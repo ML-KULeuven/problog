@@ -126,6 +126,20 @@ class TestLogicUnify(unittest.TestCase) :
         self.assertEqual( *term.args )
         
         
+    def test_add_unify_find(self) :
+        tdb = TermDB()
+        
+        f = self.f
+        A = self.A
+        B = self.B
+        
+        tdb.add(A)
+        tdb.add(B)
+        t = tdb.add(self.f(B))
+        tdb.unify(A,B)
+        
+        self.assertEqual(tdb.find(f(B)),t)
+        
         
 if __name__ == '__main__' :
     unittest.main(verbosity=2)        
