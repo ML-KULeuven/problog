@@ -1,6 +1,16 @@
 Logic
 *****
 
+The logic package contains basic logic constructs.
+
+The package directly offers access to:
+
+* Term (see :class:`problog.logic.basic.Term`)
+* Var (see :class:`problog.logic.basic.Var`)
+* Constant (see :class:`problog.logic.basic.Constant`)
+* unify (see :func:`problog.logic.unification.unify` )
+
+
 Basic logic: terms, functions, constants and variables
 ------------------------------------------------------
 
@@ -23,7 +33,7 @@ Basic logic: terms, functions, constants and variables
 Unification
 -----------
 
-.. automodule:: problog.logic.unify
+.. automodule:: problog.logic.unification
   :members:
   :undoc-members:
 
@@ -37,7 +47,7 @@ This module provides some syntactic sugar for constructing clauses.
 
 First, we create some predicates and variables::
 
-    from basic import Var
+    from problog.logic import Var
     ancestor = Lit.create('anc')
     parent = Lit.create('par')
     X = Var('X')

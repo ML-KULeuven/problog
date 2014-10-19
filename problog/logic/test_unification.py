@@ -84,8 +84,47 @@ class TestLogicUnify(unittest.TestCase) :
         f2 = tdb.add(self.f(a2))
         self.assertEqual(f1,f2)
         
+    def test_copyTo_two_vars_diff(self) :
+        tdb1 = TermDB()
+        tdb2 = TermDB()
         
-              
+        f = self.f
+        X = self.A
+        Y = self.B
+        
+        t1 = tdb1.add(X)
+        T1, = tdb1.copyTo(tdb2, t1)
+        T2, = tdb1.copyTo(tdb2, t1)
+        self.assertNotEqual(tdb2[T1], tdb2[T2])
+
+    def test_copyTo_two_vars_eq(self) :
+        tdb1 = TermDB()
+        tdb2 = TermDB()
+        
+        f = self.f
+        X = self.A
+        Y = self.B
+        
+        t1 = tdb1.add(X)
+        
+        T1, T2 = tdb1.copyTo(tdb2, t1, t1)
+        self.assertEqual(tdb2[T1], tdb2[T2])
+
+    def test_copyTo_func_two_vars(self) :
+        tdb1 = TermDB()
+        tdb2 = TermDB()
+        
+        f = self.f
+        X = self.A
+        Y = self.B
+        
+        t1 = tdb1.add(f(X,X))
+        
+        T1, = tdb1.copyTo(tdb2, t1)
+        
+        term = tdb1.getTerm(T1)
+        self.assertEqual( *term.args )
+        
         
         
 if __name__ == '__main__' :

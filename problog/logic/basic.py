@@ -72,18 +72,26 @@ class Term(object) :
     def withArgs(self,*args) :
         """Creates a new Term with the same functor and the given arguments.
         
-        :param args: 
+        :param args: new arguments for the term
         :type args: any
+        :returns: a new term with the given arguments
+        :rtype: :class:`Term`
         
         """
         return Term(self.functor, *args)
         
     def isVar(self) :
-        """Checks whether this Term represents a variable."""
+        """Checks whether this Term represents a variable.
+        
+            :returns: ``False``
+        """
         return False
         
     def isConstant(self) :
-        """Checks whether this Term represents a constant."""
+        """Checks whether this Term represents a constant.
+        
+            :returns: ``False``
+        """
         return False
         
     def __eq__(self, other) :
@@ -130,7 +138,7 @@ class Var(Term) :
     def isVar(self) :
         """Checks whether this Term represents a variable.
         
-        :returns: True
+        :returns: ``True``
         """        
         return True
         

@@ -1,6 +1,4 @@
-
 from __future__ import print_function
-
 
 from .basic import Term
 
@@ -46,6 +44,8 @@ class Clause(object) :
         
 class Lit(Term) :
     """Body literal. This corresponds to a ``call``.
+    
+    This is a subclass of :class:`problog.logic.basic.Term`.
     
     :param functor: functor of the call
     :type functor: :class:`str`

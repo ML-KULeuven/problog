@@ -104,31 +104,37 @@ class TermDB(object) :
             term = term.withArgs(*args)
         return term
         
-    def copyTo(self, index, db, varrename=None) :
+    def copyTo(self, db, *args, **kwdargs) :
         """Copy the term at the given position to a the given term database.
             Replaces all variables with safe copies.
             
            Arguments:
              varrename - dictionary of old variable to new variable (is updated)
         """
-        assert( type(index) == int)
-        if varrename == None : varrename = {}
-        term = self.getTerm(index, recursive=False)
-        if term.isVar() :
-            cl = self._getClass(index)
-            if cl in varrename :
-                return varrename[cl]
+        rename = kwdargs.get('rename',{})        
+        result = []
+        for index in args :
+            assert( type(index) == int)
+            term = self.getTerm(index, recursive=False)
+            if term.isVar() :
+                cl = self._getClass(index)
+                if cl in rename :
+                    result.append(rename[cl])
+                else :
+                    r = db.newVar()
+                    rename[cl] = r
+                    result.append(r)
             else :
-                r = db.newVar()
-                varrename[cl] = r
-                return r
-        else :
-            args = [ self.copyTo( arg, db, varrename ) for arg in term.args ]
-            new_term = term.withArgs(*args)
-            return db.add( new_term )
+                args = self.copyTo(db, *term.args, rename=rename)
+                new_term = term.withArgs(*args)
+                result.append(db.add( new_term ))
+        return result
         
     def reduce(self, term) :
-        """Find the class prototype of the given term."""
+        """Find the class prototype of the given term.
+        
+            Also accessible through __getitem__, i.e. ( tdb[term] )
+        """
         try :
             return self.getTerm( self.find(term), recursive=True )
         except KeyError :

@@ -104,8 +104,7 @@ class Engine(object) :
             new_tdb.newVar()
         
         # Add call arguments to local tdb
-        varrename = {}
-        call_args = [ tdb.copyTo(arg, new_tdb, varrename) for arg in args ]
+        call_args = tdb.copyTo( new_tdb, *args )
                 
         with new_tdb :
             # Unify call arguments with head arguments
@@ -124,10 +123,9 @@ class Engine(object) :
                     with new_tdb :
                         for a,b in zip(res, local_vars) :
                             new_tdb.unify(a,b)
-                    
-                        varrename = {}
-                        res_args = [ new_tdb.copyTo(arg, tdb, varrename) for arg in call_args ]
-                    
+                            
+                        res_args = new_tdb.copyTo(tdb, *call_args)
+                        
                         # Return values of args
                         result.append( list(map( tdb.getTerm, res_args )))
             return result
