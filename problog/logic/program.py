@@ -176,7 +176,9 @@ class ClauseDB(object) :
     * fact ( argument )
     * *empty* ( undefined (e.g. builtin) )
     
-    
+    .. todo:: 
+        
+        annotated disjunction are not supported yet
     
     """
     

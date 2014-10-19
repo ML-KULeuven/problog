@@ -75,7 +75,7 @@ class TermDB(object) :
     def _newVarName(self) :
         return '$%s_%s' % (id(self), len(self.__terms))
             
-    def newVar(self) :  # TODO check for name clash?
+    def newVar(self) :
         """Create a new variable and return its index."""
         return self._terms_add( Var( self._newVarName() ) )
     
@@ -166,7 +166,7 @@ class TermDB(object) :
         
     def _contains(self, iA, iB) :  # TODO why iA == Var?
         """Check if the first argument contains the second.
-        The first argument should be a variable.
+        The first argument should be a variable.        
         """
         # Check if iA contains iB
         assert( self.getTerm(iA, False).isVar() )
