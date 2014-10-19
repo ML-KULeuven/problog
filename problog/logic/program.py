@@ -1,6 +1,6 @@
 from __future__ import print_function
 
-from .basic import Term
+from .basic import Term, Var
 
 class _AutoDict(dict) :
     
@@ -39,8 +39,8 @@ class Clause(object) :
         res = db._addClauseNode(new_head, body_node, len(var))
         return res
 
-    def __str__(self) :
-        return "':-'(%s,%s)" % (self.head, self.body)
+    def __repr__(self) :
+        return "%s :- %s" % (self.head, self.body)
         
 class Lit(Term) :
     """Body literal. This corresponds to a ``call``.
@@ -93,12 +93,21 @@ class Lit(Term) :
         
     def __or__(self, rhs) :
         return Or(self, rhs)
-        
-    def __str__(self) :
-        return str(self.term)
-        
+                
     def __invert__(self) :
         return Not(self)
+        
+    def withArgs(self,*args) :
+        """Creates a new Lit with the same functor and the given arguments.
+        
+        :param args: new arguments for the term
+        :type args: any
+        :returns: a new term with the given arguments
+        :rtype: :class:`Lit`
+        
+        """
+        return Lit(self.functor, *args)
+
         
 class Or(object) :
     """Or"""
@@ -119,9 +128,12 @@ class Or(object) :
         
     def __and__(self, rhs) :
         return And(self, rhs)
-    
-    def __str__(self) :
-        return "';'(%s,%s)" % (self.op1, self.op2)
+            
+    def __repr__(self) :
+        lhs = str(self.op1)
+        rhs = str(self.op2)        
+        return "%s; %s" % (lhs, rhs)
+        
     
 class And(object) :
     """And"""
@@ -143,8 +155,15 @@ class And(object) :
     def __or__(self, rhs) :
         return Or(self, rhs)
     
-    def __str__(self) :
-        return "','(%s,%s)" % (self.op1, self.op2)
+    def __repr__(self) :
+        lhs = str(self.op1)
+        rhs = str(self.op2)
+        if isinstance(self.op2, Or) :
+            rhs = '(%s)' % rhs
+        if isinstance(self.op1, Or) :
+            lhs = '(%s)' % lhs
+        
+        return "%s, %s" % (lhs, rhs)
         
 class Not(object) :
     """Not"""
@@ -156,11 +175,36 @@ class Not(object) :
         op, opVars = self.child._compile(db, variables)
         return db._addNot( op, usedVars = opVars), opVars
         
-    def __str__(self) :
-        return '\+(%s)' % self.child
+    def __repr__(self) :
+        c = str(self.child)
+        if isinstance(self.child, And) :
+            c = '(%s)' % c
+        return '\+(%s)' % c
+
+class LogicProgram(object) :
+    
+    def __init__(self) :
+        pass
+        
+    def __iter__(self) :
+        """Iterator for the clauses in the program."""
+        raise NotImplementedError("LogicProgram.__iter__ is an abstract method." )
+        
+    def addClause(self, clause) :
+        raise NotImplementedError("LogicProgram.addClause is an abstract method." )
+        
+    def addFact(self, fact) :
+        raise NotImplementedError("LogicProgram.addFact is an abstract method." )
+        
+    def __iadd__(self, clausefact) :
+        if isinstance(clausefact, Clause) :
+            self.addClause(clausefact)
+        else :
+            self.addFact(clausefact)
+        return self
 
 
-class ClauseDB(object) :
+class ClauseDB(LogicProgram) :
     """Compiled logic program.
     
     A logic program is compiled into a table of instructions.
@@ -183,6 +227,7 @@ class ClauseDB(object) :
     """
     
     def __init__(self) :
+        LogicProgram.__init__(self)
         self.__nodes = []   # list of nodes
         self.__heads = {}   # head.sig => node index
     
@@ -206,20 +251,20 @@ class ClauseDB(object) :
         self.__nodes.append( node_extra )
         return index
     
-    def _getHead(self, signature) :
-        return self.__heads.get( signature )
+    def _getHead(self, head) :
+        return self.__heads.get( head.signature )
         
-    def _setHead(self, signature, index) :
-        self.__heads[ signature ] = index
+    def _setHead(self, head, index) :
+        self.__heads[ head.signature ] = index
     
-    def _addHead( self, signature, create=True ) :
-        node = self._getHead( signature )
+    def _addHead( self, head, create=True ) :
+        node = self._getHead( head )
         if node == None :
             if create :
-                node = self._appendNode( 'clause', [], signature )
+                node = self._appendNode( 'clause', [], head.functor )
             else :
                 node = self._appendNode()
-            self._setHead( signature, node )
+            self._setHead( head, node )
         return node
     
     def _addClauseNode( self, head, body_node, body_vars ) :
@@ -239,11 +284,11 @@ class ClauseDB(object) :
         return self._addClauseBody( term, subnode )
                 
     def _addClauseBody( self, head, subnode ) :
-        index = self._addHead( head.signature )
+        index = self._addHead( head )
         def_node = self.getNode(index)
         if not def_node :
             clauses = []
-            self._setNode( index, 'clause', clauses, head.signature )
+            self._setNode( index, 'clause', clauses, head.functor )
         else :
             clauses = def_node[1]
         clauses.append( subnode )
@@ -255,8 +300,9 @@ class ClauseDB(object) :
                 
     def _addCall( self, term ) :
         """Add a *call* node."""
-        node = self._addHead(term.signature, create=False)
-        return self._appendNode( 'call', node, term.args, term.signature )
+        node = self._addHead(term, create=False)
+        #print (type(term), type(term.functor), term)
+        return self._appendNode( 'call', node, term.args, term.functor )
         
     def _addAnd( self, op1, op2, usedVars=[] ) :
         """Add an *and* node."""
@@ -278,9 +324,9 @@ class ClauseDB(object) :
         :returns: location of the clause node in the database, returns ``None`` if no such node exists
         :rtype: :class:`int` or ``None``
         """
-        return self._getHead( head.signature )
+        return self._getHead( head )
        
-    def __str__(self) :
+    def __repr__(self) :
         s = ''
         for i,n in enumerate(self.__nodes) :
             s += '%s: %s\n' % (i,n)
@@ -296,11 +342,42 @@ class ClauseDB(object) :
         :rtype: :class:`int`
         """
         return clause._compile(self)
-        
-    def __iadd__(self, clausefact) :
-        if isinstance(clausefact, Clause) :
-            self.addClause(clausefact)
-        else :
-            self.addFact(clausefact)
-        return self
     
+    def _create_vars(self, term) :
+        if type(term) == int :
+            return Var('V_' + str(term))
+        else :
+            args = [ self._create_vars(arg) for arg in term.args ]
+            return term.withArgs(*args)
+        
+    def _extract(self, node_id, func=None) :
+        node = self.getNode(node_id)
+        if not node :
+            raise ValueError("Unexpected empty node.")    
+        if node[0] == 'fact' :
+            return Lit(func, *node[1])
+        elif node[0] == 'def' :
+            head = self._create_vars( Term(func,*node[2]) )
+            return Clause( head, self._extract(node[1]))
+        elif node[0] == 'call' :
+            func = node[3]
+            args = node[2]
+            return self._create_vars( Lit(func, *args) )
+        elif node[0] == 'and' :
+            a,b = node[1]
+            return And( self._extract(a), self._extract(b) )
+        elif node[0] == 'or' :
+            a,b = node[1]
+            return Or( self._extract(a), self._extract(b) )
+        else :
+            raise ValueError("Unknown node type: '%s'" % node[0])    
+        
+        
+    def __iter__(self) :
+        for node in self.__nodes :
+            if node and node[0] == 'clause' :
+                for defnode in node[1] :
+                    yield self._extract( defnode, node[2] )
+        
+        
+            

@@ -33,7 +33,7 @@ def test1() :
     katrien = Term('katrien')
     liese = Term('liese')
     
-    true = Lit(Term('true'))
+    true = Lit('true')
     
     db += anc1(X,Y) << ( par(X,Y) | par(X,Z) & anc1(Z,Y) )
     
@@ -45,7 +45,7 @@ def test1() :
     
     db += par(erik, katrien)
     db += par(katrien, liese)
-
+    
     
     #db.addDef(par(X,Y).term, db.addOr( f1, f2 ))
     #
@@ -67,9 +67,11 @@ def test1() :
    
     print ('Cycle free')
     print (PrologEngine(dbg).query( db, anc1(A,B) ))
-
+    
     print ('With cycle')
     print (PrologEngine().query( db, anc2(A,B) ))
+    
+    print ('.\n'.join(map(str,db)) + '.')
 
 def test2() :
     
@@ -86,8 +88,8 @@ def test2() :
     Y = Var('Y')
     Z = Var('Z')
         
-    true = Lit(Term('true'))
-    fail = Lit(Term('fail'))
+    true = Lit('true')
+    fail = Lit('fail')
     
     f = Term.create('f')
     

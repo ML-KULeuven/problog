@@ -16,7 +16,8 @@ class Engine(object) :
         
         self.__builtins = {}
         
-    def getBuiltIn(self, sig) :
+    def getBuiltIn(self, func, arity) :
+        sig = '%s/%s' % (func, arity)
         return self.__builtins.get(sig)
         
     def addBuiltIn(self, sig, func) :
@@ -61,7 +62,7 @@ class Engine(object) :
     def _call_call(self, db, node, local_vars, tdb, anc, call_key, level) :
         with tdb :
             call_args = [ tdb.add(arg) for arg in node[2] ]
-            builtin = self.getBuiltIn( node[3] )
+            builtin = self.getBuiltIn( node[3], len(node[2]) )
             if builtin != None :
                 try :
                     self._enter_call(level, node[3], node[2])
@@ -160,7 +161,7 @@ class Engine(object) :
             return ()
         
         rV = None
-        if node == None :
+        if not node :
             # Undefined
             raise UnknownClause()
         elif node[0] == 'fact' :
