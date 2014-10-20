@@ -157,12 +157,8 @@ def test4() :
     from problog.logic.program import PrologFile
     
     pl = PrologFile( 'family.pl' )
-            
-    db = ClauseDB.createFrom(pl)
     
-    print (db)
-    
-    print (PrologEngine().query(db, Term('ancestor',Var('X'),Var('Y'))))
+    print (PrologEngine().query(pl, Term('ancestor',Var('X'),Var('Y'))))
     
 if __name__ == '__main__' :
     test1()

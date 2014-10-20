@@ -6,7 +6,7 @@ try:
 except NameError:
     pass
 
-
+from .program import ClauseDB
 from .unification import TermDB
         
 class Engine(object) :
@@ -186,6 +186,8 @@ class Engine(object) :
         return rV
 
     def query(self, db, term, level=0) :
+        db = ClauseDB.createFrom(db)
+        
         tdb = TermDB()
         args = [ tdb.add(x) for x in term.args ]
         clause_node = db.find(term)
