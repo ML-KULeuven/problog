@@ -1,11 +1,60 @@
 """
 This module contains basic logic constructs.
-
+    
     A Term can be:
         * a function (see :class:`Term`)
         * a variable (see :class:`Var`)
         * a constant (see :class:`Constant`)
-
+        
+    Four functions are handled separately:
+        * conjunction (see :class:`And`)
+        * disjunction (see :class:`Or`)
+        * negation (see :class:`Not`)
+        * clause (see :class:`Clause`)
+    
+    **Syntactic sugar**
+    
+    Clauses can be constructed by virtue of overloading of Python operators:
+    
+      =========== =========== ============
+       Prolog      Python      English
+      =========== =========== ============
+       ``:-``          ``<<``      clause
+       ``,``           ``&``       and
+       ``;``           ``|``       or
+       ``\+``          ``~``       not
+      =========== =========== ============
+      
+    .. warning::
+    
+        Due to Python's operator priorities, the body of the clause has to be between parentheses.
+    
+    
+    **Example**::
+    
+        from problog.logic import Var, Term
+        
+        # Functors (arguments will be added later)
+        ancestor = Term('anc')
+        parent = Term('par')
+        
+        # Literals
+        leo3 = Term('leo3')
+        al2 = Term('al2')
+        phil = Term('phil')  
+        
+        # Variables
+        X = Var('X')
+        Y = Var('Y')
+        Z = Var('Z')
+        
+        # Clauses
+        c1 = ( ancestor(X,Y) << parent(X,Y) )
+        c2 = ( ancestor(X,Y) << ( parent(X,Z) & ancestor(Z,Y) ) )
+        c3 = ( parent( leo3, al2 ) )
+        c4 = ( parent( al2, phil ) )
+        
+        
 .. moduleauthor:: Anton Dries <anton.dries@cs.kuleuven.be>
 
 """
@@ -42,33 +91,16 @@ class Term(object) :
         
         """
         return Term( self.functor, *[ arg.apply(subst) for arg in self.args ])
-        
-    @classmethod
-    def create(self, functor) :
-        """Create factory for a given functor.
-        
-        :param functor: functor of the Terms to be created with the factory
-        :type functor: :class:`str`
-        :returns: factory function that accepts a list of arguments
-        :rtype: callable
-        
-        Example usage:
-        
-        >>> f = Term.create('f')
-        >>> f(1,2)
-        f(1,2)
-        >>> f(1,2,3)
-        f(1,2,3)
-        
-        """
-        return lambda *args : Term(functor, *args)
             
     def __repr__(self) :
         if self.args :
             return '%s(%s)' % (self.functor, ','.join(map(str,self.args)))
         else :
             return '%s' % (self.functor,)
-                    
+        
+    def __call__(self, *args) :
+        return self.withArgs(*args)
+        
     def withArgs(self,*args) :
         """Creates a new Term with the same functor and the given arguments.
         
@@ -78,7 +110,7 @@ class Term(object) :
         :rtype: :class:`Term`
         
         """
-        return Term(self.functor, *args)
+        return self.__class__(self.functor, *args)
         
     def isVar(self) :
         """Checks whether this Term represents a variable.
@@ -103,6 +135,19 @@ class Term(object) :
         
     def __hash__(self) :
         return hash((self.functor, self.args))
+        
+    def __lshift__(self, body) :
+        return Clause(self, body)
+    
+    def __and__(self, rhs) :
+        return And(self, rhs)
+    
+    def __or__(self, rhs) :
+        return Or(self, rhs)
+            
+    def __invert__(self) :
+        return Not(self)
+    
 
 class Var(Term) :
     """A Term representing a variable.
@@ -128,13 +173,6 @@ class Var(Term) :
         """
         return subst[self.name]
     
-    def withArgs(self,*args) :
-        """Return this variable.
-        
-        :returns: the variable itself
-        """
-        return self
-                
     def isVar(self) :
         """Checks whether this Term represents a variable.
         
@@ -163,13 +201,6 @@ class Constant(Term) :
         """
         return True
     
-    def withArgs(self,*args) :
-        """Return this constant.
-        
-        :returns: the constant itself
-        """
-        return self
-        
     def __str__(self) :
         if type(self.functor) == int or type(self.functor) == float :
             return str(self.functor)
@@ -199,3 +230,96 @@ class Constant(Term) :
             :rtype: :class:`bool`
         """
         return type(self.value) == int
+        
+class Clause(Term) :
+    """A clause."""
+    
+    def __init__(self, head, body) :
+        Term.__init__(self,':-',head,body)
+        self.head = head
+        self.body = body
+        
+    def __repr__(self) :
+        return "%s :- %s" % (self.head, self.body)
+        
+class Or(Term) :
+    """Or"""
+    
+    def __init__(self, op1, op2) :
+        Term.__init__(self, ';', op1, op2)
+        self.op1 = op1
+        self.op2 = op2
+    
+    def __or__(self, rhs) :
+        self.op2 = self.op2 | rhs
+        return self
+        
+    def __and__(self, rhs) :
+        return And(self, rhs)
+            
+    def __repr__(self) :
+        lhs = str(self.op1)
+        rhs = str(self.op2)        
+        return "%s; %s" % (lhs, rhs)
+        
+    
+class And(Term) :
+    """And"""
+    
+    def __init__(self, op1, op2) :
+        Term.__init__(self, ',', op1, op2)
+        self.op1 = op1
+        self.op2 = op2
+    
+    def __and__(self, rhs) :
+        self.op2 = self.op2 & rhs
+        return self
+        
+    def __or__(self, rhs) :
+        return Or(self, rhs)
+    
+    def __repr__(self) :
+        lhs = str(self.op1)
+        rhs = str(self.op2)
+        if isinstance(self.op2, Or) :
+            rhs = '(%s)' % rhs
+        if isinstance(self.op1, Or) :
+            lhs = '(%s)' % lhs
+        
+        return "%s, %s" % (lhs, rhs)
+        
+class Not(Term) :
+    """Not"""
+    
+    def __init__(self, child) :
+        Term.__init__(self, '\+', child)
+        self.child = child
+    
+    def __repr__(self) :
+        c = str(self.child)
+        if isinstance(self.child, And) :
+            c = '(%s)' % c
+        return '\+(%s)' % c
+
+class LogicProgram(object) :
+    """LogicProgram"""
+    
+    def __init__(self) :
+        pass
+        
+    def __iter__(self) :
+        """Iterator for the clauses in the program."""
+        raise NotImplementedError("LogicProgram.__iter__ is an abstract method." )
+        
+    def addClause(self, clause) :
+        raise NotImplementedError("LogicProgram.addClause is an abstract method." )
+        
+    def addFact(self, fact) :
+        raise NotImplementedError("LogicProgram.addFact is an abstract method." )
+        
+    def __iadd__(self, clausefact) :
+        if isinstance(clausefact, Clause) :
+            self.addClause(clausefact)
+        else :
+            self.addFact(clausefact)
+        return self

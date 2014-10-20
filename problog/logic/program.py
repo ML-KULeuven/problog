@@ -1,207 +1,6 @@
 from __future__ import print_function
 
-from .basic import Term, Var
-
-class _AutoDict(dict) :
-    
-    def __init__(self) :
-        dict.__init__(self)
-        self.__record = set()
-    
-    def __getitem__(self, key) :
-        value = self.get(key)
-        if value == None :
-            value = len(self)
-            self[key] = value
-        self.__record.add(value)
-        return value
-        
-    def usedVars(self) :
-        result = set(self.__record)
-        self.__record.clear()
-        return result
-        
-    def define(self, key) :
-        if not key in self :
-            value = len(self)
-            self[key] = value
-
-class Clause(object) :
-    
-    def __init__(self, head, body) :
-        self.head = head
-        self.body = body
-        
-    def _compile(self, db) :
-        var = _AutoDict()        
-        new_head = self.head.apply(var)
-        body_node = self.body._compile(db, var)[0]
-        res = db._addClauseNode(new_head, body_node, len(var))
-        return res
-
-    def __repr__(self) :
-        return "%s :- %s" % (self.head, self.body)
-        
-class Lit(Term) :
-    """Body literal. This corresponds to a ``call``.
-    
-    This is a subclass of :class:`problog.logic.basic.Term`.
-    
-    :param functor: functor of the call
-    :type functor: :class:`str`
-    :param args: arguments of the call
-    :type args: :class:`.Term`
-    
-    """
-    
-    def __init__(self, functor, *args) :
-        Term.__init__(self, functor, *args)
-        
-    def _compile(self, db, variables) :
-        """Compile the literal into a ``call`` and add it to the database.
-        
-        :param db: clause database 
-        :type db: ClauseDB
-        :param variables: variable translation dictionary 
-        :type variables: AutoDict
-        """
-        return db._addCall( self.apply(variables) ), variables.usedVars()
-        
-    @classmethod
-    def create(cls, func) :
-        """Create a factory function for a Lit with a given functor.
-        
-        :param func: functor 
-        :type func: :class:`str`
-        :returns: callable -- function for creating Lits
-        
-        Example::
-        
-            p = Lit.create('p')
-            t1 = p(X,Y)
-            t2 = p(p(X,X))
-        
-        """
-        
-        return lambda *args : Lit(func,*args)
-        
-    def __lshift__(self, body) :
-        return Clause(self, body)
-        
-    def __and__(self, rhs) :
-        return And(self, rhs)
-        
-    def __or__(self, rhs) :
-        return Or(self, rhs)
-                
-    def __invert__(self) :
-        return Not(self)
-        
-    def withArgs(self,*args) :
-        """Creates a new Lit with the same functor and the given arguments.
-        
-        :param args: new arguments for the term
-        :type args: any
-        :returns: a new term with the given arguments
-        :rtype: :class:`Lit`
-        
-        """
-        return Lit(self.functor, *args)
-
-        
-class Or(object) :
-    """Or"""
-    
-    def __init__(self, op1, op2) :
-        self.op1 = op1
-        self.op2 = op2
-        
-    def _compile(self, db, variables) :
-        op1, op1Vars = self.op1._compile(db, variables)
-        op2, op2Vars = self.op2._compile(db, variables)
-        opVars = (op1Vars | op2Vars)
-        return db._addOr( op1, op2, usedVars = opVars), opVars
-        
-    def __or__(self, rhs) :
-        self.op2 = self.op2 | rhs
-        return self
-        
-    def __and__(self, rhs) :
-        return And(self, rhs)
-            
-    def __repr__(self) :
-        lhs = str(self.op1)
-        rhs = str(self.op2)        
-        return "%s; %s" % (lhs, rhs)
-        
-    
-class And(object) :
-    """And"""
-    
-    def __init__(self, op1, op2) :
-        self.op1 = op1
-        self.op2 = op2
-    
-    def _compile(self, db, variables) :
-        op1, op1Vars = self.op1._compile(db, variables)
-        op2, op2Vars = self.op2._compile(db, variables)
-        opVars = (op1Vars | op2Vars)
-        return db._addAnd( op1, op2, usedVars = opVars), opVars
-        
-    def __and__(self, rhs) :
-        self.op2 = self.op2 & rhs
-        return self
-        
-    def __or__(self, rhs) :
-        return Or(self, rhs)
-    
-    def __repr__(self) :
-        lhs = str(self.op1)
-        rhs = str(self.op2)
-        if isinstance(self.op2, Or) :
-            rhs = '(%s)' % rhs
-        if isinstance(self.op1, Or) :
-            lhs = '(%s)' % lhs
-        
-        return "%s, %s" % (lhs, rhs)
-        
-class Not(object) :
-    """Not"""
-    
-    def __init__(self, child) :
-        self.child = child
-        
-    def _compile(self, db, variables) :
-        op, opVars = self.child._compile(db, variables)
-        return db._addNot( op, usedVars = opVars), opVars
-        
-    def __repr__(self) :
-        c = str(self.child)
-        if isinstance(self.child, And) :
-            c = '(%s)' % c
-        return '\+(%s)' % c
-
-class LogicProgram(object) :
-    
-    def __init__(self) :
-        pass
-        
-    def __iter__(self) :
-        """Iterator for the clauses in the program."""
-        raise NotImplementedError("LogicProgram.__iter__ is an abstract method." )
-        
-    def addClause(self, clause) :
-        raise NotImplementedError("LogicProgram.addClause is an abstract method." )
-        
-    def addFact(self, fact) :
-        raise NotImplementedError("LogicProgram.addFact is an abstract method." )
-        
-    def __iadd__(self, clausefact) :
-        if isinstance(clausefact, Clause) :
-            self.addClause(clausefact)
-        else :
-            self.addFact(clausefact)
-        return self
+from .basic import Term, Var, And, Or, Not, Clause, LogicProgram
 
 
 class ClauseDB(LogicProgram) :
@@ -341,7 +140,33 @@ class ClauseDB(LogicProgram) :
         :returns: location of the definition node in the database
         :rtype: :class:`int`
         """
-        return clause._compile(self)
+        return self._compile( clause )
+    
+    def _compile(self, struct, variables=None) :
+        if variables == None : variables = _AutoDict()
+        
+        if isinstance(struct, And) :
+            op1, op1Vars = self._compile(struct.op1, variables)
+            op2, op2Vars = self._compile(struct.op2, variables)
+            opVars = (op1Vars | op2Vars)
+            return self._addAnd( op1, op2, usedVars = opVars), opVars
+        elif isinstance(struct, Or) :
+            op1, op1Vars = self._compile(struct.op1, variables)
+            op2, op2Vars = self._compile(struct.op2, variables)
+            opVars = (op1Vars | op2Vars)
+            return self._addOr( op1, op2, usedVars = opVars), opVars
+        elif isinstance(struct, Not) :
+            child, opVars = self._compile(struct.child, variables)
+            return self._addNot( child, usedVars = opVars), opVars
+        elif isinstance(struct, Clause) :
+            new_head = struct.head.apply(variables)
+            body_node, usedVars = self._compile(struct.body, variables)
+            res = self._addClauseNode(new_head, body_node, len(variables))
+            return res
+        elif isinstance(struct, Term) :
+            return self._addCall( struct.apply(variables) ), variables.usedVars()
+        else :
+            raise ValueError("Unknown structure type: '%s'" % struct )
     
     def _create_vars(self, term) :
         if type(term) == int :
@@ -355,14 +180,14 @@ class ClauseDB(LogicProgram) :
         if not node :
             raise ValueError("Unexpected empty node.")    
         if node[0] == 'fact' :
-            return Lit(func, *node[1])
+            return Term(func, *node[1])
         elif node[0] == 'def' :
             head = self._create_vars( Term(func,*node[2]) )
             return Clause( head, self._extract(node[1]))
         elif node[0] == 'call' :
             func = node[3]
             args = node[2]
-            return self._create_vars( Lit(func, *args) )
+            return self._create_vars( Term(func, *args) )
         elif node[0] == 'and' :
             a,b = node[1]
             return And( self._extract(a), self._extract(b) )
@@ -379,5 +204,27 @@ class ClauseDB(LogicProgram) :
                 for defnode in node[1] :
                     yield self._extract( defnode, node[2] )
         
+class _AutoDict(dict) :
+    
+    def __init__(self) :
+        dict.__init__(self)
+        self.__record = set()
+    
+    def __getitem__(self, key) :
+        value = self.get(key)
+        if value == None :
+            value = len(self)
+            self[key] = value
+        self.__record.add(value)
+        return value
         
+    def usedVars(self) :
+        result = set(self.__record)
+        self.__record.clear()
+        return result
+        
+    def define(self, key) :
+        if not key in self :
+            value = len(self)
+            self[key] = value
             

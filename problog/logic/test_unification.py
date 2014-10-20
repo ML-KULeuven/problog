@@ -11,9 +11,9 @@ class TestLogicUnify(unittest.TestCase) :
         self.C = Var('C')
         self.D = Var('D')
         
-        self.f = Term.create('f')
-        self.g = Term.create('g')
-        self.h = Term.create('h')
+        self.f = Term('f')
+        self.g = Term('g')
+        self.h = Term('h')
         
         self.a = Term('a')
         self.b = Term('b')

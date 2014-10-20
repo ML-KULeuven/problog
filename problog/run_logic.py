@@ -1,27 +1,22 @@
 from __future__ import print_function
 
-from logic.basic import Term, Var
+from logic import Term, Var, Clause, And, Or
 
-from logic.program import Clause, And, Or, Lit, ClauseDB
+from logic.program import ClauseDB
 
 from logic.engine import Engine, Debugger
 
 from logic.prolog import PrologEngine
-
-debug_call = print
-
-
-    
 
     
 def test1() :
     
     db = ClauseDB()
     
-    anc1 = Lit.create('anc1')
-    anc2 = Lit.create('anc2')
-    par = Lit.create('par')  
-    tst = Lit.create('tst')  
+    anc1 = Term.create('anc1')
+    anc2 = Term.create('anc2')
+    par = Term.create('par')  
+    tst = Term.create('tst')  
     
     f = Term.create('f')
     
@@ -33,7 +28,7 @@ def test1() :
     katrien = Term('katrien')
     liese = Term('liese')
     
-    true = Lit('true')
+    true = Term('true')
     
     db += anc1(X,Y) << ( par(X,Y) | par(X,Z) & anc1(Z,Y) )
     
@@ -77,19 +72,19 @@ def test2() :
     
     db = ClauseDB()
     
-    tst1 = Lit.create('tst1')  
-    tst2 = Lit.create('tst2')  
-    _is = Lit.create('is')
+    tst1 = Term.create('tst1')  
+    tst2 = Term.create('tst2')  
+    _is = Term.create('is')
     _plus = Term.create('+')
-    eq = Lit.create('=')
-    call = Lit.create('call')
+    eq = Term.create('=')
+    call = Term.create('call')
         
     X = Var('X')
     Y = Var('Y')
     Z = Var('Z')
         
-    true = Lit('true')
-    fail = Lit('fail')
+    true = Term('true')
+    fail = Term('fail')
     
     f = Term.create('f')
     
@@ -119,8 +114,8 @@ def test3() :
     
     db = ClauseDB()
     
-    p = Lit.create('p')
-    q = Lit.create('q')
+    p = Term.create('p')
+    q = Term.create('q')
     
     X = Var('X')
     Y = Var('Y')
