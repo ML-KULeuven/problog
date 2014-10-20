@@ -47,7 +47,8 @@ class YapGrounder(object) :
         if update == None : update = GroundProgram()
         
         # Integrate result into the ground program
-        update.integrate(grounder_result)
+        res = update.integrate(grounder_result)
+        print (res)
         
         # Return the result
         return update
@@ -122,24 +123,10 @@ class GroundProgram(object) :
         self.__nodes = []
         self.__fact_names = {}
         self.__nodes_by_content = {}
-        self.__probabilities = []
-        self.__usedfacts = []
         
     def getFact(self, name) :
         return self.__fact_names.get(name, None)
-        
-    def _getUsedFacts(self, index) :
-        if index < 0 :
-            return self.__usedfacts[-index-1]
-        else :
-            return self.__usedfacts[index-1]
-        
-    def _setUsedFacts(self, index, value) :
-        if index < 0 :
-            self.__usedfacts[-index-1] = frozenset(value)
-        else :
-            self.__usedfacts[index-1] = frozenset(value)
-        
+                
     def _negate(self, t) :
         if t == self.TRUE :
             return self.FALSE
@@ -158,8 +145,6 @@ class GroundProgram(object) :
         if node_id == None : # Fact doesn't exist yet
             node_id = self._addNode( 'fact', (name, probability) )
             self.__fact_names[name] = node_id
-            self.setProbability(node_id, probability)
-            self._setUsedFacts(node_id,[abs(node_id)])
         return node_id
         
     def addNode(self, nodetype, content) :
@@ -207,28 +192,11 @@ class GroundProgram(object) :
             # Node doesn't exist yet
             node_id = self._addNode( *key )
             #self.__nodes_by_content[ key ] = node_id
-            
-            facts = set([])
-            disjoint_facts = True
-            cf = []
-            for child in content :
-                child_facts = self._getUsedFacts(child)
-                if facts & child_facts : disjoint_facts = False
-                facts |= child_facts
-                cf.append(child_facts)
-            self._setUsedFacts(node_id, facts)
-            
-            if disjoint_facts :
-                p = self.calculateProbability(nodetype, content)
-                self.setProbability(node_id, p)
-                
         return node_id
         
     def _addNode(self, nodetype, content) :
         node_id = len(self) + 1
         self.__nodes.append( (nodetype, content) )
-        self.__probabilities.append(None)
-        self.__usedfacts.append(frozenset([]))
         return node_id
         
     def getNode(self, index) :
@@ -237,47 +205,6 @@ class GroundProgram(object) :
             return self.__parent.getNode(index)
         else :
             return self.__nodes[index-self.__offset-1]
-    
-    def calculateProbability(self, nodetype, content) :
-        if nodetype == 'or' :
-            f = lambda a, b : a*(1-b)
-            p = 1
-        elif nodetype == 'and' :
-            f = lambda a, b : a*b
-            p = 1
-        for child in content :
-            p_c = self.getProbability(child)
-            if p_c == None :
-                p = None
-                break
-            else :
-                p = f(p,p_c)
-        if p != None and nodetype == 'or' :
-            p = 1 - p
-        return p
-        
-    def getProbability(self, index) :
-        if index == 0 :
-            return 1
-        elif index == None :
-            return 0
-        elif index < 0 :
-            p = self.getProbability(-index)
-            if p == None :
-                return None
-            else :
-                return 1 - p
-        else :
-            return self.__probabilities[index-1]
-    
-    def setProbability(self, index, p) :
-        #print ('SP', index, p, self.getNode(index))
-        if index == 0 or index == None :
-            pass
-        elif index < 0 :
-            self.__probabilities[-index-1] = 1 - p
-        else :
-            self.__probabilities[index-1] = p
                     
     def integrate(self, lines, rules=None) :
     
@@ -399,5 +326,5 @@ class GroundProgram(object) :
         return namedtuple('IndexStats', ('atom_count', 'name_count', 'fact_count' ) )(len(self), 0, len(self.__fact_names))
         
     def __str__(self) :
-        return '\n'.join('%s: %s (p=%s)' % (i+1,n, self.__probabilities[i]) for i, n in enumerate(self.__nodes))   
+        return '\n'.join('%s: %s' % (i+1,n) for i, n in enumerate(self.__nodes))   
     
