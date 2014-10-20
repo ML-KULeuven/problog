@@ -128,7 +128,7 @@ class Term(object) :
         
     def __eq__(self, other) :
         # TODO: this can be very slow?
-        if other == None :
+        if not other :
             return None
         else :
             return (self.functor, self.args) == (other.functor, other.args)
