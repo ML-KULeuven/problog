@@ -1,6 +1,6 @@
 import unittest
 from .basic import *
-
+from .program import *
 
 class TestLogicBasic(unittest.TestCase) :
     
@@ -33,6 +33,26 @@ class TestLogicBasic(unittest.TestCase) :
         a = Term("'A'")
         b = Var('A')
         self.assertNotEqual(str(a),str(b))
+        
+class TestLogicProgram(unittest.TestCase) :
+
+    def test_lp_create_other(self) :
+        lp = SimpleProgram()
+        lp_copy = PrologFile.createFrom( lp )
+        self.assertEqual( type(lp_copy), PrologFile )
+        
+        lp_copy = ClauseDB.createFrom( lp )
+        self.assertEqual( type(lp_copy), ClauseDB )
+    
+    def test_lp_create_self(self) :
+        lp = SimpleProgram()
+        lp_copy = SimpleProgram.createFrom( lp )
+        self.assertEqual(id(lp), id(lp_copy))
+
+    def test_lp_create_copy(self) :
+        lp = SimpleProgram()
+        lp_copy = SimpleProgram.createFrom( lp, force_copy=True )
+        self.assertNotEqual(id(lp), id(lp_copy))
         
 if __name__ == '__main__' :
     unittest.main(verbosity=2)

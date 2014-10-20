@@ -3,6 +3,78 @@ from __future__ import print_function
 from .basic import Term, Var, And, Or, Not, Clause, LogicProgram
 
 
+from .basic import LogicProgram
+
+class SimpleProgram(LogicProgram) :
+    """LogicProgram implementation as a list of clauses."""
+    
+    def __init__(self) :
+        self.__clauses = []
+        
+    def addClause(self, clause) :
+        self.__clauses.append( clause )
+        
+    def addFact(self, fact) :
+        self.__clauses.append( fact )
+    
+    def __iter__(self) :
+        return iter(self.__clauses)
+
+
+class PrologFile(LogicProgram) :
+    """LogicProgram implementation as a pointer to a Prolog file.
+    
+    :param filename: filename of the Prolog file (optional)
+    :type filename: string
+    :param allow_update: allow modifications to given file, otherwise forces copy
+    :type allow_update: bool
+    """
+    
+    def __init__(self, filename=None, allow_update=False) :
+        if filename == None :
+            filename = self._new_filename()
+            allow_update = True
+        self.__filename = filename
+        self.__allow_update = allow_update
+        
+        self.__buffer = []  # for new clauses
+        
+    def _new_filename(self) :
+        from warnings import warn
+        warn('TODO properly initialize new filename')
+        return '/tmp/somename.pl'
+        
+    def _write_buffer(self) :
+        if self.__buffer :
+            if not self.__allow_update :
+                # Copy file
+                new_filename = self._new_filename()
+                shutil.copyfile(self.__filename, new_filename)
+                self.__filename = new_filename
+        
+            filename = self.__filename
+            with open(filename, 'a') as f :
+                for line in self.__buffer :
+                    f.write(line)
+                self.__buffer = []
+        
+    def _get_filename(self) :
+        self._write_buffer()
+        return self.__filename
+    filename = property( _get_filename )
+        
+    def __iter__(self) :
+        """Iterator for the clauses in the program."""
+        # TODO implement this => use parser
+        raise NotImplementedError("yet" )
+        
+    def addClause(self, clause) :
+        self.__buffer.append( clause )
+        
+    def addFact(self, fact) :
+        self.__buffer.append( fact )
+
+
 class ClauseDB(LogicProgram) :
     """Compiled logic program.
     

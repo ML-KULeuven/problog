@@ -5,10 +5,10 @@ The logic package contains basic logic constructs.
 
 The package directly offers access to:
 
-* Term (see :class:`problog.logic.basic.Term`)
-* Var (see :class:`problog.logic.basic.Var`)
-* Constant (see :class:`problog.logic.basic.Constant`)
-* unify (see :func:`problog.logic.unification.unify` )
+* Term (see :class:`.Term`)
+* Var (see :class:`.Var`)
+* Constant (see :class:`.Constant`)
+* unify (see :func:`.unify` )
 
 
 Basic logic: terms, functions, constants and variables
@@ -47,9 +47,17 @@ Basic logic: terms, functions, constants and variables
 Logic program
 -------------
 
-.. autoclass:: problog.logic.program.LogicProgram
-  :members:
-  :undoc-members:
+.. autoclass:: problog.logic.basic.LogicProgram
+  :members: __iter__, __iadd__, createFrom, addClause, addFact
+  
+Implementations
++++++++++++++++
+
+.. autoclass:: problog.logic.program.SimpleProgram
+
+.. autoclass:: problog.logic.program.PrologFile
+
+.. autoclass:: problog.logic.program.ClauseDB
 
 
 Unification

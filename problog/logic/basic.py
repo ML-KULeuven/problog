@@ -312,14 +312,38 @@ class LogicProgram(object) :
         raise NotImplementedError("LogicProgram.__iter__ is an abstract method." )
         
     def addClause(self, clause) :
+        """Add a clause to the logic program."""
         raise NotImplementedError("LogicProgram.addClause is an abstract method." )
         
     def addFact(self, fact) :
+        """Add a fact to the logic program."""
         raise NotImplementedError("LogicProgram.addFact is an abstract method." )
         
     def __iadd__(self, clausefact) :
+        """Add clause or fact using the ``+=`` operator."""
         if isinstance(clausefact, Clause) :
             self.addClause(clausefact)
         else :
             self.addFact(clausefact)
         return self
+        
+    @classmethod
+    def createFrom(cls, lp, force_copy=False) :
+        """Create a LogicProgram of the current class from another LogicProgram.
+        
+        :param lp: logic program to convert
+        :type lp: :class:`.LogicProgram`
+        :param force_copy: default False, If true, always create a copy of the original logic program.
+        :type force_copy: bool
+        :result: LogicProgram that is (externally) identical to given one
+        :rtype: object of the class on which this method is invoked
+        
+        If the original LogicProgram already has the right class and force_copy is False, then the original program is returned.
+        """
+        if not force_copy and lp.__class__ == cls :
+            return lp
+        else :
+            obj = cls()
+            for clause in lp :
+                obj += clause
+            return obj
