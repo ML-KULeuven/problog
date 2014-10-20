@@ -1,24 +1,29 @@
 from __future__ import print_function
 
-from logic import Term, Var, Clause, And, Or
+import sys, os
 
-from logic.program import ClauseDB
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__),'../')))
 
-from logic.engine import Engine, Debugger
 
-from logic.prolog import PrologEngine
+from problog.logic import Term, Var, Clause, And, Or
+
+from problog.logic.program import ClauseDB
+
+from problog.logic.engine import Engine, Debugger
+
+from problog.logic.prolog import PrologEngine
 
     
 def test1() :
     
     db = ClauseDB()
     
-    anc1 = Term.create('anc1')
-    anc2 = Term.create('anc2')
-    par = Term.create('par')  
-    tst = Term.create('tst')  
+    anc1 = Term('anc1')
+    anc2 = Term('anc2')
+    par = Term('par')  
+    tst = Term('tst')  
     
-    f = Term.create('f')
+    f = Term('f')
     
     X = Var('X')
     Y = Var('Y')
@@ -72,12 +77,12 @@ def test2() :
     
     db = ClauseDB()
     
-    tst1 = Term.create('tst1')  
-    tst2 = Term.create('tst2')  
-    _is = Term.create('is')
-    _plus = Term.create('+')
-    eq = Term.create('=')
-    call = Term.create('call')
+    tst1 = Term('tst1')  
+    tst2 = Term('tst2')  
+    _is = Term('is')
+    _plus = Term('+')
+    eq = Term('=')
+    call = Term('call')
         
     X = Var('X')
     Y = Var('Y')
@@ -86,7 +91,7 @@ def test2() :
     true = Term('true')
     fail = Term('fail')
     
-    f = Term.create('f')
+    f = Term('f')
     
     #c1 = db.addFact( eq(X,X) )
     db += tst1(X,Y) << eq(Y,f(X))
@@ -114,8 +119,8 @@ def test3() :
     
     db = ClauseDB()
     
-    p = Term.create('p')
-    q = Term.create('q')
+    p = Term('p')
+    q = Term('q')
     
     X = Var('X')
     Y = Var('Y')
@@ -148,9 +153,19 @@ def test3() :
     print ('?- q(a,X)')
     print (PrologEngine().query( db, q(a,b) ))
 
-
+def test4() :
+    from problog.logic.program import PrologFile
+    
+    pl = PrologFile( 'family.pl' )
+            
+    db = ClauseDB.createFrom(pl)
+    
+    print (db)
+    
+    print (PrologEngine().query(db, Term('ancestor',Var('X'),Var('Y'))))
     
 if __name__ == '__main__' :
     test1()
     test2()
     test3()
+    test4()

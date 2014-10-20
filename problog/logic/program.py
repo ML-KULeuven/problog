@@ -1,9 +1,11 @@
 from __future__ import print_function
 
-from .basic import Term, Var, And, Or, Not, Clause, LogicProgram
-
+from .basic import Term, Var, And, Or, Not, Clause, LogicProgram, Constant
 
 from .basic import LogicProgram
+
+from ..parser import PrologParser, Factory
+
 
 class SimpleProgram(LogicProgram) :
     """LogicProgram implementation as a list of clauses."""
@@ -40,9 +42,9 @@ class PrologFile(LogicProgram) :
         self.__buffer = []  # for new clauses
         
     def _new_filename(self) :
-        from warnings import warn
-        warn('TODO properly initialize new filename')
-        return '/tmp/somename.pl'
+        import tempfile
+        (handle, filename) = tempfile.mkstemp(suffix='.pl')
+        return filename
         
     def _write_buffer(self) :
         if self.__buffer :
@@ -65,14 +67,69 @@ class PrologFile(LogicProgram) :
         
     def __iter__(self) :
         """Iterator for the clauses in the program."""
-        # TODO implement this => use parser
-        raise NotImplementedError("yet" )
+        parser = PrologParser(PrologFactory())
+        program = parser.parseFile(self.filename)
+        return iter(program)
         
     def addClause(self, clause) :
         self.__buffer.append( clause )
         
     def addFact(self, fact) :
         self.__buffer.append( fact )
+        
+        
+class PrologFactory(Factory) :
+    """Factory object for creating suitable objects from the parse tree."""
+        
+    def build_program(self, clauses) :
+        # LogicProgram
+        result = SimpleProgram()
+        for clause in clauses :
+            result += clause
+        return result
+    
+    def build_function(self, functor, arguments) :
+        # Term
+        return Term( functor, *arguments )
+        
+    def build_variable(self, name) :
+        return Var(name)
+        
+    def build_constant(self, value) :
+        return Constant(value)
+        
+    def build_binop(self, functor, operand1, operand2, function=None, **extra) :
+        return self.build_function("'" + functor + "'", (operand1, operand2))
+        
+    def build_unop(self, functor, operand, **extra) :
+        return self.build_function("'" + functor + "'", (operand,) )
+        
+    def build_list(self, values, tail=None, **extra) :
+        if tail == None :
+            current = '[]'
+        else :
+            current = tail
+        for value in reversed(values) :
+            current = self.build_function('.', (value, current) )
+        return current
+        
+    def build_string(self, value) :
+        return self.build_constant('"' + value + '"');
+    
+    def build_cut(self) :
+        raise NotImplementedError('Not supported!')
+        
+    def build_clause(self, functor, operand1, operand2, **extra) :
+        return Clause(operand1, operand2)
+        
+    def build_disjunction(self, functor, operand1, operand2, **extra) :
+        return Or(operand1, operand2)
+    
+    def build_conjunction(self, functor, operand1, operand2, **extra) :
+        return And(operand1, operand2)
+    
+    def build_not(self, functor, operand, **extra) :
+        return Not(operand)
 
 
 class ClauseDB(LogicProgram) :
