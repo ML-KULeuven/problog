@@ -1,4 +1,6 @@
-.PHONY: default test test2 test3 docs
+.PHONY: default test test2 test3 docs deploy_docs
+
+DOCS_LOCATION=ssh.cs.kuleuven.be:/cw/wwwserver/extern2/people/anton.dries/public_html/problog/
 
 default: test docs
 	
@@ -24,3 +26,8 @@ docs:
 	make -C docs/ html
 	@echo "======================================================================"
 	
+deploy_docs:
+	@echo "Uploading docs"
+	@echo "=============="
+	rsync --archive docs/build/html/* ${DOCS_LOCATION}
+	@echo "======================================================================"
