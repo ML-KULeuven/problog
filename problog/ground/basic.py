@@ -9,14 +9,6 @@ def local_path(*path) :
 def tmp_path(*path) :
     return os.path.abspath(os.path.join('/tmp/problog/', *path))
 
-
-    
-    
-    
-    
-
-    
-
 class Grounder(object) :
     
     def ground(self, lp, update=None) :
@@ -31,7 +23,7 @@ class Grounder(object) :
         raise NotImplementedError("Grounder.ground is an abstract method." )
         
         
-# Taken from ProbFOIL
+# Taken and modified from ProbFOIL
 class YapGrounder(object) :
     
     def ground(self, lp, update=None) :
@@ -101,9 +93,10 @@ class YapGrounder(object) :
                 lines[line_id] = ( line_type, line_content, name )
         return lines
 
+# Grounder with constraints
 
 
-# Taken from ProbFOIL
+# Taken and modified from from ProbFOIL
 class GroundProgram(object) :
     
     # Invariant: stored nodes do not have TRUE or FALSE in their content.

@@ -15,6 +15,8 @@ Contents:
    intro
    logic
    
+   notes
+   
 
    
 Indices and tables
