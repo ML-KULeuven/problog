@@ -166,9 +166,10 @@ class ClauseDB(LogicProgram) :
     
     * ('clause', [ <definitions> ], <head.functor>, <head.arity> )    => uniquely identified by functor
     * ('call', <clause / builtin>, <term.arguments>, <term.functor> )
-    * ('def', < body node >, < head.arguments >, < #vars in head+body > )
+    * ('def', < body node >, < head.arguments >, < #vars in head+body >, <head.functor> )
     * ('fact', < arguments >, <probability> )
-    * ('ad', < body node >, [ < head terms > ])
+    * ('ad', [ <adc_nodes> ])
+    * ('adc', <body node>, [<arguments>], <#vars in head+body>, <head.functor>, <parent ad node>  )
     
     * ('and', [child1,child2] )
     * ('or', [child1,child2] )
@@ -224,13 +225,24 @@ class ClauseDB(LogicProgram) :
         return node
 
     def _addAD( self, heads, body_node, body_vars ) :
+        ad_node = self._appendNode(None)
+        adc_nodes = [ self._addADChoice( head, body_node, body_vars, ad_node ) for head in heads ]
+        self._setNode( ad_node, 'ad', adc_nodes )
+
+        for head, adc_node in zip(heads, adc_nodes) :
+            self._addClauseBody(head, adc_node )
+        return ad_node
+        
         # 'ad', body node, head terms
         subnode = self._addDef( Term('', *range(0,body_vars)), body_node, body_vars )
         node = self._appendNode('ad', subnode, heads)
         for head in heads :
             self._addClauseBody( head, node )
         return None
-    
+
+    def _addADChoice( self, term, subnode, body_vars, parent ) :
+        """Add a *definition* node."""
+        return self._appendNode('adc', subnode, term.args, body_vars, term.functor, parent)
     
     def _addClauseNode( self, head, body_node, body_vars ) :
         """Add a clause node."""
@@ -245,7 +257,7 @@ class ClauseDB(LogicProgram) :
         :returns: location of the fact in the database
         :rtype: :class:`int`
         """
-        subnode = self._appendNode('fact', term.args, term.probability )
+        subnode = self._appendNode('fact', term.args, term.probability, term.functor )
         return self._addClauseBody( term, subnode )
                 
     def _addClauseBody( self, head, subnode ) :
@@ -261,7 +273,7 @@ class ClauseDB(LogicProgram) :
             
     def _addDef( self, term, subnode, body_vars ) :
         """Add a *definition* node."""
-        return self._appendNode('def', subnode, term.args, body_vars)
+        return self._appendNode('def', subnode, term.args, body_vars, term.functor)
                 
     def _addCall( self, term ) :
         """Add a *call* node."""
@@ -269,15 +281,15 @@ class ClauseDB(LogicProgram) :
         #print (type(term), type(term.functor), term)
         return self._appendNode( 'call', node, term.args, term.functor )
         
-    def _addAnd( self, op1, op2, usedVars=[] ) :
+    def _addAnd( self, op1, op2 ) :
         """Add an *and* node."""
         return self._appendNode( 'and', (op1,op2) )
         
-    def _addNot( self, op1, usedVars=[] ) :
+    def _addNot( self, op1 ) :
         """Add a *not* node."""
         return self._appendNode( 'not', op1 )        
         
-    def _addOr( self, op1, op2, usedVars=[] ) :
+    def _addOr( self, op1, op2 ) :
         """Add an *or* node."""
         return self._appendNode( 'or', (op1,op2) )
     
@@ -315,31 +327,26 @@ class ClauseDB(LogicProgram) :
         if variables == None : variables = _AutoDict()
         
         if isinstance(struct, And) :
-            op1, op1Vars = self._compile(struct.op1, variables)
-            op2, op2Vars = self._compile(struct.op2, variables)
-            opVars = (op1Vars | op2Vars)
-            return self._addAnd( op1, op2, usedVars = opVars), opVars
+            op1 = self._compile(struct.op1, variables)
+            op2 = self._compile(struct.op2, variables)
+            return self._addAnd( op1, op2)
         elif isinstance(struct, Or) :
-            op1, op1Vars = self._compile(struct.op1, variables)
-            op2, op2Vars = self._compile(struct.op2, variables)
-            opVars = (op1Vars | op2Vars)
-            return self._addOr( op1, op2, usedVars = opVars), opVars
+            op1 = self._compile(struct.op1, variables)
+            op2 = self._compile(struct.op2, variables)
+            return self._addOr( op1, op2)
         elif isinstance(struct, Not) :
-            child, opVars = self._compile(struct.child, variables)
-            return self._addNot( child, usedVars = opVars), opVars
+            child = self._compile(struct.child, variables)
+            return self._addNot( child)
         elif isinstance(struct, AnnotatedDisjunction) :
             new_heads = [ head.apply(variables) for head in struct.heads ]
-            
-            body_node, usedVars = self._compile(struct.body, variables)
-            res = self._addAD( new_heads, body_node, len(variables) )
-            return res
+            body_node = self._compile(struct.body, variables)
+            return self._addAD( new_heads, body_node, len(variables) )
         elif isinstance(struct, Clause) :
             new_head = struct.head.apply(variables)
-            body_node, usedVars = self._compile(struct.body, variables)
-            res = self._addClauseNode(new_head, body_node, len(variables))
-            return res
+            body_node = self._compile(struct.body, variables)
+            return self._addClauseNode(new_head, body_node, len(variables))
         elif isinstance(struct, Term) :
-            return self._addCall( struct.apply(variables) ), variables.usedVars()
+            return self._addCall( struct.apply(variables) )
         else :
             raise ValueError("Unknown structure type: '%s'" % struct )
     
