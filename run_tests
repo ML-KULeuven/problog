@@ -1,8 +1,0 @@
-#! /bin/bash
-
-echo "Running tests for Python 2"
-python -m unittest discover -v
-
-
-echo "Running tests for Python 3"
-python3 -m unittest discover -v

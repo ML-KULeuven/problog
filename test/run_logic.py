@@ -156,12 +156,26 @@ def test3() :
 def test4() :
     from problog.logic.program import PrologFile
     
-    pl = PrologFile( 'family.pl' )
+    pl = PrologFile( os.path.join(os.path.dirname(__file__),'family.pl') )
     
     print (PrologEngine().query(pl, Term('ancestor',Var('X'),Var('Y'))))
+
+def test5() :
+    
+    print ('====== TEST 5 ======')
+    from problog.logic.program import PrologFile
+    
+    pl = PrologFile( os.path.join(os.path.dirname(__file__),'holidays.pl') )
+
+    for cl in pl : print (str(cl))
+
+    db = ClauseDB.createFrom(pl)
+    
+    print (db)
     
 if __name__ == '__main__' :
     test1()
     test2()
     test3()
     test4()
+    test5()
