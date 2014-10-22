@@ -203,8 +203,8 @@ class ClauseDB(LogicProgram) :
     _define = namedtuple('define', ('functor', 'arity', 'children') )
     _clause = namedtuple('clause', ('functor', 'args', 'child', 'varcount') )
     _fact   = namedtuple('fact'  , ('functor', 'args', 'probability') )
-    _adc    = namedtuple('adc'   , ('functor', 'args', 'child', 'varcount', 'parent' ) )
-    _ad     = namedtuple('ad'    , ('children') )
+    _adc    = namedtuple('adc'   , ('functor', 'args', 'probability', 'child' ) )
+    _ad     = namedtuple('ad'    , ('heads', 'child', 'varcount') )
     _call   = namedtuple('call'  , ('functor', 'args', 'defnode' )) 
     _disj   = namedtuple('disj'  , ('children' ) )
     _conj   = namedtuple('conj'  , ('children' ) )
@@ -246,8 +246,8 @@ class ClauseDB(LogicProgram) :
         clause_node = self._appendNode( self._clause( head.functor, head.args, body, varcount ) )
         return self._addDefineNode( head, clause_node )
 
-    def _addADChoiceNode( self, head, body, varcount, parent ) :
-        return self._appendNode( self._adc( head.functor, head.args, body, varcount, parent ) )
+    def _addADChoiceNode( self, head, parent ) :
+        return self._appendNode( self._adc( head.functor, head.args, head.probability, parent ) )
         
     def _addCallNode( self, term ) :
         """Add a *call* node."""
@@ -256,8 +256,8 @@ class ClauseDB(LogicProgram) :
     
     def _addADNode( self, heads, body_node, body_vars ) :
         ad_node = self._appendNode(None)
-        adc_nodes = [ self._addADChoiceNode( head, body_node, body_vars, ad_node ) for head in heads ]
-        self._setNode( ad_node, self._ad(adc_nodes) )
+        adc_nodes = [ self._addADChoiceNode( head, ad_node ) for head in heads ]
+        self._setNode( ad_node, self._ad(adc_nodes, body_node, body_vars) )
         for head, adc_node in zip(heads, adc_nodes) :
             self._addDefineNode(head, adc_node )
         return ad_node    
@@ -299,15 +299,8 @@ class ClauseDB(LogicProgram) :
             self._setHead( head, node )
         return node
 
-
-    
-        
-                
-            
-        
-    
     def find(self, head ) :
-        """Find the clause node corresponding to the given head.
+        """Find the ``define`` node corresponding to the given head.
         
         :param head: clause head to match
         :type head: :class:`.basic.Term`
@@ -370,34 +363,42 @@ class ClauseDB(LogicProgram) :
             args = [ self._create_vars(arg) for arg in term.args ]
             return term.withArgs(*args)
         
-    def _extract(self, node_id, func=None) :
+    def _extract(self, node_id) :
         node = self.getNode(node_id)
         if not node :
             raise ValueError("Unexpected empty node.")    
-        if node[0] == 'fact' :
-            return Term(func, *node[1])
-        elif node[0] == 'def' :
-            head = self._create_vars( Term(func,*node[2]) )
-            return Clause( head, self._extract(node[1]))
-        elif node[0] == 'call' :
-            func = node[3]
-            args = node[2]
+            
+        nodetype = type(node).__name__
+        if nodetype == 'fact' :
+            return Term(node.functor, *node.args)
+        elif nodetype == 'clause' :
+            head = self._create_vars( Term(node.functor,*node.args) )
+            return Clause( head, self._extract(node.child))
+        elif nodetype == 'call' :
+            func = node.functor
+            args = node.args
             return self._create_vars( Term(func, *args) )
-        elif node[0] == 'and' :
-            a,b = node[1]
+        elif nodetype == 'conj' :
+            a,b = node.children
             return And( self._extract(a), self._extract(b) )
-        elif node[0] == 'or' :
-            a,b = node[1]
+        elif nodetype == 'disj' :
+            a,b = node.children
             return Or( self._extract(a), self._extract(b) )
+        elif nodetype == 'neg' :
+            return Not( self._extract(node.child))
+        elif nodetype == 'ad' :
+            heads = [ self._extract( c ) for c in node.heads ]
+            return AnnotatedDisjunction( heads, self._extract( node.child ) )
+        elif nodetype == 'adc' :
+            return self._create_vars( Term(node.functor, *node.args) )
+            
         else :
-            raise ValueError("Unknown node type: '%s'" % node[0])    
-        
+            raise ValueError("Unknown node type: '%s'" % nodetype)    
         
     def __iter__(self) :
-        for node in self.__nodes :
-            if node and node[0] == 'clause' :
-                for defnode in node[1] :
-                    yield self._extract( defnode, node[2] )
+        for index, node in enumerate(self.__nodes) :
+            if node and type(node).__name__ in ('fact', 'clause', 'ad') :
+                yield self._extract( index )
         
 class _AutoDict(dict) :
     
