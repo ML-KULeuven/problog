@@ -1,6 +1,6 @@
 from __future__ import print_function
 
-from .basic import Term, Var, And, Or, Not, Clause, LogicProgram, Constant
+from .basic import Term, Var, And, Or, Not, Clause, LogicProgram, Constant, AnnotatedDisjunction
 
 from .basic import LogicProgram
 
@@ -13,10 +13,13 @@ class SimpleProgram(LogicProgram) :
     def __init__(self) :
         self.__clauses = []
         
-    def addClause(self, clause) :
+    def _addAnnotatedDisjunction(self, clause) :
         self.__clauses.append( clause )
         
-    def addFact(self, fact) :
+    def _addClause(self, clause) :
+        self.__clauses.append( clause )
+        
+    def _addFact(self, fact) :
         self.__clauses.append( fact )
     
     def __iter__(self) :
@@ -71,10 +74,13 @@ class PrologFile(LogicProgram) :
         program = parser.parseFile(self.filename)
         return iter(program)
         
-    def addClause(self, clause) :
+    def _addAnnotatedDisjunction(self, clause) :
         self.__buffer.append( clause )
         
-    def addFact(self, fact) :
+    def _addClause(self, clause) :
+        self.__buffer.append( clause )
+        
+    def _addFact(self, fact) :
         self.__buffer.append( fact )
         
         
@@ -120,7 +126,11 @@ class PrologFactory(Factory) :
         raise NotImplementedError('Not supported!')
         
     def build_clause(self, functor, operand1, operand2, **extra) :
-        return Clause(operand1, operand2)
+        if functor == '<-' :
+            heads = self._uncurry( operand1 )
+            return AnnotatedDisjunction(heads, operand2)
+        else :
+            return Clause(operand1, operand2)
         
     def build_disjunction(self, functor, operand1, operand2, **extra) :
         return Or(operand1, operand2)
@@ -130,6 +140,21 @@ class PrologFactory(Factory) :
     
     def build_not(self, functor, operand, **extra) :
         return Not(operand)
+        
+    def build_probabilistic(self, operand1, operand2, **extra) :
+        operand2.probability = operand1
+        return operand2
+        
+    def _uncurry(self, term, func=None) :
+        if func == None : func = term.functor
+        
+        body = []
+        current = term
+        while isinstance(current, Term) and current.functor == func :
+            body.append(current.args[0])
+            current = current.args[1]
+        body.append(current)
+        return body    
 
 
 class ClauseDB(LogicProgram) :
@@ -139,18 +164,21 @@ class ClauseDB(LogicProgram) :
     
     The following instruction types are available:
     
-    * and ( child1, child2 )
-    * or  ( children )
-    * not ( child )
-    * call ( arguments )
-    * clause ( definitions )
-    * def ( head arguments, body node, variables in body )
-    * fact ( argument )
-    * *empty* ( undefined (e.g. builtin) )
+    * ('clause', [ <definitions> ], <head.functor>, <head.arity> )    => uniquely identified by functor
+    * ('call', <clause / builtin>, <term.arguments>, <term.functor> )
+    * ('def', < body node >, < head.arguments >, < #vars in head+body > )
+    * ('fact', < arguments >, <probability> )
+    * ('ad', < body node >, [ < head terms > ])
     
+    * ('and', [child1,child2] )
+    * ('or', [child1,child2] )
+    * ('not', child)
+        
     .. todo:: 
         
-        annotated disjunction are not supported yet
+        * add annotated disjunctions (*ad*)
+        * add probability field
+        * remove empty nodes -> replace by None pointer in call => requires prior knowledge of builtins
     
     """
     
@@ -189,18 +217,27 @@ class ClauseDB(LogicProgram) :
         node = self._getHead( head )
         if node == None :
             if create :
-                node = self._appendNode( 'clause', [], head.functor )
+                node = self._appendNode( 'clause', set([]), head.functor, head.arity )
             else :
                 node = self._appendNode()
             self._setHead( head, node )
         return node
+
+    def _addAD( self, heads, body_node, body_vars ) :
+        # 'ad', body node, head terms
+        subnode = self._addDef( Term('', *range(0,body_vars)), body_node, body_vars )
+        node = self._appendNode('ad', subnode, heads)
+        for head in heads :
+            self._addClauseBody( head, node )
+        return None
+    
     
     def _addClauseNode( self, head, body_node, body_vars ) :
         """Add a clause node."""
         subnode = self._addDef( head, body_node, body_vars )        
         return self._addClauseBody( head, subnode )
         
-    def addFact( self, term) :
+    def _addFact( self, term) :
         """Add a fact to the database.
         
         :param term: term to add
@@ -208,18 +245,18 @@ class ClauseDB(LogicProgram) :
         :returns: location of the fact in the database
         :rtype: :class:`int`
         """
-        subnode = self._appendNode('fact', term.args)
+        subnode = self._appendNode('fact', term.args, term.probability )
         return self._addClauseBody( term, subnode )
                 
     def _addClauseBody( self, head, subnode ) :
         index = self._addHead( head )
         def_node = self.getNode(index)
         if not def_node :
-            clauses = []
-            self._setNode( index, 'clause', clauses, head.functor )
+            clauses = set([])
+            self._setNode( index, 'clause', clauses, head.functor, head.arity )
         else :
             clauses = def_node[1]
-        clauses.append( subnode )
+        clauses.add( subnode )
         return index
             
     def _addDef( self, term, subnode, body_vars ) :
@@ -261,7 +298,7 @@ class ClauseDB(LogicProgram) :
         s += str(self.__heads)
         return s
         
-    def addClause(self, clause) :
+    def _addClause(self, clause) :
         """Add a clause to the database.
         
         :param clause: Clause to add
@@ -269,6 +306,9 @@ class ClauseDB(LogicProgram) :
         :returns: location of the definition node in the database
         :rtype: :class:`int`
         """
+        return self._compile( clause )
+    
+    def _addAnnotatedDisjunction(self, clause) :
         return self._compile( clause )
     
     def _compile(self, struct, variables=None) :
@@ -287,6 +327,12 @@ class ClauseDB(LogicProgram) :
         elif isinstance(struct, Not) :
             child, opVars = self._compile(struct.child, variables)
             return self._addNot( child, usedVars = opVars), opVars
+        elif isinstance(struct, AnnotatedDisjunction) :
+            new_heads = [ head.apply(variables) for head in struct.heads ]
+            
+            body_node, usedVars = self._compile(struct.body, variables)
+            res = self._addAD( new_heads, body_node, len(variables) )
+            return res
         elif isinstance(struct, Clause) :
             new_head = struct.head.apply(variables)
             body_node, usedVars = self._compile(struct.body, variables)

@@ -490,17 +490,7 @@ class Factory(object) :
     
     build_not = build_unop
     build_mathop1 = build_unop
-    build_directive = build_unop
-    
-    def _uncurry(self, term, func) :
-        body = []
-        current = term
-        while isinstance(current, Term) and current.func == func :
-            body.append(current.args[0])
-            current = current.args[1]
-        body.append(current)
-        return body    
-        
+    build_directive = build_unop        
                 
 if __name__ == '__main__' :
     from parser import PrologParser

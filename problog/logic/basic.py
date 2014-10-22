@@ -64,9 +64,10 @@ from __future__ import print_function
 class Term(object) :
     """Represent a first-order Term."""
     
-    def __init__(self, functor, *args) :
+    def __init__(self, functor, *args, **kwdargs) :
         self.__functor = functor
         self.__args = args
+        self.__probability = kwdargs.get('p')
     
     def _get_functor(self) : return self.__functor
     functor = property( _get_functor, doc="Term functor" )
@@ -79,6 +80,10 @@ class Term(object) :
         
     def _get_signature(self) : return '%s/%s' % (self.functor, self.arity)
     signature = property( _get_signature, doc="Term's signature ``functor/arity``" )
+    
+    def _get_probability(self) : return self.__probability
+    def _set_probability(self, p) : self.__probability = p
+    probability = property( _get_probability, _set_probability, doc="Term's probability (default: None).")
         
     def apply(self, subst) :
         """Apply the given substitution to the variables in the term.
@@ -90,13 +95,18 @@ class Term(object) :
         :rtype: :class:`Term`
         
         """
-        return Term( self.functor, *[ arg.apply(subst) for arg in self.args ])
+        return Term( self.functor, *[ arg.apply(subst) for arg in self.args ], p=self.probability)
             
     def __repr__(self) :
-        if self.args :
-            return '%s(%s)' % (self.functor, ','.join(map(str,self.args)))
+        if self.probability == None :
+            prob = ''
         else :
-            return '%s' % (self.functor,)
+            prob = '%s::' % self.probability
+        
+        if self.args :
+            return '%s%s(%s)' % (prob, self.functor, ','.join(map(str,self.args)))
+        else :
+            return '%s%s' % (prob, self.functor,)
         
     def __call__(self, *args) :
         return self.withArgs(*args)
@@ -110,7 +120,10 @@ class Term(object) :
         :rtype: :class:`Term`
         
         """
-        return self.__class__(self.functor, *args)
+        if self.probability != None :
+            return self.__class__(self.functor, *args, p=self.probability)
+        else :
+            return self.__class__(self.functor, *args)
         
     def isVar(self) :
         """Checks whether this Term represents a variable.
@@ -242,6 +255,16 @@ class Clause(Term) :
     def __repr__(self) :
         return "%s :- %s" % (self.head, self.body)
         
+class AnnotatedDisjunction(Term) :
+    
+    def __init__(self, heads, body) :
+        Term.__init__(self, '<-', heads, body)
+        self.heads = heads
+        self.body = body
+        
+    def __repr__(self) :
+        return "%s <- %s" % ('; '.join(map(str,self.heads)), self.body)
+        
 class Or(Term) :
     """Or"""
     
@@ -310,21 +333,27 @@ class LogicProgram(object) :
     def __iter__(self) :
         """Iterator for the clauses in the program."""
         raise NotImplementedError("LogicProgram.__iter__ is an abstract method." )
-        
-    def addClause(self, clause) :
+
+    def _addAnnotatedDisjunction(self, clause) :
         """Add a clause to the logic program."""
         raise NotImplementedError("LogicProgram.addClause is an abstract method." )
         
-    def addFact(self, fact) :
+    def _addClause(self, clause) :
+        """Add a clause to the logic program."""
+        raise NotImplementedError("LogicProgram.addClause is an abstract method." )
+        
+    def _addFact(self, fact) :
         """Add a fact to the logic program."""
         raise NotImplementedError("LogicProgram.addFact is an abstract method." )
         
     def __iadd__(self, clausefact) :
         """Add clause or fact using the ``+=`` operator."""
-        if isinstance(clausefact, Clause) :
-            self.addClause(clausefact)
+        if isinstance(clausefact, AnnotatedDisjunction) :
+            self._addAnnotatedDisjunction(clausefact)
+        elif isinstance(clausefact, Clause) :
+            self._addClause(clausefact)
         else :
-            self.addFact(clausefact)
+            self._addFact(clausefact)
         return self
         
     @classmethod
