@@ -6,6 +6,7 @@ from .basic import LogicProgram
 
 from ..parser import PrologParser, Factory
 
+from collections import namedtuple
 
 class SimpleProgram(LogicProgram) :
     """LogicProgram implementation as a list of clauses."""
@@ -161,20 +162,36 @@ class ClauseDB(LogicProgram) :
     """Compiled logic program.
     
     A logic program is compiled into a table of instructions.
+    The types of instructions are:
     
-    The following instruction types are available:
+    define( functor, arity, defs )
+        Pointer to all definitions of functor/arity.
+        Definitions can be: ``fact``, ``clause`` or ``adc``.
     
-    * ('clause', [ <definitions> ], <head.functor>, <head.arity> )    => uniquely identified by functor
-    * ('call', <clause / builtin>, <term.arguments>, <term.functor> )
-    * ('def', < body node >, < head.arguments >, < #vars in head+body >, <head.functor> )
-    * ('fact', < arguments >, <probability> )
-    * ('ad', [ <adc_nodes> ])
-    * ('adc', <body node>, [<arguments>], <#vars in head+body>, <head.functor>, <parent ad node>  )
-    
-    * ('and', [child1,child2] )
-    * ('or', [child1,child2] )
-    * ('not', child)
+    clause( functor, arguments, bodynode, varcount )
+        Single clause. Functor is the head functor, Arguments are the head arguments. Body node is a pointer to the node representing the body. Var count is the number of variables in head and body.
         
+    fact( functor, arguments, probability )
+        Single fact. 
+        
+    adc( functor, arguments, bodynode, varcount, parent )
+        Single annotated disjunction choice. Fields have same meaning as with ``clause``, parent_node points to the parent ``ad`` node.
+        
+    ad( childnodes )
+        Annotated disjunction group. Child nodes point to the ``adc`` nodes of the clause.
+
+    call( functor, arguments, defnode )
+        Body literal with call to clause or builtin. Arguments contains the call arguments, definition node is the pointer to the definition node of the given functor/arity.
+    
+    conj( childnodes )
+        Logical and. Currently, only 2 children are supported.
+    
+    disj( childnodes )
+        Logical or. Currently, only 2 children are supported.
+    
+    neg( childnode )
+        Logical not.
+                
     .. todo:: 
         
         * add annotated disjunctions (*ad*)
@@ -183,10 +200,68 @@ class ClauseDB(LogicProgram) :
     
     """
     
+    _define = namedtuple('define', ('functor', 'arity', 'children') )
+    _clause = namedtuple('clause', ('functor', 'args', 'child', 'varcount') )
+    _fact   = namedtuple('fact'  , ('functor', 'args', 'probability') )
+    _adc    = namedtuple('adc'   , ('functor', 'args', 'child', 'varcount', 'parent' ) )
+    _ad     = namedtuple('ad'    , ('children') )
+    _call   = namedtuple('call'  , ('functor', 'args', 'defnode' )) 
+    _disj   = namedtuple('disj'  , ('children' ) )
+    _conj   = namedtuple('conj'  , ('children' ) )
+    _neg    = namedtuple('neg'   , ('child' ) )
+        
     def __init__(self) :
         LogicProgram.__init__(self)
         self.__nodes = []   # list of nodes
         self.__heads = {}   # head.sig => node index
+    
+    def _addAndNode( self, op1, op2 ) :
+        """Add an *and* node."""
+        return self._appendNode( self._conj((op1,op2)))
+        
+    def _addNotNode( self, op1 ) :
+        """Add a *not* node."""
+        return self._appendNode( self._neg(op1) )
+        
+    def _addOrNode( self, op1, op2 ) :
+        """Add an *or* node."""
+        return self._appendNode( self._disj((op1,op2)))
+    
+    def _addDefineNode( self, head, childnode ) :
+        define_index = self._addHead( head )
+        define_node = self.getNode(define_index)
+        if not define_node :
+            clauses = []
+            self._setNode( define_index, self._define( head.functor, head.arity, clauses ) )
+        else :
+            clauses = define_node.children
+        clauses.append( childnode )
+        return childnode
+    
+    def _addFact( self, term) :
+        fact_node = self._appendNode( self._fact(term.functor, term.args, term.probability))
+        return self._addDefineNode( term, fact_node )
+        
+    def _addClauseNode( self, head, body, varcount ) :
+        clause_node = self._appendNode( self._clause( head.functor, head.args, body, varcount ) )
+        return self._addDefineNode( head, clause_node )
+
+    def _addADChoiceNode( self, head, body, varcount, parent ) :
+        return self._appendNode( self._adc( head.functor, head.args, body, varcount, parent ) )
+        
+    def _addCallNode( self, term ) :
+        """Add a *call* node."""
+        defnode = self._addHead(term, create=False)
+        return self._appendNode( self._call( term.functor, term.args, defnode ) )
+    
+    def _addADNode( self, heads, body_node, body_vars ) :
+        ad_node = self._appendNode(None)
+        adc_nodes = [ self._addADChoiceNode( head, body_node, body_vars, ad_node ) for head in heads ]
+        self._setNode( ad_node, self._ad(adc_nodes) )
+        for head, adc_node in zip(heads, adc_nodes) :
+            self._addDefineNode(head, adc_node )
+        return ad_node    
+        
     
     def getNode(self, index) :
         """Get the instruction node at the given index.
@@ -200,12 +275,12 @@ class ClauseDB(LogicProgram) :
         """
         return self.__nodes[index]
         
-    def _setNode(self, index, node_type, node_content, *node_extra) :
-        self.__nodes[index] = (node_type, node_content) + node_extra
+    def _setNode(self, index, node) :
+        self.__nodes[index] = node
         
-    def _appendNode(self, *node_extra) :
+    def _appendNode(self, node=()) :
         index = len(self.__nodes)
-        self.__nodes.append( node_extra )
+        self.__nodes.append( node )
         return index
     
     def _getHead(self, head) :
@@ -218,80 +293,18 @@ class ClauseDB(LogicProgram) :
         node = self._getHead( head )
         if node == None :
             if create :
-                node = self._appendNode( 'clause', set([]), head.functor, head.arity )
+                node = self._appendNode( self._define( head.functor, head.arity, []) )
             else :
                 node = self._appendNode()
             self._setHead( head, node )
         return node
 
-    def _addAD( self, heads, body_node, body_vars ) :
-        ad_node = self._appendNode(None)
-        adc_nodes = [ self._addADChoice( head, body_node, body_vars, ad_node ) for head in heads ]
-        self._setNode( ad_node, 'ad', adc_nodes )
 
-        for head, adc_node in zip(heads, adc_nodes) :
-            self._addClauseBody(head, adc_node )
-        return ad_node
-        
-        # 'ad', body node, head terms
-        subnode = self._addDef( Term('', *range(0,body_vars)), body_node, body_vars )
-        node = self._appendNode('ad', subnode, heads)
-        for head in heads :
-            self._addClauseBody( head, node )
-        return None
-
-    def _addADChoice( self, term, subnode, body_vars, parent ) :
-        """Add a *definition* node."""
-        return self._appendNode('adc', subnode, term.args, body_vars, term.functor, parent)
     
-    def _addClauseNode( self, head, body_node, body_vars ) :
-        """Add a clause node."""
-        subnode = self._addDef( head, body_node, body_vars )        
-        return self._addClauseBody( head, subnode )
         
-    def _addFact( self, term) :
-        """Add a fact to the database.
-        
-        :param term: term to add
-        :type term: :class:`.basic.Term`
-        :returns: location of the fact in the database
-        :rtype: :class:`int`
-        """
-        subnode = self._appendNode('fact', term.args, term.probability, term.functor )
-        return self._addClauseBody( term, subnode )
                 
-    def _addClauseBody( self, head, subnode ) :
-        index = self._addHead( head )
-        def_node = self.getNode(index)
-        if not def_node :
-            clauses = set([])
-            self._setNode( index, 'clause', clauses, head.functor, head.arity )
-        else :
-            clauses = def_node[1]
-        clauses.add( subnode )
-        return index
             
-    def _addDef( self, term, subnode, body_vars ) :
-        """Add a *definition* node."""
-        return self._appendNode('def', subnode, term.args, body_vars, term.functor)
-                
-    def _addCall( self, term ) :
-        """Add a *call* node."""
-        node = self._addHead(term, create=False)
-        #print (type(term), type(term.functor), term)
-        return self._appendNode( 'call', node, term.args, term.functor )
         
-    def _addAnd( self, op1, op2 ) :
-        """Add an *and* node."""
-        return self._appendNode( 'and', (op1,op2) )
-        
-    def _addNot( self, op1 ) :
-        """Add a *not* node."""
-        return self._appendNode( 'not', op1 )        
-        
-    def _addOr( self, op1, op2 ) :
-        """Add an *or* node."""
-        return self._appendNode( 'or', (op1,op2) )
     
     def find(self, head ) :
         """Find the clause node corresponding to the given head.
@@ -329,24 +342,24 @@ class ClauseDB(LogicProgram) :
         if isinstance(struct, And) :
             op1 = self._compile(struct.op1, variables)
             op2 = self._compile(struct.op2, variables)
-            return self._addAnd( op1, op2)
+            return self._addAndNode( op1, op2)
         elif isinstance(struct, Or) :
             op1 = self._compile(struct.op1, variables)
             op2 = self._compile(struct.op2, variables)
-            return self._addOr( op1, op2)
+            return self._addOrNode( op1, op2)
         elif isinstance(struct, Not) :
             child = self._compile(struct.child, variables)
-            return self._addNot( child)
+            return self._addNotNode( child)
         elif isinstance(struct, AnnotatedDisjunction) :
             new_heads = [ head.apply(variables) for head in struct.heads ]
             body_node = self._compile(struct.body, variables)
-            return self._addAD( new_heads, body_node, len(variables) )
+            return self._addADNode( new_heads, body_node, len(variables) )
         elif isinstance(struct, Clause) :
             new_head = struct.head.apply(variables)
             body_node = self._compile(struct.body, variables)
             return self._addClauseNode(new_head, body_node, len(variables))
         elif isinstance(struct, Term) :
-            return self._addCall( struct.apply(variables) )
+            return self._addCallNode( struct.apply(variables) )
         else :
             raise ValueError("Unknown structure type: '%s'" % struct )
     

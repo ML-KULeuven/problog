@@ -33,7 +33,7 @@ class Engine(object) :
                 
     def _call_fact(self, db, node, local_vars, tdb, anc, call_key, level) :
         with tdb :
-            atoms = list(map( tdb.add, node[1]))
+            atoms = list(map( tdb.add, node.args))
             
             # Match call arguments with fact arguments
             for a,b in zip( local_vars, atoms ) :
@@ -43,38 +43,38 @@ class Engine(object) :
                     
     def _call_and(self, db, node, local_vars, tdb, anc, call_key, level) :
         with tdb :
-            result1 = self._call(db, node[1][0], local_vars, tdb, anc=anc+[call_key], level=level)
+            result1 = self._call(db, node.children[0], local_vars, tdb, anc=anc+[call_key], level=level)
             
             result = []
             for res1 in result1 :
                 with tdb :
                     for a,b in zip(res1, local_vars) :
                         tdb.unify(a,b)
-                    result += self._call(db, node[1][1], local_vars, tdb, anc=anc+[call_key], level=level)
+                    result += self._call(db, node.children[1], local_vars, tdb, anc=anc+[call_key], level=level)
             return result
     
     def _call_or(self, db, node, local_vars, tdb, anc, call_key, level) :
         result = []
-        for n in node[1] :
+        for n in node.children :
             result += self._call(db, n, local_vars, tdb, anc=anc, level=level) 
         return result
             
     def _call_call(self, db, node, local_vars, tdb, anc, call_key, level) :
         with tdb :
-            call_args = [ tdb.add(arg) for arg in node[2] ]
-            builtin = self.getBuiltIn( node[3], len(node[2]) )
+            call_args = [ tdb.add(arg) for arg in node.args ]
+            builtin = self.getBuiltIn( node.functor, len(node.args) )
             if builtin != None :
                 try :
-                    self._enter_call(level, node[3], node[2])
+                    self._enter_call(level, node.functor, node.args)
                 except UserFail :
-                    self._exit_call(level, node[3], node[2], 'USER')
+                    self._exit_call(level, node.functor, node.args, 'USER')
                     return ()
                 
                 sub = builtin( engine=self, clausedb=db, args=call_args, tdb=tdb, anc=anc+[call_key], level=level)
                 
-                self._exit_call(level, node[3], node[2], sub)
+                self._exit_call(level, node.functor, node.args, sub)
             else :
-                sub = self._call(db, node[1], call_args, tdb, anc=anc+[call_key], level=level)
+                sub = self._call(db, node.defnode, call_args, tdb, anc=anc+[call_key], level=level)
                 
             # result at 
             result = []
@@ -88,7 +88,7 @@ class Engine(object) :
     def _call_not(self, db, node, local_vars, tdb, anc, call_key, level) :
         # TODO Change this for probabilistic
         
-        subnode = node[1]
+        subnode = node.child
         subresult = self._call(db, subnode, local_vars, tdb, anc, level)
         
         if subresult :
@@ -96,11 +96,11 @@ class Engine(object) :
         else :
             return [ [ tdb[v] for v in local_vars ] ]
             
-    def _call_def(self, db, node, args, tdb, anc, call_key, level) :
+    def _call_clause(self, db, node, args, tdb, anc, call_key, level) :
         new_tdb = TermDB()
         
         # Reserve spaces for clause variables
-        local_vars = range(0,node[3])
+        local_vars = range(0,node.varcount)
         for i in local_vars :
             new_tdb.newVar()
         
@@ -109,11 +109,11 @@ class Engine(object) :
                 
         with new_tdb :
             # Unify call arguments with head arguments
-            for call_arg, def_arg in zip(call_args, node[2]) :
+            for call_arg, def_arg in zip(call_args, node.args) :
                 new_tdb.unify(call_arg, def_arg)
             
             # Call body
-            sub = self._call(db, node[1], local_vars, new_tdb, anc, level)
+            sub = self._call(db, node.child, local_vars, new_tdb, anc, level)
             
             # sub contains values of local variables in the new context 
             #  => we need to translate them back to the 'args' from the old context
@@ -133,7 +133,7 @@ class Engine(object) :
             
         return []
     
-    def _call_clause(self, db, node, args, tdb, anc, call_key, level) :
+    def _call_def(self, db, node, args, tdb, anc, call_key, level) :
         return self._call_or(db, node, args, tdb, anc, call_key, level)
     
     def _call( self, db, node_id, input_vars, tdb, anc=[], level=0) :
@@ -160,26 +160,27 @@ class Engine(object) :
             self._exit_call(level, node_id, call_terms, 'CYCLE')
             return ()
         
+        nodetype = type(node).__name__
         rV = None
         if not node :
             # Undefined
             raise UnknownClause()
-        elif node[0] == 'fact' :
+        elif nodetype == 'fact' :
             rV = self._call_fact(db, node, input_vars, tdb, anc, call_key,level+1 )
-        elif node[0] == 'call' :
+        elif nodetype == 'call' :
             rV = self._call_call(db, node, input_vars, tdb, anc, call_key,level+1)
-        elif node[0] == 'def' :
-            rV = self._call_def(db, node, input_vars, tdb, anc, call_key,level+1)
-        elif node[0] == 'not' :
+        elif nodetype == 'clause' :
+            rV = self._call_clause(db, node, input_vars, tdb, anc, call_key,level+1)
+        elif nodetype == 'neg' :
             rV = self._call_not(db, node, input_vars, tdb, anc, call_key,level+1)
-        elif node[0] == 'and' :
+        elif nodetype == 'conj' :
             rV = self._call_and(db, node, input_vars, tdb, anc, call_key,level+1)
-        elif node[0] == 'or' or node[0] == 'clause':
+        elif nodetype == 'disj' or nodetype == 'define':
             rV = self._call_or(db, node, input_vars, tdb, anc, call_key,level+1)
         # elif node[0] == 'builtin' :
         #     rV = self._call_builtin(db, node, input_vars, tdb, anc, call_key,level+1)
         else :
-            raise NotImplementedError("Unknown node type: '%s'" % node[0] )
+            raise NotImplementedError("Unknown node type: '%s'" % nodetype )
         
         self._exit_call(level, node_id, call_terms, rV)
 
@@ -191,7 +192,7 @@ class Engine(object) :
         tdb = TermDB()
         args = [ tdb.add(x) for x in term.args ]
         clause_node = db.find(term)
-        call_node = ('call', clause_node, args, term.signature )
+        call_node = ClauseDB._call( term.functor, args, clause_node )
         return self._call_call(db, call_node, args, tdb, [], None, level)
         
 
