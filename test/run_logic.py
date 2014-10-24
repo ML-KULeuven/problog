@@ -173,6 +173,9 @@ def test5() :
     
     print (db)
     
+    for cl in db :
+        print (cl)
+    
 if __name__ == '__main__' :
     test1()
     test2()

@@ -1,16 +1,17 @@
 from __future__ import print_function
-import os
+
+from ..utils import TemporaryDirectory, local_path
 
 from ..logic.program import PrologFile
 
-def local_path(*path) :
-    return os.path.abspath(os.path.join(os.path.dirname(__file__), *path))
 
-def tmp_path(*path) :
-    return os.path.abspath(os.path.join('/tmp/problog/', *path))
+
 
 class Grounder(object) :
     
+    def __init__(self, env=None) :
+        self.env = env        
+        
     def ground(self, lp, update=None) :
         """Ground the given logic program.
             :param lp: logic program
@@ -24,7 +25,10 @@ class Grounder(object) :
         
         
 # Taken and modified from ProbFOIL
-class YapGrounder(object) :
+class YapGrounder(Grounder) :
+    
+    def __init__(self, env=None) :
+        Grounder.__init__(self, env)
     
     def ground(self, lp, update=None) :
         # This grounder requires a physical Prolog file.
@@ -39,36 +43,38 @@ class YapGrounder(object) :
         if update == None : update = GroundProgram()
         
         # Integrate result into the ground program
-        res = update.integrate(grounder_result)
-        print (res)
-        
+        #res = update.integrate(grounder_result)
+
         # Return the result
         return update
     
     def _call_grounder(self, in_file) : 
-        PROBLOG_GROUNDER = local_path('ground_compact.pl')
+        PROBLOG_GROUNDER = local_path('ground/ground_compact.pl')
+        
+        # Create a temporary directory that is removed when the block exits.
+        with TemporaryDirectory(tmpdir='/tmp/problog/') as tmp :
                 
-        # 2) Call yap to do the actual grounding
-        ground_program = tmp_path('problog.ground')
-        # Remove output file
-        if os.path.exists(ground_program) : os.remove(ground_program)
+            # 2) Call yap to do the actual grounding
+            ground_program = tmp.abspath('problog.ground')
         
-        queries = tmp_path('problog.queries')
+            queries = tmp.abspath('problog.queries')
         
-        # TODO support evidence
-        evidence = '/dev/null'
+            evidence = tmp.abspath('problog.evidence')
                 
-        import subprocess
+            import subprocess
         
-        try :
-            output = subprocess.check_output(['yap', "-L", PROBLOG_GROUNDER , '--', in_file, ground_program, evidence, queries ])
-        
-            with open(queries) as f :
-                qr = [ line.strip() for line in f ]
-            return self._read_grounding(ground_program), qr
-        except subprocess.CalledProcessError :
-            print ('Error during grounding', file=sys.stderr)
-            return [], []
+            try :
+                output = subprocess.check_output(['yap', "-L", PROBLOG_GROUNDER , '--', in_file, ground_program, evidence, queries ])
+                with open(queries) as f :
+                    qr = [ line.strip() for line in f ]
+                    
+                self._build_grounding(ground_program)
+                
+                return None, None    
+               # return self._read_grounding(ground_program), qr
+            except subprocess.CalledProcessError :
+                print ('Error during grounding', file=sys.stderr)
+                return [], []
     
     def _read_grounding(self, filename) :
         lines = []
@@ -92,6 +98,25 @@ class YapGrounder(object) :
                 
                 lines[line_id] = ( line_type, line_content, name )
         return lines
+        
+    def _build_grounding(self, filename) :
+        # line = 'line_type', 'line_content', 'name'
+        
+        
+        for line in open(filename) :
+            content, name = line.strip().split(' | ')
+            content = content.split()
+            
+            line_index = content[0]
+            line_type = content[1]
+            line_content = content[2:]
+        
+            
+            
+        
+        pass
+        
+        
 
 # Grounder with constraints
 
@@ -216,10 +241,13 @@ class GroundProgram(object) :
     def _integrate_line(self, line_num, line_type, line_content, line_alias, lines, ln_to_ni, rules) :
         # TODO make it work for cycles
         
+        print (ln_to_ni)
+        
         debg = False
         if line_num != None :
             node_id = ln_to_ni[line_num]
             if node_id != '?' : return node_id
+            ln_to_ni[line_num] = 'X'
         
         if line_type == 'fact' :
             if line_content > 1.0 - 1e-10 :
@@ -249,7 +277,7 @@ class GroundProgram(object) :
             
         # Store in translation table
         if line_num != None : ln_to_ni[line_num] = node_id
-        
+                
         return node_id
         
     def _selectNodes(self, queries, node_selection) :

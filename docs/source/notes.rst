@@ -1,6 +1,10 @@
 Notes
 =====
 
+.. warning::
+
+	These notes are for Anton's internal use only.
+
 Data structures
 ---------------
 
@@ -109,22 +113,27 @@ We can introduce literals for each head-body combination.
   p22::ad2_a2.
   p23::ad2_a4.
   
-  
-  
-  
-  
-  
-In this new representation we have lost the constraint that the literals in the head of each clause are mutually exclusive.
+This model is not equivalent to the previous one, because it does not take into account the mutual exclusivity of (p11,p12,p13) and (p21,p22,p23).
+In order to incorporate this restriction we need to modify the model in two ways:
 
-.. code_block:: prolog
-  
-  ad1_me :- (\+ad1_a1,\+ad1_a2).
-  ad1_me :- (\+ad1_a2,\+ad1_a3).
-  ad1_me :- (\+ad1_a1,\+ad1_a3).
-  
-  a1 -> -ad1_a2 /\ -ad1_a3
-  a2 -> -ad1_a1 /\ -ad1_a3
-  a3 -> -ad1_a1 /\ -ad1_a2
+	* add a constraint that states that p11, p12 and p13 are mutually exclusive.
+	* set the probability of ~ad1_a1 and others to 1 (because through mutually exlusivity the choice of *not* selecting ad1_a1 is completely determined by the choice for one of the other alternatives.)
 
-For each clause+head: fact with positive probability P and negative 1
-+ constraint that they are mutually exclusive
+Adding annotated disjunctions thus requires support for these two things:
+
+	* additional logic constraints (e.g. mutual exclusivity)
+	* separate positive and negative probabilities (where :math:`p_\ominus \not = 1-p_\oplus`)
+	
+
+.. code-block:: prolog
+
+    p11::a1, p12::a2, p13::a3 <- b, c. 
+
+    ===
+    
+    body <=> b, c
+    
+    not (ad1_a1 /\ ad1_a2) and not (ad1_a1 /\ ad1_a3) and not (ad1_a2 /\ ad1_a3) and (not body \/ ad1_a1 \/ ad1_a2 \/ ad1_a3)
+    
+     
+    

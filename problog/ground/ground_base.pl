@@ -6,10 +6,11 @@
 :- op(1000,xfx,['::']). % to support probabilistic facts
 :- op(1149,xfx,['<-']). % to support annotated disjunctions
 
-:- table possibly_true/1.
+:- table possibly_true/2.
 :- table certainly_true/1.
 :- table write_fact/2.
 :- table write_clause/2.
+:- yap_flag(tabling_mode,local).
 
 :- yap_flag(unknown, fail).
 
@@ -24,7 +25,7 @@
 
 main :- 
     % current_prolog_flag(argv, ARGS),
-    unix( argv(ARGS)), 
+    unix( argv(ARGS)),
     (ARGS = [Input,Grounding,Evidence,Queries] ->
         main(Input, Grounding, Evidence, Queries)
     ;
@@ -73,7 +74,10 @@ cleanup(Message) :-
 %%%%%%%
 % Writing evidence
 %%%%%%%
-
+write_evidence :- %Debugging - checks if there are facts evidence/1, that is without specifying the truth value.
+    evidence(Atom),
+    format(user_error, 'ERROR: The evidence atom ~q is missing a truth value.\n', [Atom]),
+    fail.
 write_evidence :-
     recorded(estream,Stream,_),
     evidence(Atom,Truth),
@@ -107,7 +111,7 @@ write_queries :-
     (ground(Atom) ->
 		format(Stream,'~q\n', Atom)
 	 ;
-		findall( Atom, possibly_true(Atom), Grounded ),
+		findall( Atom, possibly_true(Atom,_), Grounded ),
 		format_all(Stream,'~q\n', Grounded)
 	 ),
     fail.
@@ -129,7 +133,7 @@ format_all(Stream, Format, [H|T]) :-
 %%%%%%
 write_grounding :-
       query(Goal),
-      possibly_true(Goal),
+      possibly_true(Goal,_),
 		(certainly_true(Goal) ->
 			write_fact(1.0,Goal)
 		;
@@ -138,7 +142,7 @@ write_grounding :-
       fail.
 write_grounding :-
     	evidence(Goal,_),
-    	possibly_true(Goal),
+    	possibly_true(Goal,_),
       fail.
 write_grounding.
 
@@ -146,58 +150,129 @@ write_grounding.
 % Possibly true
 %%%%%%
 
-possibly_true(Goal) :-
+possibly_true(Goal,true) :-
     certainly_true(Goal).
-possibly_true(\+ Goal) :-
+possibly_true(\+ Goal,true) :-
     \+ certainly_true(Goal).
-possibly_true(not(Goal)) :-
+possibly_true(not(Goal),true) :-
     \+ certainly_true(Goal).
-possibly_true(R-P-Fact) :-
+possibly_true(R-P-Fact-[],true) :-
     write_fact(P,R-Fact).
-possibly_true(Goal) :-
+possibly_true(R-P-Fact-Body,true) :-
+    write_fact(P,R-Fact-Body).
+possibly_true(Goal,true) :-
     clause((P::Goal),Body),    
     call(Body),
     valid_probfact(Goal,P),
     write_fact(P,Goal).
-possibly_true(Goal) :-
-	(	
-	findall((AD,Body), clause((AD <- Body), true), ALL),
-	nth1(I,ALL,(AD,Body)),
-    % clause((AD <- Body),true,R),
-    % nth_clause(_,I,R),
-    ad_converter(Goal,AD,Body,I,Sum,ExtendedBody),
-    (Sum>1.00000000001 ->
-        format(user_error,'ERROR: Sum of annotated disjunction is larger than 1.0.~n~w <- ~w.~n',[AD, Body]),
-        fail
-        ;
-        true
-    ),
-    possibly_true(ExtendedBody),
-    write_clause(Goal,ExtendedBody)
+possibly_true(Goal,true) :- %The Body of an intentional probabilistic fact should be deterministic.
+    clause((P::Goal),Body),
+    \+certainly_true(Body),   
+    possibly_true(Body,_), 
+    format(user_error,'ERROR: The body of an intentional probabilistic fact ~q is not deterministic.\n',[Goal]).
+possibly_true(Goal,Body) :-
+	(
+        findall( (AD,Body), (
+            clause( (AD <- Body), true, _)),
+        List ),
+        nth1( I, List, (AD,Body)),
+        copy_term(Goal,GTest),
+        goal_in_ad(GTest, AD),
+        check_head_probabilities(AD),
+%        clause((AD <- Body), true, R),
+%	    copy_term(Goal,GTest),
+%        goal_in_ad(GTest,AD),
+%        check_head_probabilities(AD),
+%        nth_clause(_, I, R),
+        ad_converter(Goal,AD,Body,I,Sum, ExtendedBody),
+        (Sum>1.00000000001 ->
+            format(user_error,'ERROR: Sum of annotated disjunction is larger than 1.0.~n~w <- ~w.~n',[AD, Body]),
+            fail
+            ;
+            true
+        ),
+        possibly_true(ExtendedBody,_),
+        write_clause(Goal,ExtendedBody)
 	;
-    catch(clause(Goal,Body),_,fail),
-    possibly_true(Body),
-    valid_for_grounding(Goal),
-    write_clause(Goal,Body)
+        catch(clause(Goal,Body),_,fail),
+        possibly_true(Body,_),
+        valid_for_grounding(Goal),
+        write_clause(Goal,Body)
 	).
-possibly_true((Goal1,Goal2)) :-
-    possibly_true(Goal1),
-    possibly_true(Goal2).
+possibly_true((Goal1,Goal2),true) :-
+    possibly_true(Goal1,_),
+    possibly_true(Goal2,_).
 
-ad_converter(Head,AD,Body,I,Sum,Result) :-
-    ad_converter(Head,AD,Body,I,1,Sum,Result).
-ad_converter(Head,(P::Head),Body,I,Dev,P,Result) :-
+possibly_true((Goal1;Goal2),true) :-
+    possibly_true(Goal1,_);
+    possibly_true(Goal2,_).
+
+
+ad_converter(Head, (P::Head), Body, ADIndex, P1, (Body, I-P1-Head-Body)) :-
+    P1 is P, 
+    atomic_list_concat([ADIndex, '_0'], I). %Sum is the probability itself
+ad_converter(Head,AD,Body,ADIndex,Sum, Result) :-
+    ad_converter(Head,AD,Body,ADIndex, 1, 0, Sum, Result).
+ad_converter(Head,(P::Head),Body, ADIndex,Dev, HIndex, P, Result) :- %Sum is the old probability
     Pnew is P / Dev,
-    Result = (Body,I-Pnew-Head).
-ad_converter(Head,((P::Head);_),Body,I,Dev,P,Result) :-
+    (Pnew > 0.99999999999 ->
+        Result = Body
+    ;
+        atomic_list_concat([ADIndex, '_', HIndex], I),
+        Result = (Body, I-Pnew-Head-Body)
+    ).
+ad_converter(Head, ((P::Head);_), Body, ADIndex, Dev, HIndex, P, Result) :- %Sum is the old probability
     Pnew is P / Dev,
-    Result = (Body,I-Pnew-Head).
-ad_converter(Head,(P::Fact;Rec),Body,I,Dev,NSum,Result) :-
+    atomic_list_concat([ADIndex, '_', HIndex], I),
+    Result = (Body, I-Pnew-Head-Body).
+ad_converter(Head, (P::Fact;Rec), Body, ADIndex, Dev, HIndex, NSum, Result) :-
     Pnew is P / Dev,
     DevRec is Dev - P,
-    ad_converter(Head,Rec,Body,I,DevRec,Sum,ResultRec),
+    HIndexNew is HIndex + 1,
+    ad_converter(Head,Rec,Body,ADIndex,DevRec,HIndexNew, Sum, ResultRec),
     NSum is Sum + P,
-    Result = (ResultRec,\+ I-Pnew-Fact).
+    atomic_list_concat([ADIndex, '_', HIndex], I),
+    Result = (ResultRec, \+ I-Pnew-Fact-Body).
+
+goal_in_ad(Goal,(_::Goal)).
+goal_in_ad(Goal,((_::Goal);_)).
+goal_in_ad(Goal,((_::Head);AD)) :-
+	goal_in_ad(Goal,AD).
+
+check_head_probabilities(AD):-
+    check_head_probabilities_var(AD),
+    check_head_probabilities_float(AD).
+
+check_head_probabilities_var((P::Goal)):- 
+    ( \+ var(P) -> 
+        true
+    ;
+        format(user_error,'ERROR: Probabilistic label (~q::~q) is not instantiated.\n',[P, Goal]),
+        fail
+    ).
+check_head_probabilities_var(((P::Goal);AD)):- 
+    ( \+ var(P) ->
+        true
+    ;
+        format(user_error,'ERROR: Probabilistic label (~q::q) is not instantiated.\n',[P, Goal]),
+        check_head_probabilities_var(AD)
+    ).
+
+
+check_head_probabilities_float((P::Goal)):- X is P,
+    (float(X) -> 
+        true
+    ;
+        format(user_error,'ERROR: Probabilistic label (~q::~q) not float.\n',[P, Goal]),
+        fail
+    ).
+check_head_probabilities_float(((P::Goal);AD)):- X is P,
+    (float(X) ->
+        true
+    ;
+        format(user_error,'ERROR: Probabilistic label (~q::q) not float.\n',[P, Goal]),
+        check_head_probabilities_float(AD)
+    ).
 
 %%%%%%
 % Certainly true
@@ -205,18 +280,18 @@ ad_converter(Head,(P::Fact;Rec),Body,I,Dev,NSum,Result) :-
 certainly_true(\+ Goal) :-
     (
         % To backtrack over all possible ways it can be true
-        possibly_true(Goal),
+        possibly_true(Goal,_),
         fail
     ;
-        \+ possibly_true(Goal)
+        \+ possibly_true(Goal,_)
     ).
 certainly_true(not(Goal)) :-
     (
         % To backtrack over all possible ways it can be true
-        possibly_true(Goal),
+        possibly_true(Goal,_),
         fail
     ;
-        \+ possibly_true(Goal)
+        \+ possibly_true(Goal,_)
     ).
 certainly_true((Goal1,Goal2)) :- 
     certainly_true(Goal1),
@@ -228,7 +303,6 @@ certainly_true((Goal1;Goal2)) :- %to handle disjunction in bodies
 certainly_true(Goal) :-
 	 \+ builtin_reused(Goal),
     predicate_property(Goal,built_in),
-	 writeln(Goal),
     (builtin_support(Goal) ->
     	call(Goal)
 	 ;
@@ -266,138 +340,72 @@ valid_probfact(_,_).
 % Valid atom during grounding
 %%%%%%
 valid_for_grounding(Atom) :-
+    recorded(gstream, S, _),
     \+ground(Atom),
-    format(user_error,'ERROR: encountered an ungrounded atom ~q during grounding. Heads of rules should be ground after calling the rule.\n',[Atom]),
+    format(user_error,'ERROR: encountered an ungrounded atom ~q during grounding. A rule (Head and Body) should be ground after calling the rule.\n',[Atom]),
     throw(grounding_error).
 valid_for_grounding(_).
 
-get_id(Goal,I,ID) :-
-    (ground_id(Goal,I,ID) ->
-        true
-    ;
-        new_id(ID),
-        assert(ground_id(Goal,I,ID) )
-    ).
-
-get_id(Goal,ID) :-
-    (ground_id(Goal,ID) ->
-        true
-    ;
-        new_id(ID),
-        assert( ground_id(Goal,ID) )
-    ).
-
-new_id(ID) :- 
-    catch(nb_getval(factid,ID),_,ID=1),
-    ID1 is ID + 1,
-    nb_setval(factid,ID1).
-
+%%%%%
+% Write fact
+%%%%%
+write_fact(P,I-Goal-Body) :-
+    recorded(gstream,S,_),
+    format(S,'~q::ad~w(~q, ~q).\n',[P, I, Goal, Body]).
 write_fact(P,I-Goal) :-
     recorded(gstream,S,_),
-    get_id(Goal,I,ID),
-    format(S,'~q FACT ~q | ad~q_~q\n',[ID,P,I,Goal]).
+    format(S,'~q::ad~w(~q).\n',[P,I,Goal]).
 write_fact(P,Goal) :-
     Goal \= ad-_,
-    get_id(Goal,ID),
     recorded(gstream,S,_),
-    format(S,'~q FACT ~q | ~q\n',[ID,P,Goal]).
-    
+    format(S,'~q::~q.\n',[P,Goal]).
+
 %%%%%
 % Write clause
 %%%%%
 write_clause(Goal,true) :-
     !,\+certainly_true(Goal),
     recorded(gstream,S,_),
-    get_id(Goal,ID),
-    format(S,'~q FACT 1 | ~q\n',[Goal]).
+    format(S,'~q.\n',[Goal]).
 write_clause(Goal,Body) :-
     recorded(gstream,S,_),
     remove_certainly_true(Body,PBody),
-    get_id(Goal,ID),
-    (PBody == true -> 
-        format(S,'~q FACT 1 | ~q\n',[ID, Goal])
-    ;
-        format(S,'~q AND ',[ID]),
-        write_body(PBody),
-        format(S,' | ~q\n',[Goal])
-    ).
-        
+    format(S,'~q :- ',[Goal]),
+    write_body(PBody),
+    format(S,'.\n',[]).
 write_body((Atom,Rest)) :-
     !,
-    recorded(gstream,S,_),
     write_body(Atom),
-    format(S,' ',[]),
+    recorded(gstream,S,_),
+    format(S,',',[]),
     write_body(Rest).
 write_body(\+ Atom) :-
     !,write_body(not(Atom)).
-
 write_body(not(Atom)) :-
     !,
     recorded(gstream,S,_),
-    (Atom = R-P-Fact ->
-        ground_id( Fact, R, ID ),
-        format(S,'-~q',[ID])
+    valid_for_grounding(Atom),
+    (Atom = R-P-Fact-[] ->
+        format(S,'\\+ ad~w(~q)',[R,Fact])
     ;
-        ground_id( Atom, ID ),
-        format(S,'-~q',[ID])
+        (Atom = R-P-Fact-Body ->
+            format(S,'\\+ ad~w(~q, ~q)',[R,Fact,Body])
+        ;
+            format(S,'\\+ (~q)',[Atom])
+        )
     ).
 write_body(Atom) :-
     recorded(gstream,S,_),
-    (Atom = R-P-Fact ->
-        ground_id( Fact, R, ID ),
-        format(S,'~q',[ID])
+    valid_for_grounding(Atom),
+    (Atom = R-P-Fact-[] ->
+        format(S,'ad~w(~q)',[R,Fact])
     ;
-        ground_id( Atom, ID ), !,
-        format(S,'~q',[ID])
+        (Atom = R-P-Fact-Body ->
+            format(S,'ad~w(~q, ~q)',[R,Fact,Body])
+        ;
+            format(S,'~q',[Atom])
+        )
     ).
-
-% %%%%%
-% % Write fact
-% %%%%%
-% write_fact(P,I-Goal) :-
-%     recorded(gstream,S,_),
-%     format(S,'~q::ad~q_~q.\n',[P,I,Goal]).
-% write_fact(P,Goal) :-
-%     Goal \= ad-_,
-%     recorded(gstream,S,_),
-%     format(S,'~q::~q.\n',[P,Goal]).
-% 
-% %%%%%
-% % Write clause
-% %%%%%
-% write_clause(Goal,true) :-
-%     !,\+certainly_true(Goal),
-%     recorded(gstream,S,_),
-%     format(S,'~q.\n',[Goal]).
-% write_clause(Goal,Body) :-
-%     recorded(gstream,S,_),
-%     remove_certainly_true(Body,PBody),
-%     format(S,'~q :- ',[Goal]),
-%     write_body(PBody),
-%     format(S,'.\n',[]).
-% write_body((Atom,Rest)) :-
-%     !,
-%     write_body(Atom),
-%     recorded(gstream,S,_),
-%     format(S,',',[]),
-%     write_body(Rest).
-% write_body(\+ Atom) :-
-%     !,write_body(not(Atom)).
-% write_body(not(Atom)) :-
-%     !,
-%     recorded(gstream,S,_),
-%     (Atom = R-P-Fact ->
-%         format(S,'\\+ ad~q_~q',[R,Fact])
-%     ;
-%         format(S,'\\+ (~q)',[Atom])
-%     ).
-% write_body(Atom) :-
-%     recorded(gstream,S,_),
-%     (Atom = R-P-Fact ->
-%         format(S,'ad~q_~q',[R,Fact])
-%     ;
-%         format(S,'~q',[Atom])
-%     ).
 
 remove_certainly_true((Atom,Rest),Res) :-
     !,
@@ -424,12 +432,14 @@ remove_certainly_true(Atom,Atom).
 % builtin_reused/1 defines the builtins that are reused by problog
 %
 builtin_reused((_,_)).
+builtin_reused((_;_)).
 builtin_reused(not(_)).
 builtin_reused(\+(_)).
 
 %
 % builtin_support/1 defines which builtins are supported
 %
+builtin_support(length(_,_)).
 builtin_support(true).
 builtin_support(is(_,_)).
 builtin_support('@<'(_,_)).
@@ -441,8 +451,24 @@ builtin_support('=<'(_,_)).
 builtin_support('>='(_,_)).
 builtin_support('\\=='(_,_)).
 builtin_support('\\='(_,_)).
+builtin_support('='(_,_)).
 builtin_support(write(_)).
 builtin_support(writeln(_)).
 builtin_support(format(_)).
 builtin_support(format(_,_)).
+builtin_support(between(_,_,_)).
+builtin_support(var(_)).
+builtin_support(nonvar(_)).
+builtin_support(atom(_)).
+builtin_support(atomic(_)).
+builtin_support(compound(_)).
+builtin_support(ground(_)).
+builtin_support(number(_)).
+builtin_support(float(_)).
+builtin_support(integer(_)).
+builtin_support(arg(_,_,_)).
+builtin_support(functor(_,_,_)).
+builtin_support('=..'(_,_)).
+builtin_support(copy_term(_,_)).
+
 
