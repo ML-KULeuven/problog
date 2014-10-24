@@ -139,6 +139,13 @@ class Term(object) :
         """
         return False
         
+    def isGround(self) :
+        """Checks whether the term contains any variables."""
+        for arg in self.args :
+            if not arg.isGround() :
+                return False
+        return True
+        
     def __eq__(self, other) :
         # TODO: this can be very slow?
         if not other :
@@ -192,6 +199,9 @@ class Var(Term) :
         :returns: ``True``
         """        
         return True
+        
+    def isGround(self) :
+        return False
         
 class Constant(Term) :
     """A constant. 
