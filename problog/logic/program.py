@@ -128,7 +128,7 @@ class PrologFactory(Factory) :
         
     def build_clause(self, functor, operand1, operand2, **extra) :
         if functor == '<-' :
-            heads = self._uncurry( operand1 )
+            heads = self._uncurry( operand1, ';' )
             return AnnotatedDisjunction(heads, operand2)
         else :
             return Clause(operand1, operand2)
