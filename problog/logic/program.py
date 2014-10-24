@@ -373,7 +373,7 @@ class ClauseDB(LogicProgram) :
             
         nodetype = type(node).__name__
         if nodetype == 'fact' :
-            return Term(node.functor, *node.args)
+            return Term(node.functor, *node.args, p=node.probability)
         elif nodetype == 'clause' :
             head = self._create_vars( Term(node.functor,*node.args, p=node.probability) )
             return Clause( head, self._extract(node.child))

@@ -158,9 +158,9 @@ class Engine(object) :
             return ()
             
         
-        if call_key in anc :
-            self._exit_call(level, node_id, call_terms, 'CYCLE')
-            return ()
+        # if call_key in anc :
+        #     self._exit_call(level, node_id, call_terms, 'CYCLE')
+        #     return ()
         
         nodetype = type(node).__name__
         rV = None
@@ -194,6 +194,8 @@ class Engine(object) :
         tdb = TermDB()
         args = [ tdb.add(x) for x in term.args ]
         clause_node = db.find(term)
+        
+        if clause_node == None : return []
         call_node = ClauseDB._call( term.functor, args, clause_node )
         return self._call_call(db, call_node, args, tdb, [], None, level)
         
@@ -252,14 +254,18 @@ class Engine(object) :
 
         return rV
 
-    def ground(self, db, term, level=0) :
+    def ground(self, db, term, gp=None, level=0) :
         db = ClauseDB.createFrom(db)
         
-        gp = GroundProgram()
+        if gp == None :
+            gp = GroundProgram()
         
         tdb = TermDB()
         args = [ tdb.add(x) for x in term.args ]
         clause_node = db.find(term)
+        
+        if clause_node == None : return gp, []
+        
         call_node = ClauseDB._call( term.functor, args, clause_node )
         
         query = self._ground_call(db, gp, call_node, args, tdb, [], None, level)
@@ -283,7 +289,7 @@ class Engine(object) :
         
         new_results = []
         for bodynode, result in results :
-            ground_ad = gp.addADNode( node.siblings, bodynode )
+            ground_ad = gp.addADNode( node.siblings, bodynode, tuple(result) )
             ground_adc = gp.addADChoiceNode( node_id, node.probability, ground_ad )
             new_results.append( (ground_adc, result) )
         
@@ -335,6 +341,15 @@ class Engine(object) :
                         tdb.unify(a,b)
                     result.append( ( node, [ tdb.getTerm(arg) for arg in local_vars ] ) )
             return result
+    
+    def _negate(self, n ) :
+        if n == 0 :
+            return None
+        elif n == None :
+            return 0
+        else :
+            return -n
+            
             
     def _ground_not(self, db, gp, node, local_vars, tdb, anc, call_key, level) :
         # TODO Change this for probabilistic
@@ -343,9 +358,9 @@ class Engine(object) :
         subresult = self._ground(db, gp, subnode, local_vars, tdb, anc, level)
         
         if subresult :
-            return []   # no solution
+            return [ (self._negate(n),r) for n,r in subresult ]
         else :
-            return [ [ tdb[v] for v in local_vars ] ]
+            return [ (0,[ tdb[v] for v in local_vars ]) ]
             
     def _ground_clause(self, db, gp, node, args, tdb, anc, call_key, level) :
         new_tdb = TermDB()
@@ -412,7 +427,7 @@ class GroundProgram(object) :
     _fact = namedtuple('fact', ('functor', 'args', 'probability') )
     _conj = namedtuple('conj', ('children') )
     _disj = namedtuple('disj', ('children') )
-    _ad = namedtuple('ad', ('root', 'child', 'choices' ) )
+    _ad = namedtuple('ad', ('root', 'child', 'arguments', 'choices' ) )
     _adc = namedtuple('adc', ('root', 'probability', 'ad' ) )
     
     # Invariant: stored nodes do not have TRUE or FALSE in their content.
@@ -430,16 +445,21 @@ class GroundProgram(object) :
     def getFact(self, name) :
         return self.__fact_names.get(name, None)
         
-    def addADNode(self, siblings, bodynode ) :
-        key = (siblings, bodynode)
+    def addADNode(self, siblings, bodynode, args ) :
+        key = (siblings, bodynode, args)
         node_id = self.__adnodes.get( key )
         if (node_id == None) :
-            node_id = self._addNode( self._ad( siblings, bodynode, []) )
+            node_id = self._addNode( self._ad( siblings, bodynode, args, []) )
+            self.__adnodes[key] = node_id
         return node_id
 
     def addADChoiceNode(self, root, probability, ground_ad ) :
-        node_id = self._addNode( self._adc(root, probability, ground_ad ) )
-        self.getNode(ground_ad).choices.append( node_id )
+        adc = self._adc(root, probability, ground_ad )
+        node_id = self.__nodes_by_content.get(adc)
+        if node_id == None :
+            node_id = self._addNode( adc )
+            self.__nodes_by_content[adc] = node_id
+            self.getNode(ground_ad).choices.append( node_id )
         return node_id                
                 
     def _negate(self, t) :
@@ -511,6 +531,7 @@ class GroundProgram(object) :
                 node_id = self._addNode( self._disj(content) )
             else :
                 node_id = self._addNode( self._conj(content) )
+            self.__nodes_by_content[ key ] = node_id
         return node_id
         
     def _addNode(self, node) :
