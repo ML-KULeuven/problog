@@ -86,7 +86,7 @@ class PrologParser(object) :
         self.addOperator('-->'  , 1200, 'xfx', self.factory.build_binop)
         self.addOperator(':-'   , 1200, 'xfx', self.factory.build_clause )
         self.addOperator('<-'   , 1200, 'xfx', self.factory.build_clause )    
-        # self.addOperator(':-'   , 1200, 'fx', self.factory.build_directive )
+        self.addOperator(':-'   , 1200, 'fx', self.factory.build_directive )
         self.addOperator('?-'   , 1200, 'fx', self.factory.build_unop)
         self.addOperator( ';'   , 1100, 'xfy', self.factory.build_disjunction )
         self.addOperator( '|'   , 1100, 'xfy', self.factory.build_disjunction )
@@ -153,7 +153,7 @@ class PrologParser(object) :
                 raise Exception()
     
     def getOperator(self, operator, tok_before, tok_after) :
-        if not self.isTerm(tok_before) or not self.isTerm(tok_after) :
+        if not self.isTerm(tok_before) : # or not self.isTerm(tok_after) :
             return self.getUnaryOperator(operator)
         else :
             return self.getBinaryOperator(operator)
