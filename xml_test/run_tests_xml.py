@@ -4,5 +4,5 @@ from xmlrunner import XMLTestRunner
 
 loader = unittest.TestLoader()
 tests = loader.discover(".")
-runner = XMLTestRunner()
+runner = XMLTestRunner(output='test-reports')
 runner.run(tests)
