@@ -8,6 +8,8 @@ except NameError:
 
 from .program import ClauseDB
 from .unification import TermDB
+
+from collections import defaultdict, namedtuple
         
 class Engine(object) :
     
@@ -234,8 +236,12 @@ class Engine(object) :
             rV = self._ground_not(db, gp, node, input_vars, tdb, anc, call_key,level+1)
         elif nodetype == 'conj' :
             rV = self._ground_and(db, gp, node, input_vars, tdb, anc, call_key,level+1)
-        elif nodetype == 'disj' or nodetype == 'define':
+        elif nodetype == 'disj' :
             rV = self._ground_or(db, gp, node, input_vars, tdb, anc, call_key,level+1)
+        elif nodetype == 'define':
+            rV = self._ground_define(db, gp, node, input_vars, tdb, anc, call_key,level+1)
+        elif nodetype == 'adc' :
+            rV = self._ground_adc(db, gp, node_id, node, input_vars, tdb, anc, call_key,level+1)
         # elif nodetype == 'adc' :
         #     pas
         #     # rV = self._ground_and(db, gp, node, input_vars, tdb, anc, call_key,level+1)
@@ -255,7 +261,9 @@ class Engine(object) :
         args = [ tdb.add(x) for x in term.args ]
         clause_node = db.find(term)
         call_node = ClauseDB._call( term.functor, args, clause_node )
-        return self._ground_call(db, gp, call_node, args, tdb, [], None, level)
+        
+        query = self._ground_call(db, gp, call_node, args, tdb, [], None, level)
+        return gp, query
         
     def _ground_fact(self, db, gp, node, local_vars, tdb, anc, call_key, level) :
         with tdb :
@@ -269,6 +277,17 @@ class Engine(object) :
             node = gp.addFact( node.functor, args, node.probability )
             return [ (node, args) ]
         return []
+
+    def _ground_adc(self, db, gp, node_id, node, local_vars, tdb, anc, call_key, level) :
+        results = self._ground_clause( db, gp, node, local_vars, tdb, anc, call_key, level)
+        
+        new_results = []
+        for bodynode, result in results :
+            ground_ad = gp.addADNode( node.siblings, bodynode )
+            ground_adc = gp.addADChoiceNode( node_id, node.probability, ground_ad )
+            new_results.append( (ground_adc, result) )
+        
+        return new_results
                     
     def _ground_and(self, db, gp, node, local_vars, tdb, anc, call_key, level) :
         with tdb :
@@ -281,7 +300,7 @@ class Engine(object) :
                         tdb.unify(a,b)
                     result2 = self._ground(db, gp, node.children[1], local_vars, tdb, anc=anc+[call_key], level=level)     
                     for node2, res2 in result2 :
-                        result.append( ( gp.addAnd( node1, node2 ), res2 ) )
+                        result.append( ( gp.addAndNode( (node1, node2) ), res2 ) )
                     
             return result
     
@@ -365,16 +384,217 @@ class Engine(object) :
             
         return []
     
-    def _ground_def(self, db, gp, node, args, tdb, anc, call_key, level) :
-        return self._ground_or(db, gp, node, args, tdb, anc, call_key, level)
+    def _ground_define(self, db, gp, node, args, tdb, anc, call_key, level) :
+        results = self._ground_or(db, gp, node, args, tdb, anc, call_key, level)
+        
+        # - All entries should be ground.
+        # - All entries should be grouped by same facts => create or-nodes.
+        
+        groups = defaultdict(list)
+        for node, result in results :
+            for res in result :
+                if (not res.isGround()) :
+                    raise NonGroundQuery()
+            groups[ tuple(result) ].append(node)
+        
+        results = []
+        for result, nodes in groups.items() :
+            if len(nodes) > 1 :
+                node = gp.addOrNode( nodes )
+            else :
+                node = nodes[0]
+            results.append( (node,result) )
+        return results
     
+# Taken and modified from from ProbFOIL
 class GroundProgram(object) :
     
-    def addFact( self, functor, args, probability) :
-        print ('ADD FACT', functor, args, probability)
+    _fact = namedtuple('fact', ('functor', 'args', 'probability') )
+    _conj = namedtuple('conj', ('children') )
+    _disj = namedtuple('disj', ('children') )
+    _ad = namedtuple('ad', ('root', 'child', 'choices' ) )
+    _adc = namedtuple('adc', ('root', 'probability', 'ad' ) )
+    
+    # Invariant: stored nodes do not have TRUE or FALSE in their content.
+    
+    TRUE = 0
+    FALSE = None
+    
+    def __init__(self, parent=None) :
+        self.__nodes = []
+        self.__fact_names = {}
+        self.__nodes_by_content = {}
+        self.__adnodes = {}
+        self.__offset = 0
         
-    def addAnd(self, *ops ) :
-        print ('ADD AND:', *ops)
+    def getFact(self, name) :
+        return self.__fact_names.get(name, None)
+        
+    def addADNode(self, siblings, bodynode ) :
+        key = (siblings, bodynode)
+        node_id = self.__adnodes.get( key )
+        if (node_id == None) :
+            node_id = self._addNode( self._ad( siblings, bodynode, []) )
+        return node_id
+
+    def addADChoiceNode(self, root, probability, ground_ad ) :
+        node_id = self._addNode( self._adc(root, probability, ground_ad ) )
+        self.getNode(ground_ad).choices.append( node_id )
+        return node_id                
+                
+    def _negate(self, t) :
+        if t == self.TRUE :
+            return self.FALSE
+        elif t == self.FALSE :
+            return self.TRUE
+        else :
+            return -t
+            
+    # def addChoice(self, rule) :
+    #     return self._addNode('choice', rule)
+        
+    def addFact(self, functor, args, probability) :
+        """Add a named fact to the grounding."""
+        
+        name = (functor, tuple(args))
+        
+        node_id = self.getFact(name)
+        if node_id == None : # Fact doesn't exist yet
+            node_id = self._addNode( self._fact( functor, tuple(args), probability  ) )
+            self.__fact_names[name] = node_id
+        return node_id
+        
+    def addNode(self, nodetype, content) :
+        if nodetype == 'or' :
+            return self.addOrNode(content)
+        elif nodetype == 'and' :
+            return self.addAndNode(content)
+        else :
+            raise Exception("Unknown node type '%s'" % nodetype)
+        
+    def addOrNode(self, content) :
+        """Add an OR node."""
+        return self._addCompoundNode('or', content, self.TRUE, self.FALSE)
+        
+    def addAndNode(self, content) :
+        """Add an AND node."""
+        return self._addCompoundNode('and', content, self.FALSE, self.TRUE)
+        
+    def _addCompoundNode(self, nodetype, content, t, f) :
+        assert( content )   # Content should not be empty
+        
+        # If there is a t node, (true for OR, false for AND)
+        if t in content : return t
+        
+        # Eliminate unneeded node nodes (false for OR, true for AND)
+        content = filter( lambda x : x != f, content )
+
+        # Put into fixed order and eliminate duplicate nodes
+        content = tuple(sorted(set(content)))
+        
+        # Empty OR node fails, AND node is true
+        if not content : return f
+                
+        # Contains opposites: return 'TRUE' for or, 'FALSE' for and
+        if len(set(content)) > len(set(map(abs,content))) : return t
+            
+        # If node has only one child, just return the child.
+        if len(content) == 1 : return content[0]
+        
+        # Lookup node for reuse
+        key = (nodetype, content)
+        node_id = self.__nodes_by_content.get(key, None)
+        
+        if node_id == None :    
+            # Node doesn't exist yet
+            if nodetype == 'or' :
+                node_id = self._addNode( self._disj(content) )
+            else :
+                node_id = self._addNode( self._conj(content) )
+        return node_id
+        
+    def _addNode(self, node) :
+        node_id = len(self) + 1
+        self.__nodes.append( node )
+        return node_id
+        
+    def getNode(self, index) :
+        assert (index != None and index > 0)
+        if index <= self.__offset :
+            return self.__parent.getNode(index)
+        else :
+            return self.__nodes[index-self.__offset-1]
+                
+        
+    def _selectNodes(self, queries, node_selection) :
+        for q in queries :
+            node_id = q
+            if node_id :
+                self._selectNode(abs(node_id), node_selection)
+        
+    def _selectNode(self, node_id, node_selection) :
+        assert(node_id != 0)
+        if not node_selection[node_id-1] :
+            node_selection[node_id-1] = True
+            nodetype, content = self.getNode(node_id)
+            
+            if nodetype in ('and','or') :
+                for subnode in content :
+                    if subnode :
+                        self._selectNode(abs(subnode), node_selection)
+        
+    def __len__(self) :
+        return len(self.__nodes) + self.__offset
+        
+    def toCNF(self, queries=None) :
+        # if self.hasCycle :
+        #     raise NotImplementedError('The dependency graph contains a cycle!')
+        
+        if queries != None :
+            node_selection = [False] * len(self)    # selection table
+            self._selectNodes(queries, node_selection)
+        else :
+            node_selection = [True] * len(self)    # selection table
+            
+        lines = []
+        facts = {}
+        for k, sel in enumerate( node_selection ) :
+          if sel :
+            k += 1
+            v = self.getNode(k)
+            nodetype, content = v
+            
+            if nodetype == 'fact' :
+                facts[k] = content[1]
+            elif nodetype == 'and' :
+                line = str(k) + ' ' + ' '.join( map( lambda x : str(-(x)), content ) ) + ' 0'
+                lines.append(line)
+                for x in content :
+                    lines.append( "%s %s 0" % (-k, x) )
+            elif nodetype == 'or' :
+                line = str(-k) + ' ' + ' '.join( map( lambda x : str(x), content ) ) + ' 0'
+                lines.append(line)
+                for x in content :
+                    lines.append( "%s %s 0" % (k, -x) )
+                # lines.append('')
+            elif nodetype == 'choice' :
+                if content.hasScore() :
+                    facts[k] = content.probability
+                else :
+                    facts[k] = 1.0
+            else :
+                raise ValueError("Unknown node type!")
+                
+        atom_count = len(self)
+        clause_count = len(lines)
+        return [ 'p cnf %s %s' % (atom_count, clause_count) ] + lines, facts
+        
+    def stats(self) :
+        return namedtuple('IndexStats', ('atom_count', 'name_count', 'fact_count' ) )(len(self), 0, len(self.__fact_names))
+        
+    def __str__(self) :
+        return '\n'.join('%s: %s' % (i+1,n) for i, n in enumerate(self.__nodes))   
+    
         
         
         
@@ -384,6 +604,8 @@ class UnknownClause(Exception) : pass
 class UserAbort(Exception) : pass
 
 class UserFail(Exception) : pass
+
+class NonGroundQuery(Exception) : pass
         
 class Debugger(object) :
         
