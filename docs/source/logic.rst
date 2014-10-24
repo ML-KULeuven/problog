@@ -48,7 +48,7 @@ Logic program
 -------------
 
 .. autoclass:: problog.logic.basic.LogicProgram
-  :members: __iter__, __iadd__, createFrom, addClause, addFact
+  :members: __iter__, __iadd__, createFrom
   
 Implementations
 +++++++++++++++
