@@ -7,7 +7,7 @@ except NameError:
     pass
 
 from .program import ClauseDB
-from .unification import TermDB
+from .unification import TermDB, UnifyError
 
 from collections import defaultdict, namedtuple
         
@@ -227,7 +227,7 @@ class Engine(object) :
         rV = None
         if not node :
             # Undefined
-            raise UnknownClause()
+            raise _UnknownClause()
         elif nodetype == 'fact' :
             rV = self._ground_fact(db, gp, node, input_vars, tdb, anc, call_key,level+1 )
         elif nodetype == 'call' :
@@ -244,6 +244,9 @@ class Engine(object) :
             rV = self._ground_define(db, gp, node, input_vars, tdb, anc, call_key,level+1)
         elif nodetype == 'adc' :
             rV = self._ground_adc(db, gp, node_id, node, input_vars, tdb, anc, call_key,level+1)
+        elif nodetype == 'ad' :
+            rV = self._ground_ad(db, gp, node, input_vars, tdb, anc, call_key,level+1)
+        
         # elif nodetype == 'adc' :
         #     pas
         #     # rV = self._ground_and(db, gp, node, input_vars, tdb, anc, call_key,level+1)
@@ -284,15 +287,49 @@ class Engine(object) :
             return [ (node, args) ]
         return []
 
-    def _ground_adc(self, db, gp, node_id, node, local_vars, tdb, anc, call_key, level) :
-        results = self._ground_clause( db, gp, node, local_vars, tdb, anc, call_key, level)
+    def _ground_ad(self, db, gp, node, local_vars, tdb, anc, call_key, level) :
+        results = self._ground_clause(db,gp,node,local_vars,tdb,anc,call_key,level)
+        groups = defaultdict(list)
+        for node_id, result in results :
+            # for res in result :
+            #     if (not res.isGround()) :
+            #         raise NonGroundQuery((node,result))
+            groups[ tuple(result) ].append(node_id)
+        results = []
+        for result, nodes in groups.items() :
+            if len(nodes) > 1 :
+                node = gp.addOrNode( nodes )
+            else :
+                node = nodes[0]
+            results.append( (node,result) )
+        return results
+
+    def _ground_adc(self, db, gp, node_id, node, args, tdb, anc, call_key, level) :
         
+        ad_node = db.getNode(node.ad)
+        varcount = ad_node.varcount
+        new_context = self._create_context( tdb, varcount, args, node.args )
+        if new_context == None : return []
+        
+        new_tdb, new_vars, new_args = new_context
+        
+        sub = self._ground(db, gp, node.ad, new_vars, new_tdb, anc, level)
+            
+        # sub contains values of local variables in the new context 
+        #  => we need to translate them back to the 'args' from the old context
+        results = []
+        for node_id, res in sub :
+            res_new = self._integrate_context(tdb, res, *new_context)
+            if res_new != None :
+                results.append( (node_id, res_new ) )
+                
         new_results = []
         for bodynode, result in results :
-            ground_ad = gp.addADNode( node.siblings, bodynode, tuple(result) )
-            ground_adc = gp.addADChoiceNode( node_id, node.probability, ground_ad )
-            new_results.append( (ground_adc, result) )
-        
+            if bodynode != None :   # body node can be true
+                origin = (node.ad, bodynode, tuple(result))
+                choice = gp.addChoice( origin, node_id, node.probability )
+                and_node = gp.addAndNode( (choice, bodynode) )            
+                new_results.append( (and_node, result) )
         return new_results
                     
     def _ground_and(self, db, gp, node, local_vars, tdb, anc, call_key, level) :
@@ -327,12 +364,15 @@ class Engine(object) :
                     self._exit_call(level, node.functor, node.args, 'USER')
                     return ()
                 
-                sub = builtin( engine=self, clausedb=db, args=call_args, tdb=tdb, anc=anc+[call_key], level=level)
+                sub = builtin( engine=self, clausedb=db, args=call_args, tdb=tdb, anc=anc+[call_key], level=level, functor=node.functor, arity=len(node.args))
                 
+                sub = [ (0, s) for s in sub]
                 self._exit_call(level, node.functor, node.args, sub)
             else :
-                sub = self._ground(db, gp, node.defnode, call_args, tdb, anc=anc+[call_key], level=level)
-                
+                try :
+                    sub = self._ground(db, gp, node.defnode, call_args, tdb, anc=anc+[call_key], level=level)
+                except _UnknownClause :
+                    raise UnknownClause(node)
             # result at 
             result = []
             for node, res in sub :
@@ -342,62 +382,62 @@ class Engine(object) :
                     result.append( ( node, [ tdb.getTerm(arg) for arg in local_vars ] ) )
             return result
     
-    def _negate(self, n ) :
-        if n == 0 :
-            return None
-        elif n == None :
-            return 0
-        else :
-            return -n
-            
             
     def _ground_not(self, db, gp, node, local_vars, tdb, anc, call_key, level) :
-        # TODO Change this for probabilistic
-        
         subnode = node.child
         subresult = self._ground(db, gp, subnode, local_vars, tdb, anc, level)
         
         if subresult :
-            return [ (self._negate(n),r) for n,r in subresult ]
+            return [ (gp._negate(n),r) for n,r in subresult ]
         else :
             return [ (0,[ tdb[v] for v in local_vars ]) ]
             
-    def _ground_clause(self, db, gp, node, args, tdb, anc, call_key, level) :
+    def _create_context( self, tdb, varcount, call_args, def_args ) :
         new_tdb = TermDB()
         
         # Reserve spaces for clause variables
-        local_vars = range(0,node.varcount)
-        for i in local_vars :
+        new_vars = range(0,varcount)
+        for i in new_vars :
             new_tdb.newVar()
         
         # Add call arguments to local tdb
-        call_args = tdb.copyTo( new_tdb, *args )
+        new_args = tdb.copyTo( new_tdb, *call_args )
                 
-        with new_tdb :
+        try :
             # Unify call arguments with head arguments
-            for call_arg, def_arg in zip(call_args, node.args) :
+            for call_arg, def_arg in zip(new_args, def_args) :
                 new_tdb.unify(call_arg, def_arg)
+            return new_tdb, new_vars, new_args
+        except UnifyError :
+            return None
+        
+    def _integrate_context( self, tdb, result, new_tdb, new_vars, new_args ) :
+        with tdb :
+            # Unify local_vars with res
+            with new_tdb :
+                for a,b in zip(result, new_vars) :
+                    new_tdb.unify(a,b)
+                    
+                return [ tdb.getTerm(x) for x in new_tdb.copyTo(tdb, *new_args) ]
+        return None
             
-            # Call body
-            sub = self._ground(db, gp, node.child, local_vars, new_tdb, anc, level)
+    def _ground_clause(self, db, gp, node, args, tdb, anc, call_key, level) :
+        new_context = self._create_context( tdb, node.varcount, args, node.args )
+        if new_context == None : return []
+        
+        new_tdb, new_vars, new_args = new_context
+        
+        sub = self._ground(db, gp, node.child, new_vars, new_tdb, anc, level)
             
-            # sub contains values of local variables in the new context 
-            #  => we need to translate them back to the 'args' from the old context
-            result = []
-            for node, res in sub :
-                with tdb :
-                    # Unify local_vars with res
-                    with new_tdb :
-                        for a,b in zip(res, local_vars) :
-                            new_tdb.unify(a,b)
-                            
-                        res_args = new_tdb.copyTo(tdb, *call_args)
-                        
-                        # Return values of args
-                        result.append( (node, list(map( tdb.getTerm, res_args ))) )
-            return result
+        # sub contains values of local variables in the new context 
+        #  => we need to translate them back to the 'args' from the old context
+        result = []
+        for node_id, res in sub :
+            res_new = self._integrate_context(tdb, res, *new_context)
+            if res_new != None :
+                result.append( (node_id, res_new ) )
+        return result
             
-        return []
     
     def _ground_define(self, db, gp, node, args, tdb, anc, call_key, level) :
         results = self._ground_or(db, gp, node, args, tdb, anc, call_key, level)
@@ -429,39 +469,32 @@ class GroundProgram(object) :
     _disj = namedtuple('disj', ('children') )
     _ad = namedtuple('ad', ('root', 'child', 'arguments', 'choices' ) )
     _adc = namedtuple('adc', ('root', 'probability', 'ad' ) )
+    _choice = namedtuple('choice', ('origin', 'choice', 'probability'))
     
     # Invariant: stored nodes do not have TRUE or FALSE in their content.
     
     TRUE = 0
     FALSE = None
     
-    def __init__(self, parent=None) :
+    def __init__(self, parent=None, compress=True) :
         self.__nodes = []
         self.__fact_names = {}
         self.__nodes_by_content = {}
         self.__adnodes = {}
         self.__offset = 0
+        self.__compress = compress
+        self.__choice_nodes = {}
         
     def getFact(self, name) :
         return self.__fact_names.get(name, None)
         
-    def addADNode(self, siblings, bodynode, args ) :
-        key = (siblings, bodynode, args)
-        node_id = self.__adnodes.get( key )
-        if (node_id == None) :
-            node_id = self._addNode( self._ad( siblings, bodynode, args, []) )
-            self.__adnodes[key] = node_id
-        return node_id
-
-    def addADChoiceNode(self, root, probability, ground_ad ) :
-        adc = self._adc(root, probability, ground_ad )
-        node_id = self.__nodes_by_content.get(adc)
+    def addChoice(self, origin, choice, probability) :
+        node_id = self.__choice_nodes.get((origin,choice))
         if node_id == None :
-            node_id = self._addNode( adc )
-            self.__nodes_by_content[adc] = node_id
-            self.getNode(ground_ad).choices.append( node_id )
-        return node_id                
-                
+            node_id = self._addNode( self._choice( origin, choice, probability ))
+            self.__choice_nodes[(origin,choice)] = node_id
+        return node_id
+                        
     def _negate(self, t) :
         if t == self.TRUE :
             return self.FALSE
@@ -469,10 +502,7 @@ class GroundProgram(object) :
             return self.TRUE
         else :
             return -t
-            
-    # def addChoice(self, rule) :
-    #     return self._addNode('choice', rule)
-        
+                    
     def addFact(self, functor, args, probability) :
         """Add a named fact to the grounding."""
         
@@ -480,7 +510,10 @@ class GroundProgram(object) :
         
         node_id = self.getFact(name)
         if node_id == None : # Fact doesn't exist yet
-            node_id = self._addNode( self._fact( functor, tuple(args), probability  ) )
+            if probability == None and self.__compress :
+                node_id = 0
+            else :
+                node_id = self._addNode( self._fact( functor, tuple(args), probability  ) )
             self.__fact_names[name] = node_id
         return node_id
         
@@ -566,7 +599,7 @@ class GroundProgram(object) :
         
     def __len__(self) :
         return len(self.__nodes) + self.__offset
-        
+                
     def toCNF(self, queries=None) :
         # if self.hasCycle :
         #     raise NotImplementedError('The dependency graph contains a cycle!')
@@ -614,11 +647,63 @@ class GroundProgram(object) :
         return namedtuple('IndexStats', ('atom_count', 'name_count', 'fact_count' ) )(len(self), 0, len(self.__fact_names))
         
     def __str__(self) :
-        return '\n'.join('%s: %s' % (i+1,n) for i, n in enumerate(self.__nodes))   
+        s =  '\n'.join('%s: %s' % (i+1,n) for i, n in enumerate(self.__nodes))   
+        s += '\n' + str(self.__fact_names)
+        return s
     
+    def toDot(self, queries) :
+        
+        clusters = defaultdict(list)
+        
+        negative = set([])
         
         
+        s = 'digraph GP {'
+        for index, node in enumerate(self.__nodes) :
+            index += 1
+            nodetype = type(node).__name__
+                        
+            if nodetype == 'conj' :
+                s += '%s [label="AND", shape="box"];\n' % (index)
+                for c in node.children :
+                    if c < 0 and not c in negative :
+                        s += '%s [label="NOT"];' % (c)
+                        s += '%s -> %s;' % (c,-c)
+                        negative.add(c)
+                    if c != 0 :
+                        s += '%s -> %s;\n' % (index,c)
+            elif nodetype == 'disj' :
+                s += '%s [label="OR", shape="diamond"];\n' % (index)
+                for c in node.children :
+                    if c < 0 and not c in negative :
+                        s += '%s [label="NOT"];\n' % (c)
+                        s += '%s -> %s;\n' % (c,-c)
+                        negative.add(c)
+                    if c != 0 :
+                        s += '%s -> %s;\n' % (index,c)
+            elif nodetype == 'fact' :
+                s += '%s [label="%s", shape="circle"];\n' % (index, node.probability)
+                        # , node.functor, ', '.join(map(str,node.args)))
+            elif nodetype == 'choice' :
+                clusters[node.origin].append('%s [ shape="circle", label="%s" ];' % (index, node.probability))
+            else :
+                raise ValueError()
         
+        c = 0
+        for cluster, text in clusters.items() :
+            if len(text) > 1 :
+                s += 'subgraph cluster_%s { style="dotted"; color="red"; %s }\n\n' % (c,'\n'.join(text))
+            else :
+                s += '\n'.join(text) + '\n'
+            c += 1 
+            
+        for index, name in queries :
+            s += 'q_%s [ label="%s", shape="plaintext" ];\n'   % (index, name)
+            s += 'q_%s -> %s [style="dotted"];\n'  % (index, index)
+
+        return s + '}'
+
+class _UnknownClause(Exception) : pass
 
 class UnknownClause(Exception) : pass
 

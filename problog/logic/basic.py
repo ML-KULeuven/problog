@@ -95,7 +95,10 @@ class Term(object) :
         :rtype: :class:`Term`
         
         """
-        return Term( self.functor, *[ arg.apply(subst) for arg in self.args ], p=self.probability)
+        if self.probability == None :
+            return self.__class__( self.functor, *[ arg.apply(subst) for arg in self.args ])
+        else :
+            return self.__class__( self.functor, *[ arg.apply(subst) for arg in self.args ], p=self.probability)
             
     def __repr__(self) :
         if self.probability == None :
@@ -253,6 +256,9 @@ class Constant(Term) :
             :rtype: :class:`bool`
         """
         return type(self.value) == int
+        
+    def __eq__(self, other) :
+        return str(self) == str(other)
         
 class Clause(Term) :
     """A clause."""

@@ -22,7 +22,7 @@ class TestLogicBasic(unittest.TestCase) :
     def test_constInt_eq_constFloat(self) :
         a = Constant(1)
         b = Constant(1.0)
-        self.assertEqual(a,b)
+        self.assertNotEqual(a,b)
     
     def test_constant_variable_clash_str(self) :
         a = Var('A')

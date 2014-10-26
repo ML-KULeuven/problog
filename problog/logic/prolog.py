@@ -144,33 +144,56 @@ def _builtin_notsame_2(args, tdb, **kwdargs) :
         
 def _builtin_is_2(args, tdb, **kwdargs) :
     lhs, rhs = args
-    # Left can be variable or constant
-    # Evaluate right hand side and unify
-    raise NotImplementedError('is/2')
-
-def _builtin_eq_arithm_2(args, tdb, **kwdargs) :
+    lhs, rhs = [ tdb[a] for a in args ]
+    rhs = compute(rhs)    
+    with tdb :
+        tdb.unify(lhs, rhs)
+        return [ [ tdb[arg] for arg in args ] ]
+    return []
+    
+    
+def _return_bool( b, args ) :
+    if b :
+        return [ args ]
+    else :
+        return []
+    
+def _builtin_cmp(args, tdb, functor, **kwdargs) :
     lhs, rhs = args
-    # Left can be variable or constant
-    # Evaluate right hand side and unify
-    raise NotImplementedError('=:=/2')
-
+    lhs, rhs = [ tdb[a] for a in args ]
+    
+    lhs = compute(lhs).value
+    rhs = compute(rhs).value
+    
+    if (functor == "'>'") :
+        return _return_bool( lhs > rhs, args)
+    elif (functor == "'<'") :
+        return _return_bool( lhs < rhs, args)
+    elif (functor == "'>='") :
+        return _return_bool( lhs >= rhs, args)
+    elif (functor == "'=<'") :
+        return _return_bool( lhs <= rhs, args)
+    elif (functor == "'=:='") :
+        return _return_bool( lhs <= rhs, args)
+    elif (functor == "'=\='") :
+        return _return_bool( lhs != rhs, args)
+    else :
+        raise ValueError("Unknown operator: ")
+    
 
 class PrologInstantiationError(Exception) : pass
 
 class PrologTypeError(Exception) : pass
 
 def computeFunction(func, args) :
-    if func == '+' :
+    if func == "'+'" :
         return Constant(args[0].value + args[1].value)
-    elif func == '-' :
+    elif func == "'-'" :
         return Constant(args[0].value - args[1].value)
-    elif func == '*' :
+    elif func == "'*'" :
         return Constant(args[0].value * args[1].value)
-        
-        
-    
-    
-    return None
+    else :
+        raise ValueError("Unknown function: '%s'" % func)
 
 def compute( value ) :
     if value.isVar() :
@@ -197,12 +220,16 @@ def addPrologBuiltins(engine) :
     engine.addBuiltIn('fail/0', _builtin_fail_0)
     engine.addBuiltIn('call/1', _builtin_call_1)
     
-    engine.addBuiltIn('=/2', _builtin_eq_2)
-    engine.addBuiltIn('\=/2', _builtin_noteq_2)
-    engine.addBuiltIn('==', _builtin_same_2)
-    engine.addBuiltIn('\==', _builtin_notsame_2)
+    engine.addBuiltIn("'='/2", _builtin_eq_2)
+    engine.addBuiltIn("'\='/2'", _builtin_noteq_2)
+    engine.addBuiltIn("'=='/2", _builtin_same_2)
+    engine.addBuiltIn("'\=='/2", _builtin_notsame_2)
     
-    engine.addBuiltIn('is', _builtin_is_2)
-    engine.addBuiltIn('=:=', _builtin_eq_arithm_2)
-
-
+    engine.addBuiltIn("'is'/2", _builtin_is_2)
+    engine.addBuiltIn("'=:='/2", _builtin_cmp)
+    engine.addBuiltIn("'>'/2", _builtin_cmp)
+    engine.addBuiltIn("'<'/2", _builtin_cmp)
+    engine.addBuiltIn("'>='/2", _builtin_cmp)
+    engine.addBuiltIn("'=<'/2", _builtin_cmp)
+    engine.addBuiltIn("'=\='/2", _builtin_cmp)
+    
