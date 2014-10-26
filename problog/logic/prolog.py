@@ -64,7 +64,6 @@ def _builtin_call_1(engine, args, tdb, clausedb, level, **kwdargs) :
         with tdb :
             for a,b in zip(res, query.args) :
                 tdb.unify(a,b)
-            print (tdb)
             result.append( [ tdb[arg] for arg in args ] )
     return result
     
@@ -164,6 +163,7 @@ def _builtin_cmp(args, tdb, functor, **kwdargs) :
     
     lhs = compute(lhs).value
     rhs = compute(rhs).value
+    #args = (lhs,rhs)
     
     if (functor == "'>'") :
         return _return_bool( lhs > rhs, args)

@@ -213,7 +213,7 @@ class Engine(object) :
         call_key = (node_id, tuple(call_key_1) )
         
         try :
-            self._enter_call(level, node_id, call_terms)
+            self._enter_call(level, node_id, call_terms, input_vars)
         except UserFail :
             self._exit_call(level, node_id, call_terms, 'USER')
             return ()
@@ -242,14 +242,8 @@ class Engine(object) :
             rV = self._ground_or(db, gp, node, input_vars, tdb, anc, call_key,level+1)
         elif nodetype == 'define':
             rV = self._ground_define(db, gp, node, input_vars, tdb, anc, call_key,level+1)
-        elif nodetype == 'adc' :
-            rV = self._ground_adc(db, gp, node_id, node, input_vars, tdb, anc, call_key,level+1)
-        elif nodetype == 'ad' :
-            rV = self._ground_ad(db, gp, node, input_vars, tdb, anc, call_key,level+1)
-        
-        # elif nodetype == 'adc' :
-        #     pas
-        #     # rV = self._ground_and(db, gp, node, input_vars, tdb, anc, call_key,level+1)
+        elif nodetype == 'choice' :
+            rV = self._ground_choice(db, gp, node, input_vars, tdb, anc, call_key, level+1)
         else :
             raise NotImplementedError("Unknown node type: '%s'" % nodetype )
         
@@ -287,50 +281,20 @@ class Engine(object) :
             return [ (node, args) ]
         return []
 
-    def _ground_ad(self, db, gp, node, local_vars, tdb, anc, call_key, level) :
-        results = self._ground_clause(db,gp,node,local_vars,tdb,anc,call_key,level)
-        groups = defaultdict(list)
-        for node_id, result in results :
-            # for res in result :
-            #     if (not res.isGround()) :
-            #         raise NonGroundQuery((node,result))
-            groups[ tuple(result) ].append(node_id)
-        results = []
-        for result, nodes in groups.items() :
-            if len(nodes) > 1 :
-                node = gp.addOrNode( nodes )
-            else :
-                node = nodes[0]
-            results.append( (node,result) )
-        return results
-
-    def _ground_adc(self, db, gp, node_id, node, args, tdb, anc, call_key, level) :
-        
-        ad_node = db.getNode(node.ad)
-        varcount = ad_node.varcount
-        new_context = self._create_context( tdb, varcount, args, node.args )
-        if new_context == None : return []
-        
-        new_tdb, new_vars, new_args = new_context
-        
-        sub = self._ground(db, gp, node.ad, new_vars, new_tdb, anc, level)
+    def _ground_choice(self, db, gp, node, local_vars, tdb, anc, call_key, level) :
+        with tdb :
+            atoms = list(map( tdb.add, node.args))
             
-        # sub contains values of local variables in the new context 
-        #  => we need to translate them back to the 'args' from the old context
-        results = []
-        for node_id, res in sub :
-            res_new = self._integrate_context(tdb, res, *new_context)
-            if res_new != None :
-                results.append( (node_id, res_new ) )
+            # Match call arguments with fact arguments
+            for a,b in zip( local_vars, atoms ) :
+                tdb.unify(a,b)
                 
-        new_results = []
-        for bodynode, result in results :
-            if bodynode != None :   # body node can be true
-                origin = (node.ad, bodynode, tuple(result))
-                choice = gp.addChoice( origin, node_id, node.probability )
-                and_node = gp.addAndNode( (choice, bodynode) )            
-                new_results.append( (and_node, result) )
-        return new_results
+            args = tuple(map(tdb.reduce, local_vars))
+            origin = (node.group, args)
+            node = gp.addChoice( origin, node.choice  ,node.probability )
+            return [ (node, args) ]
+        return []
+
                     
     def _ground_and(self, db, gp, node, local_vars, tdb, anc, call_key, level) :
         with tdb :
@@ -359,7 +323,7 @@ class Engine(object) :
             builtin = self.getBuiltIn( node.functor, len(node.args) )
             if builtin != None :
                 try :
-                    self._enter_call(level, node.functor, node.args)
+                    self._enter_call(level, node.functor, node.args, local_vars)
                 except UserFail :
                     self._exit_call(level, node.functor, node.args, 'USER')
                     return ()
@@ -422,6 +386,7 @@ class Engine(object) :
         return None
             
     def _ground_clause(self, db, gp, node, args, tdb, anc, call_key, level) :
+        
         new_context = self._create_context( tdb, node.varcount, args, node.args )
         if new_context == None : return []
         
@@ -467,8 +432,6 @@ class GroundProgram(object) :
     _fact = namedtuple('fact', ('functor', 'args', 'probability') )
     _conj = namedtuple('conj', ('children') )
     _disj = namedtuple('disj', ('children') )
-    _ad = namedtuple('ad', ('root', 'child', 'arguments', 'choices' ) )
-    _adc = namedtuple('adc', ('root', 'probability', 'ad' ) )
     _choice = namedtuple('choice', ('origin', 'choice', 'probability'))
     
     # Invariant: stored nodes do not have TRUE or FALSE in their content.
@@ -651,7 +614,7 @@ class GroundProgram(object) :
         s += '\n' + str(self.__fact_names)
         return s
     
-    def toDot(self, queries) :
+    def toDot(self, queries, with_facts=False) :
         
         clusters = defaultdict(list)
         
@@ -683,7 +646,7 @@ class GroundProgram(object) :
                         s += '%s -> %s;\n' % (index,c)
             elif nodetype == 'fact' :
                 s += '%s [label="%s", shape="circle"];\n' % (index, node.probability)
-                        # , node.functor, ', '.join(map(str,node.args)))
+                        #, node.functor, ', '.join(map(str,node.args)))
             elif nodetype == 'choice' :
                 clusters[node.origin].append('%s [ shape="circle", label="%s" ];' % (index, node.probability))
             else :
@@ -720,12 +683,12 @@ class Debugger(object) :
         self.__trace = trace
         self.__trace_level = None
         
-    def enter(self, level, node_id, call_args) :
+    def enter(self, level, node_id, call_args, input_vars) :
         if self.__trace :
-            print ('  ' * level, '>', node_id, call_args, end='')
+            print ('  ' * level, '>', node_id, call_args, input_vars, end='')
             self._trace(level)  
         elif self.__debug :
-            print ('  ' * level, '>', node_id, call_args)
+            print ('  ' * level, '>', node_id, call_args, input_vars)
         
     def exit(self, level, node_id, call_args, result) :
         

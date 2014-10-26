@@ -6,7 +6,7 @@ from .basic import LogicProgram
 
 from ..parser import PrologParser, Factory
 
-from collections import namedtuple
+from collections import namedtuple, defaultdict
 
 class SimpleProgram(LogicProgram) :
     """LogicProgram implementation as a list of clauses."""
@@ -200,14 +200,13 @@ class ClauseDB(LogicProgram) :
     """
     
     _define = namedtuple('define', ('functor', 'arity', 'children') )
-    _clause = namedtuple('clause', ('functor', 'args', 'probability', 'child', 'varcount') )
+    _clause = namedtuple('clause', ('functor', 'args', 'probability', 'child', 'varcount', 'group') )
     _fact   = namedtuple('fact'  , ('functor', 'args', 'probability') )
-    _adc    = namedtuple('adc'   , ('functor', 'args', 'probability', 'ad' ) )
-    _ad     = namedtuple('ad'    , ('functor', 'args', 'child', 'varcount', 'choices') )
     _call   = namedtuple('call'  , ('functor', 'args', 'defnode' )) 
     _disj   = namedtuple('disj'  , ('children' ) )
     _conj   = namedtuple('conj'  , ('children' ) )
     _neg    = namedtuple('neg'   , ('child' ) )
+    _choice = namedtuple('choice', ('functor', 'args', 'probability', 'group', 'choice') )
         
     def __init__(self) :
         LogicProgram.__init__(self)
@@ -240,38 +239,22 @@ class ClauseDB(LogicProgram) :
     def _addFact( self, term) :
         fact_node = self._appendNode( self._fact(term.functor, term.args, term.probability))
         return self._addDefineNode( term, fact_node )
+
+    def _addChoiceNode(self, choice, args, probability, group) :
+        functor = 'ad_%s_%s' % (group, choice)
+        choice_node = self._appendNode( self._choice(functor, args, probability, group, choice) )
+        return choice_node
         
-    def _addClauseNode( self, head, body, varcount ) :
-        clause_node = self._appendNode( self._clause( head.functor, head.args, head.probability, body, varcount ) )
+    def _addClauseNode( self, head, body, varcount, group=None ) :
+        clause_node = self._appendNode( self._clause( head.functor, head.args, head.probability, body, varcount, group ) )
         return self._addDefineNode( head, clause_node )
 
-    def _addADChoiceNode( self, head, ad_node ) :
-        return self._appendNode( self._adc( head.functor, head.args, head.probability, ad_node ) )
         
     def _addCallNode( self, term ) :
         """Add a *call* node."""
         defnode = self._addHead(term, create=False)
         return self._appendNode( self._call( term.functor, term.args, defnode ) )
     
-    def _addADNode( self, heads, head_count, body_node, body_vars ) :
-        """Add an annotated disjunction.
-
-        :param heads: list of heads
-        :type heads: seq of Term
-        :param head_count: number of variables in head
-        
-        """
-        ad_index = self._appendNode(None)
-        head_functor = '#ad_%s' % ad_index
-        head_args = tuple(range(0,head_count))
-        
-        adc_nodes = [ self._addADChoiceNode( head, ad_index ) for head in heads ]
-        ad_node = self._ad( head_functor, head_args, body_node, body_vars, adc_nodes )
-        self._setNode( ad_index, ad_node )
-        for head, adc_node in zip(heads, adc_nodes) :
-            self._addDefineNode(head, adc_node )
-        return ad_index
-        
     
     def getNode(self, index) :
         """Get the instruction node at the given index.
@@ -354,18 +337,36 @@ class ClauseDB(LogicProgram) :
             child = self._compile(struct.child, variables)
             return self._addNotNode( child)
         elif isinstance(struct, AnnotatedDisjunction) :
-            # variables is empty
+            # Determine number of variables in the head
             new_heads = [ head.apply(variables) for head in struct.heads ]
             head_count = len(variables)
+            
+            # Body arguments
+            body_args = tuple(range(0,head_count))
+            
+            # Group id
+            group = len(self.__nodes)
+            
+            # Create the body clause
+            body_head = Term('ad_%s_body' % group, *body_args)
             body_node = self._compile(struct.body, variables)
-            return self._addADNode( new_heads, head_count, body_node, len(variables) )
+            clause_body = self._appendNode( self._clause( body_head.functor, body_head.args, None, body_node, len(variables), group=None ) )
+            
+            for choice, head in enumerate(new_heads) :
+                # For each head: add choice node
+                choice_node = self._addChoiceNode(choice, body_args, head.probability, group )
+                choice_call = self._appendNode( self._call( 'ad_%s_%s' % (group, choice), body_args, choice_node ) )
+                body_call = self._appendNode( self._call( 'ad_%s_body' % group, body_args , clause_body ) )
+                choice_body = self._addAndNode( body_call, choice_call )
+                head_clause = self._addClauseNode( head, choice_body, head_count, group=group )
+            return None
         elif isinstance(struct, Clause) :
-            new_head = struct.head.apply(variables)
-            head_count = len(variables)
-            body_node = self._compile(struct.body, variables)
-            if new_head.probability != None :
-                return self._addADNode( [new_head], head_count, body_node, len(variables) )
+            if struct.head.probability != None :
+                return self._compile( AnnotatedDisjunction( [struct.head], struct.body))
             else :
+                new_head = struct.head.apply(variables)
+                head_count = len(variables)
+                body_node = self._compile(struct.body, variables)
                 return self._addClauseNode(new_head, body_node, len(variables))
         elif isinstance(struct, Term) :
             return self._addCallNode( struct.apply(variables) )
@@ -383,13 +384,17 @@ class ClauseDB(LogicProgram) :
         node = self.getNode(node_id)
         if not node :
             raise ValueError("Unexpected empty node.")    
-            
+        
+        groups = defaultdict(list)
         nodetype = type(node).__name__
         if nodetype == 'fact' :
             return Term(node.functor, *node.args, p=node.probability)
         elif nodetype == 'clause' :
-            head = self._create_vars( Term(node.functor,*node.args, p=node.probability) )
-            return Clause( head, self._extract(node.child))
+            if clause.group != None :   # part of annotated disjunction
+                groups
+            else :
+                head = self._create_vars( Term(node.functor,*node.args, p=node.probability) )
+                return Clause( head, self._extract(node.child))
         elif nodetype == 'call' :
             func = node.functor
             args = node.args
@@ -402,19 +407,39 @@ class ClauseDB(LogicProgram) :
             return Or( self._extract(a), self._extract(b) )
         elif nodetype == 'neg' :
             return Not( self._extract(node.child))
-        elif nodetype == 'ad' :
-            heads = [ self._extract( c ) for c in node.choices ]
-            return AnnotatedDisjunction( heads, self._extract( node.child ) )
-        elif nodetype == 'adc' :
-            return self._create_vars( Term(node.functor, *node.args, p=node.probability) )
             
         else :
             raise ValueError("Unknown node type: '%s'" % nodetype)    
         
     def __iter__(self) :
+        clause_groups = defaultdict(list)
         for index, node in enumerate(self.__nodes) :
-            if node and type(node).__name__ in ('fact', 'clause', 'ad') :
-                yield self._extract( index )
+            if not node : continue
+            nodetype = type(node).__name__
+            if nodetype == 'fact' :
+                yield Term(node.functor, *node.args, p=node.probability)
+            elif nodetype == 'clause' :
+                if node.group == None :
+                    head = self._create_vars( Term(node.functor,*node.args, p=node.probability) )
+                    yield Clause( head, self._extract(node.child))
+                else :
+                    clause_groups[node.group].append(index)
+            
+            
+            #if node and type(node).__name__ in ('fact', 'clause') :
+               # yield self._extract( index )
+        for group in clause_groups.values() :
+            heads = []
+            body = None
+            for index in group :
+                node = self.getNode(index)
+                heads.append( self._create_vars( Term( node.functor, *node.args, p=node.probability)))
+                if body == None :
+                    body_node = self.getNode(node.child)
+                    body_node = self.getNode(body_node.children[0])
+                    body = self._create_vars( Term(body_node.functor, *body_node.args) )
+            yield AnnotatedDisjunction(heads, body)
+            
         
 class _AutoDict(dict) :
     
