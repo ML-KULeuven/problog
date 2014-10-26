@@ -298,14 +298,14 @@ class Engine(object) :
                     
     def _ground_and(self, db, gp, node, local_vars, tdb, anc, call_key, level) :
         with tdb :
-            result1 = self._ground(db, gp, node.children[0], local_vars, tdb, anc=anc+[call_key], level=level)
+            result1 = self._ground(db, gp, node.children[0], local_vars, tdb, anc=anc, level=level)
             
             result = []
             for node1, res1 in result1 :
                 with tdb :
                     for a,b in zip(res1, local_vars) :
                         tdb.unify(a,b)
-                    result2 = self._ground(db, gp, node.children[1], local_vars, tdb, anc=anc+[call_key], level=level)     
+                    result2 = self._ground(db, gp, node.children[1], local_vars, tdb, anc=anc, level=level)     
                     for node2, res2 in result2 :
                         result.append( ( gp.addAndNode( (node1, node2) ), res2 ) )
                     
@@ -328,13 +328,13 @@ class Engine(object) :
                     self._exit_call(level, node.functor, node.args, 'USER')
                     return ()
                 
-                sub = builtin( engine=self, clausedb=db, args=call_args, tdb=tdb, anc=anc+[call_key], level=level, functor=node.functor, arity=len(node.args))
+                sub = builtin( engine=self, clausedb=db, args=call_args, tdb=tdb, anc=anc, level=level, functor=node.functor, arity=len(node.args))
                 
                 sub = [ (0, s) for s in sub]
                 self._exit_call(level, node.functor, node.args, sub)
             else :
                 try :
-                    sub = self._ground(db, gp, node.defnode, call_args, tdb, anc=anc+[call_key], level=level)
+                    sub = self._ground(db, gp, node.defnode, call_args, tdb, anc=anc, level=level)
                 except _UnknownClause :
                     raise UnknownClause(node)
             # result at 
@@ -405,7 +405,7 @@ class Engine(object) :
             
     
     def _ground_define(self, db, gp, node, args, tdb, anc, call_key, level) :
-        results = self._ground_or(db, gp, node, args, tdb, anc, call_key, level)
+        results = self._ground_or(db, gp, node, args, tdb, anc=anc+[call_key], call_key=call_key, level=level)
         
         # - All entries should be ground.
         # - All entries should be grouped by same facts => create or-nodes.
