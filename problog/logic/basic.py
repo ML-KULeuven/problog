@@ -373,7 +373,7 @@ class LogicProgram(object) :
         return self
         
     @classmethod
-    def createFrom(cls, lp, force_copy=False) :
+    def createFrom(cls, lp, force_copy=False, **extra) :
         """Create a LogicProgram of the current class from another LogicProgram.
         
         :param lp: logic program to convert
@@ -388,7 +388,7 @@ class LogicProgram(object) :
         if not force_copy and lp.__class__ == cls :
             return lp
         else :
-            obj = cls()
+            obj = cls(**extra)
             for clause in lp :
                 obj += clause
             return obj

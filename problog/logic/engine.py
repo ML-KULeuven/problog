@@ -10,20 +10,68 @@ from .program import ClauseDB
 from .unification import TermDB, UnifyError
 
 from collections import defaultdict, namedtuple
+     
+class CycleDetected(Exception) : pass
         
-class Engine(object) :
+class BaseEngine(object) :
+    
+    def __init__(self) :
+        pass
+                
+    def addBuiltIn(self, sig, func) :
+        pass
+        
+    def getBuiltIns(self) :
+        pass
+    
+    def query(self, db, term, level=0) :
+        pass
+    
+    def ground(self, db, term, gp=None, level=0) :
+        pass
+
+class Tabled(object) :
+    
+    def __init__(self) :
+        self.__table = {}
+        
+    def __call__(self,func) :
+        def r(*args, **kwdargs) :
+            key = args[7]
+            
+            record = self.__table.get(key)
+            if record :
+                return record
+            elif record != None :
+                raise RuntimeError('Cycle detected.')
+                return []
+            else :
+                self.__table[key] = ()
+                result = func(*args, **kwdargs)
+                self.__table[key] = result
+            return result
+        return r
+        
+        
+class DefaultEngine(BaseEngine) :
+    """Standard grounding engine."""
     
     def __init__(self, debugger = None) :
         self.__debugger = debugger
         
-        self.__builtins = {}
+        self.__builtin_index = {}
+        self.__builtins = []
         
-    def getBuiltIn(self, func, arity) :
-        sig = '%s/%s' % (func, arity)
-        return self.__builtins.get(sig)
+    def _getBuiltIn(self, index) :
+        real_index = -(index + 1)
+        return self.__builtins[real_index]
         
     def addBuiltIn(self, sig, func) :
-        self.__builtins[sig] = func
+        self.__builtin_index[sig] = -(len(self.__builtin_index) + 1)
+        self.__builtins.append( func )
+        
+    def getBuiltIns(self) :
+        return self.__builtin_index
         
     def _enter_call(self, *args) :
         if self.__debugger != None :
@@ -32,227 +80,15 @@ class Engine(object) :
     def _exit_call(self, *args) :
         if self.__debugger != None :
             self.__debugger.exit(*args)
-                
-    def _call_fact(self, db, node, local_vars, tdb, anc, call_key, level) :
-        with tdb :
-            atoms = list(map( tdb.add, node.args))
-            
-            # Match call arguments with fact arguments
-            for a,b in zip( local_vars, atoms ) :
-                tdb.unify(a,b)
-            return ( list(map(tdb.reduce, local_vars)), )
-        return []
-                    
-    def _call_and(self, db, node, local_vars, tdb, anc, call_key, level) :
-        with tdb :
-            result1 = self._call(db, node.children[0], local_vars, tdb, anc=anc+[call_key], level=level)
-            
-            result = []
-            for res1 in result1 :
-                with tdb :
-                    for a,b in zip(res1, local_vars) :
-                        tdb.unify(a,b)
-                    result += self._call(db, node.children[1], local_vars, tdb, anc=anc+[call_key], level=level)
-            return result
-    
-    def _call_or(self, db, node, local_vars, tdb, anc, call_key, level) :
-        result = []
-        for n in node.children :
-            result += self._call(db, n, local_vars, tdb, anc=anc, level=level) 
-        return result
-            
-    def _call_call(self, db, node, local_vars, tdb, anc, call_key, level) :
-        with tdb :
-            call_args = [ tdb.add(arg) for arg in node.args ]
-            builtin = self.getBuiltIn( node.functor, len(node.args) )
-            if builtin != None :
-                try :
-                    self._enter_call(level, node.functor, node.args)
-                except UserFail :
-                    self._exit_call(level, node.functor, node.args, 'USER')
-                    return ()
-                
-                sub = builtin( engine=self, clausedb=db, args=call_args, tdb=tdb, anc=anc+[call_key], level=level)
-                
-                self._exit_call(level, node.functor, node.args, sub)
-            else :
-                sub = self._call(db, node.defnode, call_args, tdb, anc=anc+[call_key], level=level)
-                
-            # result at 
-            result = []
-            for res in sub :
-                with tdb :
-                    for a,b in zip(res,call_args) :
-                        tdb.unify(a,b)
-                    result.append( [ tdb.getTerm(arg) for arg in local_vars ] )
-            return result
-            
-    def _call_not(self, db, node, local_vars, tdb, anc, call_key, level) :
-        # TODO Change this for probabilistic
-        
-        subnode = node.child
-        subresult = self._call(db, subnode, local_vars, tdb, anc, level)
-        
-        if subresult :
-            return []   # no solution
-        else :
-            return [ [ tdb[v] for v in local_vars ] ]
-            
-    def _call_clause(self, db, node, args, tdb, anc, call_key, level) :
-        new_tdb = TermDB()
-        
-        # Reserve spaces for clause variables
-        local_vars = range(0,node.varcount)
-        for i in local_vars :
-            new_tdb.newVar()
-        
-        # Add call arguments to local tdb
-        call_args = tdb.copyTo( new_tdb, *args )
-                
-        with new_tdb :
-            # Unify call arguments with head arguments
-            for call_arg, def_arg in zip(call_args, node.args) :
-                new_tdb.unify(call_arg, def_arg)
-            
-            # Call body
-            sub = self._call(db, node.child, local_vars, new_tdb, anc, level)
-            
-            # sub contains values of local variables in the new context 
-            #  => we need to translate them back to the 'args' from the old context
-            result = []
-            for res in sub :
-                with tdb :
-                    # Unify local_vars with res
-                    with new_tdb :
-                        for a,b in zip(res, local_vars) :
-                            new_tdb.unify(a,b)
-                            
-                        res_args = new_tdb.copyTo(tdb, *call_args)
-                        
-                        # Return values of args
-                        result.append( list(map( tdb.getTerm, res_args )))
-            return result
-            
-        return []
-    
-    def _call_def(self, db, node, args, tdb, anc, call_key, level) :
-        return self._call_or(db, node, args, tdb, anc, call_key, level)
-    
-    def _call( self, db, node_id, input_vars, tdb, anc=[], level=0) :
-        node = db.getNode(node_id)
-        
-        call_key_1 = []
-        call_terms = []
-        for arg in input_vars :
-            call_terms.append(tdb[arg])
-            if not tdb.isGround(arg) :
-                call_key_1.append(None)
-            else :
-                call_key_1.append( str(tdb.getTerm(arg)) )
-        call_key = (node_id, tuple(call_key_1) )
-        
-        try :
-            self._enter_call(level, node_id, call_terms)
-        except UserFail :
-            self._exit_call(level, node_id, call_terms, 'USER')
-            return ()
-            
-        
-        # if call_key in anc :
-        #     self._exit_call(level, node_id, call_terms, 'CYCLE')
-        #     return ()
-        
-        nodetype = type(node).__name__
-        rV = None
-        if not node :
-            # Undefined
-            raise UnknownClause()
-        elif nodetype == 'fact' :
-            rV = self._call_fact(db, node, input_vars, tdb, anc, call_key,level+1 )
-        elif nodetype == 'call' :
-            rV = self._call_call(db, node, input_vars, tdb, anc, call_key,level+1)
-        elif nodetype == 'clause' :
-            rV = self._call_clause(db, node, input_vars, tdb, anc, call_key,level+1)
-        elif nodetype == 'neg' :
-            rV = self._call_not(db, node, input_vars, tdb, anc, call_key,level+1)
-        elif nodetype == 'conj' :
-            rV = self._call_and(db, node, input_vars, tdb, anc, call_key,level+1)
-        elif nodetype == 'disj' or nodetype == 'define':
-            rV = self._call_or(db, node, input_vars, tdb, anc, call_key,level+1)
-        # elif node[0] == 'builtin' :
-        #     rV = self._call_builtin(db, node, input_vars, tdb, anc, call_key,level+1)
-        else :
-            raise NotImplementedError("Unknown node type: '%s'" % nodetype )
-        
-        self._exit_call(level, node_id, call_terms, rV)
-
-        return rV
 
     def query(self, db, term, level=0) :
-        db = ClauseDB.createFrom(db)
+        gp = DummyGroundProgram()
+        gp, result = self.ground(db, term, gp, level)
         
-        tdb = TermDB()
-        args = [ tdb.add(x) for x in term.args ]
-        clause_node = db.find(term)
-        
-        if clause_node == None : return []
-        call_node = ClauseDB._call( term.functor, args, clause_node )
-        return self._call_call(db, call_node, args, tdb, [], None, level)
-        
-    def _ground( self, db, gp, node_id, input_vars, tdb, anc=[], level=0) :
-        node = db.getNode(node_id)
-        
-        call_key_1 = []
-        call_terms = []
-        for arg in input_vars :
-            call_terms.append(tdb[arg])
-            if not tdb.isGround(arg) :
-                call_key_1.append(None)
-            else :
-                call_key_1.append( str(tdb.getTerm(arg)) )
-        call_key = (node_id, tuple(call_key_1) )
-        
-        try :
-            self._enter_call(level, node_id, call_terms, input_vars)
-        except UserFail :
-            self._exit_call(level, node_id, call_terms, 'USER')
-            return ()
-            
-        
-        if call_key in anc :
-            self._exit_call(level, node_id, call_terms, 'CYCLE')
-            return ()
-        
-        nodetype = type(node).__name__
-        rV = None
-        if not node :
-            # Undefined
-            raise _UnknownClause()
-        elif nodetype == 'fact' :
-            rV = self._ground_fact(db, gp, node, input_vars, tdb, anc, call_key,level+1 )
-        elif nodetype == 'call' :
-            rV = self._ground_call(db, gp, node, input_vars, tdb, anc, call_key,level+1)
-        elif nodetype == 'clause' :
-            rV = self._ground_clause(db, gp, node, input_vars, tdb, anc, call_key,level+1)
-        elif nodetype == 'neg' :
-            rV = self._ground_not(db, gp, node, input_vars, tdb, anc, call_key,level+1)
-        elif nodetype == 'conj' :
-            rV = self._ground_and(db, gp, node, input_vars, tdb, anc, call_key,level+1)
-        elif nodetype == 'disj' :
-            rV = self._ground_or(db, gp, node, input_vars, tdb, anc, call_key,level+1)
-        elif nodetype == 'define':
-            rV = self._ground_define(db, gp, node, input_vars, tdb, anc, call_key,level+1)
-        elif nodetype == 'choice' :
-            rV = self._ground_choice(db, gp, node, input_vars, tdb, anc, call_key, level+1)
-        else :
-            raise NotImplementedError("Unknown node type: '%s'" % nodetype )
-        
-        self._exit_call(level, node_id, call_terms, rV)
-
-        return rV
-
+        return [ y for x,y in result ]        
+    
     def ground(self, db, term, gp=None, level=0) :
-        db = ClauseDB.createFrom(db)
+        db = ClauseDB.createFrom(db, builtins=self.getBuiltIns())
         
         if gp == None :
             gp = GroundProgram()
@@ -265,10 +101,60 @@ class Engine(object) :
         
         call_node = ClauseDB._call( term.functor, args, clause_node )
         
-        query = self._ground_call(db, gp, call_node, args, tdb, [], None, level)
+        query = self._ground_call(db, gp, None, call_node, args, tdb, anc=[], call_key=None, level=level)
         return gp, query
+    
         
-    def _ground_fact(self, db, gp, node, local_vars, tdb, anc, call_key, level) :
+    def _ground( self, db, gp, node_id, input_vars, tdb, level=0, **extra) :
+        node = db.getNode(node_id)
+          
+        call_terms = [ tdb[arg] for arg in input_vars ] 
+                
+        try :
+            try :
+                functor = node.functor
+            except AttributeError :
+                functor = str(node)
+            self._enter_call(level, '%s: %s' % (node_id,functor), call_terms)
+        except UserFail :
+            self._exit_call(level, '%s: %s' % (node_id,functor), call_terms, 'USER')
+            return ()
+            
+        
+        nodetype = type(node).__name__
+        rV = None
+        if not node :
+            raise _UnknownClause()
+        elif nodetype == 'fact' :
+            func = self._ground_fact     
+        elif nodetype == 'call' :
+            func = self._ground_call
+        elif nodetype == 'clause' :
+            func = self._ground_clause
+        elif nodetype == 'neg' :
+            func = self._ground_not
+        elif nodetype == 'conj' :
+            func = self._ground_and
+        elif nodetype == 'disj' :
+            func = self._ground_or
+        elif nodetype == 'define':
+            func = self._ground_define
+        elif nodetype == 'choice' :
+            func = self._ground_choice
+        else :
+            raise NotImplementedError("Unknown node type: '%s'" % nodetype )
+        
+        try :
+            rV = func(db, gp, node_id, node, input_vars, tdb, level=level+1, **extra )
+            self._exit_call(level, '%s: %s' % (node_id,functor), call_terms, rV)
+        except CycleDetected :
+            self._exit_call(level, '%s: %s' % (node_id,functor), call_terms, 'CYCLE')
+            rV = ()
+
+        return rV
+
+        
+    def _ground_fact(self, db, gp, node_id, node, local_vars, tdb, **extra) :
         with tdb :
             atoms = list(map( tdb.add, node.args))
             
@@ -281,7 +167,7 @@ class Engine(object) :
             return [ (node, args) ]
         return []
 
-    def _ground_choice(self, db, gp, node, local_vars, tdb, anc, call_key, level) :
+    def _ground_choice(self, db, gp, node_id, node, local_vars, tdb, **extra) :
         with tdb :
             atoms = list(map( tdb.add, node.args))
             
@@ -296,45 +182,46 @@ class Engine(object) :
         return []
 
                     
-    def _ground_and(self, db, gp, node, local_vars, tdb, anc, call_key, level) :
+    def _ground_and(self, db, gp, node_id, node, local_vars, tdb, **extra) :
         with tdb :
-            result1 = self._ground(db, gp, node.children[0], local_vars, tdb, anc=anc, level=level)
+            result1 = self._ground(db, gp, node.children[0], local_vars, tdb, **extra)
             
             result = []
             for node1, res1 in result1 :
                 with tdb :
                     for a,b in zip(res1, local_vars) :
                         tdb.unify(a,b)
-                    result2 = self._ground(db, gp, node.children[1], local_vars, tdb, anc=anc, level=level)     
+                    result2 = self._ground(db, gp, node.children[1], local_vars, tdb, **extra)     
                     for node2, res2 in result2 :
                         result.append( ( gp.addAndNode( (node1, node2) ), res2 ) )
                     
             return result
     
-    def _ground_or(self, db, gp, node, local_vars, tdb, anc, call_key, level) :
+    def _ground_or(self, db, gp, node_id, node, local_vars, tdb, **extra) :
         result = []
         for n in node.children :
-            result += self._ground(db, gp, n, local_vars, tdb, anc=anc, level=level) 
+            result += self._ground(db, gp, n, local_vars, tdb, **extra) 
         return result
             
-    def _ground_call(self, db, gp, node, local_vars, tdb, anc, call_key, level) :
+    def _ground_call(self, db, gp, node_id, node, local_vars, tdb, level=0, **extra) :
         with tdb :
             call_args = [ tdb.add(arg) for arg in node.args ]
-            builtin = self.getBuiltIn( node.functor, len(node.args) )
-            if builtin != None :
+            
+            if node.defnode < 0 :
+                builtin = self._getBuiltIn( node.defnode )
                 try :
-                    self._enter_call(level, node.functor, node.args, local_vars)
+                    self._enter_call(level, node.functor, node.args)
                 except UserFail :
                     self._exit_call(level, node.functor, node.args, 'USER')
                     return ()
                 
-                sub = builtin( engine=self, clausedb=db, args=call_args, tdb=tdb, anc=anc, level=level, functor=node.functor, arity=len(node.args))
+                sub = builtin( engine=self, clausedb=db, args=call_args, tdb=tdb, functor=node.functor, arity=len(node.args), **extra)
                 
                 sub = [ (0, s) for s in sub]
                 self._exit_call(level, node.functor, node.args, sub)
             else :
                 try :
-                    sub = self._ground(db, gp, node.defnode, call_args, tdb, anc=anc, level=level)
+                    sub = self._ground(db, gp, node.defnode, call_args, tdb, **extra)
                 except _UnknownClause :
                     raise UnknownClause(node)
             # result at 
@@ -347,15 +234,54 @@ class Engine(object) :
             return result
     
             
-    def _ground_not(self, db, gp, node, local_vars, tdb, anc, call_key, level) :
+    def _ground_not(self, db, gp, node_id, node, local_vars, tdb, **extra) :
         subnode = node.child
-        subresult = self._ground(db, gp, subnode, local_vars, tdb, anc, level)
+        subresult = self._ground(db, gp, subnode, local_vars, tdb, **extra)
         
         if subresult :
-            return [ (gp._negate(n),r) for n,r in subresult ]
+            return [ (gp.negate(n),r) for n,r in subresult if n != gp.TRUE ]
         else :
-            return [ (0,[ tdb[v] for v in local_vars ]) ]
+            return [ (gp.TRUE, [ tdb[v] for v in local_vars ]) ]
+                        
+    def _ground_clause(self, db, gp, node_id, node, args, tdb, **extra) :
+        new_context = self._create_context( tdb, node.varcount, args, node.args )
+        if new_context == None : return []
+        
+        new_tdb, new_vars, new_args = new_context
+        
+        sub = self._ground(db, gp, node.child, new_vars, new_tdb, **extra)
             
+        # sub contains values of local variables in the new context 
+        #  => we need to translate them back to the 'args' from the old context
+        result = []
+        for node_id, res in sub :
+            res_new = self._integrate_context(tdb, res, *new_context)
+            if res_new != None :
+                result.append( (node_id, res_new ) )
+        return result
+            
+    def _ground_define(self, db, gp, node_id, node, args, tdb, **extra) :        
+        results = self._ground_or(db, gp, node_id, node, args, tdb, **extra)
+        
+        # - All entries should be ground.
+        # - All entries should be grouped by same facts => create or-nodes.
+        
+        groups = defaultdict(list)
+        for node, result in results :
+            # for res in result :
+            #     if (not res.isGround()) :
+            #         raise NonGroundQuery()
+            groups[ tuple(result) ].append(node)
+        
+        results = []
+        for result, nodes in groups.items() :
+            if len(nodes) > 1 :
+                node = gp.addOrNode( nodes )
+            else :
+                node = nodes[0]
+            results.append( (node,result) )
+        return results
+        
     def _create_context( self, tdb, varcount, call_args, def_args ) :
         new_tdb = TermDB()
         
@@ -384,55 +310,115 @@ class Engine(object) :
                     
                 return [ tdb.getTerm(x) for x in new_tdb.copyTo(tdb, *new_args) ]
         return None
-            
-    def _ground_clause(self, db, gp, node, args, tdb, anc, call_key, level) :
-        
-        new_context = self._create_context( tdb, node.varcount, args, node.args )
-        if new_context == None : return []
-        
-        new_tdb, new_vars, new_args = new_context
-        
-        sub = self._ground(db, gp, node.child, new_vars, new_tdb, anc, level)
-            
-        # sub contains values of local variables in the new context 
-        #  => we need to translate them back to the 'args' from the old context
-        result = []
-        for node_id, res in sub :
-            res_new = self._integrate_context(tdb, res, *new_context)
-            if res_new != None :
-                result.append( (node_id, res_new ) )
-        return result
-            
+
+class CycleFreeEngine(DefaultEngine):
+    """Grounding engine with cycle detection."""
     
-    def _ground_define(self, db, gp, node, args, tdb, anc, call_key, level) :
-        results = self._ground_or(db, gp, node, args, tdb, anc=anc+[call_key], call_key=call_key, level=level)
-        
-        # - All entries should be ground.
-        # - All entries should be grouped by same facts => create or-nodes.
-        
-        groups = defaultdict(list)
-        for node, result in results :
-            for res in result :
-                if (not res.isGround()) :
-                    raise NonGroundQuery()
-            groups[ tuple(result) ].append(node)
-        
-        results = []
-        for result, nodes in groups.items() :
-            if len(nodes) > 1 :
-                node = gp.addOrNode( nodes )
+    def __init__(self) :
+        DefaultEngine.__init__(self)
+    
+    def _ground_define(self, db, gp, node_id, node, args, tdb, anc=[], call_key=None, level=0) :
+        call_key_1 = []
+        call_terms = []
+        for arg in args :
+            call_terms.append(tdb[arg])
+            if not tdb.isGround(arg) :
+                call_key_1.append(None)
             else :
-                node = nodes[0]
-            results.append( (node,result) )
-        return results
+                call_key_1.append( str(tdb.getTerm(arg)) )
+        call_key = (node_id, tuple(call_key_1) )
+        
+        if call_key != None and call_key in anc :
+            raise CycleDetected()
+
+        return DefaultEngine._ground_define(self, db, gp, node_id, node, args, tdb, anc=anc+[call_key], call_key=call_key, level=level)
+
+
+class TabledEngine(DefaultEngine) :
+    """Grounding engine with tabling."""
+    
+    def __init__(self) :
+        DefaultEngine.__init__(self)
+        # The table of stored results.
+        self.__table = {}
+        # Set of calls that should not be grounded (because they are cyclic, and depend on call stack).
+        self.__do_not_ground = set()
+    
+    def _ground_define(self, db, gp, node_id, node, args, tdb, anc=[], **extra) :
+        # Compute the key for this definition call (defnode + arguments).
+        call_key_1 = []
+        for arg in args :
+            if not tdb.isGround(arg) :
+                call_key_1.append(None)
+            else :
+                call_key_1.append( tdb.getTerm(arg) )
+        call_key = (node_id, tuple(call_key_1) )
+
+        # Get the record from the table.
+        record = self.__table.get( call_key )
+
+        if record == '#GROUNDING#' :
+            # This call is currently being grounded. This means we have detected a cycle.
+            # Mark all ancestors as 'do not ground'.
+            for key in anc :
+                self.__do_not_ground.add(key)
+            # Signal cycle detection (same as failing).
+            raise CycleDetected()
+        elif record == None or call_key in self.__do_not_ground :
+            # The call has not been grounded yet or was marked as 'do not ground'.
+            # Initialize ground record (for cycle detection)
+            self.__table[call_key] = '#GROUNDING#'     
+            # Compute the result using the default engine.
+            result = DefaultEngine._ground_define(self, db, gp, node_id, node, args, tdb, anc=anc+[call_key], **extra)
+            # Store the result in the table.
+            self.__table[call_key] = result
+            # Return the result.
+            return result
+        else :
+            # The call was grounded before: return the stored record.
+            return record
+
+class DummyGroundProgram(object) :
+    
+    def __init__(self) :
+        pass
+        
+    def getFact(self, name) :
+        return 0
+        
+    def addChoice(self, origin, choice, probability) :
+        return 0
+        
+    def negate(self, t) :
+        return None
+
+    def addFact(self, functor, args, probability) :
+        return 0
+    
+    def reserveNode(self) :
+        return 0
+        
+    def addNode(self, nodetype, content) :
+        return 0
+        
+    def addOrNode(self, content, index=None) :
+        return 0
+        
+    def addAndNode(self, content, index=None) :
+        if (None in content) :
+            return None
+        else :
+            return 0
     
 # Taken and modified from from ProbFOIL
 class GroundProgram(object) :
+    """Represents and AND-OR graph."""
     
     _fact = namedtuple('fact', ('functor', 'args', 'probability') )
     _conj = namedtuple('conj', ('children') )
     _disj = namedtuple('disj', ('children') )
     _choice = namedtuple('choice', ('origin', 'choice', 'probability'))
+    _alias = namedtuple('alias', ('alias') )
     
     # Invariant: stored nodes do not have TRUE or FALSE in their content.
     
@@ -443,10 +429,22 @@ class GroundProgram(object) :
         self.__nodes = []
         self.__fact_names = {}
         self.__nodes_by_content = {}
-        self.__adnodes = {}
-        self.__offset = 0
+        
         self.__compress = compress
         self.__choice_nodes = {}
+        if parent != None :
+            self.__offset = len(parent)
+        else :
+            self.__offset = 0
+        self.__parent = parent
+        
+        self.__cyclefree = True
+        
+    def isAcyclic(self) :
+        return self.__cyclefree
+        
+    def setCyclic(self) :
+        self.__cyclefree = False
         
     def getFact(self, name) :
         return self.__fact_names.get(name, None)
@@ -458,7 +456,7 @@ class GroundProgram(object) :
             self.__choice_nodes[(origin,choice)] = node_id
         return node_id
                         
-    def _negate(self, t) :
+    def negate(self, t) :
         if t == self.TRUE :
             return self.FALSE
         elif t == self.FALSE :
@@ -488,15 +486,24 @@ class GroundProgram(object) :
         else :
             raise Exception("Unknown node type '%s'" % nodetype)
         
-    def addOrNode(self, content) :
+    def addOrNode(self, content, index=None) :
         """Add an OR node."""
-        return self._addCompoundNode('or', content, self.TRUE, self.FALSE)
+        node_id = self._addCompoundNode('or', content, self.TRUE, self.FALSE, index=None)
+        return self._addAlias(node_id, index)
         
-    def addAndNode(self, content) :
+    def addAndNode(self, content, index=None) :
         """Add an AND node."""
-        return self._addCompoundNode('and', content, self.FALSE, self.TRUE)
+        node_id =  self._addCompoundNode('and', content, self.FALSE, self.TRUE, index=None)
+        return self._addAlias(node_id, index)
         
-    def _addCompoundNode(self, nodetype, content, t, f) :
+    def _addAlias( self, node_id, index ) :
+        if index == None or index == node_id :
+            return node_id
+        else :
+            self._setNode( index, self._alias(node_id) )
+            return node_id
+        
+    def _addCompoundNode(self, nodetype, content, t, f, index=None) :
         assert( content )   # Content should not be empty
         
         # If there is a t node, (true for OR, false for AND)
@@ -524,9 +531,15 @@ class GroundProgram(object) :
         if node_id == None :    
             # Node doesn't exist yet
             if nodetype == 'or' :
-                node_id = self._addNode( self._disj(content) )
+                node = self._disj(content)
             else :
-                node_id = self._addNode( self._conj(content) )
+                node = self._conj(content)
+            
+            if index != None :
+                self._setNode( index, node )
+                node_id = index
+            else :
+                node_id = self._addNode( node )
             self.__nodes_by_content[ key ] = node_id
         return node_id
         
@@ -534,6 +547,12 @@ class GroundProgram(object) :
         node_id = len(self) + 1
         self.__nodes.append( node )
         return node_id
+
+    def _setNode(self, index, node) :
+        self.__nodes[index-1] = node
+        
+    def reserveNode(self) :
+        return self._addNode(None)
         
     def getNode(self, index) :
         assert (index != None and index > 0)
@@ -683,12 +702,12 @@ class Debugger(object) :
         self.__trace = trace
         self.__trace_level = None
         
-    def enter(self, level, node_id, call_args, input_vars) :
+    def enter(self, level, node_id, call_args) :
         if self.__trace :
-            print ('  ' * level, '>', node_id, call_args, input_vars, end='')
+            print ('  ' * level, '>', node_id, call_args, end='')
             self._trace(level)  
         elif self.__debug :
-            print ('  ' * level, '>', node_id, call_args, input_vars)
+            print ('  ' * level, '>', node_id, call_args)
         
     def exit(self, level, node_id, call_args, result) :
         

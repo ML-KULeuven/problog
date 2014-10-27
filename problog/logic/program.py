@@ -207,12 +207,20 @@ class ClauseDB(LogicProgram) :
     _conj   = namedtuple('conj'  , ('children' ) )
     _neg    = namedtuple('neg'   , ('child' ) )
     _choice = namedtuple('choice', ('functor', 'args', 'probability', 'group', 'choice') )
-        
-    def __init__(self) :
+    
+    def __init__(self, builtins=None) :
         LogicProgram.__init__(self)
         self.__nodes = []   # list of nodes
         self.__heads = {}   # head.sig => node index
     
+        self.__builtins = builtins
+        
+    def _getBuiltIn(self, signature) :
+        if self.__builtins == None :
+            return None
+        else :
+            return self.__builtins.get(signature)
+        
     def _addAndNode( self, op1, op2 ) :
         """Add an *and* node."""
         return self._appendNode( self._conj((op1,op2)))
@@ -283,6 +291,13 @@ class ClauseDB(LogicProgram) :
         self.__heads[ head.signature ] = index
     
     def _addHead( self, head, create=True ) :
+        node = self._getBuiltIn( head.signature )
+        if node != None :
+            if create :
+                raise AccessError("Can not overwrite built-in '%s'." % head.signature )
+            else :
+                return node
+        
         node = self._getHead( head )
         if node == None :
             if create :
@@ -439,7 +454,8 @@ class ClauseDB(LogicProgram) :
                     body_node = self.getNode(body_node.children[0])
                     body = self._create_vars( Term(body_node.functor, *body_node.args) )
             yield AnnotatedDisjunction(heads, body)
-            
+
+class AccessError(Exception) : pass            
         
 class _AutoDict(dict) :
     

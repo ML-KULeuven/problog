@@ -20,6 +20,7 @@ def test1() :
     
     anc1 = Term('anc1')
     anc2 = Term('anc2')
+    anc3 = Term('anc3')
     par = Term('par')  
     tst = Term('tst')  
     
@@ -39,6 +40,8 @@ def test1() :
     
     db += anc2(X,Y) << ( anc2(X,Z) & par(Z,Y) | par(X,Y) )
     
+    db += anc3(X,Y) << ( anc3(X,Z) & par(Z,Y) )
+    db += anc3(X,Y) << ( par(X,Y) )
     
     #db.addClause(  )
     
@@ -66,22 +69,28 @@ def test1() :
     #dbg = None
    
     print ('Cycle free')
-    print (PrologEngine(dbg).query( db, anc1(A,B) ))
+    print (PrologEngine().query( db, anc1(A,B) ))
     
-    print ('With cycle')
+    print ('With cycle - or')
     print (PrologEngine().query( db, anc2(A,B) ))
+
+    print ('With cycle - clause')
+    print (PrologEngine(dbg).query( db, anc3(A,B) ))
+
     
     print ('.\n'.join(map(str,db)) + '.')
 
 def test2() :
     
-    db = ClauseDB()
+    eng = PrologEngine()
+    
+    db = ClauseDB(builtins=eng.getBuiltIns())
     
     tst1 = Term('tst1')  
     tst2 = Term('tst2')  
     _is = Term('is')
-    _plus = Term('+')
-    eq = Term('=')
+    _plus = Term("'+'")
+    eq = Term("'='")
     call = Term('call')
         
     X = Var('X')
@@ -109,15 +118,16 @@ def test2() :
     C = Var('C')
        
     print ('Version 1')
-    print (PrologEngine().query( db, tst1(A,B) ))
+    print (eng.query( db, tst1(A,B) ))
 
     print ('Version 2')
-    print (PrologEngine().query( db, tst2(A,B) ))  
+    print (eng.query( db, tst2(A,B) ))  
     
     
 def test3() :
     
-    db = ClauseDB()
+    eng = PrologEngine()
+    db = ClauseDB(builtins=eng.getBuiltIns())
     
     p = Term('p')
     q = Term('q')
@@ -138,20 +148,20 @@ def test3() :
     print ('==== Evaluations ====')
     
     print ('?- p(a,b)')
-    print (PrologEngine().query( db, p(a,b) ))
+    print (eng.query( db, p(a,b) ))
 
     print ('?- p(b,a)')
-    print (PrologEngine().query( db, p(b,a) ))
+    print (eng.query( db, p(b,a) ))
 
     print ('?- p(b,Y)')
-    print (PrologEngine().query( db, p(b,Y) ))
+    print (eng.query( db, p(b,Y) ))
 
     
     print ('?- p(a,X)')
-    print (PrologEngine().query( db, p(a,X) ))
+    print (eng.query( db, p(a,X) ))
     
     print ('?- q(a,X)')
-    print (PrologEngine().query( db, q(a,b) ))
+    print (eng.query( db, q(a,b) ))
 
 def test4() :
     from problog.logic.program import PrologFile

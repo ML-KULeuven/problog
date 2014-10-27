@@ -1,4 +1,4 @@
-from .engine import Engine
+from .engine import DefaultEngine, CycleFreeEngine, TabledEngine
 
 from .basic import Constant
 
@@ -207,9 +207,14 @@ def compute( value ) :
         args = [ compute(arg) for arg in value.args ]
         return computeFunction( value.functor, args )
 
-def PrologEngine(*args, **kwdargs) :
+def PrologEngine(cyclefree=True, tabled=True, *args, **kwdargs) :
     
-    engine = Engine(*args, **kwdargs)
+    if tabled :
+        engine = TabledEngine(*args, **kwdargs)
+    elif cyclefree :
+        engine = CycleFreeEngine(*args, **kwdargs)
+    else :
+        engine = DefaultEngine(*args, **kwdargs)
     
     addPrologBuiltins(engine)
     
