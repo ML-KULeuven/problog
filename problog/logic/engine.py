@@ -350,7 +350,7 @@ class TabledEngine(DefaultEngine) :
         if record == '#GROUNDING#' :
             # This call is currently being grounded. This means we have detected a cycle.
             # Mark all ancestors up to the cyclic one as 'do not ground'.
-            for key in anc :
+            for key in reversed(anc) :
                 self.__do_not_ground.add(key)
                 if key == call_key : break
             # Signal cycle detection (same as failing).
