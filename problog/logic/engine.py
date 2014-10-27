@@ -314,8 +314,8 @@ class DefaultEngine(BaseEngine) :
 class CycleFreeEngine(DefaultEngine):
     """Grounding engine with cycle detection."""
     
-    def __init__(self) :
-        DefaultEngine.__init__(self)
+    def __init__(self, **kwd) :
+        DefaultEngine.__init__(self, **kwd)
     
     def _ground_define(self, db, gp, node_id, node, args, tdb, anc=[], call_key=None, level=0) :
         call_key_1 = []
@@ -337,8 +337,8 @@ class CycleFreeEngine(DefaultEngine):
 class TabledEngine(DefaultEngine) :
     """Grounding engine with tabling."""
     
-    def __init__(self) :
-        DefaultEngine.__init__(self)
+    def __init__(self, **kwd) :
+        DefaultEngine.__init__(self, **kwd)
         # The table of stored results.
         self.__table = {}
         # Set of calls that should not be grounded (because they are cyclic, and depend on call stack).
