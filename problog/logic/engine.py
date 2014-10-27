@@ -29,29 +29,6 @@ class BaseEngine(object) :
     
     def ground(self, db, term, gp=None, level=0) :
         pass
-
-class Tabled(object) :
-    
-    def __init__(self) :
-        self.__table = {}
-        
-    def __call__(self,func) :
-        def r(*args, **kwdargs) :
-            key = args[7]
-            
-            record = self.__table.get(key)
-            if record :
-                return record
-            elif record != None :
-                raise RuntimeError('Cycle detected.')
-                return []
-            else :
-                self.__table[key] = ()
-                result = func(*args, **kwdargs)
-                self.__table[key] = result
-            return result
-        return r
-        
         
 class DefaultEngine(BaseEngine) :
     """Standard grounding engine."""
@@ -203,7 +180,7 @@ class DefaultEngine(BaseEngine) :
             result += self._ground(db, gp, n, local_vars, tdb, **extra) 
         return result
             
-    def _ground_call(self, db, gp, node_id, node, local_vars, tdb, level=0, **extra) :
+    def _ground_call(self, db, gp, node_id, node, local_vars, tdb, level=0,**extra) :
         with tdb :
             call_args = [ tdb.add(arg) for arg in node.args ]
             
@@ -215,13 +192,13 @@ class DefaultEngine(BaseEngine) :
                     self._exit_call(level, node.functor, node.args, 'USER')
                     return ()
                 
-                sub = builtin( engine=self, clausedb=db, args=call_args, tdb=tdb, functor=node.functor, arity=len(node.args), **extra)
+                sub = builtin( engine=self, clausedb=db, args=call_args, tdb=tdb, functor=node.functor, arity=len(node.args), level=level, **extra)
                 
                 sub = [ (0, s) for s in sub]
                 self._exit_call(level, node.functor, node.args, sub)
             else :
                 try :
-                    sub = self._ground(db, gp, node.defnode, call_args, tdb, **extra)
+                    sub = self._ground(db, gp, node.defnode, call_args, tdb, level=level, **extra)
                 except _UnknownClause :
                     raise UnknownClause(node)
             # result at 
@@ -260,9 +237,16 @@ class DefaultEngine(BaseEngine) :
                 result.append( (node_id, res_new ) )
         return result
             
-    def _ground_define(self, db, gp, node_id, node, args, tdb, **extra) :        
-        results = self._ground_or(db, gp, node_id, node, args, tdb, **extra)
+    def _ground_define(self, db, gp, node_id, node, args, tdb, **extra) :
+        if type(node.children) == list :
+            children = node.children            
+        else :
+            children = node.children.find( [ tdb[arg] for arg in args ] )
         
+        results = []
+        for n in children :
+            results += self._ground(db, gp, n, args, tdb, **extra) 
+                
         # - All entries should be ground.
         # - All entries should be grouped by same facts => create or-nodes.
         

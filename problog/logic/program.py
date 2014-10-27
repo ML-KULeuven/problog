@@ -156,6 +156,36 @@ class PrologFactory(Factory) :
         body.append(current)
         return body    
 
+class ClauseIndex(list) :
+    
+    def __init__(self, parent, arity) :
+        self.__parent = parent
+        self.__index = [ defaultdict(set) for i in range(0,arity) ]
+        
+    def find(self, arguments) :
+        results = set(self)
+        for i, arg in enumerate(arguments) :
+            if not arg.isGround() :    # No restrict
+                pass
+            else :
+                curr = self.__index[i][None] | self.__index[i][arg]
+                results &= curr
+        return results
+        
+    def _add(self, key, item) :
+        for i, k in enumerate(key) :
+            self.__index[i][k].add(item)
+        
+    def append(self, item) :
+        list.append(self, item)
+        key = []
+        args = self.__parent.getNode(item).args
+        for arg in args :
+            if arg.isGround() :
+                key.append(arg)
+            else :
+                key.append(None)
+        self._add(key, item)
 
 class ClauseDB(LogicProgram) :
     """Compiled logic program.
@@ -220,7 +250,7 @@ class ClauseDB(LogicProgram) :
             return None
         else :
             return self.__builtins.get(signature)
-        
+            
     def _addAndNode( self, op1, op2 ) :
         """Add an *and* node."""
         return self._appendNode( self._conj((op1,op2)))
@@ -237,7 +267,7 @@ class ClauseDB(LogicProgram) :
         define_index = self._addHead( head )
         define_node = self.getNode(define_index)
         if not define_node :
-            clauses = []
+            clauses = ClauseIndex(self, head.arity)
             self._setNode( define_index, self._define( head.functor, head.arity, clauses ) )
         else :
             clauses = define_node.children
