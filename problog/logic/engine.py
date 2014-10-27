@@ -319,7 +319,13 @@ class CycleFreeEngine(DefaultEngine):
 
 
 class TabledEngine(DefaultEngine) :
-    """Grounding engine with tabling."""
+    """Grounding engine with tabling.
+    
+    .. todo::
+        
+        Reset table.
+    
+    """
     
     def __init__(self, **kwd) :
         DefaultEngine.__init__(self, **kwd)
@@ -343,9 +349,10 @@ class TabledEngine(DefaultEngine) :
 
         if record == '#GROUNDING#' :
             # This call is currently being grounded. This means we have detected a cycle.
-            # Mark all ancestors as 'do not ground'.
+            # Mark all ancestors up to the cyclic one as 'do not ground'.
             for key in anc :
                 self.__do_not_ground.add(key)
+                if key == call_key : break
             # Signal cycle detection (same as failing).
             raise CycleDetected()
         elif record == None or call_key in self.__do_not_ground :
