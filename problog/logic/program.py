@@ -165,7 +165,7 @@ class ClauseIndex(list) :
     def find(self, arguments) :
         results = set(self)
         for i, arg in enumerate(arguments) :
-            if not arg.isGround() :    # No restrict
+            if not isinstance(arg,Term) or not arg.isGround() :    # No restrict
                 pass
             else :
                 curr = self.__index[i][None] | self.__index[i][arg]
@@ -181,7 +181,7 @@ class ClauseIndex(list) :
         key = []
         args = self.__parent.getNode(item).args
         for arg in args :
-            if arg.isGround() :
+            if isinstance(arg,Term) and arg.isGround() :
                 key.append(arg)
             else :
                 key.append(None)
@@ -331,7 +331,7 @@ class ClauseDB(LogicProgram) :
         node = self._getHead( head )
         if node == None :
             if create :
-                node = self._appendNode( self._define( head.functor, head.arity, []) )
+                node = self._appendNode( self._define( head.functor, head.arity, ClauseIndex(self, head.arity)) )
             else :
                 node = self._appendNode()
             self._setHead( head, node )
