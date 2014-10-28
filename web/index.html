@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html>
+<head>    
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap-theme.min.css" />
+    <script src="http://code.jquery.com/jquery-2.1.0.min.js"></script>
+    <script src="http://code.jquery.com/ui/1.11.1/jquery-ui.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/js/bootstrap.min.js"></script>    
+    
+    <script>    
+    function ground() { 
+        var url = '/ground';
+        var text = $('#model').val();
+        $.post( url, text, function(data) {
+            $('#result').html(data);
+        } );
+    }
+    
+    function listModels() {
+        var url = '/models';
+        $.ajax( {
+            url: url, 
+            success: function(data) {
+            $('#models').html(data);
+            } } );        
+    }
+    
+    function loadModel() {
+        var name = $('#models')[0].selectedOptions[0].value;
+        if (name == '') {
+            $('#model').val('');  
+        } else {
+            var url = '/models?name=' + encodeURIComponent(name)
+            $.ajax( {
+                url: url,
+                success: function(data) {
+                    $('#model').val(data);        
+                }
+            })
+        }
+    }
+    
+    function submit() {
+        var url = '/submit';
+        var name = window.prompt('Enter a name:', 'bugreport');
+        if (name) {
+            var text = { 'name' : name, 'data' : $('#model').val() };
+            $.post( url, text, function(data) {
+                $('#models').append('<option value="' + data + '">' + data + '</option>');
+                alert('Bug reported with name: ' + data );
+            } );
+        }
+    }
+    
+    $(document).ready( function() {
+        listModels();
+    });
+    </script>
+    
+    
+</head>
+<body>
+<div class="container">
+<select class="form-control" id="models" onchange="loadModel();">
+    
+</select>
+
+<textarea style="width:100%; height:300px;" id="model" class="form-control"></textarea>
+
+<div class="text-center">
+<input class="btn btn-danger pull-right" type="button" onclick="submit();" value="Submit a bug"/>
+<input class="btn btn-primary" type="button" onclick="ground();" value="Ground"/>
+</div>
+<div id="result"></div>
+</div>
+</body>
+</html>
