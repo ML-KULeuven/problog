@@ -226,9 +226,9 @@ def addPrologBuiltins(engine) :
     engine.addBuiltIn('call/1', _builtin_call_1)
     
     engine.addBuiltIn("'='/2", _builtin_eq_2)
-    engine.addBuiltIn("'\='/2'", _builtin_noteq_2)
+    engine.addBuiltIn("'\='/2", _builtin_noteq_2)
     engine.addBuiltIn("'=='/2", _builtin_same_2)
-    engine.addBuiltIn("'\=='/2", _builtin_notsame_2)
+    engine.addBuiltIn("'\\=='/2", _builtin_notsame_2)
     
     engine.addBuiltIn("'is'/2", _builtin_is_2)
     engine.addBuiltIn("'=:='/2", _builtin_cmp)
