@@ -553,22 +553,22 @@ class GroundProgram(object) :
             return self.__nodes[index-self.__offset-1]
                 
         
-    def _selectNodes(self, queries, node_selection) :
-        for q in queries :
-            node_id = q
-            if node_id :
-                self._selectNode(abs(node_id), node_selection)
-        
-    def _selectNode(self, node_id, node_selection) :
-        assert(node_id != 0)
-        if not node_selection[node_id-1] :
-            node_selection[node_id-1] = True
-            nodetype, content = self.getNode(node_id)
-            
-            if nodetype in ('and','or') :
-                for subnode in content :
-                    if subnode :
-                        self._selectNode(abs(subnode), node_selection)
+    # def _selectNodes(self, queries, node_selection) :
+    #     for q in queries :
+    #         node_id = q
+    #         if node_id :
+    #             self._selectNode(abs(node_id), node_selection)
+    #
+    # def _selectNode(self, node_id, node_selection) :
+    #     assert(node_id != 0)
+    #     if not node_selection[node_id-1] :
+    #         node_selection[node_id-1] = True
+    #         nodetype, content = self.getNode(node_id)
+    #
+    #         if nodetype in ('and','or') :
+    #             for subnode in content :
+    #                 if subnode :
+    #                     self._selectNode(abs(subnode), node_selection)
         
     def __len__(self) :
         return len(self.__nodes) + self.__offset
