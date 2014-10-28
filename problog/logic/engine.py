@@ -582,49 +582,59 @@ class GroundProgram(object) :
             self._selectNodes(queries, node_selection)
         else :
             node_selection = [True] * len(self)    # selection table
-            
+        
+        choices = defaultdict(list)
+        sums = defaultdict(float)
         lines = []
         facts = {}
-        for k, sel in enumerate( node_selection ) :
+        for index, sel in enumerate( node_selection ) :
           if sel :
-            k += 1
-            v = self.getNode(k)
-            nodetype, content = v
-            
-            if nodetype == 'fact' :
-                facts[k] = content[1]
-            elif nodetype == 'and' :
-                line = str(k) + ' ' + ' '.join( map( lambda x : str(-(x)), content ) ) + ' 0'
+            index += 1
+            node = self.getNode(index)
+            nodetype = type(node).__name__
+            if nodetype == 'choice' :
+                choices[node.origin].append(index)
+                sums[node.origin] += node.probability.value
+                facts[index] = (node.probability.value, 1.0)
+            elif nodetype == 'fact' :                
+                facts[index] = (node.probability.value, 1.0-node.probability.value)
+            elif nodetype == 'conj' :
+                line = str(index) + ' ' + ' '.join( map( lambda x : str(-(x)), node.children ) ) + ' 0'
                 lines.append(line)
-                for x in content :
-                    lines.append( "%s %s 0" % (-k, x) )
-            elif nodetype == 'or' :
-                line = str(-k) + ' ' + ' '.join( map( lambda x : str(x), content ) ) + ' 0'
+                for x in node.children  :
+                    lines.append( "%s %s 0" % (-index, x) )
+            elif nodetype == 'disj' :
+                line = str(-index) + ' ' + ' '.join( map( lambda x : str(x), node.children ) ) + ' 0'
                 lines.append(line)
-                for x in content :
-                    lines.append( "%s %s 0" % (k, -x) )
+                for x in node.children  :
+                    lines.append( "%s %s 0" % (index, -x) )
                 # lines.append('')
-            elif nodetype == 'choice' :
-                if content.hasScore() :
-                    facts[k] = content.probability
-                else :
-                    facts[k] = 1.0
             else :
                 raise ValueError("Unknown node type!")
-                
-        atom_count = len(self)
+        
+        #choices = [ v for v in choices.values() if len(v) > 1 ]
+        
+        atom_count = len(node_selection)
+        for k, s in choices.items() :
+            if sums[k] < 1.0-1e-6 :
+                facts[atom_count+1] = (1.0 - sums[k], 1.0)
+                s.append(atom_count+1)
+                atom_count += 1
+            for i, a in enumerate(s) :
+                for b in s[i+1:] :
+                     lines.append('-%s -%s 0' % (a,b))
+            lines.append(' '.join(map(str,s + [0]))) 
+                        
         clause_count = len(lines)
-        return [ 'p cnf %s %s' % (atom_count, clause_count) ] + lines, facts
         
-    def stats(self) :
-        return namedtuple('IndexStats', ('atom_count', 'name_count', 'fact_count' ) )(len(self), 0, len(self.__fact_names))
-        
+        return [ 'p cnf %s %s' % (atom_count, clause_count) ] + lines, facts, choices
+                
     def __str__(self) :
         s =  '\n'.join('%s: %s' % (i+1,n) for i, n in enumerate(self.__nodes))   
         s += '\n' + str(self.__fact_names)
         return s
     
-    def toDot(self, queries, with_facts=False) :
+    def toDot(self, queries=[], with_facts=False) :
         
         clusters = defaultdict(list)
         
@@ -664,10 +674,7 @@ class GroundProgram(object) :
         
         c = 0
         for cluster, text in clusters.items() :
-            if len(text) > 1 :
-                s += 'subgraph cluster_%s { style="dotted"; color="red"; %s }\n\n' % (c,'\n'.join(text))
-            else :
-                s += '\n'.join(text) + '\n'
+            s += 'subgraph cluster_%s { style="dotted"; color="red"; %s }\n\n' % (c,'\n'.join(text))
             c += 1 
             
         for index, name in queries :
