@@ -145,7 +145,7 @@ class Term(object) :
     def isGround(self) :
         """Checks whether the term contains any variables."""
         for arg in self.args :
-            if not arg.isGround() :
+            if not isinstance(arg,Term) or not arg.isGround() :
                 return False
         return True
         
