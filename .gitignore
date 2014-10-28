@@ -4,4 +4,9 @@ __pycache__
 build/
 trash/
 
+test/
+sandbox/
+data/
+test-reports/
+
 .DS_Store
