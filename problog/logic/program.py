@@ -242,7 +242,7 @@ class ClauseDB(LogicProgram) :
         LogicProgram.__init__(self)
         self.__nodes = []   # list of nodes
         self.__heads = {}   # head.sig => node index
-    
+        
         self.__builtins = builtins
         
     def _getBuiltIn(self, signature) :
@@ -250,6 +250,10 @@ class ClauseDB(LogicProgram) :
             return None
         else :
             return self.__builtins.get(signature)
+    
+    def _create_index(self, arity) :
+        # return []
+        return ClauseIndex(self, arity)
             
     def _addAndNode( self, op1, op2 ) :
         """Add an *and* node."""
@@ -267,7 +271,7 @@ class ClauseDB(LogicProgram) :
         define_index = self._addHead( head )
         define_node = self.getNode(define_index)
         if not define_node :
-            clauses = ClauseIndex(self, head.arity)
+            clauses = self._create_index(head.arity)
             self._setNode( define_index, self._define( head.functor, head.arity, clauses ) )
         else :
             clauses = define_node.children
@@ -331,7 +335,7 @@ class ClauseDB(LogicProgram) :
         node = self._getHead( head )
         if node == None :
             if create :
-                node = self._appendNode( self._define( head.functor, head.arity, ClauseIndex(self, head.arity)) )
+                node = self._appendNode( self._define( head.functor, head.arity, self._create_index(head.arity)) )
             else :
                 node = self._appendNode()
             self._setHead( head, node )
