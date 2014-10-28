@@ -192,6 +192,9 @@ def computeFunction(func, args) :
         return Constant(args[0].value - args[1].value)
     elif func == "'*'" :
         return Constant(args[0].value * args[1].value)
+    elif func == "'/'" :
+        return Constant(args[0].value / args[1].value)
+
     else :
         raise ValueError("Unknown function: '%s'" % func)
 
