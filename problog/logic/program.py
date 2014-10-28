@@ -26,6 +26,17 @@ class SimpleProgram(LogicProgram) :
     def __iter__(self) :
         return iter(self.__clauses)
 
+class PrologString(LogicProgram) :
+    
+    def __init__(self, string) :
+        self.__string = string
+        
+    def __iter__(self) :
+        """Iterator for the clauses in the program."""
+        parser = PrologParser(PrologFactory())
+        program = parser.parseString(self.__string)
+        return iter(program)
+
 
 class PrologFile(LogicProgram) :
     """LogicProgram implementation as a pointer to a Prolog file.
@@ -112,7 +123,7 @@ class PrologFactory(Factory) :
         
     def build_list(self, values, tail=None, **extra) :
         if tail == None :
-            current = '[]'
+            current = Term('[]')
         else :
             current = tail
         for value in reversed(values) :
