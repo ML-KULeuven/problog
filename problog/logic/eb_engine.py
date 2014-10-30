@@ -19,6 +19,11 @@ Assumption 8: no prolog builtins
 -- REMOVED: Assumption 7: no probabilistic grounding
 -- REMOVED: Assumption 6: no CHOICE
 
+Known issues
+------------
+
+Table for query() may make ground() invalid.
+
 """
 
 class UnifyError(Exception) : pass
@@ -96,6 +101,19 @@ def builtin_eq( A, B, context, callback ) :
             callback.newResult( ( R, R ) )
         except UnifyError :
             pass
+        callback.complete()
+
+def builtin_neq( A, B, context, callback ) :
+    """A = B
+        A and B not both variables
+    """
+    if A == None and B == None :
+        raise RuntimeError('Operation not supported!')
+    else :
+        try :
+            R = unify_value(A,B)
+        except UnifyError :
+            callback.newResult( ( A, B ) )
         callback.complete()
             
 def builtin_notsame( A, B, context, callback ) :
@@ -203,13 +221,12 @@ def addBuiltins(engine) :
     # engine.addBuiltIn('call/1', _builtin_call_1)
 
     engine.addBuiltIn('=', 2, builtin_eq)
+    engine.addBuiltIn('\=', 2, builtin_eq)
     engine.addBuiltIn('==', 2, builtin_same)
     engine.addBuiltIn('\==', 2, builtin_notsame)
-    #engine.addBuiltIn("\=/2", builtin_noteq)
-    #engine.addBuiltIn("'\\=='/2", _builtin_notsame_2)
 
     engine.addBuiltIn('is', 2, builtin_is)
-    # engine.addBuiltIn("", _builtin_cmp)
+
     engine.addBuiltIn('>', 2, builtin_gt)
     engine.addBuiltIn('<', 2, builtin_lt)
     engine.addBuiltIn('>', 2, builtin_ge)
@@ -217,10 +234,6 @@ def addBuiltins(engine) :
     engine.addBuiltIn('>=', 2, builtin_gt)
     engine.addBuiltIn('=\=', 2, builtin_val_neq)
     engine.addBuiltIn('=:=', 2, builtin_val_eq)
-
-    # engine.addBuiltIn("'>='/2", _builtin_cmp)
-    # engine.addBuiltIn("'=<'/2", _builtin_cmp)
-    # engine.addBuiltIn("'=\='/2", _builtin_cmp)
 
     
 
@@ -313,11 +326,10 @@ class EventBasedEngine(BaseEngine) :
         result = tuple(call_args)
         #result = unify(node.args, call_args)
 
-        
         if type(node.probability) == int :
             probability = call_args[node.probability]
         else :
-            probability = node.probability
+            probability = node.probability.apply(call_args)
 
         # Notify parent
         if result != None :
@@ -517,6 +529,7 @@ class ProcessDefine(ProcessNode) :
             listener.newResult(result, ground_node)
         
     def addListener(self, listener) :
+        
         # Add the listener such that it receives future events.
         ProcessNode.addListener(self, listener)
         
@@ -587,7 +600,7 @@ class ProcessCallReturn(ProcessNode) :
 def trace(*args) : pass
 
 
-
+    
 
 
 class ResultCollector(object) :

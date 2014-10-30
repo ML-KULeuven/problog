@@ -14,6 +14,9 @@ from problog.logic.prolog import PrologEngine
 from problog.logic.engine import GroundProgram, Debugger
 from problog.logic.eb_engine import EventBasedEngine, addBuiltins
 
+
+
+
 def main( filename, trace=False ) :
     
     basename = os.path.splitext(filename)[0]
@@ -73,10 +76,16 @@ def main( filename, trace=False ) :
     
     print ('Completed in %.4fs' % (time.time() - t))
     print ()
+    
+
+    new_query_nodes = gp.breakCycles( query_nodes )
+
+    
     print ('========== GROUND PROGRAM ==========')
     with open(basename + '.dot', 'w') as f :
-        f.write(gp.toDot(query_nodes))
+        f.write(gp.toDot(new_query_nodes))
     print ('See \'%s.dot\'.' % basename)
+    
     
     sys.exit()
     

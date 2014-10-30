@@ -99,10 +99,18 @@ class Term(object) :
         :rtype: :class:`Term`
         
         """
+        
+        args = []
+        for arg in self.args :
+            if not isinstance(arg, Term) :
+                args.append( subst[arg] )
+            else :
+                args.append( arg.apply(subst) )
+        
         if self.probability == None :
-            return self.__class__( self.functor, *[ arg.apply(subst) for arg in self.args ])
+            return self.__class__( self.functor, *args)
         else :
-            return self.__class__( self.functor, *[ arg.apply(subst) for arg in self.args ], p=self.probability.apply(subst))
+            return self.__class__( self.functor, *args, p=self.probability.apply(subst))
             
     def __repr__(self) :
         if self.probability == None :

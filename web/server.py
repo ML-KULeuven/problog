@@ -178,6 +178,10 @@ def ground(model) :
     filename = '/tmp/pl.dot'
     print ('Completed in %.4fs' % (time.time() - t))
     print ()
+    
+    query_nodes = gp.breakCycles( query_nodes )
+    
+    
     print ('========== GROUND PROGRAM ==========')
     with open(filename, 'w') as f :
         f.write(gp.toDot(query_nodes))

@@ -649,27 +649,25 @@ class GroundProgram(object) :
                     return child
             else :
                 return index
-               
-        
-    # def _selectNodes(self, queries, node_selection) :
-    #     for q in queries :
-    #         node_id = q
-    #         if node_id :
-    #             self._selectNode(abs(node_id), node_selection)
-    #
-    # def _selectNode(self, node_id, node_selection) :
-    #     assert(node_id != 0)
-    #     if not node_selection[node_id-1] :
-    #         node_selection[node_id-1] = True
-    #         nodetype, content = self.getNode(node_id)
-    #
-    #         if nodetype in ('and','or') :
-    #             for subnode in content :
-    #                 if subnode :
-    #                     self._selectNode(abs(subnode), node_selection)
-        
+                       
     def __len__(self) :
         return len(self.__nodes) + self.__offset
+        
+    def _selectNodes( self, queries, node_selection ) :
+        for q in queries :
+            self._selectNode( abs(q), node_selection)
+
+    def _selectNode( self, index, node_selection ) :
+        if index == 0 or index == None :
+            pass
+        else :
+            if not node_selection[abs(index)] :
+                node_selection[abs(index)] = True
+                node = self.getNode( abs(index) )
+                ntype = type(node).__name__
+                if ntype == 'conj' or ntype == 'disj' :
+                    for child in node.children :
+                        self._selectNode(child, node_selection)
                 
     def toCNF(self, queries=None) :
         # if self.hasCycle :
@@ -734,15 +732,21 @@ class GroundProgram(object) :
         s += '\n' + str(self.__fact_names)
         return s
     
-    def toDot(self, queries=[], with_facts=False) :
+    def toDot(self, queries=None, with_facts=False) :
         
         clusters = defaultdict(list)
         
         negative = set([])
         
+        if queries != None :
+            node_selection = [False] * (len(self)+1 )   # selection table
+            self._selectNodes( [ x for x,y in queries ], node_selection)
+        else :
+            node_selection = [True] * (len(self)+1 )  # selection table
         
         s = 'digraph GP {'
         for index, node in enumerate(self.__nodes) :
+          if node_selection[index+1] :
             index += 1
             nodetype = type(node).__name__
             
@@ -786,6 +790,54 @@ class GroundProgram(object) :
             s += 'q_%s -> %s [style="dotted"];\n'  % (index, self._deref(index))
 
         return s + '}'
+    
+    def breakCycles( self, nodes ) :
+        new_queries = []
+        for index, query in nodes :
+            print ('Breaking cycles for', query)
+            new_queries.append( (self.breakCycle(index)[0], query) )
+        return new_queries    
+        
+    def breakCycle(self, index, anc=None) :
+        
+        # Overwrite the node that causes a cycle.
+        
+        if anc == None : anc = []
+        
+        if index in anc :
+            return None, {index}
+        elif index == 0 :
+            return index, set()
+        elif index < 0 :
+            raise NotImplementedError('Cycle breaking does not support negation yet!')
+        else :
+            node = self.getNode(index)
+            ntype = type(node).__name__
+            if ntype in ('conj','disj') :
+                new_children = []
+                cycles = set()
+                for child in node.children :
+                    new_child, cycle = self.breakCycle( child, anc+[index] )
+                    new_children.append( new_child )
+                    if cycle : cycles |= cycle
+                if node.children != tuple(new_children) :
+                    if ntype == 'conj' :
+                        new_node = self.addAndNode( new_children )
+                    else :
+                        new_node = self.addOrNode( new_children )
+                    if index in cycles and new_node != None and new_node != 0 :
+                        cycles.remove(index)
+                        if not cycles :
+                            assert( new_node == len(self.__nodes) )
+                            self._setNode( index, self.getNode(new_node) )
+                            self.__nodes.pop(-1)     
+                            return index, cycles
+                    return new_node, cycles
+                else :
+                    return index, cycles
+            else :  # fact or choice
+                return index, None
+        
 
 class _UnknownClause(Exception) : pass
 
