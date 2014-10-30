@@ -12,6 +12,7 @@ from problog.logic import Term, Var, Constant
 from problog.logic.program import PrologFile, ClauseDB
 from problog.logic.prolog import PrologEngine
 from problog.logic.engine import GroundProgram, Debugger
+from problog.logic.eb_engine import EventBasedEngine, addBuiltins
 
 def main( filename, trace=False ) :
     
@@ -21,7 +22,8 @@ def main( filename, trace=False ) :
     
     print ('======= INITIALIZE DATA ======')
     t = time.time()
-    pl = PrologEngine()
+    pl = EventBasedEngine()
+    addBuiltins(pl)
     print ('Completed in %.4fs' % (time.time() - t))
     
     print ('========= PARSE DATA =========')
@@ -38,12 +40,13 @@ def main( filename, trace=False ) :
     print ('====== CLAUSE DATABASE ======')
     
     print (db)
+
     
     print ()
     print ('========== QUERIES ==========')
     t = time.time()
-    queries = pl.query(db, Term( 'query', Var('Q') ))
-    evidence = pl.query(db, Term( 'evidence', Var('Q'), Var('V') ))
+    queries = pl.query(db, Term( 'query', None ))
+    evidence = pl.query(db, Term( 'evidence', None,None ))
     
     print ('Number of queries:', len(queries))
     print ('Completed in %.4fs' % (time.time() - t))
@@ -74,6 +77,8 @@ def main( filename, trace=False ) :
     with open(basename + '.dot', 'w') as f :
         f.write(gp.toDot(query_nodes))
     print ('See \'%s.dot\'.' % basename)
+    
+    sys.exit()
     
     print ('========== CNF ==========')
     

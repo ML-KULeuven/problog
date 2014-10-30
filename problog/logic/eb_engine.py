@@ -2,36 +2,251 @@ from __future__ import print_function
 
 from .basic import Term, Constant
 from .program import ClauseDB, PrologString
-from .engine import DummyGroundProgram, BaseEngine, GroundProgram, UnknownClause
-from .prolog import addPrologBuiltins
+from .engine import DummyGroundProgram, BaseEngine, GroundProgram, UnknownClause, _UnknownClause, Debugger
 
 """ 
 Assumptions
 -----------
 Assumption 1: range-restricted clauses (after clause evaluation, head is ground)
 Assumption 2: functor-free
+    - added support for functors in clause head arguments
 Assumption 3: conjunction nodes have exactly two children
-Assumption 8: no prolog builtins
+Assumption 8: no prolog builtins 
+    - added some builtins (needs better framework)
 
 -- REMOVED: Assumption 4: no OR
 -- REMOVED: Assumption 5: no NOT
 -- REMOVED: Assumption 7: no probabilistic grounding
 -- REMOVED: Assumption 6: no CHOICE
 
-
 """
+
+class UnifyError(Exception) : pass
+
+def unify_value( v1, v2, context1=None, context2=None ) :
+    if v1 == None :
+        return v2
+    elif v2 == None :
+        return v1
+    elif v1 == v2 :
+        # TODO functor
+        return v1
+    else :
+        raise UnifyError()
+        
+def unify( v1, v2, context1=None, context2=None ) :
+    if v1 == None :
+        return v2
+    elif v2 == None :
+        return v1
+    else :
+        try :
+            return tuple( map( lambda xy : unify_value(xy[0],xy[1], context1, context2), zip(v1,v2) ) )
+        except UnifyError :
+            return None
+
+
+class PrologInstantiationError(Exception) : pass
+
+class PrologTypeError(Exception) : pass
+
+def computeFunction(func, args, context) :
+    if func == "'+'" :
+        return Constant(args[0].value + args[1].value)
+    elif func == "'-'" :
+        return Constant(args[0].value - args[1].value)
+    elif func == "'*'" :
+        return Constant(args[0].value * args[1].value)
+    elif func == "'/'" :
+        return Constant(args[0].value / args[1].value)
+
+    else :
+        raise ValueError("Unknown function: '%s'" % func)
+
+def compute( value, context ) :
+    if type(value) == int :
+        return compute(context[value], context)
+    elif value == None :
+        raise PrologInstantiationError(value)        
+    elif value.isConstant() :
+        if type(value.value) == str :
+            raise PrologTypeError('number', value)
+        else :
+            return value
+    else :
+        args = [ compute(arg, context) for arg in value.args ]
+        return computeFunction( value.functor, args, context )
+
+def builtin_true( context, callback ) :
+    callback.newResult(context)
+    callback.complete()    
+
+def builtin_fail( context, callback ) :
+    callback.complete()
+
+def builtin_eq( A, B, context, callback ) :
+    """A = B
+        A and B not both variables
+    """
+    if A == None and B == None :
+        raise RuntimeError('Operation not supported!')
+    else :
+        try :
+            R = unify_value(A,B)
+            callback.newResult( ( R, R ) )
+        except UnifyError :
+            pass
+        callback.complete()
+            
+def builtin_notsame( A, B, context, callback ) :
+    """A \== B"""
+    if A == None and B == None :
+        raise RuntimeError('Operation not supported!')
+    else :
+        if A != B :
+            callback.newResult( (A,B) )
+        callback.complete()    
+
+def builtin_same( A, B, context, callback ) :
+    """A \== B"""
+    if A == None and B == None :
+        raise RuntimeError('Operation not supported!')
+    else :
+        if A == B :
+            callback.newResult( (A,B) )
+        callback.complete()    
+
+def builtin_gt( A, B, context, callback ) :
+    """A > B 
+        A and B are ground
+    """
+    vA = compute(A, context).value
+    vB = compute(B, context).value
+    
+    if (vA > vB) :
+        callback.newResult( (A,B) )
+    callback.complete()
+
+def builtin_lt( A, B, context, callback ) :
+    """A > B 
+        A and B are ground
+    """
+    vA = compute(A, context).value
+    vB = compute(B, context).value
+    
+    if (vA < vB) :
+        callback.newResult( (A,B) )
+    callback.complete()
+
+def builtin_le( A, B, context, callback ) :
+    """A =< B 
+        A and B are ground
+    """
+    vA = compute(A, context).value
+    vB = compute(B, context).value
+    
+    if (vA <= vB) :
+        callback.newResult( (A,B) )
+    callback.complete()
+
+def builtin_ge( A, B, context, callback ) :
+    """A >= B 
+        A and B are ground
+    """
+    vA = compute(A, context).value
+    vB = compute(B, context).value
+    
+    if (vA >= vB) :
+        callback.newResult( (A,B) )
+    callback.complete()
+
+def builtin_val_neq( A, B, context, callback ) :
+    """A =/= B 
+        A and B are ground
+    """
+    vA = compute(A, context).value
+    vB = compute(B, context).value
+    
+    if (vA != vB) :
+        callback.newResult( (A,B) )
+    callback.complete()
+
+def builtin_val_eq( A, B, context, callback ) :
+    """A =:= B 
+        A and B are ground
+    """
+    vA = compute(A, context).value
+    vB = compute(B, context).value
+    
+    if (vA == vB) :
+        callback.newResult( (A,B) )
+    callback.complete()
+
+
+
+def builtin_is( A, B, context, callback ) :
+    """A is B
+        B is ground
+    """
+    vB = compute(B, context).value
+    try :
+        R = Constant(vB)
+        unify_value(A,R)
+        callback.newResult( (R,B) )
+    except UnifyError :
+        pass
+    callback.complete()
+        
+def addBuiltins(engine) :
+    engine.addBuiltIn('true', 0, builtin_true)
+    engine.addBuiltIn('fail', 0, builtin_fail)
+    # engine.addBuiltIn('call/1', _builtin_call_1)
+
+    engine.addBuiltIn('=', 2, builtin_eq)
+    engine.addBuiltIn('==', 2, builtin_same)
+    engine.addBuiltIn('\==', 2, builtin_notsame)
+    #engine.addBuiltIn("\=/2", builtin_noteq)
+    #engine.addBuiltIn("'\\=='/2", _builtin_notsame_2)
+
+    engine.addBuiltIn('is', 2, builtin_is)
+    # engine.addBuiltIn("", _builtin_cmp)
+    engine.addBuiltIn('>', 2, builtin_gt)
+    engine.addBuiltIn('<', 2, builtin_lt)
+    engine.addBuiltIn('>', 2, builtin_ge)
+    engine.addBuiltIn('=<', 2, builtin_le)
+    engine.addBuiltIn('>=', 2, builtin_gt)
+    engine.addBuiltIn('=\=', 2, builtin_val_neq)
+    engine.addBuiltIn('=:=', 2, builtin_val_eq)
+
+    # engine.addBuiltIn("'>='/2", _builtin_cmp)
+    # engine.addBuiltIn("'=<'/2", _builtin_cmp)
+    # engine.addBuiltIn("'=\='/2", _builtin_cmp)
+
+    
 
 class EventBasedEngine(BaseEngine) :
     
     def __init__(self) :
         BaseEngine.__init__(self)
         self.nodes = {}
+        
+        self.debugger = None
+        #self.debugger = Debugger(trace=True)
     
     def query(self, db, term, level=0) :
         gp = DummyGroundProgram()
         gp, result = self.ground(db, term, gp, level)
         
-        return [ y for x,y in result ]        
+        return [ y for x,y in result ]
+        
+    def enter_call(self, node, context) :
+        if self.debugger :
+            self.debugger.enter(0, node, context)
+        
+    def exit_call(self, node, context) :
+        if self.debugger :
+            self.debugger.exit(0, node, context, None)
+                
     
     def ground(self, db, term, gp=None, level=0) :
         db = ClauseDB.createFrom(db, builtins=self.getBuiltIns())
@@ -57,8 +272,10 @@ class EventBasedEngine(BaseEngine) :
         node = db.getNode( node_id )
         ntype = type(node).__name__
         
+        self.enter_call( node, context )
+        
         if node == () :
-            raise UnknownClause()
+            raise _UnknownClause()
         elif ntype == 'fact' :
             f = self._eval_fact 
         elif ntype == 'choice' :
@@ -79,6 +296,8 @@ class EventBasedEngine(BaseEngine) :
             raise ValueError(ntype)
         f(db, gp, node_id, node, context, parent)
         
+        self.exit_call( node, context )
+        
     def _eval_fact( self, db, gp, node_id, node, call_args, parent ) :
         trace( node, call_args )
         # Unify fact arguments with call arguments
@@ -94,10 +313,16 @@ class EventBasedEngine(BaseEngine) :
         result = tuple(call_args)
         #result = unify(node.args, call_args)
 
+        
+        if type(node.probability) == int :
+            probability = call_args[node.probability]
+        else :
+            probability = node.probability
+
         # Notify parent
         if result != None :
             origin = (node.group, result)
-            ground_node = gp.addChoice(origin, node.choice, node.probability)
+            ground_node = gp.addChoice(origin, node.choice, probability)
             parent.newResult( result, ground_node )    
     
     def _eval_call( self, db, gp, node_id, node, context, parent ) :
@@ -109,6 +334,8 @@ class EventBasedEngine(BaseEngine) :
                 call_args.append( context[call_arg] )
             else :
                 call_args.append( call_arg )
+        #print ('CALL', call_args, node.args, context)        
+        
         # create a context-switching node that extracts the head arguments
         #  from results from the body context
         # output should be send to the given parent
@@ -117,18 +344,44 @@ class EventBasedEngine(BaseEngine) :
         
         if node.defnode < 0 :
             #sub = builtin( engine=self, clausedb=db, args=call_args, tdb=tdb, functor=node.functor, arity=len(node.args), level=level, **extra)
-            raise RuntimeError('Builtins are not yet supported')        
+
+            builtin = self._getBuiltIn( node.defnode )
+            builtin( *call_args, context=context, callback=context_switch )                
         else :
-            self._eval( db, gp, node.defnode, call_args, context_switch )
+            try :
+                self._eval( db, gp, node.defnode, call_args, context_switch )
+            except _UnknownClause :
+                sig = '%s/%s' % (node.functor, len(node.args))
+                raise UnknownClause(sig)
             
     def _eval_clause( self, db, gp, node_id, node, call_args, parent ) :
         try :
+            # context = target context
+            # node.args = target values
+            # call_args = source values
+            
+            def unify( source_value, target_value, target_context ) :
+                if type(target_value) == int :
+                    target_context[target_value] = source_value
+                else :
+                    assert( isinstance(target_value, Term) )
+                    if source_value == None :  # a variable
+                        return True # unification successful
+                    else :
+                        assert( isinstance( source_value, Term ) )
+                        if target_value.signature == source_value.signature :
+                            for s_arg, t_arg in zip(source_value.args, target_value.args) :
+                                unify( s_arg, t_arg, target_context )
+                        else :
+                            raise UnifyError()
+            
             context = [None] * node.varcount
             for head_arg, call_arg in zip(node.args, call_args) :
-                if type(head_arg) == int : # head_arg is a variable
-                    context[head_arg] = call_arg
-                else : # head arg is a constant => make sure it unifies with the call arg
-                    unify_value( ( head_arg, call_arg ) )
+                unify( call_arg, head_arg, context)                
+                # if type(head_arg) == int : # head_arg is a variable
+                #     context[head_arg] = call_arg
+                # else : # head arg is a constant => make sure it unifies with the call arg
+                #     unify_value( head_arg, call_arg )
                     
             # create a context-switching node that extracts the head arguments
             #  from results from the body context
@@ -139,6 +392,7 @@ class EventBasedEngine(BaseEngine) :
             # evaluate the body, output should be send to the context-switcher
             self._eval( db, gp, node.child, context, context_switch )
         except UnifyError :
+            #print ('unification failed', node.args, call_args, context)
             pass    # head and call are not unifiable
             
     def _eval_conj( self, db, gp, node_id, node, context, parent ) :
@@ -204,16 +458,17 @@ class ProcessNot(ProcessNode) :
         self.ground_nodes = []
         self.gp = gp
         
-    def newResult(self, result, ground_node) :
-        print ('NOT_NEW', result, ground_node)
+    def newResult(self, result, ground_node=0) :
         if ground_node != None :
             self.ground_nodes.append(ground_node)
         
     def complete(self) :
-        print ('NOT', self.ground_nodes)
         if self.ground_nodes :
             or_node = self.gp.negate(self.gp.addOrNode( self.ground_nodes ))
-            self.notifyListeners(self.context, ground_node=or_node)
+            if or_node != None :
+                self.notifyListeners(self.context, ground_node=or_node)
+        else :
+            self.notifyListeners(self.context, ground_node=0)
         self.notifyComplete()
 
 class ProcessLink(object) :
@@ -225,7 +480,8 @@ class ProcessLink(object) :
         self.node_id = node_id
         self.parent = parent
         
-    def newResult(self, result, ground_node) :
+    def newResult(self, result, ground_node=0) :
+        self.engine.exit_call( self.node_id, result )    
         process = ProcessAnd(self.gp, ground_node)
         process.addListener(self.parent)
         self.engine._eval( self.db, self.gp, self.node_id, result, process)
@@ -240,7 +496,7 @@ class ProcessAnd(ProcessNode) :
         self.gp = gp
         self.first_node = first_node
         
-    def newResult(self, result, ground_node) :
+    def newResult(self, result, ground_node=0) :
         and_node = self.gp.addAndNode( (self.first_node, ground_node) )
         self.notifyListeners(result, and_node)
      
@@ -280,20 +536,15 @@ class ProcessDefine(ProcessNode) :
         
         self.notifyComplete()
     
-    def newResult(self, result, ground_node) :
+    def newResult(self, result, ground_node=0) :
         res = (tuple(result))
         if res in self.results :
-            gn = self.results[res]
-            if ground_node != gn and gn != 0 :
-                gn_node = self.gp.getNode(gn)
-                if type(gn_node).__name__ == 'disj' :
-                    self.gp._setNode( gn, self.gp._disj(  (ground_node,) + gn_node.children ))
-                else :
-                    moved_gn = self.gp._addNode( self.gp.getNode(gn) )
-                    self.gp._setNode( gn, self.gp._disj( (moved_gn, ground_node) ))
+            self.gp.updateRedirect( self.results[res], ground_node )
         else :
-            self.results[ res ] = ground_node
-            self.notifyListeners(result, ground_node)
+            self.engine.exit_call( self.node, result )
+            result_node = self.gp.addRedirect( ground_node )
+            self.results[ res ] = result_node
+            self.notifyListeners(result, result_node)
 
         
             
@@ -303,13 +554,14 @@ class ProcessBodyReturn(ProcessNode) :
         ProcessNode.__init__(self)
         self.head_args = head_args
                     
-    def newResult(self, result, ground_node) :
+    def newResult(self, result, ground_node=0) :
         output = []
         for head_arg in self.head_args :
             if type(head_arg) == int : # head_arg is a variable
                 output.append( result[head_arg] )
             else : # head arg is a constant => make sure it unifies with the call arg
                 output.append( head_arg )
+        #print ('BODY_RETURN', result, self.head_args, output, result)        
         self.notifyListeners(output, ground_node)  
         
 
@@ -320,42 +572,21 @@ class ProcessCallReturn(ProcessNode) :
         self.call_args = call_args
         self.context = context
                     
-    def newResult(self, result, ground_node) :
+    def newResult(self, result, ground_node=0) :
         output = list(self.context)
         for call_arg, res_arg in zip(self.call_args,result) :
             if type(call_arg) == int : # head_arg is a variable
                 output[call_arg] = res_arg
             else : # head arg is a constant => make sure it unifies with the call arg
                 pass
+        #print ('CALL_RETURN', self.context, self.call_args, output, result)        
         self.notifyListeners(output, ground_node)    
 
 
 #def trace(*args) : print(*args)
 def trace(*args) : pass
 
-class UnifyError(Exception) : pass
 
-def unify_value( v12 ) :
-    v1, v2 = v12
-    if v1 == None :
-        return v2
-    elif v2 == None :
-        return v1
-    elif v1 == v2 :
-        return v1
-    else :
-        raise UnifyError()
-        
-def unify( v1, v2 ) :
-    if v1 == None :
-        return v2
-    elif v2 == None :
-        return v1
-    else :
-        try :
-            return tuple( map(unify_value, zip(v1,v2) ) )
-        except UnifyError :
-            return None
 
 
 
@@ -369,6 +600,12 @@ class ResultCollector(object) :
         
     def complete(self) :
         pass
+
+try:
+    input = raw_input
+except NameError:
+    pass
+
 
 def test1() :
     

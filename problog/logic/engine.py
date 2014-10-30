@@ -23,7 +23,8 @@ class BaseEngine(object) :
         real_index = -(index + 1)
         return self.__builtins[real_index]
         
-    def addBuiltIn(self, sig, func) :
+    def addBuiltIn(self, pred, arity, func) :
+        sig = '%s/%s' % (pred, arity)
         self.__builtin_index[sig] = -(len(self.__builtin_index) + 1)
         self.__builtins.append( func )
         
@@ -452,6 +453,12 @@ class DummyGroundProgram(object) :
             return None
         else :
             return 0
+            
+    def addRedirect(self, node ) :
+        return 0
+        
+    def updateRedirect(self, index, node ) :
+        return 0
     
 # Taken and modified from from ProbFOIL
 class GroundProgram(object) :
@@ -592,6 +599,7 @@ class GroundProgram(object) :
         return node_id
 
     def _setNode(self, index, node) :
+        assert( index > 0 )
         self.__nodes[index-1] = node
         
     def reserveNode(self) :
@@ -603,7 +611,45 @@ class GroundProgram(object) :
             return self.__parent.getNode(index)
         else :
             return self.__nodes[index-self.__offset-1]
-                
+   
+    def addRedirect( self, node ) :
+        if node == 0 :
+            return 0
+        else :
+            return self._addNode( self._disj( (node,) ) )
+   
+    def updateRedirect( self, current, addition ) :
+        if addition == current : # a \/ a = a
+            return current
+        elif current == 0 :   # True \/ a = True
+            return 0    # current is already True, adding something won't change this
+        elif current > 0 :    # Current is a positive node.
+            if addition == -current :  # a \/ -a is True
+                self._setNode( current, self._disj( () ) )
+            else :
+                current_node = self.getNode( current )
+                assert( type(current_node).__name__ == 'disj' )
+                if addition in current_node.children :
+                    pass
+                else :
+                    self._setNode( current, self._disj( current_node.children + ( addition ,) ) )
+        else :
+            assert( current > 0 )        
+     
+    def _deref(self, index) :
+        if index == None :
+            return None
+        else :
+            node = self.getNode( abs(index) )
+            if type(node).__name__ == 'disj' and len(node.children) == 1 :
+                child = self._deref(node.children[0])
+                if index < 0 :
+                    return -child
+                else :
+                    return child
+            else :
+                return index
+               
         
     # def _selectNodes(self, queries, node_selection) :
     #     for q in queries :
@@ -699,10 +745,13 @@ class GroundProgram(object) :
         for index, node in enumerate(self.__nodes) :
             index += 1
             nodetype = type(node).__name__
-                        
-            if nodetype == 'conj' :
+            
+            if index != self._deref(index) :
+                pass    
+            elif nodetype == 'conj' :
                 s += '%s [label="AND", shape="box"];\n' % (index)
                 for c in node.children :
+                    c = self._deref(c)
                     if c < 0 and not c in negative :
                         s += '%s [label="NOT"];' % (c)
                         s += '%s -> %s;' % (c,-c)
@@ -712,6 +761,7 @@ class GroundProgram(object) :
             elif nodetype == 'disj' :
                 s += '%s [label="OR", shape="diamond"];\n' % (index)
                 for c in node.children :
+                    c = self._deref(c)
                     if c < 0 and not c in negative :
                         s += '%s [label="NOT"];\n' % (c)
                         s += '%s -> %s;\n' % (c,-c)
@@ -733,7 +783,7 @@ class GroundProgram(object) :
             
         for index, name in queries :
             s += 'q_%s [ label="%s", shape="plaintext" ];\n'   % (index, name)
-            s += 'q_%s -> %s [style="dotted"];\n'  % (index, index)
+            s += 'q_%s -> %s [style="dotted"];\n'  % (index, self._deref(index))
 
         return s + '}'
 

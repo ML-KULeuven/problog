@@ -78,7 +78,11 @@ class Term(object) :
     def _get_arity(self) : return len(self.__args)
     arity = property( _get_arity, doc="Number of arguments.")
         
-    def _get_signature(self) : return '%s/%s' % (self.functor, self.arity)
+    def _get_signature(self) : 
+        if type(self.functor) == str :
+            return '%s/%s' % (self.functor.strip("'"), self.arity)
+        else :
+            return '%s/%s' % (self.functor, self.arity)
     signature = property( _get_signature, doc="Term's signature ``functor/arity``" )
     
     def _get_probability(self) : return self.__probability
@@ -98,7 +102,7 @@ class Term(object) :
         if self.probability == None :
             return self.__class__( self.functor, *[ arg.apply(subst) for arg in self.args ])
         else :
-            return self.__class__( self.functor, *[ arg.apply(subst) for arg in self.args ], p=self.probability)
+            return self.__class__( self.functor, *[ arg.apply(subst) for arg in self.args ], p=self.probability.apply(subst))
             
     def __repr__(self) :
         if self.probability == None :

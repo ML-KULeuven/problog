@@ -311,7 +311,6 @@ class ClauseDB(LogicProgram) :
         defnode = self._addHead(term, create=False)
         return self._appendNode( self._call( term.functor, term.args, defnode ) )
     
-    
     def getNode(self, index) :
         """Get the instruction node at the given index.
         

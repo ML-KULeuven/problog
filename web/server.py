@@ -19,7 +19,7 @@ from problog.logic import Term, Var, Constant
 from problog.logic.program import PrologString, ClauseDB
 from problog.logic.prolog import PrologEngine, addPrologBuiltins
 from problog.logic.engine import GroundProgram, Debugger
-from radical import EventBasedEngine
+from problog.logic.eb_engine import EventBasedEngine, addBuiltins
 
 import subprocess as sp
 
@@ -128,7 +128,7 @@ def ground(model) :
     print ('======= INITIALIZE DATA ======')
     t = time.time()
     pl = EventBasedEngine() # was PrologEngine()
-    addPrologBuiltins(pl)
+    addBuiltins(pl)
     print ('Completed in %.4fs' % (time.time() - t))
     
     print ('========= PARSE DATA =========')
