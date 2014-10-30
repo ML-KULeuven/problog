@@ -16,26 +16,6 @@ class CycleDetected(Exception) : pass
 class BaseEngine(object) :
     
     def __init__(self) :
-        pass
-                
-    def addBuiltIn(self, sig, func) :
-        pass
-        
-    def getBuiltIns(self) :
-        pass
-    
-    def query(self, db, term, level=0) :
-        pass
-    
-    def ground(self, db, term, gp=None, level=0) :
-        pass
-        
-class DefaultEngine(BaseEngine) :
-    """Standard grounding engine."""
-    
-    def __init__(self, debugger = None) :
-        self.__debugger = debugger
-        
         self.__builtin_index = {}
         self.__builtins = []
         
@@ -49,6 +29,20 @@ class DefaultEngine(BaseEngine) :
         
     def getBuiltIns(self) :
         return self.__builtin_index
+    
+    def query(self, db, term, level=0) :
+        pass
+    
+    def ground(self, db, term, gp=None, level=0) :
+        pass
+        
+class DefaultEngine(BaseEngine) :
+    """Standard grounding engine."""
+    
+    def __init__(self, debugger = None) :
+        BaseEngine.__init__(self)
+        self.__debugger = debugger
+        
         
     def _enter_call(self, *args) :
         if self.__debugger != None :
@@ -300,8 +294,8 @@ class CycleFreeEngine(DefaultEngine):
     
     def __init__(self, **kwd) :
         DefaultEngine.__init__(self, **kwd)
-    
-    def _ground_define(self, db, gp, node_id, node, args, tdb, anc=[], call_key=None, level=0) :
+
+    def _ground_and(self, db, gp, node_id, node, args, tdb, anc=[], call_key=None, level=0) :
         call_key_1 = []
         call_terms = []
         for arg in args :
@@ -315,7 +309,24 @@ class CycleFreeEngine(DefaultEngine):
         if call_key != None and call_key in anc :
             raise CycleDetected()
 
-        return DefaultEngine._ground_define(self, db, gp, node_id, node, args, tdb, anc=anc+[call_key], call_key=call_key, level=level)
+        return DefaultEngine._ground_and(self, db, gp, node_id, node, args, tdb, anc=anc+[call_key], call_key=call_key, level=level)
+
+    
+    def _ground_call(self, db, gp, node_id, node, args, tdb, anc=[], call_key=None, level=0) :
+        call_key_1 = []
+        call_terms = []
+        for arg in args :
+            call_terms.append(tdb[arg])
+            if not tdb.isGround(arg) :
+                call_key_1.append(None)
+            else :
+                call_key_1.append( str(tdb.getTerm(arg)) )
+        call_key = (node_id, tuple(call_key_1) )
+        
+        if call_key != None and call_key in anc :
+            raise CycleDetected()
+
+        return DefaultEngine._ground_call(self, db, gp, node_id, node, args, tdb, anc=anc+[call_key], call_key=call_key, level=level)
 
 
 class TabledEngine(DefaultEngine) :
@@ -333,8 +344,8 @@ class TabledEngine(DefaultEngine) :
         self.__table = {}
         # Set of calls that should not be grounded (because they are cyclic, and depend on call stack).
         self.__do_not_ground = set()
-    
-    def _ground_define(self, db, gp, node_id, node, args, tdb, anc=[], **extra) :
+
+    def _ground_and(self, db, gp, node_id, node, args, tdb, anc=[], **extra) :
         # Compute the key for this definition call (defnode + arguments).
         call_key_1 = []
         for arg in args :
@@ -350,6 +361,8 @@ class TabledEngine(DefaultEngine) :
         if record == '#GROUNDING#' :
             # This call is currently being grounded. This means we have detected a cycle.
             # Mark all ancestors up to the cyclic one as 'do not ground'.
+            if None in call_key[1] :
+                raise RuntimeError('Grounder does not support cycle on non-grounded atoms.')
             for key in reversed(anc) :
                 self.__do_not_ground.add(key)
                 if key == call_key : break
@@ -360,7 +373,46 @@ class TabledEngine(DefaultEngine) :
             # Initialize ground record (for cycle detection)
             self.__table[call_key] = '#GROUNDING#'     
             # Compute the result using the default engine.
-            result = DefaultEngine._ground_define(self, db, gp, node_id, node, args, tdb, anc=anc+[call_key], **extra)
+            result = DefaultEngine._ground_and(self, db, gp, node_id, node, args, tdb, anc=anc+[call_key], **extra)
+            # Store the result in the table.
+            self.__table[call_key] = result
+            # Return the result.
+            return result
+        else :
+            # The call was grounded before: return the stored record.
+            return record
+
+    
+    def _ground_call(self, db, gp, node_id, node, args, tdb, anc=[], **extra) :
+        # Compute the key for this definition call (defnode + arguments).
+        call_key_1 = []
+        for arg in args :
+            if not tdb.isGround(arg) :
+                call_key_1.append(None)
+            else :
+                call_key_1.append( tdb.getTerm(arg) )
+        call_key = (node_id, tuple(call_key_1) )
+
+        # Get the record from the table.
+        record = self.__table.get( call_key )
+
+        if record == '#GROUNDING#' :
+            # This call is currently being grounded. This means we have detected a cycle.
+            # Mark all ancestors up to the cyclic one as 'do not ground'.
+            print (call_key)
+            if None in call_key[1] :
+                raise RuntimeError('Grounder does not support cycle on non-grounded atoms.')
+            for key in reversed(anc) :
+                self.__do_not_ground.add(key)
+                if key == call_key : break
+            # Signal cycle detection (same as failing).
+            raise CycleDetected()
+        elif record == None or call_key in self.__do_not_ground :
+            # The call has not been grounded yet or was marked as 'do not ground'.
+            # Initialize ground record (for cycle detection)
+            self.__table[call_key] = '#GROUNDING#'     
+            # Compute the result using the default engine.
+            result = DefaultEngine._ground_call(self, db, gp, node_id, node, args, tdb, anc=anc+[call_key], **extra)
             # Store the result in the table.
             self.__table[call_key] = result
             # Return the result.
@@ -615,6 +667,8 @@ class GroundProgram(object) :
         #choices = [ v for v in choices.values() if len(v) > 1 ]
         
         atom_count = len(node_selection)
+        
+        # TODO if only one choice -> set -prob to 1-prob and treat as normal fact?
         for k, s in choices.items() :
             if sums[k] < 1.0-1e-6 :
                 facts[atom_count+1] = (1.0 - sums[k], 1.0)

@@ -9,7 +9,7 @@ from problog.logic import Term, Var, Clause, And, Or
 
 from problog.logic.program import ClauseDB
 
-from problog.logic.engine import Engine, Debugger
+from problog.logic.engine import Debugger
 
 from problog.logic.prolog import PrologEngine
 
@@ -168,7 +168,10 @@ def test4() :
     
     pl = PrologFile( os.path.join(os.path.dirname(__file__),'family.pl') )
     
-    print (PrologEngine().query(pl, Term('ancestor',Var('X'),Var('Y'))))
+    print (PrologEngine().query(pl, Term('anc6',Var('X'),Var('Y'))))
+
+    print (PrologEngine().query(pl, Term('anc6',Term('maria'),Term('liese'))))
+
 
 def test5() :
     
@@ -187,8 +190,8 @@ def test5() :
         print (cl)
     
 if __name__ == '__main__' :
-    test1()
-    test2()
-    test3()
+    # test1()
+    # test2()
+    # test3()
     test4()
-    test5()
+    # test5()

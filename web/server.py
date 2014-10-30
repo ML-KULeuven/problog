@@ -17,8 +17,9 @@ sys.path.append('..')
 
 from problog.logic import Term, Var, Constant
 from problog.logic.program import PrologString, ClauseDB
-from problog.logic.prolog import PrologEngine
+from problog.logic.prolog import PrologEngine, addPrologBuiltins
 from problog.logic.engine import GroundProgram, Debugger
+from radical import EventBasedEngine
 
 import subprocess as sp
 
@@ -126,7 +127,8 @@ def ground(model) :
     
     print ('======= INITIALIZE DATA ======')
     t = time.time()
-    pl = PrologEngine()
+    pl = EventBasedEngine() # was PrologEngine()
+    addPrologBuiltins(pl)
     print ('Completed in %.4fs' % (time.time() - t))
     
     print ('========= PARSE DATA =========')
@@ -147,8 +149,8 @@ def ground(model) :
     print ()
     print ('========== QUERIES ==========')
     t = time.time()
-    queries = pl.query(db, Term( 'query', Var('Q') ))
-    evidence = pl.query(db, Term( 'evidence', Var('Q'), Var('V') ))
+    queries = pl.query(db, Term( 'query', None ))
+    evidence = pl.query(db, Term( 'evidence', None, None ))
     
     print ('Number of queries:', len(queries))
     print ('Completed in %.4fs' % (time.time() - t))
@@ -209,5 +211,5 @@ class GenericService(object) :
 
         
 if __name__ == '__main__' :
-    app = web.application(urls, globals())
+    app = web.application(urls, globals(), web.profiler)
     app.run()

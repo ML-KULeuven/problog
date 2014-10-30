@@ -255,6 +255,9 @@ class ClauseDB(LogicProgram) :
         self.__heads = {}   # head.sig => node index
         
         self.__builtins = builtins
+    
+    def __len__(self) :
+        return len(self.__nodes)
         
     def _getBuiltIn(self, signature) :
         if self.__builtins == None :
