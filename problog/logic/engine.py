@@ -459,6 +459,9 @@ class DummyGroundProgram(object) :
         
     def updateRedirect(self, index, node ) :
         return 0
+
+
+
     
 # Taken and modified from from ProbFOIL
 class GroundProgram(object) :
@@ -538,12 +541,12 @@ class GroundProgram(object) :
         
     def addOrNode(self, content, index=None) :
         """Add an OR node."""
-        node_id = self._addCompoundNode('or', content, self.TRUE, self.FALSE, index=None)
+        node_id = self._addCompoundNode('disj', content, self.TRUE, self.FALSE, index=None)
         return self._addAlias(node_id, index)
         
     def addAndNode(self, content, index=None) :
         """Add an AND node."""
-        node_id =  self._addCompoundNode('and', content, self.FALSE, self.TRUE, index=None)
+        node_id =  self._addCompoundNode('conj', content, self.FALSE, self.TRUE, index=None)
         return self._addAlias(node_id, index)
         
     def _addAlias( self, node_id, index ) :
@@ -561,6 +564,16 @@ class GroundProgram(object) :
         
         # Eliminate unneeded node nodes (false for OR, true for AND)
         content = filter( lambda x : x != f, content )
+        
+        # real_content = []
+        # for c in content :
+        #     if c > 0 :
+        #         n = self.getNode(c)
+        #         if type(n).__name__ == nodetype :
+        #             real_content += list(n.children)
+        #         else :
+        #             real_content.append(c)
+        # content = real_content
 
         # Put into fixed order and eliminate duplicate nodes
         content = tuple(sorted(set(content)))
@@ -580,7 +593,7 @@ class GroundProgram(object) :
         
         if node_id == None :    
             # Node doesn't exist yet
-            if nodetype == 'or' :
+            if nodetype == 'disj' :
                 node = self._disj(content)
             else :
                 node = self._conj(content)
@@ -637,8 +650,8 @@ class GroundProgram(object) :
             assert( current > 0 )        
      
     def _deref(self, index) :
-        if index == None :
-            return None
+        if index == None or index == 0 :
+            return index
         else :
             node = self.getNode( abs(index) )
             if type(node).__name__ == 'disj' and len(node.children) == 1 :
@@ -738,6 +751,8 @@ class GroundProgram(object) :
         
         negative = set([])
         
+        protected = frozenset( x for x,y in queries )
+        
         if queries != None :
             node_selection = [False] * (len(self)+1 )   # selection table
             self._selectNodes( [ x for x,y in queries ], node_selection)
@@ -750,9 +765,14 @@ class GroundProgram(object) :
             index += 1
             nodetype = type(node).__name__
             
+            #if nodetype in ('conj', 'disj') :
+                #print ('REAL CHILDREN:', index, node.children, '=>', , protected )
+            
             if index != self._deref(index) :
                 pass    
             elif nodetype == 'conj' :
+                #children = set(self.expand( index, None, protected ))
+                
                 s += '%s [label="AND", shape="box"];\n' % (index)
                 for c in node.children :
                     c = self._deref(c)
@@ -763,6 +783,8 @@ class GroundProgram(object) :
                     if c != 0 :
                         s += '%s -> %s;\n' % (index,c)
             elif nodetype == 'disj' :
+                #children = set(self.expand( index, None, protected ))
+                
                 s += '%s [label="OR", shape="diamond"];\n' % (index)
                 for c in node.children :
                     c = self._deref(c)
@@ -785,17 +807,224 @@ class GroundProgram(object) :
             s += 'subgraph cluster_%s { style="dotted"; color="red"; %s }\n\n' % (c,'\n'.join(text))
             c += 1 
             
+        q = 0
         for index, name in queries :
-            s += 'q_%s [ label="%s", shape="plaintext" ];\n'   % (index, name)
-            s += 'q_%s -> %s [style="dotted"];\n'  % (index, self._deref(index))
+            real_index = self._deref(index)
+            if real_index < 0 and not real_index in negative :
+                s += '%s [label="NOT"];\n' % (real_index)
+                s += '%s -> %s;\n' % (real_index,-real_index)
+                negative.add(real_index)
+            elif real_index == 0 and not real_index in negative :
+                s += '%s [label="true"];\n' % (real_index)
+            s += 'q_%s [ label="%s", shape="plaintext" ];\n'   % (q, name)
+            s += 'q_%s -> %s [style="dotted"];\n'  % (q, real_index)
+            q += 1
 
         return s + '}'
+    
+    def extract(self, nodes ) :
+
+        
+        result = GroundProgram()
+        
+        protected = set(nodes)
+        translate = {}
+        print ('EXTRACT', nodes)        
+        result_nodes = []
+        for n in nodes :
+            rn, cycles = self._extract( result, n, protected, translate )
+            result_nodes.append(rn)
+            
+        print ('EXTRACTED:')
+        print(result)
+        print (result_nodes)
+        print (translate)
+        return result, result_nodes
+        
+    def _expand( self, index, children, protected, nodetype=None, anc=None ) :
+        if anc == None : anc = []
+        
+        if index in children :
+            pass
+        elif index in anc :
+            children.add(index)
+        elif index == 0 or index == None :
+            children.add(index)
+        elif nodetype != None and abs(index) in protected :
+            children.add(index)
+        elif index < 0 :
+            # TODO handle this better
+            children.add(index)
+        else :  # index > 0
+            node = self.getNode(index)
+            ntype = type(node).__name__
+            if not ntype in ('conj', 'disj') :
+                children.add(index)
+            elif nodetype == None :
+                nodetype = ntype
+            
+            if ntype == nodetype :
+                for c in node.children :
+                    self._expand( c, children, protected, nodetype, anc+[index])
+            else :
+                children.add(index)
+        return children
+        
+    def _extract( self, gp, index, protected, translate, anc=None ) :
+        if anc == None : anc = []
+        
+        if index == 0 or index == None :
+            return index, set()
+        elif index in anc :
+            return None, {index}
+        elif abs(index) in translate :
+            if index < 0 :
+                return self.negate(translate[abs(index)]), set()
+            else :
+                return translate[abs(index)], set()
+        else :
+            node = self.getNode( abs(index) )
+            ntype = type(node).__name__
+        
+        if ntype == 'disj' or ntype == 'conj' :
+            # Get all the children while squashing together nodes.
+            children = self._expand( abs(index), set(), protected )
+            cycles = set()
+            new_children = set()
+            for child in children :
+                new_child, cycle = self._extract( gp, child, protected, translate, anc+[index] )
+                new_children.add( new_child )
+                cycles |= cycle
+            if ntype == 'conj' :
+                ncc = set()
+                for nc in new_children :
+                    gp._expand( nc, ncc, set(), 'conj')
+                new_node = gp.addAndNode( ncc )
+            else :
+                ncc = set()
+                for nc in new_children :
+                    gp._expand( nc, ncc, set(), 'disj')
+                new_node = gp.addOrNode( ncc )
+
+            if index in cycles and new_node != None and new_node != 0 :
+                cycles.remove(index)
+                if not cycles :
+                    translate[abs(index)] = new_node
+                    return new_node, cycles
+            if index < 0 :
+                return self.negate(new_node), cycles
+            else :
+                return new_node, cycles
+        else :
+            res = translate.get(abs(index))
+            if res == None :
+                res = gp._addNode( node )
+                translate[abs(index)] = res 
+            if index < 0 :
+                return self.negate(res), set()
+            else :
+                return res, set()
+        
+        node = self.getNode(index)
+        
+    def breakCycle(self, index, anc=None) :
+        
+        # Overwrite the node that causes a cycle.
+        
+        if anc == None : anc = []
+        
+        if index in anc :
+            return None, {index}
+        elif index == 0 :
+            return index, set()
+        # elif index < 0 :
+        #     raise NotImplementedError('Cycle breaking does not support negation yet!')
+        else :
+            node = self.getNode(abs(index))
+            ntype = type(node).__name__
+            if ntype in ('conj','disj') :
+                
+                new_children = []
+                cycles = set()
+                for child in node.children :
+                    new_child, cycle = self.breakCycle( child, anc+[index] )
+                    new_children.append( new_child )
+                    if cycle : cycles |= cycle
+                if node.children != tuple(new_children) :
+                    if ntype == 'conj' :
+                        new_node = self.addAndNode( new_children )
+                    else :
+                        new_node = self.addOrNode( new_children )
+                    #print ('NEW', 'ntype', node.children, new_children, '==>', new_node, '[', index, cycles, ']') 
+                    if index in cycles and new_node != None and new_node != 0 :
+                        cycles.remove(index)
+                        if not cycles :
+                            assert( new_node == len(self.__nodes) )
+                            self._setNode( abs(index), self.getNode(abs(new_node)) )
+                            self.__nodes.pop(-1)     
+                            #print ('RETURN', self.getNode(abs(index)), index, cycles )
+                            return index, cycles
+                    if index < 0 :
+                        return self.negate(new_node), cycles
+                    else :
+                        return new_node, cycles
+                else :
+                    return index, cycles
+            else :  # fact or choice
+                return index, None
+                
+    
+    
+    # def expand_(self, index, current, nodetype, protected) :
+    #     if index in protected and nodetype != None :
+    #         # We can't squash this node (it's protected), so we just return it.
+    #         return [ index ]
+    #     elif index == 0 or index == None :
+    #         # Should not happen, but hey.
+    #         return [ index ]
+    #     elif index < 0 :
+    #         # TODO reverse children if nodetype is opposite (conj <-> disj)
+    #         return [ index ]
+    #     else : # index > 0
+    #         node = self.getNode(index)
+    #         if nodetype == None :
+    #             nodetype = type(node).__name__
+    #
+    #         if type(node).__name__ != nodetype or not nodetype in ('conj', 'disj') :
+    #             # Wrong nodetype.
+    #             return [ index ]
+    #         else :
+    #             for child in node.children :
+    #                 if not child in current :
+    #                     current.add(child)
+    #                     self.expand_( child, current, nodetype, protected )
+    #                 else :
+    #                     pass
+        
+                
+    # def compact( self, nodes ) :
+    #     """Compact the datastructure."""
+    #
+    #     # Protect some nodes from being squashed together.
+    #     protect = set(nodes)
+    #
+    #     result_nodes = []
+    #     result_struct = GroundProgram()
+    #     for index in nodes :
+    #         if index == 0 or index == None :
+    #             result_nodes.append(index)
+    #         else :
+    #             pass
+    #     pass
     
     def breakCycles( self, nodes ) :
         new_queries = []
         for index, query in nodes :
-            print ('Breaking cycles for', query)
-            new_queries.append( (self.breakCycle(index)[0], query) )
+            # print ('Breaking cycles for', query, index)
+            new_node = self.breakCycle(index)[0]
+            new_queries.append( (new_node, query) )
+            # print ('-->', new_node)
+            # print (self)
         return new_queries    
         
     def breakCycle(self, index, anc=None) :
@@ -808,12 +1037,13 @@ class GroundProgram(object) :
             return None, {index}
         elif index == 0 :
             return index, set()
-        elif index < 0 :
-            raise NotImplementedError('Cycle breaking does not support negation yet!')
+        # elif index < 0 :
+        #     raise NotImplementedError('Cycle breaking does not support negation yet!')
         else :
-            node = self.getNode(index)
+            node = self.getNode(abs(index))
             ntype = type(node).__name__
             if ntype in ('conj','disj') :
+                
                 new_children = []
                 cycles = set()
                 for child in node.children :
@@ -825,14 +1055,19 @@ class GroundProgram(object) :
                         new_node = self.addAndNode( new_children )
                     else :
                         new_node = self.addOrNode( new_children )
+                    #print ('NEW', 'ntype', node.children, new_children, '==>', new_node, '[', index, cycles, ']') 
                     if index in cycles and new_node != None and new_node != 0 :
                         cycles.remove(index)
                         if not cycles :
                             assert( new_node == len(self.__nodes) )
-                            self._setNode( index, self.getNode(new_node) )
+                            self._setNode( abs(index), self.getNode(abs(new_node)) )
                             self.__nodes.pop(-1)     
+                            #print ('RETURN', self.getNode(abs(index)), index, cycles )
                             return index, cycles
-                    return new_node, cycles
+                    if index < 0 :
+                        return self.negate(new_node), cycles
+                    else :
+                        return new_node, cycles
                 else :
                     return index, cycles
             else :  # fact or choice

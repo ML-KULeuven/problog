@@ -11,7 +11,8 @@ sys.setrecursionlimit(10000)
 from problog.logic import Term, Var, Constant
 from problog.logic.program import PrologFile, ClauseDB
 from problog.logic.prolog import PrologEngine
-from problog.logic.engine import GroundProgram, Debugger
+from problog.logic.engine import Debugger
+from problog.logic.formula import LogicFormula
 from problog.logic.eb_engine import EventBasedEngine, addBuiltins
 
 
@@ -59,7 +60,7 @@ def main( filename, trace=False ) :
     
     if trace :
         pl = PrologEngine(debugger=Debugger(trace=True))
-    gp = GroundProgram()
+    gp = LogicFormula()
     for query in queries :
         print ("Grounding for query '%s':" % query[0])
         gp, ground = pl.ground(db, query[0], gp)
@@ -77,26 +78,35 @@ def main( filename, trace=False ) :
     print ('Completed in %.4fs' % (time.time() - t))
     print ()
     
+    qn_index, qn_name = zip(*query_nodes)
+    gp, qn_index = gp.makeAcyclic( qn_index )
+    query_nodes = zip(qn_index, qn_name)
+    
 
-    new_query_nodes = gp.breakCycles( query_nodes )
+    #new_query_nodes = gp.breakCycles( query_nodes )
 
     
     print ('========== GROUND PROGRAM ==========')
     with open(basename + '.dot', 'w') as f :
-        f.write(gp.toDot(new_query_nodes))
+        f.write(gp.toDot(query_nodes))
     print ('See \'%s.dot\'.' % basename)
     
     
-    sys.exit()
+
     
     print ('========== CNF ==========')
     
-    cnf, facts, choices = gp.toCNF()
+    cnf, facts = gp.toCNF()
     
     cnf_file = basename + '.cnf'
     with open(cnf_file, 'w') as f :
         print('\n'.join(cnf), file=f)
     print ('See \'%s\'.' % cnf_file)
+    
+    print (facts)
+    
+    sys.exit()
+    
     
     print ('========== NNF ==========')
     nnf_file = basename +'.nnf'

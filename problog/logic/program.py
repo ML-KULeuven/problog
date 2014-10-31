@@ -412,7 +412,9 @@ class ClauseDB(LogicProgram) :
             # Create the body clause
             body_head = Term('ad_%s_body' % group, *body_args)
             body_node = self._compile(struct.body, variables)
-            clause_body = self._appendNode( self._clause( body_head.functor, body_head.args, None, body_node, len(variables), group=None ) )
+            clause_body = self._addClauseNode( body_head, body_node, len(variables) )
+            #clause_body = self._appendNode( self._clause( body_head.functor, body_head.args, None, body_node, len(variables), group=None ) )
+            clause_body = self._addHead( body_head )
             
             for choice, head in enumerate(new_heads) :
                 # For each head: add choice node

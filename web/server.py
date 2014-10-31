@@ -18,8 +18,9 @@ sys.path.append('..')
 from problog.logic import Term, Var, Constant
 from problog.logic.program import PrologString, ClauseDB
 from problog.logic.prolog import PrologEngine, addPrologBuiltins
-from problog.logic.engine import GroundProgram, Debugger
+from problog.logic.engine import Debugger
 from problog.logic.eb_engine import EventBasedEngine, addBuiltins
+from problog.logic.formula import LogicFormula
 
 import subprocess as sp
 
@@ -160,7 +161,7 @@ def ground(model) :
     
 
     #pl = PrologEngine(debugger=Debugger(trace=True))
-    gp = GroundProgram()
+    gp = LogicFormula()
     for query in queries :
         print ("Grounding for query '%s':" % query[0])
         gp, ground = pl.ground(db, query[0], gp)
@@ -179,8 +180,16 @@ def ground(model) :
     print ('Completed in %.4fs' % (time.time() - t))
     print ()
     
-    query_nodes = gp.breakCycles( query_nodes )
+    qn_index, qn_name = zip(*query_nodes)
+    gp, qn_index = gp.makeAcyclic( qn_index )
+    query_nodes = zip(qn_index, qn_name)
     
+    
+    #query_nodes = gp.breakCycles( query_nodes )
+    
+    #gp.extract(qn)
+    
+    print (gp)
     
     print ('========== GROUND PROGRAM ==========')
     with open(filename, 'w') as f :

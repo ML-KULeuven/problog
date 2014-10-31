@@ -47,6 +47,7 @@ Examples:
   * ProbFOIL's Grounding
   * CNF
   * ...
+ 
 
 Compiler
 ++++++++

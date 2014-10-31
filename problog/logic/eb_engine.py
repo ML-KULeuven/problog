@@ -2,7 +2,8 @@ from __future__ import print_function
 
 from .basic import Term, Constant
 from .program import ClauseDB, PrologString
-from .engine import DummyGroundProgram, BaseEngine, GroundProgram, UnknownClause, _UnknownClause, Debugger
+from .engine import BaseEngine, UnknownClause, _UnknownClause, Debugger
+from .formula import LogicFormula
 
 """ 
 Assumptions
@@ -247,7 +248,7 @@ class EventBasedEngine(BaseEngine) :
         #self.debugger = Debugger(trace=True)
     
     def query(self, db, term, level=0) :
-        gp = DummyGroundProgram()
+        gp = LogicFormula()
         gp, result = self.ground(db, term, gp, level)
         
         return [ y for x,y in result ]
@@ -318,7 +319,8 @@ class EventBasedEngine(BaseEngine) :
 
         # Notify parent
         if result != None :
-            parent.newResult( result, ground_node=gp.addFact(node_id, (), node.probability) )    
+            parent.newResult( result, ground_node=gp.addAtom(node_id, node.probability) )
+        parent.complete()    
 
     def _eval_choice( self, db, gp, node_id, node, call_args, parent ) :
         trace( node, call_args )
@@ -334,12 +336,14 @@ class EventBasedEngine(BaseEngine) :
         # Notify parent
         if result != None :
             origin = (node.group, result)
-            ground_node = gp.addChoice(origin, node.choice, probability)
-            parent.newResult( result, ground_node )    
+            ground_node = gp.addAtom( (node.group, result, node.choice) , probability, group=(node.group, result) ) 
+            parent.newResult( result, ground_node )
+        parent.complete()
     
     def _eval_call( self, db, gp, node_id, node, context, parent ) :
         trace( node, context )
         # Extract call arguments from context
+        # TODO functors???
         call_args = []
         for call_arg in node.args :
             if type(call_arg) == int :
@@ -398,7 +402,7 @@ class EventBasedEngine(BaseEngine) :
             # create a context-switching node that extracts the head arguments
             #  from results from the body context
             # output should be send to the given parent
-            context_switch = ProcessBodyReturn( node.args  )
+            context_switch = ProcessBodyReturn( node.args, node  )
             context_switch.addListener(parent)
             
             # evaluate the body, output should be send to the context-switcher
@@ -411,22 +415,23 @@ class EventBasedEngine(BaseEngine) :
         # Assumption: node has exactly two children
         child1, child2 = node.children
         
+        # Processor for sending out complete signal.
+        process_complete = ProcessCompleteAll( len(node.children), parent )
+        
         # Use a link node that evaluates the second child based on input from the first.
-        node2 = ProcessLink( self, db, gp, child2, parent )     # context passed through from node1
-        self._eval( db, gp, child1, context, node2 )    # evaluate child1 and make it activate node2
+        node2 = ProcessLink( self, db, gp, child2, process_complete, parent )     # context passed through from node1
+        self._eval( db, gp, child1, context, node2 )    # evaluate child1 and make it activate node2    
 
     def _eval_disj( self, db, gp, node_id, node, context, parent ) :
+        
+        process = ProcessOr( len(node.children), parent )
         for child in node.children :
-            self._eval( db, gp, child, context, parent )    # evaluate child1 and make it activate node2
-        parent.complete()
+            self._eval( db, gp, child, context, process )    # evaluate child1 and make it activate node2
 
     def _eval_neg(self, db, gp, node_id, node, context, parent) :
-        
         process = ProcessNot( gp, context )
         process.addListener(parent)
-
         self._eval( db, gp, node.child, context, process )
-        #process.complete()
     
     def _eval_define( self, db, gp, node_id, node, call_args, parent ) :
         key = (node_id, tuple(call_args))
@@ -438,30 +443,92 @@ class EventBasedEngine(BaseEngine) :
             pnode.execute()
         else :
             pnode.addListener(parent)
+            
+class ProcessCompleteAll( object ) :
+    
+    def __init__(self, count, parent) :
+        self.count = count
+        self.parent = parent
+        
+    def newResult(self, result, ground_node=0, source=None) :
+        pass
+        
+    def complete(self, source=None) :
+        # Assumption: children are well-behaved
+        #   -> each child sends out exactly one 'complete' event.
+        #   => after 'count' events => all children are complete
+        self.count -= 1
+        if self.count == 0 :
+            self.parent.complete()
 
 class ProcessNode(object) :
-
+    """Generic class for representing *process nodes*."""
+    
+    EVT_COMPLETE = 1
+    EVT_RESULT = 2
+    EVT_ALL = 3
+    
     def __init__(self) :
+        #print ('CREATE', id(self), type(self))
         self.listeners = []
         self.isComplete = False
     
-    def notifyListeners(self, result, ground_node) :
-        for listener in self.listeners :
-            listener.newResult(result, ground_node)
+    def notifyListeners(self, result, ground_node=0, source=None) :
+        """Send the ``newResult`` event to all the listeners of this node.
+            The arguments are used as the arguments of the event.
+        """
+        # print ('NOTIFY', self, result, ground_node, source)
+        # if self.isComplete :
+        #     print ('WARNING', self, type(self))
+        
+       # assert (not self.isComplete)   # Complete is the last event that can be sent.
+        for listener, evttype in self.listeners :
+            if evttype & self.EVT_RESULT :
+                #print ('SEND', 'result', id(self), '->', id(listener))
+                listener.newResult(result, ground_node, source)
     
-    def notifyComplete(self) :
+    def notifyComplete(self, source=None) :
+        """Send the ``complete`` event to all listeners of this node."""
+        
         if not self.isComplete :
+            # print ('COMPLETE', self)
             self.isComplete = True
-            for listener in self.listeners :
-                listener.complete()
+            for listener, evttype in self.listeners :
+                if evttype & self.EVT_COMPLETE :
+                    #print ('SEND', 'complete', id(self), '->', id(listener))
+                    listener.complete(source)
         
-    def addListener(self, listener) :
+    def addListener(self, listener, eventtype=EVT_ALL) :
+        """Add the given listener."""
         # Add the listener such that it receives future events.
-        self.listeners.append(listener)
+        self.listeners.append((listener,eventtype))
         
-    def complete(self) :
+    def complete(self, source=None) :
         self.notifyComplete()
         
+    def newResult(self, result, ground_node=0, source=None) :
+        raise NotImplementedError('ProcessNode.newResult is an abstract method!')
+
+class ProcessOr(object) :
+
+    def __init__(self, count, parent) :
+        self.parent = parent
+        self.count = count
+    
+    def newResult(self, result, ground_node=0, source=None) :
+        self.parent.newResult(result, ground_node, source)
+    
+    def complete(self, source=None) :
+        
+        #print ('OR complete', self.count, self.parent)
+        
+        # Assumption: children are well-behaved
+        #   -> each child sends out exactly one 'complete' event.
+        #   => after 'count' events => all children are complete
+        self.count -= 1
+        if self.count == 0 :
+            self.parent.complete()
+            
 class ProcessNot(ProcessNode) :
     
     def __init__(self, gp, context) :
@@ -470,13 +537,15 @@ class ProcessNot(ProcessNode) :
         self.ground_nodes = []
         self.gp = gp
         
-    def newResult(self, result, ground_node=0) :
+    def newResult(self, result, ground_node=0, source=None) :
+        print('NOT RECEIVES:', result, ground_node)
         if ground_node != None :
             self.ground_nodes.append(ground_node)
         
-    def complete(self) :
+    def complete(self, source=None) :
+        print('NOT COMPLETE', self.ground_nodes)
         if self.ground_nodes :
-            or_node = self.gp.negate(self.gp.addOrNode( self.ground_nodes ))
+            or_node = self.gp.negate(self.gp.addOr( self.ground_nodes ))
             if or_node != None :
                 self.notifyListeners(self.context, ground_node=or_node)
         else :
@@ -485,21 +554,23 @@ class ProcessNot(ProcessNode) :
 
 class ProcessLink(object) :
     
-    def __init__(self, engine, db, gp, node_id, parent) :
+    def __init__(self, engine, db, gp, node_id, andc, parent) :
         self.engine = engine
         self.db = db
         self.gp = gp
         self.node_id = node_id
         self.parent = parent
+        self.andc = andc
         
-    def newResult(self, result, ground_node=0) :
+    def newResult(self, result, ground_node=0, source=None) :
         self.engine.exit_call( self.node_id, result )    
         process = ProcessAnd(self.gp, ground_node)
-        process.addListener(self.parent)
+        process.addListener(self.parent, ProcessNode.EVT_RESULT)
+        process.addListener(self.andc, ProcessNode.EVT_COMPLETE)
         self.engine._eval( self.db, self.gp, self.node_id, result, process)
         
-    def complete(self) :
-        pass
+    def complete(self, source=None) :
+        self.andc.complete()
         
 class ProcessAnd(ProcessNode) :
     
@@ -508,9 +579,12 @@ class ProcessAnd(ProcessNode) :
         self.gp = gp
         self.first_node = first_node
         
-    def newResult(self, result, ground_node=0) :
-        and_node = self.gp.addAndNode( (self.first_node, ground_node) )
-        self.notifyListeners(result, and_node)
+    def newResult(self, result, ground_node=0, source=None) :
+        and_node = self.gp.addAnd( (self.first_node, ground_node) )
+        self.notifyListeners(result, and_node, source)
+        
+    def complete(self, source=None) :
+        self.notifyComplete()
      
 class ProcessDefine(ProcessNode) :
     
@@ -523,51 +597,62 @@ class ProcessDefine(ProcessNode) :
         self.node_id = node_id
         self.node = node
         self.args = args
-        
-    def notifyListeners(self, result, ground_node) :
-        for listener in self.listeners :
-            listener.newResult(result, ground_node)
-        
-    def addListener(self, listener) :
+                
+    def addListener(self, listener, eventtype=ProcessNode.EVT_ALL) :
         
         # Add the listener such that it receives future events.
-        ProcessNode.addListener(self, listener)
+        ProcessNode.addListener(self, listener, eventtype)
         
         # If the node was already active, notify listener of past events.
         for result, ground_node in list(self.results.items()) :
-            listener.newResult(result, ground_node)
+            if eventtype & ProcessNode.EVT_RESULT :
+                listener.newResult(result, ground_node)
             
         if self.isComplete :
-            listener.complete()
+            if eventtype & ProcessNode.EVT_COMPLETE :
+                listener.complete()
         
     def execute(self) :
         # Get the appropriate children
         children = self.node.children.find( self.args )
+        
+        process = ProcessOr( len(children), self )
         # Evaluate the children
         for child in children :
-            self.engine._eval( self.db, self.gp, child, self.args, parent=self )        
+            self.engine._eval( self.db, self.gp, child, self.args, parent=process )
         
         self.notifyComplete()
     
-    def newResult(self, result, ground_node=0) :
+    def newResult(self, result, ground_node=0, source=None) :
         res = (tuple(result))
         if res in self.results :
-            self.gp.updateRedirect( self.results[res], ground_node )
+            res_node = self.results[res]
+            # Also matches siblings: p::have_one(1). have_two(X,Y) :- have_one(X), have_one(X). query(have_two(1,1)). 
+            # if self.gp._deref(res_node) == self.gp._deref(ground_node) : print ('CYCLE!!?!?!?!?!?!? =>', res_node)
+            
+            self.gp.addDisjunct( res_node, ground_node )
         else :
             self.engine.exit_call( self.node, result )
-            result_node = self.gp.addRedirect( ground_node )
+            result_node = self.gp.addOr( (ground_node,), readonly=False )
             self.results[ res ] = result_node
-            self.notifyListeners(result, result_node)
-
+            self.notifyListeners(result, result_node, source )
+            
+    def complete(self, source=None) :
+        self.notifyComplete()
+        
+    def __repr__(self) :
+        return str(self.node_id) + ': ' + str(self.node) + str(id(self))
+        
         
             
 class ProcessBodyReturn(ProcessNode) :
     
-    def __init__(self, head_args) :
+    def __init__(self, head_args, node) :
         ProcessNode.__init__(self)
         self.head_args = head_args
+        self.node = node
                     
-    def newResult(self, result, ground_node=0) :
+    def newResult(self, result, ground_node=0, source=None) :
         output = []
         for head_arg in self.head_args :
             if type(head_arg) == int : # head_arg is a variable
@@ -575,8 +660,13 @@ class ProcessBodyReturn(ProcessNode) :
             else : # head arg is a constant => make sure it unifies with the call arg
                 output.append( head_arg )
         #print ('BODY_RETURN', result, self.head_args, output, result)        
-        self.notifyListeners(output, ground_node)  
+        self.notifyListeners(output, ground_node, source)
+    
+    # def complete(self) :
+    #     pass
         
+    def __repr__(self) :
+        return str(self.node)
 
 class ProcessCallReturn(ProcessNode) :
     
@@ -585,7 +675,7 @@ class ProcessCallReturn(ProcessNode) :
         self.call_args = call_args
         self.context = context
                     
-    def newResult(self, result, ground_node=0) :
+    def newResult(self, result, ground_node=0, source=None) :
         output = list(self.context)
         for call_arg, res_arg in zip(self.call_args,result) :
             if type(call_arg) == int : # head_arg is a variable
@@ -593,8 +683,8 @@ class ProcessCallReturn(ProcessNode) :
             else : # head arg is a constant => make sure it unifies with the call arg
                 pass
         #print ('CALL_RETURN', self.context, self.call_args, output, result)        
-        self.notifyListeners(output, ground_node)    
-
+        self.notifyListeners(output, ground_node, source)    
+    
 
 #def trace(*args) : print(*args)
 def trace(*args) : pass
@@ -608,16 +698,12 @@ class ResultCollector(object) :
     def __init__(self) :
         self.results = []
     
-    def newResult( self, result, ground_result ) :
+    def newResult( self, result, ground_result, source=None ) :
         self.results.append( (ground_result, result  ))
         
-    def complete(self) :
+    def complete(self, source=None) :
         pass
 
-try:
-    input = raw_input
-except NameError:
-    pass
 
 
 def test1() :
@@ -642,6 +728,10 @@ def test1() :
 
     ancestor3(X,Y) :- ancestor3(X,Z), parent(Z,Y).
     ancestor3(X,Y) :- parent(X,Y).
+
+    ancestor4(X,Y) :- ancestor4(X,Z), ancestor4(Z,Y).
+    ancestor4(X,Y) :- parent(X,Y).
+
     """
     
     pl = PrologString( program )
@@ -650,7 +740,7 @@ def test1() :
     
     eng = EventBasedEngine()
 
-    gp, res = eng.ground( db,  Term('ancestor1',None,None ) )
+    gp, res = eng.ground( db,  Term('ancestor4',None,None ) )
 
     print (len(res)) 
     for r in res :
@@ -747,9 +837,3 @@ def test3() :
     print ('== 3 ==')
     eng._eval( db, def_index, (Constant(3),), res)
 
-if __name__ == '__main__' :
-    #test1()
-    
-    test2()
-    #
-    #test3()

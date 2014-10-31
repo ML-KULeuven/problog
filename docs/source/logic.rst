@@ -66,3 +66,9 @@ Unification
 .. automodule:: problog.logic.unification
   :members:
   :undoc-members:
+
+Logic Formula
+-------------
+
+.. autoclass:: problog.logic.engine.LogicFormula
+    :members:
