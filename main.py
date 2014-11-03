@@ -15,84 +15,39 @@ from problog.logic.formula import LogicFormula
 
 
 def ground(model) :
-    lp = PrologString(model)
     
-    print ('======= INITIALIZE DATA ======')
-    t = time.time()
     engine = DefaultEngine()
+    db = engine.prepare(model)
     
-    print ('Completed in %.4fs' % (time.time() - t))
-    
-    print ('====== PARSE & COMPILE =======')
-    t = time.time()
-    db = engine.prepare(lp)
-    print ('Completed in %.4fs' % (time.time() - t))
-    
-    print ('======= LOGIC PROGRAM =======')
-
-    t = time.time()
-    print ('\n'.join(map(str,db)))
-    print ('Completed in %.4fs' % (time.time() - t))
-    print ()
-    print ('====== CLAUSE DATABASE ======')
-    
-    print (db)
-    
-    print ()
-    print ('========== QUERIES ==========')
-    t = time.time()
     queries = engine.query(db, Term( 'query', None ))
     evidence = engine.query(db, Term( 'evidence', None, None ))
-    
-    print ('Number of queries:', len(queries))
-    print ('Completed in %.4fs' % (time.time() - t))
-    
-    t = time.time()
-    
-    #pl = PrologEngine(debugger=Debugger(trace=True))
+        
     gp = LogicFormula()
     for query in queries :
-        print ("Grounding for query '%s':" % query[0])
         gp = engine.ground(db, query[0], gp)
-        print (gp)
-        #query_nodes += [ (n,query[0].withArgs(*x)) for n,x in ground ]
 
     for query in evidence :
         gp = engine.ground(db, query[0], gp)
-        print ("Grounding for evidence '%s':" % query[0])
-        print (gp)
-        #query_nodes += [ (n,query[0].withArgs(*x)) for n,x in ground ]
-        
-    # query_nodes =  [ (x,y) for y,x in gp.getNames() ]
-    
-    filename = '/tmp/pl.dot'
-    print ('Completed in %.4fs' % (time.time() - t))
-    print ()
-    
-    # qn_index, qn_name = zip(*query_nodes)
-    gp = gp.makeAcyclic()
-    # query_nodes = zip(qn_index, qn_name)
-    
-    
-    #query_nodes = gp.breakCycles( query_nodes )
-    
-    #gp.extract(qn)
-    
-    print (gp)
-    
-    print ('========== GROUND PROGRAM ==========')
-    with open(filename, 'w') as f :
-        f.write(gp.toDot())
-    print ('See \'%s\'.' % filename)
-    return filename
 
+    return gp
 
-def main( filename, trace=False ) :
+def main( filename ) :
     
     with open(filename) as f :
         model = f.read()
     
-    ground(model)
+    lp = PrologString(model)
+        
+    gp = ground(lp)
+
+    gp = gp.makeAcyclic()
+
+    print ('========== GROUND PROGRAM ==========')
+    print (gp)
+    filename = '/tmp/pl.dot'
+    with open(filename, 'w') as f :
+        f.write(gp.toDot())
+    print ('See \'%s\'.' % filename)
     
 #
 #     basename = os.path.splitext(filename)[0]

@@ -196,8 +196,6 @@ class LogicFormula(object) :
             new_node, cycles = self._extract( output, node, protected, translate )
             translate[node] = new_node
             output.addName(name, new_node)
-            
-        print ('\n'.join(map(str,translate.items())))
         
         return output
         

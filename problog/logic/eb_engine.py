@@ -374,12 +374,12 @@ class ProcessNot(ProcessNode) :
         self.gp = gp
         
     def newResult(self, result, ground_node=0, source=None) :
-        print('NOT RECEIVES:', result, ground_node)
+        #print('NOT RECEIVES:', result, ground_node)
         if ground_node != None :
             self.ground_nodes.append(ground_node)
         
     def complete(self, source=None) :
-        print('NOT COMPLETE', self.ground_nodes)
+        #print('NOT COMPLETE', self.ground_nodes)
         if self.ground_nodes :
             or_node = self.gp.addNot(self.gp.addOr( self.ground_nodes ))
             if or_node != None :
@@ -461,20 +461,20 @@ class ProcessDefine(ProcessNode) :
     
     def newResult(self, result, ground_node=0, source=None) :
         res = (tuple(result))
-        debug = (self.node.functor in ('stress','smokes'))
-        if debug : print ('NEW RESULT:', self.node, result, ground_node)
+        #debug = (self.node.functor in ('stress','smokes'))
+        #if debug : print ('NEW RESULT:', self.node, result, ground_node)
         if res in self.results :
             res_node = self.results[res]
             # Also matches siblings: p::have_one(1). have_two(X,Y) :- have_one(X), have_one(X). query(have_two(1,1)). 
             # if self.gp._deref(res_node) == self.gp._deref(ground_node) : print ('CYCLE!!?!?!?!?!?!? =>', res_node)
-            if debug: print ('\t UPDATE NODE:', res_node)     
+            #if debug: print ('\t UPDATE NODE:', res_node)     
             self.gp.addDisjunct( res_node, ground_node )
         else :
             self.engine.exit_call( self.node, result )
             result_node = self.gp.addOr( (ground_node,), readonly=False )
             self.results[ res ] = result_node
             
-            if debug: print ('\t STORED AS:', result_node)        
+            #if debug: print ('\t STORED AS:', result_node)        
             self.notifyListeners(result, result_node, source )
             
     def complete(self, source=None) :

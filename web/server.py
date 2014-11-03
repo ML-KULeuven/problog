@@ -77,7 +77,13 @@ class Ground(object) :
         model = web.data()
 
         try :
-            filename = ground(model)
+            lp = PrologString(model)    
+            
+            gp = ground(lp)
+            gp = gp.makeAcyclic()    
+            filename = '/tmp/pl.dot'
+            with open(filename, 'w') as f :
+                f.write(gp.toDot())            
             output = sp.check_output(['dot', '-Tsvg', filename])
             return '<strong>' + output + '</strong>'
         except Exception as err :
