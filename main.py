@@ -9,30 +9,23 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__),'../')
 sys.setrecursionlimit(10000)
 
 from problog.logic import Term, Var, Constant
-from problog.logic.program import PrologFile, ClauseDB
-from problog.logic.prolog import PrologEngine
-from problog.logic.engine import Debugger
+from problog.logic.program import PrologFile, ClauseDB, PrologString
+from problog.logic.engine import DefaultEngine
 from problog.logic.formula import LogicFormula
-from problog.logic.eb_engine import EventBasedEngine, addBuiltins
 
 
-
-
-def main( filename, trace=False ) :
-    
-    basename = os.path.splitext(filename)[0]
-    
-    lp = PrologFile(os.path.abspath(filename))
+def ground(model) :
+    lp = PrologString(model)
     
     print ('======= INITIALIZE DATA ======')
     t = time.time()
-    pl = EventBasedEngine()
-    addBuiltins(pl)
+    engine = DefaultEngine()
+    
     print ('Completed in %.4fs' % (time.time() - t))
     
-    print ('========= PARSE DATA =========')
+    print ('====== PARSE & COMPILE =======')
     t = time.time()
-    db = ClauseDB.createFrom(lp, builtins=pl.getBuiltIns())
+    db = engine.prepare(lp)
     print ('Completed in %.4fs' % (time.time() - t))
     
     print ('======= LOGIC PROGRAM =======')
@@ -44,114 +37,196 @@ def main( filename, trace=False ) :
     print ('====== CLAUSE DATABASE ======')
     
     print (db)
-
     
     print ()
     print ('========== QUERIES ==========')
     t = time.time()
-    queries = pl.query(db, Term( 'query', None ))
-    evidence = pl.query(db, Term( 'evidence', None,None ))
+    queries = engine.query(db, Term( 'query', None ))
+    evidence = engine.query(db, Term( 'evidence', None, None ))
     
     print ('Number of queries:', len(queries))
     print ('Completed in %.4fs' % (time.time() - t))
     
     t = time.time()
-    query_nodes = []
     
-    if trace :
-        pl = PrologEngine(debugger=Debugger(trace=True))
+    #pl = PrologEngine(debugger=Debugger(trace=True))
     gp = LogicFormula()
     for query in queries :
         print ("Grounding for query '%s':" % query[0])
-        gp, ground = pl.ground(db, query[0], gp)
+        gp = engine.ground(db, query[0], gp)
         print (gp)
-        print (ground)
-        query_nodes += [ (n,query[0].withArgs(*x)) for n,x in ground ]
+        #query_nodes += [ (n,query[0].withArgs(*x)) for n,x in ground ]
 
     for query in evidence :
-        gp, ground = pl.ground(db, query[0], gp)
+        gp = engine.ground(db, query[0], gp)
         print ("Grounding for evidence '%s':" % query[0])
         print (gp)
-        print (ground)
-        query_nodes += [ (n,query[0].withArgs(*x)) for n,x in ground ]
+        #query_nodes += [ (n,query[0].withArgs(*x)) for n,x in ground ]
+        
+    # query_nodes =  [ (x,y) for y,x in gp.getNames() ]
     
+    filename = '/tmp/pl.dot'
     print ('Completed in %.4fs' % (time.time() - t))
     print ()
     
-    qn_index, qn_name = zip(*query_nodes)
-    gp, qn_index = gp.makeAcyclic( qn_index )
-    query_nodes = zip(qn_index, qn_name)
+    # qn_index, qn_name = zip(*query_nodes)
+    gp = gp.makeAcyclic()
+    # query_nodes = zip(qn_index, qn_name)
     
-
-    #new_query_nodes = gp.breakCycles( query_nodes )
-
+    
+    #query_nodes = gp.breakCycles( query_nodes )
+    
+    #gp.extract(qn)
+    
+    print (gp)
     
     print ('========== GROUND PROGRAM ==========')
-    with open(basename + '.dot', 'w') as f :
-        f.write(gp.toDot(query_nodes))
-    print ('See \'%s.dot\'.' % basename)
-    
-    
+    with open(filename, 'w') as f :
+        f.write(gp.toDot())
+    print ('See \'%s\'.' % filename)
+    return filename
 
-    
-    print ('========== CNF ==========')
-    
-    cnf, facts = gp.toCNF()
-    
-    cnf_file = basename + '.cnf'
-    with open(cnf_file, 'w') as f :
-        print('\n'.join(cnf), file=f)
-    print ('See \'%s\'.' % cnf_file)
-    
-    print (facts)
-    
-    sys.exit()
-    
-    
-    print ('========== NNF ==========')
-    nnf_file = basename +'.nnf'
-    cmd = ['../version2.0/assist/darwin/dsharp', '-Fnnf', nnf_file, '-smoothNNF','-disableAllLits', cnf_file ] # 
-    
-    subprocess.check_call(cmd)
-   
-    print (facts)
-    qn = dict(query_nodes)
-    qns = []
-    nnf = GroundProgram()
-    with open(nnf_file) as f :
-        for line in f :
-            line = line.strip().split()
-            if line[0] == 'nnf' :
-                pass
-            elif line[0] == 'L' :
-                name = int(line[1])
-                probs = (1.0,1.0)
-                if name < 0 :
-                    prob = facts.get(-name, probs)[1]
-                else :
-                    prob = facts.get(name, probs)[0]
-                if name in qn :
-                    prob = str(prob) + '::' + str(qn[name])
-                elif -name in qn :
-                    prob = str(prob) + '::-' + str(qn[-name])
-                # else :
-                #     prob = str(prob) + '::fact_' + str(name)
-                nnf._addNode( nnf._fact( None, None, prob ) )
-                
-            elif line[0] == 'A' :
-                children = map(lambda x : int(x) + 1 , line[2:])
-                nnf._addNode( nnf._conj( tuple(children) ))
-            elif line[0] == 'O' :
-                children = map(lambda x : int(x) + 1, line[3:])
-                nnf._addNode( nnf._disj( tuple(children) ))
-            else :
-                print ('Unknown line type')
 
-    print (nnf) 
-    with open(basename + '.nnf.dot', 'w') as f :
-        f.write(nnf.toDot())
-    print (choices.values())
-    print (query_nodes)
+def main( filename, trace=False ) :
+    
+    with open(filename) as f :
+        model = f.read()
+    
+    ground(model)
+    
+#
+#     basename = os.path.splitext(filename)[0]
+#
+#     lp = PrologFile(os.path.abspath(filename))
+#
+#     print ('======= INITIALIZE DATA ======')
+#     t = time.time()
+#     pl = EventBasedEngine()
+#     addBuiltins(pl)
+#     print ('Completed in %.4fs' % (time.time() - t))
+#
+#     print ('========= PARSE DATA =========')
+#     t = time.time()
+#     db = ClauseDB.createFrom(lp, builtins=pl.getBuiltIns())
+#     print ('Completed in %.4fs' % (time.time() - t))
+#
+#     print ('======= LOGIC PROGRAM =======')
+#
+#     t = time.time()
+#     print ('\n'.join(map(str,db)))
+#     print ('Completed in %.4fs' % (time.time() - t))
+#     print ()
+#     print ('====== CLAUSE DATABASE ======')
+#
+#     print (db)
+#
+#
+#     print ()
+#     print ('========== QUERIES ==========')
+#     t = time.time()
+#     queries = pl.query(db, Term( 'query', None ))
+#     evidence = pl.query(db, Term( 'evidence', None,None ))
+#
+#     print ('Number of queries:', len(queries))
+#     print ('Completed in %.4fs' % (time.time() - t))
+#
+#     t = time.time()
+#     query_nodes = []
+#
+#     if trace :
+#         pl = PrologEngine(debugger=Debugger(trace=True))
+#     gp = LogicFormula()
+#     for query in queries :
+#         print ("Grounding for query '%s':" % query[0])
+#         gp, ground = pl.ground(db, query[0], gp)
+#         print (gp)
+#         print (ground)
+#         query_nodes += [ (n,query[0].withArgs(*x)) for n,x in ground ]
+#
+#     for query in evidence :
+#         gp, ground = pl.ground(db, query[0], gp)
+#         print ("Grounding for evidence '%s':" % query[0])
+#         print (gp)
+#         print (ground)
+#         query_nodes += [ (n,query[0].withArgs(*x)) for n,x in ground ]
+#
+#     print ('Completed in %.4fs' % (time.time() - t))
+#     print ()
+#
+#     qn_index, qn_name = zip(*query_nodes)
+#     gp, qn_index = gp.makeAcyclic( qn_index )
+#     query_nodes = zip(qn_index, qn_name)
+#
+#
+#     #new_query_nodes = gp.breakCycles( query_nodes )
+#
+#
+#     print ('========== GROUND PROGRAM ==========')
+#     with open(basename + '.dot', 'w') as f :
+#         f.write(gp.toDot(query_nodes))
+#     print ('See \'%s.dot\'.' % basename)
+#
+#
+#
+#
+#     print ('========== CNF ==========')
+#
+#     cnf, facts = gp.toCNF()
+#
+#     cnf_file = basename + '.cnf'
+#     with open(cnf_file, 'w') as f :
+#         print('\n'.join(cnf), file=f)
+#     print ('See \'%s\'.' % cnf_file)
+#
+#     print (facts)
+#
+#     sys.exit()
+#
+#
+#     print ('========== NNF ==========')
+#     nnf_file = basename +'.nnf'
+#     cmd = ['../version2.0/assist/darwin/dsharp', '-Fnnf', nnf_file, '-smoothNNF','-disableAllLits', cnf_file ] #
+#
+#     subprocess.check_call(cmd)
+#
+#     print (facts)
+#     qn = dict(query_nodes)
+#     qns = []
+#     nnf = GroundProgram()
+#     with open(nnf_file) as f :
+#         for line in f :
+#             line = line.strip().split()
+#             if line[0] == 'nnf' :
+#                 pass
+#             elif line[0] == 'L' :
+#                 name = int(line[1])
+#                 probs = (1.0,1.0)
+#                 if name < 0 :
+#                     prob = facts.get(-name, probs)[1]
+#                 else :
+#                     prob = facts.get(name, probs)[0]
+#                 if name in qn :
+#                     prob = str(prob) + '::' + str(qn[name])
+#                 elif -name in qn :
+#                     prob = str(prob) + '::-' + str(qn[-name])
+#                 # else :
+#                 #     prob = str(prob) + '::fact_' + str(name)
+#                 nnf._addNode( nnf._fact( None, None, prob ) )
+#
+#             elif line[0] == 'A' :
+#                 children = map(lambda x : int(x) + 1 , line[2:])
+#                 nnf._addNode( nnf._conj( tuple(children) ))
+#             elif line[0] == 'O' :
+#                 children = map(lambda x : int(x) + 1, line[3:])
+#                 nnf._addNode( nnf._disj( tuple(children) ))
+#             else :
+#                 print ('Unknown line type')
+#
+#     print (nnf)
+#     with open(basename + '.nnf.dot', 'w') as f :
+#         f.write(nnf.toDot())
+#     print (choices.values())
+#     print (query_nodes)
     
                 
     

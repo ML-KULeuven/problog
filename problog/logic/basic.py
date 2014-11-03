@@ -239,6 +239,9 @@ class Constant(Term) :
         """
         return True
     
+    def __hash__(self) :
+        return hash(self.functor)
+    
     def __str__(self) :
         if type(self.functor) == int or type(self.functor) == float :
             return str(self.functor)

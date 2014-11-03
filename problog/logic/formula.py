@@ -11,36 +11,80 @@ class LogicFormula(object) :
     _atom = namedtuple('atom', ('identifier', 'probability', 'group') )
     _conj = namedtuple('conj', ('children') )
     _disj = namedtuple('disj', ('children') )
+    # negation is encoded by using a negative number for the key
     
     def __init__(self) :
+        # List of nodes
         self.__nodes = []
+        # Lookup index for 'atom' nodes, key is identifier passed to addAtom()
         self.__index_atom = {}
+        # Lookup index for 'and' nodes, key is tuple of sorted children 
         self.__index_conj = {}
+        # Lookup index for 'or' nodes, key is tuple of sorted children
         self.__index_disj = {}
         
-    def _add( self, key, collection, node ) :
-        """Adds a new node, or reuses an existing one."""
-        if collection == None :
-            index = len(self.__nodes) + 1
-            self.__nodes.append( node )
-        elif not key in collection :
-            # Create a new entry, starting from 1
-            index = len(self.__nodes) + 1
-            # Add the entry to the collection
-            collection[key] = index
-            # Add entry to the set of nodes
-            self.__nodes.append( node )
+        # Node names (for nodes of interest)
+        self.__names = {}
+        
+    def addName(self, name, node_id) :
+        """Associates a name to the given node identifier."""
+        self.__names[str(name)] = node_id
+        
+    def getNode(self, name) :
+        """Get the node by name.
+        
+        :raises KeyError: if the given name was not found
+        """
+        return self.__names[name]
+        
+    def getNames(self) :
+        return self.__names.items()
+        
+    def _add( self, node, reuse=True ) :
+        """Adds a new node, or reuses an existing one.
+        
+        :param node: node to add
+        :param reuse: (default True) attempt to map the new node onto an existing one based on its content
+        
+        """
+        if reuse :            
+            # Determine the node's key and lookup identifier base on node type.
+            ntype = type(node).__name__
+            if ntype == 'atom' :
+                key = node.identifier
+                collection = self.__index_atom
+            elif ntype == 'conj' :
+                key = node.children
+                collection = self.__index_conj
+            elif ntype == 'disj' :
+                key = node.children
+                collection = self.__index_disj
+            else :
+                raise TypeError("Unexpected node type: '%s'." % ntype)
+        
+            if not key in collection :
+                # Create a new entry, starting from 1
+                index = len(self.__nodes) + 1
+                # Add the entry to the collection
+                collection[key] = index
+                # Add entry to the set of nodes
+                self.__nodes.append( node )
+            else :
+                # Retrieve the entry from collection
+                index = collection[key]
         else :
-            # Retrieve the entry from collection
-            index = collection[key]
+            # Don't reuse, just add node.
+            index = len(self.__nodes) + 1
+            self.__nodes.append( node )
+            
         # Return the entry
         return index
         
     def _update( self, key, value ) :
+        """Replace the node with the given node."""
         assert(self.isProbabilistic(key))
         assert(key > 0)            
         self.__nodes[ key - 1 ] = value
-    
         
     def addAtom( self, identifier, probability, group=None ) :
         """Add an atom to the formula.
@@ -51,20 +95,18 @@ class LogicFormula(object) :
         :type probability: :class:`problog.logic.basic.Term`
         :param group: a group identifier that identifies mutually exclusive atoms (or None if no constraint)
         :type group: :class:`str`
-        :returns: the identifiers of the node in the formula (returns 0 for deterministic atoms)
-        :rtype: :class:`int`
+        :returns: the identifiers of the node in the formula (returns self.TRUE for deterministic atoms)
         """
         if probability == None :
             return 0
         else :
-            return self._add( identifier, self.__index_atom, self._atom( identifier, probability, group ) )
+            return self._add( self._atom( identifier, probability, group ) )
     
     def addAnd( self, components ) :
         """Add a conjunction to the logic formula.
         
         :param components: a list of node identifiers that already exist in the logic formula.
         :returns: the key of the node in the formula (returns 0 for deterministic atoms)
-        :rtype: :class:`int`
         """
         return self._addCompound('conj', components, self.FALSE, self.TRUE)
         
@@ -88,17 +130,24 @@ class LogicFormula(object) :
             node = self._getNode(key)
             if type(node).__name__ != 'disj' :
                 raise ValueError("Can only update disjunctive node")
-            self._addCompound('disj', node.children + (component,), self.TRUE, self.FALSE, readonly=False, update=key )
+                
+            if component == None :
+                # Don't do anything
+                pass
+            elif component == 0 :
+                return self._update( key, self._disj( (0,) ) )
+            else :
+                return self._update( key, self._disj( node.children + (component,) ) )
             return key
     
-    def negate( self, key ) :
+    def addNot( self, component ) :
         """Returns the key to the negation of the node."""
-        if self.isTrue(key) :
+        if self.isTrue(component) :
             return self.FALSE
-        elif self.isFalse(key) :
+        elif self.isFalse(component) :
             return self.TRUE
         else :
-            return -key
+            return -component
     
     def isTrue( self, key ) :
         """Indicates whether the given node is deterministically True."""
@@ -122,25 +171,35 @@ class LogicFormula(object) :
         """Get the type of the given node (fact, disj, conj)."""
         return type(self._getNode(key)).__name__
                 
-    def makeAcyclic(self, nodes) :
+    def makeAcyclic(self, preserve_tables=False) :
         """Break cycles."""
+        
+        assert(not preserve_tables)                    
+        
+        # TODO implement preserve tables
+        #   This copies the table information from self._def_nodes and translates all result nodes
+        #   This requires all result nodes to be maintained separately (add them to protected).
+        #   Problem: how to do this without knowledge about internal structure of the engine. 
+        
+        
         # Output formula
         output = LogicFormula()
         
         # Protected nodes (these have to exist separately)
-        protected = set(nodes)
+        protected = set(self.__names.values())
         
         # Translation table from old to new.
         translate = {}
         
         # Handle the given nodes one-by-one
-        output_nodes = []
-        for node in nodes :
+        for name, node in self.getNames() :
             new_node, cycles = self._extract( output, node, protected, translate )
             translate[node] = new_node
-            output_nodes.append(new_node)
+            output.addName(name, new_node)
+            
+        print ('\n'.join(map(str,translate.items())))
         
-        return output, output_nodes
+        return output
         
     def makeNNF(self) :
         """Transform into NNF form."""
@@ -151,6 +210,7 @@ class LogicFormula(object) :
         pass
         
     def _addCompound(self, nodetype, content, t, f, readonly=True, update=None) :
+        """Add a compound term (AND or OR)."""
         assert( content )   # Content should not be empty
         
         # If there is a t node, (true for OR, false for AND)
@@ -174,7 +234,7 @@ class LogicFormula(object) :
         
         if nodetype == 'conj' :
             node = self._conj( content )
-            return self._add( content, self.__index_conj, node )
+            return self._add( node )
         elif nodetype == 'disj' :
             node = self._disj( content )
             if update != None :
@@ -182,12 +242,12 @@ class LogicFormula(object) :
                 return self._update( update, node )
             elif readonly :
                 # If the node is readonly, we can try to reuse an existing node.
-                return self._add( content, self.__index_disj, node )
+                return self._add( node )
             else :
                 # If node is modifiable, we shouldn't reuse an existing node.
-                return self._add( content, None, node )
+                return self._add( node, reuse=False )
         else :
-            raise ValueError("Unexpected node type: '%s'" % nodetype) 
+            raise TypeError("Unexpected node type: '%s'." % nodetype) 
     
     
 
@@ -248,7 +308,7 @@ class LogicFormula(object) :
             return None, {index}
         elif abs(index) in translate :
             if index < 0 :
-                return self.negate(translate[abs(index)]), set()
+                return self.addNot(translate[abs(index)]), set()
             else :
                 return translate[abs(index)], set()
         else :
@@ -277,11 +337,10 @@ class LogicFormula(object) :
 
             if index in cycles and new_node != None and new_node != 0 :
                 cycles.remove(index)
-                if not cycles :
-                    translate[abs(index)] = new_node
-                    return new_node, cycles
+            if not cycles :
+                translate[abs(index)] = new_node
             if index < 0 :
-                return self.negate(new_node), cycles
+                return self.addNot(new_node), cycles
             else :
                 return new_node, cycles
         else :
@@ -290,7 +349,7 @@ class LogicFormula(object) :
                 res = gp.addAtom( node.identifier, node.probability, node.group )
                 translate[abs(index)] = res 
             if index < 0 :
-                return self.negate(res), set()
+                return self.addNot(res), set()
             else :
                 return res, set()
         
@@ -306,9 +365,11 @@ class LogicFormula(object) :
         s =  '\n'.join('%s: %s' % (i+1,n) for i, n in enumerate(self.__nodes))   
         return s   
 
-    def toDot(self, queries) :
+    def toDot(self) :
         # Keep track of mutually disjunctive nodes.
         clusters = defaultdict(list)
+        
+        queries = self.getNames()
         
         # Keep a list of introduced not nodes to prevent duplicates.
         negative = set([])
@@ -356,13 +417,20 @@ class LogicFormula(object) :
             c += 1 
             
         q = 0
-        for index, name in queries :
-            if index < 0 and not index in negative :
+        for name, index in queries :
+            if index == None :
+                s += '%s [label="NOT"];\n' % (index)
+                s += '%s -> %s;\n' % (index,0)
+                if not 0 in negative :
+                    s += '%s [label="true"];\n' % (0)
+                    negative.add(0)
+            elif index < 0 and not index in negative :
                 s += '%s [label="NOT"];\n' % (index)
                 s += '%s -> %s;\n' % (index,-index)
                 negative.add(index)
             elif index == 0 and not index in negative :
                 s += '%s [label="true"];\n' % (index)
+                negative.add(0)
             s += 'q_%s [ label="%s", shape="plaintext" ];\n'   % (q, name)
             s += 'q_%s -> %s [style="dotted"];\n'  % (q, index)
             q += 1
@@ -419,3 +487,37 @@ class LogicFormula(object) :
         clause_count = len(lines)
     
         return [ 'p cnf %s %s' % (atom_count, clause_count) ] + lines, facts
+
+
+class CNF(object) :
+    
+    pass
+    
+    
+#class 
+
+
+# class LogicGraph(object) :
+#   
+#
+#
+
+# class LogicProgram(object ):
+#     pass
+#
+#
+# class AndOrDAG(object) :
+#     # Cycle free
+#
+#     pass
+#
+# class CNF(object) :
+#     # CNF format
+#     pass
+#
+# class sdDNNF(object) :
+#     # DDNNF format
+#     pass
+#
+
+

@@ -249,5 +249,6 @@ Note that ``b(4)`` occurs for two of the body groundings. The nodes ``choose_`` 
     
         not (ad1_a1 /\ ad1_a2) and not (ad1_a1 /\ ad1_a3) and not (ad1_a2 /\ ad1_a3) and (not body \/ ad1_a1 \/ ad1_a2 \/ ad1_a3)
     
-     
+
+
     

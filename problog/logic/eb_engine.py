@@ -2,7 +2,6 @@ from __future__ import print_function
 
 from .basic import Term, Constant
 from .program import ClauseDB, PrologString
-from .engine import BaseEngine, UnknownClause, _UnknownClause, Debugger
 from .formula import LogicFormula
 
 """ 
@@ -51,208 +50,34 @@ def unify( v1, v2, context1=None, context2=None ) :
         except UnifyError :
             return None
 
+class _UnknownClause(Exception) : pass
 
-class PrologInstantiationError(Exception) : pass
+class UnknownClause(Exception) : pass
 
-class PrologTypeError(Exception) : pass
 
-def computeFunction(func, args, context) :
-    if func == "'+'" :
-        return Constant(args[0].value + args[1].value)
-    elif func == "'-'" :
-        return Constant(args[0].value - args[1].value)
-    elif func == "'*'" :
-        return Constant(args[0].value * args[1].value)
-    elif func == "'/'" :
-        return Constant(args[0].value / args[1].value)
-
-    else :
-        raise ValueError("Unknown function: '%s'" % func)
-
-def compute( value, context ) :
-    if type(value) == int :
-        return compute(context[value], context)
-    elif value == None :
-        raise PrologInstantiationError(value)        
-    elif value.isConstant() :
-        if type(value.value) == str :
-            raise PrologTypeError('number', value)
-        else :
-            return value
-    else :
-        args = [ compute(arg, context) for arg in value.args ]
-        return computeFunction( value.functor, args, context )
-
-def builtin_true( context, callback ) :
-    callback.newResult(context)
-    callback.complete()    
-
-def builtin_fail( context, callback ) :
-    callback.complete()
-
-def builtin_eq( A, B, context, callback ) :
-    """A = B
-        A and B not both variables
-    """
-    if A == None and B == None :
-        raise RuntimeError('Operation not supported!')
-    else :
-        try :
-            R = unify_value(A,B)
-            callback.newResult( ( R, R ) )
-        except UnifyError :
-            pass
-        callback.complete()
-
-def builtin_neq( A, B, context, callback ) :
-    """A = B
-        A and B not both variables
-    """
-    if A == None and B == None :
-        raise RuntimeError('Operation not supported!')
-    else :
-        try :
-            R = unify_value(A,B)
-        except UnifyError :
-            callback.newResult( ( A, B ) )
-        callback.complete()
-            
-def builtin_notsame( A, B, context, callback ) :
-    """A \== B"""
-    if A == None and B == None :
-        raise RuntimeError('Operation not supported!')
-    else :
-        if A != B :
-            callback.newResult( (A,B) )
-        callback.complete()    
-
-def builtin_same( A, B, context, callback ) :
-    """A \== B"""
-    if A == None and B == None :
-        raise RuntimeError('Operation not supported!')
-    else :
-        if A == B :
-            callback.newResult( (A,B) )
-        callback.complete()    
-
-def builtin_gt( A, B, context, callback ) :
-    """A > B 
-        A and B are ground
-    """
-    vA = compute(A, context).value
-    vB = compute(B, context).value
+class EventBasedEngine(object) :
     
-    if (vA > vB) :
-        callback.newResult( (A,B) )
-    callback.complete()
-
-def builtin_lt( A, B, context, callback ) :
-    """A > B 
-        A and B are ground
-    """
-    vA = compute(A, context).value
-    vB = compute(B, context).value
-    
-    if (vA < vB) :
-        callback.newResult( (A,B) )
-    callback.complete()
-
-def builtin_le( A, B, context, callback ) :
-    """A =< B 
-        A and B are ground
-    """
-    vA = compute(A, context).value
-    vB = compute(B, context).value
-    
-    if (vA <= vB) :
-        callback.newResult( (A,B) )
-    callback.complete()
-
-def builtin_ge( A, B, context, callback ) :
-    """A >= B 
-        A and B are ground
-    """
-    vA = compute(A, context).value
-    vB = compute(B, context).value
-    
-    if (vA >= vB) :
-        callback.newResult( (A,B) )
-    callback.complete()
-
-def builtin_val_neq( A, B, context, callback ) :
-    """A =/= B 
-        A and B are ground
-    """
-    vA = compute(A, context).value
-    vB = compute(B, context).value
-    
-    if (vA != vB) :
-        callback.newResult( (A,B) )
-    callback.complete()
-
-def builtin_val_eq( A, B, context, callback ) :
-    """A =:= B 
-        A and B are ground
-    """
-    vA = compute(A, context).value
-    vB = compute(B, context).value
-    
-    if (vA == vB) :
-        callback.newResult( (A,B) )
-    callback.complete()
-
-
-
-def builtin_is( A, B, context, callback ) :
-    """A is B
-        B is ground
-    """
-    vB = compute(B, context).value
-    try :
-        R = Constant(vB)
-        unify_value(A,R)
-        callback.newResult( (R,B) )
-    except UnifyError :
-        pass
-    callback.complete()
+    def __init__(self, builtins=True, debugger=None) :
+        self.__builtin_index = {}
+        self.__builtins = []
         
-def addBuiltins(engine) :
-    engine.addBuiltIn('true', 0, builtin_true)
-    engine.addBuiltIn('fail', 0, builtin_fail)
-    # engine.addBuiltIn('call/1', _builtin_call_1)
-
-    engine.addBuiltIn('=', 2, builtin_eq)
-    engine.addBuiltIn('\=', 2, builtin_eq)
-    engine.addBuiltIn('==', 2, builtin_same)
-    engine.addBuiltIn('\==', 2, builtin_notsame)
-
-    engine.addBuiltIn('is', 2, builtin_is)
-
-    engine.addBuiltIn('>', 2, builtin_gt)
-    engine.addBuiltIn('<', 2, builtin_lt)
-    engine.addBuiltIn('>', 2, builtin_ge)
-    engine.addBuiltIn('=<', 2, builtin_le)
-    engine.addBuiltIn('>=', 2, builtin_gt)
-    engine.addBuiltIn('=\=', 2, builtin_val_neq)
-    engine.addBuiltIn('=:=', 2, builtin_val_eq)
-
-    
-
-class EventBasedEngine(BaseEngine) :
-    
-    def __init__(self) :
-        BaseEngine.__init__(self)
-        self.nodes = {}
+        if builtins :
+            addBuiltins(self)
         
-        self.debugger = None
-        #self.debugger = Debugger(trace=True)
+        self.debugger = debugger
+        
+    def _getBuiltIn(self, index) :
+        real_index = -(index + 1)
+        return self.__builtins[real_index]
+        
+    def addBuiltIn(self, pred, arity, func) :
+        sig = '%s/%s' % (pred, arity)
+        self.__builtin_index[sig] = -(len(self.__builtin_index) + 1)
+        self.__builtins.append( func )
+        
+    def getBuiltIns(self) :
+        return self.__builtin_index
     
-    def query(self, db, term, level=0) :
-        gp = LogicFormula()
-        gp, result = self.ground(db, term, gp, level)
-        
-        return [ y for x,y in result ]
-        
     def enter_call(self, node, context) :
         if self.debugger :
             self.debugger.enter(0, node, context)
@@ -260,27 +85,38 @@ class EventBasedEngine(BaseEngine) :
     def exit_call(self, node, context) :
         if self.debugger :
             self.debugger.exit(0, node, context, None)
-                
     
-    def ground(self, db, term, gp=None, level=0) :
-        db = ClauseDB.createFrom(db, builtins=self.getBuiltIns())
+    def query(self, db, term, level=0) :
+        gp = LogicFormula()
+        gp, result = self._ground(db, term, gp, level)
+        return [ y for x,y in result ]
+            
+    def prepare(self, db) :
+        return ClauseDB.createFrom(db, builtins=self.getBuiltIns())
+    
+    def ground(self, db, term, gp=None) :
+        gp, results = self._ground(db, term, gp)
         
-        if gp == None :
-            gp = GroundProgram()
+        for node_id, args in results :
+            gp.addName( term.withArgs(*args), node_id )
+        if not results :
+            gp.addName( term, None )
         
-        # tdb = TermDB()
-        # args = [ tdb.add(x) for x in term.args ]
+        return gp
+    
+    def _ground(self, db, term, gp=None, level=0) :
+        db = self.prepare(db)
+        if gp == None : gp = LogicFormula()
+        
         clause_node = db.find(term)
-        
         if clause_node == None : return gp, []
         
         call_node = ClauseDB._call( term.functor, range(0,len(term.args)), clause_node )
-        
         res = ResultCollector()
         
         self._eval_call(db, gp, None, call_node, term.args, res )
+        
         return gp, res.results
-    
     
     def _eval(self, db, gp, node_id, context, parent) :
         node = db.getNode( node_id )
@@ -435,10 +271,15 @@ class EventBasedEngine(BaseEngine) :
     
     def _eval_define( self, db, gp, node_id, node, call_args, parent ) :
         key = (node_id, tuple(call_args))
-        pnode = self.nodes.get(key)
+        
+        if not hasattr(gp, '_def_nodes') :
+            gp._def_nodes = {}
+        def_nodes = gp._def_nodes
+        
+        pnode = def_nodes.get(key)
         if pnode == None :
             pnode = ProcessDefine( self, db, gp, node_id, node, call_args )
-            self.nodes[key] = pnode
+            def_nodes[key] = pnode
             pnode.addListener(parent)
             pnode.execute()
         else :
@@ -477,11 +318,6 @@ class ProcessNode(object) :
         """Send the ``newResult`` event to all the listeners of this node.
             The arguments are used as the arguments of the event.
         """
-        # print ('NOTIFY', self, result, ground_node, source)
-        # if self.isComplete :
-        #     print ('WARNING', self, type(self))
-        
-       # assert (not self.isComplete)   # Complete is the last event that can be sent.
         for listener, evttype in self.listeners :
             if evttype & self.EVT_RESULT :
                 #print ('SEND', 'result', id(self), '->', id(listener))
@@ -545,7 +381,7 @@ class ProcessNot(ProcessNode) :
     def complete(self, source=None) :
         print('NOT COMPLETE', self.ground_nodes)
         if self.ground_nodes :
-            or_node = self.gp.negate(self.gp.addOr( self.ground_nodes ))
+            or_node = self.gp.addNot(self.gp.addOr( self.ground_nodes ))
             if or_node != None :
                 self.notifyListeners(self.context, ground_node=or_node)
         else :
@@ -625,16 +461,20 @@ class ProcessDefine(ProcessNode) :
     
     def newResult(self, result, ground_node=0, source=None) :
         res = (tuple(result))
+        debug = (self.node.functor in ('stress','smokes'))
+        if debug : print ('NEW RESULT:', self.node, result, ground_node)
         if res in self.results :
             res_node = self.results[res]
             # Also matches siblings: p::have_one(1). have_two(X,Y) :- have_one(X), have_one(X). query(have_two(1,1)). 
             # if self.gp._deref(res_node) == self.gp._deref(ground_node) : print ('CYCLE!!?!?!?!?!?!? =>', res_node)
-            
+            if debug: print ('\t UPDATE NODE:', res_node)     
             self.gp.addDisjunct( res_node, ground_node )
         else :
             self.engine.exit_call( self.node, result )
             result_node = self.gp.addOr( (ground_node,), readonly=False )
             self.results[ res ] = result_node
+            
+            if debug: print ('\t STORED AS:', result_node)        
             self.notifyListeners(result, result_node, source )
             
     def complete(self, source=None) :
@@ -704,136 +544,184 @@ class ResultCollector(object) :
     def complete(self, source=None) :
         pass
 
+class PrologInstantiationError(Exception) : pass
 
+class PrologTypeError(Exception) : pass
 
-def test1() :
-    
-    program = """
-    parent(erik,katrien). 
-    parent(katrien,liese). 
-    0.3::parent(erik,anton). 
-    0.5::parent(erik,pieter).
-    0.2::parent(maria,erik).
-    parent(maria,francinne).
-    
-    married(francinne,erik).
-    parent(X,Y) :- married(X,Z), parent(Z,Y).
+def computeFunction(func, args, context) :
+    if func == "'+'" :
+        return Constant(args[0].value + args[1].value)
+    elif func == "'-'" :
+        return Constant(args[0].value - args[1].value)
+    elif func == "'*'" :
+        return Constant(args[0].value * args[1].value)
+    elif func == "'/'" :
+        return Constant(args[0].value / args[1].value)
 
-    ancestor1(X,Y) :- parent(X,Y).
-    ancestor1(X,Y) :- parent(Z,Y), ancestor1(X,Z).
+    else :
+        raise ValueError("Unknown function: '%s'" % func)
 
-    
-    ancestor2(X,Y) :- parent(X,Y).
-    ancestor2(X,Y) :- ancestor2(X,Z), parent(Z,Y).
+def compute( value, context ) :
+    if type(value) == int :
+        return compute(context[value], context)
+    elif value == None :
+        raise PrologInstantiationError(value)        
+    elif value.isConstant() :
+        if type(value.value) == str :
+            raise PrologTypeError('number', value)
+        else :
+            return value
+    else :
+        args = [ compute(arg, context) for arg in value.args ]
+        return computeFunction( value.functor, args, context )
 
-    ancestor3(X,Y) :- ancestor3(X,Z), parent(Z,Y).
-    ancestor3(X,Y) :- parent(X,Y).
+def builtin_true( context, callback ) :
+    callback.newResult(context)
+    callback.complete()    
 
-    ancestor4(X,Y) :- ancestor4(X,Z), ancestor4(Z,Y).
-    ancestor4(X,Y) :- parent(X,Y).
+def builtin_fail( context, callback ) :
+    callback.complete()
 
+def builtin_eq( A, B, context, callback ) :
+    """A = B
+        A and B not both variables
     """
-    
-    pl = PrologString( program )
-    
-    db = ClauseDB.createFrom(pl)
-    
-    eng = EventBasedEngine()
+    if A == None and B == None :
+        raise RuntimeError('Operation not supported!')
+    else :
+        try :
+            R = unify_value(A,B)
+            callback.newResult( ( R, R ) )
+        except UnifyError :
+            pass
+        callback.complete()
 
-    gp, res = eng.ground( db,  Term('ancestor4',None,None ) )
-
-    print (len(res)) 
-    for r in res :
-        print (r)
-        
-    print (gp)
-
-    
-    # processor = eng.createProcessor( def_index, res )
-    #
-    #
-    # print ('======')
-    # processor = eng.createProcessor( def_index, res )
-    # processor.evaluate( (Term('erik'),None) )
-    #
-    # print ('======')
-    #
-    # def_index = db._getHead(Term('ancestor',None,None))
-    # facts = db.getNode(def_index).children
-    #
-    # processor = eng.createProcessor( def_index, res )
-    # processor.evaluate( (None,Term('liese')) )
-
-def test2() :
-    
-    program = """
-        0.3::stress(X) :- person(X).
-        0.2::influences(X,Y) :- person(X), person(Y).
-
-        smokes(X) :- stress(X).
-        smokes(X) :- friend(X,Y), influences(Y,X), smokes(Y).
-
-        0.4::asthma(X) <- smokes(X).
-
-        person(1).
-        person(2).
-        person(3).
-        person(4).
-
-        friend(1,2).
-        friend(2,1).
-        friend(2,4).
-        friend(3,2).
-        friend(4,2).
+def builtin_neq( A, B, context, callback ) :
+    """A = B
+        A and B not both variables
     """
-    
-    pl = PrologString( program )
-    
-    db = ClauseDB.createFrom(pl)
-    
-    
-    eng = EventBasedEngine()
-    res = ResultCollector() 
-    
-    print ('====')
-    
-    
-    gp, ress = eng.ground( db, Term('smokes',Constant(1)))
-    
-    print (ress)
-    
-    print (gp)
+    if A == None and B == None :
+        raise RuntimeError('Operation not supported!')
+    else :
+        try :
+            R = unify_value(A,B)
+        except UnifyError :
+            callback.newResult( ( A, B ) )
+        callback.complete()
+            
+def builtin_notsame( A, B, context, callback ) :
+    """A \== B"""
+    if A == None and B == None :
+        raise RuntimeError('Operation not supported!')
+    else :
+        if A != B :
+            callback.newResult( (A,B) )
+        callback.complete()    
 
-def test3() :
-    
-    program = """
-        
-        p(X) :- r(X).
-        p(X) :- \+ p(X).
-        
-        q(1).
-        q(2).
-        
-        r(1).
+def builtin_same( A, B, context, callback ) :
+    """A \== B"""
+    if A == None and B == None :
+        raise RuntimeError('Operation not supported!')
+    else :
+        if A == B :
+            callback.newResult( (A,B) )
+        callback.complete()    
 
+def builtin_gt( A, B, context, callback ) :
+    """A > B 
+        A and B are ground
     """
+    vA = compute(A, context).value
+    vB = compute(B, context).value
     
-    pl = PrologString( program )
-    
-    db = ClauseDB.createFrom(pl)
-    
-    def_index = db._getHead(Term('p',None))
-    facts = db.getNode(def_index).children
-    
-    eng = EventBasedEngine()
-    res = ResultCollector() 
-    
-    print ('====')
-    
-    print ('== 1 ==')
-    eng._eval( db, def_index, (Constant(1),), res)
-    print ('== 2 ==')
-    eng._eval( db, def_index, (Constant(2),), res)
-    print ('== 3 ==')
-    eng._eval( db, def_index, (Constant(3),), res)
+    if (vA > vB) :
+        callback.newResult( (A,B) )
+    callback.complete()
 
+def builtin_lt( A, B, context, callback ) :
+    """A > B 
+        A and B are ground
+    """
+    vA = compute(A, context).value
+    vB = compute(B, context).value
+    
+    if (vA < vB) :
+        callback.newResult( (A,B) )
+    callback.complete()
+
+def builtin_le( A, B, context, callback ) :
+    """A =< B 
+        A and B are ground
+    """
+    vA = compute(A, context).value
+    vB = compute(B, context).value
+    
+    if (vA <= vB) :
+        callback.newResult( (A,B) )
+    callback.complete()
+
+def builtin_ge( A, B, context, callback ) :
+    """A >= B 
+        A and B are ground
+    """
+    vA = compute(A, context).value
+    vB = compute(B, context).value
+    
+    if (vA >= vB) :
+        callback.newResult( (A,B) )
+    callback.complete()
+
+def builtin_val_neq( A, B, context, callback ) :
+    """A =/= B 
+        A and B are ground
+    """
+    vA = compute(A, context).value
+    vB = compute(B, context).value
+    
+    if (vA != vB) :
+        callback.newResult( (A,B) )
+    callback.complete()
+
+def builtin_val_eq( A, B, context, callback ) :
+    """A =:= B 
+        A and B are ground
+    """
+    vA = compute(A, context).value
+    vB = compute(B, context).value
+    
+    if (vA == vB) :
+        callback.newResult( (A,B) )
+    callback.complete()
+
+def builtin_is( A, B, context, callback ) :
+    """A is B
+        B is ground
+    """
+    vB = compute(B, context).value
+    try :
+        R = Constant(vB)
+        unify_value(A,R)
+        callback.newResult( (R,B) )
+    except UnifyError :
+        pass
+    callback.complete()
+        
+def addBuiltins(engine) :
+    engine.addBuiltIn('true', 0, builtin_true)
+    engine.addBuiltIn('fail', 0, builtin_fail)
+    # engine.addBuiltIn('call/1', _builtin_call_1)
+
+    engine.addBuiltIn('=', 2, builtin_eq)
+    engine.addBuiltIn('\=', 2, builtin_eq)
+    engine.addBuiltIn('==', 2, builtin_same)
+    engine.addBuiltIn('\==', 2, builtin_notsame)
+
+    engine.addBuiltIn('is', 2, builtin_is)
+
+    engine.addBuiltIn('>', 2, builtin_gt)
+    engine.addBuiltIn('<', 2, builtin_lt)
+    engine.addBuiltIn('>', 2, builtin_ge)
+    engine.addBuiltIn('=<', 2, builtin_le)
+    engine.addBuiltIn('>=', 2, builtin_gt)
+    engine.addBuiltIn('=\=', 2, builtin_val_neq)
+    engine.addBuiltIn('=:=', 2, builtin_val_eq)

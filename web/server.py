@@ -7,6 +7,7 @@ import traceback
 urls = ( '/ground', 'Ground',
          '/models', 'GetModel',
          '/submit', 'Submit',
+         '/docs/(.*)', 'Docs',
          '/(.*)', 'File')
 
 
@@ -17,12 +18,13 @@ sys.path.append('..')
 
 from problog.logic import Term, Var, Constant
 from problog.logic.program import PrologString, ClauseDB
-from problog.logic.prolog import PrologEngine, addPrologBuiltins
 from problog.logic.engine import Debugger
 from problog.logic.eb_engine import EventBasedEngine, addBuiltins
 from problog.logic.formula import LogicFormula
 
 import subprocess as sp
+
+from main import ground
 
 import glob, os
 
@@ -57,6 +59,17 @@ class File(object) :
                 return f.read()
         else :
             raise web.notfound()
+
+class Docs(object) :
+    
+    def GET(self, file=None, **kwdargs) :
+        if not file :
+            file = 'index.html'
+        
+        path = os.path.abspath(os.path.join('../docs/build/html/', file ))
+        with open(path) as f:
+            return f.read()
+
 
 class Ground(object) :
     
@@ -123,79 +136,7 @@ class GetModel(object) :
     
         
 
-def ground(model) :
-    lp = PrologString(model)
-    
-    print ('======= INITIALIZE DATA ======')
-    t = time.time()
-    pl = EventBasedEngine() # was PrologEngine()
-    addBuiltins(pl)
-    print ('Completed in %.4fs' % (time.time() - t))
-    
-    print ('========= PARSE DATA =========')
-    t = time.time()
-    db = ClauseDB.createFrom(lp, builtins=pl.getBuiltIns())
-    print ('Completed in %.4fs' % (time.time() - t))
-    
-    print ('======= LOGIC PROGRAM =======')
 
-    t = time.time()
-    print ('\n'.join(map(str,db)))
-    print ('Completed in %.4fs' % (time.time() - t))
-    print ()
-    print ('====== CLAUSE DATABASE ======')
-    
-    print (db)
-    
-    print ()
-    print ('========== QUERIES ==========')
-    t = time.time()
-    queries = pl.query(db, Term( 'query', None ))
-    evidence = pl.query(db, Term( 'evidence', None, None ))
-    
-    print ('Number of queries:', len(queries))
-    print ('Completed in %.4fs' % (time.time() - t))
-    
-    t = time.time()
-    query_nodes = []
-    
-
-    #pl = PrologEngine(debugger=Debugger(trace=True))
-    gp = LogicFormula()
-    for query in queries :
-        print ("Grounding for query '%s':" % query[0])
-        gp, ground = pl.ground(db, query[0], gp)
-        print (gp)
-        print (ground)
-        query_nodes += [ (n,query[0].withArgs(*x)) for n,x in ground ]
-
-    for query in evidence :
-        gp, ground = pl.ground(db, query[0], gp)
-        print ("Grounding for evidence '%s':" % query[0])
-        print (gp)
-        print (ground)
-        query_nodes += [ (n,query[0].withArgs(*x)) for n,x in ground ]
-    
-    filename = '/tmp/pl.dot'
-    print ('Completed in %.4fs' % (time.time() - t))
-    print ()
-    
-    qn_index, qn_name = zip(*query_nodes)
-    gp, qn_index = gp.makeAcyclic( qn_index )
-    query_nodes = zip(qn_index, qn_name)
-    
-    
-    #query_nodes = gp.breakCycles( query_nodes )
-    
-    #gp.extract(qn)
-    
-    print (gp)
-    
-    print ('========== GROUND PROGRAM ==========')
-    with open(filename, 'w') as f :
-        f.write(gp.toDot(query_nodes))
-    print ('See \'%s\'.' % filename)
-    return filename
 
 
 class GenericService(object) :
