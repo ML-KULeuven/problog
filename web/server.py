@@ -85,6 +85,7 @@ class Ground(object) :
             lp = PrologString(model)    
             
             gp = ground(lp)
+            print (gp)
             gp = gp.makeAcyclic()    
             filename = '/tmp/pl.dot'
             with open(filename, 'w') as f :

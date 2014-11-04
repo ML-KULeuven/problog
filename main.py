@@ -11,7 +11,7 @@ sys.setrecursionlimit(10000)
 from problog.logic import Term, Var, Constant
 from problog.logic.program import PrologFile, ClauseDB, PrologString
 from problog.logic.engine import DefaultEngine
-from problog.logic.formula import LogicFormula
+from problog.logic.formula import LogicFormula, CNF, NNFFile
 
 
 def ground(model) :
@@ -24,12 +24,46 @@ def ground(model) :
         
     gp = LogicFormula()
     for query in queries :
-        gp = engine.ground(db, query[0], gp)
+        gp = engine.ground(db, query[0], gp, label='query')
 
     for query in evidence :
-        gp = engine.ground(db, query[0], gp)
+        if str(query[1]) == 'true' :
+            gp = engine.ground(db, query[0], gp, label='evidence')
+        else :
+            gp = engine.ground(db, query[0], gp, label='-evidence')
 
     return gp
+    
+def convert(gp) :
+    
+    return CNF(gp)
+    
+def compile(cnf) :
+    
+    cnf_file = '/tmp/pl.cnf'
+    with open(cnf_file, 'w') as f :
+        f.write(cnf.toDimacs())
+
+    nnf_file = '/tmp/pl.nnf'
+    cmd = ['../version2.0/assist/darwin/dsharp', '-Fnnf', nnf_file, '-smoothNNF','-disableAllLits', cnf_file ] #
+
+    attempts_left = 10
+    success = False
+    while attempts_left and not success :
+        try :
+            subprocess.check_call(cmd)
+            success = True
+        except subprocess.CalledProcessError as err :
+            print (err)
+            print ("dsharp crashed, retrying", file=sys.stderr)
+            attempts_left -= 1
+            if attempts_left == 0 :
+                raise err
+        
+    return NNFFile(nnf_file, cnf.facts, cnf.names)
+    
+def evaluate(nnf) :
+    pass
 
 def main( filename ) :
     
@@ -48,6 +82,47 @@ def main( filename ) :
     with open(filename, 'w') as f :
         f.write(gp.toDot())
     print ('See \'%s\'.' % filename)
+    
+    print (gp.getNames())
+    
+    cnf = convert(gp)
+    
+    nnf = compile(cnf)
+    
+    print (nnf)
+    
+    filename = '/tmp/pl.nnf.dot'
+    with open(filename, 'w') as f :
+        f.write(nnf.toDot())
+    print ('See \'%s\'.' % filename)
+    
+    print (nnf.getNamesWithLabel())
+
+    # Probability of evidence
+    for n_ev, node_ev in nnf.getNames('evidence') :
+        print ("Positive evidence:", node_ev, n_ev)
+        nnf.setRTrue(node_ev)
+    for n_ev, node_ev in nnf.getNames('-evidence') :
+        print ("Negative evidence:", node_ev, n_ev)
+        nnf.setRFalse(node_ev) 
+    prob_evidence = nnf.getProbability( len(nnf) )
+    nnf.resetProbabilities()
+    
+    # Probability of query given evidence
+    for name, node in nnf.getNames('query') :
+        print ("Query:", node, name)
+        nnf.setTrue(node)
+        for n_ev, node_ev in nnf.getNames('evidence') :
+            print ("Positive evidence:", node_ev, n_ev)
+            nnf.setRTrue(node_ev)
+        for n_ev, node_ev in nnf.getNames('-evidence') :
+            print ("Negative evidence:", node_ev, n_ev)
+            nnf.setRFalse(node_ev)            
+
+        print ('==>', name, ':', nnf.getProbability( len(nnf) ) / prob_evidence )    
+        nnf.resetProbabilities()
+
+    
     
 #
 #     basename = os.path.splitext(filename)[0]

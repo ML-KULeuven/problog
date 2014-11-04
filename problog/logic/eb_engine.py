@@ -61,7 +61,7 @@ def unify( source_value, target_value, target_context=None ) :
             if current_value == None :
                 target_context[target_value] = source_value
             else :
-                unify( source_value, current_value )
+                unify( current_value, source_value )
     elif target_value == None :
         pass
     else :
@@ -69,6 +69,8 @@ def unify( source_value, target_value, target_context=None ) :
         if source_value == None :  # a variable
             return True # unification successful
         else :
+            # print (source_value, type(source_value))
+            # print (target_value, type(target_value))
             assert( isinstance( source_value, Term ) )
             if target_value.signature == source_value.signature :
                 for s_arg, t_arg in zip(source_value.args, target_value.args) :
@@ -121,13 +123,13 @@ class EventBasedEngine(object) :
     def prepare(self, db) :
         return ClauseDB.createFrom(db, builtins=self.getBuiltIns())
     
-    def ground(self, db, term, gp=None) :
+    def ground(self, db, term, gp=None, label=None) :
         gp, results = self._ground(db, term, gp)
         
         for node_id, args in results :
-            gp.addName( term.withArgs(*args), node_id )
+            gp.addName( term.withArgs(*args), node_id, label )
         if not results :
-            gp.addName( term, None )
+            gp.addName( term, None, label )
         
         return gp
     
@@ -187,6 +189,7 @@ class EventBasedEngine(object) :
             # Notify parent
             parent.newResult( node.args, ground_node=gp.addAtom(node_id, node.probability) )
         except UnifyError :
+            print ('FACT unify', node.args, call_args)
             pass
         parent.complete()    
 
@@ -261,6 +264,7 @@ class EventBasedEngine(object) :
             # evaluate the body, output should be send to the context-switcher
             self._eval( db, gp, node.child, context, context_switch )
         except UnifyError :
+            print ('CLAUSE unify', node.args, call_args)
             #print ('unification failed', node.args, call_args, context)
             pass    # head and call are not unifiable
             
@@ -479,7 +483,6 @@ class ProcessDefine(ProcessNode) :
     def newResult(self, result, ground_node=0, source=None) :
         res = (tuple(result))
         #debug = (self.node.functor in ('stress','smokes'))
-        #if debug : print ('NEW RESULT:', self.node, result, ground_node)
         if res in self.results :
             res_node = self.results[res]
             # Also matches siblings: p::have_one(1). have_two(X,Y) :- have_one(X), have_one(X). query(have_two(1,1)). 
@@ -534,16 +537,20 @@ class ProcessCallReturn(ProcessNode) :
                     
     def newResult(self, result, ground_node=0, source=None) :
         output = list(self.context)
-        for call_arg, res_arg in zip(self.call_args,result) :
-            unify( res_arg, call_arg, output )
-            #
-            #
-            # if type(call_arg) == int : # head_arg is a variable
-            #     output[call_arg] = res_arg
-            # else : # head arg is a constant => make sure it unifies with the call arg
-            #     pass
-        #print ('CALL_RETURN', self.context, self.call_args, output, result)        
-        self.notifyListeners(output, ground_node, source)    
+        try :
+            for call_arg, res_arg in zip(self.call_args,result) :
+#                unify( res_arg, call_arg, output )
+
+
+                if type(call_arg) == int : # head_arg is a variable
+                    output[call_arg] = res_arg
+                else : # head arg is a constant => make sure it unifies with the call arg
+                    pass
+            #print ('CALL_RETURN', self.context, self.call_args, output, result)        
+            self.notifyListeners(output, ground_node, source)    
+        except UnifyError :
+            pass
+            #print ('CALL unify', result, self.call_args)
     
 
 #def trace(*args) : print(*args)

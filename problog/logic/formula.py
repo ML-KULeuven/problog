@@ -24,21 +24,27 @@ class LogicFormula(object) :
         self.__index_disj = {}
         
         # Node names (for nodes of interest)
-        self.__names = {}
+        self.__names = defaultdict(dict)
         
-    def addName(self, name, node_id) :
+    def addName(self, name, node_id, label=None) :
         """Associates a name to the given node identifier."""
-        self.__names[str(name)] = node_id
+        self.__names[label][str(name)] = node_id
+                
+    def getNames(self, label=None) :
+        if label == None :
+            result = set()
+            for forLabel in self.__names.values() :
+                result |= set( forLabel.items() )
+        else :
+            result = self.__names.get( label, {} ).items()
+        return result
         
-    def getNode(self, name) :
-        """Get the node by name.
-        
-        :raises KeyError: if the given name was not found
-        """
-        return self.__names[name]
-        
-    def getNames(self) :
-        return self.__names.items()
+    def getNamesWithLabel(self) :
+        result = []
+        for label in self.__names :
+            for name, node in self.__names[label].items() :
+                result.append( ( name, node, label ) )
+        return result
         
     def _add( self, node, reuse=True ) :
         """Adds a new node, or reuses an existing one.
@@ -187,16 +193,16 @@ class LogicFormula(object) :
         output = LogicFormula()
         
         # Protected nodes (these have to exist separately)
-        protected = set(self.__names.values())
-        
+        protected = set( [ y for x,y in self.getNames() ] )
+                
         # Translation table from old to new.
         translate = {}
         
         # Handle the given nodes one-by-one
-        for name, node in self.getNames() :
+        for name, node, label in self.getNamesWithLabel() :
             new_node, cycles = self._extract( output, node, protected, translate )
             translate[node] = new_node
-            output.addName(name, new_node)
+            output.addName(name, new_node, label)
         
         return output
         
@@ -365,9 +371,10 @@ class LogicFormula(object) :
     
     def __str__(self) :
         s =  '\n'.join('%s: %s' % (i+1,n) for i, n in enumerate(self.__nodes))   
+        s += '\n' + str(self.__names)
         return s   
 
-    def toDot(self, not_as_node=False) :
+    def toDot(self, not_as_node=True) :
         
         not_as_edge = not not_as_node
         
@@ -413,10 +420,10 @@ class LogicFormula(object) :
                         s += '%s -> %s%s;\n' % (index,c, opt)
             elif nodetype == 'atom' :
                 if node.group == None :                
-                    s += '%s [label="%s", shape="circle", style="filled", fillcolor="white"];\n' % (index, node.probability)
+                    s += '%s [label="%s", shape="ellipse", style="filled", fillcolor="white"];\n' % (index, node.probability)
                             #, node.functor, ', '.join(map(str,node.args)))
                 else :
-                    clusters[node.group].append('%s [ shape="circle", label="%s", style="filled", fillcolor="white" ];\n' % (index, node.probability))
+                    clusters[node.group].append('%s [ shape="ellipse", label="%s", style="filled", fillcolor="white" ];\n' % (index, node.probability))
             else :
                 raise TypeError("Unexpected node type: '%s'" % nodetype)
         
@@ -506,6 +513,9 @@ class LogicFormula(object) :
                     for b in nodes[i+1:] :
                          lines.append('-%s -%s 0' % (a,b))
                 lines.append(' '.join(map(str,nodes + [0]))) 
+            else :
+                p = facts[nodes[0]][0]
+                facts[nodes[0]] = (p, 1.0-p)
         clause_count = len(lines)
     
         return [ 'p cnf %s %s' % (atom_count, clause_count) ] + lines, facts
@@ -513,8 +523,126 @@ class LogicFormula(object) :
 
 class CNF(object) :
     
-    pass
+    def __init__(self, formula) :
+        self.lines, self.facts = formula.toCNF()  
+        self.names = formula.getNamesWithLabel()
     
+    def toDimacs(self) : 
+        return '\n'.join( self.lines )
+    
+class NNFFile(LogicFormula) :
+    
+    def __init__(self, filename, facts, names) :
+        LogicFormula.__init__(self)
+        self.filename = filename
+        self.facts = facts
+        self.__probs = {}
+        self.__original_probs = {}
+        self.load(filename, names)
+        self.__probs = dict(self.__original_probs)
+    
+    def load(self, filename, names) :
+        names_inv = defaultdict(list)
+        for name,node,label in names :
+            names_inv[node].append((name,label))
+        
+        with open(filename) as f :
+            line2node = {}
+            lnum = 0
+            for line in f :
+                line = line.strip().split()
+                if line[0] == 'nnf' :
+                    pass
+                elif line[0] == 'L' :
+                    name = int(line[1])
+                    probs = (1.0,1.0)
+                    probs = self.facts.get(abs(name), probs)
+                    
+                    # if name in qn :
+                    #     prob = str(prob) + '::' + str(qn[name])
+                    # elif -name in qn :
+                    #     prob = str(prob) + '::-' + str(qn[-name])
+                    node = self.addAtom( abs(name), probs  ) #
+                    if name < 0 : node = -node
+                    line2node[lnum] = node
+                    if abs(name) in names_inv :
+                        for actual_name, label in names_inv[abs(name)] :
+                            if name < 0 :
+                                self.addName(actual_name, -node, label)
+                            else :
+                                self.addName(actual_name, node, label)
+                    self.__original_probs[abs(node)] = probs
+                    lnum += 1
+                elif line[0] == 'A' :
+                    children = map(lambda x : line2node[int(x)] , line[2:])
+                    line2node[lnum] = self.addAnd( children )
+                    lnum += 1
+                elif line[0] == 'O' :
+                    children = map(lambda x : line2node[int(x)], line[3:])
+                    line2node[lnum] = self.addOr( children )        
+                    lnum += 1
+                else :
+                    print ('Unknown line type')
+
+    def _calculateProbability(self, key) :
+        assert(key != 0)
+        assert(key != None)
+        assert(key > 0) 
+        
+        node = self._getNode(key)
+        ntype = type(node).__name__
+        assert(ntype != 'atom')
+        
+        childprobs = [ self.getProbability(c) for c in node.children ]
+        if ntype == 'conj' :
+            p = 1.0
+            for c in childprobs :
+                p *= c
+            return p
+        elif ntype == 'disj' :
+            return sum(childprobs)
+        else :
+            raise TypeError("Unexpected node type: '%s'." % nodetype)
+            
+    def getProbability(self, key) :
+        if key == 0 :
+            return 1.0
+        elif key == None :
+            return 0.0
+        else :
+            probs = self.__probs.get(abs(key))
+            if probs == None :
+                p = self._calculateProbability( abs(key) )
+                probs = (p, 1.0-p)
+                self.__probs[abs(key)] = probs
+            if key < 0 :
+                return probs[1]
+            else :
+                return probs[0]
+                                
+    def setTrue(self, key) :
+        pos = self.getProbability(key)
+        self.setProbability( key, pos, 0.0 )
+
+    def setFalse(self, key) :
+        neg = self.getProbability(-key)
+        self.setProbability( key, 0.0, neg )
+
+    def setRTrue(self, key) :
+        pos = 1.0
+        self.setProbability( key, pos, 0.0 )
+
+    def setRFalse(self, key) :
+        neg = 1.0
+        self.setProbability( key, 0.0, neg )
+
+                                        
+    def setProbability(self, key, pos, neg=None) :
+        if neg == None : neg = 1.0 - pos
+        self.__probs[key] = (pos,neg)
+    
+    def resetProbabilities(self) :
+        self.__probs = dict(self.__original_probs)
     
 #class 
 
