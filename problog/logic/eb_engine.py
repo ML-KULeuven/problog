@@ -10,6 +10,10 @@ Assumptions
 Assumption 1: range-restricted clauses (after clause evaluation, head is ground)
 Assumption 2: functor-free
     - added support for functors in clause head arguments
+    - still missing:
+            - functors in facts -> OK
+            - functors in calls -> OK
+            - unify in body return?
 Assumption 3: conjunction nodes have exactly two children
 Assumption 8: no prolog builtins 
     - added some builtins (needs better framework)
@@ -28,7 +32,7 @@ Table for query() may make ground() invalid.
 
 class UnifyError(Exception) : pass
 
-def unify_value( v1, v2, context1=None, context2=None ) :
+def unify_value( v1, v2 ) :
     if v1 == None :
         return v2
     elif v2 == None :
@@ -39,16 +43,39 @@ def unify_value( v1, v2, context1=None, context2=None ) :
     else :
         raise UnifyError()
         
-def unify( v1, v2, context1=None, context2=None ) :
+def unify_simple( v1, v2 ) :
     if v1 == None :
         return v2
     elif v2 == None :
         return v1
     else :
         try :
-            return tuple( map( lambda xy : unify_value(xy[0],xy[1], context1, context2), zip(v1,v2) ) )
+            return tuple( map( lambda xy : unify_value(xy[0],xy[1]), zip(v1,v2) ) )
         except UnifyError :
             return None
+
+def unify( source_value, target_value, target_context=None ) :
+    if type(target_value) == int :
+        if target_context != None :
+            current_value = target_context[target_value]
+            if current_value == None :
+                target_context[target_value] = source_value
+            else :
+                unify( source_value, current_value )
+    elif target_value == None :
+        pass
+    else :
+        assert( isinstance(target_value, Term) )
+        if source_value == None :  # a variable
+            return True # unification successful
+        else :
+            assert( isinstance( source_value, Term ) )
+            if target_value.signature == source_value.signature :
+                for s_arg, t_arg in zip(source_value.args, target_value.args) :
+                    unify( s_arg, t_arg, target_context )
+            else :
+                raise UnifyError()
+
 
 class _UnknownClause(Exception) : pass
 
@@ -150,12 +177,17 @@ class EventBasedEngine(object) :
         
     def _eval_fact( self, db, gp, node_id, node, call_args, parent ) :
         trace( node, call_args )
+        
         # Unify fact arguments with call arguments
-        result = unify(node.args, call_args)
-
-        # Notify parent
-        if result != None :
-            parent.newResult( result, ground_node=gp.addAtom(node_id, node.probability) )
+        
+        try :
+            for a,b in zip(node.args, call_args) :
+                unify(a, b)
+            
+            # Notify parent
+            parent.newResult( node.args, ground_node=gp.addAtom(node_id, node.probability) )
+        except UnifyError :
+            pass
         parent.complete()    
 
     def _eval_choice( self, db, gp, node_id, node, call_args, parent ) :
@@ -211,22 +243,7 @@ class EventBasedEngine(object) :
             # context = target context
             # node.args = target values
             # call_args = source values
-            
-            def unify( source_value, target_value, target_context ) :
-                if type(target_value) == int :
-                    target_context[target_value] = source_value
-                else :
-                    assert( isinstance(target_value, Term) )
-                    if source_value == None :  # a variable
-                        return True # unification successful
-                    else :
-                        assert( isinstance( source_value, Term ) )
-                        if target_value.signature == source_value.signature :
-                            for s_arg, t_arg in zip(source_value.args, target_value.args) :
-                                unify( s_arg, t_arg, target_context )
-                        else :
-                            raise UnifyError()
-            
+                        
             context = [None] * node.varcount
             for head_arg, call_arg in zip(node.args, call_args) :
                 unify( call_arg, head_arg, context)                
@@ -518,10 +535,13 @@ class ProcessCallReturn(ProcessNode) :
     def newResult(self, result, ground_node=0, source=None) :
         output = list(self.context)
         for call_arg, res_arg in zip(self.call_args,result) :
-            if type(call_arg) == int : # head_arg is a variable
-                output[call_arg] = res_arg
-            else : # head arg is a constant => make sure it unifies with the call arg
-                pass
+            unify( res_arg, call_arg, output )
+            #
+            #
+            # if type(call_arg) == int : # head_arg is a variable
+            #     output[call_arg] = res_arg
+            # else : # head arg is a constant => make sure it unifies with the call arg
+            #     pass
         #print ('CALL_RETURN', self.context, self.call_args, output, result)        
         self.notifyListeners(output, ground_node, source)    
     
