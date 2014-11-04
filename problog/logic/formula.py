@@ -100,7 +100,8 @@ class LogicFormula(object) :
         if probability == None :
             return 0
         else :
-            return self._add( self._atom( identifier, probability, group ) )
+            node_id = self._add( self._atom( identifier, probability, group ) )
+            return node_id
     
     def addAnd( self, components ) :
         """Add a conjunction to the logic formula.
