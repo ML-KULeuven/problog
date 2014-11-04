@@ -70,5 +70,5 @@ Unification
 Logic Formula
 -------------
 
-.. autoclass:: problog.logic.engine.LogicFormula
-    :members:
+.. .. autoclass:: problog.logic.engine.LogicFormula
+..     :members:
