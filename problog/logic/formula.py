@@ -354,6 +354,9 @@ class LogicFormula(object) :
         
         node = self.getNode(index)
     
+    
+    def __len__(self) :
+        return len(self.__nodes)
         
     
     ##################################################################################
@@ -364,7 +367,10 @@ class LogicFormula(object) :
         s =  '\n'.join('%s: %s' % (i+1,n) for i, n in enumerate(self.__nodes))   
         return s   
 
-    def toDot(self) :
+    def toDot(self, not_as_node=False) :
+        
+        not_as_edge = not not_as_node
+        
         # Keep track of mutually disjunctive nodes.
         clusters = defaultdict(list)
         
@@ -381,23 +387,30 @@ class LogicFormula(object) :
             if nodetype == 'conj' :
                 s += '%s [label="AND", shape="box", style="filled", fillcolor="white"];\n' % (index)
                 for c in node.children :
-                    #c = self._deref(c)
-                    if c < 0 and not c in negative :
+                    opt = ''
+                    if c < 0 and not c in negative and not_as_node :
                         s += '%s [label="NOT"];\n' % (c)
                         s += '%s -> %s;\n' % (c,-c)
                         negative.add(c)
+                        
+                    if c < 0 and not_as_edge :    
+                        opt = '[arrowhead="odotnormal"]'
+                        c = -c
                     if c != 0 :
-                        s += '%s -> %s;\n' % (index,c)
+                        s += '%s -> %s%s;\n' % (index,c, opt)
             elif nodetype == 'disj' :
                 s += '%s [label="OR", shape="diamond", style="filled", fillcolor="white"];\n' % (index)
                 for c in node.children :
-                    #c = self._deref(c)
-                    if c < 0 and not c in negative :
+                    opt = ''
+                    if c < 0 and not c in negative and not_as_node :
                         s += '%s [label="NOT"];\n' % (c)
                         s += '%s -> %s;\n' % (c,-c)
                         negative.add(c)
+                    if c < 0 and not_as_edge :    
+                        opt = '[arrowhead="odotnormal"]'
+                        c = -c
                     if c != 0 :
-                        s += '%s -> %s;\n' % (index,c)
+                        s += '%s -> %s%s;\n' % (index,c, opt)
             elif nodetype == 'atom' :
                 if node.group == None :                
                     s += '%s [label="%s", shape="circle", style="filled", fillcolor="white"];\n' % (index, node.probability)
@@ -405,7 +418,7 @@ class LogicFormula(object) :
                 else :
                     clusters[node.group].append('%s [ shape="circle", label="%s", style="filled", fillcolor="white" ];\n' % (index, node.probability))
             else :
-                raise ValueError("Unexpected node type: '%s'" % nodetype)
+                raise TypeError("Unexpected node type: '%s'" % nodetype)
         
         c = 0
         for cluster, text in clusters.items() :
@@ -417,31 +430,41 @@ class LogicFormula(object) :
             
         q = 0
         for name, index in queries :
+            opt = ''
             if index == None :
-                s += '%s [label="NOT"];\n' % (index)
-                s += '%s -> %s;\n' % (index,0)
+                index = 0
+                if not_as_node :
+                    s += '%s [label="NOT"];\n' % (index)
+                    s += '%s -> %s;\n' % (index,0)
+                elif not_as_edge :
+                    opt = ', arrowhead="odotnormal"'
                 if not 0 in negative :
                     s += '%s [label="true"];\n' % (0)
                     negative.add(0)
-            elif index < 0 and not index in negative :
-                s += '%s [label="NOT"];\n' % (index)
-                s += '%s -> %s;\n' % (index,-index)
-                negative.add(index)
+            elif index < 0 : # and not index in negative :
+                if not_as_node :
+                    s += '%s [label="NOT"];\n' % (index)
+                    s += '%s -> %s;\n' % (index,-index)
+                    negative.add(index)
+                elif not_as_edge :
+                    index = -index
+                    opt = ', arrowhead="odotnormal"'
             elif index == 0 and not index in negative :
                 s += '%s [label="true"];\n' % (index)
                 negative.add(0)
             s += 'q_%s [ label="%s", shape="plaintext" ];\n'   % (q, name)
-            s += 'q_%s -> %s [style="dotted"];\n'  % (q, index)
+            s += 'q_%s -> %s [style="dotted" %s];\n'  % (q, index, opt)
             q += 1
 
         return s + '}'
-
+        
 
     ##################################################################################
     ####                             CNF CONVERSION                               ####
     ##################################################################################
     
     def toCNF(self) :
+        # TODO: does not work with non-constant probabilities
         # Keep track of mutually disjunctive nodes.
         choices = defaultdict(list)
         sums = defaultdict(float)
@@ -463,7 +486,7 @@ class LogicFormula(object) :
                 for x in node.children  :
                     lines.append( "%s %s 0" % (index, -x) )
             elif nodetype == 'atom' :
-                if node.group == None :                
+                if node.group == None :
                     facts[index] = (node.probability.value, 1.0-node.probability.value)
                 else :
                     choices[node.group].append(index)
@@ -472,7 +495,7 @@ class LogicFormula(object) :
             else :
                 raise ValueError("Unexpected node type: '%s'" % nodetype)
             
-        atom_count = len(facts)
+        atom_count = len(self.__nodes)
         for cluster, nodes in choices.items() :
             if len(nodes) > 1 :
                 if sums[cluster] < 1.0-1e-6 :
