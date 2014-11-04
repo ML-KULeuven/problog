@@ -13,7 +13,7 @@
         var url = '/ground';
         var text = ace.edit('model').getValue();
         $.post( url, text, function(data) {
-            $('#result-ground-1').html(data);
+            $('#result-ground').html(data);
         } );
     }
     
@@ -90,8 +90,13 @@
     </div>
     <div class="panel panel-default">
         <div class="panel-heading"><span class="panel-title">Ground program</span></div>        
-        <div class="panel-body" id="result-ground-1">
+        <div class="panel-body" id="result-ground"></div>
     </div>
+    <div class="panel panel-default">
+        <div class="panel-heading"><span class="panel-title">Ground program</span></div>        
+        <div class="panel-body" id="result-compile"></div>
+    </div>
+
 </div>
 </body>
 </html>

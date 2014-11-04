@@ -11,10 +11,13 @@ urls = ( '/ground', 'Ground',
          '/(.*)', 'File')
 
 
+def abspath(*relpath) :
+    return os.path.abspath(os.path.join(os.path.dirname(__file__), *relpath ))
+
                   
 
-# Assumes mngzn can be found in PYTHONPATH or in ..
-sys.path.append('..')
+# Assumes problog can be found in PYTHONPATH or in ..
+sys.path.insert(0,abspath('../'))
 
 from problog.logic import Term, Var, Constant
 from problog.logic.program import PrologString, ClauseDB
@@ -28,13 +31,14 @@ from main import ground
 
 import glob, os
 
+
 def accept_file(name) :
     
     allowed_extensions = frozenset([ '.html', '.css', '.js', '.dat', '.csv', '.db', '.mzn', '.arff', '.pl' ])
     
-    rootdir = os.path.abspath(os.path.join(os.path.dirname(__file__)))
+    rootdir = abspath()
     
-    fullname = os.path.abspath(name)
+    fullname = abspath(name)
     
     # File must be below root directory of webserver.
     if not fullname.startswith(rootdir) :
@@ -53,7 +57,8 @@ class File(object) :
     def GET(self, file=None, **kwdargs) :
         if not file :
             file = 'index.html'
-        
+
+        file = abspath(file)
         if accept_file(file) :        
             with open(file) as f:
                 return f.read()
@@ -66,7 +71,7 @@ class Docs(object) :
         if not file :
             file = 'index.html'
         
-        path = os.path.abspath(os.path.join('../docs/build/html/', file ))
+        path = abspath('../docs/build/html/', file )
         with open(path) as f:
             return f.read()
 
@@ -101,11 +106,11 @@ class Submit(object) :
         name = name.replace('.','_').replace('/','_')
         partial_name = name
         
-        fullname = os.path.join(os.path.dirname(__file__), 'data/bug/', name) + '.pl'
+        fullname = abspath('data', 'bug', name) + '.pl'
         while os.path.exists(fullname) :
             i += 1
             partial_name = name +  '_' + str(i) 
-            fullname = os.path.join(os.path.dirname(__file__), 'data/bug/', partial_name)+ '.pl'                 
+            fullname = abspath('data', 'bug', partial_name)+ '.pl'                 
         with open(fullname, 'w') as f :
             f.write(data)
         return 'bug/' + partial_name
@@ -123,8 +128,8 @@ class GetModel(object) :
         
         if name == None :
             result = '<option value="">-- select a model --</option>'
-            files = [ os.path.basename(x)[:-3] for x in glob.glob('data/*.pl') ]
-            files += [ 'bug/' + os.path.basename(x)[:-3] for x in glob.glob('data/bug/*.pl') ]
+            files = [ os.path.basename(x)[:-3] for x in glob.glob(abspath('data') + '/*.pl') ]
+            files += [ 'bug/' + os.path.basename(x)[:-3] for x in glob.glob(abspath('data','bug') + '/*.pl') ]
             for name in files :
                 result += '<option value="' + name + '">' + name + '</option>'
             return result
@@ -132,7 +137,7 @@ class GetModel(object) :
             return self.get_model(name)
         
     def get_model(self, name) :
-        file = 'data/' + name + '.pl'
+        file = abspath('data/' + name + '.pl')
         if accept_file(file) :
             with open(file) as f :
                 return f.read()
