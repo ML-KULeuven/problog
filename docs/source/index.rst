@@ -13,6 +13,7 @@ Contents:
    :numbered:
 
    intro
+   basic
    logic
    engine
    notes

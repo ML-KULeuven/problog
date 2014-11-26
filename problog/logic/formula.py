@@ -13,7 +13,16 @@ class LogicFormula(object) :
     _disj = namedtuple('disj', ('children') )
     # negation is encoded by using a negative number for the key
     
-    def __init__(self) :
+    def _create_atom( self, identifier, probability, group ) :
+        return self._atom( identifier, probability, group )
+    
+    def _create_conj( self, children ) :
+        return self._conj(children)
+        
+    def _create_disj( self, children ) :
+        return self._disj(children)
+    
+    def __init__(self, auto_compact=True) :
         # List of nodes
         self.__nodes = []
         # Lookup index for 'atom' nodes, key is identifier passed to addAtom()
@@ -25,6 +34,16 @@ class LogicFormula(object) :
         
         # Node names (for nodes of interest)
         self.__names = defaultdict(dict)
+        
+        self.__atom_count = 0
+        
+        self.__auto_compact = auto_compact
+        
+        self.__constraints_me = {}
+        self.__constraints = []
+        
+    def getAtomCount(self) :
+        return self.__atom_count
         
     def addName(self, name, node_id, label=None) :
         """Associates a name to the given node identifier."""
@@ -91,6 +110,12 @@ class LogicFormula(object) :
         assert(self.isProbabilistic(key))
         assert(key > 0)            
         self.__nodes[ key - 1 ] = value
+    
+    def _addConstraintME(self, group, node) :
+        if group == None : return
+        if not group in self.__constraints_me :
+            self.__constraints_me[group] = ConstraintME(group)
+        self.__constraints_me[group].add(node, self) 
         
     def addAtom( self, identifier, probability, group=None ) :
         """Add an atom to the formula.
@@ -106,7 +131,10 @@ class LogicFormula(object) :
         if probability == None :
             return 0
         else :
-            node_id = self._add( self._atom( identifier, probability, group ) )
+            atom = self._create_atom( identifier, probability, group )
+            node_id = self._add( atom )
+            self.__atom_count += 1  # TODO doesn't take reuse into account
+            self._addConstraintME(group, node_id)
             return node_id
     
     def addAnd( self, components ) :
@@ -178,7 +206,7 @@ class LogicFormula(object) :
         """Get the type of the given node (fact, disj, conj)."""
         return type(self._getNode(key)).__name__
                 
-    def makeAcyclic(self, preserve_tables=False) :
+    def makeAcyclic(self, preserve_tables=False, output=None) :
         """Break cycles."""
         
         assert(not preserve_tables)                    
@@ -190,7 +218,7 @@ class LogicFormula(object) :
         
         
         # Output formula
-        output = LogicFormula()
+        if output == None : output = LogicFormula()
         
         # Protected nodes (these have to exist separately)
         protected = set( [ y for x,y in self.getNames() ] )
@@ -218,43 +246,77 @@ class LogicFormula(object) :
         """Add a compound term (AND or OR)."""
         assert( content )   # Content should not be empty
         
-        # If there is a t node, (true for OR, false for AND)
-        if t in content : return t
+        if self.__auto_compact :
+            # If there is a t node, (true for OR, false for AND)
+            if t in content : return t
         
-        # Eliminate unneeded node nodes (false for OR, true for AND)
-        content = filter( lambda x : x != f, content )
+            # Eliminate unneeded node nodes (false for OR, true for AND)
+            content = filter( lambda x : x != f, content )
         
-        # Put into fixed order and eliminate duplicate nodes
-        content = tuple(sorted(set(content)))
+            # Put into fixed order and eliminate duplicate nodes
+            content = tuple(sorted(set(content)))
         
-        # Empty OR node fails, AND node is true
-        if not content : return f
+            # Empty OR node fails, AND node is true
+            if not content : return f
                 
-        # Contains opposites: return 'TRUE' for or, 'FALSE' for and
-        if len(set(content)) > len(set(map(abs,content))) : return t
+            # Contains opposites: return 'TRUE' for or, 'FALSE' for and
+            if len(set(content)) > len(set(map(abs,content))) : return t
             
-        # If node has only one child, just return the child.
-        # Don't do this for modifiable nodes, we need to keep a separate node.
-        if (readonly and update == None) and len(content) == 1 : return content[0]
+            # If node has only one child, just return the child.
+            # Don't do this for modifiable nodes, we need to keep a separate node.
+            if (readonly and update == None) and len(content) == 1 : return content[0]
+        else :
+            content = tuple(content)
         
         if nodetype == 'conj' :
-            node = self._conj( content )
-            return self._add( node )
+            node = self._create_conj( content )
+            return self._add( node, reuse=self.__auto_compact )
         elif nodetype == 'disj' :
-            node = self._disj( content )
+            node = self._create_disj( content )
             if update != None :
                 # If an update key is set, update that node
                 return self._update( update, node )
             elif readonly :
                 # If the node is readonly, we can try to reuse an existing node.
-                return self._add( node )
+                return self._add( node, reuse=self.__auto_compact )
             else :
                 # If node is modifiable, we shouldn't reuse an existing node.
                 return self._add( node, reuse=False )
         else :
             raise TypeError("Unexpected node type: '%s'." % nodetype) 
     
-    
+    def __iter__(self) :
+        return iter(self.__nodes)
+        
+    def getWeights(self) :
+        weights = {}
+        for i, n in enumerate(self) :
+            if type(n).__name__ == 'atom' :
+                i = i + 1
+                if n.probability != True :
+                    weights[i] = n.probability
+        return weights
+        
+    def extractWeights(self, semiring) :
+        weights = {}
+        for i, n in enumerate(self) :
+            if type(n).__name__ == 'atom' :
+                i = i + 1
+                if n.probability != True :
+                    weights[i] = semiring.value(n.probability), semiring.negate(semiring.value(n.probability))
+                else :
+                    weights[i] = semiring.one(), semiring.one()
+
+        for c in self.constraints() :
+            c.updateWeights( weights, semiring )
+        
+        return weights
+        
+    def constraints(self) :
+        return list(self.__constraints_me.values()) + self.__constraints
+        
+    def addConstraint(self, c) :
+        self.__constraints.append(c)
 
     ##################################################################################
     ####                       LOOP BREAKING AND COMPACTION                       ####
@@ -371,8 +433,37 @@ class LogicFormula(object) :
     
     def __str__(self) :
         s =  '\n'.join('%s: %s' % (i+1,n) for i, n in enumerate(self.__nodes))   
-        s += '\n' + str(self.__names)
+        f = True
+        for q in self.queries() :
+            if f :
+                f = False
+                s += '\nQueries : '
+            s += '\n* %s : %s' % q
+
+        f = True
+        for q in self.evidence() :
+            if f :
+                f = False
+                s += '\nEvidence : '
+            s += '\n* %s : %s' % q
+
+
+        f = True
+        for c in self.constraints () :
+            if c.isActive() :
+                if f :
+                    f = False
+                    s += '\nConstraints : '
+                s += '\n* ' + str(c)
         return s   
+        
+    def queries(self) :
+        return self.getNames('query')
+
+    def evidence(self) :
+        evidence_true = self.getNames('evidence') 
+        evidence_false = self.getNames('-evidence') 
+        return evidence_true + [ (a,-b) for a,b in evidence_false ]
 
     def toDot(self, not_as_node=True) :
         
@@ -464,210 +555,67 @@ class LogicFormula(object) :
             q += 1
 
         return s + '}'
+ 
+class Constraint(object) : 
+    pass
+    
+class ConstraintME(Constraint) :
+    """Mutually exclusive."""
+    
+    def __init__(self, group) :
+        self.nodes = set()
+        self.group = group
+        self.extra_node = None
+    
+    def __str__(self) :
+        return 'mutually_exclusive(%s, %s)' % (list(self.nodes), self.extra_node)
+    
+    def isTrue(self) :
+        return len(self.nodes) <= 1
         
-
-    ##################################################################################
-    ####                             CNF CONVERSION                               ####
-    ##################################################################################
-    
-    def toCNF(self) :
-        # TODO: does not work with non-constant probabilities
-        # Keep track of mutually disjunctive nodes.
-        choices = defaultdict(list)
-        sums = defaultdict(float)
+    def isFalse(self) :
+        return False
         
-        lines = []
-        facts = {}
-        for index, node in enumerate(self.__nodes) :
-            index += 1
-            nodetype = type(node).__name__
-            
-            if nodetype == 'conj' :
-                line = str(index) + ' ' + ' '.join( map( lambda x : str(-(x)), node.children ) ) + ' 0'
-                lines.append(line)
-                for x in node.children  :
-                    lines.append( "%s %s 0" % (-index, x) )
-            elif nodetype == 'disj' :
-                line = str(-index) + ' ' + ' '.join( map( lambda x : str(x), node.children ) ) + ' 0'
-                lines.append(line)
-                for x in node.children  :
-                    lines.append( "%s %s 0" % (index, -x) )
-            elif nodetype == 'atom' :
-                if node.group == None :
-                    facts[index] = (node.probability.value, 1.0-node.probability.value)
-                else :
-                    choices[node.group].append(index)
-                    sums[node.group] += node.probability.value
-                    facts[index] = (node.probability.value, 1.0)                    
-            else :
-                raise ValueError("Unexpected node type: '%s'" % nodetype)
-            
-        atom_count = len(self.__nodes)
-        for cluster, nodes in choices.items() :
-            if len(nodes) > 1 :
-                if sums[cluster] < 1.0-1e-6 :
-                    facts[atom_count+1] = (1.0 - sums[cluster], 1.0)
-                    nodes.append(atom_count+1)
-                    atom_count += 1
-                for i, a in enumerate(nodes) :
-                    for b in nodes[i+1:] :
-                         lines.append('-%s -%s 0' % (a,b))
-                lines.append(' '.join(map(str,nodes + [0]))) 
-            else :
-                p = facts[nodes[0]][0]
-                facts[nodes[0]] = (p, 1.0-p)
-        clause_count = len(lines)
+    def isActive(self) :
+        return not self.isTrue() and not self.isFalse()
     
-        return [ 'p cnf %s %s' % (atom_count, clause_count) ] + lines, facts
-
-
-class CNF(object) :
+    def add(self, node, formula) :
+        self.nodes.add(node)
+        if len(self.nodes) > 1 and self.extra_node == None :
+            # If there are two or more choices -> add extra choice node
+            self.updateLogic( formula )
     
-    def __init__(self, formula) :
-        self.lines, self.facts = formula.toCNF()  
-        self.names = formula.getNamesWithLabel()
-    
-    def toDimacs(self) : 
-        return '\n'.join( self.lines )
-    
-class NNFFile(LogicFormula) :
-    
-    def __init__(self, filename, facts, names) :
-        LogicFormula.__init__(self)
-        self.filename = filename
-        self.facts = facts
-        self.__probs = {}
-        self.__original_probs = {}
-        self.load(filename, names)
-        self.__probs = dict(self.__original_probs)
-    
-    def load(self, filename, names) :
-        names_inv = defaultdict(list)
-        for name,node,label in names :
-            names_inv[node].append((name,label))
-        
-        with open(filename) as f :
-            line2node = {}
-            lnum = 0
-            for line in f :
-                line = line.strip().split()
-                if line[0] == 'nnf' :
-                    pass
-                elif line[0] == 'L' :
-                    name = int(line[1])
-                    probs = (1.0,1.0)
-                    probs = self.facts.get(abs(name), probs)
-                    
-                    # if name in qn :
-                    #     prob = str(prob) + '::' + str(qn[name])
-                    # elif -name in qn :
-                    #     prob = str(prob) + '::-' + str(qn[-name])
-                    node = self.addAtom( abs(name), probs  ) #
-                    if name < 0 : node = -node
-                    line2node[lnum] = node
-                    if abs(name) in names_inv :
-                        for actual_name, label in names_inv[abs(name)] :
-                            if name < 0 :
-                                self.addName(actual_name, -node, label)
-                            else :
-                                self.addName(actual_name, node, label)
-                    self.__original_probs[abs(node)] = probs
-                    lnum += 1
-                elif line[0] == 'A' :
-                    children = map(lambda x : line2node[int(x)] , line[2:])
-                    line2node[lnum] = self.addAnd( children )
-                    lnum += 1
-                elif line[0] == 'O' :
-                    children = map(lambda x : line2node[int(x)], line[3:])
-                    line2node[lnum] = self.addOr( children )        
-                    lnum += 1
-                else :
-                    print ('Unknown line type')
-
-    def _calculateProbability(self, key) :
-        assert(key != 0)
-        assert(key != None)
-        assert(key > 0) 
-        
-        node = self._getNode(key)
-        ntype = type(node).__name__
-        assert(ntype != 'atom')
-        
-        childprobs = [ self.getProbability(c) for c in node.children ]
-        if ntype == 'conj' :
-            p = 1.0
-            for c in childprobs :
-                p *= c
-            return p
-        elif ntype == 'disj' :
-            return sum(childprobs)
+    def encodeCNF(self) :
+        if self.isActive() :
+            nodes = list(self.nodes) + [self.extra_node]
+            lines = []
+            for i,n in enumerate(nodes) :
+                for m in nodes[i+1:] :
+                    lines.append( (-n, -m ))    # mutually exclusive
+            lines.append( nodes )   # pick one
+            return lines
         else :
-            raise TypeError("Unexpected node type: '%s'." % nodetype)
+            return []
+        
+    def updateLogic(self, formula) :
+        """Add extra information to the logic structure of the formula."""
+        
+        if self.isActive() :
+            self.extra_node = formula.addAtom( ('%s_extra' % (self.group,)), True, None )
+    
+    def updateWeights(self, weights, semiring) :
+        """Update the weights of the logic formula accordingly."""
+        if self.isActive() : 
+            s = semiring.zero()
+            for n in self.nodes :
+                pos, neg = weights.get(n, (semiring.one(), semiring.one()))
+                weights[n] = (pos, semiring.one())
+                s = semiring.plus(s, pos)
+            complement = semiring.negate(s)
+            weights[self.extra_node] = (complement, semiring.one())
             
-    def getProbability(self, key) :
-        if key == 0 :
-            return 1.0
-        elif key == None :
-            return 0.0
-        else :
-            probs = self.__probs.get(abs(key))
-            if probs == None :
-                p = self._calculateProbability( abs(key) )
-                probs = (p, 1.0-p)
-                self.__probs[abs(key)] = probs
-            if key < 0 :
-                return probs[1]
-            else :
-                return probs[0]
-                                
-    def setTrue(self, key) :
-        pos = self.getProbability(key)
-        self.setProbability( key, pos, 0.0 )
-
-    def setFalse(self, key) :
-        neg = self.getProbability(-key)
-        self.setProbability( key, 0.0, neg )
-
-    def setRTrue(self, key) :
-        pos = 1.0
-        self.setProbability( key, pos, 0.0 )
-
-    def setRFalse(self, key) :
-        neg = 1.0
-        self.setProbability( key, 0.0, neg )
-
-                                        
-    def setProbability(self, key, pos, neg=None) :
-        if neg == None : neg = 1.0 - pos
-        self.__probs[key] = (pos,neg)
-    
-    def resetProbabilities(self) :
-        self.__probs = dict(self.__original_probs)
-    
-#class 
-
-
-# class LogicGraph(object) :
-#   
-#
-#
-
-# class LogicProgram(object ):
-#     pass
-#
-#
-# class AndOrDAG(object) :
-#     # Cycle free
-#
-#     pass
-#
-# class CNF(object) :
-#     # CNF format
-#     pass
-#
-# class sdDNNF(object) :
-#     # DDNNF format
-#     pass
-#
-
-
+    def copy( self, rename={} ) :
+        result = ConstraintME( self.group )
+        result.nodes = set(rename.get(x,x) for x in self.nodes)
+        result.extra_node = rename.get( self.extra_node, self.extra_node )
+        return result

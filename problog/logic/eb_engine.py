@@ -4,7 +4,7 @@ from .basic import Term, Constant
 from .program import ClauseDB, PrologString
 from .formula import LogicFormula
 
-""" 
+"""
 Assumptions
 -----------
 Assumption 1: range-restricted clauses (after clause evaluation, head is ground)
@@ -189,7 +189,7 @@ class EventBasedEngine(object) :
             # Notify parent
             parent.newResult( node.args, ground_node=gp.addAtom(node_id, node.probability) )
         except UnifyError :
-            print ('FACT unify', node.args, call_args)
+            #print ('FACT unify', node.args, call_args)
             pass
         parent.complete()    
 
@@ -264,7 +264,6 @@ class EventBasedEngine(object) :
             # evaluate the body, output should be send to the context-switcher
             self._eval( db, gp, node.child, context, context_switch )
         except UnifyError :
-            print ('CLAUSE unify', node.args, call_args)
             #print ('unification failed', node.args, call_args, context)
             pass    # head and call are not unifiable
             
@@ -583,7 +582,7 @@ def computeFunction(func, args, context) :
     elif func == "'*'" :
         return Constant(args[0].value * args[1].value)
     elif func == "'/'" :
-        return Constant(args[0].value / args[1].value)
+        return Constant(float(args[0].value) / float(args[1].value))
 
     else :
         raise ValueError("Unknown function: '%s'" % func)
