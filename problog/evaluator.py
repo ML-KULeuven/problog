@@ -142,10 +142,6 @@ class Evaluator(object) :
     def iterEvidence(self) :
         return iter(self.__evidence)            
             
-class SDDEvaluator(Evaluator):
-
-    pass
-
 
 class SimpleNNFEvaluator(Evaluator) :
     
