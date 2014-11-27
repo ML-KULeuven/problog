@@ -233,15 +233,7 @@ class LogicFormula(object) :
             output.addName(name, new_node, label)
         
         return output
-        
-    def makeNNF(self) :
-        """Transform into NNF form."""
-        pass
-        
-    def makeCNF(self, completion=True) :
-        """Transform into CNF form."""
-        pass
-        
+                
     def _addCompound(self, nodetype, content, t, f, readonly=True, update=None) :
         """Add a compound term (AND or OR)."""
         assert( content )   # Content should not be empty
