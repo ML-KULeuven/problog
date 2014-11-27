@@ -4,9 +4,10 @@ from __future__ import print_function
 
 import os, sys, subprocess
 
-from problog import PrologFile, Evaluator
-from problog.evaluator import NNF, SemiringSymbolic
-from problog.logic.sdd_formula import SDD
+from problog.logic.program import PrologFile
+from problog.evaluator import SemiringSymbolic, Evaluator
+from problog.nnf_formula import NNF
+from problog.sdd_formula import SDD
 
 def print_result( d, precision=8 ) :
     l = max( len(k) for k in d )
