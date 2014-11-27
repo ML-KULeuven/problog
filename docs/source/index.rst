@@ -16,7 +16,7 @@ Contents:
    basic
    logic
    engine
-   notes
+.. notes
    
 
    

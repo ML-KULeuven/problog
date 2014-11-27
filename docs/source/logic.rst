@@ -14,61 +14,54 @@ The package directly offers access to:
 Basic logic: terms, functions, constants and variables
 ------------------------------------------------------
 
-.. automodule:: problog.logic.basic
+.. automodule:: problog.logic
 
-.. autoclass:: problog.logic.basic.Term
+.. autoclass:: problog.logic.Term
   :members:
   :undoc-members:
 
-.. autoclass:: problog.logic.basic.Constant
+.. autoclass:: problog.logic.Constant
   :members:
   :undoc-members:
 
-.. autoclass:: problog.logic.basic.Var
+.. autoclass:: problog.logic.Var
   :members:
   :undoc-members:
 
-.. autoclass:: problog.logic.basic.And
+.. autoclass:: problog.logic.And
   :members:
   :undoc-members:
   
-.. autoclass:: problog.logic.basic.Or
+.. autoclass:: problog.logic.Or
   :members:
   :undoc-members:
   
-.. autoclass:: problog.logic.basic.Clause
+.. autoclass:: problog.logic.Clause
   :members:
   :undoc-members:
 
-.. autoclass:: problog.logic.basic.Not
+.. autoclass:: problog.logic.Not
   :members:
   :undoc-members:
 
 Logic program
 -------------
 
-.. autoclass:: problog.logic.basic.LogicProgram
+.. autoclass:: problog.logic.LogicProgram
   :members: __iter__, __iadd__, createFrom
   
 Implementations
 +++++++++++++++
 
-.. autoclass:: problog.logic.program.SimpleProgram
+.. autoclass:: problog.program.SimpleProgram
 
-.. autoclass:: problog.logic.program.PrologFile
+.. autoclass:: problog.program.PrologFile
 
-.. autoclass:: problog.logic.program.ClauseDB
+.. autoclass:: problog.program.ClauseDB
 
-
-Unification
------------
-
-.. automodule:: problog.logic.unification
-  :members:
-  :undoc-members:
 
 Logic Formula
 -------------
 
-.. .. autoclass:: problog.logic.engine.LogicFormula
-..     :members:
+.. autoclass:: problog.formula.LogicFormula
+     :members:

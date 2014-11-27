@@ -44,7 +44,7 @@ Implementation
 
 The engine uses an event-based evaluation system, which is built around the notion of *process nodes*.
 
-.. autoclass:: problog.logic.eb_engine.ProcessNode
+.. autoclass:: problog.engine.ProcessNode
     :members:
 
 
@@ -62,6 +62,6 @@ The correct operation of the engine relies on the following invariants:
     * The ``complete`` event is the last event that a node sends to a listener.
 
 
-.. autoclass:: problog.logic.eb_engine.ProcessDefine
+.. autoclass:: problog.engine.ProcessDefine
     :members:
 
