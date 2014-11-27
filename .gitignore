@@ -9,4 +9,7 @@ sandbox/
 data/
 test-reports/
 
+problog/lib/python2/
+problog/lib/python3/
+
 .DS_Store
