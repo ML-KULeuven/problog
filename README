@@ -1,0 +1,66 @@
+ProbLog v2.1
+============
+
+1. Prerequisites
+================
+
+ProbLog 2.1 has the following external requirements:
+
+    * Python 2.7+ or Python 3.2+ (with Python.h)
+    * pyparsing
+        You can install pyparsing by running the command:
+            pip install --user pyparsing
+    
+
+2. Installation
+===============
+
+Execute the command:
+
+    ./main.py install
+    
+
+3. Usage
+========
+
+usage: main.py [-h] [--knowledge {sdd,nnf}] [--symbolic] MODEL [MODEL ...]
+
+positional arguments:
+  MODEL
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --knowledge {sdd,nnf}, -k {sdd,nnf}
+                        Knowledge compilation tool.
+  --symbolic            Use symbolic evaluation.
+
+
+4. Examples
+===========
+
+The directory 'test' contains a number of models.
+
+* Use d-DNNF based evaluation
+$ ./main.py test/1_tossing_coin.pl -k nnf
+Results for test/1_tossing_coin.pl:
+	  heads1 : 0.5
+	  heads2 : 0.6
+	twoHeads : 0.3
+
+* Use SDD based evaluation
+$ ./main.py test/1_tossing_coin.pl -k sdd
+Results for test/1_tossing_coin.pl:
+	  heads1 : 0.5
+	  heads2 : 0.6
+	twoHeads : 0.3
+
+* Use symbolic evaluation (don't compute probability) (NNF only).
+$ ./main.py test/1_tossing_coin.pl -k nnf --symbolic
+Results for test/1_tossing_coin.pl:
+	  heads1 : (0.5*(1-0.6) + 0.5*0.6) / (((1-0.5)*(0.6 + (1-0.6)) + 0.5*(1-0.6)) + 0.5*0.6)
+	  heads2 : ((1-0.5)*0.6 + 0.5*0.6) / (((1-0.5)*(0.6 + (1-0.6)) + 0.5*(1-0.6)) + 0.5*0.6)
+	twoHeads : 0.5*0.6 / (((1-0.5)*(0.6 + (1-0.6)) + 0.5*(1-0.6)) + 0.5*0.6)
+
+* Evaluate all examples:
+$ ./main.py test/*.pl -k sdd
+
