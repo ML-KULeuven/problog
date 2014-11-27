@@ -1,12 +1,7 @@
 from __future__ import print_function
 
-from .interface import ground
-from .logic.program import LogicProgram
-from .logic.formula import LogicFormula
 from .logic.basic import Constant, Term
 from .logic.eb_engine import computeFunction
-
-from .logic.cnf import CNF
 
 from collections import defaultdict
 import subprocess
