@@ -83,10 +83,12 @@ def gather_info() :
 def build_sdd() :
     
     build_lib = get_module_paths()[0]
-    lib_dir = os.path.join('sdd', os.uname()[0].lower())
+    build_dir = get_module_paths()[-1]
+    
+    lib_dir = os.path.abspath(os.path.join(build_dir, 'sdd', os.uname()[0].lower()))
     
     curr = os.curdir
-    os.chdir(get_module_paths()[-1])
+    os.chdir(build_dir)
     
     from distutils.core import setup, Extension
     sdd_module = Extension('_sdd', sources=['sdd/sdd_wrap.c'], libraries=['sdd'], library_dirs=[lib_dir] )
@@ -98,7 +100,7 @@ def build_sdd() :
            ext_modules = [sdd_module],
            py_modules = ["sdd"],
            script_name = '',
-           script_args = ['build_ext', '--build-lib', build_lib ]
+           script_args = ['build_ext', '--build-lib', build_lib, '--rpath', lib_dir ]
     )
     
     os.chdir(curr)
@@ -146,10 +148,10 @@ def system_info() :
     #     s += 'Module \'sdd\': NOT INSTALLED\n'
     #     s += '  ACTION: run ProbLog installer\n'
     #
-    # return s
+    return s
 
 if __name__ == '__main__' :
     set_environment()
     info = install()
-    print (system_info())
+    print (info)
     
