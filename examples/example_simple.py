@@ -11,8 +11,6 @@ from problog import PrologFile, Evaluator
 from problog.evaluator import NNF, SemiringSymbolic
 from problog.logic.sdd_formula import SDD
 
-
-
 def print_result( d, precision=8 ) :
     l = max( len(k) for k in d )
     f_flt = '\t%' + str(l) + 's : %.' + str(precision) + 'g' 
@@ -34,6 +32,7 @@ def main( filename, knowledge=NNF, semiring=None ) :
     print_result(result)
         
 if __name__ == '__main__' :
+    
     import argparse
     
     parser = argparse.ArgumentParser()

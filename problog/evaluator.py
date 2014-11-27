@@ -6,12 +6,11 @@ from .logic.formula import LogicFormula
 from .logic.basic import Constant, Term
 from .logic.eb_engine import computeFunction
 
+from .logic.cnf import CNF
 
 from collections import defaultdict
 import subprocess
-import sys, os
-
-
+import sys, os, tempfile
 
 class Semiring(object) :
     
@@ -248,67 +247,7 @@ class SimpleNNFEvaluator(Evaluator) :
             raise TypeError("Unexpected node type: '%s'." % nodetype)    
 
 
-class CNF(object) :
-    """A logic formula in Conjunctive Normal Form.
-    
-    This class does not derive from LogicFormula.
-    
-    """
-    
-    def __init__(self) :
-        self.__names = []
-        self.__constraints = []
-        self.__weights = []
-        
-        self.__lines = []
 
-    def getNamesWithLabel(self) :
-        return self.__names
-
-    def constraints(self) :
-        return self.__constraints
-        
-    def getWeights(self) :
-        return self.__weights
-                
-    @classmethod
-    def createFrom(cls, formula, **extra) :
-        cnf = CNF()
-        
-        lines = []
-        for index, node in enumerate(formula) :
-            index += 1
-            nodetype = type(node).__name__
-            
-            if nodetype == 'conj' :
-                line = str(index) + ' ' + ' '.join( map( lambda x : str(-(x)), node.children ) ) + ' 0'
-                lines.append(line)
-                for x in node.children  :
-                    lines.append( "%s %s 0" % (-index, x) )
-            elif nodetype == 'disj' :
-                line = str(-index) + ' ' + ' '.join( map( lambda x : str(x), node.children ) ) + ' 0'
-                lines.append(line)
-                for x in node.children  :
-                    lines.append( "%s %s 0" % (index, -x) )
-            elif nodetype == 'atom' :
-                pass
-            else :
-                raise ValueError("Unexpected node type: '%s'" % nodetype)
-            
-        for c in formula.constraints() :
-            for l in c.encodeCNF() :
-                lines.append(' '.join(map(str,l)) + ' 0')
-        
-        clause_count = len(lines)
-        atom_count = len(formula)
-        cnf.__lines = [ 'p cnf %s %s' % (atom_count, clause_count) ] + lines
-        cnf.__names = formula.getNamesWithLabel()
-        cnf.__constraints = formula.constraints()
-        cnf.__weights = formula.getWeights()
-        return cnf
-        
-    def toDimacs(self) :
-        return '\n'.join( self.__lines )
     
 class NNF(LogicFormula) :
     
@@ -335,14 +274,13 @@ class NNF(LogicFormula) :
     def _compile(cls, cnf) :
         names = cnf.getNamesWithLabel()
         
-        # TODO extract paths
         # TODO add alternative compiler support
-        cnf_file = '/tmp/pl.cnf'
+        cnf_file = tempfile.mkstemp('.cnf')[1]
         with open(cnf_file, 'w') as f :
             f.write(cnf.toDimacs())
 
-        nnf_file = '/tmp/pl.nnf'
-        cmd = ['../version2.0/assist/darwin/dsharp', '-Fnnf', nnf_file, '-smoothNNF','-disableAllLits', cnf_file ] #
+        nnf_file = tempfile.mkstemp('.nnf')[1]
+        cmd = ['dsharp', '-Fnnf', nnf_file, '-smoothNNF','-disableAllLits', cnf_file ] #
 
         OUT_NULL = open(os.devnull, 'w')
 
@@ -358,7 +296,7 @@ class NNF(LogicFormula) :
                 attempts_left -= 1
                 if attempts_left == 0 :
                     raise err
-        
+        OUT_NULL.close()
         return cls._load_nnf( nnf_file, cnf)
     
     @classmethod

@@ -163,8 +163,8 @@ class Term(object) :
         
     def __eq__(self, other) :
         # TODO: this can be very slow?
-        if not other :
-            return None
+        if not isinstance(other,Term) :
+            return False
         else :
             return (self.functor, self.args) == (other.functor, other.args)
         
