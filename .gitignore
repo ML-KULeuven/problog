@@ -4,7 +4,7 @@ __pycache__
 build/
 trash/
 
-test/
+/test/
 sandbox/
 data/
 test-reports/
