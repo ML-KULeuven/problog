@@ -1,6 +1,6 @@
 import unittest
 
-from .logic.program import PrologFactory
+from .program import PrologFactory
 from .parser import PrologParser
 from .logic import Term
 

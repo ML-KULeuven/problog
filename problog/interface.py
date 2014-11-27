@@ -1,6 +1,6 @@
 
 from .engine import DefaultEngine
-from .logic.formula import LogicFormula
+from .formula import LogicFormula
 from .logic import Term, Var, Constant
 
 def ground(model, acyclic=True) :

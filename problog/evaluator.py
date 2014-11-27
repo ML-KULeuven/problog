@@ -1,6 +1,6 @@
 from __future__ import print_function
 
-from .logic.basic import Constant, Term
+from .logic import Constant, Term
 from .engine import computeFunction
 
 from collections import defaultdict

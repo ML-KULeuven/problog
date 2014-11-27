@@ -3,8 +3,8 @@ from __future__ import print_function
 import sys, os
 
 from collections import namedtuple, defaultdict
-from .logic.formula import LogicFormula
-from .logic.basic import LogicProgram
+from .formula import LogicFormula
+from .logic import LogicProgram
 from .interface import ground
 from .evaluator import Evaluator, SemiringProbability
 
