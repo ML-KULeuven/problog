@@ -1,6 +1,6 @@
 from __future__ import print_function
 
-from .logic import Term, Var, And, Or, Not_, Clause, LogicProgram, Constant, AnnotatedDisjunction
+from .logic import *
 
 from .parser import PrologParser, Factory
 
