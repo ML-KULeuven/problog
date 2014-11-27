@@ -1,6 +1,6 @@
 from __future__ import print_function
 
-from .logic import Term, Var, And, Or, Not, Clause, LogicProgram, Constant, AnnotatedDisjunction
+from .logic import Term, Var, And, Or, Not_, Clause, LogicProgram, Constant, AnnotatedDisjunction
 
 from .parser import PrologParser, Factory
 
@@ -148,7 +148,7 @@ class PrologFactory(Factory) :
         return And(operand1, operand2)
     
     def build_not(self, functor, operand, **extra) :
-        return Not(operand)
+        return Not_(operand)
         
     def build_probabilistic(self, operand1, operand2, **extra) :
         operand2.probability = operand1
@@ -393,7 +393,7 @@ class ClauseDB(LogicProgram) :
             op1 = self._compile(struct.op1, variables)
             op2 = self._compile(struct.op2, variables)
             return self._addOrNode( op1, op2)
-        elif isinstance(struct, Not) :
+        elif isinstance(struct, Not_) :
             child = self._compile(struct.child, variables)
             return self._addNotNode( child)
         elif isinstance(struct, AnnotatedDisjunction) :
@@ -468,7 +468,7 @@ class ClauseDB(LogicProgram) :
             a,b = node.children
             return Or( self._extract(a), self._extract(b) )
         elif nodetype == 'neg' :
-            return Not( self._extract(node.child))
+            return Not_( self._extract(node.child))
             
         else :
             raise ValueError("Unknown node type: '%s'" % nodetype)    

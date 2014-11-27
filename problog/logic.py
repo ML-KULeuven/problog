@@ -9,7 +9,7 @@ This module contains basic logic constructs.
     Four functions are handled separately:
         * conjunction (see :class:`And`)
         * disjunction (see :class:`Or`)
-        * negation (see :class:`Not`)
+        * negation (see :class:`Not_`)
         * clause (see :class:`Clause`)
     
     **Syntactic sugar**
@@ -181,7 +181,7 @@ class Term(object) :
         return Or(self, rhs)
             
     def __invert__(self) :
-        return Not(self)
+        return Not_(self)
     
 
 class Var(Term) :
@@ -342,7 +342,7 @@ class And(Term) :
         
         return "%s, %s" % (lhs, rhs)
         
-class Not(Term) :
+class Not_(Term) :
     """Not"""
     
     def __init__(self, child) :
