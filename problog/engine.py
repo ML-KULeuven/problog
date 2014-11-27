@@ -1,9 +1,7 @@
 from __future__ import print_function
 
-from __future__ import print_function
-
-from .logic import Term, Constant
 from .program import ClauseDB, PrologString
+from .logic import Term, Constant
 from .formula import LogicFormula
 
 """
