@@ -1,10 +1,8 @@
 from __future__ import print_function
 
-from .basic import Term, Var, And, Or, Not, Clause, LogicProgram, Constant, AnnotatedDisjunction
+from .logic import Term, Var, And, Or, Not, Clause, LogicProgram, Constant, AnnotatedDisjunction
 
-from .basic import LogicProgram
-
-from ..parser import PrologParser, Factory
+from .parser import PrologParser, Factory
 
 from collections import namedtuple, defaultdict
 

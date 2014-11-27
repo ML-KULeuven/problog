@@ -4,7 +4,7 @@ from __future__ import print_function
 
 import os, sys, subprocess
 
-from problog.logic.program import PrologFile
+from problog.program import PrologFile
 from problog.evaluator import SemiringSymbolic, Evaluator
 from problog.nnf_formula import NNF
 from problog.sdd_formula import SDD
