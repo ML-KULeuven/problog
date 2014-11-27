@@ -1,5 +1,5 @@
 
-from .logic.engine import DefaultEngine
+from .engine import DefaultEngine
 from .logic.formula import LogicFormula
 from .logic import Term, Var, Constant
 

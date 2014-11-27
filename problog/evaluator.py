@@ -1,7 +1,7 @@
 from __future__ import print_function
 
 from .logic.basic import Constant, Term
-from .logic.eb_engine import computeFunction
+from .engine import computeFunction
 
 from collections import defaultdict
 import subprocess
