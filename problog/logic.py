@@ -9,7 +9,7 @@ This module contains basic logic constructs.
     Four functions are handled separately:
         * conjunction (see :class:`And`)
         * disjunction (see :class:`Or`)
-        * negation (see :class:`Not_`)
+        * negation (see :class:`Not`)
         * clause (see :class:`Clause`)
     
     **Syntactic sugar**
@@ -199,7 +199,7 @@ class Term(object) :
         return Or(self, rhs)
             
     def __invert__(self) :
-        return Not_(self)
+        return Not(self)
     
     def __float__(self) :
         return float(self.value)
@@ -374,7 +374,7 @@ class And(Term) :
         
         return "%s, %s" % (lhs, rhs)
         
-class Not_(Term) :
+class Not(Term) :
     """Not"""
     
     def __init__(self, child) :
@@ -427,7 +427,7 @@ class LogicProgram(object) :
         :type lp: :class:`.LogicProgram`
         :param force_copy: default False, If true, always create a copy of the original logic program.
         :type force_copy: bool
-        :result: LogicProgram that is (externally) identical to given one
+        :returns: LogicProgram that is (externally) identical to given one
         :rtype: object of the class on which this method is invoked
         
         If the original LogicProgram already has the right class and force_copy is False, then the original program is returned.
@@ -441,6 +441,15 @@ class LogicProgram(object) :
             return obj
             
 def computeFunction(func, args) :
+    """Compute the result of an arithmetic function given by a functor and a list of arguments.
+    
+        :raises: ValueError if the function is unknown or the arguments can not be computed
+        :returns: the result of the function
+        :rtype: Constant
+        
+    Currently the following functions are supported: ``+/2``, ``-/2``, ``/\/2``, ``\//2``, ``xor/2``, ``*/2``, ``//2``, ``///2``, ``<</2``, ``>>/2``, ``mod/2``, ``rem/2``, ``**/2``, ``^/2``, ``+/1``, ``-/1``, ``\\/1``.
+    
+    """
     
     functions = {
         ("'+'", 2) : (lambda a,b : a + b),
