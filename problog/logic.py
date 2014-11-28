@@ -441,14 +441,30 @@ class LogicProgram(object) :
             return obj
             
 def computeFunction(func, args) :
-    if func == "'+'" and len(args) == 2 :
-        return Constant(args[0].value + args[1].value)
-    elif func == "'-'" and len(args) == 2 :
-        return Constant(args[0].value - args[1].value)
-    elif func == "'*'" and len(args) == 2 :
-        return Constant(args[0].value * args[1].value)
-    elif func == "'/'" and len(args) == 2 :
-        return Constant(args[0].value / args[1].value)
+    
+    functions = {
+        ("'+'", 2) : (lambda a,b : a + b),
+        ("'-'", 2) : (lambda a,b : a - b),
+        ("'/\\'", 2) : (lambda a,b : a & b),
+        ("'\\/'", 2) : (lambda a,b : a | b),
+        ("'xor'", 2) : (lambda a,b : a ^ b),
+        ("'*'", 2) : (lambda a,b : a * b),
+        ("'/'", 2) : (lambda a,b : a / b),
+        ("'//'", 2) : (lambda a,b : a // b),        
+        ("'<<'", 2) : (lambda a,b : a << b),
+        ("'>>'", 2) : (lambda a,b : a >> b),
+        ("'mod'", 2) : (lambda a,b : a % b),
+        ("'rem'", 2) : (lambda a,b : a % b),
+        ("'**'", 2) : (lambda a,b : a ** b),
+        ("'^'", 2) : (lambda a,b : a ** b),
+        ("'+'", 1) : (lambda a : a),
+        ("'-'", 1) : (lambda a : -a),
+        ("'\\'", 1) : (lambda a : ~a),
+    }
+    
+    function = functions.get( (func, len(args) ) )
+    if function == None :
+        raise ValueError("Unknown function: '%s'/%s" % (func, len(args)) )
     else :
-        raise ValueError("Unknown function: '%s'" % func)
-
+        values = [ arg.value for arg in args ]
+        return Constant( function(*values) )
