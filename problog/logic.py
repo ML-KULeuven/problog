@@ -60,6 +60,7 @@ This module contains basic logic constructs.
 """
 
 from __future__ import print_function
+from __future__ import division
 
 class Term(object) :
     """Represent a first-order Term."""
@@ -69,25 +70,42 @@ class Term(object) :
         self.__args = args
         self.__probability = kwdargs.get('p')
     
-    def _get_functor(self) : return self.__functor
-    functor = property( _get_functor, doc="Term functor" )
-        
-    def _get_args(self) : return self.__args
-    args = property( _get_args, doc="Term arguments" )
+    @property
+    def functor(self) : 
+        """Term functor"""
+        return self.__functor
+
+    @property
+    def args(self) : 
+        """Term arguments"""
+        return self.__args
     
-    def _get_arity(self) : return len(self.__args)
-    arity = property( _get_arity, doc="Number of arguments.")
-        
-    def _get_signature(self) : 
+    @property
+    def arity(self) : 
+        """Number of arguments."""
+        return len(self.__args)
+    
+    @property
+    def value(self) : 
+        """Value of the constant."""
+        return computeFunction(self.functor, self.args)        
+
+    @property
+    def signature(self) : 
+        """Term's signature ``functor/arity``"""
         if type(self.functor) == str :
             return '%s/%s' % (self.functor.strip("'"), self.arity)
         else :
             return '%s/%s' % (self.functor, self.arity)
-    signature = property( _get_signature, doc="Term's signature ``functor/arity``" )
     
-    def _get_probability(self) : return self.__probability
-    def _set_probability(self, p) : self.__probability = p
-    probability = property( _get_probability, _set_probability, doc="Term's probability (default: None).")
+    @property
+    def probability(self) : 
+        """Term's probability"""
+        return self.__probability
+    
+    @probability.setter
+    def probability(self, p) : 
+        self.__probability = p
         
     def apply(self, subst) :
         """Apply the given substitution to the variables in the term.
@@ -183,7 +201,12 @@ class Term(object) :
     def __invert__(self) :
         return Not_(self)
     
-
+    def __float__(self) :
+        return float(self.value)
+        
+    def __int__(self) :
+        return int(self.value)
+    
 class Var(Term) :
     """A Term representing a variable.
     
@@ -195,9 +218,16 @@ class Var(Term) :
     def __init__(self, name) :
         Term.__init__(self,name)
     
-    def _get_name(self) : return self.functor    
-    name = property( _get_name , doc="Name of the variable.")    
-        
+    @property
+    def name(self) : 
+        """Name of the variable"""
+        return self.functor    
+
+    @property
+    def value(self) : 
+        """Value of the constant."""
+        raise ValueError('Variables do not support evaluation.')
+       
     def apply(self, subst) :
         """Replace the variable with a value from the given substitution.
         
@@ -229,8 +259,10 @@ class Constant(Term) :
     def __init__(self, value) :
         Term.__init__(self,value)
     
-    def _get_value(self) : return self.functor        
-    value = property( _get_value , doc="Value of the constant.")
+    @property
+    def value(self) : 
+        """Value of the constant."""
+        return self.functor
                 
     def isConstant(self) :
         """Checks whether this Term represents a constant.
@@ -274,7 +306,7 @@ class Constant(Term) :
         
     def __eq__(self, other) :
         return str(self) == str(other)
-        
+                
 class Clause(Term) :
     """A clause."""
     
@@ -407,3 +439,16 @@ class LogicProgram(object) :
             for clause in lp :
                 obj += clause
             return obj
+            
+def computeFunction(func, args) :
+    if func == "'+'" and len(args) == 2 :
+        return Constant(args[0].value + args[1].value)
+    elif func == "'-'" and len(args) == 2 :
+        return Constant(args[0].value - args[1].value)
+    elif func == "'*'" and len(args) == 2 :
+        return Constant(args[0].value * args[1].value)
+    elif func == "'/'" and len(args) == 2 :
+        return Constant(args[0].value / args[1].value)
+    else :
+        raise ValueError("Unknown function: '%s'" % func)
+

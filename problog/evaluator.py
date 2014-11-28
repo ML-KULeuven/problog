@@ -1,6 +1,5 @@
 from __future__ import print_function
 
-from .logic import Constant, Term
 from .engine import computeFunction
 
 from collections import defaultdict
@@ -48,12 +47,7 @@ class SemiringProbability(Semiring) :
         return 1.0 - a
                 
     def value(self, a) :
-        if isinstance(a, Constant) :
-            return a.value
-        elif isinstance(a, Term) :
-            return computeFunction(a.functor, a.args, None).value
-        else :
-            return a
+        return float(a)
 
     def normalize(self, a, Z) :
         return a/Z
