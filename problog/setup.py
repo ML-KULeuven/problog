@@ -63,7 +63,7 @@ def gather_info() :
             output = subprocess.check_output( ['yap', '-g', test_program ], stderr=OUT_NULL ).decode('utf-8').split('\n')
         system_info['yap_version'] = output[0].split()[1]
         system_info['yap_tabling'] = output[1].strip() == "1"
-    except subprocess.CalledProcessError :
+    except Exception :
         pass
         
     # SDD module
