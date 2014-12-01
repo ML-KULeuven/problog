@@ -1,0 +1,5 @@
+#! /bin/bash
+
+python main.py install
+
+python3 main.py install
