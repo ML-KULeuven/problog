@@ -3,7 +3,7 @@ from __future__ import print_function
 import tempfile, os, sys, subprocess
 from collections import defaultdict
 
-from .problog import system_info
+from . import system_info
 from .evaluator import Evaluator, SemiringProbability
 from .formula import LogicDAG
 from .logic import LogicProgram
@@ -41,10 +41,10 @@ class NNF(LogicDAG) :
             f.write(cnf.toDimacs())
 
 
-        if problog.system_info.get('c2d', False) :
+        if system_info.get('c2d', False) :
             print ('USING c2d')
             nnf_file = cnf_file + '.nnf'
-            cmd = ['cnf2dDNNF', '-dt_method', '0', '-smooth_all', '-reduce', '-visualize', '-in', cnf_file ]),
+            cmd = ['cnf2dDNNF', '-dt_method', '0', '-smooth_all', '-reduce', '-visualize', '-in', cnf_file ]
         else :
             nnf_file = tempfile.mkstemp('.nnf')[1]
             cmd = ['dsharp', '-Fnnf', nnf_file, '-smoothNNF','-disableAllLits', cnf_file ] #
