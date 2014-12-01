@@ -3,7 +3,7 @@ from __future__ import print_function
 import sys, os
 
 from collections import namedtuple, defaultdict
-from .formula import LogicFormula
+from .formula import LogicDAG
 from .logic import LogicProgram
 from .interface import ground
 from .evaluator import Evaluator, SemiringProbability
@@ -16,7 +16,7 @@ except ImportError :
     sdd = None
     warnings.warn('The SDD library could not be found!', RuntimeWarning)
 
-class SDD(LogicFormula) :
+class SDD(LogicDAG) :
     """A propositional logic formula consisting of and, or, not and atoms represented as an SDD.
 
     This class has two restrictions with respect to the default LogicFormula:
@@ -34,7 +34,7 @@ class SDD(LogicFormula) :
     # negation is encoded by using a negative number for the key
 
     def __init__(self, var_count) :        
-        LogicFormula.__init__(self, auto_compact=False)
+        LogicDAG.__init__(self, auto_compact=False)
         self.sdd_manager = sdd.sdd_manager_create(var_count, 0) # auto-gc & auto-min
 
     def __del__(self) :

@@ -2,7 +2,83 @@ from __future__ import print_function
 
 from collections import namedtuple, defaultdict
 
-class LogicFormula(object) :
+from logic import LogicBase
+
+
+def makeAcyclic(src, dest) :
+    return src.makeAcyclic(output=dest)
+
+
+class LogicFormulaBase(LogicBase) :
+    
+    def getAtomCount(self) :
+        pass
+        
+    def __len__(self) :
+        pass
+    
+    def addName(self, name, node_id, label=None) :
+        pass
+                
+    def getNames(self, label=None) :
+        pass
+        
+    def getNamesWithLabel(self) :
+        pass
+        
+    def addQuery(self, name, key) :
+        pass
+    
+    def queries(self) :
+        pass
+        
+    def addEvidence(self, name, key, value) :
+        pass
+        
+    def evidence(self) :
+        pass
+    
+    def __iter__(self) :
+        pass
+        
+    def getWeights(self) :
+        pass
+        
+    def extractWeights(self, semiring) :
+        pass
+
+    def addConstraint(self, constraint) :
+        pass
+        
+    def constraints(self) :
+        pass
+        
+    def addAtom(self, identifier, weight, group) :
+        pass
+        
+    def addAnd(self, children) :
+        pass
+        
+    def addOr(self, children) :
+        pass
+        
+    def addNot(self, children) :
+        pass
+        
+    def isAtom(self, node) :
+        pass
+        
+    def isAnd(self, node) :
+        pass
+        
+    def isOr(self, node) :
+        pass
+    
+    def isNot(self, node) :
+        pass
+        
+
+class LogicFormula(LogicBase) :
     """A propositional logic formula consisting of and, or, not and atoms."""
     
     TRUE = 0
@@ -23,6 +99,8 @@ class LogicFormula(object) :
         return self._disj(children)
     
     def __init__(self, auto_compact=True) :
+        LogicBase.__init__(self)
+        
         # List of nodes
         self.__nodes = []
         # Lookup index for 'atom' nodes, key is identifier passed to addAtom()
@@ -44,6 +122,15 @@ class LogicFormula(object) :
         
     def getAtomCount(self) :
         return self.__atom_count
+        
+    def addQuery(self, name, node_id) :
+        self.addName(name, node_id, label='query')
+        
+    def addEvidence(self, name, node_id, value) :
+        if value :
+            self.addName(name, node_id, 'evidence')
+        else :
+            self.addName(name, node_id, '-evidence')
         
     def addName(self, name, node_id, label=None) :
         """Associates a name to the given node identifier."""
@@ -547,6 +634,11 @@ class LogicFormula(object) :
             q += 1
 
         return s + '}'
+
+class LogicDAG(LogicFormula) : 
+    
+    def __init__(self, auto_compact=True) :
+        LogicFormula.__init__(self, auto_compact)
  
 class Constraint(object) : 
     pass

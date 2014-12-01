@@ -4,15 +4,15 @@ import tempfile, os, sys, subprocess
 from collections import defaultdict
 
 from .evaluator import Evaluator, SemiringProbability
-from .formula import LogicFormula
+from .formula import LogicDAG
 from .logic import LogicProgram
 from .cnf_formula import CNF
 from .interface import ground
 
-class NNF(LogicFormula) :
+class NNF(LogicDAG) :
     
     def __init__(self) :
-        LogicFormula.__init__(self, auto_compact=False)
+        LogicDAG.__init__(self, auto_compact=False)
 
     @classmethod
     def createFrom(cls, formula, **extra) :
