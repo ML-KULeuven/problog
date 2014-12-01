@@ -44,6 +44,8 @@ def gather_info() :
     
     system_info = {}
     
+    system_info['root_path'] = os.path.join(os.path.dirname(__file__), '..')
+    
     system_info['os'] = os.uname()[0]
     system_info['arch'] = os.uname()[-1]
     
