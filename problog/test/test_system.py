@@ -17,8 +17,6 @@ class TestSystemSDD(unittest.TestCase) :
 
     def setUp(self) :
 
-        install()
-
         try :
             self.assertSequenceEqual = self.assertItemsEqual
         except AttributeError :
