@@ -2,17 +2,25 @@ import unittest
 
 from problog import root_path
 
-import shutil
-shutil.rmtree( root_path('problog', 'logic')  )
-
-
 from problog.setup import install
 from problog.program import PrologFile
+from problog.nnf_formula import NNF
 from problog.sdd_formula import SDD
 
 import glob, os
 
-class TestSystem(unittest.TestCase) :
+class TestSystemSDD(unittest.TestCase) :
+    
+    def setUp(self) :
+        
+        install()
+        
+        try :
+            self.assertSequenceEqual = self.assertItemsEqual
+        except AttributeError :
+            self.assertSequenceEqual = self.assertCountEqual
+
+class TestSystemNNF(unittest.TestCase) :
     
     def setUp(self) :
         
@@ -23,10 +31,6 @@ class TestSystem(unittest.TestCase) :
         except AttributeError :
             self.assertSequenceEqual = self.assertCountEqual
         
-        
-    
-    def testDummy(self) :
-        pass
 
 
 def read_result(filename) :
@@ -59,11 +63,29 @@ def createSystemTestSDD(filename) :
             self.assertAlmostEqual(correct[query], computed[query])
     
     return test
+
+
+def createSystemTestNNF(filename) :
+    
+    correct = read_result(filename)
+    
+    def test(self) : 
+    
+        sdd = NNF.createFrom(PrologFile(filename))
+        computed = sdd.evaluate()
+
+        self.assertSequenceEqual(correct, computed)
+        
+        for query in correct :
+            self.assertAlmostEqual(correct[query], computed[query])
+    
+    return test
         
 
 for testfile in glob.glob( root_path('test', '*.pl' ) ) :
-    testname = 'test_' + os.path.basename(testfile) + '_SDD'
-    setattr( TestSystem, testname, createSystemTestSDD(testfile) )    
+    testname = 'test_' + os.path.basename(testfile)
+    setattr( TestSystemSDD, testname, createSystemTestSDD(testfile) )    
+    setattr( TestSystemNNF, testname, createSystemTestNNF(testfile) )    
         
         
 # 
