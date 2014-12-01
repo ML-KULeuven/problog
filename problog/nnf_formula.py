@@ -16,7 +16,7 @@ class NNF(LogicDAG) :
         LogicDAG.__init__(self, auto_compact=False)
 
     @classmethod
-    def createFrom(cls, formula, **extra) :
+    def createFrom(cls, formula, use_compiler=None, **extra) :
         assert( isinstance(formula, LogicProgram) or isinstance(formula, LogicFormula) or isinstance(formula, CNF) )
         if isinstance(formula, LogicProgram) :
             formula = ground(formula)
@@ -26,88 +26,12 @@ class NNF(LogicDAG) :
             if not isinstance(formula, CNF) :
                 formula = CNF.createFrom(formula)
             # Invariant: formula is CNF
-            return cls._compile(formula)
+            
+            return Compiler.get(use_compiler)(formula)
         else :
             # TODO force_copy??
             return formula
-                        
-    @classmethod
-    def _compile(cls, cnf) :
-        names = cnf.getNamesWithLabel()
-        
-        # TODO add alternative compiler support
-        cnf_file = tempfile.mkstemp('.cnf')[1]
-        with open(cnf_file, 'w') as f :
-            f.write(cnf.toDimacs())
-
-        if system_info.get('c2d', False) :
-            nnf_file = cnf_file + '.nnf'
-            cmd = ['cnf2dDNNF', '-dt_method', '0', '-smooth_all', '-reduce', '-visualize', '-in', cnf_file ]
-        else :
-            nnf_file = tempfile.mkstemp('.nnf')[1]
-            cmd = ['dsharp', '-Fnnf', nnf_file, '-smoothNNF','-disableAllLits', cnf_file ] #
-
-        attempts_left = 10
-        success = False
-        while attempts_left and not success :
-            try :
-                with open(os.devnull, 'w') as OUT_NULL :
-                    subprocess.check_call(cmd, stdout=OUT_NULL)
-                success = True
-            except subprocess.CalledProcessError as err :
-                attempts_left -= 1
-                if attempts_left == 0 :
-                    raise err
-        return cls._load_nnf( nnf_file, cnf)
-    
-    @classmethod
-    def _load_nnf(cls, filename, cnf) :
-        nnf = NNF()
-
-        weights = cnf.getWeights()
-        
-        names_inv = defaultdict(list)
-        for name,node,label in cnf.getNamesWithLabel() :
-            names_inv[node].append((name,label))
-        
-        with open(filename) as f :
-            line2node = {}
-            rename = {}
-            lnum = 0
-            for line in f :
-                line = line.strip().split()
-                if line[0] == 'nnf' :
-                    pass
-                elif line[0] == 'L' :
-                    name = int(line[1])
-                    prob = weights.get(abs(name), True)
-                    node = nnf.addAtom( abs(name), prob )
-                    rename[abs(name)] = node
-                    if name < 0 : node = -node
-                    line2node[lnum] = node
-                    if abs(name) in names_inv :
-                        for actual_name, label in names_inv[abs(name)] :
-                            if name < 0 :
-                                nnf.addName(actual_name, -node, label)
-                            else :
-                                nnf.addName(actual_name, node, label)
-                    lnum += 1
-                elif line[0] == 'A' :
-                    children = map(lambda x : line2node[int(x)] , line[2:])
-                    line2node[lnum] = nnf.addAnd( children )
-                    lnum += 1
-                elif line[0] == 'O' :
-                    children = map(lambda x : line2node[int(x)], line[3:])
-                    line2node[lnum] = nnf.addOr( children )        
-                    lnum += 1
-                else :
-                    print ('Unknown line type')
-                    
-        for c in cnf.constraints() :
-            nnf.addConstraint(c.copy(rename))
-                    
-        return nnf
-        
+                                    
     def getEvaluator(self, semiring=None) :
         if semiring == None :
             semiring = SemiringProbability()
@@ -242,5 +166,105 @@ class SimpleNNFEvaluator(Evaluator) :
             raise TypeError("Unexpected node type: '%s'." % nodetype)    
 
 
-
+class Compiler(object) :
     
+    __compilers = {}
+    
+    @classmethod
+    def getDefault(cls) :
+        if system_info.get('c2d', False) :
+            return _compile_with_c2d
+        else :
+            return _compile_with_dsharp
+    
+    @classmethod
+    def get(cls, name) :
+        result = cls.__compilers.get(name)
+        if result == None : result = cls.getDefault()
+        return result
+        
+    @classmethod
+    def add(cls, name, func) :
+        cls.__compilers[name] = func
+    
+def _compile_with_dsharp( cnf ) :
+    cnf_file = tempfile.mkstemp('.cnf')[1]
+    nnf_file = tempfile.mkstemp('.nnf')[1]    
+    cmd = ['dsharp', '-Fnnf', nnf_file, '-smoothNNF','-disableAllLits', cnf_file ] #
+    return _compile( cnf, cmd, cnf_file, nnf_file )
+Compiler.add( 'dsharp', _compile_with_dsharp )
+
+def _compile_with_c2d( cnf ) :
+    cnf_file = tempfile.mkstemp('.cnf')[1]
+    nnf_file = cnf_file + '.nnf'
+    cmd = ['cnf2dDNNF', '-dt_method', '0', '-smooth_all', '-reduce', '-visualize', '-in', cnf_file ]
+    return _compile( cnf, cmd, cnf_file, nnf_file )
+Compiler.add( 'c2d', _compile_with_c2d )
+
+def _compile(cnf, cmd, cnf_file, nnf_file) :
+    names = cnf.getNamesWithLabel()
+    
+    with open(cnf_file, 'w') as f :
+        f.write(cnf.toDimacs())
+
+    attempts_left = 10
+    success = False
+    while attempts_left and not success :
+        try :
+            with open(os.devnull, 'w') as OUT_NULL :
+                subprocess.check_call(cmd, stdout=OUT_NULL)
+            success = True
+        except subprocess.CalledProcessError as err :
+            attempts_left -= 1
+            if attempts_left == 0 :
+                raise err
+    return _load_nnf( nnf_file, cnf)
+
+
+def _load_nnf(filename, cnf) :
+    
+    nnf = NNF()
+
+    weights = cnf.getWeights()
+    
+    names_inv = defaultdict(list)
+    for name,node,label in cnf.getNamesWithLabel() :
+        names_inv[node].append((name,label))
+    
+    with open(filename) as f :
+        line2node = {}
+        rename = {}
+        lnum = 0
+        for line in f :
+            line = line.strip().split()
+            if line[0] == 'nnf' :
+                pass
+            elif line[0] == 'L' :
+                name = int(line[1])
+                prob = weights.get(abs(name), True)
+                node = nnf.addAtom( abs(name), prob )
+                rename[abs(name)] = node
+                if name < 0 : node = -node
+                line2node[lnum] = node
+                if abs(name) in names_inv :
+                    for actual_name, label in names_inv[abs(name)] :
+                        if name < 0 :
+                            nnf.addName(actual_name, -node, label)
+                        else :
+                            nnf.addName(actual_name, node, label)
+                lnum += 1
+            elif line[0] == 'A' :
+                children = map(lambda x : line2node[int(x)] , line[2:])
+                line2node[lnum] = nnf.addAnd( children )
+                lnum += 1
+            elif line[0] == 'O' :
+                children = map(lambda x : line2node[int(x)], line[3:])
+                line2node[lnum] = nnf.addOr( children )        
+                lnum += 1
+            else :
+                print ('Unknown line type')
+                
+    for c in cnf.constraints() :
+        nnf.addConstraint(c.copy(rename))
+                
+    return nnf
