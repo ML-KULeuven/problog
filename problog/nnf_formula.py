@@ -42,21 +42,17 @@ class NNF(LogicDAG) :
         nnf_file = tempfile.mkstemp('.nnf')[1]
         cmd = ['dsharp', '-Fnnf', nnf_file, '-smoothNNF','-disableAllLits', cnf_file ] #
 
-        OUT_NULL = open(os.devnull, 'w')
-
         attempts_left = 10
         success = False
         while attempts_left and not success :
             try :
-                subprocess.check_call(cmd, stdout=OUT_NULL)
+                with open(os.devnull, 'w') as OUT_NULL :
+                    subprocess.check_call(cmd, stdout=OUT_NULL)
                 success = True
             except subprocess.CalledProcessError as err :
-                #print (err)
-                #print ("dsharp crashed, retrying", file=sys.stderr)
                 attempts_left -= 1
                 if attempts_left == 0 :
                     raise err
-        OUT_NULL.close()
         return cls._load_nnf( nnf_file, cnf)
     
     @classmethod
