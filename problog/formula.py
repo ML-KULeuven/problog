@@ -2,7 +2,7 @@ from __future__ import print_function
 
 from collections import namedtuple, defaultdict
 
-from logic import LogicBase
+from .logic import LogicBase
 
 
 def makeAcyclic(src, dest) :
