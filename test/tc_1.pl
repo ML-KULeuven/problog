@@ -1,4 +1,6 @@
-%%% Paste your program, query and evidence here
+%Expected outcome: 
+% stressed(1) 0.36
+% stressed(2) 0.2
 
 0.2::stressed(1).
 0.2::stressed(X):-person(X).

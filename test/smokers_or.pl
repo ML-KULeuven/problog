@@ -14,8 +14,7 @@
 0.3::stress(X) :- person(X).
 0.2::influences(X,Y) :- person(X), person(Y).
 
-smokes(X) :- stress(X). 
-smokes(X) :- friend(X,Y), influences(Y,X), smokes(Y).
+smokes(X) :- stress(X) ; friend(X,Y), influences(Y,X), smokes(Y).
 
 0.4::asthma(X) <- smokes(X).
 
@@ -32,15 +31,15 @@ friend(4,2).
 
 
 %%% Evidence
-% evidence(smokes(2),true).
-% evidence(influences(4,2),false).
+evidence(smokes(2),true).
+evidence(influences(4,2),false).
 
 %%% Queries
 query(smokes(1)).
-% query(smokes(2)).
-% query(smokes(3)).
-% query(smokes(4)).
-% query(asthma(1)).
-% query(asthma(2)).
-% query(asthma(3)).
-% query(asthma(4)).
+query(smokes(2)).
+query(smokes(3)).
+query(smokes(4)).
+query(asthma(1)).
+query(asthma(2)).
+query(asthma(3)).
+query(asthma(4)).
