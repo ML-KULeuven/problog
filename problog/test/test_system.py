@@ -1,6 +1,11 @@
 import unittest
 
 from problog import root_path
+
+import shutil
+shutil.rmtree( root_path('problog', 'logic')  )
+
+
 from problog.setup import install
 from problog.program import PrologFile
 from problog.sdd_formula import SDD
