@@ -79,7 +79,7 @@ def gather_info() :
     system_info['dsharp'] = distutils.spawn.find_executable('dsharp') != None
     
     # c2d
-    system_info['c2d'] = distutils.spawn.find_executable('cnf2ddnnf') != None
+    system_info['c2d'] = distutils.spawn.find_executable('cnf2dDNNF') != None
     return system_info
 
 def build_sdd() :

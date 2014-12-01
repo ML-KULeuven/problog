@@ -40,9 +40,7 @@ class NNF(LogicDAG) :
         with open(cnf_file, 'w') as f :
             f.write(cnf.toDimacs())
 
-
         if system_info.get('c2d', False) :
-            print ('USING c2d')
             nnf_file = cnf_file + '.nnf'
             cmd = ['cnf2dDNNF', '-dt_method', '0', '-smooth_all', '-reduce', '-visualize', '-in', cnf_file ]
         else :
