@@ -9,6 +9,10 @@ from problog.sdd_formula import SDD
 
 import glob, os
 
+class TestDummy(unittest.TestCase):
+    
+    def test_dummy(self) : pass
+
 class TestSystemSDD(unittest.TestCase) :
     
     def setUp(self) :
