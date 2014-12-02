@@ -65,18 +65,16 @@ class LogicFormulaBase(LogicBase) :
     def addNot(self, children) :
         pass
         
-    def isAtom(self, node) :
+    def getNodeType(self, key) :
         pass
         
-    def isAnd(self, node) :
+    def iterNodes(self) :
+        # return key, node, nodetype
         pass
-        
-    def isOr(self, node) :
+                
+    def ready(self) :
+        # mark end of initialization
         pass
-    
-    def isNot(self, node) :
-        pass
-        
 
 class LogicFormula(LogicBase) :
     """A propositional logic formula consisting of and, or, not and atoms."""
