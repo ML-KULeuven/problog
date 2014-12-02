@@ -6,7 +6,7 @@ from collections import defaultdict
 from . import system_info
 from .evaluator import Evaluator, SemiringProbability
 from .formula import LogicDAG
-from .logic import LogicProgram
+from .logic import LogicProgram, LogicBase
 from .cnf_formula import CNF
 from .interface import ground
 
@@ -64,7 +64,20 @@ class NNF(LogicDAG) :
             return evaluator.evaluate(node)
 
 
-
+class NNFFile(LogicBase) :
+    
+    def __init__(self, filename=None, readonly=True) :
+        """Create a new NNF file, or read an existing one."""
+        
+        if filename == None :
+            self.filename = tempfile.mkstemp('.nnf')[1] :
+            self.readonly = False
+        else :
+            self.filename = filename
+            self.readonly = readonly
+        
+    def load(self) :
+        pass
 
 class SimpleNNFEvaluator(Evaluator) :
     
