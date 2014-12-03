@@ -92,39 +92,6 @@ class CNFFile(CNF) :
             self.filename = filename
             self.readonly = readonly
             
-        self.__atom_count = 0
-        self.__lines = []
-        self.__constraints = []
-        
-        self.__names = []
-        self.__weights = []
-                        
-    def addAtom(self, *args) :
-        self.__atom_count += 1
-    
-    def addAnd(self, content) :
-        raise TypeError('This data structure does not support conjunctions.')
-                
-    def addOr(self, content) :
-        self.__lines.append( ' '.join(map(str, content)) + ' 0\n' )
-        
-    def addNot(self, content) :
-        return -content
-        
-    def addConstraint(self, constraint) :
-        self.__constraints.append(constraint)
-        for l in constraint.encodeCNF() :
-            lines.append(' '.join(map(str,l)) + ' 0')
-        
-    def constraints(self) :        
-        return self.__constraints
-
-    def getNamesWithLabel(self) :
-        return self.__names
-
-    def getWeights(self) :
-        return self.__weights
-            
     def ready(self) :
         if self.readonly :
             raise TypeError('This data structure is read only.')
