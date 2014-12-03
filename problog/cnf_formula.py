@@ -1,4 +1,12 @@
-class CNF(object) :
+from __future__ import print_function
+
+from .formula import LogicDAG, LogicBase
+
+from .core import ProbLogObject, transform
+
+import tempfile
+
+class CNF(ProbLogObject) :
     """A logic formula in Conjunctive Normal Form.
     
     This class does not derive from LogicFormula. (Although it could.)
@@ -64,6 +72,7 @@ class CNF(object) :
 # CNF -> CNFFile write toDimacs
 
 class CNFFormula(LogicDAG) :
+    """A CNF stored in memory."""
     
     def __init__(self) :
         LogicDAG.__init__(auto_compact=False)
@@ -76,16 +85,17 @@ class CNFFormula(LogicDAG) :
     def addAnd(self, content) :
         raise TypeError('This data structure does not support conjunctions.')
 
-class CNFFile(LogicBase) :
+class CNFFile(CNF) :
+    """A CNF stored in a file."""
     
     # TODO add read functionality???
     
-    def __init__(filename=None, readonly=True) :
+    def __init__(self, filename=None, readonly=True) :
         self.filename = filename
         self.readonly = readonly
         
         if filename == None :
-            self.filename = tempfile.mkstemp('.cnf')[1] :
+            self.filename = tempfile.mkstemp('.cnf')[1]
             self.readonly = False
         else :
             self.filename = filename
@@ -121,10 +131,10 @@ class CNFFile(LogicBase) :
             f.write('p cnf %s %s\n' % (self.__atom_count, len(self.__lines)))
             f.write('\n'.join(self.__lines))
 
-        
+@transform(LogicDAG, CNF) 
 def clarks_completion( source, destination ) :
-    # Source if an acyclic formula (LogicDAG)
-    # Destination is another LogicDAG (in CNF form)
+    # LogicDAG
+    # LogicDAG
     
     # Every node in original gets a literal
     num_atoms = len(source)
@@ -157,4 +167,16 @@ def clarks_completion( source, destination ) :
         
     destination.ready()
     return destination
+    
+
+class NNF_X(ProbLogObject):
+    pass
+    
+class NNFFile_X(NNF_X) :
+    pass
+    
+@transform(CNFFile, NNFFile_X)
+def compile_with_dsharp( source, destination ) :
+    pass
+    
     

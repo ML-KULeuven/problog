@@ -70,7 +70,7 @@ class NNFFile(LogicBase) :
         """Create a new NNF file, or read an existing one."""
         
         if filename == None :
-            self.filename = tempfile.mkstemp('.nnf')[1] :
+            self.filename = tempfile.mkstemp('.nnf')[1]
             self.readonly = False
         else :
             self.filename = filename

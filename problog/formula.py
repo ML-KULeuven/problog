@@ -701,3 +701,4 @@ class ConstraintME(Constraint) :
         result.nodes = set(rename.get(x,x) for x in self.nodes)
         result.extra_node = rename.get( self.extra_node, self.extra_node )
         return result
+
