@@ -9,28 +9,12 @@ from .formula import LogicDAG
 from .logic import LogicProgram, LogicBase
 from .cnf_formula import CNF
 from .interface import ground
+from .core import transform
 
 class NNF(LogicDAG) :
     
     def __init__(self) :
         LogicDAG.__init__(self, auto_compact=False)
-
-    @classmethod
-    def createFrom(cls, formula, use_compiler=None, **extra) :
-        assert( isinstance(formula, LogicProgram) or isinstance(formula, LogicFormula) or isinstance(formula, CNF) )
-        if isinstance(formula, LogicProgram) :
-            formula = ground(formula)
-
-        # Invariant: formula is CNF or LogicFormula
-        if not isinstance(formula, NNF) :
-            if not isinstance(formula, CNF) :
-                formula = CNF.createFrom(formula)
-            # Invariant: formula is CNF
-            
-            return Compiler.get(use_compiler)(formula)
-        else :
-            # TODO force_copy??
-            return formula
                                     
     def getEvaluator(self, semiring=None) :
         if semiring == None :
@@ -199,20 +183,26 @@ class Compiler(object) :
     @classmethod
     def add(cls, name, func) :
         cls.__compilers[name] = func
-    
-def _compile_with_dsharp( cnf ) :
+
+
+if system_info.get('c2d', False) :
+    @transform(CNF, NNF)
+    def _compile_with_c2d( cnf, nnf=None ) :
+        cnf_file = tempfile.mkstemp('.cnf')[1]
+        nnf_file = cnf_file + '.nnf'
+        cmd = ['cnf2dDNNF', '-dt_method', '0', '-smooth_all', '-reduce', '-visualize', '-in', cnf_file ]
+        return _compile( cnf, cmd, cnf_file, nnf_file )
+    Compiler.add( 'c2d', _compile_with_c2d )
+
+
+@transform(CNF, NNF)
+def _compile_with_dsharp( cnf, nnf=None ) :
     cnf_file = tempfile.mkstemp('.cnf')[1]
     nnf_file = tempfile.mkstemp('.nnf')[1]    
     cmd = ['dsharp', '-Fnnf', nnf_file, '-smoothNNF','-disableAllLits', cnf_file ] #
     return _compile( cnf, cmd, cnf_file, nnf_file )
 Compiler.add( 'dsharp', _compile_with_dsharp )
 
-def _compile_with_c2d( cnf ) :
-    cnf_file = tempfile.mkstemp('.cnf')[1]
-    nnf_file = cnf_file + '.nnf'
-    cmd = ['cnf2dDNNF', '-dt_method', '0', '-smooth_all', '-reduce', '-visualize', '-in', cnf_file ]
-    return _compile( cnf, cmd, cnf_file, nnf_file )
-Compiler.add( 'c2d', _compile_with_c2d )
 
 def _compile(cnf, cmd, cnf_file, nnf_file) :
     names = cnf.getNamesWithLabel()

@@ -2,14 +2,10 @@ from __future__ import print_function
 
 from collections import namedtuple, defaultdict
 
-from .logic import LogicBase
+from .core import transform, ProbLogObject
 
 
-def makeAcyclic(src, dest) :
-    return src.makeAcyclic(output=dest)
-
-
-class LogicFormulaBase(LogicBase) :
+class LogicFormulaBase(ProbLogObject) :
     
     def getAtomCount(self) :
         pass
@@ -76,7 +72,7 @@ class LogicFormulaBase(LogicBase) :
         # mark end of initialization
         pass
 
-class LogicFormula(LogicBase) :
+class LogicFormula(ProbLogObject) :
     """A propositional logic formula consisting of and, or, not and atoms."""
     
     TRUE = 0
@@ -97,7 +93,7 @@ class LogicFormula(LogicBase) :
         return self._disj(children)
     
     def __init__(self, auto_compact=True) :
-        LogicBase.__init__(self)
+        ProbLogObject.__init__(self)
         
         # List of nodes
         self.__nodes = []
@@ -290,35 +286,7 @@ class LogicFormula(LogicBase) :
     def _getNodeType(self, key) :
         """Get the type of the given node (fact, disj, conj)."""
         return type(self._getNode(key)).__name__
-                
-    def makeAcyclic(self, preserve_tables=False, output=None) :
-        """Break cycles."""
-        
-        assert(not preserve_tables)                    
-        
-        # TODO implement preserve tables
-        #   This copies the table information from self._def_nodes and translates all result nodes
-        #   This requires all result nodes to be maintained separately (add them to protected).
-        #   Problem: how to do this without knowledge about internal structure of the engine. 
-        
-        
-        # Output formula
-        if output == None : output = LogicFormula()
-        
-        # Protected nodes (these have to exist separately)
-        protected = set( [ y for x,y in self.getNames() ] )
-                
-        # Translation table from old to new.
-        translate = {}
-        
-        # Handle the given nodes one-by-one
-        for name, node, label in self.getNamesWithLabel() :
-            new_node, cycles = self._extract( output, node, protected, translate )
-            translate[node] = new_node
-            output.addName(name, new_node, label)
-        
-        return output
-                
+                                
     def _addCompound(self, nodetype, content, t, f, readonly=True, update=None) :
         """Add a compound term (AND or OR)."""
         assert( content )   # Content should not be empty
@@ -365,6 +333,12 @@ class LogicFormula(LogicBase) :
     def __iter__(self) :
         return iter(self.__nodes)
         
+    def iterNodes(self) :
+        for i, n in enumerate(self) :
+            yield (i+1, n, type(n).__name__)
+            
+        
+        
     def getWeights(self) :
         weights = {}
         for i, n in enumerate(self) :
@@ -398,6 +372,35 @@ class LogicFormula(LogicBase) :
     ##################################################################################
     ####                       LOOP BREAKING AND COMPACTION                       ####
     ##################################################################################
+
+    def makeAcyclic(self, preserve_tables=False, output=None) :
+        """Break cycles."""
+        
+        assert(not preserve_tables)                    
+        
+        # TODO implement preserve tables
+        #   This copies the table information from self._def_nodes and translates all result nodes
+        #   This requires all result nodes to be maintained separately (add them to protected).
+        #   Problem: how to do this without knowledge about internal structure of the engine. 
+        
+        
+        # Output formula
+        if output == None : output = LogicDAG()
+        
+        # Protected nodes (these have to exist separately)
+        protected = set( [ y for x,y in self.getNames() ] )
+                
+        # Translation table from old to new.
+        translate = {}
+        
+        # Handle the given nodes one-by-one
+        for name, node, label in self.getNamesWithLabel() :
+            new_node, cycles = self._extract( output, node, protected, translate )
+            translate[node] = new_node
+            output.addName(name, new_node, label)
+        
+        return output
+
             
     def _expand( self, index, children, protected, nodetype=None, anc=None ) :
         """Determine the list of all children of the node by combining the given node with its children of the same type, recursively."""
@@ -637,6 +640,10 @@ class LogicDAG(LogicFormula) :
     
     def __init__(self, auto_compact=True) :
         LogicFormula.__init__(self, auto_compact)
+        
+@transform(LogicFormula, LogicDAG)
+def breakCycles(source, target) :
+    return source.makeAcyclic(preserve_tables=False, output=target)
  
 class Constraint(object) : 
     pass

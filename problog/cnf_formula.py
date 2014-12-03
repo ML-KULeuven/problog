@@ -1,6 +1,6 @@
 from __future__ import print_function
 
-from .formula import LogicDAG, LogicBase
+from .formula import LogicDAG
 
 from .core import ProbLogObject, transform
 
@@ -14,59 +14,50 @@ class CNF(ProbLogObject) :
     """
     
     def __init__(self) :
-        self.__names = []
-        self.__constraints = []
-        self.__weights = []
-        
+        self.__atom_count = 0
         self.__lines = []
+        self.__constraints = []
+        
+        self.__names = []
+        self.__weights = []
+                        
+    def addAtom(self, *args) :
+        self.__atom_count += 1
+    
+    def addAnd(self, content) :
+        raise TypeError('This data structure does not support conjunctions.')
+                
+    def addOr(self, content) :
+        self.__lines.append( ' '.join(map(str, content)) + ' 0\n' )
+        
+    def addNot(self, content) :
+        return -content
+        
+    def addConstraint(self, constraint) :
+        self.__constraints.append(constraint)        
+        for l in constraint.encodeCNF() :
+            self.__lines.append(' '.join(map(str,l)) + ' 0')
+        
+    def constraints(self) :        
+        return self.__constraints
 
     def getNamesWithLabel(self) :
         return self.__names
-
-    def constraints(self) :
-        return self.__constraints
         
+    def setNamesWithLabel(self, names) :
+        self.__names = names
+
     def getWeights(self) :
         return self.__weights
-                
-    @classmethod
-    def createFrom(cls, formula, **extra) :
-        cnf = CNF()
         
-        lines = []
-        for index, node in enumerate(formula) :
-            index += 1
-            nodetype = type(node).__name__
+    def setWeights(self, weights) :
+        self.__weights = weights
             
-            if nodetype == 'conj' :
-                line = str(index) + ' ' + ' '.join( map( lambda x : str(-(x)), node.children ) ) + ' 0'
-                lines.append(line)
-                for x in node.children  :
-                    lines.append( "%s %s 0" % (-index, x) )
-            elif nodetype == 'disj' :
-                line = str(-index) + ' ' + ' '.join( map( lambda x : str(x), node.children ) ) + ' 0'
-                lines.append(line)
-                for x in node.children  :
-                    lines.append( "%s %s 0" % (index, -x) )
-            elif nodetype == 'atom' :
-                pass
-            else :
-                raise ValueError("Unexpected node type: '%s'" % nodetype)
-            
-        for c in formula.constraints() :
-            for l in c.encodeCNF() :
-                lines.append(' '.join(map(str,l)) + ' 0')
-        
-        clause_count = len(lines)
-        atom_count = len(formula)
-        cnf.__lines = [ 'p cnf %s %s' % (atom_count, clause_count) ] + lines
-        cnf.__names = formula.getNamesWithLabel()
-        cnf.__constraints = formula.constraints()
-        cnf.__weights = formula.getWeights()
-        return cnf
-        
+    def ready(self) :
+        pass
+
     def toDimacs(self) :
-        return '\n'.join( self.__lines )
+        return 'p cnf %s %s\n' % (self.__atom_count, len(self.__lines)) + '\n'.join( self.__lines )
         
 # CNFFile -> read CNF
 # CNF -> CNFFile write toDimacs
@@ -104,6 +95,9 @@ class CNFFile(CNF) :
         self.__atom_count = 0
         self.__lines = []
         self.__constraints = []
+        
+        self.__names = []
+        self.__weights = []
                         
     def addAtom(self, *args) :
         self.__atom_count += 1
@@ -118,11 +112,18 @@ class CNFFile(CNF) :
         return -content
         
     def addConstraint(self, constraint) :
+        self.__constraints.append(constraint)
         for l in constraint.encodeCNF() :
             lines.append(' '.join(map(str,l)) + ' 0')
         
     def constraints(self) :        
         return self.__constraints
+
+    def getNamesWithLabel(self) :
+        return self.__names
+
+    def getWeights(self) :
+        return self.__weights
             
     def ready(self) :
         if self.readonly :
@@ -132,10 +133,7 @@ class CNFFile(CNF) :
             f.write('\n'.join(self.__lines))
 
 @transform(LogicDAG, CNF) 
-def clarks_completion( source, destination ) :
-    # LogicDAG
-    # LogicDAG
-    
+def clarks_completion( source, destination ) :    
     # Every node in original gets a literal
     num_atoms = len(source)
     
@@ -148,35 +146,23 @@ def clarks_completion( source, destination ) :
         if nodetype == 'conj' :
             destination.addOr( (index,) + tuple( map( lambda x : destination.addNot(x), node.children ) ) )
             for x in node.children  :
-                destination.addOr( destination.addNot(index), x )
+                destination.addOr( (destination.addNot(index), x) )
         elif nodetype == 'disj' :
             destination.addOr( (destination.addNot(index),) + tuple( node.children ) )
             for x in node.children  :
-                destination.addOr( index, destination.addNot(x) )
+                destination.addOr( (index, destination.addNot(x)) )
         elif nodetype == 'atom' :
             pass
         else :
             raise ValueError("Unexpected node type: '%s'" % nodetype)
         
-    for c in formula.constraints() :
+    for c in source.constraints() :
         destination.addConstraint(c)
     
-    # TODO copy names and weights
-    # cnf.__names = formula.getNamesWithLabel()
-    # cnf.__weights = formula.getWeights()
-        
+    destination.setNamesWithLabel(source.getNamesWithLabel())
+    destination.setWeights(source.getWeights())
+            
     destination.ready()
     return destination
-    
-
-class NNF_X(ProbLogObject):
-    pass
-    
-class NNFFile_X(NNF_X) :
-    pass
-    
-@transform(CNFFile, NNFFile_X)
-def compile_with_dsharp( source, destination ) :
-    pass
-    
+        
     
