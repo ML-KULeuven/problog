@@ -64,11 +64,13 @@ class ProbLogObject(object) :
 class transform(object) :
     """Decorator"""
     
-    def __init__(self, cls1, cls2) :
+    def __init__(self, cls1, cls2, func=None) :
         self.cls1 = cls1
         self.cls2 = cls2
         if not issubclass(cls2, ProbLogObject) :
             raise TypeError("Conversion only possible for subclasses of ProbLogObject.")        
+        if func != None :
+            self(func)
         
     def __call__(self, f) :
         # TODO check type contract?

@@ -3,11 +3,12 @@ from __future__ import print_function
 import sys, os
 
 from collections import namedtuple, defaultdict
-from .formula import LogicDAG, LogicFormula
+from .formula import LogicDAG, LogicFormula, breakCycles
 from .cnf_formula import CNF
 from .logic import LogicProgram
 from .interface import ground
 from .evaluator import Evaluator, SemiringProbability
+from .core import transform
 
 import warnings
 
@@ -34,8 +35,13 @@ class SDD(LogicDAG) :
     _disj = namedtuple('disj', ('children', 'sddnode') )
     # negation is encoded by using a negative number for the key
 
-    def __init__(self, var_count) :        
+    def __init__(self, var_count=None) :        
         LogicDAG.__init__(self, auto_compact=False)
+        self.sdd_manager = None
+        if var_count != None :
+            self.sdd_manager = sdd.sdd_manager_create(var_count, 0) # auto-gc & auto-min
+    
+    def setVarCount(self, var_count) :
         self.sdd_manager = sdd.sdd_manager_create(var_count, 0) # auto-gc & auto-min
 
     def __del__(self) :
@@ -108,27 +114,27 @@ class SDD(LogicDAG) :
         raise NotImplementedError('SDD formula does not support node updates.')        
 
 
-    @classmethod
-    def createFrom(cls, formula, **extra) :
-        # TODO support formula CNF
-        assert( isinstance(formula, LogicProgram) or isinstance(formula, LogicFormula) or isinstance(formula, CNF) )
-        if isinstance(formula, LogicProgram) :
-            formula = ground(formula)
-
-        # Invariant: formula is CNF or LogicFormula
-        if not isinstance(formula, SDD) :
-            size = len(formula)
-            # size = formula.getAtomCount()
-            sdd = SDD(size)
-            formula = formula.makeAcyclic(output=sdd)
-        
-            for c in formula.constraints() :
-                sdd.addConstraint(c)
-            return sdd
-
-        else :
-            # TODO force_copy??
-            return formula
+    # @classmethod
+    # def createFrom(cls, formula, **extra) :
+    #     # TODO support formula CNF
+    #     assert( isinstance(formula, LogicProgram) or isinstance(formula, LogicFormula) or isinstance(formula, CNF) )
+    #     if isinstance(formula, LogicProgram) :
+    #         formula = ground(formula)
+    #
+    #     # Invariant: formula is CNF or LogicFormula
+    #     if not isinstance(formula, SDD) :
+    #         size = len(formula)
+    #         # size = formula.getAtomCount()
+    #         sdd = SDD(size)
+    #         formula = formula.makeAcyclic(output=sdd)
+    #
+    #         for c in formula.constraints() :
+    #             sdd.addConstraint(c)
+    #         return sdd
+    #
+    #     else :
+    #         # TODO force_copy??
+    #         return formula
 
 
     ##################################################################################
@@ -168,7 +174,28 @@ class SDD(LogicDAG) :
             return result
         else :
             return evaluator.evaluate(node)
-
+            
+@transform(LogicDAG, SDD)
+def buildSDD( source, destination ) :
+    size = len(source)
+    destination.setVarCount(size)
+    for i, n, t in source.iterNodes() :
+        if t == 'atom' :
+            destination.addAtom( n.identifier, n.probability, n.group )
+        elif t == 'conj' :
+            destination.addAnd( n.children )
+        elif t == 'disj' :
+            destination.addOr( n.children )
+        else :
+            raise TypeError('Unknown node type')
+            
+    for name, node, label in source.getNamesWithLabel() :
+        destination.addName(name, node, label)
+    
+    for c in source.constraints() :
+        destination.addConstraint(c)
+    return destination
+        
 
 class SDDEvaluator(Evaluator) :
 

@@ -389,57 +389,7 @@ class Not(Term) :
             c = '(%s)' % c
         return '\+(%s)' % c
 
-class LogicBase(object) :
-    
-    transformations = defaultdict(list)
-    
-    @classmethod
-    def registerTransformation(cls, src, action=None) :
-        cls.transformations[cls].append( (src, action) )
-        
-    @classmethod
-    def findPaths( cls, src, stack=() ) :
-        # Create a destination object or any of its subclasses
-        if isinstance(src, cls) :
-            yield (cls,)
-        else :
-            dest = []
-            for d in cls.transformations :
-                if issubclass(d,cls) :
-                    dest.append(d)
-                    for s, action in cls.transformations[d] :
-                        if not s in stack :                        
-                            for path in s.findPaths( src, stack+(s,) ) :
-                                yield path + (action,d)
-        
-    @classmethod
-    def createFrom(cls, obj, force_copy=False, **extra) :
-        # TODO implement this (use LogicProgram.createFrom)
-        return cls.createFromDefaultAction(obj, force_copy, **extra)
-
-    @classmethod
-    def createFromDefaultAction(cls, src, force_copy=False, **extra) :
-        """Create a LogicProgram of the current class from another LogicProgram.
-        
-        :param lp: logic program to convert
-        :type lp: :class:`.LogicProgram`
-        :param force_copy: default False, If true, always create a copy of the original logic program.
-        :type force_copy: bool
-        :returns: LogicProgram that is (externally) identical to given one
-        :rtype: object of the class on which this method is invoked
-        
-        If the original LogicProgram already has the right class and force_copy is False, then the original program is returned.
-        """
-        if not force_copy and src.__class__ == cls :
-            return src
-        else :
-            obj = cls(**extra)
-            for clause in src :
-                obj += clause
-            return obj
-
-
-class LogicProgram(LogicBase) :
+class LogicProgram(object) :
     """LogicProgram"""
     
     def __init__(self) :
@@ -470,6 +420,28 @@ class LogicProgram(LogicBase) :
         else :
             self._addFact(clausefact)
         return self
+    
+    @classmethod    
+    def createFrom(cls, src, force_copy=False, **extra) :
+        """Create a LogicProgram of the current class from another LogicProgram.
+        
+        :param lp: logic program to convert
+        :type lp: :class:`.LogicProgram`
+        :param force_copy: default False, If true, always create a copy of the original logic program.
+        :type force_copy: bool
+        :returns: LogicProgram that is (externally) identical to given one
+        :rtype: object of the class on which this method is invoked
+        
+        If the original LogicProgram already has the right class and force_copy is False, then the original program is returned.
+        """
+        if not force_copy and src.__class__ == cls :
+            return src
+        else :
+            obj = cls(**extra)
+            for clause in src :
+                obj += clause
+            return obj
+    
                     
 def computeFunction(func, args) :
     """Compute the result of an arithmetic function given by a functor and a list of arguments.
