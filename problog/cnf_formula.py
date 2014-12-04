@@ -28,7 +28,7 @@ class CNF(ProbLogObject) :
         raise TypeError('This data structure does not support conjunctions.')
                 
     def addOr(self, content) :
-        self.__lines.append( ' '.join(map(str, content)) + ' 0\n' )
+        self.__lines.append( ' '.join(map(str, content)) + ' 0' )
         
     def addNot(self, content) :
         return -content
