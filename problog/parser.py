@@ -343,7 +343,7 @@ class PrologParser(object) :
         # <float> ::= <word of nums> "." <word of nums>
         self.__float_number = Regex(r'\d+\.(\d)+([eE]\d+)?') # Word(nums) + "." + Word(nums)
         #self.__float_number.setParseAction(lambda s, x, t : float(''.join(t)))
-        self.float = self.__float_number
+        self.__float_number.setParseAction(lambda s, x, t : float(t[0]))
         
         # <int> ::= <word of nums>
         self.__int_number = Word(nums)
