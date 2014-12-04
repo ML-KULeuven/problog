@@ -135,11 +135,12 @@ class PrologFactory(Factory) :
         raise NotImplementedError('Not supported!')
         
     def build_clause(self, functor, operand1, operand2, **extra) :
-        heads = self._uncurry( operand1, ';' )
+        heads = operand1
+        #heads = self._uncurry( operand1, ';' )
         if len(heads) > 1 :
             return AnnotatedDisjunction(heads, operand2)
         else :
-            return Clause(operand1, operand2)
+            return Clause(operand1[0], operand2)
         
     def build_disjunction(self, functor, operand1, operand2, **extra) :
         return Or(operand1, operand2)

@@ -341,8 +341,9 @@ class PrologParser(object) :
         cc_id_start = 'abcdefghijklmnopqrstuvwxyz'      # Start of identifier
 
         # <float> ::= <word of nums> "." <word of nums>
-        self.__float_number = Word(nums) + "." + Word(nums)
-        self.__float_number.setParseAction(lambda s, x, t : float(''.join(t)))
+        self.__float_number = Regex(r'\d+\.(\d)+([eE]\d+)?') # Word(nums) + "." + Word(nums)
+        #self.__float_number.setParseAction(lambda s, x, t : float(''.join(t)))
+        self.float = self.__float_number
         
         # <int> ::= <word of nums>
         self.__int_number = Word(nums)
@@ -425,11 +426,48 @@ class PrologParser(object) :
         self.__list.setParseAction(self._parse_list)
                         
         # <statement> ::= <arg> ( ":-" )
-        self.statement = self.__arg + self.__dot
+        
+        # <fact> ::= <prob> :: <func> | <func> 
+        self.fact = Optional(self.__arg_in_list + Literal("::")) + self.__func
+        self.fact.setParseAction(self._parse_fact)
+        
+        # <facts> ::= <fact> ( ";" <fact> )*
+        self.facts = Forward()
+        self.facts << self.fact + ZeroOrMore(Literal(";").suppress() + self.fact)
+        
+        # <clause> ::= <facts> ":-" <arg>
+        self.statement = self.facts + Optional( ( Literal("<-") | Literal(":-") ) + self.__arg ) + self.__dot
+        self.statement.setParseAction( self._parse_statement )
+                
+        # <statement> ::= self.facts | self.clause
+        
+        #self.statement = self.__arg + self.__dot
         
         # <program> is a list of statements
         self.program = OneOrMore(self.statement).ignore('%' + restOfLine )
         self.program.setParseAction(self._parse_program)
+        
+    @guarded
+    def _parse_fact(self, s, loc, toks) :
+        if len(toks) > 1 :
+            return self.factory.build_probabilistic( functor=toks[1], operand1=toks[0], operand2=toks[2] )
+        else :
+            return toks[0]
+    
+    @guarded    
+    def _parse_statement(self, s, loc, toks) :
+        if len(toks) == 1 : # simple fact
+            return toks[0]
+        else :
+            if toks[-2] in ('<-', ':-') :
+                heads = toks[:-2]
+                body = toks[-1]
+                func = toks[-2]
+            else :
+                heads = toks
+                body = self.factory.build_function('true', [])
+                func = ':-'
+            return self.factory.build_clause( func, heads, body )            
         
     def parseToken(self, string) :
         return self.__arg.parseString(string, True)[0]

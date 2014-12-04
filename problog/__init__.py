@@ -9,3 +9,4 @@ system_info = gather_info()
 def root_path(*args) :
     return os.path.abspath( os.path.join( os.path.dirname(__file__), '..', *args ) )
     
+from . import interface
