@@ -410,10 +410,24 @@ class LogicProgram(object) :
     def _addFact(self, fact) :
         """Add a fact to the logic program."""
         raise NotImplementedError("LogicProgram.addFact is an abstract method." )
+    
+    def _uncurry(self, term, func=None) :
+        if func == None : func = term.functor
+        
+        body = []
+        current = term
+        while isinstance(current, Term) and current.functor == func :
+            body.append(current.args[0])
+            current = current.args[1]
+        body.append(current)
+        return body    
         
     def __iadd__(self, clausefact) :
         """Add clause or fact using the ``+=`` operator."""
-        if isinstance(clausefact, AnnotatedDisjunction) :
+        if isinstance(clausefact, Or) :
+            heads = self._uncurry( clausefact, ';')
+            self._addAnnotatedDisjunction( AnnotatedDisjunction(heads, Term('true') ))
+        elif isinstance(clausefact, AnnotatedDisjunction) :
             self._addAnnotatedDisjunction(clausefact)
         elif isinstance(clausefact, Clause) :
             self._addClause(clausefact)

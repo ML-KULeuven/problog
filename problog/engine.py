@@ -1,7 +1,7 @@
 from __future__ import print_function
 
 from .program import ClauseDB, PrologString
-from .logic import Term, Constant
+from .logic import Term, Constant, Var
 from .formula import LogicFormula
 
 """
@@ -124,6 +124,7 @@ class EventBasedEngine(object) :
         return ClauseDB.createFrom(db, builtins=self.getBuiltIns())
     
     def ground(self, db, term, gp=None, label=None) :
+        #self.debugger = Debugger(trace=True)
         gp, results = self._ground(db, term, gp)
         
         for node_id, args in results :
@@ -131,10 +132,14 @@ class EventBasedEngine(object) :
         if not results :
             gp.addName( term, None, label )
         
+        # print ('Ground result')
+        # print (gp)
         return gp
     
     def _ground(self, db, term, gp=None, level=0) :
         db = self.prepare(db)
+        # print ('Ground program', db)
+
         if gp == None : gp = LogicFormula()
         
         clause_node = db.find(term)
@@ -183,9 +188,8 @@ class EventBasedEngine(object) :
         # Unify fact arguments with call arguments
         
         try :
-            for a,b in zip(node.args, call_args) :
+            for a,b in zip(call_args, node.args) :
                 unify(a, b)
-            
             # Notify parent
             parent.newResult( node.args, ground_node=gp.addAtom(node_id, node.probability) )
         except UnifyError :

@@ -135,8 +135,8 @@ class PrologFactory(Factory) :
         raise NotImplementedError('Not supported!')
         
     def build_clause(self, functor, operand1, operand2, **extra) :
-        if functor == '<-' :
-            heads = self._uncurry( operand1, ';' )
+        heads = self._uncurry( operand1, ';' )
+        if len(heads) > 1 :
             return AnnotatedDisjunction(heads, operand2)
         else :
             return Clause(operand1, operand2)
@@ -291,8 +291,13 @@ class ClauseDB(LogicProgram) :
         return childnode
     
     def _addFact( self, term) :
-        fact_node = self._appendNode( self._fact(term.functor, term.args, term.probability))
-        return self._addDefineNode( term, fact_node )
+        variables = _AutoDict()
+        new_head = term.apply(variables)
+        if len(variables) == 0 :
+            fact_node = self._appendNode( self._fact(term.functor, term.args, term.probability))
+            return self._addDefineNode( term, fact_node )
+        else :
+            return self._addClause( Clause(term, Term('true')) )
 
     def _addChoiceNode(self, choice, args, probability, group) :
         functor = 'ad_%s_%s' % (group, choice)
