@@ -33,9 +33,9 @@ Table for query() may make ground() invalid.
 class UnifyError(Exception) : pass
 
 def unify_value( v1, v2 ) :
-    if v1 == None :
+    if v1 == None or type(v1) == int :
         return v2
-    elif v2 == None :
+    elif v2 == None or type(v2) == int :
         return v1
     elif v1 == v2 :
         # TODO functor
@@ -188,7 +188,10 @@ class EventBasedEngine(object) :
         # Unify fact arguments with call arguments
         
         try :
-            for a,b in zip(call_args, node.args) :
+            # print (db)
+            # print (node, call_args, node.args)
+            for a,b in zip(node.args, call_args) :
+                # print (type(a),a, type(b), b)
                 unify(a, b)
             # Notify parent
             parent.newResult( node.args, ground_node=gp.addAtom(node_id, node.probability) )
@@ -250,15 +253,16 @@ class EventBasedEngine(object) :
             # context = target context
             # node.args = target values
             # call_args = source values
-                        
+            #print ('EVAL CLAUSE:', node_id, node, call_args, parent) 
             context = [None] * node.varcount
             for head_arg, call_arg in zip(node.args, call_args) :
+                #print ('Unify:', call_arg, head_arg, context)
+                if type(call_arg) == int : call_arg = None
                 unify( call_arg, head_arg, context)                
                 # if type(head_arg) == int : # head_arg is a variable
                 #     context[head_arg] = call_arg
                 # else : # head arg is a constant => make sure it unifies with the call arg
                 #     unify_value( head_arg, call_arg )
-                    
             # create a context-switching node that extracts the head arguments
             #  from results from the body context
             # output should be send to the given parent
@@ -742,7 +746,7 @@ def addBuiltins(engine) :
     # engine.addBuiltIn('call/1', _builtin_call_1)
 
     engine.addBuiltIn('=', 2, builtin_eq)
-    engine.addBuiltIn('\=', 2, builtin_eq)
+    engine.addBuiltIn('\=', 2, builtin_neq)
     engine.addBuiltIn('==', 2, builtin_same)
     engine.addBuiltIn('\==', 2, builtin_notsame)
 
