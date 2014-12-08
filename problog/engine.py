@@ -101,7 +101,7 @@ class EventBasedEngine(object) :
         
     def addBuiltIn(self, pred, arity, func) :
         sig = '%s/%s' % (pred, arity)
-        self.__builtin_index[sig] = -(len(self.__builtin_index) + 1)
+        self.__builtin_index[sig] = -(len(self.__builtins) + 1)
         self.__builtins.append( func )
         
     def getBuiltIns(self) :
@@ -222,6 +222,7 @@ class EventBasedEngine(object) :
         trace( node, context )
         # Extract call arguments from context
         # TODO functors???
+        
         call_args = []
         for call_arg in node.args :
             if type(call_arg) == int :
@@ -238,7 +239,6 @@ class EventBasedEngine(object) :
         
         if node.defnode < 0 :
             #sub = builtin( engine=self, clausedb=db, args=call_args, tdb=tdb, functor=node.functor, arity=len(node.args), level=level, **extra)
-
             builtin = self._getBuiltIn( node.defnode )
             builtin( *call_args, context=context, callback=context_switch )                
         else :
@@ -754,9 +754,8 @@ def addBuiltins(engine) :
 
     engine.addBuiltIn('>', 2, builtin_gt)
     engine.addBuiltIn('<', 2, builtin_lt)
-    engine.addBuiltIn('>', 2, builtin_ge)
     engine.addBuiltIn('=<', 2, builtin_le)
-    engine.addBuiltIn('>=', 2, builtin_gt)
+    engine.addBuiltIn('>=', 2, builtin_ge)
     engine.addBuiltIn('=\=', 2, builtin_val_neq)
     engine.addBuiltIn('=:=', 2, builtin_val_eq)
 
