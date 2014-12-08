@@ -6,7 +6,7 @@ from problog.logic import Term, Constant
 
 import glob, os
 
-class TestDummy(unittest.TestCase):
+class TestEngine(unittest.TestCase):
     
     def setUp(self) :
 
