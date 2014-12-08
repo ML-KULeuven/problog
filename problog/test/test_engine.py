@@ -2,7 +2,7 @@ import unittest
 
 from problog.program import PrologString
 from problog.engine import DefaultEngine
-from problog.logic import Term
+from problog.logic import Term, Constant
 
 import glob, os
 
@@ -11,9 +11,9 @@ class TestDummy(unittest.TestCase):
     def setUp(self) :
 
         try :
-            self.assertSequenceEqual = self.assertItemsEqual
+            self.assertCollectionEqual = self.assertItemsEqual
         except AttributeError :
-            self.assertSequenceEqual = self.assertCountEqual
+            self.assertCollectionEqual = self.assertCountEqual
     
     
     def test_nonground_query_ad(self) :
@@ -32,5 +32,17 @@ class TestDummy(unittest.TestCase):
         
         found = [ str(x) for x, y in result.queries() ]
         
-        self.assertSequenceEqual( found, [ 'p(a)', 'p(b)' ])
+        self.assertCollectionEqual( found, [ 'p(a)', 'p(b)' ])
+        
+
+    def test_compare(self) :
+        
+        program = """
+            morning(Hour) :- Hour >= 6, Hour =< 10.
+        """
+        
+        engine = DefaultEngine()
+        db = engine.prepare( PrologString(program) )
+                
+        self.assertEqual( engine.query(db, Term('morning', Constant(8) )), [[8]])
         
