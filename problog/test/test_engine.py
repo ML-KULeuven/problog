@@ -46,3 +46,14 @@ class TestDummy(unittest.TestCase):
                 
         self.assertEqual( engine.query(db, Term('morning', Constant(8) )), [[8]])
         
+    def test_anonymous_variable(self) :
+        
+        program = """
+            p(_,_).
+        """
+        
+        engine = DefaultEngine()
+        db = engine.prepare( PrologString(program) )
+                
+        self.assertEqual( engine.query(db, Term('p', Constant(1), Constant(2) )), [[1,2]])
+    
