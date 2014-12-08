@@ -47,6 +47,7 @@ class TestDummy(unittest.TestCase):
         self.assertEqual( engine.query(db, Term('morning', Constant(8) )), [[8]])
         
     def test_anonymous_variable(self) :
+        """Test whether anonymous variables (i.e. _) are taken as distinct (they should be)."""
         
         program = """
             p(_,_).
