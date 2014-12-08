@@ -50,11 +50,17 @@ class TestDummy(unittest.TestCase):
         """Test whether anonymous variables (i.e. _) are taken as distinct (they should be)."""
         
         program = """
-            p(_,_).
+            p(_,X,_) :- X = 3.
+            
+            q(1,2,3).
+            q(1,2,4).
+            q(2,3,5).
+            r(Y) :- q(_,Y,_). 
+            
         """
         
         engine = DefaultEngine()
         db = engine.prepare( PrologString(program) )
-                
-        self.assertEqual( engine.query(db, Term('p', Constant(1), Constant(2) )), [[1,2]])
+        self.assertEqual( engine.query(db, Term('p', Constant(1), Constant(3), Constant(2) )), [[Constant(1),Constant(3),Constant(2)]])
     
+        self.assertEqual(engine.query(db, Term('r', None )), [[2], [3]])

@@ -291,15 +291,6 @@ class ClauseDB(LogicProgram) :
         clauses.append( childnode )
         return childnode
     
-    def _addFact( self, term) :
-        variables = _AutoDict()
-        new_head = term.apply(variables)
-        if len(variables) == 0 :
-            fact_node = self._appendNode( self._fact(term.functor, term.args, term.probability))
-            return self._addDefineNode( term, fact_node )
-        else :
-            return self._addClause( Clause(term, Term('true')) )
-
     def _addChoiceNode(self, choice, args, probability, group) :
         functor = 'ad_%s_%s' % (group, choice)
         choice_node = self._appendNode( self._choice(functor, args, probability, group, choice) )
@@ -388,6 +379,15 @@ class ClauseDB(LogicProgram) :
     def _addAnnotatedDisjunction(self, clause) :
         return self._compile( clause )
     
+    def _addFact( self, term) :
+        variables = _AutoDict()
+        new_head = term.apply(variables)
+        if len(variables) == 0 :
+            fact_node = self._appendNode( self._fact(term.functor, term.args, term.probability))
+            return self._addDefineNode( term, fact_node )
+        else :
+            return self._addClause( Clause(term, Term('true')) )
+    
     def _compile(self, struct, variables=None) :
         if variables == None : variables = _AutoDict()
         
@@ -404,7 +404,7 @@ class ClauseDB(LogicProgram) :
             return self._addNotNode( child)
         elif isinstance(struct, AnnotatedDisjunction) :
             # Determine number of variables in the head
-            new_heads = [ head.apply(variables) for head in struct.heads ]
+            new_heads = [ head.apply(variables) for head in struct.heads ]            
             head_count = len(variables)
             
             # Body arguments
@@ -515,14 +515,23 @@ class _AutoDict(dict) :
     def __init__(self) :
         dict.__init__(self)
         self.__record = set()
+        self.__anon = 0
     
     def __getitem__(self, key) :
-        value = self.get(key)
-        if value == None :
+        if key == '_' :
             value = len(self)
-            self[key] = value
-        self.__record.add(value)
-        return value
+            self.__anon += 1
+            return value
+        else :        
+            value = self.get(key)
+            if value == None :
+                value = len(self)
+                self[key] = value
+            self.__record.add(value)
+            return value
+            
+    def __len__(self) :
+        return dict.__len__(self) + self.__anon
         
     def usedVars(self) :
         result = set(self.__record)
