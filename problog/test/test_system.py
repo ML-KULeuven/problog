@@ -41,7 +41,10 @@ def read_result(filename) :
             if l.strip().startswith('%Expected outcome:') :
                 reading = True
             elif reading :
-                if l.strip().startswith('% ') :
+                l = l.strip()
+                if l.lower().startswith('% error') :
+                    return l[len('% error'):].strip()
+                elif l.startswith('% ') :
                     query, prob = l[2:].rsplit(None,1)
                     results[query.strip()] = float(prob.strip())
                 else :
@@ -53,14 +56,17 @@ def createSystemTestSDD(filename) :
     correct = read_result(filename)
 
     def test(self) :
+        try :
+            sdd = SDD.createFrom(PrologFile(filename))
+            computed = sdd.evaluate()
+            self.assertIsInstance( correct, dict )
+            self.assertSequenceEqual(correct, computed)
 
-        sdd = SDD.createFrom(PrologFile(filename))
-        computed = sdd.evaluate()
+            for query in correct :
+                self.assertAlmostEqual(correct[query], computed[query])
 
-        self.assertSequenceEqual(correct, computed)
-
-        for query in correct :
-            self.assertAlmostEqual(correct[query], computed[query])
+        except Exception as e :
+            self.assertEqual(correct, type(e).__name__)
 
     return test
 
@@ -70,14 +76,17 @@ def createSystemTestNNF(filename) :
     correct = read_result(filename)
 
     def test(self) :
+        try :
+            sdd = NNF.createFrom(PrologFile(filename))
+            computed = sdd.evaluate()
+            self.assertIsInstance( correct, dict )
+            self.assertSequenceEqual(correct, computed)
 
-        sdd = NNF.createFrom(PrologFile(filename))
-        computed = sdd.evaluate()
+            for query in correct :
+                self.assertAlmostEqual(correct[query], computed[query])
 
-        self.assertSequenceEqual(correct, computed)
-
-        for query in correct :
-            self.assertAlmostEqual(correct[query], computed[query])
+        except Exception as e :
+            self.assertEqual(correct, type(e).__name__)
 
     return test
 
