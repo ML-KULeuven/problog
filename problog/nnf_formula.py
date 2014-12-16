@@ -207,21 +207,32 @@ Compiler.add( 'dsharp', _compile_with_dsharp )
 def _compile(cnf, cmd, cnf_file, nnf_file) :
     names = cnf.getNamesWithLabel()
     
-    with open(cnf_file, 'w') as f :
-        f.write(cnf.toDimacs())
+    if cnf.isTrivial() :
+        nnf = NNF()
+        weights = cnf.getWeights()
+        for i in range(1,cnf.getAtomCount()+1) :
+            nnf.addAtom( i, weights.get(i), True)
+        for name, node, label in cnf.getNamesWithLabel() :
+            nnf.addName(name, node, label)
+        for c in cnf.constraints() :
+            nnf.addConstraint(c.copy())
+        return nnf
+    else :
+        with open(cnf_file, 'w') as f :
+            f.write(cnf.toDimacs())
 
-    attempts_left = 10
-    success = False
-    while attempts_left and not success :
-        try :
-            with open(os.devnull, 'w') as OUT_NULL :
-                subprocess.check_call(cmd, stdout=OUT_NULL)
-            success = True
-        except subprocess.CalledProcessError as err :
-            attempts_left -= 1
-            if attempts_left == 0 :
-                raise err
-    return _load_nnf( nnf_file, cnf)
+        attempts_left = 10
+        success = False
+        while attempts_left and not success :
+            try :
+                with open(os.devnull, 'w') as OUT_NULL :
+                    subprocess.check_call(cmd, stdout=OUT_NULL)
+                success = True
+            except subprocess.CalledProcessError as err :
+                attempts_left -= 1
+                if attempts_left == 0 :
+                    raise err
+        return _load_nnf( nnf_file, cnf)
 
 
 def _load_nnf(filename, cnf) :

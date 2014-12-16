@@ -59,6 +59,12 @@ class CNF(ProbLogObject) :
     def toDimacs(self) :
         return 'p cnf %s %s\n' % (self.__atom_count, len(self.__lines)) + '\n'.join( self.__lines )
         
+    def getAtomCount(self) :
+        return self.__atom_count
+        
+    def isTrivial(self) :
+        return len(self.__lines) == 0
+        
 # CNFFile -> read CNF
 # CNF -> CNFFile write toDimacs
 

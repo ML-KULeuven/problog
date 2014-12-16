@@ -117,6 +117,9 @@ class LogicFormula(ProbLogObject) :
     def getAtomCount(self) :
         return self.__atom_count
         
+    def isTrivial(self) :
+        return self.getAtomCount() == len(self)
+        
     def addQuery(self, name, node_id) :
         self.addName(name, node_id, label='query')
         
