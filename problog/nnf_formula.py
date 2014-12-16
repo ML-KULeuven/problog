@@ -211,11 +211,18 @@ def _compile(cnf, cmd, cnf_file, nnf_file) :
         nnf = NNF()
         weights = cnf.getWeights()
         for i in range(1,cnf.getAtomCount()+1) :
-            nnf.addAtom( i, weights.get(i), True)
+            nnf.addAtom( i, weights.get(i))
+        or_nodes = []  
+        for i in range(1,cnf.getAtomCount()+1) :
+            or_nodes.append( nnf.addOr( (i, -i) ) )
+        if or_nodes :
+            nnf.addAnd( or_nodes )
+
         for name, node, label in cnf.getNamesWithLabel() :
             nnf.addName(name, node, label)
         for c in cnf.constraints() :
             nnf.addConstraint(c.copy())
+            
         return nnf
     else :
         with open(cnf_file, 'w') as f :
@@ -251,6 +258,7 @@ def _load_nnf(filename, cnf) :
         lnum = 0
         for line in f :
             line = line.strip().split()
+            print (line)
             if line[0] == 'nnf' :
                 pass
             elif line[0] == 'L' :
