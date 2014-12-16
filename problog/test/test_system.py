@@ -92,7 +92,7 @@ def createSystemTestNNF(filename) :
 
 
 for testfile in glob.glob( root_path('test', '*.pl' ) ) :
-    testname = 'test_' + os.path.splitext(os.path.basename(testfile))[0]
+    testname = 'test_system_' + os.path.splitext(os.path.basename(testfile))[0]
     setattr( TestSystemSDD, testname, createSystemTestSDD(testfile) )
     setattr( TestSystemNNF, testname, createSystemTestNNF(testfile) )
 
