@@ -258,7 +258,6 @@ def _load_nnf(filename, cnf) :
         lnum = 0
         for line in f :
             line = line.strip().split()
-            print (line)
             if line[0] == 'nnf' :
                 pass
             elif line[0] == 'L' :
