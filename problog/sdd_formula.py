@@ -239,6 +239,8 @@ class SDDEvaluator(Evaluator) :
     def evaluate(self, node) :
         if node == 0 :
             return self.semiring.one()
+        elif node == None :
+            return self.semiring.zero()
         
         # TODO make sure this works for negative query nodes        
         m = self.sdd_manager 

@@ -93,12 +93,17 @@ class SimpleNNFEvaluator(Evaluator) :
         return result
         
     def evaluate(self, node) :
-        p = self.getWeight(abs(node))
-        n = self.getWeight(-abs(node))
-        self.setValue(abs(node), (node > 0) )
-        result = self.getWeight( len(self.__nnf) )
-        self.resetValue(abs(node),p,n)
-        return self.semiring.normalize(result,self.Z)
+        if node == 0 : 
+            return self.semiring.one()
+        elif node == None :
+            return self.semiring.zero()
+        else :        
+            p = self.getWeight(abs(node))
+            n = self.getWeight(-abs(node))
+            self.setValue(abs(node), (node > 0) )
+            result = self.getWeight( len(self.__nnf) )
+            self.resetValue(abs(node),p,n)
+            return self.semiring.normalize(result,self.Z)
         
     def resetValue(self, index, pos, neg) :
         self.setWeight( index, pos, neg)
