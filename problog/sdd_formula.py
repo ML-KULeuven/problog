@@ -38,14 +38,16 @@ class SDD(LogicDAG) :
     def __init__(self, var_count=None) :        
         LogicDAG.__init__(self, auto_compact=False)
         self.sdd_manager = None
-        if var_count != None :
+        if var_count != None and var_count != 0 :
             self.sdd_manager = sdd.sdd_manager_create(var_count, 0) # auto-gc & auto-min
     
     def setVarCount(self, var_count) :
-        self.sdd_manager = sdd.sdd_manager_create(var_count, 0) # auto-gc & auto-min
+        if var_count != 0 :
+            self.sdd_manager = sdd.sdd_manager_create(var_count, 0) # auto-gc & auto-min
 
     def __del__(self) :
-        sdd.sdd_manager_free(self.sdd_manager)
+        if self.sdd_manager != None :
+            sdd.sdd_manager_free(self.sdd_manager)
 
     ##################################################################################
     ####                        CREATE SDD SPECIFIC NODES                         ####
@@ -235,24 +237,29 @@ class SDDEvaluator(Evaluator) :
         return sdd.sdd_conjoin( i1, i2, m)
     
     def evaluate(self, node) :
+        if node == 0 :
+            return self.semiring.one()
+        
         # TODO make sure this works for negative query nodes        
         m = self.sdd_manager 
+
+        assert(m != None)
 
         # TODO build evidence and constraints before
         evidence_sdd = sdd.sdd_manager_true( m )
         for ev in self.iterEvidence() :
             evidence_sdd = sdd.sdd_conjoin( evidence_sdd, self.__sdd._getSDDNode(ev), m )
-        
+    
         for c in self.__sdd.constraints() :
             for rule in c.encodeCNF() :
                 evidence_sdd = sdd.sdd_conjoin( evidence_sdd, self._sdd_disjoin( *rule ), m )
-        
     
+
         query_sdd = self._sdd_equiv( sdd.sdd_manager_literal(node, self.sdd_manager), self.__sdd._getSDDNode(node))
 
         query_sdd = sdd.sdd_conjoin( query_sdd, evidence_sdd, self.sdd_manager )
 
-    
+
         # TODO this is probably not always correct:
         if sdd.sdd_node_is_true( query_sdd ) :
             return self.__probs[ node ][0]
