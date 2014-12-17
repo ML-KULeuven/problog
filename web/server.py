@@ -16,6 +16,9 @@ from problog.nnf_formula import NNF
 from problog.sdd_formula import SDD
 from problog.formula import LogicDAG, LogicFormula
 
+# Which compiled knowledge format to use? (SDD or NNF)
+KNOWLEDGE = NNF
+
 # Load Python standard web-related modules (based on Python version)
 import json
 import mimetypes
@@ -66,7 +69,7 @@ def model_path(*args) :
 def run_problog( model ) :
     """Evaluate the given model and return the probabilities."""
     model = model[0]
-    knowledge = SDD
+    knowledge = KNOWLEDGE
     
     try :
         formula = knowledge.createFrom( PrologString(model) )
@@ -87,9 +90,7 @@ def run_ground( model ) :
         handle, filename = tempfile.mkstemp('.dot')
         with open(filename, 'w') as f :
             f.write(formula.toDot())     
-        result = subprocess.check_output(['dot', '-Tsvg', filename])
-        #content_type = mimetypes.guess_type('result.svg')[0]
-        # content_type = 'text/html'
+        result = subprocess.check_output(['dot', '-Tsvg', filename]).decode('utf-8')
         content_type = 'application/json'
         return 200, content_type, json.dumps({ 'svg' : result, 'txt' : str(formula) })
     except Exception as err :
