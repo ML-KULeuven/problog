@@ -147,7 +147,14 @@ class EventBasedEngine(object) :
         
         call_node = ClauseDB._call( term.functor, range(0,len(term.args)), clause_node )
         res = ResultCollector()
-        self._eval_call(db, gp, None, call_node, term.args, res )
+        
+        try :
+            self._eval_call(db, gp, None, call_node, term.args, res )
+        except RuntimeError as err :
+            if str(err).startswith('maximum recursion depth exceeded') :
+                raise UnboundProgramError()
+            else :
+                raise
         
         return gp, res.results
     
@@ -764,6 +771,8 @@ class UserAbort(Exception) : pass
 class UserFail(Exception) : pass
 
 class NonGroundQuery(Exception) : pass
+
+class UnboundProgramError(Exception) : pass
 
 
 # Input python 2 and 3 compatible input
