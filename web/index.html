@@ -12,8 +12,52 @@
     function ground() { 
         var url = '/ground';
         var text = ace.edit('model').getValue();
-        $.post( url, text, function(data) {
-            $('#result-ground').html(data);
+        $.ajax( {
+            url: url, 
+            data: {'model' : text }, 
+            success: function(data) {
+                $('#result-ground').html(data);
+            },
+            error: function(jqXHR, textStatus, errorThrown) {
+                var result = $('<div>', {'class' : 'alert alert-danger'}).text( jqXHR.responseText);
+                $('#result-ground').html(result);
+            }
+        } );
+    }
+    
+    function problog() {
+        var url = '/problog';
+        var text = ace.edit('model').getValue();
+        $.ajax( { 
+            url: url, 
+            data: { 'model' : text },
+            success: function(data) {
+                var result = $('<tbody>');
+                for (var k in data) {
+                    var p = data[k];
+                    result.append($('<tr>')
+                            .append($('<td>').text(k))
+                            .append($('<td>').text(p))
+                    )
+                }
+                result = 
+                    $('<table>', {'class': 'table'})
+                        .append($('<thead>')
+                            .append($('<tr>')
+                                .append($('<th>').text('Query'))
+                                .append($('<th>').text('Probability'))
+                            )
+                        )
+                        .append(result);
+                
+                
+                $('#result-final').html(result);
+            },
+            error: function(jqXHR, textStatus, errorThrown) {
+                var result = $('<div>', {'class' : 'alert alert-danger'}).text( jqXHR.responseText);
+                
+                $('#result-final').html(result);
+            }
         } );
     }
     
@@ -83,19 +127,24 @@
             <select class="form-control" id="models" onchange="loadModel();"></select>
             <div style="width:100%; height:300px;" id="model"></div>
             <div class="text-center">
-                <input class="btn btn-danger pull-right" type="button" onclick="submit();" value="Submit a bug"/>
+                <!-- <input class="btn btn-danger pull-right" type="button" onclick="submit();" value="Submit a bug"/> -->
                 <input class="btn btn-primary" type="button" onclick="ground();" value="Ground"/>
+                <input class="btn btn-primary" type="button" onclick="problog();" value="Evaluate"/>
             </div>
         </div>
     </div>
+
+
     <div class="panel panel-default">
-        <div class="panel-heading"><span class="panel-title">Ground program</span></div>        
+        <div class="panel-heading"><span class="panel-title">Result</span></div>
+        <div class="panel-body" id="result-final"></div>
+    </div>
+
+    <div class="panel panel-default">
+        <div class="panel-heading"><span class="panel-title">Ground program</span></div>
         <div class="panel-body" id="result-ground"></div>
     </div>
-    <div class="panel panel-default">
-        <div class="panel-heading"><span class="panel-title">Ground program</span></div>        
-        <div class="panel-body" id="result-compile"></div>
-    </div>
+
 
 </div>
 </body>
