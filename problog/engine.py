@@ -147,7 +147,6 @@ class EventBasedEngine(object) :
         
         call_node = ClauseDB._call( term.functor, range(0,len(term.args)), clause_node )
         res = ResultCollector()
-        
         self._eval_call(db, gp, None, call_node, term.args, res )
         
         return gp, res.results
@@ -253,7 +252,7 @@ class EventBasedEngine(object) :
             # context = target context
             # node.args = target values
             # call_args = source values
-            #print ('EVAL CLAUSE:', node_id, node, call_args, parent) 
+            # print ('EVAL CLAUSE:', node_id, node, call_args, parent) 
             context = [None] * node.varcount
             for head_arg, call_arg in zip(node.args, call_args) :
                 #print ('Unify:', call_arg, head_arg, context)
@@ -525,8 +524,8 @@ class ProcessBodyReturn(ProcessNode) :
             if type(head_arg) == int : # head_arg is a variable
                 output.append( result[head_arg] )
             else : # head arg is a constant => make sure it unifies with the call arg
-                output.append( head_arg )
-        #print ('BODY_RETURN', result, self.head_args, output, result)        
+                instantiated = head_arg.apply( result )
+                output.append( instantiated )
         self.notifyListeners(output, ground_node, source)
     
     # def complete(self) :
@@ -548,16 +547,13 @@ class ProcessCallReturn(ProcessNode) :
             for call_arg, res_arg in zip(self.call_args,result) :
 #                unify( res_arg, call_arg, output )
 
-
                 if type(call_arg) == int : # head_arg is a variable
                     output[call_arg] = res_arg
                 else : # head arg is a constant => make sure it unifies with the call arg
                     pass
-            #print ('CALL_RETURN', self.context, self.call_args, output, result)        
             self.notifyListeners(output, ground_node, source)    
         except UnifyError :
             pass
-            #print ('CALL unify', result, self.call_args)
     
 
 #def trace(*args) : print(*args)
