@@ -1,21 +1,23 @@
 from __future__ import print_function
 
+# Load general Python modules
 import sys
 import os
 import glob
-import json
 import tempfile
 import traceback
 import subprocess
 
+# Load ProbLog modules
 sys.path.insert(0, os.path.abspath( os.path.join( os.path.dirname(__file__), '..' ) ) )
-
 from problog.program import PrologString
 from problog.evaluator import SemiringSymbolic, Evaluator
 from problog.nnf_formula import NNF
 from problog.sdd_formula import SDD
 from problog.formula import LogicDAG, LogicFormula
 
+# Load Python standard web-related modules (based on Python version)
+import json
 import mimetypes
 if sys.version_info.major == 2 :
     import BaseHTTPServer
@@ -31,15 +33,39 @@ else :
         return bytes(string, 'UTF-8')
     url_decode = urlparse.unquote_plus
 
-def root_path(args) :
-    return os.path.abspath( os.path.join(os.path.dirname(__file__), args.lstrip('/') ) )
+# Contains special URL paths. Initialize with @handle_url
+PATHS = {}
+
+class handle_url(object) :
+    """Decorator for adding a handler for a URL.
+    
+    Example: to add a handler for GET /hello?name=World
+
+    @handle_url('/hello')
+    def hello(name) :
+        return 200, 'text/plain', 'Hello %s!' % name
+    """
+    
+    def __init__(self, path) :
+        self.path = path
+    
+    def __call__(self, f) :
+        PATHS[self.path] = f
+
+
+def root_path(relative_path) :
+    """Translate URL path to file system path."""
+    return os.path.abspath( os.path.join(os.path.dirname(__file__), relative_path.lstrip('/') ) )
 
 def model_path(*args) :
+    """Translate model path to file system path."""
     return os.path.abspath( os.path.join(os.path.dirname(__file__), '../test/', *args ) )
 
 
-def run_problog( model, **query  ) :
+@handle_url('/problog')
+def run_problog( model ) :
     """Evaluate the given model and return the probabilities."""
+    model = model[0]
     knowledge = SDD
     
     try :
@@ -49,8 +75,10 @@ def run_problog( model, **query  ) :
     except Exception as err :
         return process_error(err)
 
-def run_ground( model, **query  ) :
+@handle_url('/ground')
+def run_ground( model ) :
     """Ground the program given by model and return an SVG of the resulting formula."""
+    model = model[0]
     knowledge = LogicDAG
     
     try :
@@ -81,7 +109,8 @@ def process_error( err ) :
     else :
         traceback.print_exc()
         return 400, 'text/plain', 'Unknown error: %s' % (err_type)
-    
+
+@handle_url('/models')    
 def list_models( ) :
     
     def extract_name(f) :
@@ -92,8 +121,9 @@ def list_models( ) :
     return 200, 'application/json', json.dumps(files)
     
     
-
+@handle_url('/model')
 def load_model( name ) :
+    name = name[0]
     filename = model_path(name + '.pl')
     try :
         with open(filename) as f :
@@ -101,36 +131,21 @@ def load_model( name ) :
         return 200, 'text/plain', data
     except Exception :
         return 404, 'text/plain', 'File not found!'
-    
 
-
-PATHS = {
-    '/problog': run_problog,
-    '/ground' : run_ground,
-    '/models' : list_models,
-    '/model'  : load_model
-}
-
-
-
-def argument_split(arg) :
-    res = arg.split('=',1)
-    if len(res) == 1 :
-        return (res[0], True)
-    else :
-        return tuple(res)
 
 class ProbLogHTTP(BaseHTTPServer.BaseHTTPRequestHandler) :
             
     def do_GET(self, *args, **kwdargs) :
+        """Handle a GET request.
+        
+        Looks up the URL path in PATHS and executes the corresponding function.
+        If the path does not occur in PATHS, treats the path as a filename and serves the file.
+        """
         url = urlparse.urlparse( self.path )
         
         path = url.path
-        if url.query :
-            s = url_decode(url.query).split('&')
-            query = dict( map( argument_split, s ) )
-        else :
-            query = {}
+        
+        query = urlparse.parse_qs(url.query)
         
         action = PATHS.get(path)
         if action == None :
@@ -144,7 +159,7 @@ class ProbLogHTTP(BaseHTTPServer.BaseHTTPRequestHandler) :
                 self.wfile.write(toBytes(data))
 
     def serveFile(self, filename) :
-        
+        """Serve a file."""
         if filename == '/' : filename = '/index.html'
         
         filetype, encoding = mimetypes.guess_type(filename)
