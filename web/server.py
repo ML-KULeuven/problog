@@ -164,11 +164,17 @@ class ProbLogHTTP(BaseHTTPServer.BaseHTTPRequestHandler) :
             self.wfile.write(toBytes('File not found!'))  
     
 
-def main(port=8000) :
+def main(port) :
     server_address = ('', port)
     httpd = BaseHTTPServer.HTTPServer( server_address, ProbLogHTTP )
+    print ('Starting server on port %s' % port)
     httpd.serve_forever()
 
 if __name__ == '__main__' :
-    main()
+    if len(sys.argv) > 1 :
+        port = int(sys.argv[1])
+    else :
+        port = 8000
+    
+    main(port)
 
