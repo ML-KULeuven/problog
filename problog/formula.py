@@ -613,7 +613,7 @@ class LogicFormula(ProbLogObject) :
         for name, index in queries :
             opt = ''
             if index == None :
-                index = 0
+                index = 'false'
                 if not_as_node :
                     s += '%s [label="NOT"];\n' % (index)
                     s += '%s -> %s;\n' % (index,0)
