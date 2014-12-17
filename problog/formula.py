@@ -546,7 +546,7 @@ class LogicFormula(ProbLogObject) :
     def evidence(self) :
         evidence_true = self.getNames('evidence') 
         evidence_false = self.getNames('-evidence') 
-        return evidence_true + [ (a,-b) for a,b in evidence_false ]
+        return list(evidence_true) + [ (a,-b) for a,b in evidence_false ]
 
     def toDot(self, not_as_node=True) :
         
