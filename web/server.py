@@ -2,6 +2,7 @@ from __future__ import print_function
 
 import sys
 import os
+import glob
 import json
 import tempfile
 import traceback
@@ -33,9 +34,12 @@ else :
 def root_path(args) :
     return os.path.abspath( os.path.join(os.path.dirname(__file__), args.lstrip('/') ) )
 
+def model_path(*args) :
+    return os.path.abspath( os.path.join(os.path.dirname(__file__), '../test/', *args ) )
 
-def run_problog( path, model, **query  ) :
-    
+
+def run_problog( model, **query  ) :
+    """Evaluate the given model and return the probabilities."""
     knowledge = SDD
     
     try :
@@ -45,8 +49,8 @@ def run_problog( path, model, **query  ) :
     except Exception as err :
         return process_error(err)
 
-def run_ground( path, model, **query  ) :
-    
+def run_ground( model, **query  ) :
+    """Ground the program given by model and return an SVG of the resulting formula."""
     knowledge = LogicDAG
     
     try :
@@ -55,6 +59,7 @@ def run_ground( path, model, **query  ) :
         handle, filename = tempfile.mkstemp('.dot')
         with open(filename, 'w') as f :
             f.write(formula.toDot())     
+        print (formula)
         result = subprocess.check_output(['dot', '-Tsvg', filename])
         #content_type = mimetypes.guess_type('result.svg')[0]
         content_type = 'text/html'
@@ -63,6 +68,7 @@ def run_ground( path, model, **query  ) :
         return process_error(err)
 
 def process_error( err ) :
+    """Take the given error raise by ProbLog and produce a meaningful error message."""
     err_type = type(err).__name__
     if err_type == 'ParseException' :
         return 400, 'text/plain', 'Parsing error on %s:%s: %s.\n%s' % (err.loc, err.col, err.msg, err.line )
@@ -77,12 +83,33 @@ def process_error( err ) :
         traceback.print_exc()
         return 400, 'text/plain', 'Unknown error: %s' % (err_type)
     
+def list_models( ) :
+    
+    def extract_name(f) :
+        return os.path.splitext(os.path.basename(f))[0]
+    
+    files = map(extract_name,glob.glob(model_path('*.pl')))
+    
+    return 200, 'application/json', json.dumps(files)
+    
+    
+
+def load_model( name ) :
+    filename = model_path(name + '.pl')
+    try :
+        with open(filename) as f :
+            data = f.read()
+        return 200, 'text/plain', data
+    except Exception :
+        return 404, 'text/plain', 'File not found!'
     
 
 
 PATHS = {
     '/problog': run_problog,
-    '/ground' : run_ground
+    '/ground' : run_ground,
+    '/models' : list_models,
+    '/model'  : load_model
 }
 
 
@@ -110,7 +137,7 @@ class ProbLogHTTP(BaseHTTPServer.BaseHTTPRequestHandler) :
         if action == None :
             self.serveFile(path)
         else :
-            code, datatype, data = action( path, **query )
+            code, datatype, data = action( **query )
             self.send_response(code)
             self.send_header("Content-type", datatype)
             self.end_headers()
@@ -141,6 +168,7 @@ class ProbLogHTTP(BaseHTTPServer.BaseHTTPRequestHandler) :
 def main(port=8000) :
     server_address = ('', port)
     httpd = BaseHTTPServer.HTTPServer( server_address, ProbLogHTTP )
+    print ('Starting server ...')
     httpd.serve_forever()
 
 if __name__ == '__main__' :

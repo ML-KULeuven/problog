@@ -66,18 +66,28 @@
         $.ajax( {
             url: url, 
             success: function(data) {
-            $('#models').html(data);
-            } } );        
+                
+                $('#models').empty();
+                
+                for (var i in data) {
+                    $('#models').append($('<option>', {'value' : data[i] }).text(data[i]));
+                }
+                $('#models').change();
+            } 
+        } );        
     }
     
     function loadModel() {
         var name = $('#models')[0].selectedOptions[0].value;
+        $('#result-final').empty();
+        $('#result-ground').empty();
         if (name == '') {
             ace.edit('model').setValue('');  
         } else {
-            var url = '/models?name=' + encodeURIComponent(name)
+            var url = '/model';
             $.ajax( {
                 url: url,
+                data: { 'name': name },
                 success: function(data) {
                     var editor = ace.edit('model');
                     editor.setValue(data);        
@@ -90,17 +100,17 @@
         }
     }
     
-    function submit() {
-        var url = '/submit';
-        var name = window.prompt('Enter a name:', 'bugreport');
-        if (name) {
-            var text = { 'name' : name, 'data' : ace.edit('model').getValue() };
-            $.post( url, text, function(data) {
-                $('#models').append('<option value="' + data + '">' + data + '</option>');
-                alert('Bug reported with name: ' + data );
-            } );
-        }
-    }
+    // function submit() {
+    //     var url = '/submit';
+    //     var name = window.prompt('Enter a name:', 'bugreport');
+    //     if (name) {
+    //         var text = { 'name' : name, 'data' : ace.edit('model').getValue() };
+    //         $.post( url, text, function(data) {
+    //             $('#models').append('<option value="' + data + '">' + data + '</option>');
+    //             alert('Bug reported with name: ' + data );
+    //         } );
+    //     }
+    // }
     
     $(document).ready( function() {
         listModels();
