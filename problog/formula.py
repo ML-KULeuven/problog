@@ -593,7 +593,9 @@ class LogicFormula(ProbLogObject) :
                     if c != 0 :
                         s += '%s -> %s%s;\n' % (index,c, opt)
             elif nodetype == 'atom' :
-                if node.group == None :                
+                if node.probability == True :
+                    pass
+                elif node.group == None :                
                     s += '%s [label="%s", shape="ellipse", style="filled", fillcolor="white"];\n' % (index, node.probability)
                             #, node.functor, ', '.join(map(str,node.args)))
                 else :
