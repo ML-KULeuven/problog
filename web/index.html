@@ -16,9 +16,11 @@
             url: url, 
             data: {'model' : text }, 
             success: function(data) {
-                $('#result-ground').html(data);
+                $('#result-ground').html(data.svg);
+                console.log(data.txt);
             },
             error: function(jqXHR, textStatus, errorThrown) {
+                console.log(jqXHR);
                 var result = $('<div>', {'class' : 'alert alert-danger'}).text( jqXHR.responseText);
                 $('#result-ground').html(result);
             }

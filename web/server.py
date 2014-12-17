@@ -59,11 +59,11 @@ def run_ground( model, **query  ) :
         handle, filename = tempfile.mkstemp('.dot')
         with open(filename, 'w') as f :
             f.write(formula.toDot())     
-        print (formula)
         result = subprocess.check_output(['dot', '-Tsvg', filename])
         #content_type = mimetypes.guess_type('result.svg')[0]
-        content_type = 'text/html'
-        return 200, content_type, result
+        # content_type = 'text/html'
+        content_type = 'application/json'
+        return 200, content_type, json.dumps({ 'svg' : result, 'txt' : str(formula) })
     except Exception as err :
         return process_error(err)
 
@@ -71,13 +71,12 @@ def process_error( err ) :
     """Take the given error raise by ProbLog and produce a meaningful error message."""
     err_type = type(err).__name__
     if err_type == 'ParseException' :
-        return 400, 'text/plain', 'Parsing error on %s:%s: %s.\n%s' % (err.loc, err.col, err.msg, err.line )
+        return 400, 'text/plain', 'Parsing error on %s:%s: %s.\n%s' % (err.lineno, err.col, err.msg, err.line )
     elif err_type == 'UnknownClause' :
         return 400, 'text/plain', 'Predicate undefined: \'%s\'.' % (err )
     elif err_type == 'PrologInstantiationError' :
         return 400, 'text/plain', 'Arithmetic operation on uninstantiated variable.' 
-    elif err_type == 'RuntimeError' and str(err).startswith('maximum recursion depth exceeded') :
-        # TODO move this error check to backend
+    elif err_type == 'UnboundProgramError' :
         return 400, 'text/plain', 'Unbounded program or program too large.'
     else :
         traceback.print_exc()
@@ -168,7 +167,6 @@ class ProbLogHTTP(BaseHTTPServer.BaseHTTPRequestHandler) :
 def main(port=8000) :
     server_address = ('', port)
     httpd = BaseHTTPServer.HTTPServer( server_address, ProbLogHTTP )
-    print ('Starting server ...')
     httpd.serve_forever()
 
 if __name__ == '__main__' :
