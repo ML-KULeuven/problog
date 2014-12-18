@@ -7,14 +7,9 @@ from .formula import LogicFormula
 """
 Assumptions
 -----------
-Assumption 1: range-restricted clauses (after clause evaluation, head is ground)
-Assumption 2: functor-free
-    - added support for functors in clause head arguments
-    - still missing:
-            - functors in facts -> OK
-            - functors in calls -> OK
-            - unify in body return?
-Assumption 3: conjunction nodes have exactly two children
+Assumption 1: range-restricted clauses (after clause evaluation, head is ground, ALSO: no unification of two uninstantiated variables)
+Assumption 3: conjunction nodes have exactly two children   (not a real restriction)
+
 Assumption 8: no prolog builtins 
     - added some builtins (needs better framework)
 
@@ -22,11 +17,13 @@ Assumption 8: no prolog builtins
 -- REMOVED: Assumption 5: no NOT
 -- REMOVED: Assumption 7: no probabilistic grounding
 -- REMOVED: Assumption 6: no CHOICE
+-- REMOVED: Assumption 2: functor-free
+
 
 Known issues
 ------------
 
-Table for query() may make ground() invalid.
+Table for query() may make ground() invalid. (Solution: don't reuse engine if you don't want to reuse tables)
 
 """
 
