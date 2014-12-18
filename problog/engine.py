@@ -84,7 +84,78 @@ class _UnknownClause(Exception) : pass
 class UnknownClause(Exception) : pass
 
 
+def instantiate( term, context ) :
+    if type(term) == int :
+        return context[term]
+    else :
+        return term.apply(context)
+
+
+class EngineLogger(object) :
+
+    instance = None
+    instance_class = None
+    
+    @classmethod
+    def get(self) :
+        if EngineLogger.instance == None :
+            if EngineLogger.instance_class == None :
+                EngineLogger.instance = EngineLogger()
+            else :
+                EngineLogger.instance = EngineLogger.instance_class()
+        return EngineLogger.instance
+    
+    @classmethod
+    def setClass(cls, instance_class) :
+        EngineLogger.instance_class = instance_class
+        EngineLogger.instance = None
+        
+    def __init__(self) :
+        pass
+                
+    def receiveResult(self, source, result, node, *extra) :
+        pass
+        
+    def receiveComplete(self, source, *extra) :
+        pass
+        
+    def sendResult(self, source, result, node, *extra) :
+        pass
+
+    def sendComplete(self, source, *extra) :
+        pass
+        
+    def create(self, node) :
+        pass
+        
+    def connect(self, source, listener, evt_type) :
+        pass
+        
+class SimpleEngineLogger(EngineLogger) :
+        
+    def __init__(self) :
+        pass
+                
+    def receiveResult(self, source, result, node, *extra) :
+        print (type(source).__name__, id(source), 'receive', result, node)
+        
+    def receiveComplete(self, source, *extra) :
+        print (type(source).__name__, id(source), 'receive complete')
+        
+    def sendResult(self, source, result, node, *extra) :
+        print (type(source).__name__, id(source), 'send', result, node)
+
+    def sendComplete(self, source, *extra) :
+        print (type(source).__name__, id(source), 'send complete')
+        
+    def create(self, source) :
+        print (type(source).__name__, id(source), 'create')
+        
+    def connect(self, source, listener, evt_type) :
+        print (type(source).__name__, id(source), 'connect', type(listener).__name__, id(listener))
+
 class EventBasedEngine(object) :
+    """An event-based ProbLog grounding engine. It supports cyclic programs."""
     
     def __init__(self, builtins=True, debugger=None) :
         self.__builtin_index = {}
@@ -194,15 +265,11 @@ class EventBasedEngine(object) :
         # Unify fact arguments with call arguments
         
         try :
-            # print (db)
-            # print (node, call_args, node.args)
             for a,b in zip(node.args, call_args) :
-                # print (type(a),a, type(b), b)
                 unify(a, b)
             # Notify parent
             parent.newResult( node.args, ground_node=gp.addAtom(node_id, node.probability) )
         except UnifyError :
-            #print ('FACT unify', node.args, call_args)
             pass
         parent.complete()    
 
@@ -229,14 +296,7 @@ class EventBasedEngine(object) :
         # Extract call arguments from context
         # TODO functors???
         
-        call_args = []
-        for call_arg in node.args :
-            if type(call_arg) == int :
-                call_args.append( context[call_arg] )
-            else :
-                call_args.append( call_arg )
-        #print ('CALL', call_args, node.args, context)        
-        
+        call_args = [ instantiate(arg, context) for arg in node.args ]
         # create a context-switching node that extracts the head arguments
         #  from results from the body context
         # output should be send to the given parent
@@ -256,19 +316,11 @@ class EventBasedEngine(object) :
             
     def _eval_clause( self, db, gp, node_id, node, call_args, parent ) :
         try :
-            # context = target context
-            # node.args = target values
-            # call_args = source values
-            # print ('EVAL CLAUSE:', node_id, node, call_args, parent) 
             context = [None] * node.varcount
             for head_arg, call_arg in zip(node.args, call_args) :
-                #print ('Unify:', call_arg, head_arg, context)
                 if type(call_arg) == int : call_arg = None
                 unify( call_arg, head_arg, context)                
-                # if type(head_arg) == int : # head_arg is a variable
-                #     context[head_arg] = call_arg
-                # else : # head arg is a constant => make sure it unifies with the call arg
-                #     unify_value( head_arg, call_arg )
+
             # create a context-switching node that extracts the head arguments
             #  from results from the body context
             # output should be send to the given parent
@@ -344,7 +396,7 @@ class ProcessNode(object) :
     EVT_ALL = 3
     
     def __init__(self) :
-        #print ('CREATE', id(self), type(self))
+        EngineLogger.get().create(self)
         self.listeners = []
         self.isComplete = False
     
@@ -352,6 +404,7 @@ class ProcessNode(object) :
         """Send the ``newResult`` event to all the listeners of this node.
             The arguments are used as the arguments of the event.
         """
+        EngineLogger.get().sendResult(self, result, ground_node)
         for listener, evttype in self.listeners :
             if evttype & self.EVT_RESULT :
                 #print ('SEND', 'result', id(self), '->', id(listener))
@@ -360,6 +413,7 @@ class ProcessNode(object) :
     def notifyComplete(self, source=None) :
         """Send the ``complete`` event to all listeners of this node."""
         
+        EngineLogger.get().sendComplete(self)
         if not self.isComplete :
             # print ('COMPLETE', self)
             self.isComplete = True
@@ -371,9 +425,11 @@ class ProcessNode(object) :
     def addListener(self, listener, eventtype=EVT_ALL) :
         """Add the given listener."""
         # Add the listener such that it receives future events.
+        EngineLogger.get().connect(self,listener,eventtype)
         self.listeners.append((listener,eventtype))
         
     def complete(self, source=None) :
+        EngineLogger.get().receiveComplete(self)
         self.notifyComplete()
         
     def newResult(self, result, ground_node=0, source=None) :
@@ -386,12 +442,11 @@ class ProcessOr(object) :
         self.count = count
     
     def newResult(self, result, ground_node=0, source=None) :
+        EngineLogger.get().receiveResult(self, result, ground_node)
         self.parent.newResult(result, ground_node, source)
     
-    def complete(self, source=None) :
-        
-        #print ('OR complete', self.count, self.parent)
-        
+    def complete(self, source=None) :        
+        EngineLogger.get().receiveComplete(self)
         # Assumption: children are well-behaved
         #   -> each child sends out exactly one 'complete' event.
         #   => after 'count' events => all children are complete
@@ -408,12 +463,10 @@ class ProcessNot(ProcessNode) :
         self.gp = gp
         
     def newResult(self, result, ground_node=0, source=None) :
-        #print('NOT RECEIVES:', result, ground_node)
         if ground_node != None :
             self.ground_nodes.append(ground_node)
         
     def complete(self, source=None) :
-        #print('NOT COMPLETE', self.ground_nodes)
         if self.ground_nodes :
             or_node = self.gp.addNot(self.gp.addOr( self.ground_nodes ))
             if or_node != None :
@@ -495,19 +548,14 @@ class ProcessDefine(ProcessNode) :
     
     def newResult(self, result, ground_node=0, source=None) :
         res = (tuple(result))
-        #debug = (self.node.functor in ('stress','smokes'))
         if res in self.results :
             res_node = self.results[res]
-            # Also matches siblings: p::have_one(1). have_two(X,Y) :- have_one(X), have_one(X). query(have_two(1,1)). 
-            # if self.gp._deref(res_node) == self.gp._deref(ground_node) : print ('CYCLE!!?!?!?!?!?!? =>', res_node)
-            #if debug: print ('\t UPDATE NODE:', res_node)     
             self.gp.addDisjunct( res_node, ground_node )
         else :
             self.engine.exit_call( self.node, result )
             result_node = self.gp.addOr( (ground_node,), readonly=False )
             self.results[ res ] = result_node
             
-            #if debug: print ('\t STORED AS:', result_node)        
             self.notifyListeners(result, result_node, source )
             
     def complete(self, source=None) :
@@ -526,18 +574,10 @@ class ProcessBodyReturn(ProcessNode) :
         self.node = node
                     
     def newResult(self, result, ground_node=0, source=None) :
-        output = []
-        for head_arg in self.head_args :
-            if type(head_arg) == int : # head_arg is a variable
-                output.append( result[head_arg] )
-            else : # head arg is a constant => make sure it unifies with the call arg
-                instantiated = head_arg.apply( result )
-                output.append( instantiated )
+        EngineLogger.get().receiveResult(self, result, ground_node)
+        output = [ instantiate(arg, result) for arg in self.head_args ]
         self.notifyListeners(output, ground_node, source)
-    
-    # def complete(self) :
-    #     pass
-        
+            
     def __repr__(self) :
         return str(self.node)
 
@@ -549,15 +589,11 @@ class ProcessCallReturn(ProcessNode) :
         self.context = context
                     
     def newResult(self, result, ground_node=0, source=None) :
+        EngineLogger.get().receiveResult(self, result, ground_node)
         output = list(self.context)
         try :
             for call_arg, res_arg in zip(self.call_args,result) :
-#                unify( res_arg, call_arg, output )
-
-                if type(call_arg) == int : # head_arg is a variable
-                    output[call_arg] = res_arg
-                else : # head arg is a constant => make sure it unifies with the call arg
-                    pass
+                unify( res_arg, call_arg, output )
             self.notifyListeners(output, ground_node, source)    
         except UnifyError :
             pass

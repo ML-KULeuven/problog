@@ -65,3 +65,38 @@ The correct operation of the engine relies on the following invariants:
 .. autoclass:: problog.engine.ProcessDefine
     :members:
 
+
+Overview
+--------
+
+Evaluating a call
++++++++++++++++++
+
+The operation of the engine is based on execution contexts. 
+Every statement is executed within a certain context.
+
+In the EventBasedEngine such a context is represented as a list of variable assignments.
+Each variable that exists in the context corresponds to a certain position in the list.
+Note that in this representation it is not possible to unify two non-instantiated variables (which would violated the range-restricted restriction for the ``'='/2`` call.)
+A non-instantiated value is represented by ``None`` (we will use ``_`` in the examples).
+
+Assume we are given a call ``p(X,f(Y,Z),c)``.
+The following steps will be taken:
+
+    1. The call arguments are instantiated from the context. For example, for context ``[x,_,g(z)]``, the call would become ``p(x,f(_,g(z)),c)``.
+    
+    2. The ``define`` node corresponding to the call predicate is found and each of its children is evaluated.
+        
+        * ``clause``
+        * ``fact``
+        
+    
+
+
+
+
+
+
+
+
+
