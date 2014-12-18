@@ -482,6 +482,183 @@ class PrologParser(object) :
         with open(filename) as f :
             return self.parseString(f.read())
 
+
+def is_white(s) :
+    return s in ' \t\n'
+
+
+class FastPrologParser(PrologParser) :
+
+    def parseStatement(self, string) :
+        if not ':-' in string and not '<-' in string :
+            # TODO Assumptions: string literals don't contain ; or ::
+            disjuncts = map(self.parse_fact, string.split(';'))  # assume string literals don't contain ;
+        
+            if len(disjuncts) > 1 :
+                body = self.factory.build_function('true', [])
+                func = ':-'
+                return self.factory.build_clause( func, disjuncts, body )            
+            else :
+                return disjuncts[0]
+            return string
+        else :
+            # It's a clause: call regular parser
+            return PrologParser.parseStatement(self, string)
+        
+        
+    # def parseString(self, string) :
+    #     return self.program.parseString(string, True)[0]
+            
+    def parseFile(self, filename) :
+        # TODO assumption: no '.' in strings    
+        with open(filename) as f :
+            current_statement = ''
+            for line in f :
+                # Remove comments
+                p = line.find('%')
+                if p > -1 : line = line[:p]
+                # Remove whitespace before and after
+                line = line.strip()
+                # Ignore empty lines
+                if not line : continue
+                # Find end-of-statement character (.)
+                p = line.find('.')
+                while p > -1 and p < len(line) - 1 and not is_white(line[p+1]) :
+                    # Not an end-of-statement character
+                    p = line.find('.', p+1)
+                if p == -1 : # No end-of-statement character found
+                    current_statement += ' ' + line
+                else :
+                    current_statement += ' ' + line[:p+1]
+                    yield self.parseStatement(current_statement.strip())
+                    current_statement = line[p+1:]
+
+
+    def parse_ident(self, string, p) :
+        p1 = p
+        if string[p] == "'" :
+            p = string.find("'", p+1) 
+            assert(p>-1)
+        else :
+            while p < len(string) and ( 'a' <= string[p] <= 'z' or 'A' <= string[p] <= 'Z' or '0' <= string[p] <= '9' or string[p] == '_' ) :
+                p += 1
+            p -= 1
+        return p+1, string[p1:p+1]
+    
+    def skip_ws(self, string, p) :
+        while p<len(string) and is_white(string[p]) : p += 1
+        return p
+
+    def parse_atom(self, string, p=0) :
+        # Can be a number -> then it starts with a number
+        p = self.skip_ws(string,p)
+        assert(p < len(string))    
+        if '0' <= string[p] <= '9' :
+            # Number
+            n = ''
+            while p < len(string) and '0' <= string[p] <= '9' :
+                n += string[p]
+                p +=1 
+            if p < len(string) and string[p] == '.' :   # float
+                n += string[p]
+                p += 1
+                while p < len(string) and '0' <= string[p] <= '9' :
+                    n += string[p]
+                    p +=1 
+                p = self.skip_ws(string, p)
+                return p, self.factory.build_constant(float(n))
+            else :
+                p = self.skip_ws(string, p)
+                return p, self.factory.build_constant(int(n))
+        elif 'A' <= string[p] <= 'Z' or string[p] == '_' :
+            # Variable
+            p, name = self.parse_ident(string, p)
+            return p, self.factory.build_variable(name)
+        elif string[p] == '[' :
+            # List
+            p += 1
+            p = self.skip_ws(string, p)
+        
+            args = []
+            p, arg = self.parse_atom(string, p)
+            args.append(arg)
+            p = self.skip_ws(string, p)
+        
+            while p < len(string) and string[p] == ',' :
+                p += 1
+                p = self.skip_ws(string, p)
+                p, arg = self.parse_atom(string, p)
+                args.append(arg)
+                p = self.skip_ws(string, p)
+
+            tail = None
+            if p < len(string) and string[p] == '|' :
+                p += 1
+                p = self.skip_ws(string, p)
+                p, tail = self.parse_atom(string, p)
+                p = self.skip_ws(string, p)
+
+            current = self.factory.build_list( args, tail=tail )
+        
+            assert(string[p] == ']')
+            p += 1
+            p = self.skip_ws(string, p)
+        
+            return p, current            
+        
+        else :
+            # Term
+            p, ident = self.parse_ident(string, p)
+            p = self.skip_ws(string, p)
+
+            if p < len(string) and string[p] == '(' :
+                # Parse argument list
+                p += 1
+                p = self.skip_ws(string, p)
+            
+                args = []
+                p, arg = self.parse_atom(string, p)
+                args.append(arg)
+                p = self.skip_ws(string, p)
+            
+                while p < len(string) and string[p] == ',' :
+                    p += 1
+                    p = self.skip_ws(string, p)
+                    p, arg = self.parse_atom(string, p)
+                    args.append(arg)
+                    p = self.skip_ws(string, p)
+            
+                assert(string[p] == ')')
+                p += 1
+                p = self.skip_ws(string, p)
+            
+            else :
+                args = ()
+        
+            return p, self.factory.build_function(ident, args)
+
+
+    def parse_fact(self, string) :
+        string = string.rstrip('.')
+        prob_atom = string.split('::')  # assume string literals don't contain ::
+        assert(len(prob_atom) <= 2)
+        if len(prob_atom) == 2 :
+            probstr, atomstr = prob_atom
+        else :
+            probstr, atomstr = None, prob_atom[0]
+
+        pos, atom = self.parse_atom(atomstr)  
+        assert(pos == len(atomstr))  
+    
+        if probstr :
+            pos, prob = self.parse_atom(probstr)
+            assert(pos == len(probstr))
+            self.factory.build_probabilistic(prob, atom)
+    
+        return atom
+
+DefaultPrologParser = FastPrologParser
+
 class Factory(object) :
     """Factory object for creating suitable objects from the parse tree."""
         

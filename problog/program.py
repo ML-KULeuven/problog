@@ -2,7 +2,7 @@ from __future__ import print_function
 
 from .logic import *
 
-from .parser import PrologParser, Factory
+from .parser import DefaultPrologParser, Factory
 
 from collections import namedtuple, defaultdict
 
@@ -26,13 +26,16 @@ class SimpleProgram(LogicProgram) :
 
 class PrologString(LogicProgram) :
     
-    def __init__(self, string) :
+    def __init__(self, string, parser=None) :
         self.__string = string
+        if parser == None :
+            self.parser = DefaultPrologParser(PrologFactory())
+        else :
+            self.parser = parser
         
     def __iter__(self) :
         """Iterator for the clauses in the program."""
-        parser = PrologParser(PrologFactory())
-        program = parser.parseString(self.__string)
+        program = self.parser.parseString(self.__string)
         return iter(program)
 
 
@@ -45,7 +48,13 @@ class PrologFile(LogicProgram) :
     :type allow_update: bool
     """
     
-    def __init__(self, filename=None, allow_update=False) :
+    def __init__(self, filename=None, allow_update=False, parser=None) :
+        if parser == None :
+            self.parser = DefaultPrologParser(PrologFactory())
+        else :
+            self.parser = parser
+        
+        
         if filename == None :
             filename = self._new_filename()
             allow_update = True
@@ -80,8 +89,7 @@ class PrologFile(LogicProgram) :
         
     def __iter__(self) :
         """Iterator for the clauses in the program."""
-        parser = PrologParser(PrologFactory())
-        program = parser.parseFile(self.filename)
+        program = self.parser.parseFile(self.filename)
         return iter(program)
         
     def _addAnnotatedDisjunction(self, clause) :
