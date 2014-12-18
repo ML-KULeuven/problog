@@ -17,6 +17,7 @@ class TestEngine(unittest.TestCase):
     
     
     def test_nonground_query_ad(self) :
+        """Non-ground call to annotated disjunction"""
 
         program = """
             0.1::p(a); 0.2::p(b).
@@ -36,6 +37,7 @@ class TestEngine(unittest.TestCase):
         
 
     def test_compare(self) :
+        """Comparison operator"""
         
         program = """
             morning(Hour) :- Hour >= 6, Hour =< 10.
@@ -47,7 +49,7 @@ class TestEngine(unittest.TestCase):
         self.assertEqual( engine.query(db, Term('morning', Constant(8) )), [[8]])
         
     def test_anonymous_variable(self) :
-        """Test whether anonymous variables (i.e. _) are taken as distinct (they should be)."""
+        """Anonymous variables are distinct"""
         
         program = """
             p(_,X,_) :- X = 3.
@@ -64,3 +66,25 @@ class TestEngine(unittest.TestCase):
         self.assertEqual( engine.query(db, Term('p', Constant(1), Constant(3), Constant(2) )), [[Constant(1),Constant(3),Constant(2)]])
     
         self.assertEqual(engine.query(db, Term('r', None )), [[2], [3]])
+        
+    def test_functors(self) :
+        """Calls with functors"""
+
+        program = """
+            p(_,f(A,B),C) :- A=y, B=g(C).    
+            a(X,Y,Z) :- p(X,f(Y,Z),c).
+        """
+        pl = PrologString(program)
+
+        r1 = DefaultEngine().query(pl, Term('a',Term('x'),None,Term('g',Term('c'))))
+        r1 = [ list(map(str,sol)) for sol in r1  ]
+        self.assertCollectionEqual( r1, [['x', 'y', 'g(c)']])
+
+        r2 = DefaultEngine().query(pl, Term('a',Term('x'),None,Term('h',Term('c'))))
+        self.assertCollectionEqual( r2, [])
+
+        r3 = DefaultEngine().query(pl, Term('a',Term('x'),None,Term('g',Term('z'))))
+        self.assertCollectionEqual( r3, [])
+    
+        if __name__ == '__main__' :
+            test1()
