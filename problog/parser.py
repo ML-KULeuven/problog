@@ -492,7 +492,7 @@ class FastPrologParser(PrologParser) :
     def parseStatement(self, string) :
         if not ':-' in string and not '<-' in string :
             # TODO Assumptions: string literals don't contain ; or ::
-            disjuncts = map(self.parse_fact, string.split(';'))  # assume string literals don't contain ;
+            disjuncts = list(map(self.parse_fact, string.split(';')))  # assume string literals don't contain ;
         
             if len(disjuncts) > 1 :
                 body = self.factory.build_function('true', [])
