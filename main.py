@@ -2,43 +2,82 @@
 
 from __future__ import print_function
 
-import os, sys, subprocess
+import os, sys, subprocess, traceback
 
 from problog.program import PrologFile
 from problog.evaluator import SemiringSymbolic, Evaluator
 from problog.nnf_formula import NNF
 from problog.sdd_formula import SDD
 
-def print_result( d, precision=8 ) :
-    l = max( len(k) for k in d )
-    f_flt = '\t%' + str(l) + 's : %.' + str(precision) + 'g' 
-    f_str = '\t%' + str(l) + 's : %s' 
-    for it in sorted(d.items()) :
-        if type(it[1]) == float :
-            print(f_flt % it)
-        else :
-            print(f_str % it)
+def print_result_default( d, precision=8 ) :
+    success, d = d
+    if success :
+        l = max( len(k) for k in d )
+        f_flt = '\t%' + str(l) + 's : %.' + str(precision) + 'g' 
+        f_str = '\t%' + str(l) + 's : %s' 
+        for it in sorted(d.items()) :
+            if type(it[1]) == float :
+                print(f_flt % it)
+            else :
+                print(f_str % it)
+        return 0
+    else :
+        print ('Error:', d)
+        return 1
+            
+def print_result_web( d, precision=8 ) :
+    success, d = d
+    if success :
+        import json
+        print (200, 'application/json', json.dumps(d))
+    else :
+        print (400, 'text/plain', d)
+    return 0 
+    
+
+def process_error( err ) :
+    """Take the given error raise by ProbLog and produce a meaningful error message."""
+    err_type = type(err).__name__
+    if err_type == 'ParseException' :
+        return 'Parsing error on %s:%s: %s.\n%s' % (err.lineno, err.col, err.msg, err.line )
+    elif err_type == 'UnknownClause' :
+        return 'Predicate undefined: \'%s\'.' % (err )
+    elif err_type == 'PrologInstantiationError' :
+        return 'Arithmetic operation on uninstantiated variable.' 
+    elif err_type == 'UnboundProgramError' :
+        return 'Unbounded program or program too large.'
+    else :
+        traceback.print_exc()
+        return 'Unknown error: %s' % (err_type)
+
 
 def main( filename, knowledge=NNF, semiring=None ) :
-    
-    print ('Results for %s:' % filename)
-        
-    formula = knowledge.createFrom( PrologFile(filename) )
-    
-    result = formula.evaluate(semiring=semiring)
-    
-    print_result(result)
+
+    try :
+        formula = knowledge.createFrom( PrologFile(filename) )
+        result = formula.evaluate(semiring=semiring)
+        return True, result
+    except Exception as err :
+        return False, process_error(err)
         
 if __name__ == '__main__' :
     
     import argparse
     
+    output_formats = { 
+        'default' : print_result_default,
+        'web' : print_result_web
+    }
+    
     parser = argparse.ArgumentParser()
     parser.add_argument('filenames', metavar='MODEL', nargs='+')
     parser.add_argument('--knowledge', '-k', choices=('sdd','nnf'), default='nnf', help="Knowledge compilation tool.")
     parser.add_argument('--symbolic', action='store_true', help="Use symbolic evaluation.")
+    parser.add_argument('--output-format', choices=output_formats.keys(), default='default', help="Output format.")
     
     args = parser.parse_args()
+    
+    print_result = output_formats[ args.output_format ]
     
     if args.filenames[0] == 'install' :
         from problog import setup
@@ -58,6 +97,8 @@ if __name__ == '__main__' :
     
         for filename in args.filenames :
             try :
-                main(filename, knowledge, semiring)
+                if len(args.filenames) > 1 : print ('Results for %s:' % filename)
+                retcode = print_result( main(filename, knowledge, semiring) )
+                if len(args.filenames) == 1 : sys.exit(retcode)
             except subprocess.CalledProcessError :
                 print ('error')

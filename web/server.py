@@ -7,6 +7,7 @@ import glob
 import tempfile
 import traceback
 import subprocess
+import resource
 
 # Load ProbLog modules
 sys.path.insert(0, os.path.abspath( os.path.join( os.path.dirname(__file__), '..' ) ) )
@@ -18,6 +19,10 @@ from problog.formula import LogicDAG, LogicFormula
 
 # Which compiled knowledge format to use? (SDD or NNF)
 KNOWLEDGE = NNF
+
+DEFAULT_PORT = 8000
+DEFAULT_TIMEOUT = 60
+DEFAULT_MEMOUT = 1.0 # gigabyte
 
 # Load Python standard web-related modules (based on Python version)
 import json
@@ -64,6 +69,25 @@ def model_path(*args) :
     """Translate model path to file system path."""
     return os.path.abspath( os.path.join(os.path.dirname(__file__), '../test/', *args ) )
 
+def call_process( cmd, timeout, memout ) :
+    """Call a subprocess with time and memory restrictions.
+    
+        Note: 
+            - the time restriction only works on Linux and Mac OS X
+            - the memory restriction only works on Linux
+            
+        :param:timeout: CPU time in seconds
+        :param:memout: Maximum memory in bytes
+        :return: Output of the subprocess.
+        
+    """
+
+    def setlimits() :
+        resource.setrlimit(resource.RLIMIT_CPU, (timeout, timeout))
+        resource.setrlimit(resource.RLIMIT_AS, (memout, memout))
+        
+    return subprocess.check_output(cmd, preexec_fn=setlimits)
+
 
 @handle_url('/problog')
 def run_problog( model ) :
@@ -71,12 +95,26 @@ def run_problog( model ) :
     model = model[0]
     knowledge = KNOWLEDGE
     
+    handle, tmpfile = tempfile.mkstemp('.pl')
+    with open(tmpfile, 'w') as f :
+        f.write(model)
+    
+    cmd = [ 'python', root_path('../main.py'), '-k', 'sdd', tmpfile, '--output-format', 'web' ]
+    
     try :
-        formula = knowledge.createFrom( PrologString(model) )
-        result = formula.evaluate()
-        return 200, 'application/json', json.dumps(result)
-    except Exception as err :
-        return process_error(err)
+        result = call_process(cmd, DEFAULT_TIMEOUT, DEFAULT_MEMOUT * (1 << 30))
+    
+        code, datatype, datavalue = result.split(None,2)
+        return int(code), datatype, datavalue
+    except subprocess.CalledProcessError :
+        return 500, 'text/plain', 'ProbLog evaluation exceeded time or memory limit'
+    
+    # try :
+    #     formula = knowledge.createFrom( PrologString(model) )
+    #     result = formula.evaluate()
+    #     return 200, 'application/json', json.dumps(result)
+    # except Exception as err :
+    #     return process_error(err)
 
 @handle_url('/ground')
 def run_ground( model ) :
