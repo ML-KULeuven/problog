@@ -264,7 +264,11 @@ class SDDEvaluator(Evaluator) :
 
         # TODO this is probably not always correct:
         if sdd.sdd_node_is_true( query_sdd ) :
-            return self.__probs[ node ][0]
+            if node < 0 :
+                return self.__probs[ -node ][1]
+            else :
+                return self.__probs[ node ][0]
+                
         else :
             wmc_manager = sdd.wmc_manager_new( query_sdd , 0, self.sdd_manager )
 
