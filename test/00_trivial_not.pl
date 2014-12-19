@@ -1,4 +1,4 @@
-%Expected result
+%Expected outcome:
 % p 0.6
 
 0.4::a.
