@@ -151,6 +151,24 @@ class SimpleEngineLogger(EngineLogger) :
     def connect(self, source, listener, evt_type) :
         print (type(source).__name__, id(source), 'connect', type(listener).__name__, id(listener))
 
+class Context(object) :
+    
+    def __init__(self, lst) :
+        self.__lst = lst
+        
+    def __getitem__(self, index) :
+        return self.__lst[index]
+        
+    def __setitem__(self, index, value) :
+        self.__lst[index] = value
+        
+    def __len__(self) :
+        return len(self.__lst)
+        
+    def __iter__(self) :
+        return iter(self.__lst)
+    
+
 class EventBasedEngine(object) :
     """An event-based ProbLog grounding engine. It supports cyclic programs."""
     
@@ -182,6 +200,12 @@ class EventBasedEngine(object) :
     def exit_call(self, node, context) :
         if self.debugger :
             self.debugger.exit(0, node, context, None)
+    
+    def create_context(self, lst=[], size=None) :
+        if size != None :
+            assert( not lst )
+            lst = [None] * size
+        return Context(lst)
     
     def query(self, db, term, level=0) :
         gp = LogicFormula()
@@ -217,7 +241,7 @@ class EventBasedEngine(object) :
         res = ResultCollector()
         
         try :
-            self._eval_call(db, gp, None, call_node, term.args, res )
+            self._eval_call(db, gp, None, call_node, self.create_context(term.args), res )
         except RuntimeError as err :
             if str(err).startswith('maximum recursion depth exceeded') :
                 raise UnboundProgramError()
@@ -229,6 +253,8 @@ class EventBasedEngine(object) :
     def _eval(self, db, gp, node_id, context, parent) :
         node = db.getNode( node_id )
         ntype = type(node).__name__
+        
+        assert(isinstance(context,Context))
         
         self.enter_call( node, context )
         
@@ -306,14 +332,14 @@ class EventBasedEngine(object) :
             builtin( *call_args, context=context, callback=context_switch )                
         else :
             try :
-                self._eval( db, gp, node.defnode, call_args, context_switch )
+                self._eval( db, gp, node.defnode, self.create_context(call_args), context_switch )
             except _UnknownClause :
                 sig = '%s/%s' % (node.functor, len(node.args))
                 raise UnknownClause(sig)
             
     def _eval_clause( self, db, gp, node_id, node, call_args, parent ) :
         try :
-            context = [None] * node.varcount
+            context = self.create_context(size=node.varcount)
             for head_arg, call_arg in zip(node.args, call_args) :
                 if type(call_arg) == int : call_arg = None
                 unify( call_arg, head_arg, context)                
@@ -487,7 +513,7 @@ class ProcessLink(object) :
         process = ProcessAnd(self.gp, ground_node)
         process.addListener(self.parent, ProcessNode.EVT_RESULT)
         process.addListener(self.andc, ProcessNode.EVT_COMPLETE)
-        self.engine._eval( self.db, self.gp, self.node_id, result, process)
+        self.engine._eval( self.db, self.gp, self.node_id, self.engine.create_context(result), process)
         
     def complete(self, source=None) :
         self.andc.complete()
@@ -539,7 +565,7 @@ class ProcessDefine(ProcessNode) :
         process = ProcessOr( len(children), self )
         # Evaluate the children
         for child in children :
-            self.engine._eval( self.db, self.gp, child, self.args, parent=process )
+            self.engine._eval( self.db, self.gp, child, self.engine.create_context(self.args), parent=process )
         
         self.notifyComplete()
     
