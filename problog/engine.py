@@ -153,8 +153,9 @@ class SimpleEngineLogger(EngineLogger) :
 
 class Context(object) :
     
-    def __init__(self, lst) :
+    def __init__(self, lst, define) :
         self.__lst = lst
+        self.define = define
         
     def __getitem__(self, index) :
         return self.__lst[index]
@@ -201,11 +202,11 @@ class EventBasedEngine(object) :
         if self.debugger :
             self.debugger.exit(0, node, context, None)
     
-    def create_context(self, lst=[], size=None) :
+    def create_context(self, lst=[], size=None, define=None) :
         if size != None :
             assert( not lst )
             lst = [None] * size
-        return Context(lst)
+        return Context(lst, define=define)
     
     def query(self, db, term, level=0) :
         gp = LogicFormula()
@@ -241,7 +242,7 @@ class EventBasedEngine(object) :
         res = ResultCollector()
         
         try :
-            self._eval_call(db, gp, None, call_node, self.create_context(term.args), res )
+            self._eval_call(db, gp, None, call_node, self.create_context(term.args,define=None), res )
         except RuntimeError as err :
             if str(err).startswith('maximum recursion depth exceeded') :
                 raise UnboundProgramError()
@@ -332,14 +333,14 @@ class EventBasedEngine(object) :
             builtin( *call_args, context=context, callback=context_switch )                
         else :
             try :
-                self._eval( db, gp, node.defnode, self.create_context(call_args), context_switch )
+                self._eval( db, gp, node.defnode, self.create_context(call_args, define=context.define), context_switch )
             except _UnknownClause :
                 sig = '%s/%s' % (node.functor, len(node.args))
                 raise UnknownClause(sig)
             
     def _eval_clause( self, db, gp, node_id, node, call_args, parent ) :
         try :
-            context = self.create_context(size=node.varcount)
+            context = self.create_context(size=node.varcount,define=call_args.define)
             for head_arg, call_arg in zip(node.args, call_args) :
                 if type(call_arg) == int : call_arg = None
                 unify( call_arg, head_arg, context)                
@@ -364,7 +365,7 @@ class EventBasedEngine(object) :
         process_complete = ProcessCompleteAll( len(node.children), parent )
         
         # Use a link node that evaluates the second child based on input from the first.
-        node2 = ProcessLink( self, db, gp, child2, process_complete, parent )     # context passed through from node1
+        node2 = ProcessLink( self, db, gp, child2, process_complete, parent, context.define )     # context passed through from node1
         self._eval( db, gp, child1, context, node2 )    # evaluate child1 and make it activate node2    
 
     def _eval_disj( self, db, gp, node_id, node, context, parent ) :
@@ -387,7 +388,7 @@ class EventBasedEngine(object) :
         
         pnode = def_nodes.get(key)
         if pnode == None :
-            pnode = ProcessDefine( self, db, gp, node_id, node, call_args )
+            pnode = ProcessDefine( self, db, gp, node_id, node, call_args, call_args.define )
             def_nodes[key] = pnode
             pnode.addListener(parent)
             pnode.execute()
@@ -500,20 +501,21 @@ class ProcessNot(ProcessNode) :
 
 class ProcessLink(object) :
     
-    def __init__(self, engine, db, gp, node_id, andc, parent) :
+    def __init__(self, engine, db, gp, node_id, andc, parent, define) :
         self.engine = engine
         self.db = db
         self.gp = gp
         self.node_id = node_id
         self.parent = parent
         self.andc = andc
+        self.define = define
         
     def newResult(self, result, ground_node=0, source=None) :
         self.engine.exit_call( self.node_id, result )    
         process = ProcessAnd(self.gp, ground_node)
         process.addListener(self.parent, ProcessNode.EVT_RESULT)
         process.addListener(self.andc, ProcessNode.EVT_COMPLETE)
-        self.engine._eval( self.db, self.gp, self.node_id, self.engine.create_context(result), process)
+        self.engine._eval( self.db, self.gp, self.node_id, self.engine.create_context(result,define=self.define), process)
         
     def complete(self, source=None) :
         self.andc.complete()
@@ -534,7 +536,7 @@ class ProcessAnd(ProcessNode) :
      
 class ProcessDefine(ProcessNode) :
     
-    def __init__(self, engine, db, gp, node_id, node, args) :
+    def __init__(self, engine, db, gp, node_id, node, args, parent) :
         ProcessNode.__init__(self)
         self.results = {}
         self.engine = engine
@@ -543,6 +545,7 @@ class ProcessDefine(ProcessNode) :
         self.node_id = node_id
         self.node = node
         self.args = args
+        self.parent = parent
                 
     def addListener(self, listener, eventtype=ProcessNode.EVT_ALL) :
         
@@ -565,7 +568,7 @@ class ProcessDefine(ProcessNode) :
         process = ProcessOr( len(children), self )
         # Evaluate the children
         for child in children :
-            self.engine._eval( self.db, self.gp, child, self.engine.create_context(self.args), parent=process )
+            self.engine._eval( self.db, self.gp, child, self.engine.create_context(self.args,define=self), parent=process )
         
         self.notifyComplete()
     
