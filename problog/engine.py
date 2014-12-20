@@ -393,6 +393,8 @@ class EventBasedEngine(object) :
             pnode.addListener(parent)
             pnode.execute()
         else :
+            if call_args.define and call_args.define.hasAncestor(pnode) :
+                pnode.cyclic = False
             pnode.addListener(parent)
             
 class ProcessCompleteAll( object ) :
@@ -546,7 +548,23 @@ class ProcessDefine(ProcessNode) :
         self.node = node
         self.args = args
         self.parent = parent
-                
+        self.__is_cyclic = False
+        
+    @property
+    def cyclic(self) :
+        return self.__is_cyclic
+        
+    @cyclic.setter
+    def cyclic(self, value) :
+        self.__is_cyclic = value
+        
+    def hasAncestor(self, anc) :
+        ancestor = self
+        while ancestor != None :
+            if ancestor == anc : return True
+            ancestor = ancestor.parent
+        return False
+                        
     def addListener(self, listener, eventtype=ProcessNode.EVT_ALL) :
         
         # Add the listener such that it receives future events.
