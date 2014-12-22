@@ -272,12 +272,10 @@ def _load_nnf(filename, cnf) :
                 rename[abs(name)] = node
                 if name < 0 : node = -node
                 line2node[lnum] = node
-                if abs(name) in names_inv :
-                    for actual_name, label in names_inv[abs(name)] :
-                        if name < 0 :
-                            nnf.addName(actual_name, -node, label)
-                        else :
-                            nnf.addName(actual_name, node, label)
+                if name in names_inv :
+                    for actual_name, label in names_inv[name] :
+                        nnf.addName(actual_name, node, label)
+                    del names_inv[name]
                 lnum += 1
             elif line[0] == 'A' :
                 children = map(lambda x : line2node[int(x)] , line[2:])
@@ -289,7 +287,9 @@ def _load_nnf(filename, cnf) :
                 lnum += 1
             else :
                 print ('Unknown line type')
-                
+        for name in names_inv :
+            for actual_name, label in names_inv[name] :
+                nnf.addName(actual_name, None, label)
     for c in cnf.constraints() :
         nnf.addConstraint(c.copy(rename))
                 
