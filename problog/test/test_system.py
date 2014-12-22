@@ -7,7 +7,7 @@ from problog.program import PrologFile
 from problog.nnf_formula import NNF
 from problog.sdd_formula import SDD
 
-import glob, os
+import glob, os, traceback
 
 class TestDummy(unittest.TestCase):
     
@@ -59,14 +59,18 @@ def createSystemTestSDD(filename) :
         try :
             sdd = SDD.createFrom(PrologFile(filename))
             computed = sdd.evaluate()
+        except Exception as e :
+            computed = None
+            
+        if computed == None :
+            self.assertEqual(correct, type(e).__name__)
+        else :
             self.assertIsInstance( correct, dict )
             self.assertSequenceEqual(correct, computed)
 
             for query in correct :
                 self.assertAlmostEqual(correct[query], computed[query])
 
-        except Exception as e :
-            self.assertEqual(correct, type(e).__name__)
 
     return test
 
@@ -79,14 +83,17 @@ def createSystemTestNNF(filename) :
         try :
             sdd = NNF.createFrom(PrologFile(filename))
             computed = sdd.evaluate()
+        except Exception as e :
+            computed = None
+            
+        if computed == None :
+            self.assertEqual(correct, type(e).__name__)
+        else :
             self.assertIsInstance( correct, dict )
             self.assertSequenceEqual(correct, computed)
 
             for query in correct :
                 self.assertAlmostEqual(correct[query], computed[query])
-
-        except Exception as e :
-            self.assertEqual(correct, type(e).__name__)
 
     return test
 
