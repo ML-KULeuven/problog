@@ -45,7 +45,7 @@ def main(filename) :
     
     model = PrologFile(filename)
     
-    EngineLogger.setClass(SimpleEngineLogger)
+    #EngineLogger.setClass(SimpleEngineLogger)
     
     engine = DefaultEngine()
     
