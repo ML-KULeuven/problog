@@ -99,11 +99,15 @@ def run_problog( model ) :
     with open(tmpfile, 'w') as f :
         f.write(model)
     
-    cmd = [ 'python', root_path('../main.py'), '-k', 'sdd', tmpfile, '--output-format', 'web' ]
+    handle, outfile = tempfile.mkstemp('.out')
+    
+    cmd = [ 'python', root_path('../main.py'), '-k', 'sdd', tmpfile, '--output-format', 'web', '--output', outfile ]
     
     try :
-        result = call_process(cmd, DEFAULT_TIMEOUT, DEFAULT_MEMOUT * (1 << 30))
-    
+        call_process(cmd, DEFAULT_TIMEOUT, DEFAULT_MEMOUT * (1 << 30))
+        
+        with open(outfile) as f :
+            result = f.read()
         code, datatype, datavalue = result.split(None,2)
         return int(code), datatype, datavalue
     except subprocess.CalledProcessError :
@@ -120,9 +124,13 @@ def run_problog( model ) :
 def run_ground( model ) :
     """Ground the program given by model and return an SVG of the resulting formula."""
     model = model[0]
-    knowledge = LogicDAG
+    knowledge = LogicFormula
+    
+    from problog.engine import EngineLogger, SimpleEngineLogger
+    EngineLogger.setClass(SimpleEngineLogger)
     
     try :
+
         formula = knowledge.createFrom( PrologString(model) )
         
         handle, filename = tempfile.mkstemp('.dot')
@@ -130,8 +138,10 @@ def run_ground( model ) :
             f.write(formula.toDot())     
         result = subprocess.check_output(['dot', '-Tsvg', filename]).decode('utf-8')
         content_type = 'application/json'
+        EngineLogger.setClass(None)
         return 200, content_type, json.dumps({ 'svg' : result, 'txt' : str(formula) })
     except Exception as err :
+        EngineLogger.setClass(None)
         return process_error(err)
 
 def process_error( err ) :

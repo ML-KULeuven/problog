@@ -9,7 +9,7 @@ from problog.evaluator import SemiringSymbolic, Evaluator
 from problog.nnf_formula import NNF
 from problog.sdd_formula import SDD
 
-def print_result_default( d, precision=8 ) :
+def print_result_default( d, output, precision=8 ) :    
     success, d = d
     if success :
         l = max( len(k) for k in d )
@@ -17,21 +17,21 @@ def print_result_default( d, precision=8 ) :
         f_str = '\t%' + str(l) + 's : %s' 
         for it in sorted(d.items()) :
             if type(it[1]) == float :
-                print(f_flt % it)
+                print(f_flt % it, file=output)
             else :
-                print(f_str % it)
+                print(f_str % it, file=output)
         return 0
     else :
-        print ('Error:', d)
+        print ('Error:', d, file=output)
         return 1
             
-def print_result_web( d, precision=8 ) :
+def print_result_web( d, output, precision=8 ) :
     success, d = d
     if success :
         import json
-        print (200, 'application/json', json.dumps(d))
+        print (200, 'application/json', json.dumps(d), file=output)
     else :
-        print (400, 'text/plain', d)
+        print (400, 'text/plain', d, file=output)
     return 0 
     
 
@@ -74,10 +74,16 @@ if __name__ == '__main__' :
     parser.add_argument('--knowledge', '-k', choices=('sdd','nnf'), default='nnf', help="Knowledge compilation tool.")
     parser.add_argument('--symbolic', action='store_true', help="Use symbolic evaluation.")
     parser.add_argument('--output-format', choices=output_formats.keys(), default='default', help="Output format.")
+    parser.add_argument('--output', '-o', help="Output file (default stdout)")
     
     args = parser.parse_args()
     
     print_result = output_formats[ args.output_format ]
+    
+    if args.output == None :
+        output = sys.stdout
+    else :
+        output = open(args.output, 'w')
     
     if args.filenames[0] == 'install' :
         from problog import setup
@@ -98,7 +104,10 @@ if __name__ == '__main__' :
         for filename in args.filenames :
             try :
                 if len(args.filenames) > 1 : print ('Results for %s:' % filename)
-                retcode = print_result( main(filename, knowledge, semiring) )
+                retcode = print_result( main(filename, knowledge, semiring), output )
                 if len(args.filenames) == 1 : sys.exit(retcode)
             except subprocess.CalledProcessError :
                 print ('error')
+
+    if args.output != None : output.close()
+    
