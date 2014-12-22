@@ -59,7 +59,8 @@ def createSystemTestSDD(filename) :
         try :
             sdd = SDD.createFrom(PrologFile(filename))
             computed = sdd.evaluate()
-        except Exception as e :
+        except Exception as err :
+            e = err
             computed = None
             
         if computed == None :
@@ -83,7 +84,8 @@ def createSystemTestNNF(filename) :
         try :
             sdd = NNF.createFrom(PrologFile(filename))
             computed = sdd.evaluate()
-        except Exception as e :
+        except Exception as err :
+            e = err
             computed = None
             
         if computed == None :
