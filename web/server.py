@@ -184,18 +184,26 @@ def load_model( name ) :
 
 
 class ProbLogHTTP(BaseHTTPServer.BaseHTTPRequestHandler) :
-            
-    def do_GET(self, *args, **kwdargs) :
+          
+    def do_POST(self) :
+                
+        numberOfBytes = int(self.headers["Content-Length"])
+        data = self.rfile.read(numberOfBytes)
+        query = urlparse.parse_qs(data)
+        self.do_GET(query=query)
+        
+        
+    def do_GET(self, query=None) :
         """Handle a GET request.
         
         Looks up the URL path in PATHS and executes the corresponding function.
         If the path does not occur in PATHS, treats the path as a filename and serves the file.
         """
-        url = urlparse.urlparse( self.path )
-        
-        path = url.path
-        
-        query = urlparse.parse_qs(url.query)
+
+        url = urlparse.urlparse( self.path )        
+        path = url.path        
+        if query == None :
+            query = urlparse.parse_qs(url.query)
         
         action = PATHS.get(path)
         if action == None :

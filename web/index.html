@@ -32,6 +32,7 @@
         var text = ace.edit('model').getValue();
         $.ajax( { 
             url: url, 
+			type: 'POST',
             data: { 'model' : text },
             success: function(data) {
                 var result = $('<tbody>');
