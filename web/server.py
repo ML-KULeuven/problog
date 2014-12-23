@@ -101,7 +101,7 @@ def run_problog( model ) :
     
     handle, outfile = tempfile.mkstemp('.out')
     
-    cmd = [ 'python', root_path('../main.py'), '-k', 'sdd', tmpfile, '--output-format', 'web', '--output', outfile ]
+    cmd = [ 'python', root_path('run_problog.py'), tmpfile, outfile ]
     
     try :
         call_process(cmd, DEFAULT_TIMEOUT, DEFAULT_MEMOUT * (1 << 30))
@@ -126,8 +126,8 @@ def run_ground( model ) :
     model = model[0]
     knowledge = LogicFormula
     
-    from problog.engine import EngineLogger, SimpleEngineLogger
-    EngineLogger.setClass(SimpleEngineLogger)
+    #from problog.engine import EngineLogger, SimpleEngineLogger
+    #EngineLogger.setClass(SimpleEngineLogger)
     
     try :
 
@@ -138,10 +138,10 @@ def run_ground( model ) :
             f.write(formula.toDot())     
         result = subprocess.check_output(['dot', '-Tsvg', filename]).decode('utf-8')
         content_type = 'application/json'
-        EngineLogger.setClass(None)
+        #EngineLogger.setClass(None)
         return 200, content_type, json.dumps({ 'svg' : result, 'txt' : str(formula) })
     except Exception as err :
-        EngineLogger.setClass(None)
+        #EngineLogger.setClass(None)
         return process_error(err)
 
 def process_error( err ) :
