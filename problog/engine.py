@@ -400,32 +400,6 @@ class EventBasedEngine(object) :
             else :
                 pnode.addListener(parent)
             
-class ProcessCompleteAll( object ) :
-    
-    def __init__(self, count, parent) :
-        self.count = set(count)
-        self.parent = parent
-        self.is_complete = False
-        
-    def newResult(self, result, ground_node=0, source=None) :
-        pass
-        
-    def complete(self, source) :        
-        EngineLogger.get().receiveComplete(self)
-        # Assumption: children are well-behaved
-        #   -> each child sends out exactly one 'complete' event.
-        #   => after 'count' events => all children are complete
-        assert(type(source) == int)
-        if self.is_complete : return 
-
-        if source in self.count :
-            self.count.remove(source)
-
-        #self.count -= 1
-        if not self.count and self.notify_complete :
-            self.is_complete = True
-            EngineLogger.get().sendComplete(self)
-            self.parent.complete(self)
 
 class ProcessNode(object) :
     """Generic class for representing *process nodes*."""

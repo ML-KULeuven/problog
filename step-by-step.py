@@ -64,10 +64,9 @@ def main(filename) :
     with Timer('ground') :
         gp = None
         for i, query in enumerate(queries) :
-            print ('ground query %d (%s):' % (i+1,query), '='*100)
+            #print ('ground query %d (%s):' % (i+1,query), '='*100)
             with Timer('ground query %d (%s):' % (i+1,query)) :
                 gp = engine.ground(db, query[0], gp, label='query')
-            
     
         for query in evidence :
             if str(query[1]) == 'true' :
