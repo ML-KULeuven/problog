@@ -24,6 +24,7 @@ DEFAULT_PORT = 8000
 DEFAULT_TIMEOUT = 60
 DEFAULT_MEMOUT = 1.0 # gigabyte
 
+
 # Load Python standard web-related modules (based on Python version)
 import json
 import mimetypes
@@ -228,17 +229,22 @@ class ProbLogHTTP(BaseHTTPServer.BaseHTTPRequestHandler) :
             self.wfile.write(toBytes('File not found!'))  
     
 
-def main(port) :
-    server_address = ('', port)
-    httpd = BaseHTTPServer.HTTPServer( server_address, ProbLogHTTP )
-    print ('Starting server on port %s' % port)
-    httpd.serve_forever()
 
 if __name__ == '__main__' :
-    if len(sys.argv) > 1 :
-        port = int(sys.argv[1])
-    else :
-        port = 8000
+    import argparse
     
-    main(port)
-
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--port', '-p', type=int, default=DEFAULT_PORT, help="Server listening port")
+    parser.add_argument('--timeout', '-t', type=int, default=DEFAULT_TIMEOUT, help="Time limit in seconds")
+    parser.add_argument('--memout', '-m', type=float, default=DEFAULT_MEMOUT, help="Memory limit in Gb")
+    args = parser.parse_args(sys.argv[1:])
+        
+    DEFAULT_TIMEOUT = args.timeout
+    DEFAULT_MEMOUT = args.memout
+    print ('Starting server on port %d (timeout=%d, memout=%dGb)' % (args.port, DEFAULT_TIMEOUT, DEFAULT_MEMOUT ))    
+    
+    server_address = ('', args.port)
+    httpd = BaseHTTPServer.HTTPServer( server_address, ProbLogHTTP )
+    httpd.serve_forever()
+    
+    
