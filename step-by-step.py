@@ -1,3 +1,5 @@
+#! /usr/bin/env python
+
 from __future__ import print_function
 
 import sys
@@ -51,6 +53,8 @@ def main(filename) :
     
     with Timer('parsing') :
         db = engine.prepare(model)
+    
+    print (db)
     
     with Timer('queries') :
         queries = engine.query(db, Term( 'query', None ))
