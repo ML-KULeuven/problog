@@ -315,7 +315,6 @@ class EventBasedEngine(object) :
         call_args = [ instantiate(arg, context) for arg in node.args ]
         # Create a context switching node that unifies the results of the call with the call arguments. Results are passed to the parent callback.
         context_switch = ProcessCallReturn( node.args, context, parent )
-        context_switch.addListener(parent)
         # Evaluate the define node.
         if node.defnode < 0 :
             # Negative node indicates a builtin.
