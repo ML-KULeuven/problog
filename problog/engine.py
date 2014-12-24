@@ -22,11 +22,6 @@ Assumption 8: no prolog builtins
 -- REMOVED: Assumption 2: functor-free
 
 
-Known issues
-------------
-
-Table for query() may make ground() invalid. (Solution: don't reuse engine if you don't want to reuse tables)
-
 Properties
 ----------
 
@@ -60,7 +55,7 @@ def is_variable( v ) :
     return v == None or type(v) == int
     
 def is_ground( *terms ) :
-    """Test whether a set of Term contains a variable (recursively).
+    """Test whether a any of given terms contains a variable (recursively).
     
     :return: True if none of the arguments contains any variables.
     """
@@ -178,36 +173,52 @@ class EventBasedEngine(object) :
         return self.__builtins[real_index]
         
     def addBuiltIn(self, pred, arity, func) :
+        """Add a builtin."""
         sig = '%s/%s' % (pred, arity)
         self.__builtin_index[sig] = -(len(self.__builtins) + 1)
         self.__builtins.append( func )
         
     def getBuiltIns(self) :
+        """Get the list of builtins."""
         return self.__builtin_index
     
-    def enter_call(self, node, context) :
+    def _enter_call(self, node, context) :
         if self.debugger :
             self.debugger.enter(0, node, context)
         
-    def exit_call(self, node, context) :
+    def _exit_call(self, node, context) :
         if self.debugger :
             self.debugger.exit(0, node, context, None)
     
-    def create_context(self, lst=[], size=None, define=None) :
+    def _create_context(self, lst=[], size=None, define=None) :
+        """Create a new context."""
         if size != None :
             assert( not lst )
             lst = [None] * size
         return Context(lst, define=define)
     
     def query(self, db, term, level=0) :
+        """Perform a non-probabilistic query."""
         gp = LogicFormula()
         gp, result = self._ground(db, term, gp, level)
         return [ y for x,y in result ]
             
     def prepare(self, db) :
+        """Convert given logic program to suitable format for this engine."""
         return ClauseDB.createFrom(db, builtins=self.getBuiltIns())
     
     def ground(self, db, term, gp=None, label=None) :
+        """Ground a query on the given database.
+        
+        :param db: logic program
+        :type db: LogicProgram
+        :param term: query term
+        :type term: Term
+        :param gp: output data structure (for incremental grounding)
+        :type gp: LogicFormula
+        :param label: type of query (e.g. ``query``, ``evidence`` or ``-evidence``)
+        :type label: str
+        """
         gp, results = self._ground(db, term, gp)
         
         for node_id, args in results :
@@ -218,34 +229,36 @@ class EventBasedEngine(object) :
         return gp
     
     def _ground(self, db, term, gp=None, level=0) :
+        # Convert logic program if needed.
         db = self.prepare(db)
-
+        # Create a new target datastructure if none was given.
         if gp == None : gp = LogicFormula()
-        
+        # Find the define node for the given query term.
         clause_node = db.find(term)
+        # If term not defined: fail query (no error)    # TODO add error to make it consistent?
         if clause_node == None : return gp, []
-        
+        # Create a new call.
         call_node = ClauseDB._call( term.functor, range(0,len(term.args)), clause_node )
+        # Initialize a result collector callback.
         res = ResultCollector()
-        
         try :
-            self._eval_call(db, gp, None, call_node, self.create_context(term.args,define=None), res )
+            # Evaluate call.
+            self._eval_call(db, gp, None, call_node, self._create_context(term.args,define=None), res )
         except RuntimeError as err :
             if str(err).startswith('maximum recursion depth exceeded') :
                 raise UnboundProgramError()
             else :
                 raise
-        
+        # Return ground program and results.
         return gp, res.results
     
     def _eval(self, db, gp, node_id, context, parent) :
+        # Find the node and determine its type.
         node = db.getNode( node_id )
         ntype = type(node).__name__
-        
-        assert(isinstance(context,Context))
-        
-        self.enter_call( node, context )
-        
+        # Notify debugger of enter event.
+        self._enter_call( node, context )
+        # Select appropriate method for handling this node type.
         if node == () :
             raise _UnknownClause()
         elif ntype == 'fact' :
@@ -266,115 +279,126 @@ class EventBasedEngine(object) :
             f = self._eval_neg
         else :
             raise ValueError(ntype)
+        # Evaluate the node.
         f(db, gp, node_id, node, context, parent)
-        
-        self.exit_call( node, context )
+        # Notify debugger of exit event.
+        self._exit_call( node, context )
         
     def _eval_fact( self, db, gp, node_id, node, call_args, parent ) :
-        trace( node, call_args )
-        
-        # Unify fact arguments with call arguments
-        
         try :
+            # Verify that fact arguments unify with call arguments.
             for a,b in zip(node.args, call_args) :
                 unify(a, b)
-            # Notify parent
+            # Successful unification: notify parent callback.
             parent.newResult( node.args, ground_node=gp.addAtom(node_id, node.probability) )
         except UnifyError :
+            # Failed unification: don't send result.
             pass
+        # Send complete message.
         parent.complete()    
 
     def _eval_choice( self, db, gp, node_id, node, call_args, parent ) :
-        trace( node, call_args )
-        # Unify fact arguments with call arguments
+        # This never fails.
+        # Choice is ground so result is the same as call arguments.
         result = tuple(call_args)
-
         # Ground probability.
         probability = instantiate( node.probability, call_args )
-
-        # Notify parent
-        if result != None :
-            origin = (node.group, result)
-            ground_node = gp.addAtom( (node.group, result, node.choice) , probability, group=(node.group, result) ) 
-            parent.newResult( result, ground_node )
+        # Create a new atom in ground program.
+        origin = (node.group, result)
+        ground_node = gp.addAtom( (node.group, result, node.choice) , probability, group=(node.group, result) ) 
+        # Notify parent.
+        parent.newResult( result, ground_node )
         parent.complete()
     
     def _eval_call( self, db, gp, node_id, node, context, parent ) :
-        trace( node, context )
-        # Extract call arguments from context
-        
+        # Ground the call arguments based on the current context.
         call_args = [ instantiate(arg, context) for arg in node.args ]
-        # create a context-switching node that extracts the head arguments
-        #  from results from the body context
-        # output should be send to the given parent
-        context_switch = ProcessCallReturn( node.args, context  )
+        # Create a context switching node that unifies the results of the call with the call arguments. Results are passed to the parent callback.
+        context_switch = ProcessCallReturn( node.args, context, parent )
         context_switch.addListener(parent)
-        
+        # Evaluate the define node.
         if node.defnode < 0 :
+            # Negative node indicates a builtin.
             builtin = self._getBuiltIn( node.defnode )
             builtin( *call_args, context=context, callback=context_switch )                
         else :
+            # Positive node indicates a non-builtin.
             try :
-                self._eval( db, gp, node.defnode, self.create_context(call_args, define=context.define), context_switch )
+                # Evaluate the define node.
+                self._eval( db, gp, node.defnode, self._create_context(call_args, define=context.define), context_switch )
             except _UnknownClause :
+                # The given define node is empty: no definition found for this clause.
                 sig = '%s/%s' % (node.functor, len(node.args))
                 raise UnknownClause(sig)
             
     def _eval_clause( self, db, gp, node_id, node, call_args, parent ) :
         try :
-            context = self.create_context(size=node.varcount,define=call_args.define)
+            # Create a new context (i.e. variable values).
+            context = self._create_context(size=node.varcount,define=call_args.define)
+            # Fill in the context by unifying clause head arguments with call arguments.
             for head_arg, call_arg in zip(node.args, call_args) :
+                # Remove variable identifiers from calling context.
                 if type(call_arg) == int : call_arg = None
+                # Unify argument and update context (raises UnifyError if not possible)
                 unify( call_arg, head_arg, context)                
-
-            # create a context-switching node that extracts the head arguments
-            #  from results from the body context
-            # output should be send to the given parent
-            context_switch = ProcessBodyReturn( node.args, node, node_id )
-            context_switch.addListener(parent)
-            
-            # evaluate the body, output should be send to the context-switcher
+            # Create a context switching node that extracts the head arguments from the results obtained by evaluating the body. These results are send by the parent.
+            context_switch = ProcessBodyReturn( node.args, node, node_id, parent )
+            # Evaluate the body. Use context-switch as callback.
             self._eval( db, gp, node.child, context, context_switch )
         except UnifyError :
-            parent.complete() # head and call are not unifiable
+            # Call and clause head are not unifiable, just fail (complete without results).
+            parent.complete()
             
     def _eval_conj( self, db, gp, node_id, node, context, parent ) :
-        # Assumption: node has exactly two children
+        # Extract children (always exactly two).
         child1, child2 = node.children
-        
-        # Processor for sending out complete signal.
-        # Use a link node that evaluates the second child based on input from the first.
-        node2 = ProcessLink( self, db, gp, child2, parent, context.define )     # context passed through from node1
-        self._eval( db, gp, child1, context, node2 )    # evaluate child1 and make it activate node2    
+        # Create a link between child1 and child2.
+        # The link receives results of the first child and evaluates the second child based on the result.
+        # The link receives the complete event from the first child and passes it to the parent.
+        process = ProcessLink( self, db, gp, child2, parent, context.define )
+        # Start evaluation of first child.
+        self._eval( db, gp, child1, context, process )
 
     def _eval_disj( self, db, gp, node_id, node, context, parent ) :
-        
+        # Create a disjunction processor node, and register parent as listener.
         process = ProcessOr( len(node.children), parent )
+        # Process all children.
         for child in node.children :
-            self._eval( db, gp, child, context, process )    # evaluate child1 and make it activate node2
+            self._eval( db, gp, child, context, process )
 
     def _eval_neg(self, db, gp, node_id, node, context, parent) :
-        process = ProcessNot( gp, context )
-        process.addListener(parent)
+        # Create a negation processing node, and register parent as listener.
+        process = ProcessNot( gp, context, parent)
+        # Evaluate the child node. Use processor as callback.
         self._eval( db, gp, node.child, context, process )
     
     def _eval_define( self, db, gp, node_id, node, call_args, parent ) :
+        # Create lookup key. We will reuse results for identical calls.
+        # EXTEND support call subsumption?
         key = (node_id, tuple(call_args))
         
-        if not hasattr(gp, '_def_nodes') :
-            gp._def_nodes = {}
+        # Store cache in ground program
+        if not hasattr(gp, '_def_nodes') : gp._def_nodes = {}
         def_nodes = gp._def_nodes
         
+        # Find pre-existing node.
         pnode = def_nodes.get(key)
         if pnode == None :
+            # Node does not exist: create it and add it to the list.
             pnode = ProcessDefine( self, db, gp, node_id, node, call_args, call_args.define )
             def_nodes[key] = pnode
+            # Add parent as listener.
             pnode.addListener(parent)
+            # Execute node. Note that for a given call (key), this is only done once!
             pnode.execute()
         else :
+            # Node exists already.
             if call_args.define and call_args.define.hasAncestor(pnode) :
+                # Cycle detected!
+                # EXTEND Mark this information in the ground program?
                 cnode = ProcessDefineCycle(pnode, call_args.define, parent)
             else :
+                # Not a cycle, just reusing. Register parent as listener (will retrigger past events.)
                 pnode.addListener(parent)
             
 
@@ -478,11 +502,12 @@ class ProcessNot(ProcessNode) :
         
     """
     
-    def __init__(self, gp, context) :
+    def __init__(self, gp, context, parent) :
         ProcessNode.__init__(self)
         self.context = context
         self.ground_nodes = []
         self.gp = gp
+        self.addListener(parent)
         
     def newResult(self, result, ground_node=0) :
         EngineLogger.get().receiveResult(self, result, ground_node)
@@ -499,30 +524,27 @@ class ProcessNot(ProcessNode) :
             self.notifyListeners(self.context, ground_node=0)
         self.notifyComplete()
 
-class ProcessLink(object) :
+class ProcessLink(ProcessNode) :
     """Links two calls in a conjunction."""
     
     
     def __init__(self, engine, db, gp, node_id, parent, define) :
+        ProcessNode.__init__(self)
         self.engine = engine
         self.db = db
         self.gp = gp
         self.node_id = node_id
         self.parent = parent
+        self.addListener(self.parent, ProcessNode.EVT_COMPLETE)
         self.define = define
         
     def newResult(self, result, ground_node=0) :
         EngineLogger.get().receiveResult(self, result, ground_node)
-        self.engine.exit_call( self.node_id, result )    
+        self.engine._exit_call( self.node_id, result )    
         process = ProcessAnd(self.gp, ground_node)
         process.addListener(self.parent, ProcessNode.EVT_RESULT)
-        self.engine._eval( self.db, self.gp, self.node_id, self.engine.create_context(result,define=self.define), process)
-        
-    def complete(self) :
-        EngineLogger.get().receiveComplete(self)
-        EngineLogger.get().sendComplete(self)
-        self.parent.complete()
-        
+        self.engine._eval( self.db, self.gp, self.node_id, self.engine._create_context(result,define=self.define), process)
+                
 class ProcessAnd(ProcessNode) :
     """Process a conjunction."""
     
@@ -614,7 +636,7 @@ class ProcessDefine(ProcessNode) :
         process = ProcessOr( len(children), self)
         # Evaluate the children
         for child in children :
-            self.engine._eval( self.db, self.gp, child, self.engine.create_context(self.args,define=self), parent=process )
+            self.engine._eval( self.db, self.gp, child, self.engine._create_context(self.args,define=self), parent=process )
         
         for c in self.children :
             c.complete()
@@ -636,7 +658,7 @@ class ProcessDefine(ProcessNode) :
             res_node = self.results[res]
             self.gp.addDisjunct( res_node, ground_node )
         else :
-            self.engine.exit_call( self.node, result )
+            self.engine._exit_call( self.node, result )
             result_node = self.gp.addOr( (ground_node,), readonly=False )
             self.results[ res ] = result_node
             
@@ -677,12 +699,13 @@ def extract_vars(*args, **kwd) :
 class ProcessBodyReturn(ProcessNode) :
     """Process the results of a clause body."""
     
-    def __init__(self, head_args, node, node_id) :
+    def __init__(self, head_args, node, node_id, parent) :
         ProcessNode.__init__(self)
         self.head_args = head_args
         self.head_vars = extract_vars(*self.head_args)
         self.node_id = node_id
         self.node = node
+        self.addListener(parent)
                     
     def newResult(self, result, ground_node=0) :
         for i, res in enumerate(result) :
@@ -696,11 +719,11 @@ class ProcessBodyReturn(ProcessNode) :
 class ProcessCallReturn(ProcessNode) :
     """Process the results of a call."""
     
-    
-    def __init__(self, call_args, context) :
+    def __init__(self, call_args, context, parent) :
         ProcessNode.__init__(self)
         self.call_args = call_args
         self.context = context
+        self.addListener(parent)
                     
     def newResult(self, result, ground_node=0) :
         EngineLogger.get().receiveResult(self, result, ground_node)
@@ -713,10 +736,6 @@ class ProcessCallReturn(ProcessNode) :
         # except UnifyError :
         #     pass
     
-
-#def trace(*args) : print(*args)
-def trace(*args) : pass
-
 
 class ResultCollector(ProcessNode) :
     """Collect results."""
