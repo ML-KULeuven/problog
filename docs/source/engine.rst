@@ -92,6 +92,11 @@ The following steps will be taken:
         
     
 
+Implementation
+--------------
+
+.. automodule:: problog.engine
+    :members:
 
 
 

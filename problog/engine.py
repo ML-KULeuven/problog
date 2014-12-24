@@ -1,7 +1,7 @@
 from __future__ import print_function
 
 from .program import ClauseDB, PrologString
-from .logic import Term, Constant, Var
+from .logic import Term, Constant
 from .formula import LogicFormula
 
 from collections import defaultdict
@@ -9,8 +9,8 @@ from collections import defaultdict
 """
 Assumptions
 -----------
-Assumption 1: range-restricted clauses (after clause evaluation, head is ground, ALSO: no unification of two uninstantiated variables)
-Assumption 3: conjunction nodes have exactly two children   (not a real restriction)
+Assumption 1: no unification of non-ground terms (e.g. unbound variables)
+Assumption 3: conjunction nodes have exactly two children   (internal representation only)
 
 Assumption 8: no prolog builtins 
     - added some builtins (needs better framework)
@@ -27,133 +27,119 @@ Known issues
 
 Table for query() may make ground() invalid. (Solution: don't reuse engine if you don't want to reuse tables)
 
+Properties
+----------
+
+    1. Each source sends each message at least once to each listener, irrespective of when the listener was added. 	(complete information)
+    2. Each source sends each message at most once to each listener. (no duplicates)
+    3. Each source sends a ``complete`` message to each listener.	(termination)
+    4. The ``complete`` message is the last message a listener receives from a source.  (correct order)
+
+
+Variable representation
+-----------------------
+
+Variables can be represented as:
+
+    * ``Var`` objects (these are removed during compilation)
+    * Integer referring to its index in the current context
+    * ``None`` unset value passed from other context
+
+To make ``==`` and ``\==`` work, variable identifiers should be passed from higher context (this would complicate call-key computation).
+To make ``=`` work variables should be redirectable (but this would complicate tabling).
+
 """
 
 class UnifyError(Exception) : pass
 
+def is_variable( v ) :
+    """Test whether a Term represents a variable.
+    
+    :return: True if the expression is a variable
+    """
+    return v == None or type(v) == int
+    
+def is_ground( *terms ) :
+    """Test whether a set of Term contains a variable (recursively).
+    
+    :return: True if none of the arguments contains any variables.
+    """
+    for term in terms :
+        if is_variable(term) :
+            return False
+        elif not is_ground(*term.args) : 
+            return False
+    return True
+    
+def instantiate( term, context ) :
+    """Replace variables in Term by values based on context lookup table."""
+    if type(term) == int :
+        return context[term]
+    else :
+        return term.apply(context)
+        
+
 def unify_value( v1, v2 ) :
-    if v1 == None or type(v1) == int :
+    """Test unification of two values and return most specific unifier."""
+    
+    if is_variable(v1) :
         return v2
-    elif v2 == None or type(v2) == int :
+    elif is_variable(v2) :
         return v1
-    elif v1 == v2 :
-        # TODO functor
-        return v1
+    elif v1.signature == v2.signature : # Assume Term
+        return v1.withArgs(*[ unify_value(a1,a2) for a1, a2 in zip(v1.args, v2.args) ])
     else :
         raise UnifyError()
         
-def unify_simple( v1, v2 ) :
-    if v1 == None :
-        return v2
-    elif v2 == None :
-        return v1
-    else :
-        try :
-            return tuple( map( lambda xy : unify_value(xy[0],xy[1]), zip(v1,v2) ) )
-        except UnifyError :
-            return None
-
 def unify( source_value, target_value, target_context=None ) :
+    """Unify two terms.
+        If a target context is given, the context will be updated using the variable identifiers from the first term, and the values from the second term.
+        
+        :raise UnifyError: unification failed
+        
+    """    
     if type(target_value) == int :
         if target_context != None :
             current_value = target_context[target_value]
             if current_value == None :
                 target_context[target_value] = source_value
             else :
-                unify( current_value, source_value )
+                unify( source_value, current_value )
     elif target_value == None :
         pass
     else :
         assert( isinstance(target_value, Term) )
         if source_value == None :  # a variable
-            return True # unification successful
+            pass
         else :
-            # print (source_value, type(source_value))
-            # print (target_value, type(target_value))
             assert( isinstance( source_value, Term ) )
             if target_value.signature == source_value.signature :
                 for s_arg, t_arg in zip(source_value.args, target_value.args) :
                     unify( s_arg, t_arg, target_context )
             else :
                 raise UnifyError()
-
-
-class _UnknownClause(Exception) : pass
-
-class UnknownClause(Exception) : pass
-
-
-def instantiate( term, context ) :
-    if type(term) == int :
-        return context[term]
-    else :
-        return term.apply(context)
-
-
-class EngineLogger(object) :
-
-    instance = None
-    instance_class = None
     
-    @classmethod
-    def get(self) :
-        if EngineLogger.instance == None :
-            if EngineLogger.instance_class == None :
-                EngineLogger.instance = EngineLogger()
-            else :
-                EngineLogger.instance = EngineLogger.instance_class()
-        return EngineLogger.instance
+
+class VariableUnification(Exception) : 
+    """The engine does not support unification of two unbound variables."""
     
-    @classmethod
-    def setClass(cls, instance_class) :
-        EngineLogger.instance_class = instance_class
-        EngineLogger.instance = None
-        
     def __init__(self) :
-        pass
-                
-    def receiveResult(self, source, result, node, *extra) :
-        pass
-        
-    def receiveComplete(self, source, *extra) :
-        pass
-        
-    def sendResult(self, source, result, node, *extra) :
-        pass
+        Exception.__init__(self, 'Unification of unbound variables not supported!')
+    
 
-    def sendComplete(self, source, *extra) :
-        pass
-        
-    def create(self, node) :
-        pass
-        
-    def connect(self, source, listener, evt_type) :
-        pass
-        
-class SimpleEngineLogger(EngineLogger) :
-        
-    def __init__(self) :
-        pass
-                
-    def receiveResult(self, source, result, node, *extra) :
-        print (type(source).__name__, id(source), 'receive', result, node, source)
-        
-    def receiveComplete(self, source, *extra) :
-        print (type(source).__name__, id(source), 'receive complete', source)
-        
-    def sendResult(self, source, result, node, *extra) :
-        print (type(source).__name__, id(source), 'send', result, node, source)
+class _UnknownClause(Exception) :
+    """Undefined clause in call used internally."""
+    pass
 
-    def sendComplete(self, source, *extra) :
-        print (type(source).__name__, id(source), 'send complete', source)
-        
-    def create(self, source) :
-        print (type(source).__name__, id(source), 'create', source)
-        
-    def connect(self, source, listener, evt_type) :
-        print (type(source).__name__, id(source), 'connect', type(listener).__name__, id(listener))
+class UnknownClause(Exception) :
+    """Undefined clause in call."""
+    
+    def __init__(self, signature) :
+        Exception.__init__(self, "No clauses found for '%s'!" % signature)
+
 
 class Context(object) :
+    """Variable context."""
     
     def __init__(self, lst, define) :
         self.__lst = lst
@@ -222,7 +208,6 @@ class EventBasedEngine(object) :
         return ClauseDB.createFrom(db, builtins=self.getBuiltIns())
     
     def ground(self, db, term, gp=None, label=None) :
-        #self.debugger = Debugger(trace=True)
         gp, results = self._ground(db, term, gp)
         
         for node_id, args in results :
@@ -230,13 +215,10 @@ class EventBasedEngine(object) :
         if not results :
             gp.addName( term, None, label )
         
-        # print ('Ground result')
-        # print (gp)
         return gp
     
     def _ground(self, db, term, gp=None, level=0) :
         db = self.prepare(db)
-        # print ('Ground program', db)
 
         if gp == None : gp = LogicFormula()
         
@@ -300,30 +282,26 @@ class EventBasedEngine(object) :
             parent.newResult( node.args, ground_node=gp.addAtom(node_id, node.probability) )
         except UnifyError :
             pass
-        parent.complete(node_id)    
+        parent.complete()    
 
     def _eval_choice( self, db, gp, node_id, node, call_args, parent ) :
         trace( node, call_args )
         # Unify fact arguments with call arguments
         result = tuple(call_args)
-        #result = unify(node.args, call_args)
 
-        if type(node.probability) == int :
-            probability = call_args[node.probability]
-        else :
-            probability = node.probability.apply(call_args)
+        # Ground probability.
+        probability = instantiate( node.probability, call_args )
 
         # Notify parent
         if result != None :
             origin = (node.group, result)
             ground_node = gp.addAtom( (node.group, result, node.choice) , probability, group=(node.group, result) ) 
             parent.newResult( result, ground_node )
-        parent.complete(node_id)
+        parent.complete()
     
     def _eval_call( self, db, gp, node_id, node, context, parent ) :
         trace( node, context )
         # Extract call arguments from context
-        # TODO functors???
         
         call_args = [ instantiate(arg, context) for arg in node.args ]
         # create a context-switching node that extracts the head arguments
@@ -333,7 +311,6 @@ class EventBasedEngine(object) :
         context_switch.addListener(parent)
         
         if node.defnode < 0 :
-            #sub = builtin( engine=self, clausedb=db, args=call_args, tdb=tdb, functor=node.functor, arity=len(node.args), level=level, **extra)
             builtin = self._getBuiltIn( node.defnode )
             builtin( *call_args, context=context, callback=context_switch )                
         else :
@@ -359,7 +336,7 @@ class EventBasedEngine(object) :
             # evaluate the body, output should be send to the context-switcher
             self._eval( db, gp, node.child, context, context_switch )
         except UnifyError :
-            parent.complete(None) # head and call are not unifiable
+            parent.complete() # head and call are not unifiable
             
     def _eval_conj( self, db, gp, node_id, node, context, parent ) :
         # Assumption: node has exactly two children
@@ -372,7 +349,7 @@ class EventBasedEngine(object) :
 
     def _eval_disj( self, db, gp, node_id, node, context, parent ) :
         
-        process = ProcessOr( node.children, parent )
+        process = ProcessOr( len(node.children), parent )
         for child in node.children :
             self._eval( db, gp, child, context, process )    # evaluate child1 and make it activate node2
 
@@ -413,7 +390,7 @@ class ProcessNode(object) :
         self.listeners = []
         self.isComplete = False
     
-    def notifyListeners(self, result, ground_node=0, source=None) :
+    def notifyListeners(self, result, ground_node=0) :
         """Send the ``newResult`` event to all the listeners of this node.
             The arguments are used as the arguments of the event.
         """
@@ -421,9 +398,9 @@ class ProcessNode(object) :
         for listener, evttype in self.listeners :
             if evttype & self.EVT_RESULT :
                 #print ('SEND', 'result', id(self), '->', id(listener))
-                listener.newResult(result, ground_node, source)
+                listener.newResult(result, ground_node)
     
-    def notifyComplete(self, source) :
+    def notifyComplete(self) :
         """Send the ``complete`` event to all listeners of this node."""
         
         EngineLogger.get().sendComplete(self)
@@ -433,7 +410,7 @@ class ProcessNode(object) :
             for listener, evttype in self.listeners :
                 if evttype & self.EVT_COMPLETE :
                     #print ('SEND', 'complete', id(self), '->', id(listener))
-                    listener.complete(source)
+                    listener.complete()
         
     def addListener(self, listener, eventtype=EVT_ALL) :
         """Add the given listener."""
@@ -441,48 +418,65 @@ class ProcessNode(object) :
         EngineLogger.get().connect(self,listener,eventtype)
         self.listeners.append((listener,eventtype))
         
-    def complete(self, source=None) :
-        EngineLogger.get().receiveComplete(self)
-        self.notifyComplete(source)
+    def complete(self) :
+        """Process a ``complete`` event.
         
-    def newResult(self, result, ground_node=0, source=None) :
+        By default forwards this events to its listeners.
+        """
+        EngineLogger.get().receiveComplete(self)
+        self.notifyComplete()
+        
+    def newResult(self, result, ground_node=0) :
+        """Process a new result.
+        
+        :param result: context or list of arguments
+        :param ground_node: node is ground program
+        
+        By default forwards this events to its listeners.
+        """
         EngineLogger.get().receiveResult(self, result, ground_node)
-        self.notifyListeners(result, ground_node, source)
+        self.notifyListeners(result, ground_node)
 
 class ProcessOr(ProcessNode) :
-
-    def __init__(self, count, parent, notify_complete=True) :
+    """Process a disjunction of nodes.
+    
+    :param count: number of disjuncts
+    :type count: int
+    :param parent: listener
+    :type parent: ProcessNode
+    
+    Behaviour:
+    
+        * This node forwards all results to its listeners.
+        * This node sends a complete message after receiving ``count`` ``complete`` messages from its children.
+        * If the node is initialized with ``count`` equal to 0, it sends out a ``complete`` signal immediately.
+    
+    """
+    
+    def __init__(self, count, parent) :
         ProcessNode.__init__(self)
-        self.parent = parent
-        self.count = len(count)
-        self.notify_complete = notify_complete
-        self.is_complete = False
-        if self.count == 0 :
-            self.complete(None)
-        
-    
-    def newResult(self, result, ground_node=0, source=None) :
-        EngineLogger.get().receiveResult(self, result, ground_node)
-        self.parent.newResult(result, ground_node, source)
-    
-    def complete(self, source) :        
+        self._count = count
+        self.addListener(parent)
+        if self._count == 0 :
+            self.notifyComplete()
+                
+    def complete(self) :
         EngineLogger.get().receiveComplete(self)
-        # Assumption: children are well-behaved
-        #   -> each child sends out exactly one 'complete' event.
-        #   => after 'count' events => all children are complete
-        # assert(type(source) == int)
-        # if self.is_complete : return
-        #
-        # if source in self.count :
-        #     self.count.remove(source)
-
-        self.count -= 1
-        if self.count <= 0 and self.notify_complete :
-            self.is_complete = True
+        self._count -= 1
+        if self._count <= 0 :
             EngineLogger.get().sendComplete(self)
-            self.parent.complete(self)
+            self.notifyComplete()
             
 class ProcessNot(ProcessNode) :
+    """Process a negation node.
+    
+    Behaviour:
+    
+        * This node buffers all ground nodes.
+        * Upon receiving a ``complete`` event, sends a result and a ``complete`` signal.
+        * The result is negation of an ``or`` node of its children. No result is send if the children are deterministically true.
+        
+    """
     
     def __init__(self, gp, context) :
         ProcessNode.__init__(self)
@@ -490,12 +484,12 @@ class ProcessNot(ProcessNode) :
         self.ground_nodes = []
         self.gp = gp
         
-    def newResult(self, result, ground_node=0, source=None) :
+    def newResult(self, result, ground_node=0) :
         EngineLogger.get().receiveResult(self, result, ground_node)
         if ground_node != None :
             self.ground_nodes.append(ground_node)
         
-    def complete(self, source) :
+    def complete(self) :
         EngineLogger.get().receiveComplete(self)
         if self.ground_nodes :
             or_node = self.gp.addNot(self.gp.addOr( self.ground_nodes ))
@@ -503,9 +497,11 @@ class ProcessNot(ProcessNode) :
                 self.notifyListeners(self.context, ground_node=or_node)
         else :
             self.notifyListeners(self.context, ground_node=0)
-        self.notifyComplete(source)
+        self.notifyComplete()
 
 class ProcessLink(object) :
+    """Links two calls in a conjunction."""
+    
     
     def __init__(self, engine, db, gp, node_id, parent, define) :
         self.engine = engine
@@ -515,35 +511,33 @@ class ProcessLink(object) :
         self.parent = parent
         self.define = define
         
-    def newResult(self, result, ground_node=0, source=None) :
+    def newResult(self, result, ground_node=0) :
         EngineLogger.get().receiveResult(self, result, ground_node)
         self.engine.exit_call( self.node_id, result )    
         process = ProcessAnd(self.gp, ground_node)
         process.addListener(self.parent, ProcessNode.EVT_RESULT)
         self.engine._eval( self.db, self.gp, self.node_id, self.engine.create_context(result,define=self.define), process)
         
-    def complete(self, source) :
+    def complete(self) :
         EngineLogger.get().receiveComplete(self)
         EngineLogger.get().sendComplete(self)
-        self.parent.complete(None)
+        self.parent.complete()
         
 class ProcessAnd(ProcessNode) :
+    """Process a conjunction."""
     
     def __init__(self, gp, first_node ) :
         ProcessNode.__init__(self)
         self.gp = gp
         self.first_node = first_node
         
-    def newResult(self, result, ground_node=0, source=None) :
+    def newResult(self, result, ground_node=0) :
         EngineLogger.get().receiveResult(self, result, ground_node)
         and_node = self.gp.addAnd( (self.first_node, ground_node) )
-        self.notifyListeners(result, and_node, source)
+        self.notifyListeners(result, and_node)
         
-    def complete(self, source) :
-        EngineLogger.get().receiveComplete(self)
-        self.notifyComplete(source)
-
 class ProcessDefineCycle(ProcessNode) :
+    """Process a cyclic define (child)."""
     
     def __init__(self, parent, context, listener) :
         self.parent = parent
@@ -563,6 +557,7 @@ class ProcessDefineCycle(ProcessNode) :
         
      
 class ProcessDefine(ProcessNode) :
+    """Process a standard define (or cycle parent)."""
     
     def __init__(self, engine, db, gp, node_id, node, args, parent) :
         self.node = node
@@ -610,13 +605,13 @@ class ProcessDefine(ProcessNode) :
             
         if self.isComplete :
             if eventtype & ProcessNode.EVT_COMPLETE :
-                listener.complete(None)
+                listener.complete()
         
     def execute(self) :
         # Get the appropriate children
         children = self.node.children.find( self.args )
         
-        process = ProcessOr( children, self, True)
+        process = ProcessOr( len(children), self)
         # Evaluate the children
         for child in children :
             self.engine._eval( self.db, self.gp, child, self.engine.create_context(self.args,define=self), parent=process )
@@ -624,18 +619,18 @@ class ProcessDefine(ProcessNode) :
         for c in self.children :
             c.complete()
     
-    def newResult(self, result, ground_node=0, source=None) :
+    def newResult(self, result, ground_node=0) :
         EngineLogger.get().receiveResult(self, result, ground_node)
         if self.cyclic :
-            self.newResultUnbuffered(result, ground_node, source)
+            self.newResultUnbuffered(result, ground_node)
         else :
-            self.newResultBuffered(result, ground_node, source)
+            self.newResultBuffered(result, ground_node)
     
-    def newResultBuffered(self, result, ground_node=0, source=None) :
+    def newResultBuffered(self, result, ground_node=0) :
         res = (tuple(result))
         self.__buffer[res].append( ground_node )
                         
-    def newResultUnbuffered(self, result, ground_node=0, source=None) :
+    def newResultUnbuffered(self, result, ground_node=0) :
         res = (tuple(result))
         if res in self.results :
             res_node = self.results[res]
@@ -645,12 +640,12 @@ class ProcessDefine(ProcessNode) :
             result_node = self.gp.addOr( (ground_node,), readonly=False )
             self.results[ res ] = result_node
             
-            self.notifyListeners(result, result_node, source )
+            self.notifyListeners(result, result_node )
             
-    def complete(self, source) :
+    def complete(self) :
         EngineLogger.get().receiveComplete(self)
         self._flush_buffer()
-        self.notifyComplete(self.node_id)
+        self.notifyComplete()
     
     def _cycle_detected(self) :
         self._flush_buffer(True)
@@ -663,230 +658,219 @@ class ProcessDefine(ProcessNode) :
             else :
                 node = nodes[0]
             self.results[result] = node
-            self.notifyListeners(result, node, self)
+            self.notifyListeners(result, node)
         self.__buffer.clear()
     
         
     def __repr__(self) :
         return '%s %s(%s)' % (id(self), self.node.functor, ', '.join(map(str,self.args)))
         
-        
+def extract_vars(*args, **kwd) :
+    counter = kwd.get('counter', defaultdict(int))
+    for arg in args :
+        if type(arg) == int :
+            counter[arg] += 1
+        elif isinstance(arg,Term) :
+            extract_vars(*arg.args, counter=counter)
+    return counter
             
 class ProcessBodyReturn(ProcessNode) :
+    """Process the results of a clause body."""
     
     def __init__(self, head_args, node, node_id) :
         ProcessNode.__init__(self)
         self.head_args = head_args
+        self.head_vars = extract_vars(*self.head_args)
         self.node_id = node_id
         self.node = node
                     
-    def newResult(self, result, ground_node=0, source=None) :
+    def newResult(self, result, ground_node=0) :
+        for i, res in enumerate(result) :
+            if not is_ground(res) and self.head_vars[i] > 1 :
+                raise VariableUnification()
+        
         EngineLogger.get().receiveResult(self, result, ground_node)
         output = [ instantiate(arg, result) for arg in self.head_args ]
-        self.notifyListeners(output, ground_node, source)
-    
-    def complete(self, source) :
-        self.notifyComplete(self.node_id)
-            
+        self.notifyListeners(output, ground_node)
+                
 class ProcessCallReturn(ProcessNode) :
+    """Process the results of a call."""
+    
     
     def __init__(self, call_args, context) :
         ProcessNode.__init__(self)
         self.call_args = call_args
         self.context = context
                     
-    def newResult(self, result, ground_node=0, source=None) :
+    def newResult(self, result, ground_node=0) :
         EngineLogger.get().receiveResult(self, result, ground_node)
+        
         output = list(self.context)
-        try :
-            for call_arg, res_arg in zip(self.call_args,result) :
-                unify( res_arg, call_arg, output )
-            self.notifyListeners(output, ground_node, source)    
-        except UnifyError :
-            pass
+        #try :
+        for call_arg, res_arg in zip(self.call_args,result) :
+            unify( res_arg, call_arg, output )
+        self.notifyListeners(output, ground_node)
+        # except UnifyError :
+        #     pass
     
 
 #def trace(*args) : print(*args)
 def trace(*args) : pass
 
 
-    
-
-
-class ResultCollector(object) :
+class ResultCollector(ProcessNode) :
+    """Collect results."""
     
     def __init__(self) :
+        ProcessNode.__init__(self)
         self.results = []
     
-    def newResult( self, result, ground_result, source=None ) :
+    def newResult( self, result, ground_result) :
         self.results.append( (ground_result, result  ))
         
-    def complete(self, source) :
+    def complete(self) :
         pass
 
 class PrologInstantiationError(Exception) : pass
 
 class PrologTypeError(Exception) : pass
 
-def computeFunction(func, args, context) :
-    if func == "'+'" :
-        return Constant(args[0].value + args[1].value)
-    elif func == "'-'" :
-        return Constant(args[0].value - args[1].value)
-    elif func == "'*'" :
-        return Constant(args[0].value * args[1].value)
-    elif func == "'/'" :
-        return Constant(float(args[0].value) / float(args[1].value))
-
-    else :
-        raise ValueError("Unknown function: '%s'" % func)
-
-def compute( value, context ) :
-    if type(value) == int :
-        return compute(context[value], context)
-    elif value == None :
-        raise PrologInstantiationError(value)        
-    elif value.isConstant() :
-        if type(value.value) == str :
-            raise PrologTypeError('number', value)
-        else :
-            return value
-    else :
-        args = [ compute(arg, context) for arg in value.args ]
-        return computeFunction( value.functor, args, context )
 
 def builtin_true( context, callback ) :
+    """``true``"""
     callback.newResult(context)
-    callback.complete(None)    
+    callback.complete()    
 
 def builtin_fail( context, callback ) :
-    callback.complete(None)
+    """``fail``"""
+    callback.complete()
 
 def builtin_eq( A, B, context, callback ) :
-    """A = B
+    """``A = B``
         A and B not both variables
     """
     if A == None and B == None :
-        raise RuntimeError('Operation not supported!')
+        raise VariableUnification()
     else :
         try :
             R = unify_value(A,B)
             callback.newResult( ( R, R ) )
         except UnifyError :
             pass
-        callback.complete(None)
+        callback.complete()
 
 def builtin_neq( A, B, context, callback ) :
-    """A = B
+    """``A \= B``
         A and B not both variables
     """
     if A == None and B == None :
-        raise RuntimeError('Operation not supported!')
+        callback.complete() # FAIL
     else :
         try :
             R = unify_value(A,B)
         except UnifyError :
             callback.newResult( ( A, B ) )
-        callback.complete(None)
+        callback.complete()
             
 def builtin_notsame( A, B, context, callback ) :
-    """A \== B"""
+    """``A \== B``"""
     if A == None and B == None :
-        raise RuntimeError('Operation not supported!')
+        raise RuntimeError('Operation not supported!')  # TODO make this work
     else :
         if A != B :
             callback.newResult( (A,B) )
-        callback.complete(None)    
+        callback.complete()    
 
 def builtin_same( A, B, context, callback ) :
-    """A \== B"""
+    """``A == B``"""
     if A == None and B == None :
-        raise RuntimeError('Operation not supported!')
+        raise RuntimeError('Operation not supported!')  # TODO make this work
     else :
         if A == B :
             callback.newResult( (A,B) )
-        callback.complete(None)    
+        callback.complete()    
 
 def builtin_gt( A, B, context, callback ) :
-    """A > B 
+    """``A > B`` 
         A and B are ground
     """
-    vA = compute(A, context).value
-    vB = compute(B, context).value
+    vA = A.value
+    vB = B.value
     
     if (vA > vB) :
         callback.newResult( (A,B) )
-    callback.complete(None)
+    callback.complete()
 
 def builtin_lt( A, B, context, callback ) :
-    """A > B 
+    """``A > B`` 
         A and B are ground
     """
-    vA = compute(A, context).value
-    vB = compute(B, context).value
+    vA = A.value
+    vB = B.value
     
     if (vA < vB) :
         callback.newResult( (A,B) )
-    callback.complete(None)
+    callback.complete()
 
 def builtin_le( A, B, context, callback ) :
-    """A =< B 
+    """``A =< B``
         A and B are ground
     """
-    vA = compute(A, context).value
-    vB = compute(B, context).value
+    vA = A.value
+    vB = B.value
     
     if (vA <= vB) :
         callback.newResult( (A,B) )
-    callback.complete(None)
+    callback.complete()
 
 def builtin_ge( A, B, context, callback ) :
-    """A >= B 
+    """``A >= B`` 
         A and B are ground
     """
-    vA = compute(A, context).value
-    vB = compute(B, context).value
+    vA = A.value
+    vB = B.value
     
     if (vA >= vB) :
         callback.newResult( (A,B) )
-    callback.complete(None)
+    callback.complete()
 
 def builtin_val_neq( A, B, context, callback ) :
-    """A =/= B 
+    """``A =\= B`` 
         A and B are ground
     """
-    vA = compute(A, context).value
-    vB = compute(B, context).value
+    vA = A.value
+    vB = B.value
     
     if (vA != vB) :
         callback.newResult( (A,B) )
-    callback.complete(None)
+    callback.complete()
 
 def builtin_val_eq( A, B, context, callback ) :
-    """A =:= B 
+    """``A =:= B`` 
         A and B are ground
     """
-    vA = compute(A, context).value
-    vB = compute(B, context).value
+    vA = A.value
+    vB = B.value
     
     if (vA == vB) :
         callback.newResult( (A,B) )
-    callback.complete(None)
+    callback.complete()
 
 def builtin_is( A, B, context, callback ) :
-    """A is B
+    """``A is B``
         B is ground
     """
-    vB = compute(B, context).value
+    vB = B.value
     try :
         R = Constant(vB)
         unify_value(A,R)
         callback.newResult( (R,B) )
     except UnifyError :
         pass
-    callback.complete(None)
+    callback.complete()
         
 def addBuiltins(engine) :
+    """Add Prolog builtins to the given engine."""
     engine.addBuiltIn('true', 0, builtin_true)
     engine.addBuiltIn('fail', 0, builtin_fail)
     # engine.addBuiltIn('call/1', _builtin_call_1)
@@ -989,3 +973,67 @@ class Debugger(object) :
                 self._trace(level,call)
         except EOFError :
             raise UserAbort()
+
+class EngineLogger(object) :
+    """Logger for engine messaging."""
+
+    instance = None
+    instance_class = None
+    
+    @classmethod
+    def get(self) :
+        if EngineLogger.instance == None :
+            if EngineLogger.instance_class == None :
+                EngineLogger.instance = EngineLogger()
+            else :
+                EngineLogger.instance = EngineLogger.instance_class()
+        return EngineLogger.instance
+    
+    @classmethod
+    def setClass(cls, instance_class) :
+        EngineLogger.instance_class = instance_class
+        EngineLogger.instance = None
+        
+    def __init__(self) :
+        pass
+                
+    def receiveResult(self, source, result, node, *extra) :
+        pass
+        
+    def receiveComplete(self, source, *extra) :
+        pass
+        
+    def sendResult(self, source, result, node, *extra) :
+        pass
+
+    def sendComplete(self, source, *extra) :
+        pass
+        
+    def create(self, node) :
+        pass
+        
+    def connect(self, source, listener, evt_type) :
+        pass
+        
+class SimpleEngineLogger(EngineLogger) :
+        
+    def __init__(self) :
+        pass
+                
+    def receiveResult(self, source, result, node, *extra) :
+        print (type(source).__name__, id(source), 'receive', result, node, source)
+        
+    def receiveComplete(self, source, *extra) :
+        print (type(source).__name__, id(source), 'receive complete', source)
+        
+    def sendResult(self, source, result, node, *extra) :
+        print (type(source).__name__, id(source), 'send', result, node, source)
+
+    def sendComplete(self, source, *extra) :
+        print (type(source).__name__, id(source), 'send complete', source)
+        
+    def create(self, source) :
+        print (type(source).__name__, id(source), 'create', source)
+        
+    def connect(self, source, listener, evt_type) :
+        print (type(source).__name__, id(source), 'connect', type(listener).__name__, id(listener))

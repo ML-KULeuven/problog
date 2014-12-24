@@ -493,4 +493,4 @@ def computeFunction(func, args) :
         raise ValueError("Unknown function: '%s'/%s" % (func, len(args)) )
     else :
         values = [ arg.value for arg in args ]
-        return Constant( function(*values) )
+        return function(*values)

@@ -1,7 +1,5 @@
 from __future__ import print_function
 
-from .engine import computeFunction
-
 from collections import defaultdict
 import subprocess
 import sys, os, tempfile
