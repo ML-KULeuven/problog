@@ -356,20 +356,26 @@ class LogicFormula(ProbLogObject) :
                     weights[i] = n.probability
         return weights
         
-    def extractWeights(self, semiring) :
-        weights = {}
+    def extractWeights(self, semiring, weights=None) :
+        result = {}
         for i, n in enumerate(self) :
             if type(n).__name__ == 'atom' :
                 i = i + 1
-                if n.probability != True :
-                    weights[i] = semiring.value(n.probability), semiring.negate(semiring.value(n.probability))
+                
+                if weights != None : 
+                    p = weights.get( i, n.probability )
                 else :
-                    weights[i] = semiring.one(), semiring.one()
+                    p = n.probability
+                if p != True :
+                    value = semiring.value(p)
+                    result[i] = value, semiring.negate(value)
+                else :
+                    result[i] = semiring.one(), semiring.one()
 
         for c in self.constraints() :
-            c.updateWeights( weights, semiring )
+            c.updateWeights( result, semiring )
         
-        return weights
+        return result
         
     def constraints(self) :
         return list(self.__constraints_me.values()) + self.__constraints
@@ -543,7 +549,7 @@ class LogicFormula(ProbLogObject) :
                     f = False
                     s += '\nConstraints : '
                 s += '\n* ' + str(c)
-        return s   
+        return s + '\n'
         
     def queries(self) :
         return self.getNames(LABEL_QUERY)

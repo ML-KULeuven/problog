@@ -144,7 +144,7 @@ class SDD(LogicDAG, Evaluatable) :
     ##################################################################################          
     
     def _createEvaluator(self, semiring, weights) :
-        if (type(semiring) != SemiringProbability) :
+        if not isinstance(semiring,SemiringProbability) :
             raise ValueError('SDD evaluation currently only supports probabilities!')
         return SDDEvaluator(self, semiring, weights)
     
@@ -186,12 +186,8 @@ class SDDEvaluator(Evaluator) :
     def initialize(self) :
         self.__probs.clear()
     
-        self.__probs.update(self.__sdd.extractWeights(self.semiring))
-        
-        if self.__given_weights :
-            for i, p in self.__given_weights.items() :
-                self.__probs[i] = self.semiring.value(p), self.semiring.negate(semiring.value(p))
-                    
+        self.__probs.update(self.__sdd.extractWeights(self.semiring, self.__given_weights))
+                            
         for ev in self.iterEvidence() :
             self.setEvidence( abs(ev), ev > 0 )
         
