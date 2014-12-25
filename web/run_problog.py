@@ -7,7 +7,7 @@ import os, sys, subprocess, traceback
 sys.path.insert(0, os.path.abspath( os.path.join(os.path.dirname(__file__), '../')))
 
 from problog.parser import PrologParser
-from problog.program import PrologFile
+from problog.program import PrologFile, PrologFactory
 from problog.evaluator import SemiringSymbolic, Evaluator
 from problog.nnf_formula import NNF
 # from problog.sdd_formula import SDD
@@ -41,7 +41,7 @@ def process_error( err ) :
 def main( filename) :
 
     try :
-        model = PrologFile(filename, parser=PrologParser)
+        model = PrologFile(filename, parser=PrologParser(PrologFactory()))
         formula = NNF.createFrom( model )
         result = formula.evaluate()
         return True, result

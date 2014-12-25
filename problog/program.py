@@ -52,7 +52,7 @@ class PrologFile(LogicProgram) :
         if parser == None :
             self.parser = DefaultPrologParser(PrologFactory())
         else :
-            self.parser = parser(PrologFactory())
+            self.parser = parser
         
         
         if filename == None :
