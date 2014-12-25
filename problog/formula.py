@@ -154,6 +154,13 @@ class LogicFormula(ProbLogObject) :
                 result.append( ( name, node, label ) )
         return result
         
+    def getNodeByName(self, name) :
+        for label in self.__names :
+            res = self.__names[label].get(name)
+            if res != None :
+                return res
+        raise KeyError()
+        
     def _add( self, node, reuse=True ) :
         """Adds a new node, or reuses an existing one.
         
@@ -357,6 +364,9 @@ class LogicFormula(ProbLogObject) :
         return weights
         
     def extractWeights(self, semiring, weights=None) :
+        if weights != None :
+            weights = { self.getNodeByName(n) : v for n,v in weights.items() }
+        
         result = {}
         for i, n in enumerate(self) :
             if type(n).__name__ == 'atom' :

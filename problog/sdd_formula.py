@@ -38,12 +38,17 @@ class SDD(LogicDAG, Evaluatable) :
     def __init__(self, var_count=None) :        
         LogicDAG.__init__(self, auto_compact=False)
         self.sdd_manager = None
+        self.var_count = var_count
         if var_count != None and var_count != 0 :
-            self.sdd_manager = sdd.sdd_manager_create(var_count, 0) # auto-gc & auto-min
+            self.sdd_manager = sdd.sdd_manager_create(var_count + 1, 0) # auto-gc & auto-min
     
     def setVarCount(self, var_count) :
+        self.var_count = var_count
         if var_count != 0 :
-            self.sdd_manager = sdd.sdd_manager_create(var_count, 0) # auto-gc & auto-min
+            self.sdd_manager = sdd.sdd_manager_create(var_count + 1, 0) # auto-gc & auto-min
+            
+    def getVarCount(self) :
+        return self.var_count
 
     def __del__(self) :
         if self.sdd_manager != None :
@@ -183,13 +188,14 @@ class SDDEvaluator(Evaluator) :
     def getNames(self, label=None) :
         return self.__sdd.getNames(label)
     
-    def initialize(self) :
+    def initialize(self, with_evidence=True) :
         self.__probs.clear()
     
         self.__probs.update(self.__sdd.extractWeights(self.semiring, self.__given_weights))
                             
-        for ev in self.iterEvidence() :
-            self.setEvidence( abs(ev), ev > 0 )
+        if with_evidence :
+            for ev in self.iterEvidence() :
+                self.setEvidence( abs(ev), ev > 0 )
         
         # evidence sdd => conjoin evidence nodes 
             
@@ -209,6 +215,37 @@ class SDDEvaluator(Evaluator) :
         i2 = sdd.sdd_disjoin( sdd.sdd_negate(n2,m), n1, m )
         return sdd.sdd_conjoin( i1, i2, m)
     
+    def evaluateEvidence(self) :
+        self.initialize(False)
+        
+        m = self.sdd_manager 
+
+        assert(m != None)
+        
+        evidence_sdd = sdd.sdd_manager_true( m )
+        for ev in self.iterEvidence() :
+            evidence_sdd = sdd.sdd_conjoin( evidence_sdd, self.__sdd._getSDDNode(ev), m )
+
+        for c in self.__sdd.constraints() :
+            for rule in c.encodeCNF() :
+                evidence_sdd = sdd.sdd_conjoin( evidence_sdd, self._sdd_disjoin( *rule ), m )
+
+        node = self.__sdd.getVarCount()+1
+        query_sdd = self._sdd_equiv( sdd.sdd_manager_literal(node, self.sdd_manager), evidence_sdd)
+
+        wmc_manager = sdd.wmc_manager_new( query_sdd , 0, self.sdd_manager )
+
+        for i, n in enumerate(sorted(self.__probs)) :
+            i = i + 1
+            pos, neg = self.__probs[n]
+            sdd.wmc_set_literal_weight( n, pos, wmc_manager )   # Set positive literal weight
+            sdd.wmc_set_literal_weight( -n, neg, wmc_manager )  # Set negative literal weight
+        Z = sdd.wmc_propagate( wmc_manager )
+        result = sdd.wmc_literal_pr( node, wmc_manager )
+        sdd.wmc_manager_free(wmc_manager)
+        return result
+
+        
     def evaluate(self, node) :
         if node == 0 :
             return self.semiring.one()

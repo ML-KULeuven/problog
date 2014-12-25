@@ -33,13 +33,14 @@ class SimpleNNFEvaluator(Evaluator) :
     def getNames(self, label=None) :
         return self.__nnf.getNames(label)
         
-    def initialize(self) :
+    def initialize(self, with_evidence=True) :
         self.__probs.clear()
         
         self.__probs.update(self.__nnf.extractWeights(self.semiring, self.__given_weights))        
                         
-        for ev in self.iterEvidence() :
-            self.setEvidence( abs(ev), ev > 0 )
+        if with_evidence :
+            for ev in self.iterEvidence() :
+                self.setEvidence( abs(ev), ev > 0 )
             
         self.Z = self.getZ()
                 
@@ -48,6 +49,15 @@ class SimpleNNFEvaluator(Evaluator) :
         
     def getZ(self) :
         result = self.getWeight( len(self.__nnf) )
+        return result
+        
+    def evaluateEvidence(self) :
+        self.initialize(False)
+        for ev in self.iterEvidence() :
+            self.setValue( abs(ev), ev > 0 )
+        
+        result = self.getWeight( len(self.__nnf) )
+        
         return result
         
     def evaluate(self, node) :
