@@ -4,6 +4,9 @@ from collections import namedtuple, defaultdict
 
 from .core import transform, ProbLogObject
 
+from .core import LABEL_QUERY, LABEL_EVIDENCE_POS, LABEL_EVIDENCE_NEG, LABEL_EVIDENCE_MAYBE
+
+
 
 class LogicFormulaBase(ProbLogObject) :
     
@@ -77,7 +80,7 @@ class LogicFormula(ProbLogObject) :
     
     TRUE = 0
     FALSE = None
-    
+        
     _atom = namedtuple('atom', ('identifier', 'probability', 'group') )
     _conj = namedtuple('conj', ('children') )
     _disj = namedtuple('disj', ('children') )
@@ -121,13 +124,15 @@ class LogicFormula(ProbLogObject) :
         return self.getAtomCount() == len(self)
         
     def addQuery(self, name, node_id) :
-        self.addName(name, node_id, label='query')
+        self.addName(name, node_id, label=LABEL_QUERY)
         
     def addEvidence(self, name, node_id, value) :
-        if value :
-            self.addName(name, node_id, 'evidence')
+        if value==True :
+            self.addName(name, node_id, LABEL_EVIDENCE_POS )
+        elif value==False :
+            self.addName(name, node_id, LABEL_EVIDENCE_NEG)
         else :
-            self.addName(name, node_id, '-evidence')
+            self.addName(name, node_id, LABEL_EVIDENCE_MAYBE)
         
     def addName(self, name, node_id, label=None) :
         """Associates a name to the given node identifier."""
@@ -541,11 +546,11 @@ class LogicFormula(ProbLogObject) :
         return s   
         
     def queries(self) :
-        return self.getNames('query')
+        return self.getNames(LABEL_QUERY)
 
     def evidence(self) :
-        evidence_true = self.getNames('evidence') 
-        evidence_false = self.getNames('-evidence') 
+        evidence_true = self.getNames(LABEL_EVIDENCE_POS)
+        evidence_false = self.getNames(LABEL_EVIDENCE_NEG)
         return list(evidence_true) + [ (a,-b) for a,b in evidence_false ]
 
     def toDot(self, not_as_node=True) :

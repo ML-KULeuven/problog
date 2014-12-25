@@ -2,6 +2,12 @@ from __future__ import print_function
 
 from collections import defaultdict
 
+LABEL_QUERY = "query"
+LABEL_EVIDENCE_POS = "evidence+"
+LABEL_EVIDENCE_NEG = "evidence-"
+LABEL_EVIDENCE_MAYBE = "evidence?"    
+
+
 class ProbLog(object) :
     """This is a static class"""
     

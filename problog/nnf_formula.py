@@ -4,71 +4,29 @@ import tempfile, os, sys, subprocess
 from collections import defaultdict
 
 from . import system_info
-from .evaluator import Evaluator, SemiringProbability
+from .evaluator import Evaluator, Evaluatable
 from .formula import LogicDAG
 from .logic import LogicProgram
 from .cnf_formula import CNF
 from .interface import ground
 from .core import transform
 
-class NNF(LogicDAG) :
+class NNF(LogicDAG, Evaluatable) :
     
     def __init__(self) :
         LogicDAG.__init__(self, auto_compact=False)
-                                    
-    def getEvaluator(self, semiring=None) :
-        if semiring == None :
-            semiring = SemiringProbability()
-        
-        evaluator = SimpleNNFEvaluator(self, semiring )
 
-        for n_ev, node_ev in evaluator.getNames('evidence') :
-            evaluator.addEvidence( node_ev )
-        
-        for n_ev, node_ev in evaluator.getNames('-evidence') :
-            evaluator.addEvidence( -node_ev )
+    def _createEvaluator(self, semiring, weights) :
+        return SimpleNNFEvaluator(self, semiring, weights)
 
-        evaluator.propagate()
-        return evaluator
-        
-    def evaluate(self, index=None, semiring=None) :
-        evaluator = self.getEvaluator(semiring)
-        
-        if index == None :
-            result = {}
-            # Probability of query given evidence
-            for name, node in evaluator.getNames('query') :
-                w = evaluator.evaluate(node)    
-                if w < 1e-6 : 
-                    result[name] = 0.0
-                else :
-                    result[name] = w
-            return result
-        else :
-            return evaluator.evaluate(node)
-
-
-# class NNFFile(LogicBase) :
-#
-#     def __init__(self, filename=None, readonly=True) :
-#         """Create a new NNF file, or read an existing one."""
-#
-#         if filename == None :
-#             self.filename = tempfile.mkstemp('.nnf')[1]
-#             self.readonly = False
-#         else :
-#             self.filename = filename
-#             self.readonly = readonly
-#
-#     def load(self) :
-#         pass
 
 class SimpleNNFEvaluator(Evaluator) :
     
-    def __init__(self, formula, semiring) :
+    def __init__(self, formula, semiring, weights=None) :
         Evaluator.__init__(self, formula, semiring)
         self.__nnf = formula        
         self.__probs = {}
+        self.__given_weights = weights
         
         self.Z = 0
     
@@ -79,6 +37,11 @@ class SimpleNNFEvaluator(Evaluator) :
         self.__probs.clear()
         
         self.__probs.update(self.__nnf.extractWeights(self.semiring))
+        
+        if self.__given_weights :
+            for i, p in self.__given_weights.items() :
+                self.__probs[i] = self.semiring.value(p), self.semiring.negate(semiring.value(p))
+        
                         
         for ev in self.iterEvidence() :
             self.setEvidence( abs(ev), ev > 0 )

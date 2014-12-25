@@ -2,48 +2,31 @@
 from .engine import DefaultEngine
 from .formula import LogicFormula
 from .logic import Term, Var, Constant, LogicProgram
-from .core import transform
+from .core import transform, LABEL_QUERY, LABEL_EVIDENCE_POS, LABEL_EVIDENCE_NEG, LABEL_EVIDENCE_MAYBE
 
-def ground(model, acyclic=True) :
-    
-    engine = DefaultEngine()
-    db = engine.prepare(model)
-    
-    queries = engine.query(db, Term( 'query', None ))
-    evidence = engine.query(db, Term( 'evidence', None, None ))
-        
-    gp = LogicFormula()
-    for query in queries :
-        gp = engine.ground(db, query[0], gp, label='query')
 
-    for query in evidence :
-        if str(query[1]) == 'true' :
-            gp = engine.ground(db, query[0], gp, label='evidence')
-        else :
-            gp = engine.ground(db, query[0], gp, label='-evidence')
-
-    if acyclic :
-        return gp.makeAcyclic()
-    else :
-        return gp
-        
 @transform(LogicProgram, LogicFormula)
-def ground_auto(model, gp) :
+def ground(model, target=None, queries=None, evidence=None) :
     
     engine = DefaultEngine()
     db = engine.prepare(model)
     
-    queries = engine.query(db, Term( 'query', None ))
-    evidence = engine.query(db, Term( 'evidence', None, None ))
+    if queries == None :
+        queries = [ q[0] for q in engine.query(db, Term( 'query', None )) ]
+    
+    if evidence == None :
+        evidence = engine.query(db, Term( 'evidence', None, None ))
         
+    if target == None : target = LogicFormula()
+
     for query in queries :
-        gp = engine.ground(db, query[0], gp, label='query')
+        target = engine.ground(db, query, target, label=LABEL_QUERY)
 
     for query in evidence :
         if str(query[1]) == 'true' :
-            gp = engine.ground(db, query[0], gp, label='evidence')
+            target = engine.ground(db, query[0], target, label=LABEL_EVIDENCE_POS)
+        elif str(query[1]) == 'false' :
+            target = engine.ground(db, query[0], target, label=LABEL_EVIDENCE_NEG)
         else :
-            gp = engine.ground(db, query[0], gp, label='-evidence')
-
-    return gp
-        
+            target = engine.ground(db, query[0], target, label=LABEL_EVIDENCE_MAYBE)
+    return target

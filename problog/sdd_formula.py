@@ -7,7 +7,7 @@ from .formula import LogicDAG, LogicFormula, breakCycles
 from .cnf_formula import CNF
 from .logic import LogicProgram
 from .interface import ground
-from .evaluator import Evaluator, SemiringProbability
+from .evaluator import Evaluator, SemiringProbability, Evaluatable
 from .core import transform
 
 import warnings
@@ -18,7 +18,7 @@ except ImportError :
     sdd = None
     warnings.warn('The SDD library could not be found!', RuntimeWarning)
 
-class SDD(LogicDAG) :
+class SDD(LogicDAG, Evaluatable) :
     """A propositional logic formula consisting of and, or, not and atoms represented as an SDD.
 
     This class has two restrictions with respect to the default LogicFormula:
@@ -141,41 +141,13 @@ class SDD(LogicDAG) :
 
     ##################################################################################
     ####                               EVALUATION                                 ####
-    ##################################################################################                
-
-    def getEvaluator(self, semiring=None) :
-        if semiring == None :
-            semiring = SemiringProbability()
+    ##################################################################################          
     
+    def _createEvaluator(self, semiring, weights) :
         if (type(semiring) != SemiringProbability) :
             raise ValueError('SDD evaluation currently only supports probabilities!')
+        return SDDEvaluator(self, semiring, weights)
     
-        evaluator = SDDEvaluator(self, semiring )
-
-        for n_ev, node_ev in evaluator.getNames('evidence') :
-            evaluator.addEvidence( node_ev )
-    
-        for n_ev, node_ev in evaluator.getNames('-evidence') :
-            evaluator.addEvidence( -node_ev )
-
-        evaluator.propagate()
-        return evaluator
-    
-    def evaluate(self, index=None, semiring=None) :
-        evaluator = self.getEvaluator(semiring)
-    
-        if index == None :
-            result = {}
-            # Probability of query given evidence
-            for name, node in evaluator.getNames('query') :
-                w = evaluator.evaluate(node)    
-                if w < 1e-6 : 
-                    result[name] = 0.0
-                else :
-                    result[name] = w
-            return result
-        else :
-            return evaluator.evaluate(node)
             
 @transform(LogicDAG, SDD)
 def buildSDD( source, destination ) :
@@ -201,11 +173,12 @@ def buildSDD( source, destination ) :
 
 class SDDEvaluator(Evaluator) :
 
-    def __init__(self, formula, semiring) :
+    def __init__(self, formula, semiring, weights=None) :
         Evaluator.__init__(self, formula, semiring)
         self.__sdd = formula
         self.sdd_manager = formula.sdd_manager
         self.__probs = {}
+        self.__given_weights = weights
 
     def getNames(self, label=None) :
         return self.__sdd.getNames(label)
@@ -214,6 +187,10 @@ class SDDEvaluator(Evaluator) :
         self.__probs.clear()
     
         self.__probs.update(self.__sdd.extractWeights(self.semiring))
+        
+        if self.__given_weights :
+            for i, p in self.__given_weights.items() :
+                self.__probs[i] = self.semiring.value(p), self.semiring.negate(semiring.value(p))
                     
         for ev in self.iterEvidence() :
             self.setEvidence( abs(ev), ev > 0 )
