@@ -159,6 +159,9 @@ class Term(object) :
             return self.__class__(self.functor, *args, p=self.probability)
         else :
             return self.__class__(self.functor, *args)
+            
+    def withProbability(self, p=None) :
+        return self.__class__(self.functor, *self.args, p=p)
         
     def isVar(self) :
         """Checks whether this Term represents a variable.
