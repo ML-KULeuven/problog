@@ -1,5 +1,44 @@
 #! /usr/bin/env python
 
+"""
+Learning from interpretations
+-----------------------------
+
+Parameter learning for ProbLog.
+
+Given a probabilistic program with parameterized weights and a set of partial implementations, learns appropriate values of the parameters.
+
+Algorithm
++++++++++
+
+The algorithm operates as follows:
+
+    0. Set initial values for the weights to learn.
+    1. Set the evidence present in the example.
+    2. Query the model for the weights of the atoms to be learned.
+    3. Update the weights to learn by taking the mean value over all examples and queries.
+    4. Repeat steps 1 to 4 until convergence (or a maximum number of iterations).
+    
+The score of the model for a given example is obtained by calculating the probability of the evidence in the example.
+
+Implementation
+++++++++++++++
+
+The algorithm is implemented on top of the ProbLog toolbox.
+
+It uses the following extensions of ProbLog's classes:
+
+    * a LogicProgram implementation that rewrites the model and extracts the weights to learn (see :py:func:`learning.lfi.LFIProblem.__iter__`)
+    * a custom semiring that looks up the current value of a weight to learn (see :py:func:`learning.lfi.LFIProblem.value`)
+
+
+.. autoclass:: learning.lfi.LFIProblem
+    :members: __iter__, value
+
+
+"""
+
+
 from __future__ import print_function
 
 import sys, os, random, math
@@ -142,10 +181,12 @@ class LFIProblem(SemiringProbability) :
         
         Extracts and processes all ``t(...)`` weights.
         This
+        
             * replaces each probabilistic atom ``t(...)::p(X)`` by a unique atom ``lfi(i) :: lfi_fact_i(X)``;
             * adds a new clause ``p(X) :- lfi_fact_i(X)``;
             * adds a new query ``query( lfi_fact_i(X) )``;
             * initializes the weight of ``lfi(i)`` based on the ``t(...)`` specification;
+        
         This also removes all existing queries from the model.
         
         Example:
@@ -165,6 +206,7 @@ class LFIProblem(SemiringProbability) :
             p(X) :- lfi_fact_1(X).
             query(lfi_fact_0(X)).
             query(lfi_fact_1(X)).
+        
         """
         
         for clause in self.source :
