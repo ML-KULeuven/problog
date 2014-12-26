@@ -7,6 +7,7 @@ from .core import transform, LABEL_QUERY, LABEL_EVIDENCE_POS, LABEL_EVIDENCE_NEG
 
 @transform(LogicProgram, LogicFormula)
 def ground(model, target=None, queries=None, evidence=None) :
+    # TODO queries should not contain Var objects. All variables should be None => no implicit identity e.g. query(X,X)
     
     engine = DefaultEngine()
     db = engine.prepare(model)
