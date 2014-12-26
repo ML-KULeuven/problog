@@ -1,30 +1,11 @@
+#! /usr/bin/env python
+
 from __future__ import print_function
 
 import sys, os, random, math
 from collections import defaultdict
 
 sys.path.append(os.path.abspath( os.path.join( os.path.dirname(__file__), '../' ) ) )
-
-class GreedyParameterLearner(object) :
-    pass
-    
-# We have a base program.
-    
-    
-# LFI learning: examples are sets of evidence
-# Add example:
-#   - ground base program together with queries (e)
-#   => compile & store
-# Evaluate:
-#   - queries are tunable facts
-#   - evaluate queries with current probabilities => tunable probabilities?
-
-
-# Ideas:
-#   - compute 'super' example with all evidence atoms
-#       => compile once
-
-# For each example => compile
 
 from problog.core import LABEL_QUERY
 from problog.interface import ground
@@ -36,25 +17,6 @@ from problog.logic import Term, Var, Constant, Clause, AnnotatedDisjunction
 from problog.parser import PrologParser
 from problog.program import PrologFactory, ClauseDB, PrologString, PrologFile
 
-# interpretation = { atom : True/False }
-
-
-
-class SemiringLearning(SemiringProbability) :
-    """Same as probabilistic semiring, but initializes t(...) weights with value."""
-    
-    
-    def __init__(self, weights) :
-        SemiringProbability.__init__(self)
-        self.weights = weights
-    
-    def value(self, a) :
-        if isinstance(a, Term) and a.functor == 'lfi' :
-            assert(len(a.args) == 1)
-            index = int(a.args[0])
-            return self.weights[index]
-        else :
-            return float(a)
     
 def str2bool(s) :
     if str(s) == 'true' :
@@ -77,6 +39,7 @@ class LFIProblem(SemiringProbability) :
         
         self.max_iter = max_iter
         self.min_improv = min_improv
+        self.iteration = 0
     
     # Overwrite SemiringProbability
     def value(self, a) :
@@ -175,6 +138,8 @@ class LFIProblem(SemiringProbability) :
         
         for clause in self.source :
             if isinstance(clause, Clause) :
+                if clause.head.functor == 'query' and clause.head.arity == 1 :
+                    continue                
                 new_head, extra_clauses = self._process_atom( clause.head )
                 yield Clause( new_head, clause.body )
                 for extra in extra_clauses : yield extra                
@@ -188,14 +153,12 @@ class LFIProblem(SemiringProbability) :
                 yield AnnotatedDisjunction( new_heads, clause.body )
                 for extra in extra_clauses_all : yield extra                
             else :
+                if clause.functor == 'query' and clause.arity == 1 :
+                    continue
                 # Fact
                 new_fact, extra_clauses = self._process_atom( clause )
                 yield new_fact
                 for extra in extra_clauses : yield extra
-
-                    
-        # Queries are: lfi_fact_0 ... lfi_fact_<count-1>
-        # Semiring lookup lfi_0 lfi_fact_0
 
     def evaluate_examples( self ) :
         results = []
@@ -203,9 +166,6 @@ class LFIProblem(SemiringProbability) :
         for at, val, comp in self._compiled_examples :        
             evidence = dict(zip(map(str,at),map(str2bool,val)))
 
-            # with open('nnf_%s.dot' % (i), 'w') as f :
-            #     print( comp.toDot(), file=f)
-        
             evaluator = comp.getEvaluator(semiring=self, evidence=evidence) 
 
             pQueries = {}
@@ -218,10 +178,6 @@ class LFIProblem(SemiringProbability) :
                     pQueries[name] = w
             pEvidence = evaluator.evaluateEvidence()
             i+=1
-
-        
-            #pQueries = comp.evaluate(semiring=SemiringLearning(), weights=weights, evidence=evidence) 
-            #pEvidence = comp.evaluateEvidence(semiring=SemiringLearning(), weights=weights, evidence=evidence)
             results.append( (pEvidence, pQueries) )
         return results
     
@@ -243,6 +199,7 @@ class LFIProblem(SemiringProbability) :
         return score
         
     def step(self) :
+        self.iteration += 1
         results = self.evaluate_examples()
         return self.update(results)
         
@@ -250,74 +207,11 @@ class LFIProblem(SemiringProbability) :
         self.prepare()
         delta = 1000
         prev_score = -1e10
-        iteration = 0
-        while iteration < self.max_iter and delta > self.min_improv :
+        while self.iteration < self.max_iter and delta > self.min_improv :
             score = self.step()
-            iteration += 1
             delta = score - prev_score
             prev_score = score
         return prev_score
-    
-def test1() :
-    
-    program = """
-        t(0.5)::burglary.
-        0.2::earthquake.
-        t(_)::p_alarm1.
-        t(_)::p_alarm2.
-        t(_)::p_alarm3.
-
-        alarm :- burglary, earthquake, p_alarm1.
-        alarm :- burglary, \+earthquake, p_alarm2.
-        alarm :- \+burglary, earthquake, p_alarm3.
-    """
-
-    examples = [ 
-        ( ( Term('burglary'), 'false' ), ( Term('alarm'), 'false' ) ),
-        ( ( Term('earthquake'), 'false' ), ( Term('alarm'), 'true' ), ( Term('burglary'), 'true' ) ),
-        ( ( Term('burglary'), 'false' ), )
-    ]
-    
-    print (examples)
-
-    lfi = LFIProblem(PrologString(program), examples)
-    score = lfi.run()
-
-    return run_lfi(PrologString(program), examples)
-
-    
-def test2() :
-    
-    program = """
-       t(_)::stress(X) :- person(X).
-       t(_)::influences(X,Y) :- person(X), person(Y).
-
-       smokes(X) :- stress(X).
-       smokes(X) :- friend(X,Y), influences(Y,X), smokes(Y).
-
-       person(1).
-       person(2).
-       person(3).
-       person(4).
-
-       friend(1,2).
-       friend(2,1).
-       friend(2,4).
-       friend(3,2).
-       friend(4,2).
-    """
-
-    examples = [ 
-        ( ( Term('smokes', Constant(2)), 'false' ), 
-          ( Term('smokes', Constant(4)), 'true'  ),
-          ( Term('influences', Constant(1), Constant(2)), 'false'  ),
-          ( Term('influences', Constant(4), Constant(2)), 'false'  ),
-          ( Term('influences', Constant(2), Constant(3)), 'true'  ),          
-          ( Term('stress', Constant(1)), 'true'  )
-        )
-    ]
-
-    return run_lfi(PrologString(program), examples)
 
 def read_examples( *filenames ) :
     
@@ -342,12 +236,12 @@ def read_examples( *filenames ) :
 def run_lfi( program, examples, max_iter=10000, min_improv=1e-10 ) :
     lfi = LFIProblem( program, examples, max_iter=max_iter, min_improv=min_improv )
     score = lfi.run()
-    return score, lfi.weights, lfi.names
+    return score, lfi.weights, lfi.names, lfi.iteration
     
     
 if __name__ == '__main__' :
     import argparse
-    parser = argparse.ArgumentParser("LFI learning with ProbLog")
+    parser = argparse.ArgumentParser(description="Learning from interpretations with ProbLog")
     parser.add_argument('model')
     parser.add_argument('examples', nargs='+')
     parser.add_argument('-n', dest='max_iter', default=10000 )
@@ -356,8 +250,8 @@ if __name__ == '__main__' :
     
     program = PrologFile(args.model)
     examples = list( read_examples(*args.examples ) )
-    score, weights, names = run_lfi( program, examples, args.max_iter, args.min_improv)
+    score, weights, names, iterations = run_lfi( program, examples, args.max_iter, args.min_improv)
     
-    print (score, weights, names)
+    print (score, weights, names, iterations)
     
     
