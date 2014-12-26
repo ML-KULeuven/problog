@@ -140,7 +140,7 @@ class LFIProblem(SemiringProbability) :
         Iterate over the clauses of the source model.
         This object can be used as a LogicProgram to be passed to the grounding Engine.
         
-        Extracts an processes all ``t(...)`` weights.
+        Extracts and processes all ``t(...)`` weights.
         This
             * replaces each probabilistic atom ``t(...)::p(X)`` by a unique atom ``lfi(i) :: lfi_fact_i(X)``;
             * adds a new clause ``p(X) :- lfi_fact_i(X)``;
@@ -151,11 +151,14 @@ class LFIProblem(SemiringProbability) :
         Example:
         
         .. code-block:: prolog
+        
             t(_) :: p(X) :- b(X).
             t(_) :: p(X) :- c(X).
 
         is transformed into
+        
         .. code-block:: prolog
+        
             lfi(0) :: lfi_fact_0(X) :- b(X).
             p(X) :- lfi_fact_0(X).
             lfi(1) :: lfi_fact_1(X) :- c(X).
