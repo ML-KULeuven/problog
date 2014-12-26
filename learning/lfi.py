@@ -41,8 +41,11 @@ class LFIProblem(SemiringProbability) :
         self.min_improv = min_improv
         self.iteration = 0
     
-    # Overwrite SemiringProbability
     def value(self, a) :
+        """Overrides from SemiringProbability.
+        Replaces weights of the form ``lfi(i)`` by their current estimated value.
+        """
+        
         if isinstance(a, Term) and a.functor == 'lfi' :
             assert(len(a.args) == 1)
             index = int(a.args[0])
@@ -52,10 +55,11 @@ class LFIProblem(SemiringProbability) :
          
     @property 
     def count(self) :
+        """Number of parameters to learn."""
         return len(self.weights)
     
-    
     def prepare(self) :
+        """Prepare for learning."""
         self._compile_examples()
         
     def _process_examples( self ) :
@@ -132,9 +136,33 @@ class LFIProblem(SemiringProbability) :
         
     # Overwrite from LogicProgram    
     def __iter__(self) :
-        """Iterate over the clauses."""
+        """
+        Iterate over the clauses of the source model.
+        This object can be used as a LogicProgram to be passed to the grounding Engine.
         
-        # TODO remove queries?
+        Extracts an processes all ``t(...)`` weights.
+        This
+            * replaces each probabilistic atom ``t(...)::p(X)`` by a unique atom ``lfi(i) :: lfi_fact_i(X)``;
+            * adds a new clause ``p(X) :- lfi_fact_i(X)``;
+            * adds a new query ``query( lfi_fact_i(X) )``;
+            * initializes the weight of ``lfi(i)`` based on the ``t(...)`` specification;
+        This also removes all existing queries from the model.
+        
+        Example:
+        
+        .. code-block:: prolog
+            t(_) :: p(X) :- b(X).
+            t(_) :: p(X) :- c(X).
+
+        is transformed into
+        .. code-block:: prolog
+            lfi(0) :: lfi_fact_0(X) :- b(X).
+            p(X) :- lfi_fact_0(X).
+            lfi(1) :: lfi_fact_1(X) :- c(X).
+            p(X) :- lfi_fact_1(X).
+            query(lfi_fact_0(X)).
+            query(lfi_fact_1(X)).
+        """
         
         for clause in self.source :
             if isinstance(clause, Clause) :
@@ -160,7 +188,9 @@ class LFIProblem(SemiringProbability) :
                 yield new_fact
                 for extra in extra_clauses : yield extra
 
-    def evaluate_examples( self ) :
+    def _evaluate_examples( self ) :
+        """Evaluate the model with its current estimates for all examples."""
+        
         results = []
         i = 0
         for at, val, comp in self._compiled_examples :        
@@ -181,7 +211,9 @@ class LFIProblem(SemiringProbability) :
             results.append( (pEvidence, pQueries) )
         return results
     
-    def update(self, results) :
+    def _update(self, results) :
+        """Update the current estimates based on the latest evaluation results."""
+        
         fact_marg = [0.0] * self.count
         fact_count = [0] * self.count
         score = 0.0
@@ -200,8 +232,8 @@ class LFIProblem(SemiringProbability) :
         
     def step(self) :
         self.iteration += 1
-        results = self.evaluate_examples()
-        return self.update(results)
+        results = self._evaluate_examples()
+        return self._update(results)
         
     def run(self) :
         self.prepare()

@@ -16,6 +16,7 @@ Contents:
    basic
    logic
    engine
+   learning
 .. notes
    
 
