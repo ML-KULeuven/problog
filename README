@@ -46,25 +46,34 @@ The directory 'test' contains a number of models.
 
 * Use d-DNNF based evaluation
 
+```
 	$ ./main.py test/00_trivial_and.pl -k nnf
 		  heads1 : 0.5
 	  	  heads2 : 0.6
 		twoHeads : 0.3
+```
 
 * Use SDD based evaluation
+	
+```
 	$ ./main.py test/00_trivial_and.pl -k sdd
 	  	  heads1 : 0.5
 	  	  heads2 : 0.6
 		twoHeads : 0.3
+```
 
 * Use symbolic evaluation (don't compute probability) (NNF only).
 	
+
+```
 	$ ./main.py test/00_trivial_and.pl -k nnf --symbolic
 	    heads1 : (0.5*(1-0.6) + 0.5*0.6) / (((1-0.5)*(0.6 + (1-0.6)) + 0.5*(1-0.6)) + 0.5*0.6)
 	    heads2 : ((1-0.5)*0.6 + 0.5*0.6) / (((1-0.5)*(0.6 + (1-0.6)) + 0.5*(1-0.6)) + 0.5*0.6)
 	  twoHeads : 0.5*0.6 / (((1-0.5)*(0.6 + (1-0.6)) + 0.5*(1-0.6)) + 0.5*0.6)
+```
 
 * Evaluate all examples:
-	
-	$ ./main.py test/*.pl -k sdd
 
+```	
+	$ ./main.py test/*.pl -k sdd
+```
