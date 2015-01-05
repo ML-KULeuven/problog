@@ -195,7 +195,7 @@ def sample( filename, N=1, with_facts=False ) :
                 print ('%s.' % k)
         
         if with_facts :
-            print ('.\n'.join(map(str,facts))) + '.'
+            print ('\n'.join(map((lambda s : '%s.' % s) ,facts)))
         
         print ('%%Probability: %.4g' % probability)
     
