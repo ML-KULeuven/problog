@@ -212,6 +212,46 @@ def sample( filename, N=1, with_facts=False, oneline=False ) :
             print ('====================')
             print ('\n'.join(lines))
             print ('%%Probability: %.4g' % probability)
+            
+def estimate( filename, N=1 ) :
+    from collections import defaultdict
+    
+    
+    pl = PrologFile(filename)
+    
+    engine = SamplingEngine(builtins=True)
+    db = engine.prepare(pl)
+    
+    estimates = defaultdict(float)
+    counts = 0.0
+    for i in range(0,N) :
+        queries, facts, prob = engine.sample(db)
+        for k, v in queries :
+            if v :
+                estimates[k] += 1.0
+        counts += 1.0
+    
+    for k in estimates :
+        estimates[k] = estimates[k] / counts
+    return estimates
+
+def print_result( d, output, precision=8 ) :    
+    success, d = d
+    if success :
+        if not d : return 0 # no queries
+        l = max( len(k) for k in d )
+        f_flt = '\t%' + str(l) + 's : %.' + str(precision) + 'g' 
+        f_str = '\t%' + str(l) + 's : %s' 
+        for it in sorted(d.items()) :
+            if type(it[1]) == float :
+                print(f_flt % it, file=output)
+            else :
+                print(f_str % it, file=output)
+        return 0
+    else :
+        print ('Error:', d, file=output)
+        return 1
+
     
 if __name__ == '__main__' :
     import argparse
@@ -221,7 +261,11 @@ if __name__ == '__main__' :
     parser.add_argument('-N', type=int, default=1, help="Number of samples.")
     parser.add_argument('--with-facts', action='store_true', help="Also output choice facts (default: just queries).")
     parser.add_argument('--oneline', action='store_true', help="Format samples on one line.")
+    parser.add_argument('--estimate', action='store_true')
     args = parser.parse_args()
     
-    
-    sample( args.filename, args.N, args.with_facts, args.oneline )
+    if args.estimate :
+        result = estimate( args.filename, args.N )
+        print_result((True,result), sys.stdout)
+    else :
+        sample( args.filename, args.N, args.with_facts, args.oneline )
