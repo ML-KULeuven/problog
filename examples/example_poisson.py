@@ -4,7 +4,7 @@ import sys, os
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..' ) )
 
-from main import main as problog_main
+from problog_cli import main as problog_main
 
 from problog.evaluator import Semiring
 from problog.logic import Constant, Term
