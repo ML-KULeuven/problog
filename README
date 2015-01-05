@@ -16,7 +16,7 @@ However, if you want to use the SDD library you should run the installer.
 
 Execute the command:
 
-    ./main.py install
+    python setup.py
 
 Note that this requires the Python development files (i.e. Python.h). 
     
@@ -25,7 +25,7 @@ Note that this requires the Python development files (i.e. Python.h).
 --------
 
 
-	usage: main.py [-h] [--knowledge {sdd,nnf}] [--symbolic] [--output OUTPUT]
+	usage: problog-cli.py [-h] [--knowledge {sdd,nnf}] [--symbolic] [--output OUTPUT]
                MODEL [MODEL ...]
 			   
 	positional arguments:
@@ -47,7 +47,7 @@ The directory 'test' contains a number of models.
 * Use d-DNNF based evaluation
 
 ```
-	$ ./main.py test/00_trivial_and.pl -k nnf
+	$ ./problog-cli.py test/00_trivial_and.pl -k nnf
 		  heads1 : 0.5
 	  	  heads2 : 0.6
 		twoHeads : 0.3
@@ -56,7 +56,7 @@ The directory 'test' contains a number of models.
 * Use SDD based evaluation
 	
 ```
-	$ ./main.py test/00_trivial_and.pl -k sdd
+	$ ./problog-cli.py test/00_trivial_and.pl -k sdd
 	  	  heads1 : 0.5
 	  	  heads2 : 0.6
 		twoHeads : 0.3
@@ -66,7 +66,7 @@ The directory 'test' contains a number of models.
 	
 
 ```
-	$ ./main.py test/00_trivial_and.pl -k nnf --symbolic
+	$ ./problog-cli.py test/00_trivial_and.pl -k nnf --symbolic
 	    heads1 : (0.5*(1-0.6) + 0.5*0.6) / (((1-0.5)*(0.6 + (1-0.6)) + 0.5*(1-0.6)) + 0.5*0.6)
 	    heads2 : ((1-0.5)*0.6 + 0.5*0.6) / (((1-0.5)*(0.6 + (1-0.6)) + 0.5*(1-0.6)) + 0.5*0.6)
 	  twoHeads : 0.5*0.6 / (((1-0.5)*(0.6 + (1-0.6)) + 0.5*(1-0.6)) + 0.5*0.6)
@@ -75,5 +75,5 @@ The directory 'test' contains a number of models.
 * Evaluate all examples:
 
 ```	
-	$ ./main.py test/*.pl -k sdd
+	$ ./problog-cli.py test/*.pl -k sdd
 ```
