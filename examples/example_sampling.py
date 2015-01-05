@@ -121,6 +121,8 @@ class SamplingEngine(EventBasedEngine) :
                     else :
                         self.probability *= (1-p)
                 self.facts[node_id] = value
+            else :
+                value = self.facts[node_id]
                 
             # If fact is True
             if value :
@@ -180,6 +182,8 @@ class SamplingEngine(EventBasedEngine) :
             # Note: if value == False: no update of probability.    
             
             self.facts[key] = value
+        else :
+            value = self.facts[key]
 
         if value :
             parent.newResult( result, 0 )
