@@ -5,6 +5,7 @@ from .logic import *
 from .parser import DefaultPrologParser, Factory
 
 from collections import namedtuple, defaultdict
+import os
 
 class SimpleProgram(LogicProgram) :
     """LogicProgram implementation as a list of clauses."""
@@ -27,6 +28,7 @@ class SimpleProgram(LogicProgram) :
 class PrologString(LogicProgram) :
     
     def __init__(self, string, parser=None) :
+        LogicProgram.__init__(self)
         self.__string = string
         if parser == None :
             self.parser = DefaultPrologParser(PrologFactory())
@@ -49,6 +51,7 @@ class PrologFile(LogicProgram) :
     """
     
     def __init__(self, filename=None, allow_update=False, parser=None) :
+        LogicProgram.__init__(self, os.path.dirname(filename), [ os.path.abspath(filename)] )
         if parser == None :
             self.parser = DefaultPrologParser(PrologFactory())
         else :

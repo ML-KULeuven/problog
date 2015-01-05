@@ -395,8 +395,10 @@ class Not(Term) :
 class LogicProgram(object) :
     """LogicProgram"""
     
-    def __init__(self) :
-        pass
+    def __init__(self, source_root='.', source_files=None) :
+        if source_files == None : source_files = []
+        self.source_root = source_root
+        self.source_files = source_files
         
     def __iter__(self) :
         """Iterator for the clauses in the program."""
@@ -455,6 +457,8 @@ class LogicProgram(object) :
             return src
         else :
             obj = cls(**extra)
+            obj.source_root = src.source_root
+            obj.source_files = src.source_files
             for clause in src :
                 obj += clause
             return obj

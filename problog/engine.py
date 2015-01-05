@@ -1,10 +1,11 @@
 from __future__ import print_function
 
-from .program import ClauseDB, PrologString
+from .program import ClauseDB, PrologString, PrologFile
 from .logic import Term, Constant
 from .formula import LogicFormula
 
 from collections import defaultdict
+import os
 
 """
 Assumptions
@@ -205,7 +206,30 @@ class EventBasedEngine(object) :
             
     def prepare(self, db) :
         """Convert given logic program to suitable format for this engine."""
-        return ClauseDB.createFrom(db, builtins=self.getBuiltIns())
+        result = ClauseDB.createFrom(db, builtins=self.getBuiltIns())
+        self._process_directives( result )
+        return result
+    
+    def _process_directives( self, db) :
+        term = Term('_directive')
+        directive_node = db.find( term )
+        if directive_node == None : return True    # no directives
+        # Create a new call.
+        call_node = ClauseDB._call( term.functor, range(0,len(term.args)), directive_node )
+        res = ResultCollector()
+        gp = LogicFormula()
+        try :
+            # Evaluate call.
+            self._eval_call(db, gp, None, call_node, self._create_context(term.args,define=None), res )
+        except RuntimeError as err :
+            if str(err).startswith('maximum recursion depth exceeded') :
+                raise UnboundProgramError()
+            else :
+                raise
+        # TODO warning if res.results if empty => failed directive
+        return
+
+        
     
     def ground(self, db, term, gp=None, label=None) :
         """Ground a query on the given database.
@@ -886,6 +910,31 @@ def builtin_is( A, B, callback, **kwdargs ) :
     except UnifyError :
         pass
     callback.complete()
+    
+def atom_to_filename(atom) :
+    atom = str(atom)
+    if atom[0] == atom[-1] == "'" :
+        atom = atom[1:-1]
+    return atom
+    
+    
+def builtin_consult( filename, callback=None, database=None, engine=None, context=None, **kwdargs ) :
+    
+    filename = os.path.join(database.source_root, atom_to_filename( filename ))
+    if not os.path.exists( filename ) :
+        filename += '.pl'
+    if not os.path.exists( filename ) :
+        # TODO better exception
+        raise Exception('File not found!')
+    
+    # Prevent loading the same file twice
+    if not filename in database.source_files : 
+        database.source_files.append(filename)
+        pl = PrologFile( filename )
+        for clause in pl :
+            database += clause
+    callback.newResult(context)
+    callback.complete()
         
 def addBuiltins(engine) :
     """Add Prolog builtins to the given engine."""
@@ -906,6 +955,8 @@ def addBuiltins(engine) :
     engine.addBuiltIn('>=', 2, builtin_ge)
     engine.addBuiltIn('=\=', 2, builtin_val_neq)
     engine.addBuiltIn('=:=', 2, builtin_val_eq)
+    
+    engine.addBuiltIn('consult', 1, builtin_consult)
 
 
 DefaultEngine = EventBasedEngine
