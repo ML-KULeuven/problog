@@ -77,14 +77,18 @@ class SamplingEngine(EventBasedEngine) :
                 self.probability *= p
                 
         translate = lambda x : (x[0],x[1] == 0)
-        
         facts = []
         for f, v in self.facts.items() :
-            if v :
-                node = db.getNode(f)
+            if v :                
+                if type(f) == tuple :
+                    node = db.getNode(f[0])
+                    args = f[1]
+                else :
+                    node = db.getNode(f)
+                    args = node.args
                 if node.functor != 'query' :
-                    if node.args :
-                        facts.append('%s(%s)' % (node.functor, ', '.join(map(str,node.args) ) ) )
+                    if args :
+                        facts.append('%s(%s)' % (node.functor, ', '.join(map(str,args) ) ) )
                     else :
                         facts.append('%s' % (node.functor ) )
         
@@ -175,7 +179,7 @@ class SamplingEngine(EventBasedEngine) :
                 self.groups[origin] = r-p   # Adjust remaining probability
             # Note: if value == False: no update of probability.    
             
-            self.facts[node_id] = value
+            self.facts[key] = value
 
         if value :
             parent.newResult( result, 0 )
