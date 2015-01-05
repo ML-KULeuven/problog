@@ -181,7 +181,7 @@ class SamplingEngine(EventBasedEngine) :
             parent.newResult( result, 0 )
         parent.complete()
 
-def sample( filename, N=1, with_facts=False ) :
+def sample( filename, N=1, with_facts=False, oneline=False ) :
     pl = PrologFile(filename)
     
     engine = SamplingEngine(builtins=True)
@@ -189,15 +189,21 @@ def sample( filename, N=1, with_facts=False ) :
     
     for i in range(0, N) :
         queries, facts, probability = engine.sample(db)
-        print ('====================')
+        lines = []
         for k, v in queries :
             if v :
-                print ('%s.' % k)
+                lines.append('%s.' % k)
         
         if with_facts :
-            print ('\n'.join(map((lambda s : '%s.' % s) ,facts)))
+            for f in facts :
+                lines.append('%s.' % f)
         
-        print ('%%Probability: %.4g' % probability)
+        if oneline :
+            print (' '.join(lines), '%% P=%.4g' % probability)
+        else :
+            print ('====================')
+            print ('\n'.join(lines))
+            print ('%%Probability: %.4g' % probability)
     
 if __name__ == '__main__' :
     import argparse
@@ -206,7 +212,8 @@ if __name__ == '__main__' :
     parser.add_argument('filename')
     parser.add_argument('-N', type=int, default=1, help="Number of samples.")
     parser.add_argument('--with-facts', action='store_true', help="Also output choice facts (default: just queries).")
+    parser.add_argument('--oneline', action='store_true', help="Format samples on one line.")
     args = parser.parse_args()
     
     
-    sample( args.filename, args.N, args.with_facts )
+    sample( args.filename, args.N, args.with_facts, args.oneline )
