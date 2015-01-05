@@ -319,7 +319,7 @@ class EventBasedEngine(object) :
         if node.defnode < 0 :
             # Negative node indicates a builtin.
             builtin = self._getBuiltIn( node.defnode )
-            builtin( *call_args, context=context, callback=context_switch )                
+            builtin( *call_args, context=context, callback=context_switch, database=db, engine=self )
         else :
             # Positive node indicates a non-builtin.
             try :
@@ -754,16 +754,16 @@ class PrologInstantiationError(Exception) : pass
 class PrologTypeError(Exception) : pass
 
 
-def builtin_true( context, callback ) :
+def builtin_true( context, callback, **kwdargs ) :
     """``true``"""
     callback.newResult(context)
     callback.complete()    
 
-def builtin_fail( context, callback ) :
+def builtin_fail( callback, **kwdargs ) :
     """``fail``"""
     callback.complete()
 
-def builtin_eq( A, B, context, callback ) :
+def builtin_eq( A, B, callback, **kwdargs ) :
     """``A = B``
         A and B not both variables
     """
@@ -777,7 +777,7 @@ def builtin_eq( A, B, context, callback ) :
             pass
         callback.complete()
 
-def builtin_neq( A, B, context, callback ) :
+def builtin_neq( A, B, callback, **kwdargs ) :
     """``A \= B``
         A and B not both variables
     """
@@ -790,7 +790,7 @@ def builtin_neq( A, B, context, callback ) :
             callback.newResult( ( A, B ) )
         callback.complete()
             
-def builtin_notsame( A, B, context, callback ) :
+def builtin_notsame( A, B, callback, **kwdargs ) :
     """``A \== B``"""
     if A == None and B == None :
         raise RuntimeError('Operation not supported!')  # TODO make this work
@@ -799,7 +799,7 @@ def builtin_notsame( A, B, context, callback ) :
             callback.newResult( (A,B) )
         callback.complete()    
 
-def builtin_same( A, B, context, callback ) :
+def builtin_same( A, B, callback, **kwdargs ) :
     """``A == B``"""
     if A == None and B == None :
         raise RuntimeError('Operation not supported!')  # TODO make this work
@@ -808,7 +808,7 @@ def builtin_same( A, B, context, callback ) :
             callback.newResult( (A,B) )
         callback.complete()    
 
-def builtin_gt( A, B, context, callback ) :
+def builtin_gt( A, B, callback, **kwdargs ) :
     """``A > B`` 
         A and B are ground
     """
@@ -819,7 +819,7 @@ def builtin_gt( A, B, context, callback ) :
         callback.newResult( (A,B) )
     callback.complete()
 
-def builtin_lt( A, B, context, callback ) :
+def builtin_lt( A, B, callback, **kwdargs ) :
     """``A > B`` 
         A and B are ground
     """
@@ -830,7 +830,7 @@ def builtin_lt( A, B, context, callback ) :
         callback.newResult( (A,B) )
     callback.complete()
 
-def builtin_le( A, B, context, callback ) :
+def builtin_le( A, B, callback, **kwdargs ) :
     """``A =< B``
         A and B are ground
     """
@@ -841,7 +841,7 @@ def builtin_le( A, B, context, callback ) :
         callback.newResult( (A,B) )
     callback.complete()
 
-def builtin_ge( A, B, context, callback ) :
+def builtin_ge( A, B, callback, **kwdargs ) :
     """``A >= B`` 
         A and B are ground
     """
@@ -852,7 +852,7 @@ def builtin_ge( A, B, context, callback ) :
         callback.newResult( (A,B) )
     callback.complete()
 
-def builtin_val_neq( A, B, context, callback ) :
+def builtin_val_neq( A, B, callback, **kwdargs ) :
     """``A =\= B`` 
         A and B are ground
     """
@@ -863,7 +863,7 @@ def builtin_val_neq( A, B, context, callback ) :
         callback.newResult( (A,B) )
     callback.complete()
 
-def builtin_val_eq( A, B, context, callback ) :
+def builtin_val_eq( A, B, callback, **kwdargs ) :
     """``A =:= B`` 
         A and B are ground
     """
@@ -874,7 +874,7 @@ def builtin_val_eq( A, B, context, callback ) :
         callback.newResult( (A,B) )
     callback.complete()
 
-def builtin_is( A, B, context, callback ) :
+def builtin_is( A, B, callback, **kwdargs ) :
     """``A is B``
         B is ground
     """
