@@ -78,8 +78,6 @@ class SamplingEngine(EventBasedEngine) :
                 
         translate = lambda x : (x[0],x[1] == 0)
         
-        print (self.facts, target.queries())
-        
         facts = []
         for f, v in self.facts.items() :
             if v :
