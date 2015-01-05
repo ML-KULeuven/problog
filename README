@@ -24,17 +24,20 @@ Note that this requires the Python development files (i.e. Python.h).
 3. Usage
 ========
 
-usage: main.py [-h] [--knowledge {sdd,nnf}] [--symbolic] MODEL [MODEL ...]
 
-positional arguments:
-  MODEL
-
-optional arguments:
-  -h, --help            show this help message and exit
-  --knowledge {sdd,nnf}, -k {sdd,nnf}
-                        Knowledge compilation tool.
-  --symbolic            Use symbolic evaluation.
-
+	usage: main.py [-h] [--knowledge {sdd,nnf}] [--symbolic] [--output OUTPUT]
+               MODEL [MODEL ...]
+			   
+	positional arguments:
+	  MODEL
+	  
+	optional arguments:
+	  -h, --help            show this help message and exit
+	  --knowledge {sdd,nnf}, -k {sdd,nnf}
+	                        Knowledge compilation tool.
+	  --symbolic            Use symbolic evaluation.
+	  --output OUTPUT, -o OUTPUT
+	                        Output file (default stdout)
 
 4. Examples
 ===========
