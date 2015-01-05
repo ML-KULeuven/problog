@@ -123,7 +123,11 @@ class PrologFactory(Factory) :
         
     def build_binop(self, functor, operand1, operand2, function=None, **extra) :
         return self.build_function("'" + functor + "'", (operand1, operand2))
-        
+
+    def build_directive(self, functor, operand, **extra) :
+        head = self.build_function( '_directive', [] )
+        return self.build_clause( functor, [head], operand, **extra)
+            
     def build_unop(self, functor, operand, **extra) :
         return self.build_function("'" + functor + "'", (operand,) )
         

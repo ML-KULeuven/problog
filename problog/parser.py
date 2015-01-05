@@ -435,13 +435,15 @@ class PrologParser(object) :
         self.facts = Forward()
         self.facts << self.fact + ZeroOrMore(Literal(";").suppress() + self.fact)
         
-        # <clause> ::= <facts> ":-" <arg>
-        self.statement = self.facts + Optional( ( Literal("<-") | Literal(":-") ) + self.__arg ) + self.__dot
-        self.statement.setParseAction( self._parse_statement )
-                
-        # <statement> ::= self.facts | self.clause
+        # <directive> ::= ":-" <arg> <dot>
+        self.directive = Literal(":-") + self.__arg + self.__dot
         
-        #self.statement = self.__arg + self.__dot
+        # <clause> ::= <facts> ( ":-" <arg> )? <dot>
+        self.clause = self.facts + Optional( ( Literal("<-") | Literal(":-") ) + self.__arg ) + self.__dot
+
+        # <statement> ::= self.facts | self.clause        
+        self.statement = (self.directive | self.clause)
+        self.statement.setParseAction( self._parse_statement )
         
         # <program> is a list of statements
         self.program = OneOrMore(self.statement).ignore('%' + restOfLine )
@@ -458,7 +460,9 @@ class PrologParser(object) :
     def _parse_statement(self, s, loc, toks) :
         if len(toks) == 1 : # simple fact
             return toks[0]
-        else :
+        elif toks[0] == (':-') : # directive
+            return self.factory.build_directive( toks[0], toks[-1] )            
+        else :  
             if toks[-2] in ('<-', ':-') :
                 heads = toks[:-2]
                 body = toks[-1]
