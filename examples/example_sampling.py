@@ -78,6 +78,8 @@ class SamplingEngine(EventBasedEngine) :
                 
         translate = lambda x : (x[0],x[1] == 0)
         
+        print (self.facts, target.queries())
+        
         facts = []
         for f, v in self.facts.items() :
             if v :
@@ -191,7 +193,7 @@ def sample( filename, N=1, with_facts=False ) :
         queries, facts, probability = engine.sample(db)
         print ('====================')
         for k, v in queries :
-            if v == 0 :
+            if v :
                 print ('%s.' % k)
         
         if with_facts :
