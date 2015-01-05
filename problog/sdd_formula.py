@@ -7,7 +7,7 @@ from .formula import LogicDAG, LogicFormula, breakCycles
 from .cnf_formula import CNF
 from .logic import LogicProgram
 from .interface import ground
-from .evaluator import Evaluator, SemiringProbability, Evaluatable
+from .evaluator import Evaluator, SemiringProbability, Evaluatable, InconsistentEvidenceError
 from .core import transform
 
 import warnings
@@ -265,7 +265,8 @@ class SDDEvaluator(Evaluator) :
         for c in self.__sdd.constraints() :
             for rule in c.encodeCNF() :
                 evidence_sdd = sdd.sdd_conjoin( evidence_sdd, self._sdd_disjoin( *rule ), m )
-    
+        if sdd.sdd_node_is_false(evidence_sdd) :
+            raise InconsistentEvidenceError()
 
         query_sdd = self._sdd_equiv( sdd.sdd_manager_literal(node, self.sdd_manager), self.__sdd._getSDDNode(node))
 

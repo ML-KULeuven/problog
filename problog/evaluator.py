@@ -7,6 +7,8 @@ from .core import LABEL_QUERY, LABEL_EVIDENCE_POS, LABEL_EVIDENCE_NEG, LABEL_EVI
 import subprocess
 import sys, os, tempfile
 
+class InconsistentEvidenceError(Exception) : pass
+
 class Semiring(object) :
     
     def one(self) :
@@ -108,7 +110,13 @@ class Evaluatable(object) :
         evaluator = self._createEvaluator(semiring, weights)
 
         for n_ev, node_ev in evaluator.getNames(LABEL_EVIDENCE_POS) :
-            if evidence == None :
+            if node_ev == 0 :
+                # Evidence is already deterministically true
+                pass
+            elif node_ev == None :
+                # Evidence is deterministically true
+                raise InconsistentEvidenceError()
+            elif evidence == None :
                 evaluator.addEvidence( node_ev )
             else :
                 value = evidence.get( n_ev, None )
@@ -118,7 +126,14 @@ class Evaluatable(object) :
                     evaluator.addEvidence( -node_ev )
 
         for n_ev, node_ev in evaluator.getNames(LABEL_EVIDENCE_NEG) :
-            if evidence == None :
+            if node_ev == None :
+                # Evidence is already deterministically false
+                pass
+            elif node_ev == 0 :
+                # Evidence is deterministically true
+                # TODO raise correct error
+                raise Exception('Inconsistent evidence')
+            elif evidence == None :
                 evaluator.addEvidence( -node_ev )
             else :
                 value = evidence.get( n_ev, None )

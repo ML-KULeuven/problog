@@ -4,7 +4,7 @@ import tempfile, os, sys, subprocess
 from collections import defaultdict
 
 from . import system_info
-from .evaluator import Evaluator, Evaluatable
+from .evaluator import Evaluator, Evaluatable, InconsistentEvidenceError
 from .formula import LogicDAG
 from .logic import LogicProgram
 from .cnf_formula import CNF
@@ -43,6 +43,9 @@ class SimpleNNFEvaluator(Evaluator) :
                 self.setEvidence( abs(ev), ev > 0 )
             
         self.Z = self.getZ()
+        if self.Z == 0.0 :
+            raise InconsistentEvidenceError()
+            
                 
     def propagate(self) :
         self.initialize()
