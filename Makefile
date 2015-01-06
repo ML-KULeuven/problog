@@ -42,7 +42,7 @@ dist:
 	rsync -avz --exclude '*.pyc' learning /tmp/problog-dist/
 	rsync -avz INSTALL /tmp/problog-dist/
 	rsync -avz Makefile /tmp/problog-dist/
-	rsync -avz README /tmp/problog-dist/
+	rsync -avz README.md /tmp/problog-dist/
 	rsync -avz problog-cli.py /tmp/problog-dist/
 	rsync -avz setup.py /tmp/problog-dist/
 	cd /tmp && zip -r problog-dist.zip problog-dist
