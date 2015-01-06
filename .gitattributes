@@ -1,0 +1,7 @@
+
+# We can’t distribute this ourselves.
+/problog/bin/linux/cnf2dDNNF	export-ignore
+
+# Hide some other files
+.gitignore			export-ignore
+.gitattributes			export-ignore
