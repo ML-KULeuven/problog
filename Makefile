@@ -1,7 +1,5 @@
 .PHONY: default test test2 test3 docs deploy_docs
 
-DOCS_LOCATION=ssh.cs.kuleuven.be:/cw/wwwserver/extern2/people/anton.dries/public_html/problog/
-
 default: test docs
 	
 test: test2 test3
@@ -26,11 +24,6 @@ docs:
 	make -C docs/ html
 	@echo "======================================================================"
 	
-deploy_docs:
-	@echo "Uploading docs"
-	@echo "=============="
-	rsync --archive docs/build/html/* ${DOCS_LOCATION}
-	@echo "======================================================================"
 
 dist:
 	@echo "Preparing distribution"
@@ -50,3 +43,21 @@ dist:
 	@echo "======================================================================"
 
 
+show_package:
+	@echo "Listing package content"
+	@echo "======================="
+	git archive master --format tar | tar -t
+	@echo "======================================================================"
+	
+package: docs
+	@echo "Creating package"
+	@echo "================"
+	rm -f problog.zip
+	git archive master --format zip --prefix problog2.1/ > problog.zip
+	mkdir -p problog2.1
+	ln -s ../docs problog2.1/docs
+	zip -r problog.zip problog2.1/docs/build/
+	rm problog2.1/docs
+	rmdir problog2.1	
+	@echo "======================================================================"
+	
