@@ -18,6 +18,9 @@ This path can be used with GET or POST requests.
 
 If ``servefiles`` is enabled other paths will be treated as file access requests.
 
+Copyright 2015 Anton Dries, Wannes Meert.
+All rights reserved.
+
 """
 
 from __future__ import print_function
@@ -36,6 +39,8 @@ DEFAULT_TIMEOUT = 60
 DEFAULT_MEMOUT = 1.0 # gigabyte
 
 SERVE_FILES=False
+CACHE_MODELS=True
+CACHE_DIR="cache"
 
 
 # Load Python standard web-related modules (based on Python version)
@@ -125,7 +130,72 @@ def run_problog( model ) :
         return int(code), datatype, datavalue
     except subprocess.CalledProcessError :
         return 500, 'text/plain', 'ProbLog evaluation exceeded time or memory limit'
-    
+
+
+@handle_url('/api/problog')
+def run_problog_jsonp(model, callback):
+    """Evaluate the given model and return the probabilities using the JSONP
+       standard.
+       This mode is required to send an API request when Problog is
+       running on a different server (to avoid cross-side-scripting
+       limitations).
+    """
+    model = model[0]
+    callback = callback[0]
+
+    if CACHE_MODELS:
+      import hashlib
+      inhash = hashlib.md5(model).hexdigest()
+      if not os.path.exists(CACHE_DIR):
+          os.mkdir(CACHE_DIR)
+      infile = os.path.join(CACHE_DIR, inhash+'.pl')
+      outfile = os.path.join(CACHE_DIR, inhash+'.out')
+    else:
+      handle, infile = tempfile.mkstemp('.pl')
+      handle, outfile = tempfile.mkstemp('.out')
+
+    with open(infile, 'w') as f :
+        f.write(model)
+
+
+    cmd = [ 'python', root_path('run_problog.py'), infile, outfile ]
+
+    try :
+        call_process(cmd, DEFAULT_TIMEOUT, DEFAULT_MEMOUT * (1 << 30))
+
+        with open(outfile) as f :
+            result = f.read()
+        code, datatype, datavalue = result.split(None,2)
+
+        if datatype == 'application/json':
+            datavalue = '{}({});'.format(callback, datavalue)
+
+        return int(code), datatype, datavalue
+    except subprocess.CalledProcessError :
+        return 500, 'text/plain', 'ProbLog evaluation exceeded time or memory limit'
+
+
+@handle_url('/api/model')
+def get_model_from_hash_jsonp(hash, callback):
+    hash = hash[0]
+    callback = callback[0]
+    infile = os.path.join(CACHE_DIR, hash+'.pl')
+
+    if not CACHE_MODELS or not os.path.exists(infile):
+        return 500, 'text/plain', 'Model hash not available'
+
+    result = dict()
+    with open(infile, 'r') as f:
+         result['model'] = f.read()
+
+    import json
+    datatype = 'application/json'
+    datavalue = json.dumps(result)
+    datavalue = '{}({});'.format(callback, datavalue)
+    code = 200
+
+    return int(code), datatype, datavalue
+
 
 class ProbLogHTTP(BaseHTTPServer.BaseHTTPRequestHandler) :
           
@@ -144,11 +214,14 @@ class ProbLogHTTP(BaseHTTPServer.BaseHTTPRequestHandler) :
         If the path does not occur in PATHS, treats the path as a filename and serves the file.
         """
 
-        url = urlparse.urlparse( self.path )        
-        path = url.path        
+        url = urlparse.urlparse( self.path )
+        path = url.path
         if query == None :
             query = urlparse.parse_qs(url.query)
-        
+        if '_' in query:
+            # Used by jquery to avoid caching
+            del query['_']
+
         action = PATHS.get(path)
         if action == None :
             if SERVE_FILES :
@@ -184,26 +257,26 @@ class ProbLogHTTP(BaseHTTPServer.BaseHTTPRequestHandler) :
             self.send_response(404)
             self.end_headers()
             self.wfile.write(toBytes('File not found!'))  
-    
 
 
 if __name__ == '__main__' :
     import argparse
-    
+
     parser = argparse.ArgumentParser()
     parser.add_argument('--port', '-p', type=int, default=DEFAULT_PORT, help="Server listening port")
     parser.add_argument('--timeout', '-t', type=int, default=DEFAULT_TIMEOUT, help="Time limit in seconds")
     parser.add_argument('--memout', '-m', type=float, default=DEFAULT_MEMOUT, help="Memory limit in Gb")
     parser.add_argument('--servefiles', '-F', action='store_true', help="Attempt to serve a file for undefined paths (unsafe?).")
+    parser.add_argument('--nocaching', action='store_true', help="Disable caching of submitted models")
     args = parser.parse_args(sys.argv[1:])
-        
+
     DEFAULT_TIMEOUT = args.timeout
     DEFAULT_MEMOUT = args.memout
     SERVE_FILES = args.servefiles
+    CACHE_MODELS = not args.nocaching
     print ('Starting server on port %d (timeout=%d, memout=%dGb)' % (args.port, DEFAULT_TIMEOUT, DEFAULT_MEMOUT ))    
-    
+
     server_address = ('', args.port)
     httpd = BaseHTTPServer.HTTPServer( server_address, ProbLogHTTP )
     httpd.serve_forever()
-    
-    
+
