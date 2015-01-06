@@ -31,3 +31,22 @@ deploy_docs:
 	@echo "=============="
 	rsync --archive docs/build/html/* ${DOCS_LOCATION}
 	@echo "======================================================================"
+
+dist:
+	@echo "Preparing distribution"
+	@echo "======================"
+	rm -rf /tmp/problog-dist
+	rsync -avz --exclude '*.pyc' --exclude '__pycache__' --exclude '*lib/build*' --exclude '*lib/python*' problog /tmp/problog-dist/
+	rsync -avz --exclude '*build*' docs /tmp/problog-dist/
+	rsync -avz --exclude '*.pyc' examples /tmp/problog-dist/
+	rsync -avz --exclude '*.pyc' learning /tmp/problog-dist/
+	rsync -avz INSTALL /tmp/problog-dist/
+	rsync -avz Makefile /tmp/problog-dist/
+	rsync -avz README /tmp/problog-dist/
+	rsync -avz problog-cli.py /tmp/problog-dist/
+	rsync -avz setup.py /tmp/problog-dist/
+	cd /tmp && zip -r problog-dist.zip problog-dist
+	cp /tmp/problog-dist.zip .
+	@echo "======================================================================"
+
+
