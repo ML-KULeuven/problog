@@ -69,7 +69,9 @@ def is_ground( *terms ) :
     
 def instantiate( term, context ) :
     """Replace variables in Term by values based on context lookup table."""
-    if type(term) == int :
+    if term == None :
+        return None
+    elif type(term) == int :
         return context[term]
     else :
         return term.apply(context)
