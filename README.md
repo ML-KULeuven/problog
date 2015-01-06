@@ -4,9 +4,8 @@ ProbLog v2.1
 1. Prerequisites
 ----------------
 
-ProbLog 2.1 has the following external requirements:
+ProbLog 2.1 requires Python 2.7+ or Python 3.3+.
 
-* Python 2.7+ or Python 3.2+
 
 2. Installation
 ---------------
@@ -15,9 +14,8 @@ Installation is not required.
 However, if you want to use the SDD library you should run the installer.
 
 Execute the command ``` python setup.py ```
-
 Note that this requires the Python development files (i.e. Python.h). 
-    
+
 
 3. Usage
 --------
