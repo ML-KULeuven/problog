@@ -215,19 +215,17 @@ class EventBasedEngine(object) :
         directive_node = db.find( term )
         if directive_node == None : return True    # no directives
         # Create a new call.
-        call_node = ClauseDB._call( term.functor, range(0,len(term.args)), directive_node )
-        res = ResultCollector()
+        
+        node = db.getNode(directive_node)        
         gp = LogicFormula()
-        try :
-            # Evaluate call.
-            self._eval_call(db, gp, None, call_node, self._create_context(term.args,define=None), res )
-        except RuntimeError as err :
-            if str(err).startswith('maximum recursion depth exceeded') :
-                raise UnboundProgramError()
-            else :
-                raise
-        # TODO warning if res.results if empty => failed directive
-        return
+        res = ResultCollector()
+        directives = db.getNode(directive_node).children
+        while directives :
+            current = directives.pop(0)
+            self._eval( db, gp, current, self._create_context((),define=None), res )
+            
+        # # TODO warning if len(res.results) != number of directives
+        # return
 
         
     
