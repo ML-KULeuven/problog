@@ -29,6 +29,7 @@ def print_result( d, output, precision=8 ) :
             
 def process_error( err ) :
     """Take the given error raise by ProbLog and produce a meaningful error message."""
+    
     err_type = type(err).__name__
     if err_type == 'ParseException' :
         return 'Parsing error on %s:%s: %s.\n%s' % (err.lineno, err.col, err.msg, err.line )
@@ -67,6 +68,7 @@ def argparser() :
     parser.add_argument('--knowledge', '-k', choices=('sdd','nnf'), default='nnf', help="Knowledge compilation tool.")
     parser.add_argument('--symbolic', action='store_true', help="Use symbolic evaluation.")
     parser.add_argument('--output', '-o', help="Output file (default stdout)", type=outputfile)
+    parser.add_argument('--recursion-limit', help="Set recursion limit. Increase this value if you get an unbounded program error. (default: %d)" % sys.getrecursionlimit(), default=sys.getrecursionlimit(), type=int)
     return parser
 
 if __name__ == '__main__' :
@@ -86,6 +88,9 @@ if __name__ == '__main__' :
     else:
         logger.setLevel(logging.DEBUG)
         logger.debug('Output level: DEBUG')
+
+    if args.recursion_limit :
+        sys.setrecursionlimit(args.recursion_limit)
 
     if args.output == None :
         output = sys.stdout
