@@ -5,7 +5,7 @@ from .logic import *
 from .parser import DefaultPrologParser, Factory
 
 from collections import namedtuple, defaultdict
-import os
+import os, logging
 
 class SimpleProgram(LogicProgram) :
     """LogicProgram implementation as a list of clauses."""
