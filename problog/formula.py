@@ -5,6 +5,7 @@ from collections import namedtuple, defaultdict
 from .core import transform, ProbLogObject
 
 from .core import LABEL_QUERY, LABEL_EVIDENCE_POS, LABEL_EVIDENCE_NEG, LABEL_EVIDENCE_MAYBE
+from .util import Timer
 
 
 
@@ -407,21 +408,21 @@ class LogicFormula(ProbLogObject) :
         #   This requires all result nodes to be maintained separately (add them to protected).
         #   Problem: how to do this without knowledge about internal structure of the engine. 
         
-        
-        # Output formula
-        if output == None : output = LogicDAG()
-        
-        # Protected nodes (these have to exist separately)
-        protected = set( [ y for x,y in self.getNames() ] )
-                
-        # Translation table from old to new.
-        translate = {}
-        
-        # Handle the given nodes one-by-one
-        for name, node, label in self.getNamesWithLabel() :
-            new_node, cycles = self._extract( output, node, protected, translate )
-            translate[node] = new_node
-            output.addName(name, new_node, label)
+        with Timer('Cycle breaking'):
+          # Output formula
+          if output == None : output = LogicDAG()
+          
+          # Protected nodes (these have to exist separately)
+          protected = set( [ y for x,y in self.getNames() ] )
+                  
+          # Translation table from old to new.
+          translate = {}
+          
+          # Handle the given nodes one-by-one
+          for name, node, label in self.getNamesWithLabel() :
+              new_node, cycles = self._extract( output, node, protected, translate )
+              translate[node] = new_node
+              output.addName(name, new_node, label)
         
         return output
 

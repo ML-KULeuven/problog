@@ -2,12 +2,13 @@
 
 from __future__ import print_function
 
-import os, sys, subprocess, traceback
+import os, sys, subprocess, traceback, logging
 
 from problog.program import PrologFile
 from problog.evaluator import SemiringSymbolic, Evaluator
 from problog.nnf_formula import NNF
 from problog.sdd_formula import SDD
+from problog.util import Timer
 
 def print_result( d, output, precision=8 ) :    
     success, d = d
@@ -43,10 +44,13 @@ def process_error( err ) :
 
 
 def main( filename, knowledge=NNF, semiring=None ) :
+    logger = logging.getLogger('problog')
 
     try :
-        formula = knowledge.createFrom( PrologFile(filename) )
-        result = formula.evaluate(semiring=semiring)
+        with Timer('Processing model'):
+          formula = knowledge.createFrom( PrologFile(filename) )
+        with Timer('Evaluation'):
+          result = formula.evaluate(semiring=semiring)
         return True, result
     except Exception as err :
         return False, process_error(err)
@@ -59,15 +63,30 @@ def argparser() :
     
     parser = argparse.ArgumentParser()
     parser.add_argument('filenames', metavar='MODEL', nargs='+', type=inputfile)
+    parser.add_argument('--verbose', '-v', action='count', help='Verbose output')
     parser.add_argument('--knowledge', '-k', choices=('sdd','nnf'), default='nnf', help="Knowledge compilation tool.")
     parser.add_argument('--symbolic', action='store_true', help="Use symbolic evaluation.")
     parser.add_argument('--output', '-o', help="Output file (default stdout)", type=outputfile)
     return parser
-        
+
 if __name__ == '__main__' :
     parser = argparser()
     args = parser.parse_args()
-    
+
+    logger = logging.getLogger('problog')
+    ch = logging.StreamHandler(sys.stdout)
+    formatter = logging.Formatter('[%(levelname)s] %(message)s')
+    ch.setFormatter(formatter)
+    logger.addHandler(ch)
+    if args.verbose == None:
+        logger.setLevel(logging.WARNING)
+    elif args.verbose == 1:
+        logger.setLevel(logging.INFO)
+        logger.info('Output level: INFO')
+    else:
+        logger.setLevel(logging.DEBUG)
+        logger.debug('Output level: DEBUG')
+
     if args.output == None :
         output = sys.stdout
     else :

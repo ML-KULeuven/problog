@@ -9,6 +9,7 @@ from .logic import LogicProgram
 from .interface import ground
 from .evaluator import Evaluator, SemiringProbability, Evaluatable, InconsistentEvidenceError
 from .core import transform
+from .util import Timer
 
 import warnings
 
@@ -156,23 +157,25 @@ class SDD(LogicDAG, Evaluatable) :
             
 @transform(LogicDAG, SDD)
 def buildSDD( source, destination ) :
-    size = len(source)
-    destination.setVarCount(size)
-    for i, n, t in source.iterNodes() :
-        if t == 'atom' :
-            destination.addAtom( n.identifier, n.probability, n.group )
-        elif t == 'conj' :
-            destination.addAnd( n.children )
-        elif t == 'disj' :
-            destination.addOr( n.children )
-        else :
-            raise TypeError('Unknown node type')
-            
-    for name, node, label in source.getNamesWithLabel() :
-        destination.addName(name, node, label)
-    
-    for c in source.constraints() :
-        destination.addConstraint(c)
+    with Timer('Compiling SDD'):
+        size = len(source)
+        destination.setVarCount(size)
+        for i, n, t in source.iterNodes() :
+            if t == 'atom' :
+                destination.addAtom( n.identifier, n.probability, n.group )
+            elif t == 'conj' :
+                destination.addAnd( n.children )
+            elif t == 'disj' :
+                destination.addOr( n.children )
+            else :
+                raise TypeError('Unknown node type')
+                
+        for name, node, label in source.getNamesWithLabel() :
+            destination.addName(name, node, label)
+        
+        for c in source.constraints() :
+            destination.addConstraint(c)
+
     return destination
         
 
