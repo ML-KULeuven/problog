@@ -109,11 +109,7 @@ class PrologFactory(Factory) :
     """Factory object for creating suitable objects from the parse tree."""
         
     def build_program(self, clauses) :
-        # LogicProgram
-        result = SimpleProgram()
-        for clause in clauses :
-            result += clause
-        return result
+        return clauses
     
     def build_function(self, functor, arguments) :
         return Term( functor, *arguments )
@@ -180,6 +176,21 @@ class PrologFactory(Factory) :
             current = current.args[1]
         body.append(current)
         return body    
+
+
+class ExtendedPrologFactory(PrologFactory):
+    """Prolog with some extra syntactic sugar.
+
+    Non-standard syntax:
+    - Negative head literals:
+      0.5::\+a :- b.
+    """
+    def build_program(self, clauses):
+        print(clauses)
+        return clauses
+
+
+
 
 class ClauseIndex(list) :
     

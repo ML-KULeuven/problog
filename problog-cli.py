@@ -4,11 +4,13 @@ from __future__ import print_function
 
 import os, sys, subprocess, traceback, logging
 
-from problog.program import PrologFile
+from problog.program import PrologFile, ExtendedPrologFactory
 from problog.evaluator import SemiringSymbolic, Evaluator
 from problog.nnf_formula import NNF
 from problog.sdd_formula import SDD
 from problog.util import Timer
+from problog.parser import DefaultPrologParser
+
 
 def print_result( d, output, precision=8 ) :    
     success, d = d
@@ -49,7 +51,8 @@ def main( filename, knowledge=NNF, semiring=None ) :
 
     try :
         with Timer('Total time to processing model'):
-          formula = knowledge.createFrom( PrologFile(filename) )
+          parser = DefaultPrologParser(ExtendedPrologFactory())
+          formula = knowledge.createFrom(PrologFile(filename, parser=parser))
         with Timer('Evaluation'):
           result = formula.evaluate(semiring=semiring)
         return True, result

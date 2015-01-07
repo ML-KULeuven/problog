@@ -480,11 +480,13 @@ class PrologParser(object) :
         return self.statement.parseString(string, True)[0]
         
     def parseString(self, string) :
-        return self.program.parseString(string, True)[0]
+        clauses = self.program.parseString(string, True)[0]
+        return self.factory.build_program(clauses)
         
     def parseFile(self, filename) :
         with open(filename) as f :
-            return self.parseString(f.read())
+            clauses = self.parseString(f.read())
+            return self.factory.build_program(clauses)
 
 
 def is_white(s) :
@@ -507,7 +509,8 @@ class FastPrologParser(PrologParser) :
             return string
         else :
             # It's a clause: call regular parser
-            return PrologParser.parseStatement(self, string)
+            clauses = PrologParser.parseStatement(self, string)
+            return self.factory.build_program(clauses)
         
         
     # def parseString(self, string) :
@@ -515,6 +518,7 @@ class FastPrologParser(PrologParser) :
             
     def parseFile(self, filename) :
         # TODO assumption: no '.' in strings    
+        clauses = []
         with open(filename) as f :
             current_statement = ''
             for line in f :
@@ -534,8 +538,10 @@ class FastPrologParser(PrologParser) :
                     current_statement += ' ' + line
                 else :
                     current_statement += ' ' + line[:p+1]
-                    yield self.parseStatement(current_statement.strip())
+                    #yield self.parseStatement(current_statement.strip())
+                    clauses.append(self.parseStatement(current_statement.strip()))
                     current_statement = line[p+1:]
+        return self.factory.build_program(clauses)
 
 
     def parse_ident(self, string, p) :
