@@ -50,17 +50,22 @@ def main( filename, knowledge=NNF, semiring=None ) :
         return True, result
     except Exception as err :
         return False, process_error(err)
-        
-if __name__ == '__main__' :
-    
+
+def argparser() :
     import argparse
-        
+    
+    class inputfile(str) : pass
+    class outputfile(str) : pass
+    
     parser = argparse.ArgumentParser()
-    parser.add_argument('filenames', metavar='MODEL', nargs='+')
+    parser.add_argument('filenames', metavar='MODEL', nargs='+', type=inputfile)
     parser.add_argument('--knowledge', '-k', choices=('sdd','nnf'), default='nnf', help="Knowledge compilation tool.")
     parser.add_argument('--symbolic', action='store_true', help="Use symbolic evaluation.")
-    parser.add_argument('--output', '-o', help="Output file (default stdout)")
-    
+    parser.add_argument('--output', '-o', help="Output file (default stdout)", type=outputfile)
+    return parser
+        
+if __name__ == '__main__' :
+    parser = argparser()
     args = parser.parse_args()
     
     if args.output == None :
