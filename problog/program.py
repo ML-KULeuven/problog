@@ -212,10 +212,7 @@ class ExtendedPrologFactory(PrologFactory):
 
     def build_program(self, clauses):
 
-        if type(clauses) is Clause:
-            self.update_functors(clauses)
-
-        else:
+        if type(clauses) is list:
             for clause in clauses:
                 self.update_functors(clause)
 
