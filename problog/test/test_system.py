@@ -1,13 +1,16 @@
 import unittest
 
+import glob, os, traceback, sys
+
+if __name__ == '__main__' :
+    sys.path.insert(0,os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')))
+
 from problog import root_path
 
 from problog.setup import install
 from problog.program import PrologFile
 from problog.nnf_formula import NNF
 from problog.sdd_formula import SDD
-
-import glob, os, traceback
 
 class TestDummy(unittest.TestCase):
     
@@ -100,11 +103,18 @@ def createSystemTestNNF(filename) :
     return test
 
 
-for testfile in glob.glob( root_path('test', '*.pl' ) ) :
+if __name__ == '__main__' :
+    filenames = sys.argv[1:]    
+else :
+    filenames = glob.glob( root_path('test', '*.pl' ) )
+
+for testfile in filenames :
     testname = 'test_system_' + os.path.splitext(os.path.basename(testfile))[0]
     setattr( TestSystemSDD, testname, createSystemTestSDD(testfile) )
     setattr( TestSystemNNF, testname, createSystemTestNNF(testfile) )
-
-
-#
-# TestSystem.testB = createSystemTestSDD(root_path('test', '2_tossing_coin.pl' ) )
+    
+if __name__ == '__main__' :
+    suite = unittest.TestLoader().loadTestsFromTestCase(TestSystemSDD)
+    unittest.TextTestRunner(verbosity=2).run(suite)
+    suite = unittest.TestLoader().loadTestsFromTestCase(TestSystemNNF)
+    unittest.TextTestRunner(verbosity=2).run(suite)
