@@ -428,7 +428,7 @@ class PrologParser(object) :
         # <statement> ::= <arg> ( ":-" )
         
         # <fact> ::= <prob> :: <func> | <func> 
-        self.fact = Optional(self.__arg_in_list + Literal("::")) + self.__func
+        self.fact = Optional(self.__arg_in_list + Literal("::")) + ZeroOrMore(self.__unary_operator) + self.__func
         self.fact.setParseAction(self._parse_fact)
         
         # <facts> ::= <fact> ( ";" <fact> )*
@@ -451,7 +451,9 @@ class PrologParser(object) :
         
     @guarded
     def _parse_fact(self, s, loc, toks) :
-        if len(toks) > 1 :
+        if len(toks) > 3:
+            return self.factory.build_probabilistic( functor=toks[1], operand1=toks[0], operand2=toks[3], unaryop=toks[2])
+        elif len(toks) > 1 :
             return self.factory.build_probabilistic( functor=toks[1], operand1=toks[0], operand2=toks[2] )
         else :
             return toks[0]

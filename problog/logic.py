@@ -77,6 +77,10 @@ class Term(object) :
         """Term functor"""
         return self.__functor
 
+    @functor.setter
+    def functor(self, value):
+        self.__functor = value
+
     @property
     def args(self) : 
         """Term arguments"""

@@ -182,13 +182,68 @@ class ExtendedPrologFactory(PrologFactory):
     """Prolog with some extra syntactic sugar.
 
     Non-standard syntax:
-    - Negative head literals:
+    - Negative head literals [Meert and Vennekens, PGM 2014]:
       0.5::\+a :- b.
     """
+    def __init__(self):
+        self.neg_head_lits = dict()
+
+    def update_functors(self, t):
+        if type(t) is Clause:
+            self.update_functors(t.head)
+            self.update_functors(t.body)
+        elif type(t) is AnnotatedDisjunction:
+            self.update_functors(t.heads)
+            self.update_functors(t.body)
+        elif type(t) is Term:
+            if t.signature in self.neg_head_lits:
+                t.functor = self.neg_head_lits[t.signature]['p']
+        elif type(t) is Not:
+            self.update_functors(t.child)
+        elif type(t) is Or or type(t) is And:
+            self.update_functors(t.op1)
+            self.update_functors(t.op2)
+        elif type(t) is None or type(t) is Var or type(t) is Constant:
+            pass
+        else:
+            print("Unknown type: {} -- {}".format(t, type(t)))
+            raise
+
+
     def build_program(self, clauses):
-        print(clauses)
+
+        if type(clauses) is Clause:
+            self.update_functors(clauses)
+
+        else:
+            for clause in clauses:
+                self.update_functors(clause)
+
+            # TODO: This assumes that ones a list is given as clauses it's
+            #       the final call. Is this correct?
+            for k,v in self.neg_head_lits.items():
+                cur_vars = [Var("v{}".format(i)) for i in range(v['c'])]
+                new_clause = Clause(Term(v['f'], *cur_vars), And(Term(v['p'], *cur_vars), Not(Term(v['n'], *cur_vars))))
+                clauses.append(new_clause)
+
+            logger = logging.getLogger('problog')
+            logger.debug('Transformed program:\n{}'.format('\n'.join([str(c) for c in clauses])))
+
         return clauses
 
+
+    def build_probabilistic(self, operand1, operand2, **extra) :
+        if 'unaryop' in extra and extra['unaryop'] == '\\+':
+            if not operand2.signature in self.neg_head_lits:
+                self.neg_head_lits[operand2.signature] = {
+                    'c': operand2.arity,
+                    'p': operand2.functor+"_p",
+                    'n': operand2.functor+"_n",
+                    'f': operand2.functor
+                }
+            operand2.functor = self.neg_head_lits[operand2.signature]['n']
+        operand2.probability = operand1
+        return operand2
 
 
 
