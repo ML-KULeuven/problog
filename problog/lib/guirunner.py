@@ -7,11 +7,11 @@ import os
 
 
 if sys.version_info.major == 2 :
-    from Tkinter import Tk, BOTH, RIGHT, IntVar, StringVar, Grid, X, Y,  Text, END
+    from Tkinter import Tk, BOTH, RIGHT, IntVar, StringVar, Grid, X, Y,  Text, END, Spinbox
     from ttk import Combobox, Entry, Frame, Button, Label, Checkbutton
     import tkFileDialog
 else :
-    from tkinter import Tk, BOTH, RIGHT, IntVar, StringVar, Grid, X, Y,  Text, END
+    from tkinter import Tk, BOTH, RIGHT, IntVar, StringVar, Grid, X, Y,  Text, END, Spinbox
     from tkinter.ttk import Combobox, Entry, Frame, Button, Label, Checkbutton
     import tkinter.filedialog as tkFileDialog 
 
@@ -51,7 +51,7 @@ class MainWindow(Frame) :
         Frame.__init__(self, parent)
         self.scriptname = scriptname
         self.progname = progname
-        self.prefix = []
+        self.function = []
         self.variables = []        
         self.parent = parent
         self.initUI(parser)
@@ -108,27 +108,40 @@ class MainWindow(Frame) :
             if action_type == '_HelpAction' :
                 pass
             else :
+                self.function.append(lambda v : [v])
                 self.variables.append(None)
-                self.prefix.append(None)
                 if action.choices :
                     self._add_choice( mainFrame, index, action.dest, action.choices, action.default, action.option_strings[0] )
                 elif action_type == '_StoreTrueAction' :
                     self._add_check( mainFrame, index, action.dest, False, action.option_strings[0] )
-                elif action.type.__name__ == 'inputfile' :
+                elif action_type == '_CountAction' :
+                    self._add_count( mainFrame, index, action.dest, 0, action.option_strings[0] )                    
+                elif action.type and action.type.__name__ == 'inputfile' :
                     self._add_filename( mainFrame, index, action.dest, 'r', action.option_strings )
-                elif action.type.__name__ == 'outputfile' :
+                elif action.type and action.type.__name__ == 'outputfile' :
                     self._add_filename( mainFrame, index, action.dest, 'w', action.option_strings )
                 else :
                     self._add_field( mainFrame, index, action.dest )
     
     def _add_field( self, frame, index, name ) :
+        self.variables[-1] = StringVar()
         label = Label(frame, text=name)
         label.grid(row=index, column=0, sticky='W', padx=10)
         field = Entry(frame)
+        field.grid(row=index, column=1, sticky='WE', textvariable=self.variables[-1])
+        
+    def _add_count(self, frame, index, name, default, option) :
+        self.function[-1] = lambda v : [option]*int(v)
+        self.variables[-1] = StringVar()
+        self.variables[-1].set(default)
+        label = Label(frame, text=name)
+        label.grid(row=index, column=0, sticky='W', padx=10)
+        field = Spinbox(frame, from_=0, to=100, textvariable=self.variables[-1])
         field.grid(row=index, column=1, sticky='WE')
         
+        
     def _add_choice(self, frame, index, name, choices, default, option) :
-        self.prefix[-1] = option
+        self.function[-1] = lambda v : [ option, v ]
         label = Label(frame, text=name)
         label.grid(row=index, column=0, sticky='W', padx=10)
         field = Combobox(frame, values=choices, state='readonly' )
@@ -146,7 +159,10 @@ class MainWindow(Frame) :
         field.grid(row=index, column=1, sticky='WE')
         
     def _add_filename(self, frame, index, name, mode, option) :     
-        if option : self.prefix[-1] = option[0]
+        if option : 
+            self.function[-1] = lambda v : [option, v]
+        else :
+            self.function[-1] = lambda v : [v]
            
         self.variables[-1] = StringVar()
         var = self.variables[-1]
@@ -170,10 +186,7 @@ class MainWindow(Frame) :
         button.grid(row=0,column=1)
         
         field_button.grid(row=index, column=1, sticky='WE')
-        
-    def _open_file(self) :
-        return 
-        
+                
     def run(self) :
         
         # TODO enforce required arguments
@@ -181,10 +194,8 @@ class MainWindow(Frame) :
         
         args = []
         for i, x in enumerate(self.variables) :
-            if self.prefix[i] != None and x.get() :
-                args.append(self.prefix[i])
-            if x.get() :
-                args.append(x.get())
+            if self.function[i] != None and x.get() :
+                args += self.function[i](x.get())
         
         cmd = [sys.executable, self.scriptname] + args
         
