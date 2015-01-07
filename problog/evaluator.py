@@ -162,10 +162,7 @@ class Evaluatable(object) :
             # Probability of query given evidence
             for name, node in evaluator.getNames(LABEL_QUERY) :
                 w = evaluator.evaluate(node)    
-                if w < 1e-6 : 
-                    result[name] = 0.0
-                else :
-                    result[name] = w
+                result[name] = w
             return result
         else :
             return evaluator.evaluate(node)
