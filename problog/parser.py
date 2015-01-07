@@ -582,29 +582,31 @@ class FastPrologParser(PrologParser) :
             # List
             p += 1
             p = self.skip_ws(string, p)
-        
-            args = []
-            p, arg = self.parse_atom(string, p)
-            args.append(arg)
-            p = self.skip_ws(string, p)
-        
-            while p < len(string) and string[p] == ',' :
-                p += 1
-                p = self.skip_ws(string, p)
+            if string[p] == ']' :
+                current = self.factory.build_list( [], tail=None )
+            else :
+                args = []
                 p, arg = self.parse_atom(string, p)
                 args.append(arg)
                 p = self.skip_ws(string, p)
-
-            tail = None
-            if p < len(string) and string[p] == '|' :
-                p += 1
-                p = self.skip_ws(string, p)
-                p, tail = self.parse_atom(string, p)
-                p = self.skip_ws(string, p)
-
-            current = self.factory.build_list( args, tail=tail )
         
-            assert(string[p] == ']')
+                while p < len(string) and string[p] == ',' :
+                    p += 1
+                    p = self.skip_ws(string, p)
+                    p, arg = self.parse_atom(string, p)
+                    args.append(arg)
+                    p = self.skip_ws(string, p)
+
+                tail = None
+                if p < len(string) and string[p] == '|' :
+                    p += 1
+                    p = self.skip_ws(string, p)
+                    p, tail = self.parse_atom(string, p)
+                    p = self.skip_ws(string, p)
+
+                assert(string[p] == ']')            
+                current = self.factory.build_list( args, tail=tail )
+        
             p += 1
             p = self.skip_ws(string, p)
         
