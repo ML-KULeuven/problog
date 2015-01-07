@@ -48,7 +48,7 @@ def main( filename, knowledge=NNF, semiring=None ) :
     logger = logging.getLogger('problog')
 
     try :
-        with Timer('Processing model'):
+        with Timer('Total time to processing model'):
           formula = knowledge.createFrom( PrologFile(filename) )
         with Timer('Evaluation'):
           result = formula.evaluate(semiring=semiring)

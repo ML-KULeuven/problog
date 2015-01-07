@@ -10,6 +10,7 @@ from .logic import LogicProgram
 from .cnf_formula import CNF
 from .interface import ground
 from .core import transform
+from .util import Timer
 
 class NNF(LogicDAG, Evaluatable) :
     
@@ -173,10 +174,12 @@ if system_info.get('c2d', False) :
 
 @transform(CNF, NNF)
 def _compile_with_dsharp( cnf, nnf=None ) :
-    cnf_file = tempfile.mkstemp('.cnf')[1]
-    nnf_file = tempfile.mkstemp('.nnf')[1]    
-    cmd = ['dsharp', '-Fnnf', nnf_file, '-smoothNNF','-disableAllLits', cnf_file ] #
-    return _compile( cnf, cmd, cnf_file, nnf_file )
+    with Timer('DSharp compilation'):
+        cnf_file = tempfile.mkstemp('.cnf')[1]
+        nnf_file = tempfile.mkstemp('.nnf')[1]    
+        cmd = ['dsharp', '-Fnnf', nnf_file, '-smoothNNF','-disableAllLits', cnf_file ] #
+        result = _compile( cnf, cmd, cnf_file, nnf_file )
+    return result
 Compiler.add( 'dsharp', _compile_with_dsharp )
 
 

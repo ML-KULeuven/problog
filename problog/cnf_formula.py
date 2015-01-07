@@ -3,6 +3,7 @@ from __future__ import print_function
 from .formula import LogicDAG
 
 from .core import ProbLogObject, transform
+from .util import Timer
 
 import tempfile
 
@@ -107,35 +108,35 @@ class CNFFile(CNF) :
 
 @transform(LogicDAG, CNF) 
 def clarks_completion( source, destination ) :    
-    # Every node in original gets a literal
-    num_atoms = len(source)
-    
-    # Add atoms
-    for i in range(0, num_atoms) :
-        destination.addAtom( (i+1), True, (i+1) )
+    with Timer('Clark\'s completion'):
+        # Every node in original gets a literal
+        num_atoms = len(source)
+        
+        # Add atoms
+        for i in range(0, num_atoms) :
+            destination.addAtom( (i+1), True, (i+1) )
 
-    # Complete other nodes
-    for index, node, nodetype in source.iterNodes() :
-        if nodetype == 'conj' :
-            destination.addOr( (index,) + tuple( map( lambda x : destination.addNot(x), node.children ) ) )
-            for x in node.children  :
-                destination.addOr( (destination.addNot(index), x) )
-        elif nodetype == 'disj' :
-            destination.addOr( (destination.addNot(index),) + tuple( node.children ) )
-            for x in node.children  :
-                destination.addOr( (index, destination.addNot(x)) )
-        elif nodetype == 'atom' :
-            pass
-        else :
-            raise ValueError("Unexpected node type: '%s'" % nodetype)
-        
-    for c in source.constraints() :
-        destination.addConstraint(c)
-    
-    destination.setNamesWithLabel(source.getNamesWithLabel())
-    destination.setWeights(source.getWeights())
+        # Complete other nodes
+        for index, node, nodetype in source.iterNodes() :
+            if nodetype == 'conj' :
+                destination.addOr( (index,) + tuple( map( lambda x : destination.addNot(x), node.children ) ) )
+                for x in node.children  :
+                    destination.addOr( (destination.addNot(index), x) )
+            elif nodetype == 'disj' :
+                destination.addOr( (destination.addNot(index),) + tuple( node.children ) )
+                for x in node.children  :
+                    destination.addOr( (index, destination.addNot(x)) )
+            elif nodetype == 'atom' :
+                pass
+            else :
+                raise ValueError("Unexpected node type: '%s'" % nodetype)
             
-    destination.ready()
-    return destination
+        for c in source.constraints() :
+            destination.addConstraint(c)
         
-    
+        destination.setNamesWithLabel(source.getNamesWithLabel())
+        destination.setWeights(source.getWeights())
+                
+        destination.ready()
+        return destination
+
