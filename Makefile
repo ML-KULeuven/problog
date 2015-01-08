@@ -42,3 +42,10 @@ package: docs
 	rmdir problog2.1	
 	@echo "======================================================================"
 	
+update_server:
+	@echo "Updating server"
+	@echo "==============="
+	rsync -avzr --exclude '.git*' --exclude '*.DS_Store' --exclude '*.swp' --exclude '*.pyc' --exclude '*~' --rsh='ssh ssh.cs.kuleuven.be ssh -p 2222' --chmod=u=rwx,g=rx,o=rx --exclude '*~' ./ problog@adams.cs.kuleuven.be:/home/problog/problog2.1
+	rsync -avzr --exclude '*.DS_Store' --exclude '*.swp' --exclude '*~'--rsh='ssh ssh.cs.kuleuven.be ssh -p 2222' --chmod=u=rwx,g=rx,o=rx --exclude '*~' ./web/js/ problog@adams.cs.kuleuven.be:/home/problog/public_html/js
+	@echo "======================================================================"
+

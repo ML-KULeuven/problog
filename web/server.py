@@ -34,7 +34,7 @@ import traceback
 import subprocess
 import resource
 
-DEFAULT_PORT = 8000
+DEFAULT_PORT = 5100
 DEFAULT_TIMEOUT = 60
 DEFAULT_MEMOUT = 1.0 # gigabyte
 

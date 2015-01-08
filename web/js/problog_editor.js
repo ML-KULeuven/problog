@@ -14,7 +14,7 @@
  */
 
 var problog = {
-  hostname: '',
+  hostname: 'http://localhost:5100',
   main_editor_url: '',
   editors: [],
   selector: '.problog-editor',
