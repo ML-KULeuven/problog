@@ -81,8 +81,9 @@ problog.initDiv = function(el, resize) {
   var btn_group = $('<div class="btn-group" role="group"></div>').appendTo(buttons);
   var eval_btn = $('<input class="btn btn-default" type="button" value="Evaluate"/>').appendTo(btn_group);
 
-  var result_panel = $('<div class="panel panel-default"><div class="panel-heading"><span class="panel-title">Result</span></div></div>').appendTo(problog_container);
-  var result_panel_body = $('<div class="panel-body" class="result-final"></div>').appendTo(result_panel);
+  //var result_panel = $('<div class="panel panel-default"><div class="panel-heading"><span class="panel-title">Result</span></div></div>').appendTo(problog_container);
+  var result_panel = $('<div class="panel panel-default"></div>').appendTo(problog_container);
+  var result_panel_body = $('<div class="panel-body" class="result-final">Results ...</div>').appendTo(result_panel);
 
   // Init ACE editor
   var editor = ace.edit(editor_container[0]);
@@ -123,64 +124,66 @@ problog.initDiv = function(el, resize) {
       url: url, 
       dataType: 'jsonp',
       data: data,
+      success: function(data) {
 
-    }).done( function(data) {
+        if (intr !== undefined) {
+          var meta = data;
+          data = data.weights;
+        }
 
-      if (intr !== undefined) {
-        var meta = data;
-        data = data.weights;
-      }
+        var result = $('<tbody>');
+        for (var k in data) {
+          var p = data[k];
+          result.append($('<tr>')
+                .append($('<td>').text(k))
+                .append($('<td>').text(p)));
+        }
+        result = $('<table>', {'class': 'table table-condensed'})
+         .append($('<thead>')
+          .append($('<tr>')
+           .append($('<th>').text(intr?'Fact':'Query'))
+           .append($('<th>').text('Probability'))
+          )
+         ).append(result);
 
-      var result = $('<tbody>');
-      for (var k in data) {
-        var p = data[k];
-        result.append($('<tr>')
-              .append($('<td>').text(k))
-              .append($('<td>').text(p)));
-      }
-      result = $('<table>', {'class': 'table'})
-       .append($('<thead>')
-        .append($('<tr>')
-         .append($('<th>').text(intr?'Fact':'Query'))
-         .append($('<th>').text('Probability'))
-        )
-       ).append(result);
+        result_panel_body.html(result);
 
-      result_panel_body.html(result);
-
-      if (intr !== undefined) {
-        var meta_str = "<p><strong>Stats</strong>:";
-        for (var k in meta) {
-          if (k !== 'weights') {
-            meta_str += " "+k+"="+meta[k];
+        if (intr !== undefined) {
+          var meta_str = "<p><strong>Stats</strong>:";
+          for (var k in meta) {
+            if (k !== 'weights') {
+              meta_str += " "+k+"="+meta[k];
+            }
+          }
+          meta_str += "</p>";
+          $(meta_str).appendTo(result_panel_body);
+        } else {
+          if (cur_model_hash) {
+            $('<a href="'+problog.main_editor_url+'#hash='+cur_model_hash+'">Link to model</a>').appendTo(result_panel_body);
           }
         }
-        meta_str += "</p>";
-        $(meta_str).appendTo(result_panel_body);
-      } else {
+
+        eval_btn.removeAttr('disabled');
+        eval_btn.val(btn_txt);
+      },
+
+      error: function(jqXHR, textStatus, errorThrown) {
+        //console.log("Problog request failed");
+        // TODO: response text is not captured by jQuery?
+        var text = "No (correct) response from server. ";
+        if (jqXHR.responseText) {
+          text += jqXHR.responseText;
+        }
+        var result = $('<div>', {'class' : 'alert alert-danger'}).text(text);
+        result_panel_body.html(result);
+
         if (cur_model_hash) {
           $('<a href="'+problog.main_editor_url+'#hash='+cur_model_hash+'">Link to model</a>').appendTo(result_panel_body);
         }
+
+        eval_btn.removeAttr('disabled');
+        eval_btn.val(btn_txt);
       }
-
-      eval_btn.removeAttr('disabled');
-      eval_btn.val(btn_txt);
-
-    }).fail( function(jqXHR, textStatus, errorThrown) {
-      //console.log("Problog request failed");
-      var text = "No (correct) response from server. ";
-      if (jqXHR.responseText) {
-        text += jqXHR.responseText;
-      }
-      var result = $('<div>', {'class' : 'alert alert-danger'}).text(text);
-      result_panel_body.html(result);
-
-      if (cur_model_hash) {
-        $('<a href="'+problog.main_editor_url+'#hash='+cur_model_hash+'">Link to model</a>').appendTo(result_panel_body);
-      }
-
-      eval_btn.removeAttr('disabled');
-      eval_btn.val(btn_txt);
     });
 
   });
