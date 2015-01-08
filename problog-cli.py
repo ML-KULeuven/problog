@@ -103,6 +103,9 @@ if __name__ == '__main__' :
     if args.filenames[0] == 'install' :
         from problog import setup
         setup.install()
+    elif args.filenames[0] == 'info' :
+        from problog.core import list_transformations
+        list_transformations()
     else :
         if args.knowledge == 'nnf' :
             knowledge = NNF

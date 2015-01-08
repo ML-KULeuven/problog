@@ -83,3 +83,10 @@ class transform(object) :
         # TODO check type contract?
         ProbLog.registerTransformation( self.cls1, self.cls2, f )
         return f
+        
+def list_transformations() :
+    print ('Available transformations:')
+    for target in ProbLog.transformations :
+        print ('\tcreate %s.%s' % (target.__module__, target.__name__) )
+        for src, func in ProbLog.transformations[target] :
+            print ('\t\tfrom %s.%s by %s.%s' % (src.__module__, src.__name__, func.__module__, func.__name__) )
