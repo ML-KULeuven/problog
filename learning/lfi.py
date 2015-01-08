@@ -52,7 +52,7 @@ from problog.engine import DefaultEngine
 # from problog.nnf_formula import NNF as knowledge
 from problog.sdd_formula import SDD as knowledge
 from problog.evaluator import SemiringProbability
-from problog.logic import Term, Var, Constant, Clause, AnnotatedDisjunction
+from problog.logic import Term, Var, Constant, Clause, AnnotatedDisjunction, LogicProgram
 from problog.parser import PrologParser
 from problog.program import PrologFactory, ClauseDB, PrologString, PrologFile
 
@@ -65,10 +65,11 @@ def str2bool(s) :
     else :
         return None
                 
-class LFIProblem(SemiringProbability) :
+class LFIProblem(SemiringProbability, LogicProgram) :
     
     def __init__(self, source, examples, max_iter=10000, min_improv=1e-10) :
         SemiringProbability.__init__(self)
+        LogicProgram.__init__(self)
         self.source = source
         self.names = []
         self.queries = []
