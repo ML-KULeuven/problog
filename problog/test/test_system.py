@@ -8,7 +8,7 @@ if __name__ == '__main__' :
 from problog import root_path
 
 from problog.setup import install
-from problog.program import PrologFile
+from problog.program import PrologFile, DefaultPrologParser, ExtendedPrologFactory
 from problog.nnf_formula import NNF
 from problog.sdd_formula import SDD
 
@@ -60,7 +60,8 @@ def createSystemTestSDD(filename) :
 
     def test(self) :
         try :
-            sdd = SDD.createFrom(PrologFile(filename))
+            parser = DefaultPrologParser(ExtendedPrologFactory())
+            sdd = SDD.createFrom(PrologFile(filename, parser=parser))
             computed = sdd.evaluate()
         except Exception as err :
             e = err
@@ -85,7 +86,8 @@ def createSystemTestNNF(filename) :
 
     def test(self) :
         try :
-            sdd = NNF.createFrom(PrologFile(filename))
+            parser = DefaultPrologParser(ExtendedPrologFactory())
+            sdd = NNF.createFrom(PrologFile(filename, parser=parser))
             computed = sdd.evaluate()
         except Exception as err :
             e = err
