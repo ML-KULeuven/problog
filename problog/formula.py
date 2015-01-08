@@ -7,7 +7,7 @@ from .core import transform, ProbLogObject
 from .core import LABEL_QUERY, LABEL_EVIDENCE_POS, LABEL_EVIDENCE_NEG, LABEL_EVIDENCE_MAYBE
 from .util import Timer
 
-
+import logging
 
 class LogicFormulaBase(ProbLogObject) :
     
@@ -670,7 +670,10 @@ class LogicDAG(LogicFormula) :
         
 @transform(LogicFormula, LogicDAG)
 def breakCycles(source, target) :
-    return source.makeAcyclic(preserve_tables=False, output=target)
+    logger = logging.getLogger('problog')
+    result = source.makeAcyclic(preserve_tables=False, output=target)
+    logger.debug("Ground program size: %s", len(result))
+    return result
  
 class Constraint(object) : 
     pass
