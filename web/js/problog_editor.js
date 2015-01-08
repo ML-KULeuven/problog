@@ -55,6 +55,8 @@ problog.initDiv = function(el, resize) {
     resize = false;
   }
 
+  el.css('width', '84ex');
+
   // Init theory
   var intr = undefined;
   if (el.children('.interpretations').length > 0) {
