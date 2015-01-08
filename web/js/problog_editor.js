@@ -3,6 +3,8 @@
  * Usage:
  * When calling `problog.initialize()`, all .problog-editor divs are replaced
  * by editors with the original contents of the div.
+ * If the .problog-editor div contains a .interpretations div, it is considered
+ * a learning task and a second editor is added for training data.
  *
  * Requires:
  * - http://jquery.com/
@@ -54,6 +56,11 @@ problog.initDiv = function(el, resize) {
   }
 
   // Init theory
+  var intr = undefined;
+  if (el.children('.interpretations').length > 0) {
+    intr = el.children('.interpretations').html();
+    el.children('.interpretations').remove();
+  }
   var theory = el.html();
   el.html('');
 
@@ -63,6 +70,10 @@ problog.initDiv = function(el, resize) {
   var problog_container = $('<div id="'+new_id+'"></div>').appendTo(el);
   var editor_container = $('<div class="editor-container" style="width:100%;height:300px;"></div>').appendTo(problog_container);
   editor_container.html(theory);
+  if (intr !== undefined) {
+    var editor_container_intr = $('<div class="editor-container-intr" style="width:100%;height:300px;"></div>').appendTo(problog_container);
+    editor_container_intr.html(intr);
+  }
 
   var buttons = $('<form class="text-center form-inline"></form>').appendTo(problog_container);
   var btn_group = $('<div class="btn-group" role="group"></div>').appendTo(buttons);
@@ -77,6 +88,14 @@ problog.initDiv = function(el, resize) {
   editor.getSession().setUseWrapMode(true);
   editor.setShowInvisibles(true);
 
+  if (intr !== undefined) {
+    var editor_intr = ace.edit(editor_container_intr[0]);
+    editor_intr.getSession().setMode('ace/mode/prolog');
+    editor_intr.getSession().setUseWrapMode(true);
+    editor_intr.setShowInvisibles(true);
+    eval_btn.val('Learn');
+  }
+
   // Init buttons
   eval_btn.click(function() {
     var btn_txt = eval_btn.val();
@@ -84,13 +103,27 @@ problog.initDiv = function(el, resize) {
     eval_btn.val('processing...');
     var cur_model = editor.getSession().getValue();
     var cur_model_hash = CryptoJS.MD5(cur_model);
+    var cur_intr = editor_intr.getSession().getValue();
+
+    var url = problog.hostname + '/api/inference';
+    var data = {'model': cur_model};
+    if (intr !== undefined) {
+      url = problog.hostname + '/api/learning';
+      data['examples'] = cur_intr;
+    }
 
     $.ajax({
-      url: problog.hostname + '/api/problog', 
+      url: url, 
       dataType: 'jsonp',
-      data: {'model': cur_model},
+      data: data,
 
     }).done( function(data) {
+
+      if (intr !== undefined) {
+        var meta = data;
+        data = data.weights;
+      }
+
       var result = $('<tbody>');
       for (var k in data) {
         var p = data[k];
@@ -101,13 +134,26 @@ problog.initDiv = function(el, resize) {
       result = $('<table>', {'class': 'table'})
        .append($('<thead>')
         .append($('<tr>')
-         .append($('<th>').text('Query'))
+         .append($('<th>').text(intr?'Fact':'Query'))
          .append($('<th>').text('Probability'))
         )
        ).append(result);
 
       result_panel_body.html(result);
-      $('<a href="'+problog.main_editor_url+'#hash='+cur_model_hash+'">Link to model</a>').appendTo(result_panel_body);
+
+      if (intr !== undefined) {
+        var meta_str = "<p><strong>Stats</strong>:";
+        for (var k in meta) {
+          if (k !== 'weights') {
+            meta_str += " "+k+"="+meta[k];
+          }
+        }
+        meta_str += "</p>";
+        $(meta_str).appendTo(result_panel_body);
+      } else {
+        $('<a href="'+problog.main_editor_url+'#hash='+cur_model_hash+'">Link to model</a>').appendTo(result_panel_body);
+      }
+
       eval_btn.removeAttr('disabled');
       eval_btn.val(btn_txt);
 
