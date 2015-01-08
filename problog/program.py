@@ -205,9 +205,12 @@ class ExtendedPrologFactory(PrologFactory):
             self.update_functors(t.op2)
         elif type(t) is None or type(t) is Var or type(t) is Constant:
             pass
-        else:
+        elif type(t) is list :
+            for term in t :
+                self.update_functors(term)
+        else :
             print("Unknown type: {} -- {}".format(t, type(t)))
-            raise
+            raise Exception()
 
 
     def build_program(self, clauses):
