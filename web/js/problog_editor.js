@@ -16,8 +16,8 @@
  */
 
 var problog = {
-  hostname: 'http://localhost:5100',
-  main_editor_url: '',
+  hostname: 'http://adams.cs.kuleuven.be/problog/api/',
+  main_editor_url: 'http://dtai.cs.kuleuven.be/problog/editor.html',
   editors: [],
   selector: '.problog-editor',
 };
@@ -104,17 +104,19 @@ problog.initDiv = function(el, resize) {
     eval_btn.attr('disabled', 'disabled')
     eval_btn.val('processing...');
     var cur_model = editor.getSession().getValue();
+    if (cur_model == '') {
+      cur_model = '%%';
+    }
     var cur_model_hash = undefined;
     if (CryptoJS !== undefined) {
       cur_model_hash = CryptoJS.MD5(cur_model);
     }
-    var cur_intr = editor_intr.getSession().getValue();
 
-    var url = problog.hostname + '/api/inference';
+    var url = problog.hostname + 'inference';
     var data = {'model': cur_model};
     if (intr !== undefined) {
-      url = problog.hostname + '/api/learning';
-      data['examples'] = cur_intr;
+      url = problog.hostname + 'learning';
+      data['examples'] = editor_intr.getSession().getValue();
     }
 
     $.ajax({
@@ -165,7 +167,12 @@ problog.initDiv = function(el, resize) {
       eval_btn.val(btn_txt);
 
     }).fail( function(jqXHR, textStatus, errorThrown) {
-      var result = $('<div>', {'class' : 'alert alert-danger'}).text( jqXHR.responseText);
+      //console.log("Problog request failed");
+      var text = "No (correct) response from server. ";
+      if (jqXHR.responseText) {
+        text += jqXHR.responseText;
+      }
+      var result = $('<div>', {'class' : 'alert alert-danger'}).text(text);
       result_panel_body.html(result);
 
       if (cur_model_hash) {
@@ -228,7 +235,7 @@ problog.fetchModel = function(hash, editor) {
   }
 
   $.ajax({
-    url: problog.hostname + '/api/model', 
+    url: problog.hostname+'model', 
     dataType: 'jsonp',
     data: {'hash': hash},
 

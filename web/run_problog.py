@@ -11,7 +11,7 @@ from problog.program import PrologFile, PrologFactory
 from problog.evaluator import SemiringSymbolic, Evaluator
 from problog.nnf_formula import NNF
 # from problog.sdd_formula import SDD
-            
+
 def print_result( d, output, precision=8 ) :
     success, d = d
     if success :

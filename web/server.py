@@ -33,6 +33,7 @@ import tempfile
 import traceback
 import subprocess
 import resource
+import logging, logging.config
 
 DEFAULT_PORT = 5100
 DEFAULT_TIMEOUT = 60
@@ -42,6 +43,11 @@ SERVE_FILES=False
 CACHE_MODELS=True
 CACHE_DIR="cache"
 
+api_root = ''
+
+here = os.path.dirname(__file__)
+logging.config.fileConfig(os.path.join(here,'logging.conf'))
+logger = logging.getLogger('server')
 
 # Load Python standard web-related modules (based on Python version)
 import json
@@ -108,31 +114,31 @@ def call_process( cmd, timeout, memout ) :
     return subprocess.check_output(cmd, preexec_fn=setlimits)
 
 
-@handle_url('/problog')
-def run_problog( model ) :
-    """Evaluate the given model and return the probabilities."""
-    model = model[0]
+#@handle_url('/problog')
+#def run_problog( model ) :
+    #"""Evaluate the given model and return the probabilities."""
+    #model = model[0]
     
-    handle, tmpfile = tempfile.mkstemp('.pl')
-    with open(tmpfile, 'w') as f :
-        f.write(model)
+    #handle, tmpfile = tempfile.mkstemp('.pl')
+    #with open(tmpfile, 'w') as f :
+        #f.write(model)
     
-    handle, outfile = tempfile.mkstemp('.out')
+    #handle, outfile = tempfile.mkstemp('.out')
     
-    cmd = [ 'python', root_path('run_problog.py'), tmpfile, outfile ]
+    #cmd = [ 'python', root_path('run_problog.py'), tmpfile, outfile ]
     
-    try :
-        call_process(cmd, DEFAULT_TIMEOUT, DEFAULT_MEMOUT * (1 << 30))
+    #try :
+        #call_process(cmd, DEFAULT_TIMEOUT, DEFAULT_MEMOUT * (1 << 30))
         
-        with open(outfile) as f :
-            result = f.read()
-        code, datatype, datavalue = result.split(None,2)
-        return int(code), datatype, datavalue
-    except subprocess.CalledProcessError :
-        return 500, 'text/plain', 'ProbLog evaluation exceeded time or memory limit'
+        #with open(outfile) as f :
+            #result = f.read()
+        #code, datatype, datavalue = result.split(None,2)
+        #return int(code), datatype, datavalue
+    #except subprocess.CalledProcessError :
+        #return 500, 'text/plain', 'ProbLog evaluation exceeded time or memory limit'
 
 
-@handle_url('/api/inference')
+@handle_url(api_root+'inference')
 def run_problog_jsonp(model, callback):
     """Evaluate the given model and return the probabilities using the JSONP
        standard.
@@ -174,7 +180,7 @@ def run_problog_jsonp(model, callback):
     except subprocess.CalledProcessError :
         return 500, 'text/plain', 'ProbLog evaluation exceeded time or memory limit'
 
-@handle_url('/api/learning')        
+@handle_url(api_root+'learning')
 def run_learning_jsonp(model, examples, callback) :
     """Evaluate the given model and return the probabilities using the JSONP
        standard.
@@ -219,7 +225,7 @@ def run_learning_jsonp(model, examples, callback) :
     
 
 
-@handle_url('/api/model')
+@handle_url(api_root+'model')
 def get_model_from_hash_jsonp(hash, callback):
     hash = hash[0]
     callback = callback[0]
@@ -242,29 +248,35 @@ def get_model_from_hash_jsonp(hash, callback):
 
 
 class ProbLogHTTP(BaseHTTPServer.BaseHTTPRequestHandler) :
-          
+
     def do_POST(self) :
-                
         numberOfBytes = int(self.headers["Content-Length"])
         data = self.rfile.read(numberOfBytes)
         query = urlparse.parse_qs(data)
+
+        logger.info('POST - {}'.format(query))
+
         self.do_GET(query=query)
-        
-        
+
+
     def do_GET(self, query=None) :
         """Handle a GET request.
-        
+
         Looks up the URL path in PATHS and executes the corresponding function.
         If the path does not occur in PATHS, treats the path as a filename and serves the file.
         """
 
         url = urlparse.urlparse( self.path )
         path = url.path
+        # TODO: fix after Bart fixes proxy!!!!
+        path = url.netloc
         if query == None :
             query = urlparse.parse_qs(url.query)
         if '_' in query:
             # Used by jquery to avoid caching
             del query['_']
+
+        logger.info('GET - {} - {}'.format(path, query))
 
         action = PATHS.get(path)
         if action == None :
@@ -318,7 +330,8 @@ if __name__ == '__main__' :
     DEFAULT_MEMOUT = args.memout
     SERVE_FILES = args.servefiles
     CACHE_MODELS = not args.nocaching
-    print ('Starting server on port %d (timeout=%d, memout=%dGb)' % (args.port, DEFAULT_TIMEOUT, DEFAULT_MEMOUT ))    
+    print('Starting server on port %d (timeout=%d, memout=%dGb)' % (args.port, DEFAULT_TIMEOUT, DEFAULT_MEMOUT ))    
+    logger.info('Starting server on port %d (timeout=%d, memout=%dGb)' % (args.port, DEFAULT_TIMEOUT, DEFAULT_MEMOUT ))    
 
     server_address = ('', args.port)
     httpd = BaseHTTPServer.HTTPServer( server_address, ProbLogHTTP )
