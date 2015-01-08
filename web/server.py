@@ -132,7 +132,7 @@ def run_problog( model ) :
         return 500, 'text/plain', 'ProbLog evaluation exceeded time or memory limit'
 
 
-@handle_url('/api/problog')
+@handle_url('/api/inference')
 def run_problog_jsonp(model, callback):
     """Evaluate the given model and return the probabilities using the JSONP
        standard.
@@ -173,6 +173,50 @@ def run_problog_jsonp(model, callback):
         return int(code), datatype, datavalue
     except subprocess.CalledProcessError :
         return 500, 'text/plain', 'ProbLog evaluation exceeded time or memory limit'
+
+@handle_url('/api/learning')        
+def run_learning_jsonp(model, examples, callback) :
+    """Evaluate the given model and return the probabilities using the JSONP
+       standard.
+       This mode is required to send an API request when Problog is
+       running on a different server (to avoid cross-side-scripting
+       limitations).
+    """
+    model = model[0]
+    callback = callback[0]
+
+    if False and CACHE_MODELS:  # Disabled for now
+      import hashlib
+      inhash = hashlib.md5(model).hexdigest()
+      if not os.path.exists(CACHE_DIR):
+          os.mkdir(CACHE_DIR)
+      infile = os.path.join(CACHE_DIR, inhash+'.pl')
+      outfile = os.path.join(CACHE_DIR, inhash+'.out')
+    else:
+      handle, infile = tempfile.mkstemp('.pl')
+      handle, datafile = tempfile.mkstemp('.data')
+      handle, outfile = tempfile.mkstemp('.out')
+
+    with open(infile, 'w') as f :
+        f.write(model)
+
+
+    cmd = [ 'python', root_path('run_learning.py'), infile, datafile, outfile ]
+
+    try :
+        call_process(cmd, DEFAULT_TIMEOUT, DEFAULT_MEMOUT * (1 << 30))
+
+        with open(outfile) as f :
+            result = f.read()
+        code, datatype, datavalue = result.split(None,2)
+
+        if datatype == 'application/json':
+            datavalue = '{}({});'.format(callback, datavalue)
+
+        return int(code), datatype, datavalue
+    except subprocess.CalledProcessError :
+        return 500, 'text/plain', 'ProbLog evaluation exceeded time or memory limit'
+    
 
 
 @handle_url('/api/model')
