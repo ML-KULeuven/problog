@@ -26,18 +26,12 @@ class ProbLog(object) :
         if isinstance(src, target) :
             yield (target,)
         else :
-            # for d in cls.transformations :
-            #     if issubclass(d,target) :
-                    d = target
+            for d in list(cls.transformations) :
+                if issubclass(d,target) :
                     for s, action in cls.transformations[d] :
                         if not s in stack :                        
                             for path in cls.findPaths( src, s, stack+(s,) ) :
                                 yield path + (action,d)
-                # elif issubclass(target,d) :
-                #     for s, action in cls.transformations[d] :
-                #         if not s in stack :
-                #             for path in cls.findPaths( src, s, stack+(s,) ) :
-                #                 yield path + (action,cls)
     
     @classmethod
     def convert( cls, src, target ) :
