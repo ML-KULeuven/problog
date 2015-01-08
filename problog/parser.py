@@ -482,7 +482,7 @@ class PrologParser(object) :
         return self.statement.parseString(string, True)[0]
         
     def parseString(self, string) :
-        clauses = self.program.parseString(string, True)[0]
+        clauses = self.program.parseString(string, True)
         return self.factory.build_program(clauses)
         
     def parseFile(self, filename) :
@@ -512,7 +512,7 @@ class FastPrologParser(PrologParser) :
         else :
             # It's a clause: call regular parser
             clauses = PrologParser.parseStatement(self, string)
-            return self.factory.build_program(clauses)
+            return clauses
         
         
     # def parseString(self, string) :
