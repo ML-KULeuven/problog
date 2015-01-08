@@ -215,19 +215,21 @@ class ExtendedPrologFactory(PrologFactory):
 
     def build_program(self, clauses):
 
-        if type(clauses) is list:
-            for clause in clauses:
-                self.update_functors(clause)
+        # Update functor f that appear as a negative head literal to f_p and
+        # f_n
+        for clause in clauses:
+            self.update_functors(clause)
 
-            # TODO: This assumes that ones a list is given as clauses it's
-            #       the final call. Is this correct?
-            for k,v in self.neg_head_lits.items():
-                cur_vars = [Var("v{}".format(i)) for i in range(v['c'])]
-                new_clause = Clause(Term(v['f'], *cur_vars), And(Term(v['p'], *cur_vars), Not(Term(v['n'], *cur_vars))))
-                clauses.append(new_clause)
+        # Add extra rule for a functor f that appears a as a negative head
+        # literal such that:
+        # f :- f_p, \+f_n.
+        for k,v in self.neg_head_lits.items():
+            cur_vars = [Var("v{}".format(i)) for i in range(v['c'])]
+            new_clause = Clause(Term(v['f'], *cur_vars), And(Term(v['p'], *cur_vars), Not(Term(v['n'], *cur_vars))))
+            clauses.append(new_clause)
 
-            logger = logging.getLogger('problog')
-            logger.debug('Transformed program:\n{}'.format('\n'.join([str(c) for c in clauses])))
+        logger = logging.getLogger('problog')
+        logger.debug('Transformed program:\n{}'.format('\n'.join([str(c) for c in clauses])))
 
         return clauses
 
