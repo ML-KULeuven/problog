@@ -104,7 +104,10 @@ problog.initDiv = function(el, resize) {
     eval_btn.attr('disabled', 'disabled')
     eval_btn.val('processing...');
     var cur_model = editor.getSession().getValue();
-    var cur_model_hash = CryptoJS.MD5(cur_model);
+    var cur_model_hash = undefined;
+    if (CryptoJS !== undefined) {
+      cur_model_hash = CryptoJS.MD5(cur_model);
+    }
     var cur_intr = editor_intr.getSession().getValue();
 
     var url = problog.hostname + '/api/inference';
@@ -153,7 +156,9 @@ problog.initDiv = function(el, resize) {
         meta_str += "</p>";
         $(meta_str).appendTo(result_panel_body);
       } else {
-        $('<a href="'+problog.main_editor_url+'#hash='+cur_model_hash+'">Link to model</a>').appendTo(result_panel_body);
+        if (cur_model_hash) {
+          $('<a href="'+problog.main_editor_url+'#hash='+cur_model_hash+'">Link to model</a>').appendTo(result_panel_body);
+        }
       }
 
       eval_btn.removeAttr('disabled');
@@ -162,7 +167,11 @@ problog.initDiv = function(el, resize) {
     }).fail( function(jqXHR, textStatus, errorThrown) {
       var result = $('<div>', {'class' : 'alert alert-danger'}).text( jqXHR.responseText);
       result_panel_body.html(result);
-      $('<a href="'+problog.main_editor_url+'#hash='+cur_model_hash+'">Link to model</a>').appendTo(result_panel_body);
+
+      if (cur_model_hash) {
+        $('<a href="'+problog.main_editor_url+'#hash='+cur_model_hash+'">Link to model</a>').appendTo(result_panel_body);
+      }
+
       eval_btn.removeAttr('disabled');
       eval_btn.val(btn_txt);
     });
