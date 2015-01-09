@@ -9,8 +9,8 @@ sys.path.insert(0, os.path.abspath( os.path.join(os.path.dirname(__file__), '../
 from problog.parser import PrologParser
 from problog.program import PrologFile, PrologFactory
 from problog.evaluator import SemiringSymbolic, Evaluator
-from problog.nnf_formula import NNF
-# from problog.sdd_formula import SDD
+#from problog.nnf_formula import NNF
+from problog.sdd_formula import SDD
 
 def print_result( d, output, precision=8 ) :
     success, d = d
@@ -42,7 +42,7 @@ def main( filename) :
 
     try :
         model = PrologFile(filename, parser=PrologParser(PrologFactory()))
-        formula = NNF.createFrom( model )
+        formula = SDD.createFrom( model )
         result = formula.evaluate()
         return True, result
     except Exception as err :
