@@ -193,6 +193,7 @@ def run_learning_jsonp(model, examples, callback) :
        limitations).
     """
     model = model[0]
+    examples = examples[0]
     callback = callback[0]
 
     if False and CACHE_MODELS:  # Disabled for now
@@ -210,6 +211,8 @@ def run_learning_jsonp(model, examples, callback) :
     with open(infile, 'w') as f :
         f.write(model)
 
+    with open(datafile, 'w') as f :
+        f.write(examples)
 
     cmd = [ 'python', root_path('run_learning.py'), infile, datafile, outfile ]
 
