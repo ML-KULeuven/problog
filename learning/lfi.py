@@ -117,7 +117,7 @@ class LFIProblem(SemiringProbability, LogicProgram) :
         # Simple implementation: don't add neutral evidence.
         result = defaultdict(list)
         for example in self.examples :
-            atoms, values = zip(*sorted(example))
+            atoms, values = zip(*example)
             result[atoms].append( values )
         return result
     
