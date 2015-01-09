@@ -44,6 +44,9 @@ SERVE_FILES=False
 CACHE_MODELS=True
 CACHE_DIR="cache"
 
+PYTHON_EXEC='python'    # Python 2
+# PYTHON_EXEC=sys.executable  # Match with server
+
 api_root = '/'
 
 here = os.path.dirname(__file__)
@@ -165,7 +168,7 @@ def run_problog_jsonp(model, callback):
         f.write(model)
 
 
-    cmd = [ 'python', root_path('run_problog.py'), infile, outfile ]
+    cmd = [ PYTHON_EXEC, root_path('run_problog.py'), infile, outfile ]
 
     try :
         call_process(cmd, DEFAULT_TIMEOUT, DEFAULT_MEMOUT * (1 << 30))
@@ -214,7 +217,7 @@ def run_learning_jsonp(model, examples, callback) :
     with open(datafile, 'w') as f :
         f.write(examples)
 
-    cmd = [ 'python', root_path('run_learning.py'), infile, datafile, outfile ]
+    cmd = [ PYTHON_EXEC, root_path('run_learning.py'), infile, datafile, outfile ]
 
     try :
         call_process(cmd, DEFAULT_TIMEOUT, DEFAULT_MEMOUT * (1 << 30))
