@@ -16,8 +16,7 @@
 <body>
 <div class="container">
 
-<p>Example:</p>
-
+<h2>Inference:</h2>
 <div class=problog-editor>
 %%% Probabilistic facts
 0.5::heads1.
@@ -30,6 +29,18 @@ twoHeads :- heads1, heads2.
 query(heads1).
 query(heads2).
 query(twoHeads).
+</div>
+
+
+<h2>Learning:</h2>
+<div class=problog-editor>
+%%% Probabilistic facts
+t(_)::heads1.
+t(_)::heads2.
+
+%%% Rules
+twoHeads :- heads1, heads2.
+
 <div class=interpretations>
 evidence(heads1,true).
 evidence(heads2,false).
@@ -47,7 +58,6 @@ evidence(heads2,true).
 
 
 </div>
-
 <script type="text/javascript" charset="utf-8">
   $(document).ready(function() {
       problog.initialize();
