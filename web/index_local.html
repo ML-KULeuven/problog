@@ -11,9 +11,6 @@
 
   <!--  <script src="http://adams.cs.kuleuven.be/problog/js/problog_editor.js" type="text/javascript" charset="utf-8"></script> -->
     <script src="js/problog_editor.js" type="text/javascript" charset="utf-8"></script>
-    <script type="text/javascript">
-       problog.hostname = 'http://localhost:5100/'
-    </script>
 
 </head>
 <body>
@@ -66,6 +63,7 @@ evidence(heads2,true).
 
 <script type="text/javascript" charset="utf-8">
   $(document).ready(function() {
+	  problog.hostname = 'http://localhost:5100/'
       problog.initialize();
       problog.fetchModel(); // check url for hash and load in first editor
   });
