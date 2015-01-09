@@ -43,7 +43,7 @@ SERVE_FILES=False
 CACHE_MODELS=True
 CACHE_DIR="cache"
 
-api_root = ''
+api_root = '/'
 
 here = os.path.dirname(__file__)
 logging.config.fileConfig(os.path.join(here,'logging.conf'))
@@ -268,15 +268,13 @@ class ProbLogHTTP(BaseHTTPServer.BaseHTTPRequestHandler) :
 
         url = urlparse.urlparse( self.path )
         path = url.path
-        # TODO: fix after Bart fixes proxy!!!!
-        path = url.netloc
         if query == None :
             query = urlparse.parse_qs(url.query)
         if '_' in query:
             # Used by jquery to avoid caching
             del query['_']
 
-        logger.info('GET - {} - {}'.format(path, query))
+        logger.info('GET - {} - {}'.format(path, self.client_address[0]))
 
         action = PATHS.get(path)
         if action == None :
