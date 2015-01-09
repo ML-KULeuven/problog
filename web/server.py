@@ -178,7 +178,8 @@ def run_problog_jsonp(model, callback):
 
         return int(code), datatype, datavalue
     except subprocess.CalledProcessError :
-        return 500, 'text/plain', 'ProbLog evaluation exceeded time or memory limit'
+        import json
+        return 500, 'application/json', json.dumps('ProbLog evaluation exceeded time or memory limit')
 
 @handle_url(api_root+'learning')
 def run_learning_jsonp(model, examples, callback) :
@@ -221,7 +222,8 @@ def run_learning_jsonp(model, examples, callback) :
 
         return int(code), datatype, datavalue
     except subprocess.CalledProcessError :
-        return 500, 'text/plain', 'ProbLog evaluation exceeded time or memory limit'
+        import json
+        return 500, 'application/json', json.dumps('ProbLog evaluation exceeded time or memory limit')
     
 
 

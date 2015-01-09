@@ -26,7 +26,7 @@ def print_result( d, output, precision=8 ) :
         results = { 'score' : score, 'iterations' : iterations, 'weights': dict(zip(map(conv,names),weights)) }
         print (200, 'application/json', json.dumps(results), file=output)
     else :
-        print (400, 'text/plain', d, file=output)
+        print (400, 'application/json', json.dumps(d), file=output)
     return 0 
     
 

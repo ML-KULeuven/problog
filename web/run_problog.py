@@ -18,7 +18,7 @@ def print_result( d, output, precision=8 ) :
         import json
         print (200, 'application/json', json.dumps(d), file=output)
     else :
-        print (400, 'text/plain', d, file=output)
+        print (400, 'application/json', json.dumps(d), file=output)
     return 0 
     
 
