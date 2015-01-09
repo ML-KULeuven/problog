@@ -95,6 +95,7 @@ class PrologParser(object) :
         self.addOperator( '*->' , 1050, 'xfy', self.factory.build_binop )
         self.addOperator( ','   , 1000, 'xfy', self.factory.build_conjunction )
         self.addOperator( '\+'  ,  900, 'fy', self.factory.build_not )
+        self.addOperator( 'not' ,  900, 'fy', self.factory.build_not )
         self.addOperator( '~'   ,  900, 'fx', self.factory.build_unop )
         
         self.addOperator('<'      , 700 , 'xfx', self.factory.build_compare_arithmetic, function=lambda a, b : a < b)
