@@ -471,7 +471,7 @@ class PrologParser(object) :
                 body = toks[-1]
                 func = toks[-2]
             else :
-                heads = toks
+                heads = list(toks)
                 body = self.factory.build_function('true', [])
                 func = ':-'
             return self.factory.build_clause( func, heads, body )            
