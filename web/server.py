@@ -165,7 +165,7 @@ def run_problog_jsonp(model, callback):
         f.write(model)
 
 
-    cmd = [ 'python', root_path('run_problog.py'), infile, outfile ]
+    cmd = [ 'python3', root_path('run_problog.py'), infile, outfile ]
 
     try :
         call_process(cmd, DEFAULT_TIMEOUT, DEFAULT_MEMOUT * (1 << 30))
@@ -214,7 +214,7 @@ def run_learning_jsonp(model, examples, callback) :
     with open(datafile, 'w') as f :
         f.write(examples)
 
-    cmd = [ 'python', root_path('run_learning.py'), infile, datafile, outfile ]
+    cmd = [ 'python3', root_path('run_learning.py'), infile, datafile, outfile ]
 
     try :
         call_process(cmd, DEFAULT_TIMEOUT, DEFAULT_MEMOUT * (1 << 30))
