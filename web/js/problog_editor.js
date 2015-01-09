@@ -37,6 +37,8 @@ problog.initialize = function(settings) {
     }
   }
 
+  $('head').append('<style type="text/css" media="screen">.problog-editor-buttons {margin: 5px 0;} .problog-result-sorted-desc:after {content: "▲";} .problog-result-sorted-asc:after {content: "▼";}</style>');
+
   $(problog.selector).each(function(i,el) {
     problog.initDiv($(el), resize)
   });
@@ -77,7 +79,7 @@ problog.initDiv = function(el, resize) {
     editor_container_intr.html(intr);
   }
 
-  var buttons = $('<form class="text-center form-inline"></form>').appendTo(problog_container);
+  var buttons = $('<form class="form-inline problog-editor-buttons"></form>').appendTo(problog_container);
   var btn_group = $('<div class="btn-group" role="group"></div>').appendTo(buttons);
   var eval_btn = $('<input class="btn btn-default" type="button" value="Evaluate"/>').appendTo(btn_group);
 
@@ -148,7 +150,33 @@ problog.initDiv = function(el, resize) {
           )
          ).append(result);
 
+        var table = result[0];
+        problog.sortTable(table, 1, 0);
         result_panel_body.html(result);
+
+        var col_th = $(table).children('thead').children('tr').children('th')
+        col_th.eq(0).addClass('problog-result-sorted-asc');
+        for (var i=0; i<col_th.length; i++) {
+          (function() {
+          var col_idx = i;
+          col_th.eq(i).click(function() {
+            if ($(this).hasClass('problog-result-sorted-asc')) {
+              $(this).removeClass('problog-result-sorted-asc');
+              $(this).addClass('problog-result-sorted-desc');
+              problog.sortTable(table, -1, col_idx);
+            } else if ($(this).hasClass('problog-result-sorted-desc')) {
+              $(this).removeClass('problog-result-sorted-desc');
+              $(this).addClass('problog-result-sorted-asc');
+              problog.sortTable(table, 1, col_idx);
+            } else {
+              col_th.removeClass('problog-result-sorted-asc');
+              col_th.removeClass('problog-result-sorted-desc');
+              $(this).addClass('problog-result-sorted-asc');
+              problog.sortTable(table, 1, col_idx);
+            }
+          });
+          })();
+        }
 
         if (intr !== undefined) {
           var meta_str = "<p><strong>Stats</strong>:";
@@ -263,5 +291,34 @@ problog.getHashFromUrl = function() {
   }
   return hash;
 };
+
+/** Sort rows in table
+  * 
+  * Params:
+  * table table element
+  * dir direction of sort, 1=ascending, -1=descending
+  * col number of column (td in tr)
+  */
+problog.sortTable = function(table, dir, col){
+  //var rows = $('#mytable tbody  tr').get();
+  var rows = $(table).find('tbody tr').get();
+  rows.sort(function(a, b) {
+
+    // get the text of col-th <td> of <tr> 
+    var A = $(a).children('td').eq(col).text().toUpperCase();
+    var B = $(b).children('td').eq(col).text().toUpperCase();
+    if(A < B) {
+     return -1*dir;
+    }
+    if(A > B) {
+     return 1*dir;
+    }
+    return 0;
+  });
+
+  $.each(rows, function(index, row) {
+    $(table).children('tbody').append(row);
+  });
+}
 
 

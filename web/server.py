@@ -1,3 +1,6 @@
+#!/usr/bin/env python
+# encoding: utf-8
+
 """Simple HTTP server for ProbLog.
 
 This module only defines the server interface.
