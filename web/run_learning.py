@@ -2,7 +2,7 @@
 
 from __future__ import print_function
 
-import os, sys, subprocess, traceback
+import os, sys, subprocess, traceback, json
 
 sys.path.insert(0, os.path.abspath( os.path.join(os.path.dirname(__file__), '../')))
 
@@ -18,13 +18,12 @@ from learning import lfi
 def print_result( d, output, precision=8 ) :
     success, d = d
     if success :
-        import json
         score, weights, names, iterations = d
         
         conv = lambda t : str(t.withProbability())
         
         results = { 'score' : score, 'iterations' : iterations, 'weights': dict(zip(map(conv,names),weights)) }
-        d['success'] = True
+        results['success'] = True
         print (200, 'application/json', json.dumps(results), file=output)
     else :
         d['success'] = False
