@@ -152,7 +152,7 @@ def run_problog_jsonp(model, callback):
 
     if CACHE_MODELS:
       import hashlib
-      inhash = hashlib.md5(model).hexdigest()
+      inhash = hashlib.md5(model.encode()).hexdigest()
       if not os.path.exists(CACHE_DIR):
           os.mkdir(CACHE_DIR)
       infile = os.path.join(CACHE_DIR, inhash+'.pl')
