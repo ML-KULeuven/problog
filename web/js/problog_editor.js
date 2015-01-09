@@ -133,10 +133,12 @@ problog.initDiv = function(el, resize) {
 
         var result = $('<tbody>');
         for (var k in data) {
-          var p = data[k];
-          result.append($('<tr>')
-                .append($('<td>').text(k))
-                .append($('<td>').text(p)));
+          if (k !== 'success') {
+            var p = data[k];
+            result.append($('<tr>')
+                  .append($('<td>').text(k))
+                  .append($('<td>').text(p)));
+          }
         }
         result = $('<table>', {'class': 'table table-condensed'})
          .append($('<thead>')

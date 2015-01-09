@@ -24,9 +24,12 @@ def print_result( d, output, precision=8 ) :
         conv = lambda t : str(t.withProbability())
         
         results = { 'score' : score, 'iterations' : iterations, 'weights': dict(zip(map(conv,names),weights)) }
+        d['success'] = True
         print (200, 'application/json', json.dumps(results), file=output)
     else :
-        print (400, 'application/json', json.dumps(d), file=output)
+        d['success'] = False
+        #print (400, 'application/json', json.dumps(d), file=output)
+        print (200, 'application/json', json.dumps(d), file=output)
     return 0 
     
 
@@ -54,7 +57,7 @@ def main(filename, examplefile) :
         result = lfi.run_lfi( program, examples)
         return True, result
     except Exception as err :
-        return False, process_error(err)
+        return False, {'err':process_error(err)}
     
         
 if __name__ == '__main__' :

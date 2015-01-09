@@ -2,7 +2,7 @@
 
 from __future__ import print_function
 
-import os, sys, subprocess, traceback
+import os, sys, subprocess, traceback, json
 
 sys.path.insert(0, os.path.abspath( os.path.join(os.path.dirname(__file__), '../')))
 
@@ -15,10 +15,12 @@ from problog.sdd_formula import SDD
 def print_result( d, output, precision=8 ) :
     success, d = d
     if success :
-        import json
+        d['success'] = True
         print (200, 'application/json', json.dumps(d), file=output)
     else :
-        print (400, 'application/json', json.dumps(d), file=output)
+        #print (400, 'application/json', json.dumps(d), file=output)
+        d['success'] = False
+        print (200, 'application/json', json.dumps(d), file=output)
     return 0 
     
 
@@ -46,7 +48,7 @@ def main( filename) :
         result = formula.evaluate()
         return True, result
     except Exception as err :
-        return False, process_error(err)
+        return False, {'err':process_error(err)}
         
 if __name__ == '__main__' :
     import argparse

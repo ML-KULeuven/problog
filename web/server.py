@@ -34,6 +34,7 @@ import traceback
 import subprocess
 import resource
 import logging, logging.config
+import json
 
 DEFAULT_PORT = 5100
 DEFAULT_TIMEOUT = 60
@@ -173,12 +174,14 @@ def run_problog_jsonp(model, callback):
             result = f.read()
         code, datatype, datavalue = result.split(None,2)
 
+        print("RETURN:")
+        print(code, datatype, datavalue)
+
         if datatype == 'application/json':
             datavalue = '{}({});'.format(callback, datavalue)
 
         return int(code), datatype, datavalue
     except subprocess.CalledProcessError :
-        import json
         return 500, 'application/json', json.dumps('ProbLog evaluation exceeded time or memory limit')
 
 @handle_url(api_root+'learning')
