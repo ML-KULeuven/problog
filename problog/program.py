@@ -160,7 +160,7 @@ class PrologFactory(Factory) :
         return And(operand1, operand2)
     
     def build_not(self, functor, operand, **extra) :
-        return Not(operand)
+        return Not(functor, operand)
         
     def build_probabilistic(self, operand1, operand2, **extra) :
         operand2.probability = operand1
