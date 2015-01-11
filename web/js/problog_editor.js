@@ -112,6 +112,7 @@ problog.initDiv = function(el, resize) {
     var learn_btn = $('<input class="btn btn-default" type="button" value="Learn"/>').appendTo(btn_group);
   } else {
     var editor_intr = undefined;
+    var learn_btn = undefined;
   }
 
   var start = function(btn, learn) {
@@ -259,9 +260,11 @@ problog.initDiv = function(el, resize) {
   eval_btn.click(function() {
     start(eval_btn, false);
   });
-  learn_btn.click(function() {
-    start(learn_btn, true);
-  });
+  if (learn_btn) {
+    learn_btn.click(function() {
+      start(learn_btn, true);
+    });
+  }
 
   // Auto Resize
   if (resize) {
