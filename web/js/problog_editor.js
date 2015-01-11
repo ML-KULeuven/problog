@@ -112,7 +112,7 @@ problog.initDiv = function(el, resize) {
 
   var start = function(btn, learn) {
     result_panel_body.html("...");
-    var btn_txt = eval_btn.val();
+    var btn_txt = btn.val();
     btn.attr('disabled', 'disabled')
     btn.val('processing...');
     var cur_model = editor.getSession().getValue();
@@ -129,6 +129,9 @@ problog.initDiv = function(el, resize) {
     if (learn && intr !== undefined) {
       url = problog.hostname + 'learning';
       var cur_examples = editor_intr.getSession().getValue();
+      if (cur_examples == '') {
+        cur_examples = "%%";
+      }
       data['examples'] = cur_examples;
       var cur_examples_hash = undefined;
       if (CryptoJS !== undefined) {
