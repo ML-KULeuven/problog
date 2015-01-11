@@ -160,7 +160,7 @@ class PrologFactory(Factory) :
         return And(operand1, operand2)
     
     def build_not(self, functor, operand, **extra) :
-        return Not(operand)
+        return Not(functor, operand)
         
     def build_probabilistic(self, operand1, operand2, **extra) :
         operand2.probability = operand1
@@ -225,7 +225,7 @@ class ExtendedPrologFactory(PrologFactory):
         # f :- f_p, \+f_n.
         for k,v in self.neg_head_lits.items():
             cur_vars = [Var("v{}".format(i)) for i in range(v['c'])]
-            new_clause = Clause(Term(v['f'], *cur_vars), And(Term(v['p'], *cur_vars), Not(Term(v['n'], *cur_vars))))
+            new_clause = Clause(Term(v['f'], *cur_vars), And(Term(v['p'], *cur_vars), Not('\+',Term(v['n'], *cur_vars))))
             clauses.append(new_clause)
 
         logger = logging.getLogger('problog')

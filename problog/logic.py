@@ -386,15 +386,15 @@ class And(Term) :
 class Not(Term) :
     """Not"""
     
-    def __init__(self, child) :
-        Term.__init__(self, '\+', child)
+    def __init__(self, functor, child) :
+        Term.__init__(self, functor, child)
         self.child = child
     
     def __repr__(self) :
         c = str(self.child)
         if isinstance(self.child, And) :
             c = '(%s)' % c
-        return '\+(%s)' % c
+        return '%s(%s)' % (self.functor, c)
 
 class LogicProgram(object) :
     """LogicProgram"""

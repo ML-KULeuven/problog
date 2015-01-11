@@ -452,7 +452,6 @@ class ProcessNode(object) :
         
         EngineLogger.get().sendComplete(self)
         if not self.isComplete :
-            # print ('COMPLETE', self)
             self.isComplete = True
             for listener, evttype in self.listeners :
                 if evttype & self.EVT_COMPLETE :
@@ -506,12 +505,11 @@ class ProcessOr(ProcessNode) :
         self.addListener(parent)
         if self._count == 0 :
             self.notifyComplete()
-                
+    
     def complete(self) :
         EngineLogger.get().receiveComplete(self)
         self._count -= 1
         if self._count <= 0 :
-            EngineLogger.get().sendComplete(self)
             self.notifyComplete()
             
 class ProcessNot(ProcessNode) :
@@ -560,13 +558,24 @@ class ProcessLink(ProcessNode) :
         self.parent = parent
         self.addListener(self.parent, ProcessNode.EVT_COMPLETE)
         self.define = define
+        self.required_complete = 1
         
     def newResult(self, result, ground_node=0) :
+        self.required_complete += 1     # For each result of first conjuct, we call the second conjuct which should produce a complete.
         EngineLogger.get().receiveResult(self, result, ground_node)
         self.engine._exit_call( self.node_id, result )    
         process = ProcessAnd(self.gp, ground_node)
         process.addListener(self.parent, ProcessNode.EVT_RESULT)
+        process.addListener(self, ProcessNode.EVT_COMPLETE) # Register self as listener for complete events.
         self.engine._eval( self.db, self.gp, self.node_id, self.engine._create_context(result,define=self.define), process)
+        
+    def complete(self) :
+        # Receive complete
+        EngineLogger.get().receiveComplete(self)
+        self.required_complete -= 1
+        if self.required_complete == 0 :
+            self.notifyComplete()
+        
                 
 class ProcessAnd(ProcessNode) :
     """Process a conjunction."""
@@ -663,6 +672,7 @@ class ProcessDefine(ProcessNode) :
         
         for c in self.children :
             c.complete()
+
     
     def newResult(self, result, ground_node=0) :
         EngineLogger.get().receiveResult(self, result, ground_node)
