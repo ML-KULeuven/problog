@@ -20,6 +20,7 @@ var problog = {
   main_editor_url: 'http://dtai.cs.kuleuven.be/problog/editor.html',
   editors: [],
   selector: '.problog-editor',
+  resize: false,
 };
 
 /** Initialize the header and all .problog-editor divs.
@@ -27,20 +28,12 @@ var problog = {
   * Settings:
   * - resize: Boolean (false)
  **/
-problog.initialize = function(settings) {
+problog.initialize = function() {
 
-  var resize = false;
-
-  if (settings !== undefined) {
-    if (settings.resize === true) {
-      resize = true;
-    }
-  }
-
-  $('head').append('<style type="text/css" media="screen">.problog-editor-container, .problog-editor-container-intr {border: 1px solid #ddd;} .problog-editor-buttons {margin: 5px 0;} .problog-editor-hash {float:right; margin-right:5px;} .problog-editor-results table {margin-bottom:3px;} .problog-editor-results th {cursor:pointer;} .problog-result-sorted-desc:after {content:"▲";} .problog-result-sorted-asc:after {content:"▼";}</style>');
+  $('head').append('<style type="text/css" media="screen">.problog-editor-container, .problog-editor-container-intr {border: 1px solid #ddd;} .problog-editor-buttons {margin: 5px 0;} .problog-editor-hash {float:right; margin-right:5px;} .problog-editor-results table {margin-bottom:3px;} .problog-editor-results th {cursor:pointer;width:50%;} .problog-result-sorted-desc:after {content:"▲";} .problog-result-sorted-asc:after {content:"▼";}</style>');
 
   $(problog.selector).each(function(i,el) {
-    problog.initDiv($(el), resize)
+    problog.initDiv($(el), problog.resize)
   });
 
 };
