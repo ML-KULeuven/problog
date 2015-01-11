@@ -62,6 +62,10 @@ problog.initDiv = function(el, resize) {
   // Init theory
   var intr = undefined;
   if (el.children('.interpretations').length > 0) {
+    var intr_height = el.children('.interpretations').data('height');
+    if (intr_height === undefined) {
+      intr_height = '150px';
+    }
     intr = el.children('.interpretations').html();
     if (intr[0] == '\n') {
       intr = intr.substr(1);
@@ -81,7 +85,7 @@ problog.initDiv = function(el, resize) {
   var editor_container = $('<div class="problog-editor-container" style="width:100%;height:300px;"></div>').appendTo(problog_container);
   editor_container.html(theory);
   if (intr !== undefined) {
-    var editor_container_intr = $('<div class="problog-editor-container-intr" style="width:100%;height:300px;"></div>').appendTo(problog_container);
+    var editor_container_intr = $('<div class="problog-editor-container-intr" style="width:100%;height:'+intr_height+';"></div>').appendTo(problog_container);
     editor_container_intr.html(intr);
   }
 
