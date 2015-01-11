@@ -37,7 +37,7 @@ problog.initialize = function(settings) {
     }
   }
 
-  $('head').append('<style type="text/css" media="screen">.problog-editor-buttons {margin: 5px 0;} .problog-result-sorted-desc:after {content: "▲";} .problog-result-sorted-asc:after {content: "▼";}</style>');
+  $('head').append('<style type="text/css" media="screen">.problog-editor-container, .problog-editor-container-intr {border: 1px solid #ddd;} .problog-editor-buttons {margin: 5px 0;} .problog-editor-hash {float:right; margin-right:5px;} .problog-editor-results table {margin-bottom:3px;} .problog-editor-results th {cursor:pointer;} .problog-result-sorted-desc:after {content:"▲";} .problog-result-sorted-asc:after {content:"▼";}</style>');
 
   $(problog.selector).each(function(i,el) {
     problog.initDiv($(el), resize)
@@ -63,19 +63,25 @@ problog.initDiv = function(el, resize) {
   var intr = undefined;
   if (el.children('.interpretations').length > 0) {
     intr = el.children('.interpretations').html();
+    if (intr[0] == '\n') {
+      intr = intr.substr(1);
+    }
     el.children('.interpretations').remove();
   }
   var theory = el.html();
+  if (theory[0] == '\n') {
+    theory = theory.substr(1);
+  }
   el.html('');
 
   // DOM structure
   var new_id = 'problog-editor-n'+problog.editors.length;
 
   var problog_container = $('<div id="'+new_id+'"></div>').appendTo(el);
-  var editor_container = $('<div class="editor-container" style="width:100%;height:300px;"></div>').appendTo(problog_container);
+  var editor_container = $('<div class="problog-editor-container" style="width:100%;height:300px;"></div>').appendTo(problog_container);
   editor_container.html(theory);
   if (intr !== undefined) {
-    var editor_container_intr = $('<div class="editor-container-intr" style="width:100%;height:300px;"></div>').appendTo(problog_container);
+    var editor_container_intr = $('<div class="problog-editor-container-intr" style="width:100%;height:300px;"></div>').appendTo(problog_container);
     editor_container_intr.html(intr);
   }
 
@@ -84,7 +90,7 @@ problog.initDiv = function(el, resize) {
   var eval_btn = $('<input class="btn btn-default" type="button" value="Evaluate"/>').appendTo(btn_group);
 
   //var result_panel = $('<div class="panel panel-default"><div class="panel-heading"><span class="panel-title">Result</span></div></div>').appendTo(problog_container);
-  var result_panel = $('<div class="panel panel-default"></div>').appendTo(problog_container);
+  var result_panel = $('<div class="panel panel-default problog-editor-results"></div>').appendTo(problog_container);
   var result_panel_body = $('<div class="panel-body" class="result-final">Results ...</div>').appendTo(result_panel);
 
   // Init ACE editor
@@ -98,14 +104,17 @@ problog.initDiv = function(el, resize) {
     editor_intr.getSession().setMode('ace/mode/prolog');
     editor_intr.getSession().setUseWrapMode(true);
     editor_intr.setShowInvisibles(true);
-    eval_btn.val('Learn');
+    //eval_btn.val('Learn');
+    var learn_btn = $('<input class="btn btn-default" type="button" value="Learn"/>').appendTo(btn_group);
+  } else {
+    var editor_intr = undefined;
   }
 
-  // Init buttons
-  eval_btn.click(function() {
+  var start = function(btn, learn) {
+    result_panel_body.html("...");
     var btn_txt = eval_btn.val();
-    eval_btn.attr('disabled', 'disabled')
-    eval_btn.val('processing...');
+    btn.attr('disabled', 'disabled')
+    btn.val('processing...');
     var cur_model = editor.getSession().getValue();
     if (cur_model == '') {
       cur_model = '%%';
@@ -117,9 +126,14 @@ problog.initDiv = function(el, resize) {
 
     var url = problog.hostname + 'inference';
     var data = {'model': cur_model};
-    if (intr !== undefined) {
+    if (learn && intr !== undefined) {
       url = problog.hostname + 'learning';
-      data['examples'] = editor_intr.getSession().getValue();
+      var cur_examples = editor_intr.getSession().getValue();
+      data['examples'] = cur_examples;
+      var cur_examples_hash = undefined;
+      if (CryptoJS !== undefined) {
+        cur_examples_hash = CryptoJS.MD5(cur_examples);
+      }
     }
 
     $.ajax({
@@ -128,7 +142,7 @@ problog.initDiv = function(el, resize) {
       data: data,
       success: function(data) {
 
-        if (intr !== undefined) {
+        if (learn) {
           var meta = data;
           data = data.weights;
         }
@@ -145,7 +159,7 @@ problog.initDiv = function(el, resize) {
         result = $('<table>', {'class': 'table table-condensed'})
          .append($('<thead>')
           .append($('<tr>')
-           .append($('<th>').text(intr?'Fact':'Query'))
+           .append($('<th>').text(learn?'Fact':'Query'))
            .append($('<th>').text('Probability'))
           )
          ).append(result);
@@ -178,23 +192,34 @@ problog.initDiv = function(el, resize) {
           })();
         }
 
-        if (intr !== undefined) {
+        if (learn) {
           var meta_str = "<p><strong>Stats</strong>:";
+          var sep = " ";
           for (var k in meta) {
-            if (k !== 'weights') {
-              meta_str += " "+k+"="+meta[k];
+            if (k !== 'weights' && k !== 'success') {
+              meta_str += sep+k+"="+meta[k];
+              sep = ", ";
             }
           }
           meta_str += "</p>";
           $(meta_str).appendTo(result_panel_body);
-        } else {
-          if (cur_model_hash) {
-            $('<a href="'+problog.main_editor_url+'#hash='+cur_model_hash+'">Link to model</a>').appendTo(result_panel_body);
-          }
         }
 
-        eval_btn.removeAttr('disabled');
-        eval_btn.val(btn_txt);
+        if (cur_model_hash) {
+          var cur_url = problog.main_editor_url+'#hash='+cur_model_hash;
+          if (cur_examples_hash) {
+            cur_url += '&ehash='+cur_examples_hash;
+          }
+          var clipboardBtn = $('<a class="problog-editor-hash" href="'+cur_url+'">Link to model&nbsp;<span class="problog-editor-hash glyphicon glyphicon-share" aria-hidden="true"></span></a>').appendTo(result_panel_body);
+          clipboardBtn.attr('title','Click to copy url to clipboard.');
+          clipboardBtn.click(function(e) {
+            e.preventDefault();
+            window.prompt("Copy to clipboard: Ctrl/Cmd+C, Enter", cur_url);
+          });
+        }
+
+        btn.removeAttr('disabled');
+        btn.val(btn_txt);
       },
 
       error: function(jqXHR, textStatus, errorThrown) {
@@ -208,14 +233,27 @@ problog.initDiv = function(el, resize) {
         result_panel_body.html(result);
 
         if (cur_model_hash) {
-          $('<a href="'+problog.main_editor_url+'#hash='+cur_model_hash+'">Link to model</a>').appendTo(result_panel_body);
+          var clipboardBtn = $('<a class="problog-editor-hash" href="'+problog.main_editor_url+'#hash='+cur_model_hash+'">Link to model&nbsp;<span class="problog-editor-hash glyphicon glyphicon-share" aria-hidden="true"></span></a>').appendTo(result_panel_body);
+          clipboardBtn.attr('title','Click to copy url to clipboard.');
+          clipboardBtn.click(function(e) {
+            e.preventDefault();
+            window.prompt("Copy to clipboard: Ctrl/Cmd+C, Enter", problog.main_editor_url+'#hash='+cur_model_hash);
+          });
         }
 
-        eval_btn.removeAttr('disabled');
-        eval_btn.val(btn_txt);
+        btn.removeAttr('disabled');
+        btn.val(btn_txt);
       }
     });
 
+  };
+
+  // Init buttons
+  eval_btn.click(function() {
+    start(eval_btn, false);
+  });
+  learn_btn.click(function() {
+    start(learn_btn, true);
   });
 
   // Auto Resize
@@ -246,25 +284,33 @@ problog.initDiv = function(el, resize) {
     var resizeEditor = undefined;
   }
 
-  problog.editors.push({editor: editor, resize: resizeEditor, id: new_id});
+  problog.editors.push({editor: editor, resize: resizeEditor, id: new_id, examples:editor_intr});
 
 };
 
 /** Load model from hash in editor **/
-problog.fetchModel = function(hash, editor) {
+problog.fetchModel = function(hash, editor, ehash) {
 
   // Look at url if hash not given
-  hash = problog.getHashFromUrl();
-  if (hash == '') {
-    return;
+  if (hash === undefined) {
+    hash = problog.getHashFromUrl();
+    if (hash == '') {
+      return;
+    }
+  }
+
+  if (ehash === undefined) {
+    ehash = problog.getExamplesHashFromUrl();
   }
 
   // Take first editor if not given
+  var editor_examples = undefined;
   if (editor === undefined) {
     if (problog.editors.length == 0 || problog.editors[0].editor == undefined) {
       return;
     }
     editor = problog.editors[0].editor;
+    editor_examples = problog.editors[0].examples;
   }
 
   $.ajax({
@@ -279,18 +325,46 @@ problog.fetchModel = function(hash, editor) {
     editor.setValue(jqXHR.responseText);
   });
 
+  if (ehash && editor_examples) {
+    $.ajax({
+      url: problog.hostname+'examples', 
+      dataType: 'jsonp',
+      data: {'ehash': ehash},
+
+    }).done( function(data) {
+      editor_examples.setValue(data.model,-1);
+
+    }).fail( function(jqXHR, textStatus, errorThrown) {
+      editor_examples.setValue(jqXHR.responseText);
+    });
+  }
+
 };
+
 
 problog.getHashFromUrl = function() {
   var hash = window.location.hash;
   hashidx = hash.indexOf("hash=");
   if (hashidx > 0) {
-    hash = hash.substr(hashidx+5, hashidx+5+32);
+    hash = hash.substr(hashidx+5, 32);
   } else {
     hash = '';
   }
   return hash;
 };
+
+
+problog.getExamplesHashFromUrl = function() {
+  var hash = window.location.hash;
+  hashidx = hash.indexOf("ehash=");
+  if (hashidx > 0) {
+    hash = hash.substr(hashidx+6, 32);
+  } else {
+    hash = '';
+  }
+  return hash;
+};
+
 
 /** Sort rows in table
   * 

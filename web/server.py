@@ -164,8 +164,8 @@ def run_problog_jsonp(model, callback):
       infile = os.path.join(CACHE_DIR, inhash+'.pl')
       outfile = os.path.join(CACHE_DIR, inhash+'.out')
     else:
-      handle, infile = tempfile.mkstemp('.pl')
-      handle, outfile = tempfile.mkstemp('.out')
+      _, infile = tempfile.mkstemp('.pl')
+      _, outfile = tempfile.mkstemp('.out')
 
     with open(infile, 'w') as f :
         f.write(model)
@@ -202,17 +202,19 @@ def run_learning_jsonp(model, examples, callback) :
     examples = examples[0]
     callback = callback[0]
 
-    if False and CACHE_MODELS:  # Disabled for now
+    if CACHE_MODELS:
       import hashlib
       inhash = hashlib.md5(model).hexdigest()
+      datahash = hashlib.md5(examples).hexdigest()
       if not os.path.exists(CACHE_DIR):
           os.mkdir(CACHE_DIR)
       infile = os.path.join(CACHE_DIR, inhash+'.pl')
-      outfile = os.path.join(CACHE_DIR, inhash+'.out')
+      datafile = os.path.join(CACHE_DIR, datahash+'.data')
+      outfile = os.path.join(CACHE_DIR, inhash+'_'+datahash+'.out')
     else:
-      handle, infile = tempfile.mkstemp('.pl')
-      handle, datafile = tempfile.mkstemp('.data')
-      handle, outfile = tempfile.mkstemp('.out')
+      _, infile = tempfile.mkstemp('.pl')
+      _, datafile = tempfile.mkstemp('.data')
+      _, outfile = tempfile.mkstemp('.out')
 
     with open(infile, 'w') as f :
         f.write(model)
@@ -247,6 +249,28 @@ def get_model_from_hash_jsonp(hash, callback):
 
     if not CACHE_MODELS or not os.path.exists(infile):
         return 500, 'text/plain', 'Model hash not available'
+
+    result = dict()
+    with open(infile, 'r') as f:
+         result['model'] = f.read()
+
+    import json
+    datatype = 'application/json'
+    datavalue = json.dumps(result)
+    datavalue = '{}({});'.format(callback, datavalue)
+    code = 200
+
+    return int(code), datatype, datavalue
+
+
+@handle_url(api_root+'examples')
+def get_model_from_hash_jsonp(ehash, callback):
+    ehash = ehash[0]
+    callback = callback[0]
+    infile = os.path.join(CACHE_DIR, ehash+'.data')
+
+    if not CACHE_MODELS or not os.path.exists(infile):
+        return 500, 'text/plain', 'Examples hash not available'
 
     result = dict()
     with open(infile, 'r') as f:
