@@ -479,6 +479,14 @@ def computeFunction(func, args) :
     
     """
     
+    def sign(a) :
+        if a == 0 :
+            return 0
+        elif a < 0 :
+            return -1
+        else :
+            return 1
+    
     functions = {
         ("'+'", 2) : (lambda a,b : a + b),
         ("'-'", 2) : (lambda a,b : a - b),
@@ -497,6 +505,7 @@ def computeFunction(func, args) :
         ("'+'", 1) : (lambda a : a),
         ("'-'", 1) : (lambda a : -a),
         ("'\\'", 1) : (lambda a : ~a),
+        ("sign",1) : sign
     }
     
     function = functions.get( (func, len(args) ) )
