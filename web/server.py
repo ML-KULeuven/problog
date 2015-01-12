@@ -292,8 +292,6 @@ class ProbLogHTTP(BaseHTTPServer.BaseHTTPRequestHandler) :
         data = self.rfile.read(numberOfBytes)
         query = urlparse.parse_qs(data)
 
-        logger.info('POST - {}'.format(query))
-
         self.do_GET(query=query)
 
 
@@ -311,8 +309,6 @@ class ProbLogHTTP(BaseHTTPServer.BaseHTTPRequestHandler) :
         if '_' in query:
             # Used by jquery to avoid caching
             del query['_']
-
-        logger.info('GET - {} - {}'.format(path, self.client_address[0]))
 
         action = PATHS.get(path)
         if action == None :
@@ -349,6 +345,23 @@ class ProbLogHTTP(BaseHTTPServer.BaseHTTPRequestHandler) :
             self.send_response(404)
             self.end_headers()
             self.wfile.write(toBytes('File not found!'))  
+        
+    def log_message(self,format, *args) :
+        try :
+            # Remove arguments from GET request, only keep path
+            if args[0].startswith('GET') :
+                p = args[0].find('?')
+                if p >= 0 :
+                    args0 = args[0][0:p]
+                else :
+                    args0 = args[0]
+                args = (args0,) + args[1:]
+        except Exception :
+            pass
+        
+        args = (self.client_address[0],) + args
+        format = '[%s] ' + format        
+        logger.info(format % args)
 
 
 if __name__ == '__main__' :
