@@ -422,6 +422,8 @@ class EventBasedEngine(object) :
                 # EXTEND Mark this information in the ground program?
                 cnode = ProcessDefineCycle(pnode, call_args.define, parent)
             else :
+                # Add ancestor here.
+                pnode.addAncestor(call_args.define)
                 # Not a cycle, just reusing. Register parent as listener (will retrigger past events.)
                 pnode.addListener(parent)
             
@@ -445,7 +447,6 @@ class ProcessNode(object) :
         EngineLogger.get().sendResult(self, result, ground_node)
         for listener, evttype in self.listeners :
             if evttype & self.EVT_RESULT :
-                #print ('SEND', 'result', id(self), '->', id(listener))
                 listener.newResult(result, ground_node)
     
     def notifyComplete(self) :
@@ -456,7 +457,6 @@ class ProcessNode(object) :
             self.isComplete = True
             for listener, evttype in self.listeners :
                 if evttype & self.EVT_COMPLETE :
-                    #print ('SEND', 'complete', id(self), '->', id(listener))
                     listener.complete()
         
     def addListener(self, listener, eventtype=EVT_ALL) :
@@ -563,7 +563,7 @@ class ProcessLink(ProcessNode) :
         
     def newResult(self, result, ground_node=0) :
         self.required_complete += 1     # For each result of first conjuct, we call the second conjuct which should produce a complete.
-        EngineLogger.get().receiveResult(self, result, ground_node)
+        EngineLogger.get().receiveResult(self, result, ground_node, 'required: %s' % self.required_complete)
         self.engine._exit_call( self.node_id, result )    
         process = ProcessAnd(self.gp, ground_node)
         process.addListener(self.parent, ProcessNode.EVT_RESULT)
@@ -572,7 +572,7 @@ class ProcessLink(ProcessNode) :
         
     def complete(self) :
         # Receive complete
-        EngineLogger.get().receiveComplete(self)
+        EngineLogger.get().receiveComplete(self, 'required: %s' % (self.required_complete-1))
         self.required_complete -= 1
         if self.required_complete == 0 :
             self.notifyComplete()
@@ -597,18 +597,20 @@ class ProcessDefineCycle(ProcessNode) :
     def __init__(self, parent, context, listener) :
         self.parent = parent
         
-        while context != self.parent :
-            context.cyclic = True
-            context = context.parent
-
-        self.parent.cyclic = True
-        self.parent.addCycleChild(self)
+        context.propagateCyclic(self.parent)
+        
+        # while context != self.parent :
+        #     context.cyclic = True
+        #     context = context.parent
         ProcessNode.__init__(self)
         self.addListener(listener)
         self.parent.addListener(self)
+        self.parent.cyclic = True
+        self.parent.addCycleChild(self)
+        
     
     def __repr__(self) :
-        return 'cycle child of %s' % (self.parent)
+        return 'cycle child of %s [%s]' % (self.parent, id(self))
         
      
 class ProcessDefine(ProcessNode) :
@@ -622,10 +624,12 @@ class ProcessDefine(ProcessNode) :
         self.gp = gp
         self.node_id = node_id
         self.args = args
-        self.parent = parent
+        self.parents = set()
+        if parent : self.parents.add(parent)
         self.__is_cyclic = False
         self.__buffer = defaultdict(list)
         self.children = []
+        self.execute_completed = False
         ProcessNode.__init__(self)
         
     @property
@@ -638,15 +642,34 @@ class ProcessDefine(ProcessNode) :
             self.__is_cyclic = value
             self._cycle_detected()
         
+    def propagateCyclic(self, root) :
+        if root != self :
+            self.cyclic = True
+            for p in self.parents :
+                p.propagateCyclic(root)
+            
     def addCycleChild(self, cnode ) :
         self.children.append(cnode)
+        if self.execute_completed :
+            cnode.complete()
+        
+    def addAncestor(self, parent) :
+        self.parents.add(parent)
+        
+    def getAncestors(self) :
+        current = {self}
+        just_added = current
+        while just_added :
+            latest = set()
+            for a in just_added :
+                latest |= a.parents
+            latest -= current
+            current |= latest
+            just_added = latest
+        return current
         
     def hasAncestor(self, anc) :
-        ancestor = self
-        while ancestor != None :
-            if ancestor == anc : return True
-            ancestor = ancestor.parent
-        return False
+        return anc in self.getAncestors()
                         
     def addListener(self, listener, eventtype=ProcessNode.EVT_ALL) :
         
@@ -671,6 +694,7 @@ class ProcessDefine(ProcessNode) :
         for child in children :
             self.engine._eval( self.db, self.gp, child, self.engine._create_context(self.args,define=self), parent=process )
         
+        self.execute_completed = True
         for c in self.children :
             c.complete()
 
@@ -761,12 +785,12 @@ class ProcessCallReturn(ProcessNode) :
                     
     def newResult(self, result, ground_node=0) :
         EngineLogger.get().receiveResult(self, result, ground_node)
-        
         output = list(self.context)
         #try :
         for call_arg, res_arg in zip(self.call_args,result) :
             unify( res_arg, call_arg, output )
         self.notifyListeners(output, ground_node)
+
         # except UnifyError :
         #     pass
     
@@ -1101,16 +1125,16 @@ class SimpleEngineLogger(EngineLogger) :
         pass
                 
     def receiveResult(self, source, result, node, *extra) :
-        print (type(source).__name__, id(source), 'receive', result, node, source)
+        print (type(source).__name__, id(source), 'receive', result, node, source, *extra)
         
     def receiveComplete(self, source, *extra) :
-        print (type(source).__name__, id(source), 'receive complete', source)
+        print (type(source).__name__, id(source), 'receive complete', source, *extra)
         
     def sendResult(self, source, result, node, *extra) :
-        print (type(source).__name__, id(source), 'send', result, node, source)
+        print (type(source).__name__, id(source), 'send', result, node, source, *extra)
 
     def sendComplete(self, source, *extra) :
-        print (type(source).__name__, id(source), 'send complete', source)
+        print (type(source).__name__, id(source), 'send complete', source, *extra)
         
     def create(self, source) :
         print (type(source).__name__, id(source), 'create', source)
