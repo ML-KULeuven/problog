@@ -102,7 +102,8 @@ def unify( source_value, target_value, target_context=None ) :
             if current_value == None :
                 target_context[target_value] = source_value
             else :
-                unify( source_value, current_value )
+                new_value = unify_value( source_value, current_value )
+                target_context[target_value] = new_value
     elif target_value == None :
         pass
     else :
