@@ -1237,7 +1237,7 @@ def addBuiltins(engine) :
     engine.addBuiltIn('dbreference', 1, builtin_dbreference)
     engine.addBuiltIn('primitive', 1, builtin_primitive)
     engine.addBuiltIn('ground', 1, builtin_ground)
-    engine.addBuiltIn('is_list', 1, builtin_islist)
+    engine.addBuiltIn('is_list', 1, builtin_is_list)
     
     engine.addBuiltIn('=..', 2, builtin_split_call)
     engine.addBuiltIn('arg', 3, builtin_arg)
