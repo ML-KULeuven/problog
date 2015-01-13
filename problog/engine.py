@@ -1,7 +1,7 @@
 from __future__ import print_function
 
 from .program import ClauseDB, PrologString, PrologFile
-from .logic import Term, Constant
+from .logic import Term, Constant, InstantiationError
 from .formula import LogicFormula
 
 from collections import defaultdict
@@ -344,7 +344,7 @@ class EventBasedEngine(object) :
         if node.defnode < 0 :
             # Negative node indicates a builtin.
             builtin = self._getBuiltIn( node.defnode )
-            builtin( *call_args, context=context, callback=context_switch, database=db, engine=self )
+            builtin( *call_args, context=context, callback=context_switch, database=db, engine=self, ground_program=gp )
         else :
             # Positive node indicates a non-builtin.
             try :
@@ -970,12 +970,244 @@ def builtin_consult( filename, callback=None, database=None, engine=None, contex
             database += clause
     callback.newResult(context)
     callback.complete()
-        
+
+def is_var(term) :
+    return is_variable(term) or term.isVar()
+
+def is_term(term) :
+    return not is_var(term) and not is_constant(term)
+
+def is_float(term) :
+    return is_constant(term) and term.isFloat()
+
+def is_integer(term) :
+    return is_constant(term) and term.isFloat()
+
+def is_number(term) :
+    return is_float(term) and is_integer(term)
+
+def is_constant(term) :
+    return not is_var(term) and term.isConstant()
+
+def is_atom(term) :
+    return is_term(term) and term.arity == 0
+
+def is_rational(term) :
+    return False
+
+def is_dbref(term) :
+    return False
+
+def is_compound(term) :
+    return is_term(term) and term.arity > 0
+    
+def is_list_nonempty(term) :
+    return is_compound(term) and term.functor == '.' and term.arity == 2
+    
+def is_list_empty(term) :
+    return is_atom(term) and term.functor == '[]'
+    
+def is_list(term) :
+    return is_list_empty(term) or is_list_nonempty(term)
+    
+def list_elements(term) :
+    elements = []
+    tail = term
+    while is_list_nonempty(tail) :
+        elements.append(tail.args[0])
+        tail = tail.args[1]
+    return elements, tail
+               
+def builtin_var( term, callback, **kwdargs ) :
+    if is_var(term) : callback.newResult(term)
+    callback.complete()
+
+def builtin_atom( term, callback, **kwdargs ) :
+    if is_atom(term) : callback.newResult(term)
+    callback.complete()
+
+def builtin_atomic( term, callback, **kwdargs ) :
+    if is_atom(term) or is_number(term) :
+        callback.newResult(term)
+    callback.complete()
+
+def builtin_compound( term, callback, **kwdargs ) :
+    if is_compound(term) :
+        callback.newResult(term)
+    callback.complete()
+
+def builtin_float( term, callback, **kwdargs ) :
+    if is_float(term) :
+        callback.newResult(term)
+    callback.complete()
+
+def builtin_integer( term, callback, **kwdargs ) :
+    if is_integer(term) :
+        callback.newResult(term)
+    callback.complete()
+
+def builtin_nonvar( term, callback, **kwdargs ) :
+    if not is_var(term) :
+        callback.newResult(term)
+    callback.complete()
+
+def builtin_number( term, callback, **kwdargs ) :
+    if not is_number(term) :
+        callback.newResult(term)
+    callback.complete()
+
+def builtin_simple( term, callback, **kwdargs ) :
+    if is_var(term) or is_atomic(term) :
+        callback.newResult(term)
+    callback.complete()
+    
+def builtin_callable( term, callback, **kwdargs ) :
+    if is_term(term) :
+        callback.newResult(term)
+    callback.complete()
+
+def builtin_rational( term, callback, **kwdargs ) :
+    if is_rational(term) :
+        callback.newResult(term)
+    callback.complete()    
+
+def builtin_dbreference( term, callback, **kwdargs ) :
+    if is_dbref(term) :
+        callback.newResult(term)
+    callback.complete()    
+    
+def builtin_primitive( term, callback, **kwdargs ) :
+    if is_atomic(term) or is_dbref(term) :
+        callback.newResult(term)
+    callback.complete()
+
+def builtin_ground( term, callback, **kwdargs ) :
+    if is_ground(term) :
+        callback.newResult(term)
+    callback.complete()
+
+def builtin_is_list( term, callback, **kwdargs ) :
+    if is_list(term) :
+        callback.newResult(term)
+    callback.complete()
+
+
+def builtin_split_call( term, parts, callback, **kwdargs) :
+    """T =.. L"""
+    # f(A,b,c) =.. [X,x,B,C] => f(x,b,c) =.. [f,x,b,c]
+    try :
+        if not is_var(term) :
+            part_list = ( term.withArgs(), ) + term.args
+            current = Term('[]')
+            for t in reversed(part_list) :
+                current = Term('.', t, current)
+            L = unify_value(current, parts)
+        else :
+            L = parts
+
+        # Now: 
+        #   - if term == f(A,B,C) -> L = f(A,B,C)
+        #   - if term is var -> L = parts (is_var of List)
+        if is_var(L) :
+            # Shouldn't be => ERROR
+            raise InstantiationError("'=../2' expects ground functor.")
+        elif not is_list(L) :
+            # Not a list:
+            raise UnifyError()
+        else :
+            elements, tail = list_elements(L)
+            if not is_list_empty(tail) :
+                raise InstantiationError("'=../2' expects fixed length list.")
+            elif not elements :
+                raise InstantiationError("'=../2' expects non-empty list.")
+            elif not is_atom(elements[0]) :
+                raise InstantiationError("'=../2' expects atom as functor.")
+            else :
+                term_new = elements[0](*elements[1:])
+            T = unify_value(term, term_new)
+        callback.newResult((T,L))
+    except UnifyError :
+        # Can't unify something -> FAIL.
+        pass
+    callback.complete()
+
+def builtin_arg(index,term,argument,callback,**kwdargs) :
+    if is_var(term) or is_var(index) :
+        raise InstantiationError("'arg/3' expects ground arguments at position 1 and 2.")
+    elif not is_integer(index) or int(index) < 0 :
+        raise InstantiationError("'arg/3' expects a positive integer at position 1.")
+    elif int(index) > 0 and int(index) <= len(term.args) :
+        try :
+            arg = term.args[int(index)-1]
+            res = unify_value(arg,argument)
+            callback.newResult(index,term,res)
+        except UnifyError :
+            pass
+    else :
+        # Index out of bounds -> fail silently
+        pass
+    callback.complete()
+
+def builtin_functor(term,functor,arity,callback,**kwdargs) :
+    if is_var(term) :
+        if is_atom(functor) and is_integer(arity) and int(arity) >= 0 :
+            callback.newResult( Term(functor, *((None,)*int(arity)) ), functor, arity )
+        else :
+            raise InstantiationError("'functor/3' received unexpected arguments")
+    else :
+        try :
+            func_out = unify_value(functor, Term(term.functor))
+            arity_out = unify_value(arity, Constant(term.arity))
+            callback.newResult(term, func_out, arity_out)
+        except UnifyError :
+            pass
+    callback.complete()
+
+# numbervars(T,+N1,-Nn)    number the variables TBD?
+
+class CallProcessNode(object) :
+    
+    def __init__(self, term, args, parent) :
+        self.term = term
+        self.num_args = len(args)
+        self.parent = parent
+    
+    def newResult(self, result, ground_node=0) :
+        if self.num_args > 0 :
+            res1 = result[:-self.num_args]
+            res2 = result[-self.num_args:]
+        else :
+            res1 = result
+            res2 = []
+        self.parent.newResult( [self.term(*res1)] + list(res2), ground_node )
+
+    def complete(self) :
+        self.parent.complete()
+
+
+def builtin_call( term, args=(), callback=None, database=None, engine=None, context=None, ground_program=None, **kwdargs ) :
+    if not is_term(term) :
+        raise InstantiationError("'call/1' expects a callable.")
+    else :
+        # Find the define node for the given query term.
+        clause_node = database.find(term.withArgs( *(term.args+args)))
+        # If term not defined: raise error
+        if clause_node == None : raise UnknownClause('%s/%s' % (term.functor, len(term.args)))
+        # Create a new call.
+        call_node = ClauseDB._call( term.functor, range(0, len(term.args) + len(args)), clause_node )
+        # Create a callback node that wraps the results in the functor.
+        cb = CallProcessNode(term, args, callback)
+        # Evaluate call.
+        engine._eval_call(database, ground_program, None, call_node, engine._create_context(term.args+args,define=context.define), cb )        
+
+def builtin_callN( term, *args, **kwdargs ) :
+    return builtin_call(term, args, **kwdargs)
+
 def addBuiltins(engine) :
     """Add Prolog builtins to the given engine."""
     engine.addBuiltIn('true', 0, builtin_true)
     engine.addBuiltIn('fail', 0, builtin_fail)
-    # engine.addBuiltIn('call/1', _builtin_call_1)
+    engine.addBuiltIn('false', 0, builtin_fail)
 
     engine.addBuiltIn('=', 2, builtin_eq)
     engine.addBuiltIn('\=', 2, builtin_neq)
@@ -990,7 +1222,30 @@ def addBuiltins(engine) :
     engine.addBuiltIn('>=', 2, builtin_ge)
     engine.addBuiltIn('=\=', 2, builtin_val_neq)
     engine.addBuiltIn('=:=', 2, builtin_val_eq)
+
+    engine.addBuiltIn('var', 1, builtin_var)
+    engine.addBuiltIn('atom', 1, builtin_atom)
+    engine.addBuiltIn('atomic', 1, builtin_atomic)
+    engine.addBuiltIn('compound', 1, builtin_compound)
+    engine.addBuiltIn('float', 1, builtin_float)
+    engine.addBuiltIn('rational', 1, builtin_rational)
+    engine.addBuiltIn('integer', 1, builtin_integer)
+    engine.addBuiltIn('nonvar', 1, builtin_nonvar)
+    engine.addBuiltIn('number', 1, builtin_number)
+    engine.addBuiltIn('simple', 1, builtin_simple)
+    engine.addBuiltIn('callable', 1, builtin_callable)
+    engine.addBuiltIn('dbreference', 1, builtin_dbreference)
+    engine.addBuiltIn('primitive', 1, builtin_primitive)
+    engine.addBuiltIn('ground', 1, builtin_ground)
+    engine.addBuiltIn('is_list', 1, builtin_islist)
     
+    engine.addBuiltIn('=..', 2, builtin_split_call)
+    engine.addBuiltIn('arg', 3, builtin_arg)
+    engine.addBuiltIn('functor', 3, builtin_functor)
+    
+    engine.addBuiltIn('call', 1, builtin_call)
+    for i in range(2,10) :
+        engine.addBuiltIn('call', i, builtin_callN)
     engine.addBuiltIn('consult', 1, builtin_consult)
 
 

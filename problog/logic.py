@@ -64,6 +64,9 @@ from __future__ import division
 
 from collections import defaultdict
 
+class InstantiationError(Exception): pass
+
+
 class Term(object) :
     """Represent a first-order Term."""
     
