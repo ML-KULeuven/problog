@@ -120,6 +120,8 @@ def call_process( cmd, timeout, memout ) :
         
     return subprocess.check_output(cmd, preexec_fn=setlimits)
 
+def wrap_callback(callback, jsonstr):
+    return '{}({});'.format(callback, jsonstr)
 
 #@handle_url('/problog')
 #def run_problog( model ) :
@@ -158,7 +160,10 @@ def run_problog_jsonp(model, callback):
 
     if CACHE_MODELS:
       import hashlib
-      inhash = hashlib.md5(model.encode()).hexdigest()
+      try:
+          inhash = hashlib.md5(model.encode()).hexdigest()
+      except UnicodeDecodeError as e:
+          return 200, 'application/json', wrap_callback(callback, json.dumps({'success':False,'err':'Cannot decode character in program: {}'.format(e)}))
       if not os.path.exists(CACHE_DIR):
           os.mkdir(CACHE_DIR)
       infile = os.path.join(CACHE_DIR, inhash+'.pl')
@@ -204,8 +209,14 @@ def run_learning_jsonp(model, examples, callback) :
 
     if CACHE_MODELS:
       import hashlib
-      inhash = hashlib.md5(model).hexdigest()
-      datahash = hashlib.md5(examples).hexdigest()
+      try:
+          inhash = hashlib.md5(model.decode()).hexdigest()
+      except UnicodeDecodeError as e:
+          return 200, 'application/json', wrap_callback(callback, json.dumps({'success':False,'err':'Cannot decode character in program: {}'.format(e)}))
+      try:
+          datahash = hashlib.md5(examples.decode()).hexdigest()
+      except UnicodeDecodeError as e:
+          return 200, 'application/json', wrap_callback(callback, json.dumps({'success':False,'err':'Cannot decode character in examples: {}'.format(e)}))
       if not os.path.exists(CACHE_DIR):
           os.mkdir(CACHE_DIR)
       infile = os.path.join(CACHE_DIR, inhash+'.pl')
@@ -232,7 +243,7 @@ def run_learning_jsonp(model, examples, callback) :
         code, datatype, datavalue = result.split(None,2)
 
         if datatype == 'application/json':
-            datavalue = '{}({});'.format(callback, datavalue)
+            datavalue = wrap_callback(callback, datavalue)
 
         return int(code), datatype, datavalue
     except subprocess.CalledProcessError :
@@ -257,7 +268,7 @@ def get_model_from_hash_jsonp(hash, callback):
     import json
     datatype = 'application/json'
     datavalue = json.dumps(result)
-    datavalue = '{}({});'.format(callback, datavalue)
+    datavalue = wrap_callback(callback, datavalue)
     code = 200
 
     return int(code), datatype, datavalue
@@ -279,7 +290,7 @@ def get_model_from_hash_jsonp(ehash, callback):
     import json
     datatype = 'application/json'
     datavalue = json.dumps(result)
-    datavalue = '{}({});'.format(callback, datavalue)
+    datavalue = wrap_callback(callback, datavalue)
     code = 200
 
     return int(code), datatype, datavalue
@@ -302,29 +313,32 @@ class ProbLogHTTP(BaseHTTPServer.BaseHTTPRequestHandler) :
         If the path does not occur in PATHS, treats the path as a filename and serves the file.
         """
 
-        url = urlparse.urlparse( self.path )
-        path = url.path
-        if query == None :
-            query = urlparse.parse_qs(url.query)
-        if '_' in query:
-            # Used by jquery to avoid caching
-            del query['_']
+        try:
+            url = urlparse.urlparse( self.path )
+            path = url.path
+            if query == None :
+                query = urlparse.parse_qs(url.query)
+            if '_' in query:
+                # Used by jquery to avoid caching
+                del query['_']
 
-        action = PATHS.get(path)
-        if action == None :
-            if SERVE_FILES :
-                self.serveFile(path)
+            action = PATHS.get(path)
+            if action == None :
+                if SERVE_FILES :
+                    self.serveFile(path)
+                else :
+                    self.send_response(404)
+                    self.end_headers()
+                    self.wfile.write(toBytes('File not found!'))  
             else :
-                self.send_response(404)
+                code, datatype, data = action( **query )
+                self.send_response(code)
+                self.send_header("Content-type", datatype)
                 self.end_headers()
-                self.wfile.write(toBytes('File not found!'))  
-        else :
-            code, datatype, data = action( **query )
-            self.send_response(code)
-            self.send_header("Content-type", datatype)
-            self.end_headers()
-            if data :
-                self.wfile.write(toBytes(data))
+                if data :
+                    self.wfile.write(toBytes(data))
+        except Exception as e:
+          logger.error('Uncaught exception:\n{}'.format(e))
 
     def serveFile(self, filename) :
         """Serve a file."""
