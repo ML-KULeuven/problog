@@ -4,6 +4,8 @@ from __future__ import print_function
 
 import os, sys, subprocess, traceback, json
 
+sys.setrecursionlimit(10000)
+
 sys.path.insert(0, os.path.abspath( os.path.join(os.path.dirname(__file__), '../')))
 
 from problog.parser import PrologParser
