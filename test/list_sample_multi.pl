@@ -1,5 +1,5 @@
 %Expected outcome:
-% ERROR UnboundProgramError
+% ERROR CallStackError
 % q1 0.014705882
 
 sample(L,N,S) :- permutation1(S,T), sample_ordered(L,N,T).
@@ -20,8 +20,3 @@ q1 :- sample([a,a,b,b,b,c,c,d,d,d,e,e,f,f,t,t,t,z],3,[c,a,t]).
 
 query(q1).
 
-
-length(L,N) :- length3(L,0,N).
- 
-length3([],N,N).
-length3([H|L],Acc,N) :- Acc2 is Acc + 1, length3(L,Acc2,N). 

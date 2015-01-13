@@ -1,5 +1,5 @@
 %Expected outcome:
-% ERROR UnboundProgramError
+% ERROR CallStackError
 
 0.3::p(1).
 0.2::p(2).

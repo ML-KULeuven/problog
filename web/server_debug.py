@@ -11,7 +11,7 @@ import resource
 
 # Load ProbLog modules
 sys.path.insert(0, os.path.abspath( os.path.join( os.path.dirname(__file__), '..' ) ) )
-from problog.program import PrologString
+from problog.program import PrologString, ClauseDB
 from problog.evaluator import SemiringSymbolic, Evaluator
 from problog.nnf_formula import NNF
 from problog.sdd_formula import SDD
@@ -131,12 +131,13 @@ def run_ground( model ) :
     #EngineLogger.setClass(SimpleEngineLogger)
     
     try :
-
+        print (ClauseDB.createFrom(PrologString(model)))
         formula = knowledge.createFrom( PrologString(model) )
         
         handle, filename = tempfile.mkstemp('.dot')
         with open(filename, 'w') as f :
             f.write(formula.toDot())     
+        print (formula)
         result = subprocess.check_output(['dot', '-Tsvg', filename]).decode('utf-8')
         content_type = 'application/json'
         #EngineLogger.setClass(None)

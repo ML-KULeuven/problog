@@ -122,6 +122,8 @@ class PrologParser(object) :
         self.addOperator( '/\\' , 500, 'yfx', self.factory.build_mathop2, function=lambda a, b : a & b)
         self.addOperator( '\/'  , 500, 'yfx', self.factory.build_mathop2, function=lambda a, b : a | b)
         self.addOperator( 'xor' , 500, 'yfx', self.factory.build_mathop2, function=lambda a, b : a ^ b)
+        self.addOperator( '><' , 500, 'yfx', self.factory.build_mathop2, function=lambda a, b : a ^ b)
+        self.addOperator( '#' , 500, 'yfx', self.factory.build_mathop2, function=lambda a, b : a ^ b)
         
         self.addOperator( '?'   , 500, 'fx', self.factory.build_unop )    
         
@@ -133,6 +135,7 @@ class PrologParser(object) :
         self.addOperator( '>>'  , 400 , 'yfx', self.factory.build_mathop2, function=lambda a, b : a >> b)
         self.addOperator( 'mod' , 400 , 'yfx', self.factory.build_mathop2, function=lambda a, b : a % b)
         self.addOperator( 'rem' , 400 , 'yfx', self.factory.build_mathop2, function=lambda a, b : a % b)
+        self.addOperator( 'div' , 400 , 'yfx', self.factory.build_mathop2, function=lambda a, b : ( a - (a % b) ) // b )
         
         self.addOperator( '**'  , 200 , 'xfx', self.factory.build_mathop2, function=lambda a, b : a ** b)
         self.addOperator( '^'   , 400 , 'xfy', self.factory.build_mathop2, function=lambda a, b : a ** b)

@@ -271,7 +271,7 @@ class EventBasedEngine(object) :
             self._eval_call(db, gp, None, call_node, self._create_context(term.args,define=None), res )
         except RuntimeError as err :
             if str(err).startswith('maximum recursion depth exceeded') :
-                raise UnboundProgramError()
+                raise CallStackError()
             else :
                 raise
         # Return ground program and results.
@@ -981,7 +981,10 @@ def is_float(term) :
     return is_constant(term) and term.isFloat()
 
 def is_integer(term) :
-    return is_constant(term) and term.isFloat()
+    return is_constant(term) and term.isInteger()
+
+def is_string(term) :
+    return is_constant(term) and term.isString()
 
 def is_number(term) :
     return is_float(term) and is_integer(term)
@@ -1163,7 +1166,148 @@ def builtin_functor(term,functor,arity,callback,**kwdargs) :
             pass
     callback.complete()
 
+def compare(a,b) :
+    if a < b :
+        return -1
+    elif a > b :
+        return 1
+    else :
+        return 0
+    
+def struct_cmp( A, B ) :
+    # Note: structural comparison
+    # 1) Var < Num < Str < Atom < Compound
+    # 2) Var by address
+    # 3) Number by value, if == between int and float => float is smaller (iso prolog: Float always < Integer )
+    # 4) String alphabetical
+    # 5) Atoms alphabetical
+    # 6) Compound: arity / functor / arguments
+        
+    # 1) Variables are smallest
+    if is_var(A) :
+        if is_var(B) :
+            # 2) Variable by address
+            return compare(A,B)
+        else :
+            return -1
+    elif is_var(B) :
+        return 1
+    # assert( not is_var(A) and not is_var(B) )
+    
+    # 2) Numbers are second smallest
+    if is_number(A) :
+        if is_number(B) :
+            # Just compare numbers on float value
+            res = compare(float(A),float(B))
+            if res == 0 :
+                # If the same, float is smaller.
+                if is_float(A) and is_integer(B) : 
+                    return -1
+                elif is_float(B) and is_integer(A) : 
+                    return 1
+                else :
+                    return 0
+        else :
+            return -1
+    elif is_number(B) :
+        return 1
+        
+    # 3) Strings are third
+    if is_string(A) :
+        if is_string(B) :
+            return compare(str(A),str(B))
+        else :
+            return -1
+    elif is_string(B) :
+        return 1
+    
+    # 4) Atoms / terms come next
+    # 4.1) By arity
+    res = compare(A.arity,B.arity)
+    if res != 0 : return res
+    
+    # 4.2) By functor
+    res = compare(A.functor,B.functor)
+    if res != 0 : return res
+    
+    # 4.3) By arguments (recursively)
+    for a,b in zip(A.args,B.args) :
+        res = struct_cmp(a,b)
+        if res != 0 : return res
+        
+    return 0
+    
+def builtin_struct_lt(A, B, callback, **kwdargs) :
+    res = struct_cmp(A,B)
+    if res < 0 : callback.newResult((A,B))
+    callback.complete()
+
+def builtin_struct_le(A, B, callback, **kwdargs) :
+    res = struct_cmp(A,B)
+    if res <= 0 : callback.newResult((A,B))
+    callback.complete()
+
+def builtin_struct_gt(A, B, callback, **kwdargs) :
+    res = struct_cmp(A,B)
+    if res > 0 : callback.newResult((A,B))
+    callback.complete()
+
+def builtin_struct_ge(A, B, callback, **kwdargs) :
+    res = struct_cmp(A,B)
+    if res >= 0 : callback.newResult((A,B))
+    callback.complete()
+
+def builtin_compare(C, A, B, callback, **kwdargs) :
+    accepted_C = "'<'","'='","'>'"
+    if not is_atom(C) or C.functor not in accepted_C :
+        raise InstantiationError('compare expects <, = or > as its first argument')
+    else :
+        expected = 1 - accepted_C.index(C.functor)
+        res = struct_cmp(A,B)
+        if expected == res : callback.newResult((C,A,B))
+        callback.complete()
+
 # numbervars(T,+N1,-Nn)    number the variables TBD?
+
+def build_list(elements, tail) :
+    current = tail
+    for el in reversed(elements) :
+        current = Term('.', el, current)
+    return current
+
+def builtin_length(L, N, callback, **kwdargs) :
+    if not ( ( is_integer(N) and int(N) >= 0 ) or is_var(N) ) :
+        raise InstantiationError('Expected positive integer.')
+    
+    if is_list(L) :
+        elements, tail = list_elements(L)
+    elif is_var(L) :
+        elements, tail = [], L
+    else :
+        raise InstantiationError('Expected list.')
+    
+    try :
+        if is_list_empty(tail) :
+            # Fixed list size
+            list_size = len(elements)
+            N = unify_value(N, Constant(list_size))
+            callback.newResult( ( build_list( elements, tail ), N ) )
+        elif is_var(tail) :
+            if is_var(N) :
+                raise UnboundProgramError()  # Really unbounded -> [], [_], [_,_], [_,_,_], ...
+            else :
+                remain = int(N) - len(elements)
+                if remain < 0 :
+                    raise UnifyError()
+                else :
+                    extra = [None] * remain
+                newL = build_list( elements + extra, Term('[]'))
+                callback.newResult( (newL, N) )
+    except UnifyError :
+        pass
+    callback.complete()
+    
+
 
 class CallProcessNode(object) :
     
@@ -1202,6 +1346,41 @@ def builtin_call( term, args=(), callback=None, database=None, engine=None, cont
 
 def builtin_callN( term, *args, **kwdargs ) :
     return builtin_call(term, args, **kwdargs)
+
+class StructSort(object) :
+    
+    def __init__(self, obj, *args):
+        self.obj = obj
+    def __lt__(self, other):
+        return struct_cmp(self.obj, other.obj) < 0
+    def __gt__(self, other):
+        return struct_cmp(self.obj, other.obj) > 0
+    def __eq__(self, other):
+        return struct_cmp(self.obj, other.obj) == 0
+    def __le__(self, other):
+        return struct_cmp(self.obj, other.obj) <= 0  
+    def __ge__(self, other):
+        return struct_cmp(self.obj, other.obj) >= 0
+    def __ne__(self, other):
+        return struct_cmp(self.obj, other.obj) != 0
+
+def builtin_sort( L, S, callback, **kwdargs ) :
+    # TODO doesn't work properly with variables
+    if not is_list(L) :
+        raise InstantiationError('First argument should be fixed list.')
+    else :
+        elements, tail = list_elements(L)
+        if not is_list_empty(tail) :
+            raise InstantiationError('First argument should be fixed list.')
+        else :
+            try :
+                sorted_list = build_list(sorted(set(elements), key=StructSort), Term('[]'))
+                S_out = unify_value(S,sorted_list)
+                callback.newResult( (L,S_out) )
+            except UnifyError :
+                pass
+    callback.complete()
+
 
 def addBuiltins(engine) :
     """Add Prolog builtins to the given engine."""
@@ -1243,6 +1422,14 @@ def addBuiltins(engine) :
     engine.addBuiltIn('arg', 3, builtin_arg)
     engine.addBuiltIn('functor', 3, builtin_functor)
     
+    engine.addBuiltIn('@>',2, builtin_struct_gt)
+    engine.addBuiltIn('@<',2, builtin_struct_lt)
+    engine.addBuiltIn('@>=',2, builtin_struct_ge)
+    engine.addBuiltIn('@=<',2, builtin_struct_le)
+    engine.addBuiltIn('compare',3, builtin_compare)
+    engine.addBuiltIn('length',2, builtin_length)
+    engine.addBuiltIn('sort',2, builtin_sort)
+    
     engine.addBuiltIn('call', 1, builtin_call)
     for i in range(2,10) :
         engine.addBuiltIn('call', i, builtin_callN)
@@ -1259,6 +1446,8 @@ class UserFail(Exception) : pass
 class NonGroundQuery(Exception) : pass
 
 class UnboundProgramError(Exception) : pass
+
+class CallStackError(Exception) : pass
 
 
 # Input python 2 and 3 compatible input
