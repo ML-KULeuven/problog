@@ -161,13 +161,16 @@ def run_problog_jsonp(model, callback):
     if CACHE_MODELS:
       import hashlib
       try:
-          inhash = hashlib.md5(model.encode()).hexdigest()
+          #inhash = hashlib.md5(model.decode('utf-8')).hexdigest()
+          inhash = hashlib.md5(model).hexdigest() # Python 2
       except UnicodeDecodeError as e:
+          logger.error('Unicode error catched: {}'.format(e))
           return 200, 'application/json', wrap_callback(callback, json.dumps({'success':False,'err':'Cannot decode character in program: {}'.format(e)}))
       if not os.path.exists(CACHE_DIR):
           os.mkdir(CACHE_DIR)
       infile = os.path.join(CACHE_DIR, inhash+'.pl')
       outfile = os.path.join(CACHE_DIR, inhash+'.out')
+      logger.info('Saved file: {}'.format(infile))
     else:
       _, infile = tempfile.mkstemp('.pl')
       _, outfile = tempfile.mkstemp('.out')
@@ -185,15 +188,12 @@ def run_problog_jsonp(model, callback):
             result = f.read()
         code, datatype, datavalue = result.split(None,2)
 
-        print("RETURN:")
-        print(code, datatype, datavalue)
-
         if datatype == 'application/json':
             datavalue = '{}({});'.format(callback, datavalue)
 
         return int(code), datatype, datavalue
     except subprocess.CalledProcessError :
-        return 500, 'application/json', json.dumps('ProbLog evaluation exceeded time or memory limit')
+        return 200, 'application/json', wrap_callback(callback, json.dumps({'success':False, 'err':'ProbLog evaluation exceeded time or memory limit'}))
 
 @handle_url(api_root+'learning')
 def run_learning_jsonp(model, examples, callback) :
@@ -210,17 +210,20 @@ def run_learning_jsonp(model, examples, callback) :
     if CACHE_MODELS:
       import hashlib
       try:
-          inhash = hashlib.md5(model.decode()).hexdigest()
+          inhash = hashlib.md5(model.decode('utf-8')).hexdigest()
       except UnicodeDecodeError as e:
+          logger.error('Unicode error catched: {}'.format(e))
           return 200, 'application/json', wrap_callback(callback, json.dumps({'success':False,'err':'Cannot decode character in program: {}'.format(e)}))
       try:
-          datahash = hashlib.md5(examples.decode()).hexdigest()
+          inhash = hashlib.md5(examples.decode('utf-8')).hexdigest()
       except UnicodeDecodeError as e:
+          logger.error('Unicode error catched: {}'.format(e))
           return 200, 'application/json', wrap_callback(callback, json.dumps({'success':False,'err':'Cannot decode character in examples: {}'.format(e)}))
       if not os.path.exists(CACHE_DIR):
           os.mkdir(CACHE_DIR)
       infile = os.path.join(CACHE_DIR, inhash+'.pl')
       datafile = os.path.join(CACHE_DIR, datahash+'.data')
+      logger.info('Saved files: {} and {}'.format(infile, datafile))
       outfile = os.path.join(CACHE_DIR, inhash+'_'+datahash+'.out')
     else:
       _, infile = tempfile.mkstemp('.pl')
@@ -248,8 +251,7 @@ def run_learning_jsonp(model, examples, callback) :
         return int(code), datatype, datavalue
     except subprocess.CalledProcessError :
         import json
-        return 500, 'application/json', json.dumps('ProbLog evaluation exceeded time or memory limit')
-    
+        return 200, 'application/json', wrap_callback(callback, json.dumps({'success':False, 'err':'ProbLog learning exceeded time or memory limit'}))
 
 
 @handle_url(api_root+'model')
