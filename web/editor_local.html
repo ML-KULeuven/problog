@@ -11,7 +11,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.1.3/ace.js"></script>
   <script src="http://crypto-js.googlecode.com/svn/tags/3.1.2/build/rollups/md5.js"></script>
 
-  <script src="http://adams.cs.kuleuven.be/problog/js/problog_editor.js" type="text/javascript" charset="utf-8"></script>
+  <script src="js/problog_editor.js" type="text/javascript" charset="utf-8"></script>
 </head>
 <body>
 <div class="container">
@@ -31,6 +31,7 @@
 
 <script type="text/javascript" charset="utf-8">
   $(document).ready(function() {
+      problog.hostname = 'http://localhost:5100/'
       problog.initialize();
       problog.fetchModel(); // check url for hash and load in first editor
   });
