@@ -270,9 +270,9 @@ class EventBasedEngine(object) :
             # Evaluate call.
             self._eval_call(db, gp, None, call_node, self._create_context(term.args,define=None), res )
         except RuntimeError as err :
-            # if str(err).startswith('maximum recursion depth exceeded') :
-            #     raise CallStackError()
-            # else :
+            if str(err).startswith('maximum recursion depth exceeded') :
+                raise CallStackError()
+            else :
                 raise
         # Return ground program and results.
         return gp, res.results
