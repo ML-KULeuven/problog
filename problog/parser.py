@@ -450,7 +450,7 @@ class PrologParser(object) :
         self.statement.setParseAction( self._parse_statement )
         
         # <program> is a list of statements
-        self.program = OneOrMore(self.statement).ignore('%' + restOfLine )
+        self.program = ZeroOrMore(self.statement).ignore('%' + restOfLine )
         self.program.setParseAction(self._parse_program)
         
     @guarded
