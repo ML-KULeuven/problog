@@ -68,6 +68,12 @@ import math
 
 class InstantiationError(Exception): pass
 
+def term2str(term) :
+    if term == None :
+        return '_'
+    else :
+        return str(term)
+
 
 class Term(object) :
     """Represent a first-order Term."""
@@ -147,8 +153,19 @@ class Term(object) :
         else :
             prob = '%s::' % self.probability
         
+        if self.arity == 2 and self.functor == '.' :
+            # List
+            elements = []
+            tail = self
+            while isinstance(tail,Term) and tail.arity == 2 and tail.functor == '.' :
+                elements.append(tail.args[0])
+                tail = tail.args[1]
+            if str(tail) == '[]' :
+                return '[%s]' % ', '.join(map(term2str,elements))
+            else :
+                return '[%s|%s]' % (', '.join(map(str,elements)), term2str(tail))
         if self.args :
-            return '%s%s(%s)' % (prob, self.functor, ','.join(map(str,self.args)))
+            return '%s%s(%s)' % (prob, self.functor, ','.join(map(term2str,self.args)))
         else :
             return '%s%s' % (prob, self.functor,)
         
