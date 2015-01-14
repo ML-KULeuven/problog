@@ -420,9 +420,9 @@ class PrologParser(object) :
         self.__func << self.__identifier + Optional( self.__lparen + self.__arglist + self.__rparen )
         self.__func.setParseAction(self._parse_function)
         
-        # Tail of a Prolog list
-        # <list_tail> ::= <variable> | <list>
-        self.__list_tail = self.__variable | self.__list
+        # Tail of a Prolog list -> can be any type of element
+        # <list_tail> ::= <arg_in_list>
+        self.__list_tail = self.__arg_in_list # self.__variable | self.__list
         
         # List with values
         # <fulllist> ::= "[" <arglist> ( "|" <list_tail> )? "]"
