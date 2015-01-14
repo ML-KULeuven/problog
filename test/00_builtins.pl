@@ -52,3 +52,50 @@ query(between_003). % outcome: 1
 % between_004(2) 1
 between_004(X) :- between(-3,2,X).
 query(between_004(X)). 
+
+% succ_001 :- succ(A,B).
+% query(succ_001).
+
+%Expected outcome:
+% plus_000(3) 1
+% plus_001(2) 1
+% plus_002(1) 1
+plus_000(X) :- plus(1,2,X).
+query(plus_000(X)).
+plus_001(X) :- plus(1,X,3).
+query(plus_001(X)).
+plus_002(X) :- plus(X,2,3).
+query(plus_002(X)).
+
+
+plus_003 :- plus(1,2,3).
+query(plus_003). % outcome: 1
+
+plus_004 :- plus(1,2,4).
+query(plus_004). % outcome: 0
+
+ 
+is_list_001 :- is_list([a,b|e]).
+query(is_list_001).	% outcome: 0
+
+is_list_002 :- is_list([a,b|E]).
+query(is_list_002). % outcome: 1
+
+sort_001 :- sort([a,c,b],[a,b,c]).
+query(sort_001). % outcome: 1
+
+sort_002 :- sort([b,c,a,b],L), L = [a,b,c].
+query(sort_002). % outcome: 1
+
+cmp_001 :- a @< b.
+cmp_002 :- b @< a.
+query(cmp_001).	% outcome: 1
+query(cmp_002). % outcome: 0
+
+%Expected outcome:
+% cmp_003('<') 1  
+cmp_003(X) :- compare(X,a,b).
+cmp_004 :- compare('<',a,b).
+query(cmp_003(X)).
+query(cmp_004). % outcome: 1
+

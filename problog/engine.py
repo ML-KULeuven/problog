@@ -270,9 +270,9 @@ class EventBasedEngine(object) :
             # Evaluate call.
             self._eval_call(db, gp, None, call_node, self._create_context(term.args,define=None), res )
         except RuntimeError as err :
-            if str(err).startswith('maximum recursion depth exceeded') :
-                raise CallStackError()
-            else :
+            # if str(err).startswith('maximum recursion depth exceeded') :
+            #     raise CallStackError()
+            # else :
                 raise
         # Return ground program and results.
         return gp, res.results
@@ -1017,8 +1017,24 @@ def is_dbref(term) :
 def is_compound(term) :
     return is_term(term) and term.arity > 0
     
-def is_list_nonempty(term) :
+def is_list_maybe(term) :
+    """Check whether the term looks like a list (i.e. of the form '.'(_,_))."""
     return is_compound(term) and term.functor == '.' and term.arity == 2
+    
+def is_list_nonempty(term) :
+    if is_list_maybe(term) :
+        tail = list_tail(term)
+        return is_list_empty(tail) or is_var(tail)
+    return False
+
+def is_fixed_list(term) :
+    return is_list_empty(term) or is_fixed_list_nonempty(term)
+
+def is_fixed_list_nonempty(term) :
+    if is_list_maybe(term) :
+        tail = list_tail(term)
+        return is_list_empty(tail)
+    return False
     
 def is_list_empty(term) :
     return is_atom(term) and term.functor == '[]'
@@ -1026,87 +1042,23 @@ def is_list_empty(term) :
 def is_list(term) :
     return is_list_empty(term) or is_list_nonempty(term)
     
+def is_compare(term) :
+    return is_atom(term) and term.functor in ("'<'", "'='", "'>'")
+    
 def list_elements(term) :
     elements = []
     tail = term
-    while is_list_nonempty(tail) :
+    while is_list_maybe(tail) :
         elements.append(tail.args[0])
         tail = tail.args[1]
     return elements, tail
+    
+def list_tail(term) :
+    tail = term
+    while is_list_maybe(tail) :
+        tail = tail.args[1]
+    return tail
                
-def builtin_var( term, callback, **kwdargs ) :
-    if is_var(term) : callback.newResult(term)
-    callback.complete()
-
-def builtin_atom( term, callback, **kwdargs ) :
-    if is_atom(term) : callback.newResult(term)
-    callback.complete()
-
-def builtin_atomic( term, callback, **kwdargs ) :
-    if is_atom(term) or is_number(term) :
-        callback.newResult(term)
-    callback.complete()
-
-def builtin_compound( term, callback, **kwdargs ) :
-    if is_compound(term) :
-        callback.newResult(term)
-    callback.complete()
-
-def builtin_float( term, callback, **kwdargs ) :
-    if is_float(term) :
-        callback.newResult(term)
-    callback.complete()
-
-def builtin_integer( term, callback, **kwdargs ) :
-    if is_integer(term) :
-        callback.newResult(term)
-    callback.complete()
-
-def builtin_nonvar( term, callback, **kwdargs ) :
-    if not is_var(term) :
-        callback.newResult(term)
-    callback.complete()
-
-def builtin_number( term, callback, **kwdargs ) :
-    if not is_number(term) :
-        callback.newResult(term)
-    callback.complete()
-
-def builtin_simple( term, callback, **kwdargs ) :
-    if is_var(term) or is_atomic(term) :
-        callback.newResult(term)
-    callback.complete()
-    
-def builtin_callable( term, callback, **kwdargs ) :
-    if is_term(term) :
-        callback.newResult(term)
-    callback.complete()
-
-def builtin_rational( term, callback, **kwdargs ) :
-    if is_rational(term) :
-        callback.newResult(term)
-    callback.complete()    
-
-def builtin_dbreference( term, callback, **kwdargs ) :
-    if is_dbref(term) :
-        callback.newResult(term)
-    callback.complete()    
-    
-def builtin_primitive( term, callback, **kwdargs ) :
-    if is_atomic(term) or is_dbref(term) :
-        callback.newResult(term)
-    callback.complete()
-
-def builtin_ground( term, callback, **kwdargs ) :
-    if is_ground(term) :
-        callback.newResult(term)
-    callback.complete()
-
-def builtin_is_list( term, callback, **kwdargs ) :
-    if is_list(term) :
-        callback.newResult(term)
-    callback.complete()
-
 
 def builtin_split_call( term, parts, callback, **kwdargs) :
     """T =.. L"""
@@ -1179,6 +1131,192 @@ def builtin_functor(term,functor,arity,callback,**kwdargs) :
             pass
     callback.complete()
 
+class CallProcessNode(object) :
+    
+    def __init__(self, term, args, parent) :
+        self.term = term
+        self.num_args = len(args)
+        self.parent = parent
+    
+    def newResult(self, result, ground_node=0) :
+        if self.num_args > 0 :
+            res1 = result[:-self.num_args]
+            res2 = result[-self.num_args:]
+        else :
+            res1 = result
+            res2 = []
+        self.parent.newResult( [self.term(*res1)] + list(res2), ground_node )
+
+    def complete(self) :
+        self.parent.complete()
+
+
+def builtin_call( term, args=(), callback=None, database=None, engine=None, context=None, ground_program=None, **kwdargs ) :
+    if not is_term(term) :
+        raise InstantiationError("'call/1' expects a callable.")
+    else :
+        # Find the define node for the given query term.
+        clause_node = database.find(term.withArgs( *(term.args+args)))
+        # If term not defined: raise error
+        if clause_node == None : raise UnknownClause('%s/%s' % (term.functor, len(term.args)))
+        # Create a new call.
+        call_node = ClauseDB._call( term.functor, range(0, len(term.args) + len(args)), clause_node )
+        # Create a callback node that wraps the results in the functor.
+        cb = CallProcessNode(term, args, callback)
+        # Evaluate call.
+        engine._eval_call(database, ground_program, None, call_node, engine._create_context(term.args+args,define=context.define), cb )        
+
+def builtin_callN( term, *args, **kwdargs ) :
+    return builtin_call(term, args, **kwdargs)
+
+class StructSort(object) :
+    
+    def __init__(self, obj, *args):
+        self.obj = obj
+    def __lt__(self, other):
+        return struct_cmp(self.obj, other.obj) < 0
+    def __gt__(self, other):
+        return struct_cmp(self.obj, other.obj) > 0
+    def __eq__(self, other):
+        return struct_cmp(self.obj, other.obj) == 0
+    def __le__(self, other):
+        return struct_cmp(self.obj, other.obj) <= 0  
+    def __ge__(self, other):
+        return struct_cmp(self.obj, other.obj) >= 0
+    def __ne__(self, other):
+        return struct_cmp(self.obj, other.obj) != 0
+
+
+mode_types = {
+    'i' : ('integer', is_integer),
+    'I' : ('positive_integer', is_integer_pos),
+    'v' : ('var', is_var),
+    'l' : ('list', is_list),
+    'L' : ('fixed_list', is_fixed_list),    # List of fixed length (i.e. tail is [])
+    '*' : ('any', lambda x : True ),
+    '<' : ('compare', is_compare )
+}
+
+
+class CallModeError(Exception) :
+    
+    def __init__(self, functor, args, accepted) :
+        self.scope = '%s/%s'  % ( functor, len(args) )
+        self.received = ', '.join(map(self.show_arg,args))
+        self.expected = [  ', '.join(map(self.show_mode,mode)) for mode in accepted  ]
+        message = 'Invalid argument types for call'
+        if self.scope : message += " to '%s'" % self.scope
+        message += ': arguments: (%s)' % self.received
+        message += ', expected: (%s)' % ') or ('.join(self.expected) 
+        Exception.__init__(self, message)
+        
+    def show_arg(self, x) :
+        if x == None :
+            return '_'
+        else :
+            return str(x)
+    
+    def show_mode(self, t) :
+        return mode_types[t][0]
+        
+class BooleanBuiltIn(object) :
+    """Simple builtin that consist of a check without unification. (e.g. var(X), integer(X), ... )."""
+    
+    def __init__(self, base_function) :
+        self.base_function = base_function
+    
+    def __call__( self, *args, **kwdargs ) :
+        callback = kwdargs.get('callback')
+        if self.base_function(*args) :
+            callback.newResult(args)
+        callback.complete()
+        
+class SimpleBuiltIn(object) :
+    """Simple builtin that does cannot be involved in a cycle or require engine information and has 0 or more results."""
+
+    def __init__(self, base_function) :
+        self.base_function = base_function
+    
+    def __call__(self, *args, **kwdargs ) :
+        callback = kwdargs.get('callback')
+        results = self.base_function(*args)
+        if results :
+            for result in results :
+                callback.newResult(result)
+        callback.complete()
+    
+def check_mode( args, accepted, functor=None ) :
+    for i, mode in enumerate(accepted) :
+        correct = True
+        for a,t in zip(args,mode) :
+            name, test = mode_types[t]
+            if not test(a) : 
+                correct = False
+                break
+        if correct : return i
+    raise CallModeError(functor, args, accepted)
+
+
+@BooleanBuiltIn
+def builtin_var( term ) :
+    return is_var(term)
+
+@BooleanBuiltIn
+def builtin_atom( term ) :
+    return is_atom(term)
+
+@BooleanBuiltIn
+def builtin_atomic( term ) :
+    return is_atom(term) or is_number(term)
+
+@BooleanBuiltIn
+def builtin_compound( term ) :
+    return is_compound(term)
+
+@BooleanBuiltIn
+def builtin_float( term ) :
+    return is_float(term)
+
+@BooleanBuiltIn
+def builtin_integer( term ) :
+    return is_integer(term)
+
+@BooleanBuiltIn
+def builtin_nonvar( term ) :
+    return not is_var(term)
+
+@BooleanBuiltIn
+def builtin_number( term ) :
+    return is_number(term) 
+
+@BooleanBuiltIn
+def builtin_simple( term ) :
+    return is_var(term) or is_atomic(term)
+    
+@BooleanBuiltIn
+def builtin_callable( term ) :
+    return is_term(term)
+
+@BooleanBuiltIn
+def builtin_rational( term ) :
+    return is_rational(term)
+
+@BooleanBuiltIn
+def builtin_dbreference( term ) :
+    return is_dbref(term)  
+    
+@BooleanBuiltIn
+def builtin_primitive( term ) :
+    return is_atomic(term) or is_dbref(term)
+
+@BooleanBuiltIn
+def builtin_ground( term ) :
+    return is_ground(term)
+
+@BooleanBuiltIn
+def builtin_is_list( term ) :
+    return is_list(term)
+
 def compare(a,b) :
     if a < b :
         return -1
@@ -1249,37 +1387,35 @@ def struct_cmp( A, B ) :
         if res != 0 : return res
         
     return 0
+
+@BooleanBuiltIn    
+def builtin_struct_lt(A, B) :
+    return struct_cmp(A,B) < 0    
+
+@BooleanBuiltIn    
+def builtin_struct_le(A, B) :
+    return struct_cmp(A,B) <= 0
+
+@BooleanBuiltIn    
+def builtin_struct_gt(A, B) :
+    return struct_cmp(A,B) > 0
+
+@BooleanBuiltIn    
+def builtin_struct_ge(A, B) :
+    return struct_cmp(A,B) >= 0
+
+@SimpleBuiltIn
+def builtin_compare(C, A, B) :
+    mode = check_mode( (C,A,B), [ '<**', 'v**' ], functor='compare')
+    compares = "'>'","'='","'<'" 
+    c = struct_cmp(A,B)
+    c_token = compares[1-c]
     
-def builtin_struct_lt(A, B, callback, **kwdargs) :
-    res = struct_cmp(A,B)
-    if res < 0 : callback.newResult((A,B))
-    callback.complete()
-
-def builtin_struct_le(A, B, callback, **kwdargs) :
-    res = struct_cmp(A,B)
-    if res <= 0 : callback.newResult((A,B))
-    callback.complete()
-
-def builtin_struct_gt(A, B, callback, **kwdargs) :
-    res = struct_cmp(A,B)
-    if res > 0 : callback.newResult((A,B))
-    callback.complete()
-
-def builtin_struct_ge(A, B, callback, **kwdargs) :
-    res = struct_cmp(A,B)
-    if res >= 0 : callback.newResult((A,B))
-    callback.complete()
-
-def builtin_compare(C, A, B, callback, **kwdargs) :
-    accepted_C = "'<'","'='","'>'"
-    if not is_atom(C) or C.functor not in accepted_C :
-        raise InstantiationError('compare expects <, = or > as its first argument')
-    else :
-        expected = 1 - accepted_C.index(C.functor)
-        res = struct_cmp(A,B)
-        if expected == res : callback.newResult((C,A,B))
-        callback.complete()
-
+    if mode == 0 : # Given compare
+        if c_token == C.functor : return [ (C,A,B) ]
+    else :  # Unknown compare
+        return [ (Term(c_token), A, B ) ]
+    
 # numbervars(T,+N1,-Nn)    number the variables TBD?
 
 def build_list(elements, tail) :
@@ -1288,130 +1424,106 @@ def build_list(elements, tail) :
         current = Term('.', el, current)
     return current
 
-def builtin_length(L, N, callback, **kwdargs) :
-    if not ( ( is_integer(N) and int(N) >= 0 ) or is_var(N) ) :
-        raise InstantiationError('Expected positive integer.')
-    
-    if is_list(L) :
+@SimpleBuiltIn
+def builtin_length(L, N) :
+    mode = check_mode( (L,S), [ 'LI', 'Lv', 'lI', 'vI' ], functor='length')
+    # Note that Prolog also accepts 'vv' and 'lv', but these are unbounded.
+    # Note that lI is a subset of LI, but only first matching mode is returned.
+    if mode == 0 or mode == 1 :  # Given fixed list and maybe length
         elements, tail = list_elements(L)
-    elif is_var(L) :
-        elements, tail = [], L
-    else :
-        raise InstantiationError('Expected list.')
-    
-    try :
-        if is_list_empty(tail) :
-            # Fixed list size
-            list_size = len(elements)
+        list_size = len(elements)
+        try :
             N = unify_value(N, Constant(list_size))
-            callback.newResult( ( build_list( elements, tail ), N ) )
-        elif is_var(tail) :
-            if is_var(N) :
-                raise UnboundProgramError()  # Really unbounded -> [], [_], [_,_], [_,_,_], ...
-            else :
-                remain = int(N) - len(elements)
-                if remain < 0 :
-                    raise UnifyError()
-                else :
-                    extra = [None] * remain
-                newL = build_list( elements + extra, Term('[]'))
-                callback.newResult( (newL, N) )
+            return [ ( L, N ) ]
+        except UnifyError :
+            return []    
+    else :    # Unbounded list or variable list and fixed length.
+        if mode == 2 :
+            elements, tail = list_elements(L)
+        else :
+            elements, tail = [], L
+        remain = int(N) - len(elements)
+        if remain < 0 :
+            raise UnifyError()
+        else :
+            extra = [None] * remain
+        newL = build_list( elements + extra, Term('[]'))
+        return [ (newL, N)]
+
+
+@SimpleBuiltIn
+def builtin_sort( L, S ) :
+    # TODO doesn't work properly with variables e.g. gives sort([X,Y,Y],[_]) should be sort([X,Y,Y],[X,Y])
+    mode = check_mode( (L,S), [ 'L*' ], functor='sort' )
+    elements, tail = list_elements(L)  
+    # assert( is_list_empty(tail) )
+    try :
+        sorted_list = build_list(sorted(set(elements), key=StructSort), Term('[]'))
+        S_out = unify_value(S,sorted_list)
+        return [(L,S_out)]
     except UnifyError :
-        pass
-    callback.complete()
-    
+        return []
 
-
-class CallProcessNode(object) :
-    
-    def __init__(self, term, args, parent) :
-        self.term = term
-        self.num_args = len(args)
-        self.parent = parent
-    
-    def newResult(self, result, ground_node=0) :
-        if self.num_args > 0 :
-            res1 = result[:-self.num_args]
-            res2 = result[-self.num_args:]
-        else :
-            res1 = result
-            res2 = []
-        self.parent.newResult( [self.term(*res1)] + list(res2), ground_node )
-
-    def complete(self) :
-        self.parent.complete()
-
-
-def builtin_call( term, args=(), callback=None, database=None, engine=None, context=None, ground_program=None, **kwdargs ) :
-    if not is_term(term) :
-        raise InstantiationError("'call/1' expects a callable.")
-    else :
-        # Find the define node for the given query term.
-        clause_node = database.find(term.withArgs( *(term.args+args)))
-        # If term not defined: raise error
-        if clause_node == None : raise UnknownClause('%s/%s' % (term.functor, len(term.args)))
-        # Create a new call.
-        call_node = ClauseDB._call( term.functor, range(0, len(term.args) + len(args)), clause_node )
-        # Create a callback node that wraps the results in the functor.
-        cb = CallProcessNode(term, args, callback)
-        # Evaluate call.
-        engine._eval_call(database, ground_program, None, call_node, engine._create_context(term.args+args,define=context.define), cb )        
-
-def builtin_callN( term, *args, **kwdargs ) :
-    return builtin_call(term, args, **kwdargs)
-
-class StructSort(object) :
-    
-    def __init__(self, obj, *args):
-        self.obj = obj
-    def __lt__(self, other):
-        return struct_cmp(self.obj, other.obj) < 0
-    def __gt__(self, other):
-        return struct_cmp(self.obj, other.obj) > 0
-    def __eq__(self, other):
-        return struct_cmp(self.obj, other.obj) == 0
-    def __le__(self, other):
-        return struct_cmp(self.obj, other.obj) <= 0  
-    def __ge__(self, other):
-        return struct_cmp(self.obj, other.obj) >= 0
-    def __ne__(self, other):
-        return struct_cmp(self.obj, other.obj) != 0
-
-def builtin_sort( L, S, callback, **kwdargs ) :
-    # TODO doesn't work properly with variables
-    if not is_list(L) :
-        raise InstantiationError('First argument should be fixed list.')
-    else :
-        elements, tail = list_elements(L)
-        if not is_list_empty(tail) :
-            raise InstantiationError('First argument should be fixed list.')
-        else :
-            try :
-                sorted_list = build_list(sorted(set(elements), key=StructSort), Term('[]'))
-                S_out = unify_value(S,sorted_list)
-                callback.newResult( (L,S_out) )
-            except UnifyError :
-                pass
-    callback.complete()
-    
-def builtin_between( low, high, value, callback, **kwdargs) :
-    if not is_integer(low) or not is_integer(high) or not (is_integer(value) or is_var(value)) :
-        raise InstantiationError('between/3 expects integer arguments')
-
+@SimpleBuiltIn
+def builtin_between( low, high, value ) :
+    mode = check_mode((low,high,value), [ 'iii', 'iiv' ], functor='between')
     low_v = int(low)
     high_v = int(high)
-    if is_integer(value) :
+    if mode == 0 : # Check    
         value_v = int(value)
         if low_v <= value_v <= high_v :
-            callback.newResult( (low,high,value) )
-    else :
+            return [(low,high,value)]
+    else : # Enumerate
+        results = []
         for value_v in range(low_v, high_v+1) :
-            callback.newResult( (low,high,Constant(value_v)) )
-    callback.complete()
+            results.append( (low,high,Constant(value_v)) ) 
+        return results
+
+@SimpleBuiltIn
+def builtin_succ( a, b ) :
+    mode = check_mode((a,b), [ 'vI', 'Iv', 'II' ], functor='succ')
+    if mode == 0 :
+        b_v = int(b)
+        return [(Constant(b_v-1), b)]
+    elif mode == 1 :
+        a_v = int(a)
+        return [(a, Constant(a_v+1))]
+    else :
+        a_v = int(a)
+        b_v = int(b)
+        if b_v == a_v + 1 :
+            return [(a, b)]
+    return []
+
+@SimpleBuiltIn
+def builtin_plus( a, b, c ) :
+    mode = check_mode((a,b,c), [ 'iii', 'iiv', 'ivi', 'vii' ], functor='plus')
+    if mode == 0 :
+        a_v = int(a)
+        b_v = int(b)
+        c_v = int(c)
+        if a_v + b_v == c_v :
+            return [(a,b,c)]
+    elif mode == 1 :
+        a_v = int(a)
+        b_v = int(b)
+        return [(a, b, Constant(a_v+b_v))]
+    elif mode == 2 :
+        a_v = int(a)
+        c_v = int(c)
+        return [(a, Constant(c_v-a_v), c)]
+    else :
+        b_v = int(b)
+        c_v = int(c)
+        return [(Constant(c_v-b_v), b, c)]
+    return []
 
 
 def addBuiltins(engine) :
     """Add Prolog builtins to the given engine."""
+    
+    # Shortcut some wrappers
+    
     engine.addBuiltIn('true', 0, builtin_true)
     engine.addBuiltIn('fail', 0, builtin_fail)
     engine.addBuiltIn('false', 0, builtin_fail)
@@ -1455,14 +1567,20 @@ def addBuiltins(engine) :
     engine.addBuiltIn('@>=',2, builtin_struct_ge)
     engine.addBuiltIn('@=<',2, builtin_struct_le)
     engine.addBuiltIn('compare',3, builtin_compare)
+
     engine.addBuiltIn('length',2, builtin_length)
+
     engine.addBuiltIn('sort',2, builtin_sort)
-    
+    engine.addBuiltIn('between', 3, builtin_between)
+    engine.addBuiltIn('succ',2, builtin_succ)
+    engine.addBuiltIn('plus',3, builtin_plus)
+
+    # These are special builtins
     engine.addBuiltIn('call', 1, builtin_call)
     for i in range(2,10) :
         engine.addBuiltIn('call', i, builtin_callN)
     engine.addBuiltIn('consult', 1, builtin_consult)
-    engine.addBuiltIn('between', 3, builtin_between)
+
 
 
 DefaultEngine = EventBasedEngine
