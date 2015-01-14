@@ -854,7 +854,8 @@ def builtin_notsame( A, B, callback, **kwdargs ) :
     if A == None and B == None :
         raise RuntimeError('Operation not supported!')  # TODO make this work
     else :
-        if A != B :
+        # In Python A != B is not always the same as not A == B.
+        if not A == B :
             callback.newResult( (A,B) )
         callback.complete()    
 
