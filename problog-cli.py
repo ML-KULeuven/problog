@@ -9,7 +9,7 @@ from problog.evaluator import SemiringSymbolic, Evaluator
 from problog.nnf_formula import NNF
 from problog.sdd_formula import SDD
 from problog.util import Timer
-from problog.parser import DefaultPrologParser
+from problog.parser import DefaultPrologParser, FastPrologParser
 
 
 def print_result( d, output, precision=8 ) :    
@@ -46,12 +46,12 @@ def process_error( err ) :
         return 'Unknown error: %s' % (err_type)
 
 
-def main( filename, knowledge=NNF, semiring=None ) :
+def main( filename, knowledge=NNF, semiring=None, parser_class=DefaultPrologParser ) :
     logger = logging.getLogger('problog')
 
     try :
         with Timer('Total time to processing model'):
-          parser = DefaultPrologParser(ExtendedPrologFactory())
+          parser = parse_class(ExtendedPrologFactory())
           formula = knowledge.createFrom(PrologFile(filename, parser=parser))
         with Timer('Evaluation'):
           result = formula.evaluate(semiring=semiring)
@@ -72,6 +72,7 @@ def argparser() :
     parser.add_argument('--symbolic', action='store_true', help="Use symbolic evaluation.")
     parser.add_argument('--output', '-o', help="Output file (default stdout)", type=outputfile)
     parser.add_argument('--recursion-limit', help="Set recursion limit. Increase this value if you get an unbounded program error. (default: %d)" % sys.getrecursionlimit(), default=sys.getrecursionlimit(), type=int)
+    parser.add_argument('--faster-parser', action='store_true', help=argparse.SUPPRESS)
     return parser
 
 if __name__ == '__main__' :
@@ -100,6 +101,10 @@ if __name__ == '__main__' :
     else :
         output = open(args.output, 'w')
     
+    parse_class = DefaultPrologParser
+    if args.faster_parser : parse_class = FastPrologParser
+    
+    
     if args.filenames[0] == 'install' :
         from problog import setup
         setup.install()
@@ -122,7 +127,7 @@ if __name__ == '__main__' :
         for filename in args.filenames :
             try :
                 if len(args.filenames) > 1 : print ('Results for %s:' % filename)
-                retcode = print_result( main(filename, knowledge, semiring), output )
+                retcode = print_result( main(filename, knowledge, semiring, parse_class), output )
                 if len(args.filenames) == 1 : sys.exit(retcode)
             except subprocess.CalledProcessError :
                 print ('error')

@@ -675,7 +675,7 @@ class FastPrologParser(PrologParser) :
     
         return atom
 
-DefaultPrologParser = FastPrologParser
+DefaultPrologParser = PrologParser
 
 class Factory(object) :
     """Factory object for creating suitable objects from the parse tree."""

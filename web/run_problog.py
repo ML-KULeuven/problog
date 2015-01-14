@@ -8,7 +8,7 @@ sys.setrecursionlimit(10000)
 
 sys.path.insert(0, os.path.abspath( os.path.join(os.path.dirname(__file__), '../')))
 
-from problog.parser import PrologParser
+from problog.parser import DefaultPrologParser
 from problog.program import PrologFile, ExtendedPrologFactory
 from problog.evaluator import SemiringSymbolic, Evaluator
 #from problog.nnf_formula import NNF
@@ -45,7 +45,7 @@ def process_error( err ) :
 def main( filename) :
 
     try :
-        model = PrologFile(filename, parser=PrologParser(ExtendedPrologFactory()))
+        model = PrologFile(filename, parser=DefaultPrologParser(ExtendedPrologFactory()))
         formula = SDD.createFrom( model )
         result = formula.evaluate()
         return True, result
