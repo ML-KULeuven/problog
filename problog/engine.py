@@ -1426,7 +1426,7 @@ def build_list(elements, tail) :
 
 @SimpleBuiltIn
 def builtin_length(L, N) :
-    mode = check_mode( (L,S), [ 'LI', 'Lv', 'lI', 'vI' ], functor='length')
+    mode = check_mode( (L,N), [ 'LI', 'Lv', 'lI', 'vI' ], functor='length')
     # Note that Prolog also accepts 'vv' and 'lv', but these are unbounded.
     # Note that lI is a subset of LI, but only first matching mode is returned.
     if mode == 0 or mode == 1 :  # Given fixed list and maybe length
