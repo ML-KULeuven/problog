@@ -978,11 +978,23 @@ def is_var(term) :
 def is_term(term) :
     return not is_var(term) and not is_constant(term)
 
-def is_float(term) :
+def is_float_pos(term) :
     return is_constant(term) and term.isFloat()
 
-def is_integer(term) :
+def is_float_neg(term) :
+    return is_term(term) and term.arity == 1 and term.functor == "'-'" and is_float_pos(term.args[0])
+
+def is_float(term) :
+    return is_float_pos(term) or is_float_neg(term)
+
+def is_integer_pos(term) :
     return is_constant(term) and term.isInteger()
+
+def is_integer_neg(term) :
+    return is_term(term) and term.arity == 1 and term.functor == "'-'" and is_integer_pos(term.args[0])
+
+def is_integer(term) :
+    return is_integer_pos(term) or is_integer_neg(term)
 
 def is_string(term) :
     return is_constant(term) and term.isString()
@@ -1381,6 +1393,21 @@ def builtin_sort( L, S, callback, **kwdargs ) :
             except UnifyError :
                 pass
     callback.complete()
+    
+def builtin_between( low, high, value, callback, **kwdargs) :
+    if not is_integer(low) or not is_integer(high) or not (is_integer(value) or is_var(value)) :
+        raise InstantiationError('between/3 expects integer arguments')
+
+    low_v = int(low)
+    high_v = int(high)
+    if is_integer(value) :
+        value_v = int(value)
+        if low_v <= value_v <= high_v :
+            callback.newResult( (low,high,value) )
+    else :
+        for value_v in range(low_v, high_v+1) :
+            callback.newResult( (low,high,Constant(value_v)) )
+    callback.complete()
 
 
 def addBuiltins(engine) :
@@ -1435,6 +1462,7 @@ def addBuiltins(engine) :
     for i in range(2,10) :
         engine.addBuiltIn('call', i, builtin_callN)
     engine.addBuiltIn('consult', 1, builtin_consult)
+    engine.addBuiltIn('between', 3, builtin_between)
 
 
 DefaultEngine = EventBasedEngine
