@@ -214,7 +214,7 @@ def run_learning_jsonp(model, examples, callback) :
           logger.error('Unicode error catched: {}'.format(e))
           return 200, 'application/json', wrap_callback(callback, json.dumps({'success':False,'err':'Cannot decode character in program: {}'.format(e)}))
       try:
-          inhash = hashlib.md5(examples.decode('utf-8')).hexdigest()
+          datahash = hashlib.md5(examples.decode('utf-8')).hexdigest()
       except UnicodeDecodeError as e:
           logger.error('Unicode error catched: {}'.format(e))
           return 200, 'application/json', wrap_callback(callback, json.dumps({'success':False,'err':'Cannot decode character in examples: {}'.format(e)}))
