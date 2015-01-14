@@ -79,7 +79,7 @@ def createSystemTestSDD(filename) :
             self.assertSequenceEqual(correct, computed)
 
             for query in correct :
-                self.assertAlmostEqual(correct[query], computed[query])
+                self.assertAlmostEqual(correct[query], computed[query], msg=query)
 
 
     return test
@@ -105,7 +105,7 @@ def createSystemTestNNF(filename) :
             self.assertSequenceEqual(correct, computed)
 
             for query in correct :
-                self.assertAlmostEqual(correct[query], computed[query])
+                self.assertAlmostEqual(correct[query], computed[query], msg=query)
 
     return test
 
