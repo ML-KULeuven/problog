@@ -322,7 +322,11 @@ problog.fetchModel = function(hash, editor, ehash) {
     data: {'hash': hash},
 
   }).done( function(data) {
-    editor.setValue(data.model,-1);
+    if (data.success == true) {
+      editor.setValue(data.model,-1);
+    } else {
+      editor.setValue('% '+data.err,-1);
+    }
 
   }).fail( function(jqXHR, textStatus, errorThrown) {
     editor.setValue(jqXHR.responseText);
@@ -335,7 +339,11 @@ problog.fetchModel = function(hash, editor, ehash) {
       data: {'ehash': ehash},
 
     }).done( function(data) {
-      editor_examples.setValue(data.model,-1);
+      if (data.success == true) {
+        editor_examples.setValue(data.examples,-1);
+      } else {
+        editor_examples.setValue('% '+data.err,-1);
+      }
 
     }).fail( function(jqXHR, textStatus, errorThrown) {
       editor_examples.setValue(jqXHR.responseText);
@@ -345,11 +353,19 @@ problog.fetchModel = function(hash, editor, ehash) {
 };
 
 
+/** Extract 'hash' value from url
+  * Example:
+  *   http://dtai.cs.kuleuven.be/problog/editor.html#hash=xxxx&...
+  */
 problog.getHashFromUrl = function() {
   var hash = window.location.hash;
   hashidx = hash.indexOf("hash=");
   if (hashidx > 0) {
     hash = hash.substr(hashidx+5, 32);
+    ampidx = hash.indexOf("&");
+    if (ampidx > 0) {
+      hash = hash.substring(0, ampidx);
+    }
   } else {
     hash = '';
   }
@@ -357,11 +373,19 @@ problog.getHashFromUrl = function() {
 };
 
 
+/** Extract 'ehash' value from url
+  * Example:
+  *   http://dtai.cs.kuleuven.be/problog/editor.html#ehash=xxxx&...
+  */
 problog.getExamplesHashFromUrl = function() {
   var hash = window.location.hash;
   hashidx = hash.indexOf("ehash=");
   if (hashidx > 0) {
     hash = hash.substr(hashidx+6, 32);
+    ampidx = hash.indexOf("&");
+    if (ampidx > 0) {
+      hash = hash.substring(0, ampidx);
+    }
   } else {
     hash = '';
   }

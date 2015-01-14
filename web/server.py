@@ -13,11 +13,11 @@ The operation of the server is determined by four options:
     memout (default: 1Gb)       Maximum memory usage of the ProbLog subprocess
     servefiles (default: No)    Whether to serve a file for undefined paths. (This is potentially unsafe.)
     
-The server defines one path:
+The server defines the following paths:
 
-    http://hostname:port/problog?model=...
-    
-This path can be used with GET or POST requests.
+    http://hostname:port/problog?model=... [GET,POST]
+    http://hostname:port/inference?model=...&callback=... [JSONP]
+    http://hostname:port/learn?model=...&examples=...&callback=... [JSONP]
 
 If ``servefiles`` is enabled other paths will be treated as file access requests.
 
@@ -37,7 +37,6 @@ import traceback
 import subprocess
 import resource
 import logging, logging.config
-import json
 
 DEFAULT_PORT = 5100
 DEFAULT_TIMEOUT = 60
@@ -250,7 +249,6 @@ def run_learning_jsonp(model, examples, callback) :
 
         return int(code), datatype, datavalue
     except subprocess.CalledProcessError :
-        import json
         return 200, 'application/json', wrap_callback(callback, json.dumps({'success':False, 'err':'ProbLog learning exceeded time or memory limit'}))
 
 
@@ -261,13 +259,12 @@ def get_model_from_hash_jsonp(hash, callback):
     infile = os.path.join(CACHE_DIR, hash+'.pl')
 
     if not CACHE_MODELS or not os.path.exists(infile):
-        return 500, 'text/plain', 'Model hash not available: {}'.format(hash)
+        return 200, 'application/json', wrap_callback(callback, json.dumps({'success': False, 'err': 'Model hash not available: {}'.format(hash)}))
 
-    result = dict()
+    result = {'success': True}
     with open(infile, 'r') as f:
          result['model'] = f.read()
 
-    import json
     datatype = 'application/json'
     datavalue = json.dumps(result)
     datavalue = wrap_callback(callback, datavalue)
@@ -283,13 +280,12 @@ def get_example_from_hash_jsonp(ehash, callback):
     infile = os.path.join(CACHE_DIR, ehash+'.data')
 
     if not CACHE_MODELS or not os.path.exists(infile):
-        return 500, 'text/plain', 'Examples hash not available: {}'.format(ehash)
+        return 200, 'application/json', wrap_callback(callback, json.dumps({'success': False, 'err': 'Examples hash not available: {}'.format(ehash)}))
 
     result = dict()
     with open(infile, 'r') as f:
-         result['model'] = f.read()
+         result['examples'] = f.read()
 
-    import json
     datatype = 'application/json'
     datavalue = json.dumps(result)
     datavalue = wrap_callback(callback, datavalue)
@@ -340,7 +336,8 @@ class ProbLogHTTP(BaseHTTPServer.BaseHTTPRequestHandler) :
                 if data :
                     self.wfile.write(toBytes(data))
         except Exception as e:
-          logger.error('Uncaught exception:\n{}'.format(e))
+          import traceback
+          logger.error('Uncaught exception: {}\n{}'.format(e, traceback.format_exc()))
 
     def serveFile(self, filename) :
         """Serve a file."""
@@ -395,7 +392,6 @@ if __name__ == '__main__' :
     DEFAULT_MEMOUT = args.memout
     SERVE_FILES = args.servefiles
     CACHE_MODELS = not args.nocaching
-    print('Starting server on port %d (timeout=%d, memout=%dGb)' % (args.port, DEFAULT_TIMEOUT, DEFAULT_MEMOUT ))    
     logger.info('Starting server on port %d (timeout=%d, memout=%dGb)' % (args.port, DEFAULT_TIMEOUT, DEFAULT_MEMOUT ))    
 
     server_address = ('', args.port)
