@@ -41,17 +41,22 @@ def read_result(filename) :
     with open( filename ) as f :
         reading = False
         for l in f :
-            if l.strip().startswith('%Expected outcome:') :
+            l = l.strip()
+            if l.startswith('%Expected outcome:') :
                 reading = True
             elif reading :
-                l = l.strip()
                 if l.lower().startswith('% error') :
                     return l[len('% error'):].strip()
                 elif l.startswith('% ') :
                     query, prob = l[2:].rsplit(None,1)
                     results[query.strip()] = float(prob.strip())
                 else :
-                    break
+                    reading = False
+            if l.startswith('query(') and l.find('% outcome:') >= 0 :
+                pos = l.find('% outcome:')
+                query = l[6:pos].strip().rstrip('.').rstrip()[:-1]
+                prob = l[pos+10:]
+                results[query.strip()] = float(prob.strip())
     return results
 
 def createSystemTestSDD(filename) :
