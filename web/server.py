@@ -261,7 +261,7 @@ def get_model_from_hash_jsonp(hash, callback):
     infile = os.path.join(CACHE_DIR, hash+'.pl')
 
     if not CACHE_MODELS or not os.path.exists(infile):
-        return 500, 'text/plain', 'Model hash not available'
+        return 500, 'text/plain', 'Model hash not available: {}'.format(hash)
 
     result = dict()
     with open(infile, 'r') as f:
@@ -277,13 +277,13 @@ def get_model_from_hash_jsonp(hash, callback):
 
 
 @handle_url(api_root+'examples')
-def get_model_from_hash_jsonp(ehash, callback):
+def get_example_from_hash_jsonp(ehash, callback):
     ehash = ehash[0]
     callback = callback[0]
     infile = os.path.join(CACHE_DIR, ehash+'.data')
 
     if not CACHE_MODELS or not os.path.exists(infile):
-        return 500, 'text/plain', 'Examples hash not available'
+        return 500, 'text/plain', 'Examples hash not available: {}'.format(ehash)
 
     result = dict()
     with open(infile, 'r') as f:
