@@ -64,7 +64,7 @@ from __future__ import division # consistent behaviour of / and // in python 2 a
 
 from collections import defaultdict
 
-import math
+import math, sys
 
 class InstantiationError(Exception): pass
 
@@ -539,7 +539,7 @@ def computeFunction(func, args) :
         ("min",2) : min,
         ("max",2) : max,
         ("exp",2) : math.pow,
-        ("epsilon",0) : lambda : 1e-15,
+        ("epsilon",0) : lambda : sys.float_info.epsilon,
         ("inf",0) : lambda : float('inf'),
         ("nan",0) : lambda : float('nan')
         

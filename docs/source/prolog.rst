@@ -34,7 +34,7 @@ Control predicates
  * ``P`` (use ``call/1``)
  * ``if(A,B,C)`` (use ``(A,B);(\+A,C)``)
  * ``once/1``
- * ``forall(A,B)`` (use ``\+(A,\+B))
+ * ``forall(A,B)`` (use ``\+(A,\+B)``)
  * ``ignore/1`` 
  * ``abort/0``
  * ``break/0``
@@ -198,7 +198,7 @@ Arithmetic
  * ``\ X``
  * ``pi/0``
  * ``e/0``
- * ``epsilon/0`` (hardcoded to 1e-15)
+ * ``epsilon/0``
  * ``inf/0``
  * ``nan/0``
  * ``X is Y``
