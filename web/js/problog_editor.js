@@ -320,8 +320,6 @@ problog.fetchModel = function(hash, editor, ehash) {
     ehash = problog.getExamplesHashFromUrl();
   }
 
-  console.log("Fetch model from url, hash="+hash);
-
   // Take first editor if not given
   var editor_examples = undefined;
   if (editor === undefined) {
