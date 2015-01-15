@@ -208,7 +208,7 @@ class EventBasedEngine(object) :
         :param label: type of query (e.g. ``query``, ``evidence`` or ``-evidence``)
         :type label: str
         """
-        gp, results = self._ground(db, term, gp)
+        gp, results = self._ground(db, term, gp, silent_fail=False)
         
         for node_id, args in results :
             gp.addName( term.withArgs(*args), node_id, label )
@@ -217,7 +217,7 @@ class EventBasedEngine(object) :
         
         return gp
     
-    def _ground(self, db, term, gp=None, level=0) :
+    def _ground(self, db, term, gp=None, level=0, silent_fail=True) :
         # Convert logic program if needed.
         db = self.prepare(db)
         # Create a new target datastructure if none was given.
@@ -228,8 +228,11 @@ class EventBasedEngine(object) :
         if clause_node == None :
             # Could be builtin?
             clause_node = db._getBuiltIn(term.signature)
-            
-        if clause_node == None : return gp, []
+        if clause_node == None : 
+            if silent_fail :
+                return gp, []
+            else :
+                raise UnknownClause(term.signature)
         # Create a new call.
         call_node = ClauseDB._call( term.functor, range(0,len(term.args)), clause_node )
         # Initialize a result collector callback.

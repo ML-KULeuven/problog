@@ -1,4 +1,4 @@
 %Expected outcome:
-% a 0.0
+% ERROR UnknownClause
 
 query(a).
