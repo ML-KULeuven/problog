@@ -3,7 +3,7 @@ from __future__ import print_function
 from .program import ClauseDB, PrologString, PrologFile
 from .logic import Term, Constant, InstantiationError
 from .formula import LogicFormula
-from .engine_builtins import addStandardBuiltIns, is_ground, is_variable, UnifyError, unify_value
+from .engine_builtins import addStandardBuiltIns, is_ground, is_variable, UnifyError, unify_value, is_term
 
 from collections import defaultdict
 import os
