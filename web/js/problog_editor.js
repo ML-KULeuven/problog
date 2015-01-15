@@ -50,7 +50,11 @@ problog.initDiv = function(el, resize) {
     resize = false;
   }
 
-  el.css('width', '84ex');
+  if (el.data('width')) {
+    el.css('width', el.data('width'));
+  } else {
+    el.css('width', '84ex');
+  }
 
   // Init theory
   var intr = undefined;
