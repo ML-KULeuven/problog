@@ -3,7 +3,7 @@ from __future__ import print_function
 from .program import ClauseDB, PrologString, PrologFile
 from .logic import Term, Constant, InstantiationError
 from .formula import LogicFormula
-from .engine_builtins import addStandardBuiltIns, is_ground, is_variable, UnifyError, unify_value, is_term
+from .engine_builtins import addStandardBuiltIns, is_ground, is_variable, UnifyError, unify_value, is_term, VariableUnification
 
 from collections import defaultdict
 import os
@@ -88,11 +88,6 @@ def unify( source_value, target_value, target_context=None ) :
                 raise UnifyError()
     
 
-class VariableUnification(Exception) : 
-    """The engine does not support unification of two unbound variables."""
-    
-    def __init__(self) :
-        Exception.__init__(self, 'Unification of unbound variables not supported!')
     
 
 class _UnknownClause(Exception) :

@@ -2,6 +2,12 @@ from .logic import Constant, Var, Term
 
 class UnifyError(Exception) : pass
 
+class VariableUnification(Exception) : 
+    """The engine does not support unification of two unbound variables."""
+    
+    def __init__(self) :
+        Exception.__init__(self, 'Unification of unbound variables not supported!')
+
 
 def unify_value( v1, v2 ) :
     """Test unification of two values and return most specific unifier."""
