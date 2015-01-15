@@ -17,6 +17,7 @@ Contents:
    logic
    engine
    learning
+   prolog
 .. notes
    
 
