@@ -225,6 +225,10 @@ class EventBasedEngine(object) :
         # Find the define node for the given query term.
         clause_node = db.find(term)
         # If term not defined: fail query (no error)    # TODO add error to make it consistent?
+        if clause_node == None :
+            # Could be builtin?
+            clause_node = db._getBuiltIn(term.signature)
+            
         if clause_node == None : return gp, []
         # Create a new call.
         call_node = ClauseDB._call( term.functor, range(0,len(term.args)), clause_node )
