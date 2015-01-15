@@ -43,7 +43,10 @@ class StructSort(object) :
 class CallModeError(Exception) :
     
     def __init__(self, functor, args, accepted=[], message=None) :
-        self.scope = '%s/%s'  % ( functor, len(args) )
+        if functor :
+            self.scope = '%s/%s'  % ( functor, len(args) )
+        else :
+            self.scope = None
         self.received = ', '.join(map(self.show_arg,args))
         self.expected = [  ', '.join(map(self.show_mode,mode)) for mode in accepted  ]
         msg = 'Invalid argument types for call'
@@ -171,6 +174,7 @@ mode_types = {
     '<' : ('compare', is_compare ),         # < = >
     'g' : ('ground', is_ground ),
     'a' : ('atom', is_atom),
+    'c' : ('callable', is_term)
 }
 
 def check_mode( args, accepted, functor=None ) :

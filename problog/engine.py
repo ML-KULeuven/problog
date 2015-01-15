@@ -3,7 +3,7 @@ from __future__ import print_function
 from .program import ClauseDB, PrologString, PrologFile
 from .logic import Term, Constant, InstantiationError
 from .formula import LogicFormula
-from .engine_builtins import addStandardBuiltIns, is_ground, is_variable, UnifyError, unify_value, is_term, VariableUnification
+from .engine_builtins import addStandardBuiltIns, is_ground, is_variable, UnifyError, unify_value, is_term, VariableUnification, check_mode
 
 from collections import defaultdict
 import os
@@ -791,7 +791,7 @@ def atom_to_filename(atom) :
     
     
 def builtin_consult( filename, callback=None, database=None, engine=None, context=None, **kwdargs ) :
-    
+    check_mode( (filename,), 'a', functor='consult' )
     filename = os.path.join(database.source_root, atom_to_filename( filename ))
     if not os.path.exists( filename ) :
         filename += '.pl'
@@ -831,19 +831,19 @@ class CallProcessNode(object) :
 
 
 def builtin_call( term, args=(), callback=None, database=None, engine=None, context=None, ground_program=None, **kwdargs ) :
-    if not is_term(term) :
-        raise InstantiationError("'call/1' expects a callable.")
-    else :
-        # Find the define node for the given query term.
-        clause_node = database.find(term.withArgs( *(term.args+args)))
-        # If term not defined: raise error
-        if clause_node == None : raise UnknownClause('%s/%s' % (term.functor, len(term.args)))
-        # Create a new call.
-        call_node = ClauseDB._call( term.functor, range(0, len(term.args) + len(args)), clause_node )
-        # Create a callback node that wraps the results in the functor.
-        cb = CallProcessNode(term, args, callback)
-        # Evaluate call.
-        engine._eval_call(database, ground_program, None, call_node, engine._create_context(term.args+args,define=context.define), cb )        
+    check_mode( (term,), 'c', functor='call' )
+    # Find the define node for the given query term.
+    clause_node = database.find(term.withArgs( *(term.args+args)))
+    # If term not defined: try loading it as a builtin
+    if clause_node == None : clause_node = database._getBuiltIn(term.signature)
+    # If term not defined: raise error    
+    if clause_node == None : raise UnknownClause(term.signature)
+    # Create a new call.
+    call_node = ClauseDB._call( term.functor, range(0, len(term.args) + len(args)), clause_node )
+    # Create a callback node that wraps the results in the functor.
+    cb = CallProcessNode(term, args, callback)
+    # Evaluate call.
+    engine._eval_call(database, ground_program, None, call_node, engine._create_context(term.args+args,define=context.define), cb )        
 
 def builtin_callN( term, *args, **kwdargs ) :
     return builtin_call(term, args, **kwdargs)
