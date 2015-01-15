@@ -37,6 +37,8 @@ def process_error( err ) :
         return 'Parsing error on %s:%s: %s.\n%s' % (err.lineno, err.col, err.msg, err.line )
     elif err_type == 'UnknownClause' :
         return 'Predicate undefined: \'%s\'.' % (err )
+    elif err_type == 'CallModeError' :
+        return 'Invalid arguments: %s' % (err)
     elif err_type == 'PrologInstantiationError' :
         return 'Arithmetic operation on uninstantiated variable.' 
     elif err_type == 'UnboundProgramError' :
