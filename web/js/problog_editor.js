@@ -20,15 +20,15 @@ var problog = {
   main_editor_url: 'http://dtai.cs.kuleuven.be/problog/editor.html',
   editors: [],
   selector: '.problog-editor',
+  trackurl: false,
   resize: false,
 };
 
 /** Initialize the header and all .problog-editor divs.
-  *
-  * Settings:
-  * - resize: Boolean (false)
  **/
-problog.initialize = function() {
+problog.initialize = function(settings) {
+
+  $.extend(problog, settings);
 
   $('head').append('<style type="text/css" media="screen">.problog-editor-container, .problog-editor-container-intr {border: 1px solid #ddd;} .problog-editor-buttons {margin: 5px 0;} .problog-editor-hash {float:right; margin-right:5px;} .problog-editor-results table {margin-bottom:3px;} .problog-editor-results th {cursor:pointer;width:50%;} .problog-result-sorted-desc:after {content:"▲";} .problog-result-sorted-asc:after {content:"▼";}</style>');
 
@@ -36,6 +36,9 @@ problog.initialize = function() {
     problog.initDiv($(el), problog.resize)
   });
 
+  if (problog.trackurl) {
+    problog.trackUrlHash();
+  }
 };
 
 /** Clear all .problog-editor divs. **/
@@ -295,6 +298,13 @@ problog.initDiv = function(el, resize) {
 
 };
 
+problog.trackUrlHash = function() {
+  problog.fetchModel();
+  $(window).on('hashchange', function() {
+    problog.fetchModel();
+  });
+};
+
 /** Load model from hash in editor **/
 problog.fetchModel = function(hash, editor, ehash) {
 
@@ -309,6 +319,8 @@ problog.fetchModel = function(hash, editor, ehash) {
   if (ehash === undefined) {
     ehash = problog.getExamplesHashFromUrl();
   }
+
+  console.log("Fetch model from url, hash="+hash);
 
   // Take first editor if not given
   var editor_examples = undefined;

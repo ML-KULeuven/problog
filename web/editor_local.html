@@ -31,9 +31,10 @@
 
 <script type="text/javascript" charset="utf-8">
   $(document).ready(function() {
-      problog.hostname = 'http://localhost:5100/'
-      problog.initialize();
-      problog.fetchModel(); // check url for hash and load in first editor
+      problog.initialize({
+        'hostname':'http://localhost:5100/',
+        'trackurl': true,
+      });
   });
 </script>
 
