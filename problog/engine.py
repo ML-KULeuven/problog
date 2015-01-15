@@ -757,13 +757,12 @@ class ProcessCallReturn(ProcessNode) :
     def newResult(self, result, ground_node=0) :
         EngineLogger.get().receiveResult(self, result, ground_node)
         output = list(self.context)
-        #try :
-        for call_arg, res_arg in zip(self.call_args,result) :
-            unify( res_arg, call_arg, output )
-        self.notifyListeners(output, ground_node)
-
-        # except UnifyError :
-        #     pass
+        try :
+            for call_arg, res_arg in zip(self.call_args,result) :
+                unify( res_arg, call_arg, output )
+            self.notifyListeners(output, ground_node)
+        except UnifyError :
+            pass
     
 
 class ResultCollector(ProcessNode) :
