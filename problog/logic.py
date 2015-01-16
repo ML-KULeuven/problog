@@ -164,7 +164,7 @@ class Term(object) :
             if str(tail) == '[]' :
                 return '[%s]' % ', '.join(map(term2str,elements))
             else :
-                return '[%s|%s]' % (', '.join(map(str,elements)), term2str(tail))
+                return '[%s|%s]' % (', '.join(map(term2str,elements)), term2str(tail))
         if self.args :
             return '%s%s(%s)' % (prob, self.functor, ','.join(map(term2str,self.args)))
         else :
