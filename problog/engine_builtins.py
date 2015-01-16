@@ -19,6 +19,7 @@ class UnknownClause(GroundingError) :
     """Undefined clause in call."""
     
     def __init__(self, signature, location) :
+        self.location = location
         msg = "No clauses found for '%s'" % signature
         if location : msg += " at position %s:%s" % location
         msg += '.'
@@ -27,6 +28,7 @@ class UnknownClause(GroundingError) :
 class ConsultError(GroundingError) :
     
     def __init__(self, message, location=None) :
+        self.location = location
         msg = message
         if location : msg += " at position %s:%s" % location
         msg += '.'
@@ -38,6 +40,7 @@ class VariableUnification(GroundingError) :
     """The engine does not support unification of two unbound variables."""
     
     def __init__(self, location=None) :
+        self.location = location
         GroundingError.__init__(self, 'Unification of unbound variables not supported.')
 
 
