@@ -47,6 +47,8 @@ To make ``=`` work variables should be redirectable (but this would complicate t
 
 """
 
+class NonGroundProbabilisticClause(Exception) : pass
+
 
 def instantiate( term, context ) :
     """Replace variables in Term by values based on context lookup table."""
@@ -297,6 +299,9 @@ class EventBasedEngine(object) :
         # This never fails.
         # Choice is ground so result is the same as call arguments.
         result = tuple(call_args)
+        
+        if not is_ground(*result) : raise NonGroundProbabilisticClause()
+        
         # Ground probability.
         probability = instantiate( node.probability, call_args )
         # Create a new atom in ground program.
