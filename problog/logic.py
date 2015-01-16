@@ -422,10 +422,11 @@ class Not(Term) :
 class LogicProgram(object) :
     """LogicProgram"""
     
-    def __init__(self, source_root='.', source_files=None) :
+    def __init__(self, source_root='.', source_files=None, line_info=None) :
         if source_files == None : source_files = []
         self.source_root = source_root
         self.source_files = source_files
+        self.line_info = line_info
         
     def __iter__(self) :
         """Iterator for the clauses in the program."""
@@ -486,10 +487,22 @@ class LogicProgram(object) :
             obj = cls(**extra)
             obj.source_root = src.source_root
             obj.source_files = src.source_files
+            obj.line_info = src.line_info
             for clause in src :
                 obj += clause
             return obj
-    
+            
+    def lineno(self, char) :
+        if self.line_info == None :
+            # No line info available
+            return None
+        else :
+            import bisect
+            i = bisect.bisect_right(self.line_info, char) 
+            lineno = i + 1
+            print (self.line_info)
+            charno = char - self.line_info[i-1]
+            return lineno, charno
                     
 def computeFunction(func, args) :
     """Compute the result of an arithmetic function given by a functor and a list of arguments.

@@ -27,13 +27,24 @@ class SimpleProgram(LogicProgram) :
 
 class PrologString(LogicProgram) :
     
-    def __init__(self, string, parser=None) :
-        LogicProgram.__init__(self)
+    def __init__(self, string, parser=None, source_root='.', source_files=None) :
         self.__string = string
+        lines = self._find_lines(string)
+        LogicProgram.__init__(self, source_root=source_root, source_files=source_files, line_info=lines)
         if parser == None :
             self.parser = DefaultPrologParser(PrologFactory())
         else :
             self.parser = parser
+    
+    def _find_lines(self, s) :
+        """Find line-end positions."""
+        lines = []
+        f = s.find('\n')
+        while f >= 0 :
+            lines.append(f)
+            f = s.find('\n', f+1)
+        lines.append(len(s))
+        return lines
         
     def __iter__(self) :
         """Iterator for the clauses in the program."""
@@ -41,68 +52,19 @@ class PrologString(LogicProgram) :
         return iter(program)
 
 
-class PrologFile(LogicProgram) :
+class PrologFile(PrologString) :
     """LogicProgram implementation as a pointer to a Prolog file.
     
     :param filename: filename of the Prolog file (optional)
     :type filename: string
-    :param allow_update: allow modifications to given file, otherwise forces copy
-    :type allow_update: bool
     """
     
-    def __init__(self, filename=None, allow_update=False, parser=None) :
-        LogicProgram.__init__(self, os.path.dirname(filename), [ os.path.abspath(filename)] )
-        if parser == None :
-            self.parser = DefaultPrologParser(PrologFactory())
-        else :
-            self.parser = parser
-        
-        
-        if filename == None :
-            filename = self._new_filename()
-            allow_update = True
-        self.__filename = filename
-        self.__allow_update = allow_update
-        
-        self.__buffer = []  # for new clauses
-        
-    def _new_filename(self) :
-        import tempfile
-        (handle, filename) = tempfile.mkstemp(suffix='.pl')
-        return filename
-        
-    def _write_buffer(self) :
-        if self.__buffer :
-            if not self.__allow_update :
-                # Copy file
-                new_filename = self._new_filename()
-                shutil.copyfile(self.__filename, new_filename)
-                self.__filename = new_filename
-        
-            filename = self.__filename
-            with open(filename, 'a') as f :
-                for line in self.__buffer :
-                    f.write(line)
-                self.__buffer = []
-        
-    def _get_filename(self) :
-        self._write_buffer()
-        return self.__filename
-    filename = property( _get_filename )
-        
-    def __iter__(self) :
-        """Iterator for the clauses in the program."""
-        program = self.parser.parseFile(self.filename)
-        return iter(program)
-        
-    def _addAnnotatedDisjunction(self, clause) :
-        self.__buffer.append( clause )
-        
-    def _addClause(self, clause) :
-        self.__buffer.append( clause )
-        
-    def _addFact(self, fact) :
-        self.__buffer.append( fact )
+    def __init__(self, filename, parser=None) :
+        source_root = os.path.dirname(filename)
+        source_files = [ os.path.abspath(filename)]
+        with open(filename) as f :
+            source_text = f.read()
+        PrologString.__init__(self, source_text, parser=parser, source_root=source_root, source_files=source_files)                
         
         
 class PrologFactory(Factory) :

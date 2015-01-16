@@ -52,7 +52,7 @@ class CallModeError(Exception) :
         self.location = location
         msg = 'Invalid argument types for call'
         if self.scope : msg += " to '%s'" % self.scope
-        if location != None : msg += ' at position %s ' % location
+        if location != None : msg += ' at position %s:%s ' % (location)
         msg += ': arguments: (%s)' % self.received
         if accepted :
             msg += ', expected: (%s)' % ') or ('.join(self.expected) 
@@ -179,7 +179,7 @@ mode_types = {
     'c' : ('callable', is_term)
 }
 
-def check_mode( args, accepted, functor=None, location=None, **k) :
+def check_mode( args, accepted, functor=None, location=None, database=None, **k) :
     for i, mode in enumerate(accepted) :
         correct = True
         for a,t in zip(args,mode) :
@@ -188,7 +188,7 @@ def check_mode( args, accepted, functor=None, location=None, **k) :
                 correct = False
                 break
         if correct : return i
-    raise CallModeError(functor, args, accepted, location=location)
+    raise CallModeError(functor, args, accepted, location=database.lineno(location))
     
 def list_elements(term) :
     elements = []
@@ -205,7 +205,7 @@ def list_tail(term) :
     return tail
                
 
-def builtin_split_call( term, parts, **k ) :
+def builtin_split_call( term, parts, database=None, location=None, **k ) :
     """T =.. L"""
     functor = '=..'
     # modes:
@@ -217,9 +217,9 @@ def builtin_split_call( term, parts, **k ) :
     if mode == 0 :
         elements, tail = list_elements(parts)
         if len(elements) == 0 :
-            raise CallModeError(functor, (term,parts), message='non-empty list for arg #2 if arg #1 is a variable', location=k.get('location'))
+            raise CallModeError(functor, (term,parts), message='non-empty list for arg #2 if arg #1 is a variable', location=database.lineno(location))
         elif len(elements) > 1 and not is_atom(elements[0]) :
-            raise CallModeError(functor, (term,parts), message='atom as first element in list if arg #1 is a variable', location=k.get('location'))
+            raise CallModeError(functor, (term,parts), message='atom as first element in list if arg #1 is a variable', location=database.lineno(location))
         elif len(elements) == 1 :
             # Special case => term == parts[0]
             return [(elements[0],parts)]

@@ -51,6 +51,8 @@ class NonGroundProbabilisticClause(Exception) :
     
     def __init__(self, location=None) :
         self.location = location
+        Exception.__init__(self, 'Encountered non-ground probabilistic clause at position %s:%s.' % self.location)
+        
 
 def instantiate( term, context ) :
     """Replace variables in Term by values based on context lookup table."""
@@ -303,7 +305,7 @@ class EventBasedEngine(object) :
         result = tuple(call_args)
         
         # Raise error when head is not ground.
-        if not is_ground(*result) : raise NonGroundProbabilisticClause(location=node.location)
+        if not is_ground(*result) : raise NonGroundProbabilisticClause(location=db.lineno(node.location))
         
         # Ground probability.
         probability = instantiate( node.probability, call_args )
