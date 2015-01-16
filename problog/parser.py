@@ -50,6 +50,21 @@ def guarded(f) :
     
     return res
 
+class strWithLocation(object) : 
+    
+    def __init__(self, string, location=None) :
+        self.string = string
+        self.location = location
+        
+    def __str__(self) :
+        return self.string
+        
+    def __hash__(self) :
+        return hash(self.string)
+        
+    def __eq__(self, other) :
+        return str(self) == str(other)
+    
 
 class PrologParser(object) :
     """
@@ -280,17 +295,21 @@ class PrologParser(object) :
                 elif operator_format in ['yfx','xfx'] :
                     # fold on rightmost
                     fold_location = operator_locations[-1]
-                return self._create_operator2(toks[fold_location], self._parse_arg(s,loc,toks[:fold_location]), self._parse_arg(s,loc,toks[fold_location+1:]),location=loc)  
+                operator = toks[fold_location]
+                location = self._get_location(operator)
+                return self._create_operator2(operator, self._parse_arg(s,loc,toks[:fold_location]), self._parse_arg(s,loc,toks[fold_location+1:]),location=location)  
             else :
                 if operator_format in ['fx', 'fy'] :
                     op_loc = operator_locations[0]
                     operator = toks[op_loc]
-                    operand = toks[op_loc + 1 : ]
-                    sub_toks = toks[ : op_loc] + [ self._create_operator1( operator, self._parse_arg(s,loc, operand),location=loc)  ]
+                    operand = toks[op_loc + 1 : ]    
+                    location = self._get_location(operand)
+                    sub_toks = toks[ : op_loc] + [ self._create_operator1( operator, self._parse_arg(s,location, operand),location=self._get_location(operator))  ]
                 else :
                     op_loc = operator_locations[-1]
                     operand = toks[ : op_loc  ]
-                    sub_toks = [ self._create_operator1( operator, self._parse_arg(s,loc, operand),location=loc)  ] + toks[ oploc + 1 : ]
+                    location = self._get_location(operand)
+                    sub_toks = [ self._create_operator1( operator, self._parse_arg(s,location, operand),location=self._get_location(operator))  ] + toks[ oploc + 1 : ]
                 return self._parse_arg(s,loc,sub_toks)
                 
     @guarded            
@@ -313,10 +332,26 @@ class PrologParser(object) :
     def _parse_string(self, s, loc, toks) :
         return self.factory.build_string(toks[0], location=loc)
         
+    @guarded
+    def _parse_binop(self, s, loc, toks) :
+        return strWithLocation(toks[0],location=loc)
+
+    @guarded
+    def _parse_unop(self, s, loc, toks) :
+        return strWithLocation(toks[0],location=loc)
+        
+    def _get_location(self, token) :
+        try :
+            return token.location
+        except AttributeError :
+            return None
+        
     def _define_operators(self) :
         self.__binary_operator = oneOf(list(self.binary_operators))
+        self.__binary_operator.setParseAction(self._parse_binop)
         self.__binary_operator_in_list = oneOf([ op for op in self.__binary_operators if 0 < self.__binary_operators[op][1] < self.__binary_operators[','][1] ])
         self.__unary_operator = oneOf(list(self.unary_operators))
+        self.__unary_operator.setParseAction(self._parse_unop)
 
     def _define_basic_types(self) :
         

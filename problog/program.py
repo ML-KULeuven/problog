@@ -38,7 +38,7 @@ class PrologString(LogicProgram) :
     
     def _find_lines(self, s) :
         """Find line-end positions."""
-        lines = []
+        lines = [-1]
         f = s.find('\n')
         while f >= 0 :
             lines.append(f)

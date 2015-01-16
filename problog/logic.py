@@ -499,7 +499,7 @@ class LogicProgram(object) :
         else :
             import bisect
             i = bisect.bisect_right(self.line_info, char) 
-            lineno = i + 1
+            lineno = i
             charno = char - self.line_info[i-1]
             return lineno, charno
                     
