@@ -13,17 +13,14 @@ import os
 Assumptions
 -----------
 Assumption 1: no unification of non-ground terms (e.g. unbound variables)
-Assumption 3: conjunction nodes have exactly two children   (internal representation only)
-
-Assumption 8: no prolog builtins 
-    - added some builtins (needs better framework)
 
 -- REMOVED: Assumption 4: no OR
 -- REMOVED: Assumption 5: no NOT
 -- REMOVED: Assumption 7: no probabilistic grounding
 -- REMOVED: Assumption 6: no CHOICE
 -- REMOVED: Assumption 2: functor-free
-
+-- REMOVED: Assumption 8: no prolog builtins 
+-- IS OK Assumption 3: conjunction nodes have exactly two children   (internal representation only)
 
 Properties
 ----------
