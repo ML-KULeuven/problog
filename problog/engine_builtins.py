@@ -48,8 +48,10 @@ def unify_value( v1, v2 ) :
     """Test unification of two values and return most specific unifier."""
     
     if is_variable(v1) :
+        if not is_ground(v2) : raise VariableUnification()
         return v2
     elif is_variable(v2) :
+        if not is_ground(v1) : raise VariableUnification()
         return v1
     elif v1.signature == v2.signature : # Assume Term
         return v1.withArgs(*[ unify_value(a1,a2) for a1, a2 in zip(v1.args, v2.args) ])

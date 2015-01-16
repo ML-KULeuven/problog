@@ -913,11 +913,11 @@ class UserAbort(Exception) : pass
 
 class UserFail(Exception) : pass
 
-class NonGroundQuery(Exception) : pass
 
-class UnboundProgramError(Exception) : pass
-
-class CallStackError(Exception) : pass
+class CallStackError(GroundingError) : 
+    
+    def __init__(self) :
+        GroundingError.__init__(self, 'The grounding engine exceeded the maximal recursion depth.')
 
 
 # Input python 2 and 3 compatible input
