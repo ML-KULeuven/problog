@@ -2,6 +2,8 @@ from __future__ import print_function
 
 from collections import defaultdict
 
+import traceback
+
 LABEL_QUERY = "query"
 LABEL_EVIDENCE_POS = "evidence+"
 LABEL_EVIDENCE_NEG = "evidence-"
@@ -49,6 +51,19 @@ class ProbLog(object) :
         raise ProbLogError("No conversion strategy found from an object of class '%s' to an object of class '%s'." % ( type(src).__name__, target.__name__ ))
 
 class ProbLogError(Exception) : pass
+
+class GroundingError(ProbLogError) : pass
+
+def process_error( err ) :
+    """Take the given error raise by ProbLog and produce a meaningful error message."""
+    err_type = type(err).__name__
+    if err_type == 'ParseException' :
+        return 'Parsing error on %s:%s: %s.\n%s' % (err.lineno, err.col, err.msg, err.line )
+    elif isinstance(err, GroundingError) :
+        return 'Error during grounding: %s' % err
+    else :
+        traceback.print_exc()
+        return 'Unknown error: %s' % (err_type)
 
 class ProbLogObject(object) :
     """Root class for all convertible objects in the ProbLog system."""

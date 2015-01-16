@@ -1,12 +1,44 @@
 from .logic import Constant, Var, Term
+from .core import GroundingError
+
+
+class NonGroundProbabilisticClause(GroundingError) : 
+    
+    def __init__(self, location=None) :
+        self.location = location
+        msg = 'Encountered non-ground probabilistic clause' 
+        if self.location : msg += ' at position %s:%s' % self.location
+        msg += '.'
+        GroundingError.__init__(self, msg)
+
+class _UnknownClause(Exception) :
+    """Undefined clause in call used internally."""
+    pass
+
+class UnknownClause(GroundingError) :
+    """Undefined clause in call."""
+    
+    def __init__(self, signature, location) :
+        msg = "No clauses found for '%s'" % signature
+        if location : msg += " at position %s:%s" % location
+        msg += '.'
+        GroundingError.__init__(self, msg)
+        
+class ConsultError(GroundingError) :
+    
+    def __init__(self, message, location) :
+        msg = message
+        if location : msg += " at position %s:%s" % location
+        msg += '.'
+        GroundingError.__init__(self, msg)
 
 class UnifyError(Exception) : pass
 
-class VariableUnification(Exception) : 
+class VariableUnification(GroundingError) : 
     """The engine does not support unification of two unbound variables."""
     
-    def __init__(self) :
-        Exception.__init__(self, 'Unification of unbound variables not supported!')
+    def __init__(self, location=None) :
+        GroundingError.__init__(self, 'Unification of unbound variables not supported.')
 
 
 def unify_value( v1, v2 ) :
@@ -40,7 +72,7 @@ class StructSort(object) :
         return struct_cmp(self.obj, other.obj) != 0
 
 
-class CallModeError(Exception) :
+class CallModeError(GroundingError) :
     
     def __init__(self, functor, args, accepted=[], message=None, location=None) :
         if functor :

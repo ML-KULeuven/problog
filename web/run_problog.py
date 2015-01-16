@@ -13,6 +13,7 @@ from problog.program import PrologFile, ExtendedPrologFactory
 from problog.evaluator import SemiringSymbolic, Evaluator
 #from problog.nnf_formula import NNF
 from problog.sdd_formula import SDD
+from problog.core import process_error
 
 def print_result( d, output, precision=8 ) :
     success, d = d
@@ -24,27 +25,6 @@ def print_result( d, output, precision=8 ) :
         d['success'] = False
         print (200, 'application/json', json.dumps(d), file=output)
     return 0 
-    
-
-def process_error( err, lines=None ) :
-    """Take the given error raise by ProbLog and produce a meaningful error message."""
-    err_type = type(err).__name__
-    if err_type == 'ParseException' :
-        return 'Parsing error on %s:%s: %s.\n%s' % (err.lineno, err.col, err.msg, err.line )
-    elif err_type == 'UnknownClause' :
-        return 'Predicate undefined: \'%s\'.' % (err )
-    elif err_type == 'CallModeError' :
-        return 'Invalid arguments: %s' % (err)
-    elif err_type == 'PrologInstantiationError' :
-        return 'Arithmetic operation on uninstantiated variable.' 
-    elif err_type == 'UnboundProgramError' :
-        return 'Unbounded program or program too large.'
-    elif err_type == 'NonGroundProbabilisticClause' :
-        return str(err)
-    else :
-        traceback.print_exc()
-        return 'Unknown error: %s' % (err_type)
-
 
 def main( filename) :
 

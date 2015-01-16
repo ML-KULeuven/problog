@@ -2,8 +2,9 @@ from __future__ import print_function
 
 from .program import ClauseDB, PrologString, PrologFile
 from .logic import Term, Constant, InstantiationError
+from .core import GroundingError
 from .formula import LogicFormula
-from .engine_builtins import addStandardBuiltIns, is_ground, is_variable, UnifyError, unify_value, is_term, VariableUnification, check_mode
+from .engine_builtins import addStandardBuiltIns, is_ground, is_variable, UnifyError, unify_value, is_term, VariableUnification, check_mode, NonGroundProbabilisticClause, UnknownClause, ConsultError
 
 from collections import defaultdict
 import os
@@ -46,12 +47,10 @@ To make ``==`` and ``\==`` work, variable identifiers should be passed from high
 To make ``=`` work variables should be redirectable (but this would complicate tabling).
 
 """
-
-class NonGroundProbabilisticClause(Exception) : 
     
-    def __init__(self, location=None) :
-        self.location = location
-        Exception.__init__(self, 'Encountered non-ground probabilistic clause at position %s:%s.' % self.location)
+class _UnknownClause(Exception) :
+    """Undefined clause in call used internally."""
+    pass
         
 
 def instantiate( term, context ) :
@@ -95,16 +94,6 @@ def unify( source_value, target_value, target_context=None ) :
     
 
     
-
-class _UnknownClause(Exception) :
-    """Undefined clause in call used internally."""
-    pass
-
-class UnknownClause(Exception) :
-    """Undefined clause in call."""
-    
-    def __init__(self, signature) :
-        Exception.__init__(self, "No clauses found for '%s'!" % signature)
 
 
 class Context(object) :
@@ -238,7 +227,7 @@ class EventBasedEngine(object) :
             if silent_fail :
                 return gp, []
             else :
-                raise UnknownClause(term.signature)
+                raise UnknownClause(term.signature, location=db.lineno(term.location))
         # Create a new call.
         call_node = ClauseDB._call( term.functor, range(0,len(term.args)), clause_node, None )
         # Initialize a result collector callback.
@@ -334,7 +323,7 @@ class EventBasedEngine(object) :
             except _UnknownClause :
                 # The given define node is empty: no definition found for this clause.
                 sig = '%s/%s' % (node.functor, len(node.args))
-                raise UnknownClause(sig)
+                raise UnknownClause(sig, location=db.lineno(node.location))
             
     def _eval_clause( self, db, gp, node_id, node, call_args, parent ) :
         try :
@@ -749,7 +738,7 @@ class ProcessBodyReturn(ProcessNode) :
     def newResult(self, result, ground_node=0) :
         for i, res in enumerate(result) :
             if not is_ground(res) and self.head_vars[i] > 1 :
-                raise VariableUnification()
+                raise VariableUnification(location=self.node.location)
         
         EngineLogger.get().receiveResult(self, result, ground_node)
         output = [ instantiate(arg, result) for arg in self.head_args ]
@@ -800,14 +789,14 @@ def atom_to_filename(atom) :
     return atom
     
     
-def builtin_consult( filename, callback=None, database=None, engine=None, context=None, **kwdargs ) :
+def builtin_consult( filename, callback=None, database=None, engine=None, context=None, location=None, **kwdargs ) :
     check_mode( (filename,), 'a', functor='consult' )
     filename = os.path.join(database.source_root, atom_to_filename( filename ))
     if not os.path.exists( filename ) :
         filename += '.pl'
     if not os.path.exists( filename ) :
         # TODO better exception
-        raise Exception('File not found!')
+        raise ConsultError(location=location, message='File not found')
     
     # Prevent loading the same file twice
     if not filename in database.source_files : 
@@ -847,7 +836,7 @@ def builtin_call( term, args=(), callback=None, database=None, engine=None, cont
     # If term not defined: try loading it as a builtin
     if clause_node == None : clause_node = database._getBuiltIn(term.signature)
     # If term not defined: raise error    
-    if clause_node == None : raise UnknownClause(term.signature)
+    if clause_node == None : raise UnknownClause(term.signature, location=database.lineno(term.location))
     # Create a new call.
     call_node = ClauseDB._call( term.functor, range(0, len(term.args) + len(args)), clause_node, None )
     # Create a callback node that wraps the results in the functor.
