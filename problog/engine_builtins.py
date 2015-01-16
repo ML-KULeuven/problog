@@ -26,7 +26,7 @@ class UnknownClause(GroundingError) :
         
 class ConsultError(GroundingError) :
     
-    def __init__(self, message, location) :
+    def __init__(self, message, location=None) :
         msg = message
         if location : msg += " at position %s:%s" % location
         msg += '.'
@@ -220,7 +220,11 @@ def check_mode( args, accepted, functor=None, location=None, database=None, **k)
                 correct = False
                 break
         if correct : return i
-    raise CallModeError(functor, args, accepted, location=database.lineno(location))
+    if database and location :
+        location = database.lineno(location)
+    else :
+        location = None
+    raise CallModeError(functor, args, accepted, location=location)
     
 def list_elements(term) :
     elements = []

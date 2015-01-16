@@ -4,7 +4,7 @@ from .program import ClauseDB, PrologString, PrologFile
 from .logic import Term, Constant, InstantiationError
 from .core import GroundingError
 from .formula import LogicFormula
-from .engine_builtins import addStandardBuiltIns, is_ground, is_variable, UnifyError, unify_value, is_term, VariableUnification, check_mode, NonGroundProbabilisticClause, UnknownClause, ConsultError
+from .engine_builtins import addStandardBuiltIns, is_ground, is_variable, is_list_nonempty, UnifyError, unify_value, is_term, VariableUnification, check_mode, NonGroundProbabilisticClause, UnknownClause, ConsultError
 
 from collections import defaultdict
 import os
@@ -788,6 +788,13 @@ def atom_to_filename(atom) :
         atom = atom[1:-1]
     return atom
     
+
+def builtin_consult_as_list( op1, op2, **kwdargs ) :
+    check_mode( (op1,op2), ['*L'], functor='consult', **kwdargs )
+    builtin_consult(op1, **kwdargs)
+    if is_list_nonempty(op2) :
+        builtin_consult_as_list(op2.args[0], op2.args[1], **kwdargs)
+    
     
 def builtin_consult( filename, callback=None, database=None, engine=None, context=None, location=None, **kwdargs ) :
     check_mode( (filename,), 'a', functor='consult' )
@@ -796,7 +803,7 @@ def builtin_consult( filename, callback=None, database=None, engine=None, contex
         filename += '.pl'
     if not os.path.exists( filename ) :
         # TODO better exception
-        raise ConsultError(location=location, message='File not found')
+        raise ConsultError(location=database.lineno(location), message="Consult: file not found '%s'" % filename)
     
     # Prevent loading the same file twice
     if not filename in database.source_files : 
@@ -885,6 +892,8 @@ def addBuiltIns(engine) :
     for i in range(2,10) :
         engine.addBuiltIn('call', i, builtin_callN)
     engine.addBuiltIn('consult', 1, builtin_consult)
+    engine.addBuiltIn('.', 2, builtin_consult_as_list)
+
 
 
 DefaultEngine = EventBasedEngine
