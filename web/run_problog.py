@@ -34,7 +34,10 @@ def process_error( err ) :
     elif isinstance(err, GroundingError) :
         try :
             location = err.location
-            return { 'message': 'Error during grounding: %s' % err, 'lineno' : location[0], 'col' : location[1] } 
+            if location :
+                return { 'message': 'Error during grounding: %s' % err, 'lineno' : location[0], 'col' : location[1] } 
+            else :
+                return { 'message': 'Error during grounding: %s' % err }
         except AttributeError :
             return { 'message': 'Error during grounding: %s' % err }
     else :
