@@ -203,7 +203,7 @@ class EventBasedEngine(object) :
         :param label: type of query (e.g. ``query``, ``evidence`` or ``-evidence``)
         :type label: str
         """
-        gp, results = self._ground(db, term, gp, silent_fail=False)
+        gp, results = self._ground(db, term, gp, silent_fail=False, allow_vars=False)
         
         for node_id, args in results :
             gp.addName( term.withArgs(*args), node_id, label )
@@ -212,7 +212,7 @@ class EventBasedEngine(object) :
         
         return gp
     
-    def _ground(self, db, term, gp=None, level=0, silent_fail=True) :
+    def _ground(self, db, term, gp=None, level=0, silent_fail=True, allow_vars=True) :
         # Convert logic program if needed.
         db = self.prepare(db)
         # Create a new target datastructure if none was given.
@@ -229,9 +229,9 @@ class EventBasedEngine(object) :
             else :
                 raise UnknownClause(term.signature, location=db.lineno(term.location))
         # Create a new call.
-        call_node = ClauseDB._call( term.functor, range(0,len(term.args)), clause_node, None )
+        call_node = ClauseDB._call( term.functor, range(0,len(term.args)), clause_node, term.location )
         # Initialize a result collector callback.
-        res = ResultCollector()
+        res = ResultCollector(allow_vars, database=db, location=term.location)
         try :
             # Evaluate call.
             self._eval_call(db, gp, None, call_node, self._create_context(term.args,define=None), res )
@@ -767,11 +767,21 @@ class ProcessCallReturn(ProcessNode) :
 class ResultCollector(ProcessNode) :
     """Collect results."""
     
-    def __init__(self) :
+    def __init__(self, allow_vars=True, database=None, location=None) :
         ProcessNode.__init__(self)
         self.results = []
+        self.allow_vars = allow_vars
+        self.location = location
+        self.database = database
     
     def newResult( self, result, ground_result) :
+        if not self.allow_vars and not is_ground(*result) :
+            if self.database :
+                location = self.database.lineno(self.location)
+            else :
+                location = None
+            raise NonGroundProbabilisticClause(location=location)
+        
         self.results.append( (ground_result, result  ))
         
     def complete(self) :
