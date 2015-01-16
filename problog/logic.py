@@ -493,7 +493,7 @@ class LogicProgram(object) :
             return obj
             
     def lineno(self, char) :
-        if self.line_info == None :
+        if self.line_info == None or char == None :
             # No line info available
             return None
         else :
