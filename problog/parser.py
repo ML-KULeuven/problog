@@ -229,14 +229,14 @@ class PrologParser(object) :
         return self.factory.build_program(toks)
         
     @guarded
-    def _create_operator2(self, operator, operand1, operand2) :
+    def _create_operator2(self, operator, operand1, operand2, location=None) :
         operator, prior, format, creator, extra_args = self.getBinaryOperator(operator)
-        return creator(priority=prior, format=format, functor=operator, operand1=operand1, operand2=operand2,**extra_args)
+        return creator(priority=prior, format=format, functor=operator, operand1=operand1, operand2=operand2, location=location, **extra_args)
         
     @guarded
-    def _create_operator1(self, operator, operand) :
+    def _create_operator1(self, operator, operand, location=None) :
         operator, prior, format, creator, extra_args = self.getUnaryOperator(operator)
-        return creator(priority=prior, format=format, functor=operator, operand=operand, **extra_args)
+        return creator(priority=prior, format=format, functor=operator, operand=operand, location=location, **extra_args)
     
     @guarded
     def _parse_arg(self, s, loc, toks) :
@@ -280,17 +280,17 @@ class PrologParser(object) :
                 elif operator_format in ['yfx','xfx'] :
                     # fold on rightmost
                     fold_location = operator_locations[-1]
-                return self._create_operator2(toks[fold_location], self._parse_arg(s,loc,toks[:fold_location]), self._parse_arg(s,loc,toks[fold_location+1:]))  
+                return self._create_operator2(toks[fold_location], self._parse_arg(s,loc,toks[:fold_location]), self._parse_arg(s,loc,toks[fold_location+1:]),location=loc)  
             else :
                 if operator_format in ['fx', 'fy'] :
                     op_loc = operator_locations[0]
                     operator = toks[op_loc]
                     operand = toks[op_loc + 1 : ]
-                    sub_toks = toks[ : op_loc] + [ self._create_operator1( operator, self._parse_arg(s,loc, operand))  ]
+                    sub_toks = toks[ : op_loc] + [ self._create_operator1( operator, self._parse_arg(s,loc, operand),location=loc)  ]
                 else :
                     op_loc = operator_locations[-1]
                     operand = toks[ : op_loc  ]
-                    sub_toks = [ self._create_operator1( operator, self._parse_arg(s,loc, operand))  ] + toks[ oploc + 1 : ]
+                    sub_toks = [ self._create_operator1( operator, self._parse_arg(s,loc, operand),location=loc)  ] + toks[ oploc + 1 : ]
                 return self._parse_arg(s,loc,sub_toks)
                 
     @guarded            
@@ -684,10 +684,10 @@ class Factory(object) :
         return str(value)
         
     def build_binop(self, functor, operand1, operand2, function=None, location=None, **extra) :
-        return self.build_function("'" + functor + "'", (operand1, operand2))
+        return self.build_function("'" + functor + "'", (operand1, operand2), location=location)
         
     def build_unop(self, functor, operand, location=None, **extra) :
-        return self.build_function("'" + functor + "'", (operand,) )
+        return self.build_function("'" + functor + "'", (operand,), location=location )
         
     def build_list(self, values, tail=None, location=None, **extra) :
         if tail == None :
@@ -696,7 +696,7 @@ class Factory(object) :
             return '[%s | %s]' % (', '.join(map(str,values)), tail)
         
     def build_string(self, value, location=None) :
-        return self.build_constant('"' + value + '"');
+        return self.build_constant('"' + value + '"', location=location);
     
     def build_cut(self, location=None) :
         raise NotImplementedError('Not supported!')

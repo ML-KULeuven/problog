@@ -41,7 +41,11 @@ class VariableUnification(GroundingError) :
     
     def __init__(self, location=None) :
         self.location = location
-        GroundingError.__init__(self, 'Unification of unbound variables not supported.')
+        
+        msg = 'Unification of unbound variables not supported'
+        if self.location : msg += ' at position %s:%s' % self.location
+        msg += '.'
+        GroundingError.__init__(self, msg)
 
 
 def unify_value( v1, v2 ) :
@@ -317,18 +321,20 @@ def builtin_fail( **k ) :
     return False
 
 
-def builtin_eq( A, B, **k ) :
+def builtin_eq( A, B, location=None, database=None, **k ) :
     """``A = B``
         A and B not both variables
     """
     if is_var(A) and is_var(B) :
-        raise VariableUnification()
+        raise VariableUnification(location = database.lineno(location))
     else :
         try :
             R = unify_value(A,B)
             return [( R, R )]
         except UnifyError :
             return []
+        except VariableUnification :
+            raise VariableUnification(location = database.lineno(location))
 
 
 def builtin_neq( A, B, **k ) :
@@ -348,7 +354,7 @@ def builtin_neq( A, B, **k ) :
 def builtin_notsame( A, B, **k ) :
     """``A \== B``"""
     if is_var(A) and is_var(B) :
-        raise VariableUnification() # TODO this could work
+        return False
     # In Python A != B is not always the same as not A == B.
     else :
         return not A == B
@@ -357,7 +363,7 @@ def builtin_notsame( A, B, **k ) :
 def builtin_same( A, B, **k ) :
     """``A == B``"""
     if is_var(A) and is_var(B) :
-        raise VariableUnification() # TODO this could work
+        return True
     else :
         return A == B
 

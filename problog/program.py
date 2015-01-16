@@ -83,14 +83,14 @@ class PrologFactory(Factory) :
         return Constant(value)
         
     def build_binop(self, functor, operand1, operand2, function=None, location=None, **extra) :
-        return self.build_function("'" + functor + "'", (operand1, operand2))
+        return self.build_function("'" + functor + "'", (operand1, operand2), location=location)
 
     def build_directive(self, functor, operand, location=None, **extra) :
         head = self.build_function( '_directive', [] )
         return self.build_clause( functor, [head], operand, **extra)
             
     def build_unop(self, functor, operand, location=None, **extra) :
-        return self.build_function("'" + functor + "'", (operand,) )
+        return self.build_function("'" + functor + "'", (operand,) , location=location)
         
     def build_list(self, values, tail=None, location=None, **extra) :
         if tail == None :
@@ -98,11 +98,11 @@ class PrologFactory(Factory) :
         else :
             current = tail
         for value in reversed(values) :
-            current = self.build_function('.', (value, current) )
+            current = self.build_function('.', (value, current), location=location )
         return current
         
     def build_string(self, value, location=None) :
-        return self.build_constant('"' + value + '"');
+        return self.build_constant('"' + value + '"', location=location);
     
     def build_cut(self, location=None) :
         raise NotImplementedError('Not supported!')
@@ -171,8 +171,7 @@ class ExtendedPrologFactory(PrologFactory):
             for term in t :
                 self.update_functors(term)
         else :
-            print("Unknown type: {} -- {}".format(t, type(t)))
-            raise Exception()
+            raise Exception("Unknown type: {} -- {}".format(t, type(t)))
 
 
     def build_program(self, clauses):
