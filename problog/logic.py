@@ -82,6 +82,7 @@ class Term(object) :
         self.__functor = functor
         self.__args = args
         self.__probability = kwdargs.get('p')
+        self.location = kwdargs.get('location')
     
     @property
     def functor(self) : 
@@ -143,9 +144,9 @@ class Term(object) :
                 args.append( arg.apply(subst) )
         
         if self.probability == None :
-            return self.__class__( self.functor, *args)
+            return self.__class__( self.functor, *args, location=self.location)
         else :
-            return self.__class__( self.functor, *args, p=self.probability.apply(subst))
+            return self.__class__( self.functor, *args, p=self.probability.apply(subst), location=self.location)
             
     def __repr__(self) :
         if self.probability == None :
@@ -182,9 +183,9 @@ class Term(object) :
         
         """
         if self.probability != None :
-            return self.__class__(self.functor, *args, p=self.probability)
+            return self.__class__(self.functor, *args, p=self.probability, location=self.location)
         else :
-            return self.__class__(self.functor, *args)
+            return self.__class__(self.functor, *args, location=self.location)
             
     def withProbability(self, p=None) :
         return self.__class__(self.functor, *self.args, p=p)
@@ -246,8 +247,8 @@ class Var(Term) :
     
     """
     
-    def __init__(self, name) :
-        Term.__init__(self,name)
+    def __init__(self, name, location=None) :
+        Term.__init__(self,name, location=location)
     
     @property
     def name(self) : 
@@ -287,8 +288,8 @@ class Constant(Term) :
         
     """
     
-    def __init__(self, value) :
-        Term.__init__(self,value)
+    def __init__(self, value, location=None) :
+        Term.__init__(self,value,location=location)
     
     @property
     def value(self) : 
@@ -341,8 +342,8 @@ class Constant(Term) :
 class Clause(Term) :
     """A clause."""
     
-    def __init__(self, head, body) :
-        Term.__init__(self,':-',head,body)
+    def __init__(self, head, body, location=None) :
+        Term.__init__(self,':-',head,body,location=location)
         self.head = head
         self.body = body
         
@@ -351,8 +352,8 @@ class Clause(Term) :
         
 class AnnotatedDisjunction(Term) :
     
-    def __init__(self, heads, body) :
-        Term.__init__(self, '<-', heads, body)
+    def __init__(self, heads, body, location=None) :
+        Term.__init__(self, '<-', heads, body,location=location)
         self.heads = heads
         self.body = body
         
@@ -362,8 +363,8 @@ class AnnotatedDisjunction(Term) :
 class Or(Term) :
     """Or"""
     
-    def __init__(self, op1, op2) :
-        Term.__init__(self, ';', op1, op2)
+    def __init__(self, op1, op2, location=None) :
+        Term.__init__(self, ';', op1, op2, location=location)
         self.op1 = op1
         self.op2 = op2
     
@@ -383,8 +384,8 @@ class Or(Term) :
 class And(Term) :
     """And"""
     
-    def __init__(self, op1, op2) :
-        Term.__init__(self, ',', op1, op2)
+    def __init__(self, op1, op2, location=None) :
+        Term.__init__(self, ',', op1, op2, location=location)
         self.op1 = op1
         self.op2 = op2
     
@@ -408,8 +409,8 @@ class And(Term) :
 class Not(Term) :
     """Not"""
     
-    def __init__(self, functor, child) :
-        Term.__init__(self, functor, child)
+    def __init__(self, functor, child, location=None) :
+        Term.__init__(self, functor, child, location=location)
         self.child = child
     
     def __repr__(self) :

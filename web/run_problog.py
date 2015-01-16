@@ -26,7 +26,7 @@ def print_result( d, output, precision=8 ) :
     return 0 
     
 
-def process_error( err ) :
+def process_error( err, lines=None ) :
     """Take the given error raise by ProbLog and produce a meaningful error message."""
     err_type = type(err).__name__
     if err_type == 'ParseException' :
@@ -40,7 +40,10 @@ def process_error( err ) :
     elif err_type == 'UnboundProgramError' :
         return 'Unbounded program or program too large.'
     elif err_type == 'NonGroundProbabilisticClause' :
-        return 'Encountered non-ground probabilistic clause.'
+        if err.location :
+            return 'Encountered non-ground probabilistic clause at position %s.' % err.location
+        else :
+            return 'Encountered non-ground probabilistic clause.'
     else :
         traceback.print_exc()
         return 'Unknown error: %s' % (err_type)

@@ -42,15 +42,17 @@ class StructSort(object) :
 
 class CallModeError(Exception) :
     
-    def __init__(self, functor, args, accepted=[], message=None) :
+    def __init__(self, functor, args, accepted=[], message=None, location=None) :
         if functor :
             self.scope = '%s/%s'  % ( functor, len(args) )
         else :
             self.scope = None
         self.received = ', '.join(map(self.show_arg,args))
         self.expected = [  ', '.join(map(self.show_mode,mode)) for mode in accepted  ]
+        self.location = location
         msg = 'Invalid argument types for call'
         if self.scope : msg += " to '%s'" % self.scope
+        if location != None : msg += ' at position %s ' % location
         msg += ': arguments: (%s)' % self.received
         if accepted :
             msg += ', expected: (%s)' % ') or ('.join(self.expected) 
@@ -177,7 +179,7 @@ mode_types = {
     'c' : ('callable', is_term)
 }
 
-def check_mode( args, accepted, functor=None ) :
+def check_mode( args, accepted, functor=None, location=None, **k) :
     for i, mode in enumerate(accepted) :
         correct = True
         for a,t in zip(args,mode) :
@@ -186,9 +188,7 @@ def check_mode( args, accepted, functor=None ) :
                 correct = False
                 break
         if correct : return i
-    raise CallModeError(functor, args, accepted)
-
-
+    raise CallModeError(functor, args, accepted, location=location)
     
 def list_elements(term) :
     elements = []
@@ -205,7 +205,7 @@ def list_tail(term) :
     return tail
                
 
-def builtin_split_call( term, parts ) :
+def builtin_split_call( term, parts, **k ) :
     """T =.. L"""
     functor = '=..'
     # modes:
@@ -213,15 +213,13 @@ def builtin_split_call( term, parts ) :
     #                       IF its length > 1 then first element should be an atom
     #   <n> =.. <list or var>
     #
-    mode = check_mode( (term, parts), ['vL', 'nv', 'nl' ], functor=functor )
-    
-    
+    mode = check_mode( (term, parts), ['vL', 'nv', 'nl' ], functor=functor, **k )
     if mode == 0 :
         elements, tail = list_elements(parts)
         if len(elements) == 0 :
-            raise CallModeError(functor, (term,parts), message='non-empty list for arg #2 if arg #1 is a variable')
+            raise CallModeError(functor, (term,parts), message='non-empty list for arg #2 if arg #1 is a variable', location=k.get('location'))
         elif len(elements) > 1 and not is_atom(elements[0]) :
-            raise CallModeError(functor, (term,parts), message='atom as first element in list if arg #1 is a variable')
+            raise CallModeError(functor, (term,parts), message='atom as first element in list if arg #1 is a variable', location=k.get('location'))
         elif len(elements) == 1 :
             # Special case => term == parts[0]
             return [(elements[0],parts)]
@@ -242,8 +240,8 @@ def builtin_split_call( term, parts ) :
         except UnifyError :
             return []
 
-def builtin_arg(index,term,argument) :
-    mode = check_mode( (index,term,arguments), ['In*'], functor='arg' )
+def builtin_arg(index,term,argument, **k) :
+    mode = check_mode( (index,term,arguments), ['In*'], functor='arg', **k)
     index_v = int(index) - 1
     if 0 <= index_v < len(term.args) :
         try :
@@ -254,8 +252,8 @@ def builtin_arg(index,term,argument) :
             pass
     return []
 
-def builtin_functor(term,functor,arity) :
-    mode = check_mode( (term,functor,arity), ['vaI','n**'] )
+def builtin_functor(term,functor,arity, **k) :
+    mode = check_mode( (term,functor,arity), ['vaI','n**'], functor='functor', **k)
     
     if mode == 0 : 
         callback.newResult( Term(functor, *((None,)*int(arity)) ), functor, arity )
@@ -268,17 +266,17 @@ def builtin_functor(term,functor,arity) :
             pass
     return []
 
-def builtin_true( ) :
+def builtin_true( **k ) :
     """``true``"""
     return True
 
 
-def builtin_fail( ) :
+def builtin_fail( **k ) :
     """``fail``"""
     return False
 
 
-def builtin_eq( A, B ) :
+def builtin_eq( A, B, **k ) :
     """``A = B``
         A and B not both variables
     """
@@ -292,7 +290,7 @@ def builtin_eq( A, B ) :
             return []
 
 
-def builtin_neq( A, B ) :
+def builtin_neq( A, B, **k ) :
     """``A \= B``
         A and B not both variables
     """
@@ -306,7 +304,7 @@ def builtin_neq( A, B ) :
             return True
             
 
-def builtin_notsame( A, B ) :
+def builtin_notsame( A, B, **k ) :
     """``A \== B``"""
     if is_var(A) and is_var(B) :
         raise VariableUnification() # TODO this could work
@@ -315,7 +313,7 @@ def builtin_notsame( A, B ) :
         return not A == B
 
 
-def builtin_same( A, B ) :
+def builtin_same( A, B, **k ) :
     """``A == B``"""
     if is_var(A) and is_var(B) :
         raise VariableUnification() # TODO this could work
@@ -323,59 +321,59 @@ def builtin_same( A, B ) :
         return A == B
 
 
-def builtin_gt( A, B ) :
+def builtin_gt( A, B, **k ) :
     """``A > B`` 
         A and B are ground
     """
-    mode = check_mode( (A,B), ['gg'], functor='>' )
+    mode = check_mode( (A,B), ['gg'], functor='>', **k )
     return A.value > B.value
 
 
-def builtin_lt( A, B ) :
+def builtin_lt( A, B, **k ) :
     """``A > B`` 
         A and B are ground
     """
-    mode = check_mode( (A,B), ['gg'], functor='<' )
+    mode = check_mode( (A,B), ['gg'], functor='<', **k )
     return A.value < B.value
 
 
-def builtin_le( A, B ) :
+def builtin_le( A, B, **k ) :
     """``A =< B``
         A and B are ground
     """
-    mode = check_mode( (A,B), ['gg'], functor='=<' )
+    mode = check_mode( (A,B), ['gg'], functor='=<', **k )
     return A.value <= B.value
 
 
-def builtin_ge( A, B ) :
+def builtin_ge( A, B, **k ) :
     """``A >= B`` 
         A and B are ground
     """
-    mode = check_mode( (A,B), ['gg'], functor='>=' )
+    mode = check_mode( (A,B), ['gg'], functor='>=', **k )
     return A.value >= B.value
 
 
-def builtin_val_neq( A, B ) :
+def builtin_val_neq( A, B, **k ) :
     """``A =\= B`` 
         A and B are ground
     """
-    mode = check_mode( (A,B), ['gg'], functor='=\=' )
+    mode = check_mode( (A,B), ['gg'], functor='=\=', **k )
     return A.value != B.value
 
 
-def builtin_val_eq( A, B ) :
+def builtin_val_eq( A, B, **k ) :
     """``A =:= B`` 
         A and B are ground
     """
-    mode = check_mode( (A,B), ['gg'], functor='=:=' )
+    mode = check_mode( (A,B), ['gg'], functor='=:=', **k )
     return A.value == B.value
 
 
-def builtin_is( A, B ) :
+def builtin_is( A, B, **k ) :
     """``A is B``
         B is ground
     """
-    mode = check_mode( (A,B), ['*g'], functor='is' )
+    mode = check_mode( (A,B), ['*g'], functor='is', **k )
     try :
         R = Constant(B.value)
         unify_value(A,R)
@@ -384,63 +382,63 @@ def builtin_is( A, B ) :
         return []
 
 
-def builtin_var( term ) :
+def builtin_var( term, **k ) :
     return is_var(term)
 
 
-def builtin_atom( term ) :
+def builtin_atom( term, **k ) :
     return is_atom(term)
 
 
-def builtin_atomic( term ) :
+def builtin_atomic( term, **k ) :
     return is_atom(term) or is_number(term)
 
 
-def builtin_compound( term ) :
+def builtin_compound( term, **k ) :
     return is_compound(term)
 
 
-def builtin_float( term ) :
+def builtin_float( term, **k ) :
     return is_float(term)
 
 
-def builtin_integer( term ) :
+def builtin_integer( term, **k ) :
     return is_integer(term)
 
 
-def builtin_nonvar( term ) :
+def builtin_nonvar( term, **k ) :
     return not is_var(term)
 
 
-def builtin_number( term ) :
+def builtin_number( term, **k ) :
     return is_number(term) 
 
 
-def builtin_simple( term ) :
+def builtin_simple( term, **k ) :
     return is_var(term) or is_atomic(term)
     
 
-def builtin_callable( term ) :
+def builtin_callable( term, **k ) :
     return is_term(term)
 
 
-def builtin_rational( term ) :
+def builtin_rational( term, **k ) :
     return is_rational(term)
 
 
-def builtin_dbreference( term ) :
+def builtin_dbreference( term, **k ) :
     return is_dbref(term)  
     
 
-def builtin_primitive( term ) :
+def builtin_primitive( term, **k ) :
     return is_atomic(term) or is_dbref(term)
 
 
-def builtin_ground( term ) :
+def builtin_ground( term, **k ) :
     return is_ground(term)
 
 
-def builtin_is_list( term ) :
+def builtin_is_list( term, **k ) :
     return is_list(term)
 
 def compare(a,b) :
@@ -515,24 +513,24 @@ def struct_cmp( A, B ) :
     return 0
 
     
-def builtin_struct_lt(A, B) :
+def builtin_struct_lt(A, B, **k) :
     return struct_cmp(A,B) < 0    
 
     
-def builtin_struct_le(A, B) :
+def builtin_struct_le(A, B, **k) :
     return struct_cmp(A,B) <= 0
 
     
-def builtin_struct_gt(A, B) :
+def builtin_struct_gt(A, B, **k) :
     return struct_cmp(A,B) > 0
 
     
-def builtin_struct_ge(A, B) :
+def builtin_struct_ge(A, B, **k) :
     return struct_cmp(A,B) >= 0
 
 
-def builtin_compare(C, A, B) :
-    mode = check_mode( (C,A,B), [ '<**', 'v**' ], functor='compare')
+def builtin_compare(C, A, B, **k) :
+    mode = check_mode( (C,A,B), [ '<**', 'v**' ], functor='compare', **k)
     compares = "'>'","'='","'<'" 
     c = struct_cmp(A,B)
     c_token = compares[1-c]
@@ -551,8 +549,8 @@ def build_list(elements, tail) :
     return current
 
 
-def builtin_length(L, N) :
-    mode = check_mode( (L,N), [ 'LI', 'Lv', 'lI', 'vI' ], functor='length')
+def builtin_length(L, N, **k) :
+    mode = check_mode( (L,N), [ 'LI', 'Lv', 'lI', 'vI' ], functor='length', **k)
     # Note that Prolog also accepts 'vv' and 'lv', but these are unbounded.
     # Note that lI is a subset of LI, but only first matching mode is returned.
     if mode == 0 or mode == 1 :  # Given fixed list and maybe length
@@ -578,9 +576,9 @@ def builtin_length(L, N) :
 
 
 
-def builtin_sort( L, S ) :
+def builtin_sort( L, S, **k ) :
     # TODO doesn't work properly with variables e.g. gives sort([X,Y,Y],[_]) should be sort([X,Y,Y],[X,Y])
-    mode = check_mode( (L,S), [ 'L*' ], functor='sort' )
+    mode = check_mode( (L,S), [ 'L*' ], functor='sort', **k )
     elements, tail = list_elements(L)  
     # assert( is_list_empty(tail) )
     try :
@@ -591,8 +589,8 @@ def builtin_sort( L, S ) :
         return []
 
 
-def builtin_between( low, high, value ) :
-    mode = check_mode((low,high,value), [ 'iii', 'iiv' ], functor='between')
+def builtin_between( low, high, value, **k ) :
+    mode = check_mode((low,high,value), [ 'iii', 'iiv' ], functor='between', **k)
     low_v = int(low)
     high_v = int(high)
     if mode == 0 : # Check    
@@ -606,8 +604,8 @@ def builtin_between( low, high, value ) :
         return results
 
 
-def builtin_succ( a, b ) :
-    mode = check_mode((a,b), [ 'vI', 'Iv', 'II' ], functor='succ')
+def builtin_succ( a, b, **k ) :
+    mode = check_mode((a,b), [ 'vI', 'Iv', 'II' ], functor='succ', **k)
     if mode == 0 :
         b_v = int(b)
         return [(Constant(b_v-1), b)]
@@ -622,8 +620,8 @@ def builtin_succ( a, b ) :
     return []
 
 
-def builtin_plus( a, b, c ) :
-    mode = check_mode((a,b,c), [ 'iii', 'iiv', 'ivi', 'vii' ], functor='plus')
+def builtin_plus( a, b, c , **k) :
+    mode = check_mode((a,b,c), [ 'iii', 'iiv', 'ivi', 'vii' ], functor='plus', **k)
     if mode == 0 :
         a_v = int(a)
         b_v = int(b)

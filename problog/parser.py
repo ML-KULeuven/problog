@@ -179,15 +179,7 @@ class PrologParser(object) :
                 
     binary_operators = property(lambda s : [ op for op in s.__binary_operators if s.__binary_operators[op][1] > 0 ] )
     unary_operators = property(lambda s : [ op for op in s.__unary_operators if s.__unary_operators[op][1] > 0 ] )                
-    
-    @guarded
-    def _parse_clause(self, s, l, toks) :
-        head = toks[0]
-        body = None
-        if len(toks) > 1 :
-            body = toks[1]
-        return self.factory.build_clause(head, body)
-        
+            
     def _combine_formats(self, format_list) :
         # TODO operator clashes for unary operators
         counts = Counter(format_list)
@@ -214,15 +206,15 @@ class PrologParser(object) :
                 
     @guarded        
     def _parse_cut(self, s, l, toks) :
-        return self.factory.build_cut()    
+        return self.factory.build_cut(location=l)    
         
     @guarded
     def _parse_constant(self, s, l, toks) :
-        return self.factory.build_constant(toks[0])
+        return self.factory.build_constant(toks[0], location=l)
         
     @guarded
     def _parse_variable(self, s, l, toks) :
-        return self.factory.build_variable(toks[0])
+        return self.factory.build_variable(toks[0], location=l)
         
     @guarded
     def _parse_identifier(self, s, l, toks) :
@@ -230,7 +222,7 @@ class PrologParser(object) :
         
     @guarded
     def _parse_function(self, s,l,toks) :
-        return self.factory.build_function(toks[0], toks[1:])
+        return self.factory.build_function(toks[0], toks[1:], location=l)
     
     @guarded
     def _parse_program(self, s, l ,toks) :
@@ -315,11 +307,11 @@ class PrologParser(object) :
             # Plain list
             values = toks
             tail = None
-        return self.factory.build_list(values,tail=tail)
+        return self.factory.build_list(values,tail=tail, location=loc)
         
     @guarded
     def _parse_string(self, s, loc, toks) :
-        return self.factory.build_string(toks[0])
+        return self.factory.build_string(toks[0], location=loc)
         
     def _define_operators(self) :
         self.__binary_operator = oneOf(list(self.binary_operators))
@@ -456,9 +448,9 @@ class PrologParser(object) :
     @guarded
     def _parse_fact(self, s, loc, toks) :
         if len(toks) > 3:
-            return self.factory.build_probabilistic( functor=toks[1], operand1=toks[0], operand2=toks[3], unaryop=toks[2])
+            return self.factory.build_probabilistic( functor=toks[1], operand1=toks[0], operand2=toks[3], unaryop=toks[2], location=loc)
         elif len(toks) > 1 :
-            return self.factory.build_probabilistic( functor=toks[1], operand1=toks[0], operand2=toks[2] )
+            return self.factory.build_probabilistic( functor=toks[1], operand1=toks[0], operand2=toks[2], location=loc )
         else :
             return toks[0]
     
@@ -467,7 +459,7 @@ class PrologParser(object) :
         if len(toks) == 1 : # simple fact
             return toks[0]
         elif toks[0] == (':-') : # directive
-            return self.factory.build_directive( toks[0], toks[-1] )            
+            return self.factory.build_directive( toks[0], toks[-1], location=loc )            
         else :  
             if toks[-2] in ('<-', ':-') :
                 heads = toks[:-2]
@@ -475,10 +467,10 @@ class PrologParser(object) :
                 func = toks[-2]
             else :
                 heads = list(toks)
-                body = self.factory.build_function('true', [])
+                body = self.factory.build_function('true', [], location=loc )
                 func = ':-'
-            return self.factory.build_clause( func, heads, body )            
-        
+            return self.factory.build_clause( func, heads, body, location=loc )   
+                    
     def parseToken(self, string) :
         return self.__arg.parseString(string, True)[0]
                 
@@ -491,8 +483,7 @@ class PrologParser(object) :
         
     def parseFile(self, filename) :
         with open(filename) as f :
-            clauses = self.parseString(f.read())
-            return self.factory.build_program(clauses)
+            return self.parseString(f.read())
 
 
 def is_white(s) :
@@ -680,34 +671,34 @@ DefaultPrologParser = PrologParser
 class Factory(object) :
     """Factory object for creating suitable objects from the parse tree."""
         
-    def build_program(self, clauses) :
+    def build_program(self, clauses, locations=None) :
         return '\n'.join(map(str,clauses))
     
-    def build_function(self, functor, arguments) :
+    def build_function(self, functor, arguments, location=None) :
         return '%s(%s)' % (functor, ', '.join(map(str,arguments)))
         
-    def build_variable(self, name) :
+    def build_variable(self, name, location=None) :
         return str(name)
         
-    def build_constant(self, value) :
+    def build_constant(self, value, location=None) :
         return str(value)
         
-    def build_binop(self, functor, operand1, operand2, function=None, **extra) :
+    def build_binop(self, functor, operand1, operand2, function=None, location=None, **extra) :
         return self.build_function("'" + functor + "'", (operand1, operand2))
         
-    def build_unop(self, functor, operand, **extra) :
+    def build_unop(self, functor, operand, location=None, **extra) :
         return self.build_function("'" + functor + "'", (operand,) )
         
-    def build_list(self, values, tail=None, **extra) :
+    def build_list(self, values, tail=None, location=None, **extra) :
         if tail == None :
             return '[%s]' % (', '.join(map(str,values)))
         else :
             return '[%s | %s]' % (', '.join(map(str,values)), tail)
         
-    def build_string(self, value) :
+    def build_string(self, value, location=None) :
         return self.build_constant('"' + value + '"');
     
-    def build_cut(self) :
+    def build_cut(self, location=None) :
         raise NotImplementedError('Not supported!')
         
     build_clause = build_binop

@@ -111,26 +111,26 @@ class PrologFactory(Factory) :
     def build_program(self, clauses) :
         return clauses
     
-    def build_function(self, functor, arguments) :
-        return Term( functor, *arguments )
+    def build_function(self, functor, arguments, location=None) :
+        return Term( functor, *arguments, location=location )
         
-    def build_variable(self, name) :
+    def build_variable(self, name, location=None) :
         return Var(name)
         
-    def build_constant(self, value) :
+    def build_constant(self, value, location=None) :
         return Constant(value)
         
-    def build_binop(self, functor, operand1, operand2, function=None, **extra) :
+    def build_binop(self, functor, operand1, operand2, function=None, location=None, **extra) :
         return self.build_function("'" + functor + "'", (operand1, operand2))
 
-    def build_directive(self, functor, operand, **extra) :
+    def build_directive(self, functor, operand, location=None, **extra) :
         head = self.build_function( '_directive', [] )
         return self.build_clause( functor, [head], operand, **extra)
             
-    def build_unop(self, functor, operand, **extra) :
+    def build_unop(self, functor, operand, location=None, **extra) :
         return self.build_function("'" + functor + "'", (operand,) )
         
-    def build_list(self, values, tail=None, **extra) :
+    def build_list(self, values, tail=None, location=None, **extra) :
         if tail == None :
             current = Term('[]')
         else :
@@ -139,30 +139,30 @@ class PrologFactory(Factory) :
             current = self.build_function('.', (value, current) )
         return current
         
-    def build_string(self, value) :
+    def build_string(self, value, location=None) :
         return self.build_constant('"' + value + '"');
     
-    def build_cut(self) :
+    def build_cut(self, location=None) :
         raise NotImplementedError('Not supported!')
         
-    def build_clause(self, functor, operand1, operand2, **extra) :
+    def build_clause(self, functor, operand1, operand2, location=None, **extra) :
         heads = operand1
         #heads = self._uncurry( operand1, ';' )
         if len(heads) > 1 :
-            return AnnotatedDisjunction(heads, operand2)
+            return AnnotatedDisjunction(heads, operand2, location=location)
         else :
-            return Clause(operand1[0], operand2)
+            return Clause(operand1[0], operand2, location=location)
         
-    def build_disjunction(self, functor, operand1, operand2, **extra) :
+    def build_disjunction(self, functor, operand1, operand2, location=None, **extra) :
         return Or(operand1, operand2)
     
-    def build_conjunction(self, functor, operand1, operand2, **extra) :
+    def build_conjunction(self, functor, operand1, operand2, location=None, **extra) :
         return And(operand1, operand2)
     
-    def build_not(self, functor, operand, **extra) :
+    def build_not(self, functor, operand, location=None, **extra) :
         return Not(functor, operand)
         
-    def build_probabilistic(self, operand1, operand2, **extra) :
+    def build_probabilistic(self, operand1, operand2, location=None, **extra) :
         operand2.probability = operand1
         return operand2
         
@@ -214,7 +214,6 @@ class ExtendedPrologFactory(PrologFactory):
 
 
     def build_program(self, clauses):
-
         # Update functor f that appear as a negative head literal to f_p and
         # f_n
         for clause in clauses:
@@ -234,7 +233,7 @@ class ExtendedPrologFactory(PrologFactory):
         return clauses
 
 
-    def build_probabilistic(self, operand1, operand2, **extra) :
+    def build_probabilistic(self, operand1, operand2, location=None, **extra) :
         if 'unaryop' in extra and extra['unaryop'] == '\\+':
             if not operand2.signature in self.neg_head_lits:
                 self.neg_head_lits[operand2.signature] = {
@@ -322,14 +321,14 @@ class ClauseDB(LogicProgram) :
     
     """
     
-    _define = namedtuple('define', ('functor', 'arity', 'children') )
-    _clause = namedtuple('clause', ('functor', 'args', 'probability', 'child', 'varcount', 'group') )
-    _fact   = namedtuple('fact'  , ('functor', 'args', 'probability') )
-    _call   = namedtuple('call'  , ('functor', 'args', 'defnode' )) 
+    _define = namedtuple('define', ('functor', 'arity', 'children', 'location') )
+    _clause = namedtuple('clause', ('functor', 'args', 'probability', 'child', 'varcount', 'group', 'location') )
+    _fact   = namedtuple('fact'  , ('functor', 'args', 'probability', 'location') )
+    _call   = namedtuple('call'  , ('functor', 'args', 'defnode', 'location' )) 
     _disj   = namedtuple('disj'  , ('children' ) )
     _conj   = namedtuple('conj'  , ('children' ) )
     _neg    = namedtuple('neg'   , ('child' ) )
-    _choice = namedtuple('choice', ('functor', 'args', 'probability', 'group', 'choice') )
+    _choice = namedtuple('choice', ('functor', 'args', 'probability', 'group', 'choice', 'location') )
     
     def __init__(self, builtins=None) :
         LogicProgram.__init__(self)
@@ -368,26 +367,26 @@ class ClauseDB(LogicProgram) :
         define_node = self.getNode(define_index)
         if not define_node :
             clauses = self._create_index(head.arity)
-            self._setNode( define_index, self._define( head.functor, head.arity, clauses ) )
+            self._setNode( define_index, self._define( head.functor, head.arity, clauses, head.location ) )
         else :
             clauses = define_node.children
         clauses.append( childnode )
         return childnode
     
-    def _addChoiceNode(self, choice, args, probability, group) :
+    def _addChoiceNode(self, choice, args, probability, group, location=None) :
         functor = 'ad_%s_%s' % (group, choice)
-        choice_node = self._appendNode( self._choice(functor, args, probability, group, choice) )
+        choice_node = self._appendNode( self._choice(functor, args, probability, group, choice, location) )
         return choice_node
         
     def _addClauseNode( self, head, body, varcount, group=None ) :
-        clause_node = self._appendNode( self._clause( head.functor, head.args, head.probability, body, varcount, group ) )
+        clause_node = self._appendNode( self._clause( head.functor, head.args, head.probability, body, varcount, group, head.location ) )
         return self._addDefineNode( head, clause_node )
 
         
     def _addCallNode( self, term ) :
         """Add a *call* node."""
         defnode = self._addHead(term, create=False)
-        return self._appendNode( self._call( term.functor, term.args, defnode ) )
+        return self._appendNode( self._call( term.functor, term.args, defnode, term.location ) )
     
     def getNode(self, index) :
         """Get the instruction node at the given index.
@@ -426,7 +425,7 @@ class ClauseDB(LogicProgram) :
         node = self._getHead( head )
         if node == None :
             if create :
-                node = self._appendNode( self._define( head.functor, head.arity, self._create_index(head.arity)) )
+                node = self._appendNode( self._define( head.functor, head.arity, self._create_index(head.arity), head.location) )
             else :
                 node = self._appendNode()
             self._setHead( head, node )
@@ -466,7 +465,7 @@ class ClauseDB(LogicProgram) :
         variables = _AutoDict()
         new_head = term.apply(variables)
         if len(variables) == 0 :
-            fact_node = self._appendNode( self._fact(term.functor, term.args, term.probability))
+            fact_node = self._appendNode( self._fact(term.functor, term.args, term.probability, term.location))
             return self._addDefineNode( term, fact_node )
         else :
             return self._addClause( Clause(term, Term('true')) )
@@ -502,12 +501,11 @@ class ClauseDB(LogicProgram) :
             clause_body = self._addClauseNode( body_head, body_node, len(variables) )
             #clause_body = self._appendNode( self._clause( body_head.functor, body_head.args, None, body_node, len(variables), group=None ) )
             clause_body = self._addHead( body_head )
-            
             for choice, head in enumerate(new_heads) :
                 # For each head: add choice node
-                choice_node = self._addChoiceNode(choice, body_args, head.probability, group )
-                choice_call = self._appendNode( self._call( 'ad_%s_%s' % (group, choice), body_args, choice_node ) )
-                body_call = self._appendNode( self._call( 'ad_%s_body' % group, body_args , clause_body ) )
+                choice_node = self._addChoiceNode(choice, body_args, head.probability, group, head.location )
+                choice_call = self._appendNode( self._call( 'ad_%s_%s' % (group, choice), body_args, choice_node, head.location ) )
+                body_call = self._appendNode( self._call( 'ad_%s_body' % group, body_args , clause_body, head.location ) )
                 choice_body = self._addAndNode( body_call, choice_call )
                 head_clause = self._addClauseNode( head, choice_body, head_count, group=group )
             return None

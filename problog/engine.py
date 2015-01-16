@@ -47,8 +47,10 @@ To make ``=`` work variables should be redirectable (but this would complicate t
 
 """
 
-class NonGroundProbabilisticClause(Exception) : pass
-
+class NonGroundProbabilisticClause(Exception) : 
+    
+    def __init__(self, location=None) :
+        self.location = location
 
 def instantiate( term, context ) :
     """Replace variables in Term by values based on context lookup table."""
@@ -236,7 +238,7 @@ class EventBasedEngine(object) :
             else :
                 raise UnknownClause(term.signature)
         # Create a new call.
-        call_node = ClauseDB._call( term.functor, range(0,len(term.args)), clause_node )
+        call_node = ClauseDB._call( term.functor, range(0,len(term.args)), clause_node, None )
         # Initialize a result collector callback.
         res = ResultCollector()
         try :
@@ -300,7 +302,8 @@ class EventBasedEngine(object) :
         # Choice is ground so result is the same as call arguments.
         result = tuple(call_args)
         
-        if not is_ground(*result) : raise NonGroundProbabilisticClause()
+        # Raise error when head is not ground.
+        if not is_ground(*result) : raise NonGroundProbabilisticClause(location=node.location)
         
         # Ground probability.
         probability = instantiate( node.probability, call_args )
@@ -320,7 +323,7 @@ class EventBasedEngine(object) :
         if node.defnode < 0 :
             # Negative node indicates a builtin.
             builtin = self._getBuiltIn( node.defnode )
-            builtin( *call_args, context=context, callback=context_switch, database=db, engine=self, ground_program=gp )
+            builtin( *call_args, context=context, callback=context_switch, database=db, engine=self, ground_program=gp, location=node.location )
         else :
             # Positive node indicates a non-builtin.
             try :
@@ -844,7 +847,7 @@ def builtin_call( term, args=(), callback=None, database=None, engine=None, cont
     # If term not defined: raise error    
     if clause_node == None : raise UnknownClause(term.signature)
     # Create a new call.
-    call_node = ClauseDB._call( term.functor, range(0, len(term.args) + len(args)), clause_node )
+    call_node = ClauseDB._call( term.functor, range(0, len(term.args) + len(args)), clause_node, None )
     # Create a callback node that wraps the results in the functor.
     cb = CallProcessNode(term, args, callback)
     # Evaluate call.
@@ -862,7 +865,7 @@ class BooleanBuiltIn(object) :
     
     def __call__( self, *args, **kwdargs ) :
         callback = kwdargs.get('callback')
-        if self.base_function(*args) :
+        if self.base_function(*args, **kwdargs) :
             callback.newResult(args)
         callback.complete()
         
@@ -874,7 +877,7 @@ class SimpleBuiltIn(object) :
     
     def __call__(self, *args, **kwdargs ) :
         callback = kwdargs.get('callback')
-        results = self.base_function(*args)
+        results = self.base_function(*args, **kwdargs)
         if results :
             for result in results :
                 callback.newResult(result)

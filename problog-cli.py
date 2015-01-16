@@ -44,7 +44,10 @@ def process_error( err ) :
     elif err_type == 'UnboundProgramError' :
         return 'Unbounded program or program too large.'
     elif err_type == 'NonGroundProbabilisticClause' :
-        return 'Encountered non-ground probabilistic clause.'
+        if err.location :
+            return 'Encountered non-ground probabilistic clause at position %s.' % err.location
+        else :
+            return 'Encountered non-ground probabilistic clause.'
     else :
         traceback.print_exc()
         return 'Unknown error: %s' % (err_type)
