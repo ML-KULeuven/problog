@@ -1,7 +1,10 @@
 from __future__ import print_function
 from collections import defaultdict 
 
+import sys
+
 from problog.engine import unify, UnifyError, instantiate, extract_vars, is_ground
+from problog.engine_builtins import addStandardBuiltIns
 
 # New engine: notable differences
 #  - keeps its own call stack -> no problem with Python's maximal recursion depth 
@@ -10,12 +13,19 @@ from problog.engine import unify, UnifyError, instantiate, extract_vars, is_grou
 # STATUS: works for non-cyclic programs?
 
 # TODO:
-#  - add choice node (annotated disjunctions)
-#  - add builtins
+# 
+# 
 #  - add caching of define nodes
 #  - add cycle handling
+#  - add interface
 #  - make clause and call skippable (only transform results) -> tail recursion optimization
+#  - process directives
+#
+# DONE:
+#  - add choice node (annotated disjunctions) 
+#  - add builtins
 
+from problog.program import ClauseDB
 
 def call(obj, args, kwdargs) :
     return ( 'e', obj, args, kwdargs ) 
@@ -28,8 +38,14 @@ def complete(obj, source) :
 
 class Engine(object) :
     
-    def __init__(self) :
+    def __init__(self, builtins=True) :
         self.stack = []
+        
+        self.__builtin_index = {}
+        self.__builtins = []
+        
+        if builtins :
+            addBuiltIns(self)
         
         self.node_types = {}
         self.node_types['fact'] = EvalFact
@@ -40,15 +56,68 @@ class Engine(object) :
         self.node_types['call'] = EvalCall
         self.node_types['clause'] = EvalClause
         self.node_types['choice'] = EvalChoice
+        self.node_types['builtin'] = EvalBuiltIn
+        
+    def prepare(self, db) :
+        """Convert given logic program to suitable format for this engine."""
+        result = ClauseDB.createFrom(db, builtins=self.getBuiltIns())
+        #self._process_directives( result )
+        return result
+    
+    
+    def _getBuiltIn(self, index) :
+        real_index = -(index + 1)
+        return self.__builtins[real_index]
+        
+    def addBuiltIn(self, pred, arity, func) :
+        """Add a builtin."""
+        sig = '%s/%s' % (pred, arity)
+        self.__builtin_index[sig] = -(len(self.__builtins) + 1)
+        self.__builtins.append( func )
+        
+    def getBuiltIns(self) :
+        """Get the list of builtins."""
+        return self.__builtin_index
         
     def create_node_type(self, node_type) :
         return self.node_types[node_type]
     
+    # def create_define(self, database, target, node_id, node, context, parent ) :
+    #     key = (node_id, tuple(context))
+    #
+    #     # Store cache in ground program
+    #     if not hasattr(target), '_def_nodes') : target._def_nodes = {}
+    #     def_nodes = target._def_nodes
+    #
+    #     # Find pre-existing node.
+    #     pnode = def_nodes.get(key)
+    #     if pnode == None :
+    #         # Node does not exist: create it and add it to the list.
+    #         pnode = EvalDefine( engine=self, database=database, target=target, node_id=node_id, node=node, context=context, parent=parent )
+    #         def_nodes[key] = pnode
+    #         # Add parent as listener.
+    #         pnode.addListener(parent)
+    #         # Execute node. Note that for a given call (key), this is only done once!
+    #         pnode.execute()
+    #     else :
+    #         # Node exists already.
+    #         if call_args.define and call_args.define.hasAncestor(pnode) :
+    #             # Cycle detected!
+    #             # EXTEND Mark this information in the ground program?
+    #             cnode = ProcessDefineCycle(pnode, call_args.define, parent)
+    #         else :
+    #             # Add ancestor here.
+    #             pnode.addAncestor(call_args.define)
+    #             # Not a cycle, just reusing. Register parent as listener (will retrigger past events.)
+    #             pnode.addListener(parent)
+    
     def create(self, node_id, database, **kwdargs ) :
-        # TODO built-ins -> negative node_id
-        
-        node = database.getNode(node_id)
-        node_type = type(node).__name__
+        if node_id < 0 :
+            node_type = 'builtin'
+            node = self._getBuiltIn(node_id)
+        else :
+            node = database.getNode(node_id)
+            node_type = type(node).__name__
         
         exec_node = self.create_node_type( node_type )
         
@@ -58,12 +127,45 @@ class Engine(object) :
         
     def call_node( self, pointer ) :
         return self.stack[pointer]()
-        
+    
+    
+    def _ground(self, db, term, gp=None, level=0, silent_fail=True, allow_vars=True) :
+        # Convert logic program if needed.
+        db = self.prepare(db)
+        # Create a new target datastructure if none was given.
+        if gp == None : gp = LogicFormula()
+        # Find the define node for the given query term.
+        clause_node = db.find(term)
+        # If term not defined: fail query (no error)    # TODO add error to make it consistent?
+        if clause_node == None :
+            # Could be builtin?
+            clause_node = db._getBuiltIn(term.signature)
+        if clause_node == None : 
+            if silent_fail :
+                return gp, []
+            else :
+                raise UnknownClause(term.signature, location=db.lineno(term.location))
+        # Create a new call.
+        call_node = ClauseDB._call( term.functor, range(0,len(term.args)), clause_node, term.location )
+        # Initialize a result collector callback.
+        res = ResultCollector(allow_vars, database=db, location=term.location)
+        try :
+            # Evaluate call.
+            self._eval_call(db, gp, None, call_node, self._create_context(term.args,define=None), res )
+        except RuntimeError as err :
+            if str(err).startswith('maximum recursion depth exceeded') :
+                raise CallStackError()
+            else :
+                raise
+        # Return ground program and results.
+        return gp, res.results    
         
     def execute(self, node_id, **kwdargs ) :
-        pointer = self.create( node_id, parent=None, **kwdargs )
-        cleanUp, actions = self.call_node(pointer)
+        trace = kwdargs.get('trace')
+        debug = kwdargs.get('debug') or trace
         
+        pointer = self.create( node_id, parents=[None], **kwdargs )
+        cleanUp, actions = self.call_node(pointer)
         max_stack = len(self.stack)
         solutions = []
         while actions :
@@ -72,7 +174,7 @@ class Engine(object) :
                 if act == 'r' :
                     solutions.append( (args[0], args[1]) )
                 elif act == 'c' :
-                    print ('Maximal stack size:', max_stack)
+                    if debug : print ('Maximal stack size:', max_stack)
                     return solutions
             else:
                 if act == 'e' :
@@ -89,15 +191,21 @@ class Engine(object) :
                     elif act == 'c' :
                         cleanUp, next_actions = exec_node.complete(*args,**kwdargs)
                 actions += list(reversed(next_actions))
-                # self.printStack(obj)
-                # if act in 'rc' : print (obj, act, args)
+                if debug :
+                    self.printStack(obj)
+                    if act in 'rc' : print (obj, act, args)
                 if len(self.stack) > max_stack : max_stack = len(self.stack)
+                if trace : sys.stdin.readline()
                 if cleanUp :
                     #print ('cleanUp', obj, self.stack[obj])
                     self.stack[obj] = None
                     while self.stack and self.stack[-1] == None :
                         self.stack.pop(-1)
         return solutions
+        
+    def __call__(self, query, database, target, **kwdargs ) :
+        node_id = database.find(query)
+        return self.execute( node_id, database=database, target=target, context=query.args) 
         
     def printStack(self, pointer=None) :
         print ('===========================')
@@ -116,14 +224,14 @@ NODE_FALSE = None
 
 class EvalNode(object):
 
-    def __init__(self, engine, database, target, node_id, node, context, parent, pointer, identifier=None, transform=None ) :
+    def __init__(self, engine, database, target, node_id, node, context, parents, pointer, identifier=None, transform=None, **extra ) :
         self.engine = engine
         self.database = database
         self.target = target
         self.node_id = node_id
         self.node = node
         self.context = context
-        self.parent = parent
+        self.parents = parents
         self.identifier = identifier
         self.pointer = pointer
         self.transform = transform
@@ -131,20 +239,20 @@ class EvalNode(object):
         
     def notifyResult(self, arguments, node=0, is_last=False ) :
         if self.transform == None :
-            return [ newResult( self.parent, arguments, node, self.identifier, is_last )  ]
+            return [ newResult( parent, arguments, node, self.identifier, is_last ) for parent in self.parents  ]
         else :
             print ('Transform:', arguments, self)
-            return [ newResult( self.parent, self.transform(arguments), node, self.identifier, is_last )  ]
+            return [ newResult( parent, self.transform(arguments), node, self.identifier, is_last ) for parent in self.parents  ]
         
     def notifyComplete(self) :
-        return [ complete( self.parent, self.identifier )  ]
+        return [ complete( parent, self.identifier ) for parent in self.parents  ]
         
     def createCall(self, node_id, *args, **kwdargs) :
         base_args = {}
         base_args['database'] = self.database
         base_args['target'] = self.target 
         base_args['context'] = self.context
-        base_args['parent'] = self.pointer
+        base_args['parents'] = [self.pointer]
         base_args['identifier'] = self.identifier
         base_args['transform'] = self.transform
         base_args.update(kwdargs)
@@ -262,8 +370,10 @@ class EvalDefine(EvalNode) :
     def __init__(self, **parent_args ) : 
         EvalNode.__init__(self, **parent_args)
         self.__buffer = defaultdict(list)
+        self.is_complete = False
         
     def __call__(self) :
+        # Stored results => immediately return buffer
         children = self.node.children.find( self.context )
         self.to_complete = len(children)
         
@@ -271,7 +381,7 @@ class EvalDefine(EvalNode) :
             # No children, so complete immediately.
             return True, self.notifyComplete()
         elif len(children) == 1 :
-            return True, [ self.createCall( child, parent=self.parent ) for child in children ]
+            return True, [ self.createCall( child, parents=self.parents ) for child in children ]
         else :
             return False, [ self.createCall( child ) for child in children ]
             
@@ -359,7 +469,7 @@ class EvalAnd(EvalNode) :
             else :
                 if node == NODE_TRUE :
                     # TODO Doesn't work if node != 0! Forgets the first node in probabilistic programs!
-                    return True, [ self.createCall( self.node.children[1], context=result, parent=self.parent ) ]
+                    return True, [ self.createCall( self.node.children[1], context=result, parents=self.parents ) ]
                 else :
                     return False, [ self.createCall( self.node.children[1], context=result, identifier=node ) ]
             
@@ -403,7 +513,12 @@ class EvalCall(EvalNode) :
             return is_last, self.notifyResult(result, node, is_last)
         
     def complete(self, source=None) :
-        return True, self.notifyComplete()    
+        return True, self.notifyComplete()
+    
+class EvalBuiltIn(EvalNode) : 
+    
+    def __call__(self) :
+        return self.node(*self.context, database=self.database, callback=self)
 
 class EvalClause(EvalNode) :
     
@@ -452,31 +567,88 @@ class EvalClause(EvalNode) :
 
 
 
-def test(filename) :
+class BooleanBuiltIn(object) :
+    """Simple builtin that consist of a check without unification. (e.g. var(X), integer(X), ... )."""
+    
+    def __init__(self, base_function) :
+        self.base_function = base_function
+    
+    def __call__( self, *args, **kwdargs ) :
+        callback = kwdargs.get('callback')
+        if self.base_function(*args, **kwdargs) :
+            return True, callback.notifyResult(args,NODE_TRUE,True)
+        else :
+            return True, callback.notifyComplete()
+        
+class SimpleBuiltIn(object) :
+    """Simple builtin that does cannot be involved in a cycle or require engine information and has 0 or more results."""
+
+    def __init__(self, base_function) :
+        self.base_function = base_function
+    
+    def __call__(self, *args, **kwdargs ) :
+        callback = kwdargs.get('callback')
+        results = self.base_function(*args, **kwdargs)
+        output = []
+        if results :
+            for i,result in enumerate(results) :
+                output += callback.notifyResult(result,NODE_TRUE,i==len(results)-1)
+            return True, output
+        else :
+            return True, callback.notifyComplete()
+
+def addBuiltIns(engine) :
+    
+    addStandardBuiltIns(engine, BooleanBuiltIn, SimpleBuiltIn )
+    
+    # These are special builtins
+    # engine.addBuiltIn('call', 1, builtin_call)
+    # for i in range(2,10) :
+    #     engine.addBuiltIn('call', i, builtin_callN)
+    # engine.addBuiltIn('consult', 1, builtin_consult)
+    # engine.addBuiltIn('.', 2, builtin_consult_as_list)
+
+
+
+def test(filename, trace=None) :
     import problog
     
     pl = problog.program.PrologFile(filename)
-    db = problog.program.ClauseDB.createFrom( pl )
+    
     target = problog.formula.LogicFormula()
     
     eng = Engine()
+    db = eng.prepare(pl)
     
     context = [None]
-    parent = None
     
+    print ('== Database ==')
     print (db)
-    print ('===============')
+    
+    print ()
+    print ('== Results ==')
         
     query_node = db.find(problog.logic.Term('query',None) )
-    print (query_node)
     queries = eng.execute( query_node, database=db, target=target, context=[None] )
-        
-    query = queries[0][0][0]
-    node_id = db.find(query)
-    results = eng.execute( node_id, database=db, target=target, context=([None]*query.arity) )
     
+    env = { 'database': db, 'target': target }
+    
+    for query in queries :
+        query = query[0][0]
+        results = eng( query, **env) 
+        print ("Query %s" % query)
+        if results :
+            for args, node in results :
+                print ('\t', query.withArgs(*args), { 0: 'true' }.get(node,node)  )
+        else :
+            print ('\t', 'fail')
+    
+    print ()
+    print ("== Ground program ==")
     print (target)
-    print (results)
+        
+    #
+    # print (eng.getBuiltIns())
     
     
     
@@ -484,4 +656,4 @@ def test(filename) :
 if __name__ == '__main__' :
     import sys
     
-    test(sys.argv[1])
+    test(*sys.argv[1:])
