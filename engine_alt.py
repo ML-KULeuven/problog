@@ -3,7 +3,18 @@ from collections import defaultdict
 
 from problog.engine import unify, UnifyError, instantiate, extract_vars, is_ground
 
+# New engine: notable differences
+#  - keeps its own call stack -> no problem with Python's maximal recursion depth 
+#  - supports skipping calls / tail-recursion optimization
+
 # STATUS: works for non-cyclic programs?
+
+# TODO:
+#  - add choice node (annotated disjunctions)
+#  - add builtins
+#  - add caching of define nodes
+#  - add cycle handling
+#  - make clause and call skippable (only transform results) -> tail recursion optimization
 
 
 def call(obj, args, kwdargs) :
@@ -19,6 +30,19 @@ class Engine(object) :
     
     def __init__(self) :
         self.stack = []
+        
+        self.node_types = {}
+        self.node_types['fact'] = EvalFact
+        self.node_types['conj'] = EvalAnd
+        self.node_types['disj'] = EvalOr
+        self.node_types['neg'] = EvalNot
+        self.node_types['define'] = EvalDefine
+        self.node_types['call'] = EvalCall
+        self.node_types['clause'] = EvalClause
+        self.node_types['choice'] = EvalChoice
+        
+    def create_node_type(self, node_type) :
+        return self.node_types[node_type]
     
     def create(self, node_id, database, **kwdargs ) :
         # TODO built-ins -> negative node_id
@@ -26,26 +50,8 @@ class Engine(object) :
         node = database.getNode(node_id)
         node_type = type(node).__name__
         
-        exec_node = None
-        if node_type == 'fact' :
-            exec_node = EvalFact
-        elif node_type == 'conj' :
-            exec_node = EvalAnd
-        elif node_type == 'disj' :
-            exec_node = EvalOr
-        elif node_type == 'neg' :
-            exec_node = EvalNot
-        elif node_type == 'define' :
-            # Load from cache
-            exec_node = EvalDefine
-        elif node_type == 'call' :
-            exec_node = EvalCall
-        elif node_type == 'clause' :
-            exec_node = EvalClause
-        else :
-            # TODO choice
-            raise RuntimeError("Unknown node type: '%s'" % node_type )
-            
+        exec_node = self.create_node_type( node_type )
+        
         pointer = len(self.stack) 
         self.stack.append(exec_node(pointer=pointer, engine=self, database=database, node_id=node_id, node=node, **kwdargs))
         return pointer
@@ -170,6 +176,28 @@ class EvalFact(EvalNode) :
             # Send complete message.
             actions += self.notifyComplete()
         return True, actions        # Clean up, actions
+        
+class EvalChoice(EvalNode) :
+    # Has exactly one listener.
+    # Behaviour:
+    # - call returns 0 or 1 'newResult' and 1 'complete'
+    # - can always be cleaned up immediately
+    # - does not support 'newResult' and 'complete'
+    
+    def __call__(self) :
+        actions = []
+        
+        result = tuple(self.context)
+        
+        if not is_ground(*result) : raise NonGroundProbabilisticClause(location=self.database.lineno(self.node.location))
+        
+        probability = instantiate( self.node.probability, result )
+        # Create a new atom in ground program.
+        origin = (self.node.group, result)
+        ground_node = self.target.addAtom( origin + (self.node.choice,) , probability, group=origin ) 
+        # Notify parent.
+        
+        return True, self.notifyResult(result, ground_node, True)
 
 class EvalOr(EvalNode) :
     # Has exactly one listener (parent)
@@ -329,7 +357,11 @@ class EvalAnd(EvalNode) :
                 self.to_complete += 1
                 return False, [ self.createCall( self.node.children[1], context=result, identifier=node ) ]
             else :
-                return True, [ self.createCall( self.node.children[1], context=result, identifier=node, parent=self.parent ) ]
+                if node == NODE_TRUE :
+                    # TODO Doesn't work if node != 0! Forgets the first node in probabilistic programs!
+                    return True, [ self.createCall( self.node.children[1], context=result, parent=self.parent ) ]
+                else :
+                    return False, [ self.createCall( self.node.children[1], context=result, identifier=node ) ]
             
     def complete(self, source=None) :
         self.to_complete -= 1
