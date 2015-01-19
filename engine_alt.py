@@ -15,7 +15,6 @@ from problog.engine_builtins import addStandardBuiltIns
 # TODO:
 # 
 # 
-#  - add caching of define nodes
 #  - add cycle handling
 #  - add interface
 #  - make clause and call skippable (only transform results) -> tail recursion optimization
@@ -24,6 +23,7 @@ from problog.engine_builtins import addStandardBuiltIns
 # DONE:
 #  - add choice node (annotated disjunctions) 
 #  - add builtins
+#  - add caching of define nodes
 
 from problog.program import ClauseDB
 
@@ -83,33 +83,33 @@ class Engine(object) :
         return self.node_types[node_type]
     
     # def create_define(self, database, target, node_id, node, context, parent ) :
-    #     key = (node_id, tuple(context))
-    #
-    #     # Store cache in ground program
-    #     if not hasattr(target), '_def_nodes') : target._def_nodes = {}
-    #     def_nodes = target._def_nodes
-    #
-    #     # Find pre-existing node.
-    #     pnode = def_nodes.get(key)
-    #     if pnode == None :
-    #         # Node does not exist: create it and add it to the list.
-    #         pnode = EvalDefine( engine=self, database=database, target=target, node_id=node_id, node=node, context=context, parent=parent )
-    #         def_nodes[key] = pnode
-    #         # Add parent as listener.
-    #         pnode.addListener(parent)
-    #         # Execute node. Note that for a given call (key), this is only done once!
-    #         pnode.execute()
-    #     else :
-    #         # Node exists already.
-    #         if call_args.define and call_args.define.hasAncestor(pnode) :
-    #             # Cycle detected!
-    #             # EXTEND Mark this information in the ground program?
-    #             cnode = ProcessDefineCycle(pnode, call_args.define, parent)
-    #         else :
-    #             # Add ancestor here.
-    #             pnode.addAncestor(call_args.define)
-    #             # Not a cycle, just reusing. Register parent as listener (will retrigger past events.)
-    #             pnode.addListener(parent)
+#         key = (node_id, tuple(context))
+#
+#         # Store cache in ground program
+#         if not hasattr(target), '_def_nodes') : target._def_nodes = {}
+#         def_nodes = target._def_nodes
+#
+#         # Find pre-existing node.
+#         pnode = def_nodes.get(key)
+#         if pnode == None :
+#             # Node does not exist: create it and add it to the list.
+#             pnode = EvalDefine( engine=self, database=database, target=target, node_id=node_id, node=node, context=context, parent=parent )
+#             def_nodes[key] = pnode
+#             # Add parent as listener.
+#             pnode.addListener(parent)
+#             # Execute node. Note that for a given call (key), this is only done once!
+#             pnode.execute()
+#         else :
+#             # Node exists already.
+#             if call_args.define and call_args.define.hasAncestor(pnode) :
+#                 # Cycle detected!
+#                 # EXTEND Mark this information in the ground program?
+#                 cnode = ProcessDefineCycle(pnode, call_args.define, parent)
+#             else :
+#                 # Add ancestor here.
+#                 pnode.addAncestor(call_args.define)
+#                 # Not a cycle, just reusing. Register parent as listener (will retrigger past events.)
+#                 pnode.addListener(parent)
     
     def create(self, node_id, database, **kwdargs ) :
         if node_id < 0 :
@@ -164,7 +164,10 @@ class Engine(object) :
         trace = kwdargs.get('trace')
         debug = kwdargs.get('debug') or trace
         
-        pointer = self.create( node_id, parents=[None], **kwdargs )
+        target = kwdargs['target']
+        if not hasattr(target, '_cache') : target._cache = DefineCache()
+        
+        pointer = self.create( node_id, parent=None, **kwdargs )
         cleanUp, actions = self.call_node(pointer)
         max_stack = len(self.stack)
         solutions = []
@@ -205,7 +208,7 @@ class Engine(object) :
         
     def __call__(self, query, database, target, **kwdargs ) :
         node_id = database.find(query)
-        return self.execute( node_id, database=database, target=target, context=query.args) 
+        return self.execute( node_id, database=database, target=target, context=query.args, **kwdargs) 
         
     def printStack(self, pointer=None) :
         print ('===========================')
@@ -224,14 +227,14 @@ NODE_FALSE = None
 
 class EvalNode(object):
 
-    def __init__(self, engine, database, target, node_id, node, context, parents, pointer, identifier=None, transform=None, **extra ) :
+    def __init__(self, engine, database, target, node_id, node, context, parent, pointer, identifier=None, transform=None, **extra ) :
         self.engine = engine
         self.database = database
         self.target = target
         self.node_id = node_id
         self.node = node
         self.context = context
-        self.parents = parents
+        self.parent = parent
         self.identifier = identifier
         self.pointer = pointer
         self.transform = transform
@@ -239,20 +242,19 @@ class EvalNode(object):
         
     def notifyResult(self, arguments, node=0, is_last=False ) :
         if self.transform == None :
-            return [ newResult( parent, arguments, node, self.identifier, is_last ) for parent in self.parents  ]
+            return [ newResult( self.parent, arguments, node, self.identifier, is_last )  ]
         else :
-            print ('Transform:', arguments, self)
-            return [ newResult( parent, self.transform(arguments), node, self.identifier, is_last ) for parent in self.parents  ]
+            return [ newResult( self.parent, self.transform(arguments), node, self.identifier, is_last )  ]
         
     def notifyComplete(self) :
-        return [ complete( parent, self.identifier ) for parent in self.parents  ]
+        return [ complete( self.parent, self.identifier )  ]
         
     def createCall(self, node_id, *args, **kwdargs) :
         base_args = {}
         base_args['database'] = self.database
         base_args['target'] = self.target 
         base_args['context'] = self.context
-        base_args['parents'] = [self.pointer]
+        base_args['parent'] = self.pointer
         base_args['identifier'] = self.identifier
         base_args['transform'] = self.transform
         base_args.update(kwdargs)
@@ -356,6 +358,76 @@ class EvalOr(EvalNode) :
         else :
             assert( self.to_complete > 0 )
             return False, []
+
+
+class DefineCache(object) : 
+    
+    # After a node is finished:
+    #   - store it in cache (part of ground program)
+    #   - also make subgoals available, e.g. after compute p(X)
+    #        we have p(1), p(2), p(3), ...
+    #       p(X) -> [(1,), (2,), (3,), (4,), (5,) ... ]
+    #       p(1) -> [ 1, 3, 6, 10 ]
+    #   - also reversed? -> harder
+    #
+    
+    def __init__(self) :
+        self.__non_ground = {}
+        self.__ground = {}
+        self.__active = []
+        
+    def __setitem__(self, goal, results) :
+        # Results
+        functor, args = goal
+        if is_ground(*args) :
+            if results :
+                assert(len(results) == 1)
+                res_key = next(iter(results.keys()))
+                key = (functor, res_key)
+                self.__ground[ key ] = results[res_key]
+            else :
+                self.__ground[ key ] = []  # Goal failed
+        else :
+            res_keys = list(results.keys())
+            self.__non_ground[ goal ] = res_keys
+            for res_key in res_keys :
+                key = (functor, res_key)
+                self.__ground[ key ] = results[res_key]
+                
+    def __getitem__(self, goal) :
+        functor, args = goal
+        if is_ground(*args) :
+            return { args : self.__ground[goal] }
+        else :
+            res_keys = self.__non_ground[goal]
+            result = {}
+            for res_key in res_keys :
+                result[res_key] = self.__ground[(functor,res_key)]
+            return result
+            
+    def __contains__(self, goal) :
+        functor, args = goal
+        if is_ground(*args) :
+            return goal in self.__ground
+        else :
+            return goal in self.__non_ground
+            
+    def __str__(self) :
+        return '%s\n%s' % (self.__non_ground, self.__ground)
+
+# class EvalDefineCache(EvalNode) :
+#
+#     def __init__(self, **parent_args) :
+#         pass
+#
+#     def __call__(self) :
+#         self.target
+        
+
+        
+        
+        
+
             
 class EvalDefine(EvalNode) :
     # Has exactly one listener (parent)
@@ -373,17 +445,27 @@ class EvalDefine(EvalNode) :
         self.is_complete = False
         
     def __call__(self) :
-        # Stored results => immediately return buffer
-        children = self.node.children.find( self.context )
-        self.to_complete = len(children)
+        goal = (self.node.functor, tuple(self.context))
+        if goal in self.target._cache :
+            # Stored results => immediately return buffer
+            results = self.target._cache[goal]
+            actions = []
+            for result, nodes in results.items() :
+                target_node = self.target.addOr( nodes )
+                actions += self.notifyResult(result, target_node )
+            actions += self.notifyComplete()
+            return True, actions
+        else :        
+            children = self.node.children.find( self.context )
+            self.to_complete = len(children)
         
-        if self.to_complete == 0 :
-            # No children, so complete immediately.
-            return True, self.notifyComplete()
-        elif len(children) == 1 :
-            return True, [ self.createCall( child, parents=self.parents ) for child in children ]
-        else :
-            return False, [ self.createCall( child ) for child in children ]
+            if self.to_complete == 0 :
+                # No children, so complete immediately.
+                return True, self.notifyComplete()
+            # elif len(children) == 1 :     # This case skips caching
+            #     return True, [ self.createCall( child, parent=self.parent ) for child in children ] 
+            else :
+                return False, [ self.createCall( child ) for child in children ]
             
     def newResult(self, result, node=NODE_TRUE, source=None, is_last=False ) :
         res = (tuple(result))
@@ -396,6 +478,8 @@ class EvalDefine(EvalNode) :
     def complete(self, source=None) :
         self.to_complete -= 1
         if self.to_complete == 0 :
+            cache_key = (self.node.functor, tuple(self.context))
+            self.target._cache[ cache_key ] = self.__buffer
             actions = []
             for result, nodes in self.__buffer.items() :
                 target_node = self.target.addOr( nodes )
@@ -467,9 +551,9 @@ class EvalAnd(EvalNode) :
                 self.to_complete += 1
                 return False, [ self.createCall( self.node.children[1], context=result, identifier=node ) ]
             else :
-                if node == NODE_TRUE :
+                if False and node == NODE_TRUE :
                     # TODO Doesn't work if node != 0! Forgets the first node in probabilistic programs!
-                    return True, [ self.createCall( self.node.children[1], context=result, parents=self.parents ) ]
+                    return True, [ self.createCall( self.node.children[1], context=result, parent=self.parent ) ]
                 else :
                     return False, [ self.createCall( self.node.children[1], context=result, identifier=node ) ]
             
@@ -621,6 +705,7 @@ def test(filename, trace=None) :
     db = eng.prepare(pl)
     
     context = [None]
+    parent = None
     
     print ('== Database ==')
     print (db)
@@ -635,7 +720,7 @@ def test(filename, trace=None) :
     
     for query in queries :
         query = query[0][0]
-        results = eng( query, **env) 
+        results = eng( query, trace=trace, **env) 
         print ("Query %s" % query)
         if results :
             for args, node in results :
@@ -646,6 +731,9 @@ def test(filename, trace=None) :
     print ()
     print ("== Ground program ==")
     print (target)
+    
+    
+    #print (target._cache)
         
     #
     # print (eng.getBuiltIns())
