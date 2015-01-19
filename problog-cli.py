@@ -5,7 +5,7 @@ from __future__ import print_function
 import os, sys, subprocess, traceback, logging
 
 from problog.program import PrologFile, ExtendedPrologFactory
-from problog.evaluator import SemiringSymbolic, Evaluator
+from problog.evaluator import SemiringSymbolic, SemiringLogProbability, Evaluator
 from problog.nnf_formula import NNF
 from problog.sdd_formula import SDD
 from problog.util import Timer
@@ -39,6 +39,8 @@ def main( filename, knowledge=NNF, semiring=None, parser_class=DefaultPrologPars
           formula = knowledge.createFrom(PrologFile(filename, parser=parser))
         with Timer('Evaluation'):
           result = formula.evaluate(semiring=semiring)
+          if not semiring is None:
+            result = dict([(k,semiring.result(v)) for k,v in result.items()])
         return True, result
     except Exception as err :
         return False, process_error(err)
@@ -54,6 +56,7 @@ def argparser() :
     parser.add_argument('--verbose', '-v', action='count', help='Verbose output')
     parser.add_argument('--knowledge', '-k', choices=('sdd','nnf'), default='nnf', help="Knowledge compilation tool.")
     parser.add_argument('--symbolic', action='store_true', help="Use symbolic evaluation.")
+    parser.add_argument('--logspace', action='store_true', help="Use log space evaluation.")
     parser.add_argument('--output', '-o', help="Output file (default stdout)", type=outputfile)
     parser.add_argument('--recursion-limit', help="Set recursion limit. Increase this value if you get an unbounded program error. (default: %d)" % sys.getrecursionlimit(), default=sys.getrecursionlimit(), type=int)
     parser.add_argument('--faster-parser', action='store_true', help=argparse.SUPPRESS)
@@ -105,6 +108,8 @@ if __name__ == '__main__' :
         
         if args.symbolic :
             semiring = SemiringSymbolic()
+        elif args.logspace:
+            semiring = SemiringLogProbability()
         else :
             semiring = None
     

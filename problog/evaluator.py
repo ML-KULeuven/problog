@@ -6,6 +6,7 @@ from .core import LABEL_QUERY, LABEL_EVIDENCE_POS, LABEL_EVIDENCE_NEG, LABEL_EVI
 
 import subprocess
 import sys, os, tempfile
+import math
 
 class InconsistentEvidenceError(Exception) : pass
 
@@ -27,6 +28,9 @@ class Semiring(object) :
         raise NotImplementedError()
 
     def value(self, a) :
+        raise NotImplementedError()
+
+    def result(self, a) :
         raise NotImplementedError()
 
     def normalize(self, a, Z) :
@@ -52,8 +56,47 @@ class SemiringProbability(Semiring) :
     def value(self, a) :
         return float(a)
 
+    def result(self, a) :
+        return a
+
     def normalize(self, a, Z) :
         return a/Z
+
+
+class SemiringLogProbability(SemiringProbability) :
+    inf, ninf = float("inf"), float("-inf")
+
+    def one(self) :
+        return 0.0
+
+    def zero(self) :
+        return self.ninf
+
+    def plus(self, a, b) :
+        if a < b:
+            if a == self.ninf: return b
+            return b + math.log1p(math.exp(a - b))
+        else:
+            if b == self.ninf: return a
+            return a + math.log1p(math.exp(b - a))
+
+    def times(self, a, b) :
+        return a + b
+
+    def negate(self, a) :
+        if a == 0.0: return self.zero()
+        return math.log1p(-math.exp(a))
+
+    def value(self, a) :
+        return math.log(float(a))
+
+    def result(self, a) :
+        return math.exp(a)
+
+    def normalize(self, a, Z) :
+        # Assumes Z is in log
+        return a - Z
+
 
 class SemiringSymbolic(Semiring) :
     
@@ -91,7 +134,10 @@ class SemiringSymbolic(Semiring) :
 
     def value(self, a) :
         return str(a)
-        
+
+    def result(self, a) :
+        return a
+
     def normalize(self, a, Z) :
         if Z == "1" :
             return a
