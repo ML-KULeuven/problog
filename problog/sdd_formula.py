@@ -284,7 +284,10 @@ class SDDEvaluator(Evaluator) :
                 return self.__probs[ node ][0]
                 
         else :
-            wmc_manager = sdd.wmc_manager_new( query_sdd , 0, self.sdd_manager )
+            logspace = 0
+            if self.semiring.isLogspace():
+              logspace = 1
+            wmc_manager = sdd.wmc_manager_new( query_sdd , logspace, self.sdd_manager )
 
             for i, n in enumerate(sorted(self.__probs)) :
                 i = i + 1

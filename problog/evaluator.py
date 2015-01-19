@@ -35,7 +35,11 @@ class Semiring(object) :
 
     def normalize(self, a, Z) :
         raise NotImplementedError()
-    
+
+    def isLogspace(self) :
+        return False
+
+
 class SemiringProbability(Semiring) :
 
     def one(self) :
@@ -96,6 +100,9 @@ class SemiringLogProbability(SemiringProbability) :
     def normalize(self, a, Z) :
         # Assumes Z is in log
         return a - Z
+
+    def isLogspace(self) :
+        return True
 
 
 class SemiringSymbolic(Semiring) :
