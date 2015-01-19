@@ -11,23 +11,18 @@ from .engine_builtins import addStandardBuiltIns, check_mode
 
 # New engine: notable differences
 #  - keeps its own call stack -> no problem with Python's maximal recursion depth 
-#  - supports skipping calls / tail-recursion optimization
-
-# STATUS: works for non-cyclic programs?
+#  - should support skipping calls / tail-recursion optimization
 
 # TODO:
-# 
-# 
-#  - add cycle handling
-#  - add interface
 #  - make clause and call skippable (only transform results) -> tail recursion optimization
-#  - process directives
 #
 # DONE:
 #  - add choice node (annotated disjunctions) 
 #  - add builtins
 #  - add caching of define nodes
-
+#  - add cycle handling
+#  - add interface
+#  - process directives
 
 class StackBasedEngine(object) :
     
