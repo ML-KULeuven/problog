@@ -46,7 +46,7 @@ class TestEngine(unittest.TestCase):
         engine = DefaultEngine()
         db = engine.prepare( PrologString(program) )
                 
-        self.assertEqual( engine.query(db, Term('morning', Constant(8) )), [[8]])
+        self.assertEqual( list(map(list,engine.query(db, Term('morning', Constant(8)) ))), [[8]])
         
     def test_anonymous_variable(self) :
         """Anonymous variables are distinct"""
@@ -63,9 +63,9 @@ class TestEngine(unittest.TestCase):
         
         engine = DefaultEngine()
         db = engine.prepare( PrologString(program) )
-        self.assertEqual( engine.query(db, Term('p', Constant(1), Constant(3), Constant(2) )), [[Constant(1),Constant(3),Constant(2)]])
+        self.assertEqual( list(map(list,engine.query(db, Term('p', Constant(1), Constant(3), Constant(2) )))), [[Constant(1),Constant(3),Constant(2)]])
     
-        self.assertEqual(engine.query(db, Term('r', None )), [[2], [3]])
+        self.assertEqual(list(map(list,engine.query(db, Term('r', None )))), [[2], [3]])
         
     def test_functors(self) :
         """Calls with functors"""
