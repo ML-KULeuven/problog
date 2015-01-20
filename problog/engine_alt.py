@@ -183,6 +183,8 @@ class StackBasedEngine(object) :
                         raise Exception('The engine did not complete succesfully!')
                     return solutions
                 elif act == 'o' :
+                    raise Exception('Unexpected state: cycle detected at top-level.')
+                    
                     exec_node = self.stack[args[1]]
                     cleanUp, next_actions = exec_node.complete()
                     actions += list(reversed(next_actions))
@@ -227,6 +229,7 @@ class StackBasedEngine(object) :
             if not actions and self.active_cycles :
                 # Engine stalled -> reactivate it by completing a cycle
                 cycle = self.active_cycles.pop(-1)
+                if debug : print ('Activating cycle', cycle)
                 exec_node = self.stack[cycle]
                 cleanUp, next_actions = exec_node.complete()
                 actions += list(reversed(next_actions))
@@ -570,7 +573,10 @@ class EvalDefine(EvalNode) :
     
     def newResult(self, result, node=NODE_TRUE, source=None, is_last=False ) :
         if self.is_cycle_child :
-            return is_last, self.notifyResult(result, node, is_last=is_last)
+            if is_last :
+                return True, self.notifyResult(result, node, is_last=is_last)
+            else :
+                return False, self.notifyResult(result, node, is_last=is_last)
         else :
             if self.isOnCycle() or self.isCycleRoot() :
                 res = (tuple(result))
