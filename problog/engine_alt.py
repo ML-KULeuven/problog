@@ -7,7 +7,13 @@ from .formula import LogicFormula
 from .program import ClauseDB, PrologFile
 from .logic import Term
 from .engine import unify, UnifyError, instantiate, extract_vars, is_ground, UnknownClause, _UnknownClause
-from .engine_builtins import addStandardBuiltIns, check_mode
+from .engine_builtins import addStandardBuiltIns, check_mode, GroundingError
+
+# TODO fix bug:
+#  Detect fake cycles. The active define node is not always an ancestor of the cycle child.
+#   In that case, the cycle finder message ('o') reaches the top level and the child is not registered at its parent.
+#
+
 
 # New engine: notable differences
 #  - keeps its own call stack -> no problem with Python's maximal recursion depth 
@@ -23,6 +29,19 @@ from .engine_builtins import addStandardBuiltIns, check_mode
 #  - add cycle handling
 #  - add interface
 #  - process directives
+
+class NegativeCycle(GroundingError) : 
+    """The engine does not support negative cycles."""
+    
+    def __init__(self, location=None) :
+        self.location = location
+        
+        msg = 'Negative cycle detected'
+        if self.location : msg += ' at position %s:%s' % self.location
+        msg += '.'
+        GroundingError.__init__(self, msg)
+        
+class InvalidEngineState(GroundingError): pass
 
 class StackBasedEngine(object) :
     
@@ -155,6 +174,35 @@ class StackBasedEngine(object) :
         results = self.execute( clause_node, database=db, target=gp, context=list(term.args), trace=trace, debug=debug)
         
         return gp, results
+        
+    def isAncestor( self, parent, child ) :
+        
+        # TODO this is not entirely correct: 
+        #  the negation check should happen only up to the common ancestor of the two
+        # Question: could we stop when we reach a node that is already marked cyclic or cycleroot?
+        current = self.stack[child]
+        while current and current.pointer != parent and current.parents[0] != None :
+            if type(current.node).__name__ == 'neg' :
+                raise NegativeCycle(location=current.database.lineno(current.node.location))
+            current = self.stack[current.parents[0]]
+        return current.pointer == parent 
+        
+    def checkState(self, actions) :
+        for act, obj, args, kwargs in actions :
+            if act == 'e' :
+                ps = kwargs['parents']
+                for p in ps :
+                    if p != None and (p >= len(self.stack) or self.stack[p] == None) :
+                        print (act, obj, args, kwargs)
+                        raise Exception('Invalid state: referencing non-existing object. [parent]')
+            elif act == 'r' and obj != None :                
+                obj = self.stack[obj]
+                if obj.__class__.__name__ == 'EvalDefine'  :
+                    for p in obj.cycle_children :
+                        if p != None and (p >= len(self.stack) or self.stack[p] == None) :
+                            print (p,obj,obj.pointer)
+                            raise Exception('Invalid state: referencing non-existing obj [child]')
+                
                 
     def execute(self, node_id, **kwdargs ) :
         trace = kwdargs.get('trace')
@@ -169,6 +217,7 @@ class StackBasedEngine(object) :
         max_stack = len(self.stack)
         solutions = []
         while actions :
+            self.checkState(actions)
             act, obj, args, kwdargs = actions.pop(-1)
             if obj == None :
                 if act == 'r' :
@@ -180,17 +229,17 @@ class StackBasedEngine(object) :
                     if self.active_cycles :
                         self.printStack()
                         print ('Active cycles:', self.active_cycles) 
-                        raise Exception('The engine did not complete succesfully!')
+                        raise InvalidEngineState('The engine did not complete successfully!')
                     return solutions
                 elif act == 'o' :
-                    raise Exception('Unexpected state: cycle detected at top-level.')
+                    raise InvalidEngineState('Unexpected state: cycle detected at top-level.')
                     
                     exec_node = self.stack[args[1]]
                     cleanUp, next_actions = exec_node.complete()
                     actions += list(reversed(next_actions))
                     if cleanUp : self.cleanUp(args[1])
                 else :
-                    raise Exception('Unknown message!')
+                    raise InvalidEngineState('Unknown message!')
             else:
                 if act == 'e' :
                     try :
@@ -204,11 +253,11 @@ class StackBasedEngine(object) :
                     if obj >= len(self.stack) :
                         self.printStack()
                         print (act, obj)
-                        raise Exception()
+                        raise InvalidEngineState('Non-existing pointer')
                     exec_node = self.stack[obj]
                     if exec_node == None :
                         print (act, obj)
-                        raise Exception()
+                        raise InvalidEngineState('Invalid node at given pointer')
                     if act == 'r' :
                         cleanUp, next_actions = exec_node.newResult(*args,**kwdargs)
                     elif act == 'c' :
@@ -216,7 +265,7 @@ class StackBasedEngine(object) :
                     elif act == 'o' :
                         cleanUp, next_actions = exec_node.createCycle(*args,**kwdargs)
                     else :
-                        raise Exception('Unknown message')
+                        raise InvalidEngineState('Unknown message')
                 actions += list(reversed(next_actions))
                 if debug :
                     self.printStack(obj)
@@ -238,7 +287,7 @@ class StackBasedEngine(object) :
         self.printStack()
         print ('Active cycles:', self.active_cycles)
         print ('Collected results:', solutions)
-        raise Exception('Engine did not complete correctly!')
+        raise InvalidEngineState('Engine did not complete correctly!')
     
     def cleanUp(self, obj) :
         self.stack[obj] = None
@@ -249,10 +298,7 @@ class StackBasedEngine(object) :
     def call(self, query, database, target, **kwdargs ) :
         node_id = database.find(query)
         return self.execute( node_id, database=database, target=target, context=query.args, **kwdargs) 
-        
-    def replace(self, pointer, node) :
-        self.stack[pointer] = node
-        
+                
     def printStack(self, pointer=None) :
         print ('===========================')
         for i,x in enumerate(self.stack) :
@@ -488,6 +534,9 @@ class DefineCache(object) :
     def is_active(self, goal) :
         return self.getEvalNode(goal) != None
         
+    def printEvalNode(self) :
+        print ('EVALNODES:',self.__active)
+        
     def getEvalNode(self, goal) :
         return self.__active.get(goal)
         
@@ -558,7 +607,6 @@ class EvalDefine(EvalNode) :
             actions += self.notifyComplete()
             return True, actions
         else :
-            self.target._cache.activate(goal, self)
             children = self.node.children.find( self.context )
             self.to_complete = len(children)
             
@@ -568,6 +616,7 @@ class EvalDefine(EvalNode) :
             # elif len(children) == 1 :     # This case skips caching
             #     return True, [ self.createCall( child, parents=self.parents ) for child in children ] 
             else :
+                self.target._cache.activate(goal, self)
                 actions = [ self.createCall( child) for child in children ]
                 return False, actions
     
@@ -645,12 +694,15 @@ class EvalDefine(EvalNode) :
         self.cycle_children.append(child)
         
     def cycleDetected(self) :
-        # What to do?
-        #  -> Find parent node -> add this node as a child and replace parent by
-        #  -> Replace this node into a CHILD node (unbuffered)
-        #  -> 
         self.is_cycle_child = True
-        return self.notifyCycle( self.call, self.pointer )
+        
+        goal = (self.node.functor, tuple(self.context))
+        eval_node = self.target._cache.getEvalNode(goal)
+        if self.engine.isAncestor( eval_node.pointer, self.pointer )  :
+            return self.notifyCycle( self.call, self.pointer )
+        else :
+            return self.notifyCycle( self.call, self.pointer, parents=[eval_node.pointer] )
+        
     
     def createCycle(self, call, child) :
         if self.call == call :
@@ -710,6 +762,10 @@ class EvalNot(EvalNode) :
             actions += self.notifyResult(tuple(self.context), NODE_TRUE)
         actions += self.notifyComplete()
         return True, actions
+        
+    def createCycle(self, call, child) :
+        raise NegativeCycle(location=self.database.lineno(self.node.location))
+    
         
 class EvalAnd(EvalNode) :
     
