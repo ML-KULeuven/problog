@@ -510,10 +510,10 @@ class PrologParser(object) :
         return self.__arg.parseString(string, True)[0]
                 
     def parseStatement(self, string) :
-        return self.statement.parseString(string, True)[0]
+        return self.statement.parseWithTabs().parseString(string, True)[0]
         
     def parseString(self, string) :
-        clauses = self.program.parseString(string, True)
+        clauses = self.program.parseWithTabs().parseString(string, True)
         return self.factory.build_program(clauses)
         
     def parseFile(self, filename) :

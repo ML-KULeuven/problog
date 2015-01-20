@@ -116,13 +116,13 @@ class PrologFactory(Factory) :
             return Clause(operand1[0], operand2, location=location)
         
     def build_disjunction(self, functor, operand1, operand2, location=None, **extra) :
-        return Or(operand1, operand2)
+        return Or(operand1, operand2, location=location)
     
     def build_conjunction(self, functor, operand1, operand2, location=None, **extra) :
-        return And(operand1, operand2)
+        return And(operand1, operand2, location=location)
     
     def build_not(self, functor, operand, location=None, **extra) :
-        return Not(functor, operand)
+        return Not(functor, operand, location=location)
         
     def build_probabilistic(self, operand1, operand2, location=None, **extra) :
         operand2.probability = operand1
@@ -188,8 +188,8 @@ class ExtendedPrologFactory(PrologFactory):
             new_clause = Clause(Term(v['f'], *cur_vars), And(Term(v['p'], *cur_vars), Not('\+',Term(v['n'], *cur_vars))))
             clauses.append(new_clause)
 
-        logger = logging.getLogger('problog')
-        logger.debug('Transformed program:\n{}'.format('\n'.join([str(c) for c in clauses])))
+        #logger = logging.getLogger('problog')
+        #logger.debug('Transformed program:\n{}'.format('\n'.join([str(c) for c in clauses])))
 
         return clauses
 
@@ -286,9 +286,9 @@ class ClauseDB(LogicProgram) :
     _clause = namedtuple('clause', ('functor', 'args', 'probability', 'child', 'varcount', 'group', 'location') )
     _fact   = namedtuple('fact'  , ('functor', 'args', 'probability', 'location') )
     _call   = namedtuple('call'  , ('functor', 'args', 'defnode', 'location' )) 
-    _disj   = namedtuple('disj'  , ('children' ) )
-    _conj   = namedtuple('conj'  , ('children' ) )
-    _neg    = namedtuple('neg'   , ('child' ) )
+    _disj   = namedtuple('disj'  , ('children', 'location' ) )
+    _conj   = namedtuple('conj'  , ('children', 'location' ) )
+    _neg    = namedtuple('neg'   , ('child', 'location' ) )
     _choice = namedtuple('choice', ('functor', 'args', 'probability', 'group', 'choice', 'location') )
     
     def __init__(self, builtins=None) :
@@ -311,17 +311,17 @@ class ClauseDB(LogicProgram) :
         # return []
         return ClauseIndex(self, arity)
             
-    def _addAndNode( self, op1, op2 ) :
+    def _addAndNode( self, op1, op2, location=None ) :
         """Add an *and* node."""
-        return self._appendNode( self._conj((op1,op2)))
+        return self._appendNode( self._conj((op1,op2),location))
         
-    def _addNotNode( self, op1 ) :
+    def _addNotNode( self, op1, location=None ) :
         """Add a *not* node."""
-        return self._appendNode( self._neg(op1) )
+        return self._appendNode( self._neg(op1,location) )
         
-    def _addOrNode( self, op1, op2 ) :
+    def _addOrNode( self, op1, op2, location=None ) :
         """Add an *or* node."""
-        return self._appendNode( self._disj((op1,op2)))
+        return self._appendNode( self._disj((op1,op2),location))
     
     def _addDefineNode( self, head, childnode ) :
         define_index = self._addHead( head )
@@ -444,7 +444,7 @@ class ClauseDB(LogicProgram) :
             return self._addOrNode( op1, op2)
         elif isinstance(struct, Not) :
             child = self._compile(struct.child, variables)
-            return self._addNotNode( child)
+            return self._addNotNode( child, location=struct.location)
         elif isinstance(struct, AnnotatedDisjunction) :
             # Determine number of variables in the head
             new_heads = [ head.apply(variables) for head in struct.heads ]            
