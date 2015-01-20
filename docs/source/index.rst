@@ -18,6 +18,7 @@ Contents:
    engine
    learning
    prolog
+   cycles
 .. notes
    
 
