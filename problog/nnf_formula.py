@@ -10,7 +10,7 @@ from .logic import LogicProgram
 from .cnf_formula import CNF
 from .interface import ground
 from .core import transform
-from .util import Timer
+from .util import Timer, subprocess_check_call
 
 class NNF(LogicDAG, Evaluatable) :
     
@@ -212,7 +212,7 @@ def _compile(cnf, cmd, cnf_file, nnf_file) :
         while attempts_left and not success :
             try :
                 with open(os.devnull, 'w') as OUT_NULL :
-                    subprocess.check_call(cmd, stdout=OUT_NULL)
+                    subprocess_check_call(cmd, stdout=OUT_NULL)
                 success = True
             except subprocess.CalledProcessError as err :
                 attempts_left -= 1

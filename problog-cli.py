@@ -8,7 +8,7 @@ from problog.program import PrologFile, ExtendedPrologFactory
 from problog.evaluator import SemiringSymbolic, SemiringLogProbability, Evaluator
 from problog.nnf_formula import NNF
 from problog.sdd_formula import SDD
-from problog.util import Timer
+from problog.util import Timer, start_timer, stop_timer
 from problog.core import process_error
 from problog.parser import DefaultPrologParser, FastPrologParser
 
@@ -60,6 +60,7 @@ def argparser() :
     parser.add_argument('--output', '-o', help="Output file (default stdout)", type=outputfile)
     parser.add_argument('--recursion-limit', help="Set recursion limit. Increase this value if you get an unbounded program error. (default: %d)" % sys.getrecursionlimit(), default=sys.getrecursionlimit(), type=int)
     parser.add_argument('--faster-parser', action='store_true', help=argparse.SUPPRESS)
+    parser.add_argument('--timeout', '-t', type=int, default=0, help="Set timeout (in seconds, default=off).")
     return parser
 
 if __name__ == '__main__' :
@@ -91,6 +92,7 @@ if __name__ == '__main__' :
     parse_class = DefaultPrologParser
     if args.faster_parser : parse_class = FastPrologParser
     
+    if args.timeout : start_timer(args.timeout)
     
     if args.filenames[0] == 'install' :
         from problog import setup
@@ -122,4 +124,6 @@ if __name__ == '__main__' :
                 print ('error')
 
     if args.output != None : output.close()
+    
+    if args.timeout : stop_timer()
     
