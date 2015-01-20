@@ -215,6 +215,8 @@ class Evaluatable(object) :
             # Probability of query given evidence
             for name, node in evaluator.getNames(LABEL_QUERY) :
                 w = evaluator.evaluate(node)    
+                if not semiring is None:
+                    w = semiring.result(w)
                 result[name] = w
             return result
         else :

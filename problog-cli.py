@@ -39,8 +39,6 @@ def main( filename, knowledge=NNF, semiring=None, parser_class=DefaultPrologPars
           formula = knowledge.createFrom(PrologFile(filename, parser=parser))
         with Timer('Evaluation'):
           result = formula.evaluate(semiring=semiring)
-          if not semiring is None:
-            result = dict([(k,semiring.result(v)) for k,v in result.items()])
         return True, result
     except Exception as err :
         return False, process_error(err)
