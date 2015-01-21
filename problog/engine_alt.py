@@ -377,7 +377,7 @@ class EvalNode(object):
         return False, self.notifyCycle( child )
         
     def __repr__(self) :
-        return '%s: %s %s [%s] %s {%s}' % (self.__class__.__name__, self.node, self.context, self.call, self.parents, self.pointer)
+        return '%s %s: %s %s [%s] {%s}' % (self.parents, self.__class__.__name__, self.node, self.context, self.call, self.pointer)
         
 
 class EvalFact(EvalNode) :
@@ -593,7 +593,6 @@ class EvalDefine(EvalNode) :
         self.__buffer = defaultdict(list)
         self.results = None
         
-        self.subcycles = set()
         self.cycle_children = []
         self.cycle_close = []
         self.on_cycle = False
@@ -723,13 +722,10 @@ class EvalDefine(EvalNode) :
             cycle_root.is_cycle_root = False
             cycle_root.on_cycle = True
             # Copy subcycle information from old root to new root
-            cycle_parent.subcycles = cycle_root.subcycles
-            cycle_root.subcycles = set()
             
             cycle_parent.cycle_close = cycle_root.cycle_close
             cycle_root.cycle_close = []
             
-            cycle_parent.subcycles.add(cycle_root.pointer)
             cycle_root = None        
         if cycle_root == None : # No active cycle
             # Register cycle root with engine
@@ -743,10 +739,7 @@ class EvalDefine(EvalNode) :
             # Send a close cycle message to the cycle root.
         else :  # A cycle is already active
             # The new one is a subcycle
-            cycle_root.cycle_close.append(self.pointer)
-            
-            if cycle_root.pointer != cycle_parent.pointer :
-                cycle_root.subcycles.add(cycle_parent.pointer)
+            cycle_root.cycle_close.append(self.pointer)            
             # Queue a create cycle message that will be passed up the call stack.
             queue += self.notifyCycle(self.pointer)
         return queue
@@ -786,7 +779,7 @@ class EvalDefine(EvalNode) :
             return False, actions + self.notifyCycle(child)
 
     def __repr__(self) :
-         return EvalNode.__repr__(self) + ' CC:' + str(self.cycle_children) + ' CS:' + str(self.subcycles) + ' ' + str(self.to_complete) + ' %s%s%s' % (self.is_cycle_child,self.isCycleRoot(),self.isOnCycle())
+         return EvalNode.__repr__(self) + ' CC:' + str(self.cycle_children) + ' CS:' + str(self.cycle_close) + ' ' + str(self.to_complete) + ' %s%s%s' % (self.is_cycle_child,self.isCycleRoot(),self.isOnCycle())
 
 
 class EvalNot(EvalNode) :
