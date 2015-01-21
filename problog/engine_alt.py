@@ -433,8 +433,7 @@ class EvalOr(EvalNode) :
         EvalNode.__init__(self, **parent_args)
         
         self.on_cycle = False
-        self.__buffer = defaultdict(list)
-        self.results = None
+        self.results = ResultSet()
         
     def __call__(self) :
         children = self.node.children
@@ -449,20 +448,13 @@ class EvalOr(EvalNode) :
         return self.on_cycle
     
     def flushBuffer(self, cycle=False) :
-        if self.results == None :
-            self.results = {}
-            for result, nodes in self.__buffer.items() :
-                if len(nodes) > 1 or cycle :
-                    # Must make an 'or' node
-                    node = self.target.addOr( nodes, readonly=(not cycle) )
-                else :
-                    node = nodes[0]
-                self.results[result] = node
-            self.__buffer.clear()
+        func = lambda nodes : self.target.addOr( nodes, readonly=(not cycle) )
+        self.results.collapse(func)
             
     def newResult(self, result, node=NODE_TRUE, source=None, is_last=False ) :
         if self.isOnCycle() :
             res = (tuple(result))
+            assert(self.results.collapsed)
             if res in self.results :
                 res_node = self.results[res]
                 self.target.addDisjunct( res_node, node )
@@ -477,8 +469,9 @@ class EvalOr(EvalNode) :
                     actions += act
             return False, actions
         else :
+            assert(not self.results.collapsed)
             res = (tuple(result))
-            self.__buffer[res].append( node )
+            self.results[res] = node
             if is_last :
                 return self.complete(source)
             else :
@@ -490,7 +483,7 @@ class EvalOr(EvalNode) :
             self.flushBuffer()
             actions = []
             if not self.isOnCycle() : 
-                for result, node in self.results.items() :
+                for result, node in self.results :
                     actions += self.notifyResult(result,node)
             actions += self.notifyComplete()
             return True, actions
@@ -503,7 +496,7 @@ class EvalOr(EvalNode) :
         self.on_cycle = True
         self.flushBuffer(True)
         actions = []
-        for result, node in self.results.items() :
+        for result, node in self.results :
             actions += self.notifyResult(result,node) 
         return False, actions + self.notifyCycle(child)
 
@@ -578,15 +571,63 @@ class DefineCache(object) :
             
     def __str__(self) :
         return '%s\n%s' % (self.__non_ground, self.__ground)
+
+class ResultSet(object) :
+    
+    def __init__(self) :
+        self.results = []
+        self.index = {}
+        self.collapsed = False
+    
+    def __setitem__(self, result, node) :
+        index = self.index.get(result)
+        if index == None :
+            index = len(self.results)
+            self.index[result] = index
+            if self.collapsed :
+                self.results.append( (result,node) )
+            else :
+                self.results.append( (result,[node]) )
+        else :
+            assert(not self.collapsed)
+            self.results[index][1].append( node )
+        
+    def __getitem__(self, result) :
+        index = self.index[result]
+        result, node = self.results[index]
+        return node
+        
+    def keys(self) :
+        return [ result for result, node in self.results ] 
+        
+    def __len__(self) :
+        return len(self.results)
+        
+    def collapse(self, function) :
+        if not self.collapsed :
+            for i,v in enumerate(self.results) :
+                result, node = v
+                collapsed_node = function(node)
+                self.results[i] = (result,collapsed_node)
+            self.collapsed = True
+    
+    def __contains__(self, key) :
+        return key in self.index
+    
+    def __iter__(self) :
+        return iter(self.results)
+        
         
 class EvalDefine(EvalNode) :
-    
     
     # A buffered Define node.
     def __init__(self, call=None, **parent_args ) : 
         EvalNode.__init__(self, **parent_args)
-        self.__buffer = defaultdict(list)
-        self.results = None
+        # self.__buffer = defaultdict(list)
+        # self.results = None
+        
+        self.results = ResultSet()
+        
         
         self.cycle_children = []
         self.cycle_close = []
@@ -632,6 +673,7 @@ class EvalDefine(EvalNode) :
                 return False, self.notifyResult(result, node, is_last=is_last)
         else :
             if self.isOnCycle() or self.isCycleRoot() :
+                assert(self.results.collapsed)
                 res = (tuple(result))
                 if res in self.results :
                     res_node = self.results[res]
@@ -639,7 +681,7 @@ class EvalDefine(EvalNode) :
                     actions = []
                 else :
                     result_node = self.target.addOr( (node,), readonly=False )
-                    self.results[ res ] = result_node
+                    self.results[res] = result_node
                     actions = []
                     # Send results to cycle children
                     actions += self.notifyResult(res, result_node, parents=self.cycle_children)
@@ -649,8 +691,9 @@ class EvalDefine(EvalNode) :
                         actions += act
                 return False, actions
             else :
+                assert(not self.results.collapsed)
                 res = (tuple(result))
-                self.__buffer[res].append( node )
+                self.results[res] = node
                 if is_last :
                     return self.complete(source)
                 else :
@@ -668,7 +711,7 @@ class EvalDefine(EvalNode) :
                 self.target._cache.deactivate(cache_key)
                 actions = []
                 if not self.isOnCycle() : 
-                    for result, node in self.results.items() :
+                    for result, node in self.results :
                         actions += self.notifyResult(result,node)
                 actions += self.notifyComplete()
                 return True, actions
@@ -678,17 +721,9 @@ class EvalDefine(EvalNode) :
                 return False, []
             
     def flushBuffer(self, cycle=False) :
-        if self.results == None :
-            self.results = {}
-            for result, nodes in self.__buffer.items() :
-                if len(nodes) > 1 or cycle :
-                    # Must make an 'or' node
-                    node = self.target.addOr( nodes, readonly=(not cycle) )
-                else :
-                    node = nodes[0]
-                self.results[result] = node
-            self.__buffer.clear()
-        
+        func = lambda nodes : self.target.addOr( nodes, readonly=(not cycle) )
+        self.results.collapse(func)
+                
     def isOnCycle(self) :
         return self.on_cycle
         
@@ -707,7 +742,7 @@ class EvalDefine(EvalNode) :
         cycle_parent.cycle_children.append(self.pointer)
         
         cycle_parent.flushBuffer(True)
-        for result, node in cycle_parent.results.items() :
+        for result, node in cycle_parent.results :
             queue += self.notifyResult(result,node,parents=[self.pointer]) 
         
         if cycle_root != None and cycle_parent.pointer < cycle_root.pointer :
@@ -769,7 +804,7 @@ class EvalDefine(EvalNode) :
             self.on_cycle = True
             self.flushBuffer(True)
             actions = []
-            for result, node in self.results.items() :
+            for result, node in self.results :
                 actions += self.notifyResult(result,node) 
             return False, actions + self.notifyCycle(child)
 
