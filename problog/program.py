@@ -223,7 +223,7 @@ class ClauseIndex(list) :
             else :
                 curr = self.__index[i][None] | self.__index[i][arg]
                 results &= curr
-        return results
+        return sorted(results)
         
     def _add(self, key, item) :
         for i, k in enumerate(key) :
