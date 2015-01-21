@@ -9,11 +9,6 @@ from .logic import Term
 from .engine import unify, UnifyError, instantiate, extract_vars, is_ground, UnknownClause, _UnknownClause
 from .engine_builtins import addStandardBuiltIns, check_mode, GroundingError
 
-# TODO fix bug:
-#  Detect fake cycles. The active define node is not always an ancestor of the cycle child.
-#   In that case, the cycle finder message ('o') reaches the top level and the child is not registered at its parent.
-#
-
 
 # New engine: notable differences
 #  - keeps its own call stack -> no problem with Python's maximal recursion depth 
@@ -761,8 +756,8 @@ class EvalDefine(EvalNode) :
     
     def createCycle(self, child) :
         if self.on_cycle :  # Already on cycle
-            # Don't do anything
-            return False, []
+            # Pass message to parent
+            return False, self.notifyCycle(child)
         elif self.is_cycle_root :
             # self.flushBuffer(True)
             # actions = []
