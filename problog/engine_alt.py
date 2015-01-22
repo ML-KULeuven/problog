@@ -647,10 +647,21 @@ class EvalDefine(EvalNode) :
         elif goal in self.target._cache :
             results = self.target._cache[goal]
             actions = []
-            for result, node in results.items() :
-                if node != NODE_FALSE :
-                    actions += self.notifyResult(result, node )
-            actions += self.notifyComplete()
+            n = len(results)
+            cc = False
+            if n > 0 :
+                for result, node in results.items() :
+                    n -= 1
+                    if node != NODE_FALSE :
+                        actions += self.notifyResult(result, node, is_last=(n==0))
+                        cc = True
+                    elif n == 0 :
+                        actions += self.notifyComplete()
+                        cc = True
+            else :
+                actions += self.notifyComplete()
+                cc = True
+            assert(cc)
             return True, actions
         else :
             children = self.node.children.find( self.context )
@@ -680,6 +691,9 @@ class EvalDefine(EvalNode) :
                     res_node = self.results[res]
                     self.target.addDisjunct( res_node, node )
                     actions = []
+                    if is_last :
+                        a, act = self.complete(source)
+                        actions += act
                 else :
                     result_node = self.target.addOr( (node,), readonly=False )
                     name = str(Term(self.node.functor, *res))
@@ -714,9 +728,15 @@ class EvalDefine(EvalNode) :
                 self.target._cache.deactivate(cache_key)
                 actions = []
                 if not self.isOnCycle() : 
-                    for result, node in self.results :
-                        actions += self.notifyResult(result,node)
-                actions += self.notifyComplete()
+                    n = len(self.results)
+                    if n :
+                        for result, node in self.results :
+                            n -= 1
+                            actions += self.notifyResult(result,node,is_last=(n==0))
+                    else :
+                        actions += self.notifyComplete()
+                else :
+                    actions += self.notifyComplete()
                 return True, actions
             # elif self.to_complete == len(self.cycle_children) :
             #     return False, self.notifyComplete(parents=self.cycle_children)
@@ -865,27 +885,37 @@ class EvalAnd(EvalNode) :
         # Create a node for child 1 and call it.
         return False, [ self.createCall(  self.node.children[0], identifier=None ) ]
         
-    def newResult(self, result, node=0, source=None, is_last=False ) :
-        # Different depending on whether result comes from child 1 or child 2.
-        if source != None : # Child 2 -> pass to parent
-            target_node = self.target.addAnd( (source, node) )
-            if is_last : 
-                a, acts = self.complete()
-            else :
-                a = False
-                acts = []
-            return a, self.notifyResult(result, target_node) + acts
-        else :  # Child 1 -> create child 2 and call it
-            if not is_last : 
-                self.to_complete += 1
-                return False, [ self.createCall( self.node.children[1], context=result, identifier=node ) ]
-            else :
+    def newResult(self, result, node=0, source=None, is_last=False) :
+        if source == None :     # Result from the first conjunct.
+            # We will create a second conjunct, which needs to send a 'complete' signal.
+            self.to_complete += 1
+            if is_last :
+                # Notify self that this conjunct is complete. ('all_complete' will always be False)
+                all_complete, complete_actions = self.complete()
                 if node == NODE_TRUE :
-                    # TODO Doesn't work if node != 0! Forgets the first node in probabilistic programs!
-                    return True, [ self.createCall( self.node.children[1], context=result, parents=self.parents ) ]
+                    # If there is only one node to complete (the new second conjunct) then
+                    #  we can clean up this node, but then we would lose the ground node of the first conjunct.
+                    # This is ok when it is deterministically true.  TODO make this always ok!
+                    # We can redirect the second conjunct to our parent.
+                    return (self.to_complete==1), [ self.createCall( self.node.children[1], context=result, parents=self.parents ) ]
                 else :
                     return False, [ self.createCall( self.node.children[1], context=result, identifier=node ) ]
-            
+            else :
+                # Not the last result: default behaviour
+                return False, [ self.createCall( self.node.children[1], context=result, identifier=node ) ]
+        else :  # Result from the second node
+            # Make a ground node
+            target_node = self.target.addAnd( (source, node) )
+            if is_last :
+                # Notify self of child completion
+                all_complete, complete_actions = self.complete()
+            else :
+                all_complete, complete_actions = False, []
+            if all_complete :
+                return True, self.notifyResult(result, target_node, is_last=True)
+            else :
+                return False, self.notifyResult(result, target_node, is_last=False)
+    
     def complete(self, source=None) :
         self.to_complete -= 1
         if self.to_complete == 0 :
