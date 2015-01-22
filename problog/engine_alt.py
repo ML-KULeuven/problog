@@ -6,6 +6,7 @@ import sys, os
 from .formula import LogicFormula
 from .program import ClauseDB, PrologFile
 from .logic import Term
+from .core import LABEL_NAMED
 from .engine import unify, UnifyError, instantiate, extract_vars, is_ground, UnknownClause, _UnknownClause
 from .engine_builtins import addStandardBuiltIns, check_mode, GroundingError
 
@@ -448,7 +449,7 @@ class EvalOr(EvalNode) :
         return self.on_cycle
     
     def flushBuffer(self, cycle=False) :
-        func = lambda nodes : self.target.addOr( nodes, readonly=(not cycle) )
+        func = lambda result, nodes : self.target.addOr( nodes, readonly=(not cycle) )
         self.results.collapse(func)
             
     def newResult(self, result, node=NODE_TRUE, source=None, is_last=False ) :
@@ -607,7 +608,7 @@ class ResultSet(object) :
         if not self.collapsed :
             for i,v in enumerate(self.results) :
                 result, node = v
-                collapsed_node = function(node)
+                collapsed_node = function(result, node)
                 self.results[i] = (result,collapsed_node)
             self.collapsed = True
     
@@ -681,6 +682,8 @@ class EvalDefine(EvalNode) :
                     actions = []
                 else :
                     result_node = self.target.addOr( (node,), readonly=False )
+                    name = str(Term(self.node.functor, *res))
+                    self.target.addName(name, node, LABEL_NAMED)
                     self.results[res] = result_node
                     actions = []
                     # Send results to cycle children
@@ -721,7 +724,11 @@ class EvalDefine(EvalNode) :
                 return False, []
             
     def flushBuffer(self, cycle=False) :
-        func = lambda nodes : self.target.addOr( nodes, readonly=(not cycle) )
+        def func( res, nodes ) :
+            node = self.target.addOr( nodes, readonly=(not cycle) )
+            name = str(Term(self.node.functor, *res))
+            self.target.addName(name, node, LABEL_NAMED)
+            return node
         self.results.collapse(func)
                 
     def isOnCycle(self) :
