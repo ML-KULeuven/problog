@@ -757,9 +757,7 @@ class EvalDefine(EvalNode) :
             # Unset current root
             # Unmark current cycle root
             cycle_root.is_cycle_root = False
-            cycle_root.on_cycle = True
             # Copy subcycle information from old root to new root
-            
             cycle_parent.cycle_close = cycle_root.cycle_close
             cycle_root.cycle_close = []
             
