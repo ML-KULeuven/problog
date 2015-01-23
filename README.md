@@ -76,8 +76,8 @@ $ ./problog-cli.py test/00_trivial_and.pl -k sdd
 5. License
 ----------
 
-The LGPL GNU Public License, Version 3.0  
-http://www.gnu.org/licenses/lgpl-3.0.html  
+The GPL GNU Public License, Version 3.0  
+http://www.gnu.org/licenses/gpl-3.0.html  
 Exceptions are negotiable.
 
 Copyright (c) 2014-2015, DTAI, KU Leuven. All rights reserved.
