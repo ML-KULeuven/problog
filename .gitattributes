@@ -5,3 +5,8 @@
 # Hide some other files
 .gitignore			export-ignore
 .gitattributes			export-ignore
+
+# Hide some files and directories
+/xml_test/	export-ignore
+/sandbox/	export-ignore
+Makefile	export-ignore
