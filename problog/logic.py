@@ -485,9 +485,11 @@ class LogicProgram(object) :
             return src
         else :
             obj = cls(**extra)
-            obj.source_root = src.source_root
-            obj.source_files = src.source_files
-            obj.line_info = src.line_info
+            if hasattr(src,'source_root') and hasattr(src,'source_files') :
+                obj.source_root = src.source_root
+                obj.source_files = src.source_files
+            if hasattr(src,'line_info') :
+                obj.line_info = src.line_info
             for clause in src :
                 obj += clause
             return obj
