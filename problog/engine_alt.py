@@ -295,7 +295,7 @@ class StackBasedEngine(object) :
             self.stack.pop(-1)
         
         
-    def call(self, query, database, target, **kwdargs ) :
+    def call(self, query, database, target, transform=None, **kwdargs ) :
         node_id = database.find(query)
         return self.execute( node_id, database=database, target=target, context=query.args, **kwdargs) 
                 
@@ -669,20 +669,15 @@ class EvalDefine(EvalNode) :
             results = self.target._cache[goal]
             actions = []
             n = len(results)
-            cc = False
             if n > 0 :
                 for result, node in results.items() :
                     n -= 1
                     if node != NODE_FALSE :
                         actions += self.notifyResult(result, node, is_last=(n==0))
-                        cc = True
                     elif n == 0 :
                         actions += self.notifyComplete()
-                        cc = True
             else :
                 actions += self.notifyComplete()
-                cc = True
-            assert(cc)
             return True, actions
         else :
             children = self.node.children.find( self.context )
@@ -697,8 +692,39 @@ class EvalDefine(EvalNode) :
                 self.target._cache.activate(goal, self)
                 actions = [ self.createCall( child) for child in children ]
                 return False,  actions + [ ('C', self.pointer, (True,), {} ) ]
+                
+    def notifyResult(self, arguments, node=0, is_last=False, parents=None ) :
+        assert(parents == None)
+        if parents == None : parents = self.parents
+        if self.transform : arguments = self.transform(arguments)
+        if arguments == None :
+            if is_last :
+                return self.notifyComplete()
+            else :
+                return []
+        else :
+            return [ newResult( parent, arguments, node, self.identifier, is_last ) for parent in parents ]
+        
+    def notifyResultMe(self, arguments, node=0, is_last=False ) :
+        parents = [self.pointer]
+        return [ newResult( parent, arguments, node, self.identifier, is_last ) for parent in parents ]
+
+
+    def notifyResultChildren(self, arguments, node=0, is_last=False ) :
+        parents = self.cycle_children
+        return [ newResult( parent, arguments, node, self.identifier, is_last ) for parent in parents ]
     
     def newResult(self, result, node=NODE_TRUE, source=None, is_last=False ) :
+        # TODO Should do transformation upon sending the result to parents.
+        #       => DON'T do transformation upon sending to cycle children
+        
+        #if self.transform : result = self.transform(result)
+        if result == None :
+            if is_last :
+                return self.complete(source)
+            else :
+                return False, []
+        
         if self.is_cycle_child :
             if is_last :
                 return True, self.notifyResult(result, node, is_last=is_last)
@@ -722,7 +748,7 @@ class EvalDefine(EvalNode) :
                     self.results[res] = result_node
                     actions = []
                     # Send results to cycle children
-                    actions += self.notifyResult(res, result_node, parents=self.cycle_children)
+                    actions += self.notifyResultChildren(res, result_node)
                     if self.isOnCycle() : actions += self.notifyResult(res, result_node)
                     if is_last : 
                         a, act = self.complete(source)
@@ -791,7 +817,7 @@ class EvalDefine(EvalNode) :
         
         cycle_parent.flushBuffer(True)
         for result, node in cycle_parent.results :
-            queue += self.notifyResult(result,node,parents=[self.pointer]) 
+            queue += self.notifyResultMe(result,node) 
         
         if cycle_root != None and cycle_parent.pointer < cycle_root.pointer :
             # New parent is earlier in call stack as current cycle root
@@ -967,13 +993,13 @@ class EvalCall(EvalNode) :
         
     def __call__(self) :
         call_args = [ instantiate(arg, self.context) for arg in self.node.args ]
-        return False, [ self.createCall( self.node.defnode, context=call_args ) ]
+        return True, [ self.createCall( self.node.defnode, context=call_args, transform=self.getResultTransform(), parents=self.parents ) ]
     
     def getResultTransform(self) :
         context = list(self.context)
         node_args = list(self.node.args)
         def result_transform(result) :
-            output = context
+            output = context[:]
             actions = []
             try :
                 assert(len(result) == len(node_args))
@@ -1005,7 +1031,18 @@ class EvalCall(EvalNode) :
 class EvalBuiltIn(EvalNode) : 
     
     def __call__(self) :
-        return self.node(*self.context, engine=self.engine, database=self.database, target=self.target, callback=self)
+        return self.node(*self.context, engine=self.engine, database=self.database, target=self.target, callback=self, transform=self.transform)
+        
+    def notifyResult(self, result, node=0, is_last=False) :
+        if self.transform : result = self.transform(result)
+        if result == None :
+            if is_last :
+                return EvalNode.notifyComplete()
+            else :
+                return []
+        else :
+            return EvalNode.notifyResult(self,result,node,is_last)
+        
 
 class EvalClause(EvalNode) :
     
@@ -1126,42 +1163,19 @@ def builtin_consult( arg, callback=None, database=None, engine=None, context=Non
             database += clause
     return True, callback.notifyResult((arg,), is_last=True)
 
-
-
-class CallProcessNode(object) :
-    
-    def __init__(self, term, args, parent) :
-        self.term = term
-        self.num_args = len(args)
-        self.parent = parent
-    
-    def newResult(self, result, ground_node=0) :
-        if self.num_args > 0 :
-            res1 = result[:-self.num_args]
-            res2 = result[-self.num_args:]
-        else :
-            res1 = result
-            res2 = []
-        self.parent.newResult( [self.term(*res1)] + list(res2), ground_node )
-
-    def complete(self) :
-        self.parent.complete()
-
-
 def builtin_call( term, args=(), engine=None, callback=None, **kwdargs ) :
     # TODO does not support cycle through call!
     check_mode( (term,), 'c', functor='call' )
     # Find the define node for the given query term.
     term_call = term.withArgs( *(term.args + args ))
     results = engine.call( term_call, **kwdargs )
-    
     actions = []
     n = len(term.args)
     for res, node in results :
         res1 = res[:n]
         res2 = res[n:]
         res_pass = (term.withArgs(*res1),) + res2
-        actions += callback.notifyResult( res_pass, node)
+        actions += callback.notifyResult( res_pass, node, False)
     actions += callback.notifyComplete()
     return True, actions
 
