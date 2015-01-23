@@ -4,7 +4,7 @@ from collections import namedtuple, defaultdict
 
 from .core import transform, ProbLogObject
 
-from .core import LABEL_QUERY, LABEL_EVIDENCE_POS, LABEL_EVIDENCE_NEG, LABEL_EVIDENCE_MAYBE
+from .core import LABEL_QUERY, LABEL_EVIDENCE_POS, LABEL_EVIDENCE_NEG, LABEL_EVIDENCE_MAYBE, LABEL_NAMED
 from .util import Timer
 
 import logging
@@ -420,9 +420,10 @@ class LogicFormula(ProbLogObject) :
           
           # Handle the given nodes one-by-one
           for name, node, label in self.getNamesWithLabel() :
-              new_node, cycles = self._extract( output, node, protected, translate )
-              translate[node] = new_node
-              output.addName(name, new_node, label)
+              if label != LABEL_NAMED :
+                  new_node, cycles = self._extract( output, node, protected, translate )
+                  translate[node] = new_node
+                  output.addName(name, new_node, label)
         
         return output
 
@@ -552,6 +553,12 @@ class LogicFormula(ProbLogObject) :
                 s += '\nEvidence : '
             s += '\n* %s : %s' % q
 
+        f = True
+        for q in self.named() :
+            if f :
+                f = False
+                s += '\nNamed : '
+            s += '\n* %s : %s' % q
 
         f = True
         for c in self.constraints () :
@@ -569,7 +576,10 @@ class LogicFormula(ProbLogObject) :
         evidence_true = self.getNames(LABEL_EVIDENCE_POS)
         evidence_false = self.getNames(LABEL_EVIDENCE_NEG)
         return list(evidence_true) + [ (a,-b) for a,b in evidence_false ]
-
+        
+    def named(self) :
+        return self.getNames(LABEL_NAMED)
+        
     def toDot(self, not_as_node=True) :
         
         not_as_edge = not not_as_node
@@ -668,12 +678,20 @@ class LogicDAG(LogicFormula) :
     def __init__(self, auto_compact=True) :
         LogicFormula.__init__(self, auto_compact)
         
+        
+        
 @transform(LogicFormula, LogicDAG)
 def breakCycles(source, target) :
     logger = logging.getLogger('problog')
     result = source.makeAcyclic(preserve_tables=False, output=target)
     logger.debug("Ground program size: %s", len(result))
     return result
+        
+
+
+
+
+
  
 class Constraint(object) : 
     pass

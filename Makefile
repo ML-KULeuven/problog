@@ -45,7 +45,7 @@ package: docs
 update_server:
 	@echo "Updating server"
 	@echo "==============="
-	rsync -avzr --exclude '.git*' --exclude '*.DS_Store' --exclude '*.swp' --exclude '*.pyc' --exclude '*~' --rsh='ssh ssh.cs.kuleuven.be ssh -p 2222' --chmod=u=rwx,g=rx,o=rx --exclude '*~' ./ problog@adams.cs.kuleuven.be:/home/problog/problog2.1
+	git archive master --format tar | tar -t | rsync -avz --no-dirs --rsh='ssh ssh.cs.kuleuven.be ssh -p 2222' --chmod=u=rwx,g=rx,o=rx --files-from=- ./ problog@adams.cs.kuleuven.be:/home/problog/problog2.1
 	rsync -avzr --exclude '*.DS_Store' --exclude '*.swp' --exclude '*~' --rsh='ssh ssh.cs.kuleuven.be ssh -p 2222' --chmod=u=rwx,g=rx,o=rx --exclude '*~' ./web/js/ problog@adams.cs.kuleuven.be:/home/problog/public_html/js
 	rsync -avzr --chmod=u=rwx,g=rx,o=rx ./web/editor.html ssh.cs.kuleuven.be:/cw/vwww/dtai/public_html/problog/
 	ssh ssh.cs.kuleuven.be ssh -p 2222 problog@adams.cs.kuleuven.be python /home/problog/problog2.1/setup.py

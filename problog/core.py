@@ -7,7 +7,8 @@ import traceback
 LABEL_QUERY = "query"
 LABEL_EVIDENCE_POS = "evidence+"
 LABEL_EVIDENCE_NEG = "evidence-"
-LABEL_EVIDENCE_MAYBE = "evidence?"    
+LABEL_EVIDENCE_MAYBE = "evidence?" 
+LABEL_NAMED = "named"
 
 
 class ProbLog(object) :
