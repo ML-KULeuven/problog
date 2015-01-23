@@ -1004,7 +1004,10 @@ class EvalClause(EvalNode) :
     def newResult(self, result, node=NODE_TRUE, source=None, is_last=False ) :
         result = self.getResultTransform()( result )
         if result == None :
-            return self.complete(source)
+            if is_last :
+                return self.complete(source)
+            else :
+                return False, []
         else :
             return is_last, self.notifyResult(result, node, is_last)
         
