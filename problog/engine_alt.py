@@ -16,7 +16,7 @@ from .engine_builtins import addStandardBuiltIns, check_mode, GroundingError
 #  - should support skipping calls / tail-recursion optimization
 
 # TODO:
-#  - make clause and call skippable (only transform results) -> tail recursion optimization
+#  - make clause skippable (only transform results) -> tail recursion optimization
 #
 # DONE:
 #  - add choice node (annotated disjunctions) 
@@ -25,6 +25,7 @@ from .engine_builtins import addStandardBuiltIns, check_mode, GroundingError
 #  - add cycle handling
 #  - add interface
 #  - process directives
+#  - make call skippable
 
 class NegativeCycle(GroundingError) : 
     """The engine does not support negative cycles."""
@@ -210,7 +211,6 @@ class StackBasedEngine(object) :
         max_stack = len(self.stack)
         solutions = []
         while actions :
-            #self.checkState(actions)
             act, obj, args, kwdargs = actions.pop(-1)
             if obj == None :
                 if act == 'r' :
@@ -219,10 +219,6 @@ class StackBasedEngine(object) :
                         return solutions
                 elif act == 'c' :
                     if debug : print ('Maximal stack size:', max_stack)
-                    # if self.active_cycles :
-                    #     self.printStack()
-                    #     print ('Active cycles:', self.active_cycles)
-                    #     raise InvalidEngineState('The engine did not complete successfully!')
                     return solutions
                 elif act == 'o' :
                     raise InvalidEngineState('Unexpected state: cycle detected at top-level.')
@@ -341,17 +337,6 @@ class EvalNode(object):
         self.transform = transform
         self.call = call
         
-    # def notifyResult(self, arguments, node=0, is_last=False, parents=None ) :
-#         if parents == None : parents = self.parents
-#         #if self.transform : arguments = self.transform(arguments)
-#         # if arguments == None :
-#         #     if is_last :
-#         #         return self.notifyComplete()
-#         #     else :
-#         #         return []
-#         # else :
-#         return [ newResult( parent, arguments, node, self.identifier, is_last ) for parent in parents ]
-#    
     def notifyResult(self, arguments, node=0, is_last=False, parents=None ) :
         if parents == None : parents = self.parents
         if self.transform : arguments = self.transform(arguments)
@@ -362,7 +347,6 @@ class EvalNode(object):
                 return []
         else :
             return [ newResult( parent, arguments, node, self.identifier, is_last ) for parent in parents ]
-        
         
     def notifyComplete(self, parents=None) :
         if parents == None : parents = self.parents
@@ -521,8 +505,6 @@ class EvalOr(EvalNode) :
                     actions += self.notifyResult(result,node)
             actions += self.notifyComplete()
             return True, actions
-        # elif self.to_complete == len(self.cycle_children) :
-        #     return False, self.notifyComplete(parents=self.cycle_children)
         else :
             return False, []
             
@@ -728,9 +710,6 @@ class EvalDefine(EvalNode) :
         return [ newResult( parent, arguments, node, self.identifier, is_last ) for parent in parents ]
     
     def newResult(self, result, node=NODE_TRUE, source=None, is_last=False ) :
-        # TODO Should do transformation upon sending the result to parents.
-        #       => DON'T do transformation upon sending to cycle children
-        
         #if self.transform : result = self.transform(result)
         if result == None :
             if is_last :
