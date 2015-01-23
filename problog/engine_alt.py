@@ -341,10 +341,28 @@ class EvalNode(object):
         self.transform = transform
         self.call = call
         
+    # def notifyResult(self, arguments, node=0, is_last=False, parents=None ) :
+#         if parents == None : parents = self.parents
+#         #if self.transform : arguments = self.transform(arguments)
+#         # if arguments == None :
+#         #     if is_last :
+#         #         return self.notifyComplete()
+#         #     else :
+#         #         return []
+#         # else :
+#         return [ newResult( parent, arguments, node, self.identifier, is_last ) for parent in parents ]
+#    
     def notifyResult(self, arguments, node=0, is_last=False, parents=None ) :
-        if type(arguments) != tuple : raise Exception()
         if parents == None : parents = self.parents
-        return [ newResult( parent, arguments, node, self.identifier, is_last ) for parent in parents ]
+        if self.transform : arguments = self.transform(arguments)
+        if arguments == None :
+            if is_last :
+                return self.notifyComplete()
+            else :
+                return []
+        else :
+            return [ newResult( parent, arguments, node, self.identifier, is_last ) for parent in parents ]
+        
         
     def notifyComplete(self, parents=None) :
         if parents == None : parents = self.parents
@@ -361,7 +379,7 @@ class EvalNode(object):
         base_args['context'] = self.context
         base_args['parents'] = [ self.pointer ]
         base_args['identifier'] = self.identifier
-        base_args['transform'] = self.transform
+        base_args['transform'] = None
         base_args['call'] = self.call
         base_args.update(kwdargs)
         return call( node_id, args, base_args )
@@ -686,30 +704,25 @@ class EvalDefine(EvalNode) :
             if self.to_complete == 0 :
                 # No children, so complete immediately.
                 return True, self.notifyComplete()
-            # elif len(children) == 1 :     # This case skips caching
-            #     return True, [ self.createCall( child, parents=self.parents ) for child in children ] 
+            elif len(children) == 1 :
+                # We could clean up this node here, but:
+                #   - that would skip caching
+                #   - child should apply the transform function
+                #   - effect on cycles?
+                #       -> there is no alternative, so there should no be an effect? 
+                
+                self.target._cache.activate(goal, self)
+                actions = [ self.createCall( child) for child in children ]
+                return False,  actions + [ ('C', self.pointer, (True,), {} ) ]
             else :
                 self.target._cache.activate(goal, self)
                 actions = [ self.createCall( child) for child in children ]
                 return False,  actions + [ ('C', self.pointer, (True,), {} ) ]
-                
-    def notifyResult(self, arguments, node=0, is_last=False, parents=None ) :
-        assert(parents == None)
-        if parents == None : parents = self.parents
-        if self.transform : arguments = self.transform(arguments)
-        if arguments == None :
-            if is_last :
-                return self.notifyComplete()
-            else :
-                return []
-        else :
-            return [ newResult( parent, arguments, node, self.identifier, is_last ) for parent in parents ]
-        
+    
     def notifyResultMe(self, arguments, node=0, is_last=False ) :
         parents = [self.pointer]
         return [ newResult( parent, arguments, node, self.identifier, is_last ) for parent in parents ]
-
-
+        
     def notifyResultChildren(self, arguments, node=0, is_last=False ) :
         parents = self.cycle_children
         return [ newResult( parent, arguments, node, self.identifier, is_last ) for parent in parents ]
@@ -1032,16 +1045,6 @@ class EvalBuiltIn(EvalNode) :
     
     def __call__(self) :
         return self.node(*self.context, engine=self.engine, database=self.database, target=self.target, callback=self, transform=self.transform)
-        
-    def notifyResult(self, result, node=0, is_last=False) :
-        if self.transform : result = self.transform(result)
-        if result == None :
-            if is_last :
-                return EvalNode.notifyComplete()
-            else :
-                return []
-        else :
-            return EvalNode.notifyResult(self,result,node,is_last)
         
 
 class EvalClause(EvalNode) :
