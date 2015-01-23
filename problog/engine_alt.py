@@ -344,10 +344,7 @@ class EvalNode(object):
     def notifyResult(self, arguments, node=0, is_last=False, parents=None ) :
         if type(arguments) != tuple : raise Exception()
         if parents == None : parents = self.parents
-        if self.transform == None :
-            return [ newResult( parent, arguments, node, self.identifier, is_last ) for parent in parents ]
-        else :
-            return [ newResult( parent, self.transform(arguments), node, self.identifier, is_last ) for parent in parents ]
+        return [ newResult( parent, arguments, node, self.identifier, is_last ) for parent in parents ]
         
     def notifyComplete(self, parents=None) :
         if parents == None : parents = self.parents
@@ -375,6 +372,17 @@ class EvalNode(object):
     def __repr__(self) :
         return '%s %s: %s %s [%s] {%s}' % (self.parents, self.__class__.__name__, self.node, self.context, self.call, self.pointer)
         
+    def node_str(self) :
+        return str(self.node)
+        
+    def __str__(self) :
+        if hasattr(self.node, 'location') :
+            pos = self.database.lineno(self.node.location)
+        else :
+            pos = None
+        if pos == None : pos = '??'
+        node_type = self.__class__.__name__[4:]
+        return '%s %s %s [at %s:%s] | Context: %s' % (self.parents, node_type, self.node_str(), pos[0], pos[1], self.context )    
 
 class EvalFact(EvalNode) :
     # Has exactly one listener.
@@ -398,6 +406,10 @@ class EvalFact(EvalNode) :
             actions += self.notifyComplete()
         return True, actions        # Clean up, actions
         
+    def node_str(self) :
+        return '%s' % (Term(self.node.functor, *self.context, p=self.node.probability), )
+    
+        
 class EvalChoice(EvalNode) :
     # Has exactly one listener.
     # Behaviour:
@@ -419,6 +431,9 @@ class EvalChoice(EvalNode) :
         # Notify parent.
         
         return True, self.notifyResult(result, ground_node, True)
+        
+    def node_str(self) :
+        return '%s [%s,%s]' % (Term(self.node.functor, *self.context, p=self.node.probability), self.node.group, self.node.choice)
 
 class EvalOr(EvalNode) :
     # Has exactly one listener (parent)
@@ -500,6 +515,12 @@ class EvalOr(EvalNode) :
         for result, node in self.results :
             actions += self.notifyResult(result,node) 
         return False, actions + self.notifyCycle(child)
+        
+    def node_str(self) :
+        return ''
+    
+    def __str__(self) :
+        return EvalNode.__str__(self) + ' tc: ' + str(self.to_complete)
 
 
 class DefineCache(object) : 
@@ -684,7 +705,7 @@ class EvalDefine(EvalNode) :
             else :
                 return False, self.notifyResult(result, node, is_last=is_last)
         else :
-            if self.isOnCycle() or self.isCycleRoot() :
+            if self.isOnCycle() or self.isCycleParent() :
                 assert(self.results.collapsed)
                 res = (tuple(result))
                 if res in self.results :
@@ -754,7 +775,7 @@ class EvalDefine(EvalNode) :
     def isOnCycle(self) :
         return self.on_cycle
         
-    def isCycleRoot(self) :
+    def isCycleParent(self) :
         return bool(self.cycle_children)
             
     def cycleDetected(self) :
@@ -833,9 +854,17 @@ class EvalDefine(EvalNode) :
                 actions += self.notifyResult(result,node) 
             return False, actions + self.notifyCycle(child)
 
+    def node_str(self) :
+        return str(Term(self.node.functor, *self.context))
+        
     def __repr__(self) :
-         return EvalNode.__repr__(self) + ' CC:' + str(self.cycle_children) + ' CS:' + str(self.cycle_close) + ' ' + str(self.to_complete) + ' %s%s%s' % (self.is_cycle_child,self.isCycleRoot(),self.isOnCycle())
-
+         extra = ['tc: %s' % self.to_complete]
+         if self.isCycleChild() : extra.append('CC')
+         if self.is_cycle_root : extra.append('CR')
+         if self.isCycleParent() : extra.append('CP') 
+         if self.cycle_children : extra.append('c_ch: %s' % (self.cycle_children,))
+         if self.cycle_close : extra.append('c_cl: %s' % (self.cycle_close,))
+         return EvalNode.__repr__(self) + ' ' + ' '.join(extra)
 
 class EvalNot(EvalNode) :
     # Has exactly one listener (parent)
@@ -873,6 +902,10 @@ class EvalNot(EvalNode) :
         
     def createCycle(self,child) :
         raise NegativeCycle(location=self.database.lineno(self.node.location))
+        
+    def node_str(self) :
+        return ''
+        
     
         
 class EvalAnd(EvalNode) :
@@ -924,6 +957,9 @@ class EvalAnd(EvalNode) :
             assert(self.to_complete > 0)
             return False, []
     
+    def node_str(self) :
+        return ''
+    
 class EvalCall(EvalNode) :
     
     def __init__(self, **parent_args ) : 
@@ -960,6 +996,11 @@ class EvalCall(EvalNode) :
         
     def complete(self, source=None) :
         return True, self.notifyComplete()
+        
+    def node_str(self) :
+        call_args = [ instantiate(arg, self.context) for arg in self.node.args ]
+        return '%s' %  (Term(self.node.functor, *call_args),)
+
     
 class EvalBuiltIn(EvalNode) : 
     
@@ -1013,8 +1054,10 @@ class EvalClause(EvalNode) :
         
     def complete(self, source=None) :
         return True, self.notifyComplete()
-
-
+        
+    def node_str(self) :
+        return '%s :- ...' %  (Term(self.node.functor, *self.node.args, p=self.node.probability),)
+        
 
 class BooleanBuiltIn(object) :
     """Simple builtin that consist of a check without unification. (e.g. var(X), integer(X), ... )."""
@@ -1028,6 +1071,9 @@ class BooleanBuiltIn(object) :
             return True, callback.notifyResult(args,NODE_TRUE,True)
         else :
             return True, callback.notifyComplete()
+            
+    def __str__(self) :
+        return str(self.base_function)
         
 class SimpleBuiltIn(object) :
     """Simple builtin that does cannot be involved in a cycle or require engine information and has 0 or more results."""
@@ -1045,6 +1091,9 @@ class SimpleBuiltIn(object) :
             return True, output
         else :
             return True, callback.notifyComplete()
+            
+    def __str__(self) :
+        return str(self.base_function)
 
 def atom_to_filename(atom) :
     atom = str(atom)
