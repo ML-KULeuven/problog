@@ -8,7 +8,7 @@ from .program import ClauseDB, PrologFile
 from .logic import Term
 from .core import LABEL_NAMED
 from .engine import unify, UnifyError, instantiate, extract_vars, is_ground, UnknownClause, _UnknownClause
-from .engine_builtins import addStandardBuiltIns, check_mode, GroundingError
+from .engine_builtins import addStandardBuiltIns, check_mode, GroundingError, NonGroundProbabilisticClause
 
 
 # New engine: notable differences
@@ -235,7 +235,9 @@ class StackBasedEngine(object) :
                         obj = self.create( obj, *args, **kwdargs )
                     except _UnknownClause : 
                         # TODO set right parameters
-                        raise UnknownClause('signature', location=None)
+                        sig = kwdargs['call']
+                        sig = '%s/%s' % (sig[0],len(sig[1]))
+                        raise UnknownClause(sig, location=None)
                     exec_node = self.stack[obj]
                     cleanUp, next_actions = exec_node()
                 elif act == 'C' :
