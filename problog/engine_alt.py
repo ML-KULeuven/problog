@@ -38,6 +38,9 @@ class NegativeCycle(GroundingError) :
         msg += '.'
         GroundingError.__init__(self, msg)
         
+        self.trace = False
+        self.debug = False
+        
 class InvalidEngineState(GroundingError): pass
 
 class StackBasedEngine(object) :
@@ -187,7 +190,6 @@ class StackBasedEngine(object) :
     def notifyCycle(self, child) :
         # Optimization: we can usually stop when we reach a node on_cycle.
         #   However, when we swap the cycle root we need to also notify the old cycle root up to the new cycle root.
-        
         assert(self.cycle_root != None)
         root = self.cycle_root.pointer
         childnode = self.stack[child]
@@ -196,8 +198,10 @@ class StackBasedEngine(object) :
         actions = []
         while current != root :
             exec_node = self.stack[current]
-            if exec_node.on_cycle : break
-            actions += exec_node.createCycle()
+            if exec_node.on_cycle : 
+                break
+            new_actions = exec_node.createCycle()
+            actions += new_actions
             assert(len(exec_node.parents) == 1)
             current = exec_node.parents[0]
             self.stats[0] += 1
@@ -207,6 +211,8 @@ class StackBasedEngine(object) :
         trace = kwdargs.get('trace')
         debug = kwdargs.get('debug') or trace
         stats = kwdargs.get('stats')    # Should support stats[i] += 1 with i=0..5
+        self.trace = trace
+        self.debug = debug
         
         target = kwdargs['target']
         if not hasattr(target, '_cache') : target._cache = DefineCache()
@@ -281,7 +287,15 @@ class StackBasedEngine(object) :
                     if act in 'rco' : print (obj, act, args)
                     print ( [ (a,o,x) for a,o,x,t in actions[-10:] ])
                     if len(self.stack) > max_stack : max_stack = len(self.stack)
-                if trace : sys.stdin.readline()
+                if trace : 
+                    a = sys.stdin.readline()
+                    if a.strip() == 'gp' :
+                        print (target)
+                    elif a.strip() == 'l' :
+                        trace = False
+                        self.trace = False
+                        debug = False
+                        self.debug = False
                 if cleanUp :
                     self.cleanUp(obj)
                         
@@ -302,7 +316,7 @@ class StackBasedEngine(object) :
     def printStack(self, pointer=None) :
         print ('===========================')
         for i,x in enumerate(self.stack) :
-            if pointer == None or pointer - 5 < i < pointer + 20 :
+            if pointer == None or pointer - 20 < i < pointer + 20 :
                 if i == pointer :
                     print ('>>> %s: %s' % (i,x) )
                 elif self.cycle_root != None and i == self.cycle_root.pointer  :
@@ -416,7 +430,7 @@ class EvalFact(EvalNode) :
         return True, actions        # Clean up, actions
         
     def node_str(self) :
-        return '%s' % (Term(self.node.functor, *self.context, p=self.node.probability), )
+        return '%s' % (Term(self.node.functor, *self.node.args, p=self.node.probability), )
     
         
 class EvalChoice(EvalNode) :
@@ -741,7 +755,7 @@ class EvalDefine(EvalNode) :
                 else :
                     result_node = self.target.addOr( (node,), readonly=False )
                     name = str(Term(self.node.functor, *res))
-                    self.target.addName(name, node, LABEL_NAMED)
+                    self.target.addName(name, result_node, LABEL_NAMED)
                     self.results[res] = result_node
                     actions = []
                     # Send results to cycle children
@@ -882,14 +896,15 @@ class EvalDefine(EvalNode) :
     def node_str(self) :
         return str(Term(self.node.functor, *self.context))
         
-    def __repr__(self) :
+    def __str__(self) :
          extra = ['tc: %s' % self.to_complete]
-         if self.isCycleChild() : extra.append('CC')
+         if self.is_cycle_child : extra.append('CC')
          if self.is_cycle_root : extra.append('CR')
          if self.isCycleParent() : extra.append('CP') 
+         if self.on_cycle : extra.append('*')
          if self.cycle_children : extra.append('c_ch: %s' % (self.cycle_children,))
          if self.cycle_close : extra.append('c_cl: %s' % (self.cycle_close,))
-         return EvalNode.__repr__(self) + ' ' + ' '.join(extra)
+         return EvalNode.__str__(self) + ' ' + ' '.join(extra)
 
 class EvalNot(EvalNode) :
     # Has exactly one listener (parent)
