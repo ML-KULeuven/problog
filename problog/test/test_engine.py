@@ -1,10 +1,13 @@
+from __future__ import print_function
+
 import unittest
 
 from problog.program import PrologString
 from problog.engine import DefaultEngine
 from problog.logic import Term, Constant
+from problog.formula import LogicFormula
 
-import glob, os
+import glob, os, random
 
 class TestEngine(unittest.TestCase):
     
@@ -86,5 +89,109 @@ class TestEngine(unittest.TestCase):
         r3 = DefaultEngine().query(pl, Term('a',Term('x'),None,Term('g',Term('z'))))
         self.assertCollectionEqual( r3, [])
     
-        if __name__ == '__main__' :
-            test1()
+
+class TestEngineCycles(unittest.TestCase):
+
+    def setUp(self) :    
+        self.edges = [(1,3),(1,5),(1,6),(1,8),(2,3),(2,5),(2,8)]
+        self.edges += [(4,5),(4,7),(4,9),(4,11),(5,9),(6,10),(6,11),(6,13)]
+        self.edges += [(7,11),(7,12),(8,9),(8,10),(8,11),(9,11),(10,11),(11,14)]
+        self.edges += [ (y,x) for x,y in self.edges ]
+        self.edges = list(sorted(self.edges))
+        
+        self.clause_v1 = [ 'active(X) :- edge(X,Y), active(Y).' ]
+        self.clause_v2 = [ 'active(X) :- active(Y), edge(X,Y).' ]
+        self.clauses = [ 'active(X) :- active_p(X).', 'query(active(11)).', 'path_from(X) :- path(X,_).' ]
+        
+        self.facts = [ '0.2::active_p(X).' ] + [ '0.3::edge(%s,%s).' % e for e in self.edges ]
+        
+        self.program_v1 = self.facts + self.clauses + self.clause_v1
+        self.program_v2 = self.facts + self.clauses + self.clause_v2
+        
+        self.maxDiff = None
+        try :
+            self.assertCollectionEqual = self.assertItemsEqual
+        except AttributeError :
+            self.assertCollectionEqual = self.assertCountEqual
+        
+        
+        
+    def test_cycle_goodcode(self) :
+        N = 100
+        program = self.program_v1[:]
+        
+        for i in range(0,N) :
+            random.shuffle(program)
+            txt = '\n'.join(program)
+            f = LogicFormula.createFrom(PrologString(txt))
+            paths = list(list_paths(f))
+            
+            edges = set()
+            for p in paths :
+                for i in range(0, len(p)-1) :
+                    edges.add( ( int(p[i]), int(p[i+1]) ) )
+            edges = list(sorted(edges))
+            
+            if (edges != self.edges) :
+                with open('cycle_error.pl', 'w') as f :
+                    print(txt, file=f)
+                with open('cycle_error.dot', 'w') as f :
+                    print('digraph CycleError {', file=f)
+                    for edge in edges :
+                        print('%s -> %s;' % edge, file=f)
+                    print('}', file=f)
+            
+            self.assertCollectionEqual(self.edges, edges)
+            
+    def test_cycle_badcode(self) :
+        N = 0
+        program = self.program_v2[:]
+        
+        for i in range(0,N) :
+            random.shuffle(program)
+            txt = '\n'.join(program)
+            f = LogicFormula.createFrom(PrologString(txt))
+            
+            paths = list(list_paths(f))
+            
+            edges = set()
+            for p in paths :
+                for i in range(0, len(p)-1) :
+                    edges.add( ( int(p[i]), int(p[i+1]) ) )
+            edges = list(sorted(edges))
+            
+            self.assertCollectionEqual(self.edges, edges)
+
+
+def list_paths(source) :
+    names = dict( (index, name) for name, index in source.getNames() if index != 0 ) 
+    
+    for name, node in source.queries() :
+        for path in _list_paths(source, node, []) :
+            path = [ names.get(n) for n in path ]
+            path = [ int(p[7:-1]) for p in path if p != None and p.startswith('active(')  ]
+            yield path
+        break
+        
+from itertools import product
+def _list_paths( source, node_id, path ) :
+    if node_id in path :
+        yield [node_id]
+    else :
+        add = [node_id]
+        node = source._getNode(node_id)
+        nodetype = type(node).__name__
+        if nodetype == 'conj' :
+            c1, c2 = node.children
+            paths1 = list( _list_paths(source,c1, path + add ) )
+            paths2 = list( _list_paths(source,c2, path + add ) )
+            for p1,p2 in product( paths1, paths2 ) :
+                yield add + p1 + p2
+        elif nodetype == 'disj' :
+            for c in node.children :
+                for p in _list_paths(source,c, path + add) :
+                    yield add + p
+        elif nodetype == 'atom' :
+            yield add
+        else :  # Don't support negation for now
+            raise Exception('Unexpected node type')
