@@ -8,7 +8,7 @@ from .program import ClauseDB, PrologFile
 from .logic import Term
 from .core import LABEL_NAMED
 from .engine import unify, UnifyError, instantiate, extract_vars, is_ground, UnknownClause, _UnknownClause
-from .engine_builtins import addStandardBuiltIns, check_mode, GroundingError
+from .engine_builtins import addStandardBuiltIns, check_mode, GroundingError, NonGroundProbabilisticClause
 
 
 # New engine: notable differences
@@ -116,16 +116,17 @@ class StackBasedEngine(object) :
         exec_node = self.create_node_type( node_type )
         
         pointer = len(self.stack) 
-        self.stack.append(exec_node(pointer=pointer, engine=self, database=database, node_id=node_id, node=node, **kwdargs))
+        record = exec_node(pointer=pointer, engine=self, database=database, node_id=node_id, node=node, **kwdargs)
+        self.stack.append(record)
         return pointer
     
-    def query(self, db, term, level=0) :
+    def query(self, db, term, level=0, **kwdargs) :
         """Perform a non-probabilistic query."""
         gp = LogicFormula()
-        gp, result = self._ground(db, term, gp, level)
+        gp, result = self._ground(db, term, gp, level, **kwdargs)
         return [ x for x,y in result ]
         
-    def ground(self, db, term, gp=None, label=None, trace=None, debug=None) :
+    def ground(self, db, term, gp=None, label=None, **kwdargs) :
         """Ground a query on the given database.
         
         :param db: logic program
@@ -137,7 +138,7 @@ class StackBasedEngine(object) :
         :param label: type of query (e.g. ``query``, ``evidence`` or ``-evidence``)
         :type label: str
         """
-        gp, results = self._ground(db, term, gp, silent_fail=False, allow_vars=False, trace=trace, debug=debug)
+        gp, results = self._ground(db, term, gp, silent_fail=False, allow_vars=False, **kwdargs)
         
         for args, node_id in results :
             gp.addName( term.withArgs(*args), node_id, label )
@@ -146,7 +147,7 @@ class StackBasedEngine(object) :
         
         return gp
     
-    def _ground(self, db, term, gp=None, level=0, silent_fail=True, allow_vars=True, trace=None, debug=None) :
+    def _ground(self, db, term, gp=None, level=0, silent_fail=True, allow_vars=True, **kwdargs) :
         # Convert logic program if needed.
         db = self.prepare(db)
         # Create a new target datastructure if none was given.
@@ -165,7 +166,7 @@ class StackBasedEngine(object) :
                 
         # return self.execute( node_id, database=database, target=target, context=query.args, **kwdargs)
         # eng.execute( query_node, database=db, target=target, context=[None] )
-        results = self.execute( clause_node, database=db, target=gp, context=list(term.args), trace=trace, debug=debug)
+        results = self.execute( clause_node, database=db, target=gp, context=list(term.args), **kwdargs)
         
         return gp, results
                 
@@ -179,28 +180,12 @@ class StackBasedEngine(object) :
             if type(current.node).__name__ == 'neg' :
                 raise NegativeCycle(location=current.database.lineno(current.node.location))
             current = self.stack[current.parents[0]]
-        return current.pointer == parent 
+        return current.pointer == parent
         
-    def checkState(self, actions) :
-        for act, obj, args, kwargs in actions :
-            if act == 'e' :
-                ps = kwargs['parents']
-                for p in ps :
-                    if p != None and (p >= len(self.stack) or self.stack[p] == None) :
-                        print (act, obj, args, kwargs)
-                        raise Exception('Invalid state: referencing non-existing object. [parent]')
-            elif act == 'r' and obj != None :                
-                obj = self.stack[obj]
-                if obj.__class__.__name__ == 'EvalDefine'  :
-                    for p in obj.cycle_children :
-                        if p != None and (p >= len(self.stack) or self.stack[p] == None) :
-                            print (p,obj,obj.pointer)
-                            raise Exception('Invalid state: referencing non-existing obj [child]')
-                
-                
     def execute(self, node_id, **kwdargs ) :
         trace = kwdargs.get('trace')
         debug = kwdargs.get('debug') or trace
+        stats = kwdargs.get('stats')    # Should support stats[i] += 1 with i=0..5
         
         target = kwdargs['target']
         if not hasattr(target, '_cache') : target._cache = DefineCache()
@@ -215,9 +200,11 @@ class StackBasedEngine(object) :
             if obj == None :
                 if act == 'r' :
                     solutions.append( (args[0], args[1]) )
+                    if stats != None : stats[0] += 1
                     if args[3] :    # Last result received
                         return solutions
                 elif act == 'c' :
+                    if stats != None : stats[1] += 1
                     if debug : print ('Maximal stack size:', max_stack)
                     return solutions
                 elif act == 'o' :
@@ -231,6 +218,7 @@ class StackBasedEngine(object) :
                     raise InvalidEngineState('Unknown message!')
             else:
                 if act == 'e' :
+                    if stats != None : stats[2] += 1
                     try :
                         obj = self.create( obj, *args, **kwdargs )
                     except _UnknownClause : 
@@ -239,6 +227,7 @@ class StackBasedEngine(object) :
                     exec_node = self.stack[obj]
                     cleanUp, next_actions = exec_node()
                 elif act == 'C' :
+                    if stats != None : stats[4] += 1
                     if args[0] == True and self.cycle_root and obj == self.cycle_root.pointer :
                         exec_node = self.stack[obj]
                         cleanUp, next_actions = exec_node.closeCycle(*args,**kwdargs)
@@ -246,19 +235,22 @@ class StackBasedEngine(object) :
                         exec_node = self.stack[obj]
                         cleanUp, next_actions = exec_node.closeCycle(*args,**kwdargs)
                 else:
-                    if obj >= len(self.stack) :
-                        self.printStack()
-                        print (act, obj)
-                        raise InvalidEngineState('Non-existing pointer')
+                    # if obj >= len(self.stack) :
+                    #     self.printStack()
+                    #     print (act, obj)
+                    #     raise InvalidEngineState('Non-existing pointer')
                     exec_node = self.stack[obj]
                     if exec_node == None :
                         print (act, obj)
                         raise InvalidEngineState('Invalid node at given pointer')
                     if act == 'r' :
+                        if stats != None : stats[0] += 1
                         cleanUp, next_actions = exec_node.newResult(*args,**kwdargs)
                     elif act == 'c' :
+                        if stats != None : stats[1] += 1
                         cleanUp, next_actions = exec_node.complete(*args,**kwdargs)
                     elif act == 'o' :
+                        if stats != None : stats[3] += 1
                         cleanUp, next_actions = exec_node.createCycle(*args,**kwdargs)
                     else :
                         raise InvalidEngineState('Unknown message')
@@ -268,7 +260,7 @@ class StackBasedEngine(object) :
                     self.printStack(obj)
                     if act in 'rco' : print (obj, act, args)
                     print ( [ (a,o,x) for a,o,x,t in actions ])
-                if len(self.stack) > max_stack : max_stack = len(self.stack)
+                    if len(self.stack) > max_stack : max_stack = len(self.stack)
                 if trace : sys.stdin.readline()
                 if cleanUp :
                     self.cleanUp(obj)
@@ -559,7 +551,7 @@ class DefineCache(object) :
         functor, args = goal
         if is_ground(*args) :
             if results :
-                assert(len(results) == 1)
+                # assert(len(results) == 1)
                 res_key = next(iter(results.keys()))
                 key = (functor, res_key)
                 self.__ground[ key ] = results[res_key]
