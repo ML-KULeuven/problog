@@ -111,7 +111,7 @@ def main(filename, engine='1', n=0, L=0) :
         
     if stats :
         logger.info('Engine message statistics: %s' % ', '.join( ('%s: %s' % (t,stats[i]) ) for i,t in enumerate('rceoC') ) )
-    
+    print (engine.stats)
 
 if __name__ == '__main__' :
     import argparse

@@ -200,6 +200,7 @@ class StackBasedEngine(object) :
             actions += exec_node.createCycle()
             assert(len(exec_node.parents) == 1)
             current = exec_node.parents[0]
+            self.stats[0] += 1
         return actions
         
     def execute(self, node_id, **kwdargs ) :
@@ -209,7 +210,7 @@ class StackBasedEngine(object) :
         
         target = kwdargs['target']
         if not hasattr(target, '_cache') : target._cache = DefineCache()
-        
+        n = 6
         pointer = self.create( node_id, parents=[None], **kwdargs )
         cleanUp, actions = self.stack[pointer]()
         actions = list(reversed(actions))
@@ -269,9 +270,6 @@ class StackBasedEngine(object) :
                     elif act == 'c' :
                         if stats != None : stats[1] += 1
                         cleanUp, next_actions = exec_node.complete(*args,**kwdargs)
-                    # elif act == 'o' :
-                    #     if stats != None : stats[3] += 1
-                    #     cleanUp, next_actions = exec_node.createCycle(*args,**kwdargs)
                     else :
                         raise InvalidEngineState('Unknown message')
                 actions += list(reversed(next_actions))
@@ -279,19 +277,11 @@ class StackBasedEngine(object) :
                     # if type(exec_node).__name__ in ('EvalDefine',) :
                     self.printStack(obj)
                     if act in 'rco' : print (obj, act, args)
-                    print ( [ (a,o,x) for a,o,x,t in actions ])
+                    print ( [ (a,o,x) for a,o,x,t in actions[-10:] ])
                     if len(self.stack) > max_stack : max_stack = len(self.stack)
                 if trace : sys.stdin.readline()
                 if cleanUp :
                     self.cleanUp(obj)
-            # if not actions and self.active_cycles :
-            #     # Engine stalled -> reactivate it by completing a cycle
-            #     cycle = self.active_cycles.pop(-1)
-            #     if debug : print ('Activating cycle', cycle)
-            #     exec_node = self.stack[cycle]
-            #     cleanUp, next_actions = exec_node.complete()
-            #     actions += list(reversed(next_actions))
-            #     if cleanUp : self.cleanUp(cycle)
                         
         self.printStack()
         print ('Collected results:', solutions)
@@ -310,12 +300,13 @@ class StackBasedEngine(object) :
     def printStack(self, pointer=None) :
         print ('===========================')
         for i,x in enumerate(self.stack) :
-            if i == pointer :
-                print ('>>> %s: %s' % (i,x) )
-            elif self.cycle_root != None and i == self.cycle_root.pointer  :
-                print ('ccc %s: %s' % (i,x) )
-            else :
-                print ('    %s: %s' % (i,x) )        
+            if pointer - 5 < i < pointer + 20 :
+                if i == pointer :
+                    print ('>>> %s: %s' % (i,x) )
+                elif self.cycle_root != None and i == self.cycle_root.pointer  :
+                    print ('ccc %s: %s' % (i,x) )
+                else :
+                    print ('    %s: %s' % (i,x) )        
         
 
 NODE_TRUE = 0
@@ -957,7 +948,8 @@ class EvalAnd(EvalNode) :
             if is_last :
                 # Notify self that this conjunct is complete. ('all_complete' will always be False)
                 all_complete, complete_actions = self.complete()
-                if node == NODE_TRUE :
+                if False and node == NODE_TRUE :
+                    # TODO THERE IS A BUG HERE 
                     # If there is only one node to complete (the new second conjunct) then
                     #  we can clean up this node, but then we would lose the ground node of the first conjunct.
                     # This is ok when it is deterministically true.  TODO make this always ok!
