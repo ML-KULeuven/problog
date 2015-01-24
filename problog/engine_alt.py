@@ -63,6 +63,8 @@ class StackBasedEngine(object) :
         self.node_types['builtin'] = EvalBuiltIn
         
         self.cycle_root = None
+        
+        self.stats = [0,0,0,0]
     
     def prepare(self, db) :
         """Convert given logic program to suitable format for this engine."""
@@ -116,16 +118,17 @@ class StackBasedEngine(object) :
         exec_node = self.create_node_type( node_type )
         
         pointer = len(self.stack) 
-        self.stack.append(exec_node(pointer=pointer, engine=self, database=database, node_id=node_id, node=node, **kwdargs))
+        record = exec_node(pointer=pointer, engine=self, database=database, node_id=node_id, node=node, **kwdargs)
+        self.stack.append(record)
         return pointer
     
-    def query(self, db, term, level=0) :
+    def query(self, db, term, level=0, **kwdargs) :
         """Perform a non-probabilistic query."""
         gp = LogicFormula()
-        gp, result = self._ground(db, term, gp, level)
+        gp, result = self._ground(db, term, gp, level, **kwdargs)
         return [ x for x,y in result ]
         
-    def ground(self, db, term, gp=None, label=None, trace=None, debug=None) :
+    def ground(self, db, term, gp=None, label=None, **kwdargs) :
         """Ground a query on the given database.
         
         :param db: logic program
@@ -137,7 +140,7 @@ class StackBasedEngine(object) :
         :param label: type of query (e.g. ``query``, ``evidence`` or ``-evidence``)
         :type label: str
         """
-        gp, results = self._ground(db, term, gp, silent_fail=False, allow_vars=False, trace=trace, debug=debug)
+        gp, results = self._ground(db, term, gp, silent_fail=False, allow_vars=False, **kwdargs)
         
         for args, node_id in results :
             gp.addName( term.withArgs(*args), node_id, label )
@@ -146,7 +149,7 @@ class StackBasedEngine(object) :
         
         return gp
     
-    def _ground(self, db, term, gp=None, level=0, silent_fail=True, allow_vars=True, trace=None, debug=None) :
+    def _ground(self, db, term, gp=None, level=0, silent_fail=True, allow_vars=True, **kwdargs) :
         # Convert logic program if needed.
         db = self.prepare(db)
         # Create a new target datastructure if none was given.
@@ -165,7 +168,7 @@ class StackBasedEngine(object) :
                 
         # return self.execute( node_id, database=database, target=target, context=query.args, **kwdargs)
         # eng.execute( query_node, database=db, target=target, context=[None] )
-        results = self.execute( clause_node, database=db, target=gp, context=list(term.args), trace=trace, debug=debug)
+        results = self.execute( clause_node, database=db, target=gp, context=list(term.args), **kwdargs)
         
         return gp, results
                 
@@ -179,32 +182,35 @@ class StackBasedEngine(object) :
             if type(current.node).__name__ == 'neg' :
                 raise NegativeCycle(location=current.database.lineno(current.node.location))
             current = self.stack[current.parents[0]]
-        return current.pointer == parent 
+        return current.pointer == parent
         
-    def checkState(self, actions) :
-        for act, obj, args, kwargs in actions :
-            if act == 'e' :
-                ps = kwargs['parents']
-                for p in ps :
-                    if p != None and (p >= len(self.stack) or self.stack[p] == None) :
-                        print (act, obj, args, kwargs)
-                        raise Exception('Invalid state: referencing non-existing object. [parent]')
-            elif act == 'r' and obj != None :                
-                obj = self.stack[obj]
-                if obj.__class__.__name__ == 'EvalDefine'  :
-                    for p in obj.cycle_children :
-                        if p != None and (p >= len(self.stack) or self.stack[p] == None) :
-                            print (p,obj,obj.pointer)
-                            raise Exception('Invalid state: referencing non-existing obj [child]')
-                
-                
+    def notifyCycle(self, child) :
+        # Optimization: we can usually stop when we reach a node on_cycle.
+        #   However, when we swap the cycle root we need to also notify the old cycle root up to the new cycle root.
+        
+        assert(self.cycle_root != None)
+        root = self.cycle_root.pointer
+        childnode = self.stack[child]
+        assert(len(childnode.parents) == 1)
+        current = childnode.parents[0]
+        actions = []
+        while current != root :
+            exec_node = self.stack[current]
+            if exec_node.on_cycle : break
+            actions += exec_node.createCycle()
+            assert(len(exec_node.parents) == 1)
+            current = exec_node.parents[0]
+            self.stats[0] += 1
+        return actions
+        
     def execute(self, node_id, **kwdargs ) :
         trace = kwdargs.get('trace')
         debug = kwdargs.get('debug') or trace
+        stats = kwdargs.get('stats')    # Should support stats[i] += 1 with i=0..5
         
         target = kwdargs['target']
         if not hasattr(target, '_cache') : target._cache = DefineCache()
-        
+        n = 6
         pointer = self.create( node_id, parents=[None], **kwdargs )
         cleanUp, actions = self.stack[pointer]()
         actions = list(reversed(actions))
@@ -215,9 +221,11 @@ class StackBasedEngine(object) :
             if obj == None :
                 if act == 'r' :
                     solutions.append( (args[0], args[1]) )
+                    if stats != None : stats[0] += 1
                     if args[3] :    # Last result received
                         return solutions
                 elif act == 'c' :
+                    if stats != None : stats[1] += 1
                     if debug : print ('Maximal stack size:', max_stack)
                     return solutions
                 elif act == 'o' :
@@ -231,6 +239,7 @@ class StackBasedEngine(object) :
                     raise InvalidEngineState('Unknown message!')
             else:
                 if act == 'e' :
+                    if stats != None : stats[2] += 1
                     try :
                         obj = self.create( obj, *args, **kwdargs )
                     except _UnknownClause : 
@@ -241,6 +250,7 @@ class StackBasedEngine(object) :
                     exec_node = self.stack[obj]
                     cleanUp, next_actions = exec_node()
                 elif act == 'C' :
+                    if stats != None : stats[4] += 1
                     if args[0] == True and self.cycle_root and obj == self.cycle_root.pointer :
                         exec_node = self.stack[obj]
                         cleanUp, next_actions = exec_node.closeCycle(*args,**kwdargs)
@@ -248,20 +258,20 @@ class StackBasedEngine(object) :
                         exec_node = self.stack[obj]
                         cleanUp, next_actions = exec_node.closeCycle(*args,**kwdargs)
                 else:
-                    if obj >= len(self.stack) :
-                        self.printStack()
-                        print (act, obj)
-                        raise InvalidEngineState('Non-existing pointer')
+                    # if obj >= len(self.stack) :
+                    #     self.printStack()
+                    #     print (act, obj)
+                    #     raise InvalidEngineState('Non-existing pointer')
                     exec_node = self.stack[obj]
                     if exec_node == None :
                         print (act, obj)
                         raise InvalidEngineState('Invalid node at given pointer')
                     if act == 'r' :
+                        if stats != None : stats[0] += 1
                         cleanUp, next_actions = exec_node.newResult(*args,**kwdargs)
                     elif act == 'c' :
+                        if stats != None : stats[1] += 1
                         cleanUp, next_actions = exec_node.complete(*args,**kwdargs)
-                    elif act == 'o' :
-                        cleanUp, next_actions = exec_node.createCycle(*args,**kwdargs)
                     else :
                         raise InvalidEngineState('Unknown message')
                 actions += list(reversed(next_actions))
@@ -269,19 +279,11 @@ class StackBasedEngine(object) :
                     # if type(exec_node).__name__ in ('EvalDefine',) :
                     self.printStack(obj)
                     if act in 'rco' : print (obj, act, args)
-                    print ( [ (a,o,x) for a,o,x,t in actions ])
-                if len(self.stack) > max_stack : max_stack = len(self.stack)
+                    print ( [ (a,o,x) for a,o,x,t in actions[-10:] ])
+                    if len(self.stack) > max_stack : max_stack = len(self.stack)
                 if trace : sys.stdin.readline()
                 if cleanUp :
                     self.cleanUp(obj)
-            # if not actions and self.active_cycles :
-            #     # Engine stalled -> reactivate it by completing a cycle
-            #     cycle = self.active_cycles.pop(-1)
-            #     if debug : print ('Activating cycle', cycle)
-            #     exec_node = self.stack[cycle]
-            #     cleanUp, next_actions = exec_node.complete()
-            #     actions += list(reversed(next_actions))
-            #     if cleanUp : self.cleanUp(cycle)
                         
         self.printStack()
         print ('Collected results:', solutions)
@@ -300,12 +302,13 @@ class StackBasedEngine(object) :
     def printStack(self, pointer=None) :
         print ('===========================')
         for i,x in enumerate(self.stack) :
-            if i == pointer :
-                print ('>>> %s: %s' % (i,x) )
-            elif self.cycle_root != None and i == self.cycle_root.pointer  :
-                print ('ccc %s: %s' % (i,x) )
-            else :
-                print ('    %s: %s' % (i,x) )        
+            if pointer - 5 < i < pointer + 20 :
+                if i == pointer :
+                    print ('>>> %s: %s' % (i,x) )
+                elif self.cycle_root != None and i == self.cycle_root.pointer  :
+                    print ('ccc %s: %s' % (i,x) )
+                else :
+                    print ('    %s: %s' % (i,x) )        
         
 
 NODE_TRUE = 0
@@ -338,6 +341,7 @@ class EvalNode(object):
         self.pointer = pointer
         self.transform = transform
         self.call = call
+        self.on_cycle = False
         
     def notifyResult(self, arguments, node=0, is_last=False, parents=None ) :
         if parents == None : parents = self.parents
@@ -354,9 +358,9 @@ class EvalNode(object):
         if parents == None : parents = self.parents
         return [ complete( parent, self.identifier ) for parent in parents  ]
         
-    def notifyCycle(self, child, parents=None) :
-        if parents == None : parents = self.parents
-        return [ cyclic( parent, child ) for parent in parents ]
+    # def notifyCycle(self, child, parents=None) :
+    #     if parents == None : parents = self.parents
+    #     return [ cyclic( parent, child ) for parent in parents ]
         
     def createCall(self, node_id, *args, **kwdargs) :
         base_args = {}
@@ -370,8 +374,9 @@ class EvalNode(object):
         base_args.update(kwdargs)
         return call( node_id, args, base_args )
         
-    def createCycle(self,child) :
-        return False, self.notifyCycle( child )
+    def createCycle(self) :
+        self.on_cycle = True
+        return []
         
     def __repr__(self) :
         return '%s %s: %s %s [%s] {%s}' % (self.parents, self.__class__.__name__, self.node, self.context, self.call, self.pointer)
@@ -452,7 +457,6 @@ class EvalOr(EvalNode) :
     def __init__(self, **parent_args ) : 
         EvalNode.__init__(self, **parent_args)
         
-        self.on_cycle = False
         self.results = ResultSet()
         
     def __call__(self) :
@@ -510,13 +514,13 @@ class EvalOr(EvalNode) :
         else :
             return False, []
             
-    def createCycle(self, child) :
+    def createCycle(self) :
         self.on_cycle = True
         self.flushBuffer(True)
         actions = []
         for result, node in self.results :
             actions += self.notifyResult(result,node) 
-        return False, actions + self.notifyCycle(child)
+        return actions
         
     def node_str(self) :
         return ''
@@ -561,7 +565,7 @@ class DefineCache(object) :
         functor, args = goal
         if is_ground(*args) :
             if results :
-                assert(len(results) == 1)
+                # assert(len(results) == 1)
                 res_key = next(iter(results.keys()))
                 key = (functor, res_key)
                 self.__ground[ key ] = results[res_key]
@@ -655,7 +659,6 @@ class EvalDefine(EvalNode) :
         
         self.cycle_children = []
         self.cycle_close = []
-        self.on_cycle = False
         self.is_cycle_root = False
         self.is_cycle_child = False
         
@@ -821,8 +824,10 @@ class EvalDefine(EvalNode) :
             # Copy subcycle information from old root to new root
             cycle_parent.cycle_close = cycle_root.cycle_close
             cycle_root.cycle_close = []
-            
-            cycle_root = None        
+            self.engine.cycle_root = cycle_parent
+            queue += cycle_root.createCycle()
+            queue += self.engine.notifyCycle(cycle_root.pointer) # Notify old cycle root up to new cycle root
+            cycle_root = None
         if cycle_root == None : # No active cycle
             # Register cycle root with engine
             self.engine.cycle_root = cycle_parent
@@ -831,13 +836,13 @@ class EvalDefine(EvalNode) :
             #
             cycle_parent.cycle_close.append(self.pointer)
             # Queue a create cycle message that will be passed up the call stack.
-            queue += self.notifyCycle(self.pointer)
+            queue += self.engine.notifyCycle(self.pointer)
             # Send a close cycle message to the cycle root.
         else :  # A cycle is already active
             # The new one is a subcycle
             cycle_root.cycle_close.append(self.pointer)            
             # Queue a create cycle message that will be passed up the call stack.
-            queue += self.notifyCycle(self.pointer)
+            queue += self.engine.notifyCycle(self.pointer)
         return queue
     
     def closeCycle(self, toplevel) :
@@ -855,16 +860,16 @@ class EvalDefine(EvalNode) :
         else :
             return False, []
     
-    def createCycle(self, child) :
+    def createCycle(self) :
         if self.on_cycle :  # Already on cycle
             # Pass message to parent
-            return False, self.notifyCycle(child)
+            return []
         elif self.is_cycle_root :
             # self.flushBuffer(True)
             # actions = []
             # for result, node in self.results.items() :
             #     actions += self.notifyResult(result,node, parents=[child])
-            return False, []
+            return []
         else :
             # Define node
             self.on_cycle = True
@@ -872,7 +877,7 @@ class EvalDefine(EvalNode) :
             actions = []
             for result, node in self.results :
                 actions += self.notifyResult(result,node) 
-            return False, actions + self.notifyCycle(child)
+            return actions
 
     def node_str(self) :
         return str(Term(self.node.functor, *self.context))
@@ -920,7 +925,7 @@ class EvalNot(EvalNode) :
         actions += self.notifyComplete()
         return True, actions
         
-    def createCycle(self,child) :
+    def createCycle(self) :
         raise NegativeCycle(location=self.database.lineno(self.node.location))
         
     def node_str(self) :
@@ -945,7 +950,8 @@ class EvalAnd(EvalNode) :
             if is_last :
                 # Notify self that this conjunct is complete. ('all_complete' will always be False)
                 all_complete, complete_actions = self.complete()
-                if node == NODE_TRUE :
+                if False and node == NODE_TRUE :
+                    # TODO THERE IS A BUG HERE 
                     # If there is only one node to complete (the new second conjunct) then
                     #  we can clean up this node, but then we would lose the ground node of the first conjunct.
                     # This is ok when it is deterministically true.  TODO make this always ok!
