@@ -63,6 +63,8 @@ class StackBasedEngine(object) :
         self.node_types['builtin'] = EvalBuiltIn
         
         self.cycle_root = None
+        
+        self.stats = [0,0,0,0]
     
     def prepare(self, db) :
         """Convert given logic program to suitable format for this engine."""
@@ -182,6 +184,24 @@ class StackBasedEngine(object) :
             current = self.stack[current.parents[0]]
         return current.pointer == parent
         
+    def notifyCycle(self, child) :
+        # Optimization: we can usually stop when we reach a node on_cycle.
+        #   However, when we swap the cycle root we need to also notify the old cycle root up to the new cycle root.
+        
+        assert(self.cycle_root != None)
+        root = self.cycle_root.pointer
+        childnode = self.stack[child]
+        assert(len(childnode.parents) == 1)
+        current = childnode.parents[0]
+        actions = []
+        while current != root :
+            exec_node = self.stack[current]
+            if exec_node.on_cycle : break
+            actions += exec_node.createCycle()
+            assert(len(exec_node.parents) == 1)
+            current = exec_node.parents[0]
+        return actions
+        
     def execute(self, node_id, **kwdargs ) :
         trace = kwdargs.get('trace')
         debug = kwdargs.get('debug') or trace
@@ -249,9 +269,9 @@ class StackBasedEngine(object) :
                     elif act == 'c' :
                         if stats != None : stats[1] += 1
                         cleanUp, next_actions = exec_node.complete(*args,**kwdargs)
-                    elif act == 'o' :
-                        if stats != None : stats[3] += 1
-                        cleanUp, next_actions = exec_node.createCycle(*args,**kwdargs)
+                    # elif act == 'o' :
+                    #     if stats != None : stats[3] += 1
+                    #     cleanUp, next_actions = exec_node.createCycle(*args,**kwdargs)
                     else :
                         raise InvalidEngineState('Unknown message')
                 actions += list(reversed(next_actions))
@@ -328,6 +348,7 @@ class EvalNode(object):
         self.pointer = pointer
         self.transform = transform
         self.call = call
+        self.on_cycle = False
         
     def notifyResult(self, arguments, node=0, is_last=False, parents=None ) :
         if parents == None : parents = self.parents
@@ -344,9 +365,9 @@ class EvalNode(object):
         if parents == None : parents = self.parents
         return [ complete( parent, self.identifier ) for parent in parents  ]
         
-    def notifyCycle(self, child, parents=None) :
-        if parents == None : parents = self.parents
-        return [ cyclic( parent, child ) for parent in parents ]
+    # def notifyCycle(self, child, parents=None) :
+    #     if parents == None : parents = self.parents
+    #     return [ cyclic( parent, child ) for parent in parents ]
         
     def createCall(self, node_id, *args, **kwdargs) :
         base_args = {}
@@ -360,8 +381,9 @@ class EvalNode(object):
         base_args.update(kwdargs)
         return call( node_id, args, base_args )
         
-    def createCycle(self,child) :
-        return False, self.notifyCycle( child )
+    def createCycle(self) :
+        self.on_cycle = True
+        return []
         
     def __repr__(self) :
         return '%s %s: %s %s [%s] {%s}' % (self.parents, self.__class__.__name__, self.node, self.context, self.call, self.pointer)
@@ -442,7 +464,6 @@ class EvalOr(EvalNode) :
     def __init__(self, **parent_args ) : 
         EvalNode.__init__(self, **parent_args)
         
-        self.on_cycle = False
         self.results = ResultSet()
         
     def __call__(self) :
@@ -500,13 +521,13 @@ class EvalOr(EvalNode) :
         else :
             return False, []
             
-    def createCycle(self, child) :
+    def createCycle(self) :
         self.on_cycle = True
         self.flushBuffer(True)
         actions = []
         for result, node in self.results :
             actions += self.notifyResult(result,node) 
-        return False, actions + self.notifyCycle(child)
+        return actions
         
     def node_str(self) :
         return ''
@@ -645,7 +666,6 @@ class EvalDefine(EvalNode) :
         
         self.cycle_children = []
         self.cycle_close = []
-        self.on_cycle = False
         self.is_cycle_root = False
         self.is_cycle_child = False
         
@@ -811,8 +831,10 @@ class EvalDefine(EvalNode) :
             # Copy subcycle information from old root to new root
             cycle_parent.cycle_close = cycle_root.cycle_close
             cycle_root.cycle_close = []
-            
-            cycle_root = None        
+            self.engine.cycle_root = cycle_parent
+            queue += cycle_root.createCycle()
+            queue += self.engine.notifyCycle(cycle_root.pointer) # Notify old cycle root up to new cycle root
+            cycle_root = None
         if cycle_root == None : # No active cycle
             # Register cycle root with engine
             self.engine.cycle_root = cycle_parent
@@ -821,13 +843,13 @@ class EvalDefine(EvalNode) :
             #
             cycle_parent.cycle_close.append(self.pointer)
             # Queue a create cycle message that will be passed up the call stack.
-            queue += self.notifyCycle(self.pointer)
+            queue += self.engine.notifyCycle(self.pointer)
             # Send a close cycle message to the cycle root.
         else :  # A cycle is already active
             # The new one is a subcycle
             cycle_root.cycle_close.append(self.pointer)            
             # Queue a create cycle message that will be passed up the call stack.
-            queue += self.notifyCycle(self.pointer)
+            queue += self.engine.notifyCycle(self.pointer)
         return queue
     
     def closeCycle(self, toplevel) :
@@ -845,16 +867,16 @@ class EvalDefine(EvalNode) :
         else :
             return False, []
     
-    def createCycle(self, child) :
+    def createCycle(self) :
         if self.on_cycle :  # Already on cycle
             # Pass message to parent
-            return False, self.notifyCycle(child)
+            return []
         elif self.is_cycle_root :
             # self.flushBuffer(True)
             # actions = []
             # for result, node in self.results.items() :
             #     actions += self.notifyResult(result,node, parents=[child])
-            return False, []
+            return []
         else :
             # Define node
             self.on_cycle = True
@@ -862,7 +884,7 @@ class EvalDefine(EvalNode) :
             actions = []
             for result, node in self.results :
                 actions += self.notifyResult(result,node) 
-            return False, actions + self.notifyCycle(child)
+            return actions
 
     def node_str(self) :
         return str(Term(self.node.functor, *self.context))
@@ -910,7 +932,7 @@ class EvalNot(EvalNode) :
         actions += self.notifyComplete()
         return True, actions
         
-    def createCycle(self,child) :
+    def createCycle(self) :
         raise NegativeCycle(location=self.database.lineno(self.node.location))
         
     def node_str(self) :
