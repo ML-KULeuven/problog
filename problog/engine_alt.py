@@ -258,14 +258,14 @@ class StackBasedEngine(object) :
                         exec_node = self.stack[obj]
                         cleanUp, next_actions = exec_node.closeCycle(*args,**kwdargs)
                 else:
-                    # if obj >= len(self.stack) :
-                    #     self.printStack()
-                    #     print (act, obj)
-                    #     raise InvalidEngineState('Non-existing pointer')
-                    exec_node = self.stack[obj]
+                    try :
+                        exec_node = self.stack[obj]
+                    except IndexError :
+                        self.printStack()
+                        raise InvalidEngineState('Non-existing pointer: %s' % obj )
                     if exec_node == None :
                         print (act, obj)
-                        raise InvalidEngineState('Invalid node at given pointer')
+                        raise InvalidEngineState('Invalid node at given pointer: %s' % obj)
                     if act == 'r' :
                         if stats != None : stats[0] += 1
                         cleanUp, next_actions = exec_node.newResult(*args,**kwdargs)
@@ -302,7 +302,7 @@ class StackBasedEngine(object) :
     def printStack(self, pointer=None) :
         print ('===========================')
         for i,x in enumerate(self.stack) :
-            if pointer - 5 < i < pointer + 20 :
+            if pointer == None or pointer - 5 < i < pointer + 20 :
                 if i == pointer :
                     print ('>>> %s: %s' % (i,x) )
                 elif self.cycle_root != None and i == self.cycle_root.pointer  :
