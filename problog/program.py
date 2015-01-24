@@ -223,7 +223,9 @@ class ClauseIndex(list) :
             else :
                 curr = self.__index[i][None] | self.__index[i][arg]
                 results &= curr
-        return sorted(results)
+        results = sorted(results)
+        print ('FIND:', arguments, results)
+        return results
         
     def _add(self, key, item) :
         for i, k in enumerate(key) :
@@ -239,6 +241,83 @@ class ClauseIndex(list) :
             else :
                 key.append(None)
         self._add(key, item)
+
+def intersection(l1, l2) :
+    i = 0
+    j = 0
+    n1 = len(l1)
+    n2 = len(l2)
+    r = []
+    a = r.append
+    while i < n1 and j < n2 :
+        if l1[i] == l2[j] :
+            a(l1[i])
+            i += 1
+            j += 1
+        elif l1[i] < l2[j] :
+            i += 1
+        else :
+            j += 1
+    #print ('I', l1, l2, r)
+    return r
+
+class ClauseIndex(list) :
+    
+    def __init__(self, parent, arity) :
+        self.__parent = parent
+        self.__index = [ defaultdict(set) for i in range(0,arity) ]
+        self.__optimized = False
+        
+    def optimize(self) :
+        if not self.__optimized :
+            self.__optimized = True
+            for i in range(0,len(self.__index)) :
+                arg_index = self.__index[i]
+                arg_none = arg_index[None]
+                self.__index[i] = { k : tuple(sorted(v | arg_none)) for k,v in arg_index.items() if k != None }
+                self.__index[i][None] = tuple(sorted(arg_none))
+        
+    def find(self, arguments) :
+        self.optimize()
+        results = None
+        # for i, xx in enumerate(self.__index) :
+        #     print ('\t', i, xx)
+        for i, arg in enumerate(arguments) :
+            if arg == None or not arg.isGround() : 
+                pass # Variable => no restrictions
+            else :
+                curr = self.__index[i].get(arg)
+                if curr == None :   # No facts matching this argument exactly.
+                    results = self.__index[i].get(None)
+                elif results == None :  # First argument with restriction
+                    results = curr
+                else :  # Already have a selection
+                    results = intersection(results, curr)
+            if results == [] : 
+                # print ('FIND', arguments, results)
+                return []
+        if results == None :
+            # print ('FIND', arguments, 'all')
+            return self
+        else :
+            # print ('FIND', arguments, results)
+            return results
+    
+    def _add(self, key, item) :
+        for i, k in enumerate(key) :
+            self.__index[i][k].add(item)
+        
+    def append(self, item) :
+        list.append(self, item)
+        key = []
+        args = self.__parent.getNode(item).args
+        for arg in args :
+            if isinstance(arg,Term) and arg.isGround() :
+                key.append(arg)
+            else :
+                key.append(None)
+        self._add(key, item)
+        
 
 class ClauseDB(LogicProgram) :
     """Compiled logic program.
