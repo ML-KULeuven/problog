@@ -98,11 +98,14 @@ def main(filename, engine='1', n=0, L=0) :
     logger.info('Number of queries: %s' % len(queries))
     
     non_false = 0
-    with Timer('Evaluating queries') :
-        for i, query in enumerate(queries) :
-            if L > 0 : query = query.withArgs( *( query.args + (Constant(L),))  )
-            with Timer('Evaluating query %s: %s' % (i+1, query)) :
-                result = engine.ground(db, query, gp=gp, label='query', stats=stats)
+    try :
+        with Timer('Evaluating queries') :
+            for i, query in enumerate(queries) :
+                if L > 0 : query = query.withArgs( *( query.args + (Constant(L),))  )
+                with Timer('Evaluating query %s: %s' % (i+1, query)) :
+                    result = engine.ground(db, query, gp=gp, label='query', stats=stats)
+    except KeyboardInterrupt :
+        logger.info('Interrupted by user.')
     
     failed = len( [ r for r,n in gp.queries() if n == None ] )
     
