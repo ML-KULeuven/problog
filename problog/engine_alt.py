@@ -215,6 +215,7 @@ class StackBasedEngine(object) :
         self.debug = debug
         
         target = kwdargs['target']
+        database = kwdargs['database']
         if not hasattr(target, '_cache') : target._cache = DefineCache()
         n = 6
         pointer = self.create( node_id, parents=[None], **kwdargs )
@@ -250,9 +251,14 @@ class StackBasedEngine(object) :
                         obj = self.create( obj, *args, **kwdargs )
                     except _UnknownClause : 
                         # TODO set right parameters
-                        sig = kwdargs['call']
-                        sig = '%s/%s' % (sig[0],len(sig[1]))
-                        raise UnknownClause(sig, location=None)
+                        call_origin = kwdargs.get('call_origin')
+                        if call_origin == None :
+                            sig = 'unknown'
+                            raise UnknownClause(sig, location=None)
+                        else :
+                            loc = database.lineno(call_origin[1])
+                            raise UnknownClause(call_origin[0], location=loc)
+                            
                     exec_node = self.stack[obj]
                     cleanUp, next_actions = exec_node()
                 elif act == 'C' :
@@ -670,7 +676,6 @@ class EvalDefine(EvalNode) :
         
         self.results = ResultSet()
         
-        
         self.cycle_children = []
         self.cycle_close = []
         self.is_cycle_root = False
@@ -1018,7 +1023,8 @@ class EvalCall(EvalNode) :
         
     def __call__(self) :
         call_args = [ instantiate(arg, self.context) for arg in self.node.args ]
-        return True, [ self.createCall( self.node.defnode, context=call_args, transform=self.getResultTransform(), parents=self.parents ) ]
+        origin = '%s/%s' % (self.node.functor,len(self.node.args))
+        return True, [ self.createCall( self.node.defnode, call_origin=(origin,self.node.location), context=call_args, transform=self.getResultTransform(), parents=self.parents ) ]
     
     def getResultTransform(self) :
         context = list(self.context)
