@@ -244,29 +244,24 @@ class StackBasedEngine(object) :
                     raise InvalidEngineState('Unknown message!')
             else:
                 if act == 'e' :
-                    if stats != None : stats[2] += 1
-                    try :
-                        obj = self.create( obj, *args, **kwdargs )
-                    except _UnknownClause : 
-                        # TODO set right parameters
-                        call_origin = kwdargs.get('call_origin')
-                        if call_origin == None :
-                            sig = 'unknown'
-                            raise UnknownClause(sig, location=None)
-                        else :
-                            loc = database.lineno(call_origin[1])
-                            raise UnknownClause(call_origin[0], location=loc)
-                            
-                    exec_node = self.stack[obj]
-                    cleanUp, next_actions = exec_node()
-                elif act == 'C' :
-                    if stats != None : stats[4] += 1
-                    if args[0] == True and self.cycle_root and obj == self.cycle_root.pointer :
+                    if self.cycle_root != None and kwdargs['parent'] < self.cycle_root.pointer :
+                        cleanUp = False
+                        next_actions = self.cycle_root.closeCycle(True) + [ (act,obj,args,kwdargs) ]
+                    else :
+                        if stats != None : stats[2] += 1
+                        try :
+                            obj = self.create( obj, *args, **kwdargs )
+                        except _UnknownClause : 
+                            # TODO set right parameters
+                            call_origin = kwdargs.get('call_origin')
+                            if call_origin == None :
+                                sig = 'unknown'
+                                raise UnknownClause(sig, location=None)
+                            else :
+                                loc = database.lineno(call_origin[1])
+                                raise UnknownClause(call_origin[0], location=loc)
                         exec_node = self.stack[obj]
-                        cleanUp, next_actions = exec_node.closeCycle(*args,**kwdargs)
-                    elif args[0] == False :
-                        exec_node = self.stack[obj]
-                        cleanUp, next_actions = exec_node.closeCycle(*args,**kwdargs)
+                        cleanUp, next_actions = exec_node()
                 else:
                     try :
                         exec_node = self.stack[obj]
@@ -284,6 +279,8 @@ class StackBasedEngine(object) :
                         cleanUp, next_actions = exec_node.complete(*args,**kwdargs)
                     else :
                         raise InvalidEngineState('Unknown message')
+                if not actions and not next_actions and self.cycle_root != None :
+                    next_actions = self.cycle_root.closeCycle(True)
                 actions += list(reversed(next_actions))
                 if debug :
                     # if type(exec_node).__name__ in ('EvalDefine',) :
@@ -302,6 +299,7 @@ class StackBasedEngine(object) :
                         self.debug = False
                 if cleanUp :
                     self.cleanUp(obj)
+                
                         
         self.printStack()
         print ('Collected results:', solutions)
@@ -713,11 +711,11 @@ class EvalDefine(EvalNode) :
                 
                 self.target._cache.activate(goal, self)
                 actions = [ self.createCall( child) for child in children ]
-                return False,  actions + [ ('C', self.pointer, (True,), {} ) ]
+                return False,  actions # + [ ('C', self.pointer, (True,), {} ) ]
             else :
                 self.target._cache.activate(goal, self)
                 actions = [ self.createCall( child) for child in children ]
-                return False,  actions + [ ('C', self.pointer, (True,), {} ) ]
+                return False,  actions # + [ ('C', self.pointer, (True,), {} ) ]
     
     def notifyResultMe(self, arguments, node=0, is_last=False ) :
         parent = self.pointer
@@ -872,9 +870,9 @@ class EvalDefine(EvalNode) :
             actions = []
             for cc in self.cycle_close :
                 actions += self.notifyComplete(parent=cc) 
-            return False, actions
+            return actions
         else :
-            return False, []
+            return []
     
     def createCycle(self) :
         if self.on_cycle :  # Already on cycle
