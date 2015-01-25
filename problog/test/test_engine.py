@@ -98,12 +98,13 @@ class TestEngineCycles(unittest.TestCase):
         self.edges += [(7,11),(7,12),(8,9),(8,10),(8,11),(9,11),(10,11),(11,14)]
         self.edges += [ (y,x) for x,y in self.edges ]
         self.edges = list(sorted(self.edges))
+        self.nodes = set([ x for x,y in self.edges ] + [ y for x,y in self.edges ])
         
         self.clause_v1 = [ 'active(X) :- edge(X,Y), active(Y).' ]
         self.clause_v2 = [ 'active(X) :- active(Y), edge(X,Y).' ]
         self.clauses = [ 'active(X) :- active_p(X).', 'query(active(11)).', 'path_from(X) :- path(X,_).' ]
         
-        self.facts = [ '0.2::active_p(X).' ] + [ '0.3::edge(%s,%s).' % e for e in self.edges ]
+        self.facts = [ '0.2::active_p(%s).' % e for e in self.nodes ] + [ '0.3::edge(%s,%s).' % e for e in self.edges ] 
         
         self.program_v1 = self.facts + self.clauses + self.clause_v1
         self.program_v2 = self.facts + self.clauses + self.clause_v2
@@ -117,10 +118,12 @@ class TestEngineCycles(unittest.TestCase):
         
         
     def test_cycle_goodcode(self) :
-        N = 100
+        N = 20
         program = self.program_v1[:]
         
         for i in range(0,N) :
+            seed = str(random.random())[2:]
+            random.seed(seed)
             random.shuffle(program)
             txt = '\n'.join(program)
             f = LogicFormula.createFrom(PrologString(txt))
@@ -132,25 +135,33 @@ class TestEngineCycles(unittest.TestCase):
                     edges.add( ( int(p[i]), int(p[i+1]) ) )
             edges = list(sorted(edges))
             
-            if (edges != self.edges) :
-                with open('cycle_error.pl', 'w') as f :
-                    print(txt, file=f)
-                with open('cycle_error.dot', 'w') as f :
-                    print('digraph CycleError {', file=f)
-                    for edge in edges :
-                        print('%s -> %s;' % edge, file=f)
-                    print('}', file=f)
+            # if (edges != self.edges) :
+            #     with open('cycle_error.pl', 'w') as f :
+            #         print(txt, file=f)
+            #     with open('cycle_error.dot', 'w') as f :
+            #         print('digraph CycleError {', file=f)
+            #         for edge in edges :
+            #             print('%s -> %s;' % edge, file=f)
+            #         print('}', file=f)
             
-            self.assertCollectionEqual(self.edges, edges)
+            self.assertCollectionEqual(self.edges, edges, msg='Test failed for random seed %s' % seed)
             
     def test_cycle_badcode(self) :
-        N = 0
+        N = 20
         program = self.program_v2[:]
         
         for i in range(0,N) :
+            seed = str(random.random())[2:]
+            random.seed(seed)
             random.shuffle(program)
             txt = '\n'.join(program)
+            # try :
             f = LogicFormula.createFrom(PrologString(txt))
+            # except Exception :
+            #     with open('cycle_error.pl', 'w') as f :
+            #         print(txt, file=f)
+            #     raise
+                
             
             paths = list(list_paths(f))
             
@@ -160,7 +171,17 @@ class TestEngineCycles(unittest.TestCase):
                     edges.add( ( int(p[i]), int(p[i+1]) ) )
             edges = list(sorted(edges))
             
-            self.assertCollectionEqual(self.edges, edges)
+            # if (edges != self.edges) :
+            #     with open('cycle_error.pl', 'w') as f :
+            #         print(txt, file=f)
+            #     with open('cycle_error.dot', 'w') as f :
+            #         print('digraph CycleError {', file=f)
+            #         for edge in edges :
+            #             print('%s -> %s;' % edge, file=f)
+            #         print('}', file=f)
+            
+            
+            self.assertCollectionEqual(self.edges, edges, msg='Test failed for random seed %s' % seed)
 
 
 def list_paths(source) :

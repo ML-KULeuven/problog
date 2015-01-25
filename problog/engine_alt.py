@@ -753,7 +753,11 @@ class EvalDefine(EvalNode) :
                         a, act = self.complete(source)
                         actions += act
                 else :
-                    result_node = self.target.addOr( (node,), readonly=False )
+                    cache_key = (self.node.functor, res)
+                    if cache_key in self.target._cache :
+                        result_node = self.target._cache[ cache_key ][ res ]
+                    else :
+                        result_node = self.target.addOr( (node,), readonly=False )
                     name = str(Term(self.node.functor, *res))
                     self.target.addName(name, result_node, LABEL_NAMED)
                     self.results[res] = result_node
@@ -781,6 +785,7 @@ class EvalDefine(EvalNode) :
             self.to_complete -= 1
             if self.to_complete == 0:
                 cache_key = (self.node.functor, tuple(self.context))
+                #assert (not cache_key in self.target._cache)
                 self.flushBuffer()
                 self.target._cache[ cache_key ] = self.results
                 self.target._cache.deactivate(cache_key)
@@ -803,7 +808,12 @@ class EvalDefine(EvalNode) :
             
     def flushBuffer(self, cycle=False) :
         def func( res, nodes ) :
-            node = self.target.addOr( nodes, readonly=(not cycle) )
+            cache_key = (self.node.functor, res)
+            if cache_key in self.target._cache :
+                node = self.target._cache[ cache_key ][ res ]
+            else :
+                node = self.target.addOr( nodes, readonly=(not cycle) )
+            #node = self.target.addOr( nodes, readonly=(not cycle) )
             name = str(Term(self.node.functor, *res))
             self.target.addName(name, node, LABEL_NAMED)
             return node
