@@ -1071,8 +1071,15 @@ class EvalCall(EvalNode) :
     
 class EvalBuiltIn(EvalNode) : 
     
+    def __init__(self, call_origin=None, **kwdargs) :
+        EvalNode.__init__(self, **kwdargs)
+        if call_origin != None :
+            self.location = call_origin[1]
+        else :
+            self.location = None
+    
     def __call__(self) :
-        return self.node(*self.context, engine=self.engine, database=self.database, target=self.target, callback=self, transform=self.transform)
+        return self.node(*self.context, engine=self.engine, database=self.database, target=self.target, location=self.location, callback=self, transform=self.transform)
         
 
 class EvalClause(EvalNode) :
