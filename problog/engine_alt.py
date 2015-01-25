@@ -182,10 +182,10 @@ class StackBasedEngine(object) :
         #  the negation check should happen only up to the common ancestor of the two
         # Question: could we stop when we reach a node that is already marked cyclic or cycleroot?
         current = self.stack[child]
-        while current and current.pointer != parent and current.parents[0] != None :
+        while current and current.pointer != parent and current.parent != None :
             if type(current.node).__name__ == 'neg' :
                 raise NegativeCycle(location=current.database.lineno(current.node.location))
-            current = self.stack[current.parents[0]]
+            current = self.stack[current.parent]
         return current.pointer == parent
         
     def notifyCycle(self, child) :
@@ -194,8 +194,7 @@ class StackBasedEngine(object) :
         assert(self.cycle_root != None)
         root = self.cycle_root.pointer
         childnode = self.stack[child]
-        assert(len(childnode.parents) == 1)
-        current = childnode.parents[0]
+        current = childnode.parent
         actions = []
         while current != root :
             exec_node = self.stack[current]
@@ -203,8 +202,7 @@ class StackBasedEngine(object) :
                 break
             new_actions = exec_node.createCycle()
             actions += new_actions
-            assert(len(exec_node.parents) == 1)
-            current = exec_node.parents[0]
+            current = exec_node.parent
             self.stats[0] += 1
         return actions
         
@@ -219,7 +217,7 @@ class StackBasedEngine(object) :
         database = kwdargs['database']
         if not hasattr(target, '_cache') : target._cache = DefineCache()
         n = 6
-        pointer = self.create( node_id, parents=[None], **kwdargs )
+        pointer = self.create( node_id, parent=None, **kwdargs )
         cleanUp, actions = self.stack[pointer]()
         actions = list(reversed(actions))
         max_stack = len(self.stack)
@@ -359,22 +357,22 @@ def cyclic(obj, child) :
 
 class EvalNode(object):
 
-    def __init__(self, engine, database, target, node_id, node, context, parents, pointer, identifier=None, transform=None, call=None, **extra ) :
+    def __init__(self, engine, database, target, node_id, node, context, parent, pointer, identifier=None, transform=None, call=None, **extra ) :
         self.engine = engine
         self.database = database
         self.target = target
         self.node_id = node_id
         self.node = node
         self.context = context
-        self.parents = parents
+        self.parent = parent
         self.identifier = identifier
         self.pointer = pointer
         self.transform = transform
         self.call = call
         self.on_cycle = False
         
-    def notifyResult(self, arguments, node=0, is_last=False, parents=None ) :
-        if parents == None : parents = self.parents
+    def notifyResult(self, arguments, node=0, is_last=False, parent=None ) :
+        if parent == None : parent = self.parent
         if self.transform : arguments = self.transform(arguments)
         if arguments == None :
             if is_last :
@@ -382,22 +380,18 @@ class EvalNode(object):
             else :
                 return []
         else :
-            return [ newResult( parent, arguments, node, self.identifier, is_last ) for parent in parents ]
+            return [ newResult( parent, arguments, node, self.identifier, is_last ) ]
         
-    def notifyComplete(self, parents=None) :
-        if parents == None : parents = self.parents
-        return [ complete( parent, self.identifier ) for parent in parents  ]
-        
-    # def notifyCycle(self, child, parents=None) :
-    #     if parents == None : parents = self.parents
-    #     return [ cyclic( parent, child ) for parent in parents ]
+    def notifyComplete(self, parent=None) :
+        if parent == None : parent = self.parent
+        return [ complete( parent, self.identifier ) ]
         
     def createCall(self, node_id, *args, **kwdargs) :
         base_args = {}
         base_args['database'] = self.database
         base_args['target'] = self.target 
         base_args['context'] = self.context
-        base_args['parents'] = [ self.pointer ]
+        base_args['parent'] = self.pointer
         base_args['identifier'] = self.identifier
         base_args['transform'] = None
         base_args['call'] = self.call
@@ -409,7 +403,7 @@ class EvalNode(object):
         return []
         
     def __repr__(self) :
-        return '%s %s: %s %s [%s] {%s}' % (self.parents, self.__class__.__name__, self.node, self.context, self.call, self.pointer)
+        return '%s %s: %s %s [%s] {%s}' % (self.parent, self.__class__.__name__, self.node, self.context, self.call, self.pointer)
         
     def node_str(self) :
         return str(self.node)
@@ -421,7 +415,7 @@ class EvalNode(object):
             pos = None
         if pos == None : pos = '??'
         node_type = self.__class__.__name__[4:]
-        return '%s %s %s [at %s:%s] | Context: %s' % (self.parents, node_type, self.node_str(), pos[0], pos[1], self.context )    
+        return '%s %s %s [at %s:%s] | Context: %s' % (self.parent, node_type, self.node_str(), pos[0], pos[1], self.context )    
 
 class EvalFact(EvalNode) :
     # Has exactly one listener.
@@ -736,8 +730,8 @@ class EvalDefine(EvalNode) :
                 return False,  actions + [ ('C', self.pointer, (True,), {} ) ]
     
     def notifyResultMe(self, arguments, node=0, is_last=False ) :
-        parents = [self.pointer]
-        return [ newResult( parent, arguments, node, self.identifier, is_last ) for parent in parents ]
+        parent = self.pointer
+        return [ newResult( parent, arguments, node, self.identifier, is_last ) ]
         
     def notifyResultChildren(self, arguments, node=0, is_last=False ) :
         parents = self.cycle_children
@@ -816,8 +810,6 @@ class EvalDefine(EvalNode) :
                 else :
                     actions += self.notifyComplete()
                 return True, actions
-            # elif self.to_complete == len(self.cycle_children) :
-            #     return False, self.notifyComplete(parents=self.cycle_children)
             else :
                 return False, []
             
@@ -887,15 +879,10 @@ class EvalDefine(EvalNode) :
     def closeCycle(self, toplevel) :
         if self.is_cycle_root and toplevel :
             self.engine.cycle_root = None
-            return False, self.notifyComplete(parents=self.cycle_close)
-            
-            
-            #
-            # # Forward message to subclauses and complete cycle children
-            # return False, [ ('C', sub, (False,), {}) for sub in sorted(self.subcycles) ] + self.notifyComplete(parents=self.cycle_children)
-        # elif not toplevel :
-        #     return False, self.notifyComplete(parents=self.cycle_children)
-        # else :
+            actions = []
+            for cc in self.cycle_close :
+                actions += self.notifyComplete(parent=cc) 
+            return False, actions
         else :
             return False, []
     
@@ -904,10 +891,6 @@ class EvalDefine(EvalNode) :
             # Pass message to parent
             return []
         elif self.is_cycle_root :
-            # self.flushBuffer(True)
-            # actions = []
-            # for result, node in self.results.items() :
-            #     actions += self.notifyResult(result,node, parents=[child])
             return []
         else :
             # Define node
@@ -996,7 +979,7 @@ class EvalAnd(EvalNode) :
                     #  we can clean up this node, but then we would lose the ground node of the first conjunct.
                     # This is ok when it is deterministically true.  TODO make this always ok!
                     # We can redirect the second conjunct to our parent.
-                    return (self.to_complete==1), [ self.createCall( self.node.children[1], context=result, parents=self.parents ) ]
+                    return (self.to_complete==1), [ self.createCall( self.node.children[1], context=result, parent=self.parent ) ]
                 else :
                     return False, [ self.createCall( self.node.children[1], context=result, identifier=node ) ]
             else :
@@ -1034,7 +1017,7 @@ class EvalCall(EvalNode) :
     def __call__(self) :
         call_args = [ instantiate(arg, self.context) for arg in self.node.args ]
         origin = '%s/%s' % (self.node.functor,len(self.node.args))
-        return True, [ self.createCall( self.node.defnode, call_origin=(origin,self.node.location), context=call_args, transform=self.getResultTransform(), parents=self.parents ) ]
+        return True, [ self.createCall( self.node.defnode, call_origin=(origin,self.node.location), context=call_args, transform=self.getResultTransform(), parent=self.parent ) ]
     
     def getResultTransform(self) :
         context = list(self.context)
