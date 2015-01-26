@@ -84,7 +84,8 @@ class Term(object) :
         self.probability = kwdargs.get('p')
         self.location = kwdargs.get('location')
         self.arity = len(args)
-    
+        self.__signature = None
+        
     # @property
     # def functor(self) :
     #     """Term functor"""
@@ -93,7 +94,7 @@ class Term(object) :
     # @functor.setter
     # def functor(self, value):
     #     self.__functor = value
-
+    
     # @property
     # def args(self) :
     #     """Term arguments"""
@@ -108,14 +109,16 @@ class Term(object) :
     def value(self) : 
         """Value of the Term obtained by computing the function is represents."""
         return computeFunction(self.functor, self.args)        
-
+    
     @property
-    def signature(self) : 
+    def signature(self) :
         """Term's signature ``functor/arity``"""
-        if type(self.functor) == str :
-            return '%s/%s' % (self.functor.strip("'"), self.arity)
-        else :
-            return '%s/%s' % (self.functor, self.arity)
+        if self.__signature == None :
+            if type(self.functor) == str :
+                self.__signature = '%s/%s' % (self.functor.strip("'"), self.arity)
+            else :
+                self.__signature = '%s/%s' % (self.functor, self.arity)
+        return self.__signature
     
     # @property
     # def probability(self) :
