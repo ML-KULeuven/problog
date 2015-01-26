@@ -665,6 +665,12 @@ class DefineCache(object) :
                 key = (functor, res_key)
                 self.__ground[ key ] = results[res_key]
                 
+    def get(self, key, default=None) :
+        try :
+            return self[key]
+        except KeyError :
+            return default
+                
     def __getitem__(self, goal) :
         functor, args = goal
         if is_ground(*args) :
@@ -762,41 +768,42 @@ class EvalDefine(EvalNode) :
         active_node = self.target._cache.getEvalNode(goal)
         if active_node != None :
             return False, self.cycleDetected(active_node)
-        elif goal in self.target._cache :
-            results = self.target._cache[goal]
-            actions = []
-            n = len(results)
-            if n > 0 :
-                for result, node in results.items() :
-                    n -= 1
-                    if node != NODE_FALSE :
-                        actions += self.notifyResult(result, node, is_last=(n==0))
-                    elif n == 0 :
-                        actions += self.notifyComplete()
+        else:
+            results = self.target._cache.get(goal)
+            if results != None :
+                actions = []
+                n = len(results)
+                if n > 0 :
+                    for result, node in results.items() :
+                        n -= 1
+                        if node != NODE_FALSE :
+                            actions += self.notifyResult(result, node, is_last=(n==0))
+                        elif n == 0 :
+                            actions += self.notifyComplete()
+                else :
+                    actions += self.notifyComplete()
+                return True, actions
             else :
-                actions += self.notifyComplete()
-            return True, actions
-        else :
-            children = self.node.children.find( self.context )
-            self.to_complete = len(children)
+                children = self.node.children.find( self.context )
+                self.to_complete = len(children)
             
-            if self.to_complete == 0 :
-                # No children, so complete immediately.
-                return True, self.notifyComplete()
-            elif len(children) == 1 :
-                # We could clean up this node here, but:
-                #   - that would skip caching
-                #   - child should apply the transform function
-                #   - effect on cycles?
-                #       -> there is no alternative, so there should no be an effect? 
+                if self.to_complete == 0 :
+                    # No children, so complete immediately.
+                    return True, self.notifyComplete()
+                elif len(children) == 1 :
+                    # We could clean up this node here, but:
+                    #   - that would skip caching
+                    #   - child should apply the transform function
+                    #   - effect on cycles?
+                    #       -> there is no alternative, so there should no be an effect? 
                 
-                self.target._cache.activate(goal, self)
-                actions = [ self.createCall( child) for child in children ]
-                return False,  actions # + [ ('C', self.pointer, (True,), {} ) ]
-            else :
-                self.target._cache.activate(goal, self)
-                actions = [ self.createCall( child) for child in children ]
-                return False,  actions # + [ ('C', self.pointer, (True,), {} ) ]
+                    self.target._cache.activate(goal, self)
+                    actions = [ self.createCall( child) for child in children ]
+                    return False,  actions # + [ ('C', self.pointer, (True,), {} ) ]
+                else :
+                    self.target._cache.activate(goal, self)
+                    actions = [ self.createCall( child) for child in children ]
+                    return False,  actions # + [ ('C', self.pointer, (True,), {} ) ]
     
     def notifyResultMe(self, arguments, node=0, is_last=False ) :
         parent = self.pointer
