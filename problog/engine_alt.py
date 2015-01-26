@@ -120,10 +120,19 @@ class StackBasedEngine(object) :
         
         exec_node = self.create_node_type( node_type )
         
-        pointer = len(self.stack) 
-        record = exec_node(pointer=pointer, engine=self, database=database, node_id=node_id, node=node, **kwdargs)
-        self.stack.append(record)
+        pointer = self.get_stack_size()
+        record = self.create_record(exec_node, pointer, database, node_id, node, **kwdargs)
+        self.add_record(record)
         return pointer
+        
+    def create_record(self, exec_node, pointer, database, node_id, node, **kwdargs ) :
+        return exec_node(pointer=pointer, engine=self, database=database, node_id=node_id, node=node, **kwdargs)
+        
+    def get_stack_size(self) :
+        return len(self.stack) 
+    
+    def add_record(self, record) :
+        self.stack.append(record)
     
     def query(self, db, term, level=0, **kwdargs) :
         """Perform a non-probabilistic query."""
