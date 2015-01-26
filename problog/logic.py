@@ -79,29 +79,30 @@ class Term(object) :
     """Represent a first-order Term."""
     
     def __init__(self, functor, *args, **kwdargs) :
-        self.__functor = functor
-        self.__args = args
-        self.__probability = kwdargs.get('p')
+        self.functor = functor
+        self.args = args
+        self.probability = kwdargs.get('p')
         self.location = kwdargs.get('location')
+        self.arity = len(args)
     
-    @property
-    def functor(self) : 
-        """Term functor"""
-        return self.__functor
+    # @property
+    # def functor(self) :
+    #     """Term functor"""
+    #     return self.__functor
+    #
+    # @functor.setter
+    # def functor(self, value):
+    #     self.__functor = value
 
-    @functor.setter
-    def functor(self, value):
-        self.__functor = value
-
-    @property
-    def args(self) : 
-        """Term arguments"""
-        return self.__args
+    # @property
+    # def args(self) :
+    #     """Term arguments"""
+    #     return self.__args
     
-    @property
-    def arity(self) : 
-        """Number of arguments."""
-        return len(self.__args)
+    # @property
+    # def arity(self) :
+    #     """Number of arguments."""
+    #     return len(self.__args)
     
     @property
     def value(self) : 
@@ -116,14 +117,14 @@ class Term(object) :
         else :
             return '%s/%s' % (self.functor, self.arity)
     
-    @property
-    def probability(self) : 
-        """Term's probability"""
-        return self.__probability
-    
-    @probability.setter
-    def probability(self, p) : 
-        self.__probability = p
+    # @property
+    # def probability(self) :
+    #     """Term's probability"""
+    #     return self.__probability
+    #
+    # @probability.setter
+    # def probability(self, p) :
+    #     self.__probability = p
         
     def apply(self, subst) :
         """Apply the given substitution to the variables in the term.
@@ -213,13 +214,15 @@ class Term(object) :
         
     def __eq__(self, other) :
         # TODO: this can be very slow?
-        if not isinstance(other,Term) :
+        if other == None or type(other) in (int, str) :
             return False
         else :
             return (self.functor, self.args) == (other.functor, other.args)
         
     def __hash__(self) :
-        return hash((self.functor, self.args))
+        toH = (self.functor, self.arity)
+        return hash(toH)
+        #return hash((self.functor, self.args))
         
     def __lshift__(self, body) :
         return Clause(self, body)
