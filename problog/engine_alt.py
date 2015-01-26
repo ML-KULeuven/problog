@@ -630,8 +630,8 @@ class NestedDict(object) :
 class DefineCache(object) : 
     
     def __init__(self) :
-        self.__non_ground = {}
-        self.__ground = {}
+        self.__non_ground = NestedDict()
+        self.__ground = NestedDict()
         self.__active = NestedDict()
     
     def activate(self, goal, node) :
