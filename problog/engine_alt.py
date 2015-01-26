@@ -46,8 +46,6 @@ class InvalidEngineState(GroundingError): pass
 class StackBasedEngine(object) :
     
     def __init__(self, builtins=True) :
-        self.stack = []
-        
         self.__builtin_index = {}
         self.__builtins = []
         
@@ -66,6 +64,9 @@ class StackBasedEngine(object) :
         self.node_types['builtin'] = EvalBuiltIn
         
         self.cycle_root = None
+        self.pointer = 0
+        self.stack_size = 128
+        self.stack = [None] * self.stack_size
         
         self.stats = [0,0,0,0]
     
@@ -120,7 +121,7 @@ class StackBasedEngine(object) :
         
         exec_node = self.create_node_type( node_type )
         
-        pointer = self.get_stack_size()
+        pointer = self.pointer
         record = self.create_record(exec_node, pointer, database, node_id, node, **kwdargs)
         self.add_record(record)
         return pointer
@@ -128,11 +129,14 @@ class StackBasedEngine(object) :
     def create_record(self, exec_node, pointer, database, node_id, node, **kwdargs ) :
         return exec_node(pointer=pointer, engine=self, database=database, node_id=node_id, node=node, **kwdargs)
         
-    def get_stack_size(self) :
-        return len(self.stack) 
-    
+    def grow_stack(self) :
+        self.stack += [None] * self.stack_size
+        self.stack_size = self.stack_size * 2
+            
     def add_record(self, record) :
-        self.stack.append(record)
+        if self.pointer >= self.stack_size : self.grow_stack()
+        self.stack[self.pointer] = record
+        self.pointer += 1
     
     def query(self, db, term, level=0, **kwdargs) :
         """Perform a non-probabilistic query."""
@@ -316,8 +320,9 @@ class StackBasedEngine(object) :
     
     def cleanUp(self, obj) :
         self.stack[obj] = None
-        while self.stack and self.stack[-1] == None :
-            self.stack.pop(-1)
+        while self.pointer > 0 and self.stack[self.pointer-1] == None :
+            #self.stack.pop(-1)
+            self.pointer -= 1
         
         
     def call(self, query, database, target, transform=None, **kwdargs ) :
