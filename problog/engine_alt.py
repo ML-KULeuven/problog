@@ -550,21 +550,84 @@ class EvalOr(EvalNode) :
         return EvalNode.__str__(self) + ' tc: ' + str(self.to_complete)
 
 
-class DefineCache(object) : 
+class NestedDict(object) :
     
-    # After a node is finished:
-    #   - store it in cache (part of ground program)
-    #   - also make subgoals available, e.g. after compute p(X)
-    #        we have p(1), p(2), p(3), ...
-    #       p(X) -> [(1,), (2,), (3,), (4,), (5,) ... ]
-    #       p(1) -> [ 1, 3, 6, 10 ]
-    #   - also reversed? -> harder
-    #
+    def __init__(self) :
+        self.__base = {}
+        
+    def __getitem__(self, key) :
+        p_key, s_key = key
+        elem = self.__base[p_key]
+        for s in s_key :
+            elem = elem[s]
+        return elem
+        
+    def get(self, key, default=None) :
+        try :
+            return self[key]
+        except KeyError :
+            return default
+        
+    def __contains__(self, key) :
+        p_key, s_key = key
+        try :
+            elem = self.__base[p_key]
+            for s in s_key :
+                elem = elem[s]
+            return True
+        except KeyError :
+            return False
+            
+    def __setitem__(self, key, value) :
+        p_key, s_key = key
+        if s_key :
+            elem = self.__base.get(p_key)
+            if elem == None :
+                elem = {}
+                self.__base[p_key] = elem
+            for s in s_key[:-1] :
+                elemN = elem.get(s)
+                if elemN == None :
+                    elemN = {}
+                    elem[s] = elemN
+                elem = elemN
+            elem[s_key[-1]] = value
+        else :
+            self.__base[p_key] = value
+        
+    def __delitem__(self, key) :
+        p_key, s_key = key
+        if s_key :
+            elem = self.__base[p_key]
+            elems = []
+            elems.append((p_key,self.__base,elem))
+            for s in s_key[:-1] :
+                elemN = elem[s]
+                elems.append((s,elem,elemN))
+                elem = elemN
+            del elem[s_key[-1]] # Remove last element
+            for s,e,ec in reversed(elems) :
+                if len(ec) == 0 :
+                    del e[s]
+                else :
+                    break
+        else :
+            del self.__base[p_key]
+
+# class DefineCache(object) :
+#
+#     def __init__(self) :
+#         self.__active = {}
+#
+#
+#
+
+class DefineCache(object) : 
     
     def __init__(self) :
         self.__non_ground = {}
         self.__ground = {}
-        self.__active = {}
+        self.__active = NestedDict()
     
     def activate(self, goal, node) :
         self.__active[goal] = node
@@ -574,9 +637,6 @@ class DefineCache(object) :
         
     def is_active(self, goal) :
         return self.getEvalNode(goal) != None
-        
-    def printEvalNode(self) :
-        print ('EVALNODES:',self.__active)
         
     def getEvalNode(self, goal) :
         return self.__active.get(goal)
