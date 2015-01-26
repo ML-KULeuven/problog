@@ -748,8 +748,9 @@ class EvalDefine(EvalNode) :
     
     def __call__(self) :
         goal = (self.node.functor, tuple(self.context))
-        if self.target._cache.is_active(goal) :
-            return False, self.cycleDetected()
+        active_node = self.target._cache.getEvalNode(goal)
+        if active_node != None :
+            return False, self.cycleDetected(active_node)
         elif goal in self.target._cache :
             results = self.target._cache[goal]
             actions = []
@@ -889,11 +890,10 @@ class EvalDefine(EvalNode) :
     def isCycleParent(self) :
         return bool(self.cycle_children)
             
-    def cycleDetected(self) :
+    def cycleDetected(self, cycle_parent) :
         queue = []
         goal = (self.node.functor, tuple(self.context))
         # Get the top node of this cycle.
-        cycle_parent = self.target._cache.getEvalNode(goal)
         cycle_root = self.engine.cycle_root
         # Mark this node as a cycle child
         self.is_cycle_child = True
