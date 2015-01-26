@@ -706,6 +706,12 @@ class ResultSet(object) :
         result, node = self.results[index]
         return node
         
+    def get(self, key, default=None) :
+        try :
+            return self[key]
+        except KeyError :
+            return None
+        
     def keys(self) :
         return [ result for result, node in self.results ] 
         
@@ -812,8 +818,8 @@ class EvalDefine(EvalNode) :
             if self.isOnCycle() or self.isCycleParent() :
                 assert(self.results.collapsed)
                 res = (tuple(result))
-                if res in self.results :
-                    res_node = self.results[res]
+                res_node = self.results.get(res)
+                if res_node != None :
                     self.target.addDisjunct( res_node, node )
                     actions = []
                     if is_last :
