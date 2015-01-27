@@ -85,6 +85,13 @@ class Term(object) :
         self.location = kwdargs.get('location')
         self.arity = len(args)
         self.__signature = None
+        self.__hash = None
+        self.__is_ground = None
+        
+    def setFunctor(self, functor) :
+        self.functor = functor
+        self.__signature = None
+        self.__hash = None
         
     # @property
     # def functor(self) :
@@ -139,7 +146,6 @@ class Term(object) :
         :rtype: :class:`Term`
         
         """
-        
         args = []
         for arg in self.args :
             if not isinstance(arg, Term) :
@@ -210,21 +216,30 @@ class Term(object) :
         
     def isGround(self) :
         """Checks whether the term contains any variables."""
-        for arg in self.args :
-            if not isinstance(arg,Term) or not arg.isGround() :
-                return False
-        return True
+        if self.__is_ground == None :
+            for arg in self.args :
+                if not isinstance(arg,Term) or not arg.isGround() :
+                    self.__is_ground = False
+                    break
+            else :
+                self.__is_ground = True
+        return self.__is_ground
         
     def __eq__(self, other) :
         # TODO: this can be very slow?
-        if other == None or type(other) in (int, str) :
+        if other == None : 
             return False
-        else :
+        try :
             return (self.functor, self.args) == (other.functor, other.args)
+        except AttributeError :
+            # Other is wrong type
+            return False
         
     def __hash__(self) :
-        toH = (self.functor, self.arity)
-        return hash(toH)
+        if self.__hash == None :
+            #toH = (self.functor, self.arity)
+            self.__hash = hash(self.functor)
+        return self.__hash
         #return hash((self.functor, self.args))
         
     def __lshift__(self, body) :

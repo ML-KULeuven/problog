@@ -159,7 +159,7 @@ class ExtendedPrologFactory(PrologFactory):
             self.update_functors(t.body)
         elif type(t) is Term:
             if t.signature in self.neg_head_lits:
-                t.functor = self.neg_head_lits[t.signature]['p']
+                t.setFunctor(self.neg_head_lits[t.signature]['p'])
         elif type(t) is Not:
             self.update_functors(t.child)
         elif type(t) is Or or type(t) is And:
@@ -203,7 +203,7 @@ class ExtendedPrologFactory(PrologFactory):
                     'n': operand2.functor+"_n",
                     'f': operand2.functor
                 }
-            operand2.functor = self.neg_head_lits[operand2.signature]['n']
+            operand2.setFunctor(self.neg_head_lits[operand2.signature]['n'])
         operand2.probability = operand1
         return operand2
 
