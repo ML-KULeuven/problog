@@ -262,6 +262,7 @@ class StackBasedEngine(object) :
                     if stats != None : stats[0] += 1
                     if args[3] :    # Last result received
                         if not subcall and self.pointer != 0 :
+                            self.printStack()
                             raise InvalidEngineState('Stack not empty at end of execution!')
                         if not subcall : self.shrink_stack()
                         return solutions
@@ -462,32 +463,32 @@ def eval_fact(engine, parent, node_id, node, context, target, identifier, **kwda
         # Send complete message.
         return [ complete( parent, identifier) ]
     return actions        # Pointer actions
-    
+        
+            
 def eval_define(engine, node, context, target, parent, identifier=None, transform=None, **kwdargs) :
     goal = (node.functor, tuple(context))
     active_node = target._cache.getEvalNode(goal)
     if active_node != None :
-        evalnode = EvalDefine( pointer=engine.pointer, engine=engine, node=node, context=context, target=target, identifier=identifier, parent=parent, transform=transform, **kwdargs )
-        engine.add_record(evalnode)
-        return evalnode.cycleDetected(active_node)
+        # If current node is ground and active node has results already, then we can simple send that result.
+        if active_node.is_ground and active_node.results :
+            active_node.flushBuffer(True)
+            active_node.is_cycle_parent = True  # Notify it that it's buffer was flushed
+            queue = []
+            for result, node in active_node.results :
+                if transform : result = transform(result)
+                if result == None :
+                    queue += [ complete(parent, identifier) ]
+                else :
+                    queue += [ newResult( parent, result, node, identifier, True ) ]
+            assert(len(queue) == 1)
+            return queue
+        else :
+            evalnode = EvalDefine( pointer=engine.pointer, engine=engine, node=node, context=context, target=target, identifier=identifier, parent=parent, transform=transform, **kwdargs )
+            engine.add_record(evalnode)
+            return evalnode.cycleDetected(active_node)
     else:
         results = target._cache.get(goal)
         if results != None :
-
-
-            # if transform :
-            #     results = [ ( transform(res), node ) for res,node in results.items() if node != None ]
-            # else :
-            #     results = list(results.items())
-            # results = [ (res,node) for res, node in results if res != None ]
-            # if results :
-            #     return [ newResultMulti(parent,results,identifier,True) ]
-            # elif complete :
-            #     return [complete(parent, identifier)]
-            # else :
-            #     return []
-
-
             actions = []
             n = len(results)
             if n > 0 :
@@ -619,7 +620,9 @@ class EvalOr(EvalNode) :
                 if is_last : 
                     a, act = self.complete(source)
                     actions += act
-            return False, actions
+                else :
+                    a = False
+            return a, actions
         else :
             assert(not self.results.collapsed)
             res = (tuple(result))
@@ -838,6 +841,9 @@ class ResultSet(object) :
     def __iter__(self) :
         return iter(self.results)
         
+    def __str__(self) :
+        return str(self.results)
+        
         
 class EvalDefine(EvalNode) :
     
@@ -853,6 +859,7 @@ class EvalDefine(EvalNode) :
         self.cycle_close = set()
         self.is_cycle_root = False
         self.is_cycle_child = False
+        self.is_cycle_parent = False
         
         self.call = ( self.node.functor, tuple(self.context) )
         self.to_complete = to_complete
@@ -965,7 +972,7 @@ class EvalDefine(EvalNode) :
         return self.on_cycle
         
     def isCycleParent(self) :
-        return bool(self.cycle_children)
+        return bool(self.cycle_children) or self.is_cycle_parent
             
     def cycleDetected(self, cycle_parent) :
         queue = []
