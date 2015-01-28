@@ -29,7 +29,7 @@ def ground(model, target=None, queries=None, evidence=None) :
         for filename in filenames:
             filename = os.path.join(model.source_root, filename.value.replace('"',''))
             if not os.path.exists(filename):
-              raise InvalidEngineState('External file not found: {}'.format(filename))
+              raise Exception('External file not found: {}'.format(filename))
             with open(filename, 'r') as extfile:
                 ext = imp.load_module('externals', extfile, filename, ('.py', 'U', 1))
                 for func_name, func in inspect.getmembers(ext, inspect.isfunction):
