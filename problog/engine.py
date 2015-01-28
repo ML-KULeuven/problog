@@ -122,6 +122,7 @@ class EventBasedEngine(object) :
     def __init__(self, builtins=True, debugger=None) :
         self.__builtin_index = {}
         self.__builtins = []
+        self.__externals = None
         
         if builtins :
             addBuiltIns(self)
@@ -393,7 +394,15 @@ class EventBasedEngine(object) :
                 pnode.addAncestor(call_args.define)
                 # Not a cycle, just reusing. Register parent as listener (will retrigger past events.)
                 pnode.addListener(parent)
-            
+
+    def addExternalCalls(self, externals):
+        self.__externals = externals
+
+    def getExternalCall(self, func_name):
+        if self.__externals is None or not func_name in self.__externals:
+            return None
+        return self.__externals[func_name]
+
 
 class ProcessNode(object) :
     """Generic class for representing *process nodes*."""

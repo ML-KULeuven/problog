@@ -5,6 +5,7 @@ from .logic import Term, Var, Constant, LogicProgram
 from .core import transform, LABEL_QUERY, LABEL_EVIDENCE_POS, LABEL_EVIDENCE_NEG, LABEL_EVIDENCE_MAYBE
 from .util import Timer
 import logging
+import imp, os, inspect
 
 @transform(LogicProgram, LogicFormula)
 def ground(model, target=None, queries=None, evidence=None) :
@@ -21,7 +22,20 @@ def ground(model, target=None, queries=None, evidence=None) :
         
         if evidence == None :
             evidence = engine.query(db, Term( 'evidence', None, None ))
-            
+
+        # Load external (python) files that are referenced in the model
+        externals = {}
+        filenames = [ q[0] for q in engine.query(db, Term( 'load_external', None )) ]
+        for filename in filenames:
+            filename = os.path.join(model.source_root, filename.value.replace('"',''))
+            if not os.path.exists(filename):
+              raise InvalidEngineState('External file not found: {}'.format(filename))
+            with open(filename, 'r') as extfile:
+                ext = imp.load_module('externals', extfile, filename, ('.py', 'U', 1))
+                for func_name, func in inspect.getmembers(ext, inspect.isfunction):
+                    externals[func_name] = func
+        engine.addExternalCalls(externals)
+
         if target == None : target = LogicFormula()
 
         for query in queries :

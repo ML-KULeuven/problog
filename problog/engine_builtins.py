@@ -596,6 +596,22 @@ def build_list(elements, tail) :
     return current
 
 
+def builtin_call_external(call, result, **k):
+    mode = check_mode( (call,result), ['gv'], function='call_external', **k)
+
+    func = k['engine'].getExternalCall(call.functor)
+    if func is None:
+        raise Exception('External method not known: {}'.format(call.functor))
+
+    values = [constant.value for constant in call.args]
+    computed_result = func(*values)
+
+    if computed_result < 0.0 or computed_result > 1.0:
+        raise Exception('External method returned a value that is not a probability: {}={}'.format(call, computed_result))
+
+    return [(call, Constant(computed_result))]
+
+
 def builtin_length(L, N, **k) :
     mode = check_mode( (L,N), [ 'LI', 'Lv', 'lI', 'vI' ], functor='length', **k)
     # Note that Prolog also accepts 'vv' and 'lv', but these are unbounded.
@@ -741,6 +757,7 @@ def addStandardBuiltIns(engine, b=None, s=None) :
     engine.addBuiltIn('compare',3, s(builtin_compare))
 
     engine.addBuiltIn('length',2, s(builtin_length))
+    engine.addBuiltIn('call_external',2, s(builtin_call_external))
 
     engine.addBuiltIn('sort',2, s(builtin_sort))
     engine.addBuiltIn('between', 3, s(builtin_between))

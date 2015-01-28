@@ -50,6 +50,7 @@ class StackBasedEngine(object) :
         
         self.__builtin_index = {}
         self.__builtins = []
+        self.__externals = None
         
         if builtins :
             addBuiltIns(self)
@@ -318,7 +319,16 @@ class StackBasedEngine(object) :
     def call(self, query, database, target, transform=None, **kwdargs ) :
         node_id = database.find(query)
         return self.execute( node_id, database=database, target=target, context=query.args, **kwdargs) 
-                
+
+    def addExternalCalls(self, externals):
+        self.__externals = externals
+
+    def getExternalCall(self, func_name):
+        if self.__externals is None or not func_name in self.__externals:
+            return None
+        return self.__externals[func_name]
+
+
     def printStack(self, pointer=None) :
         print ('===========================')
         for i,x in enumerate(self.stack) :
