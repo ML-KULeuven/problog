@@ -58,6 +58,7 @@ def unify_value( v1, v2 ) :
         if not is_ground(v1) : raise VariableUnification()
         return v1
     elif v1.signature == v2.signature : # Assume Term
+        if v1 == v2 : return v1
         return v1.withArgs(*[ unify_value(a1,a2) for a1, a2 in zip(v1.args, v2.args) ])
     else :
         raise UnifyError()
@@ -119,7 +120,7 @@ def is_ground( *terms ) :
     for term in terms :
         if is_variable(term) :
             return False
-        elif not is_ground(*term.args) : 
+        elif not term.isGround() :
             return False
     return True
 

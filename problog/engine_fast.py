@@ -8,7 +8,7 @@ from .formula import LogicFormula
 from .program import ClauseDB, PrologFile
 from .logic import Term
 from .core import LABEL_NAMED
-from .engine import unify, UnifyError, instantiate, extract_vars, is_ground, UnknownClause, _UnknownClause, ConsultError
+from .engine import unify, UnifyError, instantiate, extract_vars, is_ground, UnknownClause, _UnknownClause
 from .engine_builtins import addStandardBuiltIns, check_mode, GroundingError, NonGroundProbabilisticClause
 
 
@@ -44,6 +44,26 @@ class NegativeCycle(GroundingError) :
         
 class InvalidEngineState(GroundingError): pass
 
+NODE_TRUE = 0
+NODE_FALSE = None
+
+def call(obj, args, kwdargs) :
+    return ( 'e', obj, args, kwdargs ) 
+
+def newResult(obj, result, ground_node, source, is_last) :
+    return ( 'r', obj, (result, ground_node, source, is_last), {} )
+
+def newResultMulti(obj, results, source, is_last) :
+    return ( 'R', obj, (results, source, is_last), {} )
+
+def complete(obj, source) :
+    return ( 'c', obj, (source,), {} )
+    
+def cyclic(obj, child) :
+    return ( 'o', obj, (child,), {} )
+
+
+
 class StackBasedEngine(object) :
     
     def __init__(self, builtins=True) :
@@ -55,15 +75,15 @@ class StackBasedEngine(object) :
             addBuiltIns(self)
         
         self.node_types = {}
-        self.node_types['fact'] = EvalFact
-        self.node_types['conj'] = EvalAnd
-        self.node_types['disj'] = EvalOr
-        self.node_types['neg'] = EvalNot
-        self.node_types['define'] = EvalDefine
-        self.node_types['call'] = EvalCall
-        self.node_types['clause'] = EvalClause
-        self.node_types['choice'] = EvalChoice
-        self.node_types['builtin'] = EvalBuiltIn
+        self.node_types['fact'] = eval_fact
+        self.node_types['conj'] = eval_conj
+        self.node_types['disj'] = eval_disj
+        self.node_types['neg'] = eval_neg
+        self.node_types['define'] = eval_define
+        self.node_types['call'] = eval_call
+        self.node_types['clause'] = eval_clause
+        self.node_types['choice'] = eval_choice
+        self.node_types['builtin'] = eval_builtin
         
         self.cycle_root = None
         self.pointer = 0
@@ -71,13 +91,28 @@ class StackBasedEngine(object) :
         self.stack = [None] * self.stack_size
         
         self.stats = [0,0,0,0]
+        
+        self.debug = False
+        self.trace = False
     
     def prepare(self, db) :
         """Convert given logic program to suitable format for this engine."""
         result = ClauseDB.createFrom(db, builtins=self.getBuiltIns())
         self._process_directives( result )
         return result
-
+        
+    def eval(self, node_id, **kwdargs) :
+        database = kwdargs['database']
+        if node_id < 0 :
+            node_type = 'builtin'
+            node = self._getBuiltIn(node_id)
+        else :
+            node = database.getNode(node_id)
+            node_type = type(node).__name__
+        
+        exec_func = self.create_node_type( node_type )        
+        return exec_func(self, node_id=node_id, node=node, **kwdargs)
+        
     def _process_directives( self, db) :
         term = Term('_directive')
         directive_node = db.find( term )
@@ -113,27 +148,16 @@ class StackBasedEngine(object) :
         except KeyError :
             raise _UnknownClause()
     
-    def create(self, node_id, database, **kwdargs ) :
-        if node_id < 0 :
-            node_type = 'builtin'
-            node = self._getBuiltIn(node_id)
-        else :
-            node = database.getNode(node_id)
-            node_type = type(node).__name__
-        
-        exec_node = self.create_node_type( node_type )
-        
-        pointer = self.pointer
-        record = self.create_record(exec_node, pointer, database, node_id, node, **kwdargs)
-        self.add_record(record)
-        return pointer
-        
     def create_record(self, exec_node, pointer, database, node_id, node, **kwdargs ) :
         return exec_node(pointer=pointer, engine=self, database=database, node_id=node_id, node=node, **kwdargs)
         
     def grow_stack(self) :
         self.stack += [None] * self.stack_size
         self.stack_size = self.stack_size * 2
+        
+    def shrink_stack(self) :
+        self.stack_size = 128
+        self.stack = [None] * self.stack_size
             
     def add_record(self, record) :
         if self.pointer >= self.stack_size : self.grow_stack()
@@ -202,12 +226,12 @@ class StackBasedEngine(object) :
             current = self.stack[current.parent]
         return current.pointer == parent
         
-    def notifyCycle(self, child) :
+    def notifyCycle(self, childnode) :
         # Optimization: we can usually stop when we reach a node on_cycle.
         #   However, when we swap the cycle root we need to also notify the old cycle root up to the new cycle root.
         assert(self.cycle_root != None)
         root = self.cycle_root.pointer
-        childnode = self.stack[child]
+        #childnode = self.stack[child]
         current = childnode.parent
         actions = []
         while current != root :
@@ -217,22 +241,19 @@ class StackBasedEngine(object) :
             new_actions = exec_node.createCycle()
             actions += new_actions
             current = exec_node.parent
-            self.stats[0] += 1
         return actions
         
-    def execute(self, node_id, **kwdargs ) :
-        trace = kwdargs.get('trace')
-        debug = kwdargs.get('debug') or trace
+    def execute(self, node_id, subcall=False, **kwdargs ) :
+        self.trace = kwdargs.get('trace')
+        self.debug = kwdargs.get('debug') or self.trace
         stats = kwdargs.get('stats')    # Should support stats[i] += 1 with i=0..5
-        self.trace = trace
-        self.debug = debug
         
         target = kwdargs['target']
         database = kwdargs['database']
         if not hasattr(target, '_cache') : target._cache = DefineCache()
-        n = 6
-        pointer = self.create( node_id, parent=None, **kwdargs )
-        cleanUp, actions = self.stack[pointer]()
+        actions = self.eval( node_id, parent=None, **kwdargs)
+        cleanUp = False
+        
         actions = list(reversed(actions))
         max_stack = len(self.stack)
         solutions = []
@@ -243,18 +264,19 @@ class StackBasedEngine(object) :
                     solutions.append( (args[0], args[1]) )
                     if stats != None : stats[0] += 1
                     if args[3] :    # Last result received
+                        if not subcall and self.pointer != 0 :
+                            self.printStack()
+                            raise InvalidEngineState('Stack not empty at end of execution!')
+                        if not subcall : self.shrink_stack()
+                        return solutions
+                elif act == 'R' :
+                    solutions += args[0]
+                    if args[2] :
                         return solutions
                 elif act == 'c' :
                     if stats != None : stats[1] += 1
-                    if debug : print ('Maximal stack size:', max_stack)
+                    if self.debug : print ('Maximal stack size:', max_stack)
                     return solutions
-                elif act == 'o' :
-                    raise InvalidEngineState('Unexpected state: cycle detected at top-level.')
-                    
-                    exec_node = self.stack[args[1]]
-                    cleanUp, next_actions = exec_node.complete()
-                    actions += list(reversed(next_actions))
-                    if cleanUp : self.cleanUp(args[1])
                 else :
                     raise InvalidEngineState('Unknown message!')
             else:
@@ -263,11 +285,12 @@ class StackBasedEngine(object) :
                         cleanUp = False
                         next_actions = self.cycle_root.closeCycle(True) + [ (act,obj,args,kwdargs) ]
                     else :
-                        if stats != None : stats[2] += 1
                         try :
-                            obj = self.create( obj, *args, **kwdargs )
+                            if stats != None : stats[2] += 1
+                            next_actions = self.eval( obj, *args, **kwdargs )
+                            cleanUp = False
+                            obj = self.pointer
                         except _UnknownClause : 
-                            # TODO set right parameters
                             call_origin = kwdargs.get('call_origin')
                             if call_origin == None :
                                 sig = 'unknown'
@@ -275,8 +298,6 @@ class StackBasedEngine(object) :
                             else :
                                 loc = database.lineno(call_origin[1])
                                 raise UnknownClause(call_origin[0], location=loc)
-                        exec_node = self.stack[obj]
-                        cleanUp, next_actions = exec_node()
                 else:
                     try :
                         exec_node = self.stack[obj]
@@ -289,6 +310,9 @@ class StackBasedEngine(object) :
                     if act == 'r' :
                         if stats != None : stats[0] += 1
                         cleanUp, next_actions = exec_node.newResult(*args,**kwdargs)
+                    elif act == 'R' :
+                        if stats != None : stats[3] += 1
+                        cleanUp, next_actions = exec_node.newResultMulti(*args,**kwdargs)
                     elif act == 'c' :
                         if stats != None : stats[1] += 1
                         cleanUp, next_actions = exec_node.complete(*args,**kwdargs)
@@ -297,21 +321,19 @@ class StackBasedEngine(object) :
                 if not actions and not next_actions and self.cycle_root != None :
                     next_actions = self.cycle_root.closeCycle(True)
                 actions += list(reversed(next_actions))
-                if debug :
+                if self.debug :
                     # if type(exec_node).__name__ in ('EvalDefine',) :
                     self.printStack(obj)
                     if act in 'rco' : print (obj, act, args)
                     print ( [ (a,o,x) for a,o,x,t in actions[-10:] ])
                     if len(self.stack) > max_stack : max_stack = len(self.stack)
-                if trace : 
-                    a = sys.stdin.readline()
-                    if a.strip() == 'gp' :
-                        print (target)
-                    elif a.strip() == 'l' :
-                        trace = False
-                        self.trace = False
-                        debug = False
-                        self.debug = False
+                    if self.trace : 
+                        a = sys.stdin.readline()
+                        if a.strip() == 'gp' :
+                            print (target)
+                        elif a.strip() == 'l' :
+                            self.trace = False
+                            self.debug = False
                 if cleanUp :
                     self.cleanUp(obj)
                 
@@ -330,7 +352,7 @@ class StackBasedEngine(object) :
     def call(self, query, database, target, transform=None, **kwdargs ) :
         node_id = database.find(query)
         return self.execute( node_id, database=database, target=target, context=query.args, **kwdargs) 
-
+                
     def addExternalCalls(self, externals):
         self.__externals = externals
 
@@ -338,12 +360,11 @@ class StackBasedEngine(object) :
         if self.__externals is None or not func_name in self.__externals:
             return None
         return self.__externals[func_name]
-
-
+    
     def printStack(self, pointer=None) :
         print ('===========================')
         for i,x in enumerate(self.stack) :
-            if pointer == None or pointer - 20 < i < pointer + 20 :
+            if (pointer == None or pointer - 20 < i < pointer + 20) and x != None :
                 if i == pointer :
                     print ('>>> %s: %s' % (i,x) )
                 elif self.cycle_root != None and i == self.cycle_root.pointer  :
@@ -352,20 +373,6 @@ class StackBasedEngine(object) :
                     print ('    %s: %s' % (i,x) )        
         
 
-NODE_TRUE = 0
-NODE_FALSE = None
-
-def call(obj, args, kwdargs) :
-    return ( 'e', obj, args, kwdargs ) 
-
-def newResult(obj, result, ground_node, source, is_last) :
-    return ( 'r', obj, (result, ground_node, source, is_last), {} )
-
-def complete(obj, source) :
-    return ( 'c', obj, (source,), {} )
-    
-def cyclic(obj, child) :
-    return ( 'o', obj, (child,), {} )
 
 
 class EvalNode(object):
@@ -394,6 +401,17 @@ class EvalNode(object):
                 return []
         else :
             return [ newResult( parent, arguments, node, self.identifier, is_last ) ]
+            
+    def notifyResultMulti(self, results, complete, parent=None) :
+        if parent == None : parent = self.parent
+        if self.transform : results = [ ( self.transform(res), node ) for res,node in results ]
+        results = [ (res,node) for res, node in results if res != None ]
+        if results :
+            return [ newResultMulti(parent,results,self.identifier,complete) ]
+        elif complete :
+            return self.notifyComplete()
+        else :
+            return []
         
     def notifyComplete(self, parent=None) :
         if parent == None : parent = self.parent
@@ -415,6 +433,17 @@ class EvalNode(object):
         self.on_cycle = True
         return []
         
+    def newResultMulti(self, results, source, complete ) :
+        n = len(results)
+        actions = []
+        cleanUp = False
+        for res, node in results :
+            n -= 1
+            cleanUpN, actionsN = self.newResult(res,node,source, (complete and n==0) )
+            cleanUp |= cleanUpN
+            actions += actionsN
+        return cleanUp, actions
+        
     def __repr__(self) :
         return '%s %s: %s %s [%s] {%s}' % (self.parent, self.__class__.__name__, self.node, self.context, self.call, self.pointer)
         
@@ -430,57 +459,146 @@ class EvalNode(object):
         node_type = self.__class__.__name__[4:]
         return '%s %s %s [at %s:%s] | Context: %s' % (self.parent, node_type, self.node_str(), pos[0], pos[1], self.context )    
 
-class EvalFact(EvalNode) :
-    # Has exactly one listener.
-    # Behaviour:
-    # - call returns 0 or 1 'newResult' and 1 'complete'
-    # - can always be cleaned up immediately
-    # - does not support 'newResult' and 'complete'
+
+def eval_fact(engine, parent, node_id, node, context, target, identifier, **kwdargs) :
+    actions = []
+    try :
+        # Verify that fact arguments unify with call arguments.
+        for a,b in zip(node.args, context) :
+            unify(a, b)
+        # Successful unification: notify parent callback.
+        target_node = target.addAtom(node_id, node.probability)
+        return [ newResult( parent, node.args, target_node, identifier, True ) ]
+    except UnifyError :
+        # Failed unification: don't send result.
+        # Send complete message.
+        return [ complete( parent, identifier) ]
+    return actions        # Pointer actions
+        
+            
+def eval_define(engine, node, context, target, parent, identifier=None, transform=None, **kwdargs) :
+    goal = (node.functor, tuple(context))
+
+    engine.stats[2] += 1
+    results = target._cache.get(goal)
+    if results != None :
+        engine.stats[3] += 1
+        actions = []
+        n = len(results)
+        if n > 0 :
+            for result, target_node in results.items() :
+                n -= 1
+                if target_node != NODE_FALSE :
+                    if transform : result = transform(result)
+                    if result == None :
+                        if n == 0 :
+                            actions += [ complete(parent, identifier) ]
+                        else :
+                            pass
+                    else :
+                        actions += [ newResult( parent, result, target_node, identifier, n==0 ) ]
+                elif n == 0 :
+                    actions += [ complete(parent, identifier) ]
+        else :
+            actions += [ complete(parent, identifier) ]
+        return actions
+    else :
+        active_node = target._cache.getEvalNode(goal)
+        engine.stats[0] += 1
+        if active_node != None :
+            engine.stats[1] +=1
+            # If current node is ground and active node has results already, then we can simple send that result.
+            if active_node.is_ground and active_node.results :
+                active_node.flushBuffer(True)
+                active_node.is_cycle_parent = True  # Notify it that it's buffer was flushed
+                queue = []
+                for result, node in active_node.results :
+                    if transform : result = transform(result)
+                    if result == None :
+                        queue += [ complete(parent, identifier) ]
+                    else :
+                        queue += [ newResult( parent, result, node, identifier, True ) ]
+                assert(len(queue) == 1)
+                return queue
+            else :
+                evalnode = EvalDefine( pointer=engine.pointer, engine=engine, node=node, context=context, target=target, identifier=identifier, parent=parent, transform=transform, **kwdargs )
+                engine.add_record(evalnode)
+                return evalnode.cycleDetected(active_node)
+        else :
+            children = node.children.find( context )
+            to_complete = len(children)
+            
+            if to_complete == 0 :
+                # No children, so complete immediately.
+                return [ complete(parent, identifier) ]
+            else :
+                evalnode = EvalDefine( to_complete=to_complete, pointer=engine.pointer, engine=engine, node=node, context=context, target=target, identifier=identifier, transform=transform, parent=parent, **kwdargs )
+                engine.add_record(evalnode)
+                target._cache.activate(goal, evalnode)
+                actions = [ evalnode.createCall( child) for child in children ]
+                return actions
     
-    def __call__(self) :
+def eval_conj(engine, **kwdargs) :
+    return eval_default(engine, EvalAnd, **kwdargs)
+    
+def eval_disj(engine, parent, node, transform=None, **kwdargs) :
+    if len(node.children) == 0 :
+        # No children, so complete immediately.
+        return [ complete( parent, None) ]
+    else :
+        evalnode = EvalOr( pointer=engine.pointer, engine=engine, parent=parent, node=node, **kwdargs)
+        engine.add_record( evalnode )
+        return [ evalnode.createCall( child ) for child in node.children ]
+
+def eval_neg(engine, **kwdargs) :
+    return eval_default(engine, EvalNot, **kwdargs)
+    
+def eval_call(engine, node_id, node, context, **kwdargs) :
+    def result_transform(result) :
+        output = list(context)
         actions = []
         try :
-            # Verify that fact arguments unify with call arguments.
-            for a,b in zip(self.node.args, self.context) :
-                unify(a, b)
-            # Successful unification: notify parent callback.
-            target_node = self.target.addAtom(self.node_id, self.node.probability)
-            actions += self.notifyResult( self.node.args, target_node, True )
+            assert(len(result) == len(node.args))
+            for call_arg, res_arg in zip(node.args,result) :
+                unify( res_arg, call_arg, output )
+            return tuple(output)
         except UnifyError :
-            # Failed unification: don't send result.
-            # Send complete message.
-            actions += self.notifyComplete()
-        return True, actions        # Clean up, actions
-        
-    def node_str(self) :
-        return '%s' % (Term(self.node.functor, *self.node.args, p=self.node.probability), )
+            pass
+            
+    call_args = [ instantiate(arg, context) for arg in node.args ]
+    origin = '%s/%s' % (node.functor,len(node.args))
     
+    kwdargs['call_origin'] = (origin,node.location)
+    kwdargs['context'] = call_args
+    kwdargs['transform'] = result_transform
+#    actions = [ call( node.defnode, (), kwdargs ) ]
+    actions = engine.eval( node.defnode, **kwdargs )   
+    #print ( [(a,b,c) for a,b,c,d in actions ])
+    return actions
         
-class EvalChoice(EvalNode) :
-    # Has exactly one listener.
-    # Behaviour:
-    # - call returns 0 or 1 'newResult' and 1 'complete'
-    # - can always be cleaned up immediately
-    # - does not support 'newResult' and 'complete'
+def eval_clause(engine, **kwdargs) :
+    return eval_default(engine, EvalClause, **kwdargs)
     
-    def __call__(self) :
-        actions = []
-        
-        result = tuple(self.context)
-        
-        if not is_ground(*result) : raise NonGroundProbabilisticClause(location=self.database.lineno(self.node.location))
-        
-        probability = instantiate( self.node.probability, result )
-        # Create a new atom in ground program.
-        origin = (self.node.group, result)
-        ground_node = self.target.addAtom( origin + (self.node.choice,) , probability, group=origin ) 
-        # Notify parent.
-        
-        return True, self.notifyResult(result, ground_node, True)
-        
-    def node_str(self) :
-        return '%s [%s,%s]' % (Term(self.node.functor, *self.context, p=self.node.probability), self.node.group, self.node.choice)
-
+def eval_choice(engine, parent, node_id, node, context, target, database, identifier, **kwdargs) :
+    actions = []
+    result = tuple(context)
+    if not is_ground(*result) : raise NonGroundProbabilisticClause(location=database.lineno(node.location))
+    probability = instantiate( node.probability, result )
+    # Create a new atom in ground program.
+    origin = (node.group, result)
+    ground_node = target.addAtom( origin + (node.choice,) , probability, group=origin ) 
+    # Notify parent.
+    return [ newResult( parent, result, ground_node, identifier, True ) ]
+    
+def eval_builtin(engine, **kwdargs) :
+    return eval_default(engine, EvalBuiltIn, **kwdargs)
+    
+def eval_default(engine, eval_type, **kwdargs) :
+    node = eval_type(pointer=engine.pointer, engine=engine, **kwdargs)
+    cleanUp, actions = node()    # Evaluate the node
+    if not cleanUp : engine.add_record( node )
+    return actions
+    
 class EvalOr(EvalNode) :
     # Has exactly one listener (parent)
     # Has C children.
@@ -495,16 +613,8 @@ class EvalOr(EvalNode) :
         EvalNode.__init__(self, **parent_args)
         
         self.results = ResultSet()
-        
-    def __call__(self) :
-        children = self.node.children
-        self.to_complete = len(children)
-        if self.to_complete == 0 :
-            # No children, so complete immediately.
-            return True, self.notifyComplete()
-        else :
-            return False, [ self.createCall( child ) for child in children ]
-    
+        self.to_complete = len(self.node.children)
+            
     def isOnCycle(self) :
         return self.on_cycle
     
@@ -528,7 +638,9 @@ class EvalOr(EvalNode) :
                 if is_last : 
                     a, act = self.complete(source)
                     actions += act
-            return False, actions
+                else :
+                    a = False
+            return a, actions
         else :
             assert(not self.results.collapsed)
             res = (tuple(result))
@@ -629,21 +741,16 @@ class NestedDict(object) :
                     break
         else :
             del self.__base[p_key]
-
-# class DefineCache(object) :
-#
-#     def __init__(self) :
-#         self.__active = {}
-#
-#
-#
+    
+    def __str__(self) :
+        return str(self.__base)
 
 class DefineCache(object) : 
     
     def __init__(self) :
-        self.__non_ground = NestedDict()
-        self.__ground = NestedDict()
-        self.__active = NestedDict()
+        self.__non_ground = {} #NestedDict()
+        self.__ground = {} # NestedDict()
+        self.__active = {} #NestedDict()
     
     def activate(self, goal, node) :
         self.__active[goal] = node
@@ -688,9 +795,7 @@ class DefineCache(object) :
             return { args : self.__ground[goal] }
         else :
             res_keys = self.__non_ground[goal]
-            result = {}
-            for res_key in res_keys :
-                result[res_key] = self.__ground[(functor,res_key)]
+            result = { res_key : self.__ground[(functor,res_key)] for res_key in res_keys }
             return result
             
     def __contains__(self, goal) :
@@ -754,67 +859,30 @@ class ResultSet(object) :
     def __iter__(self) :
         return iter(self.results)
         
+    def __str__(self) :
+        return str(self.results)
+        
         
 class EvalDefine(EvalNode) :
     
     # A buffered Define node.
-    def __init__(self, call=None, **parent_args ) : 
-        EvalNode.__init__(self, **parent_args)
+    def __init__(self, call=None, to_complete=None, **parent_args ) : 
+        EvalNode.__init__(self,  **parent_args)
         # self.__buffer = defaultdict(list)
         # self.results = None
         
         self.results = ResultSet()
         
         self.cycle_children = []
-        self.cycle_close = []
+        self.cycle_close = set()
         self.is_cycle_root = False
         self.is_cycle_child = False
+        self.is_cycle_parent = False
         
         self.call = ( self.node.functor, tuple(self.context) )
-        self.to_complete = None
-    
-    
-    def __call__(self) :
-        goal = (self.node.functor, tuple(self.context))
-        active_node = self.target._cache.getEvalNode(goal)
-        if active_node != None :
-            return False, self.cycleDetected(active_node)
-        else:
-            results = self.target._cache.get(goal)
-            if results != None :
-                actions = []
-                n = len(results)
-                if n > 0 :
-                    for result, node in results.items() :
-                        n -= 1
-                        if node != NODE_FALSE :
-                            actions += self.notifyResult(result, node, is_last=(n==0))
-                        elif n == 0 :
-                            actions += self.notifyComplete()
-                else :
-                    actions += self.notifyComplete()
-                return True, actions
-            else :
-                children = self.node.children.find( self.context )
-                self.to_complete = len(children)
-            
-                if self.to_complete == 0 :
-                    # No children, so complete immediately.
-                    return True, self.notifyComplete()
-                elif len(children) == 1 :
-                    # We could clean up this node here, but:
-                    #   - that would skip caching
-                    #   - child should apply the transform function
-                    #   - effect on cycles?
-                    #       -> there is no alternative, so there should no be an effect? 
-                    self.target._cache.activate(goal, self)
-                    actions = [ self.createCall( child) for child in children ]
-                    return False,  actions
-                else :
-                    self.target._cache.activate(goal, self)
-                    actions = [ self.createCall( child) for child in children ]
-                    return False,  actions
-    
+        self.to_complete = to_complete
+        self.is_ground = is_ground(*self.context)
+        
     def notifyResultMe(self, arguments, node=0, is_last=False ) :
         parent = self.pointer
         return [ newResult( parent, arguments, node, self.identifier, is_last ) ]
@@ -824,13 +892,6 @@ class EvalDefine(EvalNode) :
         return [ newResult( parent, arguments, node, self.identifier, is_last ) for parent in parents ]
     
     def newResult(self, result, node=NODE_TRUE, source=None, is_last=False ) :
-        #if self.transform : result = self.transform(result)
-        if result == None :
-            if is_last :
-                return self.complete(source)
-            else :
-                return False, []
-        
         if self.is_cycle_child :
             if is_last :
                 return True, self.notifyResult(result, node, is_last=is_last)
@@ -847,6 +908,9 @@ class EvalDefine(EvalNode) :
                     if is_last :
                         a, act = self.complete(source)
                         actions += act
+                    else :
+                        a = None
+                    return a, actions
                 else :
                     cache_key = (self.node.functor, res)
                     if cache_key in self.target._cache :
@@ -858,12 +922,22 @@ class EvalDefine(EvalNode) :
                     self.results[res] = result_node
                     actions = []
                     # Send results to cycle children
-                    actions += self.notifyResultChildren(res, result_node)
+                    #actions += self.notifyResultChildren(res, result_node)
+                    # if self.pointer == 49336 :
+                    #     self.engine.debug = True
+                    #     self.engine.trace = True
                     if self.isOnCycle() : actions += self.notifyResult(res, result_node)
+                    if self.is_ground and self.engine.debug : print ('Notify children with is_last:', self.pointer, self.cycle_children)
+                    actions += self.notifyResultChildren(res, result_node, is_last=self.is_ground)
+                    if self.is_ground :
+                        self.engine.cycle_root.cycle_close -= set(self.cycle_children)
+                    #    actions += [ complete( p, self.identifier) for p in self.cycle_children ]
                     if is_last : 
                         a, act = self.complete(source)
                         actions += act
-                return False, actions
+                    else :
+                        a = False
+                    return a, actions
             else :
                 assert(not self.results.collapsed)
                 res = (tuple(result))
@@ -916,7 +990,7 @@ class EvalDefine(EvalNode) :
         return self.on_cycle
         
     def isCycleParent(self) :
-        return bool(self.cycle_children)
+        return bool(self.cycle_children) or self.is_cycle_parent
             
     def cycleDetected(self, cycle_parent) :
         queue = []
@@ -939,10 +1013,10 @@ class EvalDefine(EvalNode) :
             cycle_root.is_cycle_root = False
             # Copy subcycle information from old root to new root
             cycle_parent.cycle_close = cycle_root.cycle_close
-            cycle_root.cycle_close = []
+            cycle_root.cycle_close = set()
             self.engine.cycle_root = cycle_parent
             queue += cycle_root.createCycle()
-            queue += self.engine.notifyCycle(cycle_root.pointer) # Notify old cycle root up to new cycle root
+            queue += self.engine.notifyCycle(cycle_root) # Notify old cycle root up to new cycle root
             cycle_root = None
         if cycle_root == None : # No active cycle
             # Register cycle root with engine
@@ -950,15 +1024,16 @@ class EvalDefine(EvalNode) :
             # Mark parent as cycle root
             cycle_parent.is_cycle_root = True
             #
-            cycle_parent.cycle_close.append(self.pointer)
+            cycle_parent.cycle_close.add(self.pointer)
             # Queue a create cycle message that will be passed up the call stack.
-            queue += self.engine.notifyCycle(self.pointer)
+            queue += self.engine.notifyCycle(self)
             # Send a close cycle message to the cycle root.
         else :  # A cycle is already active
             # The new one is a subcycle
-            cycle_root.cycle_close.append(self.pointer)            
+            #if not self.is_ground :
+            cycle_root.cycle_close.add(self.pointer)
             # Queue a create cycle message that will be passed up the call stack.
-            queue += self.engine.notifyCycle(self.pointer)
+            queue += self.engine.notifyCycle(self)
         return queue
     
     def closeCycle(self, toplevel) :
@@ -1049,6 +1124,48 @@ class EvalAnd(EvalNode) :
         
     def __call__(self) :
         # Create a node for child 1 and call it.
+        
+        # base_args = {}
+        # base_args['database'] = self.database
+        # base_args['target'] = self.target
+        # base_args['context'] = self.context
+        # base_args['parent'] = self.pointer
+        # base_args['identifier'] = None
+        # base_args['transform'] = None
+        # base_args['call'] = self.call
+        # #print ('AND')
+        # and_actions = self.engine.eval( self.node.children[0], **base_args )
+        # #print ("AND", and_actions)
+        # return False, and_actions
+        
+        # a,b,c,d = self.createCall(  self.node.children[0], identifier='fc' )
+        # # # del d['target']
+        # # # del d['database']
+        # # #print ('And: ', a,b,c,d)
+        # #
+        # next_actions = self.engine.eval( b, *c, **d )
+        # self.engine.debug = True
+        # self.engine.trace = True
+        # actions = []
+        # cleanUp = False
+        # for a,b,c,d in next_actions :
+        #     if a == 'r' and b == self.pointer :
+        #         cU, act = self.newResult( *c, **d )
+        #         actions += act
+        #         cleanUp |= cU
+        #     elif a == 'c' and b == self.pointer :
+        #         cU, act = self.complete( *c, **d )
+        #         actions += act
+        #         cleanUp |= cU
+        #     else :
+        #         actions.append( (a,b,c,d) )
+        # print ('AND', self.pointer, cleanUp, [ (a,b,c,d.get('parent'),d.get('identifier')) for a,b,c,d in actions] )
+        #
+        # return cleanUp, actions
+        #
+        # # return False, next_actions
+        
+        
         return False, [ self.createCall(  self.node.children[0], identifier=None ) ]
         
     def newResult(self, result, node=0, source=None, is_last=False) :
@@ -1094,48 +1211,8 @@ class EvalAnd(EvalNode) :
     def node_str(self) :
         return ''
     
-class EvalCall(EvalNode) :
-    
-    def __init__(self, **parent_args ) : 
-        EvalNode.__init__(self, **parent_args)
-        
-    def __call__(self) :
-        call_args = [ instantiate(arg, self.context) for arg in self.node.args ]
-        origin = '%s/%s' % (self.node.functor,len(self.node.args))
-        return True, [ self.createCall( self.node.defnode, call_origin=(origin,self.node.location), context=call_args, transform=self.getResultTransform(), parent=self.parent ) ]
-    
-    def getResultTransform(self) :
-        context = list(self.context)
-        node_args = list(self.node.args)
-        def result_transform(result) :
-            output = context[:]
-            actions = []
-            try :
-                assert(len(result) == len(node_args))
-                for call_arg, res_arg in zip(node_args,result) :
-                    unify( res_arg, call_arg, output )
-                return tuple(output)
-            except UnifyError :
-                pass
-        return result_transform
-            
-    def newResult(self, result, node=NODE_TRUE, source=None, is_last=False ) :
-        result = self.getResultTransform()( result )
-        if result == None :
-            if is_last :
-                return self.complete(source)
-            else :
-                return False, []
-        else :
-            return is_last, self.notifyResult(result, node, is_last)
-        
-    def complete(self, source=None) :
-        return True, self.notifyComplete()
-        
-    def node_str(self) :
-        call_args = [ instantiate(arg, self.context) for arg in self.node.args ]
-        return '%s' %  (Term(self.node.functor, *call_args),)
-
+    def __str__(self) :
+        return EvalNode.__str__(self) + ' tc: %s' % self.to_complete
     
 class EvalBuiltIn(EvalNode) : 
     
@@ -1184,6 +1261,16 @@ class EvalClause(EvalNode) :
             return tuple(output)
             
         return result_transform
+        
+    def newResultMulti(self, results, source, complete ) :
+        transform = self.getResultTransform()
+        results = [ (transform(res), node) for res, node in results ]
+        results = [ (res, node) for res, node in results if res != None ]
+        if results :
+            return complete, [ newResultMulti(self.parent, results, source, complete) ]
+        else :        
+            return self.complete(source)
+        
         
     def newResult(self, result, node=NODE_TRUE, source=None, is_last=False ) :
         result = self.getResultTransform()( result )
@@ -1268,31 +1355,13 @@ def builtin_consult( arg, callback=None, database=None, engine=None, context=Non
         for clause in pl :
             database += clause
     return True, callback.notifyResult((arg,), is_last=True)
-    
-def builtin_load_external( arg, engine=None, database=None, callback=None, location=None, **kwdargs ) :
-    check_mode( (arg,), 'a', functor='load_external' )
-    # Load external (python) files that are referenced in the model
-    externals = {}
-    filename = os.path.join(database.source_root, atom_to_filename( arg ))
-    if not os.path.exists(filename):
-          raise ConsultError(location=database.lineno(location), message="Load external: file not found '%s'" % filename)
-    try :
-        with open(filename, 'r') as extfile:
-            ext = imp.load_module('externals', extfile, filename, ('.py', 'U', 1))
-            for func_name, func in inspect.getmembers(ext, inspect.isfunction):
-                externals[func_name] = func
-        engine.addExternalCalls(externals)
-    except ImportError :
-        raise ConsultError(location=database.lineno(location), message="Error while loading external file '%s'" % filename)        
-    return True, callback.notifyResult((arg,), is_last=True)
-    
 
 def builtin_call( term, args=(), engine=None, callback=None, **kwdargs ) :
     # TODO does not support cycle through call!
     check_mode( (term,), 'c', functor='call' )
     # Find the define node for the given query term.
     term_call = term.withArgs( *(term.args + args ))
-    results = engine.call( term_call, **kwdargs )
+    results = engine.call( term_call, subcall=True, **kwdargs )
     actions = []
     n = len(term.args)
     for res, node in results :
@@ -1317,5 +1386,24 @@ def addBuiltIns(engine) :
     engine.addBuiltIn('consult', 1, builtin_consult)
     engine.addBuiltIn('.', 2, builtin_consult_as_list)
     engine.addBuiltIn('load_external', 1, builtin_load_external)
+    
+def builtin_load_external( arg, engine=None, database=None, callback=None, location=None, **kwdargs ) :
+    check_mode( (arg,), 'a', functor='load_external' )
+    # Load external (python) files that are referenced in the model
+    externals = {}
+    filename = os.path.join(database.source_root, atom_to_filename( arg ))
+    if not os.path.exists(filename):
+          raise ConsultError(location=database.lineno(location), message="Load external: file not found '%s'" % filename)
+    try :
+        with open(filename, 'r') as extfile:
+            ext = imp.load_module('externals', extfile, filename, ('.py', 'U', 1))
+            for func_name, func in inspect.getmembers(ext, inspect.isfunction):
+                externals[func_name] = func
+        engine.addExternalCalls(externals)
+    except ImportError :
+        raise ConsultError(location=database.lineno(location), message="Error while loading external file '%s'" % filename)        
+    return True, callback.notifyResult((arg,), is_last=True)
+    
+
 
 

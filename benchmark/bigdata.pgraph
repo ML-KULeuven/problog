@@ -20839,6 +20839,7 @@ knockout('ISW2','SIP4',0).
 knockout('RTG1','HIS4',1).
 knockout('SWI6','YPL014W',0).
 
+
 %query(path(X,Y,L)) :- knockout(X,Y,_), length(L).
 query(path(X,Y)) :- knockout(X,Y,_).
 

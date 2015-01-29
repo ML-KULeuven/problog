@@ -79,51 +79,62 @@ class Term(object) :
     """Represent a first-order Term."""
     
     def __init__(self, functor, *args, **kwdargs) :
-        self.__functor = functor
-        self.__args = args
-        self.__probability = kwdargs.get('p')
+        self.functor = functor
+        self.args = args
+        self.probability = kwdargs.get('p')
         self.location = kwdargs.get('location')
+        self.arity = len(args)
+        self.__signature = None
+        self.__hash = None
+        self.__is_ground = None
+        
+    def setFunctor(self, functor) :
+        self.functor = functor
+        self.__signature = None
+        self.__hash = None
+        
+    # @property
+    # def functor(self) :
+    #     """Term functor"""
+    #     return self.__functor
+    #
+    # @functor.setter
+    # def functor(self, value):
+    #     self.__functor = value
     
-    @property
-    def functor(self) : 
-        """Term functor"""
-        return self.__functor
-
-    @functor.setter
-    def functor(self, value):
-        self.__functor = value
-
-    @property
-    def args(self) : 
-        """Term arguments"""
-        return self.__args
+    # @property
+    # def args(self) :
+    #     """Term arguments"""
+    #     return self.__args
     
-    @property
-    def arity(self) : 
-        """Number of arguments."""
-        return len(self.__args)
+    # @property
+    # def arity(self) :
+    #     """Number of arguments."""
+    #     return len(self.__args)
     
     @property
     def value(self) : 
         """Value of the Term obtained by computing the function is represents."""
         return computeFunction(self.functor, self.args)        
-
+    
     @property
-    def signature(self) : 
+    def signature(self) :
         """Term's signature ``functor/arity``"""
-        if type(self.functor) == str :
-            return '%s/%s' % (self.functor.strip("'"), self.arity)
-        else :
-            return '%s/%s' % (self.functor, self.arity)
+        if self.__signature == None :
+            if type(self.functor) == str :
+                self.__signature = '%s/%s' % (self.functor.strip("'"), self.arity)
+            else :
+                self.__signature = '%s/%s' % (self.functor, self.arity)
+        return self.__signature
     
-    @property
-    def probability(self) : 
-        """Term's probability"""
-        return self.__probability
-    
-    @probability.setter
-    def probability(self, p) : 
-        self.__probability = p
+    # @property
+    # def probability(self) :
+    #     """Term's probability"""
+    #     return self.__probability
+    #
+    # @probability.setter
+    # def probability(self, p) :
+    #     self.__probability = p
         
     def apply(self, subst) :
         """Apply the given substitution to the variables in the term.
@@ -135,7 +146,6 @@ class Term(object) :
         :rtype: :class:`Term`
         
         """
-        
         args = []
         for arg in self.args :
             if not isinstance(arg, Term) :
@@ -206,20 +216,31 @@ class Term(object) :
         
     def isGround(self) :
         """Checks whether the term contains any variables."""
-        for arg in self.args :
-            if not isinstance(arg,Term) or not arg.isGround() :
-                return False
-        return True
+        if self.__is_ground == None :
+            for arg in self.args :
+                if not isinstance(arg,Term) or not arg.isGround() :
+                    self.__is_ground = False
+                    break
+            else :
+                self.__is_ground = True
+        return self.__is_ground
         
     def __eq__(self, other) :
         # TODO: this can be very slow?
-        if not isinstance(other,Term) :
+        if other == None : 
             return False
-        else :
+        try :
             return (self.functor, self.args) == (other.functor, other.args)
+        except AttributeError :
+            # Other is wrong type
+            return False
         
     def __hash__(self) :
-        return hash((self.functor, self.args))
+        if self.__hash == None :
+            #toH = (self.functor, self.arity)
+            self.__hash = hash(self.functor)
+        return self.__hash
+        #return hash((self.functor, self.args))
         
     def __lshift__(self, body) :
         return Clause(self, body)

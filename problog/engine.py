@@ -1084,4 +1084,4 @@ class SimpleEngineLogger(EngineLogger) :
         print (type(source).__name__, id(source), 'connect', type(listener).__name__, id(listener))
         
         
-from .engine_alt import StackBasedEngine as DefaultEngine
+from .engine_fast import StackBasedEngine as DefaultEngine
