@@ -5,6 +5,7 @@ from .logic import Term, Constant, InstantiationError
 from .core import GroundingError
 from .formula import LogicFormula
 from .engine_builtins import addStandardBuiltIns, is_ground, is_variable, is_list_nonempty, UnifyError, unify_value, is_term, VariableUnification, check_mode, NonGroundProbabilisticClause, UnknownClause, ConsultError
+import imp, inspect # For load_external
 
 from collections import defaultdict
 import os
@@ -830,6 +831,25 @@ def builtin_consult( filename, callback=None, database=None, engine=None, contex
     callback.newResult(context)
     callback.complete()
 
+def builtin_load_external( arg, engine=None, database=None, callback=None, location=None, **kwdargs ) :
+    check_mode( (arg,), 'a', functor='load_external' )
+    # Load external (python) files that are referenced in the model
+    externals = {}
+    filename = os.path.join(database.source_root, atom_to_filename( arg ))
+    if not os.path.exists(filename):
+          raise ConsultError(location=database.lineno(location), message="Load external: file not found '%s'" % filename)
+    try :
+        with open(filename, 'r') as extfile:
+            ext = imp.load_module('externals', extfile, filename, ('.py', 'U', 1))
+            for func_name, func in inspect.getmembers(ext, inspect.isfunction):
+                externals[func_name] = func
+        engine.addExternalCalls(externals)
+    except ImportError :
+        raise ConsultError(location=database.lineno(location), message="Error while loading external file '%s'" % filename)        
+    
+    callback.newResult((arg,))
+    callback.complete()
+
 
 
 class CallProcessNode(object) :
@@ -909,6 +929,7 @@ def addBuiltIns(engine) :
         engine.addBuiltIn('call', i, builtin_callN)
     engine.addBuiltIn('consult', 1, builtin_consult)
     engine.addBuiltIn('.', 2, builtin_consult_as_list)
+    engine.addBuiltIn('load_external', 1, builtin_load_external)
 
 
 

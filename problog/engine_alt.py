@@ -2,12 +2,13 @@ from __future__ import print_function
 from collections import defaultdict 
 
 import sys, os
+import imp, inspect # For load_external
 
 from .formula import LogicFormula
 from .program import ClauseDB, PrologFile
 from .logic import Term
 from .core import LABEL_NAMED
-from .engine import unify, UnifyError, instantiate, extract_vars, is_ground, UnknownClause, _UnknownClause
+from .engine import unify, UnifyError, instantiate, extract_vars, is_ground, UnknownClause, _UnknownClause, ConsultError
 from .engine_builtins import addStandardBuiltIns, check_mode, GroundingError, NonGroundProbabilisticClause
 
 
@@ -1181,6 +1182,24 @@ def builtin_consult( arg, callback=None, database=None, engine=None, context=Non
         for clause in pl :
             database += clause
     return True, callback.notifyResult((arg,), is_last=True)
+    
+def builtin_load_external( arg, engine=None, database=None, callback=None, location=None, **kwdargs ) :
+    check_mode( (arg,), 'a', functor='load_external' )
+    # Load external (python) files that are referenced in the model
+    externals = {}
+    filename = os.path.join(database.source_root, atom_to_filename( arg ))
+    if not os.path.exists(filename):
+          raise ConsultError(location=database.lineno(location), message="Load external: file not found '%s'" % filename)
+    try :
+        with open(filename, 'r') as extfile:
+            ext = imp.load_module('externals', extfile, filename, ('.py', 'U', 1))
+            for func_name, func in inspect.getmembers(ext, inspect.isfunction):
+                externals[func_name] = func
+        engine.addExternalCalls(externals)
+    except ImportError :
+        raise ConsultError(location=database.lineno(location), message="Error while loading external file '%s'" % filename)        
+    return True, callback.notifyResult((arg,), is_last=True)
+    
 
 def builtin_call( term, args=(), engine=None, callback=None, **kwdargs ) :
     # TODO does not support cycle through call!
@@ -1211,6 +1230,6 @@ def addBuiltIns(engine) :
         engine.addBuiltIn('call', i, builtin_callN)
     engine.addBuiltIn('consult', 1, builtin_consult)
     engine.addBuiltIn('.', 2, builtin_consult_as_list)
-
+    engine.addBuiltIn('load_external', 1, builtin_load_external)
 
 

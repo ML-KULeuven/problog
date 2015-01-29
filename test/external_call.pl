@@ -9,7 +9,7 @@
 % sim(""aa"",""abb"") 0.3333333
 % sim2(""bb"") 0.3333333
 
-load_external("external.py").
+:- load_external('external.py').
 
 targetstring("aa").
 
