@@ -838,7 +838,7 @@ def build_list(elements, tail) :
 
 
 def builtin_call_external(call, result, **k):
-    import pypl
+    from . import pypl
     mode = check_mode( (call,result), ['gv'], function='call_external', **k)
 
     func = k['engine'].getExternalCall(call.functor)
