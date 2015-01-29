@@ -1,51 +1,197 @@
 from __future__ import print_function
 
-from .program import ClauseDB, PrologString, PrologFile
-from .logic import Term, Constant, InstantiationError
-from .core import GroundingError
+import logging
+from collections import defaultdict 
+
+from .program import ClauseDB, PrologFile
+from .logic import Term, Constant, Var
 from .formula import LogicFormula
-from .engine_builtins import addStandardBuiltIns, is_ground, is_variable, is_list_nonempty, UnifyError, unify_value, is_term, VariableUnification, check_mode, NonGroundProbabilisticClause, UnknownClause, ConsultError
-import imp, inspect # For load_external
 
-from collections import defaultdict
-import os
-
-"""
-Assumptions
------------
-Assumption 1: no unification of non-ground terms (e.g. unbound variables)
-
--- REMOVED: Assumption 4: no OR
--- REMOVED: Assumption 5: no NOT
--- REMOVED: Assumption 7: no probabilistic grounding
--- REMOVED: Assumption 6: no CHOICE
--- REMOVED: Assumption 2: functor-free
--- REMOVED: Assumption 8: no prolog builtins 
--- IS OK Assumption 3: conjunction nodes have exactly two children   (internal representation only)
-
-Properties
-----------
-
-    1. Each source sends each message at least once to each listener, irrespective of when the listener was added. 	(complete information)
-    2. Each source sends each message at most once to each listener. (no duplicates)
-    3. Each source sends a ``complete`` message to each listener.	(termination)
-    4. The ``complete`` message is the last message a listener receives from a source.  (correct order)
-
-
-Variable representation
------------------------
-
-Variables can be represented as:
-
-    * ``Var`` objects (these are removed during compilation)
-    * Integer referring to its index in the current context
-    * ``None`` unset value passed from other context
-
-To make ``==`` and ``\==`` work, variable identifiers should be passed from higher context (this would complicate call-key computation).
-To make ``=`` work variables should be redirectable (but this would complicate tabling).
-
-"""
+from .core import transform, LABEL_QUERY, LABEL_EVIDENCE_POS, LABEL_EVIDENCE_NEG, LABEL_EVIDENCE_MAYBE, GroundingError
+from .util import Timer
     
+class GenericEngine(object) :
+    """Generic interface to a grounding engine."""
+    
+    def prepare(self, db) :
+        """Prepare the given database for querying.
+        Calling this method is optional.
+        
+        :param db: logic program
+        :returns: logic program in optimized format where builtins are initialized and directives have been evaluated 
+        """
+        raise NotImplementedError('GenericEngine.prepare is an abstract method.')
+        
+    def query(self, db, term) :
+        """Evaluate a query without generating a ground program.
+        
+        :param db: logic program
+        :param term: term to query; variables should be represented as None
+        :returns: list of tuples of argument for which the query succeeds.
+        """
+        raise NotImplementedError('GenericEngine.prepare is an abstract method.')
+        
+    def ground(self, db, term, target=None, label=None) :
+        """Ground a given query term and store the result in the given ground program.
+        
+        :param db: logic program
+        :param term: term to ground; variables should be represented as None
+        :param target: target logic formula to store grounding in (a new one is created if none is given)
+        :param label: optional label (query, evidence, ...)
+        :returns: logic formula (target if given)
+        """
+        raise NotImplementedError('GenericEngine.prepare is an abstract method.')
+        
+    def ground_all(self, db, target=None, queries=None, evidence=None) :
+        """Ground all queries and evidence found in the the given database.
+        
+        :param db: logic program
+        :param target: logic formula to ground into
+        :param queries: list of queries to evaluate instead of the ones in the logic program
+        :param evidence: list of evidence to evaluate instead of the ones in the logic program
+        :returns: ground program
+        """
+        raise NotImplementedError('GenericEngine.prepare is an abstract method.')
+        
+
+class ClauseDBEngine(GenericEngine) :
+    """Parent class for all Python ClauseDB-based engines."""
+    
+    def __init__(self, builtins=True) :
+        self.__builtin_index = {}
+        self.__builtins = []
+        self.__externals = {}
+        
+        if builtins :
+            self.loadBuiltIns()
+            
+    def _getBuiltIn(self, index) :
+        real_index = -(index + 1)
+        return self.__builtins[real_index]
+        
+    def addBuiltIn(self, pred, arity, func) :
+        """Add a builtin."""
+        sig = '%s/%s' % (pred, arity)
+        self.__builtin_index[sig] = -(len(self.__builtins) + 1)
+        self.__builtins.append( func )
+        
+    def getBuiltIns(self) :
+        """Get the list of builtins."""
+        return self.__builtin_index
+        
+    def prepare(self, db) :
+        """Convert given logic program to suitable format for this engine."""
+        result = ClauseDB.createFrom(db, builtins=self.getBuiltIns())
+        self._process_directives( result )
+        return result
+        
+    def execute(self, node_id, database=None, context=None, target=None, **kwdargs ) :
+        raise NotImplementedError("ClauseDBEngine.execute is an abstract function.")
+        
+    def _process_directives(self, db) :
+        """Process directives present in the database."""
+        term = Term('_directive')
+        directive_node = db.find( term )
+        if directive_node == None : return True    # no directives
+        directives = db.getNode(directive_node).children
+        
+        gp = LogicFormula()
+        while directives :
+            current = directives.pop(0)
+            self.execute( current, database=db, context=self._create_context((), define=None), target=gp )
+        return True
+            
+    def _create_context(self, content, define=None) :
+        """Create a variable context."""
+        return content
+    
+    def query(self, db, term, **kwdargs) :
+        """Perform a non-probabilistic query."""
+        gp = LogicFormula()
+        gp, result = self._ground(db, term, gp, **kwdargs)
+        return [ x for x,y in result ]
+    
+    def ground(self, db, term, gp=None, label=None, **kwdargs) :
+        """Ground a query on the given database.
+        
+        :param db: logic program
+        :type db: LogicProgram
+        :param term: query term
+        :type term: Term
+        :param gp: output data structure (for incremental grounding)
+        :type gp: LogicFormula
+        :param label: type of query (e.g. ``query``, ``evidence`` or ``-evidence``)
+        :type label: str
+        """
+        gp, results = self._ground(db, term, gp, silent_fail=False, allow_vars=False, **kwdargs)
+        
+        for args, node_id in results :
+            gp.addName( term.withArgs(*args), node_id, label )
+        if not results :
+            gp.addName( term, None, label )
+        
+        return gp
+        
+    def _ground(self, db, term, gp=None, level=0, silent_fail=True, allow_vars=True, assume_prepared=False, **kwdargs) :
+        # Convert logic program if needed.
+        if not assume_prepared :
+            db = self.prepare(db)
+        # Create a new target datastructure if none was given.
+        if gp == None : gp = LogicFormula()
+        # Find the define node for the given query term.
+        clause_node = db.find(term)
+        # If term not defined: fail query (no error)    # TODO add error to make it consistent?
+        if clause_node == None :
+            # Could be builtin?
+            clause_node = db._getBuiltIn(term.signature)
+        if clause_node == None : 
+            if silent_fail :
+                return gp, []
+            else :
+                raise UnknownClause(term.signature, location=db.lineno(term.location))
+            
+        results = self.execute( clause_node, database=db, target=gp, context=list(term.args), **kwdargs)
+    
+        return gp, results
+        
+    def ground_all(self, db, target=None, queries=None, evidence=None) :
+        db = self.prepare(db)
+        logger = logging.getLogger('problog')
+        with Timer('Grounding'):
+            if queries == None : queries = [ q[0] for q in self.query(db, Term( 'query', None )) ]
+            if evidence == None : evidence = self.query(db, Term( 'evidence', None, None ))
+            
+            if target == None : target = LogicFormula()
+            
+            for query in queries :
+                logger.debug("Grounding query '%s'", query)
+                target = self.ground(db, query, target, label=LABEL_QUERY)
+                logger.debug("Ground program size: %s", len(target))
+            for query in evidence :
+                if str(query[1]) == 'true' :
+                    logger.debug("Grounding evidence '%s'", query[0])
+                    target = self.ground(db, query[0], target, label=LABEL_EVIDENCE_POS)
+                    logger.debug("Ground program size: %s", len(target))
+                elif str(query[1]) == 'false' :
+                    logger.debug("Grounding evidence '%s'", query[0])
+                    target = self.ground(db, query[0], target, label=LABEL_EVIDENCE_NEG)
+                    logger.debug("Ground program size: %s", len(target))
+                else :
+                    logger.debug("Grounding evidence '%s'", query[0])
+                    target = self.ground(db, query[0], target, label=LABEL_EVIDENCE_MAYBE)
+                    logger.debug("Ground program size: %s", len(target))
+        return target
+    
+    def addExternalCalls(self, externals):
+        self.__externals.update(externals)
+        
+    def getExternalCall(self, func_name):
+        if self.__externals is None or not func_name in self.__externals:
+            return None
+        return self.__externals[func_name]
+    
+# Generic functions
+
 class _UnknownClause(Exception) :
     """Undefined clause in call used internally."""
     pass
@@ -89,639 +235,649 @@ def unify( source_value, target_value, target_context=None ) :
                     unify( s_arg, t_arg, target_context )
             else :
                 raise UnifyError()
-    
-
-    
 
 
-class Context(object) :
-    """Variable context."""
-    
-    def __init__(self, lst, define) :
-        self.__lst = lst
-        self.define = define
-        
-    def __getitem__(self, index) :
-        return self.__lst[index]
-        
-    def __setitem__(self, index, value) :
-        self.__lst[index] = value
-        
-    def __len__(self) :
-        return len(self.__lst)
-        
-    def __iter__(self) :
-        return iter(self.__lst)
-        
-    def __str__(self) :
-        return str(self.__lst)
-    
 
-class EventBasedEngine(object) :
-    """An event-based ProbLog grounding engine. It supports cyclic programs."""
-    
-    def __init__(self, builtins=True, debugger=None) :
-        self.__builtin_index = {}
-        self.__builtins = []
-        self.__externals = None
-        
-        if builtins :
-            addBuiltIns(self)
-        
-        self.debugger = debugger
-        
-    def _getBuiltIn(self, index) :
-        real_index = -(index + 1)
-        return self.__builtins[real_index]
-        
-    def addBuiltIn(self, pred, arity, func) :
-        """Add a builtin."""
-        sig = '%s/%s' % (pred, arity)
-        self.__builtin_index[sig] = -(len(self.__builtins) + 1)
-        self.__builtins.append( func )
-        
-    def getBuiltIns(self) :
-        """Get the list of builtins."""
-        return self.__builtin_index
-    
-    def _enter_call(self, node, context) :
-        if self.debugger :
-            self.debugger.enter(0, node, context)
-        
-    def _exit_call(self, node, context) :
-        if self.debugger :
-            self.debugger.exit(0, node, context, None)
-    
-    def _create_context(self, lst=[], size=None, define=None) :
-        """Create a new context."""
-        if size != None :
-            assert( not lst )
-            lst = [None] * size
-        return Context(lst, define=define)
-    
-    def query(self, db, term, level=0) :
-        """Perform a non-probabilistic query."""
-        gp = LogicFormula()
-        gp, result = self._ground(db, term, gp, level)
-        return [ y for x,y in result ]
-            
-    def prepare(self, db) :
-        """Convert given logic program to suitable format for this engine."""
-        result = ClauseDB.createFrom(db, builtins=self.getBuiltIns())
-        self._process_directives( result )
-        return result
-    
-    def _process_directives( self, db) :
-        term = Term('_directive')
-        directive_node = db.find( term )
-        if directive_node == None : return True    # no directives
-        # Create a new call.
-        
-        node = db.getNode(directive_node)        
-        gp = LogicFormula()
-        res = ResultCollector()
-        directives = db.getNode(directive_node).children
-        while directives :
-            current = directives.pop(0)
-            self._eval( db, gp, current, self._create_context((),define=None), res )
-            
-        # # TODO warning if len(res.results) != number of directives
-        # return
+import os
+import imp, inspect # For load_external
 
-        
+
+class NonGroundProbabilisticClause(GroundingError) : 
     
-    def ground(self, db, term, gp=None, label=None) :
-        """Ground a query on the given database.
-        
-        :param db: logic program
-        :type db: LogicProgram
-        :param term: query term
-        :type term: Term
-        :param gp: output data structure (for incremental grounding)
-        :type gp: LogicFormula
-        :param label: type of query (e.g. ``query``, ``evidence`` or ``-evidence``)
-        :type label: str
-        """
-        gp, results = self._ground(db, term, gp, silent_fail=False, allow_vars=False)
-        
-        for node_id, args in results :
-            gp.addName( term.withArgs(*args), node_id, label )
-        if not results :
-            gp.addName( term, None, label )
-        
-        return gp
+    def __init__(self, location=None) :
+        self.location = location
+        msg = 'Encountered non-ground probabilistic clause' 
+        if self.location : msg += ' at position %s:%s' % self.location
+        msg += '.'
+        GroundingError.__init__(self, msg)
+
+class _UnknownClause(Exception) :
+    """Undefined clause in call used internally."""
+    pass
+
+class UnknownClause(GroundingError) :
+    """Undefined clause in call."""
     
-    def _ground(self, db, term, gp=None, level=0, silent_fail=True, allow_vars=True) :
-        # Convert logic program if needed.
-        db = self.prepare(db)
-        # Create a new target datastructure if none was given.
-        if gp == None : gp = LogicFormula()
-        # Find the define node for the given query term.
-        clause_node = db.find(term)
-        # If term not defined: fail query (no error)    # TODO add error to make it consistent?
-        if clause_node == None :
-            # Could be builtin?
-            clause_node = db._getBuiltIn(term.signature)
-        if clause_node == None : 
-            if silent_fail :
-                return gp, []
-            else :
-                raise UnknownClause(term.signature, location=db.lineno(term.location))
-        # Create a new call.
-        call_node = ClauseDB._call( term.functor, range(0,len(term.args)), clause_node, term.location )
-        # Initialize a result collector callback.
-        res = ResultCollector(allow_vars, database=db, location=term.location)
-        try :
-            # Evaluate call.
-            self._eval_call(db, gp, None, call_node, self._create_context(term.args,define=None), res )
-        except RuntimeError as err :
-            if str(err).startswith('maximum recursion depth exceeded') :
-                raise CallStackError()
-            else :
-                raise
-        # Return ground program and results.
-        return gp, res.results
+    def __init__(self, signature, location) :
+        self.location = location
+        msg = "No clauses found for '%s'" % signature
+        if location : msg += " at position %s:%s" % location
+        msg += '.'
+        GroundingError.__init__(self, msg)
+        
+class ConsultError(GroundingError) :
     
-    def _eval(self, db, gp, node_id, context, parent) :
-        # Find the node and determine its type.
-        node = db.getNode( node_id )
-        ntype = type(node).__name__
-        # Notify debugger of enter event.
-        self._enter_call( node, context )
-        # Select appropriate method for handling this node type.
-        if node == () :
-            raise _UnknownClause()
-        elif ntype == 'fact' :
-            f = self._eval_fact 
-        elif ntype == 'choice' :
-            f = self._eval_choice
-        elif ntype == 'define' :
-            f = self._eval_define
-        elif ntype == 'clause' :
-            f = self._eval_clause
-        elif ntype == 'conj' :
-            f = self._eval_conj
-        elif ntype == 'disj' :
-            f = self._eval_disj
-        elif ntype == 'call' :
-            f = self._eval_call
-        elif ntype == 'neg' :
-            f = self._eval_neg
+    def __init__(self, message, location=None) :
+        self.location = location
+        msg = message
+        if location : msg += " at position %s:%s" % location
+        msg += '.'
+        GroundingError.__init__(self, msg)
+
+class UnifyError(Exception) : pass
+
+class VariableUnification(GroundingError) : 
+    """The engine does not support unification of two unbound variables."""
+    
+    def __init__(self, location=None) :
+        self.location = location
+        
+        msg = 'Unification of unbound variables not supported'
+        if self.location : msg += ' at position %s:%s' % self.location
+        msg += '.'
+        GroundingError.__init__(self, msg)
+
+
+def unify_value( v1, v2 ) :
+    """Test unification of two values and return most specific unifier."""
+    
+    if is_variable(v1) :
+        if not is_ground(v2) : raise VariableUnification()
+        return v2
+    elif is_variable(v2) :
+        if not is_ground(v1) : raise VariableUnification()
+        return v1
+    elif v1.signature == v2.signature : # Assume Term
+        if v1 == v2 : return v1
+        return v1.withArgs(*[ unify_value(a1,a2) for a1, a2 in zip(v1.args, v2.args) ])
+    else :
+        raise UnifyError()
+
+
+class StructSort(object) :
+    
+    def __init__(self, obj, *args):
+        self.obj = obj
+    def __lt__(self, other):
+        return struct_cmp(self.obj, other.obj) < 0
+    def __gt__(self, other):
+        return struct_cmp(self.obj, other.obj) > 0
+    def __eq__(self, other):
+        return struct_cmp(self.obj, other.obj) == 0
+    def __le__(self, other):
+        return struct_cmp(self.obj, other.obj) <= 0  
+    def __ge__(self, other):
+        return struct_cmp(self.obj, other.obj) >= 0
+    def __ne__(self, other):
+        return struct_cmp(self.obj, other.obj) != 0
+
+
+class CallModeError(GroundingError) :
+    
+    def __init__(self, functor, args, accepted=[], message=None, location=None) :
+        if functor :
+            self.scope = '%s/%s'  % ( functor, len(args) )
         else :
-            raise ValueError(ntype)
-        # Evaluate the node.
-        f(db, gp, node_id, node, context, parent)
-        # Notify debugger of exit event.
-        self._exit_call( node, context )
+            self.scope = None
+        self.received = ', '.join(map(self.show_arg,args))
+        self.expected = [  ', '.join(map(self.show_mode,mode)) for mode in accepted  ]
+        self.location = location
+        msg = 'Invalid argument types for call'
+        if self.scope : msg += " to '%s'" % self.scope
+        if location != None : msg += ' at position %s:%s ' % (location)
+        msg += ': arguments: (%s)' % self.received
+        if accepted :
+            msg += ', expected: (%s)' % ') or ('.join(self.expected) 
+        else :
+            msg += ', expected: ' + message 
+        Exception.__init__(self, msg)
         
-    def _eval_fact( self, db, gp, node_id, node, call_args, parent ) :
+    def show_arg(self, x) :
+        if x == None :
+            return '_'
+        else :
+            return str(x)
+    
+    def show_mode(self, t) :
+        return mode_types[t][0]
+
+
+def is_ground( *terms ) :
+    """Test whether a any of given terms contains a variable (recursively).
+    
+    :return: True if none of the arguments contains any variables.
+    """
+    for term in terms :
+        if is_variable(term) :
+            return False
+        elif not term.isGround() :
+            return False
+    return True
+
+def is_variable( v ) :
+    """Test whether a Term represents a variable.
+    
+    :return: True if the expression is a variable
+    """
+    return v == None or type(v) == int    
+
+def is_var(term) :
+    return is_variable(term) or term.isVar()
+
+def is_nonvar(term) :
+    return not is_var(term)
+
+def is_term(term) :
+    return not is_var(term) and not is_constant(term)
+
+def is_float_pos(term) :
+    return is_constant(term) and term.isFloat()
+
+def is_float_neg(term) :
+    return is_term(term) and term.arity == 1 and term.functor == "'-'" and is_float_pos(term.args[0])
+
+def is_float(term) :
+    return is_float_pos(term) or is_float_neg(term)
+
+def is_integer_pos(term) :
+    return is_constant(term) and term.isInteger()
+
+def is_integer_neg(term) :
+    return is_term(term) and term.arity == 1 and term.functor == "'-'" and is_integer_pos(term.args[0])
+
+def is_integer(term) :
+    return is_integer_pos(term) or is_integer_neg(term)
+
+def is_string(term) :
+    return is_constant(term) and term.isString()
+
+def is_number(term) :
+    return is_float(term) and is_integer(term)
+
+def is_constant(term) :
+    return not is_var(term) and term.isConstant()
+
+def is_atom(term) :
+    return is_term(term) and term.arity == 0
+
+def is_rational(term) :
+    return False
+
+def is_dbref(term) :
+    return False
+
+def is_compound(term) :
+    return is_term(term) and term.arity > 0
+    
+def is_list_maybe(term) :
+    """Check whether the term looks like a list (i.e. of the form '.'(_,_))."""
+    return is_compound(term) and term.functor == '.' and term.arity == 2
+    
+def is_list_nonempty(term) :
+    if is_list_maybe(term) :
+        tail = list_tail(term)
+        return is_list_empty(tail) or is_var(tail)
+    return False
+
+def is_fixed_list(term) :
+    return is_list_empty(term) or is_fixed_list_nonempty(term)
+
+def is_fixed_list_nonempty(term) :
+    if is_list_maybe(term) :
+        tail = list_tail(term)
+        return is_list_empty(tail)
+    return False
+    
+def is_list_empty(term) :
+    return is_atom(term) and term.functor == '[]'
+    
+def is_list(term) :
+    return is_list_empty(term) or is_list_nonempty(term)
+    
+def is_compare(term) :
+    return is_atom(term) and term.functor in ("'<'", "'='", "'>'")
+
+mode_types = {
+    'i' : ('integer', is_integer),
+    'I' : ('positive_integer', is_integer_pos),
+    'v' : ('var', is_var),
+    'n' : ('nonvar', is_nonvar),
+    'l' : ('list', is_list),
+    'L' : ('fixed_list', is_fixed_list),    # List of fixed length (i.e. tail is [])
+    '*' : ('any', lambda x : True ),
+    '<' : ('compare', is_compare ),         # < = >
+    'g' : ('ground', is_ground ),
+    'a' : ('atom', is_atom),
+    'c' : ('callable', is_term)
+}
+
+def check_mode( args, accepted, functor=None, location=None, database=None, **k) :
+    for i, mode in enumerate(accepted) :
+        correct = True
+        for a,t in zip(args,mode) :
+            name, test = mode_types[t]
+            if not test(a) : 
+                correct = False
+                break
+        if correct : return i
+    if database and location :
+        location = database.lineno(location)
+    else :
+        location = None
+    raise CallModeError(functor, args, accepted, location=location)
+    
+def list_elements(term) :
+    elements = []
+    tail = term
+    while is_list_maybe(tail) :
+        elements.append(tail.args[0])
+        tail = tail.args[1]
+    return elements, tail
+    
+def list_tail(term) :
+    tail = term
+    while is_list_maybe(tail) :
+        tail = tail.args[1]
+    return tail
+               
+
+def builtin_split_call( term, parts, database=None, location=None, **k ) :
+    """T =.. L"""
+    functor = '=..'
+    # modes:
+    #   <v> =.. list  => list has to be fixed length and non-empty
+    #                       IF its length > 1 then first element should be an atom
+    #   <n> =.. <list or var>
+    #
+    mode = check_mode( (term, parts), ['vL', 'nv', 'nl' ], functor=functor, **k )
+    if mode == 0 :
+        elements, tail = list_elements(parts)
+        if len(elements) == 0 :
+            raise CallModeError(functor, (term,parts), message='non-empty list for arg #2 if arg #1 is a variable', location=database.lineno(location))
+        elif len(elements) > 1 and not is_atom(elements[0]) :
+            raise CallModeError(functor, (term,parts), message='atom as first element in list if arg #1 is a variable', location=database.lineno(location))
+        elif len(elements) == 1 :
+            # Special case => term == parts[0]
+            return [(elements[0],parts)]
+        else :
+            T = elements[0](*elements[1:])
+            return [ (T , parts) ] 
+    else :
+        part_list = ( term.withArgs(), ) + term.args
+        current = Term('[]')
+        for t in reversed(part_list) :
+            current = Term('.', t, current)
         try :
-            # Verify that fact arguments unify with call arguments.
-            for a,b in zip(node.args, call_args) :
-                unify(a, b)
-            # Successful unification: notify parent callback.
-            parent.newResult( node.args, ground_node=gp.addAtom(node_id, node.probability) )
+            L = unify_value(current, parts)
+            elements, tail = list_elements(L)
+            term_new = elements[0](*elements[1:])
+            T = unify_value( term, term_new )
+            return [(T,L)]            
         except UnifyError :
-            # Failed unification: don't send result.
+            return []
+
+def builtin_arg(index,term,argument, **k) :
+    mode = check_mode( (index,term,arguments), ['In*'], functor='arg', **k)
+    index_v = int(index) - 1
+    if 0 <= index_v < len(term.args) :
+        try :
+            arg = term.args[index_v]
+            res = unify_value(arg,argument)
+            return [(index,term,res)]
+        except UnifyError :
             pass
-        # Send complete message.
-        parent.complete()    
+    return []
 
-    def _eval_choice( self, db, gp, node_id, node, call_args, parent ) :
-        # This never fails.
-        # Choice is ground so result is the same as call arguments.
-        result = tuple(call_args)
-        
-        # Raise error when head is not ground.
-        if not is_ground(*result) : raise NonGroundProbabilisticClause(location=db.lineno(node.location))
-        
-        # Ground probability.
-        probability = instantiate( node.probability, call_args )
-        # Create a new atom in ground program.
-        origin = (node.group, result)
-        ground_node = gp.addAtom( (node.group, result, node.choice) , probability, group=(node.group, result) ) 
-        # Notify parent.
-        parent.newResult( result, ground_node )
-        parent.complete()
+def builtin_functor(term,functor,arity, **k) :
+    mode = check_mode( (term,functor,arity), ['vaI','n**'], functor='functor', **k)
     
-    def _eval_call( self, db, gp, node_id, node, context, parent ) :
-        # Ground the call arguments based on the current context.
-        call_args = [ instantiate(arg, context) for arg in node.args ]
-        # Create a context switching node that unifies the results of the call with the call arguments. Results are passed to the parent callback.
-        context_switch = ProcessCallReturn( node.args, context, parent )
-        # Evaluate the define node.
-        if node.defnode < 0 :
-            # Negative node indicates a builtin.
-            builtin = self._getBuiltIn( node.defnode )
-            builtin( *call_args, context=context, callback=context_switch, database=db, engine=self, ground_program=gp, location=node.location )
-        else :
-            # Positive node indicates a non-builtin.
-            try :
-                # Evaluate the define node.
-                self._eval( db, gp, node.defnode, self._create_context(call_args, define=context.define), context_switch )
-            except _UnknownClause :
-                # The given define node is empty: no definition found for this clause.
-                sig = '%s/%s' % (node.functor, len(node.args))
-                raise UnknownClause(sig, location=db.lineno(node.location))
-            
-    def _eval_clause( self, db, gp, node_id, node, call_args, parent ) :
+    if mode == 0 : 
+        callback.newResult( Term(functor, *((None,)*int(arity)) ), functor, arity )
+    else :
         try :
-            # Create a new context (i.e. variable values).
-            context = self._create_context(size=node.varcount,define=call_args.define)
-            # Fill in the context by unifying clause head arguments with call arguments.
-            for head_arg, call_arg in zip(node.args, call_args) :
-                # Remove variable identifiers from calling context.
-                if type(call_arg) == int : call_arg = None
-                # Unify argument and update context (raises UnifyError if not possible)
-                unify( call_arg, head_arg, context)                
-            # Create a context switching node that extracts the head arguments from the results obtained by evaluating the body. These results are send by the parent.
-            context_switch = ProcessBodyReturn( node.args, node, node_id, parent )
-            # Evaluate the body. Use context-switch as callback.
-            self._eval( db, gp, node.child, context, context_switch )
+            func_out = unify_value(functor, Term(term.functor))
+            arity_out = unify_value(arity, Constant(term.arity))
+            return [(term, func_out, arity_out)]
         except UnifyError :
-            # Call and clause head are not unifiable, just fail (complete without results).
-            parent.complete()
-            
-    def _eval_conj( self, db, gp, node_id, node, context, parent ) :
-        # Extract children (always exactly two).
-        child1, child2 = node.children
-        # Create a link between child1 and child2.
-        # The link receives results of the first child and evaluates the second child based on the result.
-        # The link receives the complete event from the first child and passes it to the parent.
-        process = ProcessLink( self, db, gp, child2, parent, context.define )
-        # Start evaluation of first child.
-        self._eval( db, gp, child1, context, process )
+            pass
+    return []
 
-    def _eval_disj( self, db, gp, node_id, node, context, parent ) :
-        # Create a disjunction processor node, and register parent as listener.
-        process = ProcessOr( len(node.children), parent )
-        # Process all children.
-        for child in node.children :
-            self._eval( db, gp, child, context, process )
-
-    def _eval_neg(self, db, gp, node_id, node, context, parent) :
-        # Create a negation processing node, and register parent as listener.
-        process = ProcessNot( gp, context, parent)
-        # Evaluate the child node. Use processor as callback.
-        self._eval( db, gp, node.child, context, process )
-    
-    def _eval_define( self, db, gp, node_id, node, call_args, parent ) :
-        # Create lookup key. We will reuse results for identical calls.
-        # EXTEND support call subsumption?
-        key = (node_id, tuple(call_args))
-        
-        # Store cache in ground program
-        if not hasattr(gp, '_def_nodes') : gp._def_nodes = {}
-        def_nodes = gp._def_nodes
-        
-        # Find pre-existing node.
-        pnode = def_nodes.get(key)
-        if pnode == None :
-            # Node does not exist: create it and add it to the list.
-            pnode = ProcessDefine( self, db, gp, node_id, node, call_args, call_args.define )
-            def_nodes[key] = pnode
-            # Add parent as listener.
-            pnode.addListener(parent)
-            # Execute node. Note that for a given call (key), this is only done once!
-            pnode.execute()
-        else :
-            # Node exists already.
-            if call_args.define and call_args.define.hasAncestor(pnode) :
-                # Cycle detected!
-                # EXTEND Mark this information in the ground program?
-                cnode = ProcessDefineCycle(pnode, call_args.define, parent)
-            else :
-                # Add ancestor here.
-                pnode.addAncestor(call_args.define)
-                # Not a cycle, just reusing. Register parent as listener (will retrigger past events.)
-                pnode.addListener(parent)
-
-    def addExternalCalls(self, externals):
-        self.__externals = externals
-
-    def getExternalCall(self, func_name):
-        if self.__externals is None or not func_name in self.__externals:
-            return None
-        return self.__externals[func_name]
+def builtin_true( **k ) :
+    """``true``"""
+    return True
 
 
-class ProcessNode(object) :
-    """Generic class for representing *process nodes*."""
-    
-    EVT_COMPLETE = 1
-    EVT_RESULT = 2
-    EVT_ALL = 3
-    
-    def __init__(self) :
-        EngineLogger.get().create(self)
-        self.listeners = []
-        self.isComplete = False
-    
-    def notifyListeners(self, result, ground_node=0) :
-        """Send the ``newResult`` event to all the listeners of this node.
-            The arguments are used as the arguments of the event.
-        """
-        EngineLogger.get().sendResult(self, result, ground_node)
-        for listener, evttype in self.listeners :
-            if evttype & self.EVT_RESULT :
-                listener.newResult(result, ground_node)
-    
-    def notifyComplete(self) :
-        """Send the ``complete`` event to all listeners of this node."""
-        
-        EngineLogger.get().sendComplete(self)
-        if not self.isComplete :
-            self.isComplete = True
-            for listener, evttype in self.listeners :
-                if evttype & self.EVT_COMPLETE :
-                    listener.complete()
-        
-    def addListener(self, listener, eventtype=EVT_ALL) :
-        """Add the given listener."""
-        # Add the listener such that it receives future events.
-        EngineLogger.get().connect(self,listener,eventtype)
-        self.listeners.append((listener,eventtype))
-        
-    def complete(self) :
-        """Process a ``complete`` event.
-        
-        By default forwards this events to its listeners.
-        """
-        EngineLogger.get().receiveComplete(self)
-        self.notifyComplete()
-        
-    def newResult(self, result, ground_node=0) :
-        """Process a new result.
-        
-        :param result: context or list of arguments
-        :param ground_node: node is ground program
-        
-        By default forwards this events to its listeners.
-        """
-        EngineLogger.get().receiveResult(self, result, ground_node)
-        self.notifyListeners(result, ground_node)
+def builtin_fail( **k ) :
+    """``fail``"""
+    return False
 
-class ProcessOr(ProcessNode) :
-    """Process a disjunction of nodes.
-    
-    :param count: number of disjuncts
-    :type count: int
-    :param parent: listener
-    :type parent: ProcessNode
-    
-    Behaviour:
-    
-        * This node forwards all results to its listeners.
-        * This node sends a complete message after receiving ``count`` ``complete`` messages from its children.
-        * If the node is initialized with ``count`` equal to 0, it sends out a ``complete`` signal immediately.
-    
+
+def builtin_eq( A, B, location=None, database=None, **k ) :
+    """``A = B``
+        A and B not both variables
     """
-    
-    def __init__(self, count, parent) :
-        ProcessNode.__init__(self)
-        self._count = count
-        self.addListener(parent)
-        if self._count == 0 :
-            self.notifyComplete()
-    
-    def complete(self) :
-        EngineLogger.get().receiveComplete(self)
-        self._count -= 1
-        if self._count <= 0 :
-            self.notifyComplete()
-            
-class ProcessNot(ProcessNode) :
-    """Process a negation node.
-    
-    Behaviour:
-    
-        * This node buffers all ground nodes.
-        * Upon receiving a ``complete`` event, sends a result and a ``complete`` signal.
-        * The result is negation of an ``or`` node of its children. No result is send if the children are deterministically true.
-        
+    if is_var(A) and is_var(B) :
+        raise VariableUnification(location = database.lineno(location))
+    else :
+        try :
+            R = unify_value(A,B)
+            return [( R, R )]
+        except UnifyError :
+            return []
+        except VariableUnification :
+            raise VariableUnification(location = database.lineno(location))
+
+
+def builtin_neq( A, B, **k ) :
+    """``A \= B``
+        A and B not both variables
     """
-    
-    def __init__(self, gp, context, parent) :
-        ProcessNode.__init__(self)
-        self.context = context
-        self.ground_nodes = []
-        self.gp = gp
-        self.addListener(parent)
-        
-    def newResult(self, result, ground_node=0) :
-        EngineLogger.get().receiveResult(self, result, ground_node)
-        if ground_node != None :
-            self.ground_nodes.append(ground_node)
-        
-    def complete(self) :
-        EngineLogger.get().receiveComplete(self)
-        if self.ground_nodes :
-            or_node = self.gp.addNot(self.gp.addOr( self.ground_nodes ))
-            if or_node != None :
-                self.notifyListeners(self.context, ground_node=or_node)
-        else :
-            self.notifyListeners(self.context, ground_node=0)
-        self.notifyComplete()
+    if is_var(A) and is_var(B) :
+        return False
+    else :
+        try :
+            R = unify_value(A,B)
+            return False
+        except UnifyError :
+            return True
+            
 
-class ProcessLink(ProcessNode) :
-    """Links two calls in a conjunction."""
+def builtin_notsame( A, B, **k ) :
+    """``A \== B``"""
+    if is_var(A) and is_var(B) :
+        return False
+    # In Python A != B is not always the same as not A == B.
+    else :
+        return not A == B
+
+
+def builtin_same( A, B, **k ) :
+    """``A == B``"""
+    if is_var(A) and is_var(B) :
+        return True
+    else :
+        return A == B
+
+
+def builtin_gt( A, B, **k ) :
+    """``A > B`` 
+        A and B are ground
+    """
+    mode = check_mode( (A,B), ['gg'], functor='>', **k )
+    return A.value > B.value
+
+
+def builtin_lt( A, B, **k ) :
+    """``A > B`` 
+        A and B are ground
+    """
+    mode = check_mode( (A,B), ['gg'], functor='<', **k )
+    return A.value < B.value
+
+
+def builtin_le( A, B, **k ) :
+    """``A =< B``
+        A and B are ground
+    """
+    mode = check_mode( (A,B), ['gg'], functor='=<', **k )
+    return A.value <= B.value
+
+
+def builtin_ge( A, B, **k ) :
+    """``A >= B`` 
+        A and B are ground
+    """
+    mode = check_mode( (A,B), ['gg'], functor='>=', **k )
+    return A.value >= B.value
+
+
+def builtin_val_neq( A, B, **k ) :
+    """``A =\= B`` 
+        A and B are ground
+    """
+    mode = check_mode( (A,B), ['gg'], functor='=\=', **k )
+    return A.value != B.value
+
+
+def builtin_val_eq( A, B, **k ) :
+    """``A =:= B`` 
+        A and B are ground
+    """
+    mode = check_mode( (A,B), ['gg'], functor='=:=', **k )
+    return A.value == B.value
+
+
+def builtin_is( A, B, **k ) :
+    """``A is B``
+        B is ground
+    """
+    mode = check_mode( (A,B), ['*g'], functor='is', **k )
+    try :
+        R = Constant(B.value)
+        unify_value(A,R)
+        return [(R,B)]
+    except UnifyError :
+        return []
+
+
+def builtin_var( term, **k ) :
+    return is_var(term)
+
+
+def builtin_atom( term, **k ) :
+    return is_atom(term)
+
+
+def builtin_atomic( term, **k ) :
+    return is_atom(term) or is_number(term)
+
+
+def builtin_compound( term, **k ) :
+    return is_compound(term)
+
+
+def builtin_float( term, **k ) :
+    return is_float(term)
+
+
+def builtin_integer( term, **k ) :
+    return is_integer(term)
+
+
+def builtin_nonvar( term, **k ) :
+    return not is_var(term)
+
+
+def builtin_number( term, **k ) :
+    return is_number(term) 
+
+
+def builtin_simple( term, **k ) :
+    return is_var(term) or is_atomic(term)
     
+
+def builtin_callable( term, **k ) :
+    return is_term(term)
+
+
+def builtin_rational( term, **k ) :
+    return is_rational(term)
+
+
+def builtin_dbreference( term, **k ) :
+    return is_dbref(term)  
     
-    def __init__(self, engine, db, gp, node_id, parent, define) :
-        ProcessNode.__init__(self)
-        self.engine = engine
-        self.db = db
-        self.gp = gp
-        self.node_id = node_id
-        self.parent = parent
-        self.addListener(self.parent, ProcessNode.EVT_COMPLETE)
-        self.define = define
-        self.required_complete = 1
-        
-    def newResult(self, result, ground_node=0) :
-        self.required_complete += 1     # For each result of first conjuct, we call the second conjuct which should produce a complete.
-        EngineLogger.get().receiveResult(self, result, ground_node, 'required: %s' % self.required_complete)
-        self.engine._exit_call( self.node_id, result )    
-        process = ProcessAnd(self.gp, ground_node)
-        process.addListener(self.parent, ProcessNode.EVT_RESULT)
-        process.addListener(self, ProcessNode.EVT_COMPLETE) # Register self as listener for complete events.
-        self.engine._eval( self.db, self.gp, self.node_id, self.engine._create_context(result,define=self.define), process)
-        
-    def complete(self) :
-        # Receive complete
-        EngineLogger.get().receiveComplete(self, 'required: %s' % (self.required_complete-1))
-        self.required_complete -= 1
-        if self.required_complete == 0 :
-            self.notifyComplete()
-        
-                
-class ProcessAnd(ProcessNode) :
-    """Process a conjunction."""
+
+def builtin_primitive( term, **k ) :
+    return is_atomic(term) or is_dbref(term)
+
+
+def builtin_ground( term, **k ) :
+    return is_ground(term)
+
+
+def builtin_is_list( term, **k ) :
+    return is_list(term)
+
+def compare(a,b) :
+    if a < b :
+        return -1
+    elif a > b :
+        return 1
+    else :
+        return 0
     
-    def __init__(self, gp, first_node ) :
-        ProcessNode.__init__(self)
-        self.gp = gp
-        self.first_node = first_node
+def struct_cmp( A, B ) :
+    # Note: structural comparison
+    # 1) Var < Num < Str < Atom < Compound
+    # 2) Var by address
+    # 3) Number by value, if == between int and float => float is smaller (iso prolog: Float always < Integer )
+    # 4) String alphabetical
+    # 5) Atoms alphabetical
+    # 6) Compound: arity / functor / arguments
         
-    def newResult(self, result, ground_node=0) :
-        EngineLogger.get().receiveResult(self, result, ground_node)
-        and_node = self.gp.addAnd( (self.first_node, ground_node) )
-        self.notifyListeners(result, and_node)
-        
-class ProcessDefineCycle(ProcessNode) :
-    """Process a cyclic define (child)."""
+    # 1) Variables are smallest
+    if is_var(A) :
+        if is_var(B) :
+            # 2) Variable by address
+            return compare(A,B)
+        else :
+            return -1
+    elif is_var(B) :
+        return 1
+    # assert( not is_var(A) and not is_var(B) )
     
-    def __init__(self, parent, context, listener) :
-        self.parent = parent
+    # 2) Numbers are second smallest
+    if is_number(A) :
+        if is_number(B) :
+            # Just compare numbers on float value
+            res = compare(float(A),float(B))
+            if res == 0 :
+                # If the same, float is smaller.
+                if is_float(A) and is_integer(B) : 
+                    return -1
+                elif is_float(B) and is_integer(A) : 
+                    return 1
+                else :
+                    return 0
+        else :
+            return -1
+    elif is_number(B) :
+        return 1
         
-        context.propagateCyclic(self.parent)
-        
-        # while context != self.parent :
-        #     context.cyclic = True
-        #     context = context.parent
-        ProcessNode.__init__(self)
-        self.addListener(listener)
-        self.parent.addListener(self)
-        self.parent.cyclic = True
-        self.parent.addCycleChild(self)
-        
+    # 3) Strings are third
+    if is_string(A) :
+        if is_string(B) :
+            return compare(str(A),str(B))
+        else :
+            return -1
+    elif is_string(B) :
+        return 1
     
-    def __repr__(self) :
-        return 'cycle child of %s [%s]' % (self.parent, id(self))
-        
-     
-class ProcessDefine(ProcessNode) :
-    """Process a standard define (or cycle parent)."""
+    # 4) Atoms / terms come next
+    # 4.1) By arity
+    res = compare(A.arity,B.arity)
+    if res != 0 : return res
     
-    def __init__(self, engine, db, gp, node_id, node, args, parent) :
-        self.node = node
-        self.results = {}
-        self.engine = engine
-        self.db = db
-        self.gp = gp
-        self.node_id = node_id
-        self.args = args
-        self.parents = set()
-        if parent : self.parents.add(parent)
-        self.__is_cyclic = False
-        self.__buffer = defaultdict(list)
-        self.children = []
-        self.execute_completed = False
-        ProcessNode.__init__(self)
+    # 4.2) By functor
+    res = compare(A.functor,B.functor)
+    if res != 0 : return res
+    
+    # 4.3) By arguments (recursively)
+    for a,b in zip(A.args,B.args) :
+        res = struct_cmp(a,b)
+        if res != 0 : return res
         
-    @property
-    def cyclic(self) :
-        return self.__is_cyclic
-        
-    @cyclic.setter
-    def cyclic(self, value) :
-        if self.__is_cyclic != value :
-            self.__is_cyclic = value
-            self._cycle_detected()
-        
-    def propagateCyclic(self, root) :
-        if root != self :
-            self.cyclic = True
-            for p in self.parents :
-                p.propagateCyclic(root)
-            
-    def addCycleChild(self, cnode ) :
-        self.children.append(cnode)
-        if self.execute_completed :
-            cnode.complete()
-        
-    def addAncestor(self, parent) :
-        self.parents.add(parent)
-        
-    def getAncestors(self) :
-        current = {self}
-        just_added = current
-        while just_added :
-            latest = set()
-            for a in just_added :
-                latest |= a.parents
-            latest -= current
-            current |= latest
-            just_added = latest
-        return current
-        
-    def hasAncestor(self, anc) :
-        return anc in self.getAncestors()
-                        
-    def addListener(self, listener, eventtype=ProcessNode.EVT_ALL) :
-        
-        # Add the listener such that it receives future events.
-        ProcessNode.addListener(self, listener, eventtype)
-        
-        # If the node was already active, notify listener of past events.
-        for result, ground_node in list(self.results.items()) :
-            if eventtype & ProcessNode.EVT_RESULT :
-                listener.newResult(result, ground_node)
-            
-        if self.isComplete :
-            if eventtype & ProcessNode.EVT_COMPLETE :
-                listener.complete()
-        
-    def execute(self) :
-        # Get the appropriate children
-        children = self.node.children.find( self.args )
-        
-        process = ProcessOr( len(children), self)
-        # Evaluate the children
-        for child in children :
-            self.engine._eval( self.db, self.gp, child, self.engine._create_context(self.args,define=self), parent=process )
-        
-        self.execute_completed = True
-        for c in self.children :
-            c.complete()
+    return 0
 
     
-    def newResult(self, result, ground_node=0) :
-        EngineLogger.get().receiveResult(self, result, ground_node)
-        if self.cyclic :
-            self.newResultUnbuffered(result, ground_node)
+def builtin_struct_lt(A, B, **k) :
+    return struct_cmp(A,B) < 0    
+
+    
+def builtin_struct_le(A, B, **k) :
+    return struct_cmp(A,B) <= 0
+
+    
+def builtin_struct_gt(A, B, **k) :
+    return struct_cmp(A,B) > 0
+
+    
+def builtin_struct_ge(A, B, **k) :
+    return struct_cmp(A,B) >= 0
+
+
+def builtin_compare(C, A, B, **k) :
+    mode = check_mode( (C,A,B), [ '<**', 'v**' ], functor='compare', **k)
+    compares = "'>'","'='","'<'" 
+    c = struct_cmp(A,B)
+    c_token = compares[1-c]
+    
+    if mode == 0 : # Given compare
+        if c_token == C.functor : return [ (C,A,B) ]
+    else :  # Unknown compare
+        return [ (Term(c_token), A, B ) ]
+    
+# numbervars(T,+N1,-Nn)    number the variables TBD?
+
+def build_list(elements, tail) :
+    current = tail
+    for el in reversed(elements) :
+        current = Term('.', el, current)
+    return current
+
+
+def builtin_call_external(call, result, **k):
+    mode = check_mode( (call,result), ['gv'], function='call_external', **k)
+
+    func = k['engine'].getExternalCall(call.functor)
+    if func is None:
+        raise Exception('External method not known: {}'.format(call.functor))
+
+    values = [constant.value for constant in call.args]
+    computed_result = func(*values)
+
+    if computed_result < 0.0 or computed_result > 1.0:
+        raise Exception('External method returned a value that is not a probability: {}={}'.format(call, computed_result))
+
+    return [(call, Constant(computed_result))]
+
+
+def builtin_length(L, N, **k) :
+    mode = check_mode( (L,N), [ 'LI', 'Lv', 'lI', 'vI' ], functor='length', **k)
+    # Note that Prolog also accepts 'vv' and 'lv', but these are unbounded.
+    # Note that lI is a subset of LI, but only first matching mode is returned.
+    if mode == 0 or mode == 1 :  # Given fixed list and maybe length
+        elements, tail = list_elements(L)
+        list_size = len(elements)
+        try :
+            N = unify_value(N, Constant(list_size))
+            return [ ( L, N ) ]
+        except UnifyError :
+            return []    
+    else :    # Unbounded list or variable list and fixed length.
+        if mode == 2 :
+            elements, tail = list_elements(L)
         else :
-            self.newResultBuffered(result, ground_node)
-    
-    def newResultBuffered(self, result, ground_node=0) :
-        res = (tuple(result))
-        self.__buffer[res].append( ground_node )
-                        
-    def newResultUnbuffered(self, result, ground_node=0) :
-        res = (tuple(result))
-        if res in self.results :
-            res_node = self.results[res]
-            self.gp.addDisjunct( res_node, ground_node )
+            elements, tail = [], L
+        remain = int(N) - len(elements)
+        if remain < 0 :
+            raise UnifyError()
         else :
-            self.engine._exit_call( self.node, result )
-            result_node = self.gp.addOr( (ground_node,), readonly=False )
-            self.results[ res ] = result_node
-            
-            self.notifyListeners(result, result_node )
-            
-    def complete(self) :
-        EngineLogger.get().receiveComplete(self)
-        self._flush_buffer()
-        self.notifyComplete()
-    
-    def _cycle_detected(self) :
-        self._flush_buffer(True)
-    
-    def _flush_buffer(self, cycle=False) :
-        for result, nodes in self.__buffer.items() :
-            if len(nodes) > 1 or cycle :
-                # Must make an 'or' node
-                node = self.gp.addOr( nodes, readonly=(not cycle) )
-            else :
-                node = nodes[0]
-            self.results[result] = node
-            self.notifyListeners(result, node)
-        self.__buffer.clear()
-    
-        
-    def __repr__(self) :
-        return '%s %s(%s)' % (id(self), self.node.functor, ', '.join(map(str,self.args)))
-        
+            extra = [None] * remain
+        newL = build_list( elements + extra, Term('[]'))
+        return [ (newL, N)]
+
 def extract_vars(*args, **kwd) :
     counter = kwd.get('counter', defaultdict(int))
     for arg in args :
@@ -730,96 +886,95 @@ def extract_vars(*args, **kwd) :
         elif isinstance(arg,Term) :
             extract_vars(*arg.args, counter=counter)
     return counter
-            
-class ProcessBodyReturn(ProcessNode) :
-    """Process the results of a clause body."""
-    
-    def __init__(self, head_args, node, node_id, parent) :
-        ProcessNode.__init__(self)
-        self.head_args = head_args
-        self.head_vars = extract_vars(*self.head_args)
-        self.node_id = node_id
-        self.node = node
-        self.addListener(parent)
-                    
-    def newResult(self, result, ground_node=0) :
-        for i, res in enumerate(result) :
-            if not is_ground(res) and self.head_vars[i] > 1 :
-                raise VariableUnification(location=self.node.location)
-        
-        EngineLogger.get().receiveResult(self, result, ground_node)
-        output = [ instantiate(arg, result) for arg in self.head_args ]
-        self.notifyListeners(output, ground_node)
-                
-class ProcessCallReturn(ProcessNode) :
-    """Process the results of a call."""
-    
-    def __init__(self, call_args, context, parent) :
-        ProcessNode.__init__(self)
-        self.call_args = call_args
-        self.context = context
-        self.addListener(parent)
-                    
-    def newResult(self, result, ground_node=0) :
-        EngineLogger.get().receiveResult(self, result, ground_node)
-        output = list(self.context)
-        try :
-            for call_arg, res_arg in zip(self.call_args,result) :
-                unify( res_arg, call_arg, output )
-            self.notifyListeners(output, ground_node)
-        except UnifyError :
-            pass
-    
 
-class ResultCollector(ProcessNode) :
-    """Collect results."""
-    
-    def __init__(self, allow_vars=True, database=None, location=None) :
-        ProcessNode.__init__(self)
-        self.results = []
-        self.allow_vars = allow_vars
-        self.location = location
-        self.database = database
-    
-    def newResult( self, result, ground_result) :
-        if not self.allow_vars and not is_ground(*result) :
-            if self.database :
-                location = self.database.lineno(self.location)
-            else :
-                location = None
-            raise NonGroundProbabilisticClause(location=location)
-        
-        self.results.append( (ground_result, result  ))
-        
-    def complete(self) :
-        pass
 
-class PrologInstantiationError(Exception) : pass
+def builtin_sort( L, S, **k ) :
+    # TODO doesn't work properly with variables e.g. gives sort([X,Y,Y],[_]) should be sort([X,Y,Y],[X,Y])
+    mode = check_mode( (L,S), [ 'L*' ], functor='sort', **k )
+    elements, tail = list_elements(L)  
+    # assert( is_list_empty(tail) )
+    try :
+        sorted_list = build_list(sorted(set(elements), key=StructSort), Term('[]'))
+        S_out = unify_value(S,sorted_list)
+        return [(L,S_out)]
+    except UnifyError :
+        return []
 
-class PrologTypeError(Exception) : pass
 
-    
+def builtin_between( low, high, value, **k ) :
+    mode = check_mode((low,high,value), [ 'iii', 'iiv' ], functor='between', **k)
+    low_v = int(low)
+    high_v = int(high)
+    if mode == 0 : # Check    
+        value_v = int(value)
+        if low_v <= value_v <= high_v :
+            return [(low,high,value)]
+    else : # Enumerate
+        results = []
+        for value_v in range(low_v, high_v+1) :
+            results.append( (low,high,Constant(value_v)) ) 
+        return results
+
+
+def builtin_succ( a, b, **k ) :
+    mode = check_mode((a,b), [ 'vI', 'Iv', 'II' ], functor='succ', **k)
+    if mode == 0 :
+        b_v = int(b)
+        return [(Constant(b_v-1), b)]
+    elif mode == 1 :
+        a_v = int(a)
+        return [(a, Constant(a_v+1))]
+    else :
+        a_v = int(a)
+        b_v = int(b)
+        if b_v == a_v + 1 :
+            return [(a, b)]
+    return []
+
+
+def builtin_plus( a, b, c , **k) :
+    mode = check_mode((a,b,c), [ 'iii', 'iiv', 'ivi', 'vii' ], functor='plus', **k)
+    if mode == 0 :
+        a_v = int(a)
+        b_v = int(b)
+        c_v = int(c)
+        if a_v + b_v == c_v :
+            return [(a,b,c)]
+    elif mode == 1 :
+        a_v = int(a)
+        b_v = int(b)
+        return [(a, b, Constant(a_v+b_v))]
+    elif mode == 2 :
+        a_v = int(a)
+        c_v = int(c)
+        return [(a, Constant(c_v-a_v), c)]
+    else :
+        b_v = int(b)
+        c_v = int(c)
+        return [(Constant(c_v-b_v), b, c)]
+    return []
+
+
 def atom_to_filename(atom) :
     atom = str(atom)
     if atom[0] == atom[-1] == "'" :
         atom = atom[1:-1]
     return atom
-    
 
+    
 def builtin_consult_as_list( op1, op2, **kwdargs ) :
     check_mode( (op1,op2), ['*L'], functor='consult', **kwdargs )
     builtin_consult(op1, **kwdargs)
     if is_list_nonempty(op2) :
         builtin_consult_as_list(op2.args[0], op2.args[1], **kwdargs)
+    return True
     
-    
-def builtin_consult( filename, callback=None, database=None, engine=None, context=None, location=None, **kwdargs ) :
+def builtin_consult( filename, database=None, engine=None, location=None, **kwdargs ) :
     check_mode( (filename,), 'a', functor='consult' )
     filename = os.path.join(database.source_root, atom_to_filename( filename ))
     if not os.path.exists( filename ) :
         filename += '.pl'
     if not os.path.exists( filename ) :
-        # TODO better exception
         raise ConsultError(location=database.lineno(location), message="Consult: file not found '%s'" % filename)
     
     # Prevent loading the same file twice
@@ -828,10 +983,10 @@ def builtin_consult( filename, callback=None, database=None, engine=None, contex
         pl = PrologFile( filename )
         for clause in pl :
             database += clause
-    callback.newResult(context)
-    callback.complete()
+    return True
 
-def builtin_load_external( arg, engine=None, database=None, callback=None, location=None, **kwdargs ) :
+
+def builtin_load_external( arg, engine=None, database=None, location=None, **kwdargs ) :
     check_mode( (arg,), 'a', functor='load_external' )
     # Load external (python) files that are referenced in the model
     externals = {}
@@ -847,241 +1002,71 @@ def builtin_load_external( arg, engine=None, database=None, callback=None, locat
     except ImportError :
         raise ConsultError(location=database.lineno(location), message="Error while loading external file '%s'" % filename)        
     
-    callback.newResult((arg,))
-    callback.complete()
-
-
-
-class CallProcessNode(object) :
-    
-    def __init__(self, term, args, parent) :
-        self.term = term
-        self.num_args = len(args)
-        self.parent = parent
-    
-    def newResult(self, result, ground_node=0) :
-        if self.num_args > 0 :
-            res1 = result[:-self.num_args]
-            res2 = result[-self.num_args:]
-        else :
-            res1 = result
-            res2 = []
-        self.parent.newResult( [self.term(*res1)] + list(res2), ground_node )
-
-    def complete(self) :
-        self.parent.complete()
-
-
-def builtin_call( term, args=(), callback=None, database=None, engine=None, context=None, ground_program=None, **kwdargs ) :
-    check_mode( (term,), 'c', functor='call' )
-    # Find the define node for the given query term.
-    clause_node = database.find(term.withArgs( *(term.args+args)))
-    # If term not defined: try loading it as a builtin
-    if clause_node == None : clause_node = database._getBuiltIn(term.signature)
-    # If term not defined: raise error    
-    if clause_node == None : raise UnknownClause(term.signature, location=database.lineno(term.location))
-    # Create a new call.
-    call_node = ClauseDB._call( term.functor, range(0, len(term.args) + len(args)), clause_node, None )
-    # Create a callback node that wraps the results in the functor.
-    cb = CallProcessNode(term, args, callback)
-    # Evaluate call.
-    engine._eval_call(database, ground_program, None, call_node, engine._create_context(term.args+args,define=context.define), cb )        
-
-def builtin_callN( term, *args, **kwdargs ) :
-    return builtin_call(term, args, **kwdargs)
-
-        
-class BooleanBuiltIn(object) :
-    """Simple builtin that consist of a check without unification. (e.g. var(X), integer(X), ... )."""
-    
-    def __init__(self, base_function) :
-        self.base_function = base_function
-    
-    def __call__( self, *args, **kwdargs ) :
-        callback = kwdargs.get('callback')
-        if self.base_function(*args, **kwdargs) :
-            callback.newResult(args)
-        callback.complete()
-        
-class SimpleBuiltIn(object) :
-    """Simple builtin that does cannot be involved in a cycle or require engine information and has 0 or more results."""
-
-    def __init__(self, base_function) :
-        self.base_function = base_function
-    
-    def __call__(self, *args, **kwdargs ) :
-        callback = kwdargs.get('callback')
-        results = self.base_function(*args, **kwdargs)
-        if results :
-            for result in results :
-                callback.newResult(result)
-        callback.complete()
+    return True
     
 
-
-def addBuiltIns(engine) :
+def addStandardBuiltIns(engine, b=None, s=None) :
+    """Add Prolog builtins to the given engine."""
     
-    addStandardBuiltIns(engine, BooleanBuiltIn, SimpleBuiltIn )
+    # Shortcut some wrappers
+    if b == None : b = BooleanBuiltIn
+    if s == None : s = SimpleBuiltIn
     
-    # These are special builtins
-    engine.addBuiltIn('call', 1, builtin_call)
-    for i in range(2,10) :
-        engine.addBuiltIn('call', i, builtin_callN)
-    engine.addBuiltIn('consult', 1, builtin_consult)
-    engine.addBuiltIn('.', 2, builtin_consult_as_list)
-    engine.addBuiltIn('load_external', 1, builtin_load_external)
+    engine.addBuiltIn('true', 0, b(builtin_true))
+    engine.addBuiltIn('fail', 0, b(builtin_fail))
+    engine.addBuiltIn('false', 0, b(builtin_fail))
 
+    engine.addBuiltIn('=', 2, s(builtin_eq))
+    engine.addBuiltIn('\=', 2, b(builtin_neq))
+    engine.addBuiltIn('==', 2, b(builtin_same))
+    engine.addBuiltIn('\==', 2, b(builtin_notsame))
 
+    engine.addBuiltIn('is', 2, s(builtin_is))
 
-DefaultEngine = EventBasedEngine
+    engine.addBuiltIn('>', 2, b(builtin_gt))
+    engine.addBuiltIn('<', 2, b(builtin_lt))
+    engine.addBuiltIn('=<', 2, b(builtin_le))
+    engine.addBuiltIn('>=', 2, b(builtin_ge))
+    engine.addBuiltIn('=\=', 2, b(builtin_val_neq))
+    engine.addBuiltIn('=:=', 2, b(builtin_val_eq))
 
-
-class UserAbort(Exception) : pass
-
-class UserFail(Exception) : pass
-
-
-class CallStackError(GroundingError) : 
+    engine.addBuiltIn('var', 1, b(builtin_var))
+    engine.addBuiltIn('atom', 1, b(builtin_atom))
+    engine.addBuiltIn('atomic', 1, b(builtin_atomic))
+    engine.addBuiltIn('compound', 1, b(builtin_compound))
+    engine.addBuiltIn('float', 1, b(builtin_float))
+    engine.addBuiltIn('rational', 1, b(builtin_rational))
+    engine.addBuiltIn('integer', 1, b(builtin_integer))
+    engine.addBuiltIn('nonvar', 1, b(builtin_nonvar))
+    engine.addBuiltIn('number', 1, b(builtin_number))
+    engine.addBuiltIn('simple', 1, b(builtin_simple))
+    engine.addBuiltIn('callable', 1, b(builtin_callable))
+    engine.addBuiltIn('dbreference', 1, b(builtin_dbreference))
+    engine.addBuiltIn('primitive', 1, b(builtin_primitive))
+    engine.addBuiltIn('ground', 1, b(builtin_ground))
+    engine.addBuiltIn('is_list', 1, b(builtin_is_list))
     
-    def __init__(self) :
-        GroundingError.__init__(self, 'The grounding engine exceeded the maximal recursion depth.')
-
-
-# Input python 2 and 3 compatible input
-try:
-    input = raw_input
-except NameError:
-    pass
-        
-class Debugger(object) :
-        
-    def __init__(self, debug=True, trace=False) :
-        self.__debug = debug
-        self.__trace = trace
-        self.__trace_level = None
-        
-    def enter(self, level, node_id, call_args) :
-        if self.__trace :
-            print ('  ' * level, '>', node_id, call_args, end='')
-            self._trace(level)  
-        elif self.__debug :
-            print ('  ' * level, '>', node_id, call_args)
-        
-    def exit(self, level, node_id, call_args, result) :
-        
-        if not self.__trace and level == self.__trace_level :
-            self.__trace = True
-            self.__trace_level = None
-            
-        if self.__trace :
-            if result == 'USER' :
-                print ('  ' * level, '<', node_id, call_args, result)
-            else :
-                print ('  ' * level, '<', node_id, call_args, result, end='')
-                self._trace(level, False)
-        elif self.__debug :
-            print ('  ' * level, '<', node_id, call_args, result)
+    engine.addBuiltIn('=..', 2, s(builtin_split_call))
+    engine.addBuiltIn('arg', 3, s(builtin_arg))
+    engine.addBuiltIn('functor', 3, s(builtin_functor))
     
-    def _trace(self, level, call=True) :
-        try : 
-            cmd = input('? ')
-            if cmd == '' or cmd == 'c' :
-                pass    # Do nothing special
-            elif cmd.lower() == 's' :
-                if call :
-                    self.__trace = False
-                    if cmd == 's' : self.__debug = False                
-                    self.__trace_level = level
-            elif cmd.lower() == 'u' :
-                self.__trace = False
-                if cmd == 'u' : self.__debug = False
-                self.__trace_level = level - 1
-            elif cmd.lower() == 'l' :
-                self.__trace = False
-                if cmd == 'l' : self.__debug = False
-                self.__trace_level = None
-            elif cmd.lower() == 'a' :
-                raise UserAbort()
-            elif cmd.lower() == 'f' :
-                if call :
-                    raise UserFail()
-            else : # help
-                prefix = '  ' * (level) + '    '
-                print (prefix, 'Available commands:')
-                print (prefix, '\tc\tcreep' )
-                print (prefix, '\ts\tskip     \tS\tskip (with debug)' )
-                print (prefix, '\tu\tgo up    \tU\tgo up (with debug)' )
-                print (prefix, '\tl\tleap     \tL\tleap (with debug)' )
-                print (prefix, '\ta\tabort' )
-                print (prefix, '\tf\tfail')
-                print (prefix, end='')
-                self._trace(level,call)
-        except EOFError :
-            raise UserAbort()
+    engine.addBuiltIn('@>',2, b(builtin_struct_gt))
+    engine.addBuiltIn('@<',2, b(builtin_struct_lt))
+    engine.addBuiltIn('@>=',2, b(builtin_struct_ge))
+    engine.addBuiltIn('@=<',2, b(builtin_struct_le))
+    engine.addBuiltIn('compare',3, s(builtin_compare))
 
-class EngineLogger(object) :
-    """Logger for engine messaging."""
+    engine.addBuiltIn('length',2, s(builtin_length))
+    engine.addBuiltIn('call_external',2, s(builtin_call_external))
 
-    instance = None
-    instance_class = None
+    engine.addBuiltIn('sort',2, s(builtin_sort))
+    engine.addBuiltIn('between', 3, s(builtin_between))
+    engine.addBuiltIn('succ',2, s(builtin_succ))
+    engine.addBuiltIn('plus',3, s(builtin_plus))
     
-    @classmethod
-    def get(self) :
-        if EngineLogger.instance == None :
-            if EngineLogger.instance_class == None :
-                EngineLogger.instance = EngineLogger()
-            else :
-                EngineLogger.instance = EngineLogger.instance_class()
-        return EngineLogger.instance
-    
-    @classmethod
-    def setClass(cls, instance_class) :
-        EngineLogger.instance_class = instance_class
-        EngineLogger.instance = None
-        
-    def __init__(self) :
-        pass
-                
-    def receiveResult(self, source, result, node, *extra) :
-        pass
-        
-    def receiveComplete(self, source, *extra) :
-        pass
-        
-    def sendResult(self, source, result, node, *extra) :
-        pass
+    engine.addBuiltIn('consult', 1, b(builtin_consult))
+    engine.addBuiltIn('.', 2, b(builtin_consult_as_list))
+    engine.addBuiltIn('load_external', 1, b(builtin_load_external))
 
-    def sendComplete(self, source, *extra) :
-        pass
-        
-    def create(self, node) :
-        pass
-        
-    def connect(self, source, listener, evt_type) :
-        pass
-        
-class SimpleEngineLogger(EngineLogger) :
-        
-    def __init__(self) :
-        pass
-                
-    def receiveResult(self, source, result, node, *extra) :
-        print (type(source).__name__, id(source), 'receive', result, node, source, *extra)
-        
-    def receiveComplete(self, source, *extra) :
-        print (type(source).__name__, id(source), 'receive complete', source, *extra)
-        
-    def sendResult(self, source, result, node, *extra) :
-        print (type(source).__name__, id(source), 'send', result, node, source, *extra)
-
-    def sendComplete(self, source, *extra) :
-        print (type(source).__name__, id(source), 'send complete', source, *extra)
-        
-    def create(self, source) :
-        print (type(source).__name__, id(source), 'create', source)
-        
-    def connect(self, source, listener, evt_type) :
-        print (type(source).__name__, id(source), 'connect', type(listener).__name__, id(listener))
-        
-        
-from .engine_fast import StackBasedEngine as DefaultEngine
+#from .engine_stack_opt import OptimizedStackBasedEngine as DefaultEngine
+from .engine_stack import StackBasedEngine as DefaultEngine

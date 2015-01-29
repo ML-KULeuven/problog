@@ -14,9 +14,8 @@ import problog
 from problog.util import Timer
 from problog.logic import Term, Constant
 
-from problog.engine import EventBasedEngine
-from problog.engine_alt import StackBasedEngine as StackBasedEngineOld
-from problog.engine_fast import StackBasedEngine
+from problog.engine_event import EventBasedEngine
+from problog.engine_stack import StackBasedEngine
 
 class GraphFile(problog.logic.LogicProgram) :
     
