@@ -1,25 +1,28 @@
 from __future__ import print_function
 
-from logic import *
+from .logic import *
 
 def py2pl(d):
+    """Translate a given Python datastructure into a Prolog datastructure."""
 
     if type(d) == list or type(d) == tuple:
-        if len(d) == 1:
-            return Term('.', py2pl(d[0]), Term('[]'))
-        tail = Term('.', py2pl(d[-2]), py2pl(d[-1]))
-        for el in reversed(d[:-2]):
+        tail = Term('.', py2pl(d[-1]), Term('[]'))
+        for el in reversed(d[:-1]):
             tail = Term('.', py2pl(el), tail)
         return tail
 
-    if type(d) == str or type(d) == int or type(d) == float:
+    if type(d) == str:
+        return Constant('"{}"'.format(d))
+
+    if type(d) == int or type(d) == float:
         return Constant(d)
 
-    raise Exception("Cannot convert from python to prolog: {} ({}).".format(d, type(d)))
+    raise Exception("Cannot convert from Python to Prolog: {} ({}).".format(d, type(d)))
     return None
 
 
 def pl2py(d):
+    """Translate a given Prolog datastructure into a Python datastructure."""
 
     if isinstance(d, Constant):
         if type(d.value) == str:
@@ -38,6 +41,6 @@ def pl2py(d):
                 elements.append(pl2py(tail))
             return elements
 
-    raise Exception("Cannot convert from prolog to python: {} ({}).".format(d, type(d)))
+    raise Exception("Cannot convert from Prolog to Python: {} ({}).".format(d, type(d)))
     return None
 
