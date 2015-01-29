@@ -838,19 +838,17 @@ def build_list(elements, tail) :
 
 
 def builtin_call_external(call, result, **k):
+    import pypl
     mode = check_mode( (call,result), ['gv'], function='call_external', **k)
 
     func = k['engine'].getExternalCall(call.functor)
     if func is None:
         raise Exception('External method not known: {}'.format(call.functor))
 
-    values = [constant.value for constant in call.args]
+    values = [pypl.pl2py(arg) for arg in call.args]
     computed_result = func(*values)
 
-    if computed_result < 0.0 or computed_result > 1.0:
-        raise Exception('External method returned a value that is not a probability: {}={}'.format(call, computed_result))
-
-    return [(call, Constant(computed_result))]
+    return [(call, pypl.py2pl(computed_result))]
 
 
 def builtin_length(L, N, **k) :

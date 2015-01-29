@@ -17,6 +17,9 @@ P::sim(X,Y) :- call_external(pysim(X,Y), P).
 P::sim2(Y) :- targetstring(X), call_external(pysim(X,Y), P).
 %P::sim2(Y) :- call_external(pysim(X,Y), P), targetstring(X). % Not allowed because of non-ground
 
+P::edge(X,Y) :- call_external(pyedge(X), L), member([Y,P], L).
+
+
 query(sim("aa","aa")).
 query(sim("aa","ab")).
 query(sim("aa","bb")).
@@ -25,3 +28,4 @@ query(sim("aa","abb")).
 
 query(sim2("bb")).
 
+%query(edge("v1",Y)).
