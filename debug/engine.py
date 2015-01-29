@@ -17,7 +17,7 @@ def test(filename, debug=None, trace=None) :
     
     target = problog.formula.LogicFormula()
     
-    eng = problog.engine_fast.StackBasedEngine()
+    eng = problog.engine.DefaultEngine()
     db = eng.prepare(pl)
     
     context = [None]

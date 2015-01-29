@@ -522,6 +522,61 @@ class LogicProgram(object) :
             lineno = i
             charno = char - self.line_info[i-1]
             return lineno, charno
+
+functions = {
+    ("'+'", 2) : (lambda a,b : a + b),
+    ("'-'", 2) : (lambda a,b : a - b),
+    ("'/\\'", 2) : (lambda a,b : a & b),
+    ("'\\/'", 2) : (lambda a,b : a | b),
+    ("'xor'", 2) : (lambda a,b : a ^ b),
+    ("xor", 2) : (lambda a,b : a ^ b),
+    ("'#'", 2) : (lambda a,b : a ^ b),
+    ("'><'", 2) : (lambda a,b : a ^ b),
+    ("'*'", 2) : (lambda a,b : a * b),
+    ("'/'", 2) : (lambda a,b : a / b),
+    ("'//'", 2) : (lambda a,b : a // b),        
+    ("'<<'", 2) : (lambda a,b : a << b),
+    ("'>>'", 2) : (lambda a,b : a >> b),
+    ("'mod'", 2) : (lambda a,b : a % b),
+    ("mod", 2) : (lambda a,b : a % b),
+    ("'rem'", 2) : (lambda a,b : a % b),
+    ("rem", 2) : (lambda a,b : a % b),
+    ("'div'", 2) : (lambda a, b : ( a - (a % b) ) // b),
+    ("div", 2) : (lambda a, b : ( a - (a % b) ) // b),
+    ("'**'", 2) : (lambda a,b : a ** b),
+    ("'^'", 2) : (lambda a,b : a ** b),
+    ("'+'", 1) : (lambda a : a),
+    ("'-'", 1) : (lambda a : -a),
+    ("'\\'", 1) : (lambda a : ~a),
+    ("atan",2) : math.atan2,
+    ("atan2",2) : math.atan2,
+    ("integer",1) : int,
+    ("float",1) : float,
+    ("float_integer_part",1) : lambda f : int(f) ,
+    ("float_fractional_part",1) : lambda f : f - int(f),
+    ("abs",1) : abs,
+    ("ceiling",1) : math.ceil,
+    ("round",1) : round,
+    ("truncate",1) : math.trunc,
+    ("min",2) : min,
+    ("max",2) : max,
+    ("exp",2) : math.pow,
+    ("epsilon",0) : lambda : sys.float_info.epsilon,
+    ("inf",0) : lambda : float('inf'),
+    ("nan",0) : lambda : float('nan')
+    
+}
+
+from_math_1 = ['exp', 'log', 'log10', 'sqrt', 'sin', 'cos', 'tan', 'asin', 'acos', 'atan', 'sinh', 'cosh',
+             'tanh', 'asinh', 'acosh', 'atanh', 'lgamma', 'gamma', 'erf', 'erfc', 'floor'  ]
+for f in from_math_1 :
+    functions[(f,1)] = getattr(math,f)
+
+from_math_0 = [ 'pi', 'e' ]
+for f in from_math_0 :
+    functions[(f,0)] = getattr(math,f)
+
+
                     
 def computeFunction(func, args) :
     """Compute the result of an arithmetic function given by a functor and a list of arguments.
@@ -533,61 +588,6 @@ def computeFunction(func, args) :
     Currently the following functions are supported: ``+/2``, ``-/2``, ``/\/2``, ``\//2``, ``xor/2``, ``*/2``, ``//2``, ``///2``, ``<</2``, ``>>/2``, ``mod/2``, ``rem/2``, ``**/2``, ``^/2``, ``+/1``, ``-/1``, ``\\/1``.
     
     """
-    
-    functions = {
-        ("'+'", 2) : (lambda a,b : a + b),
-        ("'-'", 2) : (lambda a,b : a - b),
-        ("'/\\'", 2) : (lambda a,b : a & b),
-        ("'\\/'", 2) : (lambda a,b : a | b),
-        ("'xor'", 2) : (lambda a,b : a ^ b),
-        ("xor", 2) : (lambda a,b : a ^ b),
-        ("'#'", 2) : (lambda a,b : a ^ b),
-        ("'><'", 2) : (lambda a,b : a ^ b),
-        ("'*'", 2) : (lambda a,b : a * b),
-        ("'/'", 2) : (lambda a,b : a / b),
-        ("'//'", 2) : (lambda a,b : a // b),        
-        ("'<<'", 2) : (lambda a,b : a << b),
-        ("'>>'", 2) : (lambda a,b : a >> b),
-        ("'mod'", 2) : (lambda a,b : a % b),
-        ("mod", 2) : (lambda a,b : a % b),
-        ("'rem'", 2) : (lambda a,b : a % b),
-        ("rem", 2) : (lambda a,b : a % b),
-        ("'div'", 2) : (lambda a, b : ( a - (a % b) ) // b),
-        ("div", 2) : (lambda a, b : ( a - (a % b) ) // b),
-        ("'**'", 2) : (lambda a,b : a ** b),
-        ("'^'", 2) : (lambda a,b : a ** b),
-        ("'+'", 1) : (lambda a : a),
-        ("'-'", 1) : (lambda a : -a),
-        ("'\\'", 1) : (lambda a : ~a),
-        ("atan",2) : math.atan2,
-        ("atan2",2) : math.atan2,
-        ("integer",1) : int,
-        ("float",1) : float,
-        ("float_integer_part",1) : lambda f : int(f) ,
-        ("float_fractional_part",1) : lambda f : f - int(f),
-        ("abs",1) : abs,
-        ("ceiling",1) : math.ceil,
-        ("round",1) : round,
-        ("truncate",1) : math.trunc,
-        ("min",2) : min,
-        ("max",2) : max,
-        ("exp",2) : math.pow,
-        ("epsilon",0) : lambda : sys.float_info.epsilon,
-        ("inf",0) : lambda : float('inf'),
-        ("nan",0) : lambda : float('nan')
-        
-    }
-    
-    from_math_1 = ['exp', 'log', 'log10', 'sqrt', 'sin', 'cos', 'tan', 'asin', 'acos', 'atan', 'sinh', 'cosh',
-                 'tanh', 'asinh', 'acosh', 'atanh', 'lgamma', 'gamma', 'erf', 'erfc', 'floor'  ]
-    for f in from_math_1 :
-        functions[(f,1)] = getattr(math,f)
-
-    from_math_0 = [ 'pi', 'e' ]
-    for f in from_math_0 :
-        functions[(f,0)] = getattr(math,f)
-
-    
     function = functions.get( (func, len(args) ) )
     if function == None :
         raise ValueError("Unknown function: '%s'/%s" % (func, len(args)) )
