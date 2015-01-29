@@ -15,6 +15,7 @@ from problog.util import Timer
 from problog.logic import Term, Constant
 
 from problog.engine import EventBasedEngine
+from problog.engine_alt import StackBasedEngine as StackBasedEngineOld
 from problog.engine_fast import StackBasedEngine
 
 class GraphFile(problog.logic.LogicProgram) :
@@ -76,9 +77,12 @@ def main(filename, engine='1', n=0, L=0) :
     with Timer('Read file') :
         lines = list(pl)
     
-    if engine == 'old' :
+    if engine == 'e1' :
         engine = EventBasedEngine()
         stats = None    # Engine doesn't support stats
+    elif engine == 'e2' :
+        engine = StackBasedEngineOld()
+        stats = [0] * 5
     else :
         engine = StackBasedEngine()
         stats = [0] * 5
@@ -120,7 +124,7 @@ if __name__ == '__main__' :
     import argparse
     p = argparse.ArgumentParser()
     p.add_argument('filename')
-    p.add_argument('-e', '--engine', choices=('old','new'), default='new')
+    p.add_argument('-e', '--engine', choices=('e1','e2','e3'), default='e3')
     p.add_argument('-n', type=int, default=0)
     p.add_argument('-L', type=int, default=0)
     
