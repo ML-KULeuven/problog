@@ -99,7 +99,8 @@ class StackBasedEngine(object) :
         self._process_directives( result )
         return result
         
-    def eval(self, node_id, database, **kwdargs) :
+    def eval(self, node_id, **kwdargs) :
+        database = kwdargs['database']
         if node_id < 0 :
             node_type = 'builtin'
             node = self._getBuiltIn(node_id)
@@ -108,7 +109,7 @@ class StackBasedEngine(object) :
             node_type = type(node).__name__
         
         exec_func = self.create_node_type( node_type )        
-        return exec_func(self, database=database, node_id=node_id, node=node, **kwdargs)
+        return exec_func(self, node_id=node_id, node=node, **kwdargs)
         
     def _process_directives( self, db) :
         term = Term('_directive')
@@ -467,47 +468,52 @@ def eval_fact(engine, parent, node_id, node, context, target, identifier, **kwda
             
 def eval_define(engine, node, context, target, parent, identifier=None, transform=None, **kwdargs) :
     goal = (node.functor, tuple(context))
-    active_node = target._cache.getEvalNode(goal)
-    if active_node != None :
-        # If current node is ground and active node has results already, then we can simple send that result.
-        if active_node.is_ground and active_node.results :
-            active_node.flushBuffer(True)
-            active_node.is_cycle_parent = True  # Notify it that it's buffer was flushed
-            queue = []
-            for result, node in active_node.results :
-                if transform : result = transform(result)
-                if result == None :
-                    queue += [ complete(parent, identifier) ]
-                else :
-                    queue += [ newResult( parent, result, node, identifier, True ) ]
-            assert(len(queue) == 1)
-            return queue
-        else :
-            evalnode = EvalDefine( pointer=engine.pointer, engine=engine, node=node, context=context, target=target, identifier=identifier, parent=parent, transform=transform, **kwdargs )
-            engine.add_record(evalnode)
-            return evalnode.cycleDetected(active_node)
-    else:
-        results = target._cache.get(goal)
-        if results != None :
-            actions = []
-            n = len(results)
-            if n > 0 :
-                for result, target_node in results.items() :
-                    n -= 1
-                    if target_node != NODE_FALSE :
-                        if transform : result = transform(result)
-                        if result == None :
-                            if n == 0 :
-                                actions += [ complete(parent, identifier) ]
-                            else :
-                                pass
+
+    engine.stats[2] += 1
+    results = target._cache.get(goal)
+    if results != None :
+        engine.stats[3] += 1
+        actions = []
+        n = len(results)
+        if n > 0 :
+            for result, target_node in results.items() :
+                n -= 1
+                if target_node != NODE_FALSE :
+                    if transform : result = transform(result)
+                    if result == None :
+                        if n == 0 :
+                            actions += [ complete(parent, identifier) ]
                         else :
-                            actions += [ newResult( parent, result, target_node, identifier, n==0 ) ]
-                    elif n == 0 :
-                        actions += [ complete(parent, identifier) ]
+                            pass
+                    else :
+                        actions += [ newResult( parent, result, target_node, identifier, n==0 ) ]
+                elif n == 0 :
+                    actions += [ complete(parent, identifier) ]
+        else :
+            actions += [ complete(parent, identifier) ]
+        return actions
+    else :
+        active_node = target._cache.getEvalNode(goal)
+        engine.stats[0] += 1
+        if active_node != None :
+            engine.stats[1] +=1
+            # If current node is ground and active node has results already, then we can simple send that result.
+            if active_node.is_ground and active_node.results :
+                active_node.flushBuffer(True)
+                active_node.is_cycle_parent = True  # Notify it that it's buffer was flushed
+                queue = []
+                for result, node in active_node.results :
+                    if transform : result = transform(result)
+                    if result == None :
+                        queue += [ complete(parent, identifier) ]
+                    else :
+                        queue += [ newResult( parent, result, node, identifier, True ) ]
+                assert(len(queue) == 1)
+                return queue
             else :
-                actions += [ complete(parent, identifier) ]
-            return actions
+                evalnode = EvalDefine( pointer=engine.pointer, engine=engine, node=node, context=context, target=target, identifier=identifier, parent=parent, transform=transform, **kwdargs )
+                engine.add_record(evalnode)
+                return evalnode.cycleDetected(active_node)
         else :
             children = node.children.find( context )
             to_complete = len(children)
@@ -555,7 +561,9 @@ def eval_call(engine, node_id, node, context, **kwdargs) :
     kwdargs['call_origin'] = (origin,node.location)
     kwdargs['context'] = call_args
     kwdargs['transform'] = result_transform
-    actions = [ call( node.defnode, (), kwdargs ) ]
+#    actions = [ call( node.defnode, (), kwdargs ) ]
+    actions = engine.eval( node.defnode, **kwdargs )   
+    #print ( [(a,b,c) for a,b,c,d in actions ])
     return actions
         
 def eval_clause(engine, **kwdargs) :
@@ -1106,6 +1114,48 @@ class EvalAnd(EvalNode) :
         
     def __call__(self) :
         # Create a node for child 1 and call it.
+        
+        # base_args = {}
+        # base_args['database'] = self.database
+        # base_args['target'] = self.target
+        # base_args['context'] = self.context
+        # base_args['parent'] = self.pointer
+        # base_args['identifier'] = None
+        # base_args['transform'] = None
+        # base_args['call'] = self.call
+        # #print ('AND')
+        # and_actions = self.engine.eval( self.node.children[0], **base_args )
+        # #print ("AND", and_actions)
+        # return False, and_actions
+        
+        # a,b,c,d = self.createCall(  self.node.children[0], identifier='fc' )
+        # # # del d['target']
+        # # # del d['database']
+        # # #print ('And: ', a,b,c,d)
+        # #
+        # next_actions = self.engine.eval( b, *c, **d )
+        # self.engine.debug = True
+        # self.engine.trace = True
+        # actions = []
+        # cleanUp = False
+        # for a,b,c,d in next_actions :
+        #     if a == 'r' and b == self.pointer :
+        #         cU, act = self.newResult( *c, **d )
+        #         actions += act
+        #         cleanUp |= cU
+        #     elif a == 'c' and b == self.pointer :
+        #         cU, act = self.complete( *c, **d )
+        #         actions += act
+        #         cleanUp |= cU
+        #     else :
+        #         actions.append( (a,b,c,d) )
+        # print ('AND', self.pointer, cleanUp, [ (a,b,c,d.get('parent'),d.get('identifier')) for a,b,c,d in actions] )
+        #
+        # return cleanUp, actions
+        #
+        # # return False, next_actions
+        
+        
         return False, [ self.createCall(  self.node.children[0], identifier=None ) ]
         
     def newResult(self, result, node=0, source=None, is_last=False) :
