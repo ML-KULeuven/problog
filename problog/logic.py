@@ -307,10 +307,7 @@ class Constant(Term) :
         return hash(self.functor)
     
     def __str__(self) :
-        if type(self.functor) == int or type(self.functor) == float :
-            return str(self.functor)
-        else :
-            return '"%s"' % self.functor
+        return str(self.functor)
         
     def isString(self) :
         """Check whether this constant is a string.
