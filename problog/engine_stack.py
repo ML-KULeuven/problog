@@ -151,10 +151,6 @@ class StackBasedEngine(ClauseDBEngine) :
                             raise InvalidEngineState('Stack not empty at end of execution!')
                         if not subcall : self.shrink_stack()
                         return solutions
-                elif act == 'R' :
-                    solutions += args[0]
-                    if args[2] :
-                        return solutions
                 elif act == 'c' :
                     if stats != None : stats[1] += 1
                     if self.debug : print ('Maximal stack size:', max_stack)
@@ -192,9 +188,6 @@ class StackBasedEngine(ClauseDBEngine) :
                     if act == 'r' :
                         if stats != None : stats[0] += 1
                         cleanUp, next_actions = exec_node.newResult(*args,**kwdargs)
-                    elif act == 'R' :
-                        if stats != None : stats[3] += 1
-                        cleanUp, next_actions = exec_node.newResultMulti(*args,**kwdargs)
                     elif act == 'c' :
                         if stats != None : stats[1] += 1
                         cleanUp, next_actions = exec_node.complete(*args,**kwdargs)
@@ -631,9 +624,9 @@ class NestedDict(object) :
 class DefineCache(object) : 
     
     def __init__(self) :
-        self.__non_ground = {} #NestedDict()
-        self.__ground = {} # NestedDict()
-        self.__active = {} #NestedDict()
+        self.__non_ground = NestedDict()
+        self.__ground = NestedDict()
+        self.__active = NestedDict()
     
     def activate(self, goal, node) :
         self.__active[goal] = node
@@ -661,7 +654,7 @@ class DefineCache(object) :
                 self.__ground[ key ] = NODE_FALSE  # Goal failed
         else :
             res_keys = list(results.keys())
-            self.__non_ground[ goal ] = res_keys
+            self.__non_ground[ goal ] = results
             for res_key in res_keys :
                 key = (functor, res_key)
                 self.__ground[ key ] = results[res_key]
@@ -677,7 +670,8 @@ class DefineCache(object) :
         if is_ground(*args) :
             return  [ (args,self.__ground[goal]) ]
         else :
-            res_keys = self.__non_ground[goal]
+            #res_keys = self.__non_ground[goal]
+            return self.__non_ground[goal].items()
             result = [ (res_key, self.__ground[(functor,res_key)]) for res_key in res_keys ]
 #            result = { res_key : self.__ground[(functor,res_key)] for res_key in res_keys }
             return result
@@ -725,6 +719,9 @@ class ResultSet(object) :
         
     def keys(self) :
         return [ result for result, node in self.results ] 
+        
+    def items(self) :
+        return self.results
         
     def __len__(self) :
         return len(self.results)
