@@ -88,7 +88,7 @@ class SemiringLogProbability(SemiringProbability) :
         return a + b
 
     def negate(self, a) :
-        if a == 0.0: return self.zero()
+        if a > -1e-10: return self.zero()
         return math.log1p(-math.exp(a))
 
     def value(self, a) :
