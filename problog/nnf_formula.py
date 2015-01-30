@@ -44,7 +44,7 @@ class SimpleNNFEvaluator(Evaluator) :
                 self.setEvidence( abs(ev), ev > 0 )
             
         self.Z = self.getZ()
-        if self.Z == 0.0 :
+        if self.semiring.result(self.Z) == 0.0 :
             raise InconsistentEvidenceError()
             
                 
