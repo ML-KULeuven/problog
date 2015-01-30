@@ -1161,10 +1161,10 @@ class EvalClause(EvalNode) :
         else :
             location = self.node.location
             node_args = self.node.args
-            hv = [ self.head_vars[i] > 1 for i in range(0,self.node.varcount) ]
+            hv = [ i for i in range(0,self.node.varcount) if self.head_vars[i] > 1 ]
             def result_transform(result) :
-                for i, res in enumerate(result) :
-                    if hv[i] and not is_ground(res) :
+                for i in hv :
+                    if not is_ground(result[i]) :
                         raise VariableUnification(location=location)
                 output = [ instantiate(arg, result) for arg in node_args ]
                 return tuple(output)            
