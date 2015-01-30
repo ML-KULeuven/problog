@@ -334,6 +334,18 @@ class StackBasedEngine(ClauseDBEngine) :
     
     def eval_call(engine, node_id, node, context, **kwdargs) :
         call_args = [ instantiate(arg, context) for arg in node.args ]
+        
+        if node.defnode == -5 : # \= builtin
+            try :
+                unify(call_args[0], call_args[1])
+                return [ complete( kwdargs['parent'], kwdargs['identifier'] ) ]
+            except UnifyError :
+                return [ newResult( kwdargs['parent'], context, NODE_TRUE, kwdargs['identifier'], True ) ]
+        elif node.defnode == -1 : # True
+            return [ newResult( kwdargs['parent'], context, NODE_TRUE, kwdargs['identifier'], True ) ]
+        elif node.defnode == -2 or node.defnode == -3 : # Fail/False
+            return [ complete( kwdargs['parent'], kwdargs['identifier'] ) ]
+        
         if not is_ground(*call_args) :
             def result_transform(result) :
                 output = list(context)

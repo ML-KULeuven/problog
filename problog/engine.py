@@ -1012,12 +1012,12 @@ def addStandardBuiltIns(engine, b=None, s=None) :
     if b == None : b = BooleanBuiltIn
     if s == None : s = SimpleBuiltIn
     
-    engine.addBuiltIn('true', 0, b(builtin_true))
-    engine.addBuiltIn('fail', 0, b(builtin_fail))
-    engine.addBuiltIn('false', 0, b(builtin_fail))
+    engine.addBuiltIn('true', 0, b(builtin_true))   # -1
+    engine.addBuiltIn('fail', 0, b(builtin_fail))   # -2
+    engine.addBuiltIn('false', 0, b(builtin_fail))  # -3
 
-    engine.addBuiltIn('=', 2, s(builtin_eq))
-    engine.addBuiltIn('\=', 2, b(builtin_neq))
+    engine.addBuiltIn('=', 2, s(builtin_eq))        # -4
+    engine.addBuiltIn('\=', 2, b(builtin_neq))      # -5
     engine.addBuiltIn('==', 2, b(builtin_same))
     engine.addBuiltIn('\==', 2, b(builtin_notsame))
 
