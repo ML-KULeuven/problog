@@ -1155,11 +1155,12 @@ class EvalClause(EvalNode) :
     
     def getResultTransform(self) :
         if self.is_ground :
+            context = self.context
             def result_transform(result) :
-                return self.context
+                return context
         else :
             location = self.node.location
-            node_args = list(self.node.args)
+            node_args = self.node.args
             hv = [ self.head_vars[i] > 1 for i in range(0,self.node.varcount) ]
             def result_transform(result) :
                 for i, res in enumerate(result) :
@@ -1168,16 +1169,6 @@ class EvalClause(EvalNode) :
                 output = [ instantiate(arg, result) for arg in node_args ]
                 return tuple(output)            
         return result_transform
-        
-    def newResultMulti(self, results, source, complete ) :
-        transform = self.getResultTransform()
-        results = [ (transform(res), node) for res, node in results ]
-        results = [ (res, node) for res, node in results if res != None ]
-        if results :
-            return complete, [ newResultMulti(self.parent, results, source, complete) ]
-        else :        
-            return self.complete(source)
-        
         
     def newResult(self, result, node=NODE_TRUE, source=None, is_last=False ) :
         self.engine.stats[6] += 1
