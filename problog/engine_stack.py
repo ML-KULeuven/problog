@@ -276,7 +276,7 @@ class StackBasedEngine(ClauseDBEngine) :
             actions = []
             n = len(results)
             if n > 0 :
-                for result, target_node in results.items() :
+                for result, target_node in results :
                     n -= 1
                     if target_node != NODE_FALSE :
                         if transform : result = transform(result)
@@ -344,6 +344,7 @@ class StackBasedEngine(ClauseDBEngine) :
         return engine.eval_default(EvalNot, **kwdargs)
     
     def eval_call(engine, node_id, node, context, **kwdargs) :
+        mask = [ is_ground(s) for s in node.args ]
         def result_transform(result) :
             output = list(context)
             actions = []
@@ -674,10 +675,11 @@ class DefineCache(object) :
     def __getitem__(self, goal) :
         functor, args = goal
         if is_ground(*args) :
-            return { args : self.__ground[goal] }
+            return  [ (args,self.__ground[goal]) ]
         else :
             res_keys = self.__non_ground[goal]
-            result = { res_key : self.__ground[(functor,res_key)] for res_key in res_keys }
+            result = [ (res_key, self.__ground[(functor,res_key)]) for res_key in res_keys ]
+#            result = { res_key : self.__ground[(functor,res_key)] for res_key in res_keys }
             return result
             
     def __contains__(self, goal) :
@@ -796,7 +798,10 @@ class EvalDefine(EvalNode) :
                 else :
                     cache_key = (self.node.functor, res)
                     if cache_key in self.target._cache :
-                        result_node = self.target._cache[ cache_key ][ res ]
+                        # Get direct
+                        stored_result = self.target._cache[ cache_key ]
+                        assert(len(stored_result) == 1)
+                        result_node = stored_result[ 0 ][1]
                     else :
                         result_node = self.target.addOr( (node,), readonly=False )
                     name = str(Term(self.node.functor, *res))
@@ -859,7 +864,9 @@ class EvalDefine(EvalNode) :
         def func( res, nodes ) :
             cache_key = (self.node.functor, res)
             if cache_key in self.target._cache :
-                node = self.target._cache[ cache_key ][ res ]
+                stored_result = self.target._cache[ cache_key ]
+                assert(len(stored_result)==1) 
+                node = stored_result[0][1]
             else :
                 node = self.target.addOr( nodes, readonly=(not cycle) )
             #node = self.target.addOr( nodes, readonly=(not cycle) )
