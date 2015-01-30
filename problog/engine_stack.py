@@ -1128,7 +1128,7 @@ class EvalClause(EvalNode) :
         context = [None]*self.node.varcount
         # self._create_context(size=node.varcount,define=call_args.define)
         try :
-            assert(len(self.node.args) == len(self.context))
+            self.is_ground = is_ground(*self.context)
             # Fill in the context by unifying clause head arguments with call arguments.
             for head_arg, call_arg in zip(self.node.args, self.context) :
                 # Remove variable identifiers from calling context.
@@ -1142,16 +1142,19 @@ class EvalClause(EvalNode) :
             return True, self.notifyComplete()
     
     def getResultTransform(self) :
-        location = self.node.location
-        node_args = list(self.node.args)
-        hv = [ self.head_vars[i] > 1 for i in range(0,self.node.varcount) ]
-        def result_transform(result) :
-            for i, res in enumerate(result) :
-                if hv[i] and not is_ground(res) :
-                    raise VariableUnification(location=location)
-            output = [ instantiate(arg, result) for arg in node_args ]
-            return tuple(output)
-            
+        if self.is_ground :
+            def result_transform(result) :
+                return self.context
+        else :
+            location = self.node.location
+            node_args = list(self.node.args)
+            hv = [ self.head_vars[i] > 1 for i in range(0,self.node.varcount) ]
+            def result_transform(result) :
+                for i, res in enumerate(result) :
+                    if hv[i] and not is_ground(res) :
+                        raise VariableUnification(location=location)
+                output = [ instantiate(arg, result) for arg in node_args ]
+                return tuple(output)            
         return result_transform
         
     def newResultMulti(self, results, source, complete ) :
