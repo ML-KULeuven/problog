@@ -66,7 +66,7 @@ class StackBasedEngine(ClauseDBEngine) :
         self.stack_size = 128
         self.stack = [None] * self.stack_size
         
-        self.stats = [0,0,0,0]
+        self.stats = [0] * 10
         
         self.debug = False
         self.trace = False
@@ -261,13 +261,11 @@ class StackBasedEngine(ClauseDBEngine) :
             
     def eval_define(engine, node, context, target, parent, identifier=None, transform=None, **kwdargs) :
         goal = (node.functor, tuple(context))
-
-        engine.stats[2] += 1
         results = target._cache.get(goal)
         if results != None :
-            engine.stats[3] += 1
             actions = []
             n = len(results)
+            engine.stats[7] += (n-1)
             if n > 0 :
                 for result, target_node in results :
                     n -= 1
@@ -287,9 +285,7 @@ class StackBasedEngine(ClauseDBEngine) :
             return actions
         else :
             active_node = target._cache.getEvalNode(goal)
-            engine.stats[0] += 1
             if active_node != None :
-                engine.stats[1] +=1
                 # If current node is ground and active node has results already, then we can simple send that result.
                 if active_node.is_ground and active_node.results :
                     active_node.flushBuffer(True)
@@ -332,26 +328,29 @@ class StackBasedEngine(ClauseDBEngine) :
             evalnode = EvalOr( pointer=engine.pointer, engine=engine, parent=parent, node=node, **kwdargs)
             engine.add_record( evalnode )
             return [ evalnode.createCall( child ) for child in node.children ]
-
+            
     def eval_neg(engine, **kwdargs) :
         return engine.eval_default(EvalNot, **kwdargs)
     
     def eval_call(engine, node_id, node, context, **kwdargs) :
-        mask = [ is_ground(s) for s in node.args ]
-        def result_transform(result) :
-            output = list(context)
-            actions = []
-            try :
-                assert(len(result) == len(node.args))
-                for call_arg, res_arg in zip(node.args,result) :
-                    unify( res_arg, call_arg, output )
-                return tuple(output)
-            except UnifyError :
-                pass
-            
         call_args = [ instantiate(arg, context) for arg in node.args ]
+        if not is_ground(*call_args) :
+            def result_transform(result) :
+                output = list(context)
+                actions = []
+                try :
+                    assert(len(result) == len(node.args))
+                    for call_arg, res_arg in zip(node.args,result) :
+                        unify( res_arg, call_arg, output )
+                    return tuple(output)
+                except UnifyError :
+                    pass
+        else :
+            def result_transform(result) :
+                return context
+                
         origin = '%s/%s' % (node.functor,len(node.args))
-    
+        
         kwdargs['call_origin'] = (origin,node.location)
         kwdargs['context'] = call_args
         kwdargs['transform'] = result_transform
@@ -490,6 +489,7 @@ class EvalOr(EvalNode) :
         
         self.results = ResultSet()
         self.to_complete = len(self.node.children)
+        self.engine.stats[0] += 1
             
     def isOnCycle(self) :
         return self.on_cycle
@@ -763,6 +763,7 @@ class EvalDefine(EvalNode) :
         self.call = ( self.node.functor, tuple(self.context) )
         self.to_complete = to_complete
         self.is_ground = is_ground(*self.context)
+        self.engine.stats[1] += 1
         
     def notifyResultMe(self, arguments, node=0, is_last=False ) :
         parent = self.pointer
@@ -971,7 +972,8 @@ class EvalNot(EvalNode) :
     def __init__(self, **parent_args ) : 
         EvalNode.__init__(self, **parent_args)
         self.nodes = set()  # Store ground nodes
-
+        self.engine.stats[2] += 1
+        
     def __call__(self) :
         return False, [ self.createCall( self.node.child ) ]
         
@@ -1007,6 +1009,7 @@ class EvalAnd(EvalNode) :
     def __init__(self, **parent_args) :
         EvalNode.__init__(self, **parent_args)
         self.to_complete = 1
+        self.engine.stats[3] += 1
         
     def __call__(self) :
         # Create a node for child 1 and call it.
@@ -1108,6 +1111,7 @@ class EvalBuiltIn(EvalNode) :
             self.location = call_origin[1]
         else :
             self.location = None
+        self.engine.stats[4] += 1
     
     def __call__(self) :
         return self.node(*self.context, engine=self.engine, database=self.database, target=self.target, location=self.location, callback=self, transform=self.transform)
@@ -1118,6 +1122,7 @@ class EvalClause(EvalNode) :
     def __init__(self, **parent_args ) : 
         EvalNode.__init__(self, **parent_args)
         self.head_vars = extract_vars(*self.node.args)  # For variable unification check
+        self.engine.stats[5] += 1
         
     def __call__(self) :
         context = [None]*self.node.varcount
@@ -1139,9 +1144,10 @@ class EvalClause(EvalNode) :
     def getResultTransform(self) :
         location = self.node.location
         node_args = list(self.node.args)
+        hv = [ self.head_vars[i] > 1 for i in range(0,self.node.varcount) ]
         def result_transform(result) :
             for i, res in enumerate(result) :
-                if not is_ground(res) and self.head_vars[i] > 1 :
+                if hv[i] and not is_ground(res) :
                     raise VariableUnification(location=location)
             output = [ instantiate(arg, result) for arg in node_args ]
             return tuple(output)
@@ -1159,6 +1165,7 @@ class EvalClause(EvalNode) :
         
         
     def newResult(self, result, node=NODE_TRUE, source=None, is_last=False ) :
+        self.engine.stats[6] += 1
         result = self.getResultTransform()( result )
         if result == None :
             if is_last :

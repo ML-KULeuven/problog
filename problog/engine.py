@@ -203,6 +203,8 @@ def instantiate( term, context ) :
         return None
     elif type(term) == int :
         return context[term]
+    # elif is_ground(term) :
+    #     return term
     else :
         return term.apply(context)
         
