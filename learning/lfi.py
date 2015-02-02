@@ -300,18 +300,19 @@ def read_examples( *filenames ) :
         with open(filename) as f :
             example = ''
             for line in f :
-                line = line.strip()
-                if line.startswith('---') :
+                if line.strip().startswith('---') :
                     pl = PrologString(example)
-                    yield engine.query(pl, Term('evidence',None,None))
+                    atoms =  engine.query(pl, Term('evidence',None,None))
+                    if len(atoms) > 0:
+                        yield atoms
                     example = ''
-                elif line.startswith('%') :
-                    pass
                 else :
                     example += line
-            if not example == '' :
+            if example :
                 pl = PrologString(example)
-                yield engine.query(pl, Term('evidence',None,None))
+                atoms = engine.query(pl, Term('evidence',None,None))
+                if len(atoms) > 0:
+                    yield atoms
     
     
 def run_lfi( program, examples, max_iter=10000, min_improv=1e-10 ) :
