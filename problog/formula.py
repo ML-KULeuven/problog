@@ -757,3 +757,96 @@ class ConstraintME(Constraint) :
         result.extra_node = rename.get( self.extra_node, self.extra_node )
         return result
 
+# Alternative cycle breaking below: loop formula's
+#   ASSAT: Computing Answer Sets of A Logic Program By SAT Solvers
+#   Fangzhen Lin and Yuting Zhao
+#   AAAI'02
+# Not in use: 
+#   - does not work with SDD
+#   - added constraints can become extremely large
+
+#@transform(LogicFormula, LogicDAG)
+def breakCyclesConstraint(source, target) :
+    relevant = [False] * (len(source)+1)
+    cycles = {}
+    for name, node, label in source.getNamesWithLabel() :
+        if label != LABEL_NAMED :
+            for c_in in findCycles( source, node, [], relevant) :
+                c_in = tuple(sorted(c_in))
+                if c_in in cycles :
+                    pass
+                else :
+                    cycles[c_in] = splitCycle(source, c_in)
+    
+    for c_in, c_out in cycles.items() :
+        source.addConstraint(ConstraintLoop(c_in, c_out))
+    return source
+
+def splitCycle(src, loop) :
+    cycle_free = []
+    for n in loop :
+        n = src._getNode(n)
+        t = type(n).__name__
+        if t == 'disj' :
+            cycle_free += [ c for c in n.children if not c in loop ]
+        elif t == 'conj' :
+            pass
+        else :
+            raise Exception('?')
+    return cycle_free
+    
+def findCycles( src, a, path, relevant=None ) :
+    n = src._getNode(a)
+    t = type(n).__name__
+    if relevant != None : relevant[a] = True
+    try :
+        s = path.index(a)
+        yield path[s:]
+    except ValueError :
+        if t == 'atom' :
+            pass
+        else :
+            for c in n.children :
+                for p in findCycles( src, c, path + [a], relevant ) :
+                    yield p
+                    
+                    
+class ConstraintLoop(Constraint) :
+    """Loop breaking constraint."""
+    
+    def __init__(self, cycle_nodes, noncycle_nodes) :
+        self.in_loop = cycle_nodes
+        self.ex_loop = noncycle_nodes
+        self.in_node = None
+    
+    def __str__(self) :
+        return 'loop_break(%s, %s)' % (list(self.in_loop), list(self.ex_loop))
+    
+    def isTrue(self) :
+        return False
+        
+    def isFalse(self) :
+        return False
+        
+    def isActive(self) :
+        return True
+        
+    def encodeCNF(self) :
+        if self.isActive() :
+            ex_loop = tuple(self.ex_loop)
+            lines = []
+            for m in self.in_loop :
+                lines.append( ex_loop + (-m,) )
+            return lines
+        else :
+            return []
+    
+    def updateWeights(self, weights, semiring) :
+        """Update the weights of the logic formula accordingly."""
+        pass
+        
+    def copy( self, rename={} ) :
+        cycle_nodes = set(rename.get(x,x) for x in self.in_loop)
+        noncycle_nodes = set(rename.get(x,x) for x in self.ex_loop)
+        result = ConstraintLoop( cycle_nodes, noncycle_nodes )
+        return result
