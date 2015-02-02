@@ -300,13 +300,16 @@ def read_examples( *filenames ) :
         with open(filename) as f :
             example = ''
             for line in f :
-                if line.strip().startswith('---') :
+                line = line.strip()
+                if line.startswith('---') :
                     pl = PrologString(example)
                     yield engine.query(pl, Term('evidence',None,None))
                     example = ''
+                elif line.startswith('%') :
+                    pass
                 else :
                     example += line
-            if example :
+            if not example == '' :
                 pl = PrologString(example)
                 yield engine.query(pl, Term('evidence',None,None))
     
