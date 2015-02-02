@@ -8,4 +8,4 @@ import logging
 
 @transform(LogicProgram, LogicFormula)
 def ground(model, target=None, queries=None, evidence=None) :
-    return DefaultEngine().ground_all(model,target)
+    return DefaultEngine().ground_all(model,target, queries=queries, evidence=evidence)
