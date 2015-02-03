@@ -29,7 +29,7 @@ class GenericEngine(object) :
         :param term: term to query; variables should be represented as None
         :returns: list of tuples of argument for which the query succeeds.
         """
-        raise NotImplementedError('GenericEngine.prepare is an abstract method.')
+        raise NotImplementedError('GenericEngine.query is an abstract method.')
         
     def ground(self, db, term, target=None, label=None) :
         """Ground a given query term and store the result in the given ground program.
@@ -40,7 +40,7 @@ class GenericEngine(object) :
         :param label: optional label (query, evidence, ...)
         :returns: logic formula (target if given)
         """
-        raise NotImplementedError('GenericEngine.prepare is an abstract method.')
+        raise NotImplementedError('GenericEngine.ground is an abstract method.')
         
     def ground_all(self, db, target=None, queries=None, evidence=None) :
         """Ground all queries and evidence found in the the given database.
@@ -51,7 +51,7 @@ class GenericEngine(object) :
         :param evidence: list of evidence to evaluate instead of the ones in the logic program
         :returns: ground program
         """
-        raise NotImplementedError('GenericEngine.prepare is an abstract method.')
+        raise NotImplementedError('GenericEngine.ground_all is an abstract method.')
         
 
 class ClauseDBEngine(GenericEngine) :

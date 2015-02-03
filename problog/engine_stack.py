@@ -7,7 +7,7 @@ import imp, inspect # For load_external
 from .formula import LogicFormula
 from .program import ClauseDB, PrologFile
 from .logic import Term
-from .core import LABEL_NAMED
+#from .core import LABEL_NAMED
 from .engine import unify, UnifyError, instantiate, extract_vars, is_ground, UnknownClause, _UnknownClause, ConsultError
 from .engine import addStandardBuiltIns, check_mode, GroundingError, NonGroundProbabilisticClause
 from .engine import ClauseDBEngine
@@ -81,6 +81,7 @@ class StackBasedEngine(ClauseDBEngine) :
             node_type = type(node).__name__
         
         exec_func = self.create_node_type( node_type )        
+        
         return exec_func(node_id=node_id, node=node, **kwdargs)
         
     def create_node_type(self, node_type) :
@@ -333,7 +334,6 @@ class StackBasedEngine(ClauseDBEngine) :
         return engine.eval_default(EvalNot, **kwdargs)
     
     def eval_call(engine, node_id, node, context, parent, transform=None, identifier=None, **kwdargs) :
-        # print ('eval_call', context, parent, transform, kwdargs.keys())
         call_args = [ instantiate(arg, context) for arg in node.args ]
         # print ('call_args', call_args)
         # print (node.defnode)
@@ -367,14 +367,14 @@ class StackBasedEngine(ClauseDBEngine) :
             transform.addConstant(context)
                 
         origin = '%s/%s' % (node.functor,len(node.args))
-        
         kwdargs['call_origin'] = (origin,node.location)
         kwdargs['context'] = call_args
         kwdargs['transform'] = transform
-    #    actions = [ call( node.defnode, (), kwdargs ) ]
-        actions = engine.eval( node.defnode, parent=parent, identifier=identifier, **kwdargs )   
-        #print ( [(a,b,c) for a,b,c,d in actions ])
-        return actions
+        try :
+            return engine.eval( node.defnode, parent=parent, identifier=identifier, **kwdargs )   
+        except _UnknownClause :
+            loc = kwdargs['database'].lineno(node.location)
+            raise UnknownClause(origin, location=loc)
         
     def eval_clause(engine, context, node, node_id, parent, transform=None, identifier=None, **kwdargs) :
         new_context = [None]*node.varcount
@@ -851,7 +851,7 @@ class EvalDefine(EvalNode) :
                     else :
                         result_node = self.target.addOr( (node,), readonly=False )
                     name = str(Term(self.node.functor, *res))
-                    self.target.addName(name, result_node, LABEL_NAMED)
+                    #self.target.addName(name, result_node, LABEL_NAMED)
                     self.results[res] = result_node
                     actions = []
                     # Send results to cycle children
@@ -917,7 +917,7 @@ class EvalDefine(EvalNode) :
                 node = self.target.addOr( nodes, readonly=(not cycle) )
             #node = self.target.addOr( nodes, readonly=(not cycle) )
             name = str(Term(self.node.functor, *res))
-            self.target.addName(name, node, LABEL_NAMED)
+            #self.target.addName(name, node, LABEL_NAMED)
             return node
         self.results.collapse(func)
                 
