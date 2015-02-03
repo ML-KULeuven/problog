@@ -7,7 +7,7 @@ import imp, inspect # For load_external
 from .formula import LogicFormula
 from .program import ClauseDB, PrologFile
 from .logic import Term
-#from .core import LABEL_NAMED
+from .core import LABEL_NAMED
 from .engine import unify, UnifyError, instantiate, extract_vars, is_ground, UnknownClause, _UnknownClause, ConsultError
 from .engine import addStandardBuiltIns, check_mode, GroundingError, NonGroundProbabilisticClause
 from .engine import ClauseDBEngine
@@ -47,8 +47,8 @@ def cyclic(obj, child) :
 
 class StackBasedEngine(ClauseDBEngine) :
     
-    def __init__(self, *args, **kwdargs) :
-        ClauseDBEngine.__init__(self,*args,**kwdargs)
+    def __init__(self, label_all=False, **kwdargs) :
+        ClauseDBEngine.__init__(self,**kwdargs)
         
         self.node_types = {}
         self.node_types['fact'] = self.eval_fact
@@ -70,6 +70,8 @@ class StackBasedEngine(ClauseDBEngine) :
         
         self.debug = False
         self.trace = False
+        
+        self.label_all = label_all
     
     def eval(self, node_id, **kwdargs) :
         database = kwdargs['database']
@@ -851,7 +853,8 @@ class EvalDefine(EvalNode) :
                     else :
                         result_node = self.target.addOr( (node,), readonly=False )
                     name = str(Term(self.node.functor, *res))
-                    #self.target.addName(name, result_node, LABEL_NAMED)
+                    if self.engine.label_all :
+                        self.target.addName(name, result_node, LABEL_NAMED)
                     self.results[res] = result_node
                     actions = []
                     # Send results to cycle children
@@ -917,7 +920,8 @@ class EvalDefine(EvalNode) :
                 node = self.target.addOr( nodes, readonly=(not cycle) )
             #node = self.target.addOr( nodes, readonly=(not cycle) )
             name = str(Term(self.node.functor, *res))
-            #self.target.addName(name, node, LABEL_NAMED)
+            if self.engine.label_all :
+                self.target.addName(name, node, LABEL_NAMED)
             return node
         self.results.collapse(func)
                 

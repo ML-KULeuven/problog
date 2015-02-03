@@ -126,7 +126,7 @@ class TestEngineCycles(unittest.TestCase):
             random.seed(seed)
             random.shuffle(program)
             txt = '\n'.join(program)
-            f = LogicFormula.createFrom(PrologString(txt))
+            f = DefaultEngine(label_all=True).ground_all(PrologString(txt))
             paths = list(list_paths(f))
             
             edges = set()
@@ -156,7 +156,7 @@ class TestEngineCycles(unittest.TestCase):
             random.shuffle(program)
             txt = '\n'.join(program)
             # try :
-            f = LogicFormula.createFrom(PrologString(txt))
+            f = DefaultEngine(label_all=True).ground_all(PrologString(txt))
             # except Exception :
             #     with open('cycle_error.pl', 'w') as f :
             #         print(txt, file=f)
