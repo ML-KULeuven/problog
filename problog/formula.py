@@ -917,6 +917,18 @@ class StringKeyLogicFormula(ProbLogObject) :
             return res[0]
         else :
             return res
+    
+    def _deref(self, x) :
+        c = x
+        while type(c) == str :
+            x = c
+            nn = self.__nodes[c]
+            if len(nn) == 1 :
+                c = nn[0]
+            else :
+                break
+        return x
+        
         
     def iterNodes(self) :
         for k in self.__nodes :
@@ -926,11 +938,16 @@ class StringKeyLogicFormula(ProbLogObject) :
             children = []
             for x in n :
                 if type(x) == str :
+                    x = self._deref(x)
                     child_names.append(x)
                 else :
                     key = (k, len(child_names) )
                     child_names.append( key )
-                    children.append( (key, x) )
+                    if type(x).__name__ != 'atom' :
+                        x_children = [self._deref(y) for y in x.children]
+                        children.append( (key, self._create_conj(x_children) ) )
+                    else :
+                        children.append( (key, x ))
             if len(child_names) > 1 :
                 yield (k, self._create_disj(child_names), 'disj')
                 for i,c in children :
@@ -1034,7 +1051,6 @@ class StringKeyLogicFormula(ProbLogObject) :
         for k,n,t in self.iterNodes() :
             i += 1
             translate[k] = i
-            
         for k,n,t in self.iterNodes() :
             if t == 'atom' :
                 i = target.addAtom( n.identifier, n.probability, n.group )
@@ -1045,6 +1061,7 @@ class StringKeyLogicFormula(ProbLogObject) :
             assert(i == translate[k])
             
         for name, key, label in self.getNamesWithLabel() :
+            key = self._deref(key)
             target.addName( name, translate[key], label )
         
         return target
