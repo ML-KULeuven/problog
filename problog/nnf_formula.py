@@ -167,7 +167,17 @@ if system_info.get('c2d', False) :
     def _compile_with_c2d( cnf, nnf=None ) :
         cnf_file = tempfile.mkstemp('.cnf')[1]
         nnf_file = cnf_file + '.nnf'
-        cmd = ['cnf2dDNNF', '-dt_method', '0', '-smooth_all', '-reduce', '-visualize', '-in', cnf_file ]
+        cmd = ['cnf2dDNNF', '-dt_method', '0', '-smooth_all', '-reduce', '-in', cnf_file ]
+        
+        try :
+            os.remove(cnf_file)
+        except OSError :
+            pass        
+        try :
+            os.remove(nnf_file)
+        except OSError :
+            pass
+        
         return _compile( cnf, cmd, cnf_file, nnf_file )
     Compiler.add( 'c2d', _compile_with_c2d )
 
@@ -179,6 +189,16 @@ def _compile_with_dsharp( cnf, nnf=None ) :
         nnf_file = tempfile.mkstemp('.nnf')[1]    
         cmd = ['dsharp', '-Fnnf', nnf_file, '-smoothNNF','-disableAllLits', cnf_file ] #
         result = _compile( cnf, cmd, cnf_file, nnf_file )
+        
+        try :
+            os.remove(cnf_file)
+        except OSError :
+            pass        
+        try :
+            os.remove(nnf_file)
+        except OSError :
+            pass
+        
     return result
 Compiler.add( 'dsharp', _compile_with_dsharp )
 
