@@ -833,10 +833,10 @@ class StringKeyLogicFormula(ProbLogObject) :
             return self.FALSE
         elif self.isFalse(component) :
             return self.TRUE
-        elif component.startswith('!') :
+        elif component.startswith('-') :
             return component[1:]
         else :
-            return '!' + component
+            return '-' + component
     
     def isTrue( self, key ) :
         """Indicates whether the given node is deterministically True."""
@@ -920,14 +920,21 @@ class StringKeyLogicFormula(ProbLogObject) :
     
     def _deref(self, x) :
         c = x
+        neg = 0
         while type(c) == str :
+            if c[0] == '-' : 
+                c = c[1:]
+                neg += 1
             x = c
             nn = self.__nodes[c]
             if len(nn) == 1 :
                 c = nn[0]
             else :
                 break
-        return x
+        if neg % 2 == 0 :
+            return x
+        else :
+            return '-' + x
         
         
     def iterNodes(self) :
@@ -941,7 +948,7 @@ class StringKeyLogicFormula(ProbLogObject) :
                     x = self._deref(x)
                     child_names.append(x)
                 else :
-                    key = (k, len(child_names) )
+                    key = '%s_%s' % (k,len(child_names) )
                     child_names.append( key )
                     if type(x).__name__ != 'atom' :
                         x_children = [self._deref(y) for y in x.children]
@@ -1051,6 +1058,7 @@ class StringKeyLogicFormula(ProbLogObject) :
         for k,n,t in self.iterNodes() :
             i += 1
             translate[k] = i
+            translate['-' + str(k) ] = -i
         for k,n,t in self.iterNodes() :
             if t == 'atom' :
                 i = target.addAtom( n.identifier, n.probability, n.group )
@@ -1065,6 +1073,7 @@ class StringKeyLogicFormula(ProbLogObject) :
             target.addName( name, translate[key], label )
         
         return target
+        
 
 
 
