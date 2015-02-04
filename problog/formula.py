@@ -688,7 +688,366 @@ def breakCycles(source, target) :
     return result
         
 
+class StringKeyLogicFormula(ProbLogObject) :
+    """A propositional logic formula consisting of and, or, not and atoms."""
+    
+    TRUE = 'true'
+    FALSE = 'false'
+    
+    _atom = namedtuple('atom', ('identifier', 'probability', 'group') )
+    _conj = namedtuple('conj', ('children') )
+    _disj = namedtuple('disj', ('children') )
+    # negation is encoded by using a negative number for the key
+    
+    def _create_atom( self, identifier, probability, group ) :
+        return self._atom( identifier, probability, group )
+    
+    def _create_conj( self, children ) :
+        return self._conj(children)
+        
+    def _create_disj( self, children ) :
+        return self._disj(children)
+    
+    def __init__(self) :
+        ProbLogObject.__init__(self)
+        
+        self.__nodes = defaultdict(list)
+        
+        # Node names (for nodes of interest)
+        self.__names = defaultdict(dict)
+        
+        self.__atom_count = 0
+        
+        self.__constraints_me = {}
+        self.__constraints = []
+        
+    def getAtomCount(self) :
+        return self.__atom_count
+        
+    def isTrivial(self) :
+        return self.getAtomCount() == len(self)
+        
+    def addQuery(self, name, node_id) :
+        self.addName(name, node_id, label=LABEL_QUERY)
+        
+    def addEvidence(self, name, node_id, value) :
+        if value==True :
+            self.addName(name, node_id, LABEL_EVIDENCE_POS )
+        elif value==False :
+            self.addName(name, node_id, LABEL_EVIDENCE_NEG)
+        else :
+            self.addName(name, node_id, LABEL_EVIDENCE_MAYBE)
+        
+    def addName(self, name, node_id, label=None) :
+        """Associates a name to the given node identifier."""
+        self.__names[label][str(name)] = node_id
+                
+    def getNames(self, label=None) :
+        if label == None :
+            result = set()
+            for forLabel in self.__names.values() :
+                result |= set( forLabel.items() )
+        else :
+            result = self.__names.get( label, {} ).items()
+        return result
+        
+    def getNamesWithLabel(self) :
+        result = []
+        for label in self.__names :
+            for name, node in self.__names[label].items() :
+                result.append( ( name, node, label ) )
+        return result
+        
+    def getNodeByName(self, name) :
+        for label in self.__names :
+            res = self.__names[label].get(name)
+            if res != None :
+                return res
+        raise KeyError()
+        
+    def _add( self, key, node, reuse=True ) :
+        """Adds a new node, or reuses an existing one.
+        
+        :param node: node to add
+        :param reuse: (default True) attempt to map the new node onto an existing one based on its content
+        
+        """        
+        self.__nodes[key].append(node)
+        return key
+        
+    def _update( self, key, value ) :
+        """Replace the node with the given node."""
+        self.__nodes[ key ] = [value]
+    
+    def _addConstraintME(self, group, node) :
+        if group == None : return
+        if not group in self.__constraints_me :
+            self.__constraints_me[group] = ConstraintME(group)
+        self.__constraints_me[group].add(node, self) 
+        
+    def addAtom( self, identifier, probability, group=None ) :
+        """Add an atom to the formula.
+        
+        :param identifier: a unique identifier for the atom
+        :type identifier: any
+        :param probability: probability of the atom (or None if it is deterministic)
+        :type probability: :class:`problog.logic.basic.Term`
+        :param group: a group identifier that identifies mutually exclusive atoms (or None if no constraint)
+        :type group: :class:`str`
+        :returns: the identifiers of the node in the formula (returns self.TRUE for deterministic atoms)
+        """
+        if probability == None :
+            return TRUE
+        else :
+            atom = self._create_atom( identifier, probability, group )
+            node_id = self._add( identifier, atom )
+            self.__atom_count += 1  # TODO doesn't take reuse into account
+            self._addConstraintME(group, node_id)
+            return node_id
+    
+    def addAnd( self, key, components ) :
+        """Add a conjunction to the logic formula.
+        
+        :param components: a list of node identifiers that already exist in the logic formula.
+        :returns: the key of the node in the formula (returns 0 for deterministic atoms)
+        """
+        return self._addCompound(key, 'conj', components, self.FALSE, self.TRUE)
+        
+    def addOr( self, key, components, readonly=True ) :
+        """Add a disjunction to the logic formula.
+        
+        :param components: a list of node identifiers that already exist in the logic formula.
+        :param readonly: indicates whether the node should be modifiable. This will allow additional disjunct to be added without changing the node key. Modifiable nodes are less optimizable.
+        :returns: the key of the node in the formula (returns 0 for deterministic atoms)
+        :rtype: :class:`int`
+        """
+        return self._addCompound(key, 'disj', components, self.TRUE, self.FALSE, readonly=readonly)
+        
+    def addDisjunct( self, key, component ) :
+        """Add a component to the node with the given key."""
+        raise ValueError('Formula does not support updates.')
+    
+    def addNot( self, component ) :
+        """Returns the key to the negation of the node."""
+        if self.isTrue(component) :
+            return self.FALSE
+        elif self.isFalse(component) :
+            return self.TRUE
+        elif component.startswith('!') :
+            return component[1:]
+        else :
+            return '!' + component
+    
+    def isTrue( self, key ) :
+        """Indicates whether the given node is deterministically True."""
+        return key == self.TRUE
+        
+    def isFalse( self, key ) :
+        """Indicates whether the given node is deterministically False."""
+        return key == self.FALSE
+        
+    def isProbabilistic(self, key) :
+        """Indicates whether the given node is probabilistic."""    
+        return not self.isTrue(key) and not self.isFalse(key)
 
+    def _getNode(self, key) :
+        """Get the content of the given node."""
+        n = self.__nodes[key]
+        if len(n) > 1 :
+            return self._create_disj(n)
+        else :
+            return n[0]
+    
+    def _getNodeType(self, key) :
+        """Get the type of the given node (fact, disj, conj)."""
+        return type(self._getNode(key)).__name__
+                                
+    def _addCompound(self, key, nodetype, content, t, f, readonly=True, update=None) :
+        """Add a compound term (AND or OR)."""
+        assert( content )   # Content should not be empty
+        
+        # #If there is a t node, (true for OR, false for AND)
+        # if t in content : return t
+        #
+        # # Eliminate unneeded node nodes (false for OR, true for AND)
+        # content = filter( lambda x : x != f, content )
+        #
+        # # Put into fixed order and eliminate duplicate nodes
+        # content = tuple(sorted(set(content)))
+        #
+        # # Empty OR node fails, AND node is true
+        # if not content : return f
+
+        # # Contains opposites: return 'TRUE' for or, 'FALSE' for and
+        # if len(set(content)) > len(set(map(abs,content))) : return t
+
+        # If node has only one child, just return the child.
+        # Don't do this for modifiable nodes, we need to keep a separate node.
+        if len(content) == 1 : return self._add(key, content[0])
+        
+        content = tuple(content)
+        
+        if nodetype == 'conj' :
+            node = self._create_conj( content )
+            return self._add( key, node )
+        elif nodetype == 'disj' :
+            node = self._create_disj( content )
+            if update != None :
+                # If an update key is set, update that node
+                return self._update( update, node )
+            elif readonly :
+                # If the node is readonly, we can try to reuse an existing node.
+                return self._add( key, node )
+            else :
+                # If node is modifiable, we shouldn't reuse an existing node.
+                return self._add( key, node, reuse=False )
+        else :
+            raise TypeError("Unexpected node type: '%s'." % nodetype) 
+    
+    def __iter__(self) :
+        return iter(self.__nodes.values())
+    
+    def _resolve(self, key) :
+        if type(key) == str :
+            return key
+        
+        res = self.__nodes.get(key,key)
+        if type(res) == list :
+            assert(len(res) == 1)
+            return res[0]
+        else :
+            return res
+        
+    def iterNodes(self) :
+        for k in self.__nodes :
+#            print ('R',k, self.__nodes[k])
+            n = self.__nodes[k]
+            child_names = []
+            children = []
+            for x in n :
+                if type(x) == str :
+                    child_names.append(x)
+                else :
+                    key = (k, len(child_names) )
+                    child_names.append( key )
+                    children.append( (key, x) )
+            if len(child_names) > 1 :
+                yield (k, self._create_disj(child_names), 'disj')
+                for i,c in children :
+                    yield (i, c, type(c).__name__)
+            else :
+                for i,c in children :
+                    yield (k, c, type(c).__name__)
+                
+        
+    def getWeights(self) :
+        weights = {}
+        for i, n, t in self.iterNodes() :
+            if t == 'atom' :
+                if n.probability != True :
+                    weights[i] = n.probability
+        return weights
+        
+    def extractWeights(self, semiring, weights=None) :
+        if weights != None :
+            weights = { self.getNodeByName(n) : v for n,v in weights.items() }
+        
+        result = {}
+        for i, n, t in self.iterNodes() :
+            if t == 'atom' :                
+                if weights != None : 
+                    p = weights.get( i, n.probability )
+                else :
+                    p = n.probability
+                if p != True :
+                    value = semiring.value(p)
+                    result[i] = value, semiring.negate(value)
+                else :
+                    result[i] = semiring.one(), semiring.one()
+
+        for c in self.constraints() :
+            c.updateWeights( result, semiring )
+        
+        return result
+        
+    def constraints(self) :
+        return list(self.__constraints_me.values()) + self.__constraints
+        
+    def addConstraint(self, c) :
+        self.__constraints.append(c)
+        
+    def __len__(self) :
+        return len(self.__nodes)
+        
+    
+    ##################################################################################
+    ####                            OUTPUT GENERATION                             ####
+    ##################################################################################
+    
+    def __str__(self) :
+        s =  '\n'.join('%s: %s' % (i,n) for i, n, t in self.iterNodes())
+        f = True
+        for q in self.queries() :
+            if f :
+                f = False
+                s += '\nQueries : '
+            s += '\n* %s : %s' % q
+
+        f = True
+        for q in self.evidence() :
+            if f :
+                f = False
+                s += '\nEvidence : '
+            s += '\n* %s : %s' % q
+
+        f = True
+        for q in self.named() :
+            if f :
+                f = False
+                s += '\nNamed : '
+            s += '\n* %s : %s' % q
+
+        f = True
+        for c in self.constraints () :
+            if c.isActive() :
+                if f :
+                    f = False
+                    s += '\nConstraints : '
+                s += '\n* ' + str(c)
+        return s + '\n'
+        
+    def queries(self) :
+        return self.getNames(LABEL_QUERY)
+
+    def evidence(self) :
+        evidence_true = self.getNames(LABEL_EVIDENCE_POS)
+        evidence_false = self.getNames(LABEL_EVIDENCE_NEG)
+        return list(evidence_true) + [ (a,-b) for a,b in evidence_false ]
+        
+    def named(self) :
+        return self.getNames(LABEL_NAMED)
+        
+    def toLogicFormula(self) :
+        target = LogicFormula(auto_compact=False)
+        translate = {}
+        i = 0
+        for k,n,t in self.iterNodes() :
+            i += 1
+            translate[k] = i
+            
+        for k,n,t in self.iterNodes() :
+            if t == 'atom' :
+                i = target.addAtom( n.identifier, n.probability, n.group )
+            elif t == 'disj' :
+                i = target.addOr( [ translate[x] for x in n.children ] )
+            elif t == 'conj' :
+                i = target.addAnd( [ translate[x] for x in n.children ] )
+            assert(i == translate[k])
+            
+        for name, key, label in self.getNamesWithLabel() :
+            target.addName( name, translate[key], label )
+        
+        return target
 
 
 
@@ -756,6 +1115,9 @@ class ConstraintME(Constraint) :
         result.nodes = set(rename.get(x,x) for x in self.nodes)
         result.extra_node = rename.get( self.extra_node, self.extra_node )
         return result
+
+
+
 
 # Alternative cycle breaking below: loop formula's
 #   ASSAT: Computing Answer Sets of A Logic Program By SAT Solvers
