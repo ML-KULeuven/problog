@@ -1074,7 +1074,35 @@ class StringKeyLogicFormula(ProbLogObject) :
         
         return target
         
+    @classmethod
+    def loadFrom(cls, lp) :
+        interm = StringKeyLogicFormula()
+        for c in lp :
+            if type(c).__name__ == 'Clause' :
+                key = str(c.head)
+                body = []
+                current = c.body
+                while type(current).__name__ == 'And' :
+                    if type(current.op1).__name__ == 'Not' :
+                        body.append('-' + str(current.op1.child))
+                    else :
+                        body.append(str(current.op1))
+                    current = current.op2
+                if type(current).__name__ == 'Not' :
+                    body.append('-' + str(current.child))
+                else :
+                    body.append(str(current))
+                interm.addAnd( key, body )
+                interm.addName( key, key, LABEL_NAMED )
+            elif type(c).__name__ == 'Term' :
+                key = str(c.withProbability())
+                interm.addAtom( key, c.probability, None )
+                interm.addName( key, key, LABEL_NAMED )
+            else :
+                raise Exception("Unexpected type: '%s'" % type(c).__name__)
+        return interm
 
+    
 
 
  
