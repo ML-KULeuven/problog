@@ -926,6 +926,7 @@ class StringKeyLogicFormula(ProbLogObject) :
                 c = c[1:]
                 neg += 1
             x = c
+            if not c in self.__nodes : break
             nn = self.__nodes[c]
             if len(nn) == 1 :
                 c = nn[0]
