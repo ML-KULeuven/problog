@@ -7,7 +7,7 @@ from .core import transform, ProbLogObject
 from .core import LABEL_QUERY, LABEL_EVIDENCE_POS, LABEL_EVIDENCE_NEG, LABEL_EVIDENCE_MAYBE, LABEL_NAMED
 from .util import Timer
 
-import logging
+import logging, tempfile, subprocess, os
 
 class LogicFormulaBase(ProbLogObject) :
     
@@ -680,7 +680,7 @@ class LogicDAG(LogicFormula) :
         
         
         
-@transform(LogicFormula, LogicDAG)
+#@transform(LogicFormula, LogicDAG)
 def breakCycles(source, target) :
     logger = logging.getLogger('problog')
     result = source.makeAcyclic(preserve_tables=False, output=target)
@@ -1182,7 +1182,7 @@ class ConstraintME(Constraint) :
 #   - does not work with SDD
 #   - added constraints can become extremely large
 
-#@transform(LogicFormula, LogicDAG)
+@transform(LogicFormula, LogicDAG)
 def breakCyclesConstraint(source, target) :
     relevant = [False] * (len(source)+1)
     cycles = {}
@@ -1267,3 +1267,178 @@ class ConstraintLoop(Constraint) :
         noncycle_nodes = set(rename.get(x,x) for x in self.ex_loop)
         result = ConstraintLoop( cycle_nodes, noncycle_nodes )
         return result
+        
+class TrueConstraint(Constraint) :
+    
+    def __init__(self, node) :
+        self.node = node
+        
+    def isActive(self) :
+        return True
+        
+    def encodeCNF(self) :
+        return [[self.node]]
+        
+    def copy(self, rename={}) :
+        return TrueConstraint( rename.get(self.node, self.node) )
+        
+    def updateWeights(self, weights, semiring) :
+        pass
+        
+    def __str__(self) :
+        return '%s is true' % self.node
+
+def copyFormula(source, target) :
+    for i, n, t in source.iterNodes() :
+        if t == 'atom' :
+            target.addAtom( n.identifier, n.probability, n.group )
+        elif t == 'conj' :
+            target.addAnd( n.children )
+        elif t == 'disj' :
+            target.addOr( n.children )
+        else :
+            raise TypeError("Unknown node type '%s'" % t)
+            
+    for name, node, label in source.getNamesWithLabel() :
+        target.addName(name, node, label)
+
+def breakCycles_lp(source, target) :
+    
+    copyFormula(source,target)
+    
+    tmp_file = tempfile.mkstemp('.lp')[1]
+    with open(tmp_file, 'w') as f :
+        lf_to_smodels(target, f)
+    output = subprocess.check_output(['lp2acyc', tmp_file])
+    smodels_to_lf( target, output )
+    
+    try :
+        os.remove(tmp_file)
+    except OSError :
+        pass        
+    
+    return target
+    
+
+
+def expand_node( formula, node_id ) :
+    """Expand conjunctions by their body until a disjunction or atom is encountered.
+    This method assumes that all cycles go through a disjunctive node.
+    """
+    node = formula._getNode(abs(node_id))
+    nodetype = type(node).__name__
+    conjuncts = []
+    if nodetype == 'disj' :
+        return [node_id]
+    elif nodetype == 'atom' :
+        return [node_id]
+    elif node_id < 0 :
+        return [node_id]
+    else : # conj
+        for c in node.children :
+            conjuncts += expand_node(formula,c)
+        return conjuncts
+
+def lf_to_smodels( formula, out ) :
+    
+    # '1' is an internal atom => false
+    
+    #print (formula)
+    # Write rules
+    # Basic rule: 
+    #   1 head #lits #neglits [ body literals with negative first ]
+    for i,n,t in formula.iterNodes() :
+        if t == 'disj' :
+            for c in n.children :
+                body = expand_node(formula, c)
+                l = len(body)
+                nl = len([ b for b in body if b < 0 ])
+                body = [ abs(b)+1 for b in sorted(body) ]
+                print('1 %s %s %s %s' % (i+1, l, nl, ' '.join(map(str,sorted(body))) ), file=out)
+    print (0, file=out)
+
+    for i,n,t in formula.iterNodes() :
+        if t == 'atom' or t == 'disj' :
+            print (i+1, i, file=out)
+        
+    # Symbol table => must contain all (otherwise hidden in output)
+    # Facts and disjunctions
+    #   2 a
+    #   3 b 
+    
+    print (0, file=out)
+    print ('B+', file=out)
+    # B+  positive evidence?
+    
+    print (0, file=out)
+    print ('B-', file=out)
+    # B-  negative evidence?
+    
+    print (0, file=out)
+    
+    # Number of models
+    print (1, file=out)
+    
+def smodels_to_lf( formula, acyclic ) :
+    
+    section = 0
+    rules = defaultdict(list)
+    data = [[]]
+    for line in acyclic.split('\n') :
+        if line == '0' :
+            section += 1
+            data.append([])
+        else :
+            data[-1].append( line )
+            
+    acyc_nodes = frozenset([ int(x.split()[0]) for x in data[1] if '_acyc_' in x ])
+    given_nodes = frozenset([ int(x.split()[0]) for x in data[1] if not '_acyc_' in x ])
+    if len(data[3]) > 1 :
+        root_node = int(data[3][1])
+    else :
+        root_node = None
+    
+    for line in data[0] :
+        line = line.split()
+        line_head = int(line[1])
+        line_neg = int(line[3])
+        line_body_neg = frozenset(map(int,line[4:4+line_neg]))
+        line_body_pos = frozenset(map(int,line[4+line_neg:]))
+        
+        # acyc_nodes are true
+        if acyc_nodes & line_body_neg : continue
+        # part of original program
+        if line_head in given_nodes : continue
+        # acyc_nodes are true 
+        line_body_pos -= acyc_nodes
+        body = sorted([ -a for a in line_body_neg ] + list(line_body_pos))
+        rules[line_head].append(body)
+    
+    translate = {}
+    for head in rules :
+        acyc_insert(formula, rules, head, given_nodes, translate)
+        
+    if root_node != None :
+        formula.addConstraint(TrueConstraint(translate[root_node]))
+        
+    #print (formula)
+    # print (translate[root_node])
+    
+def acyc_insert( formula, rules, head, given, translate ) :
+    if head < 0 : 
+        f = -1
+    else :
+        f = 1
+    
+    if abs(head) in translate :
+        return f * translate[abs(head)]
+    elif abs(head) in given :
+        return f * (abs(head)-1)
+    else :
+        disjuncts = []
+        for body in rules[abs(head)] :
+            new_body = [ acyc_insert(formula, rules, x, given, translate ) for x in body ]
+            disjuncts.append(formula.addAnd( new_body ))
+        new_node = formula.addOr( disjuncts )
+        translate[abs(head)] = new_node
+        return f*new_node

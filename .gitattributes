@@ -1,6 +1,7 @@
 
 # We can’t distribute this ourselves.
 /problog/bin/linux/cnf2dDNNF	export-ignore
+/problog/bin/linux/lp2acyc      export-ignore
 
 # Hide some other files
 .gitignore			export-ignore
