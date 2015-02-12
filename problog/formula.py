@@ -1302,9 +1302,12 @@ def copyFormula(source, target) :
     for name, node, label in source.getNamesWithLabel() :
         target.addName(name, node, label)
 
-def breakCycles_lp(source, target) :
+def breakCycles_lp(source, target=None) :
     
-    copyFormula(source,target)
+    if target != None :
+        copyFormula(source,target)
+    else :
+        target = source
     
     tmp_file = tempfile.mkstemp('.lp')[1]
     with open(tmp_file, 'w') as f :
