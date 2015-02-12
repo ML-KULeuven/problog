@@ -680,7 +680,7 @@ class LogicDAG(LogicFormula) :
         
         
         
-#@transform(LogicFormula, LogicDAG)
+@transform(LogicFormula, LogicDAG)
 def breakCycles(source, target) :
     logger = logging.getLogger('problog')
     result = source.makeAcyclic(preserve_tables=False, output=target)
@@ -1182,7 +1182,7 @@ class ConstraintME(Constraint) :
 #   - does not work with SDD
 #   - added constraints can become extremely large
 
-@transform(LogicFormula, LogicDAG)
+#@transform(LogicFormula, LogicDAG)
 def breakCyclesConstraint(source, target) :
     relevant = [False] * (len(source)+1)
     cycles = {}
@@ -1302,9 +1302,12 @@ def copyFormula(source, target) :
     for name, node, label in source.getNamesWithLabel() :
         target.addName(name, node, label)
 
-def breakCycles_lp(source, target) :
+def breakCycles_lp(source, target=None) :
     
-    copyFormula(source,target)
+    if target != None :
+        copyFormula(source,target)
+    else :
+        target = source
     
     tmp_file = tempfile.mkstemp('.lp')[1]
     with open(tmp_file, 'w') as f :
