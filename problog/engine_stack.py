@@ -9,7 +9,7 @@ from .program import ClauseDB, PrologFile
 from .logic import Term
 from .core import LABEL_NAMED
 from .engine import unify, UnifyError, instantiate, extract_vars, is_ground, UnknownClause, _UnknownClause, ConsultError
-from .engine import addStandardBuiltIns, check_mode, GroundingError, NonGroundProbabilisticClause
+from .engine import addStandardBuiltIns, check_mode, GroundingError, NonGroundProbabilisticClause, VariableUnification
 from .engine import ClauseDBEngine
 
 
@@ -394,13 +394,14 @@ class StackBasedEngine(ClauseDBEngine) :
                 transform.addConstant(context)
             else :
                 location = node.location
+                database = kwdargs['database']
                 node_args = node.args
                 head_vars = extract_vars(*node.args)
                 hv = [ i for i in range(0,node.varcount) if head_vars[i] > 1 ]
                 def result_transform(result) :
                     for i in hv :
                         if not is_ground(result[i]) :
-                            raise VariableUnification(location=location)
+                            raise VariableUnification(location=database.lineno(location))
                     output = [ instantiate(arg, result) for arg in node_args ]
                     return tuple(output)
                 transform.addFunction(result_transform)
