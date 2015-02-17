@@ -22,7 +22,7 @@ P::sim2(Y) :- targetstring(X), call_external(pysim(X,Y), P).
 member(X,[X|_]).
 member(X,[_|T]) :- member(X,T).
 
-P::edge(X,Y) :- call_external(pyedge(X), L), member([Y,P], L).
+P::edge(X,Y) :- call_external(pyedge(X), L), member((Y,P), L).
 
 
 query(sim("aa","aa")).
