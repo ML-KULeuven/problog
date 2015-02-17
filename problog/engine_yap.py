@@ -61,12 +61,12 @@ class YapEngine(GenericEngine) :
                 if t == 'FACT' :
                     interm.addAtom(i, c)
                     if self.label_all :
-                        interm.addName( label, i, LABEL_NAMED )
+                        interm.addName( label.strip(), i, LABEL_NAMED )
                 elif t == 'AND' :
                     children = c.split()
                     interm.addAnd( i, children )
                     if self.label_all :
-                        interm.addName( label, i, LABEL_NAMED )
+                        interm.addName( label.strip(), i, LABEL_NAMED )
         
         with open(out_qr) as f :
             for line in f :
@@ -82,5 +82,4 @@ class YapEngine(GenericEngine) :
                 else :
                     interm.addName( label.strip(), key.strip(), LABEL_EVIDENCE_NEG )
         target = interm.toLogicFormula()
-        print (target)
         return target
