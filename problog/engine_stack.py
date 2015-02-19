@@ -47,6 +47,9 @@ def cyclic(obj, child) :
 
 class StackBasedEngine(ClauseDBEngine) :
     
+    UNKNOWN_ERROR = 0
+    UNKNOWN_FAIL = 1
+    
     def __init__(self, label_all=False, **kwdargs) :
         ClauseDBEngine.__init__(self,**kwdargs)
         
@@ -72,6 +75,8 @@ class StackBasedEngine(ClauseDBEngine) :
         self.trace = False
         
         self.label_all = label_all
+        
+        self.unknown = self.UNKNOWN_ERROR
     
     def eval(self, node_id, **kwdargs) :
         database = kwdargs['database']
@@ -81,16 +86,16 @@ class StackBasedEngine(ClauseDBEngine) :
         else :
             node = database.getNode(node_id)
             node_type = type(node).__name__
-        
-        exec_func = self.create_node_type( node_type )        
-        
+        exec_func = self.create_node_type( node_type )
+        if exec_func == None :
+            if self.unknown == self.UNKNOWN_FAIL :
+                return [ complete( kwdargs['parent'], kwdargs['identifier'])]
+            else :
+                raise _UnknownClause()
         return exec_func(node_id=node_id, node=node, **kwdargs)
         
     def create_node_type(self, node_type) :
-        try :
-            return self.node_types[node_type]
-        except KeyError :
-            raise _UnknownClause()
+        return self.node_types.get(node_type)
             
     def loadBuiltIns(self) :
         addBuiltIns(self)
@@ -1192,8 +1197,6 @@ class SimpleBuiltIn(object) :
             
     def __str__(self) :
         return str(self.base_function)
-
-    
 
 def builtin_call( term, args=(), engine=None, callback=None, **kwdargs ) :
     # TODO does not support cycle through call!

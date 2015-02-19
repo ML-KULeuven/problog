@@ -1004,6 +1004,13 @@ def builtin_load_external( arg, engine=None, database=None, location=None, **kwd
     
     return True
     
+def builtin_unknown( arg, engine=None, **kwdargs) :
+    check_mode( (arg,), 'a', functor='unknown')
+    if arg.functor == 'fail' :
+        engine.unknown = engine.UNKNOWN_FAIL
+    else :
+        engine.unknown = engine.UNKNOWN_ERROR
+    return True
 
 def addStandardBuiltIns(engine, b=None, s=None) :
     """Add Prolog builtins to the given engine."""
@@ -1067,6 +1074,7 @@ def addStandardBuiltIns(engine, b=None, s=None) :
     engine.addBuiltIn('consult', 1, b(builtin_consult))
     engine.addBuiltIn('.', 2, b(builtin_consult_as_list))
     engine.addBuiltIn('load_external', 1, b(builtin_load_external))
+    engine.addBuiltIn('unknown',1,b(builtin_unknown))
 
 #from .engine_stack_opt import OptimizedStackBasedEngine as DefaultEngine
 from .engine_stack import StackBasedEngine as DefaultEngine
