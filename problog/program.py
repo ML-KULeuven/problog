@@ -370,15 +370,21 @@ class ClauseDB(LogicProgram) :
     _neg    = namedtuple('neg'   , ('child', 'location' ) )
     _choice = namedtuple('choice', ('functor', 'args', 'probability', 'group', 'choice', 'location') )
     
-    def __init__(self, builtins=None) :
+    def __init__(self, builtins=None, parent=None) :
         LogicProgram.__init__(self)
         self.__nodes = []   # list of nodes
         self.__heads = {}   # head.sig => node index
         
         self.__builtins = builtins
+        
+        self.__parent = parent
+        if parent == None :
+            self.__offset = 0
+        else :
+            self.__offset = len(parent)
     
     def __len__(self) :
-        return len(self.__nodes)
+        return len(self.__nodes) + self.__offset
         
     def _getBuiltIn(self, signature) :
         if self.__builtins == None :
@@ -438,13 +444,19 @@ class ClauseDB(LogicProgram) :
         :raises IndexError: the given index does not point to a node
         
         """
-        return self.__nodes[index]
+        if index < self.__offset :
+            return self.__parent.getNode(index)
+        else :
+            return self.__nodes[index-self.__offset]
         
     def _setNode(self, index, node) :
-        self.__nodes[index] = node
+        if index < self.__offset :
+            raise IndexError('Can\'t update node in parent.')
+        else :
+            self.__nodes[index-self.__offset] = node
         
     def _appendNode(self, node=()) :
-        index = len(self.__nodes)
+        index = len(self)
         self.__nodes.append( node )
         return index
     
