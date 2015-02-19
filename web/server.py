@@ -164,7 +164,7 @@ def run_problog_jsonp(model, callback):
           inhash = hashlib.md5(model).hexdigest() # Python 2
       except UnicodeDecodeError as e:
           logger.error('Unicode error catched: {}'.format(e))
-          return 200, 'application/json', wrap_callback(callback, json.dumps({'success':False,'err':'Cannot decode character in program: {}'.format(e)}))
+          return 200, 'application/json', wrap_callback(callback, json.dumps({'SUCCESS':False,'err':'Cannot decode character in program: {}'.format(e)}))
       if not os.path.exists(CACHE_DIR):
           os.mkdir(CACHE_DIR)
       infile = os.path.join(CACHE_DIR, inhash+'.pl')
@@ -192,7 +192,7 @@ def run_problog_jsonp(model, callback):
 
         return int(code), datatype, datavalue
     except subprocess.CalledProcessError :
-        return 200, 'application/json', wrap_callback(callback, json.dumps({'success':False, 'err':'ProbLog evaluation exceeded time or memory limit'}))
+        return 200, 'application/json', wrap_callback(callback, json.dumps({'SUCCESS':False, 'err':'ProbLog evaluation exceeded time or memory limit'}))
 
 @handle_url(api_root+'learning')
 def run_learning_jsonp(model, examples, callback) :
@@ -212,12 +212,12 @@ def run_learning_jsonp(model, examples, callback) :
           inhash = hashlib.md5(model.decode('utf-8')).hexdigest()
       except UnicodeDecodeError as e:
           logger.error('Unicode error catched: {}'.format(e))
-          return 200, 'application/json', wrap_callback(callback, json.dumps({'success':False,'err':'Cannot decode character in program: {}'.format(e)}))
+          return 200, 'application/json', wrap_callback(callback, json.dumps({'SUCCESS':False,'err':'Cannot decode character in program: {}'.format(e)}))
       try:
           datahash = hashlib.md5(examples.decode('utf-8')).hexdigest()
       except UnicodeDecodeError as e:
           logger.error('Unicode error catched: {}'.format(e))
-          return 200, 'application/json', wrap_callback(callback, json.dumps({'success':False,'err':'Cannot decode character in examples: {}'.format(e)}))
+          return 200, 'application/json', wrap_callback(callback, json.dumps({'SUCCESS':False,'err':'Cannot decode character in examples: {}'.format(e)}))
       if not os.path.exists(CACHE_DIR):
           os.mkdir(CACHE_DIR)
       infile = os.path.join(CACHE_DIR, inhash+'.pl')
@@ -249,7 +249,7 @@ def run_learning_jsonp(model, examples, callback) :
 
         return int(code), datatype, datavalue
     except subprocess.CalledProcessError :
-        return 200, 'application/json', wrap_callback(callback, json.dumps({'success':False, 'err':'ProbLog learning exceeded time or memory limit'}))
+        return 200, 'application/json', wrap_callback(callback, json.dumps({'SUCCESS':False, 'err':'ProbLog learning exceeded time or memory limit'}))
 
 
 @handle_url(api_root+'model')
@@ -259,9 +259,9 @@ def get_model_from_hash_jsonp(hash, callback):
     infile = os.path.join(CACHE_DIR, hash+'.pl')
 
     if not CACHE_MODELS or not os.path.exists(infile):
-        return 200, 'application/json', wrap_callback(callback, json.dumps({'success': False, 'err': 'Model hash not available: {}'.format(hash)}))
+        return 200, 'application/json', wrap_callback(callback, json.dumps({'SUCCESS': False, 'err': 'Model hash not available: {}'.format(hash)}))
 
-    result = {'success': True}
+    result = {'SUCCESS': True}
     with open(infile, 'r') as f:
          result['model'] = f.read()
 
@@ -280,7 +280,7 @@ def get_example_from_hash_jsonp(ehash, callback):
     infile = os.path.join(CACHE_DIR, ehash+'.data')
 
     if not CACHE_MODELS or not os.path.exists(infile):
-        return 200, 'application/json', wrap_callback(callback, json.dumps({'success': False, 'err': 'Examples hash not available: {}'.format(ehash)}))
+        return 200, 'application/json', wrap_callback(callback, json.dumps({'SUCCESS': False, 'err': 'Examples hash not available: {}'.format(ehash)}))
 
     result = dict()
     with open(infile, 'r') as f:

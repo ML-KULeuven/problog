@@ -23,10 +23,10 @@ def print_result( d, output, precision=8 ) :
         conv = lambda t : str(t.withProbability())
         
         results = { 'score' : score, 'iterations' : iterations, 'weights': dict(zip(map(conv,names),weights)) }
-        results['success'] = True
+        results['SUCCESS'] = True
         print (200, 'application/json', json.dumps(results), file=output)
     else :
-        d['success'] = False
+        d['SUCCESS'] = False
         #print (400, 'application/json', json.dumps(d), file=output)
         print (200, 'application/json', json.dumps(d), file=output)
     return 0 

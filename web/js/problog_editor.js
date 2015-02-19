@@ -150,8 +150,8 @@ problog.initDiv = function(el, resize) {
       dataType: 'jsonp',
       data: data,
       success: function(data) {
-
-		if (data.success == true) {
+          console.log(data);
+		if (data.SUCCESS == true) {
 	        if (learn) {
 	          var meta = data;
 	          data = data.weights;
@@ -159,7 +159,7 @@ problog.initDiv = function(el, resize) {
 
 			var result = $('<tbody>');
 	        for (var k in data) {
-	          if (k !== 'success') {
+	          if (k !== 'SUCCESS') {
 	            var p = data[k];
 	            result.append($('<tr>')
 	                  .append($('<td>').text(k))
@@ -207,7 +207,7 @@ problog.initDiv = function(el, resize) {
             var meta_str = "<p><strong>Stats</strong>:";
             var sep = " ";
             for (var k in meta) {
-              if (k !== 'weights' && k !== 'success') {
+              if (k !== 'weights' && k !== 'SUCCESS') {
                 meta_str += sep+k+"="+meta[k];
                 sep = ", ";
               }
@@ -359,7 +359,7 @@ problog.fetchModel = function(hash, editor, ehash) {
     data: {'hash': hash},
 
   }).done( function(data) {
-    if (data.success == true) {
+    if (data.SUCCESS == true) {
       editor.setValue(data.model,-1);
     } else {
       editor.setValue('% '+data.err,-1);
@@ -376,7 +376,7 @@ problog.fetchModel = function(hash, editor, ehash) {
       data: {'ehash': ehash},
 
     }).done( function(data) {
-      if (data.success == true) {
+      if (data.SUCCESS == true) {
         editor_examples.setValue(data.examples,-1);
       } else {
         editor_examples.setValue('% '+data.err,-1);

@@ -18,11 +18,11 @@ from problog.core import process_error, GroundingError
 def print_result( d, output, precision=8 ) :
     success, d = d
     if success :
-        d['success'] = True
+        d['SUCCESS'] = True
         print (200, 'application/json', json.dumps(d), file=output)
     else :
         #print (400, 'application/json', json.dumps(d), file=output)
-        d['success'] = False
+        d['SUCCESS'] = False
         print (200, 'application/json', json.dumps(d), file=output)
     return 0 
     
