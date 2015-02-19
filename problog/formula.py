@@ -580,6 +580,31 @@ class LogicFormula(ProbLogObject) :
     def named(self) :
         return self.getNames(LABEL_NAMED)
         
+    def toProlog(self) :
+        lines = []
+        name_lookup = { y: x for x,y in self.getNames() }
+        for i, n, t in self.iterNodes() :
+            name = name_lookup.get(i, 'node_%s' % i)
+            
+            if t == 'atom' :
+                lines.append( '%s::%s.' % (n.probability, name) )
+            elif t == 'conj' and i in name_lookup :
+                # children = set()
+                # self._expand( i, children, name_lookup, nodetype=None, anc=None)
+                # print ('%s :- %s.' % ( name, ','.join( name_lookup.get(c, 'node_%s' % c) for c in n.children  )  ))
+                # print ('\t', t, children)
+                #
+                lines.append( '%s :- %s.' % ( name, ','.join( name_lookup.get(c, 'node_%s' % c) for c in n.children  )  ) )
+            elif t == 'disj' :
+                for c in n.children :
+                    children = set()
+                    self._expand( c, children, name_lookup, nodetype=None, anc=None)
+                    lines.append( '%s :- %s.' % ( name, ','.join( name_lookup.get(x, 'node_%s' % x) for x in sorted(children)  )  ) )
+                    # print ('%s :- %s.' % ( name, name_lookup.get(c, 'node_%s' % c ) ))
+                    # print ('\t', t, children)
+                    # lines.append('%s :- %s.' % ( name, name_lookup.get(c, 'node_%s' % c ) ) )
+        return '\n'.join(lines)
+        
     def toDot(self, not_as_node=True) :
         
         not_as_edge = not not_as_node
