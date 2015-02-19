@@ -612,6 +612,7 @@ class NestedDict(object) :
         
     def __getitem__(self, key) :
         p_key, s_key = key
+        p_key = (p_key, len(s_key))
         elem = self.__base[p_key]
         for s in s_key :
             elem = elem[s]
@@ -625,6 +626,7 @@ class NestedDict(object) :
         
     def __contains__(self, key) :
         p_key, s_key = key
+        p_key = (p_key, len(s_key))
         try :
             elem = self.__base[p_key]
             for s in s_key :
@@ -635,6 +637,7 @@ class NestedDict(object) :
             
     def __setitem__(self, key, value) :
         p_key, s_key = key
+        p_key = (p_key, len(s_key))        
         if s_key :
             elem = self.__base.get(p_key)
             if elem == None :
@@ -652,6 +655,7 @@ class NestedDict(object) :
         
     def __delitem__(self, key) :
         p_key, s_key = key
+        p_key = (p_key, len(s_key))
         if s_key :
             elem = self.__base[p_key]
             elems = []
