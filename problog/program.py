@@ -427,7 +427,6 @@ class ClauseDB(LogicProgram) :
     def _addClauseNode( self, head, body, varcount, group=None ) :
         clause_node = self._appendNode( self._clause( head.functor, head.args, head.probability, body, varcount, group, head.location ) )
         return self._addDefineNode( head, clause_node )
-
         
     def _addCallNode( self, term ) :
         """Add a *call* node."""
@@ -461,7 +460,10 @@ class ClauseDB(LogicProgram) :
         return index
     
     def _getHead(self, head) :
-        return self.__heads.get( head.signature )
+        node = self.__heads.get( head.signature )
+        if node == None and self.__parent :
+            node = self.__parent._getHead(head)
+        return node
         
     def _setHead(self, head, index) :
         self.__heads[ head.signature ] = index
@@ -496,6 +498,7 @@ class ClauseDB(LogicProgram) :
     def __repr__(self) :
         s = ''
         for i,n in enumerate(self.__nodes) :
+            i += self.__offset
             s += '%s: %s\n' % (i,n)
         s += str(self.__heads)
         return s
@@ -615,6 +618,7 @@ class ClauseDB(LogicProgram) :
     def __iter__(self) :
         clause_groups = defaultdict(list)
         for index, node in enumerate(self.__nodes) :
+            index += self.__offset
             if not node : continue
             nodetype = type(node).__name__
             if nodetype == 'fact' :
