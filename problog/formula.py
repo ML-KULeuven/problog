@@ -585,7 +585,7 @@ class LogicFormula(ProbLogObject) :
         name_lookup = { y: x for x,y in self.getNames() }
         
         def get_name(x) :
-            name = name_lookup.get(abs(x), 'node_%s' % x)
+            name = name_lookup.get(abs(x), 'node_%s' % abs(x))
             if x < 0 : name = '\+' + name
             return name
             
