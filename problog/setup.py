@@ -66,14 +66,14 @@ def gather_info() :
         pass
 
     # Yap
-    try :
-        test_program =  "prolog_flag(version,V), write(V), nl, (prolog_flag(system_options,tabling) -> write(1) ; write(0)), nl, halt."
-        with open(os.devnull, 'w') as OUT_NULL :
-            output = subprocess.check_output( ['yap', '-g', test_program ], stderr=OUT_NULL ).decode('utf-8').split('\n')
-        system_info['yap_version'] = output[0].split()[1]
-        system_info['yap_tabling'] = output[1].strip() == "1"
-    except Exception :
-        pass
+    # try :
+    #     test_program =  "prolog_flag(version,V), write(V), nl, (prolog_flag(system_options,tabling) -> write(1) ; write(0)), nl, halt."
+    #     with open(os.devnull, 'w') as OUT_NULL :
+    #         output = subprocess.check_output( ['yap', '-g', test_program ], stderr=OUT_NULL ).decode('utf-8').split('\n')
+    #     system_info['yap_version'] = output[0].split()[1]
+    #     system_info['yap_tabling'] = output[1].strip() == "1"
+    # except Exception :
+    #     pass
         
     # SDD module
     try :
