@@ -10,4 +10,5 @@
 # Hide some files and directories
 /xml_test/	export-ignore
 /sandbox/	export-ignore
+/benchmark/ export-ignore
 Makefile	export-ignore
