@@ -40,7 +40,7 @@ class SDD(LogicDAG, Evaluatable) :
         LogicDAG.__init__(self, auto_compact=False)
         
         if sdd == None :
-            raise RuntimeException('The SDD library is not available. Please run the installer.')
+            raise RuntimeError('The SDD library is not available. Please run the installer.')
         
         self.sdd_manager = None
         self.var_count = var_count
