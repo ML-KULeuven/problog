@@ -12,6 +12,13 @@ import os
 import sys
 import distutils.spawn
 
+def get_system() :
+    system = sys.platform
+    if system.startswith('linux') :
+        system = 'linux'
+    elif system.startswith('win') :
+        system = 'windows'
+    return system
 
 def set_environment() :
     """Updates local PATH and PYTHONPATH to include additional component directories."""
@@ -28,13 +35,13 @@ def set_environment() :
 def get_binary_paths() :
     """Get a list of additional binary search paths."""
     binary_root = os.path.join(os.path.dirname(__file__), 'bin' )
-    system = os.uname()[0].lower()  # Darwin, Linux, ?    
+    system = get_system()  # Darwin, Linux, ?    
     return list(map(os.path.abspath,[ os.path.join(binary_root, system), binary_root ]))
     
 def get_module_paths() :
     """Get a list of additional module search paths."""    
     binary_root = os.path.join(os.path.dirname(__file__), 'lib' )
-    system = os.uname()[0].lower()  # Darwin, Linux, ?    
+    system = get_system()  # Darwin, Linux, ?    
     python = 'python%s' % sys.version_info.major
     return list(map(os.path.abspath,[ os.path.join(binary_root, python, system), os.path.join(binary_root, python), binary_root ]))
     
@@ -46,8 +53,8 @@ def gather_info() :
     
     system_info['root_path'] = os.path.join(os.path.dirname(__file__), '..')
     
-    system_info['os'] = os.uname()[0]
-    system_info['arch'] = os.uname()[-1]
+    system_info['os'] = get_system()
+    #system_info['arch'] = os.uname()[-1]
     
     system_info['python_version'] = sys.version_info
     
@@ -83,6 +90,10 @@ def gather_info() :
     return system_info
 
 def build_sdd() :
+    
+    if get_system() == 'windows' :
+        print ('The SDD library is not yet available for Windows.')
+        return
     
     build_lib = get_module_paths()[0]
     build_dir = get_module_paths()[-1]

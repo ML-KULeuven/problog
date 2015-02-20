@@ -17,7 +17,7 @@ try :
     import sdd
 except ImportError :
     sdd = None
-    warnings.warn('The SDD library could not be found!', RuntimeWarning)
+#    warnings.warn('The SDD library could not be found!', RuntimeWarning)
 
 class SDD(LogicDAG, Evaluatable) :
     """A propositional logic formula consisting of and, or, not and atoms represented as an SDD.
@@ -36,8 +36,12 @@ class SDD(LogicDAG, Evaluatable) :
     _disj = namedtuple('disj', ('children', 'sddnode') )
     # negation is encoded by using a negative number for the key
 
-    def __init__(self, var_count=None) :        
+    def __init__(self, var_count=None) :
         LogicDAG.__init__(self, auto_compact=False)
+        
+        if sdd == None :
+            raise RuntimeException('The SDD library is not available. Please run the installer.')
+        
         self.sdd_manager = None
         self.var_count = var_count
         if var_count != None and var_count != 0 :
