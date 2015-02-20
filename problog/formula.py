@@ -582,13 +582,24 @@ class LogicFormula(ProbLogObject) :
         
     def toProlog(self) :
         lines = []
-        name_lookup = { y: x for x,y in self.getNames() }
+        
+        name_lookup_clash = defaultdict(list)
+        for x,y in self.getNames() :
+            name_lookup_clash[y].append(x)
+            
+        name_lookup = {}
+        for x,y in name_lookup_clash.items() :
+            name_lookup[x] = y[0]
+            if len(y) > 1 :
+                print (y)
+                for y1 in y[1:] :
+                    lines.append( '%s :- %s.' % ( y1, y[0] ) )
         
         def get_name(x) :
             name = name_lookup.get(abs(x), 'node_%s' % abs(x))
             if x < 0 : name = '\+' + name
             return name
-            
+                    
         for i, n, t in self.iterNodes() :
             name = name_lookup.get(i, 'node_%s' % i)
             
