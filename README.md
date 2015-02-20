@@ -10,12 +10,11 @@ ProbLog 2.1 requires Python 2.7+ or Python 3.2+.
 2. Installation
 ---------------
 
-Installation is not required.
-However, if you want to use the SDD library you should run the installer.
+ProbLog 2.1 works out of the box on systems with Python.
+It has been tested on Mac OSX, Linux and Windows.
 
-Execute the command ``` python setup.py ```
-Note that this requires the Python development files (i.e. Python.h). 
-
+ProbLog supports optional components which can be installed separately.
+See the file INSTALL for detailed installation instructions.
 
 3. Usage
 --------
@@ -45,16 +44,16 @@ The directory 'test' contains a number of models.
 * Use d-DNNF based evaluation
 
 ```
-$ ./problog-cli.py test/00_trivial_and.pl -k nnf
+$ python problog-cli.py test/00_trivial_and.pl -k nnf
 	  heads1 : 0.5
 	  heads2 : 0.6
 	twoHeads : 0.3
 ```
 
-* Use SDD based evaluation
+* Use SDD based evaluation (not available on Windows)
 
 ```	
-$ ./problog-cli.py test/00_trivial_and.pl -k sdd
+$ python problog-cli.py test/00_trivial_and.pl -k sdd
 	  heads1 : 0.5
 	  heads2 : 0.6
 	twoHeads : 0.3
@@ -63,7 +62,7 @@ $ ./problog-cli.py test/00_trivial_and.pl -k sdd
 * Use symbolic evaluation (don't compute probability) (NNF only).
 
 ```	
-./problog-cli.py test/00_trivial_and.pl -k nnf --symbolic
+python problog-cli.py test/00_trivial_and.pl -k nnf --symbolic
 	  heads1 : ((1-0.6)*0.5 + 0.6*0.5) / (((1-0.6)*(0.5 + (1-0.5)) + 0.6*(1-0.5)) + 0.6*0.5)
 	  heads2 : (0.6*(1-0.5) + 0.6*0.5) / (((1-0.6)*(0.5 + (1-0.5)) + 0.6*(1-0.5)) + 0.6*0.5)
 	twoHeads : 0.6*0.5 / (((1-0.6)*(0.5 + (1-0.5)) + 0.6*(1-0.5)) + 0.6*0.5)
@@ -71,7 +70,7 @@ $ ./problog-cli.py test/00_trivial_and.pl -k sdd
 * Evaluate all examples:
 
 ```
-./problog-cli.py test/*.pl -k sdd
+python problog-cli.py test/*.pl -k sdd
 ```
 5. License
 ----------
