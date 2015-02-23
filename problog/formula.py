@@ -110,6 +110,7 @@ class LogicFormula(ProbLogObject) :
         
         # Node names (for nodes of interest)
         self.__names = defaultdict(dict)
+        self.__names_order = []
         
         self.__atom_count = 0
         
@@ -137,22 +138,27 @@ class LogicFormula(ProbLogObject) :
         
     def addName(self, name, node_id, label=None) :
         """Associates a name to the given node identifier."""
+        if not label in self.__names or not str(name) in self.__names[label] :
+            self.__names_order.append( (label,str(name)) )
         self.__names[label][str(name)] = node_id
+
                 
     def getNames(self, label=None) :
         if label == None :
-            result = set()
-            for forLabel in self.__names.values() :
-                result |= set( forLabel.items() )
+            result = []
+            for label, name in self.__names_order :
+                result.append( ( name, self.__names[label][name]) )
         else :
             result = self.__names.get( label, {} ).items()
         return result
         
     def getNamesWithLabel(self) :
         result = []
-        for label in self.__names :
-            for name, node in self.__names[label].items() :
-                result.append( ( name, node, label ) )
+        for label, name in self.__names_order :
+            result.append( ( name, self.__names[label][name], label))
+        # for label in self.__names :
+        #     for name, node in self.__names[label].items() :
+        #         result.append( ( name, node, label ) )
         return result
         
     def getNodeByName(self, name) :
