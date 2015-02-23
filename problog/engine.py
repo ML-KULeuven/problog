@@ -209,20 +209,20 @@ def instantiate( term, context ) :
         return term.apply(context)
         
         
-def unify( source_value, target_value, target_context=None ) :
+def unify( source_value, target_value, target_context=None, location=None ) :
     """Unify two terms.
         If a target context is given, the context will be updated using the variable identifiers from the first term, and the values from the second term.
         
         :raise UnifyError: unification failed
         
-    """    
+    """
     if type(target_value) == int :
         if target_context != None :
             current_value = target_context[target_value]
             if current_value == None :
                 target_context[target_value] = source_value
             else :
-                new_value = unify_value( source_value, current_value )
+                new_value = unify_value( source_value, current_value, location=location )
                 target_context[target_value] = new_value
     elif target_value == None :
         pass
@@ -290,18 +290,18 @@ class VariableUnification(GroundingError) :
         GroundingError.__init__(self, msg)
 
 
-def unify_value( v1, v2 ) :
+def unify_value( v1, v2, location=None ) :
     """Test unification of two values and return most specific unifier."""
     
     if is_variable(v1) :
-        if not is_ground(v2) : raise VariableUnification()
+        #if not is_ground(v2) : raise VariableUnification(location=location)
         return v2
     elif is_variable(v2) :
-        if not is_ground(v1) : raise VariableUnification()
+        #if not is_ground(v1) : raise VariableUnification(location=location)
         return v1
     elif v1.signature == v2.signature : # Assume Term
         if v1 == v2 : return v1
-        return v1.withArgs(*[ unify_value(a1,a2) for a1, a2 in zip(v1.args, v2.args) ])
+        return v1.withArgs(*[ unify_value(a1,a2, location=location) for a1, a2 in zip(v1.args, v2.args) ])
     else :
         raise UnifyError()
 
@@ -520,10 +520,10 @@ def builtin_split_call( term, parts, database=None, location=None, **k ) :
         for t in reversed(part_list) :
             current = Term('.', t, current)
         try :
-            L = unify_value(current, parts)
+            L = unify_value(current, parts, location=location)
             elements, tail = list_elements(L)
             term_new = elements[0](*elements[1:])
-            T = unify_value( term, term_new )
+            T = unify_value( term, term_new, location=location )
             return [(T,L)]            
         except UnifyError :
             return []
@@ -534,7 +534,7 @@ def builtin_arg(index,term,argument, **k) :
     if 0 <= index_v < len(term.args) :
         try :
             arg = term.args[index_v]
-            res = unify_value(arg,argument)
+            res = unify_value(arg,argument, location=location)
             return [(index,term,res)]
         except UnifyError :
             pass
@@ -568,11 +568,11 @@ def builtin_eq( A, B, location=None, database=None, **k ) :
     """``A = B``
         A and B not both variables
     """
-    if is_var(A) and is_var(B) :
+    if not is_ground(A) and not is_ground(B) :
         raise VariableUnification(location = database.lineno(location))
     else :
         try :
-            R = unify_value(A,B)
+            R = unify_value(A,B, location=location)
             return [( R, R )]
         except UnifyError :
             return []
@@ -592,6 +592,8 @@ def builtin_neq( A, B, **k ) :
             return False
         except UnifyError :
             return True
+        except VariableUnification :
+            return False
             
 
 def builtin_notsame( A, B, **k ) :

@@ -365,7 +365,7 @@ class StackBasedEngine(ClauseDBEngine) :
                 try :
                     assert(len(result) == len(node.args))
                     for call_arg, res_arg in zip(node.args,result) :
-                        unify( res_arg, call_arg, output )
+                        unify( res_arg, call_arg, output)
                     return tuple(output)
                 except UnifyError :
                     pass
