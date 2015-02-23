@@ -597,7 +597,6 @@ class LogicFormula(ProbLogObject) :
         for x,y in name_lookup_clash.items() :
             name_lookup[x] = y[0]
             if len(y) > 1 :
-                print (y)
                 for y1 in y[1:] :
                     lines.append( '%s :- %s.' % ( y1, y[0] ) )
         
