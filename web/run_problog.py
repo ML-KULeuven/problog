@@ -10,7 +10,7 @@ sys.path.insert(0, os.path.abspath( os.path.join(os.path.dirname(__file__), '../
 
 from problog.parser import DefaultPrologParser
 from problog.program import PrologFile, ExtendedPrologFactory
-from problog.evaluator import SemiringSymbolic, Evaluator
+from problog.evaluator import SemiringLogProbability, Evaluator
 #from problog.nnf_formula import NNF
 from problog.sdd_formula import SDD
 from problog.core import process_error, GroundingError
@@ -50,7 +50,7 @@ def main( filename) :
     try :
         model = PrologFile(filename, parser=DefaultPrologParser(ExtendedPrologFactory()))
         formula = SDD.createFrom( model )
-        result = formula.evaluate()
+        result = formula.evaluate(semiring=SemiringLogProbability())
         return True, result
     except Exception as err :
         return False, {'err':process_error(err)}
