@@ -119,22 +119,22 @@ smaller(X,[]).
 smaller(X,[N|T]) :- X<N, smaller(X,T).
 
 
-% TODO: is a custom many predicate using a/1 and b/1.
-many_int(P,N) :- 
-	findall(q(X), a(X), L),
-	many_int(L, 0, P, 0, N).
+% TODO: is a custom many predicate using a/1 (Template) and b/1 (Test).
+S::many_a_b :- 
+	findall(b(X), a(X), L),
+	many_int(L, 0, 0, S).
 
-many_int([], P, P, N, N).
-many_int([H|T], PA, P, NA, N) :-
-	H = q(X),
-    (b(X), PAN is PA + 1, NAN is NA;    % Test: true
-     \+b(X), PAN is PA, NAN is NA + 1), % Test: false
-	many_int(T, PAN, P, NAN, N).
+many_int([], P, N, S) :-
+	S is P/(P+N).
+many_int([H|T], PA, NA, S) :-
+    (call(H), PAN is PA + 1, NAN is NA;    % Test: true
+     \+call(H), PAN is PA, NAN is NA + 1), % Test: false
+	many_int(T, PAN, NAN, S).
 
-S::many :- many_int(P,N), S is P/(P+N).
-
-q_avg :- many.
+q_avg :- many_a_b.
 query(q_avg).
 
+%many2(L) :- findall((q(X),b(X)), a(X), L).
+%query(many2(L)).
 
 
