@@ -227,6 +227,12 @@ class Term(object) :
             else :
                 self.__is_ground = True
         return self.__is_ground
+    
+    def variables(self) :
+        variables = set()
+        for arg in self.args :
+            variables |= arg.variables()
+        return variables
         
     def __eq__(self, other) :
         # TODO: this can be very slow?
@@ -262,6 +268,18 @@ class Term(object) :
         
     def __int__(self) :
         return int(self.value)
+        
+    def is_positive(self) :
+        return not self.is_negative()
+        
+    def is_negative(self) :
+        return False
+        
+    def __neg__(self) :
+        return Not('\+', self)
+        
+    def __abs__(self) :
+        return self
     
 class Var(Term) :
     """A Term representing a variable.
@@ -293,6 +311,9 @@ class Var(Term) :
         :returns: the value from subst that corresponds to this variable's name
         """
         return subst[self.name]
+    
+    def variables(self) :
+        return set([self.name])
     
     def isVar(self) :
         """Checks whether this Term represents a variable.
@@ -389,6 +410,18 @@ class Or(Term) :
         self.op1 = op1
         self.op2 = op2
     
+    @classmethod   
+    def fromList(self, lst) :
+        if lst :
+            n = len(lst) - 1
+            tail = lst[n]
+            while n > 0 :
+                n -= 1
+                tail = Or(lst[n],tail)
+            return tail
+        else :
+            return Term('fail')
+    
     def __or__(self, rhs) :
         self.op2 = self.op2 | rhs
         return self
@@ -409,6 +442,18 @@ class And(Term) :
         Term.__init__(self, ',', op1, op2, location=location)
         self.op1 = op1
         self.op2 = op2
+    
+    @classmethod    
+    def fromList(self, lst) :
+        if lst :
+            n = len(lst) - 1
+            tail = lst[n]
+            while n > 0 :
+                n -= 1
+                tail = And(lst[n],tail)
+            return tail
+        else :
+            return Term('true')
     
     def __and__(self, rhs) :
         self.op2 = self.op2 & rhs
@@ -439,6 +484,16 @@ class Not(Term) :
         if isinstance(self.child, And) :
             c = '(%s)' % c
         return '%s(%s)' % (self.functor, c)
+        
+    def is_negative(self) :
+        return True
+        
+    def __neg__(self) :
+        return self.child
+        
+    def __abs__(self) :
+        return -self
+    
 
 class LogicProgram(object) :
     """LogicProgram"""

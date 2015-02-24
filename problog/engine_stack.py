@@ -341,9 +341,10 @@ class StackBasedEngine(ClauseDBEngine) :
         return engine.eval_default(EvalNot, **kwdargs)
     
     def eval_call(engine, node_id, node, context, parent, transform=None, identifier=None, **kwdargs) :
-        call_args = [ instantiate(arg, context) for arg in node.args ]
-        # print ('call_args', call_args)
-        # print (node.defnode)
+        if node.defnode == -6 :   # Findall
+            call_args = [ instantiate(arg, context, keepVars=True) for arg in node.args ]
+        else :
+            call_args = [ instantiate(arg, context) for arg in node.args ]
         if node.defnode == -5 : # \= builtin
             try :
                 unify(call_args[0], call_args[1])
@@ -1197,6 +1198,26 @@ class SimpleBuiltIn(object) :
             
     def __str__(self) :
         return str(self.base_function)
+        
+class SimpleProbabilisticBuiltIn(object) :
+    """Simple builtin that does cannot be involved in a cycle or require engine information and has 0 or more results."""
+
+    def __init__(self, base_function) :
+        self.base_function = base_function
+    
+    def __call__(self, *args, **kwdargs ) :
+        callback = kwdargs.get('callback')
+        results = self.base_function(*args, **kwdargs)
+        output = []
+        if results :
+            for i,result in enumerate(results) :
+                output += callback.notifyResult(result[0],result[1],i==len(results)-1)
+            return True, output
+        else :
+            return True, callback.notifyComplete()
+            
+    def __str__(self) :
+        return str(self.base_function)
 
 def builtin_call( term, args=(), engine=None, callback=None, **kwdargs ) :
     # TODO does not support cycle through call!
@@ -1219,7 +1240,7 @@ def builtin_callN( term, *args, **kwdargs ) :
 
 def addBuiltIns(engine) :
     
-    addStandardBuiltIns(engine, BooleanBuiltIn, SimpleBuiltIn )
+    addStandardBuiltIns(engine, BooleanBuiltIn, SimpleBuiltIn, SimpleProbabilisticBuiltIn )
     
     #These are special builtins
     engine.addBuiltIn('call', 1, builtin_call)

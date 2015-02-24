@@ -96,7 +96,7 @@ class LogicFormula(ProbLogObject) :
     def _create_disj( self, children ) :
         return self._disj(children)
     
-    def __init__(self, auto_compact=True) :
+    def __init__(self, auto_compact=True, avoid_name_clash=False, keep_order=False) :
         ProbLogObject.__init__(self)
         
         # List of nodes
@@ -111,10 +111,13 @@ class LogicFormula(ProbLogObject) :
         # Node names (for nodes of interest)
         self.__names = defaultdict(dict)
         self.__names_order = []
+        self.__names_reverse = {}
         
         self.__atom_count = 0
         
         self.__auto_compact = auto_compact
+        self.__avoid_name_clash = avoid_name_clash
+        self.__keep_order = keep_order
         
         self.__constraints_me = {}
         self.__constraints = []
@@ -141,7 +144,8 @@ class LogicFormula(ProbLogObject) :
         if not label in self.__names or not str(name) in self.__names[label] :
             self.__names_order.append( (label,str(name)) )
         self.__names[label][str(name)] = node_id
-
+        if self.__avoid_name_clash :
+            self.__names_reverse[node_id] = name
                 
     def getNames(self, label=None) :
         if label == None :
@@ -321,7 +325,10 @@ class LogicFormula(ProbLogObject) :
             content = filter( lambda x : x != f, content )
         
             # Put into fixed order and eliminate duplicate nodes
-            content = tuple(sorted(set(content)))
+            if self.__keep_order :
+                content = tuple(content)
+            else :
+                content = tuple(sorted(set(content)))
         
             # Empty OR node fails, AND node is true
             if not content : return f
@@ -331,7 +338,8 @@ class LogicFormula(ProbLogObject) :
             
             # If node has only one child, just return the child.
             # Don't do this for modifiable nodes, we need to keep a separate node.
-            if (readonly and update == None) and len(content) == 1 : return content[0]
+            if (readonly and update == None) and len(content) == 1 and not (self.__avoid_name_clash and self.__names_reverse.get(content[0]) != None) :
+                return content[0]
         else :
             content = tuple(content)
         
@@ -592,31 +600,58 @@ class LogicFormula(ProbLogObject) :
         name_lookup_clash = defaultdict(list)
         for x,y in self.getNames() :
             name_lookup_clash[y].append(x)
-            
         name_lookup = {}
         for x,y in name_lookup_clash.items() :
-            name_lookup[x] = y[0]
-            if len(y) > 1 :
-                for y1 in y[1:] :
-                    lines.append( '%s :- %s.' % ( y1, y[0] ) )
+            if x != 0 :
+                name_lookup[x] = y[0]
+                if len(y) > 1 :
+                    for y1 in set(y[1:]) :
+                        if y1 != y[0] :
+                            lines.append( '%s :- %s.' % ( y1, y[0] ) )
         
         def get_name(x) :
             name = name_lookup.get(abs(x), 'node_%s' % abs(x))
-            if x < 0 : name = '\+' + name
+            if x < 0 : name = '\+ (' + name + ')'
             return name
-                    
-        for i, n, t in self.iterNodes() :
-            name = name_lookup.get(i, 'node_%s' % i)
-            
+        
+        active = [ q for n,q in self.queries() ]
+        active += [ q for n,q in self.evidence() ]
+        active = set(active)
+        former = set([0])
+        
+        while active :
+            i = active.pop()
+            former.add(i)
+            n = self._getNode(i)
+            t = type(n).__name__
+            name = get_name(i)
             if t == 'atom' :
                 lines.append( '%s::%s.' % (n.probability, name) )
-            elif t == 'conj' and i in name_lookup :
+            elif t == 'conj' :
                 lines.append( '%s :- %s.' % ( name, ','.join( get_name(c) for c in n.children  )  ) )
-            elif t == 'disj' :
+            else :
                 for c in n.children :
-                    children = set()
+                    if self.__keep_order :
+                        children = OrderedSet()
+                    else :
+                        children = set()
                     self._expand( c, children, name_lookup, nodetype=None, anc=None)
                     lines.append( '%s :- %s.' % ( name, ','.join( get_name(x) for x in children  )  ) )
+                    children = set(map(abs,children))
+                    active |= ( children - former )
+        
+        # for i, n, t in self.iterNodes() :
+        #     name = name_lookup.get(i, 'node_%s' % i)
+        #
+        #     if t == 'atom' :
+        #         lines.append( '%s::%s.' % (n.probability, name) )
+        #     elif t == 'conj' and i in name_lookup :
+        #         lines.append( '%s :- %s.' % ( name, ','.join( get_name(c) for c in n.children  )  ) )
+        #     elif t == 'disj' :
+        #         for c in n.children :
+        #             children = set()
+        #             self._expand( c, children, name_lookup, nodetype=None, anc=None)
+        #             lines.append( '%s :- %s.' % ( name, ','.join( get_name(x) for x in children  )  ) )
         return '\n'.join(lines)
         
     def toDot(self, not_as_node=True) :
@@ -1484,3 +1519,63 @@ def acyc_insert( formula, rules, head, given, translate ) :
         new_node = formula.addOr( disjuncts )
         translate[abs(head)] = new_node
         return f*new_node
+        
+import collections
+
+class OrderedSet(collections.MutableSet):
+
+    def __init__(self, iterable=None):
+        self.end = end = [] 
+        end += [None, end, end]         # sentinel node for doubly linked list
+        self.map = {}                   # key --> [key, prev, next]
+        if iterable is not None:
+            self |= iterable
+
+    def __len__(self):
+        return len(self.map)
+
+    def __contains__(self, key):
+        return key in self.map
+
+    def add(self, key):
+        if key not in self.map:
+            end = self.end
+            curr = end[1]
+            curr[2] = end[1] = self.map[key] = [key, curr, end]
+
+    def discard(self, key):
+        if key in self.map:        
+            key, prev, next = self.map.pop(key)
+            prev[2] = next
+            next[1] = prev
+
+    def __iter__(self):
+        end = self.end
+        curr = end[2]
+        while curr is not end:
+            yield curr[0]
+            curr = curr[2]
+
+    def __reversed__(self):
+        end = self.end
+        curr = end[1]
+        while curr is not end:
+            yield curr[0]
+            curr = curr[1]
+
+    def pop(self, last=True):
+        if not self:
+            raise KeyError('set is empty')
+        key = self.end[1][0] if last else self.end[2][0]
+        self.discard(key)
+        return key
+
+    def __repr__(self):
+        if not self:
+            return '%s()' % (self.__class__.__name__,)
+        return '%s(%r)' % (self.__class__.__name__, list(self))
+
+    def __eq__(self, other):
+        if isinstance(other, OrderedSet):
+            return len(self) == len(other) and list(self) == list(other)
+        return set(self) == set(other)

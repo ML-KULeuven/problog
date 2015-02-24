@@ -283,7 +283,7 @@ class ClauseIndex(list) :
         # for i, xx in enumerate(self.__index) :
         #     print ('\t', i, xx)
         for i, arg in enumerate(arguments) :
-            if arg == None or not arg.isGround() : 
+            if arg == None or type(arg) == int or not arg.isGround() : 
                 pass # Variable => no restrictions
             else :
                 curr = self.__index[i].get(arg)
