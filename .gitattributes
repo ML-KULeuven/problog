@@ -2,6 +2,7 @@
 # We can’t distribute this ourselves.
 /problog/bin/linux/cnf2dDNNF	export-ignore
 /problog/bin/linux/lp2acyc      export-ignore
+/problog/bin/windows/cnf2dDNNF  export-ignore
 
 # Hide some other files
 .gitignore			export-ignore
@@ -12,3 +13,5 @@
 /sandbox/	export-ignore
 /benchmark/ export-ignore
 Makefile	export-ignore
+/usecases/  export-ignore
+problog-gui.py export-ignore
