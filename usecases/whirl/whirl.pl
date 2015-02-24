@@ -117,7 +117,7 @@ many_int([H|T], PA, NA, S) :-
     many_int(T, PAN, NAN, S).
 
 
-% Movie that has most academy awards
+% Movie that has many academy awards
 S::many_awards(M) :-
 	% many(Template, Test) as findall(Test, Template, L)
 	findall(winner(M,C,Y), (academy_award(C),winner(_,C,Y)), L),
