@@ -4,7 +4,7 @@ import logging
 from collections import defaultdict 
 
 from .program import ClauseDB, PrologFile
-from .logic import Term, Constant, Var
+from .logic import Term, Constant, Var, Clause
 from .formula import LogicFormula
 
 from .core import transform, LABEL_QUERY, LABEL_EVIDENCE_POS, LABEL_EVIDENCE_NEG, LABEL_EVIDENCE_MAYBE, GroundingError
@@ -1013,13 +1013,45 @@ def builtin_unknown( arg, engine=None, **kwdargs) :
     else :
         engine.unknown = engine.UNKNOWN_ERROR
     return True
+    
+def select( lst, target ) :
+    # TODO remove recursion?
+    if lst :
+        res, node = lst[0]
+        lst = lst[1:]
+        
+        for list_rest, node_rest in select(lst, target) :
+            if node == target.TRUE :  # Have to pick
+                yield  (res,) + list_rest, node_rest
+            else :  # Have choice
+                yield (res,) + list_rest, (node,) + node_rest
+                yield list_rest, (-node,) + node_rest
+    else :
+        yield (), (0,)
+    
+    
+def builtin_findall( pattern, goal, result, database=None, target=None, engine=None, **kwdargs ) :
+    findall_head = Term('_fndl', pattern)
+    findall_clause = Clause( findall_head , goal )    
+    findall_db = ClauseDB(parent=database)
+    findall_db += findall_clause
+    results = engine.call( findall_head, subcall=True, database=findall_db, target=target, **kwdargs )
+    results = [ (res[0],n) for res, n in results ]
+    
+    output = []
+    for l,n in select(results, target) :
+        node = target.addAnd(n)
+        if node != None :
+            output.append(((pattern,goal,build_list(l,Term('[]'))), node))
+    return output
 
-def addStandardBuiltIns(engine, b=None, s=None) :
+def addStandardBuiltIns(engine, b=None, s=None, sp=None) :
     """Add Prolog builtins to the given engine."""
     
     # Shortcut some wrappers
     if b == None : b = BooleanBuiltIn
     if s == None : s = SimpleBuiltIn
+    if sp == None : sp = SimpleProbabilisticBuiltIn
     
     engine.addBuiltIn('true', 0, b(builtin_true))   # -1
     engine.addBuiltIn('fail', 0, b(builtin_fail))   # -2
@@ -1027,6 +1059,9 @@ def addStandardBuiltIns(engine, b=None, s=None) :
 
     engine.addBuiltIn('=', 2, s(builtin_eq))        # -4
     engine.addBuiltIn('\=', 2, b(builtin_neq))      # -5
+
+    engine.addBuiltIn('findall',3,sp(builtin_findall)) # -6
+
     engine.addBuiltIn('==', 2, b(builtin_same))
     engine.addBuiltIn('\==', 2, b(builtin_notsame))
 
