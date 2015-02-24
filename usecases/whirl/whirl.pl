@@ -118,25 +118,23 @@ member(X,[_|T]) :- member(X,T).
 smaller(X,[]).
 smaller(X,[N|T]) :- X<N, smaller(X,T).
 
-% TODO: can the normal findall/3 be a built-in?
-% For this needs a meta-predicate or allow functors as arguments
-% Currently a merge between findall/3 and counting matches
-findall(L, Pos, Neg) :-
-    findall([], L, 0, Pos, 0, Neg).
 
-findall(Acc, L, PosA, Pos, NegA, Neg) :-
-    a(X), % Condition
-    smaller(X,Acc), % Should be a(X)
-    \+ member(X,Acc), % Should be a(X)
-    (b(X), PosAN is PosA + 1, NegAN is NegA;    % Test: true
-     \+b(X), PosAN is PosA, NegAN is NegA + 1), % Test: false
-    findall([X|Acc], L, PosAN, Pos, NegAN, Neg).
+% TODO: is a custom many predicate using a/1 and b/1.
+many_int(P,N) :- 
+	findall(q(X), a(X), L),
+	many_int(L, 0, P, 0, N).
 
-findall(L, L, P, P, N, N) :-
-    \+ (a(X), \+member(X, L)).
+many_int([], P, P, N, N).
+many_int([H|T], PA, P, NA, N) :-
+	H = q(X),
+    (b(X), PAN is PA + 1, NAN is NA;    % Test: true
+     \+b(X), PAN is PA, NAN is NA + 1), % Test: false
+	many_int(T, PAN, P, NAN, N).
 
-q_avg(L,P,N,S) :- findall(L,P,N), S is P/(P+N).
-S::q_avg2 :- q_avg(L,P,N,S).
-%query(q_avg(L,P,N,S)).
-%query(q_avg2).
+S::many :- many_int(P,N), S is P/(P+N).
+
+q_avg :- many.
+query(q_avg).
+
+
 
