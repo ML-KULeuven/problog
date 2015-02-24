@@ -197,8 +197,13 @@ class _UnknownClause(Exception) :
     pass
         
 
-def instantiate( term, context ) :
+def instantiate( term, context, keepVars=False ) :
     """Replace variables in Term by values based on context lookup table."""
+    if keepVars : 
+        context = list(context)
+        for i,v in enumerate(context) :
+            if v == None :
+                context[i] = i
     if term == None :
         return None
     elif type(term) == int :
