@@ -39,10 +39,12 @@ review('Men in Black, 1997', '(***) One of the summer s biggest hits, this ... a
 review('Face/Off, 1997',     '(**1/2) After a somewhat slow start, Cage and Travolta').
 review('Space Balls, 1987',  '(*1/2) While not one of Mel Brooks better efforts, this Star Wars spoof ... a comedy about space').
 review('Hercules',  'Animated Disney film').
+review('The Lord of the Rings: The Fellowship of the Ring, 2001', 'An epic fantasy film directed by Peter Jackson based on the first volume of J. R. R. Tolkien The Lord of the Rings. It is the first installment in the The Lord of the Rings film series, and was followed by The Two Towers (2002) and The Return of the King (2003), based on the second and third volumes of The Lord of the Rings.').
 
 academy_award('Best makeup').
 
-winner('Men in Black', 'Best makeup').
+winner('Men in Black', 'Best makeup', 1997).
+winner('The Lord of the Rings: The Fellowship of the Ring', 'Best makeup', 2001).
 
 
 % CONJUNCTIVE QUERIES
@@ -97,44 +99,34 @@ q5a(Movie, Cat) :- review(Movie ,Review),
               similar(Movie, Movie2).
 %query(q5a(M,C)).
 
-
-% Movie that has many awards
-% TODO
+% Auxiliaries
 %P::many(Template, Test) :- ...
-
-%q5(M) :- listing(C,M,T),
-%         many(academy_award(Y), winner(M,Y)).
-%query(q5(M)).
-
-0.5::a(1).
-a(2).
-a(3).
-b(1).
-0.3::b(2).
-
-member(X,[X|_]).
-member(X,[_|T]) :- member(X,T).
-
-smaller(X,[]).
-smaller(X,[N|T]) :- X<N, smaller(X,T).
-
-
-% TODO: is a custom many predicate using a/1 (Template) and b/1 (Test).
-S::many_a_b :- 
-	findall(b(X), a(X), L),
-	many_int(L, 0, 0, S).
-
+% TODO: pass atoms
+many_int(L, S) :-
+    many_int(L, 0, 0, S).
+many_int([], P, N, 0) :-
+	T is P+N,
+    T = 0.
 many_int([], P, N, S) :-
-	S is P/(P+N).
+	T is P+N,
+	T > 0,
+    S is P/T.
 many_int([H|T], PA, NA, S) :-
-    (call(H), PAN is PA + 1, NAN is NA;    % Test: true
-     \+call(H), PAN is PA, NAN is NA + 1), % Test: false
-	many_int(T, PAN, NAN, S).
+    (  call(H), PAN is PA + 1, NAN is NA;      % Test: true
+     \+call(H), PAN is PA,     NAN is NA + 1), % Test: false
+    many_int(T, PAN, NAN, S).
 
-q_avg :- many_a_b.
-query(q_avg).
 
-%many2(L) :- findall((q(X),b(X)), a(X), L).
-%query(many2(L)).
+% Movie that has most academy awards
+S::many_awards(M) :-
+	% many(Template, Test) as findall(Test, Template, L)
+	findall(winner(M,C,Y), (academy_award(C),winner(_,C,Y)), L),
+	many_int(L, S).
+
+q5(M) :-
+	listing(C,M,T),
+	%many(academy_award(Y), winner(M,Y)).
+	many_awards(M).
+query(q5(M)).
 
 
