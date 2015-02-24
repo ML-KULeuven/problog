@@ -594,29 +594,53 @@ class LogicFormula(ProbLogObject) :
             name_lookup_clash[y].append(x)
         name_lookup = {}
         for x,y in name_lookup_clash.items() :
-            name_lookup[x] = y[0]
-            if len(y) > 1 :
-                for y1 in set(y[1:]) :
-                    if y1 != y[0] :
-                        lines.append( '%s :- %s.' % ( y1, y[0] ) )
+            if x != 0 :
+                name_lookup[x] = y[0]
+                if len(y) > 1 :
+                    for y1 in set(y[1:]) :
+                        if y1 != y[0] :
+                            lines.append( '%s :- %s.' % ( y1, y[0] ) )
         
         def get_name(x) :
             name = name_lookup.get(abs(x), 'node_%s' % abs(x))
             if x < 0 : name = '\+' + name
             return name
-                    
-        for i, n, t in self.iterNodes() :
-            name = name_lookup.get(i, 'node_%s' % i)
-            
+        
+        active = [ q for n,q in self.queries() ]
+        active += [ q for n,q in self.evidence() ]
+        active = set(active)
+        former = set([0])
+        
+        while active :
+            i = active.pop()
+            former.add(i)
+            n = self._getNode(i)
+            t = type(n).__name__
+            name = get_name(i)
             if t == 'atom' :
                 lines.append( '%s::%s.' % (n.probability, name) )
-            elif t == 'conj' and i in name_lookup :
+            elif t == 'conj' :
                 lines.append( '%s :- %s.' % ( name, ','.join( get_name(c) for c in n.children  )  ) )
-            elif t == 'disj' :
+            else :
                 for c in n.children :
                     children = set()
                     self._expand( c, children, name_lookup, nodetype=None, anc=None)
                     lines.append( '%s :- %s.' % ( name, ','.join( get_name(x) for x in children  )  ) )
+                    children = set(map(abs,children))
+                    active |= ( children - former )
+        
+        # for i, n, t in self.iterNodes() :
+        #     name = name_lookup.get(i, 'node_%s' % i)
+        #
+        #     if t == 'atom' :
+        #         lines.append( '%s::%s.' % (n.probability, name) )
+        #     elif t == 'conj' and i in name_lookup :
+        #         lines.append( '%s :- %s.' % ( name, ','.join( get_name(c) for c in n.children  )  ) )
+        #     elif t == 'disj' :
+        #         for c in n.children :
+        #             children = set()
+        #             self._expand( c, children, name_lookup, nodetype=None, anc=None)
+        #             lines.append( '%s :- %s.' % ( name, ','.join( get_name(x) for x in children  )  ) )
         return '\n'.join(lines)
         
     def toDot(self, not_as_node=True) :
