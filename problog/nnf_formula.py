@@ -78,7 +78,10 @@ class SimpleNNFEvaluator(Evaluator) :
             self.setValue(abs(node), (node > 0) )
             result = self.getWeight( len(self.__nnf) )
             self.resetValue(abs(node),p,n)
-            return self.semiring.normalize(result,self.Z)
+            if self.hasEvidence() :
+                return self.semiring.normalize(result,self.Z)
+            else :
+                return result
         
     def resetValue(self, index, pos, neg) :
         self.setWeight( index, pos, neg)

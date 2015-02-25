@@ -260,6 +260,9 @@ class Evaluator(object) :
         """Add evidence"""
         self.__evidence.append(node)
         
+    def hasEvidence(self) :
+        return self.__evidence != []
+        
     def clearEvidence(self) :
         self.__evidence = []
         
