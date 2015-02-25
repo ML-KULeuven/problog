@@ -230,7 +230,7 @@ def _compile(cnf, cmd, cnf_file, nnf_file) :
         with open(cnf_file, 'w') as f :
             f.write(cnf.toDimacs())
 
-        attempts_left = 10
+        attempts_left = 1
         success = False
         while attempts_left and not success :
             try :
