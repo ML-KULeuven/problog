@@ -17,7 +17,6 @@ from problog.program import PrologFile
 from problog.logic import Term
 from problog.engine import EventBasedEngine, UnifyError, unify, instantiate
 from problog.formula import LogicFormula
-from problog.interface import *
 import random
 
 

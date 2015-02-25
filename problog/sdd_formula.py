@@ -6,7 +6,6 @@ from collections import namedtuple, defaultdict
 from .formula import LogicDAG, LogicFormula, breakCycles
 from .cnf_formula import CNF
 from .logic import LogicProgram
-from .interface import ground
 from .evaluator import Evaluator, SemiringProbability, Evaluatable, InconsistentEvidenceError
 from .core import transform
 from .util import Timer

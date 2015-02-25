@@ -18,7 +18,6 @@ from . import core
 from . import engine
 from . import evaluator
 from . import formula
-from . import interface
 from . import logic
 from . import nnf_formula
 from . import parser

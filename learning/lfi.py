@@ -46,8 +46,7 @@ from collections import defaultdict
 
 sys.path.append(os.path.abspath( os.path.join( os.path.dirname(__file__), '../' ) ) )
 
-from problog.interface import ground
-from problog.engine import DefaultEngine
+from problog.engine import DefaultEngine, ground
 # from problog.nnf_formula import NNF as knowledge
 from problog.sdd_formula import SDD as knowledge
 from problog.evaluator import SemiringProbability

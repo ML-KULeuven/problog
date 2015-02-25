@@ -4,11 +4,15 @@ import logging
 from collections import defaultdict 
 
 from .program import ClauseDB, PrologFile
-from .logic import Term, Constant, Var, Clause
+from .logic import Term, Constant, Var, Clause, LogicProgram
 from .formula import LogicFormula
 
 from .core import transform, GroundingError
 from .util import Timer
+
+@transform(LogicProgram, LogicFormula)
+def ground(model, target=None, queries=None, evidence=None) :
+    return DefaultEngine().ground_all(model,target, queries=queries, evidence=evidence)
     
 class GenericEngine(object) :
     """Generic interface to a grounding engine."""

@@ -8,7 +8,6 @@ from .evaluator import Evaluator, Evaluatable, InconsistentEvidenceError
 from .formula import LogicDAG
 from .logic import LogicProgram
 from .cnf_formula import CNF
-from .interface import ground
 from .core import transform
 from .util import Timer, subprocess_check_call
 
