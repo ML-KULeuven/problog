@@ -388,7 +388,10 @@ class ClauseDB(LogicProgram) :
         
     def _getBuiltIn(self, signature) :
         if self.__builtins == None :
-            return None
+            if self.__parent != None :
+                return self.__parent._getBuiltIn(signature)
+            else :
+                return None
         else :
             return self.__builtins.get(signature)
     
