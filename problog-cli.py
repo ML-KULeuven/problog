@@ -30,7 +30,7 @@ def print_result( d, output, precision=8 ) :
         print ('Error:', d, file=output)
         return 1
 
-def main( filename, knowledge=NNF, semiring=None, parser_class=DefaultPrologParser ) :
+def main( filename, knowledge=NNF, semiring=None, parser_class=DefaultPrologParser, debug=False ) :
     logger = logging.getLogger('problog')
 
     try :
@@ -41,7 +41,7 @@ def main( filename, knowledge=NNF, semiring=None, parser_class=DefaultPrologPars
           result = formula.evaluate(semiring=semiring)
         return True, result
     except Exception as err :
-        return False, process_error(err)
+        return False, process_error(err, debug=debug)
 
 def argparser() :
     import argparse
@@ -59,6 +59,7 @@ def argparser() :
     parser.add_argument('--recursion-limit', help="Set recursion limit. Increase this value if you get an unbounded program error. (default: %d)" % sys.getrecursionlimit(), default=sys.getrecursionlimit(), type=int)
     parser.add_argument('--faster-parser', action='store_true', help=argparse.SUPPRESS)
     parser.add_argument('--timeout', '-t', type=int, default=0, help="Set timeout (in seconds, default=off).")
+    parser.add_argument('--debug', '-d', action='store_true', help="Enable debug mode (print full errors).")
     return parser
 
 if __name__ == '__main__' :
@@ -70,7 +71,10 @@ if __name__ == '__main__' :
     formatter = logging.Formatter('[%(levelname)s] %(message)s')
     ch.setFormatter(formatter)
     logger.addHandler(ch)
-    if args.verbose == None:
+    if args.debug :
+        logger.setLevel(logging.DEBUG)
+        logger.debug('Output level: DEBUG')
+    elif args.verbose == None:
         logger.setLevel(logging.WARNING)
     elif args.verbose == 1:
         logger.setLevel(logging.INFO)
@@ -123,10 +127,10 @@ if __name__ == '__main__' :
         for filename in args.filenames :
             try :
                 if len(args.filenames) > 1 : print ('Results for %s:' % filename)
-                retcode = print_result( main(filename, knowledge, semiring, parse_class), output )
+                retcode = print_result( main(filename, knowledge, semiring, parse_class, args.debug), output )
                 if len(args.filenames) == 1 : sys.exit(retcode)
             except subprocess.CalledProcessError :
-                print ('error')
+                print ('Subprocess error')
 
     if args.output != None : output.close()
     

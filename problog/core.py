@@ -56,15 +56,19 @@ class ProbLogError(Exception) : pass
 
 class GroundingError(ProbLogError) : pass
 
-def process_error( err ) :
+def process_error( err, debug=False ) :
     """Take the given error raise by ProbLog and produce a meaningful error message."""
+    
+    if debug :
+        traceback.print_exc()
+    
     err_type = type(err).__name__
     if err_type == 'ParseException' :
         return 'Parsing error on %s:%s: %s.\n%s' % (err.lineno, err.col, err.msg, err.line )
     elif isinstance(err, GroundingError) :
         return 'Error during grounding: %s' % err
     else :
-        traceback.print_exc()
+        if not debug : traceback.print_exc()
         return 'Unknown error: %s' % (err_type)
 
 class ProbLogObject(object) :
