@@ -38,7 +38,12 @@ class Semiring(object) :
 
     def isLogspace(self) :
         return False
-
+        
+    def pos_value(self, a) :
+        return self.value(a)
+        
+    def neg_value(self, a) :
+        return self.negate(self.value(a))
 
 class SemiringProbability(Semiring) :
 

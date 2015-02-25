@@ -89,7 +89,7 @@ class SimpleNNFEvaluator(Evaluator) :
             pos_neg = self.__probs.get(abs(index))
             if pos_neg == None :
                 p = self._calculateWeight( abs(index) )
-                pos, neg = (p, self.semiring.negate(p))
+                pos, neg = (self.semiring.pos_value(p), self.semiring.neg_value(p))
             else :
                 pos, neg = pos_neg
             if index < 0 :

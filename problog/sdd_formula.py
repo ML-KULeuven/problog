@@ -314,24 +314,6 @@ class SDDEvaluator(Evaluator) :
             self.setWeight( index, pos, neg )
         else :
             self.setWeight( index, neg, pos )
-
-
-    # def getWeight(self, index) :
-    #     if index == 0 :
-    #         return self.semiring.one()
-    #     elif index == None :
-    #         return self.semiring.zero()
-    #     else :
-    #         pos_neg = self.__probs.get(abs(index))
-    #         if pos_neg == None :
-    #             p = self._calculateWeight( abs(index) )
-    #             pos, neg = (p, self.semiring.negate(p))
-    #         else :
-    #             pos, neg = pos_neg
-    #         if index < 0 :
-    #             return neg
-    #         else :
-    #             return pos
             
     def setWeight(self, index, pos, neg) :
         self.__probs[index] = (pos, neg)

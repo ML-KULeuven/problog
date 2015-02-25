@@ -514,8 +514,7 @@ class LogicFormula(ProbLogObject) :
                 else :
                     p = n.probability
                 if p != True :
-                    value = semiring.value(p)
-                    result[i] = value, semiring.negate(value)
+                    result[i] = semiring.pos_value(p), semiring.neg_value(p)
                 else :
                     result[i] = semiring.one(), semiring.one()
                     
@@ -1165,8 +1164,7 @@ class StringKeyLogicFormula(ProbLogObject) :
                 else :
                     p = n.probability
                 if p != True :
-                    value = semiring.value(p)
-                    result[i] = value, semiring.negate(value)
+                    result[i] = semiring.pos_value(p), semiring.neg_value(p)
                 else :
                     result[i] = semiring.one(), semiring.one()
 
@@ -1342,7 +1340,7 @@ class ConstraintME(Constraint) :
                 pos, neg = weights.get(n, (semiring.one(), semiring.one()))
                 weights[n] = (pos, semiring.one())
                 s = semiring.plus(s, pos)
-            complement = semiring.negate(s)
+            complement = semiring.neg_value(s)
             weights[self.extra_node] = (complement, semiring.one())
             
     def copy( self, rename={} ) :
