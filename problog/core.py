@@ -56,6 +56,8 @@ class ProbLogError(Exception) : pass
 
 class GroundingError(ProbLogError) : pass
 
+class CompilationError(ProbLogError) : pass
+
 def process_error( err, debug=False ) :
     """Take the given error raise by ProbLog and produce a meaningful error message."""
     
@@ -67,6 +69,8 @@ def process_error( err, debug=False ) :
         return 'Parsing error on %s:%s: %s.\n%s' % (err.lineno, err.col, err.msg, err.line )
     elif isinstance(err, GroundingError) :
         return 'Error during grounding: %s' % err
+    elif isinstance(err, CompilationError) :
+        return 'Error during compilation: %s' % err
     else :
         if not debug : traceback.print_exc()
         return 'Unknown error: %s' % (err_type)

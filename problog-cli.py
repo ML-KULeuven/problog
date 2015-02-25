@@ -27,7 +27,7 @@ def print_result( d, output, precision=8 ) :
                 print(f_str % it, file=output)
         return 0
     else :
-        print ('Error:', d, file=output)
+        print (d, file=output)
         return 1
 
 def main( filename, knowledge=NNF, semiring=None, parser_class=DefaultPrologParser, debug=False ) :

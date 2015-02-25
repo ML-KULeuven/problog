@@ -8,8 +8,13 @@ from .evaluator import Evaluator, Evaluatable, InconsistentEvidenceError
 from .formula import LogicDAG
 from .logic import LogicProgram
 from .cnf_formula import CNF
-from .core import transform
+from .core import transform, CompilationError
 from .util import Timer, subprocess_check_call
+
+class DSharpError(CompilationError) :
+    
+    def __init__(self) :
+        CompilationError.__init__(self, 'DSharp has encountered an error. See INSTALL for instructions on how to install an alternative knowledge compiler.')
 
 class NNF(LogicDAG, Evaluatable) :
     
@@ -190,7 +195,11 @@ def _compile_with_dsharp( cnf, nnf=None ) :
         cnf_file = tempfile.mkstemp('.cnf')[1]
         nnf_file = tempfile.mkstemp('.nnf')[1]    
         cmd = ['dsharp', '-Fnnf', nnf_file, '-smoothNNF','-disableAllLits', cnf_file ] #
-        result = _compile( cnf, cmd, cnf_file, nnf_file )
+        
+        try :
+            result = _compile( cnf, cmd, cnf_file, nnf_file )
+        except subprocess.CalledProcessError :
+            raise DSharpError()
         
         try :
             os.remove(cnf_file)
