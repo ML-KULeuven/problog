@@ -125,12 +125,9 @@ if __name__ == '__main__' :
             semiring = None
     
         for filename in args.filenames :
-            try :
-                if len(args.filenames) > 1 : print ('Results for %s:' % filename)
-                retcode = print_result( main(filename, knowledge, semiring, parse_class, args.debug), output )
-                if len(args.filenames) == 1 : sys.exit(retcode)
-            except subprocess.CalledProcessError :
-                print ('Subprocess error')
+            if len(args.filenames) > 1 : print ('Results for %s:' % filename)
+            retcode = print_result( main(filename, knowledge, semiring, parse_class, args.debug), output )
+            if len(args.filenames) == 1 : sys.exit(retcode)
 
     if args.output != None : output.close()
     
