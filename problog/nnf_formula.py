@@ -124,7 +124,7 @@ class SimpleNNFEvaluator(Evaluator) :
         assert(key != None)
         assert(key > 0) 
         
-        node = self.__nnf._getNode(key)
+        node = self.__nnf.getNode(key)
         ntype = type(node).__name__
         assert(ntype != 'atom')
         

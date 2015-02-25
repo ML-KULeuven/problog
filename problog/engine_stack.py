@@ -7,7 +7,6 @@ import imp, inspect # For load_external
 from .formula import LogicFormula
 from .program import ClauseDB, PrologFile
 from .logic import Term
-from .core import LABEL_NAMED
 from .engine import unify, UnifyError, instantiate, extract_vars, is_ground, UnknownClause, _UnknownClause, ConsultError
 from .engine import addStandardBuiltIns, check_mode, GroundingError, NonGroundProbabilisticClause, VariableUnification
 from .engine import ClauseDBEngine
@@ -865,7 +864,7 @@ class EvalDefine(EvalNode) :
                         result_node = self.target.addOr( (node,), readonly=False )
                     name = str(Term(self.node.functor, *res))
                     if self.engine.label_all :
-                        self.target.addName(name, result_node, LABEL_NAMED)
+                        self.target.addName(name, result_node, self.target.LABEL_NAMED)
                     self.results[res] = result_node
                     actions = []
                     # Send results to cycle children
@@ -932,7 +931,7 @@ class EvalDefine(EvalNode) :
             #node = self.target.addOr( nodes, readonly=(not cycle) )
             name = str(Term(self.node.functor, *res))
             if self.engine.label_all :
-                self.target.addName(name, node, LABEL_NAMED)
+                self.target.addName(name, node, self.target.LABEL_NAMED)
             return node
         self.results.collapse(func)
                 

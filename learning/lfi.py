@@ -46,7 +46,6 @@ from collections import defaultdict
 
 sys.path.append(os.path.abspath( os.path.join( os.path.dirname(__file__), '../' ) ) )
 
-from problog.core import LABEL_QUERY
 from problog.interface import ground
 from problog.engine import DefaultEngine
 # from problog.nnf_formula import NNF as knowledge
@@ -246,7 +245,7 @@ class LFIProblem(SemiringProbability, LogicProgram) :
 
             pQueries = {}
             # Probability of query given evidence
-            for name, node in evaluator.getNames(LABEL_QUERY) :
+            for name, node in evaluator.getNames('query') :
                 w = evaluator.evaluate(node)    
                 if w < 1e-6 : 
                     pQueries[name] = 0.0

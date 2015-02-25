@@ -7,7 +7,6 @@ import imp, inspect # For load_external
 from .formula import LogicFormula
 from .program import ClauseDB, PrologFile
 from .logic import Term
-from .core import LABEL_NAMED
 from .engine import unify, UnifyError, instantiate, extract_vars, is_ground, UnknownClause, _UnknownClause, ConsultError
 from .engine import addStandardBuiltIns, check_mode, GroundingError, NonGroundProbabilisticClause
 from .engine import ClauseDBEngine

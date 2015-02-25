@@ -3,7 +3,6 @@ from __future__ import print_function
 from .engine import GenericEngine
 from .util import subprocess_check_call
 from .formula import StringKeyLogicFormula
-from .core import LABEL_QUERY, LABEL_EVIDENCE_POS, LABEL_EVIDENCE_NEG, LABEL_NAMED
 from .program import PrologFile
 
 import os, tempfile
@@ -61,25 +60,25 @@ class YapEngine(GenericEngine) :
                 if t == 'FACT' :
                     interm.addAtom(i, c)
                     if self.label_all :
-                        interm.addName( label.strip(), i, LABEL_NAMED )
+                        interm.addName( label.strip(), i, interm.LABEL_NAMED )
                 elif t == 'AND' :
                     children = c.split()
                     interm.addAnd( i, children )
                     if self.label_all :
-                        interm.addName( label.strip(), i, LABEL_NAMED )
+                        interm.addName( label.strip(), i, interm.LABEL_NAMED )
         
         with open(out_qr) as f :
             for line in f :
                 key, label = line.split('|')
-                interm.addName( label.strip(), key.strip(), LABEL_QUERY )
+                interm.addName( label.strip(), key.strip(), interm.LABEL_QUERY )
                 
         with open(out_ev) as f :
             for line in f :
                 key, label = line.split('|')
                 key, value = key.split()
                 if value.strip() == 't' :
-                    interm.addName( label.strip(), key.strip(), LABEL_EVIDENCE_POS )
+                    interm.addName( label.strip(), key.strip(), interm.LABEL_EVIDENCE_POS )
                 else :
-                    interm.addName( label.strip(), key.strip(), LABEL_EVIDENCE_NEG )
+                    interm.addName( label.strip(), key.strip(), interm.LABEL_EVIDENCE_NEG )
         target = interm.toLogicFormula()
         return target

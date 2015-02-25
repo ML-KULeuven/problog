@@ -2,8 +2,6 @@ from __future__ import print_function
 
 from collections import defaultdict
 
-from .core import LABEL_QUERY, LABEL_EVIDENCE_POS, LABEL_EVIDENCE_NEG, LABEL_EVIDENCE_MAYBE
-
 import subprocess
 import sys, os, tempfile
 import math
@@ -167,7 +165,7 @@ class Evaluatable(object) :
 
         evaluator = self._createEvaluator(semiring, weights)
 
-        for n_ev, node_ev in evaluator.getNames(LABEL_EVIDENCE_POS) :
+        for n_ev, node_ev in evaluator.getNames(self.LABEL_EVIDENCE_POS) :
             if node_ev == 0 :
                 # Evidence is already deterministically true
                 pass
@@ -183,7 +181,7 @@ class Evaluatable(object) :
                 elif value == False :
                     evaluator.addEvidence( -node_ev )
 
-        for n_ev, node_ev in evaluator.getNames(LABEL_EVIDENCE_NEG) :
+        for n_ev, node_ev in evaluator.getNames(self.LABEL_EVIDENCE_NEG) :
             if node_ev == None :
                 # Evidence is already deterministically false
                 pass
@@ -201,7 +199,7 @@ class Evaluatable(object) :
                     evaluator.addEvidence( -node_ev )
 
         if evidence != None :
-            for n_ev, node_ev in evaluator.getNames(LABEL_EVIDENCE_MAYBE) :
+            for n_ev, node_ev in evaluator.getNames(self.LABEL_EVIDENCE_MAYBE) :
                 value = evidence.get( n_ev, None )
                 if value == True : 
                     evaluator.addEvidence( node_ev )
@@ -218,7 +216,7 @@ class Evaluatable(object) :
         if index == None :
             result = {}
             # Probability of query given evidence
-            for name, node in evaluator.getNames(LABEL_QUERY) :
+            for name, node in evaluator.getNames(self.LABEL_QUERY) :
                 w = evaluator.evaluate(node)    
                 if not semiring is None:
                     w = semiring.result(w)

@@ -61,7 +61,7 @@ class SamplingEngine(EventBasedEngine) :
         target = LogicFormula()
 
         for query in queries :
-            target = engine.ground(db, query, target, label=LABEL_QUERY)
+            target = engine.ground(db, query, target, label=target.LABEL_QUERY)
 
         # for query in evidence :
         #     if str(query[1]) == 'true' :

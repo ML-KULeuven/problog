@@ -96,7 +96,7 @@ class SDD(LogicDAG, Evaluatable) :
         if index < 0 :
             index = -index
             negate = True 
-        node = self._getNode(index)
+        node = self.getNode(index)
         if type(node).__name__ == 'atom' :
             # was node.sddlit
             result = sdd.sdd_manager_literal( index, self.sdd_manager )

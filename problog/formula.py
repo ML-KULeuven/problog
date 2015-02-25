@@ -5,77 +5,9 @@ import warnings
 
 from .core import transform, ProbLogObject
 
-from .core import LABEL_QUERY, LABEL_EVIDENCE_POS, LABEL_EVIDENCE_NEG, LABEL_EVIDENCE_MAYBE, LABEL_NAMED
 from .util import Timer
 
 import logging, tempfile, subprocess, os
-
-class LogicFormulaBase(ProbLogObject) :
-    
-    def getAtomCount(self) :
-        pass
-        
-    def __len__(self) :
-        pass
-    
-    def addName(self, name, node_id, label=None) :
-        pass
-                
-    def getNames(self, label=None) :
-        pass
-        
-    def getNamesWithLabel(self) :
-        pass
-        
-    def addQuery(self, name, key) :
-        pass
-    
-    def queries(self) :
-        pass
-        
-    def addEvidence(self, name, key, value) :
-        pass
-        
-    def evidence(self) :
-        pass
-    
-    def __iter__(self) :
-        pass
-        
-    def getWeights(self) :
-        pass
-        
-    def extractWeights(self, semiring) :
-        pass
-
-    def addConstraint(self, constraint) :
-        pass
-        
-    def constraints(self) :
-        pass
-        
-    def addAtom(self, identifier, weight, group) :
-        pass
-        
-    def addAnd(self, children) :
-        pass
-        
-    def addOr(self, children) :
-        pass
-        
-    def addNot(self, children) :
-        pass
-        
-    def getNodeType(self, key) :
-        pass
-        
-    def iterNodes(self) :
-        # return key, node, nodetype
-        pass
-                
-    def ready(self) :
-        # mark end of initialization
-        pass
 
 class LogicFormula(ProbLogObject) :
     """A logic formula is a data structure that is used to represent generic And-Or graphs.
@@ -225,17 +157,17 @@ class LogicFormula(ProbLogObject) :
         
     def queries(self) :
         """Get query nodes."""
-        return self.getNames(LABEL_QUERY)
+        return self.getNames(self.LABEL_QUERY)
 
     def evidence(self) :
         """Get evidence nodes."""
-        evidence_true = self.getNames(LABEL_EVIDENCE_POS)
-        evidence_false = self.getNames(LABEL_EVIDENCE_NEG)
+        evidence_true = self.getNames(self.LABEL_EVIDENCE_POS)
+        evidence_false = self.getNames(self.LABEL_EVIDENCE_NEG)
         return list(evidence_true) + [ (a,-b) for a,b in evidence_false ]
         
     def named(self) :
         """Get named nodes."""
-        return self.getNames(LABEL_NAMED)
+        return self.getNames(self.LABEL_NAMED)
     
         
     ######################################################################
@@ -243,7 +175,7 @@ class LogicFormula(ProbLogObject) :
     ######################################################################
     
         
-    def _add( self, node, reuse=True ) :
+    def _add( self, node, key=None, reuse=True ) :
         """Adds a new node, or reuses an existing one.
         
         :param node: node to add
@@ -311,23 +243,23 @@ class LogicFormula(ProbLogObject) :
         * To add an explicitly present deterministic node you can set the probability to ``True``.
         """
         if probability == None :
-            return 0
+            return self.TRUE
         else :
             atom = self._create_atom( identifier, probability, group )
-            node_id = self._add( atom )
+            node_id = self._add( atom, key=identifier )
             self.__atom_count += 1  # TODO doesn't take reuse into account
             self._addConstraintME(group, node_id)
             return node_id
     
-    def addAnd( self, components ) :
+    def addAnd( self, components, key=None ) :
         """Add a conjunction to the logic formula.
         
         :param components: a list of node identifiers that already exist in the logic formula.
         :returns: the key of the node in the formula (returns 0 for deterministic atoms)
         """
-        return self._addCompound('conj', components, self.FALSE, self.TRUE)
+        return self._addCompound('conj', components, self.FALSE, self.TRUE, key=key)
         
-    def addOr( self, components, readonly=True ) :
+    def addOr( self, components, key=None, readonly=True ) :
         """Add a disjunction to the logic formula.
         
         :param components: a list of node identifiers that already exist in the logic formula.
@@ -341,7 +273,7 @@ class LogicFormula(ProbLogObject) :
         By setting `readonly` to False, the node is made mutable and will allow adding disjunct later using the :func:`addDisjunct` method.
         This may cause the data structure to contain superfluous nodes.
         """
-        return self._addCompound('disj', components, self.TRUE, self.FALSE, readonly=readonly)
+        return self._addCompound('disj', components, self.TRUE, self.FALSE, key=key, readonly=readonly)
         
     def addDisjunct( self, key, component ) :
         """Add a component to the node with the given key.
@@ -358,7 +290,7 @@ class LogicFormula(ProbLogObject) :
         elif self.isFalse(key) :
             raise ValueError("Cannot update failing node")
         else :
-            node = self._getNode(key)
+            node = self.getNode(key)
             if type(node).__name__ != 'disj' :
                 raise ValueError("Can only update disjunctive node")
                 
@@ -394,19 +326,22 @@ class LogicFormula(ProbLogObject) :
         
     def getNode(self, key) :
         """Get the node with the given key."""
-        return self._getNode(key)
+        assert(self.isProbabilistic(key))
+        assert(key > 0)            
+        return self.__nodes[ key - 1 ]
         
     def _getNode(self, key) :
         """Get the content of the given node."""
+        warnings.warn('LogicFormula._getNode(key) is deprecated. Use LogicFormula.getNode(key) instead.', FutureWarning)
         assert(self.isProbabilistic(key))
         assert(key > 0)            
         return self.__nodes[ key - 1 ]
         
     def _getNodeType(self, key) :
         """Get the type of the given node (fact, disj, conj)."""
-        return type(self._getNode(key)).__name__
+        return type(self.getNode(key)).__name__
                                 
-    def _addCompound(self, nodetype, content, t, f, readonly=True, update=None) :
+    def _addCompound(self, nodetype, content, t, f, key=None, readonly=True, update=None) :
         """Add a compound term (AND or OR)."""
         assert( content )   # Content should not be empty
         
@@ -561,7 +496,7 @@ class LogicFormula(ProbLogObject) :
           
           # Handle the given nodes one-by-one
           for name, node, label in self.getNamesWithLabel() :
-              if label != LABEL_NAMED :
+              if label != self.LABEL_NAMED :
                   new_node, cycles = self._extract( output, node, protected, translate )
                   translate[node] = new_node
                   output.addName(name, new_node, label)
@@ -585,7 +520,7 @@ class LogicFormula(ProbLogObject) :
         elif index < 0 :
             # Combine OR with NOT AND (or vice versa)
             if nodetype != None :
-                node = self._getNode(-index)
+                node = self.getNode(-index)
                 ntype = type(node).__name__
                 if not ntype in ('conj', 'disj') :
                     children.add(index)
@@ -598,7 +533,7 @@ class LogicFormula(ProbLogObject) :
             else :
                 children.add(index)
         else :  # index > 0
-            node = self._getNode(index)
+            node = self.getNode(index)
             ntype = type(node).__name__
             if not ntype in ('conj', 'disj') :
                 children.add(index)
@@ -626,7 +561,7 @@ class LogicFormula(ProbLogObject) :
             else :
                 return translate[abs(index)], set()
         else :
-            node = self._getNode( abs(index) )
+            node = self.getNode( abs(index) )
             ntype = type(node).__name__
         
         if ntype == 'disj' or ntype == 'conj' :
@@ -734,7 +669,7 @@ class LogicFormula(ProbLogObject) :
         while active :
             i = active.pop()
             former.add(i)
-            n = self._getNode(i)
+            n = self.getNode(i)
             t = type(n).__name__
             name = get_name(i)
             if t == 'atom' :
@@ -841,7 +776,6 @@ class LogicFormula(ProbLogObject) :
             s += 'q_%s [ label="%s", shape="plaintext" ];\n'   % (q, name)
             s += 'q_%s -> %s [style="dotted" %s];\n'  % (q, index, opt)
             q += 1
-
         return s + '}'
 
 class LogicDAG(LogicFormula) : 
@@ -858,85 +792,21 @@ def breakCycles(source, target) :
     logger.debug("Ground program size: %s", len(result))
     return result
         
-
-class StringKeyLogicFormula(ProbLogObject) :
+class StringKeyLogicFormula(LogicFormula) :
     """A propositional logic formula consisting of and, or, not and atoms."""
     
     TRUE = 'true'
     FALSE = 'false'
-    
-    _atom = namedtuple('atom', ('identifier', 'probability', 'group') )
-    _conj = namedtuple('conj', ('children') )
-    _disj = namedtuple('disj', ('children') )
-    # negation is encoded by using a negative number for the key
-    
-    def _create_atom( self, identifier, probability, group ) :
-        return self._atom( identifier, probability, group )
-    
-    def _create_conj( self, children ) :
-        return self._conj(children)
         
-    def _create_disj( self, children ) :
-        return self._disj(children)
-    
     def __init__(self) :
-        ProbLogObject.__init__(self)
+        LogicFormula.__init__(self)
         
         self.__nodes = defaultdict(list)
-        
-        # Node names (for nodes of interest)
-        self.__names = defaultdict(dict)
-        
-        self.__atom_count = 0
         
         self.__constraints_me = {}
         self.__constraints = []
         
-    def getAtomCount(self) :
-        return self.__atom_count
-        
-    def isTrivial(self) :
-        return self.getAtomCount() == len(self)
-        
-    def addQuery(self, name, node_id) :
-        self.addName(name, node_id, label=LABEL_QUERY)
-        
-    def addEvidence(self, name, node_id, value) :
-        if value==True :
-            self.addName(name, node_id, LABEL_EVIDENCE_POS )
-        elif value==False :
-            self.addName(name, node_id, LABEL_EVIDENCE_NEG)
-        else :
-            self.addName(name, node_id, LABEL_EVIDENCE_MAYBE)
-        
-    def addName(self, name, node_id, label=None) :
-        """Associates a name to the given node identifier."""
-        self.__names[label][str(name)] = node_id
-                
-    def getNames(self, label=None) :
-        if label == None :
-            result = set()
-            for forLabel in self.__names.values() :
-                result |= set( forLabel.items() )
-        else :
-            result = self.__names.get( label, {} ).items()
-        return result
-        
-    def getNamesWithLabel(self) :
-        result = []
-        for label in self.__names :
-            for name, node in self.__names[label].items() :
-                result.append( ( name, node, label ) )
-        return result
-        
-    def getNodeByName(self, name) :
-        for label in self.__names :
-            res = self.__names[label].get(name)
-            if res != None :
-                return res
-        raise KeyError()
-        
-    def _add( self, key, node, reuse=True ) :
+    def _add( self, node, key=None, reuse=True ) :
         """Adds a new node, or reuses an existing one.
         
         :param node: node to add
@@ -949,55 +819,7 @@ class StringKeyLogicFormula(ProbLogObject) :
     def _update( self, key, value ) :
         """Replace the node with the given node."""
         self.__nodes[ key ] = [value]
-    
-    def _addConstraintME(self, group, node) :
-        if group == None : return
-        if not group in self.__constraints_me :
-            self.__constraints_me[group] = ConstraintME(group)
-        self.__constraints_me[group].add(node, self) 
-        
-    def addAtom( self, identifier, probability, group=None ) :
-        """Add an atom to the formula.
-        
-        :param identifier: a unique identifier for the atom
-        :type identifier: any
-        :param probability: probability of the atom (or None if it is deterministic)
-        :type probability: :class:`problog.logic.basic.Term`
-        :param group: a group identifier that identifies mutually exclusive atoms (or None if no constraint)
-        :type group: :class:`str`
-        :returns: the identifiers of the node in the formula (returns self.TRUE for deterministic atoms)
-        """
-        if probability == None :
-            return TRUE
-        else :
-            atom = self._create_atom( identifier, probability, group )
-            node_id = self._add( identifier, atom )
-            self.__atom_count += 1  # TODO doesn't take reuse into account
-            self._addConstraintME(group, node_id)
-            return node_id
-    
-    def addAnd( self, key, components ) :
-        """Add a conjunction to the logic formula.
-        
-        :param components: a list of node identifiers that already exist in the logic formula.
-        :returns: the key of the node in the formula (returns 0 for deterministic atoms)
-        """
-        return self._addCompound(key, 'conj', components, self.FALSE, self.TRUE)
-        
-    def addOr( self, key, components, readonly=True ) :
-        """Add a disjunction to the logic formula.
-        
-        :param components: a list of node identifiers that already exist in the logic formula.
-        :param readonly: indicates whether the node should be modifiable. This will allow additional disjunct to be added without changing the node key. Modifiable nodes are less optimizable.
-        :returns: the key of the node in the formula (returns 0 for deterministic atoms)
-        :rtype: :class:`int`
-        """
-        return self._addCompound(key, 'disj', components, self.TRUE, self.FALSE, readonly=readonly)
-        
-    def addDisjunct( self, key, component ) :
-        """Add a component to the node with the given key."""
-        raise ValueError('Formula does not support updates.')
-    
+            
     def addNot( self, component ) :
         """Returns the key to the negation of the node."""
         if self.isTrue(component) :
@@ -1009,31 +831,25 @@ class StringKeyLogicFormula(ProbLogObject) :
         else :
             return '-' + component
     
-    def isTrue( self, key ) :
-        """Indicates whether the given node is deterministically True."""
-        return key == self.TRUE
-        
-    def isFalse( self, key ) :
-        """Indicates whether the given node is deterministically False."""
-        return key == self.FALSE
-        
-    def isProbabilistic(self, key) :
-        """Indicates whether the given node is probabilistic."""    
-        return not self.isTrue(key) and not self.isFalse(key)
-
-    def _getNode(self, key) :
+    def getNode(self, key) :
         """Get the content of the given node."""
+        warnings.warn('LogicFormula._getNode(key) is deprecated. Use LogicFormula.getNode(key) instead.', FutureWarning)
         n = self.__nodes[key]
         if len(n) > 1 :
             return self._create_disj(n)
         else :
             return n[0]
-    
-    def _getNodeType(self, key) :
-        """Get the type of the given node (fact, disj, conj)."""
-        return type(self._getNode(key)).__name__
-                                
-    def _addCompound(self, key, nodetype, content, t, f, readonly=True, update=None) :
+            
+    def _getNode(self, key) :
+        """Get the content of the given node."""
+        warnings.warn('LogicFormula._getNode(key) is deprecated. Use LogicFormula.getNode(key) instead.', FutureWarning)
+        n = self.__nodes[key]
+        if len(n) > 1 :
+            return self._create_disj(n)
+        else :
+            return n[0]
+                                    
+    def _addCompound(self, nodetype, content, t, f, key=None, readonly=True, update=None) :
         """Add a compound term (AND or OR)."""
         assert( content )   # Content should not be empty
         
@@ -1054,13 +870,13 @@ class StringKeyLogicFormula(ProbLogObject) :
 
         # If node has only one child, just return the child.
         # Don't do this for modifiable nodes, we need to keep a separate node.
-        if len(content) == 1 : return self._add(key, content[0])
+        if len(content) == 1 : return self._add(content[0], key=key)
         
         content = tuple(content)
         
         if nodetype == 'conj' :
             node = self._create_conj( content )
-            return self._add( key, node )
+            return self._add( node, key=key )
         elif nodetype == 'disj' :
             node = self._create_disj( content )
             if update != None :
@@ -1068,16 +884,13 @@ class StringKeyLogicFormula(ProbLogObject) :
                 return self._update( update, node )
             elif readonly :
                 # If the node is readonly, we can try to reuse an existing node.
-                return self._add( key, node )
+                return self._add( node, key=key )
             else :
                 # If node is modifiable, we shouldn't reuse an existing node.
-                return self._add( key, node, reuse=False )
+                return self._add( node, key=key, reuse=False )
         else :
             raise TypeError("Unexpected node type: '%s'." % nodetype) 
-    
-    def __iter__(self) :
-        return iter(self.__nodes.values())
-    
+        
     def _resolve(self, key) :
         if type(key) == str :
             return key
@@ -1108,18 +921,8 @@ class StringKeyLogicFormula(ProbLogObject) :
         else :
             return '-' + x
     
-    def iterNodes(self) :
-        """Iterate over the nodes in the formula.
-            
-            :returns: iterator over tuples ( key, node, type )
-        """
-        warnings.warn('LogicFormula.iterNodes() is deprecated. Please update your code to use iteration on the formula itself (__iter__).', FutureWarning)
-        return self.__iter__()
-        
-        
     def __iter__(self) :
         for k in self.__nodes :
-#            print ('R',k, self.__nodes[k])
             n = self.__nodes[k]
             child_names = []
             children = []
@@ -1142,94 +945,14 @@ class StringKeyLogicFormula(ProbLogObject) :
             else :
                 for i,c in children :
                     yield (k, c, type(c).__name__)
-                
-        
-    def getWeights(self) :
-        weights = {}
-        for i, n, t in self :
-            if t == 'atom' :
-                if n.probability != True :
-                    weights[i] = n.probability
-        return weights
-        
-    def extractWeights(self, semiring, weights=None) :
-        if weights != None :
-            weights = { self.getNodeByName(n) : v for n,v in weights.items() }
-        
-        result = {}
-        for i, n, t in self :
-            if t == 'atom' :                
-                if weights != None : 
-                    p = weights.get( i, n.probability )
-                else :
-                    p = n.probability
-                if p != True :
-                    result[i] = semiring.pos_value(p), semiring.neg_value(p)
-                else :
-                    result[i] = semiring.one(), semiring.one()
-
-        for c in self.constraints() :
-            c.updateWeights( result, semiring )
-        
-        return result
-        
-    def constraints(self) :
-        return list(self.__constraints_me.values()) + self.__constraints
-        
-    def addConstraint(self, c) :
-        self.__constraints.append(c)
-        
+    
     def __len__(self) :
         return len(self.__nodes)
-        
     
     ##################################################################################
     ####                            OUTPUT GENERATION                             ####
     ##################################################################################
     
-    def __str__(self) :
-        s =  '\n'.join('%s: %s' % (i,n) for i, n, t in self)
-        f = True
-        for q in self.queries() :
-            if f :
-                f = False
-                s += '\nQueries : '
-            s += '\n* %s : %s' % q
-
-        f = True
-        for q in self.evidence() :
-            if f :
-                f = False
-                s += '\nEvidence : '
-            s += '\n* %s : %s' % q
-
-        f = True
-        for q in self.named() :
-            if f :
-                f = False
-                s += '\nNamed : '
-            s += '\n* %s : %s' % q
-
-        f = True
-        for c in self.constraints () :
-            if c.isActive() :
-                if f :
-                    f = False
-                    s += '\nConstraints : '
-                s += '\n* ' + str(c)
-        return s + '\n'
-        
-    def queries(self) :
-        return self.getNames(LABEL_QUERY)
-
-    def evidence(self) :
-        evidence_true = self.getNames(LABEL_EVIDENCE_POS)
-        evidence_false = self.getNames(LABEL_EVIDENCE_NEG)
-        return list(evidence_true) + [ (a,-b) for a,b in evidence_false ]
-        
-    def named(self) :
-        return self.getNames(LABEL_NAMED)
-        
     def toLogicFormula(self) :
         target = LogicFormula(auto_compact=False)
         translate = {}
@@ -1271,17 +994,15 @@ class StringKeyLogicFormula(ProbLogObject) :
                     body.append('-' + str(current.child))
                 else :
                     body.append(str(current))
-                interm.addAnd( key, body )
-                interm.addName( key, key, LABEL_NAMED )
+                interm.addAnd( body, key=key )
+                interm.addName( key, key, interm.LABEL_NAMED )
             elif type(c).__name__ == 'Term' :
                 key = str(c.withProbability())
                 interm.addAtom( key, c.probability, None )
-                interm.addName( key, key, LABEL_NAMED )
+                interm.addName( key, key, interm.LABEL_NAMED )
             else :
                 raise Exception("Unexpected type: '%s'" % type(c).__name__)
         return interm
-
-    
 
 
  
@@ -1365,7 +1086,7 @@ def breakCyclesConstraint(source, target) :
     relevant = [False] * (len(source)+1)
     cycles = {}
     for name, node, label in source.getNamesWithLabel() :
-        if label != LABEL_NAMED :
+        if label != interm.LABEL_NAMED :
             for c_in in findCycles( source, node, [], relevant) :
                 c_in = tuple(sorted(c_in))
                 if c_in in cycles :
@@ -1380,7 +1101,7 @@ def breakCyclesConstraint(source, target) :
 def splitCycle(src, loop) :
     cycle_free = []
     for n in loop :
-        n = src._getNode(n)
+        n = src.getNode(n)
         t = type(n).__name__
         if t == 'disj' :
             cycle_free += [ c for c in n.children if not c in loop ]
@@ -1391,7 +1112,7 @@ def splitCycle(src, loop) :
     return cycle_free
     
 def findCycles( src, a, path, relevant=None ) :
-    n = src._getNode(a)
+    n = src.getNode(a)
     t = type(n).__name__
     if relevant != None : relevant[a] = True
     try :
@@ -1506,7 +1227,7 @@ def expand_node( formula, node_id ) :
     """Expand conjunctions by their body until a disjunction or atom is encountered.
     This method assumes that all cycles go through a disjunctive node.
     """
-    node = formula._getNode(abs(node_id))
+    node = formula.getNode(abs(node_id))
     nodetype = type(node).__name__
     conjuncts = []
     if nodetype == 'disj' :

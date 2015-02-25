@@ -5,7 +5,6 @@ from __future__ import print_function
 import sys
 import time
 
-from problog.core import LABEL_QUERY, LABEL_EVIDENCE_POS, LABEL_EVIDENCE_NEG
 from problog.program import PrologFile
 from problog.logic import Term
 from problog.evaluator import SemiringSymbolic, Evaluator
@@ -71,13 +70,13 @@ def main(filename) :
         for i, query in enumerate(queries) :
             #print ('ground query %d (%s):' % (i+1,query), '='*100)
             with Timer('ground query %d (%s):' % (i+1,query)) :
-                gp = engine.ground(db, query[0], gp, label=LABEL_QUERY)
+                gp = engine.ground(db, query[0], gp, label=gp.LABEL_QUERY)
     
         for query in evidence :
             if str(query[1]) == 'true' :
-                gp = engine.ground(db, query[0], gp, label=LABEL_EVIDENCE_POS)
+                gp = engine.ground(db, query[0], gp, label=gp.LABEL_EVIDENCE_POS)
             else :
-                gp = engine.ground(db, query[0], gp, label=LABEL_EVIDENCE_NEG)
+                gp = engine.ground(db, query[0], gp, label=gp.LABEL_EVIDENCE_NEG)
     
     print (gp)
     
