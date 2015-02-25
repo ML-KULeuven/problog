@@ -40,7 +40,7 @@ If you want to use d-DNNFs you can use add the command line options -k nnf.
 
 C2D
 +++
-Due to licensing issues we can not distribute the this tool as part of our package.
+Due to licensing issues we can not distribute this tool as part of our package.
 
 1. Download c2d from
     http://reasoning.cs.ucla.edu/c2d/
@@ -76,7 +76,7 @@ SDDs are not available for Windows.
 
 C2D
 +++
-Due to licensing issues we can not distribute the this tool as part of our package.
+Due to licensing issues we can not distribute this tool as part of our package.
 
 1. Download c2d from
     http://reasoning.cs.ucla.edu/c2d/
