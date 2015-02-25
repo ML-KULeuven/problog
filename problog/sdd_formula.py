@@ -157,6 +157,10 @@ class SDD(LogicDAG, Evaluatable) :
         if not isinstance(semiring,SemiringProbability) :
             raise ValueError('SDD evaluation currently only supports probabilities!')
         return SDDEvaluator(self, semiring, weights)
+        
+    @classmethod
+    def is_available(cls) :
+        return sdd != None
     
             
 @transform(LogicDAG, SDD)

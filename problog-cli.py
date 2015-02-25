@@ -52,7 +52,7 @@ def argparser() :
     parser = argparse.ArgumentParser()
     parser.add_argument('filenames', metavar='MODEL', nargs='+', type=inputfile)
     parser.add_argument('--verbose', '-v', action='count', help='Verbose output')
-    parser.add_argument('--knowledge', '-k', choices=('sdd','nnf'), default='nnf', help="Knowledge compilation tool.")
+    parser.add_argument('--knowledge', '-k', choices=('sdd','nnf'), default=None, help="Knowledge compilation tool.")
     parser.add_argument('--symbolic', action='store_true', help="Use symbolic evaluation.")
     parser.add_argument('--logspace', action='store_true', help="Use log space evaluation.")
     parser.add_argument('--output', '-o', help="Output file (default stdout)", type=outputfile)
@@ -103,8 +103,15 @@ if __name__ == '__main__' :
             knowledge = NNF
         elif args.knowledge == 'sdd' :
             knowledge = SDD
+        elif args.knowledge == None :
+            if SDD.is_available() and not args.symbolic :
+                logger.info('Using SDD path')
+                knowledge = SDD
+            else :
+                logger.info('Using d-DNNF path')
+                knowledge = NNF
         else :
-            raise ValueError("Unknown option for --knowledge: '%s'" % args.path)
+            raise ValueError("Unknown option for --knowledge: '%s'" % args.knowledge)
         
         if args.symbolic :
             semiring = SemiringSymbolic()
