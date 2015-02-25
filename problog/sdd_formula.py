@@ -168,7 +168,7 @@ def buildSDD( source, destination ) :
     with Timer('Compiling SDD'):
         size = len(source)
         destination.setVarCount(size)
-        for i, n, t in source.iterNodes() :
+        for i, n, t in source :
             if t == 'atom' :
                 destination.addAtom( n.identifier, n.probability, n.group )
             elif t == 'conj' :

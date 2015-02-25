@@ -117,7 +117,7 @@ def clarks_completion( source, destination ) :
             destination.addAtom( (i+1), True, (i+1) )
 
         # Complete other nodes
-        for index, node, nodetype in source.iterNodes() :
+        for index, node, nodetype in source :
             if nodetype == 'conj' :
                 destination.addOr( (index,) + tuple( map( lambda x : destination.addNot(x), node.children ) ) )
                 for x in node.children  :

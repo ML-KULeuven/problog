@@ -9,7 +9,7 @@ from problog.core import LABEL_QUERY, LABEL_EVIDENCE_POS, LABEL_EVIDENCE_NEG
 from problog.program import PrologFile
 from problog.logic import Term
 from problog.evaluator import SemiringSymbolic, Evaluator
-from problog.engine import DefaultEngine, EngineLogger, SimpleEngineLogger
+from problog.engine import DefaultEngine
 from problog.nnf_formula import NNF
 from problog.cnf_formula import CNF
 from problog.sdd_formula import SDD

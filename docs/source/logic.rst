@@ -60,8 +60,8 @@ Implementations
 .. autoclass:: problog.program.ClauseDB
 
 
-Logic Formula
--------------
-
-.. autoclass:: problog.formula.LogicFormula
-     :members:
+.. Logic Formula
+.. -------------
+..
+.. .. autoclass:: problog.formula.LogicFormula
+..      :members:

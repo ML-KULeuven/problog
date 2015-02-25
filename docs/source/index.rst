@@ -15,12 +15,12 @@ Contents:
    intro
    basic
    logic
-   engine
    learning
    prolog
    cycles
+   formula
 .. notes
-   
+..   engine   
 
    
 Indices and tables
