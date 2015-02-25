@@ -37,7 +37,10 @@ class SimpleNNFEvaluator(Evaluator) :
     def initialize(self, with_evidence=True) :
         self.__probs.clear()
         
-        self.__probs.update(self.__nnf.extractWeights(self.semiring, self.__given_weights))        
+        model_weights = self.__nnf.extractWeights(self.semiring, self.__given_weights)
+        for n, p in model_weights.items() :
+            self.__probs[n] = p[0]
+            self.__probs[-n] = p[1]
                         
         if with_evidence :
             for ev in self.iterEvidence() :
@@ -86,19 +89,16 @@ class SimpleNNFEvaluator(Evaluator) :
         elif index == None :
             return self.semiring.zero()
         else :
-            pos_neg = self.__probs.get(abs(index))
-            if pos_neg == None :
-                p = self._calculateWeight( abs(index) )
-                pos, neg = (self.semiring.pos_value(p), self.semiring.neg_value(p))
+            w = self.__probs.get(index)
+            if w == None :
+                w = self._calculateWeight(index)
+                return w
             else :
-                pos, neg = pos_neg
-            if index < 0 :
-                return neg
-            else :
-                return pos
+                return w
                 
     def setWeight(self, index, pos, neg) :
-        self.__probs[index] = (pos, neg)
+        self.__probs[index] = pos
+        self.__probs[-index] = neg
         
     def setEvidence(self, index, value ) :
         pos = self.semiring.one()
