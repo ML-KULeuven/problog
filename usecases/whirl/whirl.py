@@ -1,5 +1,8 @@
 # Whirl ProbLog implementation
 #
+# Builds a TF-IDF model in the background using NLTK and Scikit-learn, such
+# that ProbLog can make use of document similarity while reasoning.
+#
 # From:
 # W. W. Cohen. Whirl: A word-based information representation language.
 # Artificial Intelligence, 118(1):163-196, 2000.
@@ -76,11 +79,6 @@ def getTFIDF():
   return tfidf
 
 
-def tfidf_similarity(vector1, vector2):
-  """Compare TF-IDF vectors for two documents."""
-  return cosine_similarity(vector1, vector2)
-
-
 def similarity(e1, e2):
   """TF-IDF similarity between two documents based on pre-processed texts.
      Expects two text/document encodings.
@@ -89,12 +87,13 @@ def similarity(e1, e2):
   tfidf = getTFIDF()
   v1 = tfidf.transform(vectorizer.transform([cleantext(e1)]))
   v2 = tfidf.transform(vectorizer.transform([cleantext(e2)]))
-  sim = tfidf_similarity(v1,v2)
+  sim = cosine_similarity(v1,v2)
   #print('similarity({}, {}) = {}'.format(e1,e2,sim))
   return float(sim[0,0])
 
 
 if __name__ == "__main__":
+  # TESTS
   model = getTFIDF()
   print('IDF:')
   #print(model.idf_)
@@ -119,8 +118,8 @@ if __name__ == "__main__":
     print(texts_weights[0])
 
   print('\nSimilarity:')
-  print('Sim(0,1): {}'.format(tfidf_similarity(texts_weights[0], texts_weights[1])))
-  print('Sim(0,2): {}'.format(tfidf_similarity(texts_weights[0], texts_weights[2])))
+  print('Sim(0,1): {}'.format(cosine_similarity(texts_weights[0], texts_weights[1])))
+  print('Sim(0,2): {}'.format(cosine_similarity(texts_weights[0], texts_weights[2])))
 
   #print(tokens)
 
