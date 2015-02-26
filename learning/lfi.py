@@ -52,7 +52,7 @@ from problog.sdd_formula import SDD as knowledge
 from problog.evaluator import SemiringProbability
 from problog.logic import Term, Var, Constant, Clause, AnnotatedDisjunction, LogicProgram
 from problog.parser import PrologParser
-from problog.program import PrologFactory, ClauseDB, PrologString, PrologFile
+from problog.program import PrologFactory, PrologString, PrologFile
 
     
 def str2bool(s) :

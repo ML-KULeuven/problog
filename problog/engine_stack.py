@@ -5,7 +5,6 @@ import sys, os
 import imp, inspect # For load_external
 
 from .formula import LogicFormula
-from .program import ClauseDB, PrologFile
 from .logic import Term
 from .engine import unify, UnifyError, instantiate, extract_vars, is_ground, UnknownClause, _UnknownClause, ConsultError
 from .engine import addStandardBuiltIns, check_mode, GroundingError, NonGroundProbabilisticClause, VariableUnification
