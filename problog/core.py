@@ -71,6 +71,8 @@ def process_error( err, debug=False ) :
         return 'Error during grounding: %s' % err
     elif isinstance(err, CompilationError) :
         return 'Error during compilation: %s' % err
+    elif isinstance(err, ProbLogError) :
+        return 'Error: %s' % err
     else :
         if not debug : traceback.print_exc()
         return 'Unknown error: %s' % (err_type)

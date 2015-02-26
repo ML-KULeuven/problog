@@ -3,6 +3,7 @@ from __future__ import print_function
 from .logic import *
 
 from .parser import DefaultPrologParser, Factory
+from .core import ProbLogError
 
 from collections import namedtuple, defaultdict
 import os, logging
@@ -62,8 +63,11 @@ class PrologFile(PrologString) :
     def __init__(self, filename, parser=None) :
         source_root = os.path.dirname(filename)
         source_files = [ os.path.abspath(filename)]
-        with open(filename) as f :
-            source_text = f.read()
+        try : 
+            with open(filename) as f :
+                source_text = f.read()
+        except IOError as err :
+            raise ProbLogError(str(err))
         PrologString.__init__(self, source_text, parser=parser, source_root=source_root, source_files=source_files)                
         
         
