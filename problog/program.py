@@ -211,41 +211,6 @@ class ExtendedPrologFactory(PrologFactory):
         operand2.probability = operand1
         return operand2
 
-
-
-class ClauseIndex(list) :
-    
-    def __init__(self, parent, arity) :
-        self.__parent = parent
-        self.__index = [ defaultdict(set) for i in range(0,arity) ]
-        
-    def find(self, arguments) :
-        results = set(self)
-        for i, arg in enumerate(arguments) :
-            if not isinstance(arg,Term) or not arg.isGround() :    # No restrict
-                pass
-            else :
-                curr = self.__index[i][None] | self.__index[i][arg]
-                results &= curr
-        results = sorted(results)
-        print ('FIND:', arguments, results)
-        return results
-        
-    def _add(self, key, item) :
-        for i, k in enumerate(key) :
-            self.__index[i][k].add(item)
-        
-    def append(self, item) :
-        list.append(self, item)
-        key = []
-        args = self.__parent.getNode(item).args
-        for arg in args :
-            if isinstance(arg,Term) and arg.isGround() :
-                key.append(arg)
-            else :
-                key.append(None)
-        self._add(key, item)
-
 def intersection(l1, l2) :
     i = 0
     j = 0
@@ -389,6 +354,9 @@ class ClauseDB(LogicProgram) :
     
     def __len__(self) :
         return len(self.__nodes) + self.__offset
+        
+    def extend(self) :
+        return ClauseDB(parent=self)
         
     def _getBuiltIn(self, signature) :
         if self.__builtins == None :
