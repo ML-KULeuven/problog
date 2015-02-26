@@ -225,6 +225,8 @@ class StackBasedEngine(ClauseDBEngine) :
         raise InvalidEngineState('Engine did not complete correctly!')
     
     def cleanUp(self, obj) :
+        if self.cycle_root and self.cycle_root.pointer == obj :
+            self.cycle_root = None
         self.stack[obj] = None
         while self.pointer > 0 and self.stack[self.pointer-1] == None :
             #self.stack.pop(-1)
