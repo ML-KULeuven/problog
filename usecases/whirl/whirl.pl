@@ -100,8 +100,6 @@ q5a(Movie, Cat) :- review(Movie ,Review),
 %query(q5a(M,C)).
 
 % Auxiliaries
-many_int(L, S) :-
-    many_int(L, 0, 0, S).
 many_int([], P, N, 0) :-
     T is P+N,
     T = 0.
@@ -114,21 +112,23 @@ many_int([H|T], PA, NA, S) :-
      \+call(H), PAN is PA,     NAN is NA + 1), % Test: false
     many_int(T, PAN, NAN, S).
 
-% TODO: pass atoms
-S::many(Template, Test) :-
-	findall(Test, Template, L),
-	many_int(L, S).
+S::many_int_prob(L) :-
+    many_int(L, 0, 0, S).
+
+many(Template, Test) :-
+    findall(Test, Template, L),
+    many_int_prob(L).
 
 
 % Movie that has many academy awards
-S::many_awards(M) :-
+many_awards(M) :-
     % many(Template, Test) as findall(Test, Template, L)
     findall(winner(M,C,Y), (academy_award(C),winner(_,C,Y)), L),
-    many_int(L, S).
+    many_int_prob(L).
 
 q5(M) :-
-    listing(C,M,T),
-	%many((academy_award(Y),winner(_,C,Y)), winner(M,C,Y)).
+    listing(_,M,_),
+	%many((academy_award(Y),winner(_,C,Y)), winner(M1,C,Y)).
 	many_awards(M).
 query(q5(M)).
 
