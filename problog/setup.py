@@ -79,7 +79,7 @@ def gather_info() :
     try :
         import sdd
         system_info['sdd_module'] = True
-    except ImportError :
+    except Exception :
         pass
         
     # DSharp
@@ -105,6 +105,8 @@ def build_sdd() :
     
     from distutils.core import setup, Extension
     sdd_module = Extension('_sdd', sources=['sdd/sdd_wrap.c'], libraries=['sdd'], library_dirs=[lib_dir] )
+
+    print (sdd_module)
 
     setup (name = 'sdd',
            version = '1.0',
