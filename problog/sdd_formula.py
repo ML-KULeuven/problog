@@ -14,7 +14,7 @@ import warnings
 
 try :
     import sdd
-except ImportError :
+except Exception :
     sdd = None
 #    warnings.warn('The SDD library could not be found!', RuntimeWarning)
 
