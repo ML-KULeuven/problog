@@ -2,7 +2,8 @@
 # We can’t distribute this ourselves.
 /problog/bin/linux/cnf2dDNNF	export-ignore
 /problog/bin/linux/lp2acyc      export-ignore
-/problog/bin/windows/cnf2dDNNF  export-ignore
+/problog/bin/windows/cnf2dDNNF.exe  export-ignore
+/problog/bin/darwin/cnf2dDNNF.exe  export-ignore
 
 # Hide some other files
 .gitignore			export-ignore
