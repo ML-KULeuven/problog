@@ -16,8 +16,8 @@
  */
 
 var problog = {
-  hostname: 'http://adams.cs.kuleuven.be/problog/api/',
-  main_editor_url: 'http://dtai.cs.kuleuven.be/problog/editor.html',
+  hostname: '//adams.cs.kuleuven.be/problog/api/',
+  main_editor_url: 'https://dtai.cs.kuleuven.be/problog/editor.html',
   editors: [],
   selector: '.problog-editor',
   trackurl: false,
