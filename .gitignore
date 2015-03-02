@@ -5,6 +5,7 @@ __pycache__
 build/
 trash/
 
+/problog/bin/darwin/cnf2dDNNF
 
 sandbox/
 data/
