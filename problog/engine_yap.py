@@ -33,8 +33,8 @@ class YapEngine(GenericEngine) :
         raise NotImplementedError('YapEngine.ground is not implemented.')
         
     def ground_all(self, db, target=None, queries=None, evidence=None) :
-        assert(queries == None)
-        assert(evidence == None)
+        assert(queries is None)
+        assert(evidence is None)
         
         db = self.prepare(db)
         

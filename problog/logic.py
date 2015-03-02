@@ -69,7 +69,7 @@ import math, sys
 class InstantiationError(Exception): pass
 
 def term2str(term) :
-    if term == None :
+    if term is None :
         return '_'
     else :
         return str(term)
@@ -120,7 +120,7 @@ class Term(object) :
     @property
     def signature(self) :
         """Term's signature ``functor/arity``"""
-        if self.__signature == None :
+        if self.__signature is None :
             if type(self.functor) == str :
                 self.__signature = '%s/%s' % (self.functor.strip("'"), self.arity)
             else :
@@ -153,7 +153,7 @@ class Term(object) :
             else :
                 args.append( arg.apply(subst) )
         
-        if self.probability == None :
+        if self.probability is None :
             if self.__class__ == And :
                 return self.__class__( *args, location=self.location)
             else :
@@ -162,7 +162,7 @@ class Term(object) :
             return self.__class__( self.functor, *args, p=self.probability.apply(subst), location=self.location)
             
     def __repr__(self) :
-        if self.probability == None :
+        if self.probability is None :
             prob = ''
         else :
             prob = '%s::' % self.probability
@@ -219,7 +219,7 @@ class Term(object) :
         
     def isGround(self) :
         """Checks whether the term contains any variables."""
-        if self.__is_ground == None :
+        if self.__is_ground is None :
             for arg in self.args :
                 if not isinstance(arg,Term) or not arg.isGround() :
                     self.__is_ground = False
@@ -236,7 +236,7 @@ class Term(object) :
         
     def __eq__(self, other) :
         # TODO: this can be very slow?
-        if other == None : 
+        if other is None : 
             return False
         try :
             return (self.functor, self.args) == (other.functor, other.args)
@@ -245,7 +245,7 @@ class Term(object) :
             return False
         
     def __hash__(self) :
-        if self.__hash == None :
+        if self.__hash is None :
             #toH = (self.functor, self.arity)
             self.__hash = hash(self.functor)
         return self.__hash
@@ -499,7 +499,7 @@ class LogicProgram(object) :
     """LogicProgram"""
     
     def __init__(self, source_root='.', source_files=None, line_info=None) :
-        if source_files == None : source_files = []
+        if source_files is None : source_files = []
         self.source_root = source_root
         self.source_files = source_files
         self.line_info = line_info
@@ -521,7 +521,7 @@ class LogicProgram(object) :
         raise NotImplementedError("LogicProgram.addFact is an abstract method." )
     
     def _uncurry(self, term, func=None) :
-        if func == None : func = term.functor
+        if func is None : func = term.functor
         
         body = []
         current = term
@@ -571,7 +571,7 @@ class LogicProgram(object) :
             return obj
             
     def lineno(self, char) :
-        if self.line_info == None or char == None :
+        if self.line_info is None or char is None :
             # No line info available
             return None
         else :
@@ -647,7 +647,7 @@ def computeFunction(func, args) :
     
     """
     function = functions.get( (func, len(args) ) )
-    if function == None :
+    if function is None :
         raise ValueError("Unknown function: '%s'/%s" % (func, len(args)) )
     else :
         values = [ arg.value for arg in args ]

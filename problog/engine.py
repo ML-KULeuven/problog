@@ -96,7 +96,7 @@ class ClauseDBEngine(GenericEngine) :
         """Process directives present in the database."""
         term = Term('_directive')
         directive_node = db.find( term )
-        if directive_node == None : return True    # no directives
+        if directive_node is None : return True    # no directives
         directives = db.getNode(directive_node).children
         
         gp = LogicFormula()
@@ -141,14 +141,14 @@ class ClauseDBEngine(GenericEngine) :
         if not assume_prepared :
             db = self.prepare(db)
         # Create a new target datastructure if none was given.
-        if gp == None : gp = LogicFormula()
+        if gp is None : gp = LogicFormula()
         # Find the define node for the given query term.
         clause_node = db.find(term)
         # If term not defined: fail query (no error)    # TODO add error to make it consistent?
-        if clause_node == None :
+        if clause_node is None :
             # Could be builtin?
             clause_node = db._getBuiltIn(term.signature)
-        if clause_node == None : 
+        if clause_node is None : 
             if silent_fail :
                 return gp, []
             else :
@@ -162,10 +162,10 @@ class ClauseDBEngine(GenericEngine) :
         db = self.prepare(db)
         logger = logging.getLogger('problog')
         with Timer('Grounding'):
-            if queries == None : queries = [ q[0] for q in self.query(db, Term( 'query', None )) ]
-            if evidence == None : evidence = self.query(db, Term( 'evidence', None, None ))
+            if queries is None : queries = [ q[0] for q in self.query(db, Term( 'query', None )) ]
+            if evidence is None : evidence = self.query(db, Term( 'evidence', None, None ))
             
-            if target == None : target = LogicFormula()
+            if target is None : target = LogicFormula()
             
             for query in queries :
                 logger.debug("Grounding query '%s'", query)
@@ -206,9 +206,9 @@ def instantiate( term, context, keepVars=False ) :
     if keepVars : 
         context = list(context)
         for i,v in enumerate(context) :
-            if v == None :
+            if v is None :
                 context[i] = i
-    if term == None :
+    if term is None :
         return None
     elif type(term) == int :
         return context[term]
@@ -228,16 +228,16 @@ def unify( source_value, target_value, target_context=None, location=None ) :
     if type(target_value) == int :
         if target_context != None :
             current_value = target_context[target_value]
-            if current_value == None :
+            if current_value is None :
                 target_context[target_value] = source_value
             else :
                 new_value = unify_value( source_value, current_value, location=location )
                 target_context[target_value] = new_value
-    elif target_value == None :
+    elif target_value is None :
         pass
     else :
         assert( isinstance(target_value, Term) )
-        if source_value == None :  # a variable
+        if source_value is None :  # a variable
             pass
         else :
             assert( isinstance( source_value, Term ) )
@@ -354,7 +354,7 @@ class CallModeError(GroundingError) :
         Exception.__init__(self, msg)
         
     def show_arg(self, x) :
-        if x == None :
+        if x is None :
             return '_'
         else :
             return str(x)
@@ -380,7 +380,7 @@ def is_variable( v ) :
     
     :return: True if the expression is a variable
     """
-    return v == None or type(v) == int    
+    return v is None or type(v) == int    
 
 def is_var(term) :
     return is_variable(term) or term.isVar()
@@ -1058,9 +1058,9 @@ def addStandardBuiltIns(engine, b=None, s=None, sp=None) :
     """Add Prolog builtins to the given engine."""
     
     # Shortcut some wrappers
-    if b == None : b = BooleanBuiltIn
-    if s == None : s = SimpleBuiltIn
-    if sp == None : sp = SimpleProbabilisticBuiltIn
+    if b is None : b = BooleanBuiltIn
+    if s is None : s = SimpleBuiltIn
+    if sp is None : sp = SimpleProbabilisticBuiltIn
     
     engine.addBuiltIn('true', 0, b(builtin_true))   # -1
     engine.addBuiltIn('fail', 0, b(builtin_fail))   # -2
@@ -1166,20 +1166,20 @@ class ClauseIndex(list) :
         # for i, xx in enumerate(self.__index) :
         #     print ('\t', i, xx)
         for i, arg in enumerate(arguments) :
-            if arg == None or type(arg) == int or not arg.isGround() : 
+            if arg is None or type(arg) == int or not arg.isGround() : 
                 pass # Variable => no restrictions
             else :
                 curr = self.__index[i].get(arg)
-                if curr == None :   # No facts matching this argument exactly.
+                if curr is None :   # No facts matching this argument exactly.
                     results = self.__index[i].get(None)
-                elif results == None :  # First argument with restriction
+                elif results is None :  # First argument with restriction
                     results = curr
                 else :  # Already have a selection
                     results = intersection(results, curr)
             if results == [] : 
                 # print ('FIND', arguments, results)
                 return []
-        if results == None :
+        if results is None :
             # print ('FIND', arguments, 'all')
             return self
         else :
@@ -1261,7 +1261,7 @@ class ClauseDB(LogicProgram) :
         self.__builtins = builtins
         
         self.__parent = parent
-        if parent == None :
+        if parent is None :
             self.__offset = 0
         else :
             self.__offset = len(parent)
@@ -1273,7 +1273,7 @@ class ClauseDB(LogicProgram) :
         return ClauseDB(parent=self)
         
     def _getBuiltIn(self, signature) :
-        if self.__builtins == None :
+        if self.__builtins is None :
             if self.__parent != None :
                 return self.__parent._getBuiltIn(signature)
             else :
@@ -1350,7 +1350,7 @@ class ClauseDB(LogicProgram) :
     
     def _getHead(self, head) :
         node = self.__heads.get( head.signature )
-        if node == None and self.__parent :
+        if node is None and self.__parent :
             node = self.__parent._getHead(head)
         return node
         
@@ -1366,7 +1366,7 @@ class ClauseDB(LogicProgram) :
                 return node
         
         node = self._getHead( head )
-        if node == None :
+        if node is None :
             if create :
                 node = self._appendNode( self._define( head.functor, head.arity, self._create_index(head.arity), head.location) )
             else :
@@ -1415,7 +1415,7 @@ class ClauseDB(LogicProgram) :
             return self._addClause( Clause(term, Term('true')) )
     
     def _compile(self, struct, variables=None) :
-        if variables == None : variables = _AutoDict()
+        if variables is None : variables = _AutoDict()
         
         if isinstance(struct, And) :
             op1 = self._compile(struct.op1, variables)
@@ -1513,7 +1513,7 @@ class ClauseDB(LogicProgram) :
             if nodetype == 'fact' :
                 yield Term(node.functor, *node.args, p=node.probability)
             elif nodetype == 'clause' :
-                if node.group == None :
+                if node.group is None :
                     head = self._create_vars( Term(node.functor,*node.args, p=node.probability) )
                     yield Clause( head, self._extract(node.child))
                 else :
@@ -1528,7 +1528,7 @@ class ClauseDB(LogicProgram) :
             for index in group :
                 node = self.getNode(index)
                 heads.append( self._create_vars( Term( node.functor, *node.args, p=node.probability)))
-                if body == None :
+                if body is None :
                     body_node = self.getNode(node.child)
                     body_node = self.getNode(body_node.children[0])
                     body = self._create_vars( Term(body_node.functor, *body_node.args) )
@@ -1550,7 +1550,7 @@ class _AutoDict(dict) :
             return value
         else :        
             value = self.get(key)
-            if value == None :
+            if value is None :
                 value = len(self)
                 self[key] = value
             self.__record.add(value)

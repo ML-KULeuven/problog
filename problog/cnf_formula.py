@@ -92,7 +92,7 @@ class CNFFile(CNF) :
         self.filename = filename
         self.readonly = readonly
         
-        if filename == None :
+        if filename is None :
             self.filename = tempfile.mkstemp('.cnf')[1]
             self.readonly = False
         else :

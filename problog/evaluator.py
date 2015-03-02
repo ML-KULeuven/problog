@@ -160,7 +160,7 @@ class Evaluatable(object) :
         raise NotImplementedError('Evaluatable._createEvaluator is an abstract method')
     
     def getEvaluator(self, semiring=None, evidence=None, weights=None) :
-        if semiring == None :
+        if semiring is None :
             semiring = SemiringProbability()
 
         evaluator = self._createEvaluator(semiring, weights)
@@ -169,10 +169,10 @@ class Evaluatable(object) :
             if node_ev == 0 :
                 # Evidence is already deterministically true
                 pass
-            elif node_ev == None :
+            elif node_ev is None :
                 # Evidence is deterministically true
                 raise InconsistentEvidenceError()
-            elif evidence == None :
+            elif evidence is None :
                 evaluator.addEvidence( node_ev )
             else :
                 value = evidence.get( n_ev, None )
@@ -182,14 +182,14 @@ class Evaluatable(object) :
                     evaluator.addEvidence( -node_ev )
 
         for n_ev, node_ev in evaluator.getNames(self.LABEL_EVIDENCE_NEG) :
-            if node_ev == None :
+            if node_ev is None :
                 # Evidence is already deterministically false
                 pass
             elif node_ev == 0 :
                 # Evidence is deterministically true
                 # TODO raise correct error
                 raise Exception('Inconsistent evidence')
-            elif evidence == None :
+            elif evidence is None :
                 evaluator.addEvidence( -node_ev )
             else :
                 value = evidence.get( n_ev, None )
@@ -213,7 +213,7 @@ class Evaluatable(object) :
     def evaluate(self, index=None, semiring=None, evidence=None, weights=None) :
         evaluator = self.getEvaluator(semiring, evidence, weights)
     
-        if index == None :
+        if index is None :
             result = {}
             # Probability of query given evidence
             for name, node in evaluator.getNames(self.LABEL_QUERY) :

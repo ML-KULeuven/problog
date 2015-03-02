@@ -72,7 +72,7 @@ def createSystemTestSDD(filename) :
             e = err
             computed = None
             
-        if computed == None :
+        if computed is None :
             self.assertEqual(correct, type(e).__name__)
         else :
             self.assertIsInstance( correct, dict )
@@ -98,7 +98,7 @@ def createSystemTestNNF(filename) :
             e = err
             computed = None
             
-        if computed == None :
+        if computed is None :
             self.assertEqual(correct, type(e).__name__)
         else :
             self.assertIsInstance( correct, dict )

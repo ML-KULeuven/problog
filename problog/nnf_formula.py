@@ -74,7 +74,7 @@ class SimpleNNFEvaluator(Evaluator) :
     def evaluate(self, node) :
         if node == 0 : 
             return self.semiring.one()
-        elif node == None :
+        elif node is None :
             return self.semiring.zero()
         else :        
             p = self.getWeight(abs(node))
@@ -93,11 +93,11 @@ class SimpleNNFEvaluator(Evaluator) :
     def getWeight(self, index) :
         if index == 0 :
             return self.semiring.one()
-        elif index == None :
+        elif index is None :
             return self.semiring.zero()
         else :
             w = self.__probs.get(index)
-            if w == None :
+            if w is None :
                 w = self._calculateWeight(index)
                 return w
             else :
@@ -161,7 +161,7 @@ class Compiler(object) :
     @classmethod
     def get(cls, name) :
         result = cls.__compilers.get(name)
-        if result == None : result = cls.getDefault()
+        if result is None : result = cls.getDefault()
         return result
         
     @classmethod

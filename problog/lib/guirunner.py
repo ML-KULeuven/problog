@@ -208,7 +208,7 @@ def show_gui( scriptname, progname=None ) :
     script = __import__(modulename)
     parser = script.argparser()
 
-    if progname == None : progname = os.path.basename(scriptname)
+    if progname is None : progname = os.path.basename(scriptname)
 
     root = Tk()
     app = MainWindow(root, parser, scriptname, progname)

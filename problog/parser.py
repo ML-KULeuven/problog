@@ -725,7 +725,7 @@ class Factory(object) :
         return self.build_function("'" + functor + "'", (operand,), location=location )
         
     def build_list(self, values, tail=None, location=None, **extra) :
-        if tail == None :
+        if tail is None :
             return '[%s]' % (', '.join(map(str,values)))
         else :
             return '[%s | %s]' % (', '.join(map(str,values)), tail)

@@ -126,7 +126,7 @@ class LogicFormula(ProbLogObject) :
             :param label: restrict names to the given label (default: all labels)
             :return: list of tuples (name, node_id)
         """
-        if label == None :
+        if label is None :
             result = []
             for label, name in self.__names_order :
                 result.append( ( name, self.__names[label][name]) )
@@ -222,7 +222,7 @@ class LogicFormula(ProbLogObject) :
         self.__nodes[ key - 1 ] = value
     
     def _addConstraintME(self, group, node) :
-        if group == None : return
+        if group is None : return
         if not group in self.__constraints_me :
             self.__constraints_me[group] = ConstraintME(group)
         self.__constraints_me[group].add(node, self) 
@@ -242,7 +242,7 @@ class LogicFormula(ProbLogObject) :
         * If ``group`` is given, a mutual exclusivity constraint is added for all nodes sharing the same group.
         * To add an explicitly present deterministic node you can set the probability to ``True``.
         """
-        if probability == None :
+        if probability is None :
             return self.TRUE
         else :
             atom = self._create_atom( identifier, probability, group )
@@ -294,7 +294,7 @@ class LogicFormula(ProbLogObject) :
             if type(node).__name__ != 'disj' :
                 raise ValueError("Can only update disjunctive node")
                 
-            if component == None :
+            if component is None :
                 # Don't do anything
                 pass
             elif component == 0 :
@@ -366,7 +366,7 @@ class LogicFormula(ProbLogObject) :
             
             # If node has only one child, just return the child.
             # Don't do this for modifiable nodes, we need to keep a separate node.
-            if (readonly and update == None) and len(content) == 1 and not (self.__avoid_name_clash and self.__names_reverse.get(content[0]) != None) :
+            if (readonly and update is None) and len(content) == 1 and not (self.__avoid_name_clash and self.__names_reverse.get(content[0]) != None) :
                 return content[0]
         else :
             content = tuple(content)
@@ -486,7 +486,7 @@ class LogicFormula(ProbLogObject) :
         
         with Timer('Cycle breaking'):
           # Output formula
-          if output == None : output = LogicDAG()
+          if output is None : output = LogicDAG()
           
           # Protected nodes (these have to exist separately)
           protected = set( [ y for x,y in self.getNames() ] )
@@ -507,13 +507,13 @@ class LogicFormula(ProbLogObject) :
     def _expand( self, index, children, protected, nodetype=None, anc=None ) :
         """Determine the list of all children of the node by combining the given node with its children of the same type, recursively."""
         
-        if anc == None : anc = []
+        if anc is None : anc = []
         
         if index in children :
             pass
         elif index in anc :
             children.add(index)
-        elif index == 0 or index == None :
+        elif index == 0 or index is None :
             children.add(index)
         elif nodetype != None and abs(index) in protected :
             children.add(index)
@@ -537,7 +537,7 @@ class LogicFormula(ProbLogObject) :
             ntype = type(node).__name__
             if not ntype in ('conj', 'disj') :
                 children.add(index)
-            elif nodetype == None :
+            elif nodetype is None :
                 nodetype = ntype
             
             if ntype == nodetype :
@@ -549,9 +549,9 @@ class LogicFormula(ProbLogObject) :
         
     def _extract( self, gp, index, protected, translate, anc=None ) :
         """Copy the given node to a new formula, while breaking loops and node combining."""
-        if anc == None : anc = []
+        if anc is None : anc = []
         
-        if index == 0 or index == None :
+        if index == 0 or index is None :
             return index, set()
         elif index in anc :
             return None, {index}
@@ -594,7 +594,7 @@ class LogicFormula(ProbLogObject) :
                 return new_node, cycles
         else :
             res = translate.get(abs(index))
-            if res == None :
+            if res is None :
                 res = gp.addAtom( node.identifier, node.probability, node.group )
                 translate[abs(index)] = res 
             if index < 0 :
@@ -733,7 +733,7 @@ class LogicFormula(ProbLogObject) :
             elif nodetype == 'atom' :
                 if node.probability == True :
                     pass
-                elif node.group == None :                
+                elif node.group is None :                
                     s += '%s [label="%s", shape="ellipse", style="filled", fillcolor="white"];\n' % (index, node.probability)
                             #, node.functor, ', '.join(map(str,node.args)))
                 else :
@@ -752,7 +752,7 @@ class LogicFormula(ProbLogObject) :
         q = 0
         for name, index in queries :
             opt = ''
-            if index == None :
+            if index is None :
                 index = 'false'
                 if not_as_node :
                     s += '%s [label="NOT"];\n' % (index)
@@ -1031,7 +1031,7 @@ class ConstraintME(Constraint) :
     
     def add(self, node, formula) :
         self.nodes.add(node)
-        if len(self.nodes) > 1 and self.extra_node == None :
+        if len(self.nodes) > 1 and self.extra_node is None :
             # If there are two or more choices -> add extra choice node
             self.updateLogic( formula )
     

@@ -85,7 +85,7 @@ class StackBasedEngine(ClauseDBEngine) :
             node = database.getNode(node_id)
             node_type = type(node).__name__
         exec_func = self.create_node_type( node_type )
-        if exec_func == None :
+        if exec_func is None :
             if self.unknown == self.UNKNOWN_FAIL :
                 return [ complete( kwdargs['parent'], kwdargs['identifier'])]
             else :
@@ -147,7 +147,7 @@ class StackBasedEngine(ClauseDBEngine) :
         solutions = []
         while actions :
             act, obj, args, kwdargs = actions.pop(-1)
-            if obj == None :
+            if obj is None :
                 if act == 'r' :
                     solutions.append( (args[0], args[1]) )
                     if stats != None : stats[0] += 1
@@ -176,7 +176,7 @@ class StackBasedEngine(ClauseDBEngine) :
                             obj = self.pointer
                         except _UnknownClause : 
                             call_origin = kwdargs.get('call_origin')
-                            if call_origin == None :
+                            if call_origin is None :
                                 sig = 'unknown'
                                 raise UnknownClause(sig, location=None)
                             else :
@@ -188,7 +188,7 @@ class StackBasedEngine(ClauseDBEngine) :
                     except IndexError :
                         self.printStack()
                         raise InvalidEngineState('Non-existing pointer: %s' % obj )
-                    if exec_node == None :
+                    if exec_node is None :
                         print (act, obj)
                         raise InvalidEngineState('Invalid node at given pointer: %s' % obj)
                     if act == 'r' :
@@ -227,7 +227,7 @@ class StackBasedEngine(ClauseDBEngine) :
         if self.cycle_root and self.cycle_root.pointer == obj :
             self.cycle_root = None
         self.stack[obj] = None
-        while self.pointer > 0 and self.stack[self.pointer-1] == None :
+        while self.pointer > 0 and self.stack[self.pointer-1] is None :
             #self.stack.pop(-1)
             self.pointer -= 1
         
@@ -240,7 +240,7 @@ class StackBasedEngine(ClauseDBEngine) :
     def printStack(self, pointer=None) :
         print ('===========================')
         for i,x in enumerate(self.stack) :
-            if (pointer == None or pointer - 20 < i < pointer + 20) and x != None :
+            if (pointer is None or pointer - 20 < i < pointer + 20) and x != None :
                 if i == pointer :
                     print ('>>> %s: %s' % (i,x) )
                 elif self.cycle_root != None and i == self.cycle_root.pointer  :
@@ -279,7 +279,7 @@ class StackBasedEngine(ClauseDBEngine) :
                     n -= 1
                     if target_node != NODE_FALSE :
                         if transform : result = transform(result)
-                        if result == None :
+                        if result is None :
                             if n == 0 :
                                 actions += [ complete(parent, identifier) ]
                             else :
@@ -301,7 +301,7 @@ class StackBasedEngine(ClauseDBEngine) :
                     queue = []
                     for result, node in active_node.results :
                         if transform : result = transform(result)
-                        if result == None :
+                        if result is None :
                             queue += [ complete(parent, identifier) ]
                         else :
                             queue += [ newResult( parent, result, node, identifier, True ) ]
@@ -358,7 +358,7 @@ class StackBasedEngine(ClauseDBEngine) :
         elif node.defnode == -2 or node.defnode == -3 : # Fail/False
             return [ complete( parent, identifier ) ]
             
-        if transform == None : transform = Transformations()
+        if transform is None : transform = Transformations()
         if not is_ground(*call_args) :
             def result_transform(result) :
                 output = list(context)
@@ -395,7 +395,7 @@ class StackBasedEngine(ClauseDBEngine) :
                 # Unify argument and update context (raises UnifyError if not possible)
                 unify( call_arg, head_arg, new_context)
                 #
-            if transform == None : transform = Transformations()
+            if transform is None : transform = Transformations()
             if is_ground(*context) :
                 transform.addConstant(context)
             else :
@@ -463,9 +463,9 @@ class EvalNode(object):
         self.on_cycle = False
         
     def notifyResult(self, arguments, node=0, is_last=False, parent=None ) :
-        if parent == None : parent = self.parent
+        if parent is None : parent = self.parent
         if self.transform : arguments = self.transform(arguments)
-        if arguments == None :
+        if arguments is None :
             if is_last :
                 return self.notifyComplete()
             else :
@@ -474,7 +474,7 @@ class EvalNode(object):
             return [ newResult( parent, arguments, node, self.identifier, is_last ) ]
             
     def notifyResultMulti(self, results, complete, parent=None) :
-        if parent == None : parent = self.parent
+        if parent is None : parent = self.parent
         if self.transform : results = [ ( self.transform(res), node ) for res,node in results ]
         results = [ (res,node) for res, node in results if res != None ]
         if results :
@@ -485,7 +485,7 @@ class EvalNode(object):
             return []
         
     def notifyComplete(self, parent=None) :
-        if parent == None : parent = self.parent
+        if parent is None : parent = self.parent
         return [ complete( parent, self.identifier ) ]
         
     def createCall(self, node_id, *args, **kwdargs) :
@@ -526,7 +526,7 @@ class EvalNode(object):
             pos = self.database.lineno(self.node.location)
         else :
             pos = None
-        if pos == None : pos = '??'
+        if pos is None : pos = '??'
         node_type = self.__class__.__name__[4:]
         return '%s %s %s [at %s:%s] | Context: %s' % (self.parent, node_type, self.node_str(), pos[0], pos[1], self.context ) + ' {' + str(self.transform) + '}'
 
@@ -646,12 +646,12 @@ class NestedDict(object) :
         p_key = (p_key, len(s_key))        
         if s_key :
             elem = self.__base.get(p_key)
-            if elem == None :
+            if elem is None :
                 elem = {}
                 self.__base[p_key] = elem
             for s in s_key[:-1] :
                 elemN = elem.get(s)
-                if elemN == None :
+                if elemN is None :
                     elemN = {}
                     elem[s] = elemN
                 elem = elemN
@@ -756,7 +756,7 @@ class ResultSet(object) :
     
     def __setitem__(self, result, node) :
         index = self.index.get(result)
-        if index == None :
+        if index is None :
             index = len(self.results)
             self.index[result] = index
             if self.collapsed :
@@ -968,7 +968,7 @@ class EvalDefine(EvalNode) :
             queue += cycle_root.createCycle()
             queue += self.engine.notifyCycle(cycle_root) # Notify old cycle root up to new cycle root
             cycle_root = None
-        if cycle_root == None : # No active cycle
+        if cycle_root is None : # No active cycle
             # Register cycle root with engine
             self.engine.cycle_root = cycle_parent
             # Mark parent as cycle root
@@ -1072,12 +1072,12 @@ class Transformations(object) :
         self.constant = None
     
     def addConstant( self, constant ) :
-        if self.constant == None :
+        if self.constant is None :
             self.constant = self(constant)
             self.functions = []
             
     def addFunction( self, function ) :
-        if self.constant == None :
+        if self.constant is None :
             self.functions.append(function)
             
     def __call__(self, result) :
@@ -1085,7 +1085,7 @@ class Transformations(object) :
             return self.constant
         else :
             for f in reversed(self.functions) :
-                if result == None : return None
+                if result is None : return None
                 result = f(result)
             return result
         
@@ -1100,7 +1100,7 @@ class EvalAnd(EvalNode) :
         return False, [ self.createCall(  self.node.children[0], identifier=None ) ]
         
     def newResult(self, result, node=0, source=None, is_last=False) :
-        if source == None :     # Result from the first conjunct.
+        if source is None :     # Result from the first conjunct.
             # We will create a second conjunct, which needs to send a 'complete' signal.
             self.to_complete += 1
             if is_last :

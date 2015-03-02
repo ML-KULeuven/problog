@@ -199,7 +199,7 @@ class EventBasedEngine(ClauseDBEngine) :
         
         # Find pre-existing node.
         pnode = def_nodes.get(key)
-        if pnode == None :
+        if pnode is None :
             # Node does not exist: create it and add it to the list.
             pnode = ProcessDefine( self, db, gp, node_id, node, call_args, call_args.define )
             def_nodes[key] = pnode
@@ -641,9 +641,9 @@ def builtin_call( term, args=(), callback=None, database=None, engine=None, cont
     # Find the define node for the given query term.
     clause_node = database.find(term.withArgs( *(term.args+args)))
     # If term not defined: try loading it as a builtin
-    if clause_node == None : clause_node = database._getBuiltIn(term.signature)
+    if clause_node is None : clause_node = database._getBuiltIn(term.signature)
     # If term not defined: raise error    
-    if clause_node == None : raise UnknownClause(term.signature, location=database.lineno(term.location))
+    if clause_node is None : raise UnknownClause(term.signature, location=database.lineno(term.location))
     # Create a new call.
     call_node = ClauseDB._call( term.functor, range(0, len(term.args) + len(args)), clause_node, None )
     # Create a callback node that wraps the results in the functor.
@@ -788,8 +788,8 @@ class EngineLogger(object) :
     
     @classmethod
     def get(self) :
-        if EngineLogger.instance == None :
-            if EngineLogger.instance_class == None :
+        if EngineLogger.instance is None :
+            if EngineLogger.instance_class is None :
                 EngineLogger.instance = EngineLogger()
             else :
                 EngineLogger.instance = EngineLogger.instance_class()

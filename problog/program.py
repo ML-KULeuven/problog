@@ -32,7 +32,7 @@ class PrologString(LogicProgram) :
         self.__string = string
         lines = self._find_lines(string)
         LogicProgram.__init__(self, source_root=source_root, source_files=source_files, line_info=lines)
-        if parser == None :
+        if parser is None :
             self.parser = DefaultPrologParser(PrologFactory())
         else :
             self.parser = parser
@@ -97,7 +97,7 @@ class PrologFactory(Factory) :
         return self.build_function("'" + functor + "'", (operand,) , location=location)
         
     def build_list(self, values, tail=None, location=None, **extra) :
-        if tail == None :
+        if tail is None :
             current = Term('[]')
         else :
             current = tail
@@ -133,7 +133,7 @@ class PrologFactory(Factory) :
         return operand2
         
     def _uncurry(self, term, func=None) :
-        if func == None : func = term.functor
+        if func is None : func = term.functor
         
         body = []
         current = term

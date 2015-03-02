@@ -38,7 +38,7 @@ class SDD(LogicDAG, Evaluatable) :
     def __init__(self, var_count=None) :
         LogicDAG.__init__(self, auto_compact=False)
         
-        if sdd == None :
+        if sdd is None :
             raise RuntimeError('The SDD library is not available. Please run the installer.')
         
         self.sdd_manager = None
@@ -107,7 +107,7 @@ class SDD(LogicDAG, Evaluatable) :
             return result
 
     def saveSDDToDot( self, filename, index=None ) :
-        if index == None :
+        if index is None :
             sdd.sdd_shared_save_as_dot(filename, self.sdd_manager)
         else :
             sdd.sdd_save_as_dot(filename, self._getSDDNode(index))
@@ -259,7 +259,7 @@ class SDDEvaluator(Evaluator) :
     def evaluate(self, node) :
         if node == 0 :
             return self.semiring.one()
-        elif node == None :
+        elif node is None :
             return self.semiring.zero()
         
         # TODO make sure this works for negative query nodes        
