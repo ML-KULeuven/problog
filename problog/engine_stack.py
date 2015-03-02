@@ -419,11 +419,18 @@ class StackBasedEngine(ClauseDBEngine) :
         except UnifyError :
             # Call and clause head are not unifiable, just fail (complete without results).
             return [ complete(parent,identifier)]
+            
+    def handle_nonground(self, location=None, **kwdargs) :
+        raise NonGroundProbabilisticClause(location=database.lineno(node.location))
+        
     
     def eval_choice(engine, parent, node_id, node, context, target, database, identifier, **kwdargs) :
         actions = []
         result = tuple(context)
-        if not is_ground(*result) : raise NonGroundProbabilisticClause(location=database.lineno(node.location))
+        
+        if not is_ground(*result) : 
+            result = engine.handle_nonground( result=result, node=node, target=target, database=database, context=context, parent=parent, node_id=node_id, identifier=identifier, **kwdargs)
+            
         probability = instantiate( node.probability, result )
         # Create a new atom in ground program.
         origin = (node.group, result)
