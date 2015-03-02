@@ -14,10 +14,15 @@ import distutils.spawn
 
 def get_system() :
     system = sys.platform
+    if system.lower().startswith('java') :
+        import java.lang.System
+        system = java.lang.System.getProperty('os.name').lower()
     if system.startswith('linux') :
         system = 'linux'
     elif system.startswith('win') :
         system = 'windows'
+    elif system.startswith('mac') :
+        system = 'darwin'
     return system
 
 def set_environment() :
@@ -28,7 +33,6 @@ def set_environment() :
         PATH = [PATH]
     PATH = os.pathsep.join( PATH + list(get_binary_paths()) )
     os.environ['PATH'] = PATH
-    
     # Set PYTHONPATH environment
     sys.path += get_module_paths()
     
@@ -42,7 +46,7 @@ def get_module_paths() :
     """Get a list of additional module search paths."""    
     binary_root = os.path.join(os.path.dirname(__file__), 'lib' )
     system = get_system()  # Darwin, Linux, ?    
-    python = 'python%s' % sys.version_info.major
+    python = 'python%s' % sys.version_info[0]
     return list(map(os.path.abspath,[ os.path.join(binary_root, python, system), os.path.join(binary_root, python), binary_root ]))
     
 
