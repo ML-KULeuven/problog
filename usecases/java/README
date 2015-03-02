@@ -1,0 +1,26 @@
+ProbLog Java example
+====================
+
+ProbLog 2.1 is compatible with Jython 2.7.
+This means that it can be easily interface with Java.
+
+The file ProbLogMain.java contains an example of running ProbLog from Java.
+
+Usage
+-----
+
+- Download 'jython_XXX.jar' from http://www.jython.org (version 2.7).
+
+- Compile the example
+
+javac -cp /path/to/jython_XXX.jar ProbLogMain.java
+
+- Set the JYTHONPATH variable to include the problog Python package.
+
+export JYTHONPATH=$PWD/../../
+
+- Run
+
+java -cp ".:/path/to/jython_XXX.jar" ProbLogMain ../../test/00_trivial_and.pl
+
+
