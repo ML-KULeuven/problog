@@ -324,6 +324,18 @@ class LogicFormula(ProbLogObject) :
         """Indicates whether the given node is probabilistic."""    
         return not self.isTrue(key) and not self.isFalse(key)
         
+    def isAtom(self, key) :
+        return self._getNodeType(key) == 'atom'
+        
+    def isAnd(self, key) :
+        return self._getNodeType(key) == 'conj'
+        
+    def isOr(self, key) :
+        return self._getNodeType(key) == 'disj'
+        
+    def isCompound(self, key) :
+        return not self.isAtom(key)
+        
     def getNode(self, key) :
         """Get the node with the given key."""
         assert(self.isProbabilistic(key))
