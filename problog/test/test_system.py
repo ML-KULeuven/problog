@@ -11,6 +11,7 @@ from problog.setup import install
 from problog.program import PrologFile, DefaultPrologParser, ExtendedPrologFactory
 from problog.nnf_formula import NNF
 from problog.sdd_formula import SDD
+from problog.evaluator import SemiringProbability, SemiringLogProbability
 
 class TestDummy(unittest.TestCase):
     
@@ -59,15 +60,21 @@ def read_result(filename) :
                 results[query.strip()] = float(prob.strip())
     return results
 
-def createSystemTestSDD(filename) :
-
+def createSystemTestSDD(filename, logspace=False) :
+    
     correct = read_result(filename)
-
+    
     def test(self) :
         try :
             parser = DefaultPrologParser(ExtendedPrologFactory())
             sdd = SDD.createFrom(PrologFile(filename, parser=parser))
-            computed = sdd.evaluate()
+            
+            if logspace :
+                semiring = SemiringLogProbability()
+            else :
+                semiring = SemiringProbability()
+            
+            computed = sdd.evaluate(semiring=semiring)
         except Exception as err :
             e = err
             computed = None
@@ -77,23 +84,28 @@ def createSystemTestSDD(filename) :
         else :
             self.assertIsInstance( correct, dict )
             self.assertSequenceEqual(correct, computed)
-
+            
             for query in correct :
                 self.assertAlmostEqual(correct[query], computed[query], msg=query)
-
 
     return test
 
 
-def createSystemTestNNF(filename) :
-
+def createSystemTestNNF(filename, logspace=False) :
+    
     correct = read_result(filename)
-
+    
     def test(self) :
         try :
             parser = DefaultPrologParser(ExtendedPrologFactory())
             sdd = NNF.createFrom(PrologFile(filename, parser=parser))
-            computed = sdd.evaluate()
+            
+            if logspace :
+                semiring = SemiringLogProbability()
+            else :
+                semiring = SemiringProbability()
+            
+            computed = sdd.evaluate(semiring=semiring)
         except Exception as err :
             e = err
             computed = None
@@ -103,7 +115,7 @@ def createSystemTestNNF(filename) :
         else :
             self.assertIsInstance( correct, dict )
             self.assertSequenceEqual(correct, computed)
-
+            
             for query in correct :
                 self.assertAlmostEqual(correct[query], computed[query], msg=query)
 
@@ -119,6 +131,11 @@ for testfile in filenames :
     testname = 'test_system_' + os.path.splitext(os.path.basename(testfile))[0]
     setattr( TestSystemSDD, testname, createSystemTestSDD(testfile) )
     setattr( TestSystemNNF, testname, createSystemTestNNF(testfile) )
+
+    testname = 'test_system_' + os.path.splitext(os.path.basename(testfile))[0] + '_logspace'
+    setattr( TestSystemSDD, testname, createSystemTestSDD(testfile, True) )
+    setattr( TestSystemNNF, testname, createSystemTestNNF(testfile, True) )
+
     
 if __name__ == '__main__' :
     suite = unittest.TestLoader().loadTestsFromTestCase(TestSystemSDD)
