@@ -762,7 +762,7 @@ class LogicFormula(ProbLogObject) :
             c += 1 
             
         q = 0
-        for name, index in queries :
+        for name, index in set(queries) :
             opt = ''
             if index is None :
                 index = 'false'
