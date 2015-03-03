@@ -340,6 +340,13 @@ class PrologParser(object) :
     def _parse_unop(self, s, loc, toks) :
         return strWithLocation(toks[0],location=loc)
         
+    @guarded
+    def _parse_float(self, s, loc, toks) :
+        if '.' in toks[0] or 'e' in toks[0] or 'E' in toks[0] :
+            return float(toks[0])
+        else :
+            raise ParseException(s,loc,'Not a float.')
+        
     def _get_location(self, token) :
         try :
             return token.location
@@ -372,9 +379,8 @@ class PrologParser(object) :
         cc_id_start = 'abcdefghijklmnopqrstuvwxyz'      # Start of identifier
 
         # <float> ::= <word of nums> "." <word of nums>
-        self.__float_number = Regex(r'\d+\.(\d)+([eE]\d+)?') # Word(nums) + "." + Word(nums)
-        #self.__float_number.setParseAction(lambda s, x, t : float(''.join(t)))
-        self.__float_number.setParseAction(lambda s, x, t : float(t[0]))
+        self.__float_number = Regex(r'[-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?')
+        self.__float_number.setParseAction(self._parse_float)
         
         # <int> ::= <word of nums>
         self.__int_number = Word(nums)
