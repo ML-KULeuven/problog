@@ -1073,7 +1073,7 @@ class ConstraintME(Constraint) :
                 pos, neg = weights.get(n, (semiring.one(), semiring.one()))
                 weights[n] = (pos, semiring.one())
                 s = semiring.plus(s, pos)
-            complement = semiring.neg_value(s)
+            complement = semiring.negate(s)
             weights[self.extra_node] = (complement, semiring.one())
             
     def copy( self, rename={} ) :
