@@ -264,25 +264,30 @@ class SDDEvaluator(Evaluator) :
         
         # TODO make sure this works for negative query nodes        
         m = self.sdd_manager 
-
+        
         assert(m != None)
-
+        
         # TODO build evidence and constraints before
         evidence_sdd = sdd.sdd_manager_true( m )
         for ev in self.iterEvidence() :
-            evidence_sdd = sdd.sdd_conjoin( evidence_sdd, self.__sdd._getSDDNode(ev), m )
-    
+            #print (ev, )
+            if type(self.__sdd.getNode(abs(ev))).__name__ != 'atom' or sdd.sdd_manager_is_var_used(abs(ev), m)  :
+                evidence_sdd = sdd.sdd_conjoin( evidence_sdd, self.__sdd._getSDDNode(ev), m )
+                
         for c in self.__sdd.constraints() :
+            # TODO add test whether variables are actually used (see above)
             for rule in c.encodeCNF() :
                 evidence_sdd = sdd.sdd_conjoin( evidence_sdd, self._sdd_disjoin( *rule ), m )
         if sdd.sdd_node_is_false(evidence_sdd) :
             raise InconsistentEvidenceError()
-
+            
+        #sdd.sdd_save_as_dot( '%s_evidence.dot' % node, evidence_sdd)
         query_sdd = self._sdd_equiv( sdd.sdd_manager_literal(node, self.sdd_manager), self.__sdd._getSDDNode(node))
-
+        #sdd.sdd_save_as_dot( '%s_query.dot'% node, query_sdd)
         query_sdd = sdd.sdd_conjoin( query_sdd, evidence_sdd, self.sdd_manager )
-
-
+        
+        #sdd.sdd_save_as_dot( '%s_query_and_evidence.dot'% node, query_sdd)
+        
         # TODO this is probably not always correct:
         if sdd.sdd_node_is_true( query_sdd ) :
             if node < 0 :
@@ -295,7 +300,6 @@ class SDDEvaluator(Evaluator) :
             if self.semiring.isLogspace():
               logspace = 1
             wmc_manager = sdd.wmc_manager_new( query_sdd , logspace, self.sdd_manager )
-
             for i, n in enumerate(sorted(self.__probs)) :
                 i = i + 1
                 pos, neg = self.__probs[n]
