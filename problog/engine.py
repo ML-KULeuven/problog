@@ -127,10 +127,21 @@ class ClauseDBEngine(GenericEngine) :
         :param label: type of query (e.g. ``query``, ``evidence`` or ``-evidence``)
         :type label: str
         """
+        
+        if isinstance(term,Not) :
+            negated = True
+            term = -term
+        else :
+            negated = False
+        
         gp, results = self._ground(db, term, gp, silent_fail=False, allow_vars=False, **kwdargs)
         
         for args, node_id in results :
-            gp.addName( term.withArgs(*args), node_id, label )
+            term_store = term.withArgs(*args)
+            if negated :
+                gp.addName( -term_store, -node_id, label )
+            else :
+                gp.addName( term_store, node_id, label )
         if not results :
             gp.addName( term, None, label )
         
