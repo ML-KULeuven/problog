@@ -128,7 +128,7 @@ class ClauseDBEngine(GenericEngine) :
         :type label: str
         """
         
-        if isinstance(term,Not) :
+        if term.is_negative() :
             negated = True
             term = -term
         else :
