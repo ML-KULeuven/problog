@@ -4,6 +4,7 @@ from __future__ import print_function
 
 import sys
 import time
+import os
 
 from problog.program import PrologFile
 from problog.logic import Term
@@ -13,22 +14,6 @@ from problog.nnf_formula import NNF
 from problog.cnf_formula import CNF
 from problog.sdd_formula import SDD
 
-def ground(model, gp) :
-    
-    
-    queries = engine.query(db, Term( 'query', None ))
-    evidence = engine.query(db, Term( 'evidence', None, None ))
-        
-    for query in queries :
-        gp = engine.ground(db, query[0], gp, label='query')
-
-    for query in evidence :
-        if str(query[1]) == 'true' :
-            gp = engine.ground(db, query[0], gp, label='evidence')
-        else :
-            gp = engine.ground(db, query[0], gp, label='-evidence')
-
-    return gp
 
 class Timer(object) :
     
@@ -43,64 +28,83 @@ class Timer(object) :
         print ('%s: %.4fs' % (self.message, time.time()-self.start_time))
 
 
-def main(filename) :
+def main(filename, with_dot, knowledge) :
+    
+    dotprefix = None
+    if with_dot :
+        dotprefix = os.path.splitext(filename)[0] + '_'
     
     model = PrologFile(filename)
     
-    #EngineLogger.setClass(SimpleEngineLogger)
-    
-    engine = DefaultEngine()
+    engine = DefaultEngine(label_all=True)
     
     with Timer('parsing') :
         db = engine.prepare(model)
     
+    print ('\n=== Database ===')
     print (db)
     
-    with Timer('queries') :
-        queries = engine.query(db, Term( 'query', None ))
+    print ('\n=== Queries ===')
+    queries = engine.query(db, Term( 'query', None ))
+    print ('Queries:', ', '.join([ str(q[0]) for q in queries ]))
     
-    with Timer('evidence') :
-        evidence = engine.query(db, Term( 'evidence', None, None ))
+    print ('\n=== Evidence ===')
+    evidence = engine.query(db, Term( 'evidence', None, None ))
+    print ('Evidence:', ', '.join([ '%s=%s' % ev for ev in evidence ]))
     
-    print ('nr of queries:', len(queries))
-    print ('nr of evidence:', len(evidence))
-    
+    print ('\n=== Ground Program ===')
     with Timer('ground') :
-        gp = None
-        for i, query in enumerate(queries) :
-            #print ('ground query %d (%s):' % (i+1,query), '='*100)
-            with Timer('ground query %d (%s):' % (i+1,query)) :
-                gp = engine.ground(db, query[0], gp, label=gp.LABEL_QUERY)
-    
-        for query in evidence :
-            if str(query[1]) == 'true' :
-                gp = engine.ground(db, query[0], gp, label=gp.LABEL_EVIDENCE_POS)
-            else :
-                gp = engine.ground(db, query[0], gp, label=gp.LABEL_EVIDENCE_NEG)
-    
+        gp = engine.ground_all(db)
     print (gp)
     
+    if dotprefix != None : 
+        with open(dotprefix + 'gp.dot', 'w') as f : 
+            print ( gp.toDot(), file=f)    
     
+    print ('\n=== Acyclic Ground Program ===')
     with Timer('acyclic') :
         gp = gp.makeAcyclic()
-    
     print (gp)
-                
-    with Timer('convert') :
-        cnf = CNF.createFrom(gp)
-    #print (cnf.getNamesWithLabel())
-                
-    with Timer('compile') :
-        nnf = NNF.createFrom(cnf)
     
-    #print (nnf)
+    if dotprefix != None : 
+        with open(dotprefix + 'agp.dot', 'w') as f : 
+            print ( gp.toDot(), file=f)
+        
+    if knowledge == 'sdd' :
+        print ('\n=== SDD compilation ===')
+        with Timer('compile') :
+            nnf = SDD.createFrom(gp)
+        
+        if dotprefix != None : 
+            nnf.saveSDDToDot(dotprefix + 'sdd.dot')
+            
+    else :
+        print ('\n=== Conversion to CNF ===')
+        with Timer('convert to CNF') :
+            cnf = CNF.createFrom(gp)
+            
+        print ('\n=== Compile to d-DNNF ===')
+        with Timer('compile') :
+            nnf = NNF.createFrom(cnf)
     
+    if dotprefix != None : 
+        with open(dotprefix + 'nnf.dot', 'w') as f : 
+            print ( nnf.toDot(), file=f)    
+    
+    print ('\n=== Evaluation result ===')
     with Timer('evaluate') :
         result = nnf.evaluate()
     
     for it in result.items() :
         print ('%s : %s' % (it))
-    
 
 if __name__ == '__main__' :
-    main(sys.argv[1])
+    
+    import argparse
+    argparser = argparse.ArgumentParser()
+    argparser.add_argument('filename')
+    argparser.add_argument('--with-dot', action='store_true')
+    argparser.add_argument('-k', '--knowledge', choices=['nnf','sdd'], default='sdd')
+    args = argparser.parse_args()
+    
+    main(**vars(args))
