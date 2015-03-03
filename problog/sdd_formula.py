@@ -262,33 +262,23 @@ class SDDEvaluator(Evaluator) :
         elif node is None :
             return self.semiring.zero()
         
-        # TODO make sure this works for negative query nodes        
         m = self.sdd_manager 
         
         assert(m != None)
         
-        # TODO build evidence and constraints before
-        evidence_sdd = sdd.sdd_manager_true( m )
+        query_sdd = self._sdd_equiv( sdd.sdd_manager_literal(node, self.sdd_manager), self.__sdd._getSDDNode(node))
         for ev in self.iterEvidence() :
-            #print (ev, )
-            if type(self.__sdd.getNode(abs(ev))).__name__ != 'atom' or sdd.sdd_manager_is_var_used(abs(ev), m)  :
-                evidence_sdd = sdd.sdd_conjoin( evidence_sdd, self.__sdd._getSDDNode(ev), m )
+            if self.__sdd.isCompound(abs(ev)) :
+                query_sdd = sdd.sdd_conjoin( query_sdd, self.__sdd._getSDDNode(ev), m )
                 
         for c in self.__sdd.constraints() :
-            # TODO add test whether variables are actually used (see above)
+            # TODO what if variables don't occur in query_sdd?
             for rule in c.encodeCNF() :
-                evidence_sdd = sdd.sdd_conjoin( evidence_sdd, self._sdd_disjoin( *rule ), m )
-        if sdd.sdd_node_is_false(evidence_sdd) :
-            raise InconsistentEvidenceError()
+                query_sdd = sdd.sdd_conjoin( query_sdd, self._sdd_disjoin( *rule ), m )
+                
+        if sdd.sdd_node_is_false(query_sdd) :
+             raise InconsistentEvidenceError()
             
-        #sdd.sdd_save_as_dot( '%s_evidence.dot' % node, evidence_sdd)
-        query_sdd = self._sdd_equiv( sdd.sdd_manager_literal(node, self.sdd_manager), self.__sdd._getSDDNode(node))
-        #sdd.sdd_save_as_dot( '%s_query.dot'% node, query_sdd)
-        query_sdd = sdd.sdd_conjoin( query_sdd, evidence_sdd, self.sdd_manager )
-        
-        #sdd.sdd_save_as_dot( '%s_query_and_evidence.dot'% node, query_sdd)
-        
-        # TODO this is probably not always correct:
         if sdd.sdd_node_is_true( query_sdd ) :
             if node < 0 :
                 return self.__probs[ -node ][1]
