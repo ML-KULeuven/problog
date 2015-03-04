@@ -420,7 +420,7 @@ class StackBasedEngine(ClauseDBEngine) :
             # Call and clause head are not unifiable, just fail (complete without results).
             return [ complete(parent,identifier)]
             
-    def handle_nonground(self, location=None, **kwdargs) :
+    def handle_nonground(self, location=None, database=None, node=None, **kwdargs) :
         raise NonGroundProbabilisticClause(location=database.lineno(node.location))
         
     
