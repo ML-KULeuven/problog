@@ -1194,7 +1194,7 @@ class TrueConstraint(Constraint) :
         return TrueConstraint( rename.get(self.node, self.node) )
         
     def updateWeights(self, weights, semiring) :
-        pass
+        weights[self.node] = (semiring.one(), semiring.zero())
         
     def __str__(self) :
         return '%s is true' % self.node
