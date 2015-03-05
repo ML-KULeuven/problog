@@ -180,7 +180,9 @@ class ClauseDBEngine(GenericEngine) :
         logger = logging.getLogger('problog')
         with Timer('Grounding'):
             if queries is None : queries = [ q[0] for q in self.query(db, Term( 'query', None )) ]
-            if evidence is None : evidence = self.query(db, Term( 'evidence', None, None ))
+            if evidence is None : 
+                evidence = self.query(db, Term( 'evidence', None, None ))
+                evidence += self.query(db, Term( 'evidence', None ))
             
             if target is None : target = LogicFormula()
             
@@ -189,18 +191,28 @@ class ClauseDBEngine(GenericEngine) :
                 target = self.ground(db, query, target, label=target.LABEL_QUERY)
                 logger.debug("Ground program size: %s", len(target))
             for query in evidence :
-                if str(query[1]) == 'true' :
-                    logger.debug("Grounding evidence '%s'", query[0])
-                    target = self.ground(db, query[0], target, label=target.LABEL_EVIDENCE_POS)
-                    logger.debug("Ground program size: %s", len(target))
-                elif str(query[1]) == 'false' :
-                    logger.debug("Grounding evidence '%s'", query[0])
-                    target = self.ground(db, query[0], target, label=target.LABEL_EVIDENCE_NEG)
-                    logger.debug("Ground program size: %s", len(target))
+                if len(query) == 1 :
+                    if query[0].is_negative() :
+                        logger.debug("Grounding evidence '%s'", query[0])
+                        target = self.ground(db, -query[0], target, label=target.LABEL_EVIDENCE_NEG)
+                        logger.debug("Ground program size: %s", len(target))
+                    else :
+                        logger.debug("Grounding evidence '%s'", query[0])
+                        target = self.ground(db, query[0], target, label=target.LABEL_EVIDENCE_POS)
+                        logger.debug("Ground program size: %s", len(target))
                 else :
-                    logger.debug("Grounding evidence '%s'", query[0])
-                    target = self.ground(db, query[0], target, label=target.LABEL_EVIDENCE_MAYBE)
-                    logger.debug("Ground program size: %s", len(target))
+                    if str(query[1]) == 'true' :
+                        logger.debug("Grounding evidence '%s'", query[0])
+                        target = self.ground(db, query[0], target, label=target.LABEL_EVIDENCE_POS)
+                        logger.debug("Ground program size: %s", len(target))
+                    elif str(query[1]) == 'false' :
+                        logger.debug("Grounding evidence '%s'", query[0])
+                        target = self.ground(db, query[0], target, label=target.LABEL_EVIDENCE_NEG)
+                        logger.debug("Ground program size: %s", len(target))
+                    else :
+                        logger.debug("Grounding evidence '%s'", query[0])
+                        target = self.ground(db, query[0], target, label=target.LABEL_EVIDENCE_MAYBE)
+                        logger.debug("Ground program size: %s", len(target))
         return target
     
     def addExternalCalls(self, externals):
