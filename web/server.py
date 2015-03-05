@@ -52,7 +52,11 @@ PYTHON_EXEC='python'    # Python 2
 api_root = '/'
 
 here = os.path.dirname(__file__)
-logging.config.fileConfig(os.path.join(here,'logging.conf'))
+
+try :
+    logging.config.fileConfig(os.path.join(here,'logging.conf'))
+except IOError :
+    pass
 logger = logging.getLogger('server')
 
 # Load Python standard web-related modules (based on Python version)
@@ -376,7 +380,6 @@ class ProbLogHTTP(BaseHTTPServer.BaseHTTPRequestHandler) :
         format = '[%s] ' + format        
         logger.info(format % args)
 
-
 if __name__ == '__main__' :
     import argparse
 
@@ -386,6 +389,7 @@ if __name__ == '__main__' :
     parser.add_argument('--memout', '-m', type=float, default=DEFAULT_MEMOUT, help="Memory limit in Gb")
     parser.add_argument('--servefiles', '-F', action='store_true', help="Attempt to serve a file for undefined paths (unsafe?).")
     parser.add_argument('--nocaching', action='store_true', help="Disable caching of submitted models")
+    parser.add_argument('--browser', action='store_true', help="Open editor in web browser.")
     args = parser.parse_args(sys.argv[1:])
 
     DEFAULT_TIMEOUT = args.timeout
@@ -396,5 +400,8 @@ if __name__ == '__main__' :
 
     server_address = ('', args.port)
     httpd = BaseHTTPServer.HTTPServer( server_address, ProbLogHTTP )
+    if args.browser :
+        import webbrowser
+        webbrowser.open( 'file://' + os.path.join(os.path.abspath(here), 'index_local.html'), new=2, autoraise=True)
     httpd.serve_forever()
 
