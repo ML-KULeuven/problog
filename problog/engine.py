@@ -1059,7 +1059,7 @@ def select( lst, target ) :
 def builtin_findall( pattern, goal, result, database=None, target=None, engine=None, **kwdargs ) :
     mode = check_mode( (result,), 'vl' )
     
-    findall_head = Term(engine.get_non_cache_functor(), pattern)       # TODO unique mangle
+    findall_head = Term(engine.get_non_cache_functor(), pattern)
     findall_clause = Clause( findall_head , goal )    
     findall_db = ClauseDB(parent=database)
     findall_db += findall_clause
