@@ -66,6 +66,8 @@ class ClauseDBEngine(GenericEngine) :
         self.__builtins = []
         self.__externals = {}
         
+        self._unique_number = 0
+        
         if builtins :
             self.loadBuiltIns()
             
@@ -91,6 +93,10 @@ class ClauseDBEngine(GenericEngine) :
         
     def execute(self, node_id, database=None, context=None, target=None, **kwdargs ) :
         raise NotImplementedError("ClauseDBEngine.execute is an abstract function.")
+        
+    def get_non_cache_functor(self) :
+        self._unique_number += 1
+        return '_nocache_%s' % self._unique_number
         
     def _process_directives(self, db) :
         """Process directives present in the database."""
@@ -1051,7 +1057,9 @@ def select( lst, target ) :
     
     
 def builtin_findall( pattern, goal, result, database=None, target=None, engine=None, **kwdargs ) :
-    findall_head = Term('_fndl', pattern)
+    mode = check_mode( (result,), 'vl' )
+    
+    findall_head = Term(engine.get_non_cache_functor(), pattern)       # TODO unique mangle
     findall_clause = Clause( findall_head , goal )    
     findall_db = ClauseDB(parent=database)
     findall_db += findall_clause
@@ -1062,7 +1070,15 @@ def builtin_findall( pattern, goal, result, database=None, target=None, engine=N
     for l,n in select(results, target) :
         node = target.addAnd(n)
         if node != None :
-            output.append(((pattern,goal,build_list(l,Term('[]'))), node))
+            res = build_list(l,Term('[]'))
+            if mode == 0  :  # var
+                output.append(((pattern,goal,res), node))
+            else :
+                try :
+                    res = unify_value(res,result)
+                    output.append(((pattern,goal,res), node))
+                except UnifyError :
+                    pass
     return output
 
 def addStandardBuiltIns(engine, b=None, s=None, sp=None) :

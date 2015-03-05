@@ -695,6 +695,9 @@ class DefineCache(object) :
         self.__non_ground = NestedDict()
         self.__ground = NestedDict()
         self.__active = NestedDict()
+        
+    def is_dont_cache(self, goal) :
+        return goal[0][:9] == '_nocache_'
     
     def activate(self, goal, node) :
         self.__active[goal] = node
@@ -709,6 +712,7 @@ class DefineCache(object) :
         return self.__active.get(goal)
         
     def __setitem__(self, goal, results) :
+        if self.is_dont_cache(goal) : return
         # Results
         functor, args = goal
         if is_ground(*args) :
