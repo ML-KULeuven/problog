@@ -14,7 +14,7 @@ from .util import Timer
 def ground(model, target=None, queries=None, evidence=None) :
     return DefaultEngine().ground_all(model,target, queries=queries, evidence=evidence)
     
-class GenericEngine(object) :
+class GenericEngine(object) : # pragma: no cover
     """Generic interface to a grounding engine."""
     
     def prepare(self, db) :
@@ -91,7 +91,7 @@ class ClauseDBEngine(GenericEngine) :
         self._process_directives( result )
         return result
         
-    def execute(self, node_id, database=None, context=None, target=None, **kwdargs ) :
+    def execute(self, node_id, database=None, context=None, target=None, **kwdargs ) : # pragma: no cover
         raise NotImplementedError("ClauseDBEngine.execute is an abstract function.")
         
     def get_non_cache_functor(self) :
@@ -303,6 +303,17 @@ class UnknownClause(GroundingError) :
         if location : msg += " at position %s:%s" % location
         msg += '.'
         GroundingError.__init__(self, msg)
+
+class UnknownExternal(GroundingError) :
+    """Undefined clause in call."""
+    
+    def __init__(self, signature, location) :
+        self.location = location
+        msg = "Unknown external function '%s'" % signature
+        if location : msg += " at position %s:%s" % location
+        msg += '.'
+        GroundingError.__init__(self, msg)
+
         
 class ConsultError(GroundingError) :
     
@@ -878,13 +889,13 @@ def build_list(elements, tail) :
     return current
 
 
-def builtin_call_external(call, result, **k):
+def builtin_call_external(call, result, database=None, location=None, **k):
     from . import pypl
-    mode = check_mode( (call,result), ['gv'], function='call_external', **k)
+    mode = check_mode( (call,result), ['gv'], function='call_external', database=database, location=location, **k)
 
     func = k['engine'].getExternalCall(call.functor)
     if func is None:
-        raise Exception('External method not known: {}'.format(call.functor))
+        raise UnknownExternal(call.functor, database.lineno(location))
 
     values = [pypl.pl2py(arg) for arg in call.args]
     computed_result = func(*values)
