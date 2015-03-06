@@ -281,7 +281,6 @@ def unify( source_value, target_value, target_context=None, location=None ) :
 import os
 import imp, inspect # For load_external
 
-
 class NonGroundProbabilisticClause(GroundingError) : 
     
     def __init__(self, location=None) :
@@ -1069,7 +1068,7 @@ def select( lst, target ) :
     
     
 def builtin_findall( pattern, goal, result, database=None, target=None, engine=None, **kwdargs ) :
-    mode = check_mode( (result,), 'vl' )
+    mode = check_mode( (result,), 'vl', **kwdargs )
     
     findall_head = Term(engine.get_non_cache_functor(), pattern)
     findall_clause = Clause( findall_head , goal )    
@@ -1092,7 +1091,7 @@ def builtin_findall( pattern, goal, result, database=None, target=None, engine=N
                 except UnifyError :
                     pass
     return output
-
+    
 def addStandardBuiltIns(engine, b=None, s=None, sp=None) :
     """Add Prolog builtins to the given engine."""
     
@@ -1160,7 +1159,7 @@ def addStandardBuiltIns(engine, b=None, s=None, sp=None) :
     engine.addBuiltIn('.', 2, b(builtin_consult_as_list))
     engine.addBuiltIn('load_external', 1, b(builtin_load_external))
     engine.addBuiltIn('unknown',1,b(builtin_unknown))
-
+    
 #from .engine_stack_opt import OptimizedStackBasedEngine as DefaultEngine
 from .engine_stack import StackBasedEngine as DefaultEngine
 
@@ -1358,6 +1357,10 @@ class ClauseDB(LogicProgram) :
         
     def _addCallNode( self, term ) :
         """Add a *call* node."""
+        
+        if term.signature in ('query/1', 'evidence/1', 'evidence/2') :
+            raise AccessError("Can\'t call %s directly." % term.signature )
+        
         defnode = self._addHead(term, create=False)
         return self._appendNode( self._call( term.functor, term.args, defnode, term.location ) )
     
@@ -1573,7 +1576,7 @@ class ClauseDB(LogicProgram) :
                     body = self._create_vars( Term(body_node.functor, *body_node.args) )
             yield AnnotatedDisjunction(heads, body)
 
-class AccessError(Exception) : pass            
+class AccessError(GroundingError) : pass            
         
 class _AutoDict(dict) :
     

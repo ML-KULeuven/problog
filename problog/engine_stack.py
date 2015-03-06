@@ -39,10 +39,6 @@ def newResult(obj, result, ground_node, source, is_last) :
 def complete(obj, source) :
     return ( 'c', obj, (source,), {} )
     
-def cyclic(obj, child) :
-    return ( 'o', obj, (child,), {} )
-
-
 class StackBasedEngine(ClauseDBEngine) :
     
     UNKNOWN_ERROR = 0
@@ -98,9 +94,6 @@ class StackBasedEngine(ClauseDBEngine) :
     def loadBuiltIns(self) :
         addBuiltIns(self)
     
-    def create_record(self, exec_node, pointer, database, node_id, node, **kwdargs ) :
-        return exec_node(pointer=pointer, engine=self, database=database, node_id=node_id, node=node, **kwdargs)
-        
     def grow_stack(self) :
         self.stack += [None] * self.stack_size
         self.stack_size = self.stack_size * 2
@@ -131,6 +124,16 @@ class StackBasedEngine(ClauseDBEngine) :
             current = exec_node.parent
         return actions
         
+    def checkCycle(self, child, parent) :
+        current = child
+        while current != parent :
+            exec_node = self.stack[current]
+            if exec_node.on_cycle :
+                break
+            if isinstance(exec_node, EvalNot) :
+                raise NegativeCycle(location=exec_node.database.lineno(exec_node.node.location))
+            current = exec_node.parent
+        
     def execute(self, node_id, subcall=False, **kwdargs ) :
         self.trace = kwdargs.get('trace')
         self.debug = kwdargs.get('debug') or self.trace
@@ -139,6 +142,7 @@ class StackBasedEngine(ClauseDBEngine) :
         target = kwdargs['target']
         database = kwdargs['database']
         if not hasattr(target, '_cache') : target._cache = DefineCache()
+        
         actions = self.eval( node_id, parent=None, **kwdargs)
         cleanUp = False
         
@@ -152,7 +156,7 @@ class StackBasedEngine(ClauseDBEngine) :
                     solutions.append( (args[0], args[1]) )
                     if stats != None : stats[0] += 1
                     if args[3] :    # Last result received
-                        if not subcall and self.pointer != 0 :
+                        if not subcall and self.pointer != 0 :  # pragma: no cover
                             self.printStack()
                             raise InvalidEngineState('Stack not empty at end of execution!')
                         if not subcall : self.shrink_stack()
@@ -161,7 +165,7 @@ class StackBasedEngine(ClauseDBEngine) :
                     if stats != None : stats[1] += 1
                     if self.debug : print ('Maximal stack size:', max_stack)
                     return solutions
-                else :
+                else :   # pragma: no cover
                     raise InvalidEngineState('Unknown message!')
             else:
                 if act == 'e' :
@@ -185,10 +189,10 @@ class StackBasedEngine(ClauseDBEngine) :
                 else:
                     try :
                         exec_node = self.stack[obj]
-                    except IndexError :
+                    except IndexError :   # pragma: no cover
                         self.printStack()
                         raise InvalidEngineState('Non-existing pointer: %s' % obj )
-                    if exec_node is None :
+                    if exec_node is None :   # pragma: no cover
                         print (act, obj)
                         raise InvalidEngineState('Invalid node at given pointer: %s' % obj)
                     if act == 'r' :
@@ -197,12 +201,12 @@ class StackBasedEngine(ClauseDBEngine) :
                     elif act == 'c' :
                         if stats != None : stats[1] += 1
                         cleanUp, next_actions = exec_node.complete(*args,**kwdargs)
-                    else :
+                    else :   # pragma: no cover
                         raise InvalidEngineState('Unknown message')
                 if not actions and not next_actions and self.cycle_root != None :
                     next_actions = self.cycle_root.closeCycle(True)
                 actions += list(reversed(next_actions))
-                if self.debug :
+                if self.debug :   # pragma: no cover
                     # if type(exec_node).__name__ in ('EvalDefine',) :
                     self.printStack(obj)
                     if act in 'rco' : print (obj, act, args)
@@ -219,9 +223,9 @@ class StackBasedEngine(ClauseDBEngine) :
                     self.cleanUp(obj)
                 
                         
-        self.printStack()
-        print ('Collected results:', solutions)
-        raise InvalidEngineState('Engine did not complete correctly!')
+        self.printStack()     # pragma: no cover
+        print ('Collected results:', solutions)    # pragma: no cover
+        raise InvalidEngineState('Engine did not complete correctly!')    # pragma: no cover
     
     def cleanUp(self, obj) :
         if self.cycle_root and self.cycle_root.pointer == obj :
@@ -237,7 +241,7 @@ class StackBasedEngine(ClauseDBEngine) :
         return self.execute( node_id, database=database, target=target, context=query.args, **kwdargs) 
                 
     
-    def printStack(self, pointer=None) :
+    def printStack(self, pointer=None) :   # pragma: no cover
         print ('===========================')
         for i,x in enumerate(self.stack) :
             if (pointer is None or pointer - 20 < i < pointer + 20) and x != None :
@@ -264,7 +268,6 @@ class StackBasedEngine(ClauseDBEngine) :
             # Failed unification: don't send result.
             # Send complete message.
             return [ complete( parent, identifier) ]
-        return actions        # Pointer actions
         
             
     def eval_define(engine, node, context, target, parent, identifier=None, transform=None, **kwdargs) :
@@ -282,8 +285,6 @@ class StackBasedEngine(ClauseDBEngine) :
                         if result is None :
                             if n == 0 :
                                 actions += [ complete(parent, identifier) ]
-                            else :
-                                pass
                         else :
                             actions += [ newResult( parent, result, target_node, identifier, n==0 ) ]
                     elif n == 0 :
@@ -306,6 +307,7 @@ class StackBasedEngine(ClauseDBEngine) :
                         else :
                             queue += [ newResult( parent, result, node, identifier, True ) ]
                     assert(len(queue) == 1)
+                    engine.checkCycle(parent, active_node.pointer)
                     return queue
                 else :
                     evalnode = EvalDefine( pointer=engine.pointer, engine=engine, node=node, context=context, target=target, identifier=identifier, parent=parent, transform=transform, **kwdargs )
@@ -480,17 +482,6 @@ class EvalNode(object):
         else :
             return [ newResult( parent, arguments, node, self.identifier, is_last ) ]
             
-    def notifyResultMulti(self, results, complete, parent=None) :
-        if parent is None : parent = self.parent
-        if self.transform : results = [ ( self.transform(res), node ) for res,node in results ]
-        results = [ (res,node) for res, node in results if res != None ]
-        if results :
-            return [ newResultMulti(parent,results,self.identifier,complete) ]
-        elif complete :
-            return self.notifyComplete()
-        else :
-            return []
-        
     def notifyComplete(self, parent=None) :
         if parent is None : parent = self.parent
         return [ complete( parent, self.identifier ) ]
@@ -511,24 +502,10 @@ class EvalNode(object):
         self.on_cycle = True
         return []
         
-    def newResultMulti(self, results, source, complete ) :
-        n = len(results)
-        actions = []
-        cleanUp = False
-        for res, node in results :
-            n -= 1
-            cleanUpN, actionsN = self.newResult(res,node,source, (complete and n==0) )
-            cleanUp |= cleanUpN
-            actions += actionsN
-        return cleanUp, actions
-        
-    # def __repr__(self) :
-    #     return '%s %s: %s %s [%s] {%s}' % (self.parent, self.__class__.__name__, self.node, self.context, self.call, self.pointer)
-        
-    def node_str(self) :
+    def node_str(self) :      # pragma: no cover
         return str(self.node)
         
-    def __str__(self) :
+    def __str__(self) :       # pragma: no cover
         if hasattr(self.node, 'location') :
             pos = self.database.lineno(self.node.location)
         else :
@@ -611,10 +588,10 @@ class EvalOr(EvalNode) :
             actions += self.notifyResult(result,node) 
         return actions
         
-    def node_str(self) :
+    def node_str(self) :  # pragma: no cover
         return ''
     
-    def __str__(self) :
+    def __str__(self) :   # pragma: no cover
         return EvalNode.__str__(self) + ' tc: ' + str(self.to_complete)
 
 
@@ -686,7 +663,7 @@ class NestedDict(object) :
         else :
             del self.__base[p_key]
     
-    def __str__(self) :
+    def __str__(self) :       # pragma: no cover
         return str(self.__base)
 
 class DefineCache(object) : 
@@ -704,9 +681,6 @@ class DefineCache(object) :
         
     def deactivate(self, goal) :
         del self.__active[goal]
-        
-    def is_active(self, goal) :
-        return self.getEvalNode(goal) != None
         
     def getEvalNode(self, goal) :
         return self.__active.get(goal)
@@ -744,9 +718,6 @@ class DefineCache(object) :
         else :
             #res_keys = self.__non_ground[goal]
             return self.__non_ground[goal].items()
-            result = [ (res_key, self.__ground[(functor,res_key)]) for res_key in res_keys ]
-#            result = { res_key : self.__ground[(functor,res_key)] for res_key in res_keys }
-            return result
             
     def __contains__(self, goal) :
         functor, args = goal
@@ -755,7 +726,7 @@ class DefineCache(object) :
         else :
             return goal in self.__non_ground
             
-    def __str__(self) :
+    def __str__(self) :       # pragma: no cover
         return '%s\n%s' % (self.__non_ground, self.__ground)
 
 class ResultSet(object) :
@@ -812,7 +783,7 @@ class ResultSet(object) :
     def __iter__(self) :
         return iter(self.results)
         
-    def __str__(self) :
+    def __str__(self) :   # pragma: no cover
         return str(self.results)
         
         
@@ -1022,10 +993,10 @@ class EvalDefine(EvalNode) :
                 actions += self.notifyResult(result,node) 
             return actions
 
-    def node_str(self) :
+    def node_str(self) :  # pragma: no cover
         return str(Term(self.node.functor, *self.context))
         
-    def __str__(self) :
+    def __str__(self) :   # pragma: no cover
          extra = ['tc: %s' % self.to_complete]
          if self.is_cycle_child : extra.append('CC')
          if self.is_cycle_root : extra.append('CR')
@@ -1073,7 +1044,7 @@ class EvalNot(EvalNode) :
     def createCycle(self) :
         raise NegativeCycle(location=self.database.lineno(self.node.location))
         
-    def node_str(self) :
+    def node_str(self) :  # pragma: no cover
         return ''
         
 class Transformations(object) :
@@ -1117,15 +1088,15 @@ class EvalAnd(EvalNode) :
             if is_last :
                 # Notify self that this conjunct is complete. ('all_complete' will always be False)
                 all_complete, complete_actions = self.complete()
-                if False and node == NODE_TRUE :
-                    # TODO THERE IS A BUG HERE 
-                    # If there is only one node to complete (the new second conjunct) then
-                    #  we can clean up this node, but then we would lose the ground node of the first conjunct.
-                    # This is ok when it is deterministically true.  TODO make this always ok!
-                    # We can redirect the second conjunct to our parent.
-                    return (self.to_complete==1), [ self.createCall( self.node.children[1], context=result, parent=self.parent ) ]
-                else :
-                    return False, [ self.createCall( self.node.children[1], context=result, identifier=node ) ]
+                # if False and node == NODE_TRUE :
+                #     # TODO THERE IS A BUG HERE
+                #     # If there is only one node to complete (the new second conjunct) then
+                #     #  we can clean up this node, but then we would lose the ground node of the first conjunct.
+                #     # This is ok when it is deterministically true.  TODO make this always ok!
+                #     # We can redirect the second conjunct to our parent.
+                #     return (self.to_complete==1), [ self.createCall( self.node.children[1], context=result, parent=self.parent ) ]
+                # else :
+                return False, [ self.createCall( self.node.children[1], context=result, identifier=node ) ]
             else :
                 # Not the last result: default behaviour
                 return False, [ self.createCall( self.node.children[1], context=result, identifier=node ) ]
@@ -1150,10 +1121,10 @@ class EvalAnd(EvalNode) :
             assert(self.to_complete > 0)
             return False, []
     
-    def node_str(self) :
+    def node_str(self) :  # pragma: no cover
         return ''
     
-    def __str__(self) :
+    def __str__(self) :   # pragma: no cover
         return EvalNode.__str__(self) + ' tc: %s' % self.to_complete
     
 class EvalBuiltIn(EvalNode) : 
@@ -1187,7 +1158,7 @@ class BooleanBuiltIn(object) :
         else :
             return True, callback.notifyComplete()
             
-    def __str__(self) :
+    def __str__(self) :   # pragma: no cover
         return str(self.base_function)
         
 class SimpleBuiltIn(object) :
@@ -1207,7 +1178,7 @@ class SimpleBuiltIn(object) :
         else :
             return True, callback.notifyComplete()
             
-    def __str__(self) :
+    def __str__(self) :    # pragma: no cover
         return str(self.base_function)
         
 class SimpleProbabilisticBuiltIn(object) :
@@ -1227,7 +1198,7 @@ class SimpleProbabilisticBuiltIn(object) :
         else :
             return True, callback.notifyComplete()
             
-    def __str__(self) :
+    def __str__(self) :   # pragma: no cover
         return str(self.base_function)
 
 def builtin_call( term, args=(), engine=None, callback=None, **kwdargs ) :
