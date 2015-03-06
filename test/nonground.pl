@@ -1,5 +1,5 @@
 %Expected outcome:
-% ERROR NonGroundProbabilisticFact
+% ERROR NonGroundProbabilisticClause
 
 0.4::b(1).
 0.4::b(2).
