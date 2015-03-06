@@ -31,8 +31,8 @@ friend(4,2).
 
 
 %%% Evidence
-evidence(smokes(2),true).
-evidence(influences(4,2),false).
+evidence(smokes(2)).
+evidence(\+influences(4,2)).
 
 %%% Queries
 query(smokes(1)).
