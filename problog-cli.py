@@ -102,6 +102,10 @@ if __name__ == '__main__' :
     elif args.filenames[0] == 'info' :
         from problog.core import list_transformations
         list_transformations()
+    elif args.filenames[0] == 'unittest' :
+        import unittest
+        test_results = unittest.TextTestResult(sys.stderr, False, 1)
+        unittest.TestLoader().discover(os.path.dirname(__file__)).run(test_results)
     else :
         if args.knowledge == 'nnf' :
             knowledge = NNF
