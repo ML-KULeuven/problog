@@ -166,7 +166,7 @@ class ClauseDBEngine(GenericEngine) :
             # Could be builtin?
             clause_node = db._getBuiltIn(term.signature)
         if clause_node is None : 
-            if silent_fail :
+            if silent_fail or self.unknown == self.UNKNOWN_FAIL :
                 return gp, []
             else :
                 raise UnknownClause(term.signature, location=db.lineno(term.location))
