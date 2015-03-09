@@ -2,7 +2,7 @@
 
 from __future__ import print_function
 
-import os, sys, subprocess, traceback, logging
+import os, sys, subprocess, traceback, logging, stat
 
 from problog.program import PrologFile, ExtendedPrologFactory
 from problog.evaluator import SemiringSymbolic, SemiringLogProbability, Evaluator
@@ -50,7 +50,7 @@ def argparser() :
     class outputfile(str) : pass
     
     parser = argparse.ArgumentParser()
-    parser.add_argument('filenames', metavar='MODEL', nargs='+', type=inputfile)
+    parser.add_argument('filenames', metavar='MODEL', nargs='*', type=inputfile)
     parser.add_argument('--verbose', '-v', action='count', help='Verbose output')
     parser.add_argument('--knowledge', '-k', choices=('sdd','nnf'), default=None, help="Knowledge compilation tool.")
     parser.add_argument('--symbolic', action='store_true', help="Use symbolic evaluation.")
@@ -95,7 +95,19 @@ if __name__ == '__main__' :
     if args.faster_parser : parse_class = FastPrologParser
     
     if args.timeout : start_timer(args.timeout)
-    
+
+    if len(args.filenames) == 0:
+        mode = os.fstat(0).st_mode
+        if stat.S_ISFIFO(mode) or stat.S_ISREG(mode):
+             # stdin is piped or redirected
+            args.filenames = ['-']
+        else:
+             # stdin is terminal
+             # No interactive input, exit
+             print('ERROR: Expected a file or stream as input.\n', file=sys.stderr)
+             parser.print_help()
+             sys.exit(1)
+
     if args.filenames[0] == 'install' :
         from problog import setup
         setup.install()
