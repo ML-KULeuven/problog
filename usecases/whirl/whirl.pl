@@ -26,7 +26,9 @@
 
 :- load_external('whirl.py').
 
-P::similar(X,Y) :- call_external(similarity(X,Y), P).
+P::similar(X,Y) :-
+    call_external(similarity(X,Y), P),
+    P > 0.0.
 
 
 % FACTS
@@ -120,16 +122,16 @@ many(Template, Test) :-
     many_int_prob(L).
 
 
-% Movie that has many academy awards
-many_awards(M) :-
+% Movie that is currently playing and has many academy awards
+many_awards_alt(M) :-
     % many(Template, Test) as findall(Test, Template, L)
     findall(winner(M,C,Y), (academy_award(C),winner(_,C,Y)), L),
     many_int_prob(L).
 
 q5(M) :-
     listing(_,M,_),
-	%many((academy_award(Y),winner(_,C,Y)), winner(M1,C,Y)).
-	many_awards(M).
-query(q5(M)).
+    %many((academy_award(Y),winner(_,C,Y)), winner(M1,C,Y)).
+    many_awards_alt(M).
+%query(q5(M)).
 
 
