@@ -325,6 +325,12 @@ class Var(Term) :
     def isGround(self) :
         return False
         
+    def __hash__(self) :
+        return hash(self.name)
+        
+    def __eq__(self, other) :
+        return str(other) == str(self)
+        
 class Constant(Term) :
     """A constant. 
     
