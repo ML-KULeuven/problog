@@ -95,7 +95,10 @@ class SemiringLogProbability(SemiringProbability) :
         return math.log1p(-math.exp(a))
 
     def value(self, a) :
-        return math.log(float(a))
+        if float(a) < 1e-10 :
+            return self.zero()
+        else :
+            return math.log(float(a))
 
     def result(self, a) :
         return math.exp(a)
