@@ -66,6 +66,8 @@ from collections import defaultdict
 
 import math, sys
 
+from .util import OrderedSet
+
 class InstantiationError(Exception): pass
 
 def term2str(term) :
@@ -229,7 +231,7 @@ class Term(object) :
         return self.__is_ground
     
     def variables(self) :
-        variables = set()
+        variables = OrderedSet()
         for arg in self.args :
             variables |= arg.variables()
         return variables
