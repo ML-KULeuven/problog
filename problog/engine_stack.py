@@ -345,6 +345,10 @@ class StackBasedEngine(ClauseDBEngine) :
     def eval_call(engine, node_id, node, context, parent, transform=None, identifier=None, **kwdargs) :
         if node.defnode == -6 :   # Findall
             call_args = [ instantiate(arg, context, keepVars=True) for arg in node.args ]
+            try :
+                ev = extract_vars(*call_args[:-1])
+            except VariableUnification :
+                raise VariableUnification(location=kwdargs['database'].lineno(node.location))
         else :
             call_args = [ instantiate(arg, context) for arg in node.args ]
         if node.defnode == -5 : # \= builtin
@@ -361,6 +365,7 @@ class StackBasedEngine(ClauseDBEngine) :
             return [ complete( parent, identifier ) ]
             
         if transform is None : transform = Transformations()
+        
         if not is_ground(*call_args) :
             def result_transform(result) :
                 output = list(context)

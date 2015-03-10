@@ -935,6 +935,8 @@ def extract_vars(*args, **kwd) :
             counter[arg] += 1
         elif isinstance(arg,Term) :
             extract_vars(*arg.args, counter=counter)
+        else :
+           raise VariableUnification()
     return counter
 
 
