@@ -673,8 +673,8 @@ class LogicFormula(ProbLogObject) :
             if x < 0 : name = '\+ (' + name + ')'
             return name
         
-        active = [ q for n,q in self.queries() ]
-        active += [ q for n,q in self.evidence() ]
+        active = [ abs(q) for n,q in self.queries() ]
+        active += [ abs(q) for n,q in self.evidence() ]
         active = set(active)
         former = set([0])
         
