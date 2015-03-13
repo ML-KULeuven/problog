@@ -204,7 +204,8 @@ class ExtendedPrologFactory(PrologFactory):
 
 
     def build_probabilistic(self, operand1, operand2, location=None, **extra) :
-        if 'unaryop' in extra and extra['unaryop'] == '\\+':
+        if ( 'unaryop' in extra and extra['unaryop'] == '\\+' ) or operand2.is_negative() :
+            operand2 = abs(operand2)
             if not operand2.signature in self.neg_head_lits:
                 self.neg_head_lits[operand2.signature] = {
                     'c': operand2.arity,
