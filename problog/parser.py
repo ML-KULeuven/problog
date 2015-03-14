@@ -758,11 +758,20 @@ class Factory(object) :
     build_directive = build_unop        
                 
 if __name__ == '__main__' :
-    from parser import PrologParser
-        
     import sys
-    if sys.argv[1] == '--string' :
-        result = PrologParser(Factory()).parseString(sys.argv[2])
-    else :
-        result = PrologParser(Factory()).parseFile(sys.argv[1])
-    print(result)
+    for filename in sys.argv[1:] :
+        print (filename)
+        print ('------------------------------------')
+        from problog.program import ExtendedPrologFactory
+    
+        with open(filename) as f :
+            string = f.read()
+        
+        try :
+            parsed = PrologParser(ExtendedPrologFactory()).parseString(string)
+    
+            for s in parsed :
+                print (s)
+        except ParseError as e :
+            print ('ParseError:', e)
+        print ('====================================')

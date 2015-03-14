@@ -1,3 +1,5 @@
+from __future__ import print_function
+
 LINE_COMMENT = '%'
 BLOCK_COMMENT_START = '/*'
 BLOCK_COMMENT_END = '*/'
@@ -9,19 +11,18 @@ class ParseError(Exception) :
     
     def __init__(self, message, location) :
         Exception.__init__(self, '%s (at %s)' % (message,location))
-    
 
-class UnexpectedCharacter(Exception) :
+class UnexpectedCharacter(ParseError) :
     
     def __init__(self, string, position) :
         char = string[position]
-        pass
+        ParseError.__init__(self, "Unexpected character '%s" % char, position)
 
-class UnmatchedCharacter(Exception) :
+class UnmatchedCharacter(ParseError) :
     
     def __init__(self, string, position, length=1) :
-        char = string[position]
-        pass
+        char = string[position:position+length]
+        ParseError.__init__(self, "Unmatched character '%s'" % char, position)
 
 class Token(object) :
     
@@ -668,16 +669,6 @@ class SubExpr(object) :
     def is_special(self, special) :
         return False
         
-        
-    #def pop_operators(self) :
-        
-        
-        
-        
-        
-        
-            
-        
     def __repr__(self) :
         return '%s {%s}' % (self.parts, self.operator)
 
@@ -686,14 +677,13 @@ if __name__ == '__main__' :
     import sys
     for filename in sys.argv[1:] :
         print (filename)
-        from problog.program import PrologFactory
-    
-        with open(filename) as f :
-            string = f.read()
-    
-        parsed = PrologParser(PrologFactory()).parseString(string)
-    
-        for s in parsed :
-            print (s)
+        print ('------------------------------------')
+        from problog.program import ExtendedPrologFactory
+        try :
+            parsed = PrologParser(ExtendedPrologFactory()).parseFile(filename)
+            for s in parsed :
+                print (s)
+        except ParseError as e :
+            print ('ParseError:', e)
         print ('====================================')
     
