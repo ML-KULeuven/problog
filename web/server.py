@@ -69,12 +69,19 @@ if sys.version_info.major == 2 :
         return bytes(string)
     import urllib
     url_decode = urllib.unquote_plus
+    import hashlib
+    def compute_hash(model) :
+        return hashlib.md5(model).hexdigest() # Python 2
+    
 else :
     import http.server as BaseHTTPServer    
     import urllib.parse as urlparse
     def toBytes( string ) :
         return bytes(string, 'UTF-8')
     url_decode = urlparse.unquote_plus
+    import hashlib
+    def compute_hash(model) :
+        return hashlib.md5(toBytes(model)).hexdigest() # Python 3
 
 # Contains special URL paths. Initialize with @handle_url
 PATHS = {}
@@ -162,10 +169,8 @@ def run_problog_jsonp(model, callback):
     callback = callback[0]
 
     if CACHE_MODELS:
-      import hashlib
       try:
-          #inhash = hashlib.md5(model.decode('utf-8')).hexdigest()
-          inhash = hashlib.md5(model).hexdigest() # Python 2
+          inhash = compute_hash(model)
       except UnicodeDecodeError as e:
           logger.error('Unicode error catched: {}'.format(e))
           return 200, 'application/json', wrap_callback(callback, json.dumps({'SUCCESS':False,'err':'Cannot decode character in program: {}'.format(e)}))
