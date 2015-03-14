@@ -366,20 +366,20 @@ class StackBasedEngine(ClauseDBEngine) :
             
         if transform is None : transform = Transformations()
         
-        if not is_ground(*call_args) :
-            def result_transform(result) :
-                output = list(context)
-                actions = []
-                try :
-                    assert(len(result) == len(node.args))
-                    for call_arg, res_arg in zip(node.args,result) :
-                        unify( res_arg, call_arg, output)
-                    return tuple(output)
-                except UnifyError :
-                    pass
-            transform.addFunction(result_transform)
-        else :
-            transform.addConstant(context)
+        # if not is_ground(*call_args) :
+        def result_transform(result) :
+            output = list(context)
+            actions = []
+            try :
+                assert(len(result) == len(node.args))
+                for call_arg, res_arg in zip(node.args,result) :
+                    unify( res_arg, call_arg, output)
+                return tuple(output)
+            except UnifyError :
+                pass
+        transform.addFunction(result_transform)
+        # else :
+        #     transform.addConstant(context)
                 
         origin = '%s/%s' % (node.functor,len(node.args))
         kwdargs['call_origin'] = (origin,node.location)
@@ -403,21 +403,21 @@ class StackBasedEngine(ClauseDBEngine) :
                 unify( call_arg, head_arg, new_context)
                 #
             if transform is None : transform = Transformations()
-            if is_ground(*context) :
-                transform.addConstant(context)
-            else :
-                location = node.location
-                database = kwdargs['database']
-                node_args = node.args
-                head_vars = extract_vars(*node.args)
-                hv = [ i for i in range(0,node.varcount) if head_vars[i] > 1 ]
-                def result_transform(result) :
-                    for i in hv :
-                        if not is_ground(result[i]) :
-                            raise VariableUnification(location=database.lineno(location))
-                    output = [ instantiate(arg, result) for arg in node_args ]
-                    return tuple(output)
-                transform.addFunction(result_transform)
+            # if is_ground(*context) :
+            #     transform.addConstant(context)
+            # else :
+            location = node.location
+            database = kwdargs['database']
+            node_args = node.args
+            head_vars = extract_vars(*node.args)
+            hv = [ i for i in range(0,node.varcount) if head_vars[i] > 1 ]
+            def result_transform(result) :
+                for i in hv :
+                    if not is_ground(result[i]) :
+                        raise VariableUnification(location=database.lineno(location))
+                output = [ instantiate(arg, result) for arg in node_args ]
+                return tuple(output)
+            transform.addFunction(result_transform)
             return engine.eval( node.child, context=new_context, parent=parent, transform=transform, **kwdargs )
             # evalnode = EvalClause(pointer=engine.pointer, node_id=node_id, parent=parent, identifier=identifier, engine=engine, context=context, node=node, **kwdargs)
             # engine.add_record( evalnode )
@@ -827,7 +827,7 @@ class EvalDefine(EvalNode) :
                 return True, self.notifyResult(result, node, is_last=is_last)
             else :
                 return False, self.notifyResult(result, node, is_last=is_last)
-        else :
+        else :    
             if self.isOnCycle() or self.isCycleParent() :
                 assert(self.results.collapsed)
                 res = (tuple(result))
@@ -873,6 +873,7 @@ class EvalDefine(EvalNode) :
                         a = False
                     return a, actions
             else :
+#                print ('RESULT', self.node, result)    
                 assert(not self.results.collapsed)
                 res = (tuple(result))
                 self.results[res] = node
@@ -1059,22 +1060,25 @@ class Transformations(object) :
         self.constant = None
     
     def addConstant( self, constant ) :
-        if self.constant is None :
-            self.constant = self(constant)
-            self.functions = []
+        pass
+        # if self.constant is None :
+        #     self.constant = self(constant)
+        #     self.functions = []
             
     def addFunction( self, function ) :
-        if self.constant is None :
+        # print ('add', function, self.constant)
+        # if self.constant is None :
             self.functions.append(function)
             
     def __call__(self, result) :
-        if self.constant != None :
-            return self.constant
-        else :
+        # if self.constant != None :
+        #     return self.constant
+        # else :
             for f in reversed(self.functions) :
                 if result is None : return None
                 result = f(result)
             return result
+            
         
 class EvalAnd(EvalNode) :
     
