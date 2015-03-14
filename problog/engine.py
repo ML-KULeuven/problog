@@ -118,8 +118,19 @@ class ClauseDBEngine(GenericEngine) :
     def query(self, db, term, **kwdargs) :
         """Perform a non-probabilistic query."""
         gp = LogicFormula()
+        if term.is_negative() :
+            term = -term
+            negative = True
+        else :
+            negative = False
         gp, result = self._ground(db, term, gp, **kwdargs)
-        return [ x for x,y in result ]
+        if negative :
+            if not result :
+                return [ term ]
+            else :
+                return []
+        else :
+            return [ x for x,y in result ]
     
     def ground(self, db, term, gp=None, label=None, **kwdargs) :
         """Ground a query on the given database.
