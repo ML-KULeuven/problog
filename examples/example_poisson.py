@@ -1,13 +1,14 @@
-
+from __future__ import print_function
 import sys, os
 
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..' ) )
 
-from problog_cli import main as problog_main
-
 from problog.evaluator import Semiring
 from problog.logic import Constant, Term
+from problog.nnf_formula import NNF
+from problog.program import PrologFile
+from problog.core import process_error
 
 
 def is_float(a) :
@@ -98,15 +99,37 @@ class SemiringWithPoisson(Semiring) :
             elif is_poisson(a) :
                 return Term('poisson', float(a.args[0])*float(Z))
         raise RuntimeError("Can't compute this: '%s / %s'" % (a,b) )
+        
+    def result(self, x) :
+        return x
                 
+
+def print_result( d, output, precision=8 ) :    
+    success, d = d
+    if success :
+        if not d : return 0 # no queries
+        l = max( len(k) for k in d )
+        f_flt = '\t%' + str(l) + 's : %.' + str(precision) + 'g' 
+        f_str = '\t%' + str(l) + 's : %s' 
+        for it in sorted(d.items()) :
+            if type(it[1]) == float :
+                print(f_flt % it, file=output)
+            else :
+                print(f_str % it, file=output)
+        return 0
+    else :
+        print (d, file=output)
+        return 1
 
 def run(filename) :
     
-    semiring = SemiringWithPoisson()
-    
-    problog_main( filename, semiring=semiring )
-    
-
+    try : 
+        semiring = SemiringWithPoisson()
+        formula = NNF.createFrom(PrologFile(filename))
+        result = formula.evaluate(semiring=semiring)
+        return True, result
+    except Exception as err :
+        return False, process_error(err)
 
 if __name__ == '__main__' :
     if len(sys.argv) <= 1 :
@@ -114,4 +137,4 @@ if __name__ == '__main__' :
     else :
         filename = sys.argv[1]
     
-    run(filename)
+    print_result(run(filename), sys.stdout)
