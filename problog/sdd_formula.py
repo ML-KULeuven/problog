@@ -311,5 +311,3 @@ class SDDEvaluator(Evaluator) :
     def setWeight(self, index, pos, neg) :
         self.__probs[index] = (pos, neg)
 
-    
-from .sdd_formula_alt import SDDtp as SDD
