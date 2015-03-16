@@ -312,3 +312,4 @@ class SDDEvaluator(Evaluator) :
         self.__probs[index] = (pos, neg)
 
     
+from .sdd_formula_alt import SDDtp as SDD
