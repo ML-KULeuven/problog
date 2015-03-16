@@ -84,10 +84,10 @@ class SDDtp(LogicFormula, Evaluatable) :
         self.sdd_nodes[index] = node
         
     def get_sdd_updated(self, key) :
-        # TODO if key < 0 : get from previous strata
         assert(key != 0)
         if key < 0 :
-            return True
+            # TODO don't always return 1
+            return 1
         else :
             index = key-1
             if self.sdd_updates is None :
@@ -111,9 +111,9 @@ class SDDtp(LogicFormula, Evaluatable) :
     def _sdd_changed(self, old_sdd, new_sdd) :
         if old_sdd == new_sdd :
         #if sdd.sdd_node_is_true(self._sdd_equiv( old_sdd, new_sdd )) : 
-            return False
+            return 0
         else :
-            return True
+            return 1
         
     def update_sdd(self, index) :
         """Recompute SDD for nodes."""
@@ -122,7 +122,7 @@ class SDDtp(LogicFormula, Evaluatable) :
         return result
         
     def at_fixpoint(self) :
-        return len(self) == 0 or (not self.sdd_updates is None and not ( True in self.sdd_updates ))
+        return len(self) == 0 or (not self.sdd_updates is None and not self._list_updated(self.sdd_updates) )
         
     def build_sdd(self) :
         stop = False
@@ -138,6 +138,12 @@ class SDDtp(LogicFormula, Evaluatable) :
             else :
                 self.sdd_nodes_prv = self.sdd_nodes[:]
                 self.sdd_updates = [True] * len(self)
+                
+    def _list_updated(self, lst) :
+        for l in lst :
+            if l > 0 : 
+                return True
+        return False
     
     def _update_sdd(self, key) :
         """Recompute SDD for nodes."""
@@ -149,17 +155,17 @@ class SDDtp(LogicFormula, Evaluatable) :
             if old_sdd is None :
                 new_sdd = sdd.sdd_manager_literal( key, self.sdd_manager )
                 self.set_sdd_node( key, new_sdd )
-                return True
+                return 2
             else :
-                return False
+                return 0
         else :
             children = [ self.get_sdd_node(c) for c in node.children ]
             child_updates = [ self.get_sdd_updated(c) for c in node.children ]
             if type(node).__name__ == 'conj' :
                 if None in children :
                     # At least one of the children is not available yet.
-                    return False
-                elif True in child_updates :
+                    return 0
+                elif self._list_updated(child_updates) :
                     # At least one of the children has been modified in the previous iteration.
                     # Q? => can we be smarter if we know that the child has been added instead of been modified
                     new_sdd = children[0]
@@ -167,24 +173,34 @@ class SDDtp(LogicFormula, Evaluatable) :
                         new_sdd = sdd.sdd_conjoin( new_sdd, c, self.sdd_manager )
                     self.set_sdd_node( key, new_sdd )
                     if old_sdd is None :
-                        return True
+                        return 2
                     else :
                         return self._sdd_changed(old_sdd, new_sdd)
                 else :
                     # None of the children have been modified.
-                    return False
+                    return 0
             elif type(node).__name__ == 'disj' :
-                if True in child_updates :
+                if self._list_updated(child_updates) :
                     # One of the children was updated
                     children = list(filter(None, children)) # Eliminate undefined nodes from list of children
-                    new_sdd = children[0]
-                    for c in children[1:] :
-                        new_sdd = sdd.sdd_disjoin( new_sdd, c, self.sdd_manager )
+                    if old_sdd is not None and not 1 in child_updates  :
+                        # Only new nodes
+                        new_sdd = old_sdd
+                        for u, c in zip(child_updates,children) :
+                            if u == 2 :
+                                new_sdd = sdd.sdd_disjoin( new_sdd, c, self.sdd_manager )
+                    else :                        
+                        new_sdd = children[0]
+                        for c in children[1:] :
+                            new_sdd = sdd.sdd_disjoin( new_sdd, c, self.sdd_manager )
                     self.set_sdd_node( key, new_sdd )
-                    return self._sdd_changed(old_sdd, new_sdd)
+                    if old_sdd is None :
+                        return 2 
+                    else :
+                        return self._sdd_changed(old_sdd, new_sdd)
                 else :
                     # None of the children was updated
-                    return False
+                    return 0
     
     ##################################################################################
     ####                         GET SDD SPECIFIC INFO                            ####
@@ -241,6 +257,6 @@ def buildSDD( source, destination ) :
         
         for c in source.constraints() :
             destination.addConstraint(c)
-    destination.build_sdd()
+        destination.build_sdd()
     return destination
     
