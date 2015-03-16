@@ -81,6 +81,10 @@ class SDDtp(LogicFormula, Evaluatable) :
         if self.sdd_nodes is None :
             self.sdd_nodes = [None] * len(self)
             self.sdd_updates = [False] * len(self)
+        sdd.sdd_ref( node, self.sdd_manager )
+        old_node = self.sdd_nodes[index]
+        if old_node is not None :
+            sdd.sdd_deref( old_node, self.sdd_manager )
         self.sdd_nodes[index] = node
         
     def get_sdd_updated(self, key) :
@@ -101,12 +105,6 @@ class SDDtp(LogicFormula, Evaluatable) :
             self.sdd_nodes = [None] * len(self)
             self.sdd_updates = [False] * len(self)
         self.sdd_updates[index] = value
-    
-    def _sdd_equiv( self, n1, n2 ) :
-        m = self.sdd_manager
-        i1 = sdd.sdd_disjoin( sdd.sdd_negate(n1,m), n2, m )
-        i2 = sdd.sdd_disjoin( sdd.sdd_negate(n2,m), n1, m )
-        return sdd.sdd_conjoin( i1, i2, m)
     
     def _sdd_changed(self, old_sdd, new_sdd) :
         if old_sdd == new_sdd :
