@@ -233,7 +233,10 @@ class Term(object) :
     def variables(self) :
         variables = OrderedSet()
         for arg in self.args :
-            variables |= arg.variables()
+            if type(arg) == int or arg is None :
+                variables.add(arg)
+            else :
+                variables |= arg.variables()
         return variables
         
     def __eq__(self, other) :
