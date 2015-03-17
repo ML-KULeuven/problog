@@ -15,9 +15,10 @@
 %% inclusion-exclusion principle).
 %%
 %% Search strategy:
-%% Problog does not use a find-best-substitution approach, whereas the WHIRL
-%% system uses an A* search strategy. The default reasoning technique in
-%% Problog finds all proofs.
+%% Problog does not use a find-best-substitution approach, whereas the WHIRL %
+%% system uses an A* search strategy based on an inverse TF-IDF index. The
+%% default reasoning technique in Problog finds all proofs (but the inverse
+%% index can be added in the Python part).
 %%
 %% Author:
 %% - Wannes Meert
@@ -123,15 +124,11 @@ many(Template, Test) :-
 
 
 % Movie that is currently playing and has many academy awards
-many_awards_alt(M) :-
+q5(M) :-
+    listing(_,M,_),
     % many(Template, Test) as findall(Test, Template, L)
     findall(winner(M,C,Y), (academy_award(C),winner(_,C,Y)), L),
     many_int_prob(L).
-
-q5(M) :-
-    listing(_,M,_),
-    %many((academy_award(Y),winner(_,C,Y)), winner(M1,C,Y)).
-    many_awards_alt(M).
 %query(q5(M)).
 
 
