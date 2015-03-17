@@ -1,0 +1,43 @@
+net 
+{ 
+}
+node Burglary 
+{
+  states = ( "True" "False" );
+}
+node Earthquake 
+{
+  states = ( "True" "False" );
+}
+node Alarm 
+{
+  states = ( "True" "False" );
+}
+node JohnCalls 
+{
+  states = ( "True" "False" );
+}
+node MaryCalls 
+{
+  states = ( "True" "False" );
+}
+potential ( Burglary ) 
+{
+  data = ( 0.01 0.99 );
+}
+potential ( Earthquake ) 
+{
+  data = ( 0.02 0.98 );
+}
+potential ( Alarm | Burglary Earthquake ) 
+{
+  data = (((0.95 0.05)(0.94 0.06))((0.29 0.71)(0.001 0.999))) ;
+}
+potential ( JohnCalls | Alarm ) 
+{
+  data = ((0.9 0.1)(0.05 0.95)) ;
+}
+potential ( MaryCalls | Alarm ) 
+{
+  data = ((0.7 0.3)(0.01 0.99)) ;
+}

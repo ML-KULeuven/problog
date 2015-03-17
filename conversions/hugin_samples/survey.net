@@ -1,0 +1,51 @@
+net 
+{ 
+}
+node A 
+{
+  states = ( "young" "adult" "old" );
+}
+node S 
+{
+  states = ( "M" "F" );
+}
+node E 
+{
+  states = ( "high" "uni" );
+}
+node O 
+{
+  states = ( "emp" "self" );
+}
+node R 
+{
+  states = ( "small" "big" );
+}
+node T 
+{
+  states = ( "car" "train" "other" );
+}
+potential ( A ) 
+{
+  data = ( 0.3 0.5 0.2 );
+}
+potential ( S ) 
+{
+  data = ( 0.6 0.4 );
+}
+potential ( E | A S ) 
+{
+  data = (((0.75 0.25)(0.64 0.36))((0.72 0.28)(0.7 0.3))((0.88 0.12)(0.9 0.1))) ;
+}
+potential ( O | E ) 
+{
+  data = ((0.96 0.04)(0.92 0.08)) ;
+}
+potential ( R | E ) 
+{
+  data = ((0.25 0.75)(0.2 0.8)) ;
+}
+potential ( T | O R ) 
+{
+  data = (((0.48 0.42 0.10)(0.58 0.24 0.18))((0.56 0.36 0.08)(0.70 0.21 0.09))) ;
+}

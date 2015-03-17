@@ -1,0 +1,611 @@
+net 
+{ 
+}
+node AppOK 
+{
+  states = ( "Correct" "Incorrect_Corrupt" );
+}
+node DataFile 
+{
+  states = ( "Correct" "Incorrect_Corrupt" );
+}
+node AppData 
+{
+  states = ( "Correct" "Incorrect_or_corrupt" );
+}
+node DskLocal 
+{
+  states = ( "Greater_than_2_Mb" "Less_than_2_Mb" );
+}
+node PrtSpool 
+{
+  states = ( "Enabled" "Disabled" );
+}
+node PrtOn 
+{
+  states = ( "Yes" "No" );
+}
+node PrtPaper 
+{
+  states = ( "Has_Paper" "No_Paper" );
+}
+node NetPrint 
+{
+  states = ( "No__Local_printer_" "Yes__Network_printer_" );
+}
+node PrtDriver 
+{
+  states = ( "Yes" "No" );
+}
+node PrtThread 
+{
+  states = ( "OK" "Corrupt_Buggy" );
+}
+node EMFOK 
+{
+  states = ( "Yes" "No" );
+}
+node GDIIN 
+{
+  states = ( "Yes" "No" );
+}
+node DrvSet 
+{
+  states = ( "Correct" "Incorrect" );
+}
+node DrvOK 
+{
+  states = ( "Reinstalled" "Corrupt" );
+}
+node GDIOUT 
+{
+  states = ( "Yes" "No" );
+}
+node PrtSel 
+{
+  states = ( "Yes" "No" );
+}
+node PrtDataOut 
+{
+  states = ( "Yes" "No" );
+}
+node PrtPath 
+{
+  states = ( "Correct" "Incorrect" );
+}
+node NtwrkCnfg 
+{
+  states = ( "Correct" "Incorrect" );
+}
+node PTROFFLINE 
+{
+  states = ( "Online" "Offline" );
+}
+node NetOK 
+{
+  states = ( "Yes" "No" );
+}
+node PrtCbl 
+{
+  states = ( "Connected" "Loose" );
+}
+node PrtPort 
+{
+  states = ( "Yes" "No" );
+}
+node CblPrtHrdwrOK 
+{
+  states = ( "Operational" "Not_Operational" );
+}
+node LclOK 
+{
+  states = ( "Yes" "No" );
+}
+node DSApplctn 
+{
+  states = ( "DOS" "Windows" );
+}
+node PrtMpTPth 
+{
+  states = ( "Correct" "Incorrect" );
+}
+node DS_NTOK 
+{
+  states = ( "Yes" "No" );
+}
+node DS_LCLOK 
+{
+  states = ( "Yes" "No" );
+}
+node PC2PRT 
+{
+  states = ( "Yes" "No" );
+}
+node PrtMem 
+{
+  states = ( "Greater_than_2_Mb" "Less_than_2Mb" );
+}
+node PrtTimeOut 
+{
+  states = ( "Long_Enough" "Too_Short" );
+}
+node FllCrrptdBffr 
+{
+  states = ( "Intact__not_Corrupt_" "Full_or_Corrupt" );
+}
+node TnrSpply 
+{
+  states = ( "Adequate" "Low" );
+}
+node PrtData 
+{
+  states = ( "Yes" "No" );
+}
+node Problem1 
+{
+  states = ( "Normal_Output" "No_Output" );
+}
+node AppDtGnTm 
+{
+  states = ( "Fast_Enough" "Too_Long" );
+}
+node PrntPrcssTm 
+{
+  states = ( "Fast_Enough" "Too_Long" );
+}
+node DeskPrntSpd 
+{
+  states = ( "OK" "Too_Slow" );
+}
+node PgOrnttnOK 
+{
+  states = ( "Correct" "Incorrect" );
+}
+node PrntngArOK 
+{
+  states = ( "Correct" "Incorrect" );
+}
+node ScrnFntNtPrntrFnt 
+{
+  states = ( "Yes" "No" );
+}
+node CmpltPgPrntd 
+{
+  states = ( "Yes" "No" );
+}
+node GrphcsRltdDrvrSttngs 
+{
+  states = ( "Correct" "Incorrect" );
+}
+node EPSGrphc 
+{
+  states = ( "No____TIF___WMF___BMP_" "Yes____EPS_" );
+}
+node NnPSGrphc 
+{
+  states = ( "Yes" "No" );
+}
+node PrtPScript 
+{
+  states = ( "Yes" "No" );
+}
+node PSGRAPHIC 
+{
+  states = ( "Yes" "No" );
+}
+node Problem4 
+{
+  states = ( "No" "Yes" );
+}
+node TrTypFnts 
+{
+  states = ( "Yes" "No" );
+}
+node FntInstlltn 
+{
+  states = ( "Verified" "Faulty" );
+}
+node PrntrAccptsTrtyp 
+{
+  states = ( "Yes" "No" );
+}
+node TTOK 
+{
+  states = ( "Yes" "No" );
+}
+node NnTTOK 
+{
+  states = ( "Yes" "No" );
+}
+node Problem5 
+{
+  states = ( "No" "Yes" );
+}
+node LclGrbld 
+{
+  states = ( "Yes" "No" );
+}
+node NtGrbld 
+{
+  states = ( "Yes" "No" );
+}
+node GrbldOtpt 
+{
+  states = ( "No" "Yes" );
+}
+node HrglssDrtnAftrPrnt 
+{
+  states = ( "Fast_Enough" "Too_Long" );
+}
+node REPEAT 
+{
+  states = ( "Yes__Always_the_Same_" "No__Different_Each_Time_" );
+}
+node AvlblVrtlMmry 
+{
+  states = ( "Adequate____1Mb_" "Inadequate____1_Mb_" );
+}
+node PSERRMEM 
+{
+  states = ( "No_Error" "Low_Memory" );
+}
+node TstpsTxt 
+{
+  states = ( "x_1_Mb_Available_VM" "x_1_Mb_Available_VM2" );
+}
+node GrbldPS 
+{
+  states = ( "No" "Yes" );
+}
+node IncmpltPS 
+{
+  states = ( "Yes" "No" );
+}
+node PrtFile 
+{
+  states = ( "Yes" "No" );
+}
+node PrtIcon 
+{
+  states = ( "Normal" "Grayed_Out" );
+}
+node Problem6 
+{
+  states = ( "No" "Yes" );
+}
+node Problem3 
+{
+  states = ( "No" "Yes" );
+}
+node PrtQueue 
+{
+  states = ( "Short" "Long" );
+}
+node NtSpd 
+{
+  states = ( "OK" "Slow" );
+}
+node Problem2 
+{
+  states = ( "OK" "Too_Long" );
+}
+node PrtStatPaper 
+{
+  states = ( "No_Error" "Jam__Out__Bin_Full" );
+}
+node PrtStatToner 
+{
+  states = ( "No_Error" "Low__None" );
+}
+node PrtStatMem 
+{
+  states = ( "No_Error" "Out_of_Memory" );
+}
+node PrtStatOff 
+{
+  states = ( "No_Error" "OFFLINE__OFF" );
+}
+potential ( AppOK ) 
+{
+  data = ( 0.995 0.005 );
+}
+potential ( DataFile ) 
+{
+  data = ( 0.995 0.005 );
+}
+potential ( AppData | AppOK DataFile ) 
+{
+  data = (((0.9999 0.0001)(0.0 1.0))((0.0 1.0)(0.5 0.5))) ;
+}
+potential ( DskLocal ) 
+{
+  data = ( 0.97 0.03 );
+}
+potential ( PrtSpool ) 
+{
+  data = ( 0.95 0.05 );
+}
+potential ( PrtOn ) 
+{
+  data = ( 0.9 0.1 );
+}
+potential ( PrtPaper ) 
+{
+  data = ( 0.98 0.02 );
+}
+potential ( NetPrint ) 
+{
+  data = ( 0.8 0.2 );
+}
+potential ( PrtDriver ) 
+{
+  data = ( 0.9 0.1 );
+}
+potential ( PrtThread ) 
+{
+  data = ( 0.9999 0.0001 );
+}
+potential ( EMFOK | AppData DskLocal PrtThread ) 
+{
+  data = ((((0.99 0.01)(0.05 0.95))((0.0 1.0)(0.5 0.5)))(((0.1 0.9)(0.5 0.5))((0.5 0.5)(0.5 0.5)))) ;
+}
+potential ( GDIIN | AppData PrtSpool EMFOK ) 
+{
+  data = ((((1.0 0.0)(0.0 1.0))((1.0 0.0)(1.0 0.0)))(((0.0 1.0)(0.0 1.0))((0.0 1.0)(0.0 1.0)))) ;
+}
+potential ( DrvSet ) 
+{
+  data = ( 0.99 0.01 );
+}
+potential ( DrvOK ) 
+{
+  data = ( 0.99 0.01 );
+}
+potential ( GDIOUT | PrtDriver GDIIN DrvSet DrvOK ) 
+{
+  data = (((((0.99 0.01)(0.2 0.8))((0.9 0.1)(0.5 0.5)))(((0.1 0.9)(0.5 0.5))((0.5 0.5)(0.5 0.5))))((((0.1 0.9)(0.5 0.5))((0.5 0.5)(0.5 0.5)))(((0.5 0.5)(0.5 0.5))((0.5 0.5)(0.5 0.5))))) ;
+}
+potential ( PrtSel ) 
+{
+  data = ( 0.99 0.01 );
+}
+potential ( PrtDataOut | GDIOUT PrtSel ) 
+{
+  data = (((0.99 0.01)(0.0 1.0))((0.0 1.0)(0.5 0.5))) ;
+}
+potential ( PrtPath ) 
+{
+  data = ( 0.97 0.03 );
+}
+potential ( NtwrkCnfg ) 
+{
+  data = ( 0.98 0.02 );
+}
+potential ( PTROFFLINE ) 
+{
+  data = ( 0.7 0.3 );
+}
+potential ( NetOK | PrtPath NtwrkCnfg PTROFFLINE ) 
+{
+  data = ((((0.99 0.01)(0.0 1.0))((0.1 0.9)(0.5 0.5)))(((0.0 1.0)(0.5 0.5))((0.5 0.5)(0.5 0.5)))) ;
+}
+potential ( PrtCbl ) 
+{
+  data = ( 0.98 0.02 );
+}
+potential ( PrtPort ) 
+{
+  data = ( 0.99 0.01 );
+}
+potential ( CblPrtHrdwrOK ) 
+{
+  data = ( 0.99 0.01 );
+}
+potential ( LclOK | PrtCbl PrtPort CblPrtHrdwrOK ) 
+{
+  data = ((((0.999 0.001)(0.01 0.99))((0.0 1.0)(0.5 0.5)))(((0.0 1.0)(0.5 0.5))((0.5 0.5)(0.5 0.5)))) ;
+}
+potential ( DSApplctn ) 
+{
+  data = ( 0.15 0.85 );
+}
+potential ( PrtMpTPth ) 
+{
+  data = ( 0.8 0.2 );
+}
+potential ( DS_NTOK | AppData PrtPath PrtMpTPth NtwrkCnfg PTROFFLINE ) 
+{
+  data = ((((((0.99 0.01)(0.0 1.0))((0.1 0.9)(0.5 0.5)))(((0.0 1.0)(0.5 0.5))((0.5 0.5)(0.5 0.5))))((((0.0 1.0)(0.5 0.5))((0.5 0.5)(0.5 0.5)))(((0.5 0.5)(0.5 0.5))((0.5 0.5)(0.5 0.5)))))(((((0.2 0.8)(0.5 0.5))((0.5 0.5)(0.5 0.5)))(((0.5 0.5)(0.5 0.5))((0.5 0.5)(0.5 0.5))))((((0.5 0.5)(0.5 0.5))((0.5 0.5)(0.5 0.5)))(((0.5 0.5)(0.5 0.5))((0.5 0.5)(0.5 0.5)))))) ;
+}
+potential ( DS_LCLOK | AppData PrtCbl PrtPort CblPrtHrdwrOK ) 
+{
+  data = (((((1.0 0.0)(0.1 0.9))((0.0 1.0)(0.5 0.5)))(((0.0 1.0)(0.5 0.5))((0.5 0.5)(0.5 0.5))))((((0.1 0.9)(0.5 0.5))((0.5 0.5)(0.5 0.5)))(((0.5 0.5)(0.5 0.5))((0.5 0.5)(0.5 0.5))))) ;
+}
+potential ( PC2PRT | NetPrint PrtDataOut NetOK LclOK DSApplctn DS_NTOK DS_LCLOK ) 
+{
+  data = ((((((((1.0 0.0)(0.0 1.0))((1.0 0.0)(0.0 1.0)))(((1.0 0.0)(1.0 0.0))((1.0 0.0)(1.0 0.0))))((((1.0 0.0)(0.0 1.0))((1.0 0.0)(0.0 1.0)))(((0.0 1.0)(0.0 1.0))((0.0 1.0)(0.0 1.0)))))(((((1.0 0.0)(0.0 1.0))((1.0 0.0)(0.0 1.0)))(((1.0 0.0)(1.0 0.0))((1.0 0.0)(1.0 0.0))))((((1.0 0.0)(0.0 1.0))((1.0 0.0)(0.0 1.0)))(((0.0 1.0)(0.0 1.0))((0.0 1.0)(0.0 1.0))))))((((((1.0 0.0)(0.0 1.0))((1.0 0.0)(0.0 1.0)))(((0.0 1.0)(0.0 1.0))((0.0 1.0)(0.0 1.0))))((((1.0 0.0)(0.0 1.0))((1.0 0.0)(0.0 1.0)))(((0.0 1.0)(0.0 1.0))((0.0 1.0)(0.0 1.0)))))(((((1.0 0.0)(0.0 1.0))((1.0 0.0)(0.0 1.0)))(((0.0 1.0)(0.0 1.0))((0.0 1.0)(0.0 1.0))))((((1.0 0.0)(0.0 1.0))((1.0 0.0)(0.0 1.0)))(((0.0 1.0)(0.0 1.0))((0.0 1.0)(0.0 1.0)))))))(((((((1.0 0.0)(1.0 0.0))((0.0 1.0)(0.0 1.0)))(((1.0 0.0)(1.0 0.0))((1.0 0.0)(1.0 0.0))))((((1.0 0.0)(1.0 0.0))((0.0 1.0)(0.0 1.0)))(((1.0 0.0)(1.0 0.0))((1.0 0.0)(1.0 0.0)))))(((((1.0 0.0)(1.0 0.0))((0.0 1.0)(0.0 1.0)))(((0.0 1.0)(0.0 1.0))((0.0 1.0)(0.0 1.0))))((((1.0 0.0)(1.0 0.0))((0.0 1.0)(0.0 1.0)))(((0.0 1.0)(0.0 1.0))((0.0 1.0)(0.0 1.0))))))((((((1.0 0.0)(1.0 0.0))((0.0 1.0)(0.0 1.0)))(((0.0 1.0)(0.0 1.0))((0.0 1.0)(0.0 1.0))))((((1.0 0.0)(1.0 0.0))((0.0 1.0)(0.0 1.0)))(((0.0 1.0)(0.0 1.0))((0.0 1.0)(0.0 1.0)))))(((((1.0 0.0)(1.0 0.0))((0.0 1.0)(0.0 1.0)))(((0.0 1.0)(0.0 1.0))((0.0 1.0)(0.0 1.0))))((((1.0 0.0)(1.0 0.0))((0.0 1.0)(0.0 1.0)))(((0.0 1.0)(0.0 1.0))((0.0 1.0)(0.0 1.0)))))))) ;
+}
+potential ( PrtMem ) 
+{
+  data = ( 0.95 0.05 );
+}
+potential ( PrtTimeOut ) 
+{
+  data = ( 0.94 0.06 );
+}
+potential ( FllCrrptdBffr ) 
+{
+  data = ( 0.85 0.15 );
+}
+potential ( TnrSpply ) 
+{
+  data = ( 0.995 0.005 );
+}
+potential ( PrtData | PrtOn PrtPaper PC2PRT PrtMem PrtTimeOut FllCrrptdBffr TnrSpply ) 
+{
+  data = ((((((((0.99 0.01)(0.01 0.99))((0.02 0.98)(0.5 0.5)))(((0.0 1.0)(0.5 0.5))((0.5 0.5)(0.5 0.5))))((((0.1 0.9)(0.5 0.5))((0.5 0.5)(0.5 0.5)))(((0.5 0.5)(0.5 0.5))((0.5 0.5)(0.5 0.5)))))(((((0.0 1.0)(0.5 0.5))((0.5 0.5)(0.5 0.5)))(((0.5 0.5)(0.5 0.5))((0.5 0.5)(0.5 0.5))))((((0.5 0.5)(0.5 0.5))((0.5 0.5)(0.5 0.5)))(((0.5 0.5)(0.5 0.5))((0.5 0.5)(0.5 0.5))))))((((((0.0 1.0)(0.5 0.5))((0.5 0.5)(0.5 0.5)))(((0.5 0.5)(0.5 0.5))((0.5 0.5)(0.5 0.5))))((((0.5 0.5)(0.5 0.5))((0.5 0.5)(0.5 0.5)))(((0.5 0.5)(0.5 0.5))((0.5 0.5)(0.5 0.5)))))(((((0.5 0.5)(0.5 0.5))((0.5 0.5)(0.5 0.5)))(((0.5 0.5)(0.5 0.5))((0.5 0.5)(0.5 0.5))))((((0.5 0.5)(0.5 0.5))((0.5 0.5)(0.5 0.5)))(((0.5 0.5)(0.5 0.5))((0.5 0.5)(0.5 0.5)))))))(((((((0.0 1.0)(0.5 0.5))((0.5 0.5)(0.5 0.5)))(((0.5 0.5)(0.5 0.5))((0.5 0.5)(0.5 0.5))))((((0.5 0.5)(0.5 0.5))((0.5 0.5)(0.5 0.5)))(((0.5 0.5)(0.5 0.5))((0.5 0.5)(0.5 0.5)))))(((((0.5 0.5)(0.5 0.5))((0.5 0.5)(0.5 0.5)))(((0.5 0.5)(0.5 0.5))((0.5 0.5)(0.5 0.5))))((((0.5 0.5)(0.5 0.5))((0.5 0.5)(0.5 0.5)))(((0.5 0.5)(0.5 0.5))((0.5 0.5)(0.5 0.5))))))((((((0.5 0.5)(0.5 0.5))((0.5 0.5)(0.5 0.5)))(((0.5 0.5)(0.5 0.5))((0.5 0.5)(0.5 0.5))))((((0.5 0.5)(0.5 0.5))((0.5 0.5)(0.5 0.5)))(((0.5 0.5)(0.5 0.5))((0.5 0.5)(0.5 0.5)))))(((((0.5 0.5)(0.5 0.5))((0.5 0.5)(0.5 0.5)))(((0.5 0.5)(0.5 0.5))((0.5 0.5)(0.5 0.5))))((((0.5 0.5)(0.5 0.5))((0.5 0.5)(0.5 0.5)))(((0.5 0.5)(0.5 0.5))((0.5 0.5)(0.5 0.5)))))))) ;
+}
+potential ( Problem1 | PrtData ) 
+{
+  data = ((1.0 0.0)(0.0 1.0)) ;
+}
+potential ( AppDtGnTm | PrtSpool ) 
+{
+  data = ((1.0 0.0)(0.99000001 0.00999999)) ;
+}
+potential ( PrntPrcssTm | PrtSpool ) 
+{
+  data = ((0.99000001 0.00999999)(1.0 0.0)) ;
+}
+potential ( DeskPrntSpd | PrtMem AppDtGnTm PrntPrcssTm ) 
+{
+  data = ((((0.99900001 0.00099999)(0.00099999 0.99900001))((0.00099999 0.99900001)(0.5 0.5)))(((0.25 0.75)(0.5 0.5))((0.5 0.5)(0.5 0.5)))) ;
+}
+potential ( PgOrnttnOK ) 
+{
+  data = ( 0.95 0.05 );
+}
+potential ( PrntngArOK ) 
+{
+  data = ( 0.98 0.02 );
+}
+potential ( ScrnFntNtPrntrFnt ) 
+{
+  data = ( 0.95 0.05 );
+}
+potential ( CmpltPgPrntd | PrtMem PgOrnttnOK PrntngArOK ) 
+{
+  data = ((((0.99 0.01)(0.1 0.9))((0.00999999 0.99000001)(0.5 0.5)))(((0.3 0.7)(0.5 0.5))((0.5 0.5)(0.5 0.5)))) ;
+}
+potential ( GrphcsRltdDrvrSttngs ) 
+{
+  data = ( 0.95 0.05 );
+}
+potential ( EPSGrphc ) 
+{
+  data = ( 0.99 0.01 );
+}
+potential ( NnPSGrphc | PrtMem GrphcsRltdDrvrSttngs EPSGrphc ) 
+{
+  data = ((((0.999 0.001)(0.0 1.0))((0.1 0.9)(0.5 0.5)))(((0.25 0.75)(0.5 0.5))((0.5 0.5)(0.5 0.5)))) ;
+}
+potential ( PrtPScript ) 
+{
+  data = ( 0.4 0.6 );
+}
+potential ( PSGRAPHIC | PrtMem GrphcsRltdDrvrSttngs EPSGrphc ) 
+{
+  data = ((((0.999 0.001)(1.0 0.0))((0.1 0.9)(0.5 0.5)))(((0.25 0.75)(0.5 0.5))((0.5 0.5)(0.5 0.5)))) ;
+}
+potential ( Problem4 | NnPSGrphc PrtPScript PSGRAPHIC ) 
+{
+  data = ((((0.0 1.0)(1.0 0.0))((0.0 1.0)(0.0 1.0)))(((0.0 1.0)(1.0 0.0))((1.0 0.0)(1.0 0.0)))) ;
+}
+potential ( TrTypFnts ) 
+{
+  data = ( 0.9 0.1 );
+}
+potential ( FntInstlltn ) 
+{
+  data = ( 0.98 0.02 );
+}
+potential ( PrntrAccptsTrtyp ) 
+{
+  data = ( 0.9 0.1 );
+}
+potential ( TTOK | PrtMem FntInstlltn PrntrAccptsTrtyp ) 
+{
+  data = ((((0.99000001 0.00999999)(0.0 1.0))((0.1 0.9)(0.5 0.5)))(((0.5 0.5)(0.5 0.5))((0.5 0.5)(0.5 0.5)))) ;
+}
+potential ( NnTTOK | PrtMem ScrnFntNtPrntrFnt FntInstlltn ) 
+{
+  data = ((((0.99000001 0.00999999)(0.1 0.9))((0.1 0.9)(0.5 0.5)))(((0.5 0.5)(0.5 0.5))((0.5 0.5)(0.5 0.5)))) ;
+}
+potential ( Problem5 | TrTypFnts TTOK NnTTOK ) 
+{
+  data = ((((0.0 1.0)(0.0 1.0))((1.0 0.0)(1.0 0.0)))(((0.0 1.0)(1.0 0.0))((0.0 1.0)(1.0 0.0)))) ;
+}
+potential ( LclGrbld | AppData PrtDriver PrtMem CblPrtHrdwrOK ) 
+{
+  data = (((((1.0 0.0)(0.1 0.9))((0.2 0.8)(0.5 0.5)))(((0.4 0.6)(0.5 0.5))((0.5 0.5)(0.5 0.5))))((((0.2 0.8)(0.5 0.5))((0.5 0.5)(0.5 0.5)))(((0.5 0.5)(0.5 0.5))((0.5 0.5)(0.5 0.5))))) ;
+}
+potential ( NtGrbld | AppData PrtDriver PrtMem NtwrkCnfg ) 
+{
+  data = (((((1.0 0.0)(0.4 0.6))((0.2 0.8)(0.5 0.5)))(((0.4 0.6)(0.5 0.5))((0.5 0.5)(0.5 0.5))))((((0.3 0.7)(0.5 0.5))((0.5 0.5)(0.5 0.5)))(((0.5 0.5)(0.5 0.5))((0.5 0.5)(0.5 0.5))))) ;
+}
+potential ( GrbldOtpt | NetPrint LclGrbld NtGrbld ) 
+{
+  data = ((((1.0 0.0)(1.0 0.0))((0.0 1.0)(0.0 1.0)))(((1.0 0.0)(0.0 1.0))((1.0 0.0)(0.0 1.0)))) ;
+}
+potential ( HrglssDrtnAftrPrnt | AppDtGnTm ) 
+{
+  data = ((0.99 0.01)(0.1 0.9)) ;
+}
+potential ( REPEAT | CblPrtHrdwrOK NtwrkCnfg ) 
+{
+  data = (((1.0 0.0)(0.5 0.5))((0.5 0.5)(0.5 0.5))) ;
+}
+potential ( AvlblVrtlMmry | PrtPScript ) 
+{
+  data = ((0.98 0.02)(1.0 0.0)) ;
+}
+potential ( PSERRMEM | PrtPScript AvlblVrtlMmry ) 
+{
+  data = (((1.0 0.0)(0.05 0.95))((1.0 0.0)(1.0 0.0))) ;
+}
+potential ( TstpsTxt | PrtPScript AvlblVrtlMmry ) 
+{
+  data = (((0.99900001 0.00099999)(0.00099999 0.99900001))((1.0 0.0)(1.0 0.0))) ;
+}
+potential ( GrbldPS | GrbldOtpt AvlblVrtlMmry ) 
+{
+  data = (((1.0 0.0)(0.1 0.9))((0.0 1.0)(0.5 0.5))) ;
+}
+potential ( IncmpltPS | CmpltPgPrntd AvlblVrtlMmry ) 
+{
+  data = (((1.0 0.0)(0.3 0.7))((0.0 1.0)(0.5 0.5))) ;
+}
+potential ( PrtFile | PrtDataOut ) 
+{
+  data = ((0.8 0.2)(0.2 0.8)) ;
+}
+potential ( PrtIcon | NtwrkCnfg PTROFFLINE ) 
+{
+  data = (((0.9999 0.0001)(0.7 0.3))((0.25 0.75)(0.5 0.5))) ;
+}
+potential ( Problem6 | GrbldOtpt PrtPScript GrbldPS ) 
+{
+  data = ((((1.0 0.0)(0.0 1.0))((1.0 0.0)(1.0 0.0)))(((1.0 0.0)(0.0 1.0))((0.0 1.0)(0.0 1.0)))) ;
+}
+potential ( Problem3 | CmpltPgPrntd PrtPScript IncmpltPS ) 
+{
+  data = ((((0.0 1.0)(1.0 0.0))((0.0 1.0)(0.0 1.0)))(((0.0 1.0)(1.0 0.0))((1.0 0.0)(1.0 0.0)))) ;
+}
+potential ( PrtQueue ) 
+{
+  data = ( 0.99 0.01 );
+}
+potential ( NtSpd | DeskPrntSpd NtwrkCnfg PrtQueue ) 
+{
+  data = ((((0.99900001 0.00099999)(0.25 0.75))((0.25 0.75)(0.5 0.5)))(((0.0 1.0)(0.5 0.5))((0.5 0.5)(0.5 0.5)))) ;
+}
+potential ( Problem2 | NetPrint DeskPrntSpd NtSpd ) 
+{
+  data = ((((1.0 0.0)(1.0 0.0))((0.0 1.0)(0.0 1.0)))(((1.0 0.0)(0.0 1.0))((1.0 0.0)(0.0 1.0)))) ;
+}
+potential ( PrtStatPaper | PrtPaper ) 
+{
+  data = ((0.99900001 0.00099999)(0.00099999 0.99900001)) ;
+}
+potential ( PrtStatToner | TnrSpply ) 
+{
+  data = ((0.99900001 0.00099999)(0.00099999 0.99900001)) ;
+}
+potential ( PrtStatMem | PrtMem ) 
+{
+  data = ((0.99900001 0.00099999)(0.2 0.8)) ;
+}
+potential ( PrtStatOff | PrtOn ) 
+{
+  data = ((0.99000001 0.00999999)(0.00999999 0.99000001)) ;
+}

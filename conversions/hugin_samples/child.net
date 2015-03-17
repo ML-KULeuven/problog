@@ -1,0 +1,163 @@
+net 
+{ 
+}
+node BirthAsphyxia 
+{
+  states = ( "yes" "no" );
+}
+node HypDistrib 
+{
+  states = ( "Equal" "Unequal" );
+}
+node HypoxiaInO2 
+{
+  states = ( "Mild" "Moderate" "Severe" );
+}
+node CO2 
+{
+  states = ( "Normal" "Low" "High" );
+}
+node ChestXray 
+{
+  states = ( "Normal" "Oligaemic" "Plethoric" "Grd_Glass" "Asy/Patch" );
+}
+node Grunting 
+{
+  states = ( "yes" "no" );
+}
+node LVHreport 
+{
+  states = ( "yes" "no" );
+}
+node LowerBodyO2 
+{
+  states = ( "<5" "5-12" "12+" );
+}
+node RUQO2 
+{
+  states = ( "<5" "5-12" "12+" );
+}
+node CO2Report 
+{
+  states = ( "<7.5" ">=7.5" );
+}
+node XrayReport 
+{
+  states = ( "Normal" "Oligaemic" "Plethoric" "Grd_Glass" "Asy/Patchy" );
+}
+node Disease 
+{
+  states = ( "PFC" "TGA" "Fallot" "PAIVS" "TAPVD" "Lung" );
+}
+node GruntingReport 
+{
+  states = ( "yes" "no" );
+}
+node Age 
+{
+  states = ( "0-3_days" "4-10_days" "11-30_days" );
+}
+node LVH 
+{
+  states = ( "yes" "no" );
+}
+node DuctFlow 
+{
+  states = ( "Lt_to_Rt" "None" "Rt_to_Lt" );
+}
+node CardiacMixing 
+{
+  states = ( "None" "Mild" "Complete" "Transp." );
+}
+node LungParench 
+{
+  states = ( "Normal" "Congested" "Abnormal" );
+}
+node LungFlow 
+{
+  states = ( "Normal" "Low" "High" );
+}
+node Sick 
+{
+  states = ( "yes" "no" );
+}
+potential ( BirthAsphyxia ) 
+{
+  data = ( 0.1 0.9 );
+}
+potential ( HypDistrib | DuctFlow CardiacMixing ) 
+{
+  data = (((0.95 0.05)(0.95 0.05)(0.95 0.05)(0.95 0.05))((0.95 0.05)(0.95 0.05)(0.95 0.05)(0.95 0.05))((0.05 0.95)(0.5 0.5)(0.95 0.05)(0.5 0.5))) ;
+}
+potential ( HypoxiaInO2 | CardiacMixing LungParench ) 
+{
+  data = (((0.93 0.05 0.02)(0.15 0.80 0.05)(0.7 0.2 0.1))((0.1 0.8 0.1)(0.10 0.75 0.15)(0.10 0.65 0.25))((0.1 0.7 0.2)(0.05 0.65 0.30)(0.1 0.5 0.4))((0.02 0.18 0.80)(0.1 0.3 0.6)(0.02 0.18 0.80))) ;
+}
+potential ( CO2 | LungParench ) 
+{
+  data = ((0.8 0.1 0.1)(0.65 0.05 0.30)(0.45 0.05 0.50)) ;
+}
+potential ( ChestXray | LungParench LungFlow ) 
+{
+  data = (((0.90 0.03 0.03 0.01 0.03)(0.14 0.80 0.02 0.02 0.02)(0.15 0.01 0.79 0.04 0.01))((0.05 0.02 0.15 0.70 0.08)(0.05 0.22 0.08 0.50 0.15)(0.05 0.02 0.40 0.40 0.13))((0.05 0.05 0.05 0.05 0.80)(0.05 0.15 0.05 0.05 0.70)(0.24 0.33 0.03 0.34 0.06))) ;
+}
+potential ( Grunting | LungParench Sick ) 
+{
+  data = (((0.2 0.8)(0.05 0.95))((0.4 0.6)(0.2 0.8))((0.8 0.2)(0.6 0.4))) ;
+}
+potential ( LVHreport | LVH ) 
+{
+  data = ((0.9 0.1)(0.05 0.95)) ;
+}
+potential ( LowerBodyO2 | HypDistrib HypoxiaInO2 ) 
+{
+  data = (((0.1 0.3 0.6)(0.3 0.6 0.1)(0.5 0.4 0.1))((0.4 0.5 0.1)(0.50 0.45 0.05)(0.60 0.35 0.05))) ;
+}
+potential ( RUQO2 | HypoxiaInO2 ) 
+{
+  data = ((0.1 0.3 0.6)(0.3 0.6 0.1)(0.5 0.4 0.1)) ;
+}
+potential ( CO2Report | CO2 ) 
+{
+  data = ((0.9 0.1)(0.9 0.1)(0.1 0.9)) ;
+}
+potential ( XrayReport | ChestXray ) 
+{
+  data = ((0.80 0.06 0.06 0.02 0.06)(0.10 0.80 0.02 0.02 0.06)(0.10 0.02 0.80 0.02 0.06)(0.08 0.02 0.10 0.60 0.20)(0.08 0.02 0.10 0.10 0.70)) ;
+}
+potential ( Disease | BirthAsphyxia ) 
+{
+  data = ((0.20 0.30 0.25 0.15 0.05 0.05)(0.03061224 0.33673469 0.29591837 0.23469388 0.05102041 0.05102041)) ;
+}
+potential ( GruntingReport | Grunting ) 
+{
+  data = ((0.8 0.2)(0.1 0.9)) ;
+}
+potential ( Age | Disease Sick ) 
+{
+  data = (((0.95 0.03 0.02)(0.85 0.10 0.05))((0.80 0.15 0.05)(0.7 0.2 0.1))((0.70 0.15 0.15)(0.25 0.25 0.50))((0.80 0.15 0.05)(0.80 0.15 0.05))((0.80 0.15 0.05)(0.7 0.2 0.1))((0.90 0.08 0.02)(0.80 0.15 0.05))) ;
+}
+potential ( LVH | Disease ) 
+{
+  data = ((0.1 0.9)(0.1 0.9)(0.1 0.9)(0.9 0.1)(0.05 0.95)(0.1 0.9)) ;
+}
+potential ( DuctFlow | Disease ) 
+{
+  data = ((0.15 0.05 0.80)(0.1 0.8 0.1)(0.8 0.2 0.0)(1.0 0.0 0.0)(0.33 0.33 0.34)(0.2 0.4 0.4)) ;
+}
+potential ( CardiacMixing | Disease ) 
+{
+  data = ((0.40 0.43 0.15 0.02)(0.02 0.09 0.09 0.80)(0.02 0.16 0.80 0.02)(0.01 0.02 0.95 0.02)(0.01 0.03 0.95 0.01)(0.40 0.53 0.05 0.02)) ;
+}
+potential ( LungParench | Disease ) 
+{
+  data = ((0.6 0.1 0.3)(0.80 0.05 0.15)(0.80 0.05 0.15)(0.80 0.05 0.15)(0.1 0.6 0.3)(0.03 0.25 0.72)) ;
+}
+potential ( LungFlow | Disease ) 
+{
+  data = ((0.30 0.65 0.05)(0.20 0.05 0.75)(0.15 0.80 0.05)(0.10 0.85 0.05)(0.3 0.1 0.6)(0.7 0.1 0.2)) ;
+}
+potential ( Sick | Disease ) 
+{
+  data = ((0.4 0.6)(0.3 0.7)(0.2 0.8)(0.3 0.7)(0.7 0.3)(0.7 0.3)) ;
+}

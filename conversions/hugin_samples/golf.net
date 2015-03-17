@@ -1,0 +1,215 @@
+net
+{
+    node_size = (100 40);
+    HR_Node_Label_Style = "0";
+    HR_Desc = "This network predicts the length of a golf stroke given information on the chosen club, the wind, and the slope.\n\nThe result depends on two factors. The length if the stroke succeeded, and the probability of a miss.\n\nThe length depends on the club, the wind and the slope. However, to reduce the number of configurations, this has been split up using two extra nodes: c_length, which is the predicted length, when only the club is considered, and w_length, which depends on c_length and the wind. These could be removed, but the table of length would grow very much if this was the case. Length, itself, depends on w_length and the slope.";
+    HR_OOBN_FitExpand = "1";
+    HR_Zoom_ZoomFactor = "100";
+    HR_Color_Interface = "21";
+    HR_Color_Instance = "0";
+    HR_Color_ContinuousChance = "32";
+    HR_Compile_MaxMinimalSeparators = "100000";
+    HR_Grid_X = "10";
+    HR_Grid_Y = "10";
+    HR_Grid_GridSnap = "1";
+    HR_Grid_GridShow = "0";
+    HR_Font_Name = "Arial";
+    HR_Font_Size = "-12";
+    HR_Font_Weight = "400";
+    HR_Font_Italic = "0";
+    HR_Propagate_Auto = "1";
+    HR_Propagate_AutoSum = "1";
+    HR_Propagate_AutoNormal = "1";
+    HR_Compile_TriangMethod = "0";
+    HR_Compile_Compress = "0";
+    HR_Compile_Approximate = "0";
+    HR_Compile_ApproxEpsilon = "0.00001";
+    HR_Monitor_AutoUpdGraph = "0";
+    HR_Monitor_GraphPrecision = "100";
+    HR_Monitor_OpenGraph = "0";
+    HR_Monitor_InitStates = "5";
+    HR_Monitor_InitSD = "2";
+    HR_Color_DiscreteChance = "16";
+    HR_Color_ContinuosChance = "48";
+    HR_Color_Utility = "36";
+    HR_Color_Decision = "17";
+    HR_Groups_UserGroupsNo = "0";
+    HR_Groups_GroupNames = "test\t";
+    HR_Groups_GroupColors = "47";
+    HRUNTIME_Monitor_InitStates = "5";
+    HRUNTIME_Monitor_OpenGraph = "0";
+    HRUNTIME_Monitor_GraphPrecision = "100";
+    HRUNTIME_Monitor_AutoUpdGraph = "0";
+    HRUNTIME_Compile_ApproxEpsilon = "0.00001";
+    HRUNTIME_Compile_Approximate = "0";
+    HRUNTIME_Compile_Compress = "0";
+    HRUNTIME_Compile_TriangMethod = "0";
+    HRUNTIME_Propagate_AutoNormal = "1";
+    HRUNTIME_Propagate_AutoSum = "1";
+    HRUNTIME_Propagate_Auto = "0";
+    HRUNTIME_Font_Italic = "0";
+    HRUNTIME_Font_Weight = "400";
+    HRUNTIME_Font_Size = "-12";
+    HRUNTIME_Font_Name = "Arial";
+    HRUNTIME_Grid_GridShow = "0";
+    HRUNTIME_Grid_GridSnap = "1";
+    HRUNTIME_Grid_Y = "10";
+    HRUNTIME_Grid_X = "10";
+}
+
+node Result
+{
+    label = "";
+    position = (309 30);
+    states = ("miss" "145" "160" "180" "200" "220" "240" "265" "290");
+    HR_Desc = "The final result";
+}
+
+node Length
+{
+    label = "";
+    position = (525 182);
+    states = ("145" "160" "180" "200" "220" "240" "265" "290");
+    HR_Desc = "The length of the stroke after both wind and slope are taken into account";
+}
+
+node Miss
+{
+    label = "";
+    position = (60 89);
+    states = ("y" "n");
+    HR_Desc = "Whether the stroke missed or not";
+}
+
+node Slope
+{
+    label = "";
+    position = (430 294);
+    states = ("none" "downhill" "uphill");
+}
+
+node W_length
+{
+    label = "";
+    position = (363 178);
+    states = ("160" "180" "200" "220" "240" "265");
+    HR_Desc = "The length of the stroke after wind is taken into account";
+}
+
+node Wind
+{
+    label = "";
+    position = (235 306);
+    states = ("none" "with" "against");
+    HR_Desc = "The wind";
+}
+
+node Club
+{
+    label = "";
+    position = (72 301);
+    states = ("spoon" "driver");
+    HR_Desc = "The possible clubs";
+}
+
+node C_length
+{
+    label = "";
+    position = (200 187);
+    states = ("180" "200" "220" "240");
+    HR_Desc = "The length of the stroke given the club";
+}
+
+potential (Result | Miss Length)
+{
+    data
+     = ((( 1 0 0 0 0 0 0 0 0 )	%  Miss=y  Length=145
+	 ( 1 0 0 0 0 0 0 0 0 )	%  Miss=y  Length=160
+	 ( 1 0 0 0 0 0 0 0 0 )	%  Miss=y  Length=180
+	 ( 1 0 0 0 0 0 0 0 0 )	%  Miss=y  Length=200
+	 ( 1 0 0 0 0 0 0 0 0 )	%  Miss=y  Length=220
+	 ( 1 0 0 0 0 0 0 0 0 )	%  Miss=y  Length=240
+	 ( 1 0 0 0 0 0 0 0 0 )	%  Miss=y  Length=265
+	 ( 1 0 0 0 0 0 0 0 0 ))	%  Miss=y  Length=290
+	(( 0 1 0 0 0 0 0 0 0 )	%  Miss=n  Length=145
+	 ( 0 0 1 0 0 0 0 0 0 )	%  Miss=n  Length=160
+	 ( 0 0 0 1 0 0 0 0 0 )	%  Miss=n  Length=180
+	 ( 0 0 0 0 1 0 0 0 0 )	%  Miss=n  Length=200
+	 ( 0 0 0 0 0 1 0 0 0 )	%  Miss=n  Length=220
+	 ( 0 0 0 0 0 0 1 0 0 )	%  Miss=n  Length=240
+	 ( 0 0 0 0 0 0 0 1 0 )	%  Miss=n  Length=265
+	 ( 0 0 0 0 0 0 0 0 1 )));	%  Miss=n  Length=290
+}
+
+potential (Length | W_length Slope)
+{
+    data
+     = ((( 0 1 0 0 0 0 0 0 )	%  W_length=160  Slope=none
+	 ( 1 0 0 0 0 0 0 0 )	%  W_length=160  Slope=downhill
+	 ( 0 0 1 0 0 0 0 0 ))	%  W_length=160  Slope=uphill
+	(( 0 0 1 0 0 0 0 0 )	%  W_length=180  Slope=none
+	 ( 0 1 0 0 0 0 0 0 )	%  W_length=180  Slope=downhill
+	 ( 0 0 0 1 0 0 0 0 ))	%  W_length=180  Slope=uphill
+	(( 0 0 0 1 0 0 0 0 )	%  W_length=200  Slope=none
+	 ( 0 0 1 0 0 0 0 0 )	%  W_length=200  Slope=downhill
+	 ( 0 0 0 0 1 0 0 0 ))	%  W_length=200  Slope=uphill
+	(( 0 0 0 0 1 0 0 0 )	%  W_length=220  Slope=none
+	 ( 0 0 0 1 0 0 0 0 )	%  W_length=220  Slope=downhill
+	 ( 0 0 0 0 0 1 0 0 ))	%  W_length=220  Slope=uphill
+	(( 0 0 0 0 0 1 0 0 )	%  W_length=240  Slope=none
+	 ( 0 0 0 0 1 0 0 0 )	%  W_length=240  Slope=downhill
+	 ( 0 0 0 0 0 0 1 0 ))	%  W_length=240  Slope=uphill
+	(( 0 0 0 0 0 0 1 0 )	%  W_length=265  Slope=none
+	 ( 0 0 0 0 0 1 0 0 )	%  W_length=265  Slope=downhill
+	 ( 0 0 0 0 0 0 0 1 )));	%  W_length=265  Slope=uphill
+}
+
+potential (Miss | Club Wind)
+{
+    data
+     = ((( 0.02 0.98 )	%  Club=spoon  Wind=none
+	 ( 0.04 0.96 )	%  Club=spoon  Wind=with
+	 ( 0.04 0.96 ))	%  Club=spoon  Wind=against
+	(( 0.06 0.94 )	%  Club=driver  Wind=none
+	 ( 0.12 0.88 )	%  Club=driver  Wind=with
+	 ( 0.12 0.88 )));	%  Club=driver  Wind=against
+}
+
+potential (Slope)
+{
+    data = ( 0.5 0.25 0.25 );
+}
+
+potential (W_length | C_length Wind)
+{
+    data
+     = ((( 0 1 0 0 0 0 )	%  C_length=180  Wind=none
+	 ( 0 0 1 0 0 0 )	%  C_length=180  Wind=with
+	 ( 1 0 0 0 0 0 ))	%  C_length=180  Wind=against
+	(( 0 0 1 0 0 0 )	%  C_length=200  Wind=none
+	 ( 0 0 0 1 0 0 )	%  C_length=200  Wind=with
+	 ( 0 1 0 0 0 0 ))	%  C_length=200  Wind=against
+	(( 0 0 0 1 0 0 )	%  C_length=220  Wind=none
+	 ( 0 0 0 0 1 0 )	%  C_length=220  Wind=with
+	 ( 0 0 1 0 0 0 ))	%  C_length=220  Wind=against
+	(( 0 0 0 0 1 0 )	%  C_length=240  Wind=none
+	 ( 0 0 0 0 0 1 )	%  C_length=240  Wind=with
+	 ( 0 0 0 1 0 0 )));	%  C_length=240  Wind=against
+}
+
+potential (Wind)
+{
+    data = ( 0.333333 0.333333 0.333333 );
+}
+
+potential (Club)
+{
+    data = ( 0.5 0.5 );
+}
+
+potential (C_length | Club)
+{
+    data
+     = (( 0.25 0.5 0.25 0 )	%  Club=spoon
+	( 0 0.25 0.5 0.25 ));	%  Club=driver
+}
