@@ -77,6 +77,13 @@ class LogicFormula(ProbLogObject) :
         
         self.__constraints_me = {}
         self.__constraints = []
+        self.__constraints_for_node = defaultdict(list)
+        
+    def constraintsForNode(self, node) :
+        return self.__constraints_for_node[node]
+        
+    def addConstraintOnNode(self, node, constraint) :
+        self.__constraints_for_node[node].append(constraint)
         
     def getAtomCount(self) :
         return self.__atom_count
@@ -223,9 +230,12 @@ class LogicFormula(ProbLogObject) :
     
     def _addConstraintME(self, group, node) :
         if group is None : return
-        if not group in self.__constraints_me :
-            self.__constraints_me[group] = ConstraintME(group)
-        self.__constraints_me[group].add(node, self) 
+        constraint = self.__constraints_me.get(group)
+        if constraint is None :
+            constraint = ConstraintAD(group)
+            self.__constraints_me[group] = constraint
+        constraint.add(node, self)
+        self.addConstraintOnNode(constraint, node)
         
     def addAtom( self, identifier, probability, group=None ) :
         """Add an atom to the formula.
@@ -481,6 +491,8 @@ class LogicFormula(ProbLogObject) :
     def addConstraint(self, c) :
         """Adds a constraint to the model."""
         self.__constraints.append(c)
+        for node in c.getNodes() :
+            self.addConstraintOnNode(node,c)
 
     ##################################################################################
     ####                       LOOP BREAKING AND COMPACTION                       ####
@@ -1019,10 +1031,17 @@ class StringKeyLogicFormula(LogicFormula) :
 
  
 class Constraint(object) : 
-    pass
     
-class ConstraintME(Constraint) :
-    """Mutually exclusive."""
+    def getNodes(self) :
+        """Get all nodes involved in this constraint."""
+        return NotImplemented('Constraint.getNodes() is an abstract method.')
+    
+    def updateWeights(self, weights, semiring) :
+        # Typically, constraints don't update weights
+        pass
+    
+class ConstraintAD(Constraint) :
+    """Annotated disjunction constraint (mutually exclusive with weight update)."""
     
     def __init__(self, group) :
         self.nodes = set()
@@ -1030,7 +1049,13 @@ class ConstraintME(Constraint) :
         self.extra_node = None
     
     def __str__(self) :
-        return 'mutually_exclusive(%s, %s)' % (list(self.nodes), self.extra_node)
+        return 'annotated_disjunction(%s, %s)' % (list(self.nodes), self.extra_node)
+    
+    def getNodes(self) :
+        if self.extra_node :
+            return list(self.nodes) + [self.extra_node]
+        else :
+            return self.nodes
     
     def isTrue(self) :
         return len(self.nodes) <= 1
@@ -1064,6 +1089,7 @@ class ConstraintME(Constraint) :
         
         if self.isActive() :
             self.extra_node = formula.addAtom( ('%s_extra' % (self.group,)), True, None )
+            formula.addConstraintOnNode(self, self.extra_node)
     
     def updateWeights(self, weights, semiring) :
         """Update the weights of the logic formula accordingly."""
@@ -1077,7 +1103,7 @@ class ConstraintME(Constraint) :
             weights[self.extra_node] = (complement, semiring.one())
             
     def copy( self, rename={} ) :
-        result = ConstraintME( self.group )
+        result = ConstraintAD( self.group )
         result.nodes = set(rename.get(x,x) for x in self.nodes)
         result.extra_node = rename.get( self.extra_node, self.extra_node )
         return result
@@ -1193,8 +1219,8 @@ class TrueConstraint(Constraint) :
     def copy(self, rename={}) :
         return TrueConstraint( rename.get(self.node, self.node) )
         
-    def updateWeights(self, weights, semiring) :
-        weights[self.node] = (semiring.one(), semiring.zero())
+    # def updateWeights(self, weights, semiring) :
+    #     weights[self.node] = (semiring.one(), semiring.zero())
         
     def __str__(self) :
         return '%s is true' % self.node
