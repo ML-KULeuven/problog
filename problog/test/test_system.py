@@ -75,6 +75,7 @@ def createSystemTestSDD(filename, logspace=False) :
                 semiring = SemiringProbability()
             
             computed = sdd.evaluate(semiring=semiring)
+            computed = { str(k) : v for k,v in computed.items() }
         except Exception as err :
             e = err
             computed = None
@@ -106,6 +107,7 @@ def createSystemTestNNF(filename, logspace=False) :
                 semiring = SemiringProbability()
             
             computed = sdd.evaluate(semiring=semiring)
+            computed = { str(k) : v for k,v in computed.items() }
         except Exception as err :
             e = err
             computed = None

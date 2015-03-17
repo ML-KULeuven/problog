@@ -95,9 +95,9 @@ class LogicFormula(ProbLogObject) :
             :param node_id: id of the node
             :param label: type of node (see LogicFormula.LABEL_*)
         """
-        if not label in self.__names or not str(name) in self.__names[label] :
-            self.__names_order.append( (label,str(name)) )
-        self.__names[label][str(name)] = node_id
+        if not label in self.__names or not name in self.__names[label] :
+            self.__names_order.append( (label,name) )
+        self.__names[label][name] = node_id
         if self.__avoid_name_clash :
             self.__names_reverse[node_id] = name
             

@@ -238,7 +238,7 @@ class LFIProblem(SemiringProbability, LogicProgram) :
         results = []
         i = 0
         for at, val, comp in self._compiled_examples :        
-            evidence = dict(zip(map(str,at),map(str2bool,val)))
+            evidence = dict(zip(at,map(str2bool,val)))
 
             evaluator = comp.getEvaluator(semiring=self, evidence=evidence) 
 
@@ -263,6 +263,7 @@ class LFIProblem(SemiringProbability, LogicProgram) :
         score = 0.0
         for pEvidence, result in results :
             for fact, value in result.items() :
+                fact = str(fact)
                 index = int(fact.split('(')[0].rsplit('_',1)[1])
                 fact_marg[index] += value
                 fact_count[index] += 1

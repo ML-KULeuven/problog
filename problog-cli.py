@@ -17,7 +17,7 @@ def print_result( d, output, precision=8 ) :
     success, d = d
     if success :
         if not d : return 0 # no queries
-        l = max( len(k) for k in d )
+        l = max( len(str(k)) for k in d )
         f_flt = '\t%' + str(l) + 's : %.' + str(precision) + 'g' 
         f_str = '\t%' + str(l) + 's : %s' 
         for it in sorted(d.items()) :
