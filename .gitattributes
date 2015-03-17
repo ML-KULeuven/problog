@@ -17,3 +17,5 @@ Makefile	export-ignore
 /usecases/  export-ignore
 problog-gui.py export-ignore
 /internal/  export-ignore
+/conversions/hugin_samples/ export-ignore
+/conversions/smile_samples/ export-ignore
