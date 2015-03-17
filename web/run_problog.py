@@ -19,10 +19,12 @@ def print_result( d, output, precision=8 ) :
     success, d = d
     if success :
         d['SUCCESS'] = True
+        d = { str(k) : v for k,v in d.items() }
         print (200, 'application/json', json.dumps(d), file=output)
     else :
         #print (400, 'application/json', json.dumps(d), file=output)
         d['SUCCESS'] = False
+        d = { str(k) : v for k,v in d.items() }
         print (200, 'application/json', json.dumps(d), file=output)
     return 0 
     
