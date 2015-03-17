@@ -30,7 +30,7 @@ problog.initialize = function(settings) {
 
   $.extend(problog, settings);
 
-  $('head').append('<style type="text/css" media="screen">.problog-editor-container, .problog-editor-container-intr {border: 1px solid #ddd;} .problog-editor-buttons {margin: 5px 0;} .problog-editor-hash {float:right; margin-right:5px;} .problog-editor-results table {margin-bottom:3px;} .problog-editor-results th {cursor:pointer;width:50%;} .problog-result-sorted-desc:after {content:"▲";} .problog-result-sorted-asc:after {content:"▼";}</style>');
+  $('head').append('<style type="text/css" media="screen">.problog-editor-container, .problog-editor-container-intr {border: 1px solid #ddd;} .problog-editor-buttons {margin: 5px 0;} .problog-editor-hash {float:right; margin-right:5px;} .problog-editor-results table {margin-bottom:3px;} .problog-editor-results th {cursor:pointer;width:50%;} .problog-result-sorted-desc:after {content:"▲";} .problog-result-sorted-asc:after {content:"▼";} table .progress {margin-bottom: 0;}</style>');
 
   $(problog.selector).each(function(i,el) {
     problog.initDiv($(el), problog.resize)
@@ -96,6 +96,10 @@ problog.initDiv = function(el, resize) {
   //var result_panel = $('<div class="panel panel-default"><div class="panel-heading"><span class="panel-title">Result</span></div></div>').appendTo(problog_container);
   var result_panel = $('<div class="panel panel-default problog-editor-results"></div>').appendTo(problog_container);
   var result_panel_body = $('<div class="panel-body" class="result-final">Results ...</div>').appendTo(result_panel);
+
+  var makeProgressBar = function(value) {
+    return $('<div class="progress"><div class="progress-bar" role="progressbar" aria-valuenow="' + (value*100) + '" aria-valuemin="0" aria-valuemax="100" style="text-align:left; width: ' + (100*value) + '%;">&nbsp'+ value + '</div></div>');
+  }
 
   // Init ACE editor
   var editor = ace.edit(editor_container[0]);
@@ -163,7 +167,7 @@ problog.initDiv = function(el, resize) {
 	            var p = data[k];
 	            result.append($('<tr>')
 	                  .append($('<td>').text(k))
-	                  .append($('<td>').text(p)));
+	                  .append($('<td>').append(makeProgressBar(p))));
 	          }
 	        }
 
