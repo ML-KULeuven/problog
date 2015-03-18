@@ -214,6 +214,16 @@ div#notebook {
 </div>
 <div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
+<p>This notebook assumes that problog-cli.py is available on your PATH.</p>
+
+</div>
+</div>
+</div>
+<div class="cell border-box-sizing text_cell rendered">
+<div class="prompt input_prompt">
+</div>
+<div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
 <h2 id="Example:-Learning-About-Coins">Example: Learning About Coins<a class="anchor-link" href="#Example:-Learning-About-Coins">&#182;</a></h2><p>This example computes the probability that it is a fair coin give a sequence of observations. What it computes is Bayes' rule:
 \begin{equation*}
     Pr(fair \mid data) = \frac{Pr(data \mid fair) \cdot Pr(fair)}{Pr(data)}
@@ -921,7 +931,7 @@ query(expr(E)).
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[40]:</div>
+<div class="prompt input_prompt">In&nbsp;[57]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython3"><pre><span class="o">!</span>../../examples/example_sampling_alt.py -N <span class="m">4</span> arithmetic_expression_sample.pl
@@ -938,17 +948,17 @@ query(expr(E)).
 <div class="output_area"><div class="prompt"></div>
 <div class="output_subarea output_stream output_stdout output_text">
 <pre>====================
-expr([&apos;x&apos;, 0]).
-% Probability: 0.35
+expr(0).
+% Probability: 0.035
 ====================
-expr([&apos;x&apos;, 0]).
-% Probability: 0.35
+expr([7, &apos;+&apos;, [3, &apos;+&apos;, 0]]).
+% Probability: 9.646875e-07
 ====================
-expr([[&apos;x&apos;, 1], [&apos;+&apos;, 0], [3, 2]]).
-% Probability: 0.0018375
+expr(9).
+% Probability: 0.035
 ====================
-expr([[[5, 2], [&apos;+&apos;, 1], [[[8, 5], [&apos;-&apos;, 4], [&apos;x&apos;, 6]], [&apos;+&apos;, 3], [&apos;x&apos;, 7]]], [&apos;+&apos;, 0], [3, 8]]).
-% Probability: 2.6589199e-09
+expr([[5, &apos;+&apos;, [[[&apos;x&apos;, &apos;+&apos;, 8], &apos;-&apos;, &apos;x&apos;], &apos;-&apos;, [[&apos;x&apos;, &apos;+&apos;, [1, &apos;-&apos;, [[[[[&apos;x&apos;, &apos;-&apos;, &apos;x&apos;], &apos;-&apos;, [0, &apos;+&apos;, [[[[[&apos;x&apos;, &apos;+&apos;, 7], &apos;-&apos;, 5], &apos;+&apos;, 1], &apos;-&apos;, 5], &apos;+&apos;, &apos;x&apos;]]], &apos;-&apos;, 1], &apos;+&apos;, [&apos;x&apos;, &apos;-&apos;, [&apos;x&apos;, &apos;-&apos;, 6]]], &apos;-&apos;, [&apos;x&apos;, &apos;-&apos;, 3]]]], &apos;+&apos;, 2]]], &apos;+&apos;, [7, &apos;+&apos;, 2]]).
+% Probability: 1.2815396e-44
 </pre>
 </div>
 </div>
