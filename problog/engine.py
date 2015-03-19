@@ -1506,8 +1506,11 @@ class ClauseDB(LogicProgram) :
             group = len(self.__nodes)
             
             # Create the body clause
-            body_head = Term('ad_%s_body' % group, *body_args)
             body_node = self._compile(struct.body, variables)
+            head_count = len(variables)            
+            # Body arguments
+            body_args = tuple(range(0,head_count))
+            body_head = Term('ad_%s_body' % group, *body_args)
             clause_body = self._addClauseNode( body_head, body_node, len(variables) )
             #clause_body = self._appendNode( self._clause( body_head.functor, body_head.args, None, body_node, len(variables), group=None ) )
             clause_body = self._addHead( body_head )
