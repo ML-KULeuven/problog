@@ -52,7 +52,7 @@ class LogicFormula(ProbLogObject) :
     def _create_disj( self, children ) :
         return self._disj(children)
     
-    def __init__(self, auto_compact=True, avoid_name_clash=False, keep_order=False) :
+    def __init__(self, auto_compact=True, avoid_name_clash=False, keep_order=False, use_string_names=False) :
         ProbLogObject.__init__(self)
         
         # List of nodes
@@ -79,6 +79,8 @@ class LogicFormula(ProbLogObject) :
         self.__constraints = []
         self.__constraints_for_node = defaultdict(list)
         
+        self.__use_string_names = use_string_names
+        
     def constraintsForNode(self, node) :
         return self.__constraints_for_node[node]
         
@@ -102,6 +104,8 @@ class LogicFormula(ProbLogObject) :
             :param node_id: id of the node
             :param label: type of node (see LogicFormula.LABEL_*)
         """
+        if self.__use_string_names :
+            name = str(name)
         if not label in self.__names or not name in self.__names[label] :
             self.__names_order.append( (label,name) )
         self.__names[label][name] = node_id
