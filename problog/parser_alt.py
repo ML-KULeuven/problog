@@ -19,6 +19,7 @@ class ParseError(CoreParseError) :
     def _convert_pos(self, string, location) :
         lineno = 1
         col = 0
+        end = 0
         stop = False
         for i,x in enumerate(string) :
             if x == '\n' :
@@ -30,7 +31,7 @@ class ParseError(CoreParseError) :
                 stop = True
             if not stop :
                 col += 1
-        return lineno, col, string[location-col]
+        return lineno, col, string[location-col:i+1]
 
 class UnexpectedCharacter(ParseError) :
     
