@@ -757,7 +757,7 @@ class Factory(object) :
     build_mathop1 = build_unop
     build_directive = build_unop
     
-#from .parser_alt import PrologParser as DefaultPrologParser
+from .parser_alt import PrologParser as DefaultPrologParser
                 
 if __name__ == '__main__' :
     import sys

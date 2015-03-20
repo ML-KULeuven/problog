@@ -1,0 +1,1 @@
+mixed(X) :- X == "qsdf'.
