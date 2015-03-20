@@ -17,15 +17,19 @@ class ParseError(CoreParseError) :
         Exception.__init__(self, '%s (at %s:%s)' % (self.msg,self.lineno, self.col))
         
     def _convert_pos(self, string, location) :
-        lineno = 0
+        lineno = 1
         col = 0
+        stop = False
         for i,x in enumerate(string) :
             if x == '\n' :
                 lineno +=1 
                 col = 0
-                if i >= location :
+                if stop :
                     break
-            col += 1
+            if i == location : 
+                stop = True
+            if not stop :
+                col += 1
         return lineno, col, string[location-col]
 
 class UnexpectedCharacter(ParseError) :
