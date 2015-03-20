@@ -34,7 +34,7 @@ def process_error( err ) :
     if err_type == 'ParseException' :
         return { 'message': 'Parsing error on %s:%s: %s.\n%s' % (err.lineno, err.col, err.msg, err.line ), 'lineno' : err.lineno, 'col': err.col }
     elif isinstance(err, ParseError) :
-        return { 'message': 'Parsing error on %s:%s: %s.\n%s' % (err.lineno, err.col, err.msg, err.line ), 'lineno' : err.lineno, 'col' : err.col } 
+        return { 'message': 'Parsing error on %s:%s: %s.' % (err.lineno, err.col, err.msg ), 'lineno' : err.lineno, 'col' : err.col } 
     elif isinstance(err, GroundingError) :
         try :
             location = err.location
