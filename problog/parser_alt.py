@@ -37,7 +37,7 @@ class UnexpectedCharacter(ParseError) :
     
     def __init__(self, string, position) :
         char = string[position]
-        ParseError.__init__(self, string, "Unexpected character '%s" % char, position)
+        ParseError.__init__(self, string, "Unexpected character '%s'" % char, position)
 
 class UnmatchedCharacter(ParseError) :
     
