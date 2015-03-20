@@ -1,5 +1,7 @@
 from __future__ import print_function
 
+import core
+
 LINE_COMMENT = '%'
 BLOCK_COMMENT_START = '/*'
 BLOCK_COMMENT_END = '*/'
@@ -7,22 +9,36 @@ NEWLINE = '\n'
     
 WHITESPACE = frozenset('\n\t ')
 
-class ParseError(Exception) :
+class ParseError(core.ParseError) :
     
-    def __init__(self, message, location) :
-        Exception.__init__(self, '%s (at %s)' % (message,location))
+    def __init__(self, string, message, location) :
+        self.msg = message
+        self.lineno, self.col, self.line = self._convert_pos(string, location)
+        Exception.__init__(self, '%s (at %s:%s)' % (self.msg,self.lineno, self.col))
+        
+    def _convert_pos(self, string, location) :
+        lineno = 0
+        col = 0
+        for i,x in enumerate(string) :
+            if x == '\n' :
+                lineno +=1 
+                col = 0
+                if i >= location :
+                    break
+            col += 1
+        return lineno, col, string[location-col]
 
 class UnexpectedCharacter(ParseError) :
     
     def __init__(self, string, position) :
         char = string[position]
-        ParseError.__init__(self, "Unexpected character '%s" % char, position)
+        ParseError.__init__(self, string, "Unexpected character '%s" % char, position)
 
 class UnmatchedCharacter(ParseError) :
     
     def __init__(self, string, position, length=1) :
         char = string[position:position+length]
-        ParseError.__init__(self, "Unmatched character '%s'" % char, position)
+        ParseError.__init__(self, string, "Unmatched character '%s'" % char, position)
 
 class Token(object) :
     
@@ -55,7 +71,7 @@ class Token(object) :
         if self.functor : o += 1
         return o
         
-    def list_options(self) :
+    def list_options(self) :  # pragma: no cover
         o = ''
         if self.atom : o += 'a'
         if self.binop : o += 'b'
@@ -63,7 +79,7 @@ class Token(object) :
         if self.functor : o += 'f'
         return o
         
-    def __repr__(self) :
+    def __repr__(self) : # pragma: no cover
         return "'%s' {%s}" % (self.string, self.list_options())
         
         
@@ -88,31 +104,20 @@ RE_FLOAT = re.compile(r'[-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?')
 
 def skip_to(s, pos, char) :
     end = s.find(char, pos)
+    print (repr(s), char, pos, end )
     if end == -1 :
-        return pos
+        return len(s)
     else :
-        return end
+        return end+1
 
-def skip_chars(s, pos, chars) :
-    len_s = len(s)
-    while pos < len_s and s[pos] in chars :
-        pos += 1
-    return pos    
-    
 def skip_comment_c(s, pos) :
-    if s[pos:pos+2] == BLOCK_COMMENT_START :
-        end = s.find(BLOCK_COMMENT_END, pos)
-        if end == -1 :
-            raise UnmatchedCharacter(string, pos, 2)
-        return end + 2
-    else :
-        return pos
+    end = s.find(BLOCK_COMMENT_END, pos)
+    if end == -1 :
+        raise UnmatchedCharacter(s, pos, 2)
+    return end + 2
 
 def skip_comment_line(s, pos) :
-    if s[pos] == LINE_COMMENT : 
-        return skip_to(s,pos,NEWLINE) + len(NEWLINE)
-    else :
-        return pos
+    return skip_to(s,pos,NEWLINE)
 
 def is_lower(c) :
     return 'a' <= c <= 'z'
@@ -202,9 +207,9 @@ class PrologParser(object) :
         elif is_digit(s[pos+1]) :
             return self._token_number(s,pos)
         elif s[pos+1] == '(' :
-            return Token('.', pos), pos+1
+            return Token('.', pos, functor=self._next_paren_open(s,pos)), pos+1
         else :
-            raise UnexpectedCharacter(string, pos)
+            raise UnexpectedCharacter(s, pos)
         
     def _token_slash(self, s, pos) :
         if s[pos:pos+2] == '/\\' :
@@ -378,8 +383,8 @@ class PrologParser(object) :
         if action is None:
             raise UnexpectedCharacter(s, pos)
         result = action(s,pos)
-        if result is None :
-            raise Exception("Undefined action: '%s'" % action)
+        if result is None : # pragma: no cover
+            raise RuntimeError("Undefined action: '%s'" % action)
         else :
             return result
             
@@ -443,7 +448,7 @@ class PrologParser(object) :
             if t is not None :
                 yield t
     
-    def _extract_statements(self, s) :
+    def _extract_statements(self, string, s) :
         statement = []
         for token in s :
             if token.is_special(SPECIAL_END) :
@@ -452,10 +457,10 @@ class PrologParser(object) :
             else :
                 statement.append(token)
         if statement :
-            raise ParseError('Incomplete statement.', -1)
+            raise ParseError(string, 'Incomplete statement.', len(string))
     
     
-    def _parenthesis_bounds(self, tokens ) :
+    def _parenthesis_bounds(self, string, tokens ) :
         # Find parenthesis subexpressions
         par_stack = []
         comma_stack = []
@@ -467,10 +472,10 @@ class PrologParser(object) :
                 try :
                     t, s = par_stack.pop(-1)
                     if t != '(' :
-                        raise ParseError("Unmatched ')'", None)
+                        raise UnmatchedCharacter(string, tokens[s].location)
                     yield s, i, comma_stack.pop(-1), '('
                 except IndexError :
-                    raise ParseError("Unmatched ')'", x.location)
+                    raise UnmatchedCharacter(string, token.location)
             elif token.is_special(SPECIAL_BRACK_OPEN) :
                 par_stack.append(('[',i))
                 comma_stack.append([])
@@ -478,7 +483,7 @@ class PrologParser(object) :
                 try :
                     t, s = par_stack.pop(-1)
                     if t != '[' :
-                        raise ParseError("Unmatched ']'", None)
+                        raise UnmatchedCharacter(string, tokens[s].location)
                     commas = comma_stack.pop(-1)
                     negs = [ x for x in commas if x < 0 ]
                     if negs :
@@ -487,18 +492,18 @@ class PrologParser(object) :
                         commas.append(i)
                     yield s, i, map(abs,commas), '['
                 except IndexError :
-                    raise ParseError("Unmatched ')'", x.location)
+                    raise UnmatchedCharacter(string, token.location)
             elif token.is_special(SPECIAL_COMMA) and comma_stack :
                 if comma_stack[-1] and comma_stack[-1][-1] < 0 :
-                    raise ParseError("Unexpected '|'", None)
+                    raise UnexpectedCharacter(string, token.location)
                 comma_stack[-1].append(i)
             elif token.is_special(SPECIAL_PIPE) and comma_stack :
                 if comma_stack[-1] and comma_stack[-1][-1] < 0 :
-                    raise ParseError("Unexpected '|'", None)
+                    raise UnexpectedCharacter(string, token.location)
                 comma_stack[-1].append(-i)
             
         if par_stack :
-            raise ParseError("Unmatched '%s'" % tokens[par_stack[-1][1]].string, tokens[par_stack[-1][1]].location)
+            raise UnmatchedCharacter(string, tokens[par_stack[-1][1]].location)
     
     def _build_operator_free(self, tokens) :
         if len(tokens) == 1 :
@@ -534,7 +539,7 @@ class PrologParser(object) :
             assert(len(tokens)==0)
             return None
             
-    def fold(self, operators, lo, hi, pprior=None, porder=None, level=0 ) :
+    def fold(self, string, operators, lo, hi, pprior=None, porder=None, level=0 ) :
         if lo >= hi : 
             return self._build_operator_free(operators[lo:hi])
         else :
@@ -542,45 +547,44 @@ class PrologParser(object) :
             max_i = None
             for i in range(lo, hi) :
                 op_n = operators[i]
+                op = None
                 if op_n.binop :
                     op = op_n.binop
                 elif op_n.unop :
                     op = op_n.unop
-                else :
-                    continue
-                if max_op == None or op[0] > max_op[0] or (op[0] == max_op[0] and max_op[1] == 'yfx') :
+                if not op is None and (max_op == None or op[0] > max_op[0] or (op[0] == max_op[0] and max_op[1] == 'yfx')) :
                     max_i = i
                     max_op = op
             if max_op == None :
                 return self._build_operator_free(operators[lo:hi])
             else :
                 if pprior == max_op[0] and porder == 'x' :
-                    raise ParseError('Operator priority clash', None)
+                    raise ParseError(string, 'Operator priority clash', operators[max_i].location)
                 else :
                     max_order = max_op[1]
                     if len(max_order) == 3 : # binop
-                        lf = self.fold( operators, lo, max_i, max_op[0], max_order[0], level+1)
-                        rf = self.fold( operators, max_i+1, hi, max_op[0], max_order[2], level+1)
+                        lf = self.fold( string, operators, lo, max_i, max_op[0], max_order[0], level+1)
+                        rf = self.fold( string, operators, max_i+1, hi, max_op[0], max_order[2], level+1)
                         return max_op[2]( functor=operators[max_i].string, operand1=lf, operand2=rf, location=operators[max_i].location )
                     else :  # unop
                         assert(max_i == lo)
-                        lf = self.fold( operators, lo+1, hi, max_op[0], max_order[1], level+1 )
+                        lf = self.fold( string, operators, lo+1, hi, max_op[0], max_order[1], level+1 )
                         return max_op[2]( functor=operators[max_i].string, operand=lf, location=operators[max_i].location )
 
-    def collapse(self, tokens ) :
-        bounds = self._parenthesis_bounds( tokens )
+    def collapse(self, string, tokens ) :
+        bounds = self._parenthesis_bounds(string, tokens )
         for i, j, c, t in bounds :
             i1 = i
             sub_tokens = []
             for ic in c :
-                toks = self.label_tokens(filterl(None, tokens[i1+1:ic]))
+                toks = self.label_tokens(string, filterl(None, tokens[i1+1:ic]))
                 
-                toks = self.fold( toks, 0, len(toks) )
+                toks = self.fold(string, toks, 0, len(toks) )
                 
                 sub_tokens.append( toks )
                 i1 = ic
-            toks = self.label_tokens(filterl(None, tokens[i1+1:j]))
-            toks = self.fold( toks, 0, len(toks) )
+            toks = self.label_tokens(string,filterl(None, tokens[i1+1:j]))
+            toks = self.fold(string, toks, 0, len(toks) )
             if toks == None : toks = self.factory.build_list(())
             sub_tokens.append( toks )
             if t == '(' :
@@ -588,10 +592,10 @@ class PrologParser(object) :
             else :
                 sub_token = SubExpr(filterl(None,sub_tokens), operator='.')
             tokens[i:j+1] = [ sub_token ] + [None] * (j-i) 
-        toks = self.label_tokens(filterl(None,tokens))
-        return self.fold( toks, 0, len(toks) )
+        toks = self.label_tokens(string,filterl(None,tokens))
+        return self.fold(string, toks, 0, len(toks) )
     
-    def label_tokens(self, tokens ) :
+    def label_tokens(self, string, tokens ) :
         l = len(tokens)-1
         p = None
         for i, t in enumerate(tokens) :
@@ -607,7 +611,7 @@ class PrologParser(object) :
             elif p.functor :    
                 pass
             elif p.atom :
-                if not t.binop : raise ParseError('Expected binary operator', t.location)
+                if not t.binop : raise ParseError(string,'Expected binary operator', t.location)
                 t.unop = None
                 t.atom = False
                 t.functor = False
@@ -621,24 +625,21 @@ class PrologParser(object) :
                 t.unop = None
         
             if t.unop and t.atom :
-                if i == l :
-                    t.unop = None
-                else :
-                    n = tokens[i+1]
-                    if not n.binop :
-                        t.atom = False
+                n = tokens[i+1]
+                if not n.binop :
+                    t.atom = False
             
             p = t
             if t.count_options() != 1 :
-                raise ParseError('Ambiguous token role', t.location)
+                raise ParseError(string,'Ambiguous token role', t.location)
             
         return tokens
         
-    def _parse_statement(self, tokens ) :
-        return self.collapse(tokens)
+    def _parse_statement(self, string, tokens ) :
+        return self.collapse(string, tokens)
         
     def parseString(self, string) :
-        return self.factory.build_program(mapl(self._parse_statement, self._extract_statements(self._tokenize(string))))
+        return self.factory.build_program(mapl(lambda x : self._parse_statement(string,x), self._extract_statements(string, self._tokenize(string))))
         
     def parseFile(self, filename) :
         with open(filename) as f :
@@ -671,7 +672,7 @@ class SubExpr(object) :
     def is_special(self, special) :
         return False
         
-    def __repr__(self) :
+    def __repr__(self) : # pragma: no cover
         return '%s {%s}' % (self.parts, self.operator)
 
 if __name__ == '__main__' :

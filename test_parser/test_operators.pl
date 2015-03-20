@@ -31,3 +31,4 @@ slashBackslash(X,Y) :- X \/ Y.
 singleBackslash(X) :- \X.
 caretPower(X,Y,R) :- R is X ^ Y.
 tilde(X) :- ~X.
+parse_operator(X) --> a(X).

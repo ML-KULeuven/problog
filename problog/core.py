@@ -54,6 +54,8 @@ class ProbLog(object) :
 
 class ProbLogError(Exception) : pass
 
+class ParseError(ProbLogError) : pass 
+
 class GroundingError(ProbLogError) : pass
 
 class CompilationError(ProbLogError) : pass
@@ -66,6 +68,8 @@ def process_error( err, debug=False ) :
     
     err_type = type(err).__name__
     if err_type == 'ParseException' :
+        return 'Parsing error on %s:%s: %s.\n%s' % (err.lineno, err.col, err.msg, err.line )
+    elif err_type == 'ParseError' :
         return 'Parsing error on %s:%s: %s.\n%s' % (err.lineno, err.col, err.msg, err.line )
     elif isinstance(err, GroundingError) :
         return 'Error during grounding: %s' % err
