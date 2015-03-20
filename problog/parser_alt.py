@@ -1,6 +1,6 @@
 from __future__ import print_function
 
-import core
+from .core import ParseError as CoreParseError
 
 LINE_COMMENT = '%'
 BLOCK_COMMENT_START = '/*'
@@ -9,7 +9,7 @@ NEWLINE = '\n'
     
 WHITESPACE = frozenset('\n\t ')
 
-class ParseError(core.ParseError) :
+class ParseError(CoreParseError) :
     
     def __init__(self, string, message, location) :
         self.msg = message
@@ -104,7 +104,6 @@ RE_FLOAT = re.compile(r'[-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?')
 
 def skip_to(s, pos, char) :
     end = s.find(char, pos)
-    print (repr(s), char, pos, end )
     if end == -1 :
         return len(s)
     else :
