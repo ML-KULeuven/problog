@@ -299,7 +299,7 @@ class PrologParser(object) :
         return Token(']', pos, atom=False, special=SPECIAL_BRACK_CLOSE), pos+1
         
     def _token_caret(self, s, pos) : 
-        return Token('^', pos, unop=(400,'xfy',self.factory.build_binop), functor=self._next_paren_open(s,pos)), pos+1
+        return Token('^', pos, binop=(400,'xfy',self.factory.build_binop), functor=self._next_paren_open(s,pos)), pos+1
     
     def _token_underscore(self, s, pos) : 
         return self._token_upper(s, pos) # Variable
@@ -308,7 +308,7 @@ class PrologParser(object) :
         return Token('|', pos, atom=False, binop=(1100,'xfy',self.factory.build_binop), special=SPECIAL_PIPE), pos+1
         
     def _token_tilde(self, s, pos) : 
-        return Token('~', pos, unop=(900,'fx',self.factory.build_binop)), pos+1
+        return Token('~', pos, unop=(900,'fx',self.factory.build_unop)), pos+1
     
     def _token_lower(self, s, pos) : 
         end = pos + 1
@@ -375,6 +375,8 @@ class PrologParser(object) :
         
     def next_token(self, s, pos) :
         action = self._token_action(s[pos])
+        if action is None:
+            raise UnexpectedCharacter(s, pos)
         result = action(s,pos)
         if result is None :
             raise Exception("Undefined action: '%s'" % action)
@@ -496,7 +498,7 @@ class PrologParser(object) :
                 comma_stack[-1].append(-i)
             
         if par_stack :
-            raise ParseError("Unmatched '%s'" % tokens[par_stack[-1][0]], tokens[par_stack[-1][1]].location)
+            raise ParseError("Unmatched '%s'" % tokens[par_stack[-1][1]].string, tokens[par_stack[-1][1]].location)
     
     def _build_operator_free(self, tokens) :
         if len(tokens) == 1 :
