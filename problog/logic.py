@@ -67,8 +67,9 @@ from collections import defaultdict
 import math, sys
 
 from .util import OrderedSet
+from .core import GroundingError
 
-class InstantiationError(Exception): pass
+class InstantiationError(GroundingError): pass
 
 def term2str(term) :
     if term is None :
@@ -593,30 +594,30 @@ class LogicProgram(object) :
             return lineno, charno
 
 functions = {
-    ("'+'", 2) : (lambda a,b : a + b),
-    ("'-'", 2) : (lambda a,b : a - b),
-    ("'/\\'", 2) : (lambda a,b : a & b),
-    ("'\\/'", 2) : (lambda a,b : a | b),
-    ("'xor'", 2) : (lambda a,b : a ^ b),
+    ("+", 2) : (lambda a,b : a + b),
+    ("-", 2) : (lambda a,b : a - b),
+    ("/\\", 2) : (lambda a,b : a & b),
+    ("\\/", 2) : (lambda a,b : a | b),
     ("xor", 2) : (lambda a,b : a ^ b),
-    ("'#'", 2) : (lambda a,b : a ^ b),
-    ("'><'", 2) : (lambda a,b : a ^ b),
-    ("'*'", 2) : (lambda a,b : a * b),
-    ("'/'", 2) : (lambda a,b : a / b),
-    ("'//'", 2) : (lambda a,b : a // b),        
-    ("'<<'", 2) : (lambda a,b : a << b),
-    ("'>>'", 2) : (lambda a,b : a >> b),
-    ("'mod'", 2) : (lambda a,b : a % b),
+    ("xor", 2) : (lambda a,b : a ^ b),
+    ("#", 2) : (lambda a,b : a ^ b),
+    ("><", 2) : (lambda a,b : a ^ b),
+    ("*", 2) : (lambda a,b : a * b),
+    ("/", 2) : (lambda a,b : a / b),
+    ("//", 2) : (lambda a,b : a // b),        
+    ("<<", 2) : (lambda a,b : a << b),
+    (">>", 2) : (lambda a,b : a >> b),
     ("mod", 2) : (lambda a,b : a % b),
-    ("'rem'", 2) : (lambda a,b : a % b),
+    ("mod", 2) : (lambda a,b : a % b),
     ("rem", 2) : (lambda a,b : a % b),
-    ("'div'", 2) : (lambda a, b : ( a - (a % b) ) // b),
+    ("rem", 2) : (lambda a,b : a % b),
     ("div", 2) : (lambda a, b : ( a - (a % b) ) // b),
-    ("'**'", 2) : (lambda a,b : a ** b),
-    ("'^'", 2) : (lambda a,b : a ** b),
-    ("'+'", 1) : (lambda a : a),
-    ("'-'", 1) : (lambda a : -a),
-    ("'\\'", 1) : (lambda a : ~a),
+    ("div", 2) : (lambda a, b : ( a - (a % b) ) // b),
+    ("**", 2) : (lambda a,b : a ** b),
+    ("^", 2) : (lambda a,b : a ** b),
+    ("+", 1) : (lambda a : a),
+    ("-", 1) : (lambda a : -a),
+    ("\\", 1) : (lambda a : ~a),
     ("atan",2) : math.atan2,
     ("atan2",2) : math.atan2,
     ("integer",1) : int,
@@ -645,7 +646,8 @@ from_math_0 = [ 'pi', 'e' ]
 for f in from_math_0 :
     functions[(f,0)] = getattr(math,f)
 
-
+def unquote(s) :
+    return s.strip("'")
                     
 def computeFunction(func, args) :
     """Compute the result of an arithmetic function given by a functor and a list of arguments.
@@ -657,9 +659,9 @@ def computeFunction(func, args) :
     Currently the following functions are supported: ``+/2``, ``-/2``, ``/\/2``, ``\//2``, ``xor/2``, ``*/2``, ``//2``, ``///2``, ``<</2``, ``>>/2``, ``mod/2``, ``rem/2``, ``**/2``, ``^/2``, ``+/1``, ``-/1``, ``\\/1``.
     
     """
-    function = functions.get( (func, len(args) ) )
+    function = functions.get( (unquote(func), len(args) ) )
     if function is None :
-        raise ValueError("Unknown function: '%s'/%s" % (func, len(args)) )
+        raise GroundingError("Unknown function: '%s'/%s" % (func, len(args)) )
     else :
         values = [ arg.value for arg in args ]
         return function(*values)

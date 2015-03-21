@@ -12,8 +12,13 @@ WHITESPACE = frozenset('\n\t ')
 class ParseError(CoreParseError) :
     
     def __init__(self, string, message, location) :
+            
         self.msg = message
-        self.lineno, self.col, self.line = self._convert_pos(string, location)
+        if type(location) == tuple :
+            self.lineno, self.col = location
+            self.line = ''
+        else :
+            self.lineno, self.col, self.line = self._convert_pos(string, location)
         Exception.__init__(self, '%s (at %s:%s)' % (self.msg,self.lineno, self.col))
         
     def _convert_pos(self, string, location) :
@@ -175,7 +180,7 @@ class PrologParser(object) :
         if end == -1 :
             raise UnmatchedCharacter(s, pos)
         else :
-            return Token(s[pos:end+1],pos), end + 1
+            return Token(s[pos:end+1],pos, functor=self._next_paren_open(s,end)), end + 1
         
     def _token_paren_open(self, s, pos) : 
         return Token(s[pos], pos, atom=False, special=SPECIAL_PAREN_OPEN), pos+1

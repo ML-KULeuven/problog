@@ -191,9 +191,11 @@ class ClauseDBEngine(GenericEngine) :
         logger = logging.getLogger('problog')
         with Timer('Grounding'):
             if queries is None : queries = [ q[0] for q in self.query(db, Term( 'query', None )) ]
+            if None in queries : raise GroundingError('Invalid query.')
             if evidence is None : 
                 evidence = self.query(db, Term( 'evidence', None, None ))
                 evidence += self.query(db, Term( 'evidence', None ))
+            if None in evidence : raise GroundingError('Invalid evidence.')
             
             if target is None : target = LogicFormula()
             
