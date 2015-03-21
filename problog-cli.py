@@ -57,7 +57,6 @@ def argparser() :
     parser.add_argument('--logspace', action='store_true', help="Use log space evaluation.")
     parser.add_argument('--output', '-o', help="Output file (default stdout)", type=outputfile)
     parser.add_argument('--recursion-limit', help="Set recursion limit. Increase this value if you get an unbounded program error. (default: %d)" % sys.getrecursionlimit(), default=sys.getrecursionlimit(), type=int)
-    parser.add_argument('--faster-parser', action='store_true', help=argparse.SUPPRESS)
     parser.add_argument('--timeout', '-t', type=int, default=0, help="Set timeout (in seconds, default=off).")
     parser.add_argument('--debug', '-d', action='store_true', help="Enable debug mode (print full errors).")
     return parser
@@ -92,7 +91,6 @@ if __name__ == '__main__' :
         output = open(args.output, 'w')
     
     parse_class = DefaultPrologParser
-    if args.faster_parser : parse_class = FastPrologParser
     
     if args.timeout : start_timer(args.timeout)
 
