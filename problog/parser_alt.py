@@ -12,26 +12,21 @@ WHITESPACE = frozenset('\n\t ')
 class ParseError(CoreParseError) :
     
     def __init__(self, string, message, location) :
-            
         self.msg = message
-        if type(location) == tuple :
-            self.lineno, self.col = location
-            self.line = ''
-        else :
-            self.lineno, self.col, self.line = self._convert_pos(string, location)
+        self.lineno, self.col, self.line = self._convert_pos(string, location)
         Exception.__init__(self, '%s (at %s:%s)' % (self.msg,self.lineno, self.col))
         
     def _convert_pos(self, string, location) :
+        """Find line number, column number and text of offending line."""
         lineno = 1
         col = 0
         end = 0
         stop = False
         for i,x in enumerate(string) :
             if x == '\n' :
+                if stop : break
                 lineno +=1 
                 col = 0
-                if stop :
-                    break
             if i == location : 
                 stop = True
             if not stop :
@@ -671,7 +666,7 @@ class SubExpr(object) :
         self.binop = None
         self.unop = None
         self.functor = False
-        self.location = (0,0)
+        self.location = self.parts[0].location
         
         self.ast = None
         
