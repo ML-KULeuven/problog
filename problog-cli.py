@@ -10,7 +10,7 @@ from problog.nnf_formula import NNF
 from problog.sdd_formula import SDD
 from problog.util import Timer, start_timer, stop_timer
 from problog.core import process_error
-from problog.parser import DefaultPrologParser, FastPrologParser
+from problog.parser import DefaultPrologParser
 
 
 def print_result( d, output, precision=8 ) :    
