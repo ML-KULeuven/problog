@@ -20,7 +20,7 @@ def print_result( d, output, precision=8 ) :
         l = max( len(str(k)) for k in d )
         f_flt = '\t%' + str(l) + 's : %.' + str(precision) + 'g' 
         f_str = '\t%' + str(l) + 's : %s' 
-        for it in sorted(d.items()) :
+        for it in sorted([ (str(k),v) for k,v in d.items()]) :
             if type(it[1]) == float :
                 print(f_flt % it, file=output)
             else :
