@@ -1100,9 +1100,12 @@ def builtin_findall( pattern, goal, result, database=None, target=None, engine=N
     findall_clause = Clause( findall_head , goal )    
     findall_db = ClauseDB(parent=database)
     findall_db += findall_clause
+    class D :
+        def __getitem__(self, key) :
+            return None
+    findall_head = instantiate(findall_head, D())
     results = engine.call( findall_head, subcall=True, database=findall_db, target=target, **kwdargs )
     results = [ (res[0],n) for res, n in results ]
-    
     output = []
     for l,n in select(results, target) :
         node = target.addAnd(n)
