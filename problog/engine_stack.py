@@ -25,6 +25,17 @@ class NegativeCycle(GroundingError) :
         self.trace = False
         self.debug = False
         
+class IndirectCallCycleError(GroundingError) :
+    """Cycle should not pass through indirect calls (e.g. call/1, findall/3)."""
+    
+    def __init__(self, location=None) :
+        self.location = location
+        msg = 'Indirect cycle detected (passing through call/1 or findall/3)'
+        if self.location : msg += ' at position %s:%s' % self.location
+        msg += '.'
+        GroundingError.__init__(self, msg)
+        
+        
 class InvalidEngineState(GroundingError): pass
 
 NODE_TRUE = 0
@@ -116,6 +127,7 @@ class StackBasedEngine(ClauseDBEngine) :
         current = childnode.parent
         actions = []
         while current != root :
+            if current is None : raise IndirectCallCycleError(location=childnode.node.location)
             exec_node = self.stack[current]
             if exec_node.on_cycle : 
                 break
