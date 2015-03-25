@@ -127,7 +127,7 @@ class StackBasedEngine(ClauseDBEngine) :
         current = childnode.parent
         actions = []
         while current != root :
-            if current is None : raise IndirectCallCycleError(location=childnode.node.location)
+            if current is None : raise IndirectCallCycleError(location=childnode.database.lineno(childnode.node.location))
             exec_node = self.stack[current]
             if exec_node.on_cycle : 
                 break
