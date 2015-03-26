@@ -87,7 +87,7 @@ class SampledFormula(LogicFormula) :
                 
                 self.facts[identifier] = value
             else :
-                value = self.engine.facts[identifier]
+                value = self.facts[identifier]
                 
         if value :
             return 0    # True
