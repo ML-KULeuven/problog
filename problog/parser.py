@@ -744,3 +744,5 @@ if __name__ == '__main__' :
         print ('====================================')
     
 DefaultPrologParser = PrologParser
+
+from .parser_pyparsing import PrologParser as DefaultPrologParser
