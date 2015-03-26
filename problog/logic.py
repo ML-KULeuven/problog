@@ -157,7 +157,7 @@ class Term(object) :
                 args.append( arg.apply(subst) )
         
         if self.probability is None :
-            if self.__class__ == And :
+            if self.__class__ == And or self.__class__ == Or :
                 return self.__class__( *args, location=self.location)
             else :
                 return self.__class__( self.functor, *args, location=self.location)
