@@ -728,6 +728,7 @@ class ListExpression(SubExpression) :
         for token_i, token in enumerate(self.tokens) :
             if token.is_special(SPECIAL_PIPE) :
                 prefix.append(parser.fold(self.string, current, 0, len(current)))
+                current = []
                 tail = parser.fold(self.string, self.tokens[token_i+1:], 0, len(self.tokens[token_i+1:]))
                 break
             elif token.is_special(SPECIAL_COMMA) :
@@ -735,6 +736,8 @@ class ListExpression(SubExpression) :
                 current = []        
             else :
                 current.append(token)
+        if current :
+            prefix.append(parser.fold(self.string, current, 0, len(current)))
         self.tokens = parser.factory.build_list(prefix, tail)
         # else :
         #     self.tokens = parser.fold(self.string, self.tokens, 0, len(self.tokens) )
