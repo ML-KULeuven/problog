@@ -615,7 +615,7 @@ class PrologParser(object) :
             else :
                 root_tokens.append(token)
         if expr_stack :
-            raise UnmatchedCharacter(string, par_stack[-1].start.location)
+            raise UnmatchedCharacter(string, expr_stack[-1].start.location)
             
         toks = self.label_tokens(string,root_tokens)
         return self.fold(string, toks, 0, len(toks) )
