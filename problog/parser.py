@@ -827,4 +827,4 @@ if __name__ == '__main__' :
     
 DefaultPrologParser = PrologParser
 
-from .parser_pyparsing import PrologParser as DefaultPrologParser
+#from .parser_pyparsing import PrologParser as DefaultPrologParser
