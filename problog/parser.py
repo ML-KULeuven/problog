@@ -55,6 +55,7 @@ class Token(object) :
         self.binop = binop
         self.unop = unop
         self.special = special
+        self.arglist = False
         if atom :
             self.functor = functor
         else :
@@ -82,6 +83,7 @@ class Token(object) :
         if self.binop : o += 'b'
         if self.unop : o += 'u'
         if self.functor : o += 'f'
+        if self.arglist : o += 'l'
         return o
         
     def __repr__(self) : # pragma: no cover
@@ -463,69 +465,19 @@ class PrologParser(object) :
         if statement :
             raise ParseError(string, 'Incomplete statement.', len(string))
     
-    
-    def _parenthesis_bounds(self, string, tokens ) :
-        # Find parenthesis subexpressions
-        par_stack = []
-        comma_stack = []
-        for i, token in enumerate( tokens ) :
-            if token.is_special(SPECIAL_PAREN_OPEN) :
-                par_stack.append(('(',i))
-                comma_stack.append([])
-            elif token.is_special(SPECIAL_PAREN_CLOSE) :
-                try :
-                    t, s = par_stack.pop(-1)
-                    if t != '(' :
-                        raise UnmatchedCharacter(string, tokens[s].location)
-                    yield s, i, comma_stack.pop(-1), '('
-                except IndexError :
-                    raise UnmatchedCharacter(string, token.location)
-            elif token.is_special(SPECIAL_BRACK_OPEN) :
-                par_stack.append(('[',i))
-                comma_stack.append([])
-            elif token.is_special(SPECIAL_BRACK_CLOSE) :
-                try :
-                    t, s = par_stack.pop(-1)
-                    if t != '[' :
-                        raise UnmatchedCharacter(string, tokens[s].location)
-                    commas = comma_stack.pop(-1)
-                    negs = [ x for x in commas if x < 0 ]
-                    if negs :
-                       assert(len(negs)==1) 
-                    else :
-                        commas.append(i)
-                    yield s, i, map(abs,commas), '['
-                except IndexError :
-                    raise UnmatchedCharacter(string, token.location)
-            elif token.is_special(SPECIAL_COMMA) and comma_stack :
-                if comma_stack[-1] and comma_stack[-1][-1] < 0 :
-                    raise UnexpectedCharacter(string, token.location)
-                comma_stack[-1].append(i)
-            elif token.is_special(SPECIAL_PIPE) and comma_stack :
-                if comma_stack[-1] and comma_stack[-1][-1] < 0 :
-                    raise UnexpectedCharacter(string, token.location)
-                comma_stack[-1].append(-i)
-            
-        if par_stack :
-            raise UnmatchedCharacter(string, tokens[par_stack[-1][1]].location)
+
     
     def _build_operator_free(self, tokens) :
         if len(tokens) == 1 :
             token = tokens[0]
-            if isinstance(token, SubExpr) :
-                if token.operator in ',.' :
-                    if token.operator == ',' :
-                        op = "','"
-                    else :
-                        op = '.' 
-                    curr = None
-                    for tok in reversed(token.parts) :
-                        if curr == None :
-                            curr = tok
-                        else :
-                            curr = self.factory.build_function(functor=op,arguments=(tok,curr)) #,location=tok.location)
+            if isinstance(token, SubExpression) :
+                if isinstance(token.tokens, list) :
+                    curr = token.tokens[-1]
+                    for t in reversed(token.tokens[:-1]) :
+                        curr = self.factory.build_conjunction(',',  t, curr)
                     return curr
-                    
+                else :
+                    return token.tokens
             elif token.is_special(SPECIAL_VARIABLE) :
                 return self.factory.build_variable(token.string, location=token.location)
             elif token.is_special(SPECIAL_INTEGER) :
@@ -537,7 +489,7 @@ class PrologParser(object) :
             else :
                 return self.factory.build_function(token.string, (), location=token.location)
         elif len(tokens) == 2 :
-            args = [ tok for tok in tokens[1].parts ]
+            args = [ tok for tok in tokens[1].tokens ]
             return self.factory.build_function(tokens[0].string, args , location=tokens[0].location)
         else :
             assert(len(tokens)==0)
@@ -574,30 +526,9 @@ class PrologParser(object) :
                         assert(max_i == lo)
                         lf = self.fold( string, operators, lo+1, hi, max_op[0], max_order[1], level+1 )
                         return max_op[2]( functor=operators[max_i].string, operand=lf, location=operators[max_i].location )
-
-    def collapse(self, string, tokens ) :
-        bounds = self._parenthesis_bounds(string, tokens )
-        for i, j, c, t in bounds :
-            i1 = i
-            sub_tokens = []
-            for ic in c :
-                toks = self.label_tokens(string, filterl(None, tokens[i1+1:ic]))
-                
-                toks = self.fold(string, toks, 0, len(toks) )
-                
-                sub_tokens.append( toks )
-                i1 = ic
-            toks = self.label_tokens(string,filterl(None, tokens[i1+1:j]))
-            toks = self.fold(string, toks, 0, len(toks) )
-            if toks == None : toks = self.factory.build_list(())
-            sub_tokens.append( toks )
-            if t == '(' :
-                sub_token = SubExpr(filterl(None,sub_tokens), operator=',')
-            else :
-                sub_token = SubExpr(filterl(None,sub_tokens), operator='.')
-            tokens[i:j+1] = [ sub_token ] + [None] * (j-i) 
-        toks = self.label_tokens(string,filterl(None,tokens))
-        return self.fold(string, toks, 0, len(toks) )
+                        
+    
+                        
     
     def label_tokens(self, string, tokens ) :
         l = len(tokens)-1
@@ -612,18 +543,25 @@ class PrologParser(object) :
             
             if i == 0 : 
                 t.binop = None  # First token can not be a binop
-            elif p.functor :    
-                pass
+                t.arglist = False
+            elif p.functor :
+                t.atom = False
+                t.arglist = t.is_comma_list
+            elif p.arglist :
+                t.unop = False
+                t.atom = False
+                t.functor = False
             elif p.atom :
                 if not t.binop : raise ParseError(string,'Expected binary operator', t.location)
                 t.unop = None
                 t.atom = False
                 t.functor = False
+                t.arglist = False    
             elif p.binop :
                 t.binop = None
-                t.is_comma_list = False
+                t.arglist = False
             else :
-                pass    
+                t.arglist = False    
             
             if t.unop and t.functor :
                 t.unop = None
@@ -632,7 +570,6 @@ class PrologParser(object) :
                 n = tokens[i+1]
                 if not n.binop :
                     t.atom = False
-            
             p = t
             if t.count_options() != 1 :
                 raise ParseError(string,'Ambiguous token role', t.location)
@@ -649,6 +586,41 @@ class PrologParser(object) :
         with open(filename) as f :
             return self.parseString(f.read())
 
+    def collapse(self, string, tokens) :
+        """Combine tokens into subexpressions."""
+        
+        root_tokens = []
+        expr_stack = [ ]
+        for token_i, token in enumerate(tokens) :
+            if token.is_special(SPECIAL_PAREN_OPEN) :   # Open a parenthesis expression
+                expr_stack.append( ParenExpression(string, token) )
+            elif token.is_special(SPECIAL_BRACK_OPEN) :   # Open a list expression
+                expr_stack.append( ListExpression(string, token) )
+            elif token.is_special(SPECIAL_PAREN_CLOSE) or token.is_special(SPECIAL_BRACK_CLOSE) :
+                try :
+                    current_expr = expr_stack.pop(-1)   # Close a parenthesis expression
+                    if not current_expr.accepts(token) :
+                        raise UnexpectedCharacter(string, token.location)
+                    else :
+                        current_expr.append(token)
+                        current_expr.parse(self)
+                        if not expr_stack :
+                            root_tokens.append(current_expr)
+                        else :
+                            expr_stack[-1].append(current_expr)
+                except IndexError :
+                    raise UnmatchedCharacter(string, token.location)
+            elif expr_stack :
+                expr_stack[-1].append(token)
+            else :
+                root_tokens.append(token)
+        if expr_stack :
+            raise UnmatchedCharacter(string, par_stack[-1].start.location)
+            
+        toks = self.label_tokens(string,root_tokens)
+        return self.fold(string, toks, 0, len(toks) )
+            
+    
 def mapl(f, l) :
     return list(map(f,l))
 
@@ -656,19 +628,54 @@ def filterl(f, l) :
     return list(filter(f,l))
 
 
-class SubExpr(object) :
+
+class SubExpression(object) :
     
-    def __init__(self, parts, operator='') :
-        self.parts = parts
-        self.operator = operator
-        self.is_comma_list = (operator==',')
-        self.atom = True
-        self.binop = None
-        self.unop = None
-        self.functor = False
-        self.location = self.parts[0].location
+    def __init__(self, string, start) :
+        self.string = string
+        self.tokens = []
+        self.start = start
+        self.end = None
         
-        self.ast = None
+        self.binop = None
+        self.unop = False
+        self.functor = False
+        self.atom = True
+        self._arglist = True
+        self.max_operators = []
+        
+    @property
+    def arglist(self) :
+        return self._arglist and self.is_comma_list
+        
+    @arglist.setter
+    def arglist(self, value) :
+        self._arglist = value
+        
+        
+    @property
+    def location(self) :
+        return self.start.location
+        
+    def parse(self, parser) :
+        self.label_tokens(parser)
+        if self.arglist :
+            current = []
+            tokens = []
+            for token in self.tokens :
+                if token.is_special(SPECIAL_COMMA) :
+                    tokens.append(parser.fold(self.string, current, 0, len(current)))
+                    current = []        
+                else :
+                    current.append(token)
+            new_token = parser.fold(self.string, current, 0, len(current))
+            tokens.append(new_token)
+            self.tokens = tokens
+        else :
+            self.tokens = parser.fold(self.string, self.tokens, 0, len(self.tokens) )
+        
+    def label_tokens(self, parser) :
+        parser.label_tokens(self.string, self.tokens)
         
     def count_options(self) :
         return 1
@@ -676,8 +683,80 @@ class SubExpr(object) :
     def is_special(self, special) :
         return False
         
-    def __repr__(self) : # pragma: no cover
-        return '%s {%s}' % (self.parts, self.operator)
+    def append(self, token) :
+        if token.is_special(self.close_char) :
+            self.end = token
+        elif token.binop :
+            if not self.max_operators or token.binop[0] > self.max_operators[0].binop[0] :
+                self.max_operators = [token]
+            elif self.max_operators and token.binop[0] == self.max_operators[0].binop[0] :
+                self.max_operators.append(token)
+            self.tokens.append(token)
+        else :
+            self.tokens.append(token)
+            
+    def list_options(self) :  # pragma: no cover
+        o = ''
+        if self.atom : o += 'a'
+        if self.binop : o += 'b'
+        if self.unop : o += 'u'
+        if self.functor : o += 'f'
+        if self.arglist : o += 'l'
+        return o
+    
+    
+
+class ListExpression(SubExpression) :
+    
+    def __init__(self, string, start) :
+        SubExpression.__init__(self, string, start)
+        self.close_char = SPECIAL_BRACK_CLOSE
+        self.is_comma_list = False
+
+    def accepts(self, token) :
+        return not token.is_special(SPECIAL_PAREN_CLOSE)
+        
+        
+    def __repr__(self) :
+        return 'LE %s {%s}' % (self.tokens, self.list_options())
+
+    def parse(self, parser) :
+        self.label_tokens(parser)
+        prefix = []
+        tail = None
+        current = []
+        for token_i, token in enumerate(self.tokens) :
+            if token.is_special(SPECIAL_PIPE) :
+                prefix.append(parser.fold(self.string, current, 0, len(current)))
+                tail = parser.fold(self.string, self.tokens[token_i+1:], 0, len(self.tokens[token_i+1:]))
+                break
+            elif token.is_special(SPECIAL_COMMA) :
+                prefix.append(parser.fold(self.string, current, 0, len(current)))
+                current = []        
+            else :
+                current.append(token)
+        self.tokens = parser.factory.build_list(prefix, tail)
+        # else :
+        #     self.tokens = parser.fold(self.string, self.tokens, 0, len(self.tokens) )
+
+
+
+class ParenExpression(SubExpression) :
+    
+    def __init__(self, string, tokens) :
+        SubExpression.__init__(self, string, tokens)
+        self.close_char = SPECIAL_PAREN_CLOSE
+        
+    @property
+    def is_comma_list(self) :
+        return not self.max_operators or self.max_operators[0].string == ','
+        
+    def accepts(self, token) :
+        return not token.is_special(SPECIAL_BRACK_CLOSE)
+        
+    def __repr__(self) :
+        return 'PE %s {%s}' % (self.tokens, self.list_options())
+
 
 class Factory(object) :
     """Factory object for creating suitable objects from the parse tree."""
@@ -745,4 +824,4 @@ if __name__ == '__main__' :
     
 DefaultPrologParser = PrologParser
 
-from .parser_pyparsing import PrologParser as DefaultPrologParser
+#from .parser_pyparsing import PrologParser as DefaultPrologParser
