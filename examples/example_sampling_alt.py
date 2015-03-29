@@ -134,6 +134,12 @@ def sample( filename, N=1, with_facts=False, oneline=False ) :
         print ('====================')
         print (result.toString(db, with_facts, oneline))
 
+def sample_object(pl, N=1):
+    engine = DefaultEngine()
+    db = engine.prepare(pl)
+    result = [engine.ground_all(db, target=SampledFormula()) for i in range(N)]
+    return result, db
+
 def estimate( filename, N=1 ) :
     from collections import defaultdict
     pl = PrologFile(filename)

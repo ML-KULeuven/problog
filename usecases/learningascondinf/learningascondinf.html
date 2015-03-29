@@ -199,9 +199,13 @@ div#notebook {
 <div class="prompt input_prompt">In&nbsp;[2]:</div>
 <div class="inner_cell">
     <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span class="kn">import</span> <span class="nn">sys</span><span class="o">,</span> <span class="nn">os</span>
+<div class=" highlight hl-ipython3"><pre><span class="kn">import</span> <span class="nn">sys</span><span class="o">,</span> <span class="nn">os</span><span class="o">,</span> <span class="nn">imp</span>
 
 <span class="n">sys</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">abspath</span><span class="p">(</span><span class="s">&#39;../..&#39;</span><span class="p">))</span>
+<span class="n">sys</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">abspath</span><span class="p">(</span><span class="s">&#39;../../examples&#39;</span><span class="p">))</span>
+<span class="n">sys</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">abspath</span><span class="p">(</span><span class="s">&#39;../../util&#39;</span><span class="p">))</span>
+
+<span class="o">%</span><span class="k">load_ext</span> problogmagic
 </pre></div>
 
 </div>
@@ -214,7 +218,15 @@ div#notebook {
 </div>
 <div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<p>This notebook assumes that problog-cli.py is available on your PATH.</p>
+<p>In this notebook we will make use of the <code>problogmagic</code> extension for IPython to format results. All code can also be ran as</p>
+
+<pre><code>$ ./problog-cli.py path/to/file.pl
+
+</code></pre>
+<p>Or in a Notebook without the magic extensions (but <code>problog-cli.py</code> in your path:</p>
+
+<pre><code>%%script problog-cli.py
+... rest of cell</code></pre>
 
 </div>
 </div>
@@ -235,10 +247,10 @@ div#notebook {
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[23]:</div>
+<div class="prompt input_prompt">In&nbsp;[15]:</div>
 <div class="inner_cell">
     <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span class="o">%%</span><span class="k">script</span> problog-cli.py
+<div class=" highlight hl-ipython3"><pre><span class="o">%%</span><span class="k">problog</span>
 
 %% Prior
 0.999::fair_coin.
@@ -271,15 +283,26 @@ query(fair_coin).
 
 
 <div class="output_area"><div class="prompt"></div>
-<div class="output_subarea output_stream output_stdout output_text">
-<pre>	fair_coin : 0.9758137
-</pre>
+
+<div class="output_html rendered_html output_subarea ">
+<table style="width:100%;"><tr><th style="width:33%;">Atom<th>Prob<tr><td>fair_coin<td><div class="progress-bar" role="progressbar" aria-valuenow="97.58137004224004" aria-valuemin="0" aria-valuemax="100" style="text-align:left;width:97.58137004224004%;padding:3px;color:white;">0.9758</div></table>
 </div>
+
 </div>
 
 </div>
 </div>
 
+</div>
+<div class="cell border-box-sizing text_cell rendered">
+<div class="prompt input_prompt">
+</div>
+<div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<p>It is important to have a <code>T</code> argument in <code>coin/2</code> to indicate about which coin we are talking. Coins are independent of each other but the same coin could be fair or not. And it is important the system knows you are talking about the same coin.</p>
+
+</div>
+</div>
 </div>
 <div class="cell border-box-sizing text_cell rendered">
 <div class="prompt input_prompt">
@@ -293,10 +316,10 @@ query(fair_coin).
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[32]:</div>
+<div class="prompt input_prompt">In&nbsp;[20]:</div>
 <div class="inner_cell">
     <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span class="o">%%</span><span class="k">script</span> problog-cli.py
+<div class=" highlight hl-ipython3"><pre><span class="o">%%</span><span class="k">problog</span>
 
 %% Uniform prior on coin weights (cw)
 %% Discretised for ProbLog (TODO: can we do better?)
@@ -327,14 +350,11 @@ query(cw(V)).
 
 
 <div class="output_area"><div class="prompt"></div>
-<div class="output_subarea output_stream output_stdout output_text">
-<pre>	   cw(0) : 0
-	cw(0.25) : 0.00076923077
-	 cw(0.5) : 0.024615385
-	cw(0.75) : 0.18692308
-	 cw(1.0) : 0.78769231
-</pre>
+
+<div class="output_html rendered_html output_subarea ">
+<table style="width:100%;"><tr><th style="width:33%;">Atom<th>Prob<tr><td>cw(0)<td><div class="progress-bar" role="progressbar" aria-valuenow="0.0" aria-valuemin="0" aria-valuemax="100" style="text-align:left;width:0.0%;padding:3px;color:black;">0.0000</div><tr><td>cw(0.25)<td><div class="progress-bar" role="progressbar" aria-valuenow="0.07692307692307693" aria-valuemin="0" aria-valuemax="100" style="text-align:left;width:0.07692307692307693%;padding:3px;color:black;">0.0008</div><tr><td>cw(0.5)<td><div class="progress-bar" role="progressbar" aria-valuenow="2.4615384615384617" aria-valuemin="0" aria-valuemax="100" style="text-align:left;width:2.4615384615384617%;padding:3px;color:black;">0.0246</div><tr><td>cw(0.75)<td><div class="progress-bar" role="progressbar" aria-valuenow="18.692307692307693" aria-valuemin="0" aria-valuemax="100" style="text-align:left;width:18.692307692307693%;padding:3px;color:white;">0.1869</div><tr><td>cw(1.0)<td><div class="progress-bar" role="progressbar" aria-valuenow="78.76923076923077" aria-valuemin="0" aria-valuemax="100" style="text-align:left;width:78.76923076923077%;padding:3px;color:white;">0.7877</div></table>
 </div>
+
 </div>
 
 </div>
@@ -347,48 +367,30 @@ query(cw(V)).
 <div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
 <h3 id="Bayesian-Learning">Bayesian Learning<a class="anchor-link" href="#Bayesian-Learning">&#182;</a></h3><p>We can integrate Bayesian learning into the ProbLog system by combining ProbLog and Python.</p>
-<p>First, we can sample from a simple program to generate data:</p>
+
+</div>
+</div>
+</div>
+<div class="cell border-box-sizing text_cell rendered">
+<div class="prompt input_prompt">
+</div>
+<div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<h4 id="Sampling">Sampling<a class="anchor-link" href="#Sampling">&#182;</a></h4><p>First, we can sample from a simple program to generate data:</p>
 
 </div>
 </div>
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[1]:</div>
+<div class="prompt input_prompt">In&nbsp;[14]:</div>
 <div class="inner_cell">
     <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span class="o">!</span>cat biased_coin_sample.pl
-</pre></div>
+<div class=" highlight hl-ipython3"><pre><span class="o">%%</span><span class="k">problogsample</span> -N 10
 
-</div>
-</div>
-</div>
-
-<div class="output_wrapper">
-<div class="output">
-
-
-<div class="output_area"><div class="prompt"></div>
-<div class="output_subarea output_stream output_stdout output_text">
-<pre>
 0.9::coin(h) ; 0.1::coin(t).
 
 query(coin(S)).
-
-</pre>
-</div>
-</div>
-
-</div>
-</div>
-
-</div>
-<div class="cell border-box-sizing code_cell rendered">
-<div class="input">
-<div class="prompt input_prompt">In&nbsp;[30]:</div>
-<div class="inner_cell">
-    <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span class="o">!</span>../../examples/example_sampling_alt.py -N <span class="m">4</span> biased_coin_sample.pl
 </pre></div>
 
 </div>
@@ -400,21 +402,11 @@ query(coin(S)).
 
 
 <div class="output_area"><div class="prompt"></div>
-<div class="output_subarea output_stream output_stdout output_text">
-<pre>====================
-coin(h).
-% Probability: 0.9
-====================
-coin(h).
-% Probability: 0.9
-====================
-coin(h).
-% Probability: 0.9
-====================
-coin(h).
-% Probability: 0.9
-</pre>
+
+<div class="output_html rendered_html output_subarea ">
+<pre>coin(h). % Probability: 0.9<br>coin(h). % Probability: 0.9<br>coin(t). % Probability: 0.1<br>coin(h). % Probability: 0.9<br>coin(h). % Probability: 0.9<br>coin(h). % Probability: 0.9<br>coin(h). % Probability: 0.9<br>coin(h). % Probability: 0.9<br>coin(h). % Probability: 0.9<br>coin(h). % Probability: 0.9<br></pre>
 </div>
+
 </div>
 
 </div>
@@ -426,30 +418,18 @@ coin(h).
 </div>
 <div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<p>Or we can sample a list of random length:</p>
+<p>Or we can sample a list of random length (stop probability is 0.1):</p>
 
 </div>
 </div>
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[12]:</div>
+<div class="prompt input_prompt">In&nbsp;[15]:</div>
 <div class="inner_cell">
     <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span class="o">!</span>cat biased_coin_sample2.pl
-</pre></div>
+<div class=" highlight hl-ipython3"><pre><span class="o">%%</span><span class="k">problogsample</span> -N 1
 
-</div>
-</div>
-</div>
-
-<div class="output_wrapper">
-<div class="output">
-
-
-<div class="output_area"><div class="prompt"></div>
-<div class="output_subarea output_stream output_stdout output_text">
-<pre>
 0.9::coin(h,T) ; 0.1::coin(t,T).
 
 0.1::stop(T).
@@ -459,21 +439,6 @@ tosses([],T) :- stop(T).
 tosses([H|R],T) :- \+stop(T), coin(H,T), Tn is T+1, tosses(R,Tn).
 
 query(tosses(C)).
-
-</pre>
-</div>
-</div>
-
-</div>
-</div>
-
-</div>
-<div class="cell border-box-sizing code_cell rendered">
-<div class="input">
-<div class="prompt input_prompt">In&nbsp;[15]:</div>
-<div class="inner_cell">
-    <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span class="o">!</span>../../examples/example_sampling_alt.py -N <span class="m">1</span> biased_coin_sample2.pl
 </pre></div>
 
 </div>
@@ -485,12 +450,11 @@ query(tosses(C)).
 
 
 <div class="output_area"><div class="prompt"></div>
-<div class="output_subarea output_stream output_stdout output_text">
-<pre>====================
-tosses([h, h, h, h, h, h, h, h, t, h, h, h, h, h]).
-% Probability: 0.00022358488
-</pre>
+
+<div class="output_html rendered_html output_subarea ">
+<pre>tosses([h, h, h, h, h, t, h, h, h, h, h, h, h, h, h, h, h, h, h, h, h, h, h, h, h, h, h, h, h, h]). % Probability: 1.9966781e-05<br></pre>
 </div>
+
 </div>
 
 </div>
@@ -502,22 +466,17 @@ tosses([h, h, h, h, h, h, h, h, t, h, h, h, h, h]).
 </div>
 <div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<p>Then we can sample an increasing number of samples to apply the same Bayesian rule approach as above:</p>
-<p><strong>TODO</strong>: Use Python output of ProbLog</p>
+<h4 id="Learn">Learn<a class="anchor-link" href="#Learn">&#182;</a></h4><p>Then we can sample an increasing number of samples to apply the same Bayesian rule approach as above and see the accuracy of our estimation improve:</p>
 
 </div>
 </div>
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[&nbsp;]:</div>
+<div class="prompt input_prompt">In&nbsp;[16]:</div>
 <div class="inner_cell">
     <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span class="kn">from</span> <span class="nn">problog.program</span> <span class="k">import</span> <span class="n">PrologString</span>
-
-<span class="c"># TODO: integrate ProbLog better into Python</span>
-<span class="c">#model = PrologString(&quot;&quot;&quot;</span>
-<span class="n">model_str</span> <span class="o">=</span> <span class="s">&quot;&quot;&quot;</span>
+<div class=" highlight hl-ipython3"><pre><span class="n">model_str</span> <span class="o">=</span> <span class="s">&quot;&quot;&quot;</span>
 <span class="s">P::cw(0); P::cw(0.125); P::cw(0.25); P::cw(0.375); P::cw(0.5); P::cw(0.625); P::cw(0.75);P::cw(0.875); P::cw(1.0) :- P is 1.0/9.</span>
 <span class="s">Ph::coin(h,T) ; Pt::coin(t,T) :- cw(Ph), Pt is 1.0-Ph.</span>
 
@@ -533,26 +492,243 @@ tosses([h, h, h, h, h, h, h, h, t, h, h, h, h, h]).
 <span class="s">&quot;&quot;&quot;</span>
 
 <span class="n">sample_str</span> <span class="o">=</span> <span class="s">&quot;&quot;&quot;</span>
-<span class="s">0.9::coin(h,T) ; 0.1::coin(t,T).</span>
+<span class="s">0.9::coin(h) ; 0.1::coin(t).</span>
+
+<span class="s">query(coin(S)).</span>
 <span class="s">&quot;&quot;&quot;</span>
-
-<span class="n">results</span> <span class="o">=</span> <span class="p">[]</span>
-
-<span class="c">#for observed_data_size in [1, 3, 6, 10, 20, 30, 50, 70, 100]:</span>
-<span class="k">for</span> <span class="n">observed_data_size</span> <span class="ow">in</span> <span class="p">[</span><span class="mi">1</span><span class="p">]:</span>
-    <span class="c"># TODO: grab sampled data from sample_str</span>
-    <span class="n">observed_data</span> <span class="o">=</span> <span class="s">&quot;[h,t,t,h,h,h,t,h,h,t,h,h,h]&quot;</span>
-    <span class="n">observation_str</span> <span class="o">=</span> <span class="s">&quot;evidence(tosses({})).</span><span class="se">\n</span><span class="s">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">observed_data</span><span class="p">)</span>
-    <span class="n">model</span> <span class="o">=</span> <span class="n">PrologString</span><span class="p">(</span><span class="n">model_str</span><span class="o">+</span><span class="n">observation_str</span><span class="p">)</span>
-    <span class="c">#TODO: use &#39;model.evaluate()&#39;, why doesn&#39;t it work?</span>
-    <span class="n">result</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">evaluate</span><span class="p">()</span>
-    <span class="n">results</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">result</span><span class="p">)</span>
-    <span class="nb">print</span><span class="p">(</span><span class="n">result</span><span class="p">)</span>
-
-<span class="c">#TODO: plot results</span>
 </pre></div>
 
 </div>
+</div>
+</div>
+
+</div>
+<div class="cell border-box-sizing code_cell rendered">
+<div class="input">
+<div class="prompt input_prompt">In&nbsp;[17]:</div>
+<div class="inner_cell">
+    <div class="input_area">
+<div class=" highlight hl-ipython3"><pre><span class="kn">from</span> <span class="nn">problog.core</span> <span class="k">import</span> <span class="n">ProbLog</span>
+<span class="kn">from</span> <span class="nn">problog.program</span> <span class="k">import</span> <span class="n">PrologString</span>
+<span class="kn">import</span> <span class="nn">example_sampling_alt</span> <span class="k">as</span> <span class="nn">plsample</span> <span class="c"># TODO: make part of problog package?</span>
+<span class="kn">from</span> <span class="nn">problog.sdd_formula</span> <span class="k">import</span> <span class="n">SDD</span>
+
+<span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
+<span class="o">%</span><span class="k">matplotlib</span> inline
+
+<span class="c">#sizes = [1, 3, 6, 10, 20, 30, 50, 70, 100] # TODO: sizes &gt; 6 are really slow</span>
+<span class="n">sizes</span> <span class="o">=</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">6</span><span class="p">]</span>
+<span class="n">results</span> <span class="o">=</span> <span class="p">[]</span>
+
+<span class="k">for</span> <span class="n">observed_data_size</span> <span class="ow">in</span> <span class="n">sizes</span><span class="p">:</span>
+    <span class="n">model</span> <span class="o">=</span> <span class="n">PrologString</span><span class="p">(</span><span class="n">sample_str</span><span class="p">)</span>
+    <span class="n">samples</span><span class="p">,</span><span class="n">_</span> <span class="o">=</span> <span class="n">plsample</span><span class="o">.</span><span class="n">sample_object</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">N</span><span class="o">=</span><span class="n">observed_data_size</span><span class="p">)</span>
+    <span class="n">observations</span> <span class="o">=</span> <span class="p">[</span><span class="nb">list</span><span class="p">(</span><span class="n">sample</span><span class="o">.</span><span class="n">queries</span><span class="p">())[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">args</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">for</span> <span class="n">sample</span> <span class="ow">in</span> <span class="n">samples</span><span class="p">]</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s">&#39;Sampled observations: {}&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">observations</span><span class="p">))</span>
+    <span class="n">observations_str</span> <span class="o">=</span> <span class="s">&quot;evidence(tosses({})).</span><span class="se">\n</span><span class="s">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">observations</span><span class="p">)</span>
+    <span class="n">model</span> <span class="o">=</span> <span class="n">PrologString</span><span class="p">(</span><span class="n">model_str</span><span class="o">+</span><span class="n">observations_str</span><span class="p">)</span>
+    
+    <span class="n">nnf</span> <span class="o">=</span> <span class="n">ProbLog</span><span class="o">.</span><span class="n">convert</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">SDD</span><span class="p">)</span>
+    <span class="n">outcome</span> <span class="o">=</span> <span class="n">nnf</span><span class="o">.</span><span class="n">evaluate</span><span class="p">()</span>
+    
+    <span class="n">results</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="nb">max</span><span class="p">([(</span><span class="n">atom</span><span class="o">.</span><span class="n">args</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span><span class="n">prob</span><span class="p">)</span> <span class="k">for</span> <span class="n">atom</span><span class="p">,</span><span class="n">prob</span> <span class="ow">in</span> <span class="n">outcome</span><span class="o">.</span><span class="n">items</span><span class="p">()],</span> <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">t</span><span class="p">:</span><span class="n">t</span><span class="p">[</span><span class="mi">1</span><span class="p">]))</span>
+
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">sizes</span><span class="p">,</span> <span class="p">[</span><span class="n">result</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">for</span> <span class="n">result</span> <span class="ow">in</span> <span class="n">results</span><span class="p">],</span> <span class="n">marker</span><span class="o">=</span><span class="s">&#39;o&#39;</span><span class="p">);</span>
+<span class="n">a</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">gca</span><span class="p">()</span>
+<span class="n">a</span><span class="o">.</span><span class="n">set_ylim</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span><span class="mf">1.1</span><span class="p">]);</span>
+</pre></div>
+
+</div>
+</div>
+</div>
+
+<div class="output_wrapper">
+<div class="output">
+
+
+<div class="output_area"><div class="prompt"></div>
+<div class="output_subarea output_stream output_stdout output_text">
+<pre>Sampled observations: [h]
+Sampled observations: [t, h]
+Sampled observations: [h, t, h]
+Sampled observations: [h, h, h, h]
+Sampled observations: [h, h, h, h, t]
+Sampled observations: [h, h, h, h, h, t]
+</pre>
+</div>
+</div>
+
+<div class="output_area"><div class="prompt"></div>
+
+
+<div class="output_png output_subarea ">
+<img src="data:image/png;base64,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
+"
+>
+</div>
+
+</div>
+
 </div>
 </div>
 
@@ -578,10 +754,10 @@ tosses([h, h, h, h, h, h, h, h, t, h, h, h, h, h]).
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[14]:</div>
+<div class="prompt input_prompt">In&nbsp;[7]:</div>
 <div class="inner_cell">
     <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span class="o">%%</span><span class="k">script</span> problog-cli.py
+<div class=" highlight hl-ipython3"><pre><span class="o">%%</span><span class="k">problog</span>
 
 :- load_external(&#39;beta.py&#39;).
 
@@ -603,14 +779,11 @@ query(cw(V)).
 
 
 <div class="output_area"><div class="prompt"></div>
-<div class="output_subarea output_stream output_stdout output_text">
-<pre>	   cw(0) : 0
-	cw(0.25) : 0.26459401
-	 cw(0.5) : 3.523941
-	cw(0.75) : 0.26459401
-	 cw(1.0) : 0
-</pre>
+
+<div class="output_html rendered_html output_subarea ">
+<table style="width:100%;"><tr><th style="width:66%;">Atom<th>Probability<tr><td>cw(0)<td><div class="progress-bar" role="progressbar" aria-valuenow="0.0" aria-valuemin="0" aria-valuemax="100" style="text-align:left;width:0.0%;padding:3px;color:black;">0.0000</div><tr><td>cw(0.25)<td><div class="progress-bar" role="progressbar" aria-valuenow="6.614850186451808" aria-valuemin="0" aria-valuemax="100" style="text-align:left;width:6.614850186451808%;padding:3px;color:white;">0.0661</div><tr><td>cw(0.5)<td><div class="progress-bar" role="progressbar" aria-valuenow="88.09852600097659" aria-valuemin="0" aria-valuemax="100" style="text-align:left;width:88.09852600097659%;padding:3px;color:white;">0.8810</div><tr><td>cw(0.75)<td><div class="progress-bar" role="progressbar" aria-valuenow="6.614850186451808" aria-valuemin="0" aria-valuemax="100" style="text-align:left;width:6.614850186451808%;padding:3px;color:white;">0.0661</div><tr><td>cw(1.0)<td><div class="progress-bar" role="progressbar" aria-valuenow="0.0" aria-valuemin="0" aria-valuemax="100" style="text-align:left;width:0.0%;padding:3px;color:black;">0.0000</div></table>
 </div>
+
 </div>
 
 </div>
@@ -629,7 +802,7 @@ query(cw(V)).
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[1]:</div>
+<div class="prompt input_prompt">In&nbsp;[45]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython3"><pre><span class="o">!</span>cat beta.py
@@ -692,10 +865,10 @@ def beta_pdf(a, b, values):
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[11]:</div>
+<div class="prompt input_prompt">In&nbsp;[8]:</div>
 <div class="inner_cell">
     <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span class="o">%%</span><span class="k">script</span> problog-cli.py
+<div class=" highlight hl-ipython3"><pre><span class="o">%%</span><span class="k">problog</span>
 
 :- load_external(&#39;beta.py&#39;).
 
@@ -730,14 +903,11 @@ query(cw(V)).
 
 
 <div class="output_area"><div class="prompt"></div>
-<div class="output_subarea output_stream output_stdout output_text">
-<pre>	   cw(0) : 0
-	cw(0.25) : 0.0014921243
-	 cw(0.5) : 0.63592166
-	cw(0.75) : 0.36258621
-	 cw(1.0) : 0
-</pre>
+
+<div class="output_html rendered_html output_subarea ">
+<table style="width:100%;"><tr><th style="width:66%;">Atom<th>Probability<tr><td>cw(0)<td><div class="progress-bar" role="progressbar" aria-valuenow="0.0" aria-valuemin="0" aria-valuemax="100" style="text-align:left;width:0.0%;padding:3px;color:black;">0.0000</div><tr><td>cw(0.25)<td><div class="progress-bar" role="progressbar" aria-valuenow="0.14921243308069132" aria-valuemin="0" aria-valuemax="100" style="text-align:left;width:0.14921243308069132%;padding:3px;color:black;">0.0015</div><tr><td>cw(0.5)<td><div class="progress-bar" role="progressbar" aria-valuenow="63.59216632831131" aria-valuemin="0" aria-valuemax="100" style="text-align:left;width:63.59216632831131%;padding:3px;color:white;">0.6359</div><tr><td>cw(0.75)<td><div class="progress-bar" role="progressbar" aria-valuenow="36.258621238607994" aria-valuemin="0" aria-valuemax="100" style="text-align:left;width:36.258621238607994%;padding:3px;color:white;">0.3626</div><tr><td>cw(1.0)<td><div class="progress-bar" role="progressbar" aria-valuenow="0.0" aria-valuemin="0" aria-valuemax="100" style="text-align:left;width:0.0%;padding:3px;color:black;">0.0000</div></table>
 </div>
+
 </div>
 
 </div>
@@ -756,10 +926,10 @@ query(cw(V)).
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[19]:</div>
+<div class="prompt input_prompt">In&nbsp;[26]:</div>
 <div class="inner_cell">
     <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span class="o">%%</span><span class="k">script</span> problog-cli.py
+<div class=" highlight hl-ipython3"><pre><span class="o">%%</span><span class="k">problog</span>
 
 %% causal power of C to cause E (prior)
 P::cpw(0) ; P::cpw(0.25) ; P::cpw(0.5) ; P::cpw(0.75) ; P::cpw(1.0) :- P is 1.0/5.
@@ -774,12 +944,10 @@ P::bw(0) ; P::bw(0.25) ; P::bw(0.5) ; P::bw(0.75) ; P::bw(1.0) :- P is 1.0/5.
 P::e_if_c(C,T) :- cpw(P), C=true.
 P::e_if_c(C,T) :- bw(P).
 
-% TODO: represent as list?
 evidence(e_if_c(true,0),  true).
 evidence(e_if_c(true,1),  true).
 evidence(e_if_c(false,2), false).
 evidence(e_if_c(true,3),  true).
-
 
 query(cpw(V)).
 </pre></div>
@@ -793,14 +961,11 @@ query(cpw(V)).
 
 
 <div class="output_area"><div class="prompt"></div>
-<div class="output_subarea output_stream output_stdout output_text">
-<pre>	   cpw(0) : 0.03546988
-	cpw(0.25) : 0.066048193
-	 cpw(0.5) : 0.13551807
-	cpw(0.75) : 0.26946988
-	 cpw(1.0) : 0.49349398
-</pre>
+
+<div class="output_html rendered_html output_subarea ">
+<table style="width:100%;"><tr><th style="width:33%;">Atom<th>Probability<tr><td>cpw(0)<td><div class="progress-bar" role="progressbar" aria-valuenow="3.546987951807229" aria-valuemin="0" aria-valuemax="100" style="text-align:left;width:3.546987951807229%;padding:3px;color:black;">0.0355</div><tr><td>cpw(0.25)<td><div class="progress-bar" role="progressbar" aria-valuenow="6.604819277108434" aria-valuemin="0" aria-valuemax="100" style="text-align:left;width:6.604819277108434%;padding:3px;color:white;">0.0660</div><tr><td>cpw(0.5)<td><div class="progress-bar" role="progressbar" aria-valuenow="13.551807228915663" aria-valuemin="0" aria-valuemax="100" style="text-align:left;width:13.551807228915663%;padding:3px;color:white;">0.1355</div><tr><td>cpw(0.75)<td><div class="progress-bar" role="progressbar" aria-valuenow="26.946987951807234" aria-valuemin="0" aria-valuemax="100" style="text-align:left;width:26.946987951807234%;padding:3px;color:white;">0.2695</div><tr><td>cpw(1.0)<td><div class="progress-bar" role="progressbar" aria-valuenow="49.34939759036145" aria-valuemin="0" aria-valuemax="100" style="text-align:left;width:49.34939759036145%;padding:3px;color:white;">0.4935</div></table>
 </div>
+
 </div>
 
 </div>
@@ -812,7 +977,7 @@ query(cpw(V)).
 </div>
 <div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<p>We can express this more ProbLog like. This results in a much easier model to comprehend compared to Church:</p>
+<p>We can express this more ProbLog like. This results in a much easier model to comprehend:</p>
 <p>(Also slower, too many variables?)</p>
 
 </div>
@@ -820,10 +985,10 @@ query(cpw(V)).
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[21]:</div>
+<div class="prompt input_prompt">In&nbsp;[27]:</div>
 <div class="inner_cell">
     <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span class="o">%%</span><span class="k">script</span> problog-cli.py
+<div class=" highlight hl-ipython3"><pre><span class="o">%%</span><span class="k">problog</span>
 
 %% causal power of C to cause E (prior)
 P::cpw(0) ; P::cpw(0.25) ; P::cpw(0.5) ; P::cpw(0.75) ; P::cpw(1.0) :- P is 1.0/5.
@@ -835,7 +1000,6 @@ P::bw(0) ; P::bw(0.25) ; P::bw(0.5) ; P::bw(0.75) ; P::bw(1.0) :- P is 1.0/5.
 P::e(T) :- cpw(P), c(T).
 P::e(T) :- bw(P).
 
-% TODO: represent as list?
 evidence(c(0), true).
 evidence(e(0), true).
 evidence(e(1), true).
@@ -857,14 +1021,11 @@ query(cpw(V)).
 
 
 <div class="output_area"><div class="prompt"></div>
-<div class="output_subarea output_stream output_stdout output_text">
-<pre>	   cpw(0) : 0.03546988
-	cpw(0.25) : 0.066048193
-	 cpw(0.5) : 0.13551807
-	cpw(0.75) : 0.26946988
-	 cpw(1.0) : 0.49349398
-</pre>
+
+<div class="output_html rendered_html output_subarea ">
+<table style="width:100%;"><tr><th style="width:33%;">Atom<th>Probability<tr><td>cpw(0)<td><div class="progress-bar" role="progressbar" aria-valuenow="3.5469879518072305" aria-valuemin="0" aria-valuemax="100" style="text-align:left;width:3.5469879518072305%;padding:3px;color:black;">0.0355</div><tr><td>cpw(0.25)<td><div class="progress-bar" role="progressbar" aria-valuenow="6.604819277108436" aria-valuemin="0" aria-valuemax="100" style="text-align:left;width:6.604819277108436%;padding:3px;color:white;">0.0660</div><tr><td>cpw(0.5)<td><div class="progress-bar" role="progressbar" aria-valuenow="13.551807228915665" aria-valuemin="0" aria-valuemax="100" style="text-align:left;width:13.551807228915665%;padding:3px;color:white;">0.1355</div><tr><td>cpw(0.75)<td><div class="progress-bar" role="progressbar" aria-valuenow="26.946987951807237" aria-valuemin="0" aria-valuemax="100" style="text-align:left;width:26.946987951807237%;padding:3px;color:white;">0.2695</div><tr><td>cpw(1.0)<td><div class="progress-bar" role="progressbar" aria-valuenow="49.349397590361455" aria-valuemin="0" aria-valuemax="100" style="text-align:left;width:49.349397590361455%;padding:3px;color:white;">0.4935</div></table>
 </div>
+
 </div>
 
 </div>
@@ -885,17 +1046,46 @@ query(cpw(V)).
 </div>
 <div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<h3 id="Example:-Inferring-an-Arithmetic-Expression">Example: Inferring an Arithmetic Expression<a class="anchor-link" href="#Example:-Inferring-an-Arithmetic-Expression">&#182;</a></h3><p>For this we would also integrate ProbLog and Python. ProbLog for the probabilistic reasoning, Python for the arithmetic expressions (note that in principle everything available in Python can be used).</p>
+<h3 id="Example:-Inferring-an-Arithmetic-Expression">Example: Inferring an Arithmetic Expression<a class="anchor-link" href="#Example:-Inferring-an-Arithmetic-Expression">&#182;</a></h3>
+</div>
+</div>
+</div>
+<div class="cell border-box-sizing text_cell rendered">
+<div class="prompt input_prompt">
+</div>
+<div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<h4 id="Pure-ProbLog">Pure ProbLog<a class="anchor-link" href="#Pure-ProbLog">&#182;</a></h4><p>Let's start with a version where we sample an arithmetic expressing using ProbLog and immediately compute the result of the expression (ignoring 'x'):</p>
 
 </div>
 </div>
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[43]:</div>
+<div class="prompt input_prompt">In&nbsp;[32]:</div>
 <div class="inner_cell">
     <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span class="o">!</span>cat arithmetic_expression_sample.pl
+<div class=" highlight hl-ipython3"><pre><span class="o">%%</span><span class="k">problogsample</span>
+
+0.7::leaf(T).
+
+0.5::operator(&#39;+&#39;,T) ; 0.5::operator(&#39;-&#39;,T).
+
+% x = 1
+Px::l(1,T); P::l(0,T); P::l(1,T); P::l(2,T); P::l(3,T); P::l(4,T); P::l(5,T); P::l(6,T); P::l(7,T); P::l(8,T); P::l(9,T) :- Px = 0.5, P is (1-Px)/10.
+
+expr(A,R) :- expr(A,1,S), R is A.
+
+expr(L,T1,T2) :- leaf(T1), T2 is T1+1, l(L,T1).
+expr(S,T1,T2) :-
+   \+ leaf(T1),
+   Ta is T1+1,
+   expr(E1,Ta,Tb),
+   expr(E2,Tb,T2),
+   operator(Operator,Ta),
+   S =.. [Operator,E1,E2].
+
+query(expr(A,R)).
 </pre></div>
 
 </div>
@@ -907,60 +1097,11 @@ query(cpw(V)).
 
 
 <div class="output_area"><div class="prompt"></div>
-<div class="output_subarea output_stream output_stdout output_text">
-<pre>0.7::leaf(T).
-0.5::operator(&apos;+&apos;,T) ; 0.5::operator(&apos;-&apos;,T).
-Px::l(&apos;x&apos;,T); P::l(0,T) ; P::l(1,T) ; P::l(2,T) ; P::l(3,T) ; P::l(4,T) ; P::l(5,T) ; P::l(6,T) ; P::l(7,T) ; P::l(8,T) ; P::l(9,T) :- P is 0.5/10, Px is 0.5.
 
-expr(L) :- expr(L,0,Tr).
-expr([L,T],T,T) :- leaf(T), l(L,T).
-expr([L,[O,T],R],T,Tr) :-
-    \+leaf(T), operator(O,T),
-    Tn1 is T+1, expr(L,Tn1,Tr1),
-    Tn2 is Tr1+1, expr(R,Tn2,Tr).
-
-query(expr(E)).
-
-</pre>
-</div>
+<div class="output_html rendered_html output_subarea ">
+<pre>expr(1,1). % Probability: 0.35<br>expr(7,7). % Probability: 0.035<br>expr(1,1). % Probability: 0.35<br>expr('+'('+'('-'('-'(1,1),'+'(7,'+'('+'(1,1),5))),1),'+'(1,1)),-11). % Probability: 2.0199586e-13<br>expr(9,9). % Probability: 0.035<br></pre>
 </div>
 
-</div>
-</div>
-
-</div>
-<div class="cell border-box-sizing code_cell rendered">
-<div class="input">
-<div class="prompt input_prompt">In&nbsp;[57]:</div>
-<div class="inner_cell">
-    <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span class="o">!</span>../../examples/example_sampling_alt.py -N <span class="m">4</span> arithmetic_expression_sample.pl
-</pre></div>
-
-</div>
-</div>
-</div>
-
-<div class="output_wrapper">
-<div class="output">
-
-
-<div class="output_area"><div class="prompt"></div>
-<div class="output_subarea output_stream output_stdout output_text">
-<pre>====================
-expr(0).
-% Probability: 0.035
-====================
-expr([7, &apos;+&apos;, [3, &apos;+&apos;, 0]]).
-% Probability: 9.646875e-07
-====================
-expr(9).
-% Probability: 0.035
-====================
-expr([[5, &apos;+&apos;, [[[&apos;x&apos;, &apos;+&apos;, 8], &apos;-&apos;, &apos;x&apos;], &apos;-&apos;, [[&apos;x&apos;, &apos;+&apos;, [1, &apos;-&apos;, [[[[[&apos;x&apos;, &apos;-&apos;, &apos;x&apos;], &apos;-&apos;, [0, &apos;+&apos;, [[[[[&apos;x&apos;, &apos;+&apos;, 7], &apos;-&apos;, 5], &apos;+&apos;, 1], &apos;-&apos;, 5], &apos;+&apos;, &apos;x&apos;]]], &apos;-&apos;, 1], &apos;+&apos;, [&apos;x&apos;, &apos;-&apos;, [&apos;x&apos;, &apos;-&apos;, 6]]], &apos;-&apos;, [&apos;x&apos;, &apos;-&apos;, 3]]]], &apos;+&apos;, 2]]], &apos;+&apos;, [7, &apos;+&apos;, 2]]).
-% Probability: 1.2815396e-44
-</pre>
-</div>
 </div>
 
 </div>
@@ -972,10 +1113,151 @@ expr([[5, &apos;+&apos;, [[[&apos;x&apos;, &apos;+&apos;, 8], &apos;-&apos;, &ap
 </div>
 <div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<p><strong>TODO</strong>: Parse sampled expressions and filter those who evaluate to 3 for x=1.</p>
+<p>If you want to include the <code>x</code> variable and give it a value of 1:</p>
 
 </div>
 </div>
+</div>
+<div class="cell border-box-sizing code_cell rendered">
+<div class="input">
+<div class="prompt input_prompt">In&nbsp;[44]:</div>
+<div class="inner_cell">
+    <div class="input_area">
+<div class=" highlight hl-ipython3"><pre><span class="o">%%</span><span class="k">problogsample</span> -N 4
+
+0.7::leaf(T).
+
+0.5::operator(&#39;+&#39;,T) ; 0.5::operator(&#39;-&#39;,T).
+
+Px::l(x,T); P::l(0,T) ; P::l(1,T) ; P::l(2,T) ; P::l(3,T) ; P::l(4,T) ; P::l(5,T) ; P::l(6,T) ; P::l(7,T) ; P::l(8,T) ; P::l(9,T) :- P is 0.5/10, Px is 0.5.
+
+expr(L,R,X) :- expr(L,0,Tr,R,X).
+
+expr(L,T,T,X,X) :- leaf(T), l(L,T), L = &#39;x&#39;.
+expr(L,T,T,L,X) :- leaf(T), l(L,T), L \== &#39;x&#39;.
+
+expr([L,O,R],T,Tr,Re,X) :-
+    \+leaf(T), operator(O,T),
+    Tn1 is T+1, expr(L,Tn1,Tr1,RL,X),
+    Tn2 is Tr1+1, expr(R,Tn2,Tr,RR,X),
+    (O == &#39;+&#39;, Re is RL+RR;
+     O == &#39;-&#39;, Re is RL-RR).
+
+query(expr(E,R,1)).
+</pre></div>
+
+</div>
+</div>
+</div>
+
+<div class="output_wrapper">
+<div class="output">
+
+
+<div class="output_area"><div class="prompt"></div>
+
+<div class="output_html rendered_html output_subarea ">
+<pre>expr(5,5,1). % Probability: 0.035<br>expr([[5, '+', 5], '+', 6],16,1). % Probability: 9.646875e-07<br>expr(0,0,1). % Probability: 0.035<br>expr(4,4,1). % Probability: 0.035<br></pre>
+</div>
+
+</div>
+
+</div>
+</div>
+
+</div>
+<div class="cell border-box-sizing text_cell rendered">
+<div class="prompt input_prompt">
+</div>
+<div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<h4 id="ProbLog-and-Python-combined">ProbLog and Python combined<a class="anchor-link" href="#ProbLog-and-Python-combined">&#182;</a></h4><p>We can also use ProbLog to generate expressions that are Python expressions. If we call ProbLog from within a Python environment we can mix ProbLog and Python to achieve what we want:</p>
+
+</div>
+</div>
+</div>
+<div class="cell border-box-sizing code_cell rendered">
+<div class="input">
+<div class="prompt input_prompt">In&nbsp;[41]:</div>
+<div class="inner_cell">
+    <div class="input_area">
+<div class=" highlight hl-ipython3"><pre><span class="n">model_str</span> <span class="o">=</span> <span class="s">&quot;&quot;&quot;</span>
+<span class="s">0.7::leaf(T).</span>
+
+<span class="s">0.5::operator(&#39;+&#39;,T) ; 0.5::operator(&#39;-&#39;,T).</span>
+
+<span class="s">Px::l(x,T); P::l(0,T) ; P::l(1,T) ; P::l(2,T) ; P::l(3,T) ; P::l(4,T) ; P::l(5,T) ; P::l(6,T) ; P::l(7,T) ; P::l(8,T) ; P::l(9,T) :- P is 0.5/10, Px is 0.5.</span>
+
+<span class="s">expr(L) :- expr(L,0,Tr).</span>
+
+<span class="s">expr(L,T1,T2) :- leaf(T1), T2 is T1+1, l(L,T1).</span>
+<span class="s">expr([EL,O,ER],T1,T2) :-</span>
+<span class="s">    \+leaf(T1),</span>
+<span class="s">    Ta is T1+1, operator(O,Ta),</span>
+<span class="s">    expr(EL,Ta,Tb),</span>
+<span class="s">    expr(ER,Tb,T2).</span>
+
+<span class="s">query(expr(E)).</span>
+<span class="s">&quot;&quot;&quot;</span>
+</pre></div>
+
+</div>
+</div>
+</div>
+
+</div>
+<div class="cell border-box-sizing code_cell rendered">
+<div class="input">
+<div class="prompt input_prompt">In&nbsp;[42]:</div>
+<div class="inner_cell">
+    <div class="input_area">
+<div class=" highlight hl-ipython3"><pre><span class="kn">from</span> <span class="nn">problog.program</span> <span class="k">import</span> <span class="n">PrologString</span>
+<span class="kn">import</span> <span class="nn">example_sampling_alt</span> <span class="k">as</span> <span class="nn">plsample</span>
+<span class="kn">from</span> <span class="nn">problog.pypl</span> <span class="k">import</span> <span class="n">pl2py</span>
+
+<span class="n">model</span> <span class="o">=</span> <span class="n">PrologString</span><span class="p">(</span><span class="n">model_str</span><span class="p">)</span>
+<span class="n">samples</span><span class="p">,</span> <span class="n">db</span> <span class="o">=</span> <span class="n">plsample</span><span class="o">.</span><span class="n">sample_object</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">N</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+<span class="n">x</span> <span class="o">=</span> <span class="mi">1</span>
+
+<span class="k">def</span> <span class="nf">list2expr</span><span class="p">(</span><span class="n">l</span><span class="p">):</span>
+    <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">l</span><span class="p">)</span> <span class="o">==</span> <span class="nb">list</span><span class="p">:</span>
+        <span class="k">return</span> <span class="s">&#39;({})&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="s">&#39;&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="n">list2expr</span><span class="p">(</span><span class="n">sl</span><span class="p">)</span> <span class="k">for</span> <span class="n">sl</span> <span class="ow">in</span> <span class="n">l</span><span class="p">]))</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span> <span class="nb">str</span><span class="p">(</span><span class="n">l</span><span class="p">)</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s">&quot;&#39;&quot;</span><span class="p">,</span><span class="s">&#39;&#39;</span><span class="p">)</span>
+
+<span class="k">for</span> <span class="n">sample</span> <span class="ow">in</span> <span class="n">samples</span><span class="p">:</span>
+    <span class="n">expr</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">sample</span><span class="o">.</span><span class="n">queries</span><span class="p">())[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">args</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">expr</span> <span class="o">=</span> <span class="n">list2expr</span><span class="p">(</span><span class="n">pl2py</span><span class="p">(</span><span class="n">expr</span><span class="p">))</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s">&#39;{} --&gt; {}&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">expr</span><span class="p">,</span> <span class="nb">eval</span><span class="p">(</span><span class="n">expr</span><span class="p">)))</span>
+</pre></div>
+
+</div>
+</div>
+</div>
+
+<div class="output_wrapper">
+<div class="output">
+
+
+<div class="output_area"><div class="prompt"></div>
+<div class="output_subarea output_stream output_stdout output_text">
+<pre>x --&gt; 1
+x --&gt; 1
+((x+((x-(x-((x-x)-((x+9)+x))))-x))-7) --&gt; -18
+(x+0) --&gt; 1
+4 --&gt; 4
+x --&gt; 1
+(x-(((x-(((x-(x+6))+0)+((4+x)-0)))+(x+(x+x)))-((8+((((x+((2+(4-(4-((1+7)-((6+((x+x)+x))+(x-x))))))-((3+((1+x)+x))+((x+8)-(x-(x-x))))))-6)+x)+((x-x)+4)))-(3-x)))) --&gt; -11
+((8-3)-(0-x)) --&gt; 6
+2 --&gt; 2
+2 --&gt; 2
+</pre>
+</div>
+</div>
+
+</div>
+</div>
+
 </div>
 <div class="cell border-box-sizing text_cell rendered">
 <div class="prompt input_prompt">

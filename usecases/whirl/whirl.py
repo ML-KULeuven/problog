@@ -14,7 +14,7 @@
 
 from __future__ import print_function
 
-import os
+import os, sys
 import string
 import glob
 
@@ -36,14 +36,20 @@ vectorizer = None
 tfidf = None # TF-IDF model
 tokens = None # List of tokens used by TF-IDF
 texts_weights = None # TF-IDF weights for texts
-punct_table = string.maketrans('','')
+if sys.version_info.major == 2:
+  punct_table = string.maketrans('','')
+else:
+  punct_table = str.maketrans('','', string.punctuation)
 stemmer = PorterStemmer()
 
 
 def cleantext(text):
   """Clean string from punctuation and capitals."""
   lowers = text.lower()
-  no_punctuation = lowers.translate(punct_table, string.punctuation)
+  if sys.version_info.major == 2:
+    no_punctuation = lowers.translate(punct_table, string.punctuation)
+  else:
+    no_punctuation = lowers.translate(punct_table)
   return no_punctuation
 
 
