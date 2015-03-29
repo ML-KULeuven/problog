@@ -124,10 +124,8 @@ class Term(object) :
     def signature(self) :
         """Term's signature ``functor/arity``"""
         if self.__signature is None :
-            if type(self.functor) == str :
-                self.__signature = '%s/%s' % (self.functor.strip("'"), self.arity)
-            else :
-                self.__signature = '%s/%s' % (self.functor, self.arity)
+            functor = str(self.functor)
+            self.__signature = '%s/%s' % (functor.strip("'"), self.arity)
         return self.__signature
     
     # @property
