@@ -69,6 +69,15 @@ class Token(object) :
     def is_atom(self) :
         return self.atom
         
+    @property
+    def priority(self) :
+        prior = 0
+        if self.binop :
+            prior = self.binop[0]
+        elif self.unop :
+            prior = self.unop[0]
+        return prior
+        
     def count_options(self) :
         o = 0
         if self.atom : o += 1
@@ -572,6 +581,7 @@ class PrologParser(object) :
                     t.atom = False
             p = t
             if t.count_options() != 1 :
+                print (str(t))
                 raise ParseError(string,'Ambiguous token role', t.location)
             
         return tokens
@@ -752,7 +762,7 @@ class ParenExpression(SubExpression) :
         
     @property
     def is_comma_list(self) :
-        return not self.max_operators or self.max_operators[0].string == ','
+        return not self.max_operators or self.max_operators[0].string == ',' or self.max_operators[0].priority < 1000
         
     def accepts(self, token) :
         return not token.is_special(SPECIAL_BRACK_CLOSE)
