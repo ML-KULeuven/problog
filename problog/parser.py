@@ -549,6 +549,8 @@ class PrologParser(object) :
                 t.functor = False
             elif t.functor and tokens[i+1].is_comma_list :
                 t.atom = False
+            elif t.unop and tokens[i+1].priority > t.priority :
+                t.unop = False
             
             if i == 0 : 
                 t.binop = None  # First token can not be a binop
@@ -653,6 +655,8 @@ class SubExpression(object) :
         self.atom = True
         self._arglist = True
         self.max_operators = []
+        
+        self.priority = 0
         
     @property
     def arglist(self) :
