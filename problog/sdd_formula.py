@@ -107,10 +107,13 @@ class SDD(LogicDAG, Evaluatable) :
             return result
 
     def saveSDDToDot( self, filename, index=None ) :
-        if index is None :
-            sdd.sdd_shared_save_as_dot(filename, self.sdd_manager)
-        else :
-            sdd.sdd_save_as_dot(filename, self._getSDDNode(index))
+        if self.sdd_manager is None:
+            raise ValueError('The SDD manager is not instantiated.')
+        else:
+            if index is None :
+                sdd.sdd_shared_save_as_dot(filename, self.sdd_manager)
+            else :
+                sdd.sdd_save_as_dot(filename, self._getSDDNode(index))
         
     ##################################################################################
     ####                          UNSUPPORTED METHODS                             ####
