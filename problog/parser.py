@@ -145,6 +145,9 @@ def is_digit(c) :
 
 def is_whitespace(c) :
     return c <= ' '
+    
+def is_comment_start(c) :
+    return c == '%' or c == '/'
 
 class PrologParser(object) :
     
@@ -217,7 +220,7 @@ class PrologParser(object) :
             return Token('-', pos, binop=(500, 'yfx',self.factory.build_binop), unop=(200,'fy',self.factory.build_unop), functor=self._next_paren_open(s,pos)), pos+1
         
     def _token_dot(self, s, pos) : 
-        if pos+1 == len(s) or is_whitespace(s[pos+1]) :
+        if pos+1 == len(s) or is_whitespace(s[pos+1]) or is_comment_start(s[pos+1]) :
             return Token('.', pos, special=SPECIAL_END), pos+1
         elif is_digit(s[pos+1]) :
             return self._token_number(s,pos)
