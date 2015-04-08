@@ -98,7 +98,7 @@ problog.initDiv = function(el, resize) {
   var result_panel_body = $('<div class="panel-body" class="result-final">Results ...</div>').appendTo(result_panel);
 
   var makeProgressBar = function(value) {
-    return $('<div class="progress"><div class="progress-bar" role="progressbar" aria-valuenow="' + (value*100) + '" aria-valuemin="0" aria-valuemax="100" style="text-align:left; width: ' + (100*value) + '%;">&nbsp'+ value + '</div></div>');
+    return $('<div class="progress"><div class="progress-bar" role="progressbar" aria-valuenow="' + (value*100) + '" aria-valuemin="0" aria-valuemax="100" style="text-align:left; width: ' + (100*value) + '%;padding:3px;color:black;background-color:#9ac2f4;background-image: linear-gradient(to bottom,#d3f0ff 0,#8fccff 100%);">&nbsp'+ value + '</div></div>');
   }
 
   // Init ACE editor

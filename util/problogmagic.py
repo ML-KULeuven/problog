@@ -9,6 +9,9 @@ Magic methods:
     %problogmodel model
     %problogmodels [model1, model2, ...]
 
+    %%problogsample [-N int]
+    <model>
+
 Usage:
 
     %load_ext problogmagic
@@ -22,15 +25,17 @@ sys.path.append(os.path.join(os.path.dirname(__file__),'..'))
 sys.path.append(os.path.join(os.path.dirname(__file__),'../examples'))
 
 from problog.core import ProbLog
-from problog.program import PrologString
+from problog.program import PrologString, ExtendedPrologFactory
+from problog.evaluator import SemiringSymbolic, SemiringLogProbability, Evaluator
+from problog.parser import DefaultPrologParser
 from problog.nnf_formula import NNF
 from problog.sdd_formula import SDD
 import example_sampling_alt as plsample
 
 if SDD.is_available():
-    knowledge = SDD
+    knowledge_default = SDD
 else:
-    knowledge = NNF
+    knowledge_default = NNF
 
 from IPython.core.display import display_html
 from IPython.core.magic import (
@@ -43,11 +48,14 @@ from IPython.core.magic_arguments import (
 from IPython.utils.warn import info, error
 
 
-def runproblog(s,output='html'):
+def runproblog(s, knowledge=knowledge_default, semiring=None, parser_class=DefaultPrologParser, output='html'):
     """Execute problog and return an html snippet, or None."""
-    model = PrologString(s)
     try:
-      result = ProbLog.convert(model, knowledge).evaluate()
+        parser = parser_class(ExtendedPrologFactory())
+        model = PrologString(s, parser=parser)
+        formula = knowledge.createFrom(model)
+        result = formula.evaluate(semiring=semiring)
+        #result = ProbLog.convert(model, knowledge).evaluate()
     except Exception as e:
         return '<pre>{}</pre>'.format(e)
     if result is None:
@@ -77,11 +85,8 @@ def formatoutput(result, output='html'):
         for atom,prob in atomprobs:
             p = prob*100
             html += '<tr><td>{a}'.format(a=atom)
-            if p < 10:
-                color = 'black'
-            else:
-                color = 'white'
-            html += '<td><div class="progress-bar" role="progressbar" aria-valuenow="{perc}" aria-valuemin="0" aria-valuemax="100" style="text-align:left;width:{perc}%;padding:3px;color:{c};">{prob:6.4f}</div>'.format(perc=prob*100,prob=prob,c=color)
+            color = 'black'
+            html += '<td><div class="progress-bar" role="progressbar" aria-valuenow="{perc}" aria-valuemin="0" aria-valuemax="100" style="text-align:left;width:{perc}%;padding:3px;color:{c};background-color:#9ac2f4;">{prob:6.4f}</div>'.format(perc=prob*100,prob=prob,c=color)
         html += '</table>'
         return html
     else:
@@ -95,13 +100,31 @@ def formatoutput(result, output='html'):
 class ProbLogMagics(Magics):
 
     @line_cell_magic
+    @magic_arguments()
+    @argument('--knowledge', '-k', choices=('sdd','nnf'), default=None, help="Knowledge compilation tool.")
+    @argument('--logspace', action='store_true', help="Use log space evaluation.")
     def problog(self, line, cell=None):
         """problog line/cell magic"""
-        if cell is None:
-            s = line
-        else:
-            s = line + '\n' + cell
-        data = runproblog(s, output='html')
+        args = parse_argstring(self.problog, line)
+        if args.knowledge == 'nnf':
+            knowledge = NNF
+        elif args.knowledge == 'sdd':
+            knowledge = SDD
+        elif args.knowledge == None:
+            if SDD.is_available():
+                knowledge = SDD
+            else:
+                knowledge = NNF
+        else :
+            error("Unknown option for --knowledge: '%s'" % args.knowledge)
+        if args.logspace:
+            semiring = SemiringLogProbability()
+        else :
+            semiring = None
+
+
+        s = cell
+        data = runproblog(s, knowledge=knowledge, semiring=semiring, output='html')
         if data:
             display_html(data, raw=True)
 
