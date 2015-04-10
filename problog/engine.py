@@ -1331,6 +1331,8 @@ class ClauseDB(LogicProgram) :
         if parent is None :
             self.__offset = 0
         else :
+            if hasattr(parent,'line_info') :
+                self.line_info = parent.line_info
             self.__offset = len(parent)
     
     def __len__(self) :
