@@ -60,84 +60,92 @@ This module contains basic logic constructs.
 """
 
 from __future__ import print_function
-from __future__ import division # consistent behaviour of / and // in python 2 and 3
+from __future__ import division  # consistent behaviour of / and // in python 2 and 3
 
-from collections import defaultdict
-
-import math, sys
+import math
+import sys
 
 from .util import OrderedSet
 from .core import GroundingError
 
-class InstantiationError(GroundingError): pass
 
-def term2str(term) :
-    if term is None :
+class InstantiationError(GroundingError):
+    pass
+
+
+def term2str(term):
+    """
+    Convert a Term argument to string.
+    This also works for variables represented as None or an integer.
+
+    :param term: the term to convert
+    :type term: Term | None | int
+    :return: string representation of the given term where None is converted to '_'.
+    :rtype: str
+    """
+    if term is None:
         return '_'
-    else :
+    elif type(term) is int:
+        return '#%s' % term
+    else:
         return str(term)
 
 
-class Term(object) :
-    """Represent a first-order Term."""
-    
-    def __init__(self, functor, *args, **kwdargs) :
-        self.functor = functor
-        self.args = args
+class Term(object):
+
+    def __init__(self, functor, *args, **kwdargs):
+        """
+        A first order term, for example 'p(X,Y)'.
+        :param functor: the functor of the term ('p' in the example)
+        :type functor: str
+        :param args: the arguments of the Term ('X' and 'Y' in the example)
+        :type args: tuple of (Term | None | int)
+        :param kwdargs: additional arguments; currently 'p' (probability) and 'location' (character position in input)
+        """
+        self.__functor = functor
+        self.__args = args
         self.probability = kwdargs.get('p')
         self.location = kwdargs.get('location')
-        self.arity = len(args)
         self.__signature = None
         self.__hash = None
         self.__is_ground = None
-        
-    def setFunctor(self, functor) :
-        self.functor = functor
+
+    @property
+    def functor(self):
+        """Term functor"""
+        return self.__functor
+
+    @functor.setter
+    def functor(self, value):
+        self.__functor = value
         self.__signature = None
         self.__hash = None
-        
-    # @property
-    # def functor(self) :
-    #     """Term functor"""
-    #     return self.__functor
-    #
-    # @functor.setter
-    # def functor(self, value):
-    #     self.__functor = value
-    
-    # @property
-    # def args(self) :
-    #     """Term arguments"""
-    #     return self.__args
-    
-    # @property
-    # def arity(self) :
-    #     """Number of arguments."""
-    #     return len(self.__args)
+
+    @property
+    def args(self):
+        """Term arguments"""
+        return self.__args
     
     @property
-    def value(self) : 
-        """Value of the Term obtained by computing the function is represents."""
+    def arity(self):
+        """Number of arguments"""
+        return len(self.__args)
+    
+    @property
+    def value(self):
+        """Value of the Term obtained by computing the function is represents"""
         return computeFunction(self.functor, self.args)        
     
     @property
-    def signature(self) :
+    def signature(self):
         """Term's signature ``functor/arity``"""
-        if self.__signature is None :
+        if self.__signature is None:
             functor = str(self.functor)
             self.__signature = '%s/%s' % (functor.strip("'"), self.arity)
         return self.__signature
-    
-    # @property
-    # def probability(self) :
-    #     """Term's probability"""
-    #     return self.__probability
-    #
-    # @probability.setter
-    # def probability(self, p) :
-    #     self.__probability = p
+
         
-    def apply(self, subst) :
+    def apply(self, subst):
         """Apply the given substitution to the variables in the term.
         
         :param subst: A mapping from variable names to something else
@@ -148,60 +156,67 @@ class Term(object) :
         
         """
         args = []
-        for arg in self.args :
-            if not isinstance(arg, Term) :
-                args.append( subst[arg] )
-            else :
-                args.append( arg.apply(subst) )
+        for arg in self.args:
+            if not isinstance(arg, Term):
+                args.append(subst[arg])
+            else:
+                args.append(arg.apply(subst))
         
-        if self.probability is None :
-            if self.__class__ == And or self.__class__ == Or :
-                return self.__class__( *args, location=self.location)
-            else :
-                return self.__class__( self.functor, *args, location=self.location)
-        else :
-            return self.__class__( self.functor, *args, p=self.probability.apply(subst), location=self.location)
+        if self.probability is None:
+            if self.__class__ == And or self.__class__ == Or:
+                return self.__class__(*args, location=self.location)
+            else:
+                return self.__class__(self.functor, *args, location=self.location)
+        else:
+            return self.__class__(self.functor, *args, p=self.probability.apply(subst), location=self.location)
             
-    def __repr__(self) :
-        if self.probability is None :
+    def __repr__(self):
+        if self.probability is None:
             prob = ''
         else :
             prob = '%s::' % self.probability
         
-        if self.arity == 2 and self.functor == '.' :
-            # List
+        if self.arity == 2 and self.functor == '.':
+            # Special treatment of lists.
             elements = []
             tail = self
-            while isinstance(tail,Term) and tail.arity == 2 and tail.functor == '.' :
+            while isinstance(tail,Term) and tail.arity == 2 and tail.functor == '.':
                 elements.append(tail.args[0])
                 tail = tail.args[1]
-            if str(tail) == '[]' :
-                return '[%s]' % ', '.join(map(term2str,elements))
-            else :
-                return '[%s|%s]' % (', '.join(map(term2str,elements)), term2str(tail))
-        if self.args :
-            return '%s%s(%s)' % (prob, self.functor, ','.join(map(term2str,self.args)))
-        else :
+            if str(tail) == '[]':
+                return '[%s]' % ', '.join(map(term2str, elements))
+            else:
+                return '[%s|%s]' % (', '.join(map(term2str, elements)), term2str(tail))
+        if self.args:
+            return '%s%s(%s)' % (prob, self.functor, ','.join(map(term2str, self.args)))
+        else:
             return '%s%s' % (prob, self.functor,)
         
-    def __call__(self, *args) :
+    def __call__(self, *args):
+        """
+        Create a new Term with the same functor and the given arguments.
+        :param args: new arguments
+        :type args: tuple of (Term | None | int)
+        :return:
+        :rtype: Term
+        """
         return self.withArgs(*args)
         
-    def withArgs(self,*args) :
+    def withArgs(self, *args):
         """Creates a new Term with the same functor and the given arguments.
         
         :param args: new arguments for the term
-        :type args: any
+        :type args: tuple of (Term | int | None)
         :returns: a new term with the given arguments
         :rtype: :class:`Term`
         
         """
-        if self.probability != None :
+        if self.probability is not None:
             return self.__class__(self.functor, *args, p=self.probability, location=self.location)
-        else :
+        else:
             return self.__class__(self.functor, *args, location=self.location)
             
-    def withProbability(self, p=None) :
+    def withProbability(self, p=None):
         return self.__class__(self.functor, *self.args, p=p)
         
     def isVar(self) :
