@@ -37,6 +37,7 @@ P::similar(X,Y) :-
 listing('Roberts Theater Chatham', 'Brassed Off', '7:15 - 9:10').
 listing('Berkeley Cinema', 'Hercules', '2:00 - 4:15 - 7:30').
 listing('Sony Mountainside Theater', 'Men in Black', '7:40 - 8:40 - 9:30 - 10:10').
+listing('Sony Mountainside Theater', 'Argo', '7:40 - 8:40 - 9:30').
 
 review('Men in Black, 1997', '(***) One of the summer s biggest hits, this ... a comedy about space aliens with Will Smith ...').
 review('Face/Off, 1997',     '(**1/2) After a somewhat slow start, Cage and Travolta').
@@ -45,9 +46,11 @@ review('Hercules',  'Animated Disney film').
 review('The Lord of the Rings: The Fellowship of the Ring, 2001', 'An epic fantasy film directed by Peter Jackson based on the first volume of J. R. R. Tolkien The Lord of the Rings. It is the first installment in the The Lord of the Rings film series, and was followed by The Two Towers (2002) and The Return of the King (2003), based on the second and third volumes of The Lord of the Rings.').
 
 academy_award('Best makeup').
+academy_award('Best movie').
 
 winner('Men in Black', 'Best makeup', 1997).
 winner('The Lord of the Rings: The Fellowship of the Ring', 'Best makeup', 2001).
+winner('Argo', 'Best movie', 2013).
 
 
 % CONJUNCTIVE QUERIES
@@ -103,20 +106,30 @@ q5a(Movie, Cat) :- review(Movie ,Review),
 %query(q5a(M,C)).
 
 % Auxiliaries
-many_int([], P, N, 0) :-
-    T is P+N,
-    T = 0.
-many_int([], P, N, S) :-
-    T is P+N,
-    T > 0,
-    S is P/T.
-many_int([H|T], PA, NA, S) :-
-    (  call(H), PAN is PA + 1, NAN is NA;      % Test: true
-     \+call(H), PAN is PA,     NAN is NA + 1), % Test: false
-    many_int(T, PAN, NAN, S).
+%many_int([], P, N, 0) :-
+%    T is P+N,
+%    T = 0.
+%many_int([], P, N, S) :-
+%    T is P+N,
+%    T > 0,
+%    S is P/T.
+%many_int([H|T], PA, NA, S) :-
+%    (  call(H), PAN is PA + 1, NAN is NA;      % Test: true
+%     \+call(H), PAN is PA,     NAN is NA + 1), % Test: false
+%    many_int(T, PAN, NAN, S).
+%
+%S::many_int_prob(L) :-
+%    many_int(L, 0, 0, S).
 
-S::many_int_prob(L) :-
-    many_int(L, 0, 0, S).
+% More efficient version
+many_int_prob(L) :- many_int(L, 0, 0, L).
+
+many_int([], P, N, L) :- T is P+N, T > 0, S is P/T, w(S,L).
+S::w(S,_).
+many_int([H|T], PA, NA, S) :-
+   (  call(H), PAN is PA + 1, NAN is NA;      % Test: true
+    \+call(H), PAN is PA,     NAN is NA + 1), % Test: false
+   many_int(T, PAN, NAN, S).
 
 many(Template, Test) :-
     findall(Test, Template, L),
