@@ -206,10 +206,7 @@ class PrologParser(object) :
             return Token('*', pos, binop=(400,'yfx',self.factory.build_binop), functor=self._next_paren_open(s,pos)), pos+1
 
     def _token_plus(self, s, pos) :
-        if is_digit(s[pos+1]) :
-            return self._token_number(s,pos)
-        else :
-            return Token('+', pos, binop=(500, 'yfx',self.factory.build_binop), unop=(200,'fy',self.factory.build_unop), functor=self._next_paren_open(s,pos)), pos+1
+        return Token('+', pos, binop=(500, 'yfx',self.factory.build_binop), unop=(200,'fy',self.factory.build_unop), functor=self._next_paren_open(s,pos)), pos+1
 
     def _token_comma(self, s, pos) : 
         return Token(',', pos, binop=(1000, 'xfy',self.factory.build_conjunction), atom=False, special=SPECIAL_COMMA), pos+1
@@ -219,8 +216,6 @@ class PrologParser(object) :
             return Token('-->', pos, binop=(1200,'xfx',self.factory.build_binop), functor=self._next_paren_open(s,pos)), pos+3
         elif s[pos:pos+2] == '->' :
             return Token('->', pos, binop=(1050,'xfy',self.factory.build_binop), functor=self._next_paren_open(s,pos)), pos+2
-        elif is_digit(s[pos+1]) :
-            return self._token_number(s,pos)
         else :
             return Token('-', pos, binop=(500, 'yfx',self.factory.build_binop), unop=(200,'fy',self.factory.build_unop), functor=self._next_paren_open(s,pos)), pos+1
         
@@ -391,7 +386,7 @@ class PrologParser(object) :
             return self._token_act4[c-123]
         else :
             return None
-    
+            
     def _build_clause( self, functor, operand1, operand2, location ) :
         heads = []
         current = operand1

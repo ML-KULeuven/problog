@@ -99,6 +99,9 @@ class PrologFactory(Factory) :
         return self.build_clause( functor, [head], operand, **extra)
             
     def build_unop(self, functor, operand, location=None, **extra) :
+        if functor == '-' and operand.isConstant() and (operand.isFloat() or operand.isInteger()) :
+            return Constant(-operand.value)
+        
         return self.build_function("'" + functor + "'", (operand,) , location=location)
         
     def build_list(self, values, tail=None, location=None, **extra) :
