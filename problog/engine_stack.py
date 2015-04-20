@@ -353,53 +353,65 @@ class StackBasedEngine(ClauseDBEngine) :
             
     def eval_neg(engine, **kwdargs) :
         return engine.eval_default(EvalNot, **kwdargs)
-    
-    def eval_call(engine, node_id, node, context, parent, transform=None, identifier=None, **kwdargs) :
-        if node.defnode == -6 :   # Findall
-            call_args = [ instantiate(arg, context, keepVars=True) for arg in node.args ]
-            try :
-                ev = extract_vars(*call_args[:-1])
+
+    def eval_call(self, node_id, node, context, parent, transform=None, identifier=None, **kwdargs):
+        if node.defnode == -6:   # Findall
+            call_args = [instantiate(arg, context, keepVars=True) for arg in node.args]
+            try:
+                extract_vars(*call_args[:-1])
             except VariableUnification :
                 raise VariableUnification(location=kwdargs['database'].lineno(node.location))
-        else :
-            call_args = [ instantiate(arg, context) for arg in node.args ]
-        if node.defnode == -5 : # \= builtin
-            try :
+
+            # Modified result transformation: only unify last argument.
+            def result_transform(result):
+                output = list(context)
+                try:
+                    assert(len(result) == len(node.args))
+                    unify(result[-1], node.args[-1], output)
+                    return tuple(output)
+                except UnifyError:
+                    pass
+        else:
+            call_args = [instantiate(arg, context) for arg in node.args]
+
+            def result_transform(result):
+                output = list(context)
+                try:
+                    assert(len(result) == len(node.args))
+                    for call_arg, res_arg in zip(node.args, result):
+                        unify(res_arg, call_arg, output)
+                    return tuple(output)
+                except UnifyError:
+                    pass
+
+        # These cases are for efficiency only.
+        if node.defnode == -5:  # \= builtin
+            try:
                 unify(call_args[0], call_args[1])
-                return [ complete( parent, identifier ) ]
-            except UnifyError :
-                if transform : context = transform(context)
-                return [ newResult( parent, context, NODE_TRUE, identifier, True ) ]
-        elif node.defnode == -1 : # True
-            if transform : context = transform(context)
-            return [ newResult( parent, context, NODE_TRUE, identifier, True ) ]
-        elif node.defnode == -2 or node.defnode == -3 : # Fail/False
-            return [ complete( parent, identifier ) ]
+                return [complete(parent, identifier)]
+            except UnifyError:
+                if transform:
+                    context = transform(context)
+                return [newResult(parent, context, NODE_TRUE, identifier, True)]
+        elif node.defnode == -1:  # True
+            if transform:
+                context = transform(context)
+            return [newResult(parent, context, NODE_TRUE, identifier, True)]
+        elif node.defnode == -2 or node.defnode == -3:  # Fail/False
+            return [complete(parent, identifier)]
             
-        if transform is None : transform = Transformations()
+        if transform is None:
+            transform = Transformations()
         
-        # if not is_ground(*call_args) :
-        def result_transform(result) :
-            output = list(context)
-            actions = []
-            try :
-                assert(len(result) == len(node.args))
-                for call_arg, res_arg in zip(node.args,result) :
-                    unify( res_arg, call_arg, output)
-                return tuple(output)
-            except UnifyError :
-                pass
         transform.addFunction(result_transform)
-        # else :
-        #     transform.addConstant(context)
-                
+
         origin = '%s/%s' % (node.functor,len(node.args))
         kwdargs['call_origin'] = (origin,node.location)
         kwdargs['context'] = call_args
         kwdargs['transform'] = transform
-        try :
-            return engine.eval( node.defnode, parent=parent, identifier=identifier, **kwdargs )   
-        except _UnknownClause :
+        try:
+            return self.eval(node.defnode, parent=parent, identifier=identifier, **kwdargs)
+        except _UnknownClause:
             loc = kwdargs['database'].lineno(node.location)
             raise UnknownClause(origin, location=loc)
         
