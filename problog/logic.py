@@ -436,7 +436,7 @@ class Or(Term) :
         self.op2 = op2
     
     @classmethod   
-    def fromList(self, lst) :
+    def fromList(cls, lst):
         if lst :
             n = len(lst) - 1
             tail = lst[n]
@@ -446,6 +446,15 @@ class Or(Term) :
             return tail
         else :
             return Term('fail')
+
+    def toList(self):
+        body = []
+        current = self
+        while isinstance(current, Term) and current.functor == self.functor:
+            body.append(current.args[0])
+            current = current.args[1]
+        body.append(current)
+        return body
     
     def __or__(self, rhs) :
         self.op2 = self.op2 | rhs
@@ -520,53 +529,38 @@ class Not(Term) :
         return -self
     
 
-class LogicProgram(object) :
+class LogicProgram(object):
     """LogicProgram"""
     
-    def __init__(self, source_root='.', source_files=None, line_info=None) :
+    def __init__(self, source_root='.', source_files=None, line_info=None):
         if source_files is None : source_files = []
         self.source_root = source_root
         self.source_files = source_files
         self.line_info = line_info
         
-    def __iter__(self) :
+    def __iter__(self):
         """Iterator for the clauses in the program."""
         raise NotImplementedError("LogicProgram.__iter__ is an abstract method." )
 
-    def _addAnnotatedDisjunction(self, clause) :
+    def add_clause(self, clause):
         """Add a clause to the logic program."""
         raise NotImplementedError("LogicProgram.addClause is an abstract method." )
         
-    def _addClause(self, clause) :
-        """Add a clause to the logic program."""
-        raise NotImplementedError("LogicProgram.addClause is an abstract method." )
-        
-    def _addFact(self, fact) :
+    def add_fact(self, fact):
         """Add a fact to the logic program."""
         raise NotImplementedError("LogicProgram.addFact is an abstract method." )
-    
-    def _uncurry(self, term, func=None) :
-        if func is None : func = term.functor
-        
-        body = []
-        current = term
-        while isinstance(current, Term) and current.functor == func :
-            body.append(current.args[0])
-            current = current.args[1]
-        body.append(current)
-        return body    
-        
-    def __iadd__(self, clausefact) :
+
+    def __iadd__(self, clausefact):
         """Add clause or fact using the ``+=`` operator."""
-        if isinstance(clausefact, Or) :
-            heads = self._uncurry( clausefact, ';')
-            self._addAnnotatedDisjunction( AnnotatedDisjunction(heads, Term('true') ))
-        elif isinstance(clausefact, AnnotatedDisjunction) :
-            self._addAnnotatedDisjunction(clausefact)
-        elif isinstance(clausefact, Clause) :
-            self._addClause(clausefact)
-        else :
-            self._addFact(clausefact)
+        if isinstance(clausefact, Or):
+            heads = clausefact.toList()
+            self.add_clause(AnnotatedDisjunction(heads, Term('true')))
+        elif isinstance(clausefact, AnnotatedDisjunction):
+            self.add_clause(clausefact)
+        elif isinstance(clausefact, Clause):
+            self.add_clause(clausefact)
+        else:
+            self.add_fact(clausefact)
         return self
     
     @classmethod    

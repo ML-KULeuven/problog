@@ -1329,75 +1329,75 @@ class ClauseDB(LogicProgram) :
         self.__builtins = builtins
         
         self.__parent = parent
-        if parent is None :
+        if parent is None:
             self.__offset = 0
         else :
-            if hasattr(parent,'line_info') :
+            if hasattr(parent, 'line_info') :
                 self.line_info = parent.line_info
             self.__offset = len(parent)
     
-    def __len__(self) :
+    def __len__(self):
         return len(self.__nodes) + self.__offset
         
-    def extend(self) :
+    def extend(self):
         return ClauseDB(parent=self)
         
     def _getBuiltIn(self, signature) :
-        if self.__builtins is None :
-            if self.__parent != None :
+        if self.__builtins is None:
+            if self.__parent is not None :
                 return self.__parent._getBuiltIn(signature)
             else :
                 return None
         else :
             return self.__builtins.get(signature)
     
-    def _create_index(self, arity) :
+    def _create_index(self, arity):
         # return []
         return ClauseIndex(self, arity)
             
-    def _addAndNode( self, op1, op2, location=None ) :
+    def _add_and_node(self, op1, op2, location=None):
         """Add an *and* node."""
-        return self._appendNode( self._conj((op1,op2),location))
+        return self._append_node(self._conj((op1, op2), location))
         
-    def _addNotNode( self, op1, location=None ) :
+    def _add_not_node(self, op1, location=None):
         """Add a *not* node."""
-        return self._appendNode( self._neg(op1,location) )
+        return self._append_node(self._neg(op1, location))
         
-    def _addOrNode( self, op1, op2, location=None ) :
+    def _add_or_node(self, op1, op2, location=None):
         """Add an *or* node."""
-        return self._appendNode( self._disj((op1,op2),location))
+        return self._append_node(self._disj((op1, op2), location))
     
-    def _addDefineNode( self, head, childnode ) :
-        define_index = self._addHead( head )
+    def _add_define_node(self, head, childnode):
+        define_index = self._add_head(head)
         define_node = self.getNode(define_index)
-        if not define_node :
+        if not define_node:
             clauses = self._create_index(head.arity)
-            self._setNode( define_index, self._define( head.functor, head.arity, clauses, head.location ) )
-        else :
+            self._set_node(define_index, self._define(head.functor, head.arity, clauses, head.location))
+        else:
             clauses = define_node.children
-        clauses.append( childnode )
+        clauses.append(childnode)
         return childnode
     
     def _add_choice_node(self, choice, args, probability, locvars, group, location=None):
         functor = 'ad_%s_%s' % (group, choice)
-        choice_node = self._appendNode(self._choice(functor, args, probability, locvars, group, choice, location))
+        choice_node = self._append_node(self._choice(functor, args, probability, locvars, group, choice, location))
         return choice_node
         
     def _add_clause_node(self, head, body, varcount, locvars, group=None):
-        clause_node = self._appendNode(self._clause(
+        clause_node = self._append_node(self._clause(
             head.functor, head.args, head.probability, body, varcount, locvars, group, head.location))
-        return self._addDefineNode(head, clause_node)
+        return self._add_define_node(head, clause_node)
         
-    def _addCallNode( self, term ) :
+    def _add_call_node(self, term):
         """Add a *call* node."""
         
         if term.signature in ('query/1', 'evidence/1', 'evidence/2') :
-            raise AccessError("Can\'t call %s directly." % term.signature )
+            raise AccessError("Can\'t call %s directly." % term.signature)
         
-        defnode = self._addHead(term, create=False)
-        return self._appendNode( self._call( term.functor, term.args, defnode, term.location ) )
+        defnode = self._add_head(term, create=False)
+        return self._append_node(self._call(term.functor, term.args, defnode, term.location))
     
-    def getNode(self, index) :
+    def getNode(self, index):
         """Get the instruction node at the given index.
         
         :param index: index of the node to retrieve
@@ -1407,49 +1407,50 @@ class ClauseDB(LogicProgram) :
         :raises IndexError: the given index does not point to a node
         
         """
-        if index < self.__offset :
+        if index < self.__offset:
             return self.__parent.getNode(index)
         else :
             return self.__nodes[index-self.__offset]
         
-    def _setNode(self, index, node) :
-        if index < self.__offset :
+    def _set_node(self, index, node):
+        if index < self.__offset:
             raise IndexError('Can\'t update node in parent.')
-        else :
+        else:
             self.__nodes[index-self.__offset] = node
         
-    def _appendNode(self, node=()) :
+    def _append_node(self, node=()):
         index = len(self)
-        self.__nodes.append( node )
+        self.__nodes.append(node)
         return index
     
-    def _getHead(self, head) :
-        node = self.__heads.get( head.signature )
-        if node is None and self.__parent :
-            node = self.__parent._getHead(head)
+    def _get_head(self, head):
+        node = self.__heads.get(head.signature)
+        if node is None and self.__parent:
+            node = self.__parent._get_head(head)
         return node
         
-    def _setHead(self, head, index) :
-        self.__heads[ head.signature ] = index
+    def _set_head(self, head, index):
+        self.__heads[head.signature] = index
     
-    def _addHead( self, head, create=True ) :
-        node = self._getBuiltIn( head.signature )
-        if node != None :
-            if create :
-                raise AccessError("Can not overwrite built-in '%s'." % head.signature )
-            else :
+    def _add_head( self, head, create=True):
+        node = self._getBuiltIn(head.signature)
+        if node is not None:
+            if create:
+                raise AccessError("Can not overwrite built-in '%s'." % head.signature)
+            else:
                 return node
         
-        node = self._getHead( head )
-        if node is None :
-            if create :
-                node = self._appendNode( self._define( head.functor, head.arity, self._create_index(head.arity), head.location) )
+        node = self._get_head(head)
+        if node is None:
+            if create:
+                node = self._append_node(self._define(head.functor, head.arity, self._create_index(head.arity),
+                                                      head.location))
             else :
-                node = self._appendNode()
-            self._setHead( head, node )
+                node = self._append_node()
+            self._set_head(head, node)
         return node
 
-    def find(self, head ) :
+    def find(self, head):
         """Find the ``define`` node corresponding to the given head.
         
         :param head: clause head to match
@@ -1457,37 +1458,43 @@ class ClauseDB(LogicProgram) :
         :returns: location of the clause node in the database, returns ``None`` if no such node exists
         :rtype: :class:`int` or ``None``
         """
-        return self._getHead( head )
+        return self._get_head(head)
        
-    def __repr__(self) :
+    def __repr__(self):
         s = ''
-        for i,n in enumerate(self.__nodes) :
+        for i, n in enumerate(self.__nodes):
             i += self.__offset
-            s += '%s: %s\n' % (i,n)
+            s += '%s: %s\n' % (i, n)
         s += str(self.__heads)
         return s
         
-    def _addClause(self, clause) :
+    def add_clause(self, clause):
         """Add a clause to the database.
         
         :param clause: Clause to add
-        :type clause: :class:`.Clause`
+        :type clause: Clause
         :returns: location of the definition node in the database
-        :rtype: :class:`int`
+        :rtype: int
         """
-        return self._compile( clause )
-    
-    def _addAnnotatedDisjunction(self, clause) :
-        return self._compile( clause )
-    
-    def _addFact( self, term) :
+        return self._compile(clause)
+
+    def add_fact(self, term):
+        """Add a fact to the database.
+        :param term: fact to add
+        :type term: Term
+        :return: position of the definition node in the database
+        :rtype: int
+        """
+
+        # Count the number of variables in the fact
         variables = _AutoDict()
-        new_head = term.apply(variables)
-        if len(variables) == 0 :
-            fact_node = self._appendNode( self._fact(term.functor, term.args, term.probability, term.location))
-            return self._addDefineNode( term, fact_node )
-        else :
-            return self._addClause( Clause(term, Term('true')) )
+        term.apply(variables)
+        # If the fact has variables, threat is as a clause.
+        if len(variables) == 0:
+            fact_node = self._append_node(self._fact(term.functor, term.args, term.probability, term.location))
+            return self._add_define_node(term, fact_node)
+        else:
+            return self.add_clause(Clause(term, Term('true')))
     
     def _compile(self, struct, variables=None):
         """
@@ -1505,40 +1512,38 @@ class ClauseDB(LogicProgram) :
         if isinstance(struct, And):
             op1 = self._compile(struct.op1, variables)
             op2 = self._compile(struct.op2, variables)
-            return self._addAndNode(op1, op2)
+            return self._add_and_node(op1, op2)
         elif isinstance(struct, Or):
             op1 = self._compile(struct.op1, variables)
             op2 = self._compile(struct.op2, variables)
-            return self._addOrNode(op1, op2)
+            return self._add_or_node(op1, op2)
         elif isinstance(struct, Not):
             child = self._compile(struct.child, variables)
-            return self._addNotNode(child, location=struct.location)
+            return self._add_not_node(child, location=struct.location)
         elif isinstance(struct, AnnotatedDisjunction):
             # Determine number of variables in the head
             new_heads = [head.apply(variables) for head in struct.heads]
-            head_count = len(variables)
-            
-            # Body arguments
-            body_args = tuple(range(0, head_count))
-            
+
             # Group id
             group = len(self.__nodes)
             
             # Create the body clause
             body_node = self._compile(struct.body, variables)
-            head_count = len(variables)            
+            body_count = len(variables)
             # Body arguments
-            body_args = tuple(range(0, head_count))
+            body_args = tuple(range(0, len(variables)))
             body_head = Term('ad_%s_body' % group, *body_args)
-            clause_body = self._add_clause_node(body_head, body_node, len(variables), variables.local_variables)
-            clause_body = self._addHead(body_head)
+            self._add_clause_node(body_head, body_node, len(variables), variables.local_variables)
+            clause_body = self._add_head(body_head)
             for choice, head in enumerate(new_heads):
                 # For each head: add choice node
-                choice_node = self._add_choice_node(choice, body_args, head.probability, variables.local_variables, group, head.location)
-                choice_call = self._appendNode(self._call('ad_%s_%s' % (group, choice), body_args, choice_node, head.location))
-                body_call = self._appendNode(self._call('ad_%s_body' % group, body_args, clause_body, head.location))
-                choice_body = self._addAndNode(body_call, choice_call )
-                head_clause = self._add_clause_node(head, choice_body, head_count, {}, group=group)
+                choice_node = self._add_choice_node(choice, body_args, head.probability, variables.local_variables,
+                                                    group, head.location)
+                choice_call = self._append_node(self._call('ad_%s_%s' % (group, choice), body_args, choice_node,
+                                                           head.location))
+                body_call = self._append_node(self._call('ad_%s_body' % group, body_args, clause_body, head.location))
+                choice_body = self._add_and_node(body_call, choice_call)
+                self._add_clause_node(head, choice_body, body_count, {}, group=group)
             return None
         elif isinstance(struct, Clause):
             if struct.head.probability is not None:
@@ -1556,78 +1561,67 @@ class ClauseDB(LogicProgram) :
                 a2 = struct.args[1].apply(variables)
                 variables.exit_local()
                 a3 = struct.args[2].apply(variables)
-                return self._addCallNode(struct(a1, a2, a3))
+                return self._add_call_node(struct(a1, a2, a3))
             else:
-                return self._addCallNode(struct.apply(variables))
+                return self._add_call_node(struct.apply(variables))
         else :
-            raise ValueError("Unknown structure type: '%s'" % struct )
+            raise ValueError("Unknown structure type: '%s'" % struct)
     
-    def _create_vars(self, term) :
-        if type(term) == int :
+    def _create_vars(self, term):
+        if type(term) == int:
             return Var('V_' + str(term))
-        else :
+        else:
             args = [ self._create_vars(arg) for arg in term.args ]
             return term.withArgs(*args)
         
-    def _extract(self, node_id) :
+    def _extract(self, node_id):
         node = self.getNode(node_id)
-        if not node :
+        if not node:
             raise ValueError("Unexpected empty node.")    
         
-        groups = defaultdict(list)
         nodetype = type(node).__name__
-        if nodetype == 'fact' :
+        if nodetype == 'fact':
             return Term(node.functor, *node.args, p=node.probability)
-        elif nodetype == 'clause' :
-            if clause.group != None :   # part of annotated disjunction
-                groups
-            else :
-                head = self._create_vars( Term(node.functor,*node.args, p=node.probability) )
-                return Clause( head, self._extract(node.child))
-        elif nodetype == 'call' :
+        elif nodetype == 'call':
             func = node.functor
             args = node.args
-            return self._create_vars( Term(func, *args) )
-        elif nodetype == 'conj' :
-            a,b = node.children
-            return And( self._extract(a), self._extract(b) )
-        elif nodetype == 'disj' :
-            a,b = node.children
-            return Or( self._extract(a), self._extract(b) )
-        elif nodetype == 'neg' :
-            return Not( '\+', self._extract(node.child))
-            
-        else :
+            return self._create_vars(Term(func, *args))
+        elif nodetype == 'conj':
+            a, b = node.children
+            return And(self._extract(a), self._extract(b))
+        elif nodetype == 'disj':
+            a, b = node.children
+            return Or(self._extract(a), self._extract(b))
+        elif nodetype == 'neg':
+            return Not('\+', self._extract(node.child))
+        else:
             raise ValueError("Unknown node type: '%s'" % nodetype)    
         
-    def __iter__(self) :
+    def __iter__(self):
         clause_groups = defaultdict(list)
-        for index, node in enumerate(self.__nodes) :
+        for index, node in enumerate(self.__nodes):
             index += self.__offset
-            if not node : continue
+            if not node:
+                continue
             nodetype = type(node).__name__
-            if nodetype == 'fact' :
+            if nodetype == 'fact':
                 yield Term(node.functor, *node.args, p=node.probability)
-            elif nodetype == 'clause' :
-                if node.group is None :
-                    head = self._create_vars( Term(node.functor,*node.args, p=node.probability) )
-                    yield Clause( head, self._extract(node.child))
-                else :
+            elif nodetype == 'clause':
+                if node.group is None:
+                    head = self._create_vars(Term(node.functor, *node.args, p=node.probability))
+                    yield Clause(head, self._extract(node.child))
+                else:
                     clause_groups[node.group].append(index)
-            
-            
-            #if node and type(node).__name__ in ('fact', 'clause') :
-               # yield self._extract( index )
-        for group in clause_groups.values() :
+        for group in clause_groups.values():
             heads = []
             body = None
-            for index in group :
+            for index in group:
                 node = self.getNode(index)
-                heads.append( self._create_vars( Term( node.functor, *node.args, p=node.probability)))
-                if body is None :
+                heads.append(self._create_vars(Term(node.functor, *node.args, p=node.probability)))
+                if body is None:
                     body_node = self.getNode(node.child)
                     body_node = self.getNode(body_node.children[0])
-                    body = self._create_vars( Term(body_node.functor, *body_node.args) )
+                    body = self._create_vars(Term(body_node.functor, *body_node.args))
             yield AnnotatedDisjunction(heads, body)
 
 

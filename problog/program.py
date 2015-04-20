@@ -8,25 +8,24 @@ from .core import ProbLogError
 from collections import namedtuple, defaultdict
 import os, logging, sys
 
+
 class SimpleProgram(LogicProgram) :
     """LogicProgram implementation as a list of clauses."""
     
-    def __init__(self) :
+    def __init__(self):
         self.__clauses = []
+
+    def add_clause(self, clause):
+        self.__clauses.append(clause)
         
-    def _addAnnotatedDisjunction(self, clause) :
-        self.__clauses.append( clause )
-        
-    def _addClause(self, clause) :
-        self.__clauses.append( clause )
-        
-    def _addFact(self, fact) :
-        self.__clauses.append( fact )
+    def add_fact(self, fact):
+        self.__clauses.append(fact)
     
-    def __iter__(self) :
+    def __iter__(self):
         return iter(self.__clauses)
 
-class PrologString(LogicProgram) :
+
+class PrologString(LogicProgram):
     
     def __init__(self, string, parser=None, source_root='.', source_files=None) :
         self.__string = string
@@ -53,7 +52,7 @@ class PrologString(LogicProgram) :
         return iter(program)
 
 
-class PrologFile(PrologString) :
+class PrologFile(PrologString):
     """LogicProgram implementation as a pointer to a Prolog file.
     
     :param filename: filename of the Prolog file (optional)
