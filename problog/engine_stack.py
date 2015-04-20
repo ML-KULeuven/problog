@@ -458,9 +458,12 @@ class StackBasedEngine(ClauseDBEngine) :
     def eval_choice(engine, parent, node_id, node, context, target, database, identifier, **kwdargs) :
         actions = []
         result = tuple(context)
-        
-        if not is_ground(*result) : 
-            result = engine.handle_nonground( result=result, node=node, target=target, database=database, context=context, parent=parent, node_id=node_id, identifier=identifier, **kwdargs)
+
+        for i, r in enumerate(result):
+            if i not in node.locvars and not is_ground(r):
+                result = engine.handle_nonground(result=result, node=node, target=target, database=database,
+                                                 context=context, parent=parent, node_id=node_id,
+                                                 identifier=identifier, **kwdargs)
             
         probability = instantiate( node.probability, result )
         # Create a new atom in ground program.

@@ -1311,14 +1311,15 @@ class ClauseDB(LogicProgram) :
     
     """
     
-    _define = namedtuple('define', ('functor', 'arity', 'children', 'location') )
-    _clause = namedtuple('clause', ('functor', 'args', 'probability', 'child', 'varcount', 'group', 'location') )
-    _fact   = namedtuple('fact'  , ('functor', 'args', 'probability', 'location') )
-    _call   = namedtuple('call'  , ('functor', 'args', 'defnode', 'location' )) 
-    _disj   = namedtuple('disj'  , ('children', 'location' ) )
-    _conj   = namedtuple('conj'  , ('children', 'location' ) )
-    _neg    = namedtuple('neg'   , ('child', 'location' ) )
-    _choice = namedtuple('choice', ('functor', 'args', 'probability', 'group', 'choice', 'location') )
+    _define = namedtuple('define', ('functor', 'arity', 'children', 'location'))
+    _clause = namedtuple('clause', ('functor', 'args', 'probability', 'child',
+                                    'varcount', 'locvars', 'group', 'location'))
+    _fact = namedtuple('fact', ('functor', 'args', 'probability', 'location'))
+    _call = namedtuple('call', ('functor', 'args', 'defnode', 'location'))
+    _disj = namedtuple('disj', ('children', 'location'))
+    _conj = namedtuple('conj', ('children', 'location'))
+    _neg = namedtuple('neg', ('child', 'location'))
+    _choice = namedtuple('choice', ('functor', 'args', 'probability', 'locvars', 'group', 'choice', 'location'))
     
     def __init__(self, builtins=None, parent=None) :
         LogicProgram.__init__(self)
@@ -1377,14 +1378,15 @@ class ClauseDB(LogicProgram) :
         clauses.append( childnode )
         return childnode
     
-    def _addChoiceNode(self, choice, args, probability, group, location=None) :
+    def _add_choice_node(self, choice, args, probability, locvars, group, location=None):
         functor = 'ad_%s_%s' % (group, choice)
-        choice_node = self._appendNode( self._choice(functor, args, probability, group, choice, location) )
+        choice_node = self._appendNode(self._choice(functor, args, probability, locvars, group, choice, location))
         return choice_node
         
-    def _addClauseNode( self, head, body, varcount, group=None ) :
-        clause_node = self._appendNode( self._clause( head.functor, head.args, head.probability, body, varcount, group, head.location ) )
-        return self._addDefineNode( head, clause_node )
+    def _add_clause_node(self, head, body, varcount, locvars, group=None):
+        clause_node = self._appendNode(self._clause(
+            head.functor, head.args, head.probability, body, varcount, locvars, group, head.location))
+        return self._addDefineNode(head, clause_node)
         
     def _addCallNode( self, term ) :
         """Add a *call* node."""
@@ -1487,27 +1489,37 @@ class ClauseDB(LogicProgram) :
         else :
             return self._addClause( Clause(term, Term('true')) )
     
-    def _compile(self, struct, variables=None) :
-        if variables is None : variables = _AutoDict()
+    def _compile(self, struct, variables=None):
+        """
+        Compile the given structure and add it to the database.
+        :param struct: structure to compile
+        :type struct: Term
+        :param variables: mapping between variable names and variable index
+        :type variables: _AutoDict
+        :return: position of the compiled structure in the database
+        :rtype: int
+        """
+        if variables is None:
+            variables = _AutoDict()
         
-        if isinstance(struct, And) :
+        if isinstance(struct, And):
             op1 = self._compile(struct.op1, variables)
             op2 = self._compile(struct.op2, variables)
-            return self._addAndNode( op1, op2)
-        elif isinstance(struct, Or) :
+            return self._addAndNode(op1, op2)
+        elif isinstance(struct, Or):
             op1 = self._compile(struct.op1, variables)
             op2 = self._compile(struct.op2, variables)
-            return self._addOrNode( op1, op2)
-        elif isinstance(struct, Not) :
+            return self._addOrNode(op1, op2)
+        elif isinstance(struct, Not):
             child = self._compile(struct.child, variables)
-            return self._addNotNode( child, location=struct.location)
-        elif isinstance(struct, AnnotatedDisjunction) :
+            return self._addNotNode(child, location=struct.location)
+        elif isinstance(struct, AnnotatedDisjunction):
             # Determine number of variables in the head
-            new_heads = [ head.apply(variables) for head in struct.heads ]            
+            new_heads = [head.apply(variables) for head in struct.heads]
             head_count = len(variables)
             
             # Body arguments
-            body_args = tuple(range(0,head_count))
+            body_args = tuple(range(0, head_count))
             
             # Group id
             group = len(self.__nodes)
@@ -1516,29 +1528,37 @@ class ClauseDB(LogicProgram) :
             body_node = self._compile(struct.body, variables)
             head_count = len(variables)            
             # Body arguments
-            body_args = tuple(range(0,head_count))
+            body_args = tuple(range(0, head_count))
             body_head = Term('ad_%s_body' % group, *body_args)
-            clause_body = self._addClauseNode( body_head, body_node, len(variables) )
-            #clause_body = self._appendNode( self._clause( body_head.functor, body_head.args, None, body_node, len(variables), group=None ) )
-            clause_body = self._addHead( body_head )
-            for choice, head in enumerate(new_heads) :
+            clause_body = self._add_clause_node(body_head, body_node, len(variables), variables.local_variables)
+            clause_body = self._addHead(body_head)
+            for choice, head in enumerate(new_heads):
                 # For each head: add choice node
-                choice_node = self._addChoiceNode(choice, body_args, head.probability, group, head.location )
-                choice_call = self._appendNode( self._call( 'ad_%s_%s' % (group, choice), body_args, choice_node, head.location ) )
-                body_call = self._appendNode( self._call( 'ad_%s_body' % group, body_args , clause_body, head.location ) )
-                choice_body = self._addAndNode( body_call, choice_call )
-                head_clause = self._addClauseNode( head, choice_body, head_count, group=group )
+                choice_node = self._add_choice_node(choice, body_args, head.probability, variables.local_variables, group, head.location)
+                choice_call = self._appendNode(self._call('ad_%s_%s' % (group, choice), body_args, choice_node, head.location))
+                body_call = self._appendNode(self._call('ad_%s_body' % group, body_args, clause_body, head.location))
+                choice_body = self._addAndNode(body_call, choice_call )
+                head_clause = self._add_clause_node(head, choice_body, head_count, {}, group=group)
             return None
-        elif isinstance(struct, Clause) :
-            if struct.head.probability != None :
-                return self._compile( AnnotatedDisjunction( [struct.head], struct.body))
-            else :
+        elif isinstance(struct, Clause):
+            if struct.head.probability is not None:
+                return self._compile(AnnotatedDisjunction([struct.head], struct.body))
+            else:
                 new_head = struct.head.apply(variables)
-                head_count = len(variables)
                 body_node = self._compile(struct.body, variables)
-                return self._addClauseNode(new_head, body_node, len(variables))
-        elif isinstance(struct, Term) :
-            return self._addCallNode( struct.apply(variables) )
+                return self._add_clause_node(new_head, body_node, len(variables), variables.local_variables)
+        elif isinstance(struct, Term):
+            if struct.functor == 'findall' and struct.arity == 3:
+                # Special case for findall: any variables added by the first two arguments of findall
+                #  are 'local' variables
+                variables.enter_local()
+                a1 = struct.args[0].apply(variables)
+                a2 = struct.args[1].apply(variables)
+                variables.exit_local()
+                a3 = struct.args[2].apply(variables)
+                return self._addCallNode(struct(a1, a2, a3))
+            else:
+                return self._addCallNode(struct.apply(variables))
         else :
             raise ValueError("Unknown structure type: '%s'" % struct )
     
@@ -1610,38 +1630,55 @@ class ClauseDB(LogicProgram) :
                     body = self._create_vars( Term(body_node.functor, *body_node.args) )
             yield AnnotatedDisjunction(heads, body)
 
-class AccessError(GroundingError) : pass            
-        
-class _AutoDict(dict) :
+
+class AccessError(GroundingError):
+    pass
+
+
+class _AutoDict(dict):
     
-    def __init__(self) :
+    def __init__(self):
         dict.__init__(self)
         self.__record = set()
         self.__anon = 0
+        self.__localmode = False
+        self.local_variables = set()
+
+    def enter_local(self):
+        self.__localmode = True
+
+    def exit_local(self):
+        self.__localmode = False
     
-    def __getitem__(self, key) :
-        if key == '_' :
+    def __getitem__(self, key):
+        if key == '_':
             value = len(self)
             self.__anon += 1
             return value
-        else :        
+        else:
             value = self.get(key)
-            if value is None :
+            if value is None:
                 value = len(self)
                 self[key] = value
+                if self.__localmode:
+                    self.local_variables.add(value)
+            elif not self.__localmode and value in self.local_variables:
+                # Variable initially defined in local scope is reused outside local scope.
+                # This means it's not local anymore.
+                self.local_variables.remove(value)
             self.__record.add(value)
             return value
             
-    def __len__(self) :
+    def __len__(self):
         return dict.__len__(self) + self.__anon
         
-    def usedVars(self) :
+    def usedVars(self):
         result = set(self.__record)
         self.__record.clear()
         return result
         
-    def define(self, key) :
-        if not key in self :
+    def define(self, key):
+        if key not in self:
             value = len(self)
             self[key] = value
-            
+
