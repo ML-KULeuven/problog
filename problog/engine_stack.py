@@ -250,8 +250,10 @@ class StackBasedEngine(ClauseDBEngine) :
         
     def call(self, query, database, target, transform=None, **kwdargs ) :
         node_id = database.find(query)
-        return self.execute( node_id, database=database, target=target, context=query.args, **kwdargs) 
-                
+        if node_id is None:
+            raise _UnknownClause()
+        else:
+            return self.execute( node_id, database=database, target=target, context=query.args, **kwdargs)
     
     def printStack(self, pointer=None) :   # pragma: no cover
         print ('===========================')
@@ -1242,7 +1244,10 @@ def builtin_call( term, args=(), engine=None, callback=None, **kwdargs ) :
     check_mode( (term,), 'c', functor='call' )
     # Find the define node for the given query term.
     term_call = term.withArgs( *(term.args + args ))
-    results = engine.call( term_call, subcall=True, **kwdargs )
+    try:
+        results = engine.call( term_call, subcall=True, **kwdargs )
+    except _UnknownClause:
+        raise UnknownClause(term_call.signature, kwdargs['database'].lineno(kwdargs['location']))
     actions = []
     n = len(term.args)
     for res, node in results :
