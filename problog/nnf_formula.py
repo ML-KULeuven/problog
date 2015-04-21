@@ -172,7 +172,8 @@ class Compiler(object) :
 if system_info.get('c2d', False) :
     @transform(CNF, NNF)
     def _compile_with_c2d( cnf, nnf=None ) :
-        cnf_file = tempfile.mkstemp('.cnf')[1]
+        fd, cnf_file = tempfile.mkstemp('.cnf')
+        os.close(fd)
         nnf_file = cnf_file + '.nnf'
         cmd = ['cnf2dDNNF', '-dt_method', '0', '-smooth_all', '-reduce', '-in', cnf_file ]
         
