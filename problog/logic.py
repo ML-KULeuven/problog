@@ -467,6 +467,18 @@ class Or(Term) :
         lhs = str(self.op1)
         rhs = str(self.op2)        
         return "%s; %s" % (lhs, rhs)
+
+    def withArgs(self, *args):
+        """Creates a new Term with the same functor and the given arguments.
+
+        :param args: new arguments for the term
+        :type args: tuple of (Term | int | None)
+        :returns: a new term with the given arguments
+        :rtype: :class:`Term`
+
+        """
+        return self.__class__(*args, location=self.location)
+
         
     
 class And(Term) :
@@ -505,6 +517,18 @@ class And(Term) :
             lhs = '(%s)' % lhs
         
         return "%s, %s" % (lhs, rhs)
+
+    def withArgs(self, *args):
+        """Creates a new Term with the same functor and the given arguments.
+
+        :param args: new arguments for the term
+        :type args: tuple of (Term | int | None)
+        :returns: a new term with the given arguments
+        :rtype: :class:`Term`
+
+        """
+        return self.__class__(*args, location=self.location)
+
         
 class Not(Term) :
     """Not"""
