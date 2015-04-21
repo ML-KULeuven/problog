@@ -810,8 +810,15 @@ class LogicDAG(LogicFormula) :
     
     def __init__(self, auto_compact=True) :
         LogicFormula.__init__(self, auto_compact)
-        
-        
+
+
+class DeterministicLogicFormula(LogicFormula):
+
+    def __init__(self, **kwdargs):
+        LogicFormula.__init__(self, **kwdargs)
+
+    def addAtom(self, identifier, probability, group=None):
+        return self.TRUE
         
 @transform(LogicFormula, LogicDAG)
 def breakCycles(source, target) :
