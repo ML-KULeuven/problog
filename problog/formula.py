@@ -685,7 +685,7 @@ class LogicFormula(ProbLogObject) :
                             lines.append( '%s :- %s.' % ( y1, y[0] ) )
         
         def get_name(x) :
-            name = name_lookup.get(abs(x), 'node_%s' % abs(x))
+            name = str(name_lookup.get(abs(x), 'node_%s' % abs(x)))
             if x < 0 : name = '\+ (' + name + ')'
             return name
         
