@@ -8,7 +8,7 @@ from .formula import LogicFormula
 from .logic import Term
 from .engine import unify, UnifyError, instantiate, extract_vars, is_ground, UnknownClause, _UnknownClause, ConsultError
 from .engine import addStandardBuiltIns, check_mode, GroundingError, NonGroundProbabilisticClause, VariableUnification
-from .engine import ClauseDBEngine, CHECK
+from .engine import ClauseDBEngine
 
 
 class NegativeCycle(GroundingError) : 
@@ -267,7 +267,6 @@ class StackBasedEngine(ClauseDBEngine) :
                     print ('    %s: %s' % (i,x) )        
         
     def eval_fact(engine, parent, node_id, node, context, target, identifier, **kwdargs) :
-        CHECK(context)
         actions = []
         try :
             # Verify that fact arguments unify with call arguments.
@@ -286,7 +285,6 @@ class StackBasedEngine(ClauseDBEngine) :
         
             
     def eval_define(engine, node, context, target, parent, identifier=None, transform=None, **kwdargs) :
-        CHECK(context)
         goal = (node.functor, context)
         results = target._cache.get(goal)
         if results != None :
@@ -359,7 +357,6 @@ class StackBasedEngine(ClauseDBEngine) :
         return engine.eval_default(EvalNot, **kwdargs)
 
     def eval_call(self, node_id, node, context, parent, transform=None, identifier=None, **kwdargs):
-        CHECK(context)
         if node.defnode == -6:   # Findall
             call_args = [instantiate(arg, context, keepVars=True) for arg in node.args]
             try:
@@ -369,7 +366,7 @@ class StackBasedEngine(ClauseDBEngine) :
 
             # Modified result transformation: only unify last argument.
             def result_transform(result):
-                output = self._create_context(context)
+                output = self._clone_context(context)
                 try:
                     assert(len(result) == len(node.args))
                     unify(result[-1], node.args[-1], output)
@@ -380,7 +377,7 @@ class StackBasedEngine(ClauseDBEngine) :
             call_args = [instantiate(arg, context) for arg in node.args]
 
             def result_transform(result):
-                output = self._create_context(context)
+                output = self._clone_context(context)
                 try:
                     assert(len(result) == len(node.args))
                     for call_arg, res_arg in zip(node.args, result):
@@ -397,7 +394,6 @@ class StackBasedEngine(ClauseDBEngine) :
             except UnifyError:
                 if transform:
                     context = transform(context)
-                CHECK(context)
                 return [newResult(parent, context, NODE_TRUE, identifier, True)]
         elif node.defnode == -1:  # True
             if transform:
@@ -463,7 +459,7 @@ class StackBasedEngine(ClauseDBEngine) :
     
     def eval_choice(engine, parent, node_id, node, context, target, database, identifier, **kwdargs) :
         actions = []
-        result = context
+        result = engine._fix_context(context)
 
         for i, r in enumerate(result):
             if i not in node.locvars and not is_ground(r):
@@ -510,7 +506,6 @@ class EvalNode(object):
         self.on_cycle = False
         
     def notifyResult(self, arguments, node=0, is_last=False, parent=None ) :
-        CHECK(arguments)
         if parent is None : parent = self.parent
         if self.transform : arguments = self.transform(arguments)
         if arguments is None :
@@ -580,7 +575,7 @@ class EvalOr(EvalNode) :
             
     def newResult(self, result, node=NODE_TRUE, source=None, is_last=False ) :
         if self.isOnCycle() :
-            res = result
+            res = self.engine._fix_context(result)
             assert(self.results.collapsed)
             if res in self.results :
                 res_node = self.results[res]
@@ -599,7 +594,7 @@ class EvalOr(EvalNode) :
                 return a, actions
         else :
             assert(not self.results.collapsed)
-            res = result
+            res = self.engine._fix_context(result)
             self.results[res] = node
             if is_last :
                 return self.complete(source)
@@ -856,7 +851,6 @@ class EvalDefine(EvalNode) :
         return [ newResult( parent, arguments, node, self.identifier, is_last ) for parent in parents ]
     
     def newResult(self, result, node=NODE_TRUE, source=None, is_last=False ) :
-        CHECK(result)
         if self.is_cycle_child :
             if is_last :
                 return True, self.notifyResult(result, node, is_last=is_last)
@@ -865,7 +859,7 @@ class EvalDefine(EvalNode) :
         else :    
             if self.isOnCycle() or self.isCycleParent() :
                 assert(self.results.collapsed)
-                res = result
+                res = self.engine._fix_context(result)
                 res_node = self.results.get(res)
                 if res_node != None :
                     self.target.addDisjunct( res_node, node )
@@ -910,7 +904,7 @@ class EvalDefine(EvalNode) :
             else :
 #                print ('RESULT', self.node, result)    
                 assert(not self.results.collapsed)
-                res = result
+                res = self.engine._fix_context(result)
                 self.results[res] = node
                 if is_last :
                     return self.complete(source)

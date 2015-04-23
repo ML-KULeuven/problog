@@ -113,11 +113,18 @@ class ClauseDBEngine(GenericEngine) :
             
     def _create_context(self, content, define=None):
         """Create a variable context."""
-        context = VariableContext(0, len(content))
-        for i, c in enumerate(content):
-            context[i] = c
-        return context
-    
+        return content
+        # context = VariableContext(0, len(content))
+        # for i, c in enumerate(content):
+        #     context[i] = c
+        # return context
+
+    def _fix_context(self, context):
+        return tuple(context)
+
+    def _clone_context(self, context):
+        return list(context)
+
     def query(self, db, term, **kwdargs) :
         """Perform a non-probabilistic query."""
         gp = LogicFormula()
@@ -246,15 +253,13 @@ class _UnknownClause(Exception) :
     pass
 
 
-def CHECK(context):
-    if not isinstance(context, VariableContext) and not type(context).__name__ == 'instance':
-        print (type(context), context)
-        raise Exception('Unexpected type')
+# def CHECK(context):
+#     if not isinstance(context, VariableContext) and not type(context).__name__ == 'instance':
+#         print (type(context), context)
+#         raise Exception('Unexpected type')
 
 def instantiate( term, context, keepVars=False ) :
     """Replace variables in Term by values based on context lookup table."""
-
-    CHECK(context)
 
     if keepVars :
         context = list(context)
@@ -278,9 +283,6 @@ def unify( source_value, target_value, target_context=None, location=None ) :
         :raise UnifyError: unification failed
         
     """
-
-    if target_context:
-        CHECK(target_context)
 
 
     if type(target_value) == int :
