@@ -114,10 +114,13 @@ class ClauseDBEngine(GenericEngine) :
     def _create_context(self, content, define=None):
         """Create a variable context."""
         return content
-        # context = VariableContext(0, len(content))
-        # for i, c in enumerate(content):
-        #     context[i] = c
-        # return context
+        # if isinstance(content, VariableContext):
+        #     return content
+        # else:
+        #     context = VariableContext(0, len(content))
+        #     for i, c in enumerate(content):
+        #         context[i] = c
+        #     return context
 
     def _fix_context(self, context):
         return tuple(context)
@@ -253,10 +256,37 @@ class _UnknownClause(Exception) :
     pass
 
 
-# def CHECK(context):
-#     if not isinstance(context, VariableContext) and not type(context).__name__ == 'instance':
-#         print (type(context), context)
-#         raise Exception('Unexpected type')
+class ContextWrapper(object):
+
+    def __init__(self, context):
+        self.context = context
+        self.numbers = [0]*len(context)
+        self.num_count = 0
+
+    def __getitem__(self, key):
+        value = self.context[key]
+        if value is None or type(value) == int:  # TODO value can't be None anymore?
+            value = self.numbers[key]
+            if value == 0:
+                self.num_count -= 1
+                value = self.num_count
+                self.numbers[key] = value
+        return value
+
+
+def instantiate_all(terms, context):
+    result = []
+    cw = ContextWrapper(context)
+    for term in terms:
+        if term is None:
+            cw.num_count -= 1
+            result.append(cw.num_count)
+        elif type(term) == int:
+            result.append(cw[term])
+        else:
+            result.append(term.apply(cw))
+    return result
+
 
 def instantiate( term, context, keepVars=False ) :
     """Replace variables in Term by values based on context lookup table."""
@@ -274,32 +304,39 @@ def instantiate( term, context, keepVars=False ) :
     #     return term
     else :
         return term.apply(context)
+
+
+def replace_in_list(lst, a, b):
+    for i, x in enumerate(lst):
+        if x == a:
+            lst[i] = b
         
-        
-def unify( source_value, target_value, target_context=None, location=None ) :
+def unify(source_value, target_value, target_context=None, location=None):
     """Unify two terms.
         If a target context is given, the context will be updated using the variable identifiers from the first term, and the values from the second term.
         
         :raise UnifyError: unification failed
         
     """
-
-
-    if type(target_value) == int :
-        if target_context != None :
-            current_value = target_context[target_value]
-            if current_value is None :
-                target_context[target_value] = source_value
-            else :
-                new_value = unify_value( source_value, current_value, location=location )
+    # print ('unify', source_value, target_value, target_context)
+    if type(target_value) == int:
+        if target_value >= 0:
+            if target_context is not None:
+                current_value = target_context[target_value]
+                new_value = unify_value(source_value, current_value, location=location)
+                if type(current_value) == int and current_value < 0:
+                    replace_in_list(target_context, current_value, new_value)
+                    # print ('SV:', current_value, new_value, target_context)
                 target_context[target_value] = new_value
-    elif target_value is None :
-        pass
-    else :
-        assert( isinstance(target_value, Term) )
-        if source_value is None :  # a variable
+        else:
             pass
-        else :
+    elif target_value is None:
+        pass    # Shouldn't happen?
+    else :
+        assert(isinstance(target_value, Term))
+        if source_value is None:  # a variable
+            pass
+        else:
             assert( isinstance( source_value, Term ) )
             if target_value.signature == source_value.signature :
                 for s_arg, t_arg in zip(source_value.args, target_value.args) :
@@ -307,6 +344,26 @@ def unify( source_value, target_value, target_context=None, location=None ) :
             else :
                 raise UnifyError()
 
+
+def unify_value(v1, v2, location=None):
+    """Test unification of two values and return most specific unifier."""
+    # print ('unify_value', v1, v2)
+    if type(v1) == int and type(v2) == int and v1 < 0 and v2 < 0:
+        return max(v1, v2)
+    elif type(v1) == int and v1 < 0 and is_variable(v2):
+        return v1
+    elif type(v2) == int and v2 < 0 and is_variable(v1):
+        return v2
+    elif is_variable(v1):
+        return v2
+    elif is_variable(v2):
+        return v1
+    elif v1.signature == v2.signature:  # Assume Term
+        if v1 == v2:
+            return v1
+        return v1.withArgs(*[unify_value(a1, a2, location=location) for a1, a2 in zip(v1.args, v2.args)])
+    else:
+        raise UnifyError()
 
 class VariableContext(object):
     """A variable context implementation that supports variable unification."""
@@ -320,7 +377,7 @@ class VariableContext(object):
         """
         self.level = level
         self.values = [None]*size
-        self.origins = [None]*size
+        self.origins = [(self.level, i) for i in range(0, size)]
 
     def __setitem__(self, index, value):
         self.values[index] = value
@@ -338,6 +395,20 @@ class VariableContext(object):
         if other is None:
             return False
         return tuple(self.values) == tuple(other.values)
+
+    def clone(self):
+        result = VariableContext(self.level, len(self))
+        result.values = self.values[:]
+        result.origins = self.origins[:]
+        return result
+
+    def show(self):
+        print ('---------------')
+        print ('VariableContext')
+        print ('level:   ', self.level)
+        print ('values:  ', self.values)
+        print ('origins: ', self.origins)
+        print ('---------------')
 
 
 import os
@@ -398,22 +469,6 @@ class VariableUnification(GroundingError) :
         if self.location : msg += ' at position %s:%s' % self.location
         msg += '.'
         GroundingError.__init__(self, msg)
-
-
-def unify_value( v1, v2, location=None ) :
-    """Test unification of two values and return most specific unifier."""
-    
-    if is_variable(v1) :
-        #if not is_ground(v2) : raise VariableUnification(location=location)
-        return v2
-    elif is_variable(v2) :
-        #if not is_ground(v1) : raise VariableUnification(location=location)
-        return v1
-    elif v1.signature == v2.signature : # Assume Term
-        if v1 == v2 : return v1
-        return v1.withArgs(*[ unify_value(a1,a2, location=location) for a1, a2 in zip(v1.args, v2.args) ])
-    else :
-        raise UnifyError()
 
 
 class StructSort(object) :
@@ -678,32 +733,31 @@ def builtin_eq( A, B, location=None, database=None, **k ) :
     """``A = B``
         A and B not both variables
     """
-    if not is_ground(A) and not is_ground(B) :
-        raise VariableUnification(location = database.lineno(location))
-    else :
-        try :
-            R = unify_value(A,B, location=location)
-            return [( R, R )]
-        except UnifyError :
-            return []
-        except VariableUnification :
-            raise VariableUnification(location = database.lineno(location))
+    # if not is_ground(A) and not is_ground(B) :
+    #    # print (k['context'])
+    #
+    #     raise VariableUnification(location = database.lineno(location))
+    # else :
+    try :
+        R = unify_value(A,B, location=location)
+        return [( R, R )]
+    except UnifyError :
+        return []
+    # except VariableUnification :
+    #     raise VariableUnification(location = database.lineno(location))
 
 
-def builtin_neq( A, B, **k ) :
+def builtin_neq(A, B, **k ):
     """``A \= B``
         A and B not both variables
     """
-    if is_var(A) and is_var(B) :
+    try:
+        R = unify_value(A, B)
         return False
-    else :
-        try :
-            R = unify_value(A,B)
-            return False
-        except UnifyError :
-            return True
-        except VariableUnification :
-            return False
+    except UnifyError:
+        return True
+        # except VariableUnification :
+        #     return False
             
 
 def builtin_notsame( A, B, **k ) :

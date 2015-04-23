@@ -6,7 +6,7 @@ import imp, inspect # For load_external
 
 from .formula import LogicFormula
 from .logic import Term
-from .engine import unify, UnifyError, instantiate, extract_vars, is_ground, UnknownClause, _UnknownClause, ConsultError
+from .engine import unify, UnifyError, instantiate, extract_vars, is_ground, UnknownClause, _UnknownClause, ConsultError, instantiate_all
 from .engine import addStandardBuiltIns, check_mode, GroundingError, NonGroundProbabilisticClause, VariableUnification
 from .engine import ClauseDBEngine
 
@@ -358,11 +358,11 @@ class StackBasedEngine(ClauseDBEngine) :
 
     def eval_call(self, node_id, node, context, parent, transform=None, identifier=None, **kwdargs):
         if node.defnode == -6:   # Findall
-            call_args = [instantiate(arg, context, keepVars=True) for arg in node.args]
-            try:
-                extract_vars(*call_args[:-1])
-            except VariableUnification :
-                raise VariableUnification(location=kwdargs['database'].lineno(node.location))
+            call_args = instantiate_all(node.args, context)
+            # try:
+            #     extract_vars(*call_args[:-1])
+            # except VariableUnification :
+            #     raise VariableUnification(location=kwdargs['database'].lineno(node.location))
 
             # Modified result transformation: only unify last argument.
             def result_transform(result):
@@ -374,14 +374,16 @@ class StackBasedEngine(ClauseDBEngine) :
                 except UnifyError:
                     pass
         else:
-            call_args = [instantiate(arg, context) for arg in node.args]
+            call_args = instantiate_all(node.args, context)
 
             def result_transform(result):
+
                 output = self._clone_context(context)
                 try:
                     assert(len(result) == len(node.args))
                     for call_arg, res_arg in zip(node.args, result):
                         unify(res_arg, call_arg, output)
+                    # print ('Return call', node.functor, result, call_args, context, output)
                     return output
                 except UnifyError:
                     pass
@@ -432,16 +434,17 @@ class StackBasedEngine(ClauseDBEngine) :
             # if is_ground(*context) :
             #     transform.addConstant(context)
             # else :
-            location = node.location
-            database = kwdargs['database']
+            # location = node.location
+            # database = kwdargs['database']
             node_args = node.args
-            head_vars = extract_vars(*node.args)
-            hv = [ i for i in range(0,node.varcount) if head_vars[i] > 1 ]
+            # head_vars = extract_vars(*node.args)
+            # hv = [ i for i in range(0,node.varcount) if head_vars[i] > 1 ]
             def result_transform(result) :
-                for i in hv :
-                    if not is_ground(result[i]) :
-                        raise VariableUnification(location=database.lineno(location))
-                output = [ instantiate(arg, result) for arg in node_args ]
+                # for i in hv :
+                #     if not is_ground(result[i]) :
+                #         print ('YEP')
+                #         raise VariableUnification(location=database.lineno(location))
+                output = instantiate_all(node_args, result)
                 return engine._create_context(output)
             transform.addFunction(result_transform)
             return engine.eval( node.child, context=new_context, parent=parent, transform=transform, **kwdargs )
