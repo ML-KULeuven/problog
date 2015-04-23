@@ -111,9 +111,12 @@ class ClauseDBEngine(GenericEngine) :
             self.execute( current, database=db, context=self._create_context((), define=None), target=gp )
         return True
             
-    def _create_context(self, content, define=None) :
+    def _create_context(self, content, define=None):
         """Create a variable context."""
-        return content
+        context = VariableContext(0, len(content))
+        for i, c in enumerate(content):
+            context[i] = c
+        return context
     
     def query(self, db, term, **kwdargs) :
         """Perform a non-probabilistic query."""
@@ -182,7 +185,7 @@ class ClauseDBEngine(GenericEngine) :
             else :
                 raise UnknownClause(term.signature, location=db.lineno(term.location))
             
-        results = self.execute( clause_node, database=db, target=gp, context=list(term.args), **kwdargs)
+        results = self.execute( clause_node, database=db, target=gp, context=self._create_context(term.args), **kwdargs)
     
         return gp, results
         
@@ -241,11 +244,19 @@ class ClauseDBEngine(GenericEngine) :
 class _UnknownClause(Exception) :
     """Undefined clause in call used internally."""
     pass
-        
+
+
+def CHECK(context):
+    if not isinstance(context, VariableContext) and not type(context).__name__ == 'instance':
+        print (type(context), context)
+        raise Exception('Unexpected type')
 
 def instantiate( term, context, keepVars=False ) :
     """Replace variables in Term by values based on context lookup table."""
-    if keepVars : 
+
+    CHECK(context)
+
+    if keepVars :
         context = list(context)
         for i,v in enumerate(context) :
             if v is None :
@@ -267,6 +278,11 @@ def unify( source_value, target_value, target_context=None, location=None ) :
         :raise UnifyError: unification failed
         
     """
+
+    if target_context:
+        CHECK(target_context)
+
+
     if type(target_value) == int :
         if target_context != None :
             current_value = target_context[target_value]
@@ -289,6 +305,37 @@ def unify( source_value, target_value, target_context=None, location=None ) :
             else :
                 raise UnifyError()
 
+
+class VariableContext(object):
+    """A variable context implementation that supports variable unification."""
+
+    def __init__(self, level, size):
+        """
+        :param level: Call level on which the context is created.
+        :type level: int
+        :param size: Number of variables in the context.
+        :type size: int
+        """
+        self.level = level
+        self.values = [None]*size
+        self.origins = [None]*size
+
+    def __setitem__(self, index, value):
+        self.values[index] = value
+
+    def __getitem__(self, index):
+        return self.values[index]
+
+    def __len__(self):
+        return len(self.values)
+
+    def __hash__(self):
+        return hash(tuple(self.values))
+
+    def __eq__(self, other):
+        if other is None:
+            return False
+        return tuple(self.values) == tuple(other.values)
 
 
 import os
@@ -1112,11 +1159,13 @@ def builtin_findall( pattern, goal, result, database=None, target=None, engine=N
         if node != None :
             res = build_list(l,Term('[]'))
             if mode == 0  :  # var
-                output.append(((pattern,goal,res), node))
+                args = (pattern,goal,res)
+                output.append((args, node))
             else :
                 try :
                     res = unify_value(res,result)
-                    output.append(((pattern,goal,res), node))
+                    args = (pattern,goal,res)
+                    output.append((args, node))
                 except UnifyError :
                     pass
     return output
