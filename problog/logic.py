@@ -86,7 +86,10 @@ def term2str(term):
     if term is None:
         return '_'
     elif type(term) is int:
-        return '#%s' % term
+        if term >= 0:
+            return '#%s' % term
+        else:
+            return '_'
     elif isinstance(term, And):
         return '(%s)' % term
     else:
