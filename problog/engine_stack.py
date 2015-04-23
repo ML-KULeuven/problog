@@ -8,7 +8,7 @@ from .formula import LogicFormula
 from .logic import Term
 from .engine import unify, UnifyError, instantiate, extract_vars, is_ground, UnknownClause, _UnknownClause, ConsultError
 from .engine import addStandardBuiltIns, check_mode, GroundingError, NonGroundProbabilisticClause, VariableUnification
-from .engine import ClauseDBEngine
+from .engine import ClauseDBEngine, CHECK
 
 
 class NegativeCycle(GroundingError) : 
@@ -253,7 +253,7 @@ class StackBasedEngine(ClauseDBEngine) :
         if node_id is None:
             raise _UnknownClause()
         else:
-            return self.execute( node_id, database=database, target=target, context=query.args, **kwdargs)
+            return self.execute( node_id, database=database, target=target, context=self._create_context(query.args), **kwdargs)
     
     def printStack(self, pointer=None) :   # pragma: no cover
         print ('===========================')
@@ -267,6 +267,7 @@ class StackBasedEngine(ClauseDBEngine) :
                     print ('    %s: %s' % (i,x) )        
         
     def eval_fact(engine, parent, node_id, node, context, target, identifier, **kwdargs) :
+        CHECK(context)
         actions = []
         try :
             # Verify that fact arguments unify with call arguments.
@@ -275,7 +276,7 @@ class StackBasedEngine(ClauseDBEngine) :
             # Successful unification: notify parent callback.
             target_node = target.addAtom(node_id, node.probability)
             if target_node != None :
-                return [ newResult( parent, node.args, target_node, identifier, True ) ]
+                return [ newResult( parent, engine._create_context(node.args), target_node, identifier, True ) ]
             else :
                 return [ complete( parent, identifier) ]
         except UnifyError :
@@ -285,7 +286,8 @@ class StackBasedEngine(ClauseDBEngine) :
         
             
     def eval_define(engine, node, context, target, parent, identifier=None, transform=None, **kwdargs) :
-        goal = (node.functor, tuple(context))
+        CHECK(context)
+        goal = (node.functor, context)
         results = target._cache.get(goal)
         if results != None :
             actions = []
@@ -357,6 +359,7 @@ class StackBasedEngine(ClauseDBEngine) :
         return engine.eval_default(EvalNot, **kwdargs)
 
     def eval_call(self, node_id, node, context, parent, transform=None, identifier=None, **kwdargs):
+        CHECK(context)
         if node.defnode == -6:   # Findall
             call_args = [instantiate(arg, context, keepVars=True) for arg in node.args]
             try:
@@ -366,23 +369,23 @@ class StackBasedEngine(ClauseDBEngine) :
 
             # Modified result transformation: only unify last argument.
             def result_transform(result):
-                output = list(context)
+                output = self._create_context(context)
                 try:
                     assert(len(result) == len(node.args))
                     unify(result[-1], node.args[-1], output)
-                    return tuple(output)
+                    return output
                 except UnifyError:
                     pass
         else:
             call_args = [instantiate(arg, context) for arg in node.args]
 
             def result_transform(result):
-                output = list(context)
+                output = self._create_context(context)
                 try:
                     assert(len(result) == len(node.args))
                     for call_arg, res_arg in zip(node.args, result):
                         unify(res_arg, call_arg, output)
-                    return tuple(output)
+                    return output
                 except UnifyError:
                     pass
 
@@ -394,6 +397,7 @@ class StackBasedEngine(ClauseDBEngine) :
             except UnifyError:
                 if transform:
                     context = transform(context)
+                CHECK(context)
                 return [newResult(parent, context, NODE_TRUE, identifier, True)]
         elif node.defnode == -1:  # True
             if transform:
@@ -409,7 +413,7 @@ class StackBasedEngine(ClauseDBEngine) :
 
         origin = '%s/%s' % (node.functor,len(node.args))
         kwdargs['call_origin'] = (origin,node.location)
-        kwdargs['context'] = call_args
+        kwdargs['context'] = self._create_context(call_args)
         kwdargs['transform'] = transform
         try:
             return self.eval(node.defnode, parent=parent, identifier=identifier, **kwdargs)
@@ -418,7 +422,7 @@ class StackBasedEngine(ClauseDBEngine) :
             raise UnknownClause(origin, location=loc)
         
     def eval_clause(engine, context, node, node_id, parent, transform=None, identifier=None, **kwdargs) :
-        new_context = [None]*node.varcount
+        new_context = engine._create_context([None]*node.varcount)
         # self._create_context(size=node.varcount,define=call_args.define)
         try :
             # Fill in the context by unifying clause head arguments with call arguments.
@@ -442,7 +446,7 @@ class StackBasedEngine(ClauseDBEngine) :
                     if not is_ground(result[i]) :
                         raise VariableUnification(location=database.lineno(location))
                 output = [ instantiate(arg, result) for arg in node_args ]
-                return tuple(output)
+                return engine._create_context(output)
             transform.addFunction(result_transform)
             return engine.eval( node.child, context=new_context, parent=parent, transform=transform, **kwdargs )
             # evalnode = EvalClause(pointer=engine.pointer, node_id=node_id, parent=parent, identifier=identifier, engine=engine, context=context, node=node, **kwdargs)
@@ -459,7 +463,7 @@ class StackBasedEngine(ClauseDBEngine) :
     
     def eval_choice(engine, parent, node_id, node, context, target, database, identifier, **kwdargs) :
         actions = []
-        result = tuple(context)
+        result = context
 
         for i, r in enumerate(result):
             if i not in node.locvars and not is_ground(r):
@@ -506,6 +510,7 @@ class EvalNode(object):
         self.on_cycle = False
         
     def notifyResult(self, arguments, node=0, is_last=False, parent=None ) :
+        CHECK(arguments)
         if parent is None : parent = self.parent
         if self.transform : arguments = self.transform(arguments)
         if arguments is None :
@@ -575,7 +580,7 @@ class EvalOr(EvalNode) :
             
     def newResult(self, result, node=NODE_TRUE, source=None, is_last=False ) :
         if self.isOnCycle() :
-            res = (tuple(result))
+            res = result
             assert(self.results.collapsed)
             if res in self.results :
                 res_node = self.results[res]
@@ -594,7 +599,7 @@ class EvalOr(EvalNode) :
                 return a, actions
         else :
             assert(not self.results.collapsed)
-            res = (tuple(result))
+            res = result
             self.results[res] = node
             if is_last :
                 return self.complete(source)
@@ -837,7 +842,7 @@ class EvalDefine(EvalNode) :
         self.is_cycle_child = False
         self.is_cycle_parent = False
         
-        self.call = ( self.node.functor, tuple(self.context) )
+        self.call = ( self.node.functor, self.context )
         self.to_complete = to_complete
         self.is_ground = is_ground(*self.context)
         self.engine.stats[1] += 1
@@ -851,6 +856,7 @@ class EvalDefine(EvalNode) :
         return [ newResult( parent, arguments, node, self.identifier, is_last ) for parent in parents ]
     
     def newResult(self, result, node=NODE_TRUE, source=None, is_last=False ) :
+        CHECK(result)
         if self.is_cycle_child :
             if is_last :
                 return True, self.notifyResult(result, node, is_last=is_last)
@@ -859,7 +865,7 @@ class EvalDefine(EvalNode) :
         else :    
             if self.isOnCycle() or self.isCycleParent() :
                 assert(self.results.collapsed)
-                res = (tuple(result))
+                res = result
                 res_node = self.results.get(res)
                 if res_node != None :
                     self.target.addDisjunct( res_node, node )
@@ -904,7 +910,7 @@ class EvalDefine(EvalNode) :
             else :
 #                print ('RESULT', self.node, result)    
                 assert(not self.results.collapsed)
-                res = (tuple(result))
+                res = result
                 self.results[res] = node
                 if is_last :
                     return self.complete(source)
@@ -917,7 +923,7 @@ class EvalDefine(EvalNode) :
         else :
             self.to_complete -= 1
             if self.to_complete == 0:
-                cache_key = (self.node.functor, tuple(self.context))
+                cache_key = (self.node.functor, self.context)
                 #assert (not cache_key in self.target._cache)
                 self.flushBuffer()
                 self.target._cache[ cache_key ] = self.results
@@ -961,7 +967,7 @@ class EvalDefine(EvalNode) :
             
     def cycleDetected(self, cycle_parent) :
         queue = []
-        goal = (self.node.functor, tuple(self.context))
+        goal = (self.node.functor, self.context)
         # Get the top node of this cycle.
         cycle_root = self.engine.cycle_root
         # Mark this node as a cycle child
@@ -1070,9 +1076,9 @@ class EvalNot(EvalNode) :
         if self.nodes :
             or_node = self.target.addNot(self.target.addOr( self.nodes ))
             if or_node != NODE_FALSE :
-                actions += self.notifyResult(tuple(self.context), or_node)
+                actions += self.notifyResult(self.context, or_node)
         else :
-            actions += self.notifyResult(tuple(self.context), NODE_TRUE)
+            actions += self.notifyResult(self.context, NODE_TRUE)
         actions += self.notifyComplete()
         return True, actions
         
@@ -1192,6 +1198,7 @@ class BooleanBuiltIn(object) :
     def __call__( self, *args, **kwdargs ) :
         callback = kwdargs.get('callback')
         if self.base_function(*args, **kwdargs) :
+            args = kwdargs['engine']._create_context(args)
             return True, callback.notifyResult(args,NODE_TRUE,True)
         else :
             return True, callback.notifyComplete()
@@ -1211,6 +1218,7 @@ class SimpleBuiltIn(object) :
         output = []
         if results :
             for i,result in enumerate(results) :
+                result = kwdargs['engine']._create_context(result)
                 output += callback.notifyResult(result,NODE_TRUE,i==len(results)-1)
             return True, output
         else :
@@ -1231,7 +1239,7 @@ class SimpleProbabilisticBuiltIn(object) :
         output = []
         if results :
             for i,result in enumerate(results) :
-                output += callback.notifyResult(result[0],result[1],i==len(results)-1)
+                output += callback.notifyResult(kwdargs['engine']._create_context(result[0]),result[1],i==len(results)-1)
             return True, output
         else :
             return True, callback.notifyComplete()
@@ -1253,8 +1261,8 @@ def builtin_call( term, args=(), engine=None, callback=None, **kwdargs ) :
     for res, node in results :
         res1 = res[:n]
         res2 = res[n:]
-        res_pass = (term.withArgs(*res1),) + res2
-        actions += callback.notifyResult( res_pass, node, False)
+        res_pass = (term.withArgs(*res1),) + tuple(res2)
+        actions += callback.notifyResult(engine._create_context(res_pass), node, False)
     actions += callback.notifyComplete()
     return True, actions
 
