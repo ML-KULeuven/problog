@@ -8,7 +8,7 @@ from .formula import LogicFormula
 from .logic import Term
 from .engine import unify, UnifyError, instantiate, extract_vars, is_ground, UnknownClause, _UnknownClause, ConsultError, instantiate_all
 from .engine import addStandardBuiltIns, check_mode, GroundingError, NonGroundProbabilisticClause, VariableUnification
-from .engine import ClauseDBEngine
+from .engine import ClauseDBEngine, substitute_all
 
 
 class NegativeCycle(GroundingError) : 
@@ -367,9 +367,10 @@ class StackBasedEngine(ClauseDBEngine) :
             # Modified result transformation: only unify last argument.
             def result_transform(result):
                 output = self._clone_context(context)
+                open_vars = {}
                 try:
                     assert(len(result) == len(node.args))
-                    unify(result[-1], node.args[-1], output)
+                    unify(result[-1], node.args[-1], output, open_vars)
                     return output
                 except UnifyError:
                     pass
@@ -379,12 +380,15 @@ class StackBasedEngine(ClauseDBEngine) :
             def result_transform(result):
 
                 output = self._clone_context(context)
+                open_vars = {}
                 try:
                     assert(len(result) == len(node.args))
                     for call_arg, res_arg in zip(node.args, result):
-                        unify(res_arg, call_arg, output)
-                    # print ('Return call', node.functor, result, call_args, context, output)
-                    return output
+                        unify(res_arg, call_arg, output, open_vars)
+
+                    output1 = substitute_all(output, open_vars)
+                    # print ('Return call', node.functor, result, call_args, context, output, open_vars, output1)
+                    return output1
                 except UnifyError:
                     pass
 
@@ -423,13 +427,15 @@ class StackBasedEngine(ClauseDBEngine) :
         new_context = engine._create_context([None]*node.varcount)
         # self._create_context(size=node.varcount,define=call_args.define)
         try :
+            open_vars = {}
             # Fill in the context by unifying clause head arguments with call arguments.
             for head_arg, call_arg in zip(node.args, context) :
                 # Remove variable identifiers from calling context.
-                if type(call_arg) == int : call_arg = None
+                # if type(call_arg) == int : call_arg = None
                 # Unify argument and update context (raises UnifyError if not possible)
-                unify( call_arg, head_arg, new_context)
+                unify(call_arg, head_arg, new_context, open_vars, clause=True)
                 #
+            # print ('Clause', node.functor, context, node.args, new_context, open_vars)
             if transform is None : transform = Transformations()
             # if is_ground(*context) :
             #     transform.addConstant(context)
@@ -440,11 +446,13 @@ class StackBasedEngine(ClauseDBEngine) :
             # head_vars = extract_vars(*node.args)
             # hv = [ i for i in range(0,node.varcount) if head_vars[i] > 1 ]
             def result_transform(result) :
+
                 # for i in hv :
                 #     if not is_ground(result[i]) :
                 #         print ('YEP')
                 #         raise VariableUnification(location=database.lineno(location))
                 output = instantiate_all(node_args, result)
+                # print ('Clause return', node_args, result, output)
                 return engine._create_context(output)
             transform.addFunction(result_transform)
             return engine.eval( node.child, context=new_context, parent=parent, transform=transform, **kwdargs )

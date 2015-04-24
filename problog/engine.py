@@ -266,13 +266,14 @@ class ContextWrapper(object):
     def __getitem__(self, key):
         value = self.context[key]
         if value is None or type(value) == int:  # TODO value can't be None anymore?
+            if value is not None:
+                key = value
             value = self.numbers[key]
             if value == 0:
                 self.num_count -= 1
                 value = self.num_count
                 self.numbers[key] = value
         return value
-
 
 def instantiate_all(terms, context):
     result = []
@@ -282,9 +283,34 @@ def instantiate_all(terms, context):
             cw.num_count -= 1
             result.append(cw.num_count)
         elif type(term) == int:
-            result.append(cw[term])
+            v = cw[term]
+            #print ('A', term, context, v, cw.numbers)
+            result.append(v)
         else:
             result.append(term.apply(cw))
+    return result
+
+
+class SubstitutionWrapper(object):
+
+    def __init__(self, subst):
+        self.subst = subst
+
+    def __getitem__(self, key):
+        if key in self.subst:
+            return self.subst[key]
+        else:
+            return key
+
+
+def substitute_all(terms, subst):
+    subst = SubstitutionWrapper(subst)
+    result = []
+    for term in terms:
+        if is_variable(term):
+            result.append(subst[term])
+        else:
+            result.append(term.apply(subst))
     return result
 
 
@@ -310,25 +336,70 @@ def replace_in_list(lst, a, b):
     for i, x in enumerate(lst):
         if x == a:
             lst[i] = b
-        
-def unify(source_value, target_value, target_context=None, location=None):
+
+
+def is_open_var(a):
+    return type(a) == int and a < 0
+
+
+def unify_value_call_head(source_value, target_value):
+    """
+    Compute the unification of two terms in the context of call to head unification.
+    :param source_value: value occuring in clause call
+    :type source_value: Term or variable. All variables are represented as negative numbers.
+    :param target_value: value occuring in clause head
+    :type target_value: Term or variable. All variables are represented as positive numbers corresponding to positions in target_context.
+    :return:
+    """
+    pass
+
+
+def unify_call_head(source_value, target_value, target_context):
+    """
+    Unify a call argument with a clause head argument.
+    :param source_value: value occuring in clause call
+    :type source_value: Term or variable. All variables are represented as negative numbers.
+    :param target_value: value occuring in clause head
+    :type target_value: Term or variable. All variables are represented as positive numbers corresponding to positions in target_context.
+    :param target_context: values of the variables in the current context. Output argument.
+    :raise UnifyError: unification fails
+    """
+    if is_variable(target_value):
+        assert type(target_value) == int and target_value >= 0
+        target_context[target_value] = unify_value_call_head(source_value, target_value)
+
+
+    pass
+
+def unify(source_value, target_value, target_context=None, open_vars=None, location=None, clause=False):
     """Unify two terms.
         If a target context is given, the context will be updated using the variable identifiers from the first term, and the values from the second term.
-        
+
+        :type open_vars: list of (Term | int | None)
+
         :raise UnifyError: unification failed
         
     """
-    # print ('unify', source_value, target_value, target_context)
+    # print ('unify', source_value, target_value, target_context, clause)
     if type(target_value) == int:
         if target_value >= 0:
             if target_context is not None:
-                current_value = target_context[target_value]
-                new_value = unify_value(source_value, current_value, location=location)
-                if type(current_value) == int and current_value < 0:
+                if is_open_var(source_value) and not clause:
+                    current_value = target_context[target_value]
+                    k = (100-source_value)
+                    open_vars[k] = unify_value(open_vars.get(k), current_value)
+                    target_context[target_value] = k
+                    new_value = k
+                else:
+                    current_value = target_context[target_value]
+                    new_value = unify_value(source_value, current_value, location=location)
+                    target_context[target_value] = new_value
+                if type(current_value) == int:
                     replace_in_list(target_context, current_value, new_value)
-                    # print ('SV:', current_value, new_value, target_context)
-                target_context[target_value] = new_value
         else:
+            # print ('Do something?')
+            # TODO
+            # If target_value is negative and source_value is positive: target_value should be replaced
             pass
     elif target_value is None:
         pass    # Shouldn't happen?
@@ -336,11 +407,15 @@ def unify(source_value, target_value, target_context=None, location=None):
         assert(isinstance(target_value, Term))
         if source_value is None:  # a variable
             pass
+        elif type(source_value) == int: # also a variable
+            # TODO handle this?
+            pass
         else:
+            #print (source_value, clause)
             assert( isinstance( source_value, Term ) )
             if target_value.signature == source_value.signature :
                 for s_arg, t_arg in zip(source_value.args, target_value.args) :
-                    unify( s_arg, t_arg, target_context )
+                    unify( s_arg, t_arg, target_context, open_vars, clause=clause )
             else :
                 raise UnifyError()
 
