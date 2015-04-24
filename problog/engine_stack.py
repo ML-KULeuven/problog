@@ -6,9 +6,9 @@ import imp, inspect # For load_external
 
 from .formula import LogicFormula
 from .logic import Term
-from .engine import unify, UnifyError, instantiate, extract_vars, is_ground, UnknownClause, _UnknownClause, ConsultError, instantiate_all
-from .engine import addStandardBuiltIns, check_mode, GroundingError, NonGroundProbabilisticClause, VariableUnification
-from .engine import ClauseDBEngine, substitute_all
+from .engine import unify, UnifyError, instantiate, is_ground, UnknownClause, _UnknownClause
+from .engine import addStandardBuiltIns, check_mode, GroundingError, NonGroundProbabilisticClause
+from .engine import ClauseDBEngine, substitute_head_args, substitute_call_args, unify_call_head, unify_call_return
 
 
 class NegativeCycle(GroundingError) : 
@@ -358,37 +358,26 @@ class StackBasedEngine(ClauseDBEngine) :
 
     def eval_call(self, node_id, node, context, parent, transform=None, identifier=None, **kwdargs):
         if node.defnode == -6:   # Findall
-            call_args = instantiate_all(node.args, context)
-            # try:
-            #     extract_vars(*call_args[:-1])
-            # except VariableUnification :
-            #     raise VariableUnification(location=kwdargs['database'].lineno(node.location))
+            call_args, var_translate = substitute_call_args(node.args, context)
 
             # Modified result transformation: only unify last argument.
             def result_transform(result):
                 output = self._clone_context(context)
-                open_vars = {}
                 try:
                     assert(len(result) == len(node.args))
-                    unify(result[-1], node.args[-1], output, open_vars)
+                    output = unify_call_return([result[-1]], [node.args[-1]], output, var_translate)
                     return output
                 except UnifyError:
                     pass
         else:
-            call_args = instantiate_all(node.args, context)
+            call_args, var_translate = substitute_call_args(node.args, context)
 
             def result_transform(result):
-
                 output = self._clone_context(context)
-                open_vars = {}
                 try:
                     assert(len(result) == len(node.args))
-                    for call_arg, res_arg in zip(node.args, result):
-                        unify(res_arg, call_arg, output, open_vars)
-
-                    output1 = substitute_all(output, open_vars)
-                    # print ('Return call', node.functor, result, call_args, context, output, open_vars, output1)
-                    return output1
+                    output = unify_call_return(result, node.args, output, var_translate)
+                    return output
                 except UnifyError:
                     pass
 
@@ -423,46 +412,21 @@ class StackBasedEngine(ClauseDBEngine) :
             loc = kwdargs['database'].lineno(node.location)
             raise UnknownClause(origin, location=loc)
         
-    def eval_clause(engine, context, node, node_id, parent, transform=None, identifier=None, **kwdargs) :
-        new_context = engine._create_context([None]*node.varcount)
-        # self._create_context(size=node.varcount,define=call_args.define)
-        try :
-            open_vars = {}
-            # Fill in the context by unifying clause head arguments with call arguments.
-            for head_arg, call_arg in zip(node.args, context) :
-                # Remove variable identifiers from calling context.
-                # if type(call_arg) == int : call_arg = None
-                # Unify argument and update context (raises UnifyError if not possible)
-                unify(call_arg, head_arg, new_context, open_vars, clause=True)
-                #
-            # print ('Clause', node.functor, context, node.args, new_context, open_vars)
-            if transform is None : transform = Transformations()
-            # if is_ground(*context) :
-            #     transform.addConstant(context)
-            # else :
-            # location = node.location
-            # database = kwdargs['database']
-            node_args = node.args
-            # head_vars = extract_vars(*node.args)
-            # hv = [ i for i in range(0,node.varcount) if head_vars[i] > 1 ]
-            def result_transform(result) :
+    def eval_clause(self, context, node, node_id, parent, transform=None, identifier=None, **kwdargs) :
+        new_context = self._create_context([None]*node.varcount)
+        try:
+            unify_call_head(context, node.args, new_context)
+            if transform is None:
+                transform = Transformations()
 
-                # for i in hv :
-                #     if not is_ground(result[i]) :
-                #         print ('YEP')
-                #         raise VariableUnification(location=database.lineno(location))
-                output = instantiate_all(node_args, result)
-                # print ('Clause return', node_args, result, output)
-                return engine._create_context(output)
+            def result_transform(result):
+                output = substitute_head_args(node.args, result)
+                return self._create_context(output)
             transform.addFunction(result_transform)
-            return engine.eval( node.child, context=new_context, parent=parent, transform=transform, **kwdargs )
-            # evalnode = EvalClause(pointer=engine.pointer, node_id=node_id, parent=parent, identifier=identifier, engine=engine, context=context, node=node, **kwdargs)
-            # engine.add_record( evalnode )
-            # evalnode.is_ground = is_ground(*context)
-            # return [ evalnode.createCall( node.child, context=new_context) ]
-        except UnifyError :
+            return self.eval(node.child, context=new_context, parent=parent, transform=transform, **kwdargs)
+        except UnifyError:
             # Call and clause head are not unifiable, just fail (complete without results).
-            return [ complete(parent,identifier)]
+            return [complete(parent, identifier)]
             
     def handle_nonground(self, location=None, database=None, node=None, **kwdargs) :
         raise NonGroundProbabilisticClause(location=database.lineno(node.location))
