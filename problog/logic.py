@@ -73,6 +73,10 @@ class InstantiationError(GroundingError):
     pass
 
 
+class ArithmeticError(GroundingError):
+    pass
+
+
 def term2str(term):
     """
     Convert a Term argument to string.
@@ -697,7 +701,7 @@ def computeFunction(func, args) :
     """
     function = functions.get( (unquote(func), len(args) ) )
     if function is None :
-        raise GroundingError("Unknown function: '%s'/%s" % (func, len(args)) )
+        raise ArithmeticError("Unknown function '%s'/%s" % (func, len(args)) )
     else :
         values = [ arg.value for arg in args ]
         return function(*values)
