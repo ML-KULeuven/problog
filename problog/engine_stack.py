@@ -256,22 +256,20 @@ class StackBasedEngine(ClauseDBEngine) :
                 else :
                     print ('    %s: %s' % (i,x) )        
         
-    def eval_fact(engine, parent, node_id, node, context, target, identifier, **kwdargs) :
-        actions = []
-        try :
+    def eval_fact(engine, parent, node_id, node, context, target, identifier, **kwdargs):
+        try:
             # Verify that fact arguments unify with call arguments.
-            for a,b in zip(node.args, context) :
-                unify(a, b)
+            unify_call_head(context, node.args, context)
             # Successful unification: notify parent callback.
             target_node = target.addAtom(node_id, node.probability)
-            if target_node != None :
-                return [ newResult( parent, engine._create_context(node.args), target_node, identifier, True ) ]
-            else :
-                return [ complete( parent, identifier) ]
-        except UnifyError :
+            if target_node is not None :
+                return [newResult(parent, engine._create_context(node.args), target_node, identifier, True)]
+            else:
+                return [complete( parent, identifier)]
+        except UnifyError:
             # Failed unification: don't send result.
             # Send complete message.
-            return [ complete( parent, identifier) ]
+            return [complete( parent, identifier)]
         
             
     def eval_define(engine, node, context, target, parent, identifier=None, transform=None, **kwdargs) :
@@ -347,29 +345,16 @@ class StackBasedEngine(ClauseDBEngine) :
         return engine.eval_default(EvalNot, **kwdargs)
 
     def eval_call(self, node_id, node, context, parent, transform=None, identifier=None, **kwdargs):
-        if node.defnode == -6:   # Findall
-            call_args, var_translate = substitute_call_args(node.args, context)
+        call_args, var_translate = substitute_call_args(node.args, context)
 
-            # Modified result transformation: only unify last argument.
-            def result_transform(result):
-                output = self._clone_context(context)
-                try:
-                    assert(len(result) == len(node.args))
-                    output = unify_call_return([result[-1]], [node.args[-1]], output, var_translate)
-                    return output
-                except UnifyError:
-                    pass
-        else:
-            call_args, var_translate = substitute_call_args(node.args, context)
-
-            def result_transform(result):
-                output = self._clone_context(context)
-                try:
-                    assert(len(result) == len(node.args))
-                    output = unify_call_return(result, node.args, output, var_translate)
-                    return output
-                except UnifyError:
-                    pass
+        def result_transform(result):
+            output = self._clone_context(context)
+            try:
+                assert(len(result) == len(node.args))
+                output = unify_call_return(result, node.args, output, var_translate)
+                return output
+            except UnifyError:
+                pass
 
         # These cases are for efficiency only.
         if node.defnode == -5:  # \= builtin
@@ -439,11 +424,9 @@ class StackBasedEngine(ClauseDBEngine) :
             
     def handle_nonground(self, location=None, database=None, node=None, **kwdargs) :
         raise NonGroundProbabilisticClause(location=database.lineno(node.location))
-        
-    
-    def eval_choice(engine, parent, node_id, node, context, target, database, identifier, **kwdargs) :
-        actions = []
-        result = engine._fix_context(context)
+
+    def eval_choice(self, parent, node_id, node, context, target, database, identifier, **kwdargs):
+        result = self._fix_context(context)
 
         for i, r in enumerate(result):
             if i not in node.locvars and not is_ground(r):
@@ -451,16 +434,16 @@ class StackBasedEngine(ClauseDBEngine) :
                                                  context=context, parent=parent, node_id=node_id,
                                                  identifier=identifier, **kwdargs)
             
-        probability = instantiate( node.probability, result )
+        probability = instantiate(node.probability, result)
         # Create a new atom in ground program.
         origin = (node.group, result)
-        ground_node = target.addAtom( origin + (node.choice,) , probability, group=origin ) 
+        ground_node = target.addAtom(origin + (node.choice,), probability, group=origin)
         # Notify parent.
         
-        if ground_node != None :
-            return [ newResult( parent, result, ground_node, identifier, True ) ]
-        else :
-            return [ complete( parent, identifier ) ]
+        if ground_node is not None:
+            return [newResult(parent, result, ground_node, identifier, True)]
+        else:
+            return [complete(parent, identifier)]
     
     def eval_builtin(engine, **kwdargs) :
         return engine.eval_default(EvalBuiltIn, **kwdargs)

@@ -91,7 +91,7 @@ def term2str(term):
         return '_'
     elif type(term) is int:
         if term >= 0:
-            return '#%s' % term
+            return 'A%s' % (term+1)
         else:
             return 'X%s' % (-term)
     elif isinstance(term, And):
