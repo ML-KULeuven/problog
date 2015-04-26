@@ -90,10 +90,10 @@ def term2str(term):
     if term is None:
         return '_'
     elif type(term) is int:
-        #if term >= 0:
+        if term >= 0:
             return '#%s' % term
-        #else:
-        #    return '_'
+        else:
+            return 'X%s' % (-term)
     elif isinstance(term, And):
         return '(%s)' % term
     else:

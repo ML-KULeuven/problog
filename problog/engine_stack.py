@@ -6,7 +6,7 @@ import imp, inspect # For load_external
 
 from .formula import LogicFormula
 from .logic import Term, ArithmeticError
-from .engine import unify, UnifyError, instantiate, is_ground, UnknownClause, _UnknownClause
+from .engine import unify, UnifyError, instantiate, is_ground, UnknownClause, _UnknownClause, is_variable
 from .engine import addStandardBuiltIns, check_mode, GroundingError, NonGroundProbabilisticClause
 from .engine import ClauseDBEngine, substitute_head_args, substitute_call_args, unify_call_head, unify_call_return
 
@@ -404,8 +404,27 @@ class StackBasedEngine(ClauseDBEngine) :
         
     def eval_clause(self, context, node, node_id, parent, transform=None, identifier=None, **kwdargs) :
         new_context = self._create_context([None]*node.varcount)
+
         try:
             unify_call_head(context, node.args, new_context)
+            # Note: new_context should not contain None values. We should replace these with negative numbers.
+            # 1. Find lowest negative number in new_context.
+            #   TODO better option is to store this in context somewhere
+            min_var = 0
+            for c in new_context:
+                if is_variable(c):
+                    if c is not None and c < 0:
+                        min_var = min(min_var, c)
+                else:
+                    variables = [v for v in c.variables() if v is not None]
+                    if variables:
+                        min_var = min(min_var, min(variables))
+            # 2. Replace None in new_context with negative values
+            cc = min_var
+            for i, c in enumerate(new_context):
+                if c is None:
+                    cc -= 1
+                    new_context[i] = cc
             if transform is None:
                 transform = Transformations()
 
