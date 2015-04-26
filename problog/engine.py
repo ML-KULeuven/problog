@@ -194,10 +194,11 @@ class ClauseDBEngine(GenericEngine) :
                 return gp, []
             else :
                 raise UnknownClause(term.signature, location=db.lineno(term.location))
+
         context = self._create_context(term.args)
         context, xxx = substitute_call_args(context, context)
-        # TODO create call node
         results = self.execute( clause_node, database=db, target=gp, context=context, **kwdargs)
+    
         return gp, results
         
     def ground_all(self, db, target=None, queries=None, evidence=None) :
@@ -1765,10 +1766,10 @@ class ClauseDB(LogicProgram) :
             head.functor, head.args, head.probability, body, varcount, locvars, group, head.location))
         return self._add_define_node(head, clause_node)
         
-    def _add_call_node(self, term, is_query=False):
+    def _add_call_node(self, term):
         """Add a *call* node."""
         
-        if not is_query and term.signature in ('query/1', 'evidence/1', 'evidence/2') :
+        if term.signature in ('query/1', 'evidence/1', 'evidence/2') :
             raise AccessError("Can\'t call %s directly." % term.signature)
         
         defnode = self._add_head(term, create=False)
