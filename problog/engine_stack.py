@@ -248,11 +248,13 @@ class StackBasedEngine(ClauseDBEngine) :
             self.pointer -= 1
         
         
-    def call(self, query, database, target, transform=None, **kwdargs ) :
+    def call(self, query, database, target, transform=None, is_query=False, **kwdargs ) :
         node_id = database.find(query)
         if node_id is None:
             raise _UnknownClause()
         else:
+            #call_database = database.extend()
+            #node_id = call_database._add_call_node(query, is_query=True)
             return self.execute( node_id, database=database, target=target, context=self._create_context(query.args), **kwdargs)
     
     def printStack(self, pointer=None) :   # pragma: no cover
@@ -326,6 +328,7 @@ class StackBasedEngine(ClauseDBEngine) :
                 else :
                     evalnode = EvalDefine( pointer=engine.pointer, engine=engine, node=node, context=context, target=target, identifier=identifier, parent=parent, transform=transform, **kwdargs )
                     engine.add_record(evalnode)
+                    engine.add_record(evalnode)
                     return evalnode.cycleDetected(active_node)
             else :
                 children = node.children.find( context )
@@ -357,45 +360,28 @@ class StackBasedEngine(ClauseDBEngine) :
         return engine.eval_default(EvalNot, **kwdargs)
 
     def eval_call(self, node_id, node, context, parent, transform=None, identifier=None, **kwdargs):
-        if node.defnode == -6:   # Findall
-            call_args, var_translate = substitute_call_args(node.args, context)
-
-            # Modified result transformation: only unify last argument.
-            def result_transform(result):
-                output = self._clone_context(context)
-                try:
-                    assert(len(result) == len(node.args))
-                    output = unify_call_return([result[-1]], [node.args[-1]], output, var_translate)
-                    return output
-                except UnifyError:
-                    pass
-        else:
-            call_args, var_translate = substitute_call_args(node.args, context)
-
-            def result_transform(result):
-                output = self._clone_context(context)
-                try:
-                    assert(len(result) == len(node.args))
-                    output = unify_call_return(result, node.args, output, var_translate)
-                    return output
-                except UnifyError:
-                    pass
-
-        # These cases are for efficiency only.
-        if node.defnode == -5:  # \= builtin
+        call_args, var_translate = substitute_call_args(node.args, context)
+        def result_transform(result):
             try:
-                unify(call_args[0], call_args[1])
-                return [complete(parent, identifier)]
+                return unify_call_return(result, node.args, self._clone_context(context), var_translate)
             except UnifyError:
-                if transform:
-                    context = transform(context)
-                return [newResult(parent, context, NODE_TRUE, identifier, True)]
-        elif node.defnode == -1:  # True
-            if transform:
-                context = transform(context)
-            return [newResult(parent, context, NODE_TRUE, identifier, True)]
-        elif node.defnode == -2 or node.defnode == -3:  # Fail/False
-            return [complete(parent, identifier)]
+                pass
+
+        # # These cases are for efficiency only.
+        # if node.defnode == -5:  # \= builtin
+        #     try:
+        #         unify(call_args[0], call_args[1])
+        #         return [complete(parent, identifier)]
+        #     except UnifyError:
+        #         if transform:
+        #             context = transform(context)
+        #         return [newResult(parent, context, NODE_TRUE, identifier, True)]
+        # elif node.defnode == -1:  # True
+        #     if transform:
+        #         context = transform(context)
+        #     return [newResult(parent, context, NODE_TRUE, identifier, True)]
+        # elif node.defnode == -2 or node.defnode == -3:  # Fail/False
+        #     return [complete(parent, identifier)]
             
         if transform is None:
             transform = Transformations()
@@ -416,6 +402,15 @@ class StackBasedEngine(ClauseDBEngine) :
         new_context = self._create_context([None]*node.varcount)
         try:
             unify_call_head(context, node.args, new_context)
+            # int_vars = [c for c in context if type(c) == int and c < 0]
+            # if int_vars:
+            #     s = min(int_vars)
+            # else:
+            #     s = 0
+            # for i, c in enumerate(new_context):
+            #     if c is None:
+            #         s -= 1
+            #         new_context[i] = s
             if transform is None:
                 transform = Transformations()
 
