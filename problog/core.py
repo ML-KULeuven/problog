@@ -52,11 +52,35 @@ class ProbLog(object) :
             return current_obj
         raise ProbLogError("No conversion strategy found from an object of class '%s' to an object of class '%s'." % ( type(src).__name__, target.__name__ ))
 
-class ProbLogError(Exception) : pass
+
+class ProbLogError(Exception):
+    """General Problog error."""
+    pass
 
 class ParseError(ProbLogError) : pass 
 
-class GroundingError(ProbLogError) : pass
+
+class GroundingError(ProbLogError):
+    """Represents an error that occurred during grounding."""
+
+    def __init__(self, base_message, location=None):
+        self.base_message = base_message
+        self.location = location
+
+    def _location_string(self):
+        if self.location is None:
+            return ''
+        if type(self.location) == tuple:
+            return ' at %s:%s' % self.location
+        else:
+            return ' at character %s' % self.location
+
+    def _message(self):
+        return '%s: %s%s.' % (self.__class__.__name__, self.base_message, self._location_string())
+
+    def __str__(self):
+        return self._message()
+
 
 class CompilationError(ProbLogError) : pass
 
@@ -65,7 +89,7 @@ def process_error( err, debug=False ) :
     
     if debug :
         traceback.print_exc()
-    
+
     err_type = type(err).__name__
     if err_type == 'ParseException' :
         return 'Parsing error on %s:%s: %s.\n%s' % (err.lineno, err.col, err.msg, err.line )

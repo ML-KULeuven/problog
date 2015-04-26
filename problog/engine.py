@@ -697,61 +697,50 @@ class VariableContext(object):
 import os
 import imp, inspect # For load_external
 
-class NonGroundProbabilisticClause(GroundingError) : 
-    
-    def __init__(self, location=None) :
-        self.location = location
-        msg = 'Encountered non-ground probabilistic clause' 
-        if self.location : msg += ' at position %s:%s' % self.location
-        msg += '.'
-        GroundingError.__init__(self, msg)
 
-class _UnknownClause(Exception) :
+class NonGroundProbabilisticClause(GroundingError):
+    """Encountered a non-ground probabilistic clause."""
+
+    def __init__(self, location):
+        GroundingError.__init__(self, 'Encountered a non-ground probabilistic clause', location)
+
+
+class _UnknownClause(Exception):
     """Undefined clause in call used internally."""
     pass
 
-class UnknownClause(GroundingError) :
+
+class UnknownClause(GroundingError):
     """Undefined clause in call."""
     
-    def __init__(self, signature, location) :
-        self.location = location
-        msg = "No clauses found for '%s'" % signature
-        if location : msg += " at position %s:%s" % location
-        msg += '.'
-        GroundingError.__init__(self, msg)
+    def __init__(self, signature, location):
+        GroundingError.__init__(self, "No clauses found for '%s'" % signature, location)
+
 
 class UnknownExternal(GroundingError) :
     """Undefined clause in call."""
     
-    def __init__(self, signature, location) :
-        self.location = location
-        msg = "Unknown external function '%s'" % signature
-        if location : msg += " at position %s:%s" % location
-        msg += '.'
-        GroundingError.__init__(self, msg)
+    def __init__(self, signature, location):
+        GroundingError.__init__(self, "Unknown external function '%s'" % signature, location)
 
         
-class ConsultError(GroundingError) :
+class ConsultError(GroundingError):
+    """Error during consult"""
     
-    def __init__(self, message, location=None) :
-        self.location = location
-        msg = message
-        if location : msg += " at position %s:%s" % location
-        msg += '.'
-        GroundingError.__init__(self, msg)
+    def __init__(self, message, location):
+        GroundingError.__init__(self, message, location)
 
-class UnifyError(Exception) : pass
 
-class VariableUnification(GroundingError) : 
+class UnifyError(Exception):
+    """Unification error (used and handled internally)."""
+    pass
+
+
+class VariableUnification(GroundingError):
     """The engine does not support unification of two unbound variables."""
     
-    def __init__(self, location=None) :
-        self.location = location
-        
-        msg = 'Unification of unbound variables not supported'
-        if self.location : msg += ' at position %s:%s' % self.location
-        msg += '.'
-        GroundingError.__init__(self, msg)
+    def __init__(self, location):
+        GroundingError.__init__(self, "Unification of unbound variables not supported", location)
 
 
 class StructSort(object) :
@@ -772,33 +761,32 @@ class StructSort(object) :
         return struct_cmp(self.obj, other.obj) != 0
 
 
-class CallModeError(GroundingError) :
+class CallModeError(GroundingError):
     
-    def __init__(self, functor, args, accepted=[], message=None, location=None) :
-        if functor :
-            self.scope = '%s/%s'  % ( functor, len(args) )
+    def __init__(self, functor, args, accepted=[], message=None, location=None):
+        if functor:
+            self.scope = '%s/%s' % (functor, len(args))
         else :
             self.scope = None
-        self.received = ', '.join(map(self.show_arg,args))
-        self.expected = [  ', '.join(map(self.show_mode,mode)) for mode in accepted  ]
-        self.location = location
+        self.received = ', '.join(map(self._show_arg,args))
+        self.expected = [', '.join(map(self._show_mode,mode)) for mode in accepted]
         msg = 'Invalid argument types for call'
-        if self.scope : msg += " to '%s'" % self.scope
-        if location != None : msg += ' at position %s:%s ' % (location)
+        if self.scope:
+            msg += " to '%s'" % self.scope
         msg += ': arguments: (%s)' % self.received
-        if accepted :
+        if accepted:
             msg += ', expected: (%s)' % ') or ('.join(self.expected) 
-        else :
-            msg += ', expected: ' + message 
-        Exception.__init__(self, msg)
+        else:
+            msg += ', expected: ' + message
+        GroundingError.__init__(self, msg, location)
         
-    def show_arg(self, x) :
-        if x is None :
+    def _show_arg(self, x):
+        if x is None:
             return '_'
         else :
             return str(x)
     
-    def show_mode(self, t) :
+    def _show_mode(self, t):
         return mode_types[t][0]
 
 
@@ -1480,7 +1468,8 @@ def select( lst, target ) :
     
     
 def builtin_findall( pattern, goal, result, database=None, target=None, engine=None, **kwdargs ) :
-    mode = check_mode( (result,), 'vl', **kwdargs )
+    mode = check_mode( (result,), 'vl', database=database, **kwdargs )
+
     findall_head = Term(engine.get_non_cache_functor(), pattern)
     findall_clause = Clause( findall_head , goal )    
     findall_db = ClauseDB(parent=database)

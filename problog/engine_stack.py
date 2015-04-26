@@ -5,38 +5,28 @@ import sys, os
 import imp, inspect # For load_external
 
 from .formula import LogicFormula
-from .logic import Term
+from .logic import Term, ArithmeticError
 from .engine import unify, UnifyError, instantiate, is_ground, UnknownClause, _UnknownClause
 from .engine import addStandardBuiltIns, check_mode, GroundingError, NonGroundProbabilisticClause
 from .engine import ClauseDBEngine, substitute_head_args, substitute_call_args, unify_call_head, unify_call_return
 
 
-class NegativeCycle(GroundingError) : 
+class NegativeCycle(GroundingError):
     """The engine does not support negative cycles."""
     
-    def __init__(self, location=None) :
-        self.location = location
-        
-        msg = 'Negative cycle detected'
-        if self.location : msg += ' at position %s:%s' % self.location
-        msg += '.'
-        GroundingError.__init__(self, msg)
-        
-        self.trace = False
-        self.debug = False
-        
+    def __init__(self, location=None):
+        GroundingError.__init__(self, 'Negative cycle detected', location)
+
+
 class IndirectCallCycleError(GroundingError) :
     """Cycle should not pass through indirect calls (e.g. call/1, findall/3)."""
     
-    def __init__(self, location=None) :
-        self.location = location
-        msg = 'Indirect cycle detected (passing through call/1 or findall/3)'
-        if self.location : msg += ' at position %s:%s' % self.location
-        msg += '.'
-        GroundingError.__init__(self, msg)
+    def __init__(self, location=None):
+        GroundingError.__init__(self, 'Indirect cycle detected (passing through call/1 or findall/3)', location)
+
         
-        
-class InvalidEngineState(GroundingError): pass
+class InvalidEngineState(GroundingError):
+    pass
 
 NODE_TRUE = 0
 NODE_FALSE = None
@@ -1143,11 +1133,20 @@ class EvalBuiltIn(EvalNode) :
             self.location = call_origin[1]
         else :
             self.location = None
+        self.call_origin = call_origin
         self.engine.stats[4] += 1
     
     def __call__(self) :
-        return self.node(*self.context, engine=self.engine, database=self.database, target=self.target, location=self.location, callback=self, transform=self.transform)
-        
+        try:
+            return self.node(*self.context, engine=self.engine, database=self.database, target=self.target, location=self.location, callback=self, transform=self.transform)
+        except ArithmeticError as err:
+            if self.database and self.location:
+                functor = self.call_origin[0].split('/')[0]
+                callterm = Term(functor, *self.context)
+                err.base_message = 'Error while evaluating %s: %s' % (callterm, err.base_message)
+                err.location = self.database.lineno(self.location)
+            raise err
+
 
 
 
@@ -1159,7 +1158,7 @@ class BooleanBuiltIn(object) :
     def __init__(self, base_function) :
         self.base_function = base_function
     
-    def __call__( self, *args, **kwdargs ) :
+    def __call__( self, *args, **kwdargs ):
         callback = kwdargs.get('callback')
         if self.base_function(*args, **kwdargs) :
             args = kwdargs['engine']._create_context(args)
@@ -1169,7 +1168,8 @@ class BooleanBuiltIn(object) :
             
     def __str__(self) :   # pragma: no cover
         return str(self.base_function)
-        
+
+
 class SimpleBuiltIn(object) :
     """Simple builtin that does cannot be involved in a cycle or require engine information and has 0 or more results."""
 
@@ -1187,7 +1187,8 @@ class SimpleBuiltIn(object) :
             return True, output
         else :
             return True, callback.notifyComplete()
-            
+
+
     def __str__(self) :    # pragma: no cover
         return str(self.base_function)
         
@@ -1207,7 +1208,7 @@ class SimpleProbabilisticBuiltIn(object) :
             return True, output
         else :
             return True, callback.notifyComplete()
-            
+
     def __str__(self) :   # pragma: no cover
         return str(self.base_function)
 
