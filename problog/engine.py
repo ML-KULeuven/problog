@@ -90,7 +90,10 @@ class ClauseDBEngine(GenericEngine) :
         result = ClauseDB.createFrom(db, builtins=self.getBuiltIns())
         self._process_directives( result )
         return result
-        
+
+    def call(self, query, database, target, transform=None, **kwdargs):
+        raise NotImplementedError("ClauseDBEngine.call is an abstract function.")
+
     def execute(self, node_id, database=None, context=None, target=None, **kwdargs ) : # pragma: no cover
         raise NotImplementedError("ClauseDBEngine.execute is an abstract function.")
         
@@ -330,7 +333,7 @@ def is_open_var(a):
     return type(a) == int and a < 0
 
 
-def unify_value_same_context(value1, value2, target_context, source_values, verbose=False):
+def unify_value(value1, value2, source_values, verbose=False):
     """
     Unify two values that exist in the same context.
     :param value1:
@@ -340,7 +343,7 @@ def unify_value_same_context(value1, value2, target_context, source_values, verb
     """
     # Variables are negative numbers or None
     if verbose:
-        print ('unify_value', value1, value2, target_context, source_values)
+        print ('unify_value', value1, value2, source_values)
     # Naive implementation (no occurs check)
     if is_variable(value1) and is_variable(value2):
         if value1 == value2:
@@ -351,8 +354,8 @@ def unify_value_same_context(value1, value2, target_context, source_values, verb
             return value1
         else:
             # Two named variables: unify their source_values
-            value = unify_value_same_context(source_values.get(value1),
-                                             source_values.get(value2), target_context, source_values)
+            value = unify_value(source_values.get(value1),
+                                             source_values.get(value2), source_values)
             if value is None:
                 value = max(value1, value2)
             source_values[value1] = value
@@ -363,18 +366,18 @@ def unify_value_same_context(value1, value2, target_context, source_values, verb
         if value1 is None:
             return value2
         else:
-            value = unify_value_same_context(source_values.get(value1), value2, target_context, source_values)
+            value = unify_value(source_values.get(value1), value2, source_values)
             source_values[value1] = value
             return value
     elif is_variable(value2):
         if value2 is None:
             return value1
         else:
-            value = unify_value_same_context(source_values.get(value2), value1, target_context, source_values)
+            value = unify_value(source_values.get(value2), value1, source_values)
             source_values[value2] = value
             return value
     elif value1.signature == value2.signature:  # Assume Term
-        return value1.withArgs(*[unify_value_same_context(a1, a2, target_context, source_values)
+        return value1.withArgs(*[unify_value(a1, a2, source_values)
                                  for a1, a2 in zip(value1.args, value2.args)])
     else:
         raise UnifyError()
@@ -492,7 +495,7 @@ def unify_call_head_single(source_value, target_value, target_context, source_va
     if is_variable(target_value):   # target_value is variable (integer >= 0)
         assert type(target_value) == int and target_value >= 0
         target_context[target_value] = \
-            unify_value_same_context(source_value, target_context[target_value], target_context, source_values, verbose=verbose)
+            unify_value(source_value, target_context[target_value], source_values, verbose=verbose)
     else:   # target_value is a Term (which can still contain variables)
         if is_variable(source_value):   # source value is variable (integer < 0)
             if source_value is None:
@@ -503,7 +506,7 @@ def unify_call_head_single(source_value, target_value, target_context, source_va
                 # We keep track of the value for each source_value, and unify the target_value with the current value.
                 # Note that we unify two values in the same scope.
                 source_values[source_value] = \
-                    unify_value_same_context(source_values.get(source_value), target_value, target_context, source_values, verbose=verbose)
+                    unify_value(source_values.get(source_value), target_value, source_values, verbose=verbose)
         else:   # source value is a Term (which can still contain variables)
             if target_value.signature == source_value.signature:
                 # When signatures match, recursively unify the arguments.
@@ -555,12 +558,12 @@ def unify_call_return_single(source_value, target_value, target_context, source_
                 target_context[target_value] = source_value
             elif type(current_value) == int:
                 # Negative variable (from V2)
-                source_values[current_value] = unify_value_same_context(
-                    source_values.get(current_value), source_value, target_context, source_values)
+                source_values[current_value] = unify_value(
+                    source_values.get(current_value), source_value, source_values)
             else:
                 # Term (with variables from V2)
-                target_context[target_value] = unify_value_same_context(
-                    current_value, source_value, target_context, source_values)
+                target_context[target_value] = unify_value(
+                    current_value, source_value, source_values)
         else:
             # Not possible. Target comes from static variables
             assert not target_value < 0
@@ -570,7 +573,7 @@ def unify_call_return_single(source_value, target_value, target_context, source_
             assert type(source_value) == int and source_value < 0
 
             source_values[source_value] = \
-                unify_value_same_context(source_values.get(source_value), target_value, target_context, source_values, verbose=verbose)
+                unify_value(source_values.get(source_value), target_value, source_values, verbose=verbose)
         else:   # source value is a Term (which can still contain variables)
             if target_value.signature == source_value.signature:
                 # When signatures match, recursively unify the arguments.
@@ -580,74 +583,25 @@ def unify_call_return_single(source_value, target_value, target_context, source_
                 raise UnifyError()
 
 
-def unify(source_value, target_value, target_context=None, open_vars=None, location=None, clause=False):
-    """Unify two terms.
-        If a target context is given, the context will be updated using the variable identifiers from the first term, and the values from the second term.
-
-        :type open_vars: list of (Term | int | None)
-
-        :raise UnifyError: unification failed
-        
-    """
-    # print ('unify', source_value, target_value, target_context, clause)
-    if type(target_value) == int:
-        if target_value >= 0:
-            if target_context is not None:
-                if is_open_var(source_value) and not clause:
-                    current_value = target_context[target_value]
-                    k = (100-source_value)
-                    open_vars[k] = unify_value(open_vars.get(k), current_value)
-                    target_context[target_value] = k
-                    new_value = k
-                else:
-                    current_value = target_context[target_value]
-                    new_value = unify_value(source_value, current_value, location=location)
-                    target_context[target_value] = new_value
-                if type(current_value) == int:
-                    replace_in_list(target_context, current_value, new_value)
-        else:
-            # print ('Do something?')
-            # TODO
-            # If target_value is negative and source_value is positive: target_value should be replaced
-            pass
-    elif target_value is None:
-        pass    # Shouldn't happen?
-    else :
-        assert(isinstance(target_value, Term))
-        if source_value is None:  # a variable
-            pass
-        elif type(source_value) == int: # also a variable
-            # TODO handle this?
-            pass
-        else:
-            #print (source_value, clause)
-            assert( isinstance( source_value, Term ) )
-            if target_value.signature == source_value.signature :
-                for s_arg, t_arg in zip(source_value.args, target_value.args) :
-                    unify( s_arg, t_arg, target_context, open_vars, clause=clause )
-            else :
-                raise UnifyError()
-
-
-def unify_value(v1, v2, location=None):
-    """Test unification of two values and return most specific unifier."""
-    # print ('unify_value', v1, v2)
-    if type(v1) == int and type(v2) == int and v1 < 0 and v2 < 0:
-        return max(v1, v2)
-    elif type(v1) == int and v1 < 0 and is_variable(v2):
-        return v1
-    elif type(v2) == int and v2 < 0 and is_variable(v1):
-        return v2
-    elif is_variable(v1):
-        return v2
-    elif is_variable(v2):
-        return v1
-    elif v1.signature == v2.signature:  # Assume Term
-        if v1 == v2:
-            return v1
-        return v1.withArgs(*[unify_value(a1, a2, location=location) for a1, a2 in zip(v1.args, v2.args)])
-    else:
-        raise UnifyError()
+# def unify_value(v1, v2, location=None):
+#     """Test unification of two values and return most specific unifier."""
+#     # print ('unify_value', v1, v2)
+#     if type(v1) == int and type(v2) == int and v1 < 0 and v2 < 0:
+#         return max(v1, v2)
+#     elif type(v1) == int and v1 < 0 and is_variable(v2):
+#         return v1
+#     elif type(v2) == int and v2 < 0 and is_variable(v1):
+#         return v2
+#     elif is_variable(v1):
+#         return v2
+#     elif is_variable(v2):
+#         return v1
+#     elif v1.signature == v2.signature:  # Assume Term
+#         if v1 == v2:
+#             return v1
+#         return v1.withArgs(*[unify_value(a1, a2, location=location) for a1, a2 in zip(v1.args, v2.args)])
+#     else:
+#         raise UnifyError()
 
 class VariableContext(object):
     """A variable context implementation that supports variable unification."""
@@ -954,10 +908,11 @@ def builtin_split_call( term, parts, database=None, location=None, **k ) :
         for t in reversed(part_list) :
             current = Term('.', t, current)
         try :
-            L = unify_value(current, parts, location=location)
+            local_values = {}
+            L = unify_value(current, parts, local_values, location=location)
             elements, tail = list_elements(L)
             term_new = elements[0](*elements[1:])
-            T = unify_value( term, term_new, location=location )
+            T = unify_value( term, term_new, local_values, location=location)
             return [(T,L)]            
         except UnifyError :
             return []
@@ -968,7 +923,7 @@ def builtin_arg(index,term,argument, **k) :
     if 0 <= index_v < len(term.args) :
         try :
             arg = term.args[index_v]
-            res = unify_value(arg,argument, location=location)
+            res = unify_value(arg, argument, {}, location=location)
             return [(index,term,res)]
         except UnifyError :
             pass
@@ -978,11 +933,12 @@ def builtin_functor(term,functor,arity, **k) :
     mode = check_mode( (term,functor,arity), ['vaI','n**'], functor='functor', **k)
     
     if mode == 0 : 
-        callback.newResult( Term(functor, *((None,)*int(arity)) ), functor, arity )
+        k.get('callback').newResult( Term(functor, *((None,)*int(arity)) ), functor, arity )
     else :
         try :
-            func_out = unify_value(functor, Term(term.functor))
-            arity_out = unify_value(arity, Constant(term.arity))
+            values = {}
+            func_out = unify_value(functor, Term(term.functor), values)
+            arity_out = unify_value(arity, Constant(term.arity), values)
             return [(term, func_out, arity_out)]
         except UnifyError :
             pass
@@ -1008,7 +964,7 @@ def builtin_eq( A, B, location=None, database=None, **k ) :
     #     raise VariableUnification(location = database.lineno(location))
     # else :
     try :
-        R = unify_value(A,B, location=location)
+        R = unify_value(A, B, {})
         return [( R, R )]
     except UnifyError :
         return []
@@ -1021,7 +977,7 @@ def builtin_neq(A, B, **k ):
         A and B not both variables
     """
     try:
-        R = unify_value(A, B)
+        R = unify_value(A, B, {})
         return False
     except UnifyError:
         return True
@@ -1101,7 +1057,7 @@ def builtin_is( A, B, **k ) :
     mode = check_mode( (A,B), ['*g'], functor='is', **k )
     try :
         R = Constant(B.value)
-        unify_value(A,R)
+        unify_value(A, R, {})
         return [(R,B)]
     except UnifyError :
         return []
@@ -1296,7 +1252,7 @@ def builtin_length(L, N, **k) :
         elements, tail = list_elements(L)
         list_size = len(elements)
         try :
-            N = unify_value(N, Constant(list_size))
+            N = unify_value(N, Constant(list_size), {})
             return [ ( L, N ) ]
         except UnifyError :
             return []    
@@ -1332,7 +1288,7 @@ def builtin_sort( L, S, **k ) :
     # assert( is_list_empty(tail) )
     try :
         sorted_list = build_list(sorted(set(elements), key=StructSort), Term('[]'))
-        S_out = unify_value(S,sorted_list)
+        S_out = unify_value(S, sorted_list, {})
         return [(L,S_out)]
     except UnifyError :
         return []
@@ -1448,54 +1404,97 @@ def builtin_unknown( arg, engine=None, **kwdargs) :
     else :
         engine.unknown = engine.UNKNOWN_ERROR
     return True
+
+
+def select_sublist(lst, target):
+    """
+    Enumerate all possible selection of elements from a list.
+    This function is used to generate all solutions to findall/3.
+    An element must be selected if it is TRUE in the target formula.
+    :param lst: list to select elements from
+    :type lst: list of Term
+    :param target: data structure containing truth value of nodes
+    :type target: LogicFormula
+    :return: generator of sublists
+    """
+    l = len(lst)
+
+    # Generate an array that indicates the decision bit for each element in the list.
+    # If an element is deterministically true, then no decision bit is needed.
+    choice_bits = [None] * l
+    x = 0
+    for i in range(0, l):
+        if lst[i][1] != target.TRUE:
+            choice_bits[i] = x
+            x += 1
+    # We have 2^x distinct lists. Each can be represented as a number between 0 and n.
+    n = (1 << x)
+
+    while n >= 0:
+        # Generate the list of positive values and node identifiers
+        sublist = [lst[i] for i in range(0, l) if choice_bits[i] is None or n & 1 << choice_bits[i]]
+        # Generate the list of negative node identifiers
+        sublist_no = tuple([-lst[i][1] for i in range(0, l) if not (choice_bits[i] is None or n & 1 << choice_bits[i])])
+        if sublist:
+            terms, nodes = zip(*sublist)
+        else:
+            # Empty list.
+            terms, nodes = (), ()
+        yield terms, nodes + sublist_no + (0,)
+        n -= 1
     
-def select( lst, target ) :
-    # TODO remove recursion?
-    if lst :
-        res, node = lst[0]
-        lst = lst[1:]
-        
-        for list_rest, node_rest in select(lst, target) :
-            if node == target.TRUE :  # Have to pick
-                yield  (res,) + list_rest, node_rest
-            else :  # Have choice
-                yield (res,) + list_rest, (node,) + node_rest
-                yield list_rest, (-node,) + node_rest
-    else :
-        yield (), (0,)
     
-    
-def builtin_findall( pattern, goal, result, database=None, target=None, engine=None, **kwdargs ) :
-    mode = check_mode( (pattern, goal, result,), ('*cv', '*cl'), database=database, **kwdargs )
+def builtin_findall(pattern, goal, result, database=None, target=None, engine=None, **kwdargs):
+    """
+    Implementation of findall/3 builtin.
+    :param pattern: pattern to extract
+    :type pattern: Term
+    :param goal: goal to evaluate
+    :type goal: Term
+    :param result: list to store results
+    :type result: Term
+    :param database: database holding logic program
+    :type database: ClauseDB
+    :param target: logic formula in which to store the result
+    :type target: LogicFormula
+    :param engine: engine that is used for evaluation
+    :type engine: ClauseDBEngine
+    :param kwdargs: additional arguments from engine
+    :return: list results (tuple of lists and node identifiers)
+    """
+    # Check the modes.
+    mode = check_mode((pattern, goal, result,), ('*cv', '*cl'), database=database, **kwdargs)
 
     findall_head = Term(engine.get_non_cache_functor(), pattern)
-    findall_clause = Clause( findall_head , goal )    
+    findall_clause = Clause( findall_head, goal)
     findall_db = ClauseDB(parent=database)
     findall_db += findall_clause
-    class D :
-        def __getitem__(self, key) :
-            return None
-    findall_head = instantiate(findall_head, D())
 
-    results = engine.call( findall_head, subcall=True, database=findall_db, target=target, **kwdargs )
-    results = [ (res[0],n) for res, n in results ]
+    class _TranslateToNone(object):
+        def __getitem__(self, item):
+            return None
+    findall_head = substitute_simple(findall_head, _TranslateToNone())
+
+    results = engine.call(findall_head, subcall=True, database=findall_db, target=target, **kwdargs)
+    results = [(res[0], n) for res, n in results]
     output = []
-    for l,n in select(results, target) :
+    for l, n in select_sublist(results, target):
         node = target.addAnd(n)
-        if node != None :
-            res = build_list(l,Term('[]'))
-            if mode == 0  :  # var
-                args = (pattern,goal,res)
+        if node is not None:
+            res = build_list(l, Term('[]'))
+            if mode == 0:  # var
+                args = (pattern, goal, res)
                 output.append((args, node))
-            else :
-                try :
-                    res = unify_value(res,result)
-                    args = (pattern,goal,res)
+            else:
+                try:
+                    res = unify_value(res, result, {})
+                    args = (pattern, goal, res)
                     output.append((args, node))
-                except UnifyError :
+                except UnifyError:
                     pass
     return output
-    
+
+
 def addStandardBuiltIns(engine, b=None, s=None, sp=None) :
     """Add Prolog builtins to the given engine."""
     

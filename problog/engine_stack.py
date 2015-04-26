@@ -1,12 +1,9 @@
 from __future__ import print_function
-from collections import defaultdict 
 
-import sys, os
-import imp, inspect # For load_external
+import sys
 
-from .formula import LogicFormula
 from .logic import Term, ArithmeticError
-from .engine import unify, UnifyError, instantiate, is_ground, UnknownClause, _UnknownClause, is_variable
+from .engine import UnifyError, instantiate, is_ground, UnknownClause, _UnknownClause, is_variable
 from .engine import addStandardBuiltIns, check_mode, GroundingError, NonGroundProbabilisticClause
 from .engine import ClauseDBEngine, substitute_head_args, substitute_call_args, unify_call_head, unify_call_return
 
@@ -355,22 +352,6 @@ class StackBasedEngine(ClauseDBEngine) :
                 return output
             except UnifyError:
                 pass
-
-        # These cases are for efficiency only.
-        if node.defnode == -5:  # \= builtin
-            try:
-                unify(call_args[0], call_args[1])
-                return [complete(parent, identifier)]
-            except UnifyError:
-                if transform:
-                    context = transform(context)
-                return [newResult(parent, context, NODE_TRUE, identifier, True)]
-        elif node.defnode == -1:  # True
-            if transform:
-                context = transform(context)
-            return [newResult(parent, context, NODE_TRUE, identifier, True)]
-        elif node.defnode == -2 or node.defnode == -3:  # Fail/False
-            return [complete(parent, identifier)]
             
         if transform is None:
             transform = Transformations()
@@ -455,7 +436,6 @@ class StackBasedEngine(ClauseDBEngine) :
         return actions
 
 
-
 class EvalNode(object):
 
     def __init__(self, engine, database, target, node_id, node, context, parent, pointer, identifier=None, transform=None, call=None, **extra ) :
@@ -516,7 +496,6 @@ class EvalNode(object):
         return '%s %s %s [at %s:%s] | Context: %s' % (self.parent, node_type, self.node_str(), pos[0], pos[1], self.context ) + ' {' + str(self.transform) + '}'
 
 
-    
 class EvalOr(EvalNode) :
     # Has exactly one listener (parent)
     # Has C children.
@@ -666,6 +645,7 @@ class NestedDict(object) :
     
     def __str__(self) :       # pragma: no cover
         return str(self.__base)
+
 
 class DefineCache(object) : 
     
