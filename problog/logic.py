@@ -473,8 +473,8 @@ class Or(Term) :
         return And(self, rhs)
             
     def __repr__(self) :
-        lhs = str(self.op1)
-        rhs = str(self.op2)        
+        lhs = term2str(self.op1)
+        rhs = term2str(self.op2)
         return "%s; %s" % (lhs, rhs)
 
     def withArgs(self, *args):
@@ -518,8 +518,8 @@ class And(Term) :
         return Or(self, rhs)
     
     def __repr__(self) :
-        lhs = str(self.op1)
-        rhs = str(self.op2)
+        lhs = term2str(self.op1)
+        rhs = term2str(self.op2)
         if isinstance(self.op2, Or) :
             rhs = '(%s)' % rhs
         if isinstance(self.op1, Or) :
