@@ -3,7 +3,7 @@ from __future__ import print_function
 import sys
 
 from .logic import Term, ArithmeticError
-from .engine import UnifyError, instantiate, is_ground, UnknownClause, _UnknownClause, is_variable
+from .engine import UnifyError, instantiate, is_ground, UnknownClause, UnknownClauseInternal, is_variable
 from .engine import addStandardBuiltIns, check_mode, GroundingError, NonGroundProbabilisticClause
 from .engine import ClauseDBEngine, substitute_head_args, substitute_call_args, unify_call_head, unify_call_return
 
@@ -38,10 +38,7 @@ def complete(obj, source) :
     return ( 'c', obj, (source,), {} )
     
 class StackBasedEngine(ClauseDBEngine) :
-    
-    UNKNOWN_ERROR = 0
-    UNKNOWN_FAIL = 1
-    
+
     def __init__(self, label_all=False, **kwdargs) :
         ClauseDBEngine.__init__(self,**kwdargs)
         
@@ -67,14 +64,13 @@ class StackBasedEngine(ClauseDBEngine) :
         self.trace = False
         
         self.label_all = label_all
-        
-        self.unknown = self.UNKNOWN_ERROR
+
     
     def eval(self, node_id, **kwdargs) :
         database = kwdargs['database']
         if node_id < 0 :
             node_type = 'builtin'
-            node = self._getBuiltIn(node_id)
+            node = self.get_builtin(node_id)
         else :
             node = database.getNode(node_id)
             node_type = type(node).__name__
@@ -83,13 +79,13 @@ class StackBasedEngine(ClauseDBEngine) :
             if self.unknown == self.UNKNOWN_FAIL :
                 return [ complete( kwdargs['parent'], kwdargs['identifier'])]
             else :
-                raise _UnknownClause()
+                raise UnknownClauseInternal()
         return exec_func(node_id=node_id, node=node, **kwdargs)
         
     def create_node_type(self, node_type) :
         return self.node_types.get(node_type)
             
-    def loadBuiltIns(self) :
+    def load_builtins(self):
         addBuiltIns(self)
     
     def grow_stack(self) :
@@ -177,7 +173,7 @@ class StackBasedEngine(ClauseDBEngine) :
                             next_actions = self.eval( obj, *args, **kwdargs )
                             cleanUp = False
                             obj = self.pointer
-                        except _UnknownClause : 
+                        except UnknownClauseInternal :
                             call_origin = kwdargs.get('call_origin')
                             if call_origin is None :
                                 sig = 'unknown'
@@ -238,7 +234,7 @@ class StackBasedEngine(ClauseDBEngine) :
     def call(self, query, database, target, transform=None, **kwdargs ) :
         node_id = database.find(query)
         if node_id is None:
-            raise _UnknownClause()
+            raise UnknownClauseInternal()
         else:
             return self.execute( node_id, database=database, target=target, context=self._create_context(query.args), **kwdargs)
     
@@ -364,7 +360,7 @@ class StackBasedEngine(ClauseDBEngine) :
         kwdargs['transform'] = transform
         try:
             return self.eval(node.defnode, parent=parent, identifier=identifier, **kwdargs)
-        except _UnknownClause:
+        except UnknownClauseInternal:
             loc = kwdargs['database'].lineno(node.location)
             raise UnknownClause(origin, location=loc)
         
@@ -1206,7 +1202,7 @@ def builtin_call( term, args=(), engine=None, callback=None, **kwdargs ) :
     term_call = term.withArgs( *(term.args + args ))
     try:
         results = engine.call( term_call, subcall=True, **kwdargs )
-    except _UnknownClause:
+    except UnknownClauseInternal:
         raise UnknownClause(term_call.signature, kwdargs['database'].lineno(kwdargs['location']))
     actions = []
     n = len(term.args)
@@ -1226,8 +1222,8 @@ def addBuiltIns(engine) :
     addStandardBuiltIns(engine, BooleanBuiltIn, SimpleBuiltIn, SimpleProbabilisticBuiltIn )
     
     #These are special builtins
-    engine.addBuiltIn('call', 1, builtin_call)
+    engine.add_builtin('call', 1, builtin_call)
     for i in range(2,10) :
-        engine.addBuiltIn('call', i, builtin_callN)
+        engine.add_builtin('call', i, builtin_callN)
 
 

@@ -7,7 +7,7 @@ import imp, inspect # For load_external
 from .formula import LogicFormula
 from .program import PrologFile
 from .logic import Term
-from .engine import unify, UnifyError, instantiate, extract_vars, is_ground, UnknownClause, _UnknownClause, ConsultError
+from .engine import unify, UnifyError, instantiate, extract_vars, is_ground, UnknownClause, UnknownClauseInternal, ConsultError
 from .engine import addStandardBuiltIns, check_mode, GroundingError, NonGroundProbabilisticClause
 from .engine import ClauseDBEngine, ClauseDB
 
@@ -74,7 +74,7 @@ class EventBasedEngine(ClauseDBEngine) :
         # Notify debugger of enter event.
         # Select appropriate method for handling this node type.
         if node == () :
-            raise _UnknownClause()
+            raise UnknownClauseInternal()
         elif ntype == 'fact' :
             f = self._eval_fact 
         elif ntype == 'choice' :
@@ -135,14 +135,14 @@ class EventBasedEngine(ClauseDBEngine) :
         # Evaluate the define node.
         if node.defnode < 0 :
             # Negative node indicates a builtin.
-            builtin = self._getBuiltIn( node.defnode )
+            builtin = self._get_builtin( node.defnode )
             builtin( *call_args, context=context, callback=context_switch, database=db, engine=self, ground_program=gp, location=node.location )
         else :
             # Positive node indicates a non-builtin.
             try :
                 # Evaluate the define node.
                 self._eval( db, gp, node.defnode, self._create_context(call_args, define=context.define), context_switch )
-            except _UnknownClause :
+            except UnknownClauseInternal :
                 # The given define node is empty: no definition found for this clause.
                 sig = '%s/%s' % (node.functor, len(node.args))
                 raise UnknownClause(sig, location=db.lineno(node.location))
@@ -219,10 +219,10 @@ class EventBasedEngine(ClauseDBEngine) :
                 # Not a cycle, just reusing. Register parent as listener (will retrigger past events.)
                 pnode.addListener(parent)
 
-    def addExternalCalls(self, externals):
+    def add_external_calls(self, externals):
         self.__externals = externals
 
-    def getExternalCall(self, func_name):
+    def get_external_call(self, func_name):
         if self.__externals is None or not func_name in self.__externals:
             return None
         return self.__externals[func_name]
@@ -641,7 +641,7 @@ def builtin_call( term, args=(), callback=None, database=None, engine=None, cont
     # Find the define node for the given query term.
     clause_node = database.find(term.withArgs( *(term.args+args)))
     # If term not defined: try loading it as a builtin
-    if clause_node is None : clause_node = database._getBuiltIn(term.signature)
+    if clause_node is None : clause_node = database._get_builtin(term.signature)
     # If term not defined: raise error    
     if clause_node is None : raise UnknownClause(term.signature, location=database.lineno(term.location))
     # Create a new call.
@@ -688,9 +688,9 @@ def addBuiltIns(engine) :
     addStandardBuiltIns(engine, BooleanBuiltIn, SimpleBuiltIn )
     
     # These are special builtins
-    engine.addBuiltIn('call', 1, builtin_call)
+    engine.add_builtin('call', 1, builtin_call)
     for i in range(2,10) :
-        engine.addBuiltIn('call', i, builtin_callN)
+        engine.add_builtin('call', i, builtin_callN)
 
 
 

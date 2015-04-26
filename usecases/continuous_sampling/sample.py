@@ -188,7 +188,7 @@ def sample( filename, N=1, with_facts=False, oneline=False ) :
     pl = PrologFile(filename)
     
     engine = DefaultEngine()
-    engine.addBuiltIn('sample',2, builtin_sample)
+    engine.add_builtin('sample',2, builtin_sample)
     db = engine.prepare(pl)
     
     for i in range(0, N) :

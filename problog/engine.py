@@ -1,129 +1,170 @@
 from __future__ import print_function
 
 import logging
+
 from collections import defaultdict, namedtuple
 
 from .program import PrologFile
 from .logic import *
 from .formula import LogicFormula
+from .engine_unify import *
+from .engine_builtin import *
 
 from .core import transform, GroundingError
 from .util import Timer
 
+
 @transform(LogicProgram, LogicFormula)
-def ground(model, target=None, queries=None, evidence=None) :
-    return DefaultEngine().ground_all(model,target, queries=queries, evidence=evidence)
-    
-class GenericEngine(object) : # pragma: no cover
+def ground(model, target=None, queries=None, evidence=None):
+    """
+    Ground a given model.
+   :param model: logic program to ground
+   :type model: LogicProgram
+   :param target: formula in which to store ground program
+   :type target: LogicFormula
+   :param queries: list of queries to override the default
+   :type queries: list of Term
+   :param evidence: list of evidence atoms to override the default
+   :type evidence: list of Term
+   :return: the ground program
+   :rtype: LogicFormula
+    """
+    return DefaultEngine().ground_all(model, target, queries=queries, evidence=evidence)
+
+
+class GenericEngine(object):  # pragma: no cover
     """Generic interface to a grounding engine."""
     
-    def prepare(self, db) :
+    def prepare(self, db):
         """Prepare the given database for querying.
         Calling this method is optional.
         
-        :param db: logic program
-        :returns: logic program in optimized format where builtins are initialized and directives have been evaluated 
+       :param db: logic program
+       :returns: logic program in optimized format where builtins are initialized and directives have been evaluated 
         """
         raise NotImplementedError('GenericEngine.prepare is an abstract method.')
         
-    def query(self, db, term) :
+    def query(self, db, term):
         """Evaluate a query without generating a ground program.
         
-        :param db: logic program
-        :param term: term to query; variables should be represented as None
-        :returns: list of tuples of argument for which the query succeeds.
+       :param db: logic program
+       :param term: term to query; variables should be represented as None
+       :returns: list of tuples of argument for which the query succeeds.
         """
         raise NotImplementedError('GenericEngine.query is an abstract method.')
         
-    def ground(self, db, term, target=None, label=None) :
+    def ground(self, db, term, target=None, label=None):
         """Ground a given query term and store the result in the given ground program.
         
-        :param db: logic program
-        :param term: term to ground; variables should be represented as None
-        :param target: target logic formula to store grounding in (a new one is created if none is given)
-        :param label: optional label (query, evidence, ...)
-        :returns: logic formula (target if given)
+       :param db: logic program
+       :param term: term to ground; variables should be represented as None
+       :param target: target logic formula to store grounding in (a new one is created if none is given)
+       :param label: optional label (query, evidence, ...)
+       :returns: logic formula (target if given)
         """
         raise NotImplementedError('GenericEngine.ground is an abstract method.')
         
-    def ground_all(self, db, target=None, queries=None, evidence=None) :
+    def ground_all(self, db, target=None, queries=None, evidence=None):
         """Ground all queries and evidence found in the the given database.
         
-        :param db: logic program
-        :param target: logic formula to ground into
-        :param queries: list of queries to evaluate instead of the ones in the logic program
-        :param evidence: list of evidence to evaluate instead of the ones in the logic program
-        :returns: ground program
+       :param db: logic program
+       :param target: logic formula to ground into
+       :param queries: list of queries to evaluate instead of the ones in the logic program
+       :param evidence: list of evidence to evaluate instead of the ones in the logic program
+       :returns: ground program
         """
         raise NotImplementedError('GenericEngine.ground_all is an abstract method.')
         
 
-class ClauseDBEngine(GenericEngine) :
+class ClauseDBEngine(GenericEngine):
     """Parent class for all Python ClauseDB-based engines."""
-    
-    def __init__(self, builtins=True) :
+
+    UNKNOWN_ERROR = 0
+    UNKNOWN_FAIL = 1
+
+    def __init__(self, builtins=True):
         self.__builtin_index = {}
         self.__builtins = []
         self.__externals = {}
         
         self._unique_number = 0
-        
-        if builtins :
-            self.loadBuiltIns()
+        self.unknown = self.UNKNOWN_ERROR
+
+        if builtins:
+            self.load_builtins()
+
+    def load_builtins(self):
+        """Load default builtins."""
+        raise NotImplementedError("ClauseDBEngine.loadBuiltIns is an abstract function.")
             
-    def _getBuiltIn(self, index) :
+    def get_builtin(self, index):
+        """Get builtin's evaluation function based on its identifier.
+       :param index: index of the builtin
+       :return: function that evaluates the builtin
+        """
         real_index = -(index + 1)
         return self.__builtins[real_index]
         
-    def addBuiltIn(self, pred, arity, func) :
-        """Add a builtin."""
-        sig = '%s/%s' % (pred, arity)
+    def add_builtin(self, predicate, arity, function):
+        """
+        Add a builtin.
+       :param predicate: name of builtin predicate
+       :param arity: arity of builtin predicate
+       :param function: function to execute builtin
+        """
+        sig = '%s/%s' % (predicate, arity)
         self.__builtin_index[sig] = -(len(self.__builtins) + 1)
-        self.__builtins.append( func )
+        self.__builtins.append(function)
         
-    def getBuiltIns(self) :
+    def get_builtins(self):
         """Get the list of builtins."""
         return self.__builtin_index
         
-    def prepare(self, db) :
-        """Convert given logic program to suitable format for this engine."""
-        result = ClauseDB.createFrom(db, builtins=self.getBuiltIns())
-        self._process_directives( result )
+    def prepare(self, db):
+        """Convert given logic program to suitable format for this engine.
+        Calling this method is optional, but it allows to perform multiple operations on the same database.
+        This also executes any directives in the input model.
+       :param db: logic program to prepare for evaluation
+       :type db: LogicProgram
+       :return: logic program in a suitable format for this engine
+       :rtype: ClauseDB
+        """
+        result = ClauseDB.createFrom(db, builtins=self.get_builtins())
+        self._process_directives(result)
         return result
 
     def call(self, query, database, target, transform=None, **kwdargs):
         raise NotImplementedError("ClauseDBEngine.call is an abstract function.")
 
-    def execute(self, node_id, database=None, context=None, target=None, **kwdargs ) : # pragma: no cover
+    def execute(self, node_id, database=None, context=None, target=None, **kwdargs):
         raise NotImplementedError("ClauseDBEngine.execute is an abstract function.")
         
-    def get_non_cache_functor(self) :
+    def get_non_cache_functor(self):
+        """
+        Get a unique functor that is excluded from caching.
+       :return: unique functor that is excluded from caching
+       :rtype: basestring
+        """
         self._unique_number += 1
         return '_nocache_%s' % self._unique_number
         
-    def _process_directives(self, db) :
+    def _process_directives(self, db):
         """Process directives present in the database."""
         term = Term('_directive')
-        directive_node = db.find( term )
-        if directive_node is None : return True    # no directives
+        directive_node = db.find(term)
+        if directive_node is None:
+            return True    # no directives
         directives = db.getNode(directive_node).children
         
         gp = LogicFormula()
-        while directives :
+        while directives:
             current = directives.pop(0)
-            self.execute( current, database=db, context=self._create_context((), define=None), target=gp )
+            self.execute(current, database=db, context=self._create_context((), define=None), target=gp)
         return True
             
     def _create_context(self, content, define=None):
         """Create a variable context."""
         return content
-        # if isinstance(content, VariableContext):
-        #     return content
-        # else:
-        #     context = VariableContext(0, len(content))
-        #     for i, c in enumerate(content):
-        #         context[i] = c
-        #     return context
 
     def _fix_context(self, context):
         return tuple(context)
@@ -131,526 +172,148 @@ class ClauseDBEngine(GenericEngine) :
     def _clone_context(self, context):
         return list(context)
 
-    def query(self, db, term, **kwdargs) :
-        """Perform a non-probabilistic query."""
+    def query(self, db, term, **kwdargs):
+        """
+
+       :param db:
+       :param term:
+       :param kwdargs:
+       :return:
+        """
         gp = LogicFormula()
-        if term.is_negative() :
+        if term.is_negative():
             term = -term
             negative = True
-        else :
+        else:
             negative = False
         gp, result = self._ground(db, term, gp, **kwdargs)
-        if negative :
-            if not result :
-                return [ term ]
-            else :
+        if negative:
+            if not result:
+                return [term]
+            else:
                 return []
-        else :
-            return [ x for x,y in result ]
+        else:
+            return [x for x, y in result]
     
-    def ground(self, db, term, gp=None, label=None, **kwdargs) :
+    def ground(self, db, term, gp=None, label=None, **kwdargs):
         """Ground a query on the given database.
         
-        :param db: logic program
-        :type db: LogicProgram
-        :param term: query term
-        :type term: Term
-        :param gp: output data structure (for incremental grounding)
-        :type gp: LogicFormula
-        :param label: type of query (e.g. ``query``, ``evidence`` or ``-evidence``)
-        :type label: str
+       :param db: logic program
+       :type db: LogicProgram
+       :param term: query term
+       :type term: Term
+       :param gp: output data structure (for incremental grounding)
+       :type gp: LogicFormula
+       :param label: type of query (e.g. ``query``, ``evidence`` or ``-evidence``)
+       :type label: str
+       :param kwdargs: additional arguments
+       :return: ground program containing the query
+       :rtype: LogicFormula
         """
-        
-        if term.is_negative() :
+        if term.is_negative():
             negated = True
             term = -term
-        else :
+        else:
             negated = False
-        
-        gp, results = self._ground(db, term, gp, silent_fail=False, allow_vars=False, **kwdargs)
-        
-        for args, node_id in results :
+        gp, results = self._ground(db, term, gp, silent_fail=False, **kwdargs)
+        for args, node_id in results:
             term_store = term.withArgs(*args)
-            if negated :
-                gp.addName( -term_store, -node_id, label )
-            else :
-                gp.addName( term_store, node_id, label )
-        if not results :
-            gp.addName( term, None, label )
-        
+            if negated:
+                gp.addName(-term_store, -node_id, label)
+            else:
+                gp.addName(term_store, node_id, label)
+        if not results:
+            gp.addName(term, None, label)
         return gp
         
-    def _ground(self, db, term, gp=None, level=0, silent_fail=True, allow_vars=True, assume_prepared=False, **kwdargs) :
+    def _ground(self, db, term, gp=None, silent_fail=True, assume_prepared=False, **kwdargs):
         # Convert logic program if needed.
-        if not assume_prepared :
+        if not assume_prepared:
             db = self.prepare(db)
         # Create a new target datastructure if none was given.
-        if gp is None : gp = LogicFormula()
+        if gp is None:
+            gp = LogicFormula()
         # Find the define node for the given query term.
         clause_node = db.find(term)
         # If term not defined: fail query (no error)    # TODO add error to make it consistent?
-        if clause_node is None :
+        if clause_node is None:
             # Could be builtin?
-            clause_node = db._getBuiltIn(term.signature)
-        if clause_node is None : 
-            if silent_fail or self.unknown == self.UNKNOWN_FAIL :
+            clause_node = db.get_builtin(term.signature)
+        if clause_node is None:
+            if silent_fail or self.unknown == self.UNKNOWN_FAIL:
                 return gp, []
-            else :
+            else:
                 raise UnknownClause(term.signature, location=db.lineno(term.location))
 
         context = self._create_context(term.args)
         context, xxx = substitute_call_args(context, context)
-        results = self.execute( clause_node, database=db, target=gp, context=context, **kwdargs)
+        results = self.execute(clause_node, database=db, target=gp, context=context, **kwdargs)
     
         return gp, results
         
-    def ground_all(self, db, target=None, queries=None, evidence=None) :
+    def ground_all(self, db, target=None, queries=None, evidence=None):
         db = self.prepare(db)
         logger = logging.getLogger('problog')
         with Timer('Grounding'):
-            if queries is None : queries = [ q[0] for q in self.query(db, Term( 'query', None )) ]
-            if None in queries : raise GroundingError('Invalid query.')
-            if evidence is None : 
-                evidence = self.query(db, Term( 'evidence', None, None ))
-                evidence += self.query(db, Term( 'evidence', None ))
-            if None in evidence : raise GroundingError('Invalid evidence.')
-            
-            if target is None : target = LogicFormula()
-            
-            for query in queries :
+            # Load queries: use argument if available, otherwise load from database.
+            if queries is None:
+                queries = [q[0] for q in self.query(db, Term('query', None))]
+            for query in queries:
+                if not isinstance(query, Term):
+                    raise GroundingError('Invalid query')   # TODO can we add a location?
+            # Load evidence: use argument if available, otherwise load from database.
+            if evidence is None:
+                evidence = self.query(db, Term('evidence', None, None))
+                evidence += self.query(db, Term('evidence', None))
+            for ev in evidence:
+                if not isinstance(ev[0], Term):
+                    raise GroundingError('Invalid evidence')   # TODO can we add a location?
+            # Initialize target if not given.
+            if target is None:
+                target = LogicFormula()
+            # Ground queries
+            for query in queries:
                 logger.debug("Grounding query '%s'", query)
                 target = self.ground(db, query, target, label=target.LABEL_QUERY)
                 logger.debug("Ground program size: %s", len(target))
-            for query in evidence :
-                if len(query) == 1 :
-                    if query[0].is_negative() :
+            # Ground evidence
+            for query in evidence:
+                if len(query) == 1:  # evidence/1
+                    if query[0].is_negative():
                         logger.debug("Grounding evidence '%s'", query[0])
                         target = self.ground(db, -query[0], target, label=target.LABEL_EVIDENCE_NEG)
                         logger.debug("Ground program size: %s", len(target))
-                    else :
+                    else:
                         logger.debug("Grounding evidence '%s'", query[0])
                         target = self.ground(db, query[0], target, label=target.LABEL_EVIDENCE_POS)
                         logger.debug("Ground program size: %s", len(target))
-                else :
-                    if str(query[1]) == 'true' :
+                else:  # evidence/2
+                    if str(query[1]) == 'true':
                         logger.debug("Grounding evidence '%s'", query[0])
                         target = self.ground(db, query[0], target, label=target.LABEL_EVIDENCE_POS)
                         logger.debug("Ground program size: %s", len(target))
-                    elif str(query[1]) == 'false' :
+                    elif str(query[1]) == 'false':
                         logger.debug("Grounding evidence '%s'", query[0])
                         target = self.ground(db, query[0], target, label=target.LABEL_EVIDENCE_NEG)
                         logger.debug("Ground program size: %s", len(target))
-                    else :
+                    else:
                         logger.debug("Grounding evidence '%s'", query[0])
                         target = self.ground(db, query[0], target, label=target.LABEL_EVIDENCE_MAYBE)
                         logger.debug("Ground program size: %s", len(target))
         return target
     
-    def addExternalCalls(self, externals):
+    def add_external_calls(self, externals):
         self.__externals.update(externals)
         
-    def getExternalCall(self, func_name):
-        if self.__externals is None or not func_name in self.__externals:
+    def get_external_call(self, func_name):
+        if self.__externals is None or func_name not in self.__externals:
             return None
         return self.__externals[func_name]
     
-# Generic functions
 
-class _UnknownClause(Exception) :
+class UnknownClauseInternal(Exception):
     """Undefined clause in call used internally."""
     pass
-
-
-class ContextWrapper(object):
-
-    def __init__(self, context):
-        self.context = context
-        self.numbers = [0]*len(context)
-        self.num_count = 0
-
-    def __getitem__(self, key):
-        value = self.context[key]
-        if value is None or type(value) == int:  # TODO value can't be None anymore?
-            if value is not None:
-                key = value
-            value = self.numbers[key]
-            if value == 0:
-                self.num_count -= 1
-                value = self.num_count
-                self.numbers[key] = value
-        return value
-
-
-
-class SubstitutionWrapper(object):
-
-    def __init__(self, subst):
-        self.subst = subst
-
-    def __getitem__(self, key):
-        if key in self.subst:
-            return self.subst[key]
-        else:
-            return key
-
-
-def substitute_all(terms, subst):
-    subst = SubstitutionWrapper(subst)
-    result = []
-    for term in terms:
-        if is_variable(term):
-            result.append(subst[term])
-        else:
-            result.append(term.apply(subst))
-    return result
-
-
-def instantiate( term, context, keepVars=False ) :
-    """Replace variables in Term by values based on context lookup table."""
-
-    if keepVars :
-        context = list(context)
-        for i,v in enumerate(context) :
-            if v is None :
-                context[i] = i
-    if term is None :
-        return None
-    elif type(term) == int :
-        return context[term]
-    # elif is_ground(term) :
-    #     return term
-    else :
-        return term.apply(context)
-
-
-def replace_in_list(lst, a, b):
-    for i, x in enumerate(lst):
-        if x == a:
-            lst[i] = b
-
-
-def is_open_var(a):
-    return type(a) == int and a < 0
-
-
-def unify_value(value1, value2, source_values, verbose=False):
-    """
-    Unify two values that exist in the same context.
-    :param value1:
-    :param value2:
-    :param target_context:
-    :return:
-    """
-    # Variables are negative numbers or None
-    if verbose:
-        print ('unify_value', value1, value2, source_values)
-    # Naive implementation (no occurs check)
-    if is_variable(value1) and is_variable(value2):
-        if value1 == value2:
-            return value1
-        elif value1 is None:
-            return value2
-        if value2 is None:  # second one is anonymous
-            return value1
-        else:
-            # Two named variables: unify their source_values
-            value = unify_value(source_values.get(value1),
-                                             source_values.get(value2), source_values)
-            if value is None:
-                value = max(value1, value2)
-            source_values[value1] = value
-            source_values[value2] = value
-            # Return the one of lowest rank: negative numbers, so max
-            return value
-    elif is_variable(value1):
-        if value1 is None:
-            return value2
-        else:
-            value = unify_value(source_values.get(value1), value2, source_values)
-            source_values[value1] = value
-            return value
-    elif is_variable(value2):
-        if value2 is None:
-            return value1
-        else:
-            value = unify_value(source_values.get(value2), value1, source_values)
-            source_values[value2] = value
-            return value
-    elif value1.signature == value2.signature:  # Assume Term
-        return value1.withArgs(*[unify_value(a1, a2, source_values)
-                                 for a1, a2 in zip(value1.args, value2.args)])
-    else:
-        raise UnifyError()
-
-
-class ContextWrapperN(object):
-
-    def __init__(self, context):
-        self.context = context
-        self.numbers = {}
-        self.translate = {None: None}
-        self.num_count = 0
-
-    def __getitem__(self, key):
-        if key is None:
-            return None
-        elif key < 0:
-            value = self.numbers.get(key)
-            if value is None:
-                self.num_count -= 1
-                value = self.num_count
-                self.numbers[key] = value
-            self.translate[value] = key
-        else:
-            value = self.context[key]
-            if value is None or type(value) == int:  # TODO value can't be None anymore?
-                if value is not None:
-                    key = value
-                    okey = value
-                else:
-                    okey = None
-                value = self.numbers.get(key)
-                if value is None:
-                    self.num_count -= 1
-                    value = self.num_count
-                    self.numbers[key] = value
-                self.translate[value] = okey
-
-        if not is_variable(value):
-            value = value.apply(self)
-        return value
-
-
-def substitute_call_args(terms, context, verbose=False):
-    result = []
-    cw = ContextWrapperN(context)
-    for term in terms:
-        if term is None:
-            cw.num_count -= 1
-            result.append(cw.num_count)
-        elif type(term) == int:
-            v = cw[term]
-            result.append(v)
-        else:
-            result.append(term.apply(cw))
-    if verbose:
-        print ('test_substitute_call_args(1, %s, %s, %s, %s)' % (terms, context, result, cw.translate))
-    return result, cw.translate
-
-
-def substitute_head_args(terms, context, verbose=False):
-    """
-    Extract the clause head arguments from the clause context.
-    :param terms: head arguments. These can contain variables >0.
-    :param context: clause context. These can contain variable <0.
-    :return: input terms where variables are substituted by their values in the context
-    """
-    result = []
-    for term in terms:
-        result.append(substitute_simple(term, context))
-    if verbose:
-        print ('test_substitute_head_args(1, %s, %s, %s)' % (terms, context, result))
-    return result
-
-
-def substitute_simple(term, context):
-    if term is None:
-        return None
-    elif type(term) == int:
-        return context[term]
-    else:
-        return term.apply(context)
-
-
-def unify_call_head(call_args, head_args, target_context, verbose=False):
-    """
-    Unify argument list from clause call and clause head.
-    :param call_args: arguments of the call
-    :param head_args: arguments of the head
-    :param target_context: list of values of variables in the clause
-    :raise UnifyError: unification failed
-    """
-    source_values = {}  # contains the values unified to the variables in the call arguments
-    for call_arg, head_arg in zip(call_args, head_args):
-        unify_call_head_single(call_arg, head_arg, target_context, source_values, verbose=verbose)
-    result = substitute_all(target_context, source_values)
-    if verbose:
-        print ('test_unify_call_head(X, %s, %s, %s, %s)' % (call_args, head_args, target_context, result))
-    return result
-
-
-def unify_call_head_single(source_value, target_value, target_context, source_values, verbose=False):
-    """
-    Unify a call argument with a clause head argument.
-    :param source_value: value occuring in clause call
-    :type source_value: Term or variable. All variables are represented as negative numbers.
-    :param target_value: value occuring in clause head
-    :type target_value: Term or variable. All variables are represented as positive numbers corresponding to positions in target_context.
-    :param target_context: values of the variables in the current context. Output argument.
-    :raise UnifyError: unification failed
-
-    The values in the target_context contain only variables from the source context (i.e. negative numbers) (or Terms).
-    Initially values are set to None.
-    """
-    if is_variable(target_value):   # target_value is variable (integer >= 0)
-        assert type(target_value) == int and target_value >= 0
-        target_context[target_value] = \
-            unify_value(source_value, target_context[target_value], source_values, verbose=verbose)
-    else:   # target_value is a Term (which can still contain variables)
-        if is_variable(source_value):   # source value is variable (integer < 0)
-            if source_value is None:
-                pass
-            else:
-                assert type(source_value) == int and source_value < 0
-                # This means that *all* occurrences of source_value should unify with the same value.
-                # We keep track of the value for each source_value, and unify the target_value with the current value.
-                # Note that we unify two values in the same scope.
-                source_values[source_value] = \
-                    unify_value(source_values.get(source_value), target_value, source_values, verbose=verbose)
-        else:   # source value is a Term (which can still contain variables)
-            if target_value.signature == source_value.signature:
-                # When signatures match, recursively unify the arguments.
-                for s_arg, t_arg in zip(source_value.args, target_value.args):
-                    unify_call_head_single(s_arg, t_arg, target_context, source_values, verbose=verbose)
-            else:
-                raise UnifyError()
-
-
-def unify_call_return(call_args, head_args, target_context, var_translate, verbose=False):
-    """
-    Unify argument list from clause call and clause head.
-    :param call_args: arguments of the call
-    :param head_args: arguments of the head
-    :param target_context: list of values of variables in the clause
-    :raise UnifyError: unification failed
-    """
-    source_values = {}  # contains the values unified to the variables in the call arguments
-    for call_arg, head_arg in zip(call_args, head_args):
-        # Translate the variables in the source value (V3) to negative variables in current context (V2)
-        call_arg = substitute_simple(call_arg, var_translate)
-        unify_call_return_single(call_arg, head_arg, target_context, source_values, verbose=verbose)
-    result = substitute_all(target_context, source_values)
-    if verbose:
-        print ('unify_call_return(%s, %s, %s, %s, %s)' % ( call_args, head_args, target_context, var_translate, result))
-    return result
-
-
-def unify_call_return_single(source_value, target_value, target_context, source_values, verbose=False):
-    """
-
-    :param source_value: value from call result. Can contain variables < 0.
-    :param target_value: value from call itself. Can contain variables >= 0.
-    :param target_context:
-    :param source_values:
-    :param var_translate: translation between source context variables and target context variables
-                            (from substitute_call_args)
-    :param verbose:
-    :return:
-    """
-    if is_variable(target_value):
-        if target_value is None:
-            pass
-        elif target_value >= 0:
-            # Get current value of target.
-            current_value = target_context[target_value]
-            # Three possibilities: None, negative variable (from V2), Term (with variables from V2)
-            if current_value is None:
-                target_context[target_value] = source_value
-            elif type(current_value) == int:
-                # Negative variable (from V2)
-                source_values[current_value] = unify_value(
-                    source_values.get(current_value), source_value, source_values)
-            else:
-                # Term (with variables from V2)
-                target_context[target_value] = unify_value(
-                    current_value, source_value, source_values)
-        else:
-            # Not possible. Target comes from static variables
-            assert not target_value < 0
-    else:
-        # Target value is Term (which can contain variables)
-        if is_variable(source_value):   # source value is variable (integer < 0)
-            assert type(source_value) == int and source_value < 0
-
-            source_values[source_value] = \
-                unify_value(source_values.get(source_value), target_value, source_values, verbose=verbose)
-        else:   # source value is a Term (which can still contain variables)
-            if target_value.signature == source_value.signature:
-                # When signatures match, recursively unify the arguments.
-                for s_arg, t_arg in zip(source_value.args, target_value.args):
-                    unify_call_return_single(s_arg, t_arg, target_context, source_values, verbose=verbose)
-            else:
-                raise UnifyError()
-
-
-# def unify_value(v1, v2, location=None):
-#     """Test unification of two values and return most specific unifier."""
-#     # print ('unify_value', v1, v2)
-#     if type(v1) == int and type(v2) == int and v1 < 0 and v2 < 0:
-#         return max(v1, v2)
-#     elif type(v1) == int and v1 < 0 and is_variable(v2):
-#         return v1
-#     elif type(v2) == int and v2 < 0 and is_variable(v1):
-#         return v2
-#     elif is_variable(v1):
-#         return v2
-#     elif is_variable(v2):
-#         return v1
-#     elif v1.signature == v2.signature:  # Assume Term
-#         if v1 == v2:
-#             return v1
-#         return v1.withArgs(*[unify_value(a1, a2, location=location) for a1, a2 in zip(v1.args, v2.args)])
-#     else:
-#         raise UnifyError()
-
-class VariableContext(object):
-    """A variable context implementation that supports variable unification."""
-
-    def __init__(self, level, size):
-        """
-        :param level: Call level on which the context is created.
-        :type level: int
-        :param size: Number of variables in the context.
-        :type size: int
-        """
-        self.level = level
-        self.values = [None]*size
-        self.origins = [(self.level, i) for i in range(0, size)]
-
-    def __setitem__(self, index, value):
-        self.values[index] = value
-
-    def __getitem__(self, index):
-        return self.values[index]
-
-    def __len__(self):
-        return len(self.values)
-
-    def __hash__(self):
-        return hash(tuple(self.values))
-
-    def __eq__(self, other):
-        if other is None:
-            return False
-        return tuple(self.values) == tuple(other.values)
-
-    def clone(self):
-        result = VariableContext(self.level, len(self))
-        result.values = self.values[:]
-        result.origins = self.origins[:]
-        return result
-
-    def show(self):
-        print ('---------------')
-        print ('VariableContext')
-        print ('level:   ', self.level)
-        print ('values:  ', self.values)
-        print ('origins: ', self.origins)
-        print ('---------------')
-
-
-import os
-import imp, inspect # For load_external
 
 
 class NonGroundProbabilisticClause(GroundingError):
@@ -660,11 +323,6 @@ class NonGroundProbabilisticClause(GroundingError):
         GroundingError.__init__(self, 'Encountered a non-ground probabilistic clause', location)
 
 
-class _UnknownClause(Exception):
-    """Undefined clause in call used internally."""
-    pass
-
-
 class UnknownClause(GroundingError):
     """Undefined clause in call."""
     
@@ -672,978 +330,155 @@ class UnknownClause(GroundingError):
         GroundingError.__init__(self, "No clauses found for '%s'" % signature, location)
 
 
-class UnknownExternal(GroundingError) :
-    """Undefined clause in call."""
-    
-    def __init__(self, signature, location):
-        GroundingError.__init__(self, "Unknown external function '%s'" % signature, location)
-
-        
-class ConsultError(GroundingError):
-    """Error during consult"""
-    
-    def __init__(self, message, location):
-        GroundingError.__init__(self, message, location)
-
-
-class UnifyError(Exception):
-    """Unification error (used and handled internally)."""
-    pass
-
-
-class VariableUnification(GroundingError):
-    """The engine does not support unification of two unbound variables."""
-    
-    def __init__(self, location):
-        GroundingError.__init__(self, "Unification of unbound variables not supported", location)
-
-
-class StructSort(object) :
-    
-    def __init__(self, obj, *args):
-        self.obj = obj
-    def __lt__(self, other):
-        return struct_cmp(self.obj, other.obj) < 0
-    def __gt__(self, other):
-        return struct_cmp(self.obj, other.obj) > 0
-    def __eq__(self, other):
-        return struct_cmp(self.obj, other.obj) == 0
-    def __le__(self, other):
-        return struct_cmp(self.obj, other.obj) <= 0  
-    def __ge__(self, other):
-        return struct_cmp(self.obj, other.obj) >= 0
-    def __ne__(self, other):
-        return struct_cmp(self.obj, other.obj) != 0
-
-
-class CallModeError(GroundingError):
-    
-    def __init__(self, functor, args, accepted=[], message=None, location=None):
-        if functor:
-            self.scope = '%s/%s' % (functor, len(args))
-        else :
-            self.scope = None
-        self.received = ', '.join(map(self._show_arg,args))
-        self.expected = [', '.join(map(self._show_mode,mode)) for mode in accepted]
-        msg = 'Invalid argument types for call'
-        if self.scope:
-            msg += " to '%s'" % self.scope
-        msg += ': arguments: (%s)' % self.received
-        if accepted:
-            msg += ', expected: (%s)' % ') or ('.join(self.expected) 
-        else:
-            msg += ', expected: ' + message
-        GroundingError.__init__(self, msg, location)
-        
-    def _show_arg(self, x):
-        return term2str(x)
-
-    def _show_mode(self, t):
-        return mode_types[t][0]
-
-
-def is_ground( *terms ) :
-    """Test whether a any of given terms contains a variable (recursively).
-    
-    :return: True if none of the arguments contains any variables.
-    """
-    for term in terms :
-        if is_variable(term) :
-            return False
-        elif not term.isGround() :
-            return False
-    return True
-
-def is_variable( v ) :
-    """Test whether a Term represents a variable.
-    
-    :return: True if the expression is a variable
-    """
-    return v is None or type(v) == int    
-
-def is_var(term) :
-    return is_variable(term) or term.isVar()
-
-def is_nonvar(term) :
-    return not is_var(term)
-
-def is_term(term) :
-    return not is_var(term) and not is_constant(term)
-
-def is_float_pos(term) :
-    return is_constant(term) and term.isFloat()
-
-def is_float_neg(term) :
-    return is_term(term) and term.arity == 1 and term.functor == "'-'" and is_float_pos(term.args[0])
-
-def is_float(term) :
-    return is_float_pos(term) or is_float_neg(term)
-
-def is_integer_pos(term) :
-    return is_constant(term) and term.isInteger()
-
-def is_integer_neg(term) :
-    return is_term(term) and term.arity == 1 and term.functor == "'-'" and is_integer_pos(term.args[0])
-
-def is_integer(term) :
-    return is_integer_pos(term) or is_integer_neg(term)
-
-def is_string(term) :
-    return is_constant(term) and term.isString()
-
-def is_number(term) :
-    return is_float(term) and is_integer(term)
-
-def is_constant(term) :
-    return not is_var(term) and term.isConstant()
-
-def is_atom(term) :
-    return is_term(term) and term.arity == 0
-
-def is_rational(term) :
-    return False
-
-def is_dbref(term) :
-    return False
-
-def is_compound(term) :
-    return is_term(term) and term.arity > 0
-    
-def is_list_maybe(term) :
-    """Check whether the term looks like a list (i.e. of the form '.'(_,_))."""
-    return is_compound(term) and term.functor == '.' and term.arity == 2
-    
-def is_list_nonempty(term) :
-    if is_list_maybe(term) :
-        tail = list_tail(term)
-        return is_list_empty(tail) or is_var(tail)
-    return False
-
-def is_fixed_list(term) :
-    return is_list_empty(term) or is_fixed_list_nonempty(term)
-
-def is_fixed_list_nonempty(term) :
-    if is_list_maybe(term) :
-        tail = list_tail(term)
-        return is_list_empty(tail)
-    return False
-    
-def is_list_empty(term) :
-    return is_atom(term) and term.functor == '[]'
-    
-def is_list(term) :
-    return is_list_empty(term) or is_list_nonempty(term)
-    
-def is_compare(term) :
-    return is_atom(term) and term.functor in ("'<'", "'='", "'>'")
-
-mode_types = {
-    'i' : ('integer', is_integer),
-    'I' : ('positive_integer', is_integer_pos),
-    'v' : ('var', is_var),
-    'n' : ('nonvar', is_nonvar),
-    'l' : ('list', is_list),
-    'L' : ('fixed_list', is_fixed_list),    # List of fixed length (i.e. tail is [])
-    '*' : ('any', lambda x : True ),
-    '<' : ('compare', is_compare ),         # < = >
-    'g' : ('ground', is_ground ),
-    'a' : ('atom', is_atom),
-    'c' : ('callable', is_term)
-}
-
-def check_mode( args, accepted, functor=None, location=None, database=None, **k) :
-    for i, mode in enumerate(accepted) :
-        correct = True
-        for a,t in zip(args,mode) :
-            name, test = mode_types[t]
-            if not test(a) : 
-                correct = False
-                break
-        if correct : return i
-    if database and location :
-        location = database.lineno(location)
-    else :
-        location = None
-    raise CallModeError(functor, args, accepted, location=location)
-    
-def list_elements(term) :
-    elements = []
-    tail = term
-    while is_list_maybe(tail) :
-        elements.append(tail.args[0])
-        tail = tail.args[1]
-    return elements, tail
-    
-def list_tail(term) :
-    tail = term
-    while is_list_maybe(tail) :
-        tail = tail.args[1]
-    return tail
-               
-
-def builtin_split_call( term, parts, database=None, location=None, **k ) :
-    """T =.. L"""
-    functor = '=..'
-    # modes:
-    #   <v> =.. list  => list has to be fixed length and non-empty
-    #                       IF its length > 1 then first element should be an atom
-    #   <n> =.. <list or var>
-    #
-    mode = check_mode( (term, parts), ['vL', 'nv', 'nl' ], functor=functor, **k )
-    if mode == 0 :
-        elements, tail = list_elements(parts)
-        if len(elements) == 0 :
-            raise CallModeError(functor, (term,parts), message='non-empty list for arg #2 if arg #1 is a variable', location=database.lineno(location))
-        elif len(elements) > 1 and not is_atom(elements[0]) :
-            raise CallModeError(functor, (term,parts), message='atom as first element in list if arg #1 is a variable', location=database.lineno(location))
-        elif len(elements) == 1 :
-            # Special case => term == parts[0]
-            return [(elements[0],parts)]
-        else :
-            T = elements[0](*elements[1:])
-            return [ (T , parts) ] 
-    else :
-        part_list = ( term.withArgs(), ) + term.args
-        current = Term('[]')
-        for t in reversed(part_list) :
-            current = Term('.', t, current)
-        try :
-            local_values = {}
-            L = unify_value(current, parts, local_values, location=location)
-            elements, tail = list_elements(L)
-            term_new = elements[0](*elements[1:])
-            T = unify_value( term, term_new, local_values, location=location)
-            return [(T,L)]            
-        except UnifyError :
-            return []
-
-def builtin_arg(index,term,argument, **k) :
-    mode = check_mode( (index,term,arguments), ['In*'], functor='arg', **k)
-    index_v = int(index) - 1
-    if 0 <= index_v < len(term.args) :
-        try :
-            arg = term.args[index_v]
-            res = unify_value(arg, argument, {}, location=location)
-            return [(index,term,res)]
-        except UnifyError :
-            pass
-    return []
-
-def builtin_functor(term,functor,arity, **k) :
-    mode = check_mode( (term,functor,arity), ['vaI','n**'], functor='functor', **k)
-    
-    if mode == 0 : 
-        k.get('callback').newResult( Term(functor, *((None,)*int(arity)) ), functor, arity )
-    else :
-        try :
-            values = {}
-            func_out = unify_value(functor, Term(term.functor), values)
-            arity_out = unify_value(arity, Constant(term.arity), values)
-            return [(term, func_out, arity_out)]
-        except UnifyError :
-            pass
-    return []
-
-def builtin_true( **k ) :
-    """``true``"""
-    return True
-
-
-def builtin_fail( **k ) :
-    """``fail``"""
-    return False
-
-
-def builtin_eq( A, B, location=None, database=None, **k ) :
-    """``A = B``
-        A and B not both variables
-    """
-    # if not is_ground(A) and not is_ground(B) :
-    #    # print (k['context'])
-    #
-    #     raise VariableUnification(location = database.lineno(location))
-    # else :
-    try :
-        R = unify_value(A, B, {})
-        return [( R, R )]
-    except UnifyError :
-        return []
-    # except VariableUnification :
-    #     raise VariableUnification(location = database.lineno(location))
-
-
-def builtin_neq(A, B, **k ):
-    """``A \= B``
-        A and B not both variables
-    """
-    try:
-        R = unify_value(A, B, {})
-        return False
-    except UnifyError:
-        return True
-        # except VariableUnification :
-        #     return False
-            
-
-def builtin_notsame( A, B, **k ) :
-    """``A \== B``"""
-    if is_var(A) and is_var(B) :
-        return False
-    # In Python A != B is not always the same as not A == B.
-    else :
-        return not A == B
-
-
-def builtin_same( A, B, **k ) :
-    """``A == B``"""
-    if is_var(A) and is_var(B) :
-        return True
-    else :
-        return A == B
-
-
-def builtin_gt( A, B, **k ) :
-    """``A > B`` 
-        A and B are ground
-    """
-    mode = check_mode( (A,B), ['gg'], functor='>', **k )
-    return A.value > B.value
-
-
-def builtin_lt( A, B, **k ) :
-    """``A > B`` 
-        A and B are ground
-    """
-    mode = check_mode( (A,B), ['gg'], functor='<', **k )
-    return A.value < B.value
-
-
-def builtin_le( A, B, **k ) :
-    """``A =< B``
-        A and B are ground
-    """
-    mode = check_mode( (A,B), ['gg'], functor='=<', **k )
-    return A.value <= B.value
-
-
-def builtin_ge( A, B, **k ) :
-    """``A >= B`` 
-        A and B are ground
-    """
-    mode = check_mode( (A,B), ['gg'], functor='>=', **k )
-    return A.value >= B.value
-
-
-def builtin_val_neq( A, B, **k ) :
-    """``A =\= B`` 
-        A and B are ground
-    """
-    mode = check_mode( (A,B), ['gg'], functor='=\=', **k )
-    return A.value != B.value
-
-
-def builtin_val_eq( A, B, **k ) :
-    """``A =:= B`` 
-        A and B are ground
-    """
-    mode = check_mode( (A,B), ['gg'], functor='=:=', **k )
-    return A.value == B.value
-
-
-def builtin_is( A, B, **k ) :
-    """``A is B``
-        B is ground
-    """
-    mode = check_mode( (A,B), ['*g'], functor='is', **k )
-    try :
-        R = Constant(B.value)
-        unify_value(A, R, {})
-        return [(R,B)]
-    except UnifyError :
-        return []
-
-
-def builtin_var( term, **k ) :
-    return is_var(term)
-
-
-def builtin_atom( term, **k ) :
-    return is_atom(term)
-
-
-def builtin_atomic( term, **k ) :
-    return is_atom(term) or is_number(term)
-
-
-def builtin_compound( term, **k ) :
-    return is_compound(term)
-
-
-def builtin_float( term, **k ) :
-    return is_float(term)
-
-
-def builtin_integer( term, **k ) :
-    return is_integer(term)
-
-
-def builtin_nonvar( term, **k ) :
-    return not is_var(term)
-
-
-def builtin_number( term, **k ) :
-    return is_number(term) 
-
-
-def builtin_simple( term, **k ) :
-    return is_var(term) or is_atomic(term)
-    
-
-def builtin_callable( term, **k ) :
-    return is_term(term)
-
-
-def builtin_rational( term, **k ) :
-    return is_rational(term)
-
-
-def builtin_dbreference( term, **k ) :
-    return is_dbref(term)  
-    
-
-def builtin_primitive( term, **k ) :
-    return is_atomic(term) or is_dbref(term)
-
-
-def builtin_ground( term, **k ) :
-    return is_ground(term)
-
-
-def builtin_is_list( term, **k ) :
-    return is_list(term)
-
-def compare(a,b) :
-    if a < b :
-        return -1
-    elif a > b :
-        return 1
-    else :
-        return 0
-    
-def struct_cmp( A, B ) :
-    # Note: structural comparison
-    # 1) Var < Num < Str < Atom < Compound
-    # 2) Var by address
-    # 3) Number by value, if == between int and float => float is smaller (iso prolog: Float always < Integer )
-    # 4) String alphabetical
-    # 5) Atoms alphabetical
-    # 6) Compound: arity / functor / arguments
-        
-    # 1) Variables are smallest
-    if is_var(A) :
-        if is_var(B) :
-            # 2) Variable by address
-            return compare(A,B)
-        else :
-            return -1
-    elif is_var(B) :
-        return 1
-    # assert( not is_var(A) and not is_var(B) )
-    
-    # 2) Numbers are second smallest
-    if is_number(A) :
-        if is_number(B) :
-            # Just compare numbers on float value
-            res = compare(float(A),float(B))
-            if res == 0 :
-                # If the same, float is smaller.
-                if is_float(A) and is_integer(B) : 
-                    return -1
-                elif is_float(B) and is_integer(A) : 
-                    return 1
-                else :
-                    return 0
-        else :
-            return -1
-    elif is_number(B) :
-        return 1
-        
-    # 3) Strings are third
-    if is_string(A) :
-        if is_string(B) :
-            return compare(str(A),str(B))
-        else :
-            return -1
-    elif is_string(B) :
-        return 1
-    
-    # 4) Atoms / terms come next
-    # 4.1) By arity
-    res = compare(A.arity,B.arity)
-    if res != 0 : return res
-    
-    # 4.2) By functor
-    res = compare(A.functor,B.functor)
-    if res != 0 : return res
-    
-    # 4.3) By arguments (recursively)
-    for a,b in zip(A.args,B.args) :
-        res = struct_cmp(a,b)
-        if res != 0 : return res
-        
-    return 0
-
-    
-def builtin_struct_lt(A, B, **k) :
-    return struct_cmp(A,B) < 0    
-
-    
-def builtin_struct_le(A, B, **k) :
-    return struct_cmp(A,B) <= 0
-
-    
-def builtin_struct_gt(A, B, **k) :
-    return struct_cmp(A,B) > 0
-
-    
-def builtin_struct_ge(A, B, **k) :
-    return struct_cmp(A,B) >= 0
-
-
-def builtin_compare(C, A, B, **k) :
-    mode = check_mode( (C,A,B), [ '<**', 'v**' ], functor='compare', **k)
-    compares = "'>'","'='","'<'" 
-    c = struct_cmp(A,B)
-    c_token = compares[1-c]
-    
-    if mode == 0 : # Given compare
-        if c_token == C.functor : return [ (C,A,B) ]
-    else :  # Unknown compare
-        return [ (Term(c_token), A, B ) ]
-    
-# numbervars(T,+N1,-Nn)    number the variables TBD?
-
-def build_list(elements, tail) :
-    current = tail
-    for el in reversed(elements) :
-        current = Term('.', el, current)
-    return current
-
-
-def builtin_call_external(call, result, database=None, location=None, **k):
-    from . import pypl
-    mode = check_mode( (call,result), ['gv'], function='call_external', database=database, location=location, **k)
-
-    func = k['engine'].getExternalCall(call.functor)
-    if func is None:
-        raise UnknownExternal(call.functor, database.lineno(location))
-
-    values = [pypl.pl2py(arg) for arg in call.args]
-    computed_result = func(*values)
-
-    return [(call, pypl.py2pl(computed_result))]
-
-
-def builtin_length(L, N, **k) :
-    mode = check_mode( (L,N), [ 'LI', 'Lv', 'lI', 'vI' ], functor='length', **k)
-    # Note that Prolog also accepts 'vv' and 'lv', but these are unbounded.
-    # Note that lI is a subset of LI, but only first matching mode is returned.
-    if mode == 0 or mode == 1 :  # Given fixed list and maybe length
-        elements, tail = list_elements(L)
-        list_size = len(elements)
-        try :
-            N = unify_value(N, Constant(list_size), {})
-            return [ ( L, N ) ]
-        except UnifyError :
-            return []    
-    else :    # Unbounded list or variable list and fixed length.
-        if mode == 2 :
-            elements, tail = list_elements(L)
-        else :
-            elements, tail = [], L
-        remain = int(N) - len(elements)
-        if remain < 0 :
-            raise UnifyError()
-        else :
-            extra = [None] * remain
-        newL = build_list( elements + extra, Term('[]'))
-        return [ (newL, N)]
-
-def extract_vars(*args, **kwd) :
-    counter = kwd.get('counter', defaultdict(int))
-    for arg in args :
-        if type(arg) == int :
-            counter[arg] += 1
-        elif isinstance(arg,Term) :
-            extract_vars(*arg.args, counter=counter)
-        else :
-           raise VariableUnification()
-    return counter
-
-
-def builtin_sort( L, S, **k ) :
-    # TODO doesn't work properly with variables e.g. gives sort([X,Y,Y],[_]) should be sort([X,Y,Y],[X,Y])
-    mode = check_mode( (L,S), [ 'L*' ], functor='sort', **k )
-    elements, tail = list_elements(L)  
-    # assert( is_list_empty(tail) )
-    try :
-        sorted_list = build_list(sorted(set(elements), key=StructSort), Term('[]'))
-        S_out = unify_value(S, sorted_list, {})
-        return [(L,S_out)]
-    except UnifyError :
-        return []
-
-
-def builtin_between( low, high, value, **k ) :
-    mode = check_mode((low,high,value), [ 'iii', 'iiv' ], functor='between', **k)
-    low_v = int(low)
-    high_v = int(high)
-    if mode == 0 : # Check    
-        value_v = int(value)
-        if low_v <= value_v <= high_v :
-            return [(low,high,value)]
-    else : # Enumerate
-        results = []
-        for value_v in range(low_v, high_v+1) :
-            results.append( (low,high,Constant(value_v)) ) 
-        return results
-
-
-def builtin_succ( a, b, **k ) :
-    mode = check_mode((a,b), [ 'vI', 'Iv', 'II' ], functor='succ', **k)
-    if mode == 0 :
-        b_v = int(b)
-        return [(Constant(b_v-1), b)]
-    elif mode == 1 :
-        a_v = int(a)
-        return [(a, Constant(a_v+1))]
-    else :
-        a_v = int(a)
-        b_v = int(b)
-        if b_v == a_v + 1 :
-            return [(a, b)]
-    return []
-
-
-def builtin_plus( a, b, c , **k) :
-    mode = check_mode((a,b,c), [ 'iii', 'iiv', 'ivi', 'vii' ], functor='plus', **k)
-    if mode == 0 :
-        a_v = int(a)
-        b_v = int(b)
-        c_v = int(c)
-        if a_v + b_v == c_v :
-            return [(a,b,c)]
-    elif mode == 1 :
-        a_v = int(a)
-        b_v = int(b)
-        return [(a, b, Constant(a_v+b_v))]
-    elif mode == 2 :
-        a_v = int(a)
-        c_v = int(c)
-        return [(a, Constant(c_v-a_v), c)]
-    else :
-        b_v = int(b)
-        c_v = int(c)
-        return [(Constant(c_v-b_v), b, c)]
-    return []
-
-
-def atom_to_filename(atom) :
-    atom = str(atom)
-    if atom[0] == atom[-1] == "'" :
-        atom = atom[1:-1]
-    return atom
-
-    
-def builtin_consult_as_list( op1, op2, **kwdargs ) :
-    check_mode( (op1,op2), ['*L'], functor='consult', **kwdargs )
-    builtin_consult(op1, **kwdargs)
-    if is_list_nonempty(op2) :
-        builtin_consult_as_list(op2.args[0], op2.args[1], **kwdargs)
-    return True
-    
-def builtin_consult( filename, database=None, engine=None, location=None, **kwdargs ) :
-    check_mode( (filename,), 'a', functor='consult' )
-    filename = os.path.join(database.source_root, atom_to_filename( filename ))
-    if not os.path.exists( filename ) :
-        filename += '.pl'
-    if not os.path.exists( filename ) :
-        raise ConsultError(location=database.lineno(location), message="Consult: file not found '%s'" % filename)
-    
-    # Prevent loading the same file twice
-    if not filename in database.source_files : 
-        database.source_files.append(filename)
-        pl = PrologFile( filename )
-        for clause in pl :
-            database += clause
-    return True
-
-
-def builtin_load_external( arg, engine=None, database=None, location=None, **kwdargs ) :
-    check_mode( (arg,), 'a', functor='load_external' )
-    # Load external (python) files that are referenced in the model
-    externals = {}
-    filename = os.path.join(database.source_root, atom_to_filename( arg ))
-    if not os.path.exists(filename):
-          raise ConsultError(location=database.lineno(location), message="Load external: file not found '%s'" % filename)
-    try :
-        with open(filename, 'r') as extfile:
-            ext = imp.load_module('externals', extfile, filename, ('.py', 'U', 1))
-            for func_name, func in inspect.getmembers(ext, inspect.isfunction):
-                externals[func_name] = func
-        engine.addExternalCalls(externals)
-    except ImportError :
-        raise ConsultError(location=database.lineno(location), message="Error while loading external file '%s'" % filename)        
-    
-    return True
-    
-def builtin_unknown( arg, engine=None, **kwdargs) :
-    check_mode( (arg,), 'a', functor='unknown')
-    if arg.functor == 'fail' :
-        engine.unknown = engine.UNKNOWN_FAIL
-    else :
-        engine.unknown = engine.UNKNOWN_ERROR
-    return True
-
-
-def select_sublist(lst, target):
-    """
-    Enumerate all possible selection of elements from a list.
-    This function is used to generate all solutions to findall/3.
-    An element must be selected if it is TRUE in the target formula.
-    :param lst: list to select elements from
-    :type lst: list of Term
-    :param target: data structure containing truth value of nodes
-    :type target: LogicFormula
-    :return: generator of sublists
-    """
-    l = len(lst)
-
-    # Generate an array that indicates the decision bit for each element in the list.
-    # If an element is deterministically true, then no decision bit is needed.
-    choice_bits = [None] * l
-    x = 0
-    for i in range(0, l):
-        if lst[i][1] != target.TRUE:
-            choice_bits[i] = x
-            x += 1
-    # We have 2^x distinct lists. Each can be represented as a number between 0 and n.
-    n = (1 << x)
-
-    while n >= 0:
-        # Generate the list of positive values and node identifiers
-        sublist = [lst[i] for i in range(0, l) if choice_bits[i] is None or n & 1 << choice_bits[i]]
-        # Generate the list of negative node identifiers
-        sublist_no = tuple([-lst[i][1] for i in range(0, l) if not (choice_bits[i] is None or n & 1 << choice_bits[i])])
-        if sublist:
-            terms, nodes = zip(*sublist)
-        else:
-            # Empty list.
-            terms, nodes = (), ()
-        yield terms, nodes + sublist_no + (0,)
-        n -= 1
-    
-    
-def builtin_findall(pattern, goal, result, database=None, target=None, engine=None, **kwdargs):
-    """
-    Implementation of findall/3 builtin.
-    :param pattern: pattern to extract
-    :type pattern: Term
-    :param goal: goal to evaluate
-    :type goal: Term
-    :param result: list to store results
-    :type result: Term
-    :param database: database holding logic program
-    :type database: ClauseDB
-    :param target: logic formula in which to store the result
-    :type target: LogicFormula
-    :param engine: engine that is used for evaluation
-    :type engine: ClauseDBEngine
-    :param kwdargs: additional arguments from engine
-    :return: list results (tuple of lists and node identifiers)
-    """
-    # Check the modes.
-    mode = check_mode((pattern, goal, result,), ('*cv', '*cl'), database=database, **kwdargs)
-
-    findall_head = Term(engine.get_non_cache_functor(), pattern)
-    findall_clause = Clause( findall_head, goal)
-    findall_db = ClauseDB(parent=database)
-    findall_db += findall_clause
-
-    class _TranslateToNone(object):
-        def __getitem__(self, item):
-            return None
-    findall_head = substitute_simple(findall_head, _TranslateToNone())
-
-    results = engine.call(findall_head, subcall=True, database=findall_db, target=target, **kwdargs)
-    results = [(res[0], n) for res, n in results]
-    output = []
-    for l, n in select_sublist(results, target):
-        node = target.addAnd(n)
-        if node is not None:
-            res = build_list(l, Term('[]'))
-            if mode == 0:  # var
-                args = (pattern, goal, res)
-                output.append((args, node))
-            else:
-                try:
-                    res = unify_value(res, result, {})
-                    args = (pattern, goal, res)
-                    output.append((args, node))
-                except UnifyError:
-                    pass
-    return output
-
-
-def addStandardBuiltIns(engine, b=None, s=None, sp=None) :
+def addStandardBuiltIns(engine, b=None, s=None, sp=None):
     """Add Prolog builtins to the given engine."""
     
     # Shortcut some wrappers
-    if b is None : b = BooleanBuiltIn
-    if s is None : s = SimpleBuiltIn
-    if sp is None : sp = SimpleProbabilisticBuiltIn
+    if b is None: b = BooleanBuiltIn
+    if s is None: s = SimpleBuiltIn
+    if sp is None: sp = SimpleProbabilisticBuiltIn
     
-    engine.addBuiltIn('true', 0, b(builtin_true))   # -1
-    engine.addBuiltIn('fail', 0, b(builtin_fail))   # -2
-    engine.addBuiltIn('false', 0, b(builtin_fail))  # -3
+    engine.add_builtin('true', 0, b(builtin_true))   # -1
+    engine.add_builtin('fail', 0, b(builtin_fail))   # -2
+    engine.add_builtin('false', 0, b(builtin_fail))  # -3
 
-    engine.addBuiltIn('=', 2, s(builtin_eq))        # -4
-    engine.addBuiltIn('\=', 2, b(builtin_neq))      # -5
+    engine.add_builtin('=', 2, s(builtin_eq))        # -4
+    engine.add_builtin('\=', 2, b(builtin_neq))      # -5
 
-    engine.addBuiltIn('findall',3,sp(builtin_findall)) # -6
+    engine.add_builtin('findall',3,sp(builtin_findall)) # -6
 
-    engine.addBuiltIn('==', 2, b(builtin_same))
-    engine.addBuiltIn('\==', 2, b(builtin_notsame))
+    engine.add_builtin('==', 2, b(builtin_same))
+    engine.add_builtin('\==', 2, b(builtin_notsame))
 
-    engine.addBuiltIn('is', 2, s(builtin_is))
+    engine.add_builtin('is', 2, s(builtin_is))
 
-    engine.addBuiltIn('>', 2, b(builtin_gt))
-    engine.addBuiltIn('<', 2, b(builtin_lt))
-    engine.addBuiltIn('=<', 2, b(builtin_le))
-    engine.addBuiltIn('>=', 2, b(builtin_ge))
-    engine.addBuiltIn('=\=', 2, b(builtin_val_neq))
-    engine.addBuiltIn('=:=', 2, b(builtin_val_eq))
+    engine.add_builtin('>', 2, b(builtin_gt))
+    engine.add_builtin('<', 2, b(builtin_lt))
+    engine.add_builtin('=<', 2, b(builtin_le))
+    engine.add_builtin('>=', 2, b(builtin_ge))
+    engine.add_builtin('=\=', 2, b(builtin_val_neq))
+    engine.add_builtin('=:=', 2, b(builtin_val_eq))
 
-    engine.addBuiltIn('var', 1, b(builtin_var))
-    engine.addBuiltIn('atom', 1, b(builtin_atom))
-    engine.addBuiltIn('atomic', 1, b(builtin_atomic))
-    engine.addBuiltIn('compound', 1, b(builtin_compound))
-    engine.addBuiltIn('float', 1, b(builtin_float))
-    engine.addBuiltIn('rational', 1, b(builtin_rational))
-    engine.addBuiltIn('integer', 1, b(builtin_integer))
-    engine.addBuiltIn('nonvar', 1, b(builtin_nonvar))
-    engine.addBuiltIn('number', 1, b(builtin_number))
-    engine.addBuiltIn('simple', 1, b(builtin_simple))
-    engine.addBuiltIn('callable', 1, b(builtin_callable))
-    engine.addBuiltIn('dbreference', 1, b(builtin_dbreference))
-    engine.addBuiltIn('primitive', 1, b(builtin_primitive))
-    engine.addBuiltIn('ground', 1, b(builtin_ground))
-    engine.addBuiltIn('is_list', 1, b(builtin_is_list))
+    engine.add_builtin('var', 1, b(builtin_var))
+    engine.add_builtin('atom', 1, b(builtin_atom))
+    engine.add_builtin('atomic', 1, b(builtin_atomic))
+    engine.add_builtin('compound', 1, b(builtin_compound))
+    engine.add_builtin('float', 1, b(builtin_float))
+    engine.add_builtin('rational', 1, b(builtin_rational))
+    engine.add_builtin('integer', 1, b(builtin_integer))
+    engine.add_builtin('nonvar', 1, b(builtin_nonvar))
+    engine.add_builtin('number', 1, b(builtin_number))
+    engine.add_builtin('simple', 1, b(builtin_simple))
+    engine.add_builtin('callable', 1, b(builtin_callable))
+    engine.add_builtin('dbreference', 1, b(builtin_dbreference))
+    engine.add_builtin('primitive', 1, b(builtin_primitive))
+    engine.add_builtin('ground', 1, b(builtin_ground))
+    engine.add_builtin('is_list', 1, b(builtin_is_list))
     
-    engine.addBuiltIn('=..', 2, s(builtin_split_call))
-    engine.addBuiltIn('arg', 3, s(builtin_arg))
-    engine.addBuiltIn('functor', 3, s(builtin_functor))
+    engine.add_builtin('=..', 2, s(builtin_split_call))
+    engine.add_builtin('arg', 3, s(builtin_arg))
+    engine.add_builtin('functor', 3, s(builtin_functor))
     
-    engine.addBuiltIn('@>',2, b(builtin_struct_gt))
-    engine.addBuiltIn('@<',2, b(builtin_struct_lt))
-    engine.addBuiltIn('@>=',2, b(builtin_struct_ge))
-    engine.addBuiltIn('@=<',2, b(builtin_struct_le))
-    engine.addBuiltIn('compare',3, s(builtin_compare))
+    engine.add_builtin('@>',2, b(builtin_struct_gt))
+    engine.add_builtin('@<',2, b(builtin_struct_lt))
+    engine.add_builtin('@>=',2, b(builtin_struct_ge))
+    engine.add_builtin('@=<',2, b(builtin_struct_le))
+    engine.add_builtin('compare',3, s(builtin_compare))
 
-    engine.addBuiltIn('length',2, s(builtin_length))
-    engine.addBuiltIn('call_external',2, s(builtin_call_external))
+    engine.add_builtin('length',2, s(builtin_length))
+    engine.add_builtin('call_external',2, s(builtin_call_external))
 
-    engine.addBuiltIn('sort',2, s(builtin_sort))
-    engine.addBuiltIn('between', 3, s(builtin_between))
-    engine.addBuiltIn('succ',2, s(builtin_succ))
-    engine.addBuiltIn('plus',3, s(builtin_plus))
+    engine.add_builtin('sort',2, s(builtin_sort))
+    engine.add_builtin('between', 3, s(builtin_between))
+    engine.add_builtin('succ',2, s(builtin_succ))
+    engine.add_builtin('plus',3, s(builtin_plus))
     
-    engine.addBuiltIn('consult', 1, b(builtin_consult))
-    engine.addBuiltIn('.', 2, b(builtin_consult_as_list))
-    engine.addBuiltIn('load_external', 1, b(builtin_load_external))
-    engine.addBuiltIn('unknown',1,b(builtin_unknown))
+    engine.add_builtin('consult', 1, b(builtin_consult))
+    engine.add_builtin('.', 2, b(builtin_consult_as_list))
+    engine.add_builtin('load_external', 1, b(builtin_load_external))
+    engine.add_builtin('unknown',1,b(builtin_unknown))
     
-#from .engine_stack_opt import OptimizedStackBasedEngine as DefaultEngine
 from .engine_stack import StackBasedEngine as DefaultEngine
 
-def intersection(l1, l2) :
+
+def intersection(l1, l2):
     i = 0
     j = 0
     n1 = len(l1)
     n2 = len(l2)
     r = []
     a = r.append
-    while i < n1 and j < n2 :
-        if l1[i] == l2[j] :
+    while i < n1 and j < n2:
+        if l1[i] == l2[j]:
             a(l1[i])
             i += 1
             j += 1
-        elif l1[i] < l2[j] :
+        elif l1[i] < l2[j]:
             i += 1
-        else :
+        else:
             j += 1
     #print ('I', l1, l2, r)
     return r
 
-class ClauseIndex(list) :
+class ClauseIndex(list):
     
-    def __init__(self, parent, arity) :
+    def __init__(self, parent, arity):
         self.__parent = parent
         self.__index = [ defaultdict(set) for i in range(0,arity) ]
         self.__optimized = False
         
-    def optimize(self) :
-        if not self.__optimized :
+    def optimize(self):
+        if not self.__optimized:
             self.__optimized = True
-            for i in range(0,len(self.__index)) :
+            for i in range(0,len(self.__index)):
                 arg_index = self.__index[i]
                 arg_none = arg_index[None]
-                self.__index[i] = { k : tuple(sorted(v | arg_none)) for k,v in arg_index.items() if k != None }
+                self.__index[i] = { k: tuple(sorted(v | arg_none)) for k,v in arg_index.items() if k != None }
                 self.__index[i][None] = tuple(sorted(arg_none))
         
-    def find(self, arguments) :
+    def find(self, arguments):
         self.optimize()
         results = None
-        # for i, xx in enumerate(self.__index) :
+        # for i, xx in enumerate(self.__index):
         #     print ('\t', i, xx)
-        for i, arg in enumerate(arguments) :
-            if arg is None or type(arg) == int or not arg.isGround() : 
+        for i, arg in enumerate(arguments):
+            if arg is None or type(arg) == int or not arg.isGround(): 
                 pass # Variable => no restrictions
-            else :
+            else:
                 curr = self.__index[i].get(arg)
-                if curr is None :   # No facts matching this argument exactly.
+                if curr is None:   # No facts matching this argument exactly.
                     results = self.__index[i].get(None)
-                elif results is None :  # First argument with restriction
+                elif results is None:  # First argument with restriction
                     results = curr
-                else :  # Already have a selection
+                else:  # Already have a selection
                     results = intersection(results, curr)
-            if results == [] : 
+            if results == []: 
                 # print ('FIND', arguments, results)
                 return []
-        if results is None :
+        if results is None:
             # print ('FIND', arguments, 'all')
             return self
-        else :
+        else:
             # print ('FIND', arguments, results)
             return results
     
-    def _add(self, key, item) :
-        for i, k in enumerate(key) :
+    def _add(self, key, item):
+        for i, k in enumerate(key):
             self.__index[i][k].add(item)
         
-    def append(self, item) :
+    def append(self, item):
         list.append(self, item)
         key = []
         args = self.__parent.getNode(item).args
-        for arg in args :
-            if isinstance(arg,Term) and arg.isGround() :
+        for arg in args:
+            if isinstance(arg,Term) and arg.isGround():
                 key.append(arg)
-            else :
+            else:
                 key.append(None)
         self._add(key, item)
         
 
-class ClauseDB(LogicProgram) :
+class ClauseDB(LogicProgram):
     """Compiled logic program.
     
     A logic program is compiled into a table of instructions.
@@ -1695,7 +530,7 @@ class ClauseDB(LogicProgram) :
     _neg = namedtuple('neg', ('child', 'location'))
     _choice = namedtuple('choice', ('functor', 'args', 'probability', 'locvars', 'group', 'choice', 'location'))
     
-    def __init__(self, builtins=None, parent=None) :
+    def __init__(self, builtins=None, parent=None):
         LogicProgram.__init__(self)
         self.__nodes = []   # list of nodes
         self.__heads = {}   # head.sig => node index
@@ -1705,8 +540,8 @@ class ClauseDB(LogicProgram) :
         self.__parent = parent
         if parent is None:
             self.__offset = 0
-        else :
-            if hasattr(parent, 'line_info') :
+        else:
+            if hasattr(parent, 'line_info'):
                 self.line_info = parent.line_info
             self.__offset = len(parent)
     
@@ -1716,13 +551,13 @@ class ClauseDB(LogicProgram) :
     def extend(self):
         return ClauseDB(parent=self)
         
-    def _getBuiltIn(self, signature) :
+    def get_builtin(self, signature):
         if self.__builtins is None:
-            if self.__parent is not None :
-                return self.__parent._getBuiltIn(signature)
-            else :
+            if self.__parent is not None:
+                return self.__parent.get_builtin(signature)
+            else:
                 return None
-        else :
+        else:
             return self.__builtins.get(signature)
     
     def _create_index(self, arity):
@@ -1765,7 +600,7 @@ class ClauseDB(LogicProgram) :
     def _add_call_node(self, term):
         """Add a *call* node."""
         
-        if term.signature in ('query/1', 'evidence/1', 'evidence/2') :
+        if term.signature in ('query/1', 'evidence/1', 'evidence/2'):
             raise AccessError("Can\'t call %s directly." % term.signature)
         
         defnode = self._add_head(term, create=False)
@@ -1774,16 +609,16 @@ class ClauseDB(LogicProgram) :
     def getNode(self, index):
         """Get the instruction node at the given index.
         
-        :param index: index of the node to retrieve
-        :type index: :class:`int`
-        :returns: requested node
-        :rtype: :class:`tuple`
-        :raises IndexError: the given index does not point to a node
+       :param index: index of the node to retrieve
+       :type index::class:`int`
+       :returns: requested node
+       :rtype::class:`tuple`
+       :raises IndexError: the given index does not point to a node
         
         """
         if index < self.__offset:
             return self.__parent.getNode(index)
-        else :
+        else:
             return self.__nodes[index-self.__offset]
         
     def _set_node(self, index, node):
@@ -1807,7 +642,7 @@ class ClauseDB(LogicProgram) :
         self.__heads[head.signature] = index
     
     def _add_head( self, head, create=True):
-        node = self._getBuiltIn(head.signature)
+        node = self.get_builtin(head.signature)
         if node is not None:
             if create:
                 raise AccessError("Can not overwrite built-in '%s'." % head.signature)
@@ -1819,7 +654,7 @@ class ClauseDB(LogicProgram) :
             if create:
                 node = self._append_node(self._define(head.functor, head.arity, self._create_index(head.arity),
                                                       head.location))
-            else :
+            else:
                 node = self._append_node()
             self._set_head(head, node)
         return node
@@ -1827,10 +662,10 @@ class ClauseDB(LogicProgram) :
     def find(self, head):
         """Find the ``define`` node corresponding to the given head.
         
-        :param head: clause head to match
-        :type head: :class:`.basic.Term`
-        :returns: location of the clause node in the database, returns ``None`` if no such node exists
-        :rtype: :class:`int` or ``None``
+       :param head: clause head to match
+       :type head::class:`.basic.Term`
+       :returns: location of the clause node in the database, returns ``None`` if no such node exists
+       :rtype::class:`int` or ``None``
         """
         return self._get_head(head)
        
@@ -1845,19 +680,19 @@ class ClauseDB(LogicProgram) :
     def add_clause(self, clause):
         """Add a clause to the database.
         
-        :param clause: Clause to add
-        :type clause: Clause
-        :returns: location of the definition node in the database
-        :rtype: int
+       :param clause: Clause to add
+       :type clause: Clause
+       :returns: location of the definition node in the database
+       :rtype: int
         """
         return self._compile(clause)
 
     def add_fact(self, term):
         """Add a fact to the database.
-        :param term: fact to add
-        :type term: Term
-        :return: position of the definition node in the database
-        :rtype: int
+       :param term: fact to add
+       :type term: Term
+       :return: position of the definition node in the database
+       :rtype: int
         """
 
         # Count the number of variables in the fact
@@ -1873,12 +708,12 @@ class ClauseDB(LogicProgram) :
     def _compile(self, struct, variables=None):
         """
         Compile the given structure and add it to the database.
-        :param struct: structure to compile
-        :type struct: Term
-        :param variables: mapping between variable names and variable index
-        :type variables: _AutoDict
-        :return: position of the compiled structure in the database
-        :rtype: int
+       :param struct: structure to compile
+       :type struct: Term
+       :param variables: mapping between variable names and variable index
+       :type variables: _AutoDict
+       :return: position of the compiled structure in the database
+       :rtype: int
         """
         if variables is None:
             variables = _AutoDict()
@@ -1938,7 +773,7 @@ class ClauseDB(LogicProgram) :
                 return self._add_call_node(struct(a1, a2, a3))
             else:
                 return self._add_call_node(struct.apply(variables))
-        else :
+        else:
             raise ValueError("Unknown structure type: '%s'" % struct)
     
     def _create_vars(self, term):
