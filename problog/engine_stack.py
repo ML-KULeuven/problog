@@ -429,7 +429,6 @@ class StackBasedEngine(ClauseDBEngine) :
         result = self._fix_context(context)
 
         for i, r in enumerate(result):
-            print (node.locvars)
             if i not in node.locvars and not is_ground(r):
                 result = self.handle_nonground(result=result, node=node, target=target, database=database,
                                                context=context, parent=parent, node_id=node_id,
