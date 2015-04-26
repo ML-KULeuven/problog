@@ -782,11 +782,8 @@ class CallModeError(GroundingError):
         GroundingError.__init__(self, msg, location)
         
     def _show_arg(self, x):
-        if x is None:
-            return '_'
-        else :
-            return str(x)
-    
+        return term2str(x)
+
     def _show_mode(self, t):
         return mode_types[t][0]
 
@@ -1469,7 +1466,7 @@ def select( lst, target ) :
     
     
 def builtin_findall( pattern, goal, result, database=None, target=None, engine=None, **kwdargs ) :
-    mode = check_mode( (result,), 'vl', database=database, **kwdargs )
+    mode = check_mode( (pattern, goal, result,), ('*cv', '*cl'), database=database, **kwdargs )
 
     findall_head = Term(engine.get_non_cache_functor(), pattern)
     findall_clause = Clause( findall_head , goal )    
