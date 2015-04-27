@@ -87,6 +87,9 @@ class StackBasedEngine(ClauseDBEngine) :
             
     def load_builtins(self):
         addBuiltIns(self)
+
+    def add_simple_builtin(self, predicate, arity, function):
+        return self.add_builtin(predicate, arity, SimpleBuiltIn(function))
     
     def grow_stack(self) :
         self.stack += [None] * self.stack_size

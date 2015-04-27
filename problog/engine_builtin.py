@@ -1,5 +1,5 @@
 
-from .logic import term2str, Term, Clause, Constant
+from .logic import term2str, Term, Clause, Constant, term2list, list2term
 from .program import PrologFile
 from .core import GroundingError
 from .engine_unify import unify_value, is_variable, UnifyError, substitute_simple
@@ -143,7 +143,11 @@ def is_compound(term):
 
 
 def is_list_maybe(term):
-    """Check whether the term looks like a list (i.e. of the form '.'(_,_))."""
+    """
+    Check whether the term looks like a list (i.e. of the form '.'(_,_)).
+    :param term:
+    :return:
+    """
     return is_compound(term) and term.functor == '.' and term.arity == 2
 
 
@@ -180,27 +184,42 @@ def is_compare(term):
 mode_types = {
     'i': ('integer', is_integer),
     'I': ('positive_integer', is_integer_pos),
+    'f': ('float', is_float),
     'v': ('var', is_var),
     'n': ('nonvar', is_nonvar),
     'l': ('list', is_list),
     'L': ('fixed_list', is_fixed_list),    # List of fixed length (i.e. tail is [])
-    '*': ('any', lambda x: True ),
-    '<': ('compare', is_compare ),         # < = >
-    'g': ('ground', is_ground ),
+    '*': ('any', lambda x: True),
+    '<': ('compare', is_compare),         # < = >
+    'g': ('ground', is_ground),
     'a': ('atom', is_atom),
     'c': ('callable', is_term)
 }
 
 
-def check_mode( args, accepted, functor=None, location=None, database=None, **k):
+def check_mode(args, accepted, functor=None, location=None, database=None, **kwdargs):
+    """
+    Checks the arguments against a list of accepted types.
+    :param args: arguments to check
+    :type args: list of Term
+    :param accepted: list of accepted combination of types (see mode_types)
+    :type accepted: list of basestring
+    :param functor: functor of the call (used for error message)
+    :param location: location of the call (used for error message)
+    :param database: database (used for error message)
+    :param kwdargs: additional arguments (not used)
+    :return: the index of the first mode in accepted that matches the arguments
+    :rtype: int
+    """
     for i, mode in enumerate(accepted):
         correct = True
-        for a,t in zip(args,mode):
+        for a, t in zip(args, mode):
             name, test = mode_types[t]
             if not test(a):
                 correct = False
                 break
-        if correct: return i
+        if correct:
+            return i
     if database and location:
         location = database.lineno(location)
     else:
@@ -209,6 +228,14 @@ def check_mode( args, accepted, functor=None, location=None, database=None, **k)
 
 
 def list_elements(term):
+    """
+    Extract elements from a List term.
+    Ignores the list tail.
+    :param term: term representing a list
+    :type term: Term
+    :return: elements of the list
+    :rtype: list of Term
+    """
     elements = []
     tail = term
     while is_list_maybe(tail):
@@ -218,6 +245,13 @@ def list_elements(term):
 
 
 def list_tail(term):
+    """
+    Extract the tail of the list.
+    :param term: Term representing a list
+    :type term: Term
+    :return: tail of the list
+    :rtype: Term
+    """
     tail = term
     while is_list_maybe(tail):
         tail = tail.args[1]
@@ -225,7 +259,15 @@ def list_tail(term):
 
 
 def builtin_split_call(term, parts, database=None, location=None, **kwdargs):
-    """T =.. L"""
+    """
+    Implements the '=..' builtin operator.
+    :param term:
+    :param parts:
+    :param database:
+    :param location:
+    :param kwdargs:
+    :return:
+    """
     functor = '=..'
     # modes:
     #   <v> =.. list  => list has to be fixed length and non-empty
@@ -890,3 +932,91 @@ def builtin_findall(pattern, goal, result, database=None, target=None, engine=No
                 except UnifyError:
                     pass
     return output
+
+
+class problog_export(object):
+
+    engine = None
+
+    @classmethod
+    def add_function(cls, name, in_args, out_args, function):
+        if cls.engine is not None:
+            cls.engine.add_simple_builtin(name, in_args+out_args, function)
+
+    def __init__(self, *args, **kwdargs):
+        # TODO check if arguments are in order: input first, output last
+        self.input_arguments = [a[1:] for a in args if a[0] == '+']
+        self.output_arguments = [a[1:] for a in args if a[0] == '-']
+
+    def _convert_input(self, a, t):
+        if t == 'str':
+            return str(a)
+        elif t == 'int':
+            return int(a)
+        elif t == 'float':
+            return float(a)
+        elif t == 'list':
+            return term2list(a)
+        else:
+            raise ValueError("Unknown type specifier '%s'!" % t)
+
+    def _extract_callmode(self):
+        callmode = ''
+        for t in self.input_arguments:
+            if t == 'str':
+                callmode += 'a'
+            elif t == 'int':
+                callmode += 'i'
+            elif t == 'float':
+                callmode += 'f'
+            elif t == 'list':
+                callmode += 'L'
+            else:
+                raise ValueError("Unknown type specifier '%s'!" % t)
+        for t in self.output_arguments:
+            callmode += 'v'
+        return callmode
+
+    def _convert_output(self, a, t):
+        if t == 'str':
+            return Term(a)
+        elif t == 'int':
+            return Constant(a)
+        elif t == 'float':
+            return Constant(a)
+        elif t == 'list':
+            return list2term(a)
+        else:
+            raise ValueError("Unknown type specifier '%s'!" % t)
+
+    def _convert_inputs(self, args):
+        return [self._convert_input(a, t) for a, t in zip(args, self.input_arguments)]
+
+    def _convert_outputs(self, args):
+        return [self._convert_output(a, t) for a, t in zip(args, self.output_arguments)]
+
+    def __call__(self, function):
+        def _wrapped_function(*args, **kwdargs):
+            check_mode(args, [self._extract_callmode()], function.__name__, **kwdargs)
+            # TODO check that output arguments are variables
+            converted_args = self._convert_inputs(args)
+            result = function(*converted_args)
+            if len(self.output_arguments) == 1:
+                result = [result]
+            result = args[:len(self.input_arguments)] + tuple(self._convert_outputs(result))
+            return [result]
+        problog_export.add_function(function.__name__, len(self.input_arguments), len(self.output_arguments), _wrapped_function)
+        return function
+
+
+def builtin_use_module(filename, engine=None, database=None, location=None, **kwdargs ):
+    filename = os.path.join(database.source_root, atom_to_filename(filename))
+    load_external_module(engine, filename)
+    return True
+
+
+def load_external_module(engine, filename):
+    import imp
+    problog_export.engine = engine
+    with open(filename, 'r') as extfile:
+        imp.load_module('externals', extfile, filename, ('.py', 'U', 1))

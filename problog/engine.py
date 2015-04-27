@@ -397,6 +397,8 @@ def addStandardBuiltIns(engine, b=None, s=None, sp=None):
     engine.add_builtin('.', 2, b(builtin_consult_as_list))
     engine.add_builtin('load_external', 1, b(builtin_load_external))
     engine.add_builtin('unknown',1,b(builtin_unknown))
+
+    engine.add_builtin('use_module', 1, b(builtin_use_module))
     
 from .engine_stack import StackBasedEngine as DefaultEngine
 

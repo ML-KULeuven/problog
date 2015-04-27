@@ -100,6 +100,23 @@ def term2str(term):
         return str(term)
 
 
+def list2term(lst):
+    tail = Term('[]')
+    for e in reversed(lst):
+        tail = Term('.', e, tail)
+    return tail
+
+
+def term2list(term):
+    result = []
+    while term.functor == '.' and term.arity == 2:
+        result.append(term.args[0])
+        term = term.args[1]
+    if not term == Term('[]'):
+        raise ValueError('Expected fixed list.')
+    return result
+
+
 class Term(object):
 
     def __init__(self, functor, *args, **kwdargs):
