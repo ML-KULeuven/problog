@@ -7,7 +7,11 @@ import sys, os, tempfile
 import math
 from .core import ProbLogError
 
-class InconsistentEvidenceError(ProbLogError) : pass
+
+class InconsistentEvidenceError(ProbLogError):
+
+    def __init__(self, message=None):
+        ProbLogError.__init__(self, 'The given evidence is inconsistent.')
 
 class Semiring(object) :
     
@@ -192,7 +196,7 @@ class Evaluatable(object) :
             elif node_ev == 0 :
                 # Evidence is deterministically true
                 # TODO raise correct error
-                raise Exception('Inconsistent evidence')
+                raise InconsistentEvidenceError()
             elif evidence is None :
                 evaluator.addEvidence( -node_ev )
             else :
