@@ -604,6 +604,10 @@ class LogicProgram(object):
         """Add clause or fact using the ``+=`` operator."""
         if isinstance(clausefact, Or):
             heads = clausefact.toList()
+            for head in heads:
+                if not type(head) == Term:
+                    # TODO compute correct location
+                    raise GroundingError("Unexpected fact '%s'" % head)
             self.add_clause(AnnotatedDisjunction(heads, Term('true')))
         elif isinstance(clausefact, AnnotatedDisjunction):
             self.add_clause(clausefact)
