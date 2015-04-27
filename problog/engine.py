@@ -245,9 +245,15 @@ class ClauseDBEngine(GenericEngine):
             else:
                 raise UnknownClause(term.signature, location=db.lineno(term.location))
 
-        context = self._create_context(term.args)
-        context, xxx = substitute_call_args(context, context)
-        results = self.execute(clause_node, database=db, target=gp, context=context, **kwdargs)
+        try:
+            context = self._create_context(term.args)
+            context, xxx = substitute_call_args(context, context)
+            results = self.execute(clause_node, database=db, target=gp, context=context, **kwdargs)
+        except UnknownClauseInternal:
+            if silent_fail or self.unknown == self.UNKNOWN_FAIL:
+                return gp, []
+            else:
+                raise UnknownClause(term.signature, location=db.lineno(term.location))
     
         return gp, results
         
