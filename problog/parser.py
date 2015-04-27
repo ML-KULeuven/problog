@@ -470,16 +470,18 @@ class PrologParser(object) :
         statement = []
         for token in s :
             if token.is_special(SPECIAL_END) :
+                if not statement:
+                    raise ParseError(string, 'Empty statement found', token.location)
                 yield statement
                 statement = []
             else :
                 statement.append(token)
         if statement :
-            raise ParseError(string, 'Incomplete statement.', len(string))
+            raise ParseError(string, 'Incomplete statement', len(string))
     
 
     
-    def _build_operator_free(self, tokens) :
+    def _build_operator_free(self, string, tokens) :
         if len(tokens) == 1 :
             token = tokens[0]
             if isinstance(token, SubExpression) :
@@ -503,13 +505,14 @@ class PrologParser(object) :
         elif len(tokens) == 2 :
             args = [ tok for tok in tokens[1].tokens ]
             return self.factory.build_function(tokens[0].string, args , location=tokens[0].location)
-        else :
-            assert(len(tokens)==0)
+        elif len(tokens) != 0 :
+            raise ParseError(string, 'Unexpected token', tokens[0].location)
+        else:
             return None
             
     def fold(self, string, operators, lo, hi, pprior=None, porder=None, level=0 ) :
         if lo >= hi : 
-            return self._build_operator_free(operators[lo:hi])
+            return self._build_operator_free(string, operators[lo:hi])
         else :
             max_op = None
             max_i = None
@@ -524,7 +527,7 @@ class PrologParser(object) :
                     max_i = i
                     max_op = op
             if max_op == None :
-                return self._build_operator_free(operators[lo:hi])
+                return self._build_operator_free(string, operators[lo:hi])
             else :
                 if pprior == max_op[0] and porder == 'x' :
                     raise ParseError(string, 'Operator priority clash', operators[max_i].location)
