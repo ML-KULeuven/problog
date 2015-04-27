@@ -1011,7 +1011,10 @@ class problog_export(object):
 
 def builtin_use_module(filename, engine=None, database=None, location=None, **kwdargs ):
     filename = os.path.join(database.source_root, atom_to_filename(filename))
-    load_external_module(database, filename)
+    try:
+        load_external_module(database, filename)
+    except IOError as err:
+        raise ConsultError('Error while reading external library: %s' % str(err), database.lineno(location))
     return True
 
 
