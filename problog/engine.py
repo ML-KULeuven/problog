@@ -738,7 +738,7 @@ class ClauseDB(LogicProgram):
         """
         if variables is None:
             variables = _AutoDict()
-        
+
         if isinstance(struct, And):
             op1 = self._compile(struct.op1, variables)
             op2 = self._compile(struct.op2, variables)

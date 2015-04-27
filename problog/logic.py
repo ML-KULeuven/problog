@@ -609,8 +609,10 @@ class LogicProgram(object):
             self.add_clause(clausefact)
         elif isinstance(clausefact, Clause):
             self.add_clause(clausefact)
-        else:
+        elif type(clausefact) == Term:
             self.add_fact(clausefact)
+        else:
+            raise GroundingError("Unexpected fact '%s'" % clausefact, self.lineno(clausefact.location))
         return self
     
     @classmethod    

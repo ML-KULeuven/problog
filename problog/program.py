@@ -85,10 +85,10 @@ class PrologFactory(Factory) :
         return Term( functor, *arguments, location=location )
         
     def build_variable(self, name, location=None) :
-        return Var(name)
+        return Var(name, location=location)
         
     def build_constant(self, value, location=None) :
-        return Constant(value)
+        return Constant(value, location=location)
         
     def build_binop(self, functor, operand1, operand2, function=None, location=None, **extra) :
         return self.build_function("'" + functor + "'", (operand1, operand2), location=location)
