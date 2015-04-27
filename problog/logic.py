@@ -705,20 +705,31 @@ for f in from_math_0 :
 
 def unquote(s) :
     return s.strip("'")
-                    
-def computeFunction(func, args) :
+
+
+def computeFunction(func, args):
     """Compute the result of an arithmetic function given by a functor and a list of arguments.
-    
-        :raises: ValueError if the function is unknown or the arguments can not be computed
-        :returns: the result of the function
-        :rtype: Constant
-        
-    Currently the following functions are supported: ``+/2``, ``-/2``, ``/\/2``, ``\//2``, ``xor/2``, ``*/2``, ``//2``, ``///2``, ``<</2``, ``>>/2``, ``mod/2``, ``rem/2``, ``**/2``, ``^/2``, ``+/1``, ``-/1``, ``\\/1``.
+
+    :param func: functor
+    :type: basestring
+    :param args: arguments
+    :type args: list of Term
+    :raises: ArithmeticError if the function is unknown or if an error occurs while computing it
+    :return: result of the function
+    :rtype: Constant
+
+    Currently the following functions are supported:
+        ``+/2``, ``-/2``, ``/\/2``, ``\//2``, ``xor/2``, ``*/2``, ``//2``,
+        ``///2``, ``<</2``, ``>>/2``, ``mod/2``, ``rem/2``, ``**/2``, ``^/2``,
+        ``+/1``, ``-/1``, ``\\/1``.
     
     """
-    function = functions.get( (unquote(func), len(args) ) )
-    if function is None :
-        raise ArithmeticError("Unknown function '%s'/%s" % (func, len(args)) )
+    function = functions.get((unquote(func), len(args)))
+    if function is None:
+        raise ArithmeticError("Unknown function '%s'/%s" % (func, len(args)))
     else :
-        values = [ arg.value for arg in args ]
-        return function(*values)
+        try:
+            values = [arg.value for arg in args]
+            return function(*values)
+        except ZeroDivisionError:
+            raise ArithmeticError("Division by zero.")
