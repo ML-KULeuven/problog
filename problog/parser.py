@@ -535,7 +535,8 @@ class PrologParser(object) :
                         rf = self.fold( string, operators, max_i+1, hi, max_op[0], max_order[2], level+1)
                         return max_op[2]( functor=operators[max_i].string, operand1=lf, operand2=rf, location=operators[max_i].location )
                     else :  # unop
-                        assert(max_i == lo)
+                        if max_i != lo:
+                            raise ParseError(string, 'Operator priority clash', operators[max_i].location)
                         lf = self.fold( string, operators, lo+1, hi, max_op[0], max_order[1], level+1 )
                         return max_op[2]( functor=operators[max_i].string, operand=lf, location=operators[max_i].location )
                         
