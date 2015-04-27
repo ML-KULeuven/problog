@@ -4,7 +4,7 @@ from __future__ import print_function
 import sys, os
 
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..' ) )
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../..' ) )
 
 from problog.evaluator import Semiring
 from problog.logic import Constant, Term

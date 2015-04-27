@@ -26,6 +26,9 @@ from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.feature_extraction.text import TfidfTransformer
 from sklearn.feature_extraction.text import CountVectorizer
 
+sys.path.append('../../')
+from problog.extern import problog_export
+
 
 # Settings
 texts = glob.glob('movies/reviews/*.txt') # input texts for TF-IDF model
@@ -85,6 +88,7 @@ def getTFIDF():
   return tfidf
 
 
+@problog_export('+str', '+str', '-float')
 def similarity(e1, e2):
   """TF-IDF similarity between two documents based on pre-processed texts.
      Expects two text/document encodings.

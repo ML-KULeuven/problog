@@ -187,7 +187,7 @@ div#notebook {
 <div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
 <p>Februari 2015<br>
-<a href="wannes.meert@cs.kuleuven.be">Wannes Meert</a>, <a href="anton.dries@cs.kuleuven.be">Anton Dries</a>, DTAI Research Group, KU Leuven</p>
+<a href="mailto:wannes.meert@cs.kuleuven.be">Wannes Meert</a>, <a href="mailto:angelika.kimmig@cs.kuleuven.be">Angelika Kimmig</a>, <a href="mailto:anton.dries@cs.kuleuven.be">Anton Dries</a>, DTAI Research Group, KU Leuven</p>
 
 </div>
 </div>
@@ -214,6 +214,23 @@ div#notebook {
 
 </div>
 </div>
+</div>
+<div class="cell border-box-sizing code_cell rendered">
+<div class="input">
+<div class="prompt input_prompt">In&nbsp;[1]:</div>
+<div class="inner_cell">
+    <div class="input_area">
+<div class=" highlight hl-ipython3"><pre><span class="kn">import</span> <span class="nn">sys</span><span class="o">,</span> <span class="nn">os</span>
+<span class="kn">from</span> <span class="nn">IPython.display</span> <span class="k">import</span> <span class="n">display</span><span class="p">,</span> <span class="n">display_svg</span>
+<span class="kn">import</span> <span class="nn">pydot</span>
+<span class="n">sys</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">abspath</span><span class="p">(</span><span class="s">&#39;../../util&#39;</span><span class="p">))</span>
+<span class="o">%</span><span class="k">load_ext</span> problogmagic
+</pre></div>
+
+</div>
+</div>
+</div>
+
 </div>
 <div class="cell border-box-sizing text_cell rendered">
 <div class="prompt input_prompt">
@@ -254,10 +271,10 @@ div#notebook {
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[16]:</div>
+<div class="prompt input_prompt">In&nbsp;[4]:</div>
 <div class="inner_cell">
     <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span class="o">!</span>head -n <span class="m">49</span> whirl.pl <span class="p">|</span> tail -n <span class="m">14</span>
+<div class=" highlight hl-ipython3"><pre><span class="o">!</span>head -n <span class="m">58</span> whirl.pl <span class="p">|</span> tail -n <span class="m">17</span>
 </pre></div>
 
 </div>
@@ -273,6 +290,7 @@ div#notebook {
 <pre>listing(&apos;Roberts Theater Chatham&apos;, &apos;Brassed Off&apos;, &apos;7:15 - 9:10&apos;).
 listing(&apos;Berkeley Cinema&apos;, &apos;Hercules&apos;, &apos;2:00 - 4:15 - 7:30&apos;).
 listing(&apos;Sony Mountainside Theater&apos;, &apos;Men in Black&apos;, &apos;7:40 - 8:40 - 9:30 - 10:10&apos;).
+listing(&apos;Sony Mountainside Theater&apos;, &apos;Argo&apos;, &apos;7:40 - 8:40 - 9:30&apos;).
 
 review(&apos;Men in Black, 1997&apos;, &apos;(***) One of the summer s biggest hits, this ... a comedy about space aliens with Will Smith ...&apos;).
 review(&apos;Face/Off, 1997&apos;,     &apos;(**1/2) After a somewhat slow start, Cage and Travolta&apos;).
@@ -281,9 +299,11 @@ review(&apos;Hercules&apos;,  &apos;Animated Disney film&apos;).
 review(&apos;The Lord of the Rings: The Fellowship of the Ring, 2001&apos;, &apos;An epic fantasy film directed by Peter Jackson based on the first volume of J. R. R. Tolkien The Lord of the Rings. It is the first installment in the The Lord of the Rings film series, and was followed by The Two Towers (2002) and The Return of the King (2003), based on the second and third volumes of The Lord of the Rings.&apos;).
 
 academy_award(&apos;Best makeup&apos;).
+academy_award(&apos;Best movie&apos;).
 
 winner(&apos;Men in Black&apos;, &apos;Best makeup&apos;, 1997).
 winner(&apos;The Lord of the Rings: The Fellowship of the Ring&apos;, &apos;Best makeup&apos;, 2001).
+winner(&apos;Argo&apos;, &apos;Best movie&apos;, 2013).
 </pre>
 </div>
 </div>
@@ -321,7 +341,7 @@ winner(&apos;The Lord of the Rings: The Fellowship of the Ring&apos;, &apos;Best
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[5]:</div>
+<div class="prompt input_prompt">In&nbsp;[2]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython3"><pre><span class="kn">from</span> <span class="nn">nltk</span> <span class="k">import</span> <span class="n">word_tokenize</span>
@@ -349,7 +369,7 @@ winner(&apos;The Lord of the Rings: The Fellowship of the Ring&apos;, &apos;Best
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[33]:</div>
+<div class="prompt input_prompt">In&nbsp;[3]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython3"><pre><span class="kn">from</span> <span class="nn">sklearn.metrics.pairwise</span> <span class="k">import</span> <span class="n">cosine_similarity</span>
@@ -381,7 +401,7 @@ winner(&apos;The Lord of the Rings: The Fellowship of the Ring&apos;, &apos;Best
 </div>
 </div>
 
-<div class="output_area"><div class="prompt output_prompt">Out[33]:</div>
+<div class="output_area"><div class="prompt output_prompt">Out[3]:</div>
 
 
 <div class="output_text output_subarea output_execute_result">
@@ -416,14 +436,14 @@ winner(&apos;The Lord of the Rings: The Fellowship of the Ring&apos;, &apos;Best
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[18]:</div>
+<div class="prompt input_prompt">In&nbsp;[5]:</div>
 <div class="inner_cell">
     <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span class="o">%%</span><span class="k">script</span> problog-cli.py
-:- load_external(&#39;whirl.py&#39;).
+<div class=" highlight hl-ipython3"><pre><span class="o">%%</span><span class="k">problog</span>
+:- use_module(&#39;whirl.py&#39;).
 
 P::similar(X,Y) :-
-    call_external(similarity(X,Y), P),
+    similarity(X,Y,P),
     P &gt; 0.0.
             
 query(similar(&#39;comedy Smith&#39;, &#39;space Smith&#39;)).
@@ -440,12 +460,11 @@ query(similar(&#39;comedy Smith&#39;, &#39;Will Smith&#39;)).
 
 
 <div class="output_area"><div class="prompt"></div>
-<div class="output_subarea output_stream output_stdout output_text">
-<pre>	  similar(&apos;comedy Smith&apos;,&apos;Will Smith&apos;) : 0.77828292
-	similar(&apos;comedy Smith&apos;,&apos;space Brooks&apos;) : 0
-	 similar(&apos;comedy Smith&apos;,&apos;space Smith&apos;) : 0.60572431
-</pre>
+
+<div class="output_html rendered_html output_subarea ">
+<table style="width:100%;"><tr><th style="width:66%;">Atom<th>Probability<tr><td>similar('comedy Smith','Will Smith')<td><div class="progress-bar" role="progressbar" aria-valuenow="77.82829228046184" aria-valuemin="0" aria-valuemax="100" style="text-align:left;width:77.82829228046184%;padding:3px;color:black;background-color:#9ac2f4;">0.7783</div><tr><td>similar('comedy Smith','space Brooks')<td><div class="progress-bar" role="progressbar" aria-valuenow="0.0" aria-valuemin="0" aria-valuemax="100" style="text-align:left;width:0.0%;padding:3px;color:black;background-color:#9ac2f4;">0.0000</div><tr><td>similar('comedy Smith','space Smith')<td><div class="progress-bar" role="progressbar" aria-valuenow="60.572430792929964" aria-valuemin="0" aria-valuemax="100" style="text-align:left;width:60.572430792929964%;padding:3px;color:black;background-color:#9ac2f4;">0.6057</div></table>
 </div>
+
 </div>
 
 </div>
@@ -489,15 +508,15 @@ query(similar(&#39;comedy Smith&#39;, &#39;Will Smith&#39;)).
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[21]:</div>
+<div class="prompt input_prompt">In&nbsp;[6]:</div>
 <div class="inner_cell">
     <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span class="o">%%</span><span class="k">script</span> problog-cli.py
-:- load_external(&#39;whirl.py&#39;).
+<div class=" highlight hl-ipython3"><pre><span class="o">%%</span><span class="k">problog</span>
+:- use_module(&#39;whirl.py&#39;).
 
 P::similar(X,Y) :-
-    call_external(similarity(X,Y), P),
-    P &gt; 0.7.
+    similarity(X,Y,P),
+    P &gt; 0.7. % Only keep likely matches
             
 query(similar(&#39;comedy Smith&#39;, &#39;space Smith&#39;)).
 query(similar(&#39;comedy Smith&#39;, &#39;space Brooks&#39;)).
@@ -513,12 +532,11 @@ query(similar(&#39;comedy Smith&#39;, &#39;Will Smith&#39;)).
 
 
 <div class="output_area"><div class="prompt"></div>
-<div class="output_subarea output_stream output_stdout output_text">
-<pre>	  similar(&apos;comedy Smith&apos;,&apos;Will Smith&apos;) : 0.77828292
-	similar(&apos;comedy Smith&apos;,&apos;space Brooks&apos;) : 0
-	 similar(&apos;comedy Smith&apos;,&apos;space Smith&apos;) : 0
-</pre>
+
+<div class="output_html rendered_html output_subarea ">
+<table style="width:100%;"><tr><th style="width:66%;">Atom<th>Probability<tr><td>similar('comedy Smith','Will Smith')<td><div class="progress-bar" role="progressbar" aria-valuenow="77.82829228046184" aria-valuemin="0" aria-valuemax="100" style="text-align:left;width:77.82829228046184%;padding:3px;color:black;background-color:#9ac2f4;">0.7783</div><tr><td>similar('comedy Smith','space Brooks')<td><div class="progress-bar" role="progressbar" aria-valuenow="0.0" aria-valuemin="0" aria-valuemax="100" style="text-align:left;width:0.0%;padding:3px;color:black;background-color:#9ac2f4;">0.0000</div><tr><td>similar('comedy Smith','space Smith')<td><div class="progress-bar" role="progressbar" aria-valuenow="0.0" aria-valuemin="0" aria-valuemax="100" style="text-align:left;width:0.0%;padding:3px;color:black;background-color:#9ac2f4;">0.0000</div></table>
 </div>
+
 </div>
 
 </div>
@@ -562,28 +580,15 @@ SCORE(B_1 \land \dots \land B_k, \theta) = 1 - \prod_{i=1}^{k}SCORE(B_i,\theta)
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[19]:</div>
+<div class="prompt input_prompt">In&nbsp;[14]:</div>
 <div class="inner_cell">
     <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span class="o">%%</span><span class="k">script</span> --out result problog-cli.py
+<div class=" highlight hl-ipython3"><pre><span class="o">%%</span><span class="k">problog</span>
 :- consult(whirl).
 
-q1(Movie, Review) :- review(Movie, Review),
+q1_(Movie, Review) :- review(Movie, Review),
                      similar(Review, &#39;comedy with space aliens&#39;).
-query(q1(X,Y)).
-</pre></div>
-
-</div>
-</div>
-</div>
-
-</div>
-<div class="cell border-box-sizing code_cell rendered">
-<div class="input">
-<div class="prompt input_prompt">In&nbsp;[20]:</div>
-<div class="inner_cell">
-    <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span class="n">problogResult</span><span class="p">(</span><span class="n">result</span><span class="p">)</span>
+query(q1_(X,Y)).
 </pre></div>
 
 </div>
@@ -594,10 +599,10 @@ query(q1(X,Y)).
 <div class="output">
 
 
-<div class="output_area"><div class="prompt output_prompt">Out[20]:</div>
+<div class="output_area"><div class="prompt"></div>
 
-<div class="output_html rendered_html output_subarea output_execute_result">
-<table><tr><td>	q1('Men in Black, 1997','(***) One of the summer s biggest hits, this ... a comedy about space aliens with Will Smith ...') <td>0.53799496<tr><td>	 q1('Space Balls, 1987','(*1/2) While not one of Mel Brooks better efforts, this Star Wars spoof ... a comedy about space') <td>0.27688516</table>
+<div class="output_html rendered_html output_subarea ">
+<table style="width:100%;"><tr><th style="width:66%;">Atom<th>Probability<tr><td>q1_('Men in Black, 1997','(***) One of the summer s biggest hits, this ... a comedy about space aliens with Will Smith ...')<td><div class="progress-bar" role="progressbar" aria-valuenow="53.79949630708509" aria-valuemin="0" aria-valuemax="100" style="text-align:left;width:53.79949630708509%;padding:3px;color:black;background-color:#9ac2f4;">0.5380</div><tr><td>q1_('Space Balls, 1987','(*1/2) While not one of Mel Brooks better efforts, this Star Wars spoof ... a comedy about space')<td><div class="progress-bar" role="progressbar" aria-valuenow="27.68851622996053" aria-valuemin="0" aria-valuemax="100" style="text-align:left;width:27.68851622996053%;padding:3px;color:black;background-color:#9ac2f4;">0.2769</div></table>
 </div>
 
 </div>
@@ -618,29 +623,16 @@ query(q1(X,Y)).
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[9]:</div>
+<div class="prompt input_prompt">In&nbsp;[15]:</div>
 <div class="inner_cell">
     <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span class="o">%%</span><span class="k">script</span> --out result problog-cli.py
+<div class=" highlight hl-ipython3"><pre><span class="o">%%</span><span class="k">problog</span>
 :- consult(whirl).
 
-q2(Cinema,Movie1,Times,Review) :- listing(Cinema, Movie1, Times),
-                                  review(Movie2, Review),
-                                  similar(Movie1,Movie2).
-query(q2(C,M,T,R)).
-</pre></div>
-
-</div>
-</div>
-</div>
-
-</div>
-<div class="cell border-box-sizing code_cell rendered">
-<div class="input">
-<div class="prompt input_prompt">In&nbsp;[10]:</div>
-<div class="inner_cell">
-    <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span class="n">problogResult</span><span class="p">(</span><span class="n">result</span><span class="p">)</span>
+q2_(Cinema,Movie1,Times,Review) :- listing(Cinema, Movie1, Times),
+                                   review(Movie2, Review),
+                                   similar(Movie1,Movie2).
+query(q2_(C,M,T,R)).
 </pre></div>
 
 </div>
@@ -651,10 +643,10 @@ query(q2(C,M,T,R)).
 <div class="output">
 
 
-<div class="output_area"><div class="prompt output_prompt">Out[10]:</div>
+<div class="output_area"><div class="prompt"></div>
 
-<div class="output_html rendered_html output_subarea output_execute_result">
-<table><tr><td>	                                                                                                  q2('Berkeley Cinema','Hercules','2:00 - 4:15 - 7:30','Animated Disney film') <td>1.0<tr><td>	q2('Sony Mountainside Theater','Men in Black','7:40 - 8:40 - 9:30 - 10:10','(***) One of the summer s biggest hits, this ... a comedy about space aliens with Will Smith ...') <td>0.86859437</table>
+<div class="output_html rendered_html output_subarea ">
+<table style="width:100%;"><tr><th style="width:66%;">Atom<th>Probability<tr><td>q2_('Berkeley Cinema','Hercules','2:00 - 4:15 - 7:30','Animated Disney film')<td><div class="progress-bar" role="progressbar" aria-valuenow="100.0" aria-valuemin="0" aria-valuemax="100" style="text-align:left;width:100.0%;padding:3px;color:black;background-color:#9ac2f4;">1.0000</div><tr><td>q2_('Sony Mountainside Theater','Men in Black','7:40 - 8:40 - 9:30 - 10:10','(***) One of the summer s biggest hits, this ... a comedy about space aliens with Will Smith ...')<td><div class="progress-bar" role="progressbar" aria-valuenow="86.85943660616971" aria-valuemin="0" aria-valuemax="100" style="text-align:left;width:86.85943660616971%;padding:3px;color:black;background-color:#9ac2f4;">0.8686</div></table>
 </div>
 
 </div>
@@ -675,15 +667,15 @@ query(q2(C,M,T,R)).
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[38]:</div>
+<div class="prompt input_prompt">In&nbsp;[16]:</div>
 <div class="inner_cell">
     <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span class="o">%%</span><span class="k">script</span> problog-cli.py
+<div class=" highlight hl-ipython3"><pre><span class="o">%%</span><span class="k">problog</span>
 :- consult(whirl).
 
-q3(Cinema,Movie,Times,Review) :- listing(Cinema,Movie,Times),
-                                 review(Movie,Review).
-query(q3(C,M,T,R)).
+q3_(Cinema,Movie,Times,Review) :- listing(Cinema,Movie,Times),
+                                  review(Movie,Review).
+query(q3_(C,M,T,R)).
 </pre></div>
 
 </div>
@@ -695,10 +687,11 @@ query(q3(C,M,T,R)).
 
 
 <div class="output_area"><div class="prompt"></div>
-<div class="output_subarea output_stream output_stdout output_text">
-<pre>	q3(&apos;Berkeley Cinema&apos;,&apos;Hercules&apos;,&apos;2:00 - 4:15 - 7:30&apos;,&apos;Animated Disney film&apos;) : 1
-</pre>
+
+<div class="output_html rendered_html output_subarea ">
+<table style="width:100%;"><tr><th style="width:66%;">Atom<th>Probability<tr><td>q3_('Berkeley Cinema','Hercules','2:00 - 4:15 - 7:30','Animated Disney film')<td><div class="progress-bar" role="progressbar" aria-valuenow="100.0" aria-valuemin="0" aria-valuemax="100" style="text-align:left;width:100.0%;padding:3px;color:black;background-color:#9ac2f4;">1.0000</div></table>
 </div>
+
 </div>
 
 </div>
@@ -717,16 +710,16 @@ query(q3(C,M,T,R)).
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[42]:</div>
+<div class="prompt input_prompt">In&nbsp;[19]:</div>
 <div class="inner_cell">
     <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span class="o">%%</span><span class="k">script</span> problog-cli.py
+<div class=" highlight hl-ipython3"><pre><span class="o">%%</span><span class="k">problog</span>
 :- consult(whirl).
 
-q4(Movie1) :- listing(Cinema, Movie1, Times), review(Movie2, Review),
-              similar(Movie1, Movie2),
-              similar(Review,&quot;comedy with space aliens&quot;).
-query(q4(M)).
+q4_(Movie1) :- listing(Cinema, Movie1, Times), review(Movie2, Review),
+               similar(Movie1, Movie2),
+               similar(Review, &#39;comedy with space aliens&#39;).
+query(q4_(M)).
 </pre></div>
 
 </div>
@@ -738,12 +731,11 @@ query(q4(M)).
 
 
 <div class="output_area"><div class="prompt"></div>
-<div class="output_subarea output_stream output_stdout output_text">
-<pre>	 q4(&apos;Brassed Off&apos;) : 0
-	    q4(&apos;Hercules&apos;) : 0
-	q4(&apos;Men in Black&apos;) : 0.46729939
-</pre>
+
+<div class="output_html rendered_html output_subarea ">
+<table style="width:100%;"><tr><th style="width:66%;">Atom<th>Probability<tr><td>q4_('Men in Black')<td><div class="progress-bar" role="progressbar" aria-valuenow="46.72993938929119" aria-valuemin="0" aria-valuemax="100" style="text-align:left;width:46.72993938929119%;padding:3px;color:black;background-color:#9ac2f4;">0.4673</div></table>
 </div>
+
 </div>
 
 </div>
@@ -780,22 +772,22 @@ SCORE(a, \theta) = 1 - \prod_{<\theta,Body_i> \in SUPPORT(a)}(1-SCORE(Body_i,\th
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[45]:</div>
+<div class="prompt input_prompt">In&nbsp;[20]:</div>
 <div class="inner_cell">
     <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span class="o">%%</span><span class="k">script</span> problog-cli.py
+<div class=" highlight hl-ipython3"><pre><span class="o">%%</span><span class="k">problog</span>
 :- consult(whirl).
 
-view1(Cinema) :- listing(Cinema, Movie1, Times), 
-                 review(Movie2, Review),
-                 similar(Movie1, Movie2),
-                 similar(Review, &quot;comedy with space aliens&quot;).
-view1(Cinema) :- listing(Cinema, Movie1, Times),
-                 review(Movie2, Review),
-                 similar(Movie1, Movie2),
-                 similar(Review, &quot;animated Walt Disney film&quot;).
-q4a(Cinema) :- view1(Cinema).
-query(q4a(C)).
+view1_(Cinema) :- listing(Cinema, Movie1, Times), 
+                  review(Movie2, Review),
+                  similar(Movie1, Movie2),
+                  similar(Review, &quot;comedy with space aliens&quot;).
+view1_(Cinema) :- listing(Cinema, Movie1, Times),
+                  review(Movie2, Review),
+                  similar(Movie1, Movie2),
+                  similar(Review, &quot;animated Walt Disney film&quot;).
+q4a_(Cinema) :- view1(Cinema).
+query(q4a_(C)).
 </pre></div>
 
 </div>
@@ -807,12 +799,11 @@ query(q4a(C)).
 
 
 <div class="output_area"><div class="prompt"></div>
-<div class="output_subarea output_stream output_stdout output_text">
-<pre>	          q4a(&apos;Berkeley Cinema&apos;) : 1
-	  q4a(&apos;Roberts Theater Chatham&apos;) : 0
-	q4a(&apos;Sony Mountainside Theater&apos;) : 0.46729939
-</pre>
+
+<div class="output_html rendered_html output_subarea ">
+<table style="width:100%;"><tr><th style="width:66%;">Atom<th>Probability<tr><td>q4a_('Berkeley Cinema')<td><div class="progress-bar" role="progressbar" aria-valuenow="100.0" aria-valuemin="0" aria-valuemax="100" style="text-align:left;width:100.0%;padding:3px;color:black;background-color:#9ac2f4;">1.0000</div><tr><td>q4a_('Sony Mountainside Theater')<td><div class="progress-bar" role="progressbar" aria-valuenow="46.72993938929119" aria-valuemin="0" aria-valuemax="100" style="text-align:left;width:46.72993938929119%;padding:3px;color:black;background-color:#9ac2f4;">0.4673</div></table>
 </div>
+
 </div>
 
 </div>
@@ -837,24 +828,24 @@ SCORE(many(p(Y_1, \dots, Y_k), Test, \theta) = \sum_{<s,a_1,\dots,a_k> \in P} \f
 </div>
 <div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<h3 id="Q5-(deterministic)">Q5 (deterministic)<a class="anchor-link" href="#Q5-(deterministic)">&#182;</a></h3><p>Movie with Will Smith that won an award without fuzzy matching will find no results.</p>
+<h3 id="Q5-(deterministic)">Q5 (deterministic)<a class="anchor-link" href="#Q5-(deterministic)">&#182;</a></h3><p>Movie with Will Smith that won an award.</p>
 
 </div>
 </div>
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[46]:</div>
+<div class="prompt input_prompt">In&nbsp;[21]:</div>
 <div class="inner_cell">
     <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span class="o">%%</span><span class="k">script</span> problog-cli.py
+<div class=" highlight hl-ipython3"><pre><span class="o">%%</span><span class="k">problog</span>
 :- consult(whirl).
 
-q5a(Movie, Cat) :- review(Movie ,Review),
-              similar(Review, &quot;Will Smith&quot;),
-              academy_award(Cat), winner(Movie2, Cat),
-              similar(Movie, Movie2).
-query(q5a(M,C)).
+q5a_(Movie, Cat) :- review(Movie ,Review),
+                    similar(Review, &#39;Will Smith&#39;),
+                    academy_award(Cat), winner(Movie2, Cat, Y),
+                    similar(Movie, Movie2).
+query(q5a_(M,C)).
 </pre></div>
 
 </div>
@@ -866,10 +857,11 @@ query(q5a(M,C)).
 
 
 <div class="output_area"><div class="prompt"></div>
-<div class="output_subarea output_stream output_stdout output_text">
-<pre>Error during grounding: No clauses found for &apos;winner/2&apos; at position 5:35.
-</pre>
+
+<div class="output_html rendered_html output_subarea ">
+<table style="width:100%;"><tr><th style="width:66%;">Atom<th>Probability<tr><td>q5a_('Men in Black, 1997','Best makeup')<td><div class="progress-bar" role="progressbar" aria-valuenow="30.800544275677886" aria-valuemin="0" aria-valuemax="100" style="text-align:left;width:30.800544275677886%;padding:3px;color:black;background-color:#9ac2f4;">0.3080</div></table>
 </div>
+
 </div>
 
 </div>
@@ -881,7 +873,7 @@ query(q5a(M,C)).
 </div>
 <div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<h3 id="Q5">Q5<a class="anchor-link" href="#Q5">&#182;</a></h3><p>Movie that is currently playing and has many academy awards.</p>
+<h3 id="Q5">Q5<a class="anchor-link" href="#Q5">&#182;</a></h3><p>Movie that is currently playing and has <em>many</em> academy awards.</p>
 
 </div>
 </div>
@@ -891,19 +883,12 @@ query(q5a(M,C)).
 <div class="prompt input_prompt">In&nbsp;[22]:</div>
 <div class="inner_cell">
     <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span class="o">%%</span><span class="k">script</span> problog-cli.py
+<div class=" highlight hl-ipython3"><pre><span class="o">%%</span><span class="k">problog</span>
 :- consult(whirl).
 
-many_awards(M) :-
-    % many(Template, Test) as findall(Test, Template, L)
-    findall(winner(M,C,Y), (academy_award(C),winner(_,C,Y)), L),
-    many_int_prob(L).
-
-q5(M) :-
-    listing(_,M,_),
-    %many((academy_award(Y),winner(_,C,Y)), winner(M1,C,Y)).
-    many_awards(M).
-query(q5(M)).
+q5_(M) :- listing(_,M,_),
+          many((academy_award(C),winner(_,C,Y)), winner(M,C,Y)).
+query(q5_(M)).
 </pre></div>
 
 </div>
@@ -915,12 +900,11 @@ query(q5(M)).
 
 
 <div class="output_area"><div class="prompt"></div>
-<div class="output_subarea output_stream output_stdout output_text">
-<pre>	 q5(&apos;Brassed Off&apos;) : 0
-	    q5(&apos;Hercules&apos;) : 0
-	q5(&apos;Men in Black&apos;) : 0.5
-</pre>
+
+<div class="output_html rendered_html output_subarea ">
+<table style="width:100%;"><tr><th style="width:66%;">Atom<th>Probability<tr><td>q5_('Argo')<td><div class="progress-bar" role="progressbar" aria-valuenow="33.33333333333333" aria-valuemin="0" aria-valuemax="100" style="text-align:left;width:33.33333333333333%;padding:3px;color:black;background-color:#9ac2f4;">0.3333</div><tr><td>q5_('Brassed Off')<td><div class="progress-bar" role="progressbar" aria-valuenow="0.0" aria-valuemin="0" aria-valuemax="100" style="text-align:left;width:0.0%;padding:3px;color:black;background-color:#9ac2f4;">0.0000</div><tr><td>q5_('Hercules')<td><div class="progress-bar" role="progressbar" aria-valuenow="0.0" aria-valuemin="0" aria-valuemax="100" style="text-align:left;width:0.0%;padding:3px;color:black;background-color:#9ac2f4;">0.0000</div><tr><td>q5_('Men in Black')<td><div class="progress-bar" role="progressbar" aria-valuenow="33.33333333333333" aria-valuemin="0" aria-valuemax="100" style="text-align:left;width:33.33333333333333%;padding:3px;color:black;background-color:#9ac2f4;">0.3333</div></table>
 </div>
+
 </div>
 
 </div>
@@ -932,26 +916,26 @@ query(q5(M)).
 </div>
 <div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<p>The <code>many</code> predicate present in WHIRL can be implemented in ProbLog using <code>findall</code> and a custom predicate to count the weighted average:</p>
+<h4 id="Implementation-of-the-many-predicate">Implementation of the <code>many</code> predicate<a class="anchor-link" href="#Implementation-of-the-many-predicate">&#182;</a></h4><p>The <code>many</code> predicate present in WHIRL can be implemented in ProbLog using <code>findall</code> and a custom predicate to count the weighted average:</p>
 
 </div>
 </div>
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[50]:</div>
+<div class="prompt input_prompt">In&nbsp;[&nbsp;]:</div>
 <div class="inner_cell">
     <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span class="o">%%</span><span class="k">script</span> problog-cli.py
+<div class=" highlight hl-ipython3"><pre><span class="o">%%</span><span class="k">problog</span>
 
-many_int([], P, N, 0) :- T is P+N, T = 0.
-many_int([], P, N, S) :- T is P+N, T &gt; 0, S is P/T.
+many_int_prob(L) :- many_int(L, 0, 0, L).
+
+many_int([], P, N, L) :- T is P+N, T &gt; 0, S is P/T, w(S,L).
+S::w(S,_).
 many_int([H|T], PA, NA, S) :-
-    (  call(H), PAN is PA + 1, NAN is NA;      % Test: true
-     \+call(H), PAN is PA,     NAN is NA + 1), % Test: false
-    many_int(T, PAN, NAN, S).
-
-S::many_int_prob(L) :- many_int(L, 0, 0, S).
+   (  call(H), PAN is PA + 1, NAN is NA;      % Test: true
+    \+call(H), PAN is PA,     NAN is NA + 1), % Test: false
+   many_int(T, PAN, NAN, S).
 
 many(Template, Test) :-
     findall(Test, Template, L),
@@ -968,37 +952,171 @@ many(Template, Test) :-
 </div>
 <div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<p>Before Anton implemented <code>findall</code>:</p>
+<p>The <code>many_int</code> predicate is representing a binomial tree that in the leaves expresses the histogram of possible numbers of true and false tests in the list defined by the template.</p>
 
 </div>
 </div>
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[&nbsp;]:</div>
+<div class="prompt input_prompt">In&nbsp;[37]:</div>
 <div class="inner_cell">
     <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span class="n">member</span><span class="p">(</span><span class="n">X</span><span class="p">,[</span><span class="n">X</span><span class="o">|</span><span class="n">_</span><span class="p">])</span><span class="o">.</span>
-<span class="n">member</span><span class="p">(</span><span class="n">X</span><span class="p">,[</span><span class="n">_</span><span class="o">|</span><span class="n">T</span><span class="p">])</span> <span class="p">:</span><span class="o">-</span> <span class="n">member</span><span class="p">(</span><span class="n">X</span><span class="p">,</span><span class="n">T</span><span class="p">)</span><span class="o">.</span>
+<div class=" highlight hl-ipython3"><pre><span class="n">gv</span> <span class="o">=</span> <span class="s">&quot;digraph binomial_tree {</span><span class="se">\n</span><span class="s">&quot;</span>
+<span class="n">max_depth</span> <span class="o">=</span> <span class="mi">3</span>
+<span class="k">for</span> <span class="n">depth</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="n">max_depth</span><span class="o">+</span><span class="mi">1</span><span class="p">):</span>
+    <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">depth</span><span class="o">+</span><span class="mi">1</span><span class="p">):</span>
+        <span class="n">node</span> <span class="o">=</span> <span class="s">&#39;{}_{}&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">depth</span><span class="p">,</span><span class="n">col</span><span class="p">)</span>
+        <span class="n">label</span> <span class="o">=</span> <span class="s">&#39;{}-{}&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">col</span><span class="p">,</span><span class="n">depth</span><span class="o">-</span><span class="n">col</span><span class="p">)</span>
+        <span class="n">gv</span> <span class="o">+=</span> <span class="s">&#39;</span><span class="se">\t</span><span class="s">{} [shape=none,label=&quot;{}&quot;,width=.3];</span><span class="se">\n</span><span class="s">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">node</span><span class="p">,</span><span class="n">label</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">col</span> <span class="o">==</span> <span class="n">depth</span><span class="p">:</span>
+            <span class="n">parent</span> <span class="o">=</span> <span class="s">&#39;{}_{}&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">depth</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span><span class="n">col</span><span class="p">)</span>
+            <span class="n">gv</span> <span class="o">+=</span> <span class="s">&#39;</span><span class="se">\t</span><span class="s">{} -- {} [arrowhead=none];</span><span class="se">\n</span><span class="s">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">parent</span><span class="p">,</span><span class="n">node</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">col</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">parent</span> <span class="o">=</span> <span class="s">&#39;{}_{}&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">depth</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span><span class="n">col</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+            <span class="n">gv</span> <span class="o">+=</span> <span class="s">&#39;</span><span class="se">\t</span><span class="s">{} -- {} [arrowhead=none];</span><span class="se">\n</span><span class="s">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">parent</span><span class="p">,</span><span class="n">node</span><span class="p">)</span>
+            
+<span class="n">gv</span> <span class="o">+=</span> <span class="s">&quot;}</span><span class="se">\n</span><span class="s">&quot;</span>
+<span class="c">#print(gv)</span>
+<span class="n">display_svg</span><span class="p">(</span><span class="n">pydot</span><span class="o">.</span><span class="n">graph_from_dot_data</span><span class="p">(</span><span class="n">gv</span><span class="p">)</span><span class="o">.</span><span class="n">create_svg</span><span class="p">(),</span> <span class="n">raw</span><span class="o">=</span><span class="k">True</span><span class="p">)</span>
+</pre></div>
 
-<span class="n">smaller</span><span class="p">(</span><span class="n">X</span><span class="p">,[])</span><span class="o">.</span>
-<span class="n">smaller</span><span class="p">(</span><span class="n">X</span><span class="p">,[</span><span class="n">N</span><span class="o">|</span><span class="n">T</span><span class="p">])</span> <span class="p">:</span><span class="o">-</span> <span class="n">X</span><span class="o">&lt;</span><span class="n">N</span><span class="p">,</span> <span class="n">smaller</span><span class="p">(</span><span class="n">X</span><span class="p">,</span><span class="n">T</span><span class="p">)</span><span class="o">.</span>
+</div>
+</div>
+</div>
 
-<span class="n">findall</span><span class="p">(</span><span class="n">L</span><span class="p">,</span> <span class="n">Pos</span><span class="p">,</span> <span class="n">Neg</span><span class="p">)</span> <span class="p">:</span><span class="o">-</span>
-    <span class="n">findall</span><span class="p">([],</span> <span class="n">L</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">Pos</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">Neg</span><span class="p">)</span><span class="o">.</span>
+<div class="output_wrapper">
+<div class="output">
 
-<span class="n">findall</span><span class="p">(</span><span class="n">Acc</span><span class="p">,</span> <span class="n">L</span><span class="p">,</span> <span class="n">PosA</span><span class="p">,</span> <span class="n">Pos</span><span class="p">,</span> <span class="n">NegA</span><span class="p">,</span> <span class="n">Neg</span><span class="p">)</span> <span class="p">:</span><span class="o">-</span>
-    <span class="n">a</span><span class="p">(</span><span class="n">X</span><span class="p">),</span> <span class="o">%</span> <span class="n">Condition</span>
-    <span class="n">smaller</span><span class="p">(</span><span class="n">X</span><span class="p">,</span><span class="n">Acc</span><span class="p">),</span> <span class="o">%</span> <span class="n">Should</span> <span class="n">be</span> <span class="n">a</span><span class="p">(</span><span class="n">X</span><span class="p">)</span>
-    \<span class="o">+</span> <span class="n">member</span><span class="p">(</span><span class="n">X</span><span class="p">,</span><span class="n">Acc</span><span class="p">),</span> <span class="o">%</span> <span class="n">Should</span> <span class="n">be</span> <span class="n">a</span><span class="p">(</span><span class="n">X</span><span class="p">)</span>
-    <span class="p">(</span><span class="n">b</span><span class="p">(</span><span class="n">X</span><span class="p">),</span> <span class="n">PosAN</span> <span class="ow">is</span> <span class="n">PosA</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="n">NegAN</span> <span class="ow">is</span> <span class="n">NegA</span><span class="p">;</span>    <span class="o">%</span> <span class="n">Test</span><span class="p">:</span> <span class="n">true</span>
-     \<span class="o">+</span><span class="n">b</span><span class="p">(</span><span class="n">X</span><span class="p">),</span> <span class="n">PosAN</span> <span class="ow">is</span> <span class="n">PosA</span><span class="p">,</span> <span class="n">NegAN</span> <span class="ow">is</span> <span class="n">NegA</span> <span class="o">+</span> <span class="mi">1</span><span class="p">),</span> <span class="o">%</span> <span class="n">Test</span><span class="p">:</span> <span class="n">false</span>
-    <span class="n">findall</span><span class="p">([</span><span class="n">X</span><span class="o">|</span><span class="n">Acc</span><span class="p">],</span> <span class="n">L</span><span class="p">,</span> <span class="n">PosAN</span><span class="p">,</span> <span class="n">Pos</span><span class="p">,</span> <span class="n">NegAN</span><span class="p">,</span> <span class="n">Neg</span><span class="p">)</span><span class="o">.</span>
 
-<span class="n">findall</span><span class="p">(</span><span class="n">L</span><span class="p">,</span> <span class="n">L</span><span class="p">,</span> <span class="n">P</span><span class="p">,</span> <span class="n">P</span><span class="p">,</span> <span class="n">N</span><span class="p">,</span> <span class="n">N</span><span class="p">)</span> <span class="p">:</span><span class="o">-</span>
-    \<span class="o">+</span> <span class="p">(</span><span class="n">a</span><span class="p">(</span><span class="n">X</span><span class="p">),</span> \<span class="o">+</span><span class="n">member</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">L</span><span class="p">))</span><span class="o">.</span>
+<div class="output_area"><div class="prompt"></div>
 
-<span class="n">q_avg</span><span class="p">(</span><span class="n">L</span><span class="p">,</span><span class="n">P</span><span class="p">,</span><span class="n">N</span><span class="p">,</span><span class="n">S</span><span class="p">)</span> <span class="p">:</span><span class="o">-</span> <span class="n">findall</span><span class="p">(</span><span class="n">L</span><span class="p">,</span><span class="n">P</span><span class="p">,</span><span class="n">N</span><span class="p">),</span> <span class="n">S</span> <span class="ow">is</span> <span class="n">P</span><span class="o">/</span><span class="p">(</span><span class="n">P</span><span class="o">+</span><span class="n">N</span><span class="p">)</span><span class="o">.</span>
+<div class="output_svg output_subarea ">
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+ "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<!-- Generated by graphviz version 2.38.0 (20140413.2041)
+ -->
+<!-- Title: binomial_tree Pages: 1 -->
+<svg width="202pt" height="260pt"
+ viewBox="0.00 0.00 202.00 260.00" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<g id="graph0" class="graph" transform="scale(1 1) rotate(0) translate(4 256)">
+<title>binomial_tree</title>
+<polygon fill="white" stroke="none" points="-4,4 -4,-256 198,-256 198,4 -4,4"/>
+<!-- 0_0 -->
+<g id="node1" class="node"><title>0_0</title>
+<text text-anchor="middle" x="95.5" y="-230.3" font-family="Times,serif" font-size="14.00">0&#45;0</text>
+</g>
+<!-- 1_0 -->
+<g id="node2" class="node"><title>1_0</title>
+<text text-anchor="middle" x="69.5" y="-158.3" font-family="Times,serif" font-size="14.00">0&#45;1</text>
+</g>
+<!-- 0_0&#45;&gt;1_0 -->
+<g id="edge1" class="edge"><title>0_0&#45;&gt;1_0</title>
+<path fill="none" stroke="black" d="M89.073,-215.697C85.0429,-204.846 79.8691,-190.917 75.853,-180.104"/>
+</g>
+<!-- 1_1 -->
+<g id="node3" class="node"><title>1_1</title>
+<text text-anchor="middle" x="122.5" y="-158.3" font-family="Times,serif" font-size="14.00">1&#45;0</text>
+</g>
+<!-- 0_0&#45;&gt;1_1 -->
+<g id="edge2" class="edge"><title>0_0&#45;&gt;1_1</title>
+<path fill="none" stroke="black" d="M102.174,-215.697C106.359,-204.846 111.732,-190.917 115.903,-180.104"/>
+</g>
+<!-- 2_0 -->
+<g id="node4" class="node"><title>2_0</title>
+<text text-anchor="middle" x="43.5" y="-86.3" font-family="Times,serif" font-size="14.00">0&#45;2</text>
+</g>
+<!-- 1_0&#45;&gt;2_0 -->
+<g id="edge3" class="edge"><title>1_0&#45;&gt;2_0</title>
+<path fill="none" stroke="black" d="M63.073,-143.697C59.0429,-132.846 53.8691,-118.917 49.853,-108.104"/>
+</g>
+<!-- 2_1 -->
+<g id="node5" class="node"><title>2_1</title>
+<text text-anchor="middle" x="96.5" y="-86.3" font-family="Times,serif" font-size="14.00">1&#45;1</text>
+</g>
+<!-- 1_0&#45;&gt;2_1 -->
+<g id="edge5" class="edge"><title>1_0&#45;&gt;2_1</title>
+<path fill="none" stroke="black" d="M76.1742,-143.697C80.3593,-132.846 85.7321,-118.917 89.9026,-108.104"/>
+</g>
+<!-- 1_1&#45;&gt;2_1 -->
+<g id="edge4" class="edge"><title>1_1&#45;&gt;2_1</title>
+<path fill="none" stroke="black" d="M116.073,-143.697C112.043,-132.846 106.869,-118.917 102.853,-108.104"/>
+</g>
+<!-- 2_2 -->
+<g id="node6" class="node"><title>2_2</title>
+<text text-anchor="middle" x="149.5" y="-86.3" font-family="Times,serif" font-size="14.00">2&#45;0</text>
+</g>
+<!-- 1_1&#45;&gt;2_2 -->
+<g id="edge6" class="edge"><title>1_1&#45;&gt;2_2</title>
+<path fill="none" stroke="black" d="M129.174,-143.697C133.359,-132.846 138.732,-118.917 142.903,-108.104"/>
+</g>
+<!-- 3_0 -->
+<g id="node7" class="node"><title>3_0</title>
+<text text-anchor="middle" x="17.5" y="-14.3" font-family="Times,serif" font-size="14.00">0&#45;3</text>
+</g>
+<!-- 2_0&#45;&gt;3_0 -->
+<g id="edge7" class="edge"><title>2_0&#45;&gt;3_0</title>
+<path fill="none" stroke="black" d="M37.073,-71.6966C33.0429,-60.8463 27.8691,-46.9167 23.853,-36.1043"/>
+</g>
+<!-- 3_1 -->
+<g id="node8" class="node"><title>3_1</title>
+<text text-anchor="middle" x="70.5" y="-14.3" font-family="Times,serif" font-size="14.00">1&#45;2</text>
+</g>
+<!-- 2_0&#45;&gt;3_1 -->
+<g id="edge9" class="edge"><title>2_0&#45;&gt;3_1</title>
+<path fill="none" stroke="black" d="M50.1742,-71.6966C54.3593,-60.8463 59.7321,-46.9167 63.9026,-36.1043"/>
+</g>
+<!-- 2_1&#45;&gt;3_1 -->
+<g id="edge8" class="edge"><title>2_1&#45;&gt;3_1</title>
+<path fill="none" stroke="black" d="M90.073,-71.6966C86.0429,-60.8463 80.8691,-46.9167 76.853,-36.1043"/>
+</g>
+<!-- 3_2 -->
+<g id="node9" class="node"><title>3_2</title>
+<text text-anchor="middle" x="123.5" y="-14.3" font-family="Times,serif" font-size="14.00">2&#45;1</text>
+</g>
+<!-- 2_1&#45;&gt;3_2 -->
+<g id="edge11" class="edge"><title>2_1&#45;&gt;3_2</title>
+<path fill="none" stroke="black" d="M103.174,-71.6966C107.359,-60.8463 112.732,-46.9167 116.903,-36.1043"/>
+</g>
+<!-- 2_2&#45;&gt;3_2 -->
+<g id="edge10" class="edge"><title>2_2&#45;&gt;3_2</title>
+<path fill="none" stroke="black" d="M143.073,-71.6966C139.043,-60.8463 133.869,-46.9167 129.853,-36.1043"/>
+</g>
+<!-- 3_3 -->
+<g id="node10" class="node"><title>3_3</title>
+<text text-anchor="middle" x="176.5" y="-14.3" font-family="Times,serif" font-size="14.00">3&#45;0</text>
+</g>
+<!-- 2_2&#45;&gt;3_3 -->
+<g id="edge12" class="edge"><title>2_2&#45;&gt;3_3</title>
+<path fill="none" stroke="black" d="M156.174,-71.6966C160.359,-60.8463 165.732,-46.9167 169.903,-36.1043"/>
+</g>
+</g>
+</svg>
+
+</div>
+
+</div>
+
+</div>
+</div>
+
+</div>
+<div class="cell border-box-sizing text_cell rendered">
+<div class="prompt input_prompt">
+</div>
+<div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<h4 id="Linear-implementation-of-the-many-predicate">Linear implementation of the <code>many</code> predicate<a class="anchor-link" href="#Linear-implementation-of-the-many-predicate">&#182;</a></h4>
+</div>
+</div>
+</div>
+<div class="cell border-box-sizing code_cell rendered">
+<div class="input">
+<div class="prompt input_prompt">In&nbsp;[23]:</div>
+<div class="inner_cell">
+    <div class="input_area">
+<div class=" highlight hl-ipython3"><pre><span class="c"># TODO (see library for solution)</span>
 </pre></div>
 
 </div>
@@ -1024,35 +1142,6 @@ many(Template, Test) :-
 
 </div>
 </div>
-</div>
-<div class="cell border-box-sizing text_cell rendered">
-<div class="prompt input_prompt">
-</div>
-<div class="inner_cell">
-<div class="text_cell_render border-box-sizing rendered_html">
-<p><em>Document setup</em>: This document can be run as an IPython notebook. You can ignore the next code block.</p>
-
-</div>
-</div>
-</div>
-<div class="cell border-box-sizing code_cell rendered">
-<div class="input">
-<div class="prompt input_prompt">In&nbsp;[7]:</div>
-<div class="inner_cell">
-    <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span class="k">class</span> <span class="nc">problogResult</span><span class="p">:</span>
-    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">string</span><span class="p">):</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">list</span> <span class="o">=</span> <span class="p">[</span><span class="n">s</span><span class="o">.</span><span class="n">rsplit</span><span class="p">(</span><span class="s">&#39;:&#39;</span><span class="p">,</span><span class="mi">1</span><span class="p">)</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">string</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&#39;</span><span class="se">\n</span><span class="s">&#39;</span><span class="p">)</span> <span class="k">if</span> <span class="n">s</span> <span class="o">!=</span> <span class="s">&#39;&#39;</span><span class="p">]</span>
-        <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">list</span><span class="p">:</span> <span class="n">t</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">t</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">list</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span><span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">reverse</span><span class="o">=</span><span class="k">True</span><span class="p">)</span>
-    <span class="k">def</span> <span class="nf">_repr_html_</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="k">return</span> <span class="s">&#39;&lt;table&gt;&#39;</span><span class="o">+</span><span class="s">&#39;&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="s">&#39;&lt;tr&gt;{}&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="s">&#39;&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="s">&#39;&lt;td&gt;{}&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">cell</span><span class="p">)</span> <span class="k">for</span> <span class="n">cell</span> <span class="ow">in</span> <span class="n">row</span><span class="p">]))</span> <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">list</span><span class="p">])</span><span class="o">+</span><span class="s">&#39;&lt;/table&gt;&#39;</span>
-</pre></div>
-
-</div>
-</div>
-</div>
-
 </div>
     </div>
   </div>

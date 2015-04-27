@@ -25,12 +25,17 @@
 %% - Anton Dries
 %%
 
-:- load_external('whirl.py').
+:- use_module('whirl.py').
+
 
 P::similar(X,Y) :-
-    call_external(similarity(X,Y), P),
+    similarity(X,Y,P),
     P > 0.0.
 
+% Example usage of similar and similarity
+
+%query(similarity('will', 'will smith', P)).
+%query(similar('will', 'will smith')).
 
 % FACTS
 
@@ -75,7 +80,7 @@ q3(Cinema,Movie,Times,Review) :- listing(Cinema,Movie,Times),
 % See where the latest science fiction comedy is playing
 q4(Movie1) :- listing(Cinema, Movie1, Times), review(Movie2, Review),
               similar(Movie1, Movie2),
-              similar(Review,"comedy with space aliens").
+              similar(Review,'comedy with space aliens').
 %query(q4(M)).
 
 
@@ -87,11 +92,11 @@ q4(Movie1) :- listing(Cinema, Movie1, Times), review(Movie2, Review),
 view1(Cinema) :- listing(Cinema, Movie1, Times), 
                  review(Movie2, Review),
                  similar(Movie1, Movie2),
-                 similar(Review, "comedy with space aliens").
+                 similar(Review, 'comedy with space aliens').
 view1(Cinema) :- listing(Cinema, Movie1, Times),
                  review(Movie2, Review),
                  similar(Movie1, Movie2),
-                 similar(Review, "animated Walt Disney film").
+                 similar(Review, 'animated Walt Disney film').
 q4a(Cinema) :- view1(Cinema).
 %query(q4a(C)).
 
@@ -100,28 +105,12 @@ q4a(Cinema) :- view1(Cinema).
 
 % Movie with Will Smith that won an award
 q5a(Movie, Cat) :- review(Movie ,Review),
-              similar(Review, "Will Smith"),
+              similar(Review, 'Will Smith'),
               academy_award(Cat), winner(Movie2, Cat),
               similar(Movie, Movie2).
 %query(q5a(M,C)).
 
-% Auxiliaries
-%many_int([], P, N, 0) :-
-%    T is P+N,
-%    T = 0.
-%many_int([], P, N, S) :-
-%    T is P+N,
-%    T > 0,
-%    S is P/T.
-%many_int([H|T], PA, NA, S) :-
-%    (  call(H), PAN is PA + 1, NAN is NA;      % Test: true
-%     \+call(H), PAN is PA,     NAN is NA + 1), % Test: false
-%    many_int(T, PAN, NAN, S).
-%
-%S::many_int_prob(L) :-
-%    many_int(L, 0, 0, S).
-
-% More efficient version
+% Many predicate
 many_int_prob(L) :- many_int(L, 0, 0, L).
 
 many_int([], P, N, L) :- T is P+N, T > 0, S is P/T, w(S,L).
@@ -139,9 +128,6 @@ many(Template, Test) :-
 % Movie that is currently playing and has many academy awards
 q5(M) :-
     listing(_,M,_),
-    % many(Template, Test) as findall(Test, Template, L)
-    findall(winner(M,C,Y), (academy_award(C),winner(_,C,Y)), L),
-    many_int_prob(L).
+    many((academy_award(C),winner(_,C,Y)), winner(M,C,Y)).
 %query(q5(M)).
-
 
