@@ -782,6 +782,8 @@ class ClauseDB(LogicProgram):
                 new_head = struct.head.apply(variables)
                 body_node = self._compile(struct.body, variables)
                 return self._add_clause_node(new_head, body_node, len(variables), variables.local_variables)
+        elif isinstance(struct, Var):
+            raise InstantiationError('Unexpected variable in clause body', self.lineno(struct.location))
         elif isinstance(struct, Term):
             if struct.functor == 'findall' and struct.arity == 3:
                 # Special case for findall: any variables added by the first two arguments of findall
