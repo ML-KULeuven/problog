@@ -201,7 +201,7 @@ def check_mode(args, accepted, functor=None, location=None, database=None, **kwd
     """
     Checks the arguments against a list of accepted types.
     :param args: arguments to check
-    :type args: list of Term
+    :type args: tuple of Term
     :param accepted: list of accepted combination of types (see mode_types)
     :type accepted: list of basestring
     :param functor: functor of the call (used for error message)
@@ -936,12 +936,12 @@ def builtin_findall(pattern, goal, result, database=None, target=None, engine=No
 
 class problog_export(object):
 
-    engine = None
+    database = None
 
     @classmethod
     def add_function(cls, name, in_args, out_args, function):
-        if cls.engine is not None:
-            cls.engine.add_simple_builtin(name, in_args+out_args, function)
+        if cls.database is not None:
+            cls.database.add_extern(name, in_args+out_args, function)
 
     def __init__(self, *args, **kwdargs):
         # TODO check if arguments are in order: input first, output last
@@ -1011,12 +1011,12 @@ class problog_export(object):
 
 def builtin_use_module(filename, engine=None, database=None, location=None, **kwdargs ):
     filename = os.path.join(database.source_root, atom_to_filename(filename))
-    load_external_module(engine, filename)
+    load_external_module(database, filename)
     return True
 
 
-def load_external_module(engine, filename):
+def load_external_module(database, filename):
     import imp
-    problog_export.engine = engine
+    problog_export.database = database
     with open(filename, 'r') as extfile:
         imp.load_module('externals', extfile, filename, ('.py', 'U', 1))

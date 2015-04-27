@@ -43,11 +43,14 @@ def get_binary_paths() :
     return list(map(os.path.abspath,[ os.path.join(binary_root, system), binary_root ]))
     
 def get_module_paths() :
-    """Get a list of additional module search paths."""    
+    """Get a list of additional module search paths."""
     binary_root = os.path.join(os.path.dirname(__file__), 'lib' )
     system = get_system()  # Darwin, Linux, ?    
     python = 'python%s' % sys.version_info[0]
-    return list(map(os.path.abspath,[ os.path.join(binary_root, python, system), os.path.join(binary_root, python), binary_root ]))
+    return list(map(os.path.abspath,
+                    [os.path.join(binary_root, python, system),
+                     os.path.join(binary_root, python),
+                     binary_root]))
     
 
 def gather_info() :

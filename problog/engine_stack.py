@@ -52,6 +52,7 @@ class StackBasedEngine(ClauseDBEngine) :
         self.node_types['clause'] = self.eval_clause
         self.node_types['choice'] = self.eval_choice
         self.node_types['builtin'] = self.eval_builtin
+        self.node_types['extern'] = self.eval_extern
         
         self.cycle_root = None
         self.pointer = 0
@@ -140,7 +141,6 @@ class StackBasedEngine(ClauseDBEngine) :
         target = kwdargs['target']
         database = kwdargs['database']
         if not hasattr(target, '_cache') : target._cache = DefineCache()
-        
         actions = self.eval( node_id, parent=None, **kwdargs)
         cleanUp = False
         
@@ -424,14 +424,18 @@ class StackBasedEngine(ClauseDBEngine) :
             return [newResult(parent, result, ground_node, identifier, True)]
         else:
             return [complete(parent, identifier)]
+
+    def eval_extern(self, node=None, **kwdargs):
+        return self.eval_builtin(node=SimpleBuiltIn(node.function), **kwdargs)
+
+    def eval_builtin(self, **kwdargs):
+        return self.eval_default(EvalBuiltIn, **kwdargs)
     
-    def eval_builtin(engine, **kwdargs) :
-        return engine.eval_default(EvalBuiltIn, **kwdargs)
-    
-    def eval_default(engine, eval_type, **kwdargs) :
-        node = eval_type(pointer=engine.pointer, engine=engine, **kwdargs)
-        cleanUp, actions = node()    # Evaluate the node
-        if not cleanUp : engine.add_record( node )
+    def eval_default(self, eval_type, **kwdargs) :
+        node = eval_type(pointer=self.pointer, engine=self, **kwdargs)
+        cleanup, actions = node()    # Evaluate the node
+        if not cleanup:
+            self.add_record(node)
         return actions
 
 

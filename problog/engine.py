@@ -115,7 +115,7 @@ class ClauseDBEngine(GenericEngine):
         sig = '%s/%s' % (predicate, arity)
         self.__builtin_index[sig] = -(len(self.__builtins) + 1)
         self.__builtins.append(function)
-        
+
     def get_builtins(self):
         """Get the list of builtins."""
         return self.__builtin_index
@@ -531,6 +531,7 @@ class ClauseDB(LogicProgram):
     _conj = namedtuple('conj', ('children', 'location'))
     _neg = namedtuple('neg', ('child', 'location'))
     _choice = namedtuple('choice', ('functor', 'args', 'probability', 'locvars', 'group', 'choice', 'location'))
+    _extern = namedtuple('extern', ('functor', 'arity', 'function',))
     
     def __init__(self, builtins=None, parent=None):
         LogicProgram.__init__(self)
@@ -601,7 +602,6 @@ class ClauseDB(LogicProgram):
         
     def _add_call_node(self, term):
         """Add a *call* node."""
-        
         if term.signature in ('query/1', 'evidence/1', 'evidence/2'):
             raise AccessError("Can\'t call %s directly." % term.signature)
         
@@ -706,6 +706,19 @@ class ClauseDB(LogicProgram):
             return self._add_define_node(term, fact_node)
         else:
             return self.add_clause(Clause(term, Term('true')))
+
+    def add_extern(self, predicate, arity, function):
+        head = Term(predicate, *[None]*arity)
+        node_id = self._get_head(head)
+        if node_id is None:
+            node_id = self._append_node(self._extern(predicate, arity, function))
+            self._set_head(head, node_id)
+        else:
+            node = self.getNode(node_id)
+            if node == ():
+                self._set_node(node_id, self._extern(predicate, arity, function))
+            else:
+                raise AccessError("External function overrides already defined predicate '%s'" % head.signature)
     
     def _compile(self, struct, variables=None):
         """
