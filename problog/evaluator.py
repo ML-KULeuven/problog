@@ -5,8 +5,9 @@ from collections import defaultdict
 import subprocess
 import sys, os, tempfile
 import math
+from .core import ProbLogError
 
-class InconsistentEvidenceError(Exception) : pass
+class InconsistentEvidenceError(ProbLogError) : pass
 
 class Semiring(object) :
     
