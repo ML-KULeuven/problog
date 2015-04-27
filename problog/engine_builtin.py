@@ -288,7 +288,7 @@ def builtin_split_call(term, parts, database=None, location=None, **kwdargs):
             return [(elements[0], parts)]
         else:
             term_part = elements[0](*elements[1:])
-            return [(term_part , parts)]
+            return [(term_part, parts)]
     else:
         part_list = (term.withArgs(), ) + term.args
         current = Term('[]')
@@ -297,10 +297,10 @@ def builtin_split_call(term, parts, database=None, location=None, **kwdargs):
         try:
             local_values = {}
             list_part = unify_value(current, parts, local_values)
-            elements, tail = list_elements(L)
+            elements, tail = list_elements(list_part)
             term_new = elements[0](*elements[1:])
-            term_part = unify_value( term, term_new, local_values)
-            return [(term_part ,list_part)]
+            term_part = unify_value(term, term_new, local_values)
+            return [(term_part, list_part)]
         except UnifyError:
             return []
 
