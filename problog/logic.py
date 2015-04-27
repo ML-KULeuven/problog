@@ -707,7 +707,7 @@ for f in from_math_1 :
 
 from_math_0 = [ 'pi', 'e' ]
 for f in from_math_0 :
-    functions[(f,0)] = getattr(math,f)
+    functions[(f,0)] = lambda: getattr(math,f)
 
 def unquote(s) :
     return s.strip("'")
