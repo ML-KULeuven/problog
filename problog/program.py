@@ -120,7 +120,10 @@ class PrologFactory(Factory) :
         
     def build_clause(self, functor, operand1, operand2, location=None, **extra) :
         heads = operand1
-        #heads = self._uncurry( operand1, ';' )
+        for head in heads:
+            if not type(head) == Term:
+                # TODO compute correct location
+                raise GroundingError("Unexpected clause head '%s'" % head)
         if len(heads) > 1 :
             return AnnotatedDisjunction(heads, operand2, location=location)
         else :

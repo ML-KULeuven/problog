@@ -390,7 +390,7 @@ class PrologParser(object) :
     def _build_clause( self, functor, operand1, operand2, location ) :
         heads = []
         current = operand1
-        while current.functor == ';' :
+        while current.functor == ';':
             heads.append(current.args[0])
             current = current.args[1]
         heads.append(current)
