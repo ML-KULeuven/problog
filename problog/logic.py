@@ -199,6 +199,93 @@ class Term(object):
             return self.__class__(self.functor, *args, p=self.probability.apply(subst), location=self.location)
 
     def __repr__(self):
+        # Non-recursive version of __repr__
+        stack = [deque([self])]
+        # current: popleft from stack[-1]
+        # arguments: new level on stack
+        parts = []
+        put = parts.append
+        while stack:
+            current = stack[-1].popleft()
+            if current is None:
+                put('_')
+            elif type(current) == str:
+                put(current)
+            elif type(current) == int:
+                if current < 0:
+                    put('X%s' % -current)
+                else:
+                    put('A%s' % (current+1))
+            elif type(current) == And:  # Depends on level
+                q = deque()
+                q.append('(')
+                if type(current.args[0]) == Or:
+                    q.append('(')
+                    q.append(current.args[0])
+                    q.append(')')
+                else:
+                    q.append(current.args[0])
+                tail = current.args[1]
+                while isinstance(tail, Term) and tail.functor == ',' and tail.arity == 2:
+                    q.append(', ')
+                    if type(tail.args[0]) == Or:
+                        q.append('(')
+                        q.append(tail.args[0])
+                        q.append(')')
+                    else:
+                        q.append(tail.args[0])
+                    tail = tail.args[1]
+                q.append(', ')
+                if type(tail) == Or:
+                    q.append('(')
+                    q.append(tail)
+                    q.append(')')
+                else:
+                    q.append(tail)
+                q.append(')')
+                stack.append(q)
+            elif type(current) == Or:
+                q = deque()
+                q.append(current.args[0])
+                tail = current.args[1]
+                while isinstance(tail, Term) and tail.functor == ';' and tail.arity == 2:
+                    q.append('; ')
+                    q.append(tail.args[0])
+                    tail = tail.args[1]
+                q.append('; ')
+                q.append(tail)
+                stack.append(q)
+            elif current.functor == '.' and current.arity == 2:  # List
+                q = deque()
+                q.append('[')
+                q.append(current.args[0])
+                tail = current.args[1]
+                while isinstance(tail, Term) and tail.functor == '.' and tail.arity == 2:
+                    q.append(', ')
+                    q.append(tail.args[0])
+                    tail = tail.args[1]
+                if not tail == Term('[]'):
+                    q.append(' | ')
+                    q.append(tail)
+                q.append(']')
+                stack.append(q)
+            else:
+                put(str(current.functor))
+                if current.args:
+                    q = deque()
+                    q.append('(')
+                    q.append(current.args[0])
+                    for a in current.args[1:]:
+                        q.append(',')
+                        q.append(a)
+                    q.append(')')
+                    stack.append(q)
+            while stack and not stack[-1]:
+                stack.pop(-1)
+        return ''.join(parts)
+
+
+    def repr_recursive(self):
         # TODO make non-recursive
         if self.probability is None:
             prob = ''
