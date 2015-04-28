@@ -3,6 +3,7 @@ Unification
 """
 
 from __future__ import print_function
+from .core import GroundingError
 
 
 def is_variable(term):
@@ -61,6 +62,13 @@ def instantiate(term, context):
         return term.apply(context)
 
 
+class OccursCheck(GroundingError):
+
+
+    def __init__(self):
+        GroundingError.__init__(self, 'Infinite unification')
+
+
 def unify_value(value1, value2, source_values):
     """
     Unify two values that exist in the same context.
@@ -91,6 +99,8 @@ def unify_value(value1, value2, source_values):
         if value1 is None:
             return value2
         else:
+            #if value1 in value2.variables():
+            #    raise OccursCheck()
             value = unify_value(source_values.get(value1), value2, source_values)
             source_values[value1] = value
             return value
@@ -98,6 +108,8 @@ def unify_value(value1, value2, source_values):
         if value2 is None:
             return value1
         else:
+            #if value2 in value1.variables():
+            #    raise OccursCheck()
             value = unify_value(source_values.get(value2), value1, source_values)
             source_values[value2] = value
             return value
@@ -316,7 +328,6 @@ def _unify_call_return_single(source_value, target_value, target_context, source
         # Target value is Term (which can contain variables)
         if is_variable(source_value):   # source value is variable (integer < 0)
             assert type(source_value) == int and source_value < 0
-
             source_values[source_value] = \
                 unify_value(source_values.get(source_value), target_value, source_values)
         else:   # source value is a Term (which can still contain variables)

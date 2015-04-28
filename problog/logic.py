@@ -197,8 +197,9 @@ class Term(object):
                 return self.__class__(self.functor, *args, location=self.location)
         else:
             return self.__class__(self.functor, *args, p=self.probability.apply(subst), location=self.location)
-            
+
     def __repr__(self):
+        # TODO make non-recursive
         if self.probability is None:
             prob = ''
         else :
