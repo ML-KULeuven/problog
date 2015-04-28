@@ -125,7 +125,7 @@ class StackBasedEngine(ClauseDBEngine) :
         
     def checkCycle(self, child, parent) :
         current = child
-        while current != parent :
+        while current > parent :
             exec_node = self.stack[current]
             if exec_node.on_cycle :
                 break
