@@ -99,8 +99,8 @@ def unify_value(value1, value2, source_values):
         if value1 is None:
             return value2
         else:
-            #if value1 in value2.variables():
-            #    raise OccursCheck()
+            if value1 in value2.variables():
+                raise OccursCheck()
             value = unify_value(source_values.get(value1), value2, source_values)
             source_values[value1] = value
             return value
@@ -108,8 +108,8 @@ def unify_value(value1, value2, source_values):
         if value2 is None:
             return value1
         else:
-            #if value2 in value1.variables():
-            #    raise OccursCheck()
+            if value2 in value1.variables():
+                raise OccursCheck()
             value = unify_value(source_values.get(value2), value1, source_values)
             source_values[value2] = value
             return value

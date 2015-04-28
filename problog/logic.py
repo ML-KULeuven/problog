@@ -172,31 +172,51 @@ class Term(object):
             self.__signature = '%s/%s' % (functor.strip("'"), self.arity)
         return self.__signature
 
-        
     def apply(self, subst):
         """Apply the given substitution to the variables in the term.
-        
+
         :param subst: A mapping from variable names to something else
         :type subst: an object with a __getitem__ method
         :raises: whatever subst.__getitem__ raises
         :returns: a new Term with all variables replaced by their values from the given substitution
         :rtype: :class:`Term`
-        
+
         """
-        args = []
-        for arg in self.args:
-            if not isinstance(arg, Term):
-                args.append(subst[arg])
+        old_stack = [deque([self])]
+        new_stack = []
+        term_stack = []
+        while old_stack:
+            current = old_stack[-1].popleft()
+            if current is None or type(current) == int:
+                if new_stack:
+                    new_stack[-1].append(subst[current])
+                else:
+                    return subst[current]
+            elif current.isVar():
+                if new_stack:
+                    new_stack[-1].append(subst[current.name])
+                else:
+                    return subst[current.name]
             else:
-                args.append(arg.apply(subst))
-        
-        if self.probability is None:
-            if self.__class__ == And or self.__class__ == Or:
-                return self.__class__(*args, location=self.location)
-            else:
-                return self.__class__(self.functor, *args, location=self.location)
-        else:
-            return self.__class__(self.functor, *args, p=self.probability.apply(subst), location=self.location)
+                # Add arguments to stack
+                term_stack.append(current)
+                q = deque(current.args)
+                if current.probability is not None:
+                    q.append(current.probability)
+                old_stack.append(q)
+                new_stack.append([])
+            while old_stack and not old_stack[-1]:
+                old_stack.pop(-1)
+                new_args = new_stack.pop(-1)
+                term = term_stack.pop(-1)
+                if term.probability is not None:
+                    new_term = term.withArgs(*new_args[:-1], p=new_args[-1])
+                else:
+                    new_term = term.withArgs(*new_args)
+                if new_stack:
+                    new_stack[-1].append(new_term)
+                else:
+                    return new_term
 
     def __repr__(self):
         # Non-recursive version of __repr__
@@ -255,7 +275,7 @@ class Term(object):
                 q.append('; ')
                 q.append(tail)
                 stack.append(q)
-            elif current.functor == '.' and current.arity == 2:  # List
+            elif isinstance(current, Term) and current.functor == '.' and current.arity == 2:  # List
                 q = deque()
                 q.append('[')
                 q.append(current.args[0])
@@ -269,7 +289,7 @@ class Term(object):
                     q.append(tail)
                 q.append(']')
                 stack.append(q)
-            else:
+            elif isinstance(current, Term):
                 put(str(current.functor))
                 if current.args:
                     q = deque()
@@ -280,6 +300,8 @@ class Term(object):
                         q.append(a)
                     q.append(')')
                     stack.append(q)
+            else:
+                put(str(current))
             while stack and not stack[-1]:
                 stack.pop(-1)
         return ''.join(parts)
@@ -318,7 +340,7 @@ class Term(object):
         """
         return self.withArgs(*args)
         
-    def withArgs(self, *args):
+    def withArgs(self, *args, **kwdargs):
         """Creates a new Term with the same functor and the given arguments.
         
         :param args: new arguments for the term
@@ -327,8 +349,12 @@ class Term(object):
         :rtype: :class:`Term`
         
         """
+        if 'p' in kwdargs:
+            p = kwdargs['p']
+        else:
+            p = self.probability
         if self.probability is not None:
-            return self.__class__(self.functor, *args, p=self.probability, location=self.location)
+            return self.__class__(self.functor, *args, p=p, location=self.location)
         else:
             return self.__class__(self.functor, *args, location=self.location)
             
@@ -349,24 +375,36 @@ class Term(object):
         """
         return False
         
-    def isGround(self) :
+    def isGround(self):
         """Checks whether the term contains any variables."""
-        if self.__is_ground is None :
-            for arg in self.args :
-                if not isinstance(arg,Term) or not arg.isGround() :
+        if self.__is_ground is None:
+            queue = deque([self])
+            while queue:
+                term = queue.popleft()
+                if term is None or type(term) == int or term.isVar():
                     self.__is_ground = False
-                    break
-            else :
-                self.__is_ground = True
-        return self.__is_ground
+                    return False
+                else:
+                    queue.extend(term.args)
+            self.__is_ground = True
+            return True
+        else:
+            return self.__is_ground
     
-    def variables(self) :
+    def variables(self):
+        """
+        Extract the variables present in the term.
+        :return: set of variables
+        :rtype: OrderedSet
+        """
         variables = OrderedSet()
-        for arg in self.args :
-            if type(arg) == int or arg is None :
-                variables.add(arg)
-            else :
-                variables |= arg.variables()
+        queue = deque([self])
+        while queue:
+            term = queue.popleft()
+            if term is None or type(term) == int or term.isVar():
+                variables.add(term)
+            else:
+                queue.extend(term.args)
         return variables
 
     def __eq__(self, other):
@@ -464,20 +502,7 @@ class Var(Term) :
     def value(self) : 
         """Value of the constant."""
         raise ValueError('Variables do not support evaluation.')
-       
-    def apply(self, subst) :
-        """Replace the variable with a value from the given substitution.
-        
-        :param subst: A mapping from variable names to something else
-        :type subst: an object with a __getitem__ method
-        :raises: whatever subst.__getitem__ raises
-        :returns: the value from subst that corresponds to this variable's name
-        """
-        return subst[self.name]
-    
-    def variables(self) :
-        return set([self.name])
-    
+           
     def isVar(self) :
         """Checks whether this Term represents a variable.
         
