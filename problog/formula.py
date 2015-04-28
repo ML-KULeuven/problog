@@ -506,7 +506,9 @@ class LogicFormula(ProbLogObject) :
         """Break cycles."""
         
         assert(not preserve_tables)                    
-        
+
+        # TODO make non-recursive
+
         # TODO implement preserve tables
         #   This copies the table information from self._def_nodes and translates all result nodes
         #   This requires all result nodes to be maintained separately (add them to protected).

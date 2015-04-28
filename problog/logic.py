@@ -68,6 +68,8 @@ import sys
 from .util import OrderedSet
 from .core import GroundingError
 
+from collections import deque
+
 
 class InstantiationError(GroundingError):
     pass
@@ -278,8 +280,36 @@ class Term(object):
             else :
                 variables |= arg.variables()
         return variables
-        
-    def __eq__(self, other) :
+
+    def __eq__(self, other):
+        # Non-recursive version of equality check.
+        l1 = deque([self])
+        l2 = deque([other])
+        while l1 and l2:
+            t1 = l1.popleft()
+            t2 = l2.popleft()
+
+            if type(t1) != type(t2):
+                return False
+            elif type(t1) == int:
+                if t1 != t2:
+                    return False
+            elif t1 is None:
+                if t2 is not None:
+                    return False
+            else:  # t1 and t2 are Terms
+                if t1.functor != t2.functor:
+                    return False
+                if t1.arity != t2.arity:
+                    return False
+                l1.extend(t1.args)
+                l2.extend(t2.args)
+        return l1 == l2  # Should both be empty.
+
+    def __eq__rec(self, other) :
+        # implement non-recursive
+
+
         # TODO: this can be very slow?
         if other is None : 
             return False
