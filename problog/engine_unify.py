@@ -249,7 +249,22 @@ def _unify_call_head_single(source_value, target_value, target_context, source_v
                 raise UnifyError()
 
 
-def unify_call_return(call_args, head_args, target_context, var_translate):
+class _VarTranslateWrapper(object):
+
+    def __init__(self, var_translate, min_var):
+        self.base = var_translate
+        self.min_var = min_var
+
+    def __getitem__(self, item):
+        if item in self.base:
+            return self.base[item]
+        else:
+            self.min_var -= 1
+            self.base[item] = self.min_var
+            return self.min_var
+
+
+def unify_call_return(call_args, head_args, target_context, var_translate, min_var):
     """
     Unify argument list from clause call and clause head.
     :param call_args: arguments of the call
@@ -258,6 +273,7 @@ def unify_call_return(call_args, head_args, target_context, var_translate):
     :param var_translate:
     :raise UnifyError: unification failed
     """
+    var_translate = _VarTranslateWrapper(var_translate, min_var)
     source_values = {}  # contains the values unified to the variables in the call arguments
     for call_arg, head_arg in zip(call_args, head_args):
         # Translate the variables in the source value (V3) to negative variables in current context (V2)

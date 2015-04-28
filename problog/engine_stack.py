@@ -342,12 +342,13 @@ class StackBasedEngine(ClauseDBEngine) :
 
     def eval_call(self, node_id, node, context, parent, transform=None, identifier=None, **kwdargs):
         call_args, var_translate = substitute_call_args(node.args, context)
+        min_var = self._context_min_var(context)
 
         def result_transform(result):
             output = self._clone_context(context)
             try:
                 assert(len(result) == len(node.args))
-                output = unify_call_return(result, node.args, output, var_translate)
+                output = unify_call_return(result, node.args, output, var_translate, min_var)
                 return output
             except UnifyError:
                 pass
@@ -366,7 +367,19 @@ class StackBasedEngine(ClauseDBEngine) :
         except UnknownClauseInternal:
             loc = kwdargs['database'].lineno(node.location)
             raise UnknownClause(origin, location=loc)
-        
+
+    def _context_min_var(self, context):
+        min_var = 0
+        for c in context:
+                if is_variable(c):
+                    if c is not None and c < 0:
+                        min_var = min(min_var, c)
+                else:
+                    variables = [v for v in c.variables() if v is not None]
+                    if variables:
+                        min_var = min(min_var, min(variables))
+        return min_var
+
     def eval_clause(self, context, node, node_id, parent, transform=None, identifier=None, **kwdargs) :
         new_context = self._create_context([None]*node.varcount)
 
@@ -375,15 +388,7 @@ class StackBasedEngine(ClauseDBEngine) :
             # Note: new_context should not contain None values. We should replace these with negative numbers.
             # 1. Find lowest negative number in new_context.
             #   TODO better option is to store this in context somewhere
-            min_var = 0
-            for c in new_context:
-                if is_variable(c):
-                    if c is not None and c < 0:
-                        min_var = min(min_var, c)
-                else:
-                    variables = [v for v in c.variables() if v is not None]
-                    if variables:
-                        min_var = min(min_var, min(variables))
+            min_var = self._context_min_var(new_context)
             # 2. Replace None in new_context with negative values
             cc = min_var
             for i, c in enumerate(new_context):
