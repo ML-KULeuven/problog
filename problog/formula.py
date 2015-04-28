@@ -3,7 +3,7 @@ from __future__ import print_function
 from collections import namedtuple, defaultdict
 import warnings
 
-from .core import transform, ProbLogObject
+from .core import transform, ProbLogObject, ProbLogError
 
 from .util import Timer
 
@@ -513,23 +513,26 @@ class LogicFormula(ProbLogObject) :
         #   This copies the table information from self._def_nodes and translates all result nodes
         #   This requires all result nodes to be maintained separately (add them to protected).
         #   Problem: how to do this without knowledge about internal structure of the engine. 
-        
-        with Timer('Cycle breaking'):
-          # Output formula
-          if output is None : output = LogicDAG()
-          
-          # Protected nodes (these have to exist separately)
-          protected = set( [ y for x,y in self.getNames() ] )
-                  
-          # Translation table from old to new.
-          translate = {}
-          
-          # Handle the given nodes one-by-one
-          for name, node, label in self.getNamesWithLabel() :
-              if label != self.LABEL_NAMED :
-                  new_node, cycles = self._extract( output, node, protected, translate )
-                  translate[node] = new_node
-                  output.addName(name, new_node, label)
+        try:
+            with Timer('Cycle breaking'):
+              # Output formula
+              if output is None : output = LogicDAG()
+
+              # Protected nodes (these have to exist separately)
+              protected = set( [ y for x,y in self.getNames() ] )
+
+              # Translation table from old to new.
+              translate = {}
+
+              # Handle the given nodes one-by-one
+              for name, node, label in self.getNamesWithLabel() :
+                  if label != self.LABEL_NAMED :
+                      new_node, cycles = self._extract( output, node, protected, translate )
+                      translate[node] = new_node
+                      output.addName(name, new_node, label)
+        except RuntimeError as err:
+            if str(err).startswith('maximum recursion depth'):
+                raise ProbLogError('Program too large for cycle breaking. Use --recursion-limit argument to increase recursion limit.')
         
         return output
 
