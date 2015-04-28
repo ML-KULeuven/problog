@@ -120,10 +120,13 @@ class PrologFactory(Factory) :
         
     def build_clause(self, functor, operand1, operand2, location=None, **extra) :
         heads = operand1
+        # TODO move this to parser code
         for head in heads:
             if not type(head) == Term:
                 # TODO compute correct location
                 raise GroundingError("Unexpected clause head '%s'" % head)
+            elif len(heads) > 1 and head.probability is None:
+                raise GroundingError("Non-probabilistic head in multi-head clause '%s'" % head)
         if len(heads) > 1 :
             return AnnotatedDisjunction(heads, operand2, location=location)
         else :

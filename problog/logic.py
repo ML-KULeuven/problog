@@ -604,10 +604,13 @@ class LogicProgram(object):
         """Add clause or fact using the ``+=`` operator."""
         if isinstance(clausefact, Or):
             heads = clausefact.toList()
+            # TODO move this to parser code
             for head in heads:
                 if not type(head) == Term:
                     # TODO compute correct location
                     raise GroundingError("Unexpected fact '%s'" % head)
+                elif len(heads) > 1 and head.probability is None:
+                    raise GroundingError("Non-probabilistic head in multi-head clause '%s'" % head)
             self.add_clause(AnnotatedDisjunction(heads, Term('true')))
         elif isinstance(clausefact, AnnotatedDisjunction):
             self.add_clause(clausefact)
