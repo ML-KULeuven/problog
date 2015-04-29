@@ -4,15 +4,7 @@ Unification
 
 from __future__ import print_function
 from .core import GroundingError
-
-
-def is_variable(term):
-    """Test whether a Term represents a variable.
-
-    :param term: term to check
-    :return: True if the expression is a variable
-    """
-    return term is None or type(term) == int
+from .logic import is_variable
 
 
 class UnifyError(Exception):

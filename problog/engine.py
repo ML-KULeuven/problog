@@ -4,11 +4,9 @@ import logging
 
 from collections import defaultdict, namedtuple
 
-from .program import PrologFile
 from .logic import *
 from .formula import LogicFormula
 from .engine_unify import *
-from .engine_builtin import *
 
 from .core import transform, GroundingError
 from .util import Timer
@@ -335,76 +333,6 @@ class UnknownClause(GroundingError):
     def __init__(self, signature, location):
         GroundingError.__init__(self, "No clauses found for '%s'" % signature, location)
 
-
-def addStandardBuiltIns(engine, b=None, s=None, sp=None):
-    """Add Prolog builtins to the given engine."""
-    
-    # Shortcut some wrappers
-    if b is None: b = BooleanBuiltIn
-    if s is None: s = SimpleBuiltIn
-    if sp is None: sp = SimpleProbabilisticBuiltIn
-    
-    engine.add_builtin('true', 0, b(builtin_true))   # -1
-    engine.add_builtin('fail', 0, b(builtin_fail))   # -2
-    engine.add_builtin('false', 0, b(builtin_fail))  # -3
-
-    engine.add_builtin('=', 2, s(builtin_eq))        # -4
-    engine.add_builtin('\=', 2, b(builtin_neq))      # -5
-
-    engine.add_builtin('findall',3,sp(builtin_findall)) # -6
-
-    engine.add_builtin('==', 2, b(builtin_same))
-    engine.add_builtin('\==', 2, b(builtin_notsame))
-
-    engine.add_builtin('is', 2, s(builtin_is))
-
-    engine.add_builtin('>', 2, b(builtin_gt))
-    engine.add_builtin('<', 2, b(builtin_lt))
-    engine.add_builtin('=<', 2, b(builtin_le))
-    engine.add_builtin('>=', 2, b(builtin_ge))
-    engine.add_builtin('=\=', 2, b(builtin_val_neq))
-    engine.add_builtin('=:=', 2, b(builtin_val_eq))
-
-    engine.add_builtin('var', 1, b(builtin_var))
-    engine.add_builtin('atom', 1, b(builtin_atom))
-    engine.add_builtin('atomic', 1, b(builtin_atomic))
-    engine.add_builtin('compound', 1, b(builtin_compound))
-    engine.add_builtin('float', 1, b(builtin_float))
-    engine.add_builtin('rational', 1, b(builtin_rational))
-    engine.add_builtin('integer', 1, b(builtin_integer))
-    engine.add_builtin('nonvar', 1, b(builtin_nonvar))
-    engine.add_builtin('number', 1, b(builtin_number))
-    engine.add_builtin('simple', 1, b(builtin_simple))
-    engine.add_builtin('callable', 1, b(builtin_callable))
-    engine.add_builtin('dbreference', 1, b(builtin_dbreference))
-    engine.add_builtin('primitive', 1, b(builtin_primitive))
-    engine.add_builtin('ground', 1, b(builtin_ground))
-    engine.add_builtin('is_list', 1, b(builtin_is_list))
-    
-    engine.add_builtin('=..', 2, s(builtin_split_call))
-    engine.add_builtin('arg', 3, s(builtin_arg))
-    engine.add_builtin('functor', 3, s(builtin_functor))
-    
-    engine.add_builtin('@>',2, b(builtin_struct_gt))
-    engine.add_builtin('@<',2, b(builtin_struct_lt))
-    engine.add_builtin('@>=',2, b(builtin_struct_ge))
-    engine.add_builtin('@=<',2, b(builtin_struct_le))
-    engine.add_builtin('compare',3, s(builtin_compare))
-
-    engine.add_builtin('length',2, s(builtin_length))
-    engine.add_builtin('call_external',2, s(builtin_call_external))
-
-    engine.add_builtin('sort',2, s(builtin_sort))
-    engine.add_builtin('between', 3, s(builtin_between))
-    engine.add_builtin('succ',2, s(builtin_succ))
-    engine.add_builtin('plus',3, s(builtin_plus))
-    
-    engine.add_builtin('consult', 1, b(builtin_consult))
-    engine.add_builtin('.', 2, b(builtin_consult_as_list))
-    engine.add_builtin('load_external', 1, b(builtin_load_external))
-    engine.add_builtin('unknown',1,b(builtin_unknown))
-
-    engine.add_builtin('use_module', 1, b(builtin_use_module))
     
 from .engine_stack import StackBasedEngine as DefaultEngine
 
@@ -450,7 +378,7 @@ class ClauseIndex(list):
         # for i, xx in enumerate(self.__index):
         #     print ('\t', i, xx)
         for i, arg in enumerate(arguments):
-            if arg is None or type(arg) == int or not arg.isGround(): 
+            if not is_ground(arg):
                 pass # Variable => no restrictions
             else:
                 curr = self.__index[i].get(arg)
@@ -479,7 +407,7 @@ class ClauseIndex(list):
         key = []
         args = self.__parent.getNode(item).args
         for arg in args:
-            if isinstance(arg,Term) and arg.isGround():
+            if is_ground(arg):
                 key.append(arg)
             else:
                 key.append(None)

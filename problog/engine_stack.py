@@ -2,10 +2,11 @@ from __future__ import print_function
 
 import sys
 
-from .logic import Term, ArithmeticError
-from .engine import UnifyError, instantiate, is_ground, UnknownClause, UnknownClauseInternal, is_variable
-from .engine import addStandardBuiltIns, check_mode, GroundingError, NonGroundProbabilisticClause
+from .logic import Term, ArithmeticError, is_ground
+from .engine import UnifyError, instantiate, UnknownClause, UnknownClauseInternal, is_variable
+from .engine import GroundingError, NonGroundProbabilisticClause
 from .engine import ClauseDBEngine, substitute_head_args, substitute_call_args, unify_call_head, unify_call_return
+from .engine_builtin import add_standard_builtins, IndirectCallCycleError
 
 
 class NegativeCycle(GroundingError):
@@ -13,13 +14,6 @@ class NegativeCycle(GroundingError):
     
     def __init__(self, location=None):
         GroundingError.__init__(self, 'Negative cycle detected', location)
-
-
-class IndirectCallCycleError(GroundingError) :
-    """Cycle should not pass through indirect calls (e.g. call/1, findall/3)."""
-    
-    def __init__(self, location=None):
-        GroundingError.__init__(self, 'Indirect cycle detected (passing through call/1 or findall/3)', location)
 
         
 class InvalidEngineState(GroundingError):
@@ -418,7 +412,7 @@ class StackBasedEngine(ClauseDBEngine) :
                 result = self.handle_nonground(result=result, node=node, target=target, database=database,
                                                context=context, parent=parent, node_id=node_id,
                                                identifier=identifier, **kwdargs)
-            
+
         probability = instantiate(node.probability, result)
         # Create a new atom in ground program.
         origin = (node.group, result)
@@ -1207,35 +1201,9 @@ class SimpleProbabilisticBuiltIn(object) :
     def __str__(self) :   # pragma: no cover
         return str(self.base_function)
 
-def builtin_call( term, args=(), engine=None, callback=None, **kwdargs ) :
-    # TODO does not support cycle through call!
-    check_mode( (term,), 'c', functor='call' )
-    # Find the define node for the given query term.
-    term_call = term.withArgs( *(term.args + args ))
-    try:
-        results = engine.call( term_call, subcall=True, **kwdargs )
-    except UnknownClauseInternal:
-        raise UnknownClause(term_call.signature, kwdargs['database'].lineno(kwdargs['location']))
-    actions = []
-    n = len(term.args)
-    for res, node in results :
-        res1 = res[:n]
-        res2 = res[n:]
-        res_pass = (term.withArgs(*res1),) + tuple(res2)
-        actions += callback.notifyResult(engine._create_context(res_pass), node, False)
-    actions += callback.notifyComplete()
-    return True, actions
-
-def builtin_callN( term, *args, **kwdargs ) :
-    return builtin_call(term, args, **kwdargs)
 
 def addBuiltIns(engine) :
     
-    addStandardBuiltIns(engine, BooleanBuiltIn, SimpleBuiltIn, SimpleProbabilisticBuiltIn )
+    add_standard_builtins(engine, BooleanBuiltIn, SimpleBuiltIn, SimpleProbabilisticBuiltIn )
     
-    #These are special builtins
-    engine.add_builtin('call', 1, builtin_call)
-    for i in range(2,10) :
-        engine.add_builtin('call', i, builtin_callN)
-
 

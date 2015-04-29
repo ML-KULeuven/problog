@@ -103,6 +103,13 @@ def term2str(term):
 
 
 def list2term(lst):
+    """
+    Transform a Python list of terms in to a Prolog Term.
+    :param lst: list of Terms
+    :type lst: list of Term
+    :return: Term representing a Prolog list
+    :rtype: Term
+    """
     tail = Term('[]')
     for e in reversed(lst):
         tail = Term('.', e, tail)
@@ -110,6 +117,14 @@ def list2term(lst):
 
 
 def term2list(term):
+    """
+    Transform a Prolog list to a Python list of terms.
+    :param term: term representing a fixed length Prolog list
+    :type term: Term
+    :raise ValueError: given term is not a valid fixed length Prolog list
+    :return: Python list containing the elements from the Prolog list
+    :rtype: list of Term
+    """
     result = []
     while term.functor == '.' and term.arity == 2:
         result.append(term.args[0])
@@ -117,6 +132,29 @@ def term2list(term):
     if not term == Term('[]'):
         raise ValueError('Expected fixed list.')
     return result
+
+
+def is_ground(*terms):
+    """Test whether a any of given terms contains a variable.
+    :param terms: list of terms to test for the presence of variables
+    :param terms: tuple of (Term | int | None)
+    :return: True if none of the arguments contains any variables.
+    """
+    for term in terms:
+        if is_variable(term):
+            return False
+        elif not term.is_ground():
+            return False
+    return True
+
+
+def is_variable(term):
+    """Test whether a Term represents a variable.
+
+    :param term: term to check
+    :return: True if the expression is a variable
+    """
+    return term is None or type(term) == int
 
 
 class Term(object):
@@ -306,30 +344,6 @@ class Term(object):
                 stack.pop(-1)
         return ''.join(parts)
 
-
-    def repr_recursive(self):
-        # TODO make non-recursive
-        if self.probability is None:
-            prob = ''
-        else :
-            prob = '%s::' % self.probability
-        
-        if self.arity == 2 and self.functor == '.':
-            # Special treatment of lists.
-            elements = []
-            tail = self
-            while isinstance(tail,Term) and tail.arity == 2 and tail.functor == '.':
-                elements.append(tail.args[0])
-                tail = tail.args[1]
-            if str(tail) == '[]':
-                return '[%s]' % ', '.join(map(term2str, elements))
-            else:
-                return '[%s|%s]' % (', '.join(map(term2str, elements)), term2str(tail))
-        if self.args:
-            return '%s%s(%s)' % (prob, self.functor, ','.join(map(term2str, self.args)))
-        else:
-            return '%s%s' % (prob, self.functor,)
-        
     def __call__(self, *args):
         """
         Create a new Term with the same functor and the given arguments.
@@ -375,7 +389,7 @@ class Term(object):
         """
         return False
         
-    def isGround(self):
+    def is_ground(self):
         """Checks whether the term contains any variables."""
         if self.__is_ground is None:
             queue = deque([self])
@@ -502,7 +516,7 @@ class Var(Term) :
     def value(self) : 
         """Value of the constant."""
         raise ValueError('Variables do not support evaluation.')
-           
+
     def isVar(self) :
         """Checks whether this Term represents a variable.
         
