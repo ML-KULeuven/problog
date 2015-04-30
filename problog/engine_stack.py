@@ -16,7 +16,7 @@ class NegativeCycle(GroundingError):
         GroundingError.__init__(self, 'Negative cycle detected', location)
 
         
-class InvalidEngineState(GroundingError):
+class InvalidEngineState(Exception):
     pass
 
 NODE_TRUE = 0
@@ -817,7 +817,7 @@ class EvalDefine(EvalNode) :
                         a, act = self.complete(source)
                         actions += act
                     else :
-                        a = None
+                        a = False
                     return a, actions
                 else :
                     cache_key = (self.node.functor, res)
@@ -839,11 +839,13 @@ class EvalDefine(EvalNode) :
                     #     self.engine.debug = True
                     #     self.engine.trace = True
                     if self.isOnCycle() : actions += self.notifyResult(res, result_node)
-                    if self.is_ground and self.engine.debug : print ('Notify children with is_last:', self.pointer, self.cycle_children)
-                    actions += self.notifyResultChildren(res, result_node, is_last=self.is_ground)
-                    if self.is_ground :
-                        self.engine.cycle_root.cycle_close -= set(self.cycle_children)
-                    #    actions += [ complete( p, self.identifier) for p in self.cycle_children ]
+
+                    actions += self.notifyResultChildren(res, result_node, is_last=False)
+                    # TODO the following optimization doesn't always work, see test/some_cycles.pl
+                    # actions += self.notifyResultChildren(res, result_node, is_last=self.is_ground)
+                    # if self.is_ground :
+                    #     self.engine.cycle_root.cycle_close -= set(self.cycle_children)
+
                     if is_last : 
                         a, act = self.complete(source)
                         actions += act
