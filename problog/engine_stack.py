@@ -72,7 +72,7 @@ class StackBasedEngine(ClauseDBEngine) :
         exec_func = self.create_node_type( node_type )
         if exec_func is None :
             if self.unknown == self.UNKNOWN_FAIL :
-                return [ complete( kwdargs['parent'], kwdargs['identifier'])]
+                return [ complete( kwdargs['parent'], kwdargs.get('identifier'))]
             else :
                 raise UnknownClauseInternal()
         return exec_func(node_id=node_id, node=node, **kwdargs)
