@@ -9,15 +9,18 @@
 #   Concept:
 #       Each term has a value which is stored in the SampledFormula.
 #       When an probabilistic atom or choice atom is evaluated:
-#           - if probability is boolean discrete:       determine Yes/No, store in formula and return 0 (True) or None (False)
-#           - if probability is non-boolean discrete:   determine value, store value in formula and return key to value
+#           - if probability is boolean discrete:
+#                           determine Yes/No, store in formula and return 0 (True) or None (False)
+#           - if probability is non-boolean discrete:
+#                           determine value, store value in formula and return key to value
 #       Adds builtin sample(X,S) that calls X and returns the sampled value in S.
 
 from __future__ import print_function
 
-import sys, os
+import sys
+import os
 
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__),'..','..')))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
 
 from problog.program import PrologFile
 from problog.logic import Term, Constant
@@ -26,28 +29,36 @@ from problog.engine_builtin import check_mode
 from problog.formula import LogicFormula
 import random
 
-def sample_value( term ) :
+
+def sample_value(term):
+    """
+    Sample a value from the distribution described by the term.
+    :param term: term describing a distribution
+    :type term: Term
+    :return: value of the term
+    :rtype: Constant
+    """
     # TODO add discrete distribution
-    if term.functor == 'normal' :
-        a,b = map(float, term.args)
-        return Constant(random.normalvariate(a,b))
-    elif term.functor == 'poisson' :
+    if term.functor == 'normal':
+        a, b = map(float, term.args)
+        return Constant(random.normalvariate(a, b))
+    elif term.functor == 'poisson':
         import numpy.random
         a = map(float, term.args)
         return Constant(numpy.random.poisson(a)[0])
-    elif term.functor == 'exponential' :
+    elif term.functor == 'exponential':
         a = map(float, term.args)
         return Constant(random.expovariate(a))
-    elif term.functor == 'beta' :
-        a,b = map(float, term.args)
-        return Constant(random.betavariate(a,b))
-    elif term.functor == 'gamma' :
-        a,b = map(float, term.args)
-        return Constant(random.gammavariate(a,b))
-    elif term.functor == 'uniform' :
-        a,b = map(float, term.args)
-        return Constant(random.randrange(a,b))
-    elif term.functor == 'constant' :
+    elif term.functor == 'beta':
+        a, b = map(float, term.args)
+        return Constant(random.betavariate(a, b))
+    elif term.functor == 'gamma':
+        a, b = map(float, term.args)
+        return Constant(random.gammavariate(a, b))
+    elif term.functor == 'uniform':
+        a, b = map(float, term.args)
+        return Constant(random.randrange(a, b))
+    elif term.functor == 'constant':
         return term.args[0]
     else :
         raise ValueError("Unknown distribution: '%s'" % term.functor)
