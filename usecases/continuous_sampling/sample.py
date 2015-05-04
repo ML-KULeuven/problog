@@ -161,6 +161,26 @@ class SampledFormula(LogicFormula) :
             sep = '\n'
         return sep.join(set(lines))
         #return '%s%s%% Probability: %.8g' % (sep.join(set(lines)),sep,self.probability)
+        
+    def toTuples(self, db):
+        lines = []
+        for k, v in self.queries() :
+            if not v is None : 
+                val = self.getValue(v)
+                if val is None :
+                    lines.append((k.functor,) + k.args + (None,))
+                else :
+                    lines.append((k.functor,) + k.args + (val,))
+        # if with_facts :
+        #     for k, v in self.facts.items() :
+        #         if v : lines.append(str(translate(db, k)) + '.')
+            
+        # if oneline :
+        #     sep = ' '
+        # else :
+        #     sep = '\n'
+        return list(set(lines))
+        
 
 def translate(db, atom_id) :
     if type(atom_id) == tuple :
@@ -184,17 +204,17 @@ def builtin_sample(term, result, target=None, engine=None, callback=None, **kwda
     actions += callback.notifyComplete()
     return True, actions
 
-def sample( filename, N=1, with_facts=False, oneline=False ) :
-    pl = PrologFile(filename)
-    
+def sample(model, N=1, with_facts=False, oneline=False, tuples=False ) :
     engine = DefaultEngine()
     engine.add_builtin('sample',2, builtin_sample)
-    db = engine.prepare(pl)
+    db = engine.prepare(model)
     
     for i in range(0, N) :
         result = engine.ground_all(db, target=SampledFormula())
-        print ('====================')
-        print (result.toString(db, with_facts, oneline))
+        if tuples:
+            yield result.toTuples(db)
+        else:
+            yield result.toString(db, with_facts, oneline)
 
 # def sample_object(pl, N=1):
 #     engine = DefaultEngine()
@@ -257,4 +277,8 @@ if __name__ == '__main__' :
         result = estimate( args.filename, args.N )
         print_result((True,result), sys.stdout)
     else :
-        sample( args.filename, args.N, args.with_facts, args.oneline )
+        pl = PrologFile(args.filename)
+        for s in sample(pl, args.N, args.with_facts, args.oneline):
+            print ('====================')
+            print (s)
+            
