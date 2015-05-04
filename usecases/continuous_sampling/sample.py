@@ -21,8 +21,8 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__),'..','
 
 from problog.program import PrologFile
 from problog.logic import Term, Constant
-from problog.engine import DefaultEngine, check_mode
-from problog.engine_stack import SimpleBuiltIn
+from problog.engine import DefaultEngine
+from problog.engine_builtin import check_mode
 from problog.formula import LogicFormula
 import random
 
