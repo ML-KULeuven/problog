@@ -31,7 +31,9 @@ def print_result( d, output, precision=8 ) :
 def process_error( err ) :
     """Take the given error raise by ProbLog and produce a meaningful error message."""
     err_type = type(err).__name__
-    if err_type == 'ParseException' :
+    if err_type == 'MemoryError':
+        return { 'message': 'ProbLog exceeded the available memory limit.' }
+    elif err_type == 'ParseException' :
         return { 'message': 'Parsing error on %s:%s: %s.\n%s' % (err.lineno, err.col, err.msg, err.line ), 'lineno' : err.lineno, 'col': err.col }
     elif isinstance(err, ParseError) :
         return { 'message': 'Parsing error on %s:%s: %s.' % (err.lineno, err.col, err.msg ), 'lineno' : err.lineno, 'col' : err.col } 
