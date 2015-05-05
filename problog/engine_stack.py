@@ -31,10 +31,11 @@ def newResult(obj, result, ground_node, source, is_last) :
 def complete(obj, source) :
     return ( 'c', obj, (source,), {} )
     
-class StackBasedEngine(ClauseDBEngine) :
 
-    def __init__(self, label_all=False, **kwdargs) :
-        ClauseDBEngine.__init__(self,**kwdargs)
+class StackBasedEngine(ClauseDBEngine):
+
+    def __init__(self, label_all=False, **kwdargs):
+        ClauseDBEngine.__init__(self, **kwdargs)
         
         self.node_types = {}
         self.node_types['fact'] = self.eval_fact
@@ -60,9 +61,7 @@ class StackBasedEngine(ClauseDBEngine) :
         
         self.label_all = label_all
 
-        # from .debug import EngineTracer
-        # self.debugger = EngineTracer()
-        self.debugger = None
+        self.debugger = kwdargs.get('debugger')
 
     def eval(self, node_id, **kwdargs):
         database = kwdargs['database']
@@ -385,6 +384,9 @@ class StackBasedEngine(ClauseDBEngine) :
         return engine.eval_default(EvalNot, **kwdargs)
 
     def eval_call(self, node_id, node, context, parent, transform=None, identifier=None, **kwdargs):
+        if self.debugger:
+            self.debugger.call_create(node_id, node.functor, context, parent)
+
         call_args, var_translate = substitute_call_args(node.args, context)
         min_var = self._context_min_var(context)
 
@@ -393,6 +395,8 @@ class StackBasedEngine(ClauseDBEngine) :
             try:
                 assert(len(result) == len(node.args))
                 output = unify_call_return(result, node.args, output, var_translate, min_var)
+                if self.debugger:
+                    self.debugger.call_result(node_id, node.functor, context, output)
                 return output
             except UnifyError:
                 pass
