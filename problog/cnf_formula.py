@@ -7,6 +7,7 @@ from .util import Timer
 
 import tempfile
 
+
 class CNF(ProbLogObject) :
     """A logic formula in Conjunctive Normal Form.
     
@@ -14,7 +15,7 @@ class CNF(ProbLogObject) :
     
     """
     
-    def __init__(self) :
+    def __init__(self, **kwdargs):
         self.__atom_count = 0
         self.__lines = []
         self.__constraints = []
@@ -65,15 +66,13 @@ class CNF(ProbLogObject) :
         
     def isTrivial(self) :
         return len(self.__lines) == 0
-        
-# CNFFile -> read CNF
-# CNF -> CNFFile write toDimacs
 
-class CNFFormula(LogicDAG) :
+
+class CNFFormula(LogicDAG):
     """A CNF stored in memory."""
     
-    def __init__(self) :
-        LogicDAG.__init__(auto_compact=False)
+    def __init__(self, **kwdargs):
+        LogicDAG.__init__(auto_compact=False, **kwdargs)
         
     def __iter__(self) :
         for n in LogicDAG.__iter__(self) :
@@ -88,7 +87,7 @@ class CNFFile(CNF) :
     
     # TODO add read functionality???
     
-    def __init__(self, filename=None, readonly=True) :
+    def __init__(self, filename=None, readonly=True, **kwdargs):
         self.filename = filename
         self.readonly = readonly
         
@@ -107,7 +106,7 @@ class CNFFile(CNF) :
             f.write('\n'.join(self.__lines))
 
 @transform(LogicDAG, CNF) 
-def clarks_completion( source, destination ) :    
+def clarks_completion(source, destination, **kwdargs):
     with Timer('Clark\'s completion'):
         # Every node in original gets a literal
         num_atoms = len(source)

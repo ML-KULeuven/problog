@@ -396,7 +396,7 @@ class StackBasedEngine(ClauseDBEngine):
                 assert(len(result) == len(node.args))
                 output = unify_call_return(result, node.args, output, var_translate, min_var)
                 if self.debugger:
-                    self.debugger.call_result(node_id, node.functor, call_args, output)
+                    self.debugger.call_result(node_id, node.functor, call_args, result)
                 return output
             except UnifyError:
                 pass

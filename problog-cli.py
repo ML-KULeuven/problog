@@ -11,6 +11,7 @@ from problog.sdd_formula import SDD
 from problog.util import Timer, start_timer, stop_timer
 from problog.core import process_error
 from problog.parser import DefaultPrologParser
+from problog.debug import EngineTracer
 
 
 def print_result( d, output, precision=8 ) :    
@@ -30,13 +31,17 @@ def print_result( d, output, precision=8 ) :
         print (d, file=output)
         return 1
 
-def main( filename, knowledge=NNF, semiring=None, parser_class=DefaultPrologParser, debug=False ) :
+def main( filename, knowledge=NNF, semiring=None, parse_class=DefaultPrologParser, debug=False, engine_debug=False) :
     logger = logging.getLogger('problog')
+    if engine_debug:
+        debugger = EngineTracer()
+    else:
+        debugger = None
 
     try :
         with Timer('Total time to processing model'):
           parser = parse_class(ExtendedPrologFactory())
-          formula = knowledge.createFrom(PrologFile(filename, parser=parser))
+          formula = knowledge.createFrom(PrologFile(filename, parser=parser), debugger=debugger)
         with Timer('Evaluation'):
           result = formula.evaluate(semiring=semiring)
         return True, result
@@ -59,6 +64,7 @@ def argparser() :
     parser.add_argument('--recursion-limit', help="Set recursion limit. Increase this value if you get an unbounded program error. (default: %d)" % sys.getrecursionlimit(), default=sys.getrecursionlimit(), type=int)
     parser.add_argument('--timeout', '-t', type=int, default=0, help="Set timeout (in seconds, default=off).")
     parser.add_argument('--debug', '-d', action='store_true', help="Enable debug mode (print full errors).")
+    parser.add_argument('--engine-debug', action='store_true', help=argparse.SUPPRESS)
     return parser
 
 if __name__ == '__main__' :
@@ -140,7 +146,7 @@ if __name__ == '__main__' :
     
         for filename in args.filenames :
             if len(args.filenames) > 1 : print ('Results for %s:' % filename)
-            retcode = print_result( main(filename, knowledge, semiring, parse_class, args.debug), output )
+            retcode = print_result( main(filename, knowledge, semiring, parse_class, args.debug, args.engine_debug), output )
             if len(args.filenames) == 1 : sys.exit(retcode)
 
     if args.output != None : output.close()

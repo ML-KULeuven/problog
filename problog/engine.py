@@ -13,7 +13,7 @@ from .util import Timer
 
 
 @transform(LogicProgram, LogicFormula)
-def ground(model, target=None, queries=None, evidence=None):
+def ground(model, target=None, queries=None, evidence=None, **kwdargs):
     """
     Ground a given model.
    :param model: logic program to ground
@@ -27,7 +27,7 @@ def ground(model, target=None, queries=None, evidence=None):
    :return: the ground program
    :rtype: LogicFormula
     """
-    return DefaultEngine().ground_all(model, target, queries=queries, evidence=evidence)
+    return DefaultEngine(**kwdargs).ground_all(model, target, queries=queries, evidence=evidence)
 
 
 class GenericEngine(object):  # pragma: no cover
@@ -80,7 +80,7 @@ class ClauseDBEngine(GenericEngine):
     UNKNOWN_ERROR = 0
     UNKNOWN_FAIL = 1
 
-    def __init__(self, builtins=True):
+    def __init__(self, builtins=True, **kwdargs):
         self.__builtin_index = {}
         self.__builtins = []
         self.__externals = {}

@@ -11,6 +11,10 @@ LABEL_EVIDENCE_MAYBE = "evidence?"
 LABEL_NAMED = "named"
 
 
+class TransformationUnavailable(Exception):
+    pass
+
+
 class ProbLog(object) :
     """This is a static class"""
     
@@ -38,19 +42,33 @@ class ProbLog(object) :
                                 yield path + (action,d)
     
     @classmethod
-    def convert( cls, src, target ) :
-        for path in cls.findPaths(src,target) :
-            current_obj = src
-            path = path[1:]
-            while path :
-                if path[1] != None :
-                    next_obj = path[0]( current_obj, path[1]() )
-                else :
-                    next_obj = path[1].createFromDefaultAction(current_obj)
-                path = path[2:]
-                current_obj = next_obj
-            return current_obj
-        raise ProbLogError("No conversion strategy found from an object of class '%s' to an object of class '%s'." % ( type(src).__name__, target.__name__ ))
+    def convert(cls, src, target, **kwdargs):
+        """
+        Convert the source object into an object of the target class.
+        :param src: source object
+        :param target: target class
+        :param kwdargs: additional arguments passed to transformation functions
+        """
+        # Find transformation paths from source to target.
+        for path in cls.findPaths(src, target):
+            try:
+                # A path is a sequence of obj, function, obj/class, function, obj/class, ..., obj_class
+                current_obj = src
+                path = path[1:]
+                # Invariant: path[0] is a function, path[1] is an obj/class
+                while path:
+                    if path[1] is not None:
+                        next_obj = path[0](current_obj, path[1](**kwdargs), **kwdargs)
+                    else:
+                        next_obj = path[1].createFromDefaultAction(current_obj, **kwdargs)
+                    path = path[2:]
+                    current_obj = next_obj
+                return current_obj
+            except TransformationUnavailable:
+                # The current transformation strategy didn't work for some reason. Try another one.
+                pass
+        raise ProbLogError("No conversion strategy found from an object of class '%s' to an object of class '%s'."
+                           % (type(src).__name__, target.__name__))
 
 
 class ProbLogError(Exception):
@@ -110,8 +128,8 @@ class ProbLogObject(object) :
 
 
     @classmethod
-    def createFrom(cls, obj) :
-        return ProbLog.convert( obj, cls )
+    def createFrom(cls, obj, **kwdargs):
+        return ProbLog.convert(obj, cls, **kwdargs)
 
     @classmethod
     def createFromDefaultAction(cls, src) :

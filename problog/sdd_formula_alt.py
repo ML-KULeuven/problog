@@ -19,10 +19,10 @@ except Exception :
 #    warnings.warn('The SDD library could not be found!', RuntimeWarning)
 
 
-class SDDtp(LogicFormula, Evaluatable) :
+class SDDtp(LogicFormula, Evaluatable):
     """Alternative SDD-based LogicFormula for forward reasoning."""
     
-    def __init__(self, var_count=None) :
+    def __init__(self, var_count=None, **kwdargs):
         LogicFormula.__init__(self, auto_compact=False)
         
         self.sdd_nodes = None
@@ -33,7 +33,7 @@ class SDDtp(LogicFormula, Evaluatable) :
         
         self.sdd_manager = None
         self.var_count = var_count
-        if var_count != None and var_count != 0 :
+        if var_count is not None and var_count != 0 :
             self.sdd_manager = sdd.sdd_manager_create(var_count + 1, 0) # auto-gc & auto-min
             
         self.sdd_nodes_prv = None

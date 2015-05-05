@@ -18,10 +18,10 @@ class DSharpError(CompilationError) :
 
 class NNF(LogicDAG, Evaluatable) :
     
-    def __init__(self) :
+    def __init__(self, **kwdargs):
         LogicDAG.__init__(self, auto_compact=False)
 
-    def _createEvaluator(self, semiring, weights) :
+    def _createEvaluator(self, semiring, weights):
         return SimpleNNFEvaluator(self, semiring, weights)
 
 
@@ -171,7 +171,7 @@ class Compiler(object) :
 
 if system_info.get('c2d', False) :
     @transform(CNF, NNF)
-    def _compile_with_c2d( cnf, nnf=None ) :
+    def _compile_with_c2d( cnf, nnf=None, **kwdargs) :
         fd, cnf_file = tempfile.mkstemp('.cnf')
         os.close(fd)
         nnf_file = cnf_file + '.nnf'
@@ -191,7 +191,7 @@ if system_info.get('c2d', False) :
 
 
 @transform(CNF, NNF)
-def _compile_with_dsharp( cnf, nnf=None ) :
+def _compile_with_dsharp( cnf, nnf=None, **kwdargs) :
     with Timer('DSharp compilation'):
         cnf_file = tempfile.mkstemp('.cnf')[1]
         nnf_file = tempfile.mkstemp('.nnf')[1]    

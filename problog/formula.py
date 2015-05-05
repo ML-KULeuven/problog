@@ -9,7 +9,8 @@ from .util import Timer
 
 import logging, tempfile, subprocess, os
 
-class LogicFormula(ProbLogObject) :
+
+class LogicFormula(ProbLogObject):
     """A logic formula is a data structure that is used to represent generic And-Or graphs.
     It can typically contain three types of nodes:
     
@@ -52,7 +53,7 @@ class LogicFormula(ProbLogObject) :
     def _create_disj( self, children ) :
         return self._disj(children)
     
-    def __init__(self, auto_compact=True, avoid_name_clash=False, keep_order=False, use_string_names=False) :
+    def __init__(self, auto_compact=True, avoid_name_clash=False, keep_order=False, use_string_names=False, **kwdargs):
         ProbLogObject.__init__(self)
         
         # List of nodes
@@ -811,10 +812,11 @@ class LogicFormula(ProbLogObject) :
             q += 1
         return s + '}'
 
-class LogicDAG(LogicFormula) : 
+
+class LogicDAG(LogicFormula):
     
-    def __init__(self, auto_compact=True) :
-        LogicFormula.__init__(self, auto_compact)
+    def __init__(self, auto_compact=True, **kwdargs):
+        LogicFormula.__init__(self, auto_compact, **kwdargs)
 
 
 class DeterministicLogicFormula(LogicFormula):
@@ -824,14 +826,16 @@ class DeterministicLogicFormula(LogicFormula):
 
     def addAtom(self, identifier, probability, group=None):
         return self.TRUE
-        
+
+
 @transform(LogicFormula, LogicDAG)
-def breakCycles(source, target) :
+def breakCycles(source, target, **kwdargs):
     logger = logging.getLogger('problog')
     result = source.makeAcyclic(preserve_tables=False, output=target)
     logger.debug("Ground program size: %s", len(result))
     return result
-        
+
+
 class StringKeyLogicFormula(LogicFormula) :
     """A propositional logic formula consisting of and, or, not and atoms."""
     

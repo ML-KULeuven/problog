@@ -48,9 +48,9 @@ class EngineTracer(object):
         self.level -= 1
         if self.call_results[(node_id, functor, tuple(context))] > 0:
             # print ('  ' * self.level, "return success")
-            pass
+            print ('  ' * self.level, "complete", Term(functor, *context))
         else:
-            print ('  ' * self.level, "fail")
+            print ('  ' * self.level, "fail", Term(functor, *context))
         self.call_results[(node_id, functor, tuple(context))] = 0
 
 #  Assume the program

@@ -18,7 +18,8 @@ except Exception :
     sdd = None
 #    warnings.warn('The SDD library could not be found!', RuntimeWarning)
 
-class SDD(LogicDAG, Evaluatable) :
+
+class SDD(LogicDAG, Evaluatable):
     """A propositional logic formula consisting of and, or, not and atoms represented as an SDD.
 
     This class has two restrictions with respect to the default LogicFormula:
@@ -35,7 +36,7 @@ class SDD(LogicDAG, Evaluatable) :
     _disj = namedtuple('disj', ('children', 'sddnode') )
     # negation is encoded by using a negative number for the key
 
-    def __init__(self, var_count=None) :
+    def __init__(self, var_count=None, **kwdargs):
         LogicDAG.__init__(self, auto_compact=False)
         
         if sdd is None :
@@ -43,8 +44,8 @@ class SDD(LogicDAG, Evaluatable) :
         
         self.sdd_manager = None
         self.var_count = var_count
-        if var_count != None and var_count != 0 :
-            self.sdd_manager = sdd.sdd_manager_create(var_count + 1, 0) # auto-gc & auto-min
+        if var_count is not None and var_count != 0:
+            self.sdd_manager = sdd.sdd_manager_create(var_count + 1, 0)  # auto-gc & auto-min
     
     def setVarCount(self, var_count) :
         self.var_count = var_count
@@ -166,24 +167,24 @@ class SDD(LogicDAG, Evaluatable) :
     
             
 @transform(LogicDAG, SDD)
-def buildSDD( source, destination ) :
+def buildSDD( source, destination, **kwdargs):
     with Timer('Compiling SDD'):
         size = len(source)
         destination.setVarCount(size)
-        for i, n, t in source :
-            if t == 'atom' :
-                destination.addAtom( n.identifier, n.probability, n.group )
-            elif t == 'conj' :
-                destination.addAnd( n.children )
-            elif t == 'disj' :
-                destination.addOr( n.children )
-            else :
+        for i, n, t in source:
+            if t == 'atom':
+                destination.addAtom(n.identifier, n.probability, n.group)
+            elif t == 'conj':
+                destination.addAnd(n.children)
+            elif t == 'disj':
+                destination.addOr(n.children)
+            else:
                 raise TypeError('Unknown node type')
                 
-        for name, node, label in source.getNamesWithLabel() :
+        for name, node, label in source.getNamesWithLabel():
             destination.addName(name, node, label)
         
-        for c in source.constraints() :
+        for c in source.constraints():
             destination.addConstraint(c)
 
     return destination
