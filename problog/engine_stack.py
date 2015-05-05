@@ -384,11 +384,11 @@ class StackBasedEngine(ClauseDBEngine):
         return engine.eval_default(EvalNot, **kwdargs)
 
     def eval_call(self, node_id, node, context, parent, transform=None, identifier=None, **kwdargs):
-        if self.debugger:
-            self.debugger.call_create(node_id, node.functor, context, parent)
-
         call_args, var_translate = substitute_call_args(node.args, context)
         min_var = self._context_min_var(context)
+
+        if self.debugger:
+            self.debugger.call_create(node_id, node.functor, call_args, parent)
 
         def result_transform(result):
             output = self._clone_context(context)
@@ -396,7 +396,7 @@ class StackBasedEngine(ClauseDBEngine):
                 assert(len(result) == len(node.args))
                 output = unify_call_return(result, node.args, output, var_translate, min_var)
                 if self.debugger:
-                    self.debugger.call_result(node_id, node.functor, context, output)
+                    self.debugger.call_result(node_id, node.functor, call_args, output)
                 return output
             except UnifyError:
                 pass

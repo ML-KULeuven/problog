@@ -36,16 +36,22 @@ class EngineTracer(object):
             self.call_return(*self.call_redirect[msgtarget])
 
     def call_create(self, node_id, functor, context, parent):
-        print ('  ' * self.level, "CALL", Term(functor, *context))
+        print ('  ' * self.level, "call", Term(functor, *context))
         self.level += 1
         self.call_redirect[parent] = (node_id, functor, context)
 
     def call_result(self, node_id, functor, context, result):
-        print ('  ' * self.level, "RESULT", Term(functor, *result))
+        print ('  ' * self.level, "result", Term(functor, *result))
+        self.call_results[(node_id, functor, tuple(context))] += 1
 
     def call_return(self, node_id, functor, context):
         self.level -= 1
-        print ('  ' * self.level, "RETURN", Term(functor, *context))
+        if self.call_results[(node_id, functor, tuple(context))] > 0:
+            # print ('  ' * self.level, "return success")
+            pass
+        else:
+            print ('  ' * self.level, "fail")
+        self.call_results[(node_id, functor, tuple(context))] = 0
 
 #  Assume the program
 #   a(1).
