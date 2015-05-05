@@ -60,8 +60,11 @@ class StackBasedEngine(ClauseDBEngine) :
         
         self.label_all = label_all
 
-    
-    def eval(self, node_id, **kwdargs) :
+        # from .debug import EngineTracer
+        # self.debugger = EngineTracer()
+        self.debugger = None
+
+    def eval(self, node_id, **kwdargs):
         database = kwdargs['database']
         if node_id < 0 :
             node_type = 'builtin'
@@ -127,104 +130,151 @@ class StackBasedEngine(ClauseDBEngine) :
                 raise NegativeCycle(location=exec_node.database.lineno(exec_node.node.location))
             current = exec_node.parent
         
-    def execute(self, node_id, subcall=False, **kwdargs ) :
+    def execute(self, node_id, target=None, database=None, subcall=False, **kwdargs):
+        """
+        Execute the given node.
+        :param node_id: pointer of the node in the database
+        :param subcall: indicates whether this is a toplevel call or a subcall
+        :param target: target datastructure for storing the ground program
+        :param database: database containing the logic program to ground
+        :param kwdargs: additional arguments
+        :return: results of the execution
+        """
+        # Find out debugging mode.
         self.trace = kwdargs.get('trace')
         self.debug = kwdargs.get('debug') or self.trace
-        stats = kwdargs.get('stats')    # Should support stats[i] += 1 with i=0..5
-        
-        target = kwdargs['target']
-        database = kwdargs['database']
-        if not hasattr(target, '_cache') : target._cache = DefineCache()
-        actions = self.eval( node_id, parent=None, **kwdargs)
-        cleanUp = False
-        
+        debugger = self.debugger
+
+        # Initialize the cache/table.
+        # This is stored in the target ground program because node ids are only valid in that context.
+        if not hasattr(target, '_cache'):
+            target._cache = DefineCache()
+
+        # Retrieve the list of actions needed to evaluate the top-level node.
+        actions = self.eval(node_id, parent=None, database=database, target=target, **kwdargs)
+
+        # Initialize the action stack.
         actions = list(reversed(actions))
-        max_stack = len(self.stack)
         solutions = []
-        while actions :
-            act, obj, args, kwdargs = actions.pop(-1)
-            if obj is None :
-                if act == 'r' :
-                    solutions.append( (args[0], args[1]) )
-                    if stats != None : stats[0] += 1
-                    if args[3] :    # Last result received
-                        if not subcall and self.pointer != 0 :  # pragma: no cover
+
+        # Main loop: process actions until there are no more.
+        while actions:
+            # Pop the next action.
+            # An action consists of 4 parts:
+            #   - act: the type of action (r, c, e)
+            #   - obj: the pointer on which to call the action
+            #   - args: the arguments of the action
+            #   - context: the execution context
+            act, obj, args, context = actions.pop(-1)
+
+            # Inform the debugger.
+            if debugger:
+                debugger.process_message(act, obj, args, context)
+
+            if obj is None:
+                # We have reached the top-level.
+                if act == 'r':
+                    # A new result is available
+                    solutions.append((args[0], args[1]))
+                    if args[3]:
+                        # Last result received
+                        if not subcall and self.pointer != 0:  # pragma: no cover
+                            # ERROR: the engine stack should be empty.
                             self.printStack()
                             raise InvalidEngineState('Stack not empty at end of execution!')
-                        if not subcall : self.shrink_stack()
+                        if not subcall:
+                            # Clean up the stack to save memory.
+                            self.shrink_stack()
                         return solutions
-                elif act == 'c' :
-                    if stats != None : stats[1] += 1
-                    if self.debug : print ('Maximal stack size:', max_stack)
+                elif act == 'c':
+                    # Indicates completion of the execution.
                     return solutions
-                else :   # pragma: no cover
+                else:
+                    # ERROR: unknown message
                     raise InvalidEngineState('Unknown message!')
             else:
-                if act == 'e' :
-                    if self.cycle_root != None and kwdargs['parent'] < self.cycle_root.pointer :
-                        cleanUp = False
-                        next_actions = self.cycle_root.closeCycle(True) + [ (act,obj,args,kwdargs) ]
-                    else :
-                        try :
-                            if stats != None : stats[2] += 1
-                            next_actions = self.eval( obj, *args, **kwdargs )
-                            cleanUp = False
+                # We are not at the top-level.
+                if act == 'e':
+                    # Never clean up in this case because 'obj' doesn't contain a pointer.
+                    cleanup = False
+                    # We need to execute another node.
+                    if self.cycle_root is not None and context['parent'] < self.cycle_root.pointer:
+                        # There is an active cycle and we are about to execute a node outside that cycle.
+                        # We first need to close the cycle.
+                        next_actions = self.cycle_root.closeCycle(True) + [(act, obj, args, context)]
+                    else:
+                        try:
+                            # Evaluate the next node.
+                            next_actions = self.eval(obj, *args, **context)
                             obj = self.pointer
-                        except UnknownClauseInternal :
-                            call_origin = kwdargs.get('call_origin')
-                            if call_origin is None :
+                        except UnknownClauseInternal:
+                            # An unknown clause was encountered.
+                            # TODO why is this handled here?
+                            call_origin = context.get('call_origin')
+                            if call_origin is None:
                                 sig = 'unknown'
                                 raise UnknownClause(sig, location=None)
-                            else :
+                            else:
                                 loc = database.lineno(call_origin[1])
                                 raise UnknownClause(call_origin[0], location=loc)
                 else:
-                    try :
+                    # The message is 'r' or 'c'. This means 'obj' should be a valid pointer.
+                    try:
+                        # Retrieve the execution node from the stack.
                         exec_node = self.stack[obj]
-                    except IndexError :   # pragma: no cover
+                    except IndexError:   # pragma: no cover
                         self.printStack()
-                        raise InvalidEngineState('Non-existing pointer: %s' % obj )
-                    if exec_node is None :   # pragma: no cover
+                        raise InvalidEngineState('Non-existing pointer: %s' % obj)
+                    if exec_node is None:   # pragma: no cover
                         print (act, obj)
                         raise InvalidEngineState('Invalid node at given pointer: %s' % obj)
-                    if act == 'r' :
-                        if stats != None : stats[0] += 1
-                        cleanUp, next_actions = exec_node.newResult(*args,**kwdargs)
-                    elif act == 'c' :
-                        if stats != None : stats[1] += 1
-                        cleanUp, next_actions = exec_node.complete(*args,**kwdargs)
-                    else :   # pragma: no cover
+
+                    if act == 'r':
+                        # A new result was received.
+                        cleanup, next_actions = exec_node.newResult(*args, **context)
+                    elif act == 'c':
+                        # A completion message was received.
+                        cleanup, next_actions = exec_node.complete(*args, **context)
+                    else:   # pragma: no cover
                         raise InvalidEngineState('Unknown message')
-                if not actions and not next_actions and self.cycle_root != None :
+
+                if not actions and not next_actions and self.cycle_root is not None:
+                    # If there are no more actions and we have an active cycle, we should close the cycle.
                     next_actions = self.cycle_root.closeCycle(True)
+                # Update the list of actions.
                 actions += list(reversed(next_actions))
-                if self.debug :   # pragma: no cover
-                    # if type(exec_node).__name__ in ('EvalDefine',) :
+
+                # Do debugging.
+                if self.debug:   # pragma: no cover
                     self.printStack(obj)
-                    if act in 'rco' : print (obj, act, args)
-                    print ( [ (a,o,x) for a,o,x,t in actions[-10:] ])
-                    if len(self.stack) > max_stack : max_stack = len(self.stack)
-                    if self.trace : 
+                    if act in 'rco':
+                        print (obj, act, args)
+                    print ([(a, o, x) for a, o, x, t in actions[-10:]])
+                    if self.trace:
                         a = sys.stdin.readline()
-                        if a.strip() == 'gp' :
+                        if a.strip() == 'gp':
                             print (target)
-                        elif a.strip() == 'l' :
+                        elif a.strip() == 'l':
                             self.trace = False
                             self.debug = False
-                if cleanUp :
-                    self.cleanUp(obj)
-                
-                        
+                if cleanup:
+                    self.cleanup(obj)
+
+        # This should never happen.
         self.printStack()     # pragma: no cover
         print ('Collected results:', solutions)    # pragma: no cover
         raise InvalidEngineState('Engine did not complete correctly!')    # pragma: no cover
     
-    def cleanUp(self, obj) :
-        if self.cycle_root and self.cycle_root.pointer == obj :
+    def cleanup(self, obj):
+        """
+        Remove the given node from the stack and lower the pointer.
+        :param obj: pointer of the object to remove
+        :type obj: int
+        """
+        if self.cycle_root and self.cycle_root.pointer == obj:
             self.cycle_root = None
         self.stack[obj] = None
-        while self.pointer > 0 and self.stack[self.pointer-1] is None :
-            #self.stack.pop(-1)
+        while self.pointer > 0 and self.stack[self.pointer-1] is None:
             self.pointer -= 1
         
         
