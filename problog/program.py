@@ -16,7 +16,11 @@ class SimpleProgram(LogicProgram) :
         self.__clauses = []
 
     def add_clause(self, clause):
-        self.__clauses.append(clause)
+        if type(clause) is list:
+            for c in clause:
+                self.__clauses.append(c)
+        else:
+            self.__clauses.append(clause)
         
     def add_fact(self, fact):
         self.__clauses.append(fact)
