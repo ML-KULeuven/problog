@@ -16,12 +16,12 @@
 #       Adds builtin sample(X,S) that calls X and returns the sampled value in S.
 #
 #
-#   TODO support evidence
 #   How to support evidence?
 #       => evidence on facts or derived from deterministic data: trivial, just fix value
 #       => evidence on atoms derived from other probabilistic facts:
 #           -> query evidence first
 #           -> if evidence is false, restart immediately
+#   Currently, evidence is supported through post-processing.
 
 from __future__ import print_function
 
