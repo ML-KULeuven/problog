@@ -14,6 +14,14 @@
 #           - if probability is non-boolean discrete:
 #                           determine value, store value in formula and return key to value
 #       Adds builtin sample(X,S) that calls X and returns the sampled value in S.
+#
+#
+#   TODO support evidence
+#   How to support evidence?
+#       => evidence on facts or derived from deterministic data: trivial, just fix value
+#       => evidence on atoms derived from other probabilistic facts:
+#           -> query evidence first
+#           -> if evidence is false, restart immediately
 
 from __future__ import print_function
 
@@ -237,6 +245,7 @@ def translate(db, atom_id):
 
 
 def builtin_sample(term, result, target=None, engine=None, callback=None, **kwdargs):
+    # TODO wrong error message when call argument is wrong
     check_mode((term, result), 'cv', functor='sample')
     # Find the define node for the given query term.
     term_call = term.withArgs(*term.args)
@@ -255,14 +264,21 @@ def sample(model, n=1, with_facts=False, oneline=False, tuples=False):
     engine = DefaultEngine()
     engine.add_builtin('sample', 2, builtin_sample)
     db = engine.prepare(model)
-    
-    for i in range(0, n):
-        result = engine.ground_all(db, target=SampledFormula())
-        if tuples:
-            yield result.toTuples()
-        else:
-            yield result.toString(db, with_facts, oneline)
 
+    i = 0
+    while i < n:
+        result = engine.ground_all(db, target=SampledFormula())
+        evidence_ok = True
+        for name, node in result.evidence():
+            if node is None:
+                evidence_ok = False
+                break
+        if evidence_ok:
+            if tuples:
+                yield result.toTuples()
+            else:
+                yield result.toString(db, with_facts, oneline)
+            i += 1
 
 def main(args):
     import argparse

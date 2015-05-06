@@ -175,7 +175,7 @@ class LogicFormula(ProbLogObject):
         """Get evidence nodes."""
         evidence_true = self.getNames(self.LABEL_EVIDENCE_POS)
         evidence_false = self.getNames(self.LABEL_EVIDENCE_NEG)
-        return list(evidence_true) + [ (a,-b) for a,b in evidence_false ]
+        return list(evidence_true) + [ (a,self.addNot(b)) for a,b in evidence_false ]
         
     def named(self) :
         """Get named nodes."""
