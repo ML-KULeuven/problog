@@ -344,7 +344,7 @@ class Term(object):
                 stack.pop(-1)
         return ''.join(parts)
 
-    def __call__(self, *args):
+    def __call__(self, *args, **kwdargs):
         """
         Create a new Term with the same functor and the given arguments.
         :param args: new arguments
@@ -352,7 +352,7 @@ class Term(object):
         :return:
         :rtype: Term
         """
-        return self.withArgs(*args)
+        return self.withArgs(*args, **kwdargs)
         
     def withArgs(self, *args, **kwdargs):
         """Creates a new Term with the same functor and the given arguments.
@@ -367,7 +367,7 @@ class Term(object):
             p = kwdargs['p']
         else:
             p = self.probability
-        if self.probability is not None:
+        if p is not None:
             return self.__class__(self.functor, *args, p=p, location=self.location)
         else:
             return self.__class__(self.functor, *args, location=self.location)
