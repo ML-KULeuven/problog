@@ -1,22 +1,25 @@
+"""
+__author__ = Anton Dries
+
+Provides access to Sentential Decision Diagrams (SDDs).
+
+"""
+
+# TODO bug with auto-gc enabled: see test/consult.pl
+# TODO bug when varcount is not set in advance
+
 from __future__ import print_function
 
-import sys, os
-
-from collections import namedtuple, defaultdict
-from .formula import LogicDAG, LogicFormula, breakCycles
-from .cnf_formula import CNF
-from .logic import LogicProgram
+from collections import namedtuple
+from .formula import LogicDAG
 from .evaluator import Evaluator, SemiringProbability, Evaluatable, InconsistentEvidenceError
 from .core import transform
 from .util import Timer
 
-import warnings
-
-try :
+try:
     import sdd
-except Exception :
+except ImportError:
     sdd = None
-#    warnings.warn('The SDD library could not be found!', RuntimeWarning)
 
 
 class SDDManager(object):
@@ -98,6 +101,10 @@ class SDDManager(object):
         :type: SDDNode
         :return: conjunction of the given nodes
         :rtype: SDDNode
+
+        This method handles node reference counting, that is, all intermediate results
+         are marked for garbage collection, and the output node has a reference count greater than one.
+        Reference count on input nodes is not touched (unless one of the inputs becomes the output).
         """
         r = sdd.sdd_manager_true(self.__manager)
         for s in nodes:
@@ -114,6 +121,10 @@ class SDDManager(object):
         :type: SDDNode
         :return: disjunction of the given nodes
         :rtype: SDDNode
+
+        This method handles node reference counting, that is, all intermediate results
+         are marked for garbage collection, and the output node has a reference count greater than one.
+        Reference count on input nodes is not touched (unless one of the inputs becomes the output).
         """
         r = sdd.sdd_manager_false(self.__manager)
         for s in nodes:
@@ -130,6 +141,11 @@ class SDDManager(object):
         :type node: SDDNode
         :return: negation of the given node
         :rtype: SDDNode
+
+        This method handles node reference counting, that is, all intermediate results
+         are marked for garbage collection, and the output node has a reference count greater than one.
+        Reference count on input nodes is not touched (unless one of the inputs becomes the output).
+
         """
         new_sdd = sdd.sdd_negate(node, self.__manager)
         sdd.sdd_ref(new_sdd, self.__manager)
@@ -158,23 +174,45 @@ class SDDManager(object):
         not1 = self.negate(node1)
         not2 = self.negate(node2)
         i1 = self.disjoin(not1, node2)
-        sdd.sdd_deref(not1, self.__manager)
+        self.deref(not1)
         i2 = self.disjoin(node1, not2)
-        sdd.sdd_deref(not2, self.__manager)
+        self.deref(not2)
         r = self.conjoin(i1, i2)
-        sdd.sdd_deref(i1, self.__manager)
-        sdd.sdd_deref(i2, self.__manager)
+        self.deref(i1, i2)
         return r
 
+    def ref(self, *nodes):
+        """
+        Increase the reference count for the given nodes.
+        :param nodes: nodes to increase count on
+        :type nodes: tuple of SDDNode
+        """
+        for node in nodes:
+            sdd.sdd_ref(node, self.__manager)
+
     def deref(self, *nodes):
+        """
+        Decrease the reference count for the given nodes.
+        :param nodes: nodes to decrease count on
+        :type nodes: tuple of SDDNode
+        """
         for node in nodes:
             sdd.sdd_deref(node, self.__manager)
 
-    def to_dot(self, node, filename):
+    def write_to_dot(self, node, filename):
+        """
+        Write SDD node to a DOT file.
+        :param node: SDD node to output
+        :type node: SDDNode
+        :param filename: filename to write to
+        :type filename: basestring
+        """
         sdd.sdd_save_as_dot(filename, node)
 
-
     def __del__(self):
+        """
+        Clean up the SDD manager.
+        """
         sdd.sdd_manager_free(self.__manager)
         self.__manager = None
 
@@ -205,29 +243,32 @@ class SDD(LogicDAG, Evaluatable):
         self.sdd_manager = SDDManager(var_count, auto_gc=auto_gc)
 
     def set_varcount(self, varcount):
+        """
+        Set the variable count for the SDD.
+        This method should be called before any nodes are added to the SDD.
+        :param varcount: number of variables in the SDD
+        """
         self.sdd_manager = SDDManager(varcount=varcount+1, auto_gc=self.auto_gc)
-
-    ##################################################################################
-    ####                        CREATE SDD SPECIFIC NODES                         ####
-    ##################################################################################
 
     def _create_atom(self, identifier, probability, group):
         new_lit = self.getAtomCount()+1
         return self._atom(identifier, probability, group, new_lit)
 
     def _create_conj(self, children):
-        new_sdd = self.sdd_manager.conjoin(*[self._get_sddnode(c) for c in children])
+        new_sdd = self.sdd_manager.conjoin(*[self.get_sddnode(c) for c in children])
         return self._conj(children, new_sdd)
 
     def _create_disj(self, children):
-        new_sdd = self.sdd_manager.disjoin(*[self._get_sddnode(c) for c in children])
+        new_sdd = self.sdd_manager.disjoin(*[self.get_sddnode(c) for c in children])
         return self._disj(children, new_sdd)
 
-    ##################################################################################
-    ####                         GET SDD SPECIFIC INFO                            ####
-    ##################################################################################                
-        
-    def _get_sddnode(self, index):
+    def get_sddnode(self, index):
+        """
+        Get the SDD node corresponding to the entry at the given index.
+        :param index: index of node to retrieve
+        :return: SDD node corresponding to the given index
+        :rtype: SDDNode
+        """
         negate = False
         if index < 0:
             index = -index
@@ -239,59 +280,33 @@ class SDD(LogicDAG, Evaluatable):
         else:
             result = node.sddnode
         if negate:
-            return self.sdd_manager.negate(result)
+            new_sdd = self.sdd_manager.negate(result)
+            return new_sdd
         else:
             return result
 
-    def saveSDDToDot( self, filename, index=None ) :
+    def write_to_dot(self, filename, index=None):
+        """
+        Write an SDD node to a DOT file.
+        :param filename: filename to write to
+        :param index: index of the node in the SDD data structure
+        """
         if self.sdd_manager is None:
             raise ValueError('The SDD manager is not instantiated.')
         else:
-            if index is None :
+            if index is None:
                 sdd.sdd_shared_save_as_dot(filename, self.sdd_manager.get_manager())
             else:
-                sdd.sdd_save_as_dot(filename, self._get_sddnode(index))
-        
-    ##################################################################################
-    ####                          UNSUPPORTED METHODS                             ####
-    ##################################################################################                
-        
-    def _update( self, key, value ) :
+                self.sdd_manager.write_to_dot(filename, self.get_sddnode(index))
+
+    def _update(self, key, value):
         """Replace the node with the given node."""
         raise NotImplementedError('SDD formula does not support node updates.')
         
-    def addDisjunct( self, key, component ) :
+    def addDisjunct(self, key, component):
         """Add a component to the node with the given key."""
-        raise NotImplementedError('SDD formula does not support node updates.')        
+        raise NotImplementedError('SDD formula does not support node updates.')
 
-
-    # @classmethod
-    # def createFrom(cls, formula, **extra) :
-    #     # TODO support formula CNF
-    #     assert( isinstance(formula, LogicProgram) or isinstance(formula, LogicFormula) or isinstance(formula, CNF) )
-    #     if isinstance(formula, LogicProgram) :
-    #         formula = ground(formula)
-    #
-    #     # Invariant: formula is CNF or LogicFormula
-    #     if not isinstance(formula, SDD) :
-    #         size = len(formula)
-    #         # size = formula.getAtomCount()
-    #         sdd = SDD(size)
-    #         formula = formula.makeAcyclic(output=sdd)
-    #
-    #         for c in formula.constraints() :
-    #             sdd.addConstraint(c)
-    #         return sdd
-    #
-    #     else :
-    #         # TODO force_copy??
-    #         return formula
-
-
-    ##################################################################################
-    ####                               EVALUATION                                 ####
-    ##################################################################################          
-    
     def _createEvaluator(self, semiring, weights) :
         if not isinstance(semiring,SemiringProbability) :
             raise ValueError('SDD evaluation currently only supports probabilities!')
@@ -326,9 +341,9 @@ def buildSDD( source, destination, **kwdargs):
     return destination
         
 
-class SDDEvaluator(Evaluator) :
+class SDDEvaluator(Evaluator):
 
-    def __init__(self, formula, semiring, weights=None) :
+    def __init__(self, formula, semiring, weights=None):
         Evaluator.__init__(self, formula, semiring)
         self.__sdd = formula
         self.sdd_manager = formula.sdd_manager
@@ -358,17 +373,15 @@ class SDDEvaluator(Evaluator) :
         elif node is None:
             return self.semiring.zero()
 
-        query_node_sdd = self.sdd_manager.equiv(self.sdd_manager.literal(node), self.__sdd._get_sddnode(node))
-        evidence_sdd = self.sdd_manager.conjoin(*[self.__sdd._get_sddnode(ev) for ev in self.iterEvidence() if self.__sdd.isCompound(abs(ev))])
+        query_node_sdd = self.sdd_manager.equiv(self.sdd_manager.literal(node), self.__sdd.get_sddnode(node))
+        evidence_sdd = self.sdd_manager.conjoin(*[self.__sdd.get_sddnode(ev) for ev in self.iterEvidence() if self.__sdd.isCompound(abs(ev))])
         rule_sdds = []
         for c in self.__sdd.constraints():
             for rule in c.encodeCNF():
-                rule_sdds.append(self.sdd_manager.disjoin(*[self.__sdd._get_sddnode(r) for r in rule]))
+                rule_sdds.append(self.sdd_manager.disjoin(*[self.__sdd.get_sddnode(r) for r in rule]))
         query_sdd = self.sdd_manager.conjoin(query_node_sdd, evidence_sdd, *rule_sdds)
 
-        self.sdd_manager.deref(query_node_sdd)
-        self.sdd_manager.deref(evidence_sdd)
-        self.sdd_manager.deref(*rule_sdds)
+        self.sdd_manager.deref(query_node_sdd, evidence_sdd, *rule_sdds)
 
         if self.sdd_manager.is_false(query_sdd):
             raise InconsistentEvidenceError()
