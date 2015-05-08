@@ -19,6 +19,166 @@ except Exception :
 #    warnings.warn('The SDD library could not be found!', RuntimeWarning)
 
 
+class SDDManager(object):
+    """
+    Manager for SDDs.
+    It wraps around the SDD library and offers some additional methods.
+    """
+
+    def __init__(self, varcount=0, auto_gc=True):
+        """
+        Create a new SDD manager.
+        :param varcount: number of initial variables
+        :type varcount: int
+        :param auto_gc: use automatic garbage collection and minimization
+        :type auto_gc: bool
+        """
+        if varcount is None or varcount == 0:
+            varcount = 1
+        self.__manager = sdd.sdd_manager_create(varcount, auto_gc)
+        self.varcount = varcount
+
+    def get_manager(self):
+        """
+        Get the underlying sdd manager.
+        :return:
+        """
+        return self.__manager
+
+    def add_variable(self, label=0):
+        """
+        Add a variable to the manager and return its label.
+        :param label: suggested label of the variable
+        :type label: int
+        :return: label of the new variable
+        :rtype: int
+        """
+        if label == 0 or label > self.varcount:
+            sdd.sdd_manager_add_var_after_last(self.__manager)
+            self.varcount += 1
+            return self.varcount
+        else:
+            return label
+
+    def literal(self, label):
+        """
+        Return an SDD node representing a literal.
+        :param label: label of the literal
+        :type label: int
+        :return: SDD node representing the literal
+        :rtype: SDDNode
+        """
+        self.add_variable(label)
+        return sdd.sdd_manager_literal(label, self.__manager)
+
+    def is_true(self, node):
+        """
+        Checks whether the SDD node represents True
+        :param node: node to verify
+        :type node: SDDNode
+        :return: True if the node represents True
+        :rtype: bool
+        """
+        return sdd.sdd_node_is_true(node)
+
+    def is_false(self, node):
+        """
+        Checks whether the SDD node represents False
+        :param node: node to verify
+        :type node: SDDNode
+        :return: False if the node represents False
+        :rtype: bool
+        """
+        return sdd.sdd_node_is_false(node)
+
+    def conjoin(self, *nodes):
+        """
+        Create the conjunction of the given nodes.
+        :param nodes: nodes to conjoin
+        :type: SDDNode
+        :return: conjunction of the given nodes
+        :rtype: SDDNode
+        """
+        r = sdd.sdd_manager_true(self.__manager)
+        for s in nodes:
+            r1 = sdd.sdd_conjoin(r, s, self.__manager)
+            sdd.sdd_ref(r1, self.__manager)
+            sdd.sdd_deref(r, self.__manager)
+            r = r1
+        return r
+
+    def disjoin(self, *nodes):
+        """
+        Create the disjunction of the given nodes.
+        :param nodes: nodes to conjoin
+        :type: SDDNode
+        :return: disjunction of the given nodes
+        :rtype: SDDNode
+        """
+        r = sdd.sdd_manager_false(self.__manager)
+        for s in nodes:
+            r1 = sdd.sdd_disjoin(r, s, self.__manager)
+            sdd.sdd_ref(r1, self.__manager)
+            sdd.sdd_deref(r, self.__manager)
+            r = r1
+        return r
+
+    def negate(self, node):
+        """
+        Create the negation of the given node.
+        :param node: negation of the given node
+        :type node: SDDNode
+        :return: negation of the given node
+        :rtype: SDDNode
+        """
+        new_sdd = sdd.sdd_negate(node, self.__manager)
+        sdd.sdd_ref(new_sdd, self.__manager)
+        return new_sdd
+
+    def same(self, node1, node2):
+        """
+        Checks whether two SDD nodes are equivalent.
+        :param node1: first node
+        :type: SDDNode
+        :param node2: second node
+        :type: SDDNode
+        :return: True if the given nodes are equivalent, False otherwise.
+        :rtype: bool
+        """
+        # Assumes SDD library always reuses equivalent nodes.
+        return int(node1) == int(node2)
+
+    def equiv(self, node1, node2):
+        """
+        Enforce the equivalence between node1 and node2 in the SDD.
+        :param node1:
+        :param node2:
+        :return:
+        """
+        not1 = self.negate(node1)
+        not2 = self.negate(node2)
+        i1 = self.disjoin(not1, node2)
+        sdd.sdd_deref(not1, self.__manager)
+        i2 = self.disjoin(node1, not2)
+        sdd.sdd_deref(not2, self.__manager)
+        r = self.conjoin(i1, i2)
+        sdd.sdd_deref(i1, self.__manager)
+        sdd.sdd_deref(i2, self.__manager)
+        return r
+
+    def deref(self, *nodes):
+        for node in nodes:
+            sdd.sdd_deref(node, self.__manager)
+
+    def to_dot(self, node, filename):
+        sdd.sdd_save_as_dot(filename, node)
+
+
+    def __del__(self):
+        sdd.sdd_manager_free(self.__manager)
+        self.__manager = None
+
+
 class SDD(LogicDAG, Evaluatable):
     """A propositional logic formula consisting of and, or, not and atoms represented as an SDD.
 
@@ -36,78 +196,78 @@ class SDD(LogicDAG, Evaluatable):
     _disj = namedtuple('disj', ('children', 'sddnode') )
     # negation is encoded by using a negative number for the key
 
-    def __init__(self, var_count=None, **kwdargs):
+    def __init__(self, var_count=None, auto_gc=False, **kwdargs):
         LogicDAG.__init__(self, auto_compact=False)
         
-        if sdd is None :
+        if sdd is None:
             raise RuntimeError('The SDD library is not available. Please run the installer.')
-        
-        self.sdd_manager = None
-        self.var_count = var_count
-        if var_count is not None and var_count != 0:
-            self.sdd_manager = sdd.sdd_manager_create(var_count + 1, 0)  # auto-gc & auto-min
-    
-    def setVarCount(self, var_count) :
-        self.var_count = var_count
-        if var_count != 0 :
-            self.sdd_manager = sdd.sdd_manager_create(var_count + 1, 0) # auto-gc & auto-min
-            
-    def getVarCount(self) :
-        return self.var_count
 
-    def __del__(self) :
-        if self.sdd_manager != None :
-            sdd.sdd_manager_free(self.sdd_manager)
+        self.sdd_manager = SDDManager(var_count, auto_gc=auto_gc)
+
+        # self.sdd_manager = None
+        # self.var_count = var_count
+        # if var_count is not None and var_count != 0:
+        #     self.sdd_manager = sdd.sdd_manager_create(var_count + 1, 0)  # auto-gc & auto-min
+    
+    # def setVarCount(self, var_count) :
+    #     self.var_count = var_count
+    #     if var_count != 0 :
+    #         self.sdd_manager = sdd.sdd_manager_create(var_count + 1, 0) # auto-gc & auto-min
+    #
+
+    def set_varcount(self, varcount):
+        self.sdd_manager = SDDManager(varcount+1)
+
+
+    def getVarCount(self):
+        return self.sdd_manager.varcount
+
+    # def __del__(self) :
+    #     # if self.sdd_manager != None :
+    #     #     sdd.sdd_manager_free(self.sdd_manager)
+    #     del self.sdd_manager
 
     ##################################################################################
     ####                        CREATE SDD SPECIFIC NODES                         ####
     ##################################################################################
 
-    def _create_atom( self, identifier, probability, group ) :
+    def _create_atom(self, identifier, probability, group):
         new_lit = self.getAtomCount()+1
-        return self._atom( identifier, probability, group, new_lit )
+        new_sdd = self.sdd_manager.literal(new_lit)
+        return self._atom(identifier, probability, group, new_sdd)
 
-    def _create_conj( self, children ) :
+    def _create_conj(self, children):
         children_original = children[:]
-        c1 = self._getSDDNode( children[0] )
-        children = children[1:]
-        while children :
-            c2 = self._getSDDNode( children[0] )
-            children = children[1:]
-            c1 = sdd.sdd_conjoin(c1, c2, self.sdd_manager)
-        return self._conj( children_original, c1 )
+        new_sdd = self.sdd_manager.conjoin(*[self._get_sddnode(c) for c in children])
+        return self._conj(children_original, new_sdd)
 
-    def _create_disj( self, children ) :
+    def _create_disj(self, children):
         children_original = children[:]
-        c1 = self._getSDDNode( children[0] )
-        children = children[1:]
-        while children :
-            c2 = self._getSDDNode( children[0] )
-            children = children[1:]
-            c1 = sdd.sdd_disjoin(c1, c2, self.sdd_manager)
-        return self._disj( children_original, c1 )
+        new_sdd = self.sdd_manager.disjoin(*[self._get_sddnode(c) for c in children])
+        return self._disj(children_original, new_sdd)
 
     ##################################################################################
     ####                         GET SDD SPECIFIC INFO                            ####
     ##################################################################################                
         
-    def _getSDDNode( self, index ) :
+    def _get_sddnode(self, index):
         negate = False
-        if index < 0 :
+        if index < 0:
             index = -index
             negate = True 
         node = self.getNode(index)
-        if type(node).__name__ == 'atom' :
+        if type(node).__name__ == 'atom':
             # was node.sddlit
-            result = sdd.sdd_manager_literal( index, self.sdd_manager )
-        else :
+            result = self.sdd_manager.literal(index)
+        else:
             result = node.sddnode
-        if negate :
-            return sdd.sdd_negate( result, self.sdd_manager )
-        else :
+        if negate:
+            return self.sdd_manager.negate(result)
+        else:
             return result
 
     def saveSDDToDot( self, filename, index=None ) :
+        raise NotImplementedError()
         if self.sdd_manager is None:
             raise ValueError('The SDD manager is not instantiated.')
         else:
@@ -170,7 +330,7 @@ class SDD(LogicDAG, Evaluatable):
 def buildSDD( source, destination, **kwdargs):
     with Timer('Compiling SDD'):
         size = len(source)
-        destination.setVarCount(size)
+        destination.set_varcount(size)
         for i, n, t in source:
             if t == 'atom':
                 destination.addAtom(n.identifier, n.probability, n.group)
@@ -215,92 +375,49 @@ class SDDEvaluator(Evaluator) :
             
     def propagate(self) :
         self.initialize()
-            
-    def _sdd_disjoin( self, r1, *r ) :
-        if not r :
-            return self.__sdd._getSDDNode(r1)
-        else :
-            rec = self._sdd_disjoin(*r)
-            return sdd.sdd_disjoin( self.__sdd._getSDDNode(r1), rec, self.sdd_manager )
-    
-    def _sdd_equiv( self, n1, n2 ) :
-        m = self.sdd_manager
-        i1 = sdd.sdd_disjoin( sdd.sdd_negate(n1,m), n2, m )
-        i2 = sdd.sdd_disjoin( sdd.sdd_negate(n2,m), n1, m )
-        return sdd.sdd_conjoin( i1, i2, m)
-    
-    def evaluateEvidence(self) :
-        self.initialize(False)
         
-        m = self.sdd_manager 
-
-        assert(m != None)
-        
-        evidence_sdd = sdd.sdd_manager_true( m )
-        for ev in self.iterEvidence() :
-            evidence_sdd = sdd.sdd_conjoin( evidence_sdd, self.__sdd._getSDDNode(ev), m )
-
-        for c in self.__sdd.constraints() :
-            for rule in c.encodeCNF() :
-                evidence_sdd = sdd.sdd_conjoin( evidence_sdd, self._sdd_disjoin( *rule ), m )
-
-        node = self.__sdd.getVarCount()+1
-        query_sdd = self._sdd_equiv( sdd.sdd_manager_literal(node, self.sdd_manager), evidence_sdd)
-
-        wmc_manager = sdd.wmc_manager_new( query_sdd , 0, self.sdd_manager )
-
-        for i, n in enumerate(sorted(self.__probs)) :
-            i = i + 1
-            pos, neg = self.__probs[n]
-            sdd.wmc_set_literal_weight( n, pos, wmc_manager )   # Set positive literal weight
-            sdd.wmc_set_literal_weight( -n, neg, wmc_manager )  # Set negative literal weight
-        Z = sdd.wmc_propagate( wmc_manager )
-        result = sdd.wmc_literal_pr( node, wmc_manager )
-        sdd.wmc_manager_free(wmc_manager)
-        return result
-
-        
-    def evaluate(self, node) :
-        if node == 0 :
+    def evaluate(self, node):
+        if node == 0:
             return self.semiring.one()
-        elif node is None :
+        elif node is None:
             return self.semiring.zero()
-        
-        m = self.sdd_manager 
-        
-        assert(m != None)
-        
-        query_sdd = self._sdd_equiv( sdd.sdd_manager_literal(node, self.sdd_manager), self.__sdd._getSDDNode(node))
-        for ev in self.iterEvidence() :
-            if self.__sdd.isCompound(abs(ev)) :
-                query_sdd = sdd.sdd_conjoin( query_sdd, self.__sdd._getSDDNode(ev), m )
-                
-        for c in self.__sdd.constraints() :
-            # TODO what if variables don't occur in query_sdd?
-            for rule in c.encodeCNF() :
-                query_sdd = sdd.sdd_conjoin( query_sdd, self._sdd_disjoin( *rule ), m )
-                
-        if sdd.sdd_node_is_false(query_sdd) :
-             raise InconsistentEvidenceError()
-            
-        if sdd.sdd_node_is_true( query_sdd ) :
-            if node < 0 :
-                return self.__probs[ -node ][1]
-            else :
-                return self.__probs[ node ][0]
+
+        query_node_sdd = self.sdd_manager.equiv(self.sdd_manager.literal(node), self.__sdd._get_sddnode(node))
+        evidence_sdd = self.sdd_manager.conjoin(*[self.__sdd._get_sddnode(ev) for ev in self.iterEvidence() if self.__sdd.isCompound(abs(ev))])
+        rule_sdds = []
+        for c in self.__sdd.constraints():
+            for rule in c.encodeCNF():
+                rule_sdds.append(self.sdd_manager.disjoin(*[self.__sdd._get_sddnode(r) for r in rule]))
+        query_sdd = self.sdd_manager.conjoin(query_node_sdd, evidence_sdd, *rule_sdds)
+
+        if node == 2:
+            self.sdd_manager.to_dot(query_sdd, '/tmp/a.dot')
+
+        self.sdd_manager.deref(query_node_sdd)
+        self.sdd_manager.deref(evidence_sdd)
+        self.sdd_manager.deref(*rule_sdds)
+
+        if self.sdd_manager.is_false(query_sdd):
+            raise InconsistentEvidenceError()
+
+        if self.sdd_manager.is_true(query_sdd):
+            if node < 0:
+                return self.__probs[-node][1]
+            else:
+                return self.__probs[node][0]
                 
         else :
             logspace = 0
             if self.semiring.isLogspace():
-              logspace = 1
-            wmc_manager = sdd.wmc_manager_new( query_sdd , logspace, self.sdd_manager )
-            for i, n in enumerate(sorted(self.__probs)) :
-                i = i + 1
+                logspace = 1
+            wmc_manager = sdd.wmc_manager_new(query_sdd, logspace, self.sdd_manager.get_manager())
+            for i, n in enumerate(sorted(self.__probs)):
+                i += 1
                 pos, neg = self.__probs[n]
-                sdd.wmc_set_literal_weight( n, pos, wmc_manager )   # Set positive literal weight
-                sdd.wmc_set_literal_weight( -n, neg, wmc_manager )  # Set negative literal weight
-            Z = sdd.wmc_propagate( wmc_manager )
-            result = sdd.wmc_literal_pr( node, wmc_manager )
+                sdd.wmc_set_literal_weight(n, pos, wmc_manager)   # Set positive literal weight
+                sdd.wmc_set_literal_weight(-n, neg, wmc_manager)  # Set negative literal weight
+            Z = sdd.wmc_propagate(wmc_manager)
+            result = sdd.wmc_literal_pr(node, wmc_manager)
             sdd.wmc_manager_free(wmc_manager)
             return result
             
