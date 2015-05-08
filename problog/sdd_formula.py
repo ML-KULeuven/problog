@@ -198,34 +198,14 @@ class SDD(LogicDAG, Evaluatable):
 
     def __init__(self, var_count=None, auto_gc=False, **kwdargs):
         LogicDAG.__init__(self, auto_compact=False)
-        
         if sdd is None:
             raise RuntimeError('The SDD library is not available. Please run the installer.')
 
+        self.auto_gc = auto_gc
         self.sdd_manager = SDDManager(var_count, auto_gc=auto_gc)
 
-        # self.sdd_manager = None
-        # self.var_count = var_count
-        # if var_count is not None and var_count != 0:
-        #     self.sdd_manager = sdd.sdd_manager_create(var_count + 1, 0)  # auto-gc & auto-min
-    
-    # def setVarCount(self, var_count) :
-    #     self.var_count = var_count
-    #     if var_count != 0 :
-    #         self.sdd_manager = sdd.sdd_manager_create(var_count + 1, 0) # auto-gc & auto-min
-    #
-
     def set_varcount(self, varcount):
-        self.sdd_manager = SDDManager(varcount+1)
-
-
-    def getVarCount(self):
-        return self.sdd_manager.varcount
-
-    # def __del__(self) :
-    #     # if self.sdd_manager != None :
-    #     #     sdd.sdd_manager_free(self.sdd_manager)
-    #     del self.sdd_manager
+        self.sdd_manager = SDDManager(varcount=varcount+1, auto_gc=self.auto_gc)
 
     ##################################################################################
     ####                        CREATE SDD SPECIFIC NODES                         ####
@@ -233,18 +213,15 @@ class SDD(LogicDAG, Evaluatable):
 
     def _create_atom(self, identifier, probability, group):
         new_lit = self.getAtomCount()+1
-        new_sdd = self.sdd_manager.literal(new_lit)
-        return self._atom(identifier, probability, group, new_sdd)
+        return self._atom(identifier, probability, group, new_lit)
 
     def _create_conj(self, children):
-        children_original = children[:]
         new_sdd = self.sdd_manager.conjoin(*[self._get_sddnode(c) for c in children])
-        return self._conj(children_original, new_sdd)
+        return self._conj(children, new_sdd)
 
     def _create_disj(self, children):
-        children_original = children[:]
         new_sdd = self.sdd_manager.disjoin(*[self._get_sddnode(c) for c in children])
-        return self._disj(children_original, new_sdd)
+        return self._disj(children, new_sdd)
 
     ##################################################################################
     ####                         GET SDD SPECIFIC INFO                            ####
@@ -389,9 +366,6 @@ class SDDEvaluator(Evaluator) :
             for rule in c.encodeCNF():
                 rule_sdds.append(self.sdd_manager.disjoin(*[self.__sdd._get_sddnode(r) for r in rule]))
         query_sdd = self.sdd_manager.conjoin(query_node_sdd, evidence_sdd, *rule_sdds)
-
-        if node == 2:
-            self.sdd_manager.to_dot(query_sdd, '/tmp/a.dot')
 
         self.sdd_manager.deref(query_node_sdd)
         self.sdd_manager.deref(evidence_sdd)

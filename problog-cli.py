@@ -31,7 +31,7 @@ def print_result( d, output, precision=8 ) :
         print (d, file=output)
         return 1
 
-def main( filename, knowledge=NNF, semiring=None, parse_class=DefaultPrologParser, debug=False, engine_debug=False) :
+def main( filename, knowledge=NNF, semiring=None, parse_class=DefaultPrologParser, debug=False, engine_debug=False, **kwdargs) :
     logger = logging.getLogger('problog')
     if engine_debug:
         debugger = EngineTracer()
@@ -41,7 +41,7 @@ def main( filename, knowledge=NNF, semiring=None, parse_class=DefaultPrologParse
     try :
         with Timer('Total time to processing model'):
           parser = parse_class(ExtendedPrologFactory())
-          formula = knowledge.createFrom(PrologFile(filename, parser=parser), debugger=debugger)
+          formula = knowledge.createFrom(PrologFile(filename, parser=parser), debugger=debugger, **kwdargs)
         with Timer('Evaluation'):
           result = formula.evaluate(semiring=semiring)
         return True, result
@@ -67,6 +67,7 @@ def argparser() :
     parser.add_argument('--timeout', '-t', type=int, default=0, help="Set timeout (in seconds, default=off).")
     parser.add_argument('--debug', '-d', action='store_true', help="Enable debug mode (print full errors).")
     parser.add_argument('--engine-debug', action='store_true', help=argparse.SUPPRESS)
+    parser.add_argument('--auto-gc', action='store_true', help=argparse.SUPPRESS)
     return parser
 
 if __name__ == '__main__' :
@@ -148,7 +149,7 @@ if __name__ == '__main__' :
     
         for filename in args.filenames :
             if len(args.filenames) > 1 : print ('Results for %s:' % filename)
-            retcode = print_result( main(filename, knowledge, semiring, parse_class, args.debug, args.engine_debug), output )
+            retcode = print_result( main(filename, knowledge, semiring, parse_class, args.debug, args.engine_debug, auto_gc=args.auto_gc), output )
             if len(args.filenames) == 1 : sys.exit(retcode)
 
     if args.output != None : output.close()
