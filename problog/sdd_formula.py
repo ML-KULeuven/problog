@@ -5,9 +5,6 @@ Provides access to Sentential Decision Diagrams (SDDs).
 
 """
 
-# TODO bug with auto-gc enabled: see test/consult.pl
-# TODO bug when varcount is not set in advance
-
 from __future__ import print_function
 
 from collections import namedtuple
