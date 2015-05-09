@@ -59,7 +59,8 @@ class SDDManager(object):
         if label == 0 or label > self.varcount:
             sdd.sdd_manager_add_var_after_last(self.__manager)
             self.varcount += 1
-            return self.varcount
+            assert self.varcount == label
+            return label
         else:
             return label
 
@@ -217,6 +218,17 @@ class SDDManager(object):
         self.__manager = None
 
 
+# Changes to be made:
+#  Currently, variables in the SDD correspond to internal nodes in the LogicFormula.
+#  This means that many of them are not used. Literals should refer to facts instead.
+#  The only exceptions should be the query nodes.
+#  This should also fix some problems with minimization.
+#
+#  get_atom_literal
+#  get_query_literal
+#  get_evidence_literal (can be same as get_query_literal)
+
+
 class SDD(LogicDAG, Evaluatable):
     """A propositional logic formula consisting of and, or, not and atoms represented as an SDD.
 
@@ -234,13 +246,12 @@ class SDD(LogicDAG, Evaluatable):
     _disj = namedtuple('disj', ('children', 'sddnode') )
     # negation is encoded by using a negative number for the key
 
-    def __init__(self, var_count=None, auto_gc=False, **kwdargs):
+    def __init__(self, sdd_auto_gc=True, **kwdargs):
         LogicDAG.__init__(self, auto_compact=False)
         if sdd is None:
             raise RuntimeError('The SDD library is not available. Please run the installer.')
-
-        self.auto_gc = auto_gc
-        self.sdd_manager = SDDManager(var_count, auto_gc=auto_gc)
+        self.auto_gc = sdd_auto_gc
+        self.sdd_manager = SDDManager(auto_gc=sdd_auto_gc)
 
     def set_varcount(self, varcount):
         """
@@ -252,15 +263,25 @@ class SDD(LogicDAG, Evaluatable):
 
     def _create_atom(self, identifier, probability, group):
         new_lit = self.getAtomCount()+1
-        return self._atom(identifier, probability, group, new_lit)
+        self.sdd_manager.add_variable(len(self)+1)
+        return self._atom(identifier, probability, group, len(self)+1)
 
     def _create_conj(self, children):
         new_sdd = self.sdd_manager.conjoin(*[self.get_sddnode(c) for c in children])
+        self.sdd_manager.add_variable(len(self)+1)
         return self._conj(children, new_sdd)
 
     def _create_disj(self, children):
         new_sdd = self.sdd_manager.disjoin(*[self.get_sddnode(c) for c in children])
+        self.sdd_manager.add_variable(len(self)+1)
         return self._disj(children, new_sdd)
+
+    def addName(self, name, node_id, label=None):
+        LogicDAG.addName(self, name, node_id, label)
+        if label == self.LABEL_QUERY:
+            pass
+        elif label in (self.LABEL_EVIDENCE_MAYBE, self.LABEL_EVIDENCE_NEG, self.LABEL_EVIDENCE_POS):
+            pass
 
     def get_sddnode(self, index):
         """
@@ -276,7 +297,7 @@ class SDD(LogicDAG, Evaluatable):
         node = self.getNode(index)
         if type(node).__name__ == 'atom':
             # was node.sddlit
-            result = self.sdd_manager.literal(index)
+            result = self.sdd_manager.literal(node.sddlit)
         else:
             result = node.sddnode
         if negate:
@@ -320,8 +341,6 @@ class SDD(LogicDAG, Evaluatable):
 @transform(LogicDAG, SDD)
 def buildSDD( source, destination, **kwdargs):
     with Timer('Compiling SDD'):
-        size = len(source)
-        destination.set_varcount(size)
         for i, n, t in source:
             if t == 'atom':
                 destination.addAtom(n.identifier, n.probability, n.group)
@@ -337,6 +356,11 @@ def buildSDD( source, destination, **kwdargs):
         
         for c in source.constraints():
             destination.addConstraint(c)
+
+    for i, n, t in destination:
+        if t != 'atom':
+            destination.sdd_manager.write_to_dot(n.sddnode, '/tmp/m%s.dot' % i)
+
 
     return destination
         
@@ -368,11 +392,19 @@ class SDDEvaluator(Evaluator):
         self.initialize()
         
     def evaluate(self, node):
+        """
+        Evaluate the given node in the SDD.
+        :param node: identifier of the node to evaluate
+        :return: weight of the node
+        """
+
+        # Trivial case: node is deterministically True or False
         if node == 0:
             return self.semiring.one()
         elif node is None:
             return self.semiring.zero()
 
+        # Construct the query SDD
         query_node_sdd = self.sdd_manager.equiv(self.sdd_manager.literal(node), self.__sdd.get_sddnode(node))
         evidence_sdd = self.sdd_manager.conjoin(*[self.__sdd.get_sddnode(ev) for ev in self.iterEvidence() if self.__sdd.isCompound(abs(ev))])
         rule_sdds = []
@@ -381,31 +413,42 @@ class SDDEvaluator(Evaluator):
                 rule_sdds.append(self.sdd_manager.disjoin(*[self.__sdd.get_sddnode(r) for r in rule]))
         query_sdd = self.sdd_manager.conjoin(query_node_sdd, evidence_sdd, *rule_sdds)
 
+        # Delete temporary SDDs
         self.sdd_manager.deref(query_node_sdd, evidence_sdd, *rule_sdds)
 
         if self.sdd_manager.is_false(query_sdd):
             raise InconsistentEvidenceError()
+
 
         if self.sdd_manager.is_true(query_sdd):
             if node < 0:
                 return self.__probs[-node][1]
             else:
                 return self.__probs[node][0]
-                
-        else :
-            logspace = 0
-            if self.semiring.isLogspace():
-                logspace = 1
-            wmc_manager = sdd.wmc_manager_new(query_sdd, logspace, self.sdd_manager.get_manager())
-            for i, n in enumerate(sorted(self.__probs)):
-                i += 1
-                pos, neg = self.__probs[n]
-                sdd.wmc_set_literal_weight(n, pos, wmc_manager)   # Set positive literal weight
-                sdd.wmc_set_literal_weight(-n, neg, wmc_manager)  # Set negative literal weight
-            Z = sdd.wmc_propagate(wmc_manager)
-            result = sdd.wmc_literal_pr(node, wmc_manager)
-            sdd.wmc_manager_free(wmc_manager)
-            return result
+        else:
+            varlist_intern = sdd.sdd_variables(query_sdd, self.sdd_manager.get_manager())
+            varlist = [sdd.sdd_array_int_element(varlist_intern, i) for i in range(0, self.sdd_manager.varcount+1)]
+            del varlist_intern
+            if varlist[abs(node)] == 0:
+                if node < 0:
+                    return self.__probs[-node][1]
+                else:
+                    return self.__probs[node][0]
+            else:
+                logspace = 0
+                if self.semiring.isLogspace():
+                    logspace = 1
+                wmc_manager = sdd.wmc_manager_new(query_sdd, logspace, self.sdd_manager.get_manager())
+
+                for i, n in enumerate(sorted(self.__probs)):
+                    i += 1
+                    pos, neg = self.__probs[n]
+                    sdd.wmc_set_literal_weight(n, pos, wmc_manager)   # Set positive literal weight
+                    sdd.wmc_set_literal_weight(-n, neg, wmc_manager)  # Set negative literal weight
+                Z = sdd.wmc_propagate(wmc_manager)
+                result = sdd.wmc_literal_pr(node, wmc_manager)
+                sdd.wmc_manager_free(wmc_manager)
+                return result
             
     def setEvidence(self, index, value ) :
         pos = self.semiring.one()

@@ -95,6 +95,10 @@ def sdd_array_element(arr, element):
     return _sdd.sdd_array_element(arr, element)
 sdd_array_element = _sdd.sdd_array_element
 
+def sdd_array_int_element(arr, element):
+    return _sdd.sdd_array_int_element(arr, element)
+sdd_array_int_element = _sdd.sdd_array_int_element
+
 _sdd.PRIsS_swigconstant(_sdd)
 PRIsS = _sdd.PRIsS
 

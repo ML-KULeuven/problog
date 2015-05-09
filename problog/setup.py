@@ -7,10 +7,10 @@
 
 from __future__ import print_function
 
-import subprocess
 import os
 import sys
 import distutils.spawn
+import glob
 
 def get_system() :
     system = sys.platform
@@ -113,8 +113,6 @@ def build_sdd() :
     from distutils.core import setup, Extension
     sdd_module = Extension('_sdd', sources=['sdd/sdd_wrap.c'], libraries=['sdd'], library_dirs=[lib_dir] )
 
-    print (sdd_module)
-
     setup (name = 'sdd',
            version = '1.0',
            author      = "",
@@ -127,11 +125,13 @@ def build_sdd() :
     
     os.chdir(curr)
 
-def install() :
+
+
+def install(force=True) :
     info = gather_info()
     update = False
-    
-    if not info.get('sdd_module') :
+
+    if force or not info.get('sdd_module') :
         build_sdd()
         update = True
         

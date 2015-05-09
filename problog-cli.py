@@ -149,7 +149,8 @@ if __name__ == '__main__' :
     
         for filename in args.filenames :
             if len(args.filenames) > 1 : print ('Results for %s:' % filename)
-            retcode = print_result( main(filename, knowledge, semiring, parse_class, args.debug, args.engine_debug, auto_gc=args.auto_gc), output )
+            retcode = print_result( main(filename, knowledge, semiring, parse_class, args.debug,
+                                         args.engine_debug, sdd_auto_gc=args.auto_gc), output )
             if len(args.filenames) == 1 : sys.exit(retcode)
 
     if args.output != None : output.close()
