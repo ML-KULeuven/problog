@@ -15,7 +15,7 @@ from .util import Timer
 
 try:
     import sdd
-except ImportError:
+except Exception:
     sdd = None
 
 
