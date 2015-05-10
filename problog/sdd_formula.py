@@ -354,11 +354,6 @@ def buildSDD( source, destination, **kwdargs):
         for c in source.constraints():
             destination.addConstraint(c)
 
-    for i, n, t in destination:
-        if t != 'atom':
-            destination.sdd_manager.write_to_dot(n.sddnode, '/tmp/m%s.dot' % i)
-
-
     return destination
         
 
@@ -424,7 +419,9 @@ class SDDEvaluator(Evaluator):
                 return self.__probs[node][0]
         else:
             varlist_intern = sdd.sdd_variables(query_sdd, self.sdd_manager.get_manager())
-            varlist = [sdd.sdd_array_int_element(varlist_intern, i) for i in range(0, self.sdd_manager.varcount+1)]
+            vc1 = self.sdd_manager.varcount+1
+            vc = sdd.sdd_manager_var_count(self.sdd_manager.get_manager())+1
+            varlist = [sdd.sdd_array_int_element(varlist_intern, i) for i in range(0, vc)]
             del varlist_intern
             if varlist[abs(node)] == 0:
                 if node < 0:
