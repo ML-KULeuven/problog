@@ -382,7 +382,35 @@ class SDDEvaluator(Evaluator):
             
     def propagate(self) :
         self.initialize()
-        
+
+    def evaluateEvidence(self):
+        self.initialize(False)
+
+        node = self.sdd_manager.add_variable(len(self.__sdd)+1)
+
+        evidence_sdd = self.sdd_manager.conjoin(*[self.__sdd.get_sddnode(ev) for ev in self.iterEvidence()])
+        rule_sdds = []
+        for c in self.__sdd.constraints():
+            for rule in c.encodeCNF():
+                rule_sdds.append(self.sdd_manager.disjoin(*[self.__sdd.get_sddnode(r) for r in rule]))
+        query_evidence_sdd = self.sdd_manager.conjoin(evidence_sdd, *rule_sdds)
+        query_sdd = self.sdd_manager.equiv(self.sdd_manager.literal(node), query_evidence_sdd)
+
+        logspace = 0
+        if self.semiring.isLogspace():
+            logspace = 1
+        wmc_manager = sdd.wmc_manager_new(query_sdd, logspace, self.sdd_manager.get_manager())
+
+        for i, n in enumerate(sorted(self.__probs)):
+            i += 1
+            pos, neg = self.__probs[n]
+            sdd.wmc_set_literal_weight(n, pos, wmc_manager)   # Set positive literal weight
+            sdd.wmc_set_literal_weight(-n, neg, wmc_manager)  # Set negative literal weight
+        Z = sdd.wmc_propagate(wmc_manager)
+        result = sdd.wmc_literal_pr(node, wmc_manager)
+        sdd.wmc_manager_free(wmc_manager)
+        return result
+
     def evaluate(self, node):
         """
         Evaluate the given node in the SDD.
