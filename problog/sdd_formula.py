@@ -82,6 +82,13 @@ class SDDManager(object):
         """
         return sdd.sdd_node_is_true(node)
 
+    def true(self):
+        """
+        Return an SDD node representing True
+        :return:
+        """
+        return sdd.sdd_manager_true(self.__manager)
+
     def is_false(self, node):
         """
         Checks whether the SDD node represents False
@@ -91,6 +98,14 @@ class SDDManager(object):
         :rtype: bool
         """
         return sdd.sdd_node_is_false(node)
+
+    def false(self):
+        """
+        Return an SDD node representing False
+        :return:
+        """
+        return sdd.sdd_manager_false(self.__manager)
+
 
     def conjoin(self, *nodes):
         """
