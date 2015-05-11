@@ -123,6 +123,31 @@ def process_error( err, debug=False ) :
         if not debug : traceback.print_exc()
         return 'Unknown error: %s' % (err_type)
 
+
+def process_result(d, precision=8):
+    """
+    Pretty print result
+    :param d: result
+    :type d: dict
+    :param precision: max. number of digits
+    :type precision: int
+    :return: pretty printed result
+    :rtype: basestring
+    """
+    if not d:
+        return ""  # no queries
+    else:
+        s = []
+        l = max(len(str(k)) for k in d)
+        f_flt = '\t%' + str(l) + 's : %.' + str(precision) + 'g'
+        f_str = '\t%' + str(l) + 's : %s'
+        for it in sorted([(str(k), v) for k, v in d.items()]):
+            if type(it[1]) == float:
+                s.append(f_flt % it)
+            else:
+                s.append(f_str % it)
+        return '\n'.join(s)
+
 class ProbLogObject(object) :
     """Root class for all convertible objects in the ProbLog system."""
 
