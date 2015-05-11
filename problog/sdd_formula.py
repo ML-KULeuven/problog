@@ -356,7 +356,8 @@ def buildSDD(source, destination, **kwdargs):
             destination.addName(name, node, label)
         
         for c in source.constraints():
-            destination.addConstraint(c)
+            if c.isActive():
+                destination.addConstraint(c)
 
     return destination
         
