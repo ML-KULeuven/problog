@@ -265,9 +265,6 @@ class SDD(LogicDAG, Evaluatable):
         self.auto_gc = sdd_auto_gc
         self.sdd_manager = SDDManager(auto_gc=sdd_auto_gc)
 
-        self._sdd_nodes_pos = []
-        self._sdd_nodes_neg = []
-
         self._constraint_sdd = None
 
     def set_varcount(self, varcount):
@@ -321,11 +318,7 @@ class SDD(LogicDAG, Evaluatable):
             new_sdd = self.sdd_manager.negate(result)
             return new_sdd
         else:
-            return node
-
-    def set_sddnode(self, index, sddnode):
-        assert index > 0
-        self._sdd_nodes_pos[index-1] = sddnode
+            return result
 
     def get_constraint_sdd(self):
         if self._constraint_sdd is None:
@@ -336,8 +329,6 @@ class SDD(LogicDAG, Evaluatable):
     def addConstraint(self, c):
         if self._constraint_sdd is None:
             self._constraint_sdd = self.sdd_manager.true()
-        print ('add_constraint', c)
-        print (self)
         LogicDAG.addConstraint(self, c)
         for rule in c.encodeCNF():
             rule_sdd = self.sdd_manager.disjoin(*[self.get_sddnode(r) for r in rule])
