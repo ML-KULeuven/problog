@@ -337,7 +337,6 @@ class SDD(LogicDAG, Evaluatable):
             self.sdd_manager.deref(rule_sdd)
             self._constraint_sdd = new_constraint_sdd
 
-
     def write_to_dot(self, filename, index=None):
         """
         Write an SDD node to a DOT file.
@@ -429,11 +428,8 @@ class SDDEvaluator(Evaluator):
         node = self.sdd_manager.add_variable(len(self.__sdd)+1)
 
         evidence_sdd = self.sdd_manager.conjoin(*[self.__sdd.get_sddnode(ev) for ev in self.iterEvidence()])
-        rule_sdds = []
-        for c in self.__sdd.constraints():
-            for rule in c.encodeCNF():
-                rule_sdds.append(self.sdd_manager.disjoin(*[self.__sdd.get_sddnode(r) for r in rule]))
-        query_evidence_sdd = self.sdd_manager.conjoin(evidence_sdd, *rule_sdds)
+
+        query_evidence_sdd = self.sdd_manager.conjoin(evidence_sdd, self.__sdd.get_constraint_sdd())
         query_sdd = self.sdd_manager.equiv(self.sdd_manager.literal(node), query_evidence_sdd)
 
         logspace = 0
@@ -464,21 +460,21 @@ class SDDEvaluator(Evaluator):
         elif node is None:
             return self.semiring.zero()
 
+        query_def_sdd = self.__sdd.get_sddnode(node)
+        constraint_sdd = self.__sdd.get_constraint_sdd()
+
         # Construct the query SDD
-        query_node_sdd = self.sdd_manager.equiv(self.sdd_manager.literal(node), self.__sdd.get_sddnode(node))
-        evidence_sdd = self.sdd_manager.conjoin(*[self.__sdd.get_sddnode(ev) for ev in self.iterEvidence() if self.__sdd.isCompound(abs(ev))])
-        rule_sdds = []
-        for c in self.__sdd.constraints():
-            for rule in c.encodeCNF():
-                rule_sdds.append(self.sdd_manager.disjoin(*[self.__sdd.get_sddnode(r) for r in rule]))
-        query_sdd = self.sdd_manager.conjoin(query_node_sdd, evidence_sdd, *rule_sdds)
+        query_node_sdd = self.sdd_manager.equiv(self.sdd_manager.literal(node), query_def_sdd)
+        evidence_sdd = self.sdd_manager.conjoin(
+            *[self.__sdd.get_sddnode(ev) for ev in self.iterEvidence() if self.__sdd.isCompound(abs(ev))])
+
+        query_sdd = self.sdd_manager.conjoin(query_node_sdd, evidence_sdd, constraint_sdd)
 
         # Delete temporary SDDs
-        self.sdd_manager.deref(query_node_sdd, evidence_sdd, *rule_sdds)
+        self.sdd_manager.deref(query_node_sdd, evidence_sdd)
 
         if self.sdd_manager.is_false(query_sdd):
             raise InconsistentEvidenceError()
-
 
         if self.sdd_manager.is_true(query_sdd):
             if node < 0:
@@ -511,6 +507,69 @@ class SDDEvaluator(Evaluator):
                 result = sdd.wmc_literal_pr(node, wmc_manager)
                 sdd.wmc_manager_free(wmc_manager)
                 return result
+
+    def evaluate2(self, node):
+        """
+        Evaluate the given node in the SDD.
+        :param node: identifier of the node to evaluate
+        :return: weight of the node
+        """
+
+        # Trivial case: node is deterministically True or False
+        if node == 0:
+            return self.semiring.one()
+        elif node is None:
+            return self.semiring.zero()
+
+        # TODO cache evidence_sdd and Z1
+
+        query_def_sdd = self.__sdd.get_sddnode(node)
+        constraint_sdd = self.__sdd.get_constraint_sdd()
+
+        # Construct the query SDD
+        # query_node_sdd = self.sdd_manager.equiv(self.sdd_manager.literal(node), query_def_sdd)
+
+        with Timer('Evidence'):
+            evidence_sdd = self.sdd_manager.conjoin(constraint_sdd, *[self.__sdd.get_sddnode(ev) for ev in self.iterEvidence() if self.__sdd.isCompound(abs(ev))])
+
+        with Timer('Query %s' % node):
+            query_sdd = self.sdd_manager.conjoin(query_def_sdd, evidence_sdd, constraint_sdd)
+
+        with Timer('Z1'):
+            logspace = 0
+            if self.semiring.isLogspace():
+                logspace = 1
+            wmc_manager = sdd.wmc_manager_new(query_sdd, logspace, self.sdd_manager.get_manager())
+
+            for i, n in enumerate(sorted(self.__probs)):
+                i += 1
+                pos, neg = self.__probs[n]
+                sdd.wmc_set_literal_weight(n, pos, wmc_manager)   # Set positive literal weight
+                sdd.wmc_set_literal_weight(-n, neg, wmc_manager)  # Set negative literal weight
+            Z1 = sdd.wmc_propagate(wmc_manager)
+            # result = sdd.wmc_literal_pr(node, wmc_manager)
+            sdd.wmc_manager_free(wmc_manager)
+
+        with Timer('Z2'):
+            wmc_manager = sdd.wmc_manager_new(evidence_sdd, logspace, self.sdd_manager.get_manager())
+
+            for i, n in enumerate(sorted(self.__probs)):
+                i += 1
+                pos, neg = self.__probs[n]
+                sdd.wmc_set_literal_weight(n, pos, wmc_manager)   # Set positive literal weight
+                sdd.wmc_set_literal_weight(-n, neg, wmc_manager)  # Set negative literal weight
+            Z2 = sdd.wmc_propagate(wmc_manager)
+            # result = sdd.wmc_literal_pr(node, wmc_manager)
+            sdd.wmc_manager_free(wmc_manager)
+
+            self.sdd_manager.deref(evidence_sdd, query_sdd)
+
+        if Z2 == self.semiring.zero():
+            raise InconsistentEvidenceError()
+
+        result = self.semiring.normalize(Z1, Z2)
+        return result
+
             
     def setEvidence(self, index, value ) :
         pos = self.semiring.one()
