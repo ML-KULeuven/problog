@@ -258,7 +258,7 @@ class SDD(LogicDAG, Evaluatable):
     _disj = namedtuple('disj', ('children', 'sddnode') )
     # negation is encoded by using a negative number for the key
 
-    def __init__(self, sdd_auto_gc=True, **kwdargs):
+    def __init__(self, sdd_auto_gc=False, **kwdargs):
         LogicDAG.__init__(self, auto_compact=False)
         if sdd is None:
             raise InstallError('The SDD library is not available. Please run the installer.')
