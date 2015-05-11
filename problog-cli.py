@@ -122,6 +122,24 @@ def main(argv):
     """Main function.
     :param argv: command line arguments
     """
+
+    if argv[0] == 'install':
+        from problog import setup
+        setup.install()
+        return
+    elif argv[0] == 'info':
+        from problog.core import list_transformations
+        list_transformations()
+        return
+    elif argv[0] == 'unittest':
+        import unittest
+        test_results = unittest.TextTestResult(sys.stderr, False, 1)
+        unittest.TestLoader().discover(os.path.dirname(__file__)).run(test_results)
+        return
+    elif argv[0] == 'sample':
+        from problog.sample import main
+        return main(argv[1:])
+
     parser = argparser()
     args = parser.parse_args(argv)
 
@@ -167,45 +185,34 @@ def main(argv):
             parser.print_help()
             sys.exit(1)
 
-    if args.filenames[0] == 'install':
-        from problog import setup
-        setup.install()
-    elif args.filenames[0] == 'info':
-        from problog.core import list_transformations
-        list_transformations()
-    elif args.filenames[0] == 'unittest':
-        import unittest
-        test_results = unittest.TextTestResult(sys.stderr, False, 1)
-        unittest.TestLoader().discover(os.path.dirname(__file__)).run(test_results)
-    else:
-        if args.koption in ('nnf', 'ddnnf'):
-            knowledge = NNF
-        elif args.koption == 'sdd':
+    if args.koption in ('nnf', 'ddnnf'):
+        knowledge = NNF
+    elif args.koption == 'sdd':
+        knowledge = SDD
+    elif args.koption is None:
+        if SDD.is_available() and not args.symbolic:
+            logger.info('Using SDD path')
             knowledge = SDD
-        elif args.koption is None:
-            if SDD.is_available() and not args.symbolic:
-                logger.info('Using SDD path')
-                knowledge = SDD
-            else:
-                logger.info('Using d-DNNF path')
-                knowledge = NNF
         else:
-            raise ValueError("Unknown option for --knowledge: '%s'" % args.knowledge)
-        
-        if args.symbolic:
-            semiring = SemiringSymbolic()
-        elif args.logspace:
-            semiring = SemiringLogProbability()
-        else:
-            semiring = None
-    
-        for filename in args.filenames:
-            if len(args.filenames) > 1:
-                print ('Results for %s:' % filename)
-            result = run_problog(filename, knowledge, semiring, parse_class, **vars(args))
-            retcode = print_result(result, output)
-            if len(args.filenames) == 1:
-                sys.exit(retcode)
+            logger.info('Using d-DNNF path')
+            knowledge = NNF
+    else:
+        raise ValueError("Unknown option for --knowledge: '%s'" % args.knowledge)
+
+    if args.symbolic:
+        semiring = SemiringSymbolic()
+    elif args.logspace:
+        semiring = SemiringLogProbability()
+    else:
+        semiring = None
+
+    for filename in args.filenames:
+        if len(args.filenames) > 1:
+            print ('Results for %s:' % filename)
+        result = run_problog(filename, knowledge, semiring, parse_class, **vars(args))
+        retcode = print_result(result, output)
+        if len(args.filenames) == 1:
+            sys.exit(retcode)
 
     if args.output is not None:
         output.close()
