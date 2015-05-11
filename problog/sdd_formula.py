@@ -265,6 +265,11 @@ class SDD(LogicDAG, Evaluatable):
         self.auto_gc = sdd_auto_gc
         self.sdd_manager = SDDManager(auto_gc=sdd_auto_gc)
 
+        self._sdd_nodes_pos = []
+        self._sdd_nodes_neg = []
+
+        self._constraint_sdd = None
+
     def set_varcount(self, varcount):
         """
         Set the variable count for the SDD.
@@ -316,7 +321,31 @@ class SDD(LogicDAG, Evaluatable):
             new_sdd = self.sdd_manager.negate(result)
             return new_sdd
         else:
-            return result
+            return node
+
+    def set_sddnode(self, index, sddnode):
+        assert index > 0
+        self._sdd_nodes_pos[index-1] = sddnode
+
+    def get_constraint_sdd(self):
+        if self._constraint_sdd is None:
+            return self.sdd_manager.true()
+        else:
+            return self._constraint_sdd
+
+    def addConstraint(self, c):
+        if self._constraint_sdd is None:
+            self._constraint_sdd = self.sdd_manager.true()
+        print ('add_constraint', c)
+        print (self)
+        LogicDAG.addConstraint(self, c)
+        for rule in c.encodeCNF():
+            rule_sdd = self.sdd_manager.disjoin(*[self.get_sddnode(r) for r in rule])
+            new_constraint_sdd = self.sdd_manager.conjoin(self._constraint_sdd, rule_sdd)
+            self.sdd_manager.deref(self._constraint_sdd)
+            self.sdd_manager.deref(rule_sdd)
+            self._constraint_sdd = new_constraint_sdd
+
 
     def write_to_dot(self, filename, index=None):
         """
