@@ -10,7 +10,7 @@ from __future__ import print_function
 from collections import namedtuple
 from .formula import LogicDAG
 from .evaluator import Evaluator, SemiringProbability, Evaluatable, InconsistentEvidenceError
-from .core import transform
+from .core import transform, InstallError
 from .util import Timer
 
 try:
@@ -246,7 +246,7 @@ class SDD(LogicDAG, Evaluatable):
     def __init__(self, sdd_auto_gc=True, **kwdargs):
         LogicDAG.__init__(self, auto_compact=False)
         if sdd is None:
-            raise RuntimeError('The SDD library is not available. Please run the installer.')
+            raise InstallError('The SDD library is not available. Please run the installer.')
         self.auto_gc = sdd_auto_gc
         self.sdd_manager = SDDManager(auto_gc=sdd_auto_gc)
 

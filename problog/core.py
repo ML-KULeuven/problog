@@ -100,7 +100,17 @@ class GroundingError(ProbLogError):
         return self._message()
 
 
-class CompilationError(ProbLogError) : pass
+class CompilationError(ProbLogError):
+    pass
+
+
+class InstallError(ProbLogError):
+    """
+    Missing component that should be installed.
+    """
+    pass
+
+
 
 def process_error( err, debug=False ) :
     """Take the given error raise by ProbLog and produce a meaningful error message."""
