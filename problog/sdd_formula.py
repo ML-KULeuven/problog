@@ -336,8 +336,12 @@ class SDD(LogicDAG, Evaluatable):
     
             
 @transform(LogicDAG, SDD)
-def buildSDD( source, destination, **kwdargs):
+def buildSDD(source, destination, **kwdargs):
+
     with Timer('Compiling SDD'):
+        if kwdargs.get('sdd_preset_variables'):
+            s = len(source)
+            destination.set_varcount(s+1)
         for i, n, t in source:
             if t == 'atom':
                 destination.addAtom(n.identifier, n.probability, n.group)

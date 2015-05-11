@@ -108,6 +108,13 @@ def argparser():
                                    default=argparse.SUPPRESS, help=argparse.SUPPRESS)
     sdd_auto_gc_group.add_argument('--sdd-no-auto-gc', action='store_false', dest='sdd_auto_gc',
                                    default=argparse.SUPPRESS, help=argparse.SUPPRESS)
+
+    sdd_fixvars_group = parser.add_mutually_exclusive_group()
+    sdd_fixvars_group.add_argument('--sdd-preset-variables', action='store_true', dest='sdd_preset_variables',
+                                   default=argparse.SUPPRESS, help=argparse.SUPPRESS)
+    sdd_fixvars_group.add_argument('--sdd-no-preset-variables', action='store_false', dest='sdd_preset_variables',
+                                   default=argparse.SUPPRESS, help=argparse.SUPPRESS)
+
     return parser
 
 
