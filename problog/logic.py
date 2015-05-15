@@ -365,6 +365,8 @@ class Term(object):
         """
         if 'p' in kwdargs:
             p = kwdargs['p']
+            if type(p) == int or type(p) == float:
+                p = Constant(p)
         else:
             p = self.probability
         if p is not None:
