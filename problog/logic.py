@@ -365,7 +365,6 @@ class Term(object):
         """
         if 'p' in kwdargs:
             p = kwdargs['p']
-            print('{}-{}'.format(p,type(p)))
             #if type(p) == int or type(p) == float:
                 #p = Constant(p)
         else:

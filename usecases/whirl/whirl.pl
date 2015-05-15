@@ -23,6 +23,7 @@
 %% Author:
 %% - Wannes Meert
 %% - Anton Dries
+%% - Angelika Kimmig
 %%
 
 :- use_module('whirl.py').
