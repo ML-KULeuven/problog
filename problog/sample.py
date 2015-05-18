@@ -222,7 +222,7 @@ class SampledFormula(LogicFormula):
                     lines.append('%s = %s.' % (str(k), val))
         if with_facts:
             for k, v in self.facts.items():
-                if v:
+                if v == 0:
                     lines.append(str(translate(db, k)) + '.')
             
         if oneline:
