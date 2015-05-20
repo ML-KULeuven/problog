@@ -78,6 +78,8 @@ class LFIProblem(SemiringProbability, LogicProgram) :
         self.max_iter = max_iter
         self.min_improv = min_improv
         self.iteration = 0
+
+        self.output_mode = False
     
     def value(self, a) :
         """Overrides from SemiringProbability.
@@ -171,6 +173,18 @@ class LFIProblem(SemiringProbability, LogicProgram) :
             return replacement, extra_clauses
         else :
             return atom, []
+
+    def _process_atom_output(self, atom):
+        """Returns tuple ( prob_atom, [ additional clauses ] )"""
+
+        if atom.probability and atom.probability.functor == 't' :
+            assert (atom in self.names)
+            index = self.names.index(atom)
+            weight = self.weights[index]
+            result = atom.withProbability(weight)
+            return result, []
+        else:
+            return atom, []
         
     # Overwrite from LogicProgram    
     def __iter__(self) :
@@ -207,19 +221,24 @@ class LFIProblem(SemiringProbability, LogicProgram) :
             query(lfi_fact_1(X)).
         
         """
-        
-        for clause in self.source :
+
+        if self.output_mode:
+            process_atom = self._process_atom_output
+        else:
+            process_atom = self._process_atom
+
+        for clause in self.source:
             if isinstance(clause, Clause) :
                 if clause.head.functor == 'query' and clause.head.arity == 1 :
                     continue                
-                new_head, extra_clauses = self._process_atom( clause.head )
+                new_head, extra_clauses = process_atom( clause.head )
                 yield Clause( new_head, clause.body )
                 for extra in extra_clauses : yield extra                
             elif isinstance(clause, AnnotatedDisjunction) :
                 new_heads = []
                 extra_clauses_all = []
                 for head in clause.heads :
-                    new_head, extra_clauses = self._process_atom( head )
+                    new_head, extra_clauses = process_atom( head )
                     new_heads.append(new_head)
                     extra_clauses_all += extra_clauses                
                 yield AnnotatedDisjunction( new_heads, clause.body )
@@ -228,7 +247,7 @@ class LFIProblem(SemiringProbability, LogicProgram) :
                 if clause.functor == 'query' and clause.arity == 1 :
                     continue
                 # Fact
-                new_fact, extra_clauses = self._process_atom( clause )
+                new_fact, extra_clauses = process_atom( clause )
                 yield new_fact
                 for extra in extra_clauses : yield extra
 
@@ -279,6 +298,15 @@ class LFIProblem(SemiringProbability, LogicProgram) :
         self.iteration += 1
         results = self._evaluate_examples()
         return self._update(results)
+
+    def get_model(self):
+        self.output_mode = True
+        lines = []
+        for l in self:
+            lines.append('%s.' % l)
+        lines.append('')
+        self.output_mode = False
+        return '\n'.join(lines)
         
     def run(self) :
         self.prepare()
@@ -314,11 +342,15 @@ def read_examples( *filenames ) :
                     yield atoms
     
     
-def run_lfi( program, examples, max_iter=10000, min_improv=1e-10 ) :
+def run_lfi( program, examples, max_iter=10000, min_improv=1e-10, output=None):
     lfi = LFIProblem( program, examples, max_iter=max_iter, min_improv=min_improv )
     score = lfi.run()
+
+    if output is not None:
+        with open(output,'w') as f:
+            f.write(lfi.get_model())
     return score, lfi.weights, lfi.names, lfi.iteration
-    
+
     
 if __name__ == '__main__' :
     import argparse
@@ -327,11 +359,12 @@ if __name__ == '__main__' :
     parser.add_argument('examples', nargs='+')
     parser.add_argument('-n', dest='max_iter', default=10000 )
     parser.add_argument('-d', dest='min_improv', default=1e-10 )
+    parser.add_argument('-o', '--output', type=str, default=None, help='write resulting model to given file')
     args = parser.parse_args()
     
     program = PrologFile(args.model)
-    examples = list( read_examples(*args.examples ) )
-    score, weights, names, iterations = run_lfi( program, examples, args.max_iter, args.min_improv)
+    examples = list(read_examples(*args.examples))
+    score, weights, names, iterations = run_lfi( program, examples, args.max_iter, args.min_improv, args.output)
     
     print (score, weights, names, iterations)
     
