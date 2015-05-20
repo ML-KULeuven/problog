@@ -363,14 +363,16 @@ class Term(object):
         
         :param args: new arguments for the term
         :type args: tuple of (Term | int | None)
+        :param kwdargs: keyword arguments for the term
+        :type kwdargs: p=Constant | p=Var | p=float
         :returns: a new term with the given arguments
         :rtype: :class:`Term`
         
         """
         if 'p' in kwdargs:
             p = kwdargs['p']
-            #if type(p) == int or type(p) == float:
-                #p = Constant(p)
+            if type(p) == float:
+                p = Constant(p)
         else:
             p = self.probability
         if p is not None:
