@@ -1,0 +1,63 @@
+This change log only contains significant changes and/or new features.
+Intermediate bugfixes and speed improvements are not listed.
+
+
+2015/05/20 
+
+    LFI learning
+        - added option to output model file
+    
+2015/05/11
+
+    (NEW) Sampling in ProbLog
+        - added sampling to the CLI (problog-cli.py sample <model>)
+    
+    ProbLog CLI
+        - added flags for SDD options:
+            --sdd-auto-gc / --sdd-no-auto-gc 
+                turn on/off minimization and garbage collection on SDD
+            --sdd-preset-variables / --sdd-no-preset-variables
+                turn on/off initializing the SDD with the correct number of variables
+
+2015/05/06
+
+    ProbLog CLI
+        - Logspace evaluation is now the default. Use --nologspace to turn it off.
+        
+    
+2015/05/05
+
+    ProbLog CLI
+        - Added a flag to turn on debugging output from grounding engine (--engine-debug)
+
+2015/04/27
+
+    (NEW) ProbLog-to-Python connection
+        - added new syntax for calling Python for ProbLog
+        
+2015/04/26
+
+    ProbLog core
+        - eliminate restriction on variable unification
+
+2015/03/05
+
+    ProbLog core
+        - add builtin findall/3
+
+2015/02/01
+
+    ProbLog2.1 released. New features include:
+    
+        - simplified installation
+        - better error messaging - improved output
+        - added support for weighted model count through Sentential Decision Diagrams
+        - several bugfixes
+        - possibility to interface with ProbLog's components directly from Python (under development)
+        
+    Features taken from ProbLog 2.0
+        
+        - learning from interpretations (learning/lfi.py)
+        - weighted model count through d-DNNFs
+        - runs on Windows, Mac OSX and Linux
+        - ...
