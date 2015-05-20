@@ -984,21 +984,22 @@ def builtin_findall_base(pattern, goal, result, top_only=False, database=None, t
     results = [(res[0], n) for res, n in results]
     output = []
     if top_only:
-        # Only return the maximal list.
-        l, n = zip(*results)
-        node = target.addAnd(n)
-        if node is not None:
-            res = build_list(l, Term('[]'))
-            if mode == 0:  # var
-                args = (pattern, goal, res)
-                output.append((args, node))
-            else:
-                try:
-                    res = unify_value(res, result, {})
+        if results:
+            # Only return the maximal list.
+            l, n = zip(*results)
+            node = target.addAnd(n)
+            if node is not None:
+                res = build_list(l, Term('[]'))
+                if mode == 0:  # var
                     args = (pattern, goal, res)
                     output.append((args, node))
-                except UnifyError:
-                    pass
+                else:
+                    try:
+                        res = unify_value(res, result, {})
+                        args = (pattern, goal, res)
+                        output.append((args, node))
+                    except UnifyError:
+                        pass
     else:
         for l, n in select_sublist(results, target):
             node = target.addAnd(n)
@@ -1121,6 +1122,7 @@ def builtin_call( term, args=(), engine=None, callback=None, **kwdargs ) :
     check_mode( (term,), 'c', functor='call' )
     # Find the define node for the given query term.
     term_call = term.withArgs( *(term.args + args ))
+
     try:
         results = engine.call( term_call, subcall=True, **kwdargs )
     except UnknownClauseInternal:
