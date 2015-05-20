@@ -170,6 +170,7 @@ class Term(object):
         """
         self.__functor = functor
         self.__args = args
+        self.__arity = len(self.__args)
         self.probability = kwdargs.get('p')
         self.location = kwdargs.get('location')
         self.__signature = None
@@ -195,7 +196,7 @@ class Term(object):
     @property
     def arity(self):
         """Number of arguments"""
-        return len(self.__args)
+        return self.__arity
     
     @property
     def value(self):
@@ -328,6 +329,9 @@ class Term(object):
                 q.append(']')
                 stack.append(q)
             elif isinstance(current, Term):
+                if current.probability is not None:
+                    put(str(current.probability))       # This is a recursive call.
+                    put('::')
                 put(str(current.functor))
                 if current.args:
                     q = deque()
@@ -440,18 +444,15 @@ class Term(object):
                 if t2 is not None:
                     return False
             else:  # t1 and t2 are Terms
-                if t1.functor != t2.functor:
+                if t1.__functor != t2.__functor:
                     return False
-                if t1.arity != t2.arity:
+                if t1.__arity != t2.__arity:
                     return False
-                l1.extend(t1.args)
-                l2.extend(t2.args)
+                l1.extend(t1.__args)
+                l2.extend(t2.__args)
         return l1 == l2  # Should both be empty.
 
     def __eq__rec(self, other) :
-        # implement non-recursive
-
-
         # TODO: this can be very slow?
         if other is None : 
             return False
@@ -461,12 +462,10 @@ class Term(object):
             # Other is wrong type
             return False
         
-    def __hash__(self) :
-        if self.__hash is None :
-            #toH = (self.functor, self.arity)
+    def __hash__(self):
+        if self.__hash is None:
             self.__hash = hash(self.functor)
         return self.__hash
-        #return hash((self.functor, self.args))
         
     def __lshift__(self, body) :
         return Clause(self, body)
