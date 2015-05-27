@@ -55,7 +55,7 @@ def run_problog(filename, knowledge=NNF, semiring=None, parse_class=DefaultProlo
         debugger = None
 
     try:
-        with Timer('Total time to processing model'):
+        with Timer('Total time to process model'):
             parser = parse_class(ExtendedPrologFactory())
             formula = knowledge.createFrom(PrologFile(filename, parser=parser), debugger=debugger, **kwdargs)
         with Timer('Evaluation'):
