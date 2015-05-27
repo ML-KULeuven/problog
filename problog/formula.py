@@ -674,52 +674,146 @@ class LogicFormula(ProbLogObject):
                     s += '\nConstraints : '
                 s += '\n* ' + str(c)
         return s + '\n'
+
+    def toProlog(self, yap_style=True):
+        """
+        DEPRECATED: see to_prolog()
+        :param yap_style:
+        :return:
+        """
+        warnings.warn(
+            'LogicFormula.toProlog() is deprecated. Use LogicFormula.to_prolog() instead.',
+            FutureWarning)
+        return self.to_prolog(yap_style=yap_style)
         
-    def toProlog(self) :
+    def to_prolog(self, yap_style=False):
+        """Convert the Logic Formula to a Prolog program.
+
+        To make this work correctly some flags should be set on the engine and LogicFormula prior \
+        to grounding.
+        The following code should be used:
+
+        .. code-block:: python
+
+            pl = problog.program.PrologFile(inFile)
+            eng = problog.engine.DefaultEngine(label_all=True)
+
+            gp = problog.formula.LogicFormula(avoid_name_clash=True, keep_order=True)
+            gp = eng.ground_all(pl, target=gp)
+
+            prologfile = gp.to_prolog()
+
+        :param yap_style: use Yap-style negation (i.e. ``\+ (atom)``) instead of ``\+atom``.
+        :return: Prolog program
+        :rtype: str
+        """
         lines = []
-        
+
         name_lookup_clash = defaultdict(list)
-        for x,y in self.getNames() :
+        for x, y in self.getNames():
             name_lookup_clash[y].append(x)
         name_lookup = {}
-        for x,y in name_lookup_clash.items() :
-            if x != 0 :
+        derived_names = {}
+        for x, y in name_lookup_clash.items():
+            if x != 0:
                 name_lookup[x] = y[0]
-                if len(y) > 1 :
-                    for y1 in set(y[1:]) :
-                        if y1 != y[0] :
-                            lines.append( '%s :- %s.' % ( y1, y[0] ) )
-        
-        def get_name(x) :
-            name = str(name_lookup.get(abs(x), 'node_%s' % abs(x)))
-            if x < 0 : name = '\+ (' + name + ')'
-            return name
-        
-        active = [ abs(q) for n,q in self.queries() if not q is None ]
-        active += [ abs(q) for n,q in self.evidence() if not q is None ]
+                if len(y) > 1:
+                    for y1 in set(y[1:]):
+                        if str(y1) != str(y[0]):
+                            lines.append('%s :- %s.' % (y1, y[0]))
+
+        def negate(x):
+            """Give the string representation of the negation of the given node.
+
+            :param x: node to negate
+            :return: negated node
+            """
+            if yap_style:
+                return '\+ (%s)' % x
+            else:
+                return '\+%s' % x
+
+        def get_name(x):
+            """Get the name for the given node.
+
+            :param x: node identifier (postive or negative, not 0 or None)
+            :return: name of the given node
+            """
+            nname = name_lookup.get(abs(x))
+            if nname is None:
+                node = self.getNode(abs(x))
+                if type(node).__name__ == 'disj' and len(node.children) == 1:
+                    nname = get_name(node.children[0])
+                else:
+                    nname = derived_names.get(abs(x))
+                    if nname is None:
+                        nname = 'node_%s' % abs(x)
+                    else:
+                        nname = str(nname)
+            else:
+                nname = str(nname)
+            if x < 0:
+                nname = negate(nname)
+            return nname
+
+        active = [abs(q) for n, q in self.queries() if q is not None]
+        active += [abs(q) for n, q in self.evidence() if q is not None]
         active = set(active)
-        former = set([0])
-        
-        while active :
+        former = {0}
+
+        while active:
             i = active.pop()
             former.add(i)
             n = self.getNode(i)
             t = type(n).__name__
             name = get_name(i)
-            if t == 'atom' :
-                lines.append( '%s::%s.' % (n.probability, name) )
-            elif t == 'conj' :
-                lines.append( '%s :- %s.' % ( name, ','.join( get_name(c) for c in n.children  )  ) )
-            else :
-                for c in n.children :
-                    if self.__keep_order :
+            if t == 'atom':
+                lines.append('%s::%s.' % (n.probability, name))
+            elif t == 'conj':
+                if len(n.children) == 2 and n.children[1] > 0:
+                    children = [n.children[0]]
+                    current = n.children[1]
+                    current_node = self.getNode(current)
+                    while type(current_node).__name__ == 'conj' and len(current_node.children) == 2:
+                        children.append(current_node.children[0])
+                        current = current_node.children[1]
+                        if current > 0:
+                            current_node = self.getNode(current)
+                        else:
+                            current_node = None
+                    children.append(current)
+                    lines.append('%s :- %s.' % (name, ','.join(get_name(c) for c in children)))
+                else:
+                    lines.append('%s :- %s.' % (name, ','.join(get_name(c) for c in n.children)))
+            else:
+                if name:
+                    derived_names.update({c: name for c in n.children})
+                for c in n.children:
+                    former.add(c)
+                    if self.__keep_order:
                         children = OrderedSet()
-                    else :
+                    else:
                         children = set()
-                    self._expand( c, children, name_lookup, nodetype=None, anc=None)
-                    lines.append( '%s :- %s.' % ( name, ','.join( get_name(x) for x in children  )  ) )
-                    children = set(map(abs,children))
-                    active |= ( children - former )
+                    self._expand(c, children, name_lookup, nodetype=None, anc=None)
+                    lines.append('%s :- %s.' % (name, ','.join(get_name(x) for x in children)))
+                    children = set(map(abs, children))
+                    active |= (children - former)
+
+        for n, q in self.queries():
+            if q is None:
+                lines.append('%s :- fail.' % n)
+            elif q == 0:
+                lines.append('%s.' % n)
+            elif q < 0:
+                lines.append('%s :- %s.' % (n, negate(get_name(-q))))
+        for n, q in self.evidence():
+            if q is None:
+                lines.append('%s :- fail.' % n)
+            elif q == 0:
+                lines.append('%s.' % n)
+            elif q < 0:
+                lines.append('%s :- %s.' % (n, negate(get_name(-q))))
+
         return '\n'.join(lines)
         
     def toDot(self, not_as_node=True) :
