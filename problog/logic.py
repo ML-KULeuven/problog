@@ -176,6 +176,7 @@ class Term(object):
         self.__signature = None
         self.__hash = None
         self.__is_ground = None
+        self.__list_length = None
 
     @property
     def functor(self):
@@ -221,6 +222,10 @@ class Term(object):
         :rtype: :class:`Term`
 
         """
+        if self.is_ground():
+            # No variables to substitute.
+            return self
+
         old_stack = [deque([self])]
         new_stack = []
         term_stack = []
@@ -369,6 +374,9 @@ class Term(object):
         :rtype: :class:`Term`
         
         """
+        if not kwdargs and list(map(id, args)) == list(map(id, self.args)):
+            return self
+
         if 'p' in kwdargs:
             p = kwdargs['p']
             if type(p) == float:
@@ -429,7 +437,21 @@ class Term(object):
                 queue.extend(term.args)
         return variables
 
+    def _list_length(self):
+        if self.__list_length is None:
+            l = 0
+            current = self
+            while not is_variable(current) and current.functor == '.' and current.arity == 2:
+                l += 1
+                current = current.args[1]
+            self.__list_length = l
+        return self.__list_length
+
+
     def __eq__(self, other):
+        if self._list_length() != other._list_length():
+            return False
+
         # Non-recursive version of equality check.
         l1 = deque([self])
         l2 = deque([other])

@@ -390,11 +390,13 @@ class StackBasedEngine(ClauseDBEngine):
         if self.debugger:
             self.debugger.call_create(node_id, node.functor, call_args, parent)
 
+        ground_mask = [not is_ground(c) for c in call_args]
+
         def result_transform(result):
             output = self._clone_context(context)
             try:
                 assert(len(result) == len(node.args))
-                output = unify_call_return(result, node.args, output, var_translate, min_var)
+                output = unify_call_return(result, node.args, output, var_translate, min_var, mask=ground_mask)
                 if self.debugger:
                     self.debugger.call_result(node_id, node.functor, call_args, result)
                 return output

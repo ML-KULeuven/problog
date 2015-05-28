@@ -71,6 +71,7 @@ def unify_value(value1, value2, source_values):
     """
     # Variables are negative numbers or None
     # Naive implementation (no occurs check)
+
     if is_variable(value1) and is_variable(value2):
         if value1 == value2:
             return value1
@@ -268,7 +269,7 @@ class _VarTranslateWrapper(object):
             return self.min_var
 
 
-def unify_call_return(call_args, head_args, target_context, var_translate, min_var):
+def unify_call_return(call_args, head_args, target_context, var_translate, min_var, mask=None):
     """
     Unify argument list from clause call and clause head.
     :param call_args: arguments of the call
@@ -277,12 +278,16 @@ def unify_call_return(call_args, head_args, target_context, var_translate, min_v
     :param var_translate:
     :raise UnifyError: unification failed
     """
+    if mask is None:
+        mask = [True] * len(call_args)
+
     var_translate = _VarTranslateWrapper(var_translate, min_var)
     source_values = {}  # contains the values unified to the variables in the call arguments
-    for call_arg, head_arg in zip(call_args, head_args):
-        # Translate the variables in the source value (V3) to negative variables in current context (V2)
-        call_arg = substitute_simple(call_arg, var_translate)
-        _unify_call_return_single(call_arg, head_arg, target_context, source_values)
+    for call_arg, head_arg, mask_arg in zip(call_args, head_args, mask):
+        if mask_arg:
+            # Translate the variables in the source value (V3) to negative variables in current context (V2)
+            call_arg = substitute_simple(call_arg, var_translate)
+            _unify_call_return_single(call_arg, head_arg, target_context, source_values)
     result = substitute_all(target_context, source_values)
     return result
 
