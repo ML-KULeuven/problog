@@ -123,22 +123,23 @@ def main(argv):
     :param argv: command line arguments
     """
 
-    if argv[0] == 'install':
-        from problog import setup
-        setup.install()
-        return
-    elif argv[0] == 'info':
-        from problog.core import list_transformations
-        list_transformations()
-        return
-    elif argv[0] == 'unittest':
-        import unittest
-        test_results = unittest.TextTestResult(sys.stderr, False, 1)
-        unittest.TestLoader().discover(os.path.dirname(__file__)).run(test_results)
-        return
-    elif argv[0] == 'sample':
-        from problog.sample import main
-        return main(argv[1:])
+    if len(argv) > 1:
+        if argv[0] == 'install':
+            from problog import setup
+            setup.install()
+            return
+        elif argv[0] == 'info':
+            from problog.core import list_transformations
+            list_transformations()
+            return
+        elif argv[0] == 'unittest':
+            import unittest
+            test_results = unittest.TextTestResult(sys.stderr, False, 1)
+            unittest.TestLoader().discover(os.path.dirname(__file__)).run(test_results)
+            return
+        elif argv[0] == 'sample':
+            from problog.sample import main
+            return main(argv[1:])
 
     parser = argparser()
     args = parser.parse_args(argv)
