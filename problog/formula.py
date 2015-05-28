@@ -774,6 +774,7 @@ class LogicFormula(ProbLogObject):
 
         while to_add:
             node_id = to_add.pop()  # We are going to add the definition of this node.
+            added.add(node_id)  # Prevent the same node from being added twice
             assert node_id > 0
             node = self.getNode(node_id)  # Get the node content.
             node_type = type(node).__name__
@@ -785,6 +786,7 @@ class LogicFormula(ProbLogObject):
                     child_type = type(child).__name__
                     if child_type == 'conj':
                         body = self._unroll_conj(child)
+                        to_add |= (set(map(abs,body)) - added)
                     else:
                         body = [child_id]
                         if abs(child_id) not in added:
@@ -794,6 +796,7 @@ class LogicFormula(ProbLogObject):
                 lines.append('%s::%s.' % (node.probability, name))
             else:
                 body = self._unroll_conj(node)
+                to_add |= (set(map(abs,body)) - added)
                 lines.append('%s :- %s.' % (name, ','.join(map(_get_name, body))))
 
         # Make sure all true/false/negated queries and evidence are present.
