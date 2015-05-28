@@ -123,7 +123,7 @@ def main(argv):
     :param argv: command line arguments
     """
 
-    if len(argv) > 1:
+    if len(argv) > 0:
         if argv[0] == 'install':
             from problog import setup
             setup.install()
