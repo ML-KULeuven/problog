@@ -181,6 +181,7 @@ class Term(object):
         self.__hash = None
         self._cache_is_ground = None
         self._cache_list_length = None
+        self._cache_variables = None
 
     @property
     def functor(self):
@@ -431,15 +432,17 @@ class Term(object):
         :return: set of variables
         :rtype: OrderedSet
         """
-        variables = OrderedSet()
-        queue = deque([self])
-        while queue:
-            term = queue.popleft()
-            if term is None or type(term) == int or term.isVar():
-                variables.add(term)
-            else:
-                queue.extend(term.args)
-        return variables
+        if self._cache_variables is None:
+            variables = OrderedSet()
+            queue = deque([self])
+            while queue:
+                term = queue.popleft()
+                if term is None or type(term) == int or term.isVar():
+                    variables.add(term)
+                else:
+                    queue.extend(term.args)
+            self._cache_variables = variables
+        return self._cache_variables
 
     def _list_length(self):
         if self._cache_list_length is None:
@@ -521,7 +524,7 @@ class Term(object):
         
     def __hash__(self):
         if self.__hash is None:
-            self.__hash = hash((self.functor, self._list_length()))
+            self.__hash = hash((self.__functor, self.__arity, self._list_length()))
         return self.__hash
         
     def __lshift__(self, body) :
