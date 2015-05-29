@@ -237,7 +237,7 @@ def _compile(cnf, cmd, cnf_file, nnf_file) :
         return nnf
     else :
         with open(cnf_file, 'w') as f :
-            f.write(cnf.toDimacs())
+            f.write(cnf.to_dimacs())
 
         attempts_left = 1
         success = False

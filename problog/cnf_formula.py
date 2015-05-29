@@ -5,6 +5,7 @@ from .formula import LogicDAG
 from .core import ProbLogObject, transform
 from .util import Timer
 
+import warnings
 import tempfile
 
 
