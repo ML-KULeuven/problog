@@ -801,8 +801,6 @@ class LogicFormula(ProbLogObject):
                 lines.append('%s :- fail.' % n)
             elif q == 0:
                 lines.append('%s.' % n)
-            elif q < 0:
-                lines.append('%s :- \+%s.' % (n, _get_name(-q)))
 
         return '\n'.join(lines)
 
