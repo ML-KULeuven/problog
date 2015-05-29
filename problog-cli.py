@@ -15,6 +15,7 @@ from problog.evaluator import SemiringSymbolic, SemiringLogProbability
 from problog.nnf_formula import NNF
 from problog.sdd_formula import SDD
 from problog.formula import LogicFormula, LogicDAG
+from problog.cnf_formula import CNF
 from problog.util import Timer, start_timer, stop_timer
 from problog.core import process_error, process_result
 from problog.parser import DefaultPrologParser
@@ -69,12 +70,23 @@ def run_problog(filename, knowledge=NNF, semiring=None, parse_class=DefaultProlo
 def ground(argv):
     import argparse
     parser = argparse.ArgumentParser()
-    parser.add_argument('filename', metavar='MODEL', type=str)
-    parser.add_argument('--format', choices=('dot', 'pl'), default='pl', help='output format')
-    parser.add_argument('--break-cycles', action='store_true')
+    parser.add_argument('filename', metavar='MODEL', type=str, help='input ProbLog model')
+    parser.add_argument('--format', choices=('dot', 'pl', 'cnf'), default=None, help='output format')
+    parser.add_argument('--break-cycles', action='store_true', help='perform cycle breaking')
+    parser.add_argument('-o', '--output', type=str, help='output file', default=None)
     args = parser.parse_args(argv)
 
-    if args.break_cycles:
+    outformat = args.format
+    outfile = sys.stdout
+    if args.output:
+        outfile = open(args.output, 'w')
+        if outformat is None:
+            outformat = os.path.splitext(args.output)[1][1:]
+
+    if outformat == 'cnf' and not args.break_cycles:
+        print ('Warning: CNF output requires cycle-breaking; cycle breaking enabled.', file=sys.stderr)
+
+    if args.break_cycles or outformat == 'cnf':
         target = LogicDAG
     else:
         target = LogicFormula
@@ -83,10 +95,17 @@ def ground(argv):
         PrologFile(args.filename, parser=DefaultPrologParser(ExtendedPrologFactory())),
         label_all=True, avoid_name_clash=True, keep_order=True)
 
-    if args.format == 'pl':
-        print (gp.to_prolog())
+    if outformat == 'pl':
+        print (gp.to_prolog(), file=outfile)
+    elif outformat == 'dot':
+        print (gp.to_dot(), file=outfile)
+    elif outformat == 'cnf':
+        print (CNF.createFrom(gp).to_dimacs(), file=outfile)
     else:
-        print (gp.to_dot())
+        print (gp.to_prolog(), file=outfile)
+
+    if args.output:
+        outfile.close()
 
 
 def argparser():
@@ -103,25 +122,45 @@ def argparser():
     class OutputFile(str):
         """Stub class for file output arguments."""
         pass
-    
-    parser = argparse.ArgumentParser()
+
+    description = """ProbLog 2.1 command line interface
+
+    The arguments listed below are for the default mode.
+    ProbLog also supports the following alternative modes:
+
+      - (default): inference
+      - install: run the installer
+      - ground: generate ground program (see ground --help)
+      - sample: generate samples from the model (see sample --help)
+      - unittest: run the testsuite
+
+    Select a mode by adding one of these keywords as first argument (e.g. problog-cli.py install).
+    """
+
+    parser = argparse.ArgumentParser(description=description,
+                                     formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument('filenames', metavar='MODEL', nargs='*', type=InputFile)
     parser.add_argument('--verbose', '-v', action='count', help='Verbose output')
-    parser.add_argument('--knowledge', '-k', dest='koption', choices=('sdd', 'nnf', 'ddnnf'), default=None,
-                        help="Knowledge compilation tool.")
+    parser.add_argument('--knowledge', '-k', dest='koption', choices=('sdd', 'nnf', 'ddnnf'),
+                        default=None, help="Knowledge compilation tool.")
 
     # Evaluation semiring
     ls_group = parser.add_mutually_exclusive_group()
-    ls_group.add_argument('--symbolic', action='store_true', help="Use symbolic evaluation.")
-    ls_group.add_argument('--logspace', action='store_true', help="Use log space evaluation (default).", default=True)
-    ls_group.add_argument('--nologspace', dest='logspace', action='store_false', help="Use normal space evaluation.")
+    ls_group.add_argument('--symbolic', action='store_true',
+                          help="Use symbolic evaluation.")
+    ls_group.add_argument('--logspace', action='store_true',
+                          help="Use log space evaluation (default).", default=True)
+    ls_group.add_argument('--nologspace', dest='logspace', action='store_false',
+                          help="Use normal space evaluation.")
 
     parser.add_argument('--output', '-o', help="Output file (default stdout)", type=OutputFile)
     parser.add_argument('--recursion-limit',
                         help="Set Python recursion limit. (default: %d)" % sys.getrecursionlimit(),
                         default=sys.getrecursionlimit(), type=int)
-    parser.add_argument('--timeout', '-t', type=int, default=0, help="Set timeout (in seconds, default=off).")
-    parser.add_argument('--debug', '-d', action='store_true', help="Enable debug mode (print full errors).")
+    parser.add_argument('--timeout', '-t', type=int, default=0,
+                        help="Set timeout (in seconds, default=off).")
+    parser.add_argument('--debug', '-d', action='store_true',
+                        help="Enable debug mode (print full errors).")
 
     # Additional arguments (passed through)
     parser.add_argument('--engine-debug', action='store_true', help=argparse.SUPPRESS)
@@ -134,11 +173,12 @@ def argparser():
                                    default=argparse.SUPPRESS, help=argparse.SUPPRESS)
 
     sdd_fixvars_group = parser.add_mutually_exclusive_group()
-    sdd_fixvars_group.add_argument('--sdd-preset-variables', action='store_true', dest='sdd_preset_variables',
+    sdd_fixvars_group.add_argument('--sdd-preset-variables', action='store_true',
+                                   dest='sdd_preset_variables',
                                    default=argparse.SUPPRESS, help=argparse.SUPPRESS)
-    sdd_fixvars_group.add_argument('--sdd-no-preset-variables', action='store_false', dest='sdd_preset_variables',
+    sdd_fixvars_group.add_argument('--sdd-no-preset-variables', action='store_false',
+                                   dest='sdd_preset_variables',
                                    default=argparse.SUPPRESS, help=argparse.SUPPRESS)
-
     return parser
 
 

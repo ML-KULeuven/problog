@@ -58,7 +58,11 @@ class CNF(ProbLogObject) :
     def ready(self) :
         pass
 
-    def toDimacs(self) :
+    def toDimacs(self):
+        warnings.warn('CNF.toDimacs() is deprecated. Use CNF.to_dimacs() instead.', FutureWarning)
+        return self.to_dimacs()
+
+    def to_dimacs(self):
         return 'p cnf %s %s\n' % (self.__atom_count, len(self.__lines)) + '\n'.join( self.__lines )
         
     def getAtomCount(self) :
