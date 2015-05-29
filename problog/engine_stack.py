@@ -884,8 +884,8 @@ class EvalDefine(EvalNode) :
                         result_node = stored_result[ 0 ][1]
                     else :
                         result_node = self.target.addOr( (node,), readonly=False )
-                    name = str(Term(self.node.functor, *res))
                     if self.engine.label_all :
+                        name = str(Term(self.node.functor, *res))
                         self.target.addName(name, result_node, self.target.LABEL_NAMED)
                     self.results[res] = result_node
                     actions = []
@@ -954,8 +954,8 @@ class EvalDefine(EvalNode) :
             else :
                 node = self.target.addOr( nodes, readonly=(not cycle) )
             #node = self.target.addOr( nodes, readonly=(not cycle) )
-            name = str(Term(self.node.functor, *res))
             if self.engine.label_all :
+                name = str(Term(self.node.functor, *res))
                 self.target.addName(name, node, self.target.LABEL_NAMED)
             return node
         self.results.collapse(func)

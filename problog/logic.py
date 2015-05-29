@@ -157,6 +157,10 @@ def is_variable(term):
     return term is None or type(term) == int
 
 
+def is_list(term):
+    return not is_variable(term) and term.functor == '.' and term.arity == 2
+
+
 class Term(object):
 
     def __init__(self, functor, *args, **kwdargs):
@@ -175,8 +179,8 @@ class Term(object):
         self.location = kwdargs.get('location')
         self.__signature = None
         self.__hash = None
-        self.__is_ground = None
-        self.__list_length = None
+        self._cache_is_ground = None
+        self._cache_list_length = None
 
     @property
     def functor(self):
@@ -407,19 +411,19 @@ class Term(object):
         
     def is_ground(self):
         """Checks whether the term contains any variables."""
-        if self.__is_ground is None:
+        if self._cache_is_ground is None:
             queue = deque([self])
             while queue:
                 term = queue.popleft()
                 if term is None or type(term) == int or term.isVar():
-                    self.__is_ground = False
+                    self._cache_is_ground = False
                     return False
-                else:
+                elif not term._cache_is_ground:
                     queue.extend(term.args)
-            self.__is_ground = True
+            self._cache_is_ground = True
             return True
         else:
-            return self.__is_ground
+            return self._cache_is_ground
     
     def variables(self):
         """
@@ -438,30 +442,39 @@ class Term(object):
         return variables
 
     def _list_length(self):
-        if self.__list_length is None:
+        if self._cache_list_length is None:
             l = 0
             current = self
             while not is_variable(current) and current.functor == '.' and current.arity == 2:
+                if current._cache_list_length is not None:
+                    return l + current._cache_list_length
                 l += 1
                 current = current.args[1]
-            self.__list_length = l
-        return self.__list_length
+            self._cache_list_length = l
+        return self._cache_list_length
 
+    def _list_decompose(self):
+        elements = []
+        current = self
+        while not is_variable(current) and current.functor == '.' and current.arity == 2:
+            elements.append(current.args[0])
+            current = current.args[1]
+        return elements, current
 
     def __eq__(self, other):
         if not isinstance(other, Term):
             return False
-        if self._list_length() != other._list_length():
-            return False
-
         # Non-recursive version of equality check.
         l1 = deque([self])
         l2 = deque([other])
         while l1 and l2:
             t1 = l1.popleft()
             t2 = l2.popleft()
-
-            if type(t1) != type(t2):
+            if len(l1) != len(l2):
+                return False
+            elif id(t1) == id(t2):
+                pass
+            elif type(t1) != type(t2):
                 return False
             elif type(t1) == int:
                 if t1 != t2:
@@ -478,6 +491,24 @@ class Term(object):
                 l2.extend(t2.__args)
         return l1 == l2  # Should both be empty.
 
+    def __eq__list(self, other):
+
+        if self._list_length() != other._list_length():
+            return False
+
+        elems1, tail1 = self._list_decompose()
+        elems2, tail2 = other._list_decompose()
+
+        if tail1 != tail2:
+            return False
+        else:
+            for e1, e2 in zip(elems1, elems2):
+                if e1 != e2:
+                    return False
+        return True
+
+
+
     def __eq__rec(self, other) :
         # TODO: this can be very slow?
         if other is None : 
@@ -490,7 +521,7 @@ class Term(object):
         
     def __hash__(self):
         if self.__hash is None:
-            self.__hash = hash(self.functor)
+            self.__hash = hash((self.functor, self._list_length()))
         return self.__hash
         
     def __lshift__(self, body) :
