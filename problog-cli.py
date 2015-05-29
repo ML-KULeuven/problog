@@ -14,6 +14,7 @@ from problog.program import PrologFile, ExtendedPrologFactory
 from problog.evaluator import SemiringSymbolic, SemiringLogProbability
 from problog.nnf_formula import NNF
 from problog.sdd_formula import SDD
+from problog.formula import LogicFormula, LogicDAG
 from problog.util import Timer, start_timer, stop_timer
 from problog.core import process_error, process_result
 from problog.parser import DefaultPrologParser
@@ -63,6 +64,29 @@ def run_problog(filename, knowledge=NNF, semiring=None, parse_class=DefaultProlo
         return True, result
     except Exception as err:
         return False, process_error(err, debug=debug)
+
+
+def ground(argv):
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument('filename', metavar='MODEL', type=str)
+    parser.add_argument('--format', choices=('dot', 'pl'), default='pl', help='output format')
+    parser.add_argument('--break-cycles', action='store_true')
+    args = parser.parse_args(argv)
+
+    if args.break_cycles:
+        target = LogicDAG
+    else:
+        target = LogicFormula
+
+    gp = target.createFrom(
+        PrologFile(args.filename, parser=DefaultPrologParser(ExtendedPrologFactory())),
+        label_all=True, avoid_name_clash=True, keep_order=True)
+
+    if args.format == 'pl':
+        print (gp.to_prolog())
+    else:
+        print (gp.to_dot())
 
 
 def argparser():
@@ -140,6 +164,8 @@ def main(argv):
         elif argv[0] == 'sample':
             from problog.sample import main
             return main(argv[1:])
+        elif argv[0] == 'ground':
+            return ground(argv[1:])
 
     parser = argparser()
     args = parser.parse_args(argv)

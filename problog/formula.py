@@ -817,7 +817,11 @@ class LogicFormula(ProbLogObject):
 
         return '\n'.join(lines)
 
-    def toDot(self, not_as_node=True) :
+    def toDot(self, not_as_node=True):
+        warnings.warn('LogicFormula.toDot() is deprecated. Use LogicFormula.to_dot() instead.', FutureWarning)
+        return self.to_dot(not_as_node)
+
+    def to_dot(self, not_as_node=True) :
         
         not_as_edge = not not_as_node
         
