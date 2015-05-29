@@ -46,6 +46,9 @@ We can do
 Sampling and sampling based inference (``sample``)
 --------------------------------------------------
 
+Sampling
+++++++++
+
 In the ``sample`` mode, ProbLog will generate possible assignments to the queries in the model.
 For example,
 
@@ -88,6 +91,9 @@ The result above would then become
     heads1. someHeads. % Probability: 0.2
     heads2. someHeads. % Probability: 0.3
 
+Sample based inference
+++++++++++++++++++++++
+
 It is also possible to use the sample mode for *probability estimation* by setting the flag \
 ``--estimate``.  The output is similar to the output in default mode.
 
@@ -99,7 +105,7 @@ The number of samples used for estimation can be determined in three ways:
 
 The sampling algorithm supports *evidence* through rejection sampling.  All generated samples are \
 guaranteed to satisfy the evidence.  Note that this process can be slow if the evidence has low \
- probability.
+probability.
 
 .. code-block:: prolog
 
