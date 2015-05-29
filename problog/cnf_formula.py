@@ -2,7 +2,7 @@ from __future__ import print_function
 
 from .formula import LogicDAG
 
-from .core import ProbLogObject, transform
+from .core import ProbLogObject, transform, deprecated, deprecated_function
 from .util import Timer
 
 import warnings
@@ -59,13 +59,11 @@ class CNF(ProbLogObject) :
     def ready(self) :
         pass
 
-    def toDimacs(self):
-        warnings.warn('CNF.toDimacs() is deprecated. Use CNF.to_dimacs() instead.', FutureWarning)
-        return self.to_dimacs()
-
     def to_dimacs(self):
         return 'p cnf %s %s\n' % (self.__atom_count, len(self.__lines)) + '\n'.join( self.__lines )
-        
+
+    toDimacs = deprecated_function('toDimacs', to_dimacs)
+
     def getAtomCount(self) :
         return self.__atom_count
         

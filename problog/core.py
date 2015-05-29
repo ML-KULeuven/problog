@@ -192,3 +192,27 @@ def list_transformations() :
         print ('\tcreate %s.%s' % (target.__module__, target.__name__) )
         for src, func in ProbLog.transformations[target] :
             print ('\t\tfrom %s.%s by %s.%s' % (src.__module__, src.__name__, func.__module__, func.__name__) )
+
+
+import warnings
+
+
+class deprecated(object):
+
+    def __init__(self, forward):
+        self.forward = forward
+
+    def __call__(self, func):
+        def _wrapped(*args, **kwdargs):
+            warnings.warn('%s is deprecated. Use %s instead.'
+                          % (func.__name__, self.forward.__name__), FutureWarning)
+            return self.forward(*args, **kwdargs)
+        return _wrapped
+
+
+def deprecated_function(name, func):
+    def _wrapped(*args, **kwdargs):
+        warnings.warn('%s is deprecated. Use %s instead.' % (name, func.__name__), FutureWarning)
+        return func(*args, **kwdargs)
+    return _wrapped
+

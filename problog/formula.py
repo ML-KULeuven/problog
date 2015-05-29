@@ -3,7 +3,7 @@ from __future__ import print_function
 from collections import namedtuple, defaultdict
 import warnings
 
-from .core import transform, ProbLogObject, ProbLogError
+from .core import transform, ProbLogObject, ProbLogError, deprecated_function
 
 from .util import Timer
 
@@ -675,17 +675,6 @@ class LogicFormula(ProbLogObject):
                 s += '\n* ' + str(c)
         return s + '\n'
 
-    def toProlog(self, yap_style=True):
-        """
-        DEPRECATED: see to_prolog()
-        :param yap_style:
-        :return:
-        """
-        warnings.warn(
-            'LogicFormula.toProlog() is deprecated. Use LogicFormula.to_prolog() instead.',
-            FutureWarning)
-        return self.to_prolog(yap_style=yap_style)
-
     def _unroll_conj(self, node):
         assert type(node).__name__ == 'conj'
         if len(node.children) == 2 and node.children[1] > 0:
@@ -817,10 +806,6 @@ class LogicFormula(ProbLogObject):
 
         return '\n'.join(lines)
 
-    def toDot(self, not_as_node=True):
-        warnings.warn('LogicFormula.toDot() is deprecated. Use LogicFormula.to_dot() instead.', FutureWarning)
-        return self.to_dot(not_as_node)
-
     def to_dot(self, not_as_node=True) :
         
         not_as_edge = not not_as_node
@@ -911,6 +896,8 @@ class LogicFormula(ProbLogObject):
             q += 1
         return s + '}'
 
+    toProlog = deprecated_function('toProlog', to_prolog)
+    toDot = deprecated_function('toDot', to_dot)
 
 class LogicDAG(LogicFormula):
     
