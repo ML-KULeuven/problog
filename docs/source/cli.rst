@@ -109,7 +109,7 @@ The number of samples used for estimation can be determined in three ways:
 
 .. code-block:: prolog
 
-    $ ./problog-cli.py sample test/00_trivial_or.pl  --estimate -t 5
+    $ ./problog-cli.py sample some_heads.pl  --estimate -t 5
     % Probability estimate after 7865 samples:
     someHeads : 0.79249841
 
