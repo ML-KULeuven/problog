@@ -91,6 +91,10 @@ The result above would then become
     heads1. someHeads. % Probability: 0.2
     heads2. someHeads. % Probability: 0.3
 
+The sampling algorithm supports **evidence** through rejection sampling.  All generated samples \
+are guaranteed to satisfy the evidence.  Note that this process can be slow if the evidence has \
+low probability.
+
 Sample based inference
 ++++++++++++++++++++++
 
@@ -102,10 +106,6 @@ The number of samples used for estimation can be determined in three ways:
     * by supplying the number of samples using the argument ``-N``
     * by supplying a timeout using the argument ``--timeout`` or ``-t`` (not supported on Windows)
     * by manually interrupting the process using CTRL-C or by sending a TERM(15) signal
-
-The sampling algorithm supports *evidence* through rejection sampling.  All generated samples are \
-guaranteed to satisfy the evidence.  Note that this process can be slow if the evidence has low \
-probability.
 
 .. code-block:: prolog
 
