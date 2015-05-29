@@ -13,6 +13,7 @@ Contents:
    :numbered:
 
    intro
+   cli
    basic
    logic
    learning

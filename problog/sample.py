@@ -31,8 +31,11 @@ from .logic import Term, Constant
 from .engine import DefaultEngine
 from .engine_builtin import check_mode
 from .formula import LogicFormula
+from .core import process_result
+from .util import start_timer, stop_timer
 import random
 import math
+import signal
 
 try:
 
@@ -270,7 +273,7 @@ def builtin_sample(term, result, target=None, engine=None, callback=None, **kwda
     return True, actions
 
 
-def sample(model, n=1, with_facts=False, oneline=False, tuples=False):
+def sample(model, n=1, with_facts=False, oneline=False, tuples=False, **kwdargs):
     engine = DefaultEngine()
     engine.add_builtin('sample', 2, builtin_sample)
     db = engine.prepare(model)
@@ -291,20 +294,72 @@ def sample(model, n=1, with_facts=False, oneline=False, tuples=False):
             i += 1
 
 
+def estimate(model, n=0, **kwdargs):
+    from collections import defaultdict
+    engine = DefaultEngine()
+    engine.add_builtin('sample', 2, builtin_sample)
+    db = engine.prepare(model)
+
+    estimates = defaultdict(float)
+    counts = 0.0
+    try:
+        while n == 0 or counts < n:
+            result = engine.ground_all(db, target=SampledFormula())
+            evidence_ok = True
+            for name, node in result.evidence():
+                if node is None:
+                    evidence_ok = False
+                    break
+            if evidence_ok:
+                for k, v in result.queries():
+                    if v == 0:
+                        estimates[k] += 1.0
+                counts += 1.0
+    except KeyboardInterrupt:
+        pass
+    except SystemExit:
+        pass
+    print ('%% Probability estimate after %d samples:' % counts)
+    for k in estimates:
+        estimates[k] = estimates[k] / counts
+    return estimates
+
+
 def main(args):
     import argparse
     parser = argparse.ArgumentParser()
 
     parser.add_argument('filename')
-    parser.add_argument('-N', type=int, default=1, help="Number of samples.")
+    parser.add_argument('-N', type=int, dest='n', default=argparse.SUPPRESS, help="Number of samples.")
     parser.add_argument('--with-facts', action='store_true', help="Also output choice facts (default: just queries).")
     parser.add_argument('--oneline', action='store_true', help="Format samples on one line.")
+    parser.add_argument('--estimate', action='store_true', help='Estimate probability of queries from samples.')
+    parser.add_argument('--timeout', '-t', type=int, default=0,
+                        help="Set timeout (in seconds, default=off).")
+
     args = parser.parse_args(args)
 
     pl = PrologFile(args.filename)
-    for s in sample(pl, args.N, args.with_facts, args.oneline):
-        print ('====================')
-        print (s)
+
+    if args.timeout:
+        start_timer(args.timeout)
+
+    def signal_term_handler(signal, frame):
+        sys.exit(143)
+
+    signal.signal(signal.SIGTERM, signal_term_handler)
+
+    if args.estimate:
+        results = estimate(pl, **vars(args))
+        print (process_result(results))
+    else:
+        for s in sample(pl, **vars(args)):
+            if not args.oneline:
+                print ('====================')
+            print (s)
+
+    if args.timeout:
+        stop_timer()
 
     
 if __name__ == '__main__':
