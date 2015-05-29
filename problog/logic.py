@@ -449,6 +449,8 @@ class Term(object):
 
 
     def __eq__(self, other):
+        if not isinstance(other, Term):
+            return False
         if self._list_length() != other._list_length():
             return False
 
