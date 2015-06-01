@@ -421,6 +421,8 @@ class Term(object):
                     return False
                 elif not term._cache_is_ground:
                     queue.extend(term.args)
+                    if term.probability != None:
+                        queue.append(term.probability)
             self._cache_is_ground = True
             return True
         else:
@@ -441,6 +443,8 @@ class Term(object):
                     variables.add(term)
                 else:
                     queue.extend(term.args)
+                    if term.probability:
+                        queue.append(term.probability)
             self._cache_variables = variables
         return self._cache_variables
 
