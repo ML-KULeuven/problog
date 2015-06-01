@@ -677,7 +677,10 @@ class LogicFormula(ProbLogObject):
 
     def _unroll_conj(self, node):
         assert type(node).__name__ == 'conj'
-        if len(node.children) == 2 and node.children[1] > 0:
+
+        if len(node.children) == 1:
+            return node.children
+        elif len(node.children) == 2 and node.children[1] > 0:
             children = [node.children[0]]
             current = node.children[1]
             current_node = self.getNode(current)
@@ -746,6 +749,8 @@ class LogicFormula(ProbLogObject):
                 nodex = self.getNode(abs(x))
                 if type(nodex).__name__ == 'disj' and len(nodex.children) == 1:
                     res = _get_name(nodex.children[0])
+                elif type(nodex).__name__ == 'conj' and len(nodex.children) == 1:
+                    res = _get_name(nodex.children[0])
                 else:
                     res = 'node_%s' % abs(x)
             else:
@@ -780,13 +785,21 @@ class LogicFormula(ProbLogObject):
                         body = [child_id]
                         if abs(child_id) not in added:
                             to_add.add(abs(child_id))
-                    lines.append('%s :- %s.' % (name, ','.join(map(_get_name, body))))
+                    body_names = list(map(_get_name, body))
+                    if len(body_names) == 1 and body_names[0] == name:
+                        pass
+                    else:
+                        lines.append('%s :- %s.' % (name, ','.join(body_names)))
             elif node_type == 'atom':
                 lines.append('%s::%s.' % (node.probability, name))
-            else:
+            else:  # conj
                 body = self._unroll_conj(node)
                 to_add |= (set(map(abs,body)) - added)
-                lines.append('%s :- %s.' % (name, ','.join(map(_get_name, body))))
+                body_names = list(map(_get_name, body))
+                if len(body_names) == 1 and body_names[0] == name:
+                    pass
+                else:
+                    lines.append('%s :- %s.' % (name, ','.join(body_names)))
 
         # Make sure all true/false/negated queries and evidence are present.
         for n, q in self.queries():
