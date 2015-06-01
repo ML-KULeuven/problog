@@ -53,6 +53,7 @@ from problog.evaluator import SemiringProbability
 from problog.logic import Term, Var, Constant, Clause, AnnotatedDisjunction, LogicProgram, Or
 from problog.parser import PrologParser
 from problog.program import PrologFactory, PrologString, PrologFile
+from problog.core import ProbLogError
 
     
 def str2bool(s) :
@@ -311,7 +312,10 @@ class LFIProblem(SemiringProbability, LogicProgram) :
                 index = int(fact.split('(')[0].rsplit('_',1)[1])
                 fact_marg[index] += value
                 fact_count[index] += 1
-            score += math.log(pEvidence)
+            try:
+                score += math.log(pEvidence)
+            except ValueError:
+                raise ProbLogError('Inconsistent evidence.')
 
         output = {}
         for index in range(0, self.count) :
