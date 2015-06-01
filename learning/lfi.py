@@ -185,7 +185,7 @@ class LFIProblem(SemiringProbability, LogicProgram) :
             else:
                 atoms_out.append(atom)
         if len(atoms_out) == 1:
-            return atoms_out, extra_clauses
+            return atoms_out[0], extra_clauses
         else:
             return Or.fromList(atoms_out), extra_clauses
 
@@ -208,7 +208,7 @@ class LFIProblem(SemiringProbability, LogicProgram) :
             else:
                 atoms_out.append(atom)
         if len(atoms_out) == 1:
-            return atoms_out, []
+            return atoms_out[0], []
         else:
             return Or.fromList(atoms_out), []
         
