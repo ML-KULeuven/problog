@@ -783,8 +783,12 @@ class LogicFormula(ProbLogObject):
                         to_add |= (set(map(abs,body)) - added)
                     else:
                         body = [child_id]
-                        if abs(child_id) not in added:
-                            to_add.add(abs(child_id))
+                        if name_lookup.get(abs(child_id)) is None:
+                            lines.append('%s::%s.' % (child.probability, name))
+                            continue
+                        else:
+                            if abs(child_id) not in added:
+                                to_add.add(abs(child_id))
                     body_names = list(map(_get_name, body))
                     if len(body_names) == 1 and body_names[0] == name:
                         pass
