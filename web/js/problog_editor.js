@@ -124,7 +124,7 @@ problog.initDiv = function(el, resize) {
     var btn_txt = btn.val();
     btn.attr('disabled', 'disabled')
     btn.val('processing...');
-	editor.getSession().clearAnnotations();	   
+    editor.getSession().clearAnnotations();
     var cur_model = editor.getSession().getValue();
     if (cur_model == '') {
       cur_model = '%%';
@@ -154,65 +154,65 @@ problog.initDiv = function(el, resize) {
       dataType: 'jsonp',
       data: data,
       success: function(data) {
-          console.log(data);
-		if (data.SUCCESS == true) {
-	        if (learn) {
-	          var meta = data;
-	          data = data.weights;
-	        }
+        console.log(data);
+        if (data.SUCCESS == true) {
+          if (learn) {
+            var facts = data.weights;
+          } else {
+            var facts = data.probs
+          }
 
-			var result = $('<tbody>');
-	        for (var k in data) {
-	          if (k !== 'SUCCESS') {
-	            var p = data[k];
-	            result.append($('<tr>')
-	                  .append($('<td>').text(k))
-	                  .append($('<td>').append(makeProgressBar(p))));
-	          }
-	        }
+          var result = $('<tbody>');
+          for (var k in facts) {
+            var n = facts[k][0];
+            var p = facts[k][1];
+            result.append($('<tr>')
+                  .append($('<td>').text(n))
+                  .append($('<td>').append(makeProgressBar(p))));
+          }
 
-   	        result = $('<table>', {'class': 'table table-condensed'})
-	         .append($('<thead>')
-	          .append($('<tr>')
-	           .append($('<th>').text(learn?'Fact':'Query'))
-	           .append($('<th>').text('Probability'))
-	          )
-	         ).append(result);
+          result = $('<table>', {'class': 'table table-condensed'})
+            .append($('<thead>')
+             .append($('<tr>')
+              .append($('<th>').text(learn?'Fact':'Query'))
+              .append($('<th>').text('Probability'))
+             )
+            ).append(result);
 
-	        var table = result[0];
-	        problog.sortTable(table, 1, 0);
-	        result_panel_body.html(result);
+          var table = result[0];
+          problog.sortTable(table, 1, 0);
+          result_panel_body.html(result);
 
-	        var col_th = $(table).children('thead').children('tr').children('th')
-	        col_th.eq(0).addClass('problog-result-sorted-asc');
-	        for (var i=0; i<col_th.length; i++) {
-	          (function() {
-	          var col_idx = i;
-	          col_th.eq(i).click(function() {
-	            if ($(this).hasClass('problog-result-sorted-asc')) {
-	              $(this).removeClass('problog-result-sorted-asc');
-	              $(this).addClass('problog-result-sorted-desc');
-	              problog.sortTable(table, -1, col_idx);
-  	            } else if ($(this).hasClass('problog-result-sorted-desc')) {
-	              $(this).removeClass('problog-result-sorted-desc');
-	              $(this).addClass('problog-result-sorted-asc');
-	              problog.sortTable(table, 1, col_idx);
-	            } else {
-	              col_th.removeClass('problog-result-sorted-asc');
-	              col_th.removeClass('problog-result-sorted-desc');
-	              $(this).addClass('problog-result-sorted-asc');
-	              problog.sortTable(table, 1, col_idx);
-	            }
-	          });
-	        })();
-	      }
+          var col_th = $(table).children('thead').children('tr').children('th')
+          col_th.eq(0).addClass('problog-result-sorted-asc');
+          for (var i=0; i<col_th.length; i++) {
+            (function() {
+              var col_idx = i;
+              col_th.eq(i).click(function() {
+                if ($(this).hasClass('problog-result-sorted-asc')) {
+                  $(this).removeClass('problog-result-sorted-asc');
+                  $(this).addClass('problog-result-sorted-desc');
+                  problog.sortTable(table, -1, col_idx);
+                } else if ($(this).hasClass('problog-result-sorted-desc')) {
+                  $(this).removeClass('problog-result-sorted-desc');
+                  $(this).addClass('problog-result-sorted-asc');
+                  problog.sortTable(table, 1, col_idx);
+                } else {
+                  col_th.removeClass('problog-result-sorted-asc');
+                  col_th.removeClass('problog-result-sorted-desc');
+                  $(this).addClass('problog-result-sorted-asc');
+                  problog.sortTable(table, 1, col_idx);
+                }
+              });
+            })();
+          }
 
           if (learn) {
             var meta_str = "<p><strong>Stats</strong>:";
             var sep = " ";
-            for (var k in meta) {
-              if (k !== 'weights' && k !== 'SUCCESS') {
-                meta_str += sep+k+"="+meta[k];
+            for (var k in data) {
+              if (k !== 'weights' && k !== 'probs' && k !== 'SUCCESS') {
+                meta_str += sep+k+"="+data[k];
                 sep = ", ";
               }
             }
@@ -220,21 +220,21 @@ problog.initDiv = function(el, resize) {
             $(meta_str).appendTo(result_panel_body);
           }
 
-		} else {
-			p = data.err;
-			var msg = p.message;
-			if (msg == undefined) msg = p;
-			var row = p.lineno;
-			var col = p.colno;
+        } else {
+          p = data.err;
+          var msg = p.message;
+          if (msg == undefined) msg = p;
+          var row = p.lineno;
+          var col = p.colno;
 
-            var result = $('<div>', { 'class': 'alert alert-danger' } ).text(msg);
-			if (row !== undefined) {
-				var editor = ace.edit(editor_container[0]);
-				editor.getSession().setAnnotations([{ row: row-1, column: col, text: p.message, type: 'error'}]);	   
-			}
-			result_panel_body.html(result);
+          var result = $('<div>', { 'class': 'alert alert-danger' } ).text(msg);
+          if (row !== undefined) {
+            var editor = ace.edit(editor_container[0]);
+            editor.getSession().setAnnotations([{ row: row-1, column: col, text: p.message, type: 'error'}]);	   
+          }
+          result_panel_body.html(result);
 
-		}
+        }
 
         if (cur_model_hash) {
           var cur_url = problog.main_editor_url+'#hash='+cur_model_hash;

@@ -17,15 +17,16 @@ from problog.core import process_error, GroundingError, ParseError
 
 def print_result( d, output, precision=8 ) :
     success, d = d
+    result = {}
     if success :
-        d['SUCCESS'] = True
-        d = { str(k) : round(v,12) for k,v in d.items() }
-        print (200, 'application/json', json.dumps(d), file=output)
+        result['SUCCESS'] = True
+        result['probs'] = [[str(k),round(v,12)] for k,v in d.items()]
+        print (200, 'application/json', json.dumps(result), file=output)
     else :
         #print (400, 'application/json', json.dumps(d), file=output)
-        d['SUCCESS'] = False
-        d = { str(k) : v for k,v in d.items() }
-        print (200, 'application/json', json.dumps(d), file=output)
+        result['SUCCESS'] = False
+        result['probs'] = [[str(k),v] for k,v in d.items()]
+        print (200, 'application/json', json.dumps(result), file=output)
     return 0 
     
 def process_error( err ) :
