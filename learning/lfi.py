@@ -127,7 +127,7 @@ class LFIProblem(SemiringProbability, LogicProgram) :
     
         :param examples: Output of ::func::`process_examples`.
         """
-        baseprogram = DefaultEngine().prepare(self)        
+        baseprogram = DefaultEngine().prepare(self)
         examples = self._process_examples()
     
         result = []
@@ -142,7 +142,6 @@ class LFIProblem(SemiringProbability, LogicProgram) :
      
     def _process_atom( self, atom ) :
         """Returns tuple ( prob_atom, [ additional clauses ] )"""
-
         if isinstance(atom, Or):
             # Annotated disjunction
             atoms = atom.toList()
@@ -201,7 +200,8 @@ class LFIProblem(SemiringProbability, LogicProgram) :
         for atom in atoms:
             if atom.probability and atom.probability.functor == 't' :
                 assert (atom in self.names)
-                index = self.names.index(atom)
+                index = self.output_names.index(atom)
+                self.output_names[index] = None
                 weight = self.weights[index]
                 result = atom.withProbability(weight)
                 atoms_out.append(result)
@@ -250,6 +250,7 @@ class LFIProblem(SemiringProbability, LogicProgram) :
 
         if self.output_mode:
             process_atom = self._process_atom_output
+            self.output_names = self.names[:]
         else:
             process_atom = self._process_atom
 
