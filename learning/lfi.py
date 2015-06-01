@@ -50,7 +50,7 @@ from problog.engine import DefaultEngine, ground
 # from problog.nnf_formula import NNF as knowledge
 from problog.sdd_formula import SDD as knowledge
 from problog.evaluator import SemiringProbability
-from problog.logic import Term, Var, Constant, Clause, AnnotatedDisjunction, LogicProgram
+from problog.logic import Term, Var, Constant, Clause, AnnotatedDisjunction, LogicProgram, Or
 from problog.parser import PrologParser
 from problog.program import PrologFactory, PrologString, PrologFile
 
@@ -141,50 +141,75 @@ class LFIProblem(SemiringProbability, LogicProgram) :
      
     def _process_atom( self, atom ) :
         """Returns tuple ( prob_atom, [ additional clauses ] )"""
-        
-        if atom.probability and atom.probability.functor == 't' :
-            # Learnable probability
-            assert(len(atom.probability.args) == 1) 
-            start_value = atom.probability.args[0]
 
-            # 1) Introduce a new fact
-            lfi_fact = Term('lfi_fact_%d' % self.count, *atom.args)
-            lfi_prob = Term('lfi', Constant(self.count)) 
-            
-            # 2) Replacement atom
-            replacement = lfi_fact.withProbability(lfi_prob)
-            
-            # 3) Create redirection clause
-            extra_clauses = [ Clause( atom.withProbability(), lfi_fact ) ]
-            
-            # 4) Set initial weight
-            if isinstance(start_value, Constant) :
-                self.weights.append( float(start_value) )
-            else :
-                self.weights.append( random.random() )
-                
-            # 5) Add query
-            self.queries.append(lfi_fact)
-            extra_clauses.append(Term('query', lfi_fact))
-            
-            # 6) Add name
-            self.names.append(atom)
-            
-            return replacement, extra_clauses
-        else :
-            return atom, []
+        if isinstance(atom, Or):
+            # Annotated disjunction
+            atoms = atom.toList()
+        else:
+            atoms = [atom]
+
+        atoms_out = []
+        extra_clauses = []
+
+        for atom in atoms:
+            if atom.probability and atom.probability.functor == 't':
+                # Learnable probability
+                assert(len(atom.probability.args) == 1)
+                start_value = atom.probability.args[0]
+
+                # 1) Introduce a new fact
+                lfi_fact = Term('lfi_fact_%d' % self.count, *atom.args)
+                lfi_prob = Term('lfi', Constant(self.count))
+
+                # 2) Replacement atom
+                replacement = lfi_fact.withProbability(lfi_prob)
+
+                # 3) Create redirection clause
+                extra_clauses += [ Clause( atom.withProbability(), lfi_fact ) ]
+
+                # 4) Set initial weight
+                if isinstance(start_value, Constant) :
+                    self.weights.append( float(start_value) )
+                else :
+                    self.weights.append( random.random() )
+
+                # 5) Add query
+                self.queries.append(lfi_fact)
+                extra_clauses.append(Term('query', lfi_fact))
+
+                # 6) Add name
+                self.names.append(atom)
+
+                atoms_out.append(replacement)
+            else:
+                atoms_out.append(atom)
+        if len(atoms_out) == 1:
+            return atoms_out, extra_clauses
+        else:
+            return Or.fromList(atoms_out), extra_clauses
 
     def _process_atom_output(self, atom):
         """Returns tuple ( prob_atom, [ additional clauses ] )"""
 
-        if atom.probability and atom.probability.functor == 't' :
-            assert (atom in self.names)
-            index = self.names.index(atom)
-            weight = self.weights[index]
-            result = atom.withProbability(weight)
-            return result, []
+        if isinstance(atom, Or):
+            atoms = atom.toList()
         else:
-            return atom, []
+            atoms = [atom]
+
+        atoms_out = []
+        for atom in atoms:
+            if atom.probability and atom.probability.functor == 't' :
+                assert (atom in self.names)
+                index = self.names.index(atom)
+                weight = self.weights[index]
+                result = atom.withProbability(weight)
+                atoms_out.append(result)
+            else:
+                atoms_out.append(atom)
+        if len(atoms_out) == 1:
+            return atoms_out, []
+        else:
+            return Or.fromList(atoms_out), []
         
     # Overwrite from LogicProgram    
     def __iter__(self) :
