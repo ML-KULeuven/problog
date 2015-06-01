@@ -227,7 +227,7 @@ class Term(object):
         :rtype: :class:`Term`
 
         """
-        if self.is_ground():
+        if self.is_ground() and self.probability is None:
             # No variables to substitute.
             return self
 
@@ -421,8 +421,6 @@ class Term(object):
                     return False
                 elif not term._cache_is_ground:
                     queue.extend(term.args)
-                    if term.probability != None:
-                        queue.append(term.probability)
             self._cache_is_ground = True
             return True
         else:
