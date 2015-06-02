@@ -384,26 +384,37 @@ class LFIProblem(SemiringProbability, LogicProgram) :
             prev_score = score
         return prev_score
 
-def read_examples( *filenames ) :
+def extract_evidence(pl):
+    engine = DefaultEngine()
+    atoms = engine.query(pl, Term('evidence', None, None))
+    atoms1 = engine.query(pl, Term('evidence', None))
+    for atom in atoms1:
+        atom = atom[0]
+        if atom.is_negative:
+            atoms.append((atom, Term('false')))
+        else:
+            atoms.append((atom, Term('true')))
+    return atoms
+
+def read_examples(*filenames):
     
-    for filename in filenames :
-        
+    for filename in filenames:
         engine = DefaultEngine()
         
-        with open(filename) as f :
+        with open(filename) as f:
             example = ''
-            for line in f :
+            for line in f:
                 if line.strip().startswith('---') :
                     pl = PrologString(example)
-                    atoms =  engine.query(pl, Term('evidence',None,None))
+                    atoms = extract_evidence(pl)
                     if len(atoms) > 0:
                         yield atoms
                     example = ''
-                else :
+                else:
                     example += line
-            if example :
+            if example:
                 pl = PrologString(example)
-                atoms = engine.query(pl, Term('evidence',None,None))
+                atoms = extract_evidence(pl)
                 if len(atoms) > 0:
                     yield atoms
     
