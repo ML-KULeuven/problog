@@ -30,7 +30,7 @@ problog.initialize = function(settings) {
 
   $.extend(problog, settings);
 
-  $('head').append('<style type="text/css" media="screen">.problog-editor-container, .problog-editor-container-intr {border: 1px solid #ddd;} .problog-editor-buttons {margin: 5px 0;} .problog-editor-hash {float:right; margin-right:5px;} .problog-editor-results table {margin-bottom:3px;} .problog-editor-results th {cursor:pointer;width:50%;} .problog-result-sorted-desc:after {content:"▲";} .problog-result-sorted-asc:after {content:"▼";} table .progress {margin-bottom: 0;}</style>');
+  $('head').append('<style type="text/css" media="screen">.problog-editor-container, .problog-editor-container-intr {border: 1px solid #ddd;} .problog-editor-buttons {margin: 5px 0;} .problog-editor-hash {float:right; margin-right:5px;} .problog-editor-results table {margin-bottom:3px;} .problog-editor-results th {cursor:pointer;} .problog-result-sorted-desc:after {content:"▲";} .problog-result-sorted-asc:after {content:"▼";} table .progress {margin-bottom: 0;}</style>');
 
   $(problog.selector).each(function(i,el) {
     problog.initDiv($(el), problog.resize)
@@ -166,16 +166,20 @@ problog.initDiv = function(el, resize) {
           for (var k in facts) {
             var n = facts[k][0];
             var p = facts[k][1];
+            var l = facts[k][2];
+            var c = facts[k][3];
             result.append($('<tr>')
                   .append($('<td>').text(n))
+                  .append($('<td>').text(l+':'+c))
                   .append($('<td>').append(makeProgressBar(p))));
           }
 
           result = $('<table>', {'class': 'table table-condensed'})
             .append($('<thead>')
              .append($('<tr>')
-              .append($('<th>').text(learn?'Fact':'Query'))
-              .append($('<th>').text('Probability'))
+              .append($('<th style="width:50%;">').text(learn?'Fact':'Query'))
+              .append($('<th style="width:10%;">').text('Location'))
+              .append($('<th style="width:40%;">').text('Probability'))
              )
             ).append(result);
 

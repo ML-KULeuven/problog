@@ -20,7 +20,7 @@ def print_result( d, output, precision=8 ) :
     result = {}
     if success :
         result['SUCCESS'] = True
-        result['probs'] = [[str(k),round(v,12)] for k,v in d.items()]
+        result['probs'] = [[str(n),round(p,12),l,c] for n,p,l,c in d]
         print (200, 'application/json', json.dumps(result), file=output)
     else :
         #print (400, 'application/json', json.dumps(d), file=output)
@@ -58,7 +58,12 @@ def main( filename) :
         model = PrologFile(filename, parser=DefaultPrologParser(ExtendedPrologFactory()))
         formula = SDD.createFrom( model )
         result = formula.evaluate(semiring=SemiringLogProbability())
-        return True, result
+
+        new_result= []
+        for n,p in result.items():
+            new_result.append((str(n.withProbability()),p,) + model.lineno(n.location))
+
+        return True, new_result
     except Exception as err :
         return False, {'err':process_error(err)}
         
