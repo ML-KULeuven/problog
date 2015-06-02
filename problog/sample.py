@@ -213,22 +213,32 @@ class SampledFormula(LogicFormula):
                 raise ValueError("Can't combine sampled predicates. Make sure bodies are mutually exclusive.")
         return LogicFormula.addOr(self, content, **kwd)
 
-    def toString(self, db, with_facts, with_probability, oneline):
+    def toString(self, db, with_facts=False, with_probability=False, oneline=False,
+                 as_evidence=False, **extra):
         self.computeProbability()
+
+        if as_evidence:
+            base = 'evidence(%s).'
+        else:
+            base = '%s.'
+
         lines = []
         for k, v in self.queries():
             if v is not None:
                 val = self.getValue(v)
                 if val is None:
-                    lines.append('%s.' % (str(k)))
+                    lines.append(base % (str(k)))
                 else:
-                    lines.append('%s = %s.' % (str(k), val))
+                    if not as_evidence:
+                        lines.append('%s = %s.' % (str(k), val))
+            elif as_evidence:
+                lines.append(base % ('\+' + str(k)))
         if with_facts:
             for k, v in self.facts.items():
                 if v == 0:
-                    lines.append(str(translate(db, k)) + '.')
+                    lines.append(base % str(translate(db, k)))
                 elif v is None:
-                    lines.append('\+' + str(translate(db, k)) + '.')
+                    lines.append(base % ('\+' + str(translate(db, k))))
 
         if oneline:
             sep = ' '
@@ -276,7 +286,7 @@ def builtin_sample(term, result, target=None, engine=None, callback=None, **kwda
     return True, actions
 
 
-def sample(model, n=1, with_facts=False, oneline=False, tuples=False, with_probability=False, **kwdargs):
+def sample(model, n=1, tuples=False, **kwdargs):
     engine = DefaultEngine()
     engine.add_builtin('sample', 2, builtin_sample)
     db = engine.prepare(model)
@@ -293,7 +303,7 @@ def sample(model, n=1, with_facts=False, oneline=False, tuples=False, with_proba
             if tuples:
                 yield result.toTuples()
             else:
-                yield result.toString(db, with_facts, with_probability, oneline)
+                yield result.toString(db, **kwdargs)
             i += 1
 
 
@@ -336,6 +346,7 @@ def main(args):
     parser.add_argument('-N', type=int, dest='n', default=argparse.SUPPRESS, help="Number of samples.")
     parser.add_argument('--with-facts', action='store_true', help="Also output choice facts (default: just queries).")
     parser.add_argument('--with-probability', action='store_true', help="Show probability.")
+    parser.add_argument('--as-evidence', action='store_true', help="Output as evidence.")
     parser.add_argument('--oneline', action='store_true', help="Format samples on one line.")
     parser.add_argument('--estimate', action='store_true', help='Estimate probability of queries from samples.')
     parser.add_argument('--timeout', '-t', type=int, default=0,
