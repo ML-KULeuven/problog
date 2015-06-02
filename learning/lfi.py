@@ -208,7 +208,7 @@ class LFIProblem(SemiringProbability, LogicProgram) :
                 #else:
                 #    return [Clause(atoms_out[0], body)] + extra_clauses
             else:
-                return [AnnotatedDisjunction(Or.fromList(atoms_out), Term('true'))] + extra_clauses
+                return [AnnotatedDisjunction(atoms_out, Term('true'))] + extra_clauses
         else:
             if len(atoms) == 1:
                 if body is None:
@@ -243,7 +243,7 @@ class LFIProblem(SemiringProbability, LogicProgram) :
             else:
                 return [Clause(atoms_out[0], body)]
         else:
-            return [AnnotatedDisjunction(Or.fromList(atoms_out), body)]
+            return [AnnotatedDisjunction(atoms_out, body)]
         
     # Overwrite from LogicProgram    
     def __iter__(self) :
