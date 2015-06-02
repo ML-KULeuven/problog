@@ -393,7 +393,7 @@ def extract_evidence(pl):
     atoms1 = engine.query(pl, Term('evidence', None))
     for atom in atoms1:
         atom = atom[0]
-        if atom.is_negative:
+        if atom.is_negative():
             atoms.append((atom, Term('false')))
         else:
             atoms.append((atom, Term('true')))
