@@ -20,9 +20,7 @@ def print_result( d, output, precision=8 ) :
     if success :
         score, weights, names, iterations = d
         
-        conv = lambda t : str(t.withProbability())
-        
-        results = { 'score' : score, 'iterations' : iterations, 'weights': [[n,w] for n,w in zip(map(conv,names),weights)] }
+        results = { 'score' : score, 'iterations' : iterations, 'weights': [[n[0],w,n[1],n[2]] for n,w in zip(names,weights)] }
         results['SUCCESS'] = True
         print (200, 'application/json', json.dumps(results), file=output)
     else :
@@ -36,9 +34,13 @@ def main(filename, examplefile) :
     try :
         examples = list(lfi.read_examples( examplefile ))
         program = PrologFile(filename)
-    
-        result = lfi.run_lfi( program, examples)
-        return True, result
+        score, weights, names, iterations = lfi.run_lfi( program, examples)
+
+        new_names = []
+        for n in names:
+            new_names.append((str(n.withProbability()),) + program.lineno(n.location))
+
+        return True, (score, weights, new_names, iterations)
     except Exception as err :
         return False, {'err':process_error(err)}
     
