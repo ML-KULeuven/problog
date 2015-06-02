@@ -213,7 +213,7 @@ class SampledFormula(LogicFormula):
                 raise ValueError("Can't combine sampled predicates. Make sure bodies are mutually exclusive.")
         return LogicFormula.addOr(self, content, **kwd)
 
-    def toString(self, db, with_facts, oneline):
+    def toString(self, db, with_facts, with_probability, oneline):
         self.computeProbability()
         lines = []
         for k, v in self.queries():
@@ -229,13 +229,14 @@ class SampledFormula(LogicFormula):
                     lines.append(str(translate(db, k)) + '.')
                 elif v is None:
                     lines.append('\+' + str(translate(db, k)) + '.')
-            
+
         if oneline:
             sep = ' '
         else:
             sep = '\n'
         lines = list(set(lines))
-        lines.append('%% Probability: %.8g' % self.probability)
+        if with_probability:
+            lines.append('%% Probability: %.8g' % self.probability)
         return sep.join(lines)
 
     def toTuples(self):
@@ -275,7 +276,7 @@ def builtin_sample(term, result, target=None, engine=None, callback=None, **kwda
     return True, actions
 
 
-def sample(model, n=1, with_facts=False, oneline=False, tuples=False, **kwdargs):
+def sample(model, n=1, with_facts=False, oneline=False, tuples=False, with_probability=False, **kwdargs):
     engine = DefaultEngine()
     engine.add_builtin('sample', 2, builtin_sample)
     db = engine.prepare(model)
@@ -292,7 +293,7 @@ def sample(model, n=1, with_facts=False, oneline=False, tuples=False, **kwdargs)
             if tuples:
                 yield result.toTuples()
             else:
-                yield result.toString(db, with_facts, oneline)
+                yield result.toString(db, with_facts, with_probability, oneline)
             i += 1
 
 
@@ -334,6 +335,7 @@ def main(args):
     parser.add_argument('filename')
     parser.add_argument('-N', type=int, dest='n', default=argparse.SUPPRESS, help="Number of samples.")
     parser.add_argument('--with-facts', action='store_true', help="Also output choice facts (default: just queries).")
+    parser.add_argument('--with-probability', action='store_true', help="Show probability.")
     parser.add_argument('--oneline', action='store_true', help="Format samples on one line.")
     parser.add_argument('--estimate', action='store_true', help='Estimate probability of queries from samples.')
     parser.add_argument('--timeout', '-t', type=int, default=0,
@@ -355,9 +357,11 @@ def main(args):
         results = estimate(pl, **vars(args))
         print (process_result(results))
     else:
+        first = True
         for s in sample(pl, **vars(args)):
-            if not args.oneline:
-                print ('====================')
+            if not args.oneline and not first:
+                print ('----------------')
+            first = False
             print (s)
 
     if args.timeout:
