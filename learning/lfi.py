@@ -416,9 +416,11 @@ def extract_evidence(pl):
     for atom in atoms1:
         atom = atom[0]
         if atom.is_negative():
-            atoms.append((atom, Term('false')))
+            atoms.append((-atom, Term('false')))
         else:
             atoms.append((atom, Term('true')))
+
+    print (atoms)
     return atoms
 
 def read_examples(*filenames):
