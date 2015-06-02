@@ -192,7 +192,10 @@ class LFIProblem(SemiringProbability, LogicProgram) :
 
                 # 5) Add query
                 self.queries.append(lfi_fact)
-                extra_clauses.append(Term('query', lfi_fact))
+                if body:
+                    extra_clauses.append(Clause(Term('query', lfi_fact), body))
+                else:
+                    extra_clauses.append(Term('query', lfi_fact))
 
                 # 6) Add name
                 self.names.append(atom)
