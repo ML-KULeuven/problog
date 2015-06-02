@@ -399,12 +399,14 @@ class LFIProblem(SemiringProbability, LogicProgram) :
     def run(self) :
         self.prepare()
         if self.verbose:
-            print ('Weight to learn:', self.names)
+            print ('Weights to learn:', self.names)
             print ('Initial weights:', self.weights)
         delta = 1000
         prev_score = -1e10
         while self.iteration < self.max_iter and (delta < 0 or delta > self.min_improv):
             score = self.step()
+            if self.verbose > 1:
+                print ('Weights after iteration %s: %s' % (self.iteration, self.weights))
             delta = score - prev_score
             prev_score = score
         return prev_score
@@ -419,8 +421,6 @@ def extract_evidence(pl):
             atoms.append((-atom, Term('false')))
         else:
             atoms.append((atom, Term('true')))
-
-    print (atoms)
     return atoms
 
 def read_examples(*filenames):
