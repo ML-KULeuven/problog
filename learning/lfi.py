@@ -343,8 +343,8 @@ class LFIProblem(SemiringProbability, LogicProgram) :
         fact_marg = [0.0] * self.count
         fact_count = [0] * self.count
         score = 0.0
-        for pEvidence, result in results :
-            for fact, value in result.items() :
+        for pEvidence, result in results:
+            for fact, value in result.items():
                 fact = str(fact)
                 index = int(fact.split('(')[0].rsplit('_',1)[1])
                 fact_marg[index] += value
@@ -378,7 +378,7 @@ class LFIProblem(SemiringProbability, LogicProgram) :
         self.prepare()
         delta = 1000
         prev_score = -1e10
-        while self.iteration < self.max_iter and delta > self.min_improv :
+        while self.iteration < self.max_iter and (delta < 0 or delta > self.min_improv):
             score = self.step()
             delta = score - prev_score
             prev_score = score
@@ -423,8 +423,8 @@ if __name__ == '__main__' :
     parser = argparse.ArgumentParser(description="Learning from interpretations with ProbLog")
     parser.add_argument('model')
     parser.add_argument('examples', nargs='+')
-    parser.add_argument('-n', dest='max_iter', default=10000 )
-    parser.add_argument('-d', dest='min_improv', default=1e-10 )
+    parser.add_argument('-n', dest='max_iter', default=10000, type=int )
+    parser.add_argument('-d', dest='min_improv', default=1e-10, type=float )
     parser.add_argument('-o', '--output', type=str, default=None, help='write resulting model to given file')
     args = parser.parse_args()
     
