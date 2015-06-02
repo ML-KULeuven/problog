@@ -703,8 +703,7 @@ class Or(Term) :
         return body
     
     def __or__(self, rhs) :
-        self.op2 = self.op2 | rhs
-        return self
+        return Or(self.op1, self.op2 | rhs)
         
     def __and__(self, rhs) :
         return And(self, rhs)
@@ -748,8 +747,7 @@ class And(Term) :
             return Term('true')
     
     def __and__(self, rhs) :
-        self.op2 = self.op2 & rhs
-        return self
+        return And(self.op1, self.op2 & rhs)
         
     def __or__(self, rhs) :
         return Or(self, rhs)
@@ -774,7 +772,6 @@ class And(Term) :
 
         """
         return self.__class__(*args, location=self.location)
-
         
 class Not(Term) :
     """Not"""

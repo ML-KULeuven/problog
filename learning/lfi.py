@@ -140,7 +140,7 @@ class LFIProblem(SemiringProbability, LogicProgram) :
         self._compiled_examples = result
     
      
-    def _process_atom( self, atom ) :
+    def _process_atom(self, atom, body):
         """Returns tuple ( prob_atom, [ additional clauses ] )"""
         if isinstance(atom, Or):
             # Annotated disjunction
@@ -151,8 +151,21 @@ class LFIProblem(SemiringProbability, LogicProgram) :
         atoms_out = []
         extra_clauses = []
 
+        has_lfi_fact = False
         for atom in atoms:
             if atom.probability and atom.probability.functor == 't':
+                # t(_)::p(X) :- body.
+                #
+                # Translate to
+                #   lfi(1)::lfi_fact_1(X).
+                #   p(X) :- body, lfi_fact1(X).
+                # For annotated disjunction: t(_)::p1(X); t(_)::p2(X) :- body.
+                #   lfi1::lfi_fact1(X); lfi2::lfi_fact2(X); ... .
+                #   p1(X) :- body, lfi_fact1(X).
+                #   p2(X) :- body, lfi_fact2(X).
+                #  ....
+                has_lfi_fact = True
+
                 # Learnable probability
                 assert(len(atom.probability.args) == 1)
                 start_value = atom.probability.args[0]
@@ -163,15 +176,19 @@ class LFIProblem(SemiringProbability, LogicProgram) :
 
                 # 2) Replacement atom
                 replacement = lfi_fact.withProbability(lfi_prob)
+                if body is None:
+                    new_body = lfi_fact
+                else:
+                    new_body = body & lfi_fact
 
                 # 3) Create redirection clause
-                extra_clauses += [ Clause( atom.withProbability(), lfi_fact ) ]
+                extra_clauses += [Clause(atom.withProbability(), new_body)]
 
                 # 4) Set initial weight
-                if isinstance(start_value, Constant) :
-                    self.weights.append( float(start_value) )
-                else :
-                    self.weights.append( random.random() )
+                if isinstance(start_value, Constant):
+                    self.weights.append(float(start_value))
+                else:
+                    self.weights.append(random.random())
 
                 # 5) Add query
                 self.queries.append(lfi_fact)
@@ -183,12 +200,25 @@ class LFIProblem(SemiringProbability, LogicProgram) :
                 atoms_out.append(replacement)
             else:
                 atoms_out.append(atom)
-        if len(atoms_out) == 1:
-            return atoms_out[0], extra_clauses
-        else:
-            return Or.fromList(atoms_out), extra_clauses
 
-    def _process_atom_output(self, atom):
+        if has_lfi_fact:
+            if len(atoms) == 1:     # Simple clause
+                #if body is None:
+                return [atoms_out[0]] + extra_clauses
+                #else:
+                #    return [Clause(atoms_out[0], body)] + extra_clauses
+            else:
+                return [AnnotatedDisjunction(Or.fromList(atoms_out), Term('true'))] + extra_clauses
+        else:
+            if len(atoms) == 1:
+                if body is None:
+                    return [atoms_out[0]]
+                else:
+                    return [Clause(atoms_out[0], body)]
+            else:
+                return [AnnotatedDisjunction(atoms_out, body)]
+
+    def _process_atom_output(self, atom, body):
         """Returns tuple ( prob_atom, [ additional clauses ] )"""
 
         if isinstance(atom, Or):
@@ -208,9 +238,12 @@ class LFIProblem(SemiringProbability, LogicProgram) :
             else:
                 atoms_out.append(atom)
         if len(atoms_out) == 1:
-            return atoms_out[0], []
+            if body is None:
+                return [atoms_out[0]]
+            else:
+                return [Clause(atoms_out[0], body)]
         else:
-            return Or.fromList(atoms_out), []
+            return [AnnotatedDisjunction(Or.fromList(atoms_out), body)]
         
     # Overwrite from LogicProgram    
     def __iter__(self) :
@@ -255,28 +288,31 @@ class LFIProblem(SemiringProbability, LogicProgram) :
             process_atom = self._process_atom
 
         for clause in self.source:
-            if isinstance(clause, Clause) :
-                if clause.head.functor == 'query' and clause.head.arity == 1 :
+            if isinstance(clause, Clause) or isinstance(clause, AnnotatedDisjunction):
+                if clause.head.functor == 'query' and clause.head.arity == 1:
                     continue                
-                new_head, extra_clauses = process_atom( clause.head )
-                yield Clause( new_head, clause.body )
-                for extra in extra_clauses : yield extra                
-            elif isinstance(clause, AnnotatedDisjunction) :
-                new_heads = []
-                extra_clauses_all = []
-                for head in clause.heads :
-                    new_head, extra_clauses = process_atom( head )
-                    new_heads.append(new_head)
-                    extra_clauses_all += extra_clauses                
-                yield AnnotatedDisjunction( new_heads, clause.body )
-                for extra in extra_clauses_all : yield extra                
-            else :
-                if clause.functor == 'query' and clause.arity == 1 :
+                extra_clauses = process_atom(clause.head, clause.body)
+                #yield Clause(new_head, clause.body)
+                for extra in extra_clauses:
+                    yield extra
+            # elif isinstance(clause, AnnotatedDisjunction):
+            #     new_heads = []
+            #     extra_clauses_all = []
+            #     for head in clause.heads:
+            #         new_head, extra_clauses = process_atom(head, clause.body)
+            #         new_heads.append(new_head)
+            #         extra_clauses_all += extra_clauses
+            #     yield AnnotatedDisjunction(new_heads, clause.body)
+            #     for extra in extra_clauses_all:
+            #         yield extra
+            else:
+                if clause.functor == 'query' and clause.arity == 1:
                     continue
                 # Fact
-                new_fact, extra_clauses = process_atom( clause )
-                yield new_fact
-                for extra in extra_clauses : yield extra
+                extra_clauses = process_atom(clause, None)
+                # yield new_fact
+                for extra in extra_clauses:
+                    yield extra
 
     def _evaluate_examples( self ) :
         """Evaluate the model with its current estimates for all examples."""
