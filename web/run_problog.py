@@ -25,7 +25,7 @@ def print_result( d, output, precision=8 ) :
     else :
         #print (400, 'application/json', json.dumps(d), file=output)
         result['SUCCESS'] = False
-        result['probs'] = [[str(k),v] for k,v in d.items()]
+        result = d
         print (200, 'application/json', json.dumps(result), file=output)
     return 0 
     
