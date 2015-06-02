@@ -291,7 +291,7 @@ def get_example_from_hash_jsonp(ehash, callback):
     if not CACHE_MODELS or not os.path.exists(infile):
         return 200, 'application/json', wrap_callback(callback, json.dumps({'SUCCESS': False, 'err': 'Examples hash not available: {}'.format(ehash)}))
 
-    result = dict()
+    result = {'SUCCESS': True}
     with open(infile, 'r') as f:
          result['examples'] = f.read()
 

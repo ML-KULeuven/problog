@@ -387,7 +387,7 @@ problog.fetchModel = function(hash, editor, ehash) {
       if (data.SUCCESS == true) {
         editor_examples.setValue(data.examples,-1);
       } else {
-        editor_examples.setValue('% '+data.err,-1);
+        editor_examples.setValue('% Failed loading: '+data.err,-1);
       }
 
     }).fail( function(jqXHR, textStatus, errorThrown) {
