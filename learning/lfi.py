@@ -66,7 +66,7 @@ def str2bool(s) :
                 
 class LFIProblem(SemiringProbability, LogicProgram) :
     
-    def __init__(self, source, examples, max_iter=10000, min_improv=1e-10) :
+    def __init__(self, source, examples, max_iter=10000, min_improv=1e-10, verbose=0) :
         SemiringProbability.__init__(self)
         LogicProgram.__init__(self)
         self.source = source
@@ -78,6 +78,7 @@ class LFIProblem(SemiringProbability, LogicProgram) :
         
         self.max_iter = max_iter
         self.min_improv = min_improv
+        self.verbose = verbose
         self.iteration = 0
 
         self.output_mode = False
@@ -152,6 +153,14 @@ class LFIProblem(SemiringProbability, LogicProgram) :
         extra_clauses = []
 
         has_lfi_fact = False
+        available_probability = 1.0
+
+        for atom in atoms:
+            if atom.probability and atom.probability.functor == 't':
+                start_value = atom.probability.args[0]
+                if isinstance(start_value, Constant):
+                    available_probability -= float(start_value)
+
         for atom in atoms:
             if atom.probability and atom.probability.functor == 't':
                 # t(_)::p(X) :- body.
@@ -188,7 +197,9 @@ class LFIProblem(SemiringProbability, LogicProgram) :
                 if isinstance(start_value, Constant):
                     self.weights.append(float(start_value))
                 else:
-                    self.weights.append(random.random())
+                    p = random.random() * available_probability
+                    available_probability -= p
+                    self.weights.append(p)
 
                 # 5) Add query
                 self.queries.append(lfi_fact)
@@ -379,6 +390,9 @@ class LFIProblem(SemiringProbability, LogicProgram) :
         
     def run(self) :
         self.prepare()
+        if self.verbose:
+            print ('Weight to learn:', self.names)
+            print ('Initial weights:', self.weights)
         delta = 1000
         prev_score = -1e10
         while self.iteration < self.max_iter and (delta < 0 or delta > self.min_improv):
@@ -422,8 +436,8 @@ def read_examples(*filenames):
                     yield atoms
     
     
-def run_lfi( program, examples, max_iter=10000, min_improv=1e-10, output=None):
-    lfi = LFIProblem( program, examples, max_iter=max_iter, min_improv=min_improv )
+def run_lfi( program, examples, max_iter=10000, min_improv=1e-10, output=None, verbose=False):
+    lfi = LFIProblem( program, examples, max_iter=max_iter, min_improv=min_improv, verbose=verbose)
     score = lfi.run()
 
     if output is not None:
@@ -440,11 +454,12 @@ if __name__ == '__main__' :
     parser.add_argument('-n', dest='max_iter', default=10000, type=int )
     parser.add_argument('-d', dest='min_improv', default=1e-10, type=float )
     parser.add_argument('-o', '--output', type=str, default=None, help='write resulting model to given file')
+    parser.add_argument('-v', '--verbose', action='count')
     args = parser.parse_args()
     
     program = PrologFile(args.model)
     examples = list(read_examples(*args.examples))
-    score, weights, names, iterations = run_lfi( program, examples, args.max_iter, args.min_improv, args.output)
+    score, weights, names, iterations = run_lfi( program, examples, args.max_iter, args.min_improv, args.output, args.verbose)
     
     print (score, weights, names, iterations)
     
