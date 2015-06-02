@@ -227,6 +227,8 @@ class SampledFormula(LogicFormula):
             for k, v in self.facts.items():
                 if v == 0:
                     lines.append(str(translate(db, k)) + '.')
+                elif v is None:
+                    lines.append('\+' + str(translate(db, k)) + '.')
             
         if oneline:
             sep = ' '
