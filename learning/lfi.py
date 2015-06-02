@@ -63,7 +63,8 @@ def str2bool(s) :
         return False
     else :
         return None
-                
+
+
 class LFIProblem(SemiringProbability, LogicProgram) :
     
     def __init__(self, source, examples, max_iter=10000, min_improv=1e-10, verbose=0) :
@@ -155,11 +156,20 @@ class LFIProblem(SemiringProbability, LogicProgram) :
         has_lfi_fact = False
         available_probability = 1.0
 
+        num_random_weights = 0
         for atom in atoms:
             if atom.probability and atom.probability.functor == 't':
                 start_value = atom.probability.args[0]
                 if isinstance(start_value, Constant):
                     available_probability -= float(start_value)
+                else:
+                    num_random_weights += 1
+            elif atom.probability:
+                available_probability -= float(atom.probability)
+
+        random_weights = [random.random() for i in range(0, num_random_weights+1)]
+        norm_factor = available_probability / sum(random_weights)
+        random_weights = [r*norm_factor for r in random_weights]
 
         for atom in atoms:
             if atom.probability and atom.probability.functor == 't':
@@ -197,9 +207,7 @@ class LFIProblem(SemiringProbability, LogicProgram) :
                 if isinstance(start_value, Constant):
                     self.weights.append(float(start_value))
                 else:
-                    p = random.random() * available_probability
-                    available_probability -= p
-                    self.weights.append(p)
+                    self.weights.append(random_weights.pop(-1))
 
                 # 5) Add query
                 self.queries.append(lfi_fact)
