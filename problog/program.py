@@ -33,6 +33,7 @@ class PrologString(LogicProgram):
     
     def __init__(self, string, parser=None, source_root='.', source_files=None) :
         self.__string = string
+        self.__program = None
         lines = self._find_lines(string)
         LogicProgram.__init__(self, source_root=source_root, source_files=source_files, line_info=lines)
         if parser is None :
@@ -40,6 +41,13 @@ class PrologString(LogicProgram):
         else :
             self.parser = parser
     
+    def _program(self):
+        """Parsed program"""
+        if self.__program is None:
+          self.__program = self.parser.parseString(self.__string)
+        return self.__program
+
+
     def _find_lines(self, s) :
         """Find line-end positions."""
         lines = [-1]
@@ -49,11 +57,14 @@ class PrologString(LogicProgram):
             f = s.find('\n', f+1)
         lines.append(len(s))
         return lines
-        
+
     def __iter__(self) :
         """Iterator for the clauses in the program."""
-        program = self.parser.parseString(self.__string)
-        return iter(program)
+        return iter(self._program())
+
+    def __getitem__(self, slice):
+        program = self._program()
+        return program[slice]
 
 
 class PrologFile(PrologString):
