@@ -40,8 +40,33 @@ We can do
     $ ./problog-cli.py some_heads.pl
     someHeads : 0.8
 
+ProbLog supports supports several alternative knowledge compilation tools.
+By default, it uses the first available option from
 
-... to complete ...
+    1. SDD
+    2. d-DNNF using c2d
+    3. d-DNNF using dsharp
+
+The choice between SDD and d-DNNF can also be set using the option ``-k`` or ``--knowledge``.
+
+By default, ProbLog transforms probabilities to logarithmic space to avoid rounding errors. \
+This behavior can be disabled using the flag ``--nologspace``.
+
+By default, Problog outputs its results to standard output. To write to an output file, use the \
+option ``-o`` or ``--output``.
+
+A time out can be set using the option ``-t`` or ``--timeout``.
+
+For progress information use the ``-v`` or ``--verbose`` option (can be repeated).
+
+The following options are advanced options:
+
+  * ``--debug``: turn on debugging mode (prints full error messages)
+  * ``--recursion-limit <value>``: increase Python's recursion limit (default: 1000)
+  * ``--engine-debug``: turn on very verbose grounding
+  * ``--sdd-auto-gc``: turn on SDD minimization and garbage collection (default: off)
+  * ``--sdd-preset-variables``: preserve SDD variables (default: off)
+
 
 Sampling and sampling based inference (``sample``)
 --------------------------------------------------
