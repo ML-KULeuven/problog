@@ -87,6 +87,8 @@ def add_standard_builtins(engine, b=None, s=None, sp=None):
     for i in range(2, 10):
         engine.add_builtin('call', i, builtin_callN)
 
+    engine.add_builtin('sample_uniform1', 3, sp(builtin_sample_uniform))
+
 
 class CallModeError(GroundingError):
     """
@@ -1016,6 +1018,47 @@ def builtin_findall_base(pattern, goal, result, top_only=False, database=None, t
                     except UnifyError:
                         pass
     return output
+
+
+def builtin_sample_all(pattern, goal, result, database=None, target=None, **kwdargs):
+    # Like findall.
+    pass
+
+
+def builtin_sample_uniform(key, list, result, database=None, target=None, **kwdargs):
+    """Implements the sample_uniform(+Key,+List,-Result) builtin.
+    This predicate succeeds once for each element in the list as result, and with probability \
+    1/(length of the list).
+    The first argument is used as an identifier such that calls with the same key enforce mutual \
+    exclusivity on the results, that is, the probability of
+
+        sample_uniform(K,L,R1), sample_uniform(K,L,R2), R1 \== R2
+
+    is 0.
+
+
+
+    :param key:
+    :param list:
+    :param result:
+    :param database:
+    :type database: StackBasedEngine
+    :param target:
+    :type target: LogicFormula
+    :param kwdargs:
+    :return:
+    """
+    mode = check_mode((key, list, result,), ['aLv'], database=database, **kwdargs)
+    identifier = '_uniform_%s' % key
+    elements, tail = list_elements(list)
+    prob = Constant(1/float(len(elements)))
+    results = []
+    for i, elem in enumerate(elements):
+        elem_identifier = (identifier, i)
+        # res = unify_value(result, elem)
+        results.append(((key, list, elem), target.addAtom(identifier=elem_identifier, probability=prob, group=identifier)))
+    return results
+
 
 
 def builtin_findall(pattern, goal, result, **kwdargs):
