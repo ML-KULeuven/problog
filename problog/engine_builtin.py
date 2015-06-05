@@ -1032,8 +1032,8 @@ class problog_export(object):
 
     @classmethod
     def add_function(cls, name, in_args, out_args, function):
-        if cls.database is not None:
-            cls.database.add_extern(name, in_args+out_args, function)
+        if problog_export.database is not None:
+            problog_export.database.add_extern(name, in_args+out_args, function)
 
     def __init__(self, *args, **kwdargs):
         # TODO check if arguments are in order: input first, output last
@@ -1097,6 +1097,24 @@ class problog_export(object):
                 result = [result]
             result = args[:len(self.input_arguments)] + tuple(self._convert_outputs(result))
             return [result]
+        problog_export.add_function(function.__name__, len(self.input_arguments), len(self.output_arguments), _wrapped_function)
+        return function
+
+
+class problog_export_nondet(problog_export):
+
+    def __call__(self, function):
+        def _wrapped_function(*args, **kwdargs):
+            check_mode(args, [self._extract_callmode()], function.__name__, **kwdargs)
+            # TODO check that output arguments are variables
+            converted_args = self._convert_inputs(args)
+            results = []
+            for result in function(*converted_args):
+                if len(self.output_arguments) == 1:
+                    result = [result]
+                result = args[:len(self.input_arguments)] + tuple(self._convert_outputs(result))
+                results.append(result)
+            return results
         problog_export.add_function(function.__name__, len(self.input_arguments), len(self.output_arguments), _wrapped_function)
         return function
 
