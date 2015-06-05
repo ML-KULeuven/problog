@@ -71,7 +71,7 @@ def ground(argv):
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument('filename', metavar='MODEL', type=str, help='input ProbLog model')
-    parser.add_argument('--format', choices=('dot', 'pl', 'cnf'), default=None, help='output format')
+    parser.add_argument('--format', choices=('dot', 'pl', 'cnf', 'internal'), default=None, help='output format')
     parser.add_argument('--break-cycles', action='store_true', help='perform cycle breaking')
     parser.add_argument('-o', '--output', type=str, help='output file', default=None)
     args = parser.parse_args(argv)
@@ -101,6 +101,8 @@ def ground(argv):
         print (gp.to_dot(), file=outfile)
     elif outformat == 'cnf':
         print (CNF.createFrom(gp).to_dimacs(), file=outfile)
+    elif outformat == 'internal':
+        print (str(gp), file=outfile)
     else:
         print (gp.to_prolog(), file=outfile)
 
