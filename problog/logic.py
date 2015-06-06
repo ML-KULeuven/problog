@@ -578,7 +578,7 @@ class Var(Term) :
     @property
     def value(self) : 
         """Value of the constant."""
-        raise ValueError('Variables do not support evaluation.')
+        raise ValueError('Variables do not support evaluation: {}.'.format(self.name))
 
     def isVar(self) :
         """Checks whether this Term represents a variable.
