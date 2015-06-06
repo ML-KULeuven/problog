@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Problog editor</title>
+
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap.min.css" />
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap-theme.min.css" />
+  <script src="http://code.jquery.com/jquery-2.1.0.min.js"></script>
+  <script src="http://code.jquery.com/ui/1.11.1/jquery-ui.min.js"></script>
+  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/js/bootstrap.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.1.3/ace.js"></script>
+  <script src="http://crypto-js.googlecode.com/svn/tags/3.1.2/build/rollups/md5.js"></script>
+
+  <script src="js/problog_editor.js" type="text/javascript" charset="utf-8"></script>
+</head>
+<body>
+<div class="container">
+
+<h1>ProbLog Editor</h1>
+
+<div class=problog-editor data-width="100%">
+%% Your program
+<div class=interpretations>
+%% Your examples
+</div>
+</div>
+
+<p style="color:gray;font-style:italic;">This interface is for academic purposes only. Input is stored on our servers to execute the queries.</p>
+
+</div>
+
+<script type="text/javascript" charset="utf-8">
+  $(document).ready(function() {
+      problog.initialize({
+        'hostname':'http://localhost:5100/',
+        'trackurl': true,
+      });
+  });
+</script>
+
+</body>
+

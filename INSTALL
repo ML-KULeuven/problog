@@ -1,0 +1,134 @@
+Installation instructions
+=========================
+
+ProbLog 2.1 should work out of the box on most systems with Python installed.
+
+Mac OSX and most Linux installations have Python pre-installed.
+If Python is not yet installed on your system you can obtain it from 
+    
+    https://www.python.org/downloads/
+    
+For better performance you can also run ProbLog with PyPy:
+
+    http://pypy.org/download.html
+
+ProbLog is compatible with Python 2.7+ and 3.2+.
+
+ProbLog's evaluation is based on knowledge compilation tools.
+By default it uses dsharp [https://bitbucket.org/haz/dsharp].
+
+It also supports two other tools:
+    * C2D Compiler (NNF) [http://reasoning.cs.ucla.edu/c2d/]
+    * Sentential Decision Diagrams (SDD) [http://reasoning.cs.ucla.edu/sdd/]
+    
+It is recommended to install one of these alternatives (especially for Mac users).
+
+Linux (64-bit)
+--------------
+
+SDD
++++
+
+1. Run `python problog-cli.py install`
+
+Note: this installation requires 'python-dev' (i.e. Python.h)
+
+Usage: 
+ProbLog will automatically use SDDs from now on.
+If you want to use d-DNNFs you can use add the command line options -k nnf. 
+
+
+C2D
++++
+Due to licensing issues we can not distribute this tool as part of our package.
+
+1. Download c2d from
+    http://reasoning.cs.ucla.edu/c2d/
+2. Copy the executable `cnf2ddnnf` to the folder `problog/bin/linux/` OR make it available through PATH
+
+Usage: 
+C2D is automatically used instead of dsharp when detected.
+Note: if you have also install SDDs you have to specify -k nnf on the command line.
+
+Mac OSX
+-------
+
+SDD
++++
+
+1. Run `python problog-cli.py install`
+
+Usage: 
+ProbLog will automatically use SDDs from now on.
+If you want to use d-DNNFs you can use add the command line options -k nnf. 
+
+C2D
++++
+C2D is not available for Mac OSX.
+
+
+Windows
+-------
+
+SDD
++++
+SDDs are not available for Windows.
+
+C2D
++++
+Due to licensing issues we can not distribute this tool as part of our package.
+
+1. Download c2d from
+    http://reasoning.cs.ucla.edu/c2d/
+2. Copy the executable `c2d_windows.exe` to the folder `problog/bin/windows/`
+3. Rename the executable to `cnf2ddnnf.exe`
+
+Usage: 
+C2D is automatically used instead of dsharp when detected.
+
+Licenses of included third-party software
+-----------------------------------------
+
+DSharp [https://bitbucket.org/haz/dsharp]
++++++++++++++++++++++++++++++++++++++++++
+
+GPLv2
+
+SDD [http://reasoning.cs.ucla.edu/sdd/]
++++++++++++++++++++++++++++++++++++++++
+
+Copyright (c) 2013-2014, Regents of the University of California
+
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are
+met:
+
+Redistributions of source code must retain the above copyright notice,
+this list of conditions and the following disclaimer.
+
+Redistributions in binary form must reproduce the above copyright
+notice, this list of conditions and the following disclaimer in the
+documentation and/or other materials provided with the distribution.
+
+Neither the name of the University of California nor the names of its
+contributors may be used to endorse or promote products derived from
+this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+"AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+
+
+
+

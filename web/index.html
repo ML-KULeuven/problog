@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html>
+<head>    
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap-theme.min.css" />
+    <script src="http://code.jquery.com/jquery-2.1.0.min.js"></script>
+    <script src="http://code.jquery.com/ui/1.11.1/jquery-ui.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/js/bootstrap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.1.3/ace.js"></script>
+    
+    <script>
+	
+	var hostname = '';
+	    
+    function ground() { 
+        var url = hostname + '/ground';
+        var text = ace.edit('model').getValue();
+        $.ajax( {
+            url: url, 
+            data: {'model' : text }, 
+            success: function(data) {
+                $('#result-ground').html(data.svg);
+                console.log(data.txt);
+            },
+            error: function(jqXHR, textStatus, errorThrown) {
+                console.log(jqXHR);
+                var result = $('<div>', {'class' : 'alert alert-danger'}).text( jqXHR.responseText);
+                $('#result-ground').html(result);
+            }
+        } );
+    }
+    
+    function problog() {
+        var url = hostname + '/problog';
+        var text = ace.edit('model').getValue();
+        $.ajax( { 
+            url: url, 
+			type: 'POST',
+            data: { 'model' : text },
+            success: function(data) {
+                var result = $('<tbody>');
+                for (var k in data) {
+                    var p = data[k];
+                    result.append($('<tr>')
+                            .append($('<td>').text(k))
+                            .append($('<td>').text(p))
+                    )
+                }
+                result = 
+                    $('<table>', {'class': 'table'})
+                        .append($('<thead>')
+                            .append($('<tr>')
+                                .append($('<th>').text('Query'))
+                                .append($('<th>').text('Probability'))
+                            )
+                        )
+                        .append(result);
+                
+                
+                $('#result-final').html(result);
+            },
+            error: function(jqXHR, textStatus, errorThrown) {
+                var result = $('<div>', {'class' : 'alert alert-danger'}).text( jqXHR.responseText);
+                
+                $('#result-final').html(result);
+            }
+        } );
+    }
+    
+    function listModels() {
+        var url = hostname + '/models';
+        $.ajax( {
+            url: url, 
+            success: function(data) {
+                
+                $('#models').empty();
+                
+                for (var i in data) {
+                    $('#models').append($('<option>', {'value' : data[i] }).text(data[i]));
+                }
+                $('#models').change();
+            } 
+        } );        
+    }
+    
+    function loadModel() {
+        var name = $('#models')[0].selectedOptions[0].value;
+        $('#result-final').empty();
+        $('#result-ground').empty();
+        if (name == '') {
+            ace.edit('model').setValue('');  
+        } else {
+            var url = '/model';
+            $.ajax( {
+                url: url,
+                data: { 'name': name },
+                success: function(data) {
+                    var editor = ace.edit('model');
+                    editor.setValue(data);        
+                    editor.gotoLine(1,0);
+                    editor.centerSelection();
+                    editor.focus();
+                    
+                }
+            })
+        }
+    }
+    
+    // function submit() {
+    //     var url = '/submit';
+    //     var name = window.prompt('Enter a name:', 'bugreport');
+    //     if (name) {
+    //         var text = { 'name' : name, 'data' : ace.edit('model').getValue() };
+    //         $.post( url, text, function(data) {
+    //             $('#models').append('<option value="' + data + '">' + data + '</option>');
+    //             alert('Bug reported with name: ' + data );
+    //         } );
+    //     }
+    // }
+    
+    $(document).ready( function() {
+        listModels();
+        
+        var editor = ace.edit('model');
+        editor.getSession().setMode('ace/mode/prolog');
+        editor.getSession().setUseWrapMode(true);
+        editor.setShowInvisibles(true);
+        
+        
+    });
+    </script>
+    
+    
+</head>
+<body>
+<div class="container">
+    <div class="page-header">
+        <h1>ProbLog</h1>
+    </div>
+    <div class="panel panel-default">
+        <div class="panel-heading"><span class="panel-title">Model</span></div>
+        <div class="panel-body">
+            <select class="form-control" id="models" onchange="loadModel();"></select>
+            <div style="width:100%; height:300px;" id="model"></div>
+            <div class="text-center">
+                <!-- <input class="btn btn-danger pull-right" type="button" onclick="submit();" value="Submit a bug"/> -->
+                <input class="btn btn-primary" type="button" onclick="ground();" value="Ground"/>
+                <input class="btn btn-primary" type="button" onclick="problog();" value="Evaluate"/>
+            </div>
+        </div>
+    </div>
+
+
+    <div class="panel panel-default">
+        <div class="panel-heading"><span class="panel-title">Result</span></div>
+        <div class="panel-body" id="result-final"></div>
+    </div>
+
+    <div class="panel panel-default">
+        <div class="panel-heading"><span class="panel-title">Ground program</span></div>
+        <div class="panel-body" id="result-ground"></div>
+    </div>
+
+
+</div>
+</body>
+</html>

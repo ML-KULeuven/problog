@@ -1,0 +1,8 @@
+#! /bin/bash
+
+# To start using:
+# - Install wine
+# - Download c2d_windows.exe and rename it to cnf2dDNNF.exe
+# - Rename this file to 'cnf2dDNNF' to activate
+
+wine ${BASH_SOURCE[0]}.exe $*

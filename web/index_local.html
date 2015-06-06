@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>ProbLog interface</title>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.1/css/bootstrap.min.css" />
+    <!--<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.1/css/bootstrap-theme.min.css" />-->
+    <script src="http://code.jquery.com/jquery-2.1.0.min.js"></script>
+    <!--<script src="http://code.jquery.com/ui/1.11.1/jquery-ui.min.js"></script>-->
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.1/js/bootstrap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.1.3/ace.js"></script>
+    <script src="http://crypto-js.googlecode.com/svn/tags/3.1.2/build/rollups/md5.js"></script>
+
+  <!--  <script src="http://adams.cs.kuleuven.be/problog/js/problog_editor.js" type="text/javascript" charset="utf-8"></script> -->
+    <script src="js/problog_editor.js" type="text/javascript" charset="utf-8"></script>
+
+</head>
+<body>
+<div class="container">
+
+<h2>ProbLog 2.1</h2>
+<div class=problog-editor>
+%%% Probabilistic facts
+0.5::heads1.
+0.6::heads2.
+
+%%% Rules
+twoHeads :- heads1, heads2.
+
+%%% Queries
+query(heads1).
+query(heads2).
+query(twoHeads).
+</div>
+
+
+<!-- <h2>Learning:</h2>
+<div class=problog-editor>
+%%% Probabilistic facts
+t(_)::heads1.
+t(_)::heads2.
+
+%%% Rules
+twoHeads :- heads1, heads2.
+
+<div class=interpretations>
+evidence(heads1,true).
+evidence(heads2,false).
+----
+evidence(heads1,true).
+evidence(heads2,true).
+----
+evidence(heads1,false).
+evidence(heads2,false).
+----
+evidence(heads1,true).
+evidence(heads2,true).
+</div>
+</div> -->
+
+
+</div>
+
+<script type="text/javascript" charset="utf-8">
+  $(document).ready(function() {
+	  problog.hostname = 'http://localhost:5100/'
+      problog.initialize();
+      problog.fetchModel(); // check url for hash and load in first editor
+  });
+</script>
+
+</body>
+
