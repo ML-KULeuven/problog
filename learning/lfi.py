@@ -164,7 +164,7 @@ class LFIProblem(SemiringProbability, LogicProgram) :
                     available_probability -= float(start_value)
                 else:
                     num_random_weights += 1
-            elif atom.probability:
+            elif atom.probability and atom.isConstant():
                 available_probability -= float(atom.probability)
 
         random_weights = [random.random() for i in range(0, num_random_weights+1)]
