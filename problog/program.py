@@ -183,12 +183,13 @@ class ExtendedPrologFactory(PrologFactory):
         self.neg_head_lits = dict()
 
     def update_functors(self, t):
+        """Adapt functors that appear as a negative literal to be f_p and f_n
+        where f appears in the head.
+        """
         if type(t) is Clause:
             self.update_functors(t.head)
-            self.update_functors(t.body)
         elif type(t) is AnnotatedDisjunction:
             self.update_functors(t.heads)
-            self.update_functors(t.body)
         elif type(t) is Term:
             if t.signature in self.neg_head_lits:
                 t.functor = self.neg_head_lits[t.signature]['p']
@@ -220,8 +221,8 @@ class ExtendedPrologFactory(PrologFactory):
             new_clause = Clause(Term(v['f'], *cur_vars), And(Term(v['p'], *cur_vars), Not('\+',Term(v['n'], *cur_vars))))
             clauses.append(new_clause)
 
-        #logger = logging.getLogger('problog')
-        #logger.debug('Transformed program:\n{}'.format('\n'.join([str(c) for c in clauses])))
+        logger = logging.getLogger('problog')
+        logger.debug('Transformed program:\n{}'.format('\n'.join([str(c) for c in clauses])))
 
         return clauses
 
