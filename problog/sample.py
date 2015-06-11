@@ -27,7 +27,7 @@ from __future__ import print_function
 import sys
 
 from .program import PrologFile
-from .logic import Term, Constant
+from .logic import Term, Constant, ArithmeticError
 from .engine import DefaultEngine
 from .engine_builtin import check_mode
 from .formula import LogicFormula
@@ -119,7 +119,12 @@ class SampledFormula(LogicFormula):
         self.values = []
         
     def _isSimpleProbability(self, term):
-        return type(term) == float or term.isConstant()
+        try:
+            t = float(term)
+            return True
+        except ArithmeticError as e:
+            return False
+        #return type(term) == float or term.isConstant()
         
     def addValue(self, value):
         self.values.append(value)
