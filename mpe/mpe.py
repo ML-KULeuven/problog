@@ -15,6 +15,22 @@ from problog.formula import LogicFormula
 from problog.evaluator import SemiringLogProbability
 
 
+def extract_relevant(gp):
+
+    relevant = [False] * (len(gp)+1)
+
+    explore_next = [abs(n) for q, n in gp.queries()] + [abs(n) for q, n in gp.evidence()]
+    while explore_next:
+        explore_now = explore_next
+        explore_next = []
+        for x in explore_now:
+            if not relevant[x]:
+                relevant[x] = True
+                node = gp.getNode(x)
+                if type(node).__name__ != 'atom':
+                    explore_next += list(map(abs, node.children))
+    return relevant
+
 def groundprogram2flatzinc(gp):
     """
 
@@ -26,12 +42,18 @@ def groundprogram2flatzinc(gp):
     constraints = []
 
     weights = gp.extractWeights(SemiringLogProbability())
+    relevant = extract_relevant(gp)
+
+    print ('Relevant program size:', sum(relevant))
 
     atom_vars = []
     atoms = []
     probs = []
+    probs_offset = 0.0
     neg_nodes = set()
     for i, n, t in gp:
+        if not relevant[i]:
+            continue
         varname = 'b_lit_%s_pos' % i
 
         if t == 'conj':
@@ -66,24 +88,25 @@ def groundprogram2flatzinc(gp):
             variables.append('var bool: %s :: output_var;' % varname)
             var_int = 'i_lit_%s_pos' % i
             var_float_pos = 'f_lit_%s_pos' % i
-            var_float_neg = 'f_lit_%s_neg' % i
+            # var_float_neg = 'f_lit_%s_neg' % i
             variables.append('var int: %s :: var_is_introduced;' % var_int)
             variables.append('var float: %s :: var_is_introduced;' % var_float_pos)
-            variables.append('var float: %s :: var_is_introduced;' % var_float_neg)
+            # variables.append('var float: %s :: var_is_introduced;' % var_float_neg)
             constraints.append('constraint bool2int(%s,%s) :: defines_var(%s);' % (varname, var_int, var_int))
             constraints.append('constraint int2float(%s,%s) :: defines_var(%s);' % (var_int, var_float_pos, var_float_pos))
-            constraints.append('constraint float_plus(%s,-1.0,%s) :: defines_var(%s);' % (var_float_pos, var_float_neg, var_float_neg))
+            # constraints.append('constraint float_plus(%s,-1.0,%s) :: defines_var(%s);' % (var_float_pos, var_float_neg, var_float_neg))
 
             pp, pn = weights[i]
             atom_vars.append(varname)
             atoms.append(var_float_pos)
-            atoms.append(var_float_neg)
-            probs.append(str(pp))
-            probs.append(str(-pn))
+            # atoms.append(var_float_neg)
+            probs.append(str(pp-pn))
+            # probs.append(str(-pn))
+            probs_offset -= pn
 
     optvar = 'score'
     variables.append('var float: score :: output_var;')
-    constraints.append('constraint float_lin_eq([%s],[%s],0.0) :: defines_var(%s);' % (','.join(probs + ['-1.0']), ','.join(atoms + [optvar]), optvar))
+    constraints.append('constraint float_lin_eq([%s],[%s],%s) :: defines_var(%s);' % (','.join(probs + ['-1.0']), ','.join(atoms + [optvar]), probs_offset, optvar))
 
     for q, n in gp.queries():
         constraints.append('constraint bool_eq(b_lit_%s_pos,true);' % n)
@@ -105,7 +128,7 @@ def groundprogram2flatzinc(gp):
                     r_neg.append('b_lit_%s_pos' % -x)
             constraints.append('constraint bool_clause([%s],[%s]);' % (','.join(r_pos),','.join(r_neg)))
 
-    solve = 'solve :: bool_search([%s], first_fail, indomain_max, complete) maximize %s;' % (','.join(atom_vars), optvar)
+    solve = 'solve :: bool_search([%s], occurrence, indomain_max, complete) maximize %s;' % (','.join(atom_vars), optvar)
     return '\n'.join(variables) + '\n' + '\n'.join(constraints) + '\n' + solve
 
 
