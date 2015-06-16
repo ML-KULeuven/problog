@@ -42,7 +42,16 @@ def groundprogram2flatzinc(gp):
     constraints = []
 
     weights = gp.extractWeights(SemiringLogProbability())
-    relevant = extract_relevant(gp)
+
+    has_constraint = False
+    for c in gp.constraints():
+        has_constraint = True
+        break
+
+    if has_constraint:
+        relevant = [True] * (len(gp)+1)
+    else:
+        relevant = extract_relevant(gp)
 
     print ('Relevant program size:', sum(relevant))
 
