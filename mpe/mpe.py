@@ -10,9 +10,12 @@ from __future__ import print_function
 import math
 import subprocess
 import sys
+from problog.util import Timer
+
+sys.setrecursionlimit(10000)
 
 from problog.program import PrologFile
-from problog.formula import LogicDAG
+from problog.formula import LogicDAG, LogicFormula
 from problog.evaluator import SemiringLogProbability
 
 
@@ -194,7 +197,7 @@ def groundprogram2lp(gp):
                         formula += '+'
                     formula += 'x%s' % c
             constraints.append(formula + ' >= ' + str(low_bound))
-            constraints.append(formula + ' < ' + str(high_bound))
+            constraints.append(formula + ' <= ' + str(high_bound-1))
         elif t == 'disj':
             formula = ''
             low_bound = 0
@@ -225,13 +228,13 @@ def groundprogram2lp(gp):
     obj = ' + '.join(obj)
 
     for q, n in gp.queries():
-        constraints.append('x%s > 0' % n)
+        constraints.append('x%s >= 1' % n)
 
     for q, n in gp.evidence():
         if n > 0:
-            constraints.append('x%s > 0;' % n)
+            constraints.append('x%s >= 1;' % n)
         else:
-            constraints.append('x%s = 0;' % n)
+            constraints.append('x%s <= 0;' % n)
 
     # TODO constraints
     for c in gp.constraints():
@@ -312,10 +315,15 @@ def call_flatzinc_solver(fzn, solver, **kwdargs):
 
 def main(inputfile, **kwdargs):
     pl = PrologFile(inputfile)
-    gp = LogicDAG.createFrom(pl, label_all=True)
+    print ('Grounding...', file=sys.stderr)
+    gp = LogicFormula.createFrom(pl, label_all=True)
+    print ('Cycle breaking...', file=sys.stderr)
+    dag = LogicDAG.createFrom(gp)
 
-    lp, score_offset = groundprogram2lp(gp)
+    print ('Transforming...', file=sys.stderr)
+    lp, score_offset = groundprogram2lp(dag)
 
+    print ('Solving...', file=sys.stderr)
     score, facts = call_scip(lp, **kwdargs)
     score -= score_offset
 
