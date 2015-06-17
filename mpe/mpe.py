@@ -315,16 +315,16 @@ def call_flatzinc_solver(fzn, solver, **kwdargs):
 
 def main(inputfile, **kwdargs):
     pl = PrologFile(inputfile)
-    print ('Grounding...', file=sys.stderr)
-    gp = LogicFormula.createFrom(pl, label_all=True)
-    print ('Cycle breaking...', file=sys.stderr)
-    dag = LogicDAG.createFrom(gp)
+    with Timer('Grounding...', output=sys.stderr):
+        gp = LogicFormula.createFrom(pl, label_all=True)
+    with Timer('Cycle breaking...', output=sys.stderr):
+        dag = LogicDAG.createFrom(gp)
 
-    print ('Transforming...', file=sys.stderr)
-    lp, score_offset = groundprogram2lp(dag)
+    with Timer('Transforming...', output=sys.stderr):
+        lp, score_offset = groundprogram2lp(dag)
 
-    print ('Solving...', file=sys.stderr)
-    score, facts = call_scip(lp, **kwdargs)
+    with Timer('Solving...', output=sys.stderr):
+        score, facts = call_scip(lp, **kwdargs)
     score -= score_offset
 
     for name, node in gp.getNames():

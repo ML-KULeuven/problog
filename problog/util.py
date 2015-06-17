@@ -10,16 +10,20 @@ import distutils.spawn
 
 class Timer(object) :
 
-    def __init__(self, msg) :
+    def __init__(self, msg, output=None) :
         self.message = msg
         self.start_time = None
+        self.output = output
         
     def __enter__(self) :
         self.start_time = time.time()
         
     def __exit__(self, *args) :
-        logger = logging.getLogger('problog')
-        logger.info('%s: %.4fs' % (self.message, time.time()-self.start_time))
+        if self.output is None:
+            logger = logging.getLogger('problog')
+            logger.info('%s: %.4fs' % (self.message, time.time()-self.start_time))
+        else:
+            print ('%s: %.4fs' % (self.message, time.time()-self.start_time), file=self.output)
 
 def raise_timeout(*args) :
     raise KeyboardInterrupt('Timeout')   # Global exception on all threads
