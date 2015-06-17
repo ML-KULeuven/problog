@@ -12,7 +12,7 @@ import subprocess
 import sys
 
 from problog.program import PrologFile
-from problog.formula import LogicFormula
+from problog.formula import LogicDAG
 from problog.evaluator import SemiringLogProbability
 
 
@@ -169,7 +169,6 @@ def groundprogram2lp(gp):
         relevant = extract_relevant(gp)
 
     print ('Relevant program size:', sum(relevant), file=sys.stderr)
-
     atom_vars = []
     bounds = []
     atoms = []
@@ -235,16 +234,20 @@ def groundprogram2lp(gp):
             constraints.append('x%s = 0;' % n)
 
     # TODO constraints
-    # for c in gp.constraints():
-    #     for r in c.encodeCNF():
-    #         r_pos = []
-    #         r_neg = []
-    #         for x in r:
-    #             if x > 0:
-    #                 r_pos.append('b_lit_%s_pos' % x)
-    #             else:
-    #                 r_neg.append('b_lit_%s_pos' % -x)
-    #         constraints.append('constraint bool_clause([%s],[%s]);' % (','.join(r_pos),','.join(r_neg)))
+    for c in gp.constraints():
+        for r in c.encodeCNF():
+            rule = []
+            rhs = 0.0
+            for x in r:
+                if x > 0:
+                    if rule:
+                        rule.append('+ x%s' % x)
+                    else:
+                        rule.append('x%s' % x)
+                else:
+                    rule.append('- x%s' % -x)
+                    rhs -= 1
+            constraints.append(''.join(rule) + ' > ' + str(rhs))
 
     result = """
 maximize
@@ -309,7 +312,7 @@ def call_flatzinc_solver(fzn, solver, **kwdargs):
 
 def main(inputfile, **kwdargs):
     pl = PrologFile(inputfile)
-    gp = LogicFormula.createFrom(pl, label_all=True)
+    gp = LogicDAG.createFrom(pl, label_all=True)
 
     lp, score_offset = groundprogram2lp(gp)
 
@@ -323,7 +326,7 @@ def main(inputfile, **kwdargs):
     for f in facts:
         print ('node_%s' % f)
 
-    print ('Probability:', math.exp(score))
+    print ('%% Probability: %s [log: %s]' % (math.exp(score), score))
 
 
 
