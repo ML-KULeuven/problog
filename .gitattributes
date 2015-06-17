@@ -15,6 +15,7 @@
 /benchmark/ export-ignore
 Makefile	export-ignore
 /usecases/  export-ignore
+/mpe/ export-ignore
 problog-gui.py export-ignore
 /internal/  export-ignore
 /conversions/hugin_samples/ export-ignore
