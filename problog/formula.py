@@ -350,7 +350,12 @@ class LogicFormula(ProbLogObject):
         
     def isCompound(self, key) :
         return not self.isAtom(key)
-        
+
+    def get_node(self, key):
+        assert(self.isProbabilistic(key))
+        assert(key > 0)
+        return self.__nodes[ key - 1 ]
+
     def getNode(self, key) :
         """Get the node with the given key."""
         assert(self.isProbabilistic(key))
@@ -929,13 +934,85 @@ class DeterministicLogicFormula(LogicFormula):
         return self.TRUE
 
 
-@transform(LogicFormula, LogicDAG)
+# @transform(LogicFormula, LogicDAG)
 def breakCycles(source, target, **kwdargs):
     logger = logging.getLogger('problog')
     result = source.makeAcyclic(preserve_tables=False, output=target)
     logger.debug("Ground program size: %s", len(result))
     return result
 
+
+@transform(LogicFormula, LogicDAG)
+def break_cycles(source, target, **kwdargs):
+
+    cycles_broken = set()
+    content = set()
+    translation = defaultdict(list)
+
+    for q, n in source.queries():
+        if source.isProbabilistic(n):
+            newnode = _break_cycles(source, target, n, [], cycles_broken, content, translation)
+        else:
+            newnode = n
+        target.addName(q, newnode, target.LABEL_QUERY)
+
+    for q, n in source.evidence():
+        newnode = _break_cycles(source, target, abs(n), [], cycles_broken, content, translation)
+        if n < 0:
+            target.addName(q, newnode, target.LABEL_EVIDENCE_NEG)
+        else:
+            target.addName(q, newnode, target.LABEL_EVIDENCE_POS)
+
+    for name, node, label in source.getNamesWithLabel():
+        for newnode, cb, cn in translation[node]:
+            aux = 0
+            if label == target.LABEL_NAMED:
+                if cb:
+                    aux += 1
+                    target.addName(name + '_aux%s' % aux, newnode, label)
+                else:
+                    target.addName(name, newnode, label)
+
+    return target
+
+def _break_cycles(source, target, nodeid, ancestors, cycles_broken, content, translation):
+    # TODO reuse from translation
+    negative_node = nodeid < 0
+    nodeid = abs(nodeid)
+
+    if nodeid in ancestors:
+        cycles_broken.add(nodeid)
+        return None     # cyclic node: node is False
+    elif nodeid in translation:
+        ancset = frozenset(ancestors)
+        for newnode, cb, cn in translation[nodeid]:
+            if cb <= ancset and not ancset & cn:
+                if negative_node:
+                    return target.addNot(newnode)
+                else:
+                    return newnode
+    child_cycles_broken = set()
+    child_content = set()
+
+    content.add(nodeid)
+    node = source.get_node(nodeid)
+    nodetype = type(node).__name__
+    if nodetype == 'atom':
+        newnode = target.addAtom(node.identifier, node.probability, node.group)
+    else:
+        children = [_break_cycles(source, target, child, ancestors + [nodeid], child_cycles_broken, child_content, translation) for child in node.children]
+        if nodetype == 'conj':
+            newnode = target.addAnd(children)
+        else:
+            newnode = target.addOr(children)
+    translation[nodeid].append((newnode, child_cycles_broken, child_content-child_cycles_broken))
+    content |= child_content
+    cycles_broken |= child_cycles_broken
+
+    if negative_node:
+        return target.addNot(newnode)
+    else:
+        return newnode
 
 class StringKeyLogicFormula(LogicFormula) :
     """A propositional logic formula consisting of and, or, not and atoms."""
