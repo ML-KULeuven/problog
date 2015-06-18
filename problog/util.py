@@ -53,10 +53,33 @@ def subprocess_call(*popenargs, **kwargs):
         popenargs = find_process(*popenargs)
         process = subprocess.Popen(*popenargs, **kwargs)
         return process.wait()
-    except KeyboardInterrupt :
-        process.kill()
+    except KeyboardInterrupt:
+        kill_proc_tree(process)
         raise
-        
+    except SystemExit:
+        kill_proc_tree(process)
+        raise
+
+
+def kill_proc_tree(process, including_parent=True):
+    """
+    Recursively kill a subprocess. Useful when the subprocess is a script.
+    Requires psutil but silently fails when it is not present.
+    """
+    try:
+        import psutil
+        pid = process.pid
+        parent = psutil.Process(pid)
+        children = parent.children(recursive=True)
+        for child in children:
+            child.kill()
+        psutil.wait_procs(children, timeout=5)
+        if including_parent:
+            parent.kill()
+            parent.wait(5)
+    except ImportError:
+        process.kill()
+
 import collections
 
 class OrderedSet(collections.MutableSet):
