@@ -1,7 +1,7 @@
 """
 __author__ = Anton Dries
 
-Provides access to Sentential Decision Diagrams (SDDs).
+Provides access to Binary Decision Diagrams (BDDs).
 
 """
 
@@ -348,7 +348,7 @@ class BDD(LogicDAG, Evaluatable):
 @transform(LogicDAG, BDD)
 def buildBDD(source, destination, **kwdargs):
 
-    with Timer('Compiling SDD'):
+    with Timer('Compiling BDD'):
         if kwdargs.get('sdd_preset_variables'):
             s = len(source)
             destination.set_varcount(s+1)
@@ -449,13 +449,6 @@ class BDDEvaluator(Evaluator):
 
         query_sdd = self.sdd_manager.conjoin(query_def_sdd, evidence_sdd, constraint_sdd)
 
-
-        # Delete temporary SDDs
-        # self.sdd_manager.deref(query_node_sdd, evidence_sdd)
-
-        # if self.sdd_manager.is_false(query_sdd):
-        #     raise InconsistentEvidenceError()
-
         if self.sdd_manager.is_true(query_sdd):
             if node < 0:
                 return self.__probs[-node][1]
@@ -477,83 +470,4 @@ class BDDEvaluator(Evaluator):
                     pw = self.semiring.times(p, pw)
                 pall = self.semiring.plus(pw, pall)
             return self.semiring.normalize(pall, self.__z)
-
-    def evaluate2(self, node):
-        """
-        Evaluate the given node in the SDD.
-        :param node: identifier of the node to evaluate
-        :return: weight of the node
-        """
-
-        # Trivial case: node is deterministically True or False
-        if node == 0:
-            return self.semiring.one()
-        elif node is None:
-            return self.semiring.zero()
-
-        # TODO cache evidence_sdd and Z1
-
-        query_def_sdd = self.__sdd.get_sddnode(node)
-        constraint_sdd = self.__sdd.get_constraint_sdd()
-
-        # Construct the query SDD
-        # query_node_sdd = self.sdd_manager.equiv(self.sdd_manager.literal(node), query_def_sdd)
-
-        with Timer('Evidence'):
-            evidence_sdd = self.sdd_manager.conjoin(constraint_sdd, *[self.__sdd.get_sddnode(ev) for ev in self.iterEvidence() if self.__sdd.isCompound(abs(ev))])
-
-        with Timer('Query %s' % node):
-            query_sdd = self.sdd_manager.conjoin(query_def_sdd, evidence_sdd, constraint_sdd)
-
-        with Timer('Z1'):
-            logspace = 0
-            if self.semiring.isLogspace():
-                logspace = 1
-            wmc_manager = sdd.wmc_manager_new(query_sdd, logspace, self.sdd_manager.get_manager())
-
-            for i, n in enumerate(sorted(self.__probs)):
-                i += 1
-                pos, neg = self.__probs[n]
-                sdd.wmc_set_literal_weight(n, pos, wmc_manager)   # Set positive literal weight
-                sdd.wmc_set_literal_weight(-n, neg, wmc_manager)  # Set negative literal weight
-            Z1 = sdd.wmc_propagate(wmc_manager)
-            # result = sdd.wmc_literal_pr(node, wmc_manager)
-            sdd.wmc_manager_free(wmc_manager)
-
-        with Timer('Z2'):
-            wmc_manager = sdd.wmc_manager_new(evidence_sdd, logspace, self.sdd_manager.get_manager())
-
-            for i, n in enumerate(sorted(self.__probs)):
-                i += 1
-                pos, neg = self.__probs[n]
-                sdd.wmc_set_literal_weight(n, pos, wmc_manager)   # Set positive literal weight
-                sdd.wmc_set_literal_weight(-n, neg, wmc_manager)  # Set negative literal weight
-            Z2 = sdd.wmc_propagate(wmc_manager)
-            # result = sdd.wmc_literal_pr(node, wmc_manager)
-            sdd.wmc_manager_free(wmc_manager)
-
-            self.sdd_manager.deref(evidence_sdd, query_sdd)
-
-        if Z2 == self.semiring.zero():
-            raise InconsistentEvidenceError()
-
-        result = self.semiring.normalize(Z1, Z2)
-        return result
-
-            
-    def setEvidence(self, index, value ) :
-        pos = self.semiring.one()
-        neg = self.semiring.zero()
-        if value :
-            self.setWeight( index, pos, neg )
-        else :
-            self.setWeight( index, neg, pos )
-            
-    def setWeight(self, index, pos, neg) :
-        self.__probs[index] = (pos, neg)
-
-#from .sdd_formula_alt import SDDtp as SDD
-
-
-
 
