@@ -934,7 +934,7 @@ class DeterministicLogicFormula(LogicFormula):
         return self.TRUE
 
 
-# @transform(LogicFormula, LogicDAG)
+#@transform(LogicFormula, LogicDAG)
 def breakCycles(source, target, **kwdargs):
     logger = logging.getLogger('problog')
     result = source.makeAcyclic(preserve_tables=False, output=target)
@@ -944,36 +944,38 @@ def breakCycles(source, target, **kwdargs):
 
 @transform(LogicFormula, LogicDAG)
 def break_cycles(source, target, **kwdargs):
+    logger = logging.getLogger('problog')
+    with Timer('Cycle breaking'):
+        cycles_broken = set()
+        content = set()
+        translation = defaultdict(list)
 
-    cycles_broken = set()
-    content = set()
-    translation = defaultdict(list)
+        for q, n in source.queries():
+            if source.isProbabilistic(n):
+                newnode = _break_cycles(source, target, n, [], cycles_broken, content, translation)
+            else:
+                newnode = n
+            target.addName(q, newnode, target.LABEL_QUERY)
 
-    for q, n in source.queries():
-        if source.isProbabilistic(n):
-            newnode = _break_cycles(source, target, n, [], cycles_broken, content, translation)
-        else:
-            newnode = n
-        target.addName(q, newnode, target.LABEL_QUERY)
+        for q, n in source.evidence():
+            newnode = _break_cycles(source, target, abs(n), [], cycles_broken, content, translation)
+            if n < 0:
+                target.addName(q, newnode, target.LABEL_EVIDENCE_NEG)
+            else:
+                target.addName(q, newnode, target.LABEL_EVIDENCE_POS)
 
-    for q, n in source.evidence():
-        newnode = _break_cycles(source, target, abs(n), [], cycles_broken, content, translation)
-        if n < 0:
-            target.addName(q, newnode, target.LABEL_EVIDENCE_NEG)
-        else:
-            target.addName(q, newnode, target.LABEL_EVIDENCE_POS)
+        for name, node, label in source.getNamesWithLabel():
+            for newnode, cb, cn in translation[node]:
+                aux = 0
+                if label == target.LABEL_NAMED:
+                    if cb:
+                        aux += 1
+                        target.addName(name + '_aux%s' % aux, newnode, label)
+                    else:
+                        target.addName(name, newnode, label)
 
-    for name, node, label in source.getNamesWithLabel():
-        for newnode, cb, cn in translation[node]:
-            aux = 0
-            if label == target.LABEL_NAMED:
-                if cb:
-                    aux += 1
-                    target.addName(name + '_aux%s' % aux, newnode, label)
-                else:
-                    target.addName(name, newnode, label)
-
-    return target
+        logger.debug("Ground program size: %s", len(target))
+        return target
 
 def _break_cycles(source, target, nodeid, ancestors, cycles_broken, content, translation):
     # TODO reuse from translation
@@ -984,8 +986,13 @@ def _break_cycles(source, target, nodeid, ancestors, cycles_broken, content, tra
         cycles_broken.add(nodeid)
         return None     # cyclic node: node is False
     elif nodeid in translation:
-        ancset = frozenset(ancestors)
+        ancset = frozenset(ancestors + [nodeid])
         for newnode, cb, cn in translation[nodeid]:
+            # We can reuse this previous node iff
+            #   - no more cycles have been broken that should not be broken now
+            #       (cycles broken is a subset of ancestors)
+            #   - no more cycles should be broken than those that have been broken in the previous
+            #       (the previous node does not contain ancestors)
             if cb <= ancset and not ancset & cn:
                 if negative_node:
                     return target.addNot(newnode)
