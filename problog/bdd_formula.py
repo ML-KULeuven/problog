@@ -471,3 +471,13 @@ class BDDEvaluator(Evaluator):
                 pall = self.semiring.plus(pw, pall)
             return self.semiring.normalize(pall, self.__z)
 
+    def setEvidence(self, index, value ) :
+        pos = self.semiring.one()
+        neg = self.semiring.zero()
+        if value :
+            self.setWeight( index, pos, neg )
+        else :
+            self.setWeight( index, neg, pos )
+
+    def setWeight(self, index, pos, neg) :
+        self.__probs[index] = (pos, neg)
