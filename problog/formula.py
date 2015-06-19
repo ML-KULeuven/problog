@@ -786,6 +786,9 @@ class LogicFormula(ProbLogObject):
                     if child_type == 'conj':
                         body = self._unroll_conj(child)
                         to_add |= (set(map(abs,body)) - added)
+                    elif child_type == 'disj':
+                        body = [child_id]
+                        to_add.add(abs(child_id))
                     else:
                         body = [child_id]
                         if name_lookup.get(abs(child_id)) is None:
