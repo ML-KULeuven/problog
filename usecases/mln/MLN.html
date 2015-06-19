@@ -252,13 +252,13 @@ Friends(people,people)
 w Smokes(x) ^ Friends(x,y) =&gt; Smokes(y)
 
 </code></pre>
-<p>is translated to (ignoring the type definitions):</p>
+<p>is translated to an MLN where only literal formulas have a weight (ignoring the type definitions):</p>
 
-<pre><code>w' R(x,y)
+<pre><code>w R(x,y)
 R(x,y) &lt;=&gt; (Smokes(x) ^ Friends(x,y) =&gt; Smokes(y)).
 
+
 </code></pre>
-<p>with $w' = \frac{e^w}{e^w+1}$.</p>
 <h3 id="WFOMC-to-ProbLog">WFOMC to ProbLog<a class="anchor-link" href="#WFOMC-to-ProbLog">&#182;</a></h3><p>The WFOMC program above can be written to cProbLog:</p>
 
 <pre><code>people(a). people(b).
@@ -268,7 +268,7 @@ w' :: r(X,Y).
 evidence(r(X,Y) &lt;=&gt; smokes(X) ^ friends(X,Y) =&gt; smokes(Y), true) :- people(X), people(Y).
 
 </code></pre>
-<p>The types of the predicates are introduced by adding a <code>people</code> predicate that lists the domain elements and linking this to the <code>smokes</code> and <code>friends</code> predicates. The 0.5 probability is a default for MLNs if a predicate is not introduced explicitely ($\frac{e^0}{e^0+1} = \frac{1}{2}$). If a sentence <code>w Smokes(x)</code> is present in the MLN, the 0.5 would be replace by w' for <code>smokes</code>.</p>
+<p>with $w' = \frac{e^w}{e^w+1}$. The types of the predicates are introduced by adding a <code>people</code> predicate that lists the domain elements and linking this to the <code>smokes</code> and <code>friends</code> predicates. The 0.5 probability is a default for MLNs if a predicate is not introduced explicitely ($\frac{e^0}{e^0+1} = 0.5$). If a sentence <code>w_s Smokes(x)</code> is present in the MLN, the 0.5 would be replaced by $w_s' = \frac{e^{w_s}}{e^{w_s}+1}$ for <code>smokes</code>.</p>
 <p>The current ProbLog implementation does not support first-order logic constraints, so this has to be rewritten to ProbLog rules. This can be achieved by turning the constraint into a CNF and adding a ProbLog clauses <code>ev :- not_c_i</code> for every clause <code>c_i</code> in the CNF. The <code>not_c_i</code> is the negation of clause <code>c_i</code>. Finally, you set the evidence on <code>ev</code> to false.</p>
 
 <pre><code>people(a). people(b).
