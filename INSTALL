@@ -65,6 +65,8 @@ If you want to use d-DNNFs you can use add the command line options -k nnf.
 C2D
 +++
 C2D is not available for Mac OSX.
+However, it is possible to use the Windows version by using `wine`.
+Instructions are in 'problog/bin/darwin/cnf2ddnnf_wine'.
 
 
 Windows
