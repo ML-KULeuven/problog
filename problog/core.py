@@ -197,17 +197,12 @@ def list_transformations() :
 import warnings
 
 
-class deprecated(object):
+def deprecated(func):
 
-    def __init__(self, forward):
-        self.forward = forward
-
-    def __call__(self, func):
-        def _wrapped(*args, **kwdargs):
-            warnings.warn('%s is deprecated. Use %s instead.'
-                          % (func.__name__, self.forward.__name__), FutureWarning)
-            return self.forward(*args, **kwdargs)
-        return _wrapped
+    def _wrapped(*args, **kwdargs):
+        warnings.warn('%s is deprecated' % func.__name__ , FutureWarning)
+        return func(*args, **kwdargs)
+    return _wrapped
 
 
 def deprecated_function(name, func):

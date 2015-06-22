@@ -3,7 +3,7 @@ from __future__ import print_function
 from collections import namedtuple, defaultdict
 import warnings
 
-from .core import transform, ProbLogObject, ProbLogError, deprecated_function
+from .core import transform, ProbLogObject, ProbLogError, deprecated_function, deprecated
 
 from .util import Timer
 from .logic import Term
@@ -569,11 +569,12 @@ class LogicFormula(ProbLogObject):
         """Returns a list of all constraints."""
         return list(self.__constraints_me.values()) + self.__constraints
         
-    def addConstraint(self, c) :
+    def add_constraint(self, c) :
         """Adds a constraint to the model."""
         self.__constraints.append(c)
         for node in c.getNodes() :
             self.addConstraintOnNode(node,c)
+
 
     ##################################################################################
     ####                            OUTPUT GENERATION                             ####

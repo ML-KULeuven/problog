@@ -5,7 +5,7 @@ from collections import defaultdict
 import subprocess
 import sys, os, tempfile
 import math
-from .core import ProbLogError
+from .core import ProbLogError, deprecated_function
 
 
 class InconsistentEvidenceError(ProbLogError):
@@ -164,14 +164,14 @@ class SemiringSymbolic(Semiring) :
 
 class Evaluatable(object) :
     
-    def _createEvaluator(self, semiring, weights) :
-        raise NotImplementedError('Evaluatable._createEvaluator is an abstract method')
+    def create_evaluator(self, semiring, weights):
+        raise NotImplementedError('Evaluatable.create_evaluator is an abstract method')
     
-    def getEvaluator(self, semiring=None, evidence=None, weights=None) :
+    def get_evaluator(self, semiring=None, evidence=None, weights=None) :
         if semiring is None :
             semiring = SemiringProbability()
 
-        evaluator = self._createEvaluator(semiring, weights)
+        evaluator = self.create_evaluator(semiring, weights)
 
         for n_ev, node_ev in evaluator.getNames(self.LABEL_EVIDENCE_POS) :
             if node_ev == 0 :
@@ -219,7 +219,7 @@ class Evaluatable(object) :
         return evaluator
 
     def evaluate(self, index=None, semiring=None, evidence=None, weights=None) :
-        evaluator = self.getEvaluator(semiring, evidence, weights)
+        evaluator = self.get_evaluator(semiring, evidence, weights)
     
         if index is None :
             result = {}

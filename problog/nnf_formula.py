@@ -21,7 +21,7 @@ class NNF(LogicDAG, Evaluatable) :
     def __init__(self, **kwdargs):
         LogicDAG.__init__(self, auto_compact=False)
 
-    def _createEvaluator(self, semiring, weights):
+    def create_evaluator(self, semiring, weights):
         return SimpleNNFEvaluator(self, semiring, weights)
 
 
@@ -232,7 +232,7 @@ def _compile(cnf, cmd, cnf_file, nnf_file) :
         for name, node, label in cnf.getNamesWithLabel() :
             nnf.addName(name, node, label)
         for c in cnf.constraints() :
-            nnf.addConstraint(c.copy())
+            nnf.add_constraint(c.copy())
             
         return nnf
     else :
@@ -297,6 +297,6 @@ def _load_nnf(filename, cnf) :
             for actual_name, label in names_inv[name] :
                 nnf.addName(actual_name, None, label)
     for c in cnf.constraints() :
-        nnf.addConstraint(c.copy(rename))
+        nnf.add_constraint(c.copy(rename))
                 
     return nnf
