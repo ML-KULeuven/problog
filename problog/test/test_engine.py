@@ -185,7 +185,7 @@ class TestEngineCycles(unittest.TestCase):
 
 
 def list_paths(source) :
-    names = dict( (index, str(name)) for name, index in source.getNames() if index != 0 ) 
+    names = dict( (index, str(source.get_name(index))) for index, node, tp in source if index != 0 )
     
     for name, node in source.queries() :
         for path in _list_paths(source, node, []) :
