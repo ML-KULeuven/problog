@@ -576,146 +576,6 @@ class LogicFormula(ProbLogObject):
             self.addConstraintOnNode(node,c)
 
     ##################################################################################
-    ####                       LOOP BREAKING AND COMPACTION                       ####
-    ##################################################################################
-
-    def makeAcyclic(self, preserve_tables=False, output=None) :
-        """Break cycles."""
-        
-        assert(not preserve_tables)                    
-
-        # TODO make non-recursive
-
-        # TODO implement preserve tables
-        #   This copies the table information from self._def_nodes and translates all result nodes
-        #   This requires all result nodes to be maintained separately (add them to protected).
-        #   Problem: how to do this without knowledge about internal structure of the engine. 
-        try:
-            with Timer('Cycle breaking'):
-              # Output formula
-              if output is None : output = LogicDAG()
-
-              # Protected nodes (these have to exist separately)
-              protected = set( [ y for x,y in self.getNames() ] )
-
-              # Translation table from old to new.
-              translate = {}
-
-              # Handle the given nodes one-by-one
-              for name, node, label in self.getNamesWithLabel() :
-                  if label != self.LABEL_NAMED :
-                      new_node, cycles = self._extract( output, node, protected, translate )
-                      translate[node] = new_node
-                      output.addName(name, new_node, label)
-        except RuntimeError as err:
-            if str(err).startswith('maximum recursion depth'):
-                raise ProbLogError('Program too large for cycle breaking. Use --recursion-limit argument to increase recursion limit.')
-        
-        return output
-
-            
-    def _expand( self, index, children, protected, nodetype=None, anc=None ) :
-        """Determine the list of all children of the node by combining the given node with its children of the same type, recursively."""
-        
-        if anc is None : anc = []
-        
-        if index in children :
-            pass
-        elif index in anc :
-            children.add(index)
-        elif index == 0 or index is None :
-            children.add(index)
-        elif nodetype != None and abs(index) in protected :
-            children.add(index)
-        elif index < 0 :
-            # Combine OR with NOT AND (or vice versa)
-            if nodetype != None :
-                node = self.getNode(-index)
-                ntype = type(node).__name__
-                if not ntype in ('conj', 'disj') :
-                    children.add(index)
-                else :
-                    if ntype != nodetype :
-                        for c in node.children :
-                            self._expand( -c, children, protected, nodetype, anc+[index])
-                    else :
-                        children.add(index)
-            else :
-                children.add(index)
-        else :  # index > 0
-            node = self.getNode(index)
-            ntype = type(node).__name__
-            if not ntype in ('conj', 'disj') :
-                children.add(index)
-            elif nodetype is None :
-                nodetype = ntype
-            
-            if ntype == nodetype :
-                for c in node.children :
-                    self._expand( c, children, protected, nodetype, anc+[index])
-            else :
-                children.add(index)
-        return children
-        
-    def _extract( self, gp, index, protected, translate, anc=None ) :
-        """Copy the given node to a new formula, while breaking loops and node combining."""
-        if anc is None : anc = []
-        
-        if index == 0 or index is None :
-            return index, set()
-        elif index in anc :
-            return None, {index}
-        elif abs(index) in translate :
-            if index < 0 :
-                return self.addNot(translate[abs(index)]), set()
-            else :
-                return translate[abs(index)], set()
-        else :
-            node = self.getNode( abs(index) )
-            ntype = type(node).__name__
-        
-        if ntype == 'disj' or ntype == 'conj' :
-            # Get all the children while squashing together nodes.
-            children = self._expand( abs(index), set(), protected )
-            cycles = set()
-            new_children = set()
-            for child in children :
-                new_child, cycle = self._extract( gp, child, protected, translate, anc+[index] )
-                new_children.add( new_child )
-                cycles |= cycle
-            if ntype == 'conj' :
-                ncc = set()
-                for nc in new_children :
-                    gp._expand( nc, ncc, set(), 'conj')
-                new_node = gp.addAnd( ncc )
-            else :
-                ncc = set()
-                for nc in new_children :
-                    gp._expand( nc, ncc, set(), 'disj')
-                new_node = gp.addOr( ncc )
-
-            if index in cycles and new_node != None and new_node != 0 :
-                cycles.remove(index)
-            if not cycles :
-                translate[abs(index)] = new_node
-            if index < 0 :
-                return self.addNot(new_node), cycles
-            else :
-                return new_node, cycles
-        else :
-            res = translate.get(abs(index))
-            if res is None :
-                res = gp.addAtom( node.identifier, node.probability, node.group )
-                translate[abs(index)] = res 
-            if index < 0 :
-                return self.addNot(res), set()
-            else :
-                return res, set()
-        
-        node = self.getNode(index)
-    
-    
-    ##################################################################################
     ####                            OUTPUT GENERATION                             ####
     ##################################################################################
     
@@ -794,110 +654,17 @@ class LogicFormula(ProbLogObject):
         :rtype: str
         """
 
-        def negate(x):
-            """Give the string representation of the negation of the given node.
-
-            :param x: node to negate
-            :return: negated node
-            """
-            if yap_style:
-                return '\+ (%s)' % x
-            else:
-                return '\+%s' % x
-
-        lines = []  # lines of the output
-
-        # Construct the table with name clashes.
-        name_lookup_clash = defaultdict(list)
-        for x, y in self.getNames():
-            name_lookup_clash[y].append(x)
-
-        # Construct the name lookup table.
-        name_lookup = {}
-        for x, y in name_lookup_clash.items():
-            if x != 0 :
-                name_lookup[x] = y[0]
-
-        # We define a helper function to determine the name of a node.
-        def _get_name(x):
-            res = name_lookup.get(abs(x))
-            if res is None:
-                nodex = self.getNode(abs(x))
-                if type(nodex).__name__ == 'disj' and len(nodex.children) == 1:
-                    res = _get_name(nodex.children[0])
-                elif type(nodex).__name__ == 'conj' and len(nodex.children) == 1:
-                    res = _get_name(nodex.children[0])
+        lines = []
+        for head, body in self.enumerate_clauses():
+            if body:    # clause with a body
+                body = ', '.join(map(str, map(self.get_name, body)))
+                lines.append('%s :- %s.' % (self.get_name(head), body))
+            else:   # fact
+                prob = self.get_node(head).probability
+                if prob is not None:
+                    lines.append('%s::%s.' % (prob, self.get_name(head)))
                 else:
-                    res = 'node_%s' % abs(x)
-            else:
-                res = str(res)
-            if x < 0:
-                res = negate(res)
-            return res
-
-        to_add = [abs(q) for n, q in self.queries() if q is not None]
-        to_add += [abs(q) for n, q in self.evidence() if q is not None]
-        to_add = set(to_add)
-
-        # Keep track of all nodes that have been added already.
-        added = set()
-
-        while to_add:
-            node_id = to_add.pop()  # We are going to add the definition of this node.
-            added.add(node_id)  # Prevent the same node from being added twice
-            assert node_id > 0
-            node = self.getNode(node_id)  # Get the node content.
-            node_type = type(node).__name__
-            name = _get_name(node_id)
-
-            if node_type == 'disj':
-                for child_id in node.children:
-                    child = self.getNode(abs(child_id))
-                    child_type = type(child).__name__
-                    if child_type == 'conj':
-                        body = self._unroll_conj(child)
-                        to_add |= (set(map(abs,body)) - added)
-                    elif child_type == 'disj':
-                        body = [child_id]
-                        to_add.add(abs(child_id))
-                    else:
-                        body = [child_id]
-                        if name_lookup.get(abs(child_id)) is None:
-                            lines.append('%s::%s.' % (child.probability, name))
-                            continue
-                        else:
-                            if abs(child_id) not in added:
-                                to_add.add(abs(child_id))
-                    body_names = list(map(_get_name, body))
-                    if len(body_names) == 1 and body_names[0] == name:
-                        pass
-                    else:
-                        lines.append('%s :- %s.' % (name, ','.join(body_names)))
-            elif node_type == 'atom':
-                lines.append('%s::%s.' % (node.probability, name))
-            else:  # conj
-                body = self._unroll_conj(node)
-                to_add |= (set(map(abs,body)) - added)
-                body_names = list(map(_get_name, body))
-                if len(body_names) == 1 and body_names[0] == name:
-                    pass
-                else:
-                    lines.append('%s :- %s.' % (name, ','.join(body_names)))
-
-        # Make sure all true/false/negated queries and evidence are present.
-        for n, q in self.queries():
-            if q is None:
-                lines.append('%s :- fail.' % n)
-            elif q == 0:
-                lines.append('%s.' % n)
-            elif q < 0:
-                lines.append('%s :- \+%s.' % (n, _get_name(-q)))
-        for n, q in self.evidence():
-            if q is None:
-                lines.append('%s :- fail.' % n)
-            elif q == 0:
-                lines.append('%s.' % n)
-
+                    lines.append('%s.' % self.get_name(head))
         return '\n'.join(lines)
 
     def to_dot(self, not_as_node=True) :
@@ -1008,14 +775,6 @@ class DeterministicLogicFormula(LogicFormula):
         return self.TRUE
 
 
-#@transform(LogicFormula, LogicDAG)
-def breakCycles(source, target, **kwdargs):
-    logger = logging.getLogger('problog')
-    result = source.makeAcyclic(preserve_tables=False, output=target)
-    logger.debug("Ground program size: %s", len(result))
-    return result
-
-
 @transform(LogicFormula, LogicDAG)
 def break_cycles(source, target, **kwdargs):
     logger = logging.getLogger('problog')
@@ -1037,16 +796,6 @@ def break_cycles(source, target, **kwdargs):
                 target.addName(q, newnode, target.LABEL_EVIDENCE_NEG)
             else:
                 target.addName(q, newnode, target.LABEL_EVIDENCE_POS)
-
-        for name, node, label in source.getNamesWithLabel():
-            for newnode, cb, cn in translation[node]:
-                aux = 0
-                if label == target.LABEL_NAMED:
-                    if cb:
-                        aux += 1
-                        target.addName(name + '_aux%s' % aux, newnode, label)
-                    else:
-                        target.addName(name, newnode, label)
 
         logger.debug("Ground program size: %s", len(target))
         return target
@@ -1079,13 +828,17 @@ def _break_cycles(source, target, nodeid, ancestors, cycles_broken, content, tra
     node = source.get_node(nodeid)
     nodetype = type(node).__name__
     if nodetype == 'atom':
-        newnode = target.addAtom(node.identifier, node.probability, node.group)
+        newnode = target.addAtom(node.identifier, node.probability, node.group, node.name)
     else:
         children = [_break_cycles(source, target, child, ancestors + [nodeid], child_cycles_broken, child_content, translation) for child in node.children]
+        newname = node.name
+        if newname is not None and child_cycles_broken:
+            newfunc = newname.functor + '_cb_' + str(len(translation[nodeid]))
+            newname = Term(newfunc, *newname.args)
         if nodetype == 'conj':
-            newnode = target.addAnd(children)
+            newnode = target.addAnd(children, name=newname)
         else:
-            newnode = target.addOr(children)
+            newnode = target.addOr(children, name=newname)
     translation[nodeid].append((newnode, child_cycles_broken, child_content-child_cycles_broken))
     content |= child_content
     cycles_broken |= child_cycles_broken
