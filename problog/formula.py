@@ -6,6 +6,7 @@ import warnings
 from .core import transform, ProbLogObject, ProbLogError, deprecated_function
 
 from .util import Timer
+from .logic import Term
 
 import logging, tempfile, subprocess, os
 
@@ -39,19 +40,19 @@ class LogicFormula(ProbLogObject):
     LABEL_EVIDENCE_MAYBE = "evidence?" 
     LABEL_NAMED = "named"
         
-    _atom = namedtuple('atom', ('identifier', 'probability', 'group') )
-    _conj = namedtuple('conj', ('children') )
-    _disj = namedtuple('disj', ('children') )
+    _atom = namedtuple('atom', ('identifier', 'probability', 'group', 'name'))
+    _conj = namedtuple('conj', ('children', 'name'))
+    _disj = namedtuple('disj', ('children', 'name'))
     # negation is encoded by using a negative number for the key
     
-    def _create_atom( self, identifier, probability, group ) :
-        return self._atom( identifier, probability, group )
+    def _create_atom(self, identifier, probability, group, name=None):
+        return self._atom(identifier, probability, group, name)
     
-    def _create_conj( self, children ) :
-        return self._conj(children)
+    def _create_conj(self, children, name=None):
+        return self._conj(children, name)
         
-    def _create_disj( self, children ) :
-        return self._disj(children)
+    def _create_disj( self, children, name=None):
+        return self._disj(children, name)
     
     def __init__(self, auto_compact=True, avoid_name_clash=False, keep_order=False, use_string_names=False, **kwdargs):
         ProbLogObject.__init__(self)
@@ -105,6 +106,11 @@ class LogicFormula(ProbLogObject):
             :param node_id: id of the node
             :param label: type of node (see LogicFormula.LABEL_*)
         """
+        if self.isProbabilistic(node_id):
+            node = self.get_node(abs(node_id))
+            node = type(node)(*(node[:-1] + (name,)))
+            self._update(abs(node_id), node)
+
         if self.__use_string_names :
             name = str(name)
         if not label in self.__names or not name in self.__names[label] :
@@ -242,7 +248,7 @@ class LogicFormula(ProbLogObject):
         constraint.add(node, self)
         self.addConstraintOnNode(constraint, node)
         
-    def addAtom( self, identifier, probability, group=None ) :
+    def addAtom(self, identifier, probability, group=None, name=None):
         """Add an atom to the formula.
         
         :param identifier: a unique identifier for the atom
@@ -257,24 +263,24 @@ class LogicFormula(ProbLogObject):
         * If ``group`` is given, a mutual exclusivity constraint is added for all nodes sharing the same group.
         * To add an explicitly present deterministic node you can set the probability to ``True``.
         """
-        if probability is None :
+        if probability is None:
             return self.TRUE
-        else :
-            atom = self._create_atom( identifier, probability, group )
-            node_id = self._add( atom, key=identifier )
+        else:
+            atom = self._create_atom(identifier, probability, group, name)
+            node_id = self._add(atom, key=identifier)
             self.__atom_count += 1  # TODO doesn't take reuse into account
             self._addConstraintME(group, node_id)
             return node_id
     
-    def addAnd( self, components, key=None ) :
+    def addAnd(self, components, key=None, name=None):
         """Add a conjunction to the logic formula.
         
         :param components: a list of node identifiers that already exist in the logic formula.
         :returns: the key of the node in the formula (returns 0 for deterministic atoms)
         """
-        return self._addCompound('conj', components, self.FALSE, self.TRUE, key=key)
+        return self._addCompound('conj', components, self.FALSE, self.TRUE, key=key, name=name)
         
-    def addOr( self, components, key=None, readonly=True ) :
+    def addOr(self, components, key=None, readonly=True, name=None):
         """Add a disjunction to the logic formula.
         
         :param components: a list of node identifiers that already exist in the logic formula.
@@ -288,9 +294,9 @@ class LogicFormula(ProbLogObject):
         By setting `readonly` to False, the node is made mutable and will allow adding disjunct later using the :func:`addDisjunct` method.
         This may cause the data structure to contain superfluous nodes.
         """
-        return self._addCompound('disj', components, self.TRUE, self.FALSE, key=key, readonly=readonly)
+        return self._addCompound('disj', components, self.TRUE, self.FALSE, key=key, readonly=readonly, name=name)
         
-    def addDisjunct( self, key, component ) :
+    def addDisjunct(self, key, component):
         """Add a component to the node with the given key.
         
         :param key: id of the node to update
@@ -312,10 +318,10 @@ class LogicFormula(ProbLogObject):
             if component is None :
                 # Don't do anything
                 pass
-            elif component == 0 :
-                return self._update( key, self._disj( (0,) ) )
-            else :
-                return self._update( key, self._disj( node.children + (component,) ) )
+            elif component == 0:
+                return self._update(key, self._create_disj((0,), name=node.name))
+            else:
+                return self._update(key, self._create_disj(node.children + (component,), name=node.name))
             return key
     
     def addNot( self, component ) :
@@ -373,7 +379,7 @@ class LogicFormula(ProbLogObject):
         """Get the type of the given node (fact, disj, conj)."""
         return type(self.getNode(key)).__name__
                                 
-    def _addCompound(self, nodetype, content, t, f, key=None, readonly=True, update=None) :
+    def _addCompound(self, nodetype, content, t, f, key=None, readonly=True, update=None, name=None):
         """Add a compound term (AND or OR)."""
         assert( content )   # Content should not be empty
         
@@ -398,34 +404,39 @@ class LogicFormula(ProbLogObject):
             
             # If node has only one child, just return the child.
             # Don't do this for modifiable nodes, we need to keep a separate node.
-            if (readonly and update is None) and len(content) == 1 and not (self.__avoid_name_clash and self.__names_reverse.get(content[0]) != None) :
-                return content[0]
+            if (readonly and update is None) and len(content) == 1:
+                if self.__avoid_name_clash:
+                    name_old = self.get_node(abs(content[0])).name
+                    if name is None or name_old is None or name == name_old:
+                        return content[0]
+                else:
+                    return content[0]
         else :
             content = tuple(content)
-        
-        if nodetype == 'conj' :
-            node = self._create_conj( content )
+
+        if nodetype == 'conj':
+            node = self._create_conj(content, name)
             return self._add( node, reuse=self.__auto_compact )
-        elif nodetype == 'disj' :
-            node = self._create_disj( content )
-            if update != None :
+        elif nodetype == 'disj':
+            node = self._create_disj(content, name)
+            if update is not None:
                 # If an update key is set, update that node
-                return self._update( update, node )
-            elif readonly :
+                return self._update(update, node)
+            elif readonly:
                 # If the node is readonly, we can try to reuse an existing node.
-                return self._add( node, reuse=self.__auto_compact )
-            else :
+                return self._add(node, reuse=self.__auto_compact)
+            else:
                 # If node is modifiable, we shouldn't reuse an existing node.
-                return self._add( node, reuse=False )
-        else :
+                return self._add(node, reuse=False)
+        else:
             raise TypeError("Unexpected node type: '%s'." % nodetype) 
     
-    def __iter__(self) :
+    def __iter__(self):
         """Iterate over the nodes in the formula.
         
             :returns: iterator over tuples ( key, node, type )
         """
-        for i, n in enumerate(self.__nodes) :
+        for i, n in enumerate(self.__nodes):
             yield (i+1, n, type(n).__name__)
         
         
@@ -436,7 +447,67 @@ class LogicFormula(ProbLogObject):
         """
         warnings.warn('LogicFormula.iterNodes() is deprecated. Please update your code to use default iteration (__iter__).', FutureWarning)
         return self.__iter__()
-            
+
+    def get_name(self, nodeid):
+        """Get the name of the given node."""
+        if nodeid == 0:
+            return 'true'
+        elif nodeid is None:
+            return 'false'
+        else:
+            node = self.get_node(abs(nodeid))
+            name = node.name
+            if name is None:
+               name = Term('node_%s' % abs(nodeid))
+            if nodeid < 0:
+                return -name
+            else:
+                return name
+
+    def enumerate_clauses(self, relevant_only=True):
+        """Enumerate the clauses of this logic formula.
+            Clauses are represented as ('head, [body]').
+        """
+
+        enumerated = OrderedSet()
+
+        if relevant_only:
+            to_enumerate = OrderedSet(abs(n) for q, n in self.queries() if self.isProbabilistic(n))
+            to_enumerate |= OrderedSet(abs(n) for q, n in self.evidence() if self.isProbabilistic(n))
+        else:
+            to_enumerate = OrderedSet(range(1, len(self)+1))
+
+        while to_enumerate:
+            i = to_enumerate.pop()
+            enumerated.add(i)
+            n = self.get_node(i)
+            t = type(n).__name__
+
+            if t == 'atom':
+                yield i, []
+            elif t == 'conj':
+                # In case a query or evidence is directly referring to a conjunctive node.
+                body = self._unroll_conj(n)
+                to_enumerate |= (OrderedSet((map(abs, body))) - enumerated)
+                yield i, body
+            else:   # t == 'disj'
+                for c_i in n.children:
+                    c_n = self.get_node(c_i)
+                    c_t = type(c_n).__name__
+                    if c_t == 'atom':
+                        yield i, [c_i]
+                        if abs(c_i) not in enumerated:
+                            to_enumerate.add(abs(c_i))
+                    elif c_t == 'conj':
+                        body = self._unroll_conj(c_n)
+                        to_enumerate |= (OrderedSet(map(abs, body)) - enumerated)
+                        yield i, body
+                    else:
+                        yield i, [c_i]
+                        if abs(c_i) not in enumerated:
+                            to_enumerate.add(abs(c_i))
+
+
     def __len__(self) :
         """Returns the number of nodes in the formula."""
         return len(self.__nodes)        
@@ -933,7 +1004,7 @@ class DeterministicLogicFormula(LogicFormula):
     def __init__(self, **kwdargs):
         LogicFormula.__init__(self, **kwdargs)
 
-    def addAtom(self, identifier, probability, group=None):
+    def addAtom(self, identifier, probability, group=None, name=None):
         return self.TRUE
 
 

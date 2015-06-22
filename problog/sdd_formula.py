@@ -253,9 +253,9 @@ class SDD(LogicDAG, Evaluatable):
     It can be used as a target for the ``makeAcyclic`` method.
     """
 
-    _atom = namedtuple('atom', ('identifier', 'probability', 'group', 'sddlit') )
-    _conj = namedtuple('conj', ('children', 'sddnode') )
-    _disj = namedtuple('disj', ('children', 'sddnode') )
+    _atom = namedtuple('atom', ('identifier', 'probability', 'group', 'sddlit', 'name'))
+    _conj = namedtuple('conj', ('children', 'sddnode', 'name'))
+    _disj = namedtuple('disj', ('children', 'sddnode', 'name'))
     # negation is encoded by using a negative number for the key
 
     def __init__(self, sdd_auto_gc=False, **kwdargs):
@@ -275,20 +275,20 @@ class SDD(LogicDAG, Evaluatable):
         """
         self.sdd_manager = SDDManager(varcount=varcount+1, auto_gc=self.auto_gc)
 
-    def _create_atom(self, identifier, probability, group):
+    def _create_atom(self, identifier, probability, group, name=None):
         new_lit = self.getAtomCount()+1
         self.sdd_manager.add_variable(len(self)+1)
-        return self._atom(identifier, probability, group, len(self)+1)
+        return self._atom(identifier, probability, group, len(self)+1, name)
 
-    def _create_conj(self, children):
+    def _create_conj(self, children, name=None):
         new_sdd = self.sdd_manager.conjoin(*[self.get_sddnode(c) for c in children])
         self.sdd_manager.add_variable(len(self)+1)
-        return self._conj(children, new_sdd)
+        return self._conj(children, new_sdd, name)
 
-    def _create_disj(self, children):
+    def _create_disj(self, children, name=None):
         new_sdd = self.sdd_manager.disjoin(*[self.get_sddnode(c) for c in children])
         self.sdd_manager.add_variable(len(self)+1)
-        return self._disj(children, new_sdd)
+        return self._disj(children, new_sdd, name)
 
     def addName(self, name, node_id, label=None):
         LogicDAG.addName(self, name, node_id, label)
@@ -351,10 +351,6 @@ class SDD(LogicDAG, Evaluatable):
             else:
                 self.sdd_manager.write_to_dot(filename, self.get_sddnode(index))
 
-    def _update(self, key, value):
-        """Replace the node with the given node."""
-        raise NotImplementedError('SDD formula does not support node updates.')
-        
     def addDisjunct(self, key, component):
         """Add a component to the node with the given key."""
         raise NotImplementedError('SDD formula does not support node updates.')

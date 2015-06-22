@@ -295,20 +295,25 @@ class StackBasedEngine(ClauseDBEngine):
                 else :
                     print ('    %s: %s' % (i,x) )        
         
-    def eval_fact(engine, parent, node_id, node, context, target, identifier, **kwdargs):
+    def eval_fact(self, parent, node_id, node, context, target, identifier, **kwdargs):
         try:
             # Verify that fact arguments unify with call arguments.
             unify_call_head(context, node.args, context)
-            # Successful unification: notify parent callback.
-            target_node = target.addAtom(node_id, node.probability)
-            if target_node is not None :
-                return [newResult(parent, engine._create_context(node.args), target_node, identifier, True)]
+
+            if self.label_all:
+                name = Term(node.functor, *node.args)
             else:
-                return [complete( parent, identifier)]
+                name = None
+            # Successful unification: notify parent callback.
+            target_node = target.addAtom(node_id, node.probability, name=name)
+            if target_node is not None:
+                return [newResult(parent, self._create_context(node.args), target_node, identifier, True)]
+            else:
+                return [complete(parent, identifier)]
         except UnifyError:
             # Failed unification: don't send result.
             # Send complete message.
-            return [complete( parent, identifier)]
+            return [complete(parent, identifier)]
         
             
     def eval_define(engine, node, context, target, parent, identifier=None, transform=None, **kwdargs) :
@@ -471,8 +476,14 @@ class StackBasedEngine(ClauseDBEngine):
 
         probability = instantiate(node.probability, result)
         # Create a new atom in ground program.
+
+        if self.label_all:
+            name = Term(node.functor, *result)
+        else:
+            name = None
+
         origin = (node.group, result)
-        ground_node = target.addAtom(origin + (node.choice,), probability, group=origin)
+        ground_node = target.addAtom(origin + (node.choice,), probability, group=origin, name=name)
         # Notify parent.
         
         if ground_node is not None:
@@ -573,8 +584,8 @@ class EvalOr(EvalNode) :
     def isOnCycle(self) :
         return self.on_cycle
     
-    def flushBuffer(self, cycle=False) :
-        func = lambda result, nodes : self.target.addOr( nodes, readonly=(not cycle) )
+    def flushBuffer(self, cycle=False):
+        func = lambda result, nodes: self.target.addOr(nodes, readonly=(not cycle), name=None)
         self.results.collapse(func)
             
     def newResult(self, result, node=NODE_TRUE, source=None, is_last=False ) :
@@ -586,7 +597,7 @@ class EvalOr(EvalNode) :
                 self.target.addDisjunct( res_node, node )
                 return False, []
             else :
-                result_node = self.target.addOr( (node,), readonly=False )
+                result_node = self.target.addOr((node,), readonly=False, name=None)
                 self.results[ res ] = result_node
                 actions = []
                 if self.isOnCycle() : actions += self.notifyResult(res, result_node)
@@ -882,11 +893,15 @@ class EvalDefine(EvalNode) :
                         stored_result = self.target._cache[ cache_key ]
                         assert(len(stored_result) == 1)
                         result_node = stored_result[ 0 ][1]
-                    else :
-                        result_node = self.target.addOr( (node,), readonly=False )
-                    if self.engine.label_all :
-                        name = str(Term(self.node.functor, *res))
-                        self.target.addName(name, result_node, self.target.LABEL_NAMED)
+                    else:
+                        if self.engine.label_all:
+                            name = Term(self.node.functor, *res)
+                        else:
+                            name = None
+                        result_node = self.target.addOr((node,), readonly=False, name=name)
+                    # if self.engine.label_all :
+                    #     name = str(Term(self.node.functor, *res))
+                    #     self.target.addName(name, result_node, self.target.LABEL_NAMED)
                     self.results[res] = result_node
                     actions = []
                     # Send results to cycle children
@@ -952,11 +967,15 @@ class EvalDefine(EvalNode) :
                 assert(len(stored_result)==1) 
                 node = stored_result[0][1]
             else :
-                node = self.target.addOr( nodes, readonly=(not cycle) )
+                if self.engine.label_all:
+                    name = Term(self.node.functor, *res)
+                else:
+                    name = None
+                node = self.target.addOr(nodes, readonly=(not cycle), name=name)
             #node = self.target.addOr( nodes, readonly=(not cycle) )
-            if self.engine.label_all :
-                name = str(Term(self.node.functor, *res))
-                self.target.addName(name, node, self.target.LABEL_NAMED)
+            # if self.engine.label_all:
+            #     name = str(Term(self.node.functor, *res))
+            #     self.target.addName(name, node, self.target.LABEL_NAMED)
             return node
         self.results.collapse(func)
                 
@@ -1075,7 +1094,11 @@ class EvalNot(EvalNode) :
     def complete(self, source=None) :
         actions = []
         if self.nodes :
-            or_node = self.target.addNot(self.target.addOr( self.nodes ))
+            if self.engine.label_all:
+                name = Term(self.node.functor, *self.node.args)
+            else:
+                name = None
+            or_node = self.target.addNot(self.target.addOr(self.nodes, name=name))
             if or_node != NODE_FALSE :
                 actions += self.notifyResult(self.context, or_node)
         else :
@@ -1147,15 +1170,15 @@ class EvalAnd(EvalNode) :
                 return False, [ self.createCall( self.node.children[1], context=result, identifier=node ) ]
         else :  # Result from the second node
             # Make a ground node
-            target_node = self.target.addAnd( (source, node) )
-            if is_last :
+            target_node = self.target.addAnd((source, node), name=None)
+            if is_last:
                 # Notify self of child completion
                 all_complete, complete_actions = self.complete()
-            else :
+            else:
                 all_complete, complete_actions = False, []
             if all_complete :
                 return True, self.notifyResult(result, target_node, is_last=True)
-            else :
+            else:
                 return False, self.notifyResult(result, target_node, is_last=False)
     
     def complete(self, source=None) :

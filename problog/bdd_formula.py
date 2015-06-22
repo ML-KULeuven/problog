@@ -222,9 +222,9 @@ class BDD(LogicDAG, Evaluatable):
     It can be used as a target for the ``makeAcyclic`` method.
     """
 
-    _atom = namedtuple('atom', ('identifier', 'probability', 'group', 'bddlit') )
-    _conj = namedtuple('conj', ('children', 'bddnode') )
-    _disj = namedtuple('disj', ('children', 'bddnode') )
+    _atom = namedtuple('atom', ('identifier', 'probability', 'group', 'bddlit', 'name'))
+    _conj = namedtuple('conj', ('children', 'bddnode', 'name'))
+    _disj = namedtuple('disj', ('children', 'bddnode', 'name'))
     # negation is encoded by using a negative number for the key
 
     def __init__(self, **kwdargs):
@@ -236,20 +236,20 @@ class BDD(LogicDAG, Evaluatable):
         self.bdd_manager = BDDManager()
         self._constraint_bdd = None
 
-    def _create_atom(self, identifier, probability, group):
+    def _create_atom(self, identifier, probability, group, name=None):
         new_lit = self.getAtomCount()+1
         self.bdd_manager.add_variable(len(self)+1)
-        return self._atom(identifier, probability, group, len(self)+1)
+        return self._atom(identifier, probability, group, len(self)+1, name)
 
-    def _create_conj(self, children):
+    def _create_conj(self, children, name=None):
         new_bdd = self.bdd_manager.conjoin(*[self.get_bddnode(c) for c in children])
         self.bdd_manager.add_variable(len(self)+1)
-        return self._conj(children, new_bdd)
+        return self._conj(children, new_bdd, name)
 
-    def _create_disj(self, children):
+    def _create_disj(self, children, name=None):
         new_bdd = self.bdd_manager.disjoin(*[self.get_bddnode(c) for c in children])
         self.bdd_manager.add_variable(len(self)+1)
-        return self._disj(children, new_bdd)
+        return self._disj(children, new_bdd, name)
 
     def addName(self, name, node_id, label=None):
         LogicDAG.addName(self, name, node_id, label)
@@ -305,10 +305,6 @@ class BDD(LogicDAG, Evaluatable):
         """
         pass
 
-    def _update(self, key, value):
-        """Replace the node with the given node."""
-        raise NotImplementedError('BDD formula does not support node updates.')
-        
     def addDisjunct(self, key, component):
         """Add a component to the node with the given key."""
         raise NotImplementedError('BDD formula does not support node updates.')
