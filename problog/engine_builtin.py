@@ -972,7 +972,7 @@ def builtin_findall_base(pattern, goal, result, top_only=False, database=None, t
     # Check the modes.
     mode = check_mode((pattern, goal, result,), ('*cv', '*cl'), database=database, **kwdargs)
 
-    findall_head = Term(engine.get_non_cache_functor(), pattern)
+    findall_head = Term(engine.get_non_cache_functor(), pattern, *goal.variables())
     findall_clause = Clause( findall_head, goal)
     findall_db = database.extend()
     findall_db += findall_clause
