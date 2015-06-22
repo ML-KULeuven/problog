@@ -524,8 +524,7 @@ class ClauseDB(LogicProgram):
         clauses.append(childnode)
         return childnode
     
-    def _add_choice_node(self, choice, args, probability, locvars, group, location=None):
-        functor = 'ad_%s_%s' % (group, choice)
+    def _add_choice_node(self, choice, functor, args, probability, locvars, group, location=None):
         choice_node = self._append_node(self._choice(functor, args, probability, locvars, group, choice, location))
         return choice_node
         
@@ -690,16 +689,24 @@ class ClauseDB(LogicProgram):
             body_count = len(variables)
             # Body arguments
             body_args = tuple(range(0, len(variables)))
-            body_head = Term('ad_%s_body' % group, *body_args)
+            if len(new_heads) > 1:
+                body_functor = 'ad_%s_body' % (group)
+            else:
+                body_functor = '%s_%s_body' % (new_heads[0].functor, group)
+            body_head = Term(body_functor, *body_args)
             self._add_clause_node(body_head, body_node, len(variables), variables.local_variables)
             clause_body = self._add_head(body_head)
             for choice, head in enumerate(new_heads):
                 # For each head: add choice node
-                choice_node = self._add_choice_node(choice, body_args, head.probability, variables.local_variables,
+                if len(new_heads) > 1:
+                    choice_functor = '%s_cf_%s_%s' % (head.functor, group, choice)
+                else:
+                    choice_functor = '%s_%s_choice' % (head.functor, group)
+                choice_node = self._add_choice_node(choice, choice_functor, body_args, head.probability, variables.local_variables,
                                                     group, head.location)
-                choice_call = self._append_node(self._call('ad_%s_%s' % (group, choice), body_args, choice_node,
+                choice_call = self._append_node(self._call(choice_functor, body_args, choice_node,
                                                            head.location))
-                body_call = self._append_node(self._call('ad_%s_body' % group, body_args, clause_body, head.location))
+                body_call = self._append_node(self._call(body_functor, body_args, clause_body, head.location))
                 choice_body = self._add_and_node(body_call, choice_call)
                 self._add_clause_node(head, choice_body, body_count, {}, group=group)
             return None
