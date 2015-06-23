@@ -1094,11 +1094,7 @@ class EvalNot(EvalNode) :
     def complete(self, source=None) :
         actions = []
         if self.nodes :
-            if self.engine.label_all:
-                name = Term(self.node.functor, *self.node.args)
-            else:
-                name = None
-            or_node = self.target.addNot(self.target.addOr(self.nodes, name=name))
+            or_node = self.target.addNot(self.target.addOr(self.nodes, name=None))
             if or_node != NODE_FALSE :
                 actions += self.notifyResult(self.context, or_node)
         else :
