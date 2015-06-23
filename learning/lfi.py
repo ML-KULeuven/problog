@@ -344,17 +344,16 @@ class LFIProblem(SemiringProbability, LogicProgram) :
         for at, val, comp in self._compiled_examples :        
             evidence = dict(zip(at,map(str2bool,val)))
 
-            evaluator = comp.getEvaluator(semiring=self, evidence=evidence) 
-
+            evaluator = comp.get_evaluator(semiring=self, evidence=evidence)
             pQueries = {}
             # Probability of query given evidence
-            for name, node in evaluator.getNames('query') :
+            for name, node in evaluator.get_names('query'):
                 w = evaluator.evaluate(node)    
                 if w < 1e-6 : 
                     pQueries[name] = 0.0
                 else :
                     pQueries[name] = w
-            pEvidence = evaluator.evaluateEvidence()
+            pEvidence = evaluator.evaluate_evidence()
             i+=1
             results.append( (pEvidence, pQueries) )
         return results

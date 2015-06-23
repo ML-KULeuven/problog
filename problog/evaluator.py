@@ -167,13 +167,13 @@ class Evaluatable(object) :
     def create_evaluator(self, semiring, weights):
         raise NotImplementedError('Evaluatable.create_evaluator is an abstract method')
     
-    def get_evaluator(self, semiring=None, evidence=None, weights=None) :
+    def get_evaluator(self, semiring=None, evidence=None, weights=None):
         if semiring is None :
             semiring = SemiringProbability()
 
         evaluator = self.create_evaluator(semiring, weights)
 
-        for n_ev, node_ev in evaluator.getNames(self.LABEL_EVIDENCE_POS) :
+        for n_ev, node_ev in evaluator.get_names(self.LABEL_EVIDENCE_POS) :
             if node_ev == 0 :
                 # Evidence is already deterministically true
                 pass
@@ -181,15 +181,15 @@ class Evaluatable(object) :
                 # Evidence is deterministically true
                 raise InconsistentEvidenceError()
             elif evidence is None :
-                evaluator.addEvidence( node_ev )
+                evaluator.add_evidence( node_ev )
             else :
                 value = evidence.get( n_ev, None )
                 if value == True : 
-                    evaluator.addEvidence( node_ev )
+                    evaluator.add_evidence( node_ev )
                 elif value == False :
-                    evaluator.addEvidence( -node_ev )
+                    evaluator.add_evidence( -node_ev )
 
-        for n_ev, node_ev in evaluator.getNames(self.LABEL_EVIDENCE_NEG) :
+        for n_ev, node_ev in evaluator.get_names(self.LABEL_EVIDENCE_NEG) :
             if node_ev is None :
                 # Evidence is already deterministically false
                 pass
@@ -198,21 +198,21 @@ class Evaluatable(object) :
                 # TODO raise correct error
                 raise InconsistentEvidenceError()
             elif evidence is None :
-                evaluator.addEvidence( -node_ev )
+                evaluator.add_evidence( -node_ev )
             else :
                 value = evidence.get( n_ev, None )
                 if value == True : 
-                    evaluator.addEvidence( node_ev )
+                    evaluator.add_evidence( node_ev )
                 elif value == False :
-                    evaluator.addEvidence( -node_ev )
+                    evaluator.add_evidence( -node_ev )
 
         if evidence != None :
-            for n_ev, node_ev in evaluator.getNames(self.LABEL_EVIDENCE_MAYBE) :
+            for n_ev, node_ev in evaluator.get_names(self.LABEL_EVIDENCE_MAYBE) :
                 value = evidence.get( n_ev, None )
                 if value == True : 
-                    evaluator.addEvidence( node_ev )
+                    evaluator.add_evidence( node_ev )
                 elif value == False :
-                    evaluator.addEvidence( -node_ev )
+                    evaluator.add_evidence( -node_ev )
 
 
         evaluator.propagate()
@@ -224,7 +224,7 @@ class Evaluatable(object) :
         if index is None :
             result = {}
             # Probability of query given evidence
-            for name, node in evaluator.getNames(self.LABEL_QUERY) :
+            for name, node in evaluator.get_names(self.LABEL_QUERY):
                 w = evaluator.evaluate(node)    
                 if not semiring is None:
                     w = semiring.result(w)
@@ -244,35 +244,37 @@ class Evaluator(object) :
         self.__semiring = semiring
         
         self.__evidence = []
-        
-    def _get_semiring(self) : return self.__semiring
-    semiring = property(_get_semiring)
-        
-    def initialize(self) :
+
+    @property
+    def semiring(self):
+        return self.__semiring
+
+    def initialize(self):
         raise NotImplementedError('Evaluator.initialize() is an abstract method.')
         
-    def propagate(self) :
+    def propagate(self):
         raise NotImplementedError('Evaluator.propagate() is an abstract method.')
         
-    def evaluate(self, index) :
+    def evaluate(self, index):
         """Compute the value of the given node."""
         raise NotImplementedError('Evaluator.evaluate() is an abstract method.')
+
+    def evaluate_evidence(self):
+        raise NotImplementedError('Evaluator.evaluate_evidence is an abstract method.')
         
-    def getZ(self) :
+    def get_z(self):
         """Get the normalization constant."""
-        raise NotImplementedError('Evaluator.getZ() is an abstract method.')
+        raise NotImplementedError('Evaluator.get_z() is an abstract method.')
         
-    def addEvidence(self, node) :
+    def add_evidence(self, node):
         """Add evidence"""
         self.__evidence.append(node)
         
-    def hasEvidence(self) :
+    def has_evidence(self):
         return self.__evidence != []
         
-    def clearEvidence(self) :
+    def clear_evidence(self):
         self.__evidence = []
         
-    def iterEvidence(self) :
-        return iter(self.__evidence)            
-            
-
+    def evidence(self):
+        return iter(self.__evidence)

@@ -32,12 +32,10 @@ class SimpleNNFEvaluator(Evaluator) :
         self.__nnf = formula        
         self.__probs = {}
         self.__given_weights = weights
-        
-        self.Z = 0
-    
-    def getNames(self, label=None) :
-        return self.__nnf.getNames(label)
-        
+
+    def get_names(self, label=None) :
+        return self.__nnf.get_names(label)
+
     def initialize(self, with_evidence=True) :
         self.__probs.clear()
         
@@ -47,27 +45,26 @@ class SimpleNNFEvaluator(Evaluator) :
             self.__probs[-n] = p[1]
                         
         if with_evidence :
-            for ev in self.iterEvidence() :
-                self.setEvidence( abs(ev), ev > 0 )
-            
-        self.Z = self.getZ()
-        if self.semiring.result(self.Z) == 0.0 :
+            for ev in self.evidence() :
+                self.set_evidence( abs(ev), ev > 0 )
+
+        if self.semiring.result(self.get_z()) == 0.0 :
             raise InconsistentEvidenceError()
-            
-                
+
+
     def propagate(self) :
         self.initialize()
         
-    def getZ(self) :
-        result = self.getWeight( len(self.__nnf) )
+    def get_z(self) :
+        result = self.get_weight( len(self.__nnf) )
         return result
         
-    def evaluateEvidence(self) :
+    def evaluate_evidence(self):
         self.initialize(False)
-        for ev in self.iterEvidence() :
-            self.setValue( abs(ev), ev > 0 )
+        for ev in self.evidence():
+            self.set_value( abs(ev), ev > 0 )
         
-        result = self.getWeight( len(self.__nnf) )
+        result = self.get_weight( len(self.__nnf) )
         
         return result
         
@@ -77,20 +74,20 @@ class SimpleNNFEvaluator(Evaluator) :
         elif node is None :
             return self.semiring.zero()
         else :        
-            p = self.getWeight(abs(node))
-            n = self.getWeight(-abs(node))
-            self.setValue(abs(node), (node > 0) )
-            result = self.getWeight( len(self.__nnf) )
-            self.resetValue(abs(node),p,n)
-            if self.hasEvidence() :
-                return self.semiring.normalize(result,self.Z)
+            p = self.get_weight(abs(node))
+            n = self.get_weight(-abs(node))
+            self.set_value(abs(node), (node > 0) )
+            result = self.get_weight( len(self.__nnf) )
+            self.reset_value(abs(node),p,n)
+            if self.has_evidence():
+                return self.semiring.normalize(result,self.get_z())
             else :
                 return result
         
-    def resetValue(self, index, pos, neg) :
-        self.setWeight( index, pos, neg)
+    def reset_value(self, index, pos, neg) :
+        self.set_weight( index, pos, neg)
             
-    def getWeight(self, index) :
+    def get_weight(self, index) :
         if index == 0 :
             return self.semiring.one()
         elif index is None :
@@ -103,25 +100,25 @@ class SimpleNNFEvaluator(Evaluator) :
             else :
                 return w
                 
-    def setWeight(self, index, pos, neg) :
+    def set_weight(self, index, pos, neg) :
         self.__probs[index] = pos
         self.__probs[-index] = neg
         
-    def setEvidence(self, index, value ) :
+    def set_evidence(self, index, value ) :
         pos = self.semiring.one()
         neg = self.semiring.zero()
         if value :
-            self.setWeight( index, pos, neg )
+            self.set_weight(index, pos, neg)
         else :
-            self.setWeight( index, neg, pos )
+            self.set_weight(index, neg, pos)
             
-    def setValue(self, index, value ) :
+    def set_value(self, index, value ) :
         if value :
-            pos = self.getWeight(index)
-            self.setWeight( index, pos, self.semiring.zero() )
+            pos = self.get_weight(index)
+            self.set_weight( index, pos, self.semiring.zero() )
         else :
-            neg = self.getWeight(-index)
-            self.setWeight( index, self.semiring.zero(), neg )
+            neg = self.get_weight(-index)
+            self.set_weight( index, self.semiring.zero(), neg )
 
     def _calculateWeight(self, key) :
         assert(key != 0)
@@ -132,7 +129,7 @@ class SimpleNNFEvaluator(Evaluator) :
         ntype = type(node).__name__
         assert(ntype != 'atom')
         
-        childprobs = [ self.getWeight(c) for c in node.children ]
+        childprobs = [ self.get_weight(c) for c in node.children ]
         if ntype == 'conj' :
             p = self.semiring.one()
             for c in childprobs :

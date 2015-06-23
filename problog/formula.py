@@ -138,8 +138,12 @@ class LogicFormula(ProbLogObject):
             self.addName(name, node_id, self.LABEL_EVIDENCE_NEG)
         else :
             self.addName(name, node_id, self.LABEL_EVIDENCE_MAYBE)
-                
-    def getNames(self, label=None) :
+
+    def getNames(self, label=None):
+        warnings.warn('getNames() is deprecated', FutureWarning)
+        return self.get_names(label)
+
+    def get_names(self, label=None) :
         """Get a list of named nodes.
             :param label: restrict names to the given label (default: all labels)
             :return: list of tuples (name, node_id)
@@ -175,17 +179,17 @@ class LogicFormula(ProbLogObject):
         
     def queries(self) :
         """Get query nodes."""
-        return self.getNames(self.LABEL_QUERY)
+        return self.get_names(self.LABEL_QUERY)
 
     def evidence(self) :
         """Get evidence nodes."""
-        evidence_true = self.getNames(self.LABEL_EVIDENCE_POS)
-        evidence_false = self.getNames(self.LABEL_EVIDENCE_NEG)
+        evidence_true = self.get_names(self.LABEL_EVIDENCE_POS)
+        evidence_false = self.get_names(self.LABEL_EVIDENCE_NEG)
         return list(evidence_true) + [ (a,self.addNot(b)) for a,b in evidence_false ]
         
     def named(self) :
         """Get named nodes."""
-        return self.getNames(self.LABEL_NAMED)
+        return self.get_names(self.LABEL_NAMED)
     
         
     ######################################################################
@@ -675,7 +679,7 @@ class LogicFormula(ProbLogObject):
         # Keep track of mutually disjunctive nodes.
         clusters = defaultdict(list)
         
-        queries = self.getNames()
+        queries = self.get_names()
         
         # Keep a list of introduced not nodes to prevent duplicates.
         negative = set([])

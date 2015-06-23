@@ -315,8 +315,11 @@ class DDEvaluator(Evaluator):
     def get_manager(self):
         return self.formula.get_manager()
 
-    def getNames(self, label=None):
-        return self.formula.getNames(label)
+    def get_names(self, label=None):
+        return self.formula.get_names(label)
+
+    def get_z(self):
+        return self.normalization
 
     def initialize(self, with_evidence=True):
         self.weights.clear()
@@ -326,18 +329,19 @@ class DDEvaluator(Evaluator):
             self.weights[self.formula.atom2var[atom]] = weight
 
         if with_evidence:
-            for ev in self.iterEvidence():
+            for ev in self.evidence():
                 if ev in self.formula.atom2var:
                     # Only for atoms
-                    self.setEvidence(self.formula.atom2var[ev], ev > 0)
+                    self.set_evidence(self.formula.atom2var[ev], ev > 0)
 
     def propagate(self):
         self.initialize()
-        self.normalization = self.evaluateEvidence()
+        self.normalization = self.evaluate_evidence()
 
-    def evaluateEvidence(self):
+    def evaluate_evidence(self):
         constraint_inode = self.formula.get_constraint_inode()
-        self.evidence_inode = self.get_manager().conjoin(constraint_inode, *[self.formula.get_inode(ev) for ev in self.iterEvidence()])
+        evidence_nodes = [self.formula.get_inode(ev) for ev in self.evidence()]
+        self.evidence_inode = self.get_manager().conjoin(constraint_inode, *evidence_nodes)
         result = self.get_manager().wmc(self.evidence_inode, self.weights, self.semiring)
         if result == self.semiring.zero():
             raise InconsistentEvidenceError()
@@ -356,18 +360,19 @@ class DDEvaluator(Evaluator):
         query_sdd = self.get_manager().conjoin(query_def_inode, evidence_inode)
         result = self.get_manager().wmc(query_sdd, self.weights, self.semiring)
         self.get_manager().deref(query_sdd)
+        # TODO only normalize when there are evidence or constraints.
         result = self.semiring.normalize(result, self.normalization)
         return result
 
-    def setEvidence(self, index, value ) :
+    def set_evidence(self, index, value):
         pos = self.semiring.one()
         neg = self.semiring.zero()
         if value:
-            self.setWeight( index, pos, neg )
-        else :
-            self.setWeight( index, neg, pos )
+            self.set_weight(index, pos, neg)
+        else:
+            self.set_weight(index, neg, pos)
 
-    def setWeight(self, index, pos, neg):
+    def set_weight(self, index, pos, neg):
         self.weights[index] = (pos, neg)
 
     def __del__(self):
