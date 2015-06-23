@@ -175,27 +175,19 @@ class BDDManager(DDManager):
             print (node.to_dot(), file=f)
 
     def wmc(self, node, weights, semiring):
-        if self.is_true(node):
-            if node < 0:
-                return weights[-node][1]
-            else:
-                return weights[node][0]
-        elif self.is_false(node):
-            return semiring.zero()
-        else:
-            pall = semiring.zero()
-            for path in node.satisfy_all():
-                pw = semiring.one()
-                for var, val in path.items():
-                    var = int(var.name[1:])
-                    pos, neg = weights[var]
-                    if val:
-                        p = pos
-                    else:
-                        p = neg
-                    pw = semiring.times(p, pw)
-                pall = semiring.plus(pw, pall)
-            return pall
+        pall = semiring.zero()
+        for path in node.satisfy_all():
+            pw = semiring.one()
+            for var, val in path.items():
+                var = int(var.name[1:])
+                pos, neg = weights[var]
+                if val:
+                    p = pos
+                else:
+                    p = neg
+                pw = semiring.times(p, pw)
+            pall = semiring.plus(pw, pall)
+        return pall
 
     def __del__(self):
         """
