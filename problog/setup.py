@@ -111,7 +111,7 @@ def build_sdd() :
     os.chdir(build_dir)
     
     from distutils.core import setup, Extension
-    sdd_module = Extension('_sdd', sources=['sdd/sdd_wrap.c'], libraries=['sdd'], library_dirs=[lib_dir] )
+    sdd_module = Extension('_sdd', sources=['sdd/sdd_wrap.c', 'sdd/except.c'], libraries=['sdd'], library_dirs=[lib_dir] )
 
     setup (name = 'sdd',
            version = '1.0',

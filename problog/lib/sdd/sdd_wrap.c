@@ -2908,6 +2908,9 @@ SWIG_Python_NonDynamicSetAttr(PyObject *obj, PyObject *name, PyObject *value) {
 
 
 
+  #define SWIG_exception(code, msg) do { SWIG_Error(code, msg); SWIG_fail;; } while(0) 
+
+
 /* -------- TYPES TABLE (BEGIN) -------- */
 
 #define SWIGTYPE_p_char swig_types[0]
@@ -2964,6 +2967,17 @@ static swig_module_info swig_module = {swig_types, 16, 0, 0, 0, 0};
 #include "parameters.h"
 #include "compiler.h"
 #include "array_access.h"
+
+#include <execinfo.h>
+#include <signal.h>
+
+#include "except.h"
+
+void c_handler(int sig)
+{
+  throw(sig);
+}
+
 
 
 #include <limits.h>
@@ -3433,7 +3447,39 @@ SWIGINTERN PyObject *_wrap_sdd_array_element(PyObject *SWIGUNUSEDPARM(self), PyO
     SWIG_exception_fail(SWIG_ArgError(ecode2), "in method '" "sdd_array_element" "', argument " "2"" of type '" "int""'");
   } 
   arg2 = (int)(val2);
-  result = (SddNode *)sdd_array_element(arg1,arg2);
+  {
+    //
+    //    signal(SIGFPE,  handler);
+    //    signal(SIGILL,  handler);
+    
+    // signal(SIGSEGV, handler);
+    
+    
+    void (*h_alrm)(int);
+    void (*h_abrt)(int);
+    void (*h_term)(int);
+    void (*h_int)(int);
+    h_alrm = signal(SIGALRM,  c_handler);
+    h_abrt = signal(SIGABRT, c_handler);
+    h_term = signal(SIGTERM, c_handler);
+    h_int = signal(SIGINT,  c_handler);
+    try {
+      result = (SddNode *)sdd_array_element(arg1,arg2);
+    } catch(SIGINT) {
+      SWIG_exception(SWIG_SystemError, "Process interrupted");
+    } catch(SIGTERM) {
+      SWIG_exception(SWIG_SystemError, "Process terminated");
+    } catch(SIGABRT) {
+      SWIG_exception(SWIG_SystemError, "Process aborted");
+    } catch(SIGALRM) {
+      SWIG_exception(SWIG_SystemError, "Process timeout");
+    }
+    signal(SIGTERM, h_term);
+    signal(SIGINT,  h_int);
+    signal(SIGABRT, h_abrt);
+    signal(SIGALRM, h_alrm);
+    
+  }
   resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_sdd_node_t, 0 |  0 );
   return resultobj;
 fail:
@@ -3464,7 +3510,39 @@ SWIGINTERN PyObject *_wrap_sdd_array_int_element(PyObject *SWIGUNUSEDPARM(self),
     SWIG_exception_fail(SWIG_ArgError(ecode2), "in method '" "sdd_array_int_element" "', argument " "2"" of type '" "int""'");
   } 
   arg2 = (int)(val2);
-  result = (int)sdd_array_int_element(arg1,arg2);
+  {
+    //
+    //    signal(SIGFPE,  handler);
+    //    signal(SIGILL,  handler);
+    
+    // signal(SIGSEGV, handler);
+    
+    
+    void (*h_alrm)(int);
+    void (*h_abrt)(int);
+    void (*h_term)(int);
+    void (*h_int)(int);
+    h_alrm = signal(SIGALRM,  c_handler);
+    h_abrt = signal(SIGABRT, c_handler);
+    h_term = signal(SIGTERM, c_handler);
+    h_int = signal(SIGINT,  c_handler);
+    try {
+      result = (int)sdd_array_int_element(arg1,arg2);
+    } catch(SIGINT) {
+      SWIG_exception(SWIG_SystemError, "Process interrupted");
+    } catch(SIGTERM) {
+      SWIG_exception(SWIG_SystemError, "Process terminated");
+    } catch(SIGABRT) {
+      SWIG_exception(SWIG_SystemError, "Process aborted");
+    } catch(SIGALRM) {
+      SWIG_exception(SWIG_SystemError, "Process timeout");
+    }
+    signal(SIGTERM, h_term);
+    signal(SIGINT,  h_int);
+    signal(SIGABRT, h_abrt);
+    signal(SIGALRM, h_alrm);
+    
+  }
   resultobj = SWIG_From_int((int)(result));
   return resultobj;
 fail:
@@ -3563,7 +3641,39 @@ SWIGINTERN PyObject *_wrap_sdd_manager_new(PyObject *SWIGUNUSEDPARM(self), PyObj
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "sdd_manager_new" "', argument " "1"" of type '" "Vtree *""'"); 
   }
   arg1 = (Vtree *)(argp1);
-  result = (SddManager *)sdd_manager_new(arg1);
+  {
+    //
+    //    signal(SIGFPE,  handler);
+    //    signal(SIGILL,  handler);
+    
+    // signal(SIGSEGV, handler);
+    
+    
+    void (*h_alrm)(int);
+    void (*h_abrt)(int);
+    void (*h_term)(int);
+    void (*h_int)(int);
+    h_alrm = signal(SIGALRM,  c_handler);
+    h_abrt = signal(SIGABRT, c_handler);
+    h_term = signal(SIGTERM, c_handler);
+    h_int = signal(SIGINT,  c_handler);
+    try {
+      result = (SddManager *)sdd_manager_new(arg1);
+    } catch(SIGINT) {
+      SWIG_exception(SWIG_SystemError, "Process interrupted");
+    } catch(SIGTERM) {
+      SWIG_exception(SWIG_SystemError, "Process terminated");
+    } catch(SIGABRT) {
+      SWIG_exception(SWIG_SystemError, "Process aborted");
+    } catch(SIGALRM) {
+      SWIG_exception(SWIG_SystemError, "Process timeout");
+    }
+    signal(SIGTERM, h_term);
+    signal(SIGINT,  h_int);
+    signal(SIGABRT, h_abrt);
+    signal(SIGALRM, h_alrm);
+    
+  }
   resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_sdd_manager_t, 0 |  0 );
   return resultobj;
 fail:
@@ -3594,7 +3704,39 @@ SWIGINTERN PyObject *_wrap_sdd_manager_create(PyObject *SWIGUNUSEDPARM(self), Py
     SWIG_exception_fail(SWIG_ArgError(ecode2), "in method '" "sdd_manager_create" "', argument " "2"" of type '" "int""'");
   } 
   arg2 = (int)(val2);
-  result = (SddManager *)sdd_manager_create(arg1,arg2);
+  {
+    //
+    //    signal(SIGFPE,  handler);
+    //    signal(SIGILL,  handler);
+    
+    // signal(SIGSEGV, handler);
+    
+    
+    void (*h_alrm)(int);
+    void (*h_abrt)(int);
+    void (*h_term)(int);
+    void (*h_int)(int);
+    h_alrm = signal(SIGALRM,  c_handler);
+    h_abrt = signal(SIGABRT, c_handler);
+    h_term = signal(SIGTERM, c_handler);
+    h_int = signal(SIGINT,  c_handler);
+    try {
+      result = (SddManager *)sdd_manager_create(arg1,arg2);
+    } catch(SIGINT) {
+      SWIG_exception(SWIG_SystemError, "Process interrupted");
+    } catch(SIGTERM) {
+      SWIG_exception(SWIG_SystemError, "Process terminated");
+    } catch(SIGABRT) {
+      SWIG_exception(SWIG_SystemError, "Process aborted");
+    } catch(SIGALRM) {
+      SWIG_exception(SWIG_SystemError, "Process timeout");
+    }
+    signal(SIGTERM, h_term);
+    signal(SIGINT,  h_int);
+    signal(SIGABRT, h_abrt);
+    signal(SIGALRM, h_alrm);
+    
+  }
   resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_sdd_manager_t, 0 |  0 );
   return resultobj;
 fail:
@@ -3615,7 +3757,39 @@ SWIGINTERN PyObject *_wrap_sdd_manager_free(PyObject *SWIGUNUSEDPARM(self), PyOb
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "sdd_manager_free" "', argument " "1"" of type '" "SddManager *""'"); 
   }
   arg1 = (SddManager *)(argp1);
-  sdd_manager_free(arg1);
+  {
+    //
+    //    signal(SIGFPE,  handler);
+    //    signal(SIGILL,  handler);
+    
+    // signal(SIGSEGV, handler);
+    
+    
+    void (*h_alrm)(int);
+    void (*h_abrt)(int);
+    void (*h_term)(int);
+    void (*h_int)(int);
+    h_alrm = signal(SIGALRM,  c_handler);
+    h_abrt = signal(SIGABRT, c_handler);
+    h_term = signal(SIGTERM, c_handler);
+    h_int = signal(SIGINT,  c_handler);
+    try {
+      sdd_manager_free(arg1);
+    } catch(SIGINT) {
+      SWIG_exception(SWIG_SystemError, "Process interrupted");
+    } catch(SIGTERM) {
+      SWIG_exception(SWIG_SystemError, "Process terminated");
+    } catch(SIGABRT) {
+      SWIG_exception(SWIG_SystemError, "Process aborted");
+    } catch(SIGALRM) {
+      SWIG_exception(SWIG_SystemError, "Process timeout");
+    }
+    signal(SIGTERM, h_term);
+    signal(SIGINT,  h_int);
+    signal(SIGABRT, h_abrt);
+    signal(SIGALRM, h_alrm);
+    
+  }
   resultobj = SWIG_Py_Void();
   return resultobj;
 fail:
@@ -3636,7 +3810,39 @@ SWIGINTERN PyObject *_wrap_sdd_manager_print(PyObject *SWIGUNUSEDPARM(self), PyO
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "sdd_manager_print" "', argument " "1"" of type '" "SddManager *""'"); 
   }
   arg1 = (SddManager *)(argp1);
-  sdd_manager_print(arg1);
+  {
+    //
+    //    signal(SIGFPE,  handler);
+    //    signal(SIGILL,  handler);
+    
+    // signal(SIGSEGV, handler);
+    
+    
+    void (*h_alrm)(int);
+    void (*h_abrt)(int);
+    void (*h_term)(int);
+    void (*h_int)(int);
+    h_alrm = signal(SIGALRM,  c_handler);
+    h_abrt = signal(SIGABRT, c_handler);
+    h_term = signal(SIGTERM, c_handler);
+    h_int = signal(SIGINT,  c_handler);
+    try {
+      sdd_manager_print(arg1);
+    } catch(SIGINT) {
+      SWIG_exception(SWIG_SystemError, "Process interrupted");
+    } catch(SIGTERM) {
+      SWIG_exception(SWIG_SystemError, "Process terminated");
+    } catch(SIGABRT) {
+      SWIG_exception(SWIG_SystemError, "Process aborted");
+    } catch(SIGALRM) {
+      SWIG_exception(SWIG_SystemError, "Process timeout");
+    }
+    signal(SIGTERM, h_term);
+    signal(SIGINT,  h_int);
+    signal(SIGABRT, h_abrt);
+    signal(SIGALRM, h_alrm);
+    
+  }
   resultobj = SWIG_Py_Void();
   return resultobj;
 fail:
@@ -3657,7 +3863,39 @@ SWIGINTERN PyObject *_wrap_sdd_manager_auto_gc_and_minimize_on(PyObject *SWIGUNU
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "sdd_manager_auto_gc_and_minimize_on" "', argument " "1"" of type '" "SddManager *""'"); 
   }
   arg1 = (SddManager *)(argp1);
-  sdd_manager_auto_gc_and_minimize_on(arg1);
+  {
+    //
+    //    signal(SIGFPE,  handler);
+    //    signal(SIGILL,  handler);
+    
+    // signal(SIGSEGV, handler);
+    
+    
+    void (*h_alrm)(int);
+    void (*h_abrt)(int);
+    void (*h_term)(int);
+    void (*h_int)(int);
+    h_alrm = signal(SIGALRM,  c_handler);
+    h_abrt = signal(SIGABRT, c_handler);
+    h_term = signal(SIGTERM, c_handler);
+    h_int = signal(SIGINT,  c_handler);
+    try {
+      sdd_manager_auto_gc_and_minimize_on(arg1);
+    } catch(SIGINT) {
+      SWIG_exception(SWIG_SystemError, "Process interrupted");
+    } catch(SIGTERM) {
+      SWIG_exception(SWIG_SystemError, "Process terminated");
+    } catch(SIGABRT) {
+      SWIG_exception(SWIG_SystemError, "Process aborted");
+    } catch(SIGALRM) {
+      SWIG_exception(SWIG_SystemError, "Process timeout");
+    }
+    signal(SIGTERM, h_term);
+    signal(SIGINT,  h_int);
+    signal(SIGABRT, h_abrt);
+    signal(SIGALRM, h_alrm);
+    
+  }
   resultobj = SWIG_Py_Void();
   return resultobj;
 fail:
@@ -3678,7 +3916,39 @@ SWIGINTERN PyObject *_wrap_sdd_manager_auto_gc_and_minimize_off(PyObject *SWIGUN
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "sdd_manager_auto_gc_and_minimize_off" "', argument " "1"" of type '" "SddManager *""'"); 
   }
   arg1 = (SddManager *)(argp1);
-  sdd_manager_auto_gc_and_minimize_off(arg1);
+  {
+    //
+    //    signal(SIGFPE,  handler);
+    //    signal(SIGILL,  handler);
+    
+    // signal(SIGSEGV, handler);
+    
+    
+    void (*h_alrm)(int);
+    void (*h_abrt)(int);
+    void (*h_term)(int);
+    void (*h_int)(int);
+    h_alrm = signal(SIGALRM,  c_handler);
+    h_abrt = signal(SIGABRT, c_handler);
+    h_term = signal(SIGTERM, c_handler);
+    h_int = signal(SIGINT,  c_handler);
+    try {
+      sdd_manager_auto_gc_and_minimize_off(arg1);
+    } catch(SIGINT) {
+      SWIG_exception(SWIG_SystemError, "Process interrupted");
+    } catch(SIGTERM) {
+      SWIG_exception(SWIG_SystemError, "Process terminated");
+    } catch(SIGABRT) {
+      SWIG_exception(SWIG_SystemError, "Process aborted");
+    } catch(SIGALRM) {
+      SWIG_exception(SWIG_SystemError, "Process timeout");
+    }
+    signal(SIGTERM, h_term);
+    signal(SIGINT,  h_int);
+    signal(SIGABRT, h_abrt);
+    signal(SIGALRM, h_alrm);
+    
+  }
   resultobj = SWIG_Py_Void();
   return resultobj;
 fail:
@@ -3707,7 +3977,39 @@ SWIGINTERN PyObject *_wrap_sdd_manager_set_minimize_function(PyObject *SWIGUNUSE
     SWIG_exception_fail(SWIG_ArgError(res2), "in method '" "sdd_manager_set_minimize_function" "', argument " "2"" of type '" "SddManager *""'"); 
   }
   arg2 = (SddManager *)(argp2);
-  sdd_manager_set_minimize_function(arg1,arg2);
+  {
+    //
+    //    signal(SIGFPE,  handler);
+    //    signal(SIGILL,  handler);
+    
+    // signal(SIGSEGV, handler);
+    
+    
+    void (*h_alrm)(int);
+    void (*h_abrt)(int);
+    void (*h_term)(int);
+    void (*h_int)(int);
+    h_alrm = signal(SIGALRM,  c_handler);
+    h_abrt = signal(SIGABRT, c_handler);
+    h_term = signal(SIGTERM, c_handler);
+    h_int = signal(SIGINT,  c_handler);
+    try {
+      sdd_manager_set_minimize_function(arg1,arg2);
+    } catch(SIGINT) {
+      SWIG_exception(SWIG_SystemError, "Process interrupted");
+    } catch(SIGTERM) {
+      SWIG_exception(SWIG_SystemError, "Process terminated");
+    } catch(SIGABRT) {
+      SWIG_exception(SWIG_SystemError, "Process aborted");
+    } catch(SIGALRM) {
+      SWIG_exception(SWIG_SystemError, "Process timeout");
+    }
+    signal(SIGTERM, h_term);
+    signal(SIGINT,  h_int);
+    signal(SIGABRT, h_abrt);
+    signal(SIGALRM, h_alrm);
+    
+  }
   resultobj = SWIG_Py_Void();
   return resultobj;
 fail:
@@ -3728,7 +4030,39 @@ SWIGINTERN PyObject *_wrap_sdd_manager_unset_minimize_function(PyObject *SWIGUNU
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "sdd_manager_unset_minimize_function" "', argument " "1"" of type '" "SddManager *""'"); 
   }
   arg1 = (SddManager *)(argp1);
-  sdd_manager_unset_minimize_function(arg1);
+  {
+    //
+    //    signal(SIGFPE,  handler);
+    //    signal(SIGILL,  handler);
+    
+    // signal(SIGSEGV, handler);
+    
+    
+    void (*h_alrm)(int);
+    void (*h_abrt)(int);
+    void (*h_term)(int);
+    void (*h_int)(int);
+    h_alrm = signal(SIGALRM,  c_handler);
+    h_abrt = signal(SIGABRT, c_handler);
+    h_term = signal(SIGTERM, c_handler);
+    h_int = signal(SIGINT,  c_handler);
+    try {
+      sdd_manager_unset_minimize_function(arg1);
+    } catch(SIGINT) {
+      SWIG_exception(SWIG_SystemError, "Process interrupted");
+    } catch(SIGTERM) {
+      SWIG_exception(SWIG_SystemError, "Process terminated");
+    } catch(SIGABRT) {
+      SWIG_exception(SWIG_SystemError, "Process aborted");
+    } catch(SIGALRM) {
+      SWIG_exception(SWIG_SystemError, "Process timeout");
+    }
+    signal(SIGTERM, h_term);
+    signal(SIGINT,  h_int);
+    signal(SIGABRT, h_abrt);
+    signal(SIGALRM, h_alrm);
+    
+  }
   resultobj = SWIG_Py_Void();
   return resultobj;
 fail:
@@ -3750,7 +4084,39 @@ SWIGINTERN PyObject *_wrap_sdd_manager_options(PyObject *SWIGUNUSEDPARM(self), P
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "sdd_manager_options" "', argument " "1"" of type '" "SddManager *""'"); 
   }
   arg1 = (SddManager *)(argp1);
-  result = (void *)sdd_manager_options(arg1);
+  {
+    //
+    //    signal(SIGFPE,  handler);
+    //    signal(SIGILL,  handler);
+    
+    // signal(SIGSEGV, handler);
+    
+    
+    void (*h_alrm)(int);
+    void (*h_abrt)(int);
+    void (*h_term)(int);
+    void (*h_int)(int);
+    h_alrm = signal(SIGALRM,  c_handler);
+    h_abrt = signal(SIGABRT, c_handler);
+    h_term = signal(SIGTERM, c_handler);
+    h_int = signal(SIGINT,  c_handler);
+    try {
+      result = (void *)sdd_manager_options(arg1);
+    } catch(SIGINT) {
+      SWIG_exception(SWIG_SystemError, "Process interrupted");
+    } catch(SIGTERM) {
+      SWIG_exception(SWIG_SystemError, "Process terminated");
+    } catch(SIGABRT) {
+      SWIG_exception(SWIG_SystemError, "Process aborted");
+    } catch(SIGALRM) {
+      SWIG_exception(SWIG_SystemError, "Process timeout");
+    }
+    signal(SIGTERM, h_term);
+    signal(SIGINT,  h_int);
+    signal(SIGABRT, h_abrt);
+    signal(SIGALRM, h_alrm);
+    
+  }
   resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_void, 0 |  0 );
   return resultobj;
 fail:
@@ -3778,7 +4144,39 @@ SWIGINTERN PyObject *_wrap_sdd_manager_set_options(PyObject *SWIGUNUSEDPARM(self
     SWIG_exception_fail(SWIG_ArgError(res2), "in method '" "sdd_manager_set_options" "', argument " "2"" of type '" "SddManager *""'"); 
   }
   arg2 = (SddManager *)(argp2);
-  sdd_manager_set_options(arg1,arg2);
+  {
+    //
+    //    signal(SIGFPE,  handler);
+    //    signal(SIGILL,  handler);
+    
+    // signal(SIGSEGV, handler);
+    
+    
+    void (*h_alrm)(int);
+    void (*h_abrt)(int);
+    void (*h_term)(int);
+    void (*h_int)(int);
+    h_alrm = signal(SIGALRM,  c_handler);
+    h_abrt = signal(SIGABRT, c_handler);
+    h_term = signal(SIGTERM, c_handler);
+    h_int = signal(SIGINT,  c_handler);
+    try {
+      sdd_manager_set_options(arg1,arg2);
+    } catch(SIGINT) {
+      SWIG_exception(SWIG_SystemError, "Process interrupted");
+    } catch(SIGTERM) {
+      SWIG_exception(SWIG_SystemError, "Process terminated");
+    } catch(SIGABRT) {
+      SWIG_exception(SWIG_SystemError, "Process aborted");
+    } catch(SIGALRM) {
+      SWIG_exception(SWIG_SystemError, "Process timeout");
+    }
+    signal(SIGTERM, h_term);
+    signal(SIGINT,  h_int);
+    signal(SIGABRT, h_abrt);
+    signal(SIGALRM, h_alrm);
+    
+  }
   resultobj = SWIG_Py_Void();
   return resultobj;
 fail:
@@ -3809,7 +4207,39 @@ SWIGINTERN PyObject *_wrap_sdd_manager_is_var_used(PyObject *SWIGUNUSEDPARM(self
     SWIG_exception_fail(SWIG_ArgError(res2), "in method '" "sdd_manager_is_var_used" "', argument " "2"" of type '" "SddManager *""'"); 
   }
   arg2 = (SddManager *)(argp2);
-  result = (int)sdd_manager_is_var_used(arg1,arg2);
+  {
+    //
+    //    signal(SIGFPE,  handler);
+    //    signal(SIGILL,  handler);
+    
+    // signal(SIGSEGV, handler);
+    
+    
+    void (*h_alrm)(int);
+    void (*h_abrt)(int);
+    void (*h_term)(int);
+    void (*h_int)(int);
+    h_alrm = signal(SIGALRM,  c_handler);
+    h_abrt = signal(SIGABRT, c_handler);
+    h_term = signal(SIGTERM, c_handler);
+    h_int = signal(SIGINT,  c_handler);
+    try {
+      result = (int)sdd_manager_is_var_used(arg1,arg2);
+    } catch(SIGINT) {
+      SWIG_exception(SWIG_SystemError, "Process interrupted");
+    } catch(SIGTERM) {
+      SWIG_exception(SWIG_SystemError, "Process terminated");
+    } catch(SIGABRT) {
+      SWIG_exception(SWIG_SystemError, "Process aborted");
+    } catch(SIGALRM) {
+      SWIG_exception(SWIG_SystemError, "Process timeout");
+    }
+    signal(SIGTERM, h_term);
+    signal(SIGINT,  h_int);
+    signal(SIGABRT, h_abrt);
+    signal(SIGALRM, h_alrm);
+    
+  }
   resultobj = SWIG_From_int((int)(result));
   return resultobj;
 fail:
@@ -3840,7 +4270,39 @@ SWIGINTERN PyObject *_wrap_sdd_manager_vtree_of_var(PyObject *SWIGUNUSEDPARM(sel
     SWIG_exception_fail(SWIG_ArgError(res2), "in method '" "sdd_manager_vtree_of_var" "', argument " "2"" of type '" "SddManager const *""'"); 
   }
   arg2 = (SddManager *)(argp2);
-  result = (Vtree *)sdd_manager_vtree_of_var(arg1,(struct sdd_manager_t const *)arg2);
+  {
+    //
+    //    signal(SIGFPE,  handler);
+    //    signal(SIGILL,  handler);
+    
+    // signal(SIGSEGV, handler);
+    
+    
+    void (*h_alrm)(int);
+    void (*h_abrt)(int);
+    void (*h_term)(int);
+    void (*h_int)(int);
+    h_alrm = signal(SIGALRM,  c_handler);
+    h_abrt = signal(SIGABRT, c_handler);
+    h_term = signal(SIGTERM, c_handler);
+    h_int = signal(SIGINT,  c_handler);
+    try {
+      result = (Vtree *)sdd_manager_vtree_of_var(arg1,(struct sdd_manager_t const *)arg2);
+    } catch(SIGINT) {
+      SWIG_exception(SWIG_SystemError, "Process interrupted");
+    } catch(SIGTERM) {
+      SWIG_exception(SWIG_SystemError, "Process terminated");
+    } catch(SIGABRT) {
+      SWIG_exception(SWIG_SystemError, "Process aborted");
+    } catch(SIGALRM) {
+      SWIG_exception(SWIG_SystemError, "Process timeout");
+    }
+    signal(SIGTERM, h_term);
+    signal(SIGINT,  h_int);
+    signal(SIGABRT, h_abrt);
+    signal(SIGALRM, h_alrm);
+    
+  }
   resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_vtree_t, 0 |  0 );
   return resultobj;
 fail:
@@ -3880,7 +4342,39 @@ SWIGINTERN PyObject *_wrap_sdd_manager_lca_of_literals(PyObject *SWIGUNUSEDPARM(
     SWIG_exception_fail(SWIG_ArgError(res3), "in method '" "sdd_manager_lca_of_literals" "', argument " "3"" of type '" "SddManager *""'"); 
   }
   arg3 = (SddManager *)(argp3);
-  result = (Vtree *)sdd_manager_lca_of_literals(arg1,arg2,arg3);
+  {
+    //
+    //    signal(SIGFPE,  handler);
+    //    signal(SIGILL,  handler);
+    
+    // signal(SIGSEGV, handler);
+    
+    
+    void (*h_alrm)(int);
+    void (*h_abrt)(int);
+    void (*h_term)(int);
+    void (*h_int)(int);
+    h_alrm = signal(SIGALRM,  c_handler);
+    h_abrt = signal(SIGABRT, c_handler);
+    h_term = signal(SIGTERM, c_handler);
+    h_int = signal(SIGINT,  c_handler);
+    try {
+      result = (Vtree *)sdd_manager_lca_of_literals(arg1,arg2,arg3);
+    } catch(SIGINT) {
+      SWIG_exception(SWIG_SystemError, "Process interrupted");
+    } catch(SIGTERM) {
+      SWIG_exception(SWIG_SystemError, "Process terminated");
+    } catch(SIGABRT) {
+      SWIG_exception(SWIG_SystemError, "Process aborted");
+    } catch(SIGALRM) {
+      SWIG_exception(SWIG_SystemError, "Process timeout");
+    }
+    signal(SIGTERM, h_term);
+    signal(SIGINT,  h_int);
+    signal(SIGABRT, h_abrt);
+    signal(SIGALRM, h_alrm);
+    
+  }
   resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_vtree_t, 0 |  0 );
   return resultobj;
 fail:
@@ -3902,7 +4396,39 @@ SWIGINTERN PyObject *_wrap_sdd_manager_var_count(PyObject *SWIGUNUSEDPARM(self),
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "sdd_manager_var_count" "', argument " "1"" of type '" "SddManager *""'"); 
   }
   arg1 = (SddManager *)(argp1);
-  result = (SddLiteral)sdd_manager_var_count(arg1);
+  {
+    //
+    //    signal(SIGFPE,  handler);
+    //    signal(SIGILL,  handler);
+    
+    // signal(SIGSEGV, handler);
+    
+    
+    void (*h_alrm)(int);
+    void (*h_abrt)(int);
+    void (*h_term)(int);
+    void (*h_int)(int);
+    h_alrm = signal(SIGALRM,  c_handler);
+    h_abrt = signal(SIGABRT, c_handler);
+    h_term = signal(SIGTERM, c_handler);
+    h_int = signal(SIGINT,  c_handler);
+    try {
+      result = (SddLiteral)sdd_manager_var_count(arg1);
+    } catch(SIGINT) {
+      SWIG_exception(SWIG_SystemError, "Process interrupted");
+    } catch(SIGTERM) {
+      SWIG_exception(SWIG_SystemError, "Process terminated");
+    } catch(SIGABRT) {
+      SWIG_exception(SWIG_SystemError, "Process aborted");
+    } catch(SIGALRM) {
+      SWIG_exception(SWIG_SystemError, "Process timeout");
+    }
+    signal(SIGTERM, h_term);
+    signal(SIGINT,  h_int);
+    signal(SIGABRT, h_abrt);
+    signal(SIGALRM, h_alrm);
+    
+  }
   resultobj = SWIG_From_long((long)(result));
   return resultobj;
 fail:
@@ -3932,7 +4458,39 @@ SWIGINTERN PyObject *_wrap_sdd_manager_var_order(PyObject *SWIGUNUSEDPARM(self),
     SWIG_exception_fail(SWIG_ArgError(res2), "in method '" "sdd_manager_var_order" "', argument " "2"" of type '" "SddManager *""'"); 
   }
   arg2 = (SddManager *)(argp2);
-  sdd_manager_var_order(arg1,arg2);
+  {
+    //
+    //    signal(SIGFPE,  handler);
+    //    signal(SIGILL,  handler);
+    
+    // signal(SIGSEGV, handler);
+    
+    
+    void (*h_alrm)(int);
+    void (*h_abrt)(int);
+    void (*h_term)(int);
+    void (*h_int)(int);
+    h_alrm = signal(SIGALRM,  c_handler);
+    h_abrt = signal(SIGABRT, c_handler);
+    h_term = signal(SIGTERM, c_handler);
+    h_int = signal(SIGINT,  c_handler);
+    try {
+      sdd_manager_var_order(arg1,arg2);
+    } catch(SIGINT) {
+      SWIG_exception(SWIG_SystemError, "Process interrupted");
+    } catch(SIGTERM) {
+      SWIG_exception(SWIG_SystemError, "Process terminated");
+    } catch(SIGABRT) {
+      SWIG_exception(SWIG_SystemError, "Process aborted");
+    } catch(SIGALRM) {
+      SWIG_exception(SWIG_SystemError, "Process timeout");
+    }
+    signal(SIGTERM, h_term);
+    signal(SIGINT,  h_int);
+    signal(SIGABRT, h_abrt);
+    signal(SIGALRM, h_alrm);
+    
+  }
   resultobj = SWIG_Py_Void();
   return resultobj;
 fail:
@@ -3953,7 +4511,39 @@ SWIGINTERN PyObject *_wrap_sdd_manager_add_var_before_first(PyObject *SWIGUNUSED
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "sdd_manager_add_var_before_first" "', argument " "1"" of type '" "SddManager *""'"); 
   }
   arg1 = (SddManager *)(argp1);
-  sdd_manager_add_var_before_first(arg1);
+  {
+    //
+    //    signal(SIGFPE,  handler);
+    //    signal(SIGILL,  handler);
+    
+    // signal(SIGSEGV, handler);
+    
+    
+    void (*h_alrm)(int);
+    void (*h_abrt)(int);
+    void (*h_term)(int);
+    void (*h_int)(int);
+    h_alrm = signal(SIGALRM,  c_handler);
+    h_abrt = signal(SIGABRT, c_handler);
+    h_term = signal(SIGTERM, c_handler);
+    h_int = signal(SIGINT,  c_handler);
+    try {
+      sdd_manager_add_var_before_first(arg1);
+    } catch(SIGINT) {
+      SWIG_exception(SWIG_SystemError, "Process interrupted");
+    } catch(SIGTERM) {
+      SWIG_exception(SWIG_SystemError, "Process terminated");
+    } catch(SIGABRT) {
+      SWIG_exception(SWIG_SystemError, "Process aborted");
+    } catch(SIGALRM) {
+      SWIG_exception(SWIG_SystemError, "Process timeout");
+    }
+    signal(SIGTERM, h_term);
+    signal(SIGINT,  h_int);
+    signal(SIGABRT, h_abrt);
+    signal(SIGALRM, h_alrm);
+    
+  }
   resultobj = SWIG_Py_Void();
   return resultobj;
 fail:
@@ -3974,7 +4564,39 @@ SWIGINTERN PyObject *_wrap_sdd_manager_add_var_after_last(PyObject *SWIGUNUSEDPA
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "sdd_manager_add_var_after_last" "', argument " "1"" of type '" "SddManager *""'"); 
   }
   arg1 = (SddManager *)(argp1);
-  sdd_manager_add_var_after_last(arg1);
+  {
+    //
+    //    signal(SIGFPE,  handler);
+    //    signal(SIGILL,  handler);
+    
+    // signal(SIGSEGV, handler);
+    
+    
+    void (*h_alrm)(int);
+    void (*h_abrt)(int);
+    void (*h_term)(int);
+    void (*h_int)(int);
+    h_alrm = signal(SIGALRM,  c_handler);
+    h_abrt = signal(SIGABRT, c_handler);
+    h_term = signal(SIGTERM, c_handler);
+    h_int = signal(SIGINT,  c_handler);
+    try {
+      sdd_manager_add_var_after_last(arg1);
+    } catch(SIGINT) {
+      SWIG_exception(SWIG_SystemError, "Process interrupted");
+    } catch(SIGTERM) {
+      SWIG_exception(SWIG_SystemError, "Process terminated");
+    } catch(SIGABRT) {
+      SWIG_exception(SWIG_SystemError, "Process aborted");
+    } catch(SIGALRM) {
+      SWIG_exception(SWIG_SystemError, "Process timeout");
+    }
+    signal(SIGTERM, h_term);
+    signal(SIGINT,  h_int);
+    signal(SIGABRT, h_abrt);
+    signal(SIGALRM, h_alrm);
+    
+  }
   resultobj = SWIG_Py_Void();
   return resultobj;
 fail:
@@ -4004,7 +4626,39 @@ SWIGINTERN PyObject *_wrap_sdd_manager_add_var_before(PyObject *SWIGUNUSEDPARM(s
     SWIG_exception_fail(SWIG_ArgError(res2), "in method '" "sdd_manager_add_var_before" "', argument " "2"" of type '" "SddManager *""'"); 
   }
   arg2 = (SddManager *)(argp2);
-  sdd_manager_add_var_before(arg1,arg2);
+  {
+    //
+    //    signal(SIGFPE,  handler);
+    //    signal(SIGILL,  handler);
+    
+    // signal(SIGSEGV, handler);
+    
+    
+    void (*h_alrm)(int);
+    void (*h_abrt)(int);
+    void (*h_term)(int);
+    void (*h_int)(int);
+    h_alrm = signal(SIGALRM,  c_handler);
+    h_abrt = signal(SIGABRT, c_handler);
+    h_term = signal(SIGTERM, c_handler);
+    h_int = signal(SIGINT,  c_handler);
+    try {
+      sdd_manager_add_var_before(arg1,arg2);
+    } catch(SIGINT) {
+      SWIG_exception(SWIG_SystemError, "Process interrupted");
+    } catch(SIGTERM) {
+      SWIG_exception(SWIG_SystemError, "Process terminated");
+    } catch(SIGABRT) {
+      SWIG_exception(SWIG_SystemError, "Process aborted");
+    } catch(SIGALRM) {
+      SWIG_exception(SWIG_SystemError, "Process timeout");
+    }
+    signal(SIGTERM, h_term);
+    signal(SIGINT,  h_int);
+    signal(SIGABRT, h_abrt);
+    signal(SIGALRM, h_alrm);
+    
+  }
   resultobj = SWIG_Py_Void();
   return resultobj;
 fail:
@@ -4034,7 +4688,39 @@ SWIGINTERN PyObject *_wrap_sdd_manager_add_var_after(PyObject *SWIGUNUSEDPARM(se
     SWIG_exception_fail(SWIG_ArgError(res2), "in method '" "sdd_manager_add_var_after" "', argument " "2"" of type '" "SddManager *""'"); 
   }
   arg2 = (SddManager *)(argp2);
-  sdd_manager_add_var_after(arg1,arg2);
+  {
+    //
+    //    signal(SIGFPE,  handler);
+    //    signal(SIGILL,  handler);
+    
+    // signal(SIGSEGV, handler);
+    
+    
+    void (*h_alrm)(int);
+    void (*h_abrt)(int);
+    void (*h_term)(int);
+    void (*h_int)(int);
+    h_alrm = signal(SIGALRM,  c_handler);
+    h_abrt = signal(SIGABRT, c_handler);
+    h_term = signal(SIGTERM, c_handler);
+    h_int = signal(SIGINT,  c_handler);
+    try {
+      sdd_manager_add_var_after(arg1,arg2);
+    } catch(SIGINT) {
+      SWIG_exception(SWIG_SystemError, "Process interrupted");
+    } catch(SIGTERM) {
+      SWIG_exception(SWIG_SystemError, "Process terminated");
+    } catch(SIGABRT) {
+      SWIG_exception(SWIG_SystemError, "Process aborted");
+    } catch(SIGALRM) {
+      SWIG_exception(SWIG_SystemError, "Process timeout");
+    }
+    signal(SIGTERM, h_term);
+    signal(SIGINT,  h_int);
+    signal(SIGABRT, h_abrt);
+    signal(SIGALRM, h_alrm);
+    
+  }
   resultobj = SWIG_Py_Void();
   return resultobj;
 fail:
@@ -4056,7 +4742,39 @@ SWIGINTERN PyObject *_wrap_sdd_manager_true(PyObject *SWIGUNUSEDPARM(self), PyOb
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "sdd_manager_true" "', argument " "1"" of type '" "SddManager const *""'"); 
   }
   arg1 = (SddManager *)(argp1);
-  result = (SddNode *)sdd_manager_true((struct sdd_manager_t const *)arg1);
+  {
+    //
+    //    signal(SIGFPE,  handler);
+    //    signal(SIGILL,  handler);
+    
+    // signal(SIGSEGV, handler);
+    
+    
+    void (*h_alrm)(int);
+    void (*h_abrt)(int);
+    void (*h_term)(int);
+    void (*h_int)(int);
+    h_alrm = signal(SIGALRM,  c_handler);
+    h_abrt = signal(SIGABRT, c_handler);
+    h_term = signal(SIGTERM, c_handler);
+    h_int = signal(SIGINT,  c_handler);
+    try {
+      result = (SddNode *)sdd_manager_true((struct sdd_manager_t const *)arg1);
+    } catch(SIGINT) {
+      SWIG_exception(SWIG_SystemError, "Process interrupted");
+    } catch(SIGTERM) {
+      SWIG_exception(SWIG_SystemError, "Process terminated");
+    } catch(SIGABRT) {
+      SWIG_exception(SWIG_SystemError, "Process aborted");
+    } catch(SIGALRM) {
+      SWIG_exception(SWIG_SystemError, "Process timeout");
+    }
+    signal(SIGTERM, h_term);
+    signal(SIGINT,  h_int);
+    signal(SIGABRT, h_abrt);
+    signal(SIGALRM, h_alrm);
+    
+  }
   resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_sdd_node_t, 0 |  0 );
   return resultobj;
 fail:
@@ -4078,7 +4796,39 @@ SWIGINTERN PyObject *_wrap_sdd_manager_false(PyObject *SWIGUNUSEDPARM(self), PyO
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "sdd_manager_false" "', argument " "1"" of type '" "SddManager const *""'"); 
   }
   arg1 = (SddManager *)(argp1);
-  result = (SddNode *)sdd_manager_false((struct sdd_manager_t const *)arg1);
+  {
+    //
+    //    signal(SIGFPE,  handler);
+    //    signal(SIGILL,  handler);
+    
+    // signal(SIGSEGV, handler);
+    
+    
+    void (*h_alrm)(int);
+    void (*h_abrt)(int);
+    void (*h_term)(int);
+    void (*h_int)(int);
+    h_alrm = signal(SIGALRM,  c_handler);
+    h_abrt = signal(SIGABRT, c_handler);
+    h_term = signal(SIGTERM, c_handler);
+    h_int = signal(SIGINT,  c_handler);
+    try {
+      result = (SddNode *)sdd_manager_false((struct sdd_manager_t const *)arg1);
+    } catch(SIGINT) {
+      SWIG_exception(SWIG_SystemError, "Process interrupted");
+    } catch(SIGTERM) {
+      SWIG_exception(SWIG_SystemError, "Process terminated");
+    } catch(SIGABRT) {
+      SWIG_exception(SWIG_SystemError, "Process aborted");
+    } catch(SIGALRM) {
+      SWIG_exception(SWIG_SystemError, "Process timeout");
+    }
+    signal(SIGTERM, h_term);
+    signal(SIGINT,  h_int);
+    signal(SIGABRT, h_abrt);
+    signal(SIGALRM, h_alrm);
+    
+  }
   resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_sdd_node_t, 0 |  0 );
   return resultobj;
 fail:
@@ -4109,7 +4859,39 @@ SWIGINTERN PyObject *_wrap_sdd_manager_literal(PyObject *SWIGUNUSEDPARM(self), P
     SWIG_exception_fail(SWIG_ArgError(res2), "in method '" "sdd_manager_literal" "', argument " "2"" of type '" "SddManager *""'"); 
   }
   arg2 = (SddManager *)(argp2);
-  result = (SddNode *)sdd_manager_literal(arg1,arg2);
+  {
+    //
+    //    signal(SIGFPE,  handler);
+    //    signal(SIGILL,  handler);
+    
+    // signal(SIGSEGV, handler);
+    
+    
+    void (*h_alrm)(int);
+    void (*h_abrt)(int);
+    void (*h_term)(int);
+    void (*h_int)(int);
+    h_alrm = signal(SIGALRM,  c_handler);
+    h_abrt = signal(SIGABRT, c_handler);
+    h_term = signal(SIGTERM, c_handler);
+    h_int = signal(SIGINT,  c_handler);
+    try {
+      result = (SddNode *)sdd_manager_literal(arg1,arg2);
+    } catch(SIGINT) {
+      SWIG_exception(SWIG_SystemError, "Process interrupted");
+    } catch(SIGTERM) {
+      SWIG_exception(SWIG_SystemError, "Process terminated");
+    } catch(SIGABRT) {
+      SWIG_exception(SWIG_SystemError, "Process aborted");
+    } catch(SIGALRM) {
+      SWIG_exception(SWIG_SystemError, "Process timeout");
+    }
+    signal(SIGTERM, h_term);
+    signal(SIGINT,  h_int);
+    signal(SIGABRT, h_abrt);
+    signal(SIGALRM, h_alrm);
+    
+  }
   resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_sdd_node_t, 0 |  0 );
   return resultobj;
 fail:
@@ -4158,7 +4940,39 @@ SWIGINTERN PyObject *_wrap_sdd_apply(PyObject *SWIGUNUSEDPARM(self), PyObject *a
     SWIG_exception_fail(SWIG_ArgError(res4), "in method '" "sdd_apply" "', argument " "4"" of type '" "SddManager *""'"); 
   }
   arg4 = (SddManager *)(argp4);
-  result = (SddNode *)sdd_apply(arg1,arg2,arg3,arg4);
+  {
+    //
+    //    signal(SIGFPE,  handler);
+    //    signal(SIGILL,  handler);
+    
+    // signal(SIGSEGV, handler);
+    
+    
+    void (*h_alrm)(int);
+    void (*h_abrt)(int);
+    void (*h_term)(int);
+    void (*h_int)(int);
+    h_alrm = signal(SIGALRM,  c_handler);
+    h_abrt = signal(SIGABRT, c_handler);
+    h_term = signal(SIGTERM, c_handler);
+    h_int = signal(SIGINT,  c_handler);
+    try {
+      result = (SddNode *)sdd_apply(arg1,arg2,arg3,arg4);
+    } catch(SIGINT) {
+      SWIG_exception(SWIG_SystemError, "Process interrupted");
+    } catch(SIGTERM) {
+      SWIG_exception(SWIG_SystemError, "Process terminated");
+    } catch(SIGABRT) {
+      SWIG_exception(SWIG_SystemError, "Process aborted");
+    } catch(SIGALRM) {
+      SWIG_exception(SWIG_SystemError, "Process timeout");
+    }
+    signal(SIGTERM, h_term);
+    signal(SIGINT,  h_int);
+    signal(SIGABRT, h_abrt);
+    signal(SIGALRM, h_alrm);
+    
+  }
   resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_sdd_node_t, 0 |  0 );
   return resultobj;
 fail:
@@ -4216,7 +5030,39 @@ SWIGINTERN PyObject *_wrap_sdd_apply_in_vtree(PyObject *SWIGUNUSEDPARM(self), Py
     SWIG_exception_fail(SWIG_ArgError(res5), "in method '" "sdd_apply_in_vtree" "', argument " "5"" of type '" "SddManager *""'"); 
   }
   arg5 = (SddManager *)(argp5);
-  result = (SddNode *)sdd_apply_in_vtree(arg1,arg2,arg3,arg4,arg5);
+  {
+    //
+    //    signal(SIGFPE,  handler);
+    //    signal(SIGILL,  handler);
+    
+    // signal(SIGSEGV, handler);
+    
+    
+    void (*h_alrm)(int);
+    void (*h_abrt)(int);
+    void (*h_term)(int);
+    void (*h_int)(int);
+    h_alrm = signal(SIGALRM,  c_handler);
+    h_abrt = signal(SIGABRT, c_handler);
+    h_term = signal(SIGTERM, c_handler);
+    h_int = signal(SIGINT,  c_handler);
+    try {
+      result = (SddNode *)sdd_apply_in_vtree(arg1,arg2,arg3,arg4,arg5);
+    } catch(SIGINT) {
+      SWIG_exception(SWIG_SystemError, "Process interrupted");
+    } catch(SIGTERM) {
+      SWIG_exception(SWIG_SystemError, "Process terminated");
+    } catch(SIGABRT) {
+      SWIG_exception(SWIG_SystemError, "Process aborted");
+    } catch(SIGALRM) {
+      SWIG_exception(SWIG_SystemError, "Process timeout");
+    }
+    signal(SIGTERM, h_term);
+    signal(SIGINT,  h_int);
+    signal(SIGABRT, h_abrt);
+    signal(SIGALRM, h_alrm);
+    
+  }
   resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_sdd_node_t, 0 |  0 );
   return resultobj;
 fail:
@@ -4256,7 +5102,39 @@ SWIGINTERN PyObject *_wrap_sdd_conjoin(PyObject *SWIGUNUSEDPARM(self), PyObject 
     SWIG_exception_fail(SWIG_ArgError(res3), "in method '" "sdd_conjoin" "', argument " "3"" of type '" "SddManager *""'"); 
   }
   arg3 = (SddManager *)(argp3);
-  result = (SddNode *)sdd_conjoin(arg1,arg2,arg3);
+  {
+    //
+    //    signal(SIGFPE,  handler);
+    //    signal(SIGILL,  handler);
+    
+    // signal(SIGSEGV, handler);
+    
+    
+    void (*h_alrm)(int);
+    void (*h_abrt)(int);
+    void (*h_term)(int);
+    void (*h_int)(int);
+    h_alrm = signal(SIGALRM,  c_handler);
+    h_abrt = signal(SIGABRT, c_handler);
+    h_term = signal(SIGTERM, c_handler);
+    h_int = signal(SIGINT,  c_handler);
+    try {
+      result = (SddNode *)sdd_conjoin(arg1,arg2,arg3);
+    } catch(SIGINT) {
+      SWIG_exception(SWIG_SystemError, "Process interrupted");
+    } catch(SIGTERM) {
+      SWIG_exception(SWIG_SystemError, "Process terminated");
+    } catch(SIGABRT) {
+      SWIG_exception(SWIG_SystemError, "Process aborted");
+    } catch(SIGALRM) {
+      SWIG_exception(SWIG_SystemError, "Process timeout");
+    }
+    signal(SIGTERM, h_term);
+    signal(SIGINT,  h_int);
+    signal(SIGABRT, h_abrt);
+    signal(SIGALRM, h_alrm);
+    
+  }
   resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_sdd_node_t, 0 |  0 );
   return resultobj;
 fail:
@@ -4296,7 +5174,39 @@ SWIGINTERN PyObject *_wrap_sdd_disjoin(PyObject *SWIGUNUSEDPARM(self), PyObject 
     SWIG_exception_fail(SWIG_ArgError(res3), "in method '" "sdd_disjoin" "', argument " "3"" of type '" "SddManager *""'"); 
   }
   arg3 = (SddManager *)(argp3);
-  result = (SddNode *)sdd_disjoin(arg1,arg2,arg3);
+  {
+    //
+    //    signal(SIGFPE,  handler);
+    //    signal(SIGILL,  handler);
+    
+    // signal(SIGSEGV, handler);
+    
+    
+    void (*h_alrm)(int);
+    void (*h_abrt)(int);
+    void (*h_term)(int);
+    void (*h_int)(int);
+    h_alrm = signal(SIGALRM,  c_handler);
+    h_abrt = signal(SIGABRT, c_handler);
+    h_term = signal(SIGTERM, c_handler);
+    h_int = signal(SIGINT,  c_handler);
+    try {
+      result = (SddNode *)sdd_disjoin(arg1,arg2,arg3);
+    } catch(SIGINT) {
+      SWIG_exception(SWIG_SystemError, "Process interrupted");
+    } catch(SIGTERM) {
+      SWIG_exception(SWIG_SystemError, "Process terminated");
+    } catch(SIGABRT) {
+      SWIG_exception(SWIG_SystemError, "Process aborted");
+    } catch(SIGALRM) {
+      SWIG_exception(SWIG_SystemError, "Process timeout");
+    }
+    signal(SIGTERM, h_term);
+    signal(SIGINT,  h_int);
+    signal(SIGABRT, h_abrt);
+    signal(SIGALRM, h_alrm);
+    
+  }
   resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_sdd_node_t, 0 |  0 );
   return resultobj;
 fail:
@@ -4327,7 +5237,39 @@ SWIGINTERN PyObject *_wrap_sdd_negate(PyObject *SWIGUNUSEDPARM(self), PyObject *
     SWIG_exception_fail(SWIG_ArgError(res2), "in method '" "sdd_negate" "', argument " "2"" of type '" "SddManager *""'"); 
   }
   arg2 = (SddManager *)(argp2);
-  result = (SddNode *)sdd_negate(arg1,arg2);
+  {
+    //
+    //    signal(SIGFPE,  handler);
+    //    signal(SIGILL,  handler);
+    
+    // signal(SIGSEGV, handler);
+    
+    
+    void (*h_alrm)(int);
+    void (*h_abrt)(int);
+    void (*h_term)(int);
+    void (*h_int)(int);
+    h_alrm = signal(SIGALRM,  c_handler);
+    h_abrt = signal(SIGABRT, c_handler);
+    h_term = signal(SIGTERM, c_handler);
+    h_int = signal(SIGINT,  c_handler);
+    try {
+      result = (SddNode *)sdd_negate(arg1,arg2);
+    } catch(SIGINT) {
+      SWIG_exception(SWIG_SystemError, "Process interrupted");
+    } catch(SIGTERM) {
+      SWIG_exception(SWIG_SystemError, "Process terminated");
+    } catch(SIGABRT) {
+      SWIG_exception(SWIG_SystemError, "Process aborted");
+    } catch(SIGALRM) {
+      SWIG_exception(SWIG_SystemError, "Process timeout");
+    }
+    signal(SIGTERM, h_term);
+    signal(SIGINT,  h_int);
+    signal(SIGABRT, h_abrt);
+    signal(SIGALRM, h_alrm);
+    
+  }
   resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_sdd_node_t, 0 |  0 );
   return resultobj;
 fail:
@@ -4367,7 +5309,39 @@ SWIGINTERN PyObject *_wrap_sdd_condition(PyObject *SWIGUNUSEDPARM(self), PyObjec
     SWIG_exception_fail(SWIG_ArgError(res3), "in method '" "sdd_condition" "', argument " "3"" of type '" "SddManager *""'"); 
   }
   arg3 = (SddManager *)(argp3);
-  result = (SddNode *)sdd_condition(arg1,arg2,arg3);
+  {
+    //
+    //    signal(SIGFPE,  handler);
+    //    signal(SIGILL,  handler);
+    
+    // signal(SIGSEGV, handler);
+    
+    
+    void (*h_alrm)(int);
+    void (*h_abrt)(int);
+    void (*h_term)(int);
+    void (*h_int)(int);
+    h_alrm = signal(SIGALRM,  c_handler);
+    h_abrt = signal(SIGABRT, c_handler);
+    h_term = signal(SIGTERM, c_handler);
+    h_int = signal(SIGINT,  c_handler);
+    try {
+      result = (SddNode *)sdd_condition(arg1,arg2,arg3);
+    } catch(SIGINT) {
+      SWIG_exception(SWIG_SystemError, "Process interrupted");
+    } catch(SIGTERM) {
+      SWIG_exception(SWIG_SystemError, "Process terminated");
+    } catch(SIGABRT) {
+      SWIG_exception(SWIG_SystemError, "Process aborted");
+    } catch(SIGALRM) {
+      SWIG_exception(SWIG_SystemError, "Process timeout");
+    }
+    signal(SIGTERM, h_term);
+    signal(SIGINT,  h_int);
+    signal(SIGABRT, h_abrt);
+    signal(SIGALRM, h_alrm);
+    
+  }
   resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_sdd_node_t, 0 |  0 );
   return resultobj;
 fail:
@@ -4407,7 +5381,39 @@ SWIGINTERN PyObject *_wrap_sdd_exists(PyObject *SWIGUNUSEDPARM(self), PyObject *
     SWIG_exception_fail(SWIG_ArgError(res3), "in method '" "sdd_exists" "', argument " "3"" of type '" "SddManager *""'"); 
   }
   arg3 = (SddManager *)(argp3);
-  result = (SddNode *)sdd_exists(arg1,arg2,arg3);
+  {
+    //
+    //    signal(SIGFPE,  handler);
+    //    signal(SIGILL,  handler);
+    
+    // signal(SIGSEGV, handler);
+    
+    
+    void (*h_alrm)(int);
+    void (*h_abrt)(int);
+    void (*h_term)(int);
+    void (*h_int)(int);
+    h_alrm = signal(SIGALRM,  c_handler);
+    h_abrt = signal(SIGABRT, c_handler);
+    h_term = signal(SIGTERM, c_handler);
+    h_int = signal(SIGINT,  c_handler);
+    try {
+      result = (SddNode *)sdd_exists(arg1,arg2,arg3);
+    } catch(SIGINT) {
+      SWIG_exception(SWIG_SystemError, "Process interrupted");
+    } catch(SIGTERM) {
+      SWIG_exception(SWIG_SystemError, "Process terminated");
+    } catch(SIGABRT) {
+      SWIG_exception(SWIG_SystemError, "Process aborted");
+    } catch(SIGALRM) {
+      SWIG_exception(SWIG_SystemError, "Process timeout");
+    }
+    signal(SIGTERM, h_term);
+    signal(SIGINT,  h_int);
+    signal(SIGABRT, h_abrt);
+    signal(SIGALRM, h_alrm);
+    
+  }
   resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_sdd_node_t, 0 |  0 );
   return resultobj;
 fail:
@@ -4447,7 +5453,39 @@ SWIGINTERN PyObject *_wrap_sdd_forall(PyObject *SWIGUNUSEDPARM(self), PyObject *
     SWIG_exception_fail(SWIG_ArgError(res3), "in method '" "sdd_forall" "', argument " "3"" of type '" "SddManager *""'"); 
   }
   arg3 = (SddManager *)(argp3);
-  result = (SddNode *)sdd_forall(arg1,arg2,arg3);
+  {
+    //
+    //    signal(SIGFPE,  handler);
+    //    signal(SIGILL,  handler);
+    
+    // signal(SIGSEGV, handler);
+    
+    
+    void (*h_alrm)(int);
+    void (*h_abrt)(int);
+    void (*h_term)(int);
+    void (*h_int)(int);
+    h_alrm = signal(SIGALRM,  c_handler);
+    h_abrt = signal(SIGABRT, c_handler);
+    h_term = signal(SIGTERM, c_handler);
+    h_int = signal(SIGINT,  c_handler);
+    try {
+      result = (SddNode *)sdd_forall(arg1,arg2,arg3);
+    } catch(SIGINT) {
+      SWIG_exception(SWIG_SystemError, "Process interrupted");
+    } catch(SIGTERM) {
+      SWIG_exception(SWIG_SystemError, "Process terminated");
+    } catch(SIGABRT) {
+      SWIG_exception(SWIG_SystemError, "Process aborted");
+    } catch(SIGALRM) {
+      SWIG_exception(SWIG_SystemError, "Process timeout");
+    }
+    signal(SIGTERM, h_term);
+    signal(SIGINT,  h_int);
+    signal(SIGABRT, h_abrt);
+    signal(SIGALRM, h_alrm);
+    
+  }
   resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_sdd_node_t, 0 |  0 );
   return resultobj;
 fail:
@@ -4478,7 +5516,39 @@ SWIGINTERN PyObject *_wrap_sdd_minimize_cardinality(PyObject *SWIGUNUSEDPARM(sel
     SWIG_exception_fail(SWIG_ArgError(res2), "in method '" "sdd_minimize_cardinality" "', argument " "2"" of type '" "SddManager *""'"); 
   }
   arg2 = (SddManager *)(argp2);
-  result = (SddNode *)sdd_minimize_cardinality(arg1,arg2);
+  {
+    //
+    //    signal(SIGFPE,  handler);
+    //    signal(SIGILL,  handler);
+    
+    // signal(SIGSEGV, handler);
+    
+    
+    void (*h_alrm)(int);
+    void (*h_abrt)(int);
+    void (*h_term)(int);
+    void (*h_int)(int);
+    h_alrm = signal(SIGALRM,  c_handler);
+    h_abrt = signal(SIGABRT, c_handler);
+    h_term = signal(SIGTERM, c_handler);
+    h_int = signal(SIGINT,  c_handler);
+    try {
+      result = (SddNode *)sdd_minimize_cardinality(arg1,arg2);
+    } catch(SIGINT) {
+      SWIG_exception(SWIG_SystemError, "Process interrupted");
+    } catch(SIGTERM) {
+      SWIG_exception(SWIG_SystemError, "Process terminated");
+    } catch(SIGABRT) {
+      SWIG_exception(SWIG_SystemError, "Process aborted");
+    } catch(SIGALRM) {
+      SWIG_exception(SWIG_SystemError, "Process timeout");
+    }
+    signal(SIGTERM, h_term);
+    signal(SIGINT,  h_int);
+    signal(SIGABRT, h_abrt);
+    signal(SIGALRM, h_alrm);
+    
+  }
   resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_sdd_node_t, 0 |  0 );
   return resultobj;
 fail:
@@ -4500,7 +5570,39 @@ SWIGINTERN PyObject *_wrap_sdd_minimum_cardinality(PyObject *SWIGUNUSEDPARM(self
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "sdd_minimum_cardinality" "', argument " "1"" of type '" "SddNode *""'"); 
   }
   arg1 = (SddNode *)(argp1);
-  result = (SddLiteral)sdd_minimum_cardinality(arg1);
+  {
+    //
+    //    signal(SIGFPE,  handler);
+    //    signal(SIGILL,  handler);
+    
+    // signal(SIGSEGV, handler);
+    
+    
+    void (*h_alrm)(int);
+    void (*h_abrt)(int);
+    void (*h_term)(int);
+    void (*h_int)(int);
+    h_alrm = signal(SIGALRM,  c_handler);
+    h_abrt = signal(SIGABRT, c_handler);
+    h_term = signal(SIGTERM, c_handler);
+    h_int = signal(SIGINT,  c_handler);
+    try {
+      result = (SddLiteral)sdd_minimum_cardinality(arg1);
+    } catch(SIGINT) {
+      SWIG_exception(SWIG_SystemError, "Process interrupted");
+    } catch(SIGTERM) {
+      SWIG_exception(SWIG_SystemError, "Process terminated");
+    } catch(SIGABRT) {
+      SWIG_exception(SWIG_SystemError, "Process aborted");
+    } catch(SIGALRM) {
+      SWIG_exception(SWIG_SystemError, "Process timeout");
+    }
+    signal(SIGTERM, h_term);
+    signal(SIGINT,  h_int);
+    signal(SIGABRT, h_abrt);
+    signal(SIGALRM, h_alrm);
+    
+  }
   resultobj = SWIG_From_long((long)(result));
   return resultobj;
 fail:
@@ -4531,7 +5633,39 @@ SWIGINTERN PyObject *_wrap_sdd_model_count(PyObject *SWIGUNUSEDPARM(self), PyObj
     SWIG_exception_fail(SWIG_ArgError(res2), "in method '" "sdd_model_count" "', argument " "2"" of type '" "SddManager *""'"); 
   }
   arg2 = (SddManager *)(argp2);
-  result = (SddModelCount)sdd_model_count(arg1,arg2);
+  {
+    //
+    //    signal(SIGFPE,  handler);
+    //    signal(SIGILL,  handler);
+    
+    // signal(SIGSEGV, handler);
+    
+    
+    void (*h_alrm)(int);
+    void (*h_abrt)(int);
+    void (*h_term)(int);
+    void (*h_int)(int);
+    h_alrm = signal(SIGALRM,  c_handler);
+    h_abrt = signal(SIGABRT, c_handler);
+    h_term = signal(SIGTERM, c_handler);
+    h_int = signal(SIGINT,  c_handler);
+    try {
+      result = (SddModelCount)sdd_model_count(arg1,arg2);
+    } catch(SIGINT) {
+      SWIG_exception(SWIG_SystemError, "Process interrupted");
+    } catch(SIGTERM) {
+      SWIG_exception(SWIG_SystemError, "Process terminated");
+    } catch(SIGABRT) {
+      SWIG_exception(SWIG_SystemError, "Process aborted");
+    } catch(SIGALRM) {
+      SWIG_exception(SWIG_SystemError, "Process timeout");
+    }
+    signal(SIGTERM, h_term);
+    signal(SIGINT,  h_int);
+    signal(SIGABRT, h_abrt);
+    signal(SIGALRM, h_alrm);
+    
+  }
   resultobj = SWIG_From_unsigned_SS_long_SS_long((unsigned long long)(result));
   return resultobj;
 fail:
@@ -4553,7 +5687,39 @@ SWIGINTERN PyObject *_wrap_sdd_node_is_true(PyObject *SWIGUNUSEDPARM(self), PyOb
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "sdd_node_is_true" "', argument " "1"" of type '" "SddNode *""'"); 
   }
   arg1 = (SddNode *)(argp1);
-  result = (int)sdd_node_is_true(arg1);
+  {
+    //
+    //    signal(SIGFPE,  handler);
+    //    signal(SIGILL,  handler);
+    
+    // signal(SIGSEGV, handler);
+    
+    
+    void (*h_alrm)(int);
+    void (*h_abrt)(int);
+    void (*h_term)(int);
+    void (*h_int)(int);
+    h_alrm = signal(SIGALRM,  c_handler);
+    h_abrt = signal(SIGABRT, c_handler);
+    h_term = signal(SIGTERM, c_handler);
+    h_int = signal(SIGINT,  c_handler);
+    try {
+      result = (int)sdd_node_is_true(arg1);
+    } catch(SIGINT) {
+      SWIG_exception(SWIG_SystemError, "Process interrupted");
+    } catch(SIGTERM) {
+      SWIG_exception(SWIG_SystemError, "Process terminated");
+    } catch(SIGABRT) {
+      SWIG_exception(SWIG_SystemError, "Process aborted");
+    } catch(SIGALRM) {
+      SWIG_exception(SWIG_SystemError, "Process timeout");
+    }
+    signal(SIGTERM, h_term);
+    signal(SIGINT,  h_int);
+    signal(SIGABRT, h_abrt);
+    signal(SIGALRM, h_alrm);
+    
+  }
   resultobj = SWIG_From_int((int)(result));
   return resultobj;
 fail:
@@ -4575,7 +5741,39 @@ SWIGINTERN PyObject *_wrap_sdd_node_is_false(PyObject *SWIGUNUSEDPARM(self), PyO
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "sdd_node_is_false" "', argument " "1"" of type '" "SddNode *""'"); 
   }
   arg1 = (SddNode *)(argp1);
-  result = (int)sdd_node_is_false(arg1);
+  {
+    //
+    //    signal(SIGFPE,  handler);
+    //    signal(SIGILL,  handler);
+    
+    // signal(SIGSEGV, handler);
+    
+    
+    void (*h_alrm)(int);
+    void (*h_abrt)(int);
+    void (*h_term)(int);
+    void (*h_int)(int);
+    h_alrm = signal(SIGALRM,  c_handler);
+    h_abrt = signal(SIGABRT, c_handler);
+    h_term = signal(SIGTERM, c_handler);
+    h_int = signal(SIGINT,  c_handler);
+    try {
+      result = (int)sdd_node_is_false(arg1);
+    } catch(SIGINT) {
+      SWIG_exception(SWIG_SystemError, "Process interrupted");
+    } catch(SIGTERM) {
+      SWIG_exception(SWIG_SystemError, "Process terminated");
+    } catch(SIGABRT) {
+      SWIG_exception(SWIG_SystemError, "Process aborted");
+    } catch(SIGALRM) {
+      SWIG_exception(SWIG_SystemError, "Process timeout");
+    }
+    signal(SIGTERM, h_term);
+    signal(SIGINT,  h_int);
+    signal(SIGABRT, h_abrt);
+    signal(SIGALRM, h_alrm);
+    
+  }
   resultobj = SWIG_From_int((int)(result));
   return resultobj;
 fail:
@@ -4597,7 +5795,39 @@ SWIGINTERN PyObject *_wrap_sdd_node_is_literal(PyObject *SWIGUNUSEDPARM(self), P
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "sdd_node_is_literal" "', argument " "1"" of type '" "SddNode *""'"); 
   }
   arg1 = (SddNode *)(argp1);
-  result = (int)sdd_node_is_literal(arg1);
+  {
+    //
+    //    signal(SIGFPE,  handler);
+    //    signal(SIGILL,  handler);
+    
+    // signal(SIGSEGV, handler);
+    
+    
+    void (*h_alrm)(int);
+    void (*h_abrt)(int);
+    void (*h_term)(int);
+    void (*h_int)(int);
+    h_alrm = signal(SIGALRM,  c_handler);
+    h_abrt = signal(SIGABRT, c_handler);
+    h_term = signal(SIGTERM, c_handler);
+    h_int = signal(SIGINT,  c_handler);
+    try {
+      result = (int)sdd_node_is_literal(arg1);
+    } catch(SIGINT) {
+      SWIG_exception(SWIG_SystemError, "Process interrupted");
+    } catch(SIGTERM) {
+      SWIG_exception(SWIG_SystemError, "Process terminated");
+    } catch(SIGABRT) {
+      SWIG_exception(SWIG_SystemError, "Process aborted");
+    } catch(SIGALRM) {
+      SWIG_exception(SWIG_SystemError, "Process timeout");
+    }
+    signal(SIGTERM, h_term);
+    signal(SIGINT,  h_int);
+    signal(SIGABRT, h_abrt);
+    signal(SIGALRM, h_alrm);
+    
+  }
   resultobj = SWIG_From_int((int)(result));
   return resultobj;
 fail:
@@ -4619,7 +5849,39 @@ SWIGINTERN PyObject *_wrap_sdd_node_is_decision(PyObject *SWIGUNUSEDPARM(self), 
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "sdd_node_is_decision" "', argument " "1"" of type '" "SddNode *""'"); 
   }
   arg1 = (SddNode *)(argp1);
-  result = (int)sdd_node_is_decision(arg1);
+  {
+    //
+    //    signal(SIGFPE,  handler);
+    //    signal(SIGILL,  handler);
+    
+    // signal(SIGSEGV, handler);
+    
+    
+    void (*h_alrm)(int);
+    void (*h_abrt)(int);
+    void (*h_term)(int);
+    void (*h_int)(int);
+    h_alrm = signal(SIGALRM,  c_handler);
+    h_abrt = signal(SIGABRT, c_handler);
+    h_term = signal(SIGTERM, c_handler);
+    h_int = signal(SIGINT,  c_handler);
+    try {
+      result = (int)sdd_node_is_decision(arg1);
+    } catch(SIGINT) {
+      SWIG_exception(SWIG_SystemError, "Process interrupted");
+    } catch(SIGTERM) {
+      SWIG_exception(SWIG_SystemError, "Process terminated");
+    } catch(SIGABRT) {
+      SWIG_exception(SWIG_SystemError, "Process aborted");
+    } catch(SIGALRM) {
+      SWIG_exception(SWIG_SystemError, "Process timeout");
+    }
+    signal(SIGTERM, h_term);
+    signal(SIGINT,  h_int);
+    signal(SIGABRT, h_abrt);
+    signal(SIGALRM, h_alrm);
+    
+  }
   resultobj = SWIG_From_int((int)(result));
   return resultobj;
 fail:
@@ -4641,7 +5903,39 @@ SWIGINTERN PyObject *_wrap_sdd_node_size(PyObject *SWIGUNUSEDPARM(self), PyObjec
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "sdd_node_size" "', argument " "1"" of type '" "SddNode *""'"); 
   }
   arg1 = (SddNode *)(argp1);
-  result = (SddNodeSize)sdd_node_size(arg1);
+  {
+    //
+    //    signal(SIGFPE,  handler);
+    //    signal(SIGILL,  handler);
+    
+    // signal(SIGSEGV, handler);
+    
+    
+    void (*h_alrm)(int);
+    void (*h_abrt)(int);
+    void (*h_term)(int);
+    void (*h_int)(int);
+    h_alrm = signal(SIGALRM,  c_handler);
+    h_abrt = signal(SIGABRT, c_handler);
+    h_term = signal(SIGTERM, c_handler);
+    h_int = signal(SIGINT,  c_handler);
+    try {
+      result = (SddNodeSize)sdd_node_size(arg1);
+    } catch(SIGINT) {
+      SWIG_exception(SWIG_SystemError, "Process interrupted");
+    } catch(SIGTERM) {
+      SWIG_exception(SWIG_SystemError, "Process terminated");
+    } catch(SIGABRT) {
+      SWIG_exception(SWIG_SystemError, "Process aborted");
+    } catch(SIGALRM) {
+      SWIG_exception(SWIG_SystemError, "Process timeout");
+    }
+    signal(SIGTERM, h_term);
+    signal(SIGINT,  h_int);
+    signal(SIGABRT, h_abrt);
+    signal(SIGALRM, h_alrm);
+    
+  }
   resultobj = SWIG_From_unsigned_SS_int((unsigned int)(result));
   return resultobj;
 fail:
@@ -4663,7 +5957,39 @@ SWIGINTERN PyObject *_wrap_sdd_node_literal(PyObject *SWIGUNUSEDPARM(self), PyOb
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "sdd_node_literal" "', argument " "1"" of type '" "SddNode *""'"); 
   }
   arg1 = (SddNode *)(argp1);
-  result = (SddLiteral)sdd_node_literal(arg1);
+  {
+    //
+    //    signal(SIGFPE,  handler);
+    //    signal(SIGILL,  handler);
+    
+    // signal(SIGSEGV, handler);
+    
+    
+    void (*h_alrm)(int);
+    void (*h_abrt)(int);
+    void (*h_term)(int);
+    void (*h_int)(int);
+    h_alrm = signal(SIGALRM,  c_handler);
+    h_abrt = signal(SIGABRT, c_handler);
+    h_term = signal(SIGTERM, c_handler);
+    h_int = signal(SIGINT,  c_handler);
+    try {
+      result = (SddLiteral)sdd_node_literal(arg1);
+    } catch(SIGINT) {
+      SWIG_exception(SWIG_SystemError, "Process interrupted");
+    } catch(SIGTERM) {
+      SWIG_exception(SWIG_SystemError, "Process terminated");
+    } catch(SIGABRT) {
+      SWIG_exception(SWIG_SystemError, "Process aborted");
+    } catch(SIGALRM) {
+      SWIG_exception(SWIG_SystemError, "Process timeout");
+    }
+    signal(SIGTERM, h_term);
+    signal(SIGINT,  h_int);
+    signal(SIGABRT, h_abrt);
+    signal(SIGALRM, h_alrm);
+    
+  }
   resultobj = SWIG_From_long((long)(result));
   return resultobj;
 fail:
@@ -4685,7 +6011,39 @@ SWIGINTERN PyObject *_wrap_sdd_node_elements(PyObject *SWIGUNUSEDPARM(self), PyO
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "sdd_node_elements" "', argument " "1"" of type '" "SddNode *""'"); 
   }
   arg1 = (SddNode *)(argp1);
-  result = (SddNode **)sdd_node_elements(arg1);
+  {
+    //
+    //    signal(SIGFPE,  handler);
+    //    signal(SIGILL,  handler);
+    
+    // signal(SIGSEGV, handler);
+    
+    
+    void (*h_alrm)(int);
+    void (*h_abrt)(int);
+    void (*h_term)(int);
+    void (*h_int)(int);
+    h_alrm = signal(SIGALRM,  c_handler);
+    h_abrt = signal(SIGABRT, c_handler);
+    h_term = signal(SIGTERM, c_handler);
+    h_int = signal(SIGINT,  c_handler);
+    try {
+      result = (SddNode **)sdd_node_elements(arg1);
+    } catch(SIGINT) {
+      SWIG_exception(SWIG_SystemError, "Process interrupted");
+    } catch(SIGTERM) {
+      SWIG_exception(SWIG_SystemError, "Process terminated");
+    } catch(SIGABRT) {
+      SWIG_exception(SWIG_SystemError, "Process aborted");
+    } catch(SIGALRM) {
+      SWIG_exception(SWIG_SystemError, "Process timeout");
+    }
+    signal(SIGTERM, h_term);
+    signal(SIGINT,  h_int);
+    signal(SIGABRT, h_abrt);
+    signal(SIGALRM, h_alrm);
+    
+  }
   resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_p_sdd_node_t, 0 |  0 );
   return resultobj;
 fail:
@@ -4715,7 +6073,39 @@ SWIGINTERN PyObject *_wrap_sdd_node_set_bit(PyObject *SWIGUNUSEDPARM(self), PyOb
     SWIG_exception_fail(SWIG_ArgError(res2), "in method '" "sdd_node_set_bit" "', argument " "2"" of type '" "SddNode *""'"); 
   }
   arg2 = (SddNode *)(argp2);
-  sdd_node_set_bit(arg1,arg2);
+  {
+    //
+    //    signal(SIGFPE,  handler);
+    //    signal(SIGILL,  handler);
+    
+    // signal(SIGSEGV, handler);
+    
+    
+    void (*h_alrm)(int);
+    void (*h_abrt)(int);
+    void (*h_term)(int);
+    void (*h_int)(int);
+    h_alrm = signal(SIGALRM,  c_handler);
+    h_abrt = signal(SIGABRT, c_handler);
+    h_term = signal(SIGTERM, c_handler);
+    h_int = signal(SIGINT,  c_handler);
+    try {
+      sdd_node_set_bit(arg1,arg2);
+    } catch(SIGINT) {
+      SWIG_exception(SWIG_SystemError, "Process interrupted");
+    } catch(SIGTERM) {
+      SWIG_exception(SWIG_SystemError, "Process terminated");
+    } catch(SIGABRT) {
+      SWIG_exception(SWIG_SystemError, "Process aborted");
+    } catch(SIGALRM) {
+      SWIG_exception(SWIG_SystemError, "Process timeout");
+    }
+    signal(SIGTERM, h_term);
+    signal(SIGINT,  h_int);
+    signal(SIGABRT, h_abrt);
+    signal(SIGALRM, h_alrm);
+    
+  }
   resultobj = SWIG_Py_Void();
   return resultobj;
 fail:
@@ -4737,7 +6127,39 @@ SWIGINTERN PyObject *_wrap_sdd_node_bit(PyObject *SWIGUNUSEDPARM(self), PyObject
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "sdd_node_bit" "', argument " "1"" of type '" "SddNode *""'"); 
   }
   arg1 = (SddNode *)(argp1);
-  result = (int)sdd_node_bit(arg1);
+  {
+    //
+    //    signal(SIGFPE,  handler);
+    //    signal(SIGILL,  handler);
+    
+    // signal(SIGSEGV, handler);
+    
+    
+    void (*h_alrm)(int);
+    void (*h_abrt)(int);
+    void (*h_term)(int);
+    void (*h_int)(int);
+    h_alrm = signal(SIGALRM,  c_handler);
+    h_abrt = signal(SIGABRT, c_handler);
+    h_term = signal(SIGTERM, c_handler);
+    h_int = signal(SIGINT,  c_handler);
+    try {
+      result = (int)sdd_node_bit(arg1);
+    } catch(SIGINT) {
+      SWIG_exception(SWIG_SystemError, "Process interrupted");
+    } catch(SIGTERM) {
+      SWIG_exception(SWIG_SystemError, "Process terminated");
+    } catch(SIGABRT) {
+      SWIG_exception(SWIG_SystemError, "Process aborted");
+    } catch(SIGALRM) {
+      SWIG_exception(SWIG_SystemError, "Process timeout");
+    }
+    signal(SIGTERM, h_term);
+    signal(SIGINT,  h_int);
+    signal(SIGABRT, h_abrt);
+    signal(SIGALRM, h_alrm);
+    
+  }
   resultobj = SWIG_From_int((int)(result));
   return resultobj;
 fail:
@@ -4759,7 +6181,39 @@ SWIGINTERN PyObject *_wrap_sdd_id(PyObject *SWIGUNUSEDPARM(self), PyObject *args
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "sdd_id" "', argument " "1"" of type '" "SddNode *""'"); 
   }
   arg1 = (SddNode *)(argp1);
-  result = sdd_id(arg1);
+  {
+    //
+    //    signal(SIGFPE,  handler);
+    //    signal(SIGILL,  handler);
+    
+    // signal(SIGSEGV, handler);
+    
+    
+    void (*h_alrm)(int);
+    void (*h_abrt)(int);
+    void (*h_term)(int);
+    void (*h_int)(int);
+    h_alrm = signal(SIGALRM,  c_handler);
+    h_abrt = signal(SIGABRT, c_handler);
+    h_term = signal(SIGTERM, c_handler);
+    h_int = signal(SIGINT,  c_handler);
+    try {
+      result = sdd_id(arg1);
+    } catch(SIGINT) {
+      SWIG_exception(SWIG_SystemError, "Process interrupted");
+    } catch(SIGTERM) {
+      SWIG_exception(SWIG_SystemError, "Process terminated");
+    } catch(SIGABRT) {
+      SWIG_exception(SWIG_SystemError, "Process aborted");
+    } catch(SIGALRM) {
+      SWIG_exception(SWIG_SystemError, "Process timeout");
+    }
+    signal(SIGTERM, h_term);
+    signal(SIGINT,  h_int);
+    signal(SIGABRT, h_abrt);
+    signal(SIGALRM, h_alrm);
+    
+  }
   resultobj = SWIG_From_size_t((size_t)(result));
   return resultobj;
 fail:
@@ -4790,7 +6244,39 @@ SWIGINTERN PyObject *_wrap_sdd_garbage_collected(PyObject *SWIGUNUSEDPARM(self),
     SWIG_exception_fail(SWIG_ArgError(ecode2), "in method '" "sdd_garbage_collected" "', argument " "2"" of type '" "SddSize""'");
   } 
   arg2 = (SddSize)(val2);
-  result = (int)sdd_garbage_collected(arg1,arg2);
+  {
+    //
+    //    signal(SIGFPE,  handler);
+    //    signal(SIGILL,  handler);
+    
+    // signal(SIGSEGV, handler);
+    
+    
+    void (*h_alrm)(int);
+    void (*h_abrt)(int);
+    void (*h_term)(int);
+    void (*h_int)(int);
+    h_alrm = signal(SIGALRM,  c_handler);
+    h_abrt = signal(SIGABRT, c_handler);
+    h_term = signal(SIGTERM, c_handler);
+    h_int = signal(SIGINT,  c_handler);
+    try {
+      result = (int)sdd_garbage_collected(arg1,arg2);
+    } catch(SIGINT) {
+      SWIG_exception(SWIG_SystemError, "Process interrupted");
+    } catch(SIGTERM) {
+      SWIG_exception(SWIG_SystemError, "Process terminated");
+    } catch(SIGABRT) {
+      SWIG_exception(SWIG_SystemError, "Process aborted");
+    } catch(SIGALRM) {
+      SWIG_exception(SWIG_SystemError, "Process timeout");
+    }
+    signal(SIGTERM, h_term);
+    signal(SIGINT,  h_int);
+    signal(SIGABRT, h_abrt);
+    signal(SIGALRM, h_alrm);
+    
+  }
   resultobj = SWIG_From_int((int)(result));
   return resultobj;
 fail:
@@ -4812,7 +6298,39 @@ SWIGINTERN PyObject *_wrap_sdd_vtree_of(PyObject *SWIGUNUSEDPARM(self), PyObject
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "sdd_vtree_of" "', argument " "1"" of type '" "SddNode *""'"); 
   }
   arg1 = (SddNode *)(argp1);
-  result = (Vtree *)sdd_vtree_of(arg1);
+  {
+    //
+    //    signal(SIGFPE,  handler);
+    //    signal(SIGILL,  handler);
+    
+    // signal(SIGSEGV, handler);
+    
+    
+    void (*h_alrm)(int);
+    void (*h_abrt)(int);
+    void (*h_term)(int);
+    void (*h_int)(int);
+    h_alrm = signal(SIGALRM,  c_handler);
+    h_abrt = signal(SIGABRT, c_handler);
+    h_term = signal(SIGTERM, c_handler);
+    h_int = signal(SIGINT,  c_handler);
+    try {
+      result = (Vtree *)sdd_vtree_of(arg1);
+    } catch(SIGINT) {
+      SWIG_exception(SWIG_SystemError, "Process interrupted");
+    } catch(SIGTERM) {
+      SWIG_exception(SWIG_SystemError, "Process terminated");
+    } catch(SIGABRT) {
+      SWIG_exception(SWIG_SystemError, "Process aborted");
+    } catch(SIGALRM) {
+      SWIG_exception(SWIG_SystemError, "Process timeout");
+    }
+    signal(SIGTERM, h_term);
+    signal(SIGINT,  h_int);
+    signal(SIGABRT, h_abrt);
+    signal(SIGALRM, h_alrm);
+    
+  }
   resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_vtree_t, 0 |  0 );
   return resultobj;
 fail:
@@ -4843,7 +6361,39 @@ SWIGINTERN PyObject *_wrap_sdd_copy(PyObject *SWIGUNUSEDPARM(self), PyObject *ar
     SWIG_exception_fail(SWIG_ArgError(res2), "in method '" "sdd_copy" "', argument " "2"" of type '" "SddManager *""'"); 
   }
   arg2 = (SddManager *)(argp2);
-  result = (SddNode *)sdd_copy(arg1,arg2);
+  {
+    //
+    //    signal(SIGFPE,  handler);
+    //    signal(SIGILL,  handler);
+    
+    // signal(SIGSEGV, handler);
+    
+    
+    void (*h_alrm)(int);
+    void (*h_abrt)(int);
+    void (*h_term)(int);
+    void (*h_int)(int);
+    h_alrm = signal(SIGALRM,  c_handler);
+    h_abrt = signal(SIGABRT, c_handler);
+    h_term = signal(SIGTERM, c_handler);
+    h_int = signal(SIGINT,  c_handler);
+    try {
+      result = (SddNode *)sdd_copy(arg1,arg2);
+    } catch(SIGINT) {
+      SWIG_exception(SWIG_SystemError, "Process interrupted");
+    } catch(SIGTERM) {
+      SWIG_exception(SWIG_SystemError, "Process terminated");
+    } catch(SIGABRT) {
+      SWIG_exception(SWIG_SystemError, "Process aborted");
+    } catch(SIGALRM) {
+      SWIG_exception(SWIG_SystemError, "Process timeout");
+    }
+    signal(SIGTERM, h_term);
+    signal(SIGINT,  h_int);
+    signal(SIGABRT, h_abrt);
+    signal(SIGALRM, h_alrm);
+    
+  }
   resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_sdd_node_t, 0 |  0 );
   return resultobj;
 fail:
@@ -4883,7 +6433,39 @@ SWIGINTERN PyObject *_wrap_sdd_rename_variables(PyObject *SWIGUNUSEDPARM(self), 
     SWIG_exception_fail(SWIG_ArgError(res3), "in method '" "sdd_rename_variables" "', argument " "3"" of type '" "SddManager *""'"); 
   }
   arg3 = (SddManager *)(argp3);
-  result = (SddNode *)sdd_rename_variables(arg1,arg2,arg3);
+  {
+    //
+    //    signal(SIGFPE,  handler);
+    //    signal(SIGILL,  handler);
+    
+    // signal(SIGSEGV, handler);
+    
+    
+    void (*h_alrm)(int);
+    void (*h_abrt)(int);
+    void (*h_term)(int);
+    void (*h_int)(int);
+    h_alrm = signal(SIGALRM,  c_handler);
+    h_abrt = signal(SIGABRT, c_handler);
+    h_term = signal(SIGTERM, c_handler);
+    h_int = signal(SIGINT,  c_handler);
+    try {
+      result = (SddNode *)sdd_rename_variables(arg1,arg2,arg3);
+    } catch(SIGINT) {
+      SWIG_exception(SWIG_SystemError, "Process interrupted");
+    } catch(SIGTERM) {
+      SWIG_exception(SWIG_SystemError, "Process terminated");
+    } catch(SIGABRT) {
+      SWIG_exception(SWIG_SystemError, "Process aborted");
+    } catch(SIGALRM) {
+      SWIG_exception(SWIG_SystemError, "Process timeout");
+    }
+    signal(SIGTERM, h_term);
+    signal(SIGINT,  h_int);
+    signal(SIGABRT, h_abrt);
+    signal(SIGALRM, h_alrm);
+    
+  }
   resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_sdd_node_t, 0 |  0 );
   return resultobj;
 fail:
@@ -4914,7 +6496,39 @@ SWIGINTERN PyObject *_wrap_sdd_variables(PyObject *SWIGUNUSEDPARM(self), PyObjec
     SWIG_exception_fail(SWIG_ArgError(res2), "in method '" "sdd_variables" "', argument " "2"" of type '" "SddManager *""'"); 
   }
   arg2 = (SddManager *)(argp2);
-  result = (int *)sdd_variables(arg1,arg2);
+  {
+    //
+    //    signal(SIGFPE,  handler);
+    //    signal(SIGILL,  handler);
+    
+    // signal(SIGSEGV, handler);
+    
+    
+    void (*h_alrm)(int);
+    void (*h_abrt)(int);
+    void (*h_term)(int);
+    void (*h_int)(int);
+    h_alrm = signal(SIGALRM,  c_handler);
+    h_abrt = signal(SIGABRT, c_handler);
+    h_term = signal(SIGTERM, c_handler);
+    h_int = signal(SIGINT,  c_handler);
+    try {
+      result = (int *)sdd_variables(arg1,arg2);
+    } catch(SIGINT) {
+      SWIG_exception(SWIG_SystemError, "Process interrupted");
+    } catch(SIGTERM) {
+      SWIG_exception(SWIG_SystemError, "Process terminated");
+    } catch(SIGABRT) {
+      SWIG_exception(SWIG_SystemError, "Process aborted");
+    } catch(SIGALRM) {
+      SWIG_exception(SWIG_SystemError, "Process timeout");
+    }
+    signal(SIGTERM, h_term);
+    signal(SIGINT,  h_int);
+    signal(SIGABRT, h_abrt);
+    signal(SIGALRM, h_alrm);
+    
+  }
   resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_int, 0 |  0 );
   return resultobj;
 fail:
@@ -4946,7 +6560,39 @@ SWIGINTERN PyObject *_wrap_sdd_read(PyObject *SWIGUNUSEDPARM(self), PyObject *ar
     SWIG_exception_fail(SWIG_ArgError(res2), "in method '" "sdd_read" "', argument " "2"" of type '" "SddManager *""'"); 
   }
   arg2 = (SddManager *)(argp2);
-  result = (SddNode *)sdd_read((char const *)arg1,arg2);
+  {
+    //
+    //    signal(SIGFPE,  handler);
+    //    signal(SIGILL,  handler);
+    
+    // signal(SIGSEGV, handler);
+    
+    
+    void (*h_alrm)(int);
+    void (*h_abrt)(int);
+    void (*h_term)(int);
+    void (*h_int)(int);
+    h_alrm = signal(SIGALRM,  c_handler);
+    h_abrt = signal(SIGABRT, c_handler);
+    h_term = signal(SIGTERM, c_handler);
+    h_int = signal(SIGINT,  c_handler);
+    try {
+      result = (SddNode *)sdd_read((char const *)arg1,arg2);
+    } catch(SIGINT) {
+      SWIG_exception(SWIG_SystemError, "Process interrupted");
+    } catch(SIGTERM) {
+      SWIG_exception(SWIG_SystemError, "Process terminated");
+    } catch(SIGABRT) {
+      SWIG_exception(SWIG_SystemError, "Process aborted");
+    } catch(SIGALRM) {
+      SWIG_exception(SWIG_SystemError, "Process timeout");
+    }
+    signal(SIGTERM, h_term);
+    signal(SIGINT,  h_int);
+    signal(SIGABRT, h_abrt);
+    signal(SIGALRM, h_alrm);
+    
+  }
   resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_sdd_node_t, 0 |  0 );
   if (alloc1 == SWIG_NEWOBJ) free((char*)buf1);
   return resultobj;
@@ -4979,7 +6625,39 @@ SWIGINTERN PyObject *_wrap_sdd_save(PyObject *SWIGUNUSEDPARM(self), PyObject *ar
     SWIG_exception_fail(SWIG_ArgError(res2), "in method '" "sdd_save" "', argument " "2"" of type '" "SddNode *""'"); 
   }
   arg2 = (SddNode *)(argp2);
-  sdd_save((char const *)arg1,arg2);
+  {
+    //
+    //    signal(SIGFPE,  handler);
+    //    signal(SIGILL,  handler);
+    
+    // signal(SIGSEGV, handler);
+    
+    
+    void (*h_alrm)(int);
+    void (*h_abrt)(int);
+    void (*h_term)(int);
+    void (*h_int)(int);
+    h_alrm = signal(SIGALRM,  c_handler);
+    h_abrt = signal(SIGABRT, c_handler);
+    h_term = signal(SIGTERM, c_handler);
+    h_int = signal(SIGINT,  c_handler);
+    try {
+      sdd_save((char const *)arg1,arg2);
+    } catch(SIGINT) {
+      SWIG_exception(SWIG_SystemError, "Process interrupted");
+    } catch(SIGTERM) {
+      SWIG_exception(SWIG_SystemError, "Process terminated");
+    } catch(SIGABRT) {
+      SWIG_exception(SWIG_SystemError, "Process aborted");
+    } catch(SIGALRM) {
+      SWIG_exception(SWIG_SystemError, "Process timeout");
+    }
+    signal(SIGTERM, h_term);
+    signal(SIGINT,  h_int);
+    signal(SIGABRT, h_abrt);
+    signal(SIGALRM, h_alrm);
+    
+  }
   resultobj = SWIG_Py_Void();
   if (alloc1 == SWIG_NEWOBJ) free((char*)buf1);
   return resultobj;
@@ -5012,7 +6690,39 @@ SWIGINTERN PyObject *_wrap_sdd_save_as_dot(PyObject *SWIGUNUSEDPARM(self), PyObj
     SWIG_exception_fail(SWIG_ArgError(res2), "in method '" "sdd_save_as_dot" "', argument " "2"" of type '" "SddNode *""'"); 
   }
   arg2 = (SddNode *)(argp2);
-  sdd_save_as_dot((char const *)arg1,arg2);
+  {
+    //
+    //    signal(SIGFPE,  handler);
+    //    signal(SIGILL,  handler);
+    
+    // signal(SIGSEGV, handler);
+    
+    
+    void (*h_alrm)(int);
+    void (*h_abrt)(int);
+    void (*h_term)(int);
+    void (*h_int)(int);
+    h_alrm = signal(SIGALRM,  c_handler);
+    h_abrt = signal(SIGABRT, c_handler);
+    h_term = signal(SIGTERM, c_handler);
+    h_int = signal(SIGINT,  c_handler);
+    try {
+      sdd_save_as_dot((char const *)arg1,arg2);
+    } catch(SIGINT) {
+      SWIG_exception(SWIG_SystemError, "Process interrupted");
+    } catch(SIGTERM) {
+      SWIG_exception(SWIG_SystemError, "Process terminated");
+    } catch(SIGABRT) {
+      SWIG_exception(SWIG_SystemError, "Process aborted");
+    } catch(SIGALRM) {
+      SWIG_exception(SWIG_SystemError, "Process timeout");
+    }
+    signal(SIGTERM, h_term);
+    signal(SIGINT,  h_int);
+    signal(SIGABRT, h_abrt);
+    signal(SIGALRM, h_alrm);
+    
+  }
   resultobj = SWIG_Py_Void();
   if (alloc1 == SWIG_NEWOBJ) free((char*)buf1);
   return resultobj;
@@ -5045,7 +6755,39 @@ SWIGINTERN PyObject *_wrap_sdd_shared_save_as_dot(PyObject *SWIGUNUSEDPARM(self)
     SWIG_exception_fail(SWIG_ArgError(res2), "in method '" "sdd_shared_save_as_dot" "', argument " "2"" of type '" "SddManager *""'"); 
   }
   arg2 = (SddManager *)(argp2);
-  sdd_shared_save_as_dot((char const *)arg1,arg2);
+  {
+    //
+    //    signal(SIGFPE,  handler);
+    //    signal(SIGILL,  handler);
+    
+    // signal(SIGSEGV, handler);
+    
+    
+    void (*h_alrm)(int);
+    void (*h_abrt)(int);
+    void (*h_term)(int);
+    void (*h_int)(int);
+    h_alrm = signal(SIGALRM,  c_handler);
+    h_abrt = signal(SIGABRT, c_handler);
+    h_term = signal(SIGTERM, c_handler);
+    h_int = signal(SIGINT,  c_handler);
+    try {
+      sdd_shared_save_as_dot((char const *)arg1,arg2);
+    } catch(SIGINT) {
+      SWIG_exception(SWIG_SystemError, "Process interrupted");
+    } catch(SIGTERM) {
+      SWIG_exception(SWIG_SystemError, "Process terminated");
+    } catch(SIGABRT) {
+      SWIG_exception(SWIG_SystemError, "Process aborted");
+    } catch(SIGALRM) {
+      SWIG_exception(SWIG_SystemError, "Process timeout");
+    }
+    signal(SIGTERM, h_term);
+    signal(SIGINT,  h_int);
+    signal(SIGABRT, h_abrt);
+    signal(SIGALRM, h_alrm);
+    
+  }
   resultobj = SWIG_Py_Void();
   if (alloc1 == SWIG_NEWOBJ) free((char*)buf1);
   return resultobj;
@@ -5069,7 +6811,39 @@ SWIGINTERN PyObject *_wrap_sdd_count(PyObject *SWIGUNUSEDPARM(self), PyObject *a
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "sdd_count" "', argument " "1"" of type '" "SddNode *""'"); 
   }
   arg1 = (SddNode *)(argp1);
-  result = sdd_count(arg1);
+  {
+    //
+    //    signal(SIGFPE,  handler);
+    //    signal(SIGILL,  handler);
+    
+    // signal(SIGSEGV, handler);
+    
+    
+    void (*h_alrm)(int);
+    void (*h_abrt)(int);
+    void (*h_term)(int);
+    void (*h_int)(int);
+    h_alrm = signal(SIGALRM,  c_handler);
+    h_abrt = signal(SIGABRT, c_handler);
+    h_term = signal(SIGTERM, c_handler);
+    h_int = signal(SIGINT,  c_handler);
+    try {
+      result = sdd_count(arg1);
+    } catch(SIGINT) {
+      SWIG_exception(SWIG_SystemError, "Process interrupted");
+    } catch(SIGTERM) {
+      SWIG_exception(SWIG_SystemError, "Process terminated");
+    } catch(SIGABRT) {
+      SWIG_exception(SWIG_SystemError, "Process aborted");
+    } catch(SIGALRM) {
+      SWIG_exception(SWIG_SystemError, "Process timeout");
+    }
+    signal(SIGTERM, h_term);
+    signal(SIGINT,  h_int);
+    signal(SIGABRT, h_abrt);
+    signal(SIGALRM, h_alrm);
+    
+  }
   resultobj = SWIG_From_size_t((size_t)(result));
   return resultobj;
 fail:
@@ -5091,7 +6865,39 @@ SWIGINTERN PyObject *_wrap_sdd_size(PyObject *SWIGUNUSEDPARM(self), PyObject *ar
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "sdd_size" "', argument " "1"" of type '" "SddNode *""'"); 
   }
   arg1 = (SddNode *)(argp1);
-  result = sdd_size(arg1);
+  {
+    //
+    //    signal(SIGFPE,  handler);
+    //    signal(SIGILL,  handler);
+    
+    // signal(SIGSEGV, handler);
+    
+    
+    void (*h_alrm)(int);
+    void (*h_abrt)(int);
+    void (*h_term)(int);
+    void (*h_int)(int);
+    h_alrm = signal(SIGALRM,  c_handler);
+    h_abrt = signal(SIGABRT, c_handler);
+    h_term = signal(SIGTERM, c_handler);
+    h_int = signal(SIGINT,  c_handler);
+    try {
+      result = sdd_size(arg1);
+    } catch(SIGINT) {
+      SWIG_exception(SWIG_SystemError, "Process interrupted");
+    } catch(SIGTERM) {
+      SWIG_exception(SWIG_SystemError, "Process terminated");
+    } catch(SIGABRT) {
+      SWIG_exception(SWIG_SystemError, "Process aborted");
+    } catch(SIGALRM) {
+      SWIG_exception(SWIG_SystemError, "Process timeout");
+    }
+    signal(SIGTERM, h_term);
+    signal(SIGINT,  h_int);
+    signal(SIGABRT, h_abrt);
+    signal(SIGALRM, h_alrm);
+    
+  }
   resultobj = SWIG_From_size_t((size_t)(result));
   return resultobj;
 fail:
@@ -5122,7 +6928,39 @@ SWIGINTERN PyObject *_wrap_sdd_shared_size(PyObject *SWIGUNUSEDPARM(self), PyObj
     SWIG_exception_fail(SWIG_ArgError(ecode2), "in method '" "sdd_shared_size" "', argument " "2"" of type '" "SddSize""'");
   } 
   arg2 = (SddSize)(val2);
-  result = sdd_shared_size(arg1,arg2);
+  {
+    //
+    //    signal(SIGFPE,  handler);
+    //    signal(SIGILL,  handler);
+    
+    // signal(SIGSEGV, handler);
+    
+    
+    void (*h_alrm)(int);
+    void (*h_abrt)(int);
+    void (*h_term)(int);
+    void (*h_int)(int);
+    h_alrm = signal(SIGALRM,  c_handler);
+    h_abrt = signal(SIGABRT, c_handler);
+    h_term = signal(SIGTERM, c_handler);
+    h_int = signal(SIGINT,  c_handler);
+    try {
+      result = sdd_shared_size(arg1,arg2);
+    } catch(SIGINT) {
+      SWIG_exception(SWIG_SystemError, "Process interrupted");
+    } catch(SIGTERM) {
+      SWIG_exception(SWIG_SystemError, "Process terminated");
+    } catch(SIGABRT) {
+      SWIG_exception(SWIG_SystemError, "Process aborted");
+    } catch(SIGALRM) {
+      SWIG_exception(SWIG_SystemError, "Process timeout");
+    }
+    signal(SIGTERM, h_term);
+    signal(SIGINT,  h_int);
+    signal(SIGABRT, h_abrt);
+    signal(SIGALRM, h_alrm);
+    
+  }
   resultobj = SWIG_From_size_t((size_t)(result));
   return resultobj;
 fail:
@@ -5144,7 +6982,39 @@ SWIGINTERN PyObject *_wrap_sdd_manager_size(PyObject *SWIGUNUSEDPARM(self), PyOb
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "sdd_manager_size" "', argument " "1"" of type '" "SddManager const *""'"); 
   }
   arg1 = (SddManager *)(argp1);
-  result = sdd_manager_size((struct sdd_manager_t const *)arg1);
+  {
+    //
+    //    signal(SIGFPE,  handler);
+    //    signal(SIGILL,  handler);
+    
+    // signal(SIGSEGV, handler);
+    
+    
+    void (*h_alrm)(int);
+    void (*h_abrt)(int);
+    void (*h_term)(int);
+    void (*h_int)(int);
+    h_alrm = signal(SIGALRM,  c_handler);
+    h_abrt = signal(SIGABRT, c_handler);
+    h_term = signal(SIGTERM, c_handler);
+    h_int = signal(SIGINT,  c_handler);
+    try {
+      result = sdd_manager_size((struct sdd_manager_t const *)arg1);
+    } catch(SIGINT) {
+      SWIG_exception(SWIG_SystemError, "Process interrupted");
+    } catch(SIGTERM) {
+      SWIG_exception(SWIG_SystemError, "Process terminated");
+    } catch(SIGABRT) {
+      SWIG_exception(SWIG_SystemError, "Process aborted");
+    } catch(SIGALRM) {
+      SWIG_exception(SWIG_SystemError, "Process timeout");
+    }
+    signal(SIGTERM, h_term);
+    signal(SIGINT,  h_int);
+    signal(SIGABRT, h_abrt);
+    signal(SIGALRM, h_alrm);
+    
+  }
   resultobj = SWIG_From_size_t((size_t)(result));
   return resultobj;
 fail:
@@ -5166,7 +7036,39 @@ SWIGINTERN PyObject *_wrap_sdd_manager_live_size(PyObject *SWIGUNUSEDPARM(self),
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "sdd_manager_live_size" "', argument " "1"" of type '" "SddManager const *""'"); 
   }
   arg1 = (SddManager *)(argp1);
-  result = sdd_manager_live_size((struct sdd_manager_t const *)arg1);
+  {
+    //
+    //    signal(SIGFPE,  handler);
+    //    signal(SIGILL,  handler);
+    
+    // signal(SIGSEGV, handler);
+    
+    
+    void (*h_alrm)(int);
+    void (*h_abrt)(int);
+    void (*h_term)(int);
+    void (*h_int)(int);
+    h_alrm = signal(SIGALRM,  c_handler);
+    h_abrt = signal(SIGABRT, c_handler);
+    h_term = signal(SIGTERM, c_handler);
+    h_int = signal(SIGINT,  c_handler);
+    try {
+      result = sdd_manager_live_size((struct sdd_manager_t const *)arg1);
+    } catch(SIGINT) {
+      SWIG_exception(SWIG_SystemError, "Process interrupted");
+    } catch(SIGTERM) {
+      SWIG_exception(SWIG_SystemError, "Process terminated");
+    } catch(SIGABRT) {
+      SWIG_exception(SWIG_SystemError, "Process aborted");
+    } catch(SIGALRM) {
+      SWIG_exception(SWIG_SystemError, "Process timeout");
+    }
+    signal(SIGTERM, h_term);
+    signal(SIGINT,  h_int);
+    signal(SIGABRT, h_abrt);
+    signal(SIGALRM, h_alrm);
+    
+  }
   resultobj = SWIG_From_size_t((size_t)(result));
   return resultobj;
 fail:
@@ -5188,7 +7090,39 @@ SWIGINTERN PyObject *_wrap_sdd_manager_dead_size(PyObject *SWIGUNUSEDPARM(self),
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "sdd_manager_dead_size" "', argument " "1"" of type '" "SddManager const *""'"); 
   }
   arg1 = (SddManager *)(argp1);
-  result = sdd_manager_dead_size((struct sdd_manager_t const *)arg1);
+  {
+    //
+    //    signal(SIGFPE,  handler);
+    //    signal(SIGILL,  handler);
+    
+    // signal(SIGSEGV, handler);
+    
+    
+    void (*h_alrm)(int);
+    void (*h_abrt)(int);
+    void (*h_term)(int);
+    void (*h_int)(int);
+    h_alrm = signal(SIGALRM,  c_handler);
+    h_abrt = signal(SIGABRT, c_handler);
+    h_term = signal(SIGTERM, c_handler);
+    h_int = signal(SIGINT,  c_handler);
+    try {
+      result = sdd_manager_dead_size((struct sdd_manager_t const *)arg1);
+    } catch(SIGINT) {
+      SWIG_exception(SWIG_SystemError, "Process interrupted");
+    } catch(SIGTERM) {
+      SWIG_exception(SWIG_SystemError, "Process terminated");
+    } catch(SIGABRT) {
+      SWIG_exception(SWIG_SystemError, "Process aborted");
+    } catch(SIGALRM) {
+      SWIG_exception(SWIG_SystemError, "Process timeout");
+    }
+    signal(SIGTERM, h_term);
+    signal(SIGINT,  h_int);
+    signal(SIGABRT, h_abrt);
+    signal(SIGALRM, h_alrm);
+    
+  }
   resultobj = SWIG_From_size_t((size_t)(result));
   return resultobj;
 fail:
@@ -5210,7 +7144,39 @@ SWIGINTERN PyObject *_wrap_sdd_manager_count(PyObject *SWIGUNUSEDPARM(self), PyO
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "sdd_manager_count" "', argument " "1"" of type '" "SddManager const *""'"); 
   }
   arg1 = (SddManager *)(argp1);
-  result = sdd_manager_count((struct sdd_manager_t const *)arg1);
+  {
+    //
+    //    signal(SIGFPE,  handler);
+    //    signal(SIGILL,  handler);
+    
+    // signal(SIGSEGV, handler);
+    
+    
+    void (*h_alrm)(int);
+    void (*h_abrt)(int);
+    void (*h_term)(int);
+    void (*h_int)(int);
+    h_alrm = signal(SIGALRM,  c_handler);
+    h_abrt = signal(SIGABRT, c_handler);
+    h_term = signal(SIGTERM, c_handler);
+    h_int = signal(SIGINT,  c_handler);
+    try {
+      result = sdd_manager_count((struct sdd_manager_t const *)arg1);
+    } catch(SIGINT) {
+      SWIG_exception(SWIG_SystemError, "Process interrupted");
+    } catch(SIGTERM) {
+      SWIG_exception(SWIG_SystemError, "Process terminated");
+    } catch(SIGABRT) {
+      SWIG_exception(SWIG_SystemError, "Process aborted");
+    } catch(SIGALRM) {
+      SWIG_exception(SWIG_SystemError, "Process timeout");
+    }
+    signal(SIGTERM, h_term);
+    signal(SIGINT,  h_int);
+    signal(SIGABRT, h_abrt);
+    signal(SIGALRM, h_alrm);
+    
+  }
   resultobj = SWIG_From_size_t((size_t)(result));
   return resultobj;
 fail:
@@ -5232,7 +7198,39 @@ SWIGINTERN PyObject *_wrap_sdd_manager_live_count(PyObject *SWIGUNUSEDPARM(self)
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "sdd_manager_live_count" "', argument " "1"" of type '" "SddManager const *""'"); 
   }
   arg1 = (SddManager *)(argp1);
-  result = sdd_manager_live_count((struct sdd_manager_t const *)arg1);
+  {
+    //
+    //    signal(SIGFPE,  handler);
+    //    signal(SIGILL,  handler);
+    
+    // signal(SIGSEGV, handler);
+    
+    
+    void (*h_alrm)(int);
+    void (*h_abrt)(int);
+    void (*h_term)(int);
+    void (*h_int)(int);
+    h_alrm = signal(SIGALRM,  c_handler);
+    h_abrt = signal(SIGABRT, c_handler);
+    h_term = signal(SIGTERM, c_handler);
+    h_int = signal(SIGINT,  c_handler);
+    try {
+      result = sdd_manager_live_count((struct sdd_manager_t const *)arg1);
+    } catch(SIGINT) {
+      SWIG_exception(SWIG_SystemError, "Process interrupted");
+    } catch(SIGTERM) {
+      SWIG_exception(SWIG_SystemError, "Process terminated");
+    } catch(SIGABRT) {
+      SWIG_exception(SWIG_SystemError, "Process aborted");
+    } catch(SIGALRM) {
+      SWIG_exception(SWIG_SystemError, "Process timeout");
+    }
+    signal(SIGTERM, h_term);
+    signal(SIGINT,  h_int);
+    signal(SIGABRT, h_abrt);
+    signal(SIGALRM, h_alrm);
+    
+  }
   resultobj = SWIG_From_size_t((size_t)(result));
   return resultobj;
 fail:
@@ -5254,7 +7252,39 @@ SWIGINTERN PyObject *_wrap_sdd_manager_dead_count(PyObject *SWIGUNUSEDPARM(self)
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "sdd_manager_dead_count" "', argument " "1"" of type '" "SddManager const *""'"); 
   }
   arg1 = (SddManager *)(argp1);
-  result = sdd_manager_dead_count((struct sdd_manager_t const *)arg1);
+  {
+    //
+    //    signal(SIGFPE,  handler);
+    //    signal(SIGILL,  handler);
+    
+    // signal(SIGSEGV, handler);
+    
+    
+    void (*h_alrm)(int);
+    void (*h_abrt)(int);
+    void (*h_term)(int);
+    void (*h_int)(int);
+    h_alrm = signal(SIGALRM,  c_handler);
+    h_abrt = signal(SIGABRT, c_handler);
+    h_term = signal(SIGTERM, c_handler);
+    h_int = signal(SIGINT,  c_handler);
+    try {
+      result = sdd_manager_dead_count((struct sdd_manager_t const *)arg1);
+    } catch(SIGINT) {
+      SWIG_exception(SWIG_SystemError, "Process interrupted");
+    } catch(SIGTERM) {
+      SWIG_exception(SWIG_SystemError, "Process terminated");
+    } catch(SIGABRT) {
+      SWIG_exception(SWIG_SystemError, "Process aborted");
+    } catch(SIGALRM) {
+      SWIG_exception(SWIG_SystemError, "Process timeout");
+    }
+    signal(SIGTERM, h_term);
+    signal(SIGINT,  h_int);
+    signal(SIGABRT, h_abrt);
+    signal(SIGALRM, h_alrm);
+    
+  }
   resultobj = SWIG_From_size_t((size_t)(result));
   return resultobj;
 fail:
@@ -5276,7 +7306,39 @@ SWIGINTERN PyObject *_wrap_sdd_vtree_size(PyObject *SWIGUNUSEDPARM(self), PyObje
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "sdd_vtree_size" "', argument " "1"" of type '" "Vtree const *""'"); 
   }
   arg1 = (Vtree *)(argp1);
-  result = sdd_vtree_size((struct vtree_t const *)arg1);
+  {
+    //
+    //    signal(SIGFPE,  handler);
+    //    signal(SIGILL,  handler);
+    
+    // signal(SIGSEGV, handler);
+    
+    
+    void (*h_alrm)(int);
+    void (*h_abrt)(int);
+    void (*h_term)(int);
+    void (*h_int)(int);
+    h_alrm = signal(SIGALRM,  c_handler);
+    h_abrt = signal(SIGABRT, c_handler);
+    h_term = signal(SIGTERM, c_handler);
+    h_int = signal(SIGINT,  c_handler);
+    try {
+      result = sdd_vtree_size((struct vtree_t const *)arg1);
+    } catch(SIGINT) {
+      SWIG_exception(SWIG_SystemError, "Process interrupted");
+    } catch(SIGTERM) {
+      SWIG_exception(SWIG_SystemError, "Process terminated");
+    } catch(SIGABRT) {
+      SWIG_exception(SWIG_SystemError, "Process aborted");
+    } catch(SIGALRM) {
+      SWIG_exception(SWIG_SystemError, "Process timeout");
+    }
+    signal(SIGTERM, h_term);
+    signal(SIGINT,  h_int);
+    signal(SIGABRT, h_abrt);
+    signal(SIGALRM, h_alrm);
+    
+  }
   resultobj = SWIG_From_size_t((size_t)(result));
   return resultobj;
 fail:
@@ -5298,7 +7360,39 @@ SWIGINTERN PyObject *_wrap_sdd_vtree_live_size(PyObject *SWIGUNUSEDPARM(self), P
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "sdd_vtree_live_size" "', argument " "1"" of type '" "Vtree const *""'"); 
   }
   arg1 = (Vtree *)(argp1);
-  result = sdd_vtree_live_size((struct vtree_t const *)arg1);
+  {
+    //
+    //    signal(SIGFPE,  handler);
+    //    signal(SIGILL,  handler);
+    
+    // signal(SIGSEGV, handler);
+    
+    
+    void (*h_alrm)(int);
+    void (*h_abrt)(int);
+    void (*h_term)(int);
+    void (*h_int)(int);
+    h_alrm = signal(SIGALRM,  c_handler);
+    h_abrt = signal(SIGABRT, c_handler);
+    h_term = signal(SIGTERM, c_handler);
+    h_int = signal(SIGINT,  c_handler);
+    try {
+      result = sdd_vtree_live_size((struct vtree_t const *)arg1);
+    } catch(SIGINT) {
+      SWIG_exception(SWIG_SystemError, "Process interrupted");
+    } catch(SIGTERM) {
+      SWIG_exception(SWIG_SystemError, "Process terminated");
+    } catch(SIGABRT) {
+      SWIG_exception(SWIG_SystemError, "Process aborted");
+    } catch(SIGALRM) {
+      SWIG_exception(SWIG_SystemError, "Process timeout");
+    }
+    signal(SIGTERM, h_term);
+    signal(SIGINT,  h_int);
+    signal(SIGABRT, h_abrt);
+    signal(SIGALRM, h_alrm);
+    
+  }
   resultobj = SWIG_From_size_t((size_t)(result));
   return resultobj;
 fail:
@@ -5320,7 +7414,39 @@ SWIGINTERN PyObject *_wrap_sdd_vtree_dead_size(PyObject *SWIGUNUSEDPARM(self), P
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "sdd_vtree_dead_size" "', argument " "1"" of type '" "Vtree const *""'"); 
   }
   arg1 = (Vtree *)(argp1);
-  result = sdd_vtree_dead_size((struct vtree_t const *)arg1);
+  {
+    //
+    //    signal(SIGFPE,  handler);
+    //    signal(SIGILL,  handler);
+    
+    // signal(SIGSEGV, handler);
+    
+    
+    void (*h_alrm)(int);
+    void (*h_abrt)(int);
+    void (*h_term)(int);
+    void (*h_int)(int);
+    h_alrm = signal(SIGALRM,  c_handler);
+    h_abrt = signal(SIGABRT, c_handler);
+    h_term = signal(SIGTERM, c_handler);
+    h_int = signal(SIGINT,  c_handler);
+    try {
+      result = sdd_vtree_dead_size((struct vtree_t const *)arg1);
+    } catch(SIGINT) {
+      SWIG_exception(SWIG_SystemError, "Process interrupted");
+    } catch(SIGTERM) {
+      SWIG_exception(SWIG_SystemError, "Process terminated");
+    } catch(SIGABRT) {
+      SWIG_exception(SWIG_SystemError, "Process aborted");
+    } catch(SIGALRM) {
+      SWIG_exception(SWIG_SystemError, "Process timeout");
+    }
+    signal(SIGTERM, h_term);
+    signal(SIGINT,  h_int);
+    signal(SIGABRT, h_abrt);
+    signal(SIGALRM, h_alrm);
+    
+  }
   resultobj = SWIG_From_size_t((size_t)(result));
   return resultobj;
 fail:
@@ -5342,7 +7468,39 @@ SWIGINTERN PyObject *_wrap_sdd_vtree_count(PyObject *SWIGUNUSEDPARM(self), PyObj
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "sdd_vtree_count" "', argument " "1"" of type '" "Vtree const *""'"); 
   }
   arg1 = (Vtree *)(argp1);
-  result = sdd_vtree_count((struct vtree_t const *)arg1);
+  {
+    //
+    //    signal(SIGFPE,  handler);
+    //    signal(SIGILL,  handler);
+    
+    // signal(SIGSEGV, handler);
+    
+    
+    void (*h_alrm)(int);
+    void (*h_abrt)(int);
+    void (*h_term)(int);
+    void (*h_int)(int);
+    h_alrm = signal(SIGALRM,  c_handler);
+    h_abrt = signal(SIGABRT, c_handler);
+    h_term = signal(SIGTERM, c_handler);
+    h_int = signal(SIGINT,  c_handler);
+    try {
+      result = sdd_vtree_count((struct vtree_t const *)arg1);
+    } catch(SIGINT) {
+      SWIG_exception(SWIG_SystemError, "Process interrupted");
+    } catch(SIGTERM) {
+      SWIG_exception(SWIG_SystemError, "Process terminated");
+    } catch(SIGABRT) {
+      SWIG_exception(SWIG_SystemError, "Process aborted");
+    } catch(SIGALRM) {
+      SWIG_exception(SWIG_SystemError, "Process timeout");
+    }
+    signal(SIGTERM, h_term);
+    signal(SIGINT,  h_int);
+    signal(SIGABRT, h_abrt);
+    signal(SIGALRM, h_alrm);
+    
+  }
   resultobj = SWIG_From_size_t((size_t)(result));
   return resultobj;
 fail:
@@ -5364,7 +7522,39 @@ SWIGINTERN PyObject *_wrap_sdd_vtree_live_count(PyObject *SWIGUNUSEDPARM(self), 
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "sdd_vtree_live_count" "', argument " "1"" of type '" "Vtree const *""'"); 
   }
   arg1 = (Vtree *)(argp1);
-  result = sdd_vtree_live_count((struct vtree_t const *)arg1);
+  {
+    //
+    //    signal(SIGFPE,  handler);
+    //    signal(SIGILL,  handler);
+    
+    // signal(SIGSEGV, handler);
+    
+    
+    void (*h_alrm)(int);
+    void (*h_abrt)(int);
+    void (*h_term)(int);
+    void (*h_int)(int);
+    h_alrm = signal(SIGALRM,  c_handler);
+    h_abrt = signal(SIGABRT, c_handler);
+    h_term = signal(SIGTERM, c_handler);
+    h_int = signal(SIGINT,  c_handler);
+    try {
+      result = sdd_vtree_live_count((struct vtree_t const *)arg1);
+    } catch(SIGINT) {
+      SWIG_exception(SWIG_SystemError, "Process interrupted");
+    } catch(SIGTERM) {
+      SWIG_exception(SWIG_SystemError, "Process terminated");
+    } catch(SIGABRT) {
+      SWIG_exception(SWIG_SystemError, "Process aborted");
+    } catch(SIGALRM) {
+      SWIG_exception(SWIG_SystemError, "Process timeout");
+    }
+    signal(SIGTERM, h_term);
+    signal(SIGINT,  h_int);
+    signal(SIGABRT, h_abrt);
+    signal(SIGALRM, h_alrm);
+    
+  }
   resultobj = SWIG_From_size_t((size_t)(result));
   return resultobj;
 fail:
@@ -5386,7 +7576,39 @@ SWIGINTERN PyObject *_wrap_sdd_vtree_dead_count(PyObject *SWIGUNUSEDPARM(self), 
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "sdd_vtree_dead_count" "', argument " "1"" of type '" "Vtree const *""'"); 
   }
   arg1 = (Vtree *)(argp1);
-  result = sdd_vtree_dead_count((struct vtree_t const *)arg1);
+  {
+    //
+    //    signal(SIGFPE,  handler);
+    //    signal(SIGILL,  handler);
+    
+    // signal(SIGSEGV, handler);
+    
+    
+    void (*h_alrm)(int);
+    void (*h_abrt)(int);
+    void (*h_term)(int);
+    void (*h_int)(int);
+    h_alrm = signal(SIGALRM,  c_handler);
+    h_abrt = signal(SIGABRT, c_handler);
+    h_term = signal(SIGTERM, c_handler);
+    h_int = signal(SIGINT,  c_handler);
+    try {
+      result = sdd_vtree_dead_count((struct vtree_t const *)arg1);
+    } catch(SIGINT) {
+      SWIG_exception(SWIG_SystemError, "Process interrupted");
+    } catch(SIGTERM) {
+      SWIG_exception(SWIG_SystemError, "Process terminated");
+    } catch(SIGABRT) {
+      SWIG_exception(SWIG_SystemError, "Process aborted");
+    } catch(SIGALRM) {
+      SWIG_exception(SWIG_SystemError, "Process timeout");
+    }
+    signal(SIGTERM, h_term);
+    signal(SIGINT,  h_int);
+    signal(SIGABRT, h_abrt);
+    signal(SIGALRM, h_alrm);
+    
+  }
   resultobj = SWIG_From_size_t((size_t)(result));
   return resultobj;
 fail:
@@ -5408,7 +7630,39 @@ SWIGINTERN PyObject *_wrap_sdd_vtree_size_at(PyObject *SWIGUNUSEDPARM(self), PyO
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "sdd_vtree_size_at" "', argument " "1"" of type '" "Vtree const *""'"); 
   }
   arg1 = (Vtree *)(argp1);
-  result = sdd_vtree_size_at((struct vtree_t const *)arg1);
+  {
+    //
+    //    signal(SIGFPE,  handler);
+    //    signal(SIGILL,  handler);
+    
+    // signal(SIGSEGV, handler);
+    
+    
+    void (*h_alrm)(int);
+    void (*h_abrt)(int);
+    void (*h_term)(int);
+    void (*h_int)(int);
+    h_alrm = signal(SIGALRM,  c_handler);
+    h_abrt = signal(SIGABRT, c_handler);
+    h_term = signal(SIGTERM, c_handler);
+    h_int = signal(SIGINT,  c_handler);
+    try {
+      result = sdd_vtree_size_at((struct vtree_t const *)arg1);
+    } catch(SIGINT) {
+      SWIG_exception(SWIG_SystemError, "Process interrupted");
+    } catch(SIGTERM) {
+      SWIG_exception(SWIG_SystemError, "Process terminated");
+    } catch(SIGABRT) {
+      SWIG_exception(SWIG_SystemError, "Process aborted");
+    } catch(SIGALRM) {
+      SWIG_exception(SWIG_SystemError, "Process timeout");
+    }
+    signal(SIGTERM, h_term);
+    signal(SIGINT,  h_int);
+    signal(SIGABRT, h_abrt);
+    signal(SIGALRM, h_alrm);
+    
+  }
   resultobj = SWIG_From_size_t((size_t)(result));
   return resultobj;
 fail:
@@ -5430,7 +7684,39 @@ SWIGINTERN PyObject *_wrap_sdd_vtree_live_size_at(PyObject *SWIGUNUSEDPARM(self)
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "sdd_vtree_live_size_at" "', argument " "1"" of type '" "Vtree const *""'"); 
   }
   arg1 = (Vtree *)(argp1);
-  result = sdd_vtree_live_size_at((struct vtree_t const *)arg1);
+  {
+    //
+    //    signal(SIGFPE,  handler);
+    //    signal(SIGILL,  handler);
+    
+    // signal(SIGSEGV, handler);
+    
+    
+    void (*h_alrm)(int);
+    void (*h_abrt)(int);
+    void (*h_term)(int);
+    void (*h_int)(int);
+    h_alrm = signal(SIGALRM,  c_handler);
+    h_abrt = signal(SIGABRT, c_handler);
+    h_term = signal(SIGTERM, c_handler);
+    h_int = signal(SIGINT,  c_handler);
+    try {
+      result = sdd_vtree_live_size_at((struct vtree_t const *)arg1);
+    } catch(SIGINT) {
+      SWIG_exception(SWIG_SystemError, "Process interrupted");
+    } catch(SIGTERM) {
+      SWIG_exception(SWIG_SystemError, "Process terminated");
+    } catch(SIGABRT) {
+      SWIG_exception(SWIG_SystemError, "Process aborted");
+    } catch(SIGALRM) {
+      SWIG_exception(SWIG_SystemError, "Process timeout");
+    }
+    signal(SIGTERM, h_term);
+    signal(SIGINT,  h_int);
+    signal(SIGABRT, h_abrt);
+    signal(SIGALRM, h_alrm);
+    
+  }
   resultobj = SWIG_From_size_t((size_t)(result));
   return resultobj;
 fail:
@@ -5452,7 +7738,39 @@ SWIGINTERN PyObject *_wrap_sdd_vtree_dead_size_at(PyObject *SWIGUNUSEDPARM(self)
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "sdd_vtree_dead_size_at" "', argument " "1"" of type '" "Vtree const *""'"); 
   }
   arg1 = (Vtree *)(argp1);
-  result = sdd_vtree_dead_size_at((struct vtree_t const *)arg1);
+  {
+    //
+    //    signal(SIGFPE,  handler);
+    //    signal(SIGILL,  handler);
+    
+    // signal(SIGSEGV, handler);
+    
+    
+    void (*h_alrm)(int);
+    void (*h_abrt)(int);
+    void (*h_term)(int);
+    void (*h_int)(int);
+    h_alrm = signal(SIGALRM,  c_handler);
+    h_abrt = signal(SIGABRT, c_handler);
+    h_term = signal(SIGTERM, c_handler);
+    h_int = signal(SIGINT,  c_handler);
+    try {
+      result = sdd_vtree_dead_size_at((struct vtree_t const *)arg1);
+    } catch(SIGINT) {
+      SWIG_exception(SWIG_SystemError, "Process interrupted");
+    } catch(SIGTERM) {
+      SWIG_exception(SWIG_SystemError, "Process terminated");
+    } catch(SIGABRT) {
+      SWIG_exception(SWIG_SystemError, "Process aborted");
+    } catch(SIGALRM) {
+      SWIG_exception(SWIG_SystemError, "Process timeout");
+    }
+    signal(SIGTERM, h_term);
+    signal(SIGINT,  h_int);
+    signal(SIGABRT, h_abrt);
+    signal(SIGALRM, h_alrm);
+    
+  }
   resultobj = SWIG_From_size_t((size_t)(result));
   return resultobj;
 fail:
@@ -5474,7 +7792,39 @@ SWIGINTERN PyObject *_wrap_sdd_vtree_count_at(PyObject *SWIGUNUSEDPARM(self), Py
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "sdd_vtree_count_at" "', argument " "1"" of type '" "Vtree const *""'"); 
   }
   arg1 = (Vtree *)(argp1);
-  result = sdd_vtree_count_at((struct vtree_t const *)arg1);
+  {
+    //
+    //    signal(SIGFPE,  handler);
+    //    signal(SIGILL,  handler);
+    
+    // signal(SIGSEGV, handler);
+    
+    
+    void (*h_alrm)(int);
+    void (*h_abrt)(int);
+    void (*h_term)(int);
+    void (*h_int)(int);
+    h_alrm = signal(SIGALRM,  c_handler);
+    h_abrt = signal(SIGABRT, c_handler);
+    h_term = signal(SIGTERM, c_handler);
+    h_int = signal(SIGINT,  c_handler);
+    try {
+      result = sdd_vtree_count_at((struct vtree_t const *)arg1);
+    } catch(SIGINT) {
+      SWIG_exception(SWIG_SystemError, "Process interrupted");
+    } catch(SIGTERM) {
+      SWIG_exception(SWIG_SystemError, "Process terminated");
+    } catch(SIGABRT) {
+      SWIG_exception(SWIG_SystemError, "Process aborted");
+    } catch(SIGALRM) {
+      SWIG_exception(SWIG_SystemError, "Process timeout");
+    }
+    signal(SIGTERM, h_term);
+    signal(SIGINT,  h_int);
+    signal(SIGABRT, h_abrt);
+    signal(SIGALRM, h_alrm);
+    
+  }
   resultobj = SWIG_From_size_t((size_t)(result));
   return resultobj;
 fail:
@@ -5496,7 +7846,39 @@ SWIGINTERN PyObject *_wrap_sdd_vtree_live_count_at(PyObject *SWIGUNUSEDPARM(self
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "sdd_vtree_live_count_at" "', argument " "1"" of type '" "Vtree const *""'"); 
   }
   arg1 = (Vtree *)(argp1);
-  result = sdd_vtree_live_count_at((struct vtree_t const *)arg1);
+  {
+    //
+    //    signal(SIGFPE,  handler);
+    //    signal(SIGILL,  handler);
+    
+    // signal(SIGSEGV, handler);
+    
+    
+    void (*h_alrm)(int);
+    void (*h_abrt)(int);
+    void (*h_term)(int);
+    void (*h_int)(int);
+    h_alrm = signal(SIGALRM,  c_handler);
+    h_abrt = signal(SIGABRT, c_handler);
+    h_term = signal(SIGTERM, c_handler);
+    h_int = signal(SIGINT,  c_handler);
+    try {
+      result = sdd_vtree_live_count_at((struct vtree_t const *)arg1);
+    } catch(SIGINT) {
+      SWIG_exception(SWIG_SystemError, "Process interrupted");
+    } catch(SIGTERM) {
+      SWIG_exception(SWIG_SystemError, "Process terminated");
+    } catch(SIGABRT) {
+      SWIG_exception(SWIG_SystemError, "Process aborted");
+    } catch(SIGALRM) {
+      SWIG_exception(SWIG_SystemError, "Process timeout");
+    }
+    signal(SIGTERM, h_term);
+    signal(SIGINT,  h_int);
+    signal(SIGABRT, h_abrt);
+    signal(SIGALRM, h_alrm);
+    
+  }
   resultobj = SWIG_From_size_t((size_t)(result));
   return resultobj;
 fail:
@@ -5518,7 +7900,39 @@ SWIGINTERN PyObject *_wrap_sdd_vtree_dead_count_at(PyObject *SWIGUNUSEDPARM(self
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "sdd_vtree_dead_count_at" "', argument " "1"" of type '" "Vtree const *""'"); 
   }
   arg1 = (Vtree *)(argp1);
-  result = sdd_vtree_dead_count_at((struct vtree_t const *)arg1);
+  {
+    //
+    //    signal(SIGFPE,  handler);
+    //    signal(SIGILL,  handler);
+    
+    // signal(SIGSEGV, handler);
+    
+    
+    void (*h_alrm)(int);
+    void (*h_abrt)(int);
+    void (*h_term)(int);
+    void (*h_int)(int);
+    h_alrm = signal(SIGALRM,  c_handler);
+    h_abrt = signal(SIGABRT, c_handler);
+    h_term = signal(SIGTERM, c_handler);
+    h_int = signal(SIGINT,  c_handler);
+    try {
+      result = sdd_vtree_dead_count_at((struct vtree_t const *)arg1);
+    } catch(SIGINT) {
+      SWIG_exception(SWIG_SystemError, "Process interrupted");
+    } catch(SIGTERM) {
+      SWIG_exception(SWIG_SystemError, "Process terminated");
+    } catch(SIGABRT) {
+      SWIG_exception(SWIG_SystemError, "Process aborted");
+    } catch(SIGALRM) {
+      SWIG_exception(SWIG_SystemError, "Process timeout");
+    }
+    signal(SIGTERM, h_term);
+    signal(SIGINT,  h_int);
+    signal(SIGABRT, h_abrt);
+    signal(SIGALRM, h_alrm);
+    
+  }
   resultobj = SWIG_From_size_t((size_t)(result));
   return resultobj;
 fail:
@@ -5550,7 +7964,39 @@ SWIGINTERN PyObject *_wrap_sdd_vtree_new(PyObject *SWIGUNUSEDPARM(self), PyObjec
     SWIG_exception_fail(SWIG_ArgError(res2), "in method '" "sdd_vtree_new" "', argument " "2"" of type '" "char const *""'");
   }
   arg2 = (char *)(buf2);
-  result = (Vtree *)sdd_vtree_new(arg1,(char const *)arg2);
+  {
+    //
+    //    signal(SIGFPE,  handler);
+    //    signal(SIGILL,  handler);
+    
+    // signal(SIGSEGV, handler);
+    
+    
+    void (*h_alrm)(int);
+    void (*h_abrt)(int);
+    void (*h_term)(int);
+    void (*h_int)(int);
+    h_alrm = signal(SIGALRM,  c_handler);
+    h_abrt = signal(SIGABRT, c_handler);
+    h_term = signal(SIGTERM, c_handler);
+    h_int = signal(SIGINT,  c_handler);
+    try {
+      result = (Vtree *)sdd_vtree_new(arg1,(char const *)arg2);
+    } catch(SIGINT) {
+      SWIG_exception(SWIG_SystemError, "Process interrupted");
+    } catch(SIGTERM) {
+      SWIG_exception(SWIG_SystemError, "Process terminated");
+    } catch(SIGABRT) {
+      SWIG_exception(SWIG_SystemError, "Process aborted");
+    } catch(SIGALRM) {
+      SWIG_exception(SWIG_SystemError, "Process timeout");
+    }
+    signal(SIGTERM, h_term);
+    signal(SIGINT,  h_int);
+    signal(SIGABRT, h_abrt);
+    signal(SIGALRM, h_alrm);
+    
+  }
   resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_vtree_t, 0 |  0 );
   if (alloc2 == SWIG_NEWOBJ) free((char*)buf2);
   return resultobj;
@@ -5593,7 +8039,39 @@ SWIGINTERN PyObject *_wrap_sdd_vtree_new_with_var_order(PyObject *SWIGUNUSEDPARM
     SWIG_exception_fail(SWIG_ArgError(res3), "in method '" "sdd_vtree_new_with_var_order" "', argument " "3"" of type '" "char const *""'");
   }
   arg3 = (char *)(buf3);
-  result = (Vtree *)sdd_vtree_new_with_var_order(arg1,arg2,(char const *)arg3);
+  {
+    //
+    //    signal(SIGFPE,  handler);
+    //    signal(SIGILL,  handler);
+    
+    // signal(SIGSEGV, handler);
+    
+    
+    void (*h_alrm)(int);
+    void (*h_abrt)(int);
+    void (*h_term)(int);
+    void (*h_int)(int);
+    h_alrm = signal(SIGALRM,  c_handler);
+    h_abrt = signal(SIGABRT, c_handler);
+    h_term = signal(SIGTERM, c_handler);
+    h_int = signal(SIGINT,  c_handler);
+    try {
+      result = (Vtree *)sdd_vtree_new_with_var_order(arg1,arg2,(char const *)arg3);
+    } catch(SIGINT) {
+      SWIG_exception(SWIG_SystemError, "Process interrupted");
+    } catch(SIGTERM) {
+      SWIG_exception(SWIG_SystemError, "Process terminated");
+    } catch(SIGABRT) {
+      SWIG_exception(SWIG_SystemError, "Process aborted");
+    } catch(SIGALRM) {
+      SWIG_exception(SWIG_SystemError, "Process timeout");
+    }
+    signal(SIGTERM, h_term);
+    signal(SIGINT,  h_int);
+    signal(SIGABRT, h_abrt);
+    signal(SIGALRM, h_alrm);
+    
+  }
   resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_vtree_t, 0 |  0 );
   if (alloc3 == SWIG_NEWOBJ) free((char*)buf3);
   return resultobj;
@@ -5616,7 +8094,39 @@ SWIGINTERN PyObject *_wrap_sdd_vtree_free(PyObject *SWIGUNUSEDPARM(self), PyObje
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "sdd_vtree_free" "', argument " "1"" of type '" "Vtree *""'"); 
   }
   arg1 = (Vtree *)(argp1);
-  sdd_vtree_free(arg1);
+  {
+    //
+    //    signal(SIGFPE,  handler);
+    //    signal(SIGILL,  handler);
+    
+    // signal(SIGSEGV, handler);
+    
+    
+    void (*h_alrm)(int);
+    void (*h_abrt)(int);
+    void (*h_term)(int);
+    void (*h_int)(int);
+    h_alrm = signal(SIGALRM,  c_handler);
+    h_abrt = signal(SIGABRT, c_handler);
+    h_term = signal(SIGTERM, c_handler);
+    h_int = signal(SIGINT,  c_handler);
+    try {
+      sdd_vtree_free(arg1);
+    } catch(SIGINT) {
+      SWIG_exception(SWIG_SystemError, "Process interrupted");
+    } catch(SIGTERM) {
+      SWIG_exception(SWIG_SystemError, "Process terminated");
+    } catch(SIGABRT) {
+      SWIG_exception(SWIG_SystemError, "Process aborted");
+    } catch(SIGALRM) {
+      SWIG_exception(SWIG_SystemError, "Process timeout");
+    }
+    signal(SIGTERM, h_term);
+    signal(SIGINT,  h_int);
+    signal(SIGABRT, h_abrt);
+    signal(SIGALRM, h_alrm);
+    
+  }
   resultobj = SWIG_Py_Void();
   return resultobj;
 fail:
@@ -5647,7 +8157,39 @@ SWIGINTERN PyObject *_wrap_sdd_vtree_save(PyObject *SWIGUNUSEDPARM(self), PyObje
     SWIG_exception_fail(SWIG_ArgError(res2), "in method '" "sdd_vtree_save" "', argument " "2"" of type '" "Vtree *""'"); 
   }
   arg2 = (Vtree *)(argp2);
-  sdd_vtree_save((char const *)arg1,arg2);
+  {
+    //
+    //    signal(SIGFPE,  handler);
+    //    signal(SIGILL,  handler);
+    
+    // signal(SIGSEGV, handler);
+    
+    
+    void (*h_alrm)(int);
+    void (*h_abrt)(int);
+    void (*h_term)(int);
+    void (*h_int)(int);
+    h_alrm = signal(SIGALRM,  c_handler);
+    h_abrt = signal(SIGABRT, c_handler);
+    h_term = signal(SIGTERM, c_handler);
+    h_int = signal(SIGINT,  c_handler);
+    try {
+      sdd_vtree_save((char const *)arg1,arg2);
+    } catch(SIGINT) {
+      SWIG_exception(SWIG_SystemError, "Process interrupted");
+    } catch(SIGTERM) {
+      SWIG_exception(SWIG_SystemError, "Process terminated");
+    } catch(SIGABRT) {
+      SWIG_exception(SWIG_SystemError, "Process aborted");
+    } catch(SIGALRM) {
+      SWIG_exception(SWIG_SystemError, "Process timeout");
+    }
+    signal(SIGTERM, h_term);
+    signal(SIGINT,  h_int);
+    signal(SIGABRT, h_abrt);
+    signal(SIGALRM, h_alrm);
+    
+  }
   resultobj = SWIG_Py_Void();
   if (alloc1 == SWIG_NEWOBJ) free((char*)buf1);
   return resultobj;
@@ -5672,7 +8214,39 @@ SWIGINTERN PyObject *_wrap_sdd_vtree_read(PyObject *SWIGUNUSEDPARM(self), PyObje
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "sdd_vtree_read" "', argument " "1"" of type '" "char const *""'");
   }
   arg1 = (char *)(buf1);
-  result = (Vtree *)sdd_vtree_read((char const *)arg1);
+  {
+    //
+    //    signal(SIGFPE,  handler);
+    //    signal(SIGILL,  handler);
+    
+    // signal(SIGSEGV, handler);
+    
+    
+    void (*h_alrm)(int);
+    void (*h_abrt)(int);
+    void (*h_term)(int);
+    void (*h_int)(int);
+    h_alrm = signal(SIGALRM,  c_handler);
+    h_abrt = signal(SIGABRT, c_handler);
+    h_term = signal(SIGTERM, c_handler);
+    h_int = signal(SIGINT,  c_handler);
+    try {
+      result = (Vtree *)sdd_vtree_read((char const *)arg1);
+    } catch(SIGINT) {
+      SWIG_exception(SWIG_SystemError, "Process interrupted");
+    } catch(SIGTERM) {
+      SWIG_exception(SWIG_SystemError, "Process terminated");
+    } catch(SIGABRT) {
+      SWIG_exception(SWIG_SystemError, "Process aborted");
+    } catch(SIGALRM) {
+      SWIG_exception(SWIG_SystemError, "Process timeout");
+    }
+    signal(SIGTERM, h_term);
+    signal(SIGINT,  h_int);
+    signal(SIGABRT, h_abrt);
+    signal(SIGALRM, h_alrm);
+    
+  }
   resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_vtree_t, 0 |  0 );
   if (alloc1 == SWIG_NEWOBJ) free((char*)buf1);
   return resultobj;
@@ -5705,7 +8279,39 @@ SWIGINTERN PyObject *_wrap_sdd_vtree_save_as_dot(PyObject *SWIGUNUSEDPARM(self),
     SWIG_exception_fail(SWIG_ArgError(res2), "in method '" "sdd_vtree_save_as_dot" "', argument " "2"" of type '" "Vtree *""'"); 
   }
   arg2 = (Vtree *)(argp2);
-  sdd_vtree_save_as_dot((char const *)arg1,arg2);
+  {
+    //
+    //    signal(SIGFPE,  handler);
+    //    signal(SIGILL,  handler);
+    
+    // signal(SIGSEGV, handler);
+    
+    
+    void (*h_alrm)(int);
+    void (*h_abrt)(int);
+    void (*h_term)(int);
+    void (*h_int)(int);
+    h_alrm = signal(SIGALRM,  c_handler);
+    h_abrt = signal(SIGABRT, c_handler);
+    h_term = signal(SIGTERM, c_handler);
+    h_int = signal(SIGINT,  c_handler);
+    try {
+      sdd_vtree_save_as_dot((char const *)arg1,arg2);
+    } catch(SIGINT) {
+      SWIG_exception(SWIG_SystemError, "Process interrupted");
+    } catch(SIGTERM) {
+      SWIG_exception(SWIG_SystemError, "Process terminated");
+    } catch(SIGABRT) {
+      SWIG_exception(SWIG_SystemError, "Process aborted");
+    } catch(SIGALRM) {
+      SWIG_exception(SWIG_SystemError, "Process timeout");
+    }
+    signal(SIGTERM, h_term);
+    signal(SIGINT,  h_int);
+    signal(SIGABRT, h_abrt);
+    signal(SIGALRM, h_alrm);
+    
+  }
   resultobj = SWIG_Py_Void();
   if (alloc1 == SWIG_NEWOBJ) free((char*)buf1);
   return resultobj;
@@ -5729,7 +8335,39 @@ SWIGINTERN PyObject *_wrap_sdd_manager_vtree(PyObject *SWIGUNUSEDPARM(self), PyO
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "sdd_manager_vtree" "', argument " "1"" of type '" "SddManager const *""'"); 
   }
   arg1 = (SddManager *)(argp1);
-  result = (Vtree *)sdd_manager_vtree((struct sdd_manager_t const *)arg1);
+  {
+    //
+    //    signal(SIGFPE,  handler);
+    //    signal(SIGILL,  handler);
+    
+    // signal(SIGSEGV, handler);
+    
+    
+    void (*h_alrm)(int);
+    void (*h_abrt)(int);
+    void (*h_term)(int);
+    void (*h_int)(int);
+    h_alrm = signal(SIGALRM,  c_handler);
+    h_abrt = signal(SIGABRT, c_handler);
+    h_term = signal(SIGTERM, c_handler);
+    h_int = signal(SIGINT,  c_handler);
+    try {
+      result = (Vtree *)sdd_manager_vtree((struct sdd_manager_t const *)arg1);
+    } catch(SIGINT) {
+      SWIG_exception(SWIG_SystemError, "Process interrupted");
+    } catch(SIGTERM) {
+      SWIG_exception(SWIG_SystemError, "Process terminated");
+    } catch(SIGABRT) {
+      SWIG_exception(SWIG_SystemError, "Process aborted");
+    } catch(SIGALRM) {
+      SWIG_exception(SWIG_SystemError, "Process timeout");
+    }
+    signal(SIGTERM, h_term);
+    signal(SIGINT,  h_int);
+    signal(SIGABRT, h_abrt);
+    signal(SIGALRM, h_alrm);
+    
+  }
   resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_vtree_t, 0 |  0 );
   return resultobj;
 fail:
@@ -5751,7 +8389,39 @@ SWIGINTERN PyObject *_wrap_sdd_manager_vtree_copy(PyObject *SWIGUNUSEDPARM(self)
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "sdd_manager_vtree_copy" "', argument " "1"" of type '" "SddManager const *""'"); 
   }
   arg1 = (SddManager *)(argp1);
-  result = (Vtree *)sdd_manager_vtree_copy((struct sdd_manager_t const *)arg1);
+  {
+    //
+    //    signal(SIGFPE,  handler);
+    //    signal(SIGILL,  handler);
+    
+    // signal(SIGSEGV, handler);
+    
+    
+    void (*h_alrm)(int);
+    void (*h_abrt)(int);
+    void (*h_term)(int);
+    void (*h_int)(int);
+    h_alrm = signal(SIGALRM,  c_handler);
+    h_abrt = signal(SIGABRT, c_handler);
+    h_term = signal(SIGTERM, c_handler);
+    h_int = signal(SIGINT,  c_handler);
+    try {
+      result = (Vtree *)sdd_manager_vtree_copy((struct sdd_manager_t const *)arg1);
+    } catch(SIGINT) {
+      SWIG_exception(SWIG_SystemError, "Process interrupted");
+    } catch(SIGTERM) {
+      SWIG_exception(SWIG_SystemError, "Process terminated");
+    } catch(SIGABRT) {
+      SWIG_exception(SWIG_SystemError, "Process aborted");
+    } catch(SIGALRM) {
+      SWIG_exception(SWIG_SystemError, "Process timeout");
+    }
+    signal(SIGTERM, h_term);
+    signal(SIGINT,  h_int);
+    signal(SIGABRT, h_abrt);
+    signal(SIGALRM, h_alrm);
+    
+  }
   resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_vtree_t, 0 |  0 );
   return resultobj;
 fail:
@@ -5773,7 +8443,39 @@ SWIGINTERN PyObject *_wrap_sdd_vtree_left(PyObject *SWIGUNUSEDPARM(self), PyObje
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "sdd_vtree_left" "', argument " "1"" of type '" "Vtree const *""'"); 
   }
   arg1 = (Vtree *)(argp1);
-  result = (Vtree *)sdd_vtree_left((struct vtree_t const *)arg1);
+  {
+    //
+    //    signal(SIGFPE,  handler);
+    //    signal(SIGILL,  handler);
+    
+    // signal(SIGSEGV, handler);
+    
+    
+    void (*h_alrm)(int);
+    void (*h_abrt)(int);
+    void (*h_term)(int);
+    void (*h_int)(int);
+    h_alrm = signal(SIGALRM,  c_handler);
+    h_abrt = signal(SIGABRT, c_handler);
+    h_term = signal(SIGTERM, c_handler);
+    h_int = signal(SIGINT,  c_handler);
+    try {
+      result = (Vtree *)sdd_vtree_left((struct vtree_t const *)arg1);
+    } catch(SIGINT) {
+      SWIG_exception(SWIG_SystemError, "Process interrupted");
+    } catch(SIGTERM) {
+      SWIG_exception(SWIG_SystemError, "Process terminated");
+    } catch(SIGABRT) {
+      SWIG_exception(SWIG_SystemError, "Process aborted");
+    } catch(SIGALRM) {
+      SWIG_exception(SWIG_SystemError, "Process timeout");
+    }
+    signal(SIGTERM, h_term);
+    signal(SIGINT,  h_int);
+    signal(SIGABRT, h_abrt);
+    signal(SIGALRM, h_alrm);
+    
+  }
   resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_vtree_t, 0 |  0 );
   return resultobj;
 fail:
@@ -5795,7 +8497,39 @@ SWIGINTERN PyObject *_wrap_sdd_vtree_right(PyObject *SWIGUNUSEDPARM(self), PyObj
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "sdd_vtree_right" "', argument " "1"" of type '" "Vtree const *""'"); 
   }
   arg1 = (Vtree *)(argp1);
-  result = (Vtree *)sdd_vtree_right((struct vtree_t const *)arg1);
+  {
+    //
+    //    signal(SIGFPE,  handler);
+    //    signal(SIGILL,  handler);
+    
+    // signal(SIGSEGV, handler);
+    
+    
+    void (*h_alrm)(int);
+    void (*h_abrt)(int);
+    void (*h_term)(int);
+    void (*h_int)(int);
+    h_alrm = signal(SIGALRM,  c_handler);
+    h_abrt = signal(SIGABRT, c_handler);
+    h_term = signal(SIGTERM, c_handler);
+    h_int = signal(SIGINT,  c_handler);
+    try {
+      result = (Vtree *)sdd_vtree_right((struct vtree_t const *)arg1);
+    } catch(SIGINT) {
+      SWIG_exception(SWIG_SystemError, "Process interrupted");
+    } catch(SIGTERM) {
+      SWIG_exception(SWIG_SystemError, "Process terminated");
+    } catch(SIGABRT) {
+      SWIG_exception(SWIG_SystemError, "Process aborted");
+    } catch(SIGALRM) {
+      SWIG_exception(SWIG_SystemError, "Process timeout");
+    }
+    signal(SIGTERM, h_term);
+    signal(SIGINT,  h_int);
+    signal(SIGABRT, h_abrt);
+    signal(SIGALRM, h_alrm);
+    
+  }
   resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_vtree_t, 0 |  0 );
   return resultobj;
 fail:
@@ -5817,7 +8551,39 @@ SWIGINTERN PyObject *_wrap_sdd_vtree_parent(PyObject *SWIGUNUSEDPARM(self), PyOb
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "sdd_vtree_parent" "', argument " "1"" of type '" "Vtree const *""'"); 
   }
   arg1 = (Vtree *)(argp1);
-  result = (Vtree *)sdd_vtree_parent((struct vtree_t const *)arg1);
+  {
+    //
+    //    signal(SIGFPE,  handler);
+    //    signal(SIGILL,  handler);
+    
+    // signal(SIGSEGV, handler);
+    
+    
+    void (*h_alrm)(int);
+    void (*h_abrt)(int);
+    void (*h_term)(int);
+    void (*h_int)(int);
+    h_alrm = signal(SIGALRM,  c_handler);
+    h_abrt = signal(SIGABRT, c_handler);
+    h_term = signal(SIGTERM, c_handler);
+    h_int = signal(SIGINT,  c_handler);
+    try {
+      result = (Vtree *)sdd_vtree_parent((struct vtree_t const *)arg1);
+    } catch(SIGINT) {
+      SWIG_exception(SWIG_SystemError, "Process interrupted");
+    } catch(SIGTERM) {
+      SWIG_exception(SWIG_SystemError, "Process terminated");
+    } catch(SIGABRT) {
+      SWIG_exception(SWIG_SystemError, "Process aborted");
+    } catch(SIGALRM) {
+      SWIG_exception(SWIG_SystemError, "Process timeout");
+    }
+    signal(SIGTERM, h_term);
+    signal(SIGINT,  h_int);
+    signal(SIGABRT, h_abrt);
+    signal(SIGALRM, h_alrm);
+    
+  }
   resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_vtree_t, 0 |  0 );
   return resultobj;
 fail:
@@ -5839,7 +8605,39 @@ SWIGINTERN PyObject *_wrap_sdd_vtree_is_leaf(PyObject *SWIGUNUSEDPARM(self), PyO
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "sdd_vtree_is_leaf" "', argument " "1"" of type '" "Vtree const *""'"); 
   }
   arg1 = (Vtree *)(argp1);
-  result = (int)sdd_vtree_is_leaf((struct vtree_t const *)arg1);
+  {
+    //
+    //    signal(SIGFPE,  handler);
+    //    signal(SIGILL,  handler);
+    
+    // signal(SIGSEGV, handler);
+    
+    
+    void (*h_alrm)(int);
+    void (*h_abrt)(int);
+    void (*h_term)(int);
+    void (*h_int)(int);
+    h_alrm = signal(SIGALRM,  c_handler);
+    h_abrt = signal(SIGABRT, c_handler);
+    h_term = signal(SIGTERM, c_handler);
+    h_int = signal(SIGINT,  c_handler);
+    try {
+      result = (int)sdd_vtree_is_leaf((struct vtree_t const *)arg1);
+    } catch(SIGINT) {
+      SWIG_exception(SWIG_SystemError, "Process interrupted");
+    } catch(SIGTERM) {
+      SWIG_exception(SWIG_SystemError, "Process terminated");
+    } catch(SIGABRT) {
+      SWIG_exception(SWIG_SystemError, "Process aborted");
+    } catch(SIGALRM) {
+      SWIG_exception(SWIG_SystemError, "Process timeout");
+    }
+    signal(SIGTERM, h_term);
+    signal(SIGINT,  h_int);
+    signal(SIGABRT, h_abrt);
+    signal(SIGALRM, h_alrm);
+    
+  }
   resultobj = SWIG_From_int((int)(result));
   return resultobj;
 fail:
@@ -5870,7 +8668,39 @@ SWIGINTERN PyObject *_wrap_sdd_vtree_is_sub(PyObject *SWIGUNUSEDPARM(self), PyOb
     SWIG_exception_fail(SWIG_ArgError(res2), "in method '" "sdd_vtree_is_sub" "', argument " "2"" of type '" "Vtree const *""'"); 
   }
   arg2 = (Vtree *)(argp2);
-  result = (int)sdd_vtree_is_sub((struct vtree_t const *)arg1,(struct vtree_t const *)arg2);
+  {
+    //
+    //    signal(SIGFPE,  handler);
+    //    signal(SIGILL,  handler);
+    
+    // signal(SIGSEGV, handler);
+    
+    
+    void (*h_alrm)(int);
+    void (*h_abrt)(int);
+    void (*h_term)(int);
+    void (*h_int)(int);
+    h_alrm = signal(SIGALRM,  c_handler);
+    h_abrt = signal(SIGABRT, c_handler);
+    h_term = signal(SIGTERM, c_handler);
+    h_int = signal(SIGINT,  c_handler);
+    try {
+      result = (int)sdd_vtree_is_sub((struct vtree_t const *)arg1,(struct vtree_t const *)arg2);
+    } catch(SIGINT) {
+      SWIG_exception(SWIG_SystemError, "Process interrupted");
+    } catch(SIGTERM) {
+      SWIG_exception(SWIG_SystemError, "Process terminated");
+    } catch(SIGABRT) {
+      SWIG_exception(SWIG_SystemError, "Process aborted");
+    } catch(SIGALRM) {
+      SWIG_exception(SWIG_SystemError, "Process timeout");
+    }
+    signal(SIGTERM, h_term);
+    signal(SIGINT,  h_int);
+    signal(SIGABRT, h_abrt);
+    signal(SIGALRM, h_alrm);
+    
+  }
   resultobj = SWIG_From_int((int)(result));
   return resultobj;
 fail:
@@ -5910,7 +8740,39 @@ SWIGINTERN PyObject *_wrap_sdd_vtree_lca(PyObject *SWIGUNUSEDPARM(self), PyObjec
     SWIG_exception_fail(SWIG_ArgError(res3), "in method '" "sdd_vtree_lca" "', argument " "3"" of type '" "Vtree *""'"); 
   }
   arg3 = (Vtree *)(argp3);
-  result = (Vtree *)sdd_vtree_lca(arg1,arg2,arg3);
+  {
+    //
+    //    signal(SIGFPE,  handler);
+    //    signal(SIGILL,  handler);
+    
+    // signal(SIGSEGV, handler);
+    
+    
+    void (*h_alrm)(int);
+    void (*h_abrt)(int);
+    void (*h_term)(int);
+    void (*h_int)(int);
+    h_alrm = signal(SIGALRM,  c_handler);
+    h_abrt = signal(SIGABRT, c_handler);
+    h_term = signal(SIGTERM, c_handler);
+    h_int = signal(SIGINT,  c_handler);
+    try {
+      result = (Vtree *)sdd_vtree_lca(arg1,arg2,arg3);
+    } catch(SIGINT) {
+      SWIG_exception(SWIG_SystemError, "Process interrupted");
+    } catch(SIGTERM) {
+      SWIG_exception(SWIG_SystemError, "Process terminated");
+    } catch(SIGABRT) {
+      SWIG_exception(SWIG_SystemError, "Process aborted");
+    } catch(SIGALRM) {
+      SWIG_exception(SWIG_SystemError, "Process timeout");
+    }
+    signal(SIGTERM, h_term);
+    signal(SIGINT,  h_int);
+    signal(SIGABRT, h_abrt);
+    signal(SIGALRM, h_alrm);
+    
+  }
   resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_vtree_t, 0 |  0 );
   return resultobj;
 fail:
@@ -5932,7 +8794,39 @@ SWIGINTERN PyObject *_wrap_sdd_vtree_var_count(PyObject *SWIGUNUSEDPARM(self), P
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "sdd_vtree_var_count" "', argument " "1"" of type '" "Vtree const *""'"); 
   }
   arg1 = (Vtree *)(argp1);
-  result = (SddLiteral)sdd_vtree_var_count((struct vtree_t const *)arg1);
+  {
+    //
+    //    signal(SIGFPE,  handler);
+    //    signal(SIGILL,  handler);
+    
+    // signal(SIGSEGV, handler);
+    
+    
+    void (*h_alrm)(int);
+    void (*h_abrt)(int);
+    void (*h_term)(int);
+    void (*h_int)(int);
+    h_alrm = signal(SIGALRM,  c_handler);
+    h_abrt = signal(SIGABRT, c_handler);
+    h_term = signal(SIGTERM, c_handler);
+    h_int = signal(SIGINT,  c_handler);
+    try {
+      result = (SddLiteral)sdd_vtree_var_count((struct vtree_t const *)arg1);
+    } catch(SIGINT) {
+      SWIG_exception(SWIG_SystemError, "Process interrupted");
+    } catch(SIGTERM) {
+      SWIG_exception(SWIG_SystemError, "Process terminated");
+    } catch(SIGABRT) {
+      SWIG_exception(SWIG_SystemError, "Process aborted");
+    } catch(SIGALRM) {
+      SWIG_exception(SWIG_SystemError, "Process timeout");
+    }
+    signal(SIGTERM, h_term);
+    signal(SIGINT,  h_int);
+    signal(SIGABRT, h_abrt);
+    signal(SIGALRM, h_alrm);
+    
+  }
   resultobj = SWIG_From_long((long)(result));
   return resultobj;
 fail:
@@ -5954,7 +8848,39 @@ SWIGINTERN PyObject *_wrap_sdd_vtree_var(PyObject *SWIGUNUSEDPARM(self), PyObjec
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "sdd_vtree_var" "', argument " "1"" of type '" "Vtree const *""'"); 
   }
   arg1 = (Vtree *)(argp1);
-  result = (SddLiteral)sdd_vtree_var((struct vtree_t const *)arg1);
+  {
+    //
+    //    signal(SIGFPE,  handler);
+    //    signal(SIGILL,  handler);
+    
+    // signal(SIGSEGV, handler);
+    
+    
+    void (*h_alrm)(int);
+    void (*h_abrt)(int);
+    void (*h_term)(int);
+    void (*h_int)(int);
+    h_alrm = signal(SIGALRM,  c_handler);
+    h_abrt = signal(SIGABRT, c_handler);
+    h_term = signal(SIGTERM, c_handler);
+    h_int = signal(SIGINT,  c_handler);
+    try {
+      result = (SddLiteral)sdd_vtree_var((struct vtree_t const *)arg1);
+    } catch(SIGINT) {
+      SWIG_exception(SWIG_SystemError, "Process interrupted");
+    } catch(SIGTERM) {
+      SWIG_exception(SWIG_SystemError, "Process terminated");
+    } catch(SIGABRT) {
+      SWIG_exception(SWIG_SystemError, "Process aborted");
+    } catch(SIGALRM) {
+      SWIG_exception(SWIG_SystemError, "Process timeout");
+    }
+    signal(SIGTERM, h_term);
+    signal(SIGINT,  h_int);
+    signal(SIGABRT, h_abrt);
+    signal(SIGALRM, h_alrm);
+    
+  }
   resultobj = SWIG_From_long((long)(result));
   return resultobj;
 fail:
@@ -5976,7 +8902,39 @@ SWIGINTERN PyObject *_wrap_sdd_vtree_position(PyObject *SWIGUNUSEDPARM(self), Py
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "sdd_vtree_position" "', argument " "1"" of type '" "Vtree const *""'"); 
   }
   arg1 = (Vtree *)(argp1);
-  result = (SddLiteral)sdd_vtree_position((struct vtree_t const *)arg1);
+  {
+    //
+    //    signal(SIGFPE,  handler);
+    //    signal(SIGILL,  handler);
+    
+    // signal(SIGSEGV, handler);
+    
+    
+    void (*h_alrm)(int);
+    void (*h_abrt)(int);
+    void (*h_term)(int);
+    void (*h_int)(int);
+    h_alrm = signal(SIGALRM,  c_handler);
+    h_abrt = signal(SIGABRT, c_handler);
+    h_term = signal(SIGTERM, c_handler);
+    h_int = signal(SIGINT,  c_handler);
+    try {
+      result = (SddLiteral)sdd_vtree_position((struct vtree_t const *)arg1);
+    } catch(SIGINT) {
+      SWIG_exception(SWIG_SystemError, "Process interrupted");
+    } catch(SIGTERM) {
+      SWIG_exception(SWIG_SystemError, "Process terminated");
+    } catch(SIGABRT) {
+      SWIG_exception(SWIG_SystemError, "Process aborted");
+    } catch(SIGALRM) {
+      SWIG_exception(SWIG_SystemError, "Process timeout");
+    }
+    signal(SIGTERM, h_term);
+    signal(SIGINT,  h_int);
+    signal(SIGABRT, h_abrt);
+    signal(SIGALRM, h_alrm);
+    
+  }
   resultobj = SWIG_From_long((long)(result));
   return resultobj;
 fail:
@@ -6007,7 +8965,39 @@ SWIGINTERN PyObject *_wrap_sdd_vtree_location(PyObject *SWIGUNUSEDPARM(self), Py
     SWIG_exception_fail(SWIG_ArgError(res2), "in method '" "sdd_vtree_location" "', argument " "2"" of type '" "SddManager *""'"); 
   }
   arg2 = (SddManager *)(argp2);
-  result = (Vtree **)sdd_vtree_location(arg1,arg2);
+  {
+    //
+    //    signal(SIGFPE,  handler);
+    //    signal(SIGILL,  handler);
+    
+    // signal(SIGSEGV, handler);
+    
+    
+    void (*h_alrm)(int);
+    void (*h_abrt)(int);
+    void (*h_term)(int);
+    void (*h_int)(int);
+    h_alrm = signal(SIGALRM,  c_handler);
+    h_abrt = signal(SIGABRT, c_handler);
+    h_term = signal(SIGTERM, c_handler);
+    h_int = signal(SIGINT,  c_handler);
+    try {
+      result = (Vtree **)sdd_vtree_location(arg1,arg2);
+    } catch(SIGINT) {
+      SWIG_exception(SWIG_SystemError, "Process interrupted");
+    } catch(SIGTERM) {
+      SWIG_exception(SWIG_SystemError, "Process terminated");
+    } catch(SIGABRT) {
+      SWIG_exception(SWIG_SystemError, "Process aborted");
+    } catch(SIGALRM) {
+      SWIG_exception(SWIG_SystemError, "Process timeout");
+    }
+    signal(SIGTERM, h_term);
+    signal(SIGINT,  h_int);
+    signal(SIGABRT, h_abrt);
+    signal(SIGALRM, h_alrm);
+    
+  }
   resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_p_vtree_t, 0 |  0 );
   return resultobj;
 fail:
@@ -6056,7 +9046,39 @@ SWIGINTERN PyObject *_wrap_sdd_vtree_rotate_left(PyObject *SWIGUNUSEDPARM(self),
     SWIG_exception_fail(SWIG_ArgError(ecode4), "in method '" "sdd_vtree_rotate_left" "', argument " "4"" of type '" "float""'");
   } 
   arg4 = (float)(val4);
-  result = (int)sdd_vtree_rotate_left(arg1,arg2,arg3,arg4);
+  {
+    //
+    //    signal(SIGFPE,  handler);
+    //    signal(SIGILL,  handler);
+    
+    // signal(SIGSEGV, handler);
+    
+    
+    void (*h_alrm)(int);
+    void (*h_abrt)(int);
+    void (*h_term)(int);
+    void (*h_int)(int);
+    h_alrm = signal(SIGALRM,  c_handler);
+    h_abrt = signal(SIGABRT, c_handler);
+    h_term = signal(SIGTERM, c_handler);
+    h_int = signal(SIGINT,  c_handler);
+    try {
+      result = (int)sdd_vtree_rotate_left(arg1,arg2,arg3,arg4);
+    } catch(SIGINT) {
+      SWIG_exception(SWIG_SystemError, "Process interrupted");
+    } catch(SIGTERM) {
+      SWIG_exception(SWIG_SystemError, "Process terminated");
+    } catch(SIGABRT) {
+      SWIG_exception(SWIG_SystemError, "Process aborted");
+    } catch(SIGALRM) {
+      SWIG_exception(SWIG_SystemError, "Process timeout");
+    }
+    signal(SIGTERM, h_term);
+    signal(SIGINT,  h_int);
+    signal(SIGABRT, h_abrt);
+    signal(SIGALRM, h_alrm);
+    
+  }
   resultobj = SWIG_From_int((int)(result));
   return resultobj;
 fail:
@@ -6114,7 +9136,39 @@ SWIGINTERN PyObject *_wrap_sdd_vtree_rotate_right(PyObject *SWIGUNUSEDPARM(self)
     SWIG_exception_fail(SWIG_ArgError(ecode5), "in method '" "sdd_vtree_rotate_right" "', argument " "5"" of type '" "int""'");
   } 
   arg5 = (int)(val5);
-  result = (int)sdd_vtree_rotate_right(arg1,arg2,arg3,arg4,arg5);
+  {
+    //
+    //    signal(SIGFPE,  handler);
+    //    signal(SIGILL,  handler);
+    
+    // signal(SIGSEGV, handler);
+    
+    
+    void (*h_alrm)(int);
+    void (*h_abrt)(int);
+    void (*h_term)(int);
+    void (*h_int)(int);
+    h_alrm = signal(SIGALRM,  c_handler);
+    h_abrt = signal(SIGABRT, c_handler);
+    h_term = signal(SIGTERM, c_handler);
+    h_int = signal(SIGINT,  c_handler);
+    try {
+      result = (int)sdd_vtree_rotate_right(arg1,arg2,arg3,arg4,arg5);
+    } catch(SIGINT) {
+      SWIG_exception(SWIG_SystemError, "Process interrupted");
+    } catch(SIGTERM) {
+      SWIG_exception(SWIG_SystemError, "Process terminated");
+    } catch(SIGABRT) {
+      SWIG_exception(SWIG_SystemError, "Process aborted");
+    } catch(SIGALRM) {
+      SWIG_exception(SWIG_SystemError, "Process timeout");
+    }
+    signal(SIGTERM, h_term);
+    signal(SIGINT,  h_int);
+    signal(SIGABRT, h_abrt);
+    signal(SIGALRM, h_alrm);
+    
+  }
   resultobj = SWIG_From_int((int)(result));
   return resultobj;
 fail:
@@ -6172,7 +9226,39 @@ SWIGINTERN PyObject *_wrap_sdd_vtree_swap(PyObject *SWIGUNUSEDPARM(self), PyObje
     SWIG_exception_fail(SWIG_ArgError(ecode5), "in method '" "sdd_vtree_swap" "', argument " "5"" of type '" "int""'");
   } 
   arg5 = (int)(val5);
-  result = (int)sdd_vtree_swap(arg1,arg2,arg3,arg4,arg5);
+  {
+    //
+    //    signal(SIGFPE,  handler);
+    //    signal(SIGILL,  handler);
+    
+    // signal(SIGSEGV, handler);
+    
+    
+    void (*h_alrm)(int);
+    void (*h_abrt)(int);
+    void (*h_term)(int);
+    void (*h_int)(int);
+    h_alrm = signal(SIGALRM,  c_handler);
+    h_abrt = signal(SIGABRT, c_handler);
+    h_term = signal(SIGTERM, c_handler);
+    h_int = signal(SIGINT,  c_handler);
+    try {
+      result = (int)sdd_vtree_swap(arg1,arg2,arg3,arg4,arg5);
+    } catch(SIGINT) {
+      SWIG_exception(SWIG_SystemError, "Process interrupted");
+    } catch(SIGTERM) {
+      SWIG_exception(SWIG_SystemError, "Process terminated");
+    } catch(SIGABRT) {
+      SWIG_exception(SWIG_SystemError, "Process aborted");
+    } catch(SIGALRM) {
+      SWIG_exception(SWIG_SystemError, "Process timeout");
+    }
+    signal(SIGTERM, h_term);
+    signal(SIGINT,  h_int);
+    signal(SIGABRT, h_abrt);
+    signal(SIGALRM, h_alrm);
+    
+  }
   resultobj = SWIG_From_int((int)(result));
   return resultobj;
 fail:
@@ -6202,7 +9288,39 @@ SWIGINTERN PyObject *_wrap_sdd_manager_set_size_limit_context(PyObject *SWIGUNUS
     SWIG_exception_fail(SWIG_ArgError(res2), "in method '" "sdd_manager_set_size_limit_context" "', argument " "2"" of type '" "SddManager *""'"); 
   }
   arg2 = (SddManager *)(argp2);
-  sdd_manager_set_size_limit_context(arg1,arg2);
+  {
+    //
+    //    signal(SIGFPE,  handler);
+    //    signal(SIGILL,  handler);
+    
+    // signal(SIGSEGV, handler);
+    
+    
+    void (*h_alrm)(int);
+    void (*h_abrt)(int);
+    void (*h_term)(int);
+    void (*h_int)(int);
+    h_alrm = signal(SIGALRM,  c_handler);
+    h_abrt = signal(SIGABRT, c_handler);
+    h_term = signal(SIGTERM, c_handler);
+    h_int = signal(SIGINT,  c_handler);
+    try {
+      sdd_manager_set_size_limit_context(arg1,arg2);
+    } catch(SIGINT) {
+      SWIG_exception(SWIG_SystemError, "Process interrupted");
+    } catch(SIGTERM) {
+      SWIG_exception(SWIG_SystemError, "Process terminated");
+    } catch(SIGABRT) {
+      SWIG_exception(SWIG_SystemError, "Process aborted");
+    } catch(SIGALRM) {
+      SWIG_exception(SWIG_SystemError, "Process timeout");
+    }
+    signal(SIGTERM, h_term);
+    signal(SIGINT,  h_int);
+    signal(SIGABRT, h_abrt);
+    signal(SIGALRM, h_alrm);
+    
+  }
   resultobj = SWIG_Py_Void();
   return resultobj;
 fail:
@@ -6223,7 +9341,39 @@ SWIGINTERN PyObject *_wrap_sdd_manager_update_size_limit_context(PyObject *SWIGU
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "sdd_manager_update_size_limit_context" "', argument " "1"" of type '" "SddManager *""'"); 
   }
   arg1 = (SddManager *)(argp1);
-  sdd_manager_update_size_limit_context(arg1);
+  {
+    //
+    //    signal(SIGFPE,  handler);
+    //    signal(SIGILL,  handler);
+    
+    // signal(SIGSEGV, handler);
+    
+    
+    void (*h_alrm)(int);
+    void (*h_abrt)(int);
+    void (*h_term)(int);
+    void (*h_int)(int);
+    h_alrm = signal(SIGALRM,  c_handler);
+    h_abrt = signal(SIGABRT, c_handler);
+    h_term = signal(SIGTERM, c_handler);
+    h_int = signal(SIGINT,  c_handler);
+    try {
+      sdd_manager_update_size_limit_context(arg1);
+    } catch(SIGINT) {
+      SWIG_exception(SWIG_SystemError, "Process interrupted");
+    } catch(SIGTERM) {
+      SWIG_exception(SWIG_SystemError, "Process terminated");
+    } catch(SIGABRT) {
+      SWIG_exception(SWIG_SystemError, "Process aborted");
+    } catch(SIGALRM) {
+      SWIG_exception(SWIG_SystemError, "Process timeout");
+    }
+    signal(SIGTERM, h_term);
+    signal(SIGINT,  h_int);
+    signal(SIGABRT, h_abrt);
+    signal(SIGALRM, h_alrm);
+    
+  }
   resultobj = SWIG_Py_Void();
   return resultobj;
 fail:
@@ -6245,7 +9395,39 @@ SWIGINTERN PyObject *_wrap_sdd_vtree_bit(PyObject *SWIGUNUSEDPARM(self), PyObjec
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "sdd_vtree_bit" "', argument " "1"" of type '" "Vtree const *""'"); 
   }
   arg1 = (Vtree *)(argp1);
-  result = (int)sdd_vtree_bit((struct vtree_t const *)arg1);
+  {
+    //
+    //    signal(SIGFPE,  handler);
+    //    signal(SIGILL,  handler);
+    
+    // signal(SIGSEGV, handler);
+    
+    
+    void (*h_alrm)(int);
+    void (*h_abrt)(int);
+    void (*h_term)(int);
+    void (*h_int)(int);
+    h_alrm = signal(SIGALRM,  c_handler);
+    h_abrt = signal(SIGABRT, c_handler);
+    h_term = signal(SIGTERM, c_handler);
+    h_int = signal(SIGINT,  c_handler);
+    try {
+      result = (int)sdd_vtree_bit((struct vtree_t const *)arg1);
+    } catch(SIGINT) {
+      SWIG_exception(SWIG_SystemError, "Process interrupted");
+    } catch(SIGTERM) {
+      SWIG_exception(SWIG_SystemError, "Process terminated");
+    } catch(SIGABRT) {
+      SWIG_exception(SWIG_SystemError, "Process aborted");
+    } catch(SIGALRM) {
+      SWIG_exception(SWIG_SystemError, "Process timeout");
+    }
+    signal(SIGTERM, h_term);
+    signal(SIGINT,  h_int);
+    signal(SIGABRT, h_abrt);
+    signal(SIGALRM, h_alrm);
+    
+  }
   resultobj = SWIG_From_int((int)(result));
   return resultobj;
 fail:
@@ -6275,7 +9457,39 @@ SWIGINTERN PyObject *_wrap_sdd_vtree_set_bit(PyObject *SWIGUNUSEDPARM(self), PyO
     SWIG_exception_fail(SWIG_ArgError(res2), "in method '" "sdd_vtree_set_bit" "', argument " "2"" of type '" "Vtree *""'"); 
   }
   arg2 = (Vtree *)(argp2);
-  sdd_vtree_set_bit(arg1,arg2);
+  {
+    //
+    //    signal(SIGFPE,  handler);
+    //    signal(SIGILL,  handler);
+    
+    // signal(SIGSEGV, handler);
+    
+    
+    void (*h_alrm)(int);
+    void (*h_abrt)(int);
+    void (*h_term)(int);
+    void (*h_int)(int);
+    h_alrm = signal(SIGALRM,  c_handler);
+    h_abrt = signal(SIGABRT, c_handler);
+    h_term = signal(SIGTERM, c_handler);
+    h_int = signal(SIGINT,  c_handler);
+    try {
+      sdd_vtree_set_bit(arg1,arg2);
+    } catch(SIGINT) {
+      SWIG_exception(SWIG_SystemError, "Process interrupted");
+    } catch(SIGTERM) {
+      SWIG_exception(SWIG_SystemError, "Process terminated");
+    } catch(SIGABRT) {
+      SWIG_exception(SWIG_SystemError, "Process aborted");
+    } catch(SIGALRM) {
+      SWIG_exception(SWIG_SystemError, "Process timeout");
+    }
+    signal(SIGTERM, h_term);
+    signal(SIGINT,  h_int);
+    signal(SIGABRT, h_abrt);
+    signal(SIGALRM, h_alrm);
+    
+  }
   resultobj = SWIG_Py_Void();
   return resultobj;
 fail:
@@ -6297,7 +9511,39 @@ SWIGINTERN PyObject *_wrap_sdd_vtree_data(PyObject *SWIGUNUSEDPARM(self), PyObje
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "sdd_vtree_data" "', argument " "1"" of type '" "Vtree *""'"); 
   }
   arg1 = (Vtree *)(argp1);
-  result = (void *)sdd_vtree_data(arg1);
+  {
+    //
+    //    signal(SIGFPE,  handler);
+    //    signal(SIGILL,  handler);
+    
+    // signal(SIGSEGV, handler);
+    
+    
+    void (*h_alrm)(int);
+    void (*h_abrt)(int);
+    void (*h_term)(int);
+    void (*h_int)(int);
+    h_alrm = signal(SIGALRM,  c_handler);
+    h_abrt = signal(SIGABRT, c_handler);
+    h_term = signal(SIGTERM, c_handler);
+    h_int = signal(SIGINT,  c_handler);
+    try {
+      result = (void *)sdd_vtree_data(arg1);
+    } catch(SIGINT) {
+      SWIG_exception(SWIG_SystemError, "Process interrupted");
+    } catch(SIGTERM) {
+      SWIG_exception(SWIG_SystemError, "Process terminated");
+    } catch(SIGABRT) {
+      SWIG_exception(SWIG_SystemError, "Process aborted");
+    } catch(SIGALRM) {
+      SWIG_exception(SWIG_SystemError, "Process timeout");
+    }
+    signal(SIGTERM, h_term);
+    signal(SIGINT,  h_int);
+    signal(SIGABRT, h_abrt);
+    signal(SIGALRM, h_alrm);
+    
+  }
   resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_void, 0 |  0 );
   return resultobj;
 fail:
@@ -6325,7 +9571,39 @@ SWIGINTERN PyObject *_wrap_sdd_vtree_set_data(PyObject *SWIGUNUSEDPARM(self), Py
     SWIG_exception_fail(SWIG_ArgError(res2), "in method '" "sdd_vtree_set_data" "', argument " "2"" of type '" "Vtree *""'"); 
   }
   arg2 = (Vtree *)(argp2);
-  sdd_vtree_set_data(arg1,arg2);
+  {
+    //
+    //    signal(SIGFPE,  handler);
+    //    signal(SIGILL,  handler);
+    
+    // signal(SIGSEGV, handler);
+    
+    
+    void (*h_alrm)(int);
+    void (*h_abrt)(int);
+    void (*h_term)(int);
+    void (*h_int)(int);
+    h_alrm = signal(SIGALRM,  c_handler);
+    h_abrt = signal(SIGABRT, c_handler);
+    h_term = signal(SIGTERM, c_handler);
+    h_int = signal(SIGINT,  c_handler);
+    try {
+      sdd_vtree_set_data(arg1,arg2);
+    } catch(SIGINT) {
+      SWIG_exception(SWIG_SystemError, "Process interrupted");
+    } catch(SIGTERM) {
+      SWIG_exception(SWIG_SystemError, "Process terminated");
+    } catch(SIGABRT) {
+      SWIG_exception(SWIG_SystemError, "Process aborted");
+    } catch(SIGALRM) {
+      SWIG_exception(SWIG_SystemError, "Process timeout");
+    }
+    signal(SIGTERM, h_term);
+    signal(SIGINT,  h_int);
+    signal(SIGABRT, h_abrt);
+    signal(SIGALRM, h_alrm);
+    
+  }
   resultobj = SWIG_Py_Void();
   return resultobj;
 fail:
@@ -6347,7 +9625,39 @@ SWIGINTERN PyObject *_wrap_sdd_vtree_search_state(PyObject *SWIGUNUSEDPARM(self)
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "sdd_vtree_search_state" "', argument " "1"" of type '" "Vtree const *""'"); 
   }
   arg1 = (Vtree *)(argp1);
-  result = (void *)sdd_vtree_search_state((struct vtree_t const *)arg1);
+  {
+    //
+    //    signal(SIGFPE,  handler);
+    //    signal(SIGILL,  handler);
+    
+    // signal(SIGSEGV, handler);
+    
+    
+    void (*h_alrm)(int);
+    void (*h_abrt)(int);
+    void (*h_term)(int);
+    void (*h_int)(int);
+    h_alrm = signal(SIGALRM,  c_handler);
+    h_abrt = signal(SIGABRT, c_handler);
+    h_term = signal(SIGTERM, c_handler);
+    h_int = signal(SIGINT,  c_handler);
+    try {
+      result = (void *)sdd_vtree_search_state((struct vtree_t const *)arg1);
+    } catch(SIGINT) {
+      SWIG_exception(SWIG_SystemError, "Process interrupted");
+    } catch(SIGTERM) {
+      SWIG_exception(SWIG_SystemError, "Process terminated");
+    } catch(SIGABRT) {
+      SWIG_exception(SWIG_SystemError, "Process aborted");
+    } catch(SIGALRM) {
+      SWIG_exception(SWIG_SystemError, "Process timeout");
+    }
+    signal(SIGTERM, h_term);
+    signal(SIGINT,  h_int);
+    signal(SIGABRT, h_abrt);
+    signal(SIGALRM, h_alrm);
+    
+  }
   resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_void, 0 |  0 );
   return resultobj;
 fail:
@@ -6376,7 +9686,39 @@ SWIGINTERN PyObject *_wrap_sdd_vtree_set_search_state(PyObject *SWIGUNUSEDPARM(s
     SWIG_exception_fail(SWIG_ArgError(res2), "in method '" "sdd_vtree_set_search_state" "', argument " "2"" of type '" "Vtree const *""'"); 
   }
   arg2 = (Vtree *)(argp2);
-  result = (void *)sdd_vtree_set_search_state(arg1,(struct vtree_t const *)arg2);
+  {
+    //
+    //    signal(SIGFPE,  handler);
+    //    signal(SIGILL,  handler);
+    
+    // signal(SIGSEGV, handler);
+    
+    
+    void (*h_alrm)(int);
+    void (*h_abrt)(int);
+    void (*h_term)(int);
+    void (*h_int)(int);
+    h_alrm = signal(SIGALRM,  c_handler);
+    h_abrt = signal(SIGABRT, c_handler);
+    h_term = signal(SIGTERM, c_handler);
+    h_int = signal(SIGINT,  c_handler);
+    try {
+      result = (void *)sdd_vtree_set_search_state(arg1,(struct vtree_t const *)arg2);
+    } catch(SIGINT) {
+      SWIG_exception(SWIG_SystemError, "Process interrupted");
+    } catch(SIGTERM) {
+      SWIG_exception(SWIG_SystemError, "Process terminated");
+    } catch(SIGABRT) {
+      SWIG_exception(SWIG_SystemError, "Process aborted");
+    } catch(SIGALRM) {
+      SWIG_exception(SWIG_SystemError, "Process timeout");
+    }
+    signal(SIGTERM, h_term);
+    signal(SIGINT,  h_int);
+    signal(SIGABRT, h_abrt);
+    signal(SIGALRM, h_alrm);
+    
+  }
   resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_void, 0 |  0 );
   return resultobj;
 fail:
@@ -6398,7 +9740,39 @@ SWIGINTERN PyObject *_wrap_sdd_ref_count(PyObject *SWIGUNUSEDPARM(self), PyObjec
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "sdd_ref_count" "', argument " "1"" of type '" "SddNode *""'"); 
   }
   arg1 = (SddNode *)(argp1);
-  result = (SddRefCount)sdd_ref_count(arg1);
+  {
+    //
+    //    signal(SIGFPE,  handler);
+    //    signal(SIGILL,  handler);
+    
+    // signal(SIGSEGV, handler);
+    
+    
+    void (*h_alrm)(int);
+    void (*h_abrt)(int);
+    void (*h_term)(int);
+    void (*h_int)(int);
+    h_alrm = signal(SIGALRM,  c_handler);
+    h_abrt = signal(SIGABRT, c_handler);
+    h_term = signal(SIGTERM, c_handler);
+    h_int = signal(SIGINT,  c_handler);
+    try {
+      result = (SddRefCount)sdd_ref_count(arg1);
+    } catch(SIGINT) {
+      SWIG_exception(SWIG_SystemError, "Process interrupted");
+    } catch(SIGTERM) {
+      SWIG_exception(SWIG_SystemError, "Process terminated");
+    } catch(SIGABRT) {
+      SWIG_exception(SWIG_SystemError, "Process aborted");
+    } catch(SIGALRM) {
+      SWIG_exception(SWIG_SystemError, "Process timeout");
+    }
+    signal(SIGTERM, h_term);
+    signal(SIGINT,  h_int);
+    signal(SIGABRT, h_abrt);
+    signal(SIGALRM, h_alrm);
+    
+  }
   resultobj = SWIG_From_unsigned_SS_int((unsigned int)(result));
   return resultobj;
 fail:
@@ -6429,7 +9803,39 @@ SWIGINTERN PyObject *_wrap_sdd_ref(PyObject *SWIGUNUSEDPARM(self), PyObject *arg
     SWIG_exception_fail(SWIG_ArgError(res2), "in method '" "sdd_ref" "', argument " "2"" of type '" "SddManager *""'"); 
   }
   arg2 = (SddManager *)(argp2);
-  result = (SddNode *)sdd_ref(arg1,arg2);
+  {
+    //
+    //    signal(SIGFPE,  handler);
+    //    signal(SIGILL,  handler);
+    
+    // signal(SIGSEGV, handler);
+    
+    
+    void (*h_alrm)(int);
+    void (*h_abrt)(int);
+    void (*h_term)(int);
+    void (*h_int)(int);
+    h_alrm = signal(SIGALRM,  c_handler);
+    h_abrt = signal(SIGABRT, c_handler);
+    h_term = signal(SIGTERM, c_handler);
+    h_int = signal(SIGINT,  c_handler);
+    try {
+      result = (SddNode *)sdd_ref(arg1,arg2);
+    } catch(SIGINT) {
+      SWIG_exception(SWIG_SystemError, "Process interrupted");
+    } catch(SIGTERM) {
+      SWIG_exception(SWIG_SystemError, "Process terminated");
+    } catch(SIGABRT) {
+      SWIG_exception(SWIG_SystemError, "Process aborted");
+    } catch(SIGALRM) {
+      SWIG_exception(SWIG_SystemError, "Process timeout");
+    }
+    signal(SIGTERM, h_term);
+    signal(SIGINT,  h_int);
+    signal(SIGABRT, h_abrt);
+    signal(SIGALRM, h_alrm);
+    
+  }
   resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_sdd_node_t, 0 |  0 );
   return resultobj;
 fail:
@@ -6460,7 +9866,39 @@ SWIGINTERN PyObject *_wrap_sdd_deref(PyObject *SWIGUNUSEDPARM(self), PyObject *a
     SWIG_exception_fail(SWIG_ArgError(res2), "in method '" "sdd_deref" "', argument " "2"" of type '" "SddManager *""'"); 
   }
   arg2 = (SddManager *)(argp2);
-  result = (SddNode *)sdd_deref(arg1,arg2);
+  {
+    //
+    //    signal(SIGFPE,  handler);
+    //    signal(SIGILL,  handler);
+    
+    // signal(SIGSEGV, handler);
+    
+    
+    void (*h_alrm)(int);
+    void (*h_abrt)(int);
+    void (*h_term)(int);
+    void (*h_int)(int);
+    h_alrm = signal(SIGALRM,  c_handler);
+    h_abrt = signal(SIGABRT, c_handler);
+    h_term = signal(SIGTERM, c_handler);
+    h_int = signal(SIGINT,  c_handler);
+    try {
+      result = (SddNode *)sdd_deref(arg1,arg2);
+    } catch(SIGINT) {
+      SWIG_exception(SWIG_SystemError, "Process interrupted");
+    } catch(SIGTERM) {
+      SWIG_exception(SWIG_SystemError, "Process terminated");
+    } catch(SIGABRT) {
+      SWIG_exception(SWIG_SystemError, "Process aborted");
+    } catch(SIGALRM) {
+      SWIG_exception(SWIG_SystemError, "Process timeout");
+    }
+    signal(SIGTERM, h_term);
+    signal(SIGINT,  h_int);
+    signal(SIGABRT, h_abrt);
+    signal(SIGALRM, h_alrm);
+    
+  }
   resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_sdd_node_t, 0 |  0 );
   return resultobj;
 fail:
@@ -6481,7 +9919,39 @@ SWIGINTERN PyObject *_wrap_sdd_manager_garbage_collect(PyObject *SWIGUNUSEDPARM(
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "sdd_manager_garbage_collect" "', argument " "1"" of type '" "SddManager *""'"); 
   }
   arg1 = (SddManager *)(argp1);
-  sdd_manager_garbage_collect(arg1);
+  {
+    //
+    //    signal(SIGFPE,  handler);
+    //    signal(SIGILL,  handler);
+    
+    // signal(SIGSEGV, handler);
+    
+    
+    void (*h_alrm)(int);
+    void (*h_abrt)(int);
+    void (*h_term)(int);
+    void (*h_int)(int);
+    h_alrm = signal(SIGALRM,  c_handler);
+    h_abrt = signal(SIGABRT, c_handler);
+    h_term = signal(SIGTERM, c_handler);
+    h_int = signal(SIGINT,  c_handler);
+    try {
+      sdd_manager_garbage_collect(arg1);
+    } catch(SIGINT) {
+      SWIG_exception(SWIG_SystemError, "Process interrupted");
+    } catch(SIGTERM) {
+      SWIG_exception(SWIG_SystemError, "Process terminated");
+    } catch(SIGABRT) {
+      SWIG_exception(SWIG_SystemError, "Process aborted");
+    } catch(SIGALRM) {
+      SWIG_exception(SWIG_SystemError, "Process timeout");
+    }
+    signal(SIGTERM, h_term);
+    signal(SIGINT,  h_int);
+    signal(SIGABRT, h_abrt);
+    signal(SIGALRM, h_alrm);
+    
+  }
   resultobj = SWIG_Py_Void();
   return resultobj;
 fail:
@@ -6511,7 +9981,39 @@ SWIGINTERN PyObject *_wrap_sdd_vtree_garbage_collect(PyObject *SWIGUNUSEDPARM(se
     SWIG_exception_fail(SWIG_ArgError(res2), "in method '" "sdd_vtree_garbage_collect" "', argument " "2"" of type '" "SddManager *""'"); 
   }
   arg2 = (SddManager *)(argp2);
-  sdd_vtree_garbage_collect(arg1,arg2);
+  {
+    //
+    //    signal(SIGFPE,  handler);
+    //    signal(SIGILL,  handler);
+    
+    // signal(SIGSEGV, handler);
+    
+    
+    void (*h_alrm)(int);
+    void (*h_abrt)(int);
+    void (*h_term)(int);
+    void (*h_int)(int);
+    h_alrm = signal(SIGALRM,  c_handler);
+    h_abrt = signal(SIGABRT, c_handler);
+    h_term = signal(SIGTERM, c_handler);
+    h_int = signal(SIGINT,  c_handler);
+    try {
+      sdd_vtree_garbage_collect(arg1,arg2);
+    } catch(SIGINT) {
+      SWIG_exception(SWIG_SystemError, "Process interrupted");
+    } catch(SIGTERM) {
+      SWIG_exception(SWIG_SystemError, "Process terminated");
+    } catch(SIGABRT) {
+      SWIG_exception(SWIG_SystemError, "Process aborted");
+    } catch(SIGALRM) {
+      SWIG_exception(SWIG_SystemError, "Process timeout");
+    }
+    signal(SIGTERM, h_term);
+    signal(SIGINT,  h_int);
+    signal(SIGABRT, h_abrt);
+    signal(SIGALRM, h_alrm);
+    
+  }
   resultobj = SWIG_Py_Void();
   return resultobj;
 fail:
@@ -6542,7 +10044,39 @@ SWIGINTERN PyObject *_wrap_sdd_manager_garbage_collect_if(PyObject *SWIGUNUSEDPA
     SWIG_exception_fail(SWIG_ArgError(res2), "in method '" "sdd_manager_garbage_collect_if" "', argument " "2"" of type '" "SddManager *""'"); 
   }
   arg2 = (SddManager *)(argp2);
-  result = (int)sdd_manager_garbage_collect_if(arg1,arg2);
+  {
+    //
+    //    signal(SIGFPE,  handler);
+    //    signal(SIGILL,  handler);
+    
+    // signal(SIGSEGV, handler);
+    
+    
+    void (*h_alrm)(int);
+    void (*h_abrt)(int);
+    void (*h_term)(int);
+    void (*h_int)(int);
+    h_alrm = signal(SIGALRM,  c_handler);
+    h_abrt = signal(SIGABRT, c_handler);
+    h_term = signal(SIGTERM, c_handler);
+    h_int = signal(SIGINT,  c_handler);
+    try {
+      result = (int)sdd_manager_garbage_collect_if(arg1,arg2);
+    } catch(SIGINT) {
+      SWIG_exception(SWIG_SystemError, "Process interrupted");
+    } catch(SIGTERM) {
+      SWIG_exception(SWIG_SystemError, "Process terminated");
+    } catch(SIGABRT) {
+      SWIG_exception(SWIG_SystemError, "Process aborted");
+    } catch(SIGALRM) {
+      SWIG_exception(SWIG_SystemError, "Process timeout");
+    }
+    signal(SIGTERM, h_term);
+    signal(SIGINT,  h_int);
+    signal(SIGABRT, h_abrt);
+    signal(SIGALRM, h_alrm);
+    
+  }
   resultobj = SWIG_From_int((int)(result));
   return resultobj;
 fail:
@@ -6582,7 +10116,39 @@ SWIGINTERN PyObject *_wrap_sdd_vtree_garbage_collect_if(PyObject *SWIGUNUSEDPARM
     SWIG_exception_fail(SWIG_ArgError(res3), "in method '" "sdd_vtree_garbage_collect_if" "', argument " "3"" of type '" "SddManager *""'"); 
   }
   arg3 = (SddManager *)(argp3);
-  result = (int)sdd_vtree_garbage_collect_if(arg1,arg2,arg3);
+  {
+    //
+    //    signal(SIGFPE,  handler);
+    //    signal(SIGILL,  handler);
+    
+    // signal(SIGSEGV, handler);
+    
+    
+    void (*h_alrm)(int);
+    void (*h_abrt)(int);
+    void (*h_term)(int);
+    void (*h_int)(int);
+    h_alrm = signal(SIGALRM,  c_handler);
+    h_abrt = signal(SIGABRT, c_handler);
+    h_term = signal(SIGTERM, c_handler);
+    h_int = signal(SIGINT,  c_handler);
+    try {
+      result = (int)sdd_vtree_garbage_collect_if(arg1,arg2,arg3);
+    } catch(SIGINT) {
+      SWIG_exception(SWIG_SystemError, "Process interrupted");
+    } catch(SIGTERM) {
+      SWIG_exception(SWIG_SystemError, "Process terminated");
+    } catch(SIGABRT) {
+      SWIG_exception(SWIG_SystemError, "Process aborted");
+    } catch(SIGALRM) {
+      SWIG_exception(SWIG_SystemError, "Process timeout");
+    }
+    signal(SIGTERM, h_term);
+    signal(SIGINT,  h_int);
+    signal(SIGABRT, h_abrt);
+    signal(SIGALRM, h_alrm);
+    
+  }
   resultobj = SWIG_From_int((int)(result));
   return resultobj;
 fail:
@@ -6603,7 +10169,39 @@ SWIGINTERN PyObject *_wrap_sdd_manager_minimize(PyObject *SWIGUNUSEDPARM(self), 
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "sdd_manager_minimize" "', argument " "1"" of type '" "SddManager *""'"); 
   }
   arg1 = (SddManager *)(argp1);
-  sdd_manager_minimize(arg1);
+  {
+    //
+    //    signal(SIGFPE,  handler);
+    //    signal(SIGILL,  handler);
+    
+    // signal(SIGSEGV, handler);
+    
+    
+    void (*h_alrm)(int);
+    void (*h_abrt)(int);
+    void (*h_term)(int);
+    void (*h_int)(int);
+    h_alrm = signal(SIGALRM,  c_handler);
+    h_abrt = signal(SIGABRT, c_handler);
+    h_term = signal(SIGTERM, c_handler);
+    h_int = signal(SIGINT,  c_handler);
+    try {
+      sdd_manager_minimize(arg1);
+    } catch(SIGINT) {
+      SWIG_exception(SWIG_SystemError, "Process interrupted");
+    } catch(SIGTERM) {
+      SWIG_exception(SWIG_SystemError, "Process terminated");
+    } catch(SIGABRT) {
+      SWIG_exception(SWIG_SystemError, "Process aborted");
+    } catch(SIGALRM) {
+      SWIG_exception(SWIG_SystemError, "Process timeout");
+    }
+    signal(SIGTERM, h_term);
+    signal(SIGINT,  h_int);
+    signal(SIGABRT, h_abrt);
+    signal(SIGALRM, h_alrm);
+    
+  }
   resultobj = SWIG_Py_Void();
   return resultobj;
 fail:
@@ -6634,7 +10232,39 @@ SWIGINTERN PyObject *_wrap_sdd_vtree_minimize(PyObject *SWIGUNUSEDPARM(self), Py
     SWIG_exception_fail(SWIG_ArgError(res2), "in method '" "sdd_vtree_minimize" "', argument " "2"" of type '" "SddManager *""'"); 
   }
   arg2 = (SddManager *)(argp2);
-  result = (Vtree *)sdd_vtree_minimize(arg1,arg2);
+  {
+    //
+    //    signal(SIGFPE,  handler);
+    //    signal(SIGILL,  handler);
+    
+    // signal(SIGSEGV, handler);
+    
+    
+    void (*h_alrm)(int);
+    void (*h_abrt)(int);
+    void (*h_term)(int);
+    void (*h_int)(int);
+    h_alrm = signal(SIGALRM,  c_handler);
+    h_abrt = signal(SIGABRT, c_handler);
+    h_term = signal(SIGTERM, c_handler);
+    h_int = signal(SIGINT,  c_handler);
+    try {
+      result = (Vtree *)sdd_vtree_minimize(arg1,arg2);
+    } catch(SIGINT) {
+      SWIG_exception(SWIG_SystemError, "Process interrupted");
+    } catch(SIGTERM) {
+      SWIG_exception(SWIG_SystemError, "Process terminated");
+    } catch(SIGABRT) {
+      SWIG_exception(SWIG_SystemError, "Process aborted");
+    } catch(SIGALRM) {
+      SWIG_exception(SWIG_SystemError, "Process timeout");
+    }
+    signal(SIGTERM, h_term);
+    signal(SIGINT,  h_int);
+    signal(SIGABRT, h_abrt);
+    signal(SIGALRM, h_alrm);
+    
+  }
   resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_vtree_t, 0 |  0 );
   return resultobj;
 fail:
@@ -6664,7 +10294,39 @@ SWIGINTERN PyObject *_wrap_sdd_manager_set_lr_time_limit(PyObject *SWIGUNUSEDPAR
     SWIG_exception_fail(SWIG_ArgError(res2), "in method '" "sdd_manager_set_lr_time_limit" "', argument " "2"" of type '" "SddManager *""'"); 
   }
   arg2 = (SddManager *)(argp2);
-  sdd_manager_set_lr_time_limit(arg1,arg2);
+  {
+    //
+    //    signal(SIGFPE,  handler);
+    //    signal(SIGILL,  handler);
+    
+    // signal(SIGSEGV, handler);
+    
+    
+    void (*h_alrm)(int);
+    void (*h_abrt)(int);
+    void (*h_term)(int);
+    void (*h_int)(int);
+    h_alrm = signal(SIGALRM,  c_handler);
+    h_abrt = signal(SIGABRT, c_handler);
+    h_term = signal(SIGTERM, c_handler);
+    h_int = signal(SIGINT,  c_handler);
+    try {
+      sdd_manager_set_lr_time_limit(arg1,arg2);
+    } catch(SIGINT) {
+      SWIG_exception(SWIG_SystemError, "Process interrupted");
+    } catch(SIGTERM) {
+      SWIG_exception(SWIG_SystemError, "Process terminated");
+    } catch(SIGABRT) {
+      SWIG_exception(SWIG_SystemError, "Process aborted");
+    } catch(SIGALRM) {
+      SWIG_exception(SWIG_SystemError, "Process timeout");
+    }
+    signal(SIGTERM, h_term);
+    signal(SIGINT,  h_int);
+    signal(SIGABRT, h_abrt);
+    signal(SIGALRM, h_alrm);
+    
+  }
   resultobj = SWIG_Py_Void();
   return resultobj;
 fail:
@@ -6694,7 +10356,39 @@ SWIGINTERN PyObject *_wrap_sdd_manager_set_rr_time_limit(PyObject *SWIGUNUSEDPAR
     SWIG_exception_fail(SWIG_ArgError(res2), "in method '" "sdd_manager_set_rr_time_limit" "', argument " "2"" of type '" "SddManager *""'"); 
   }
   arg2 = (SddManager *)(argp2);
-  sdd_manager_set_rr_time_limit(arg1,arg2);
+  {
+    //
+    //    signal(SIGFPE,  handler);
+    //    signal(SIGILL,  handler);
+    
+    // signal(SIGSEGV, handler);
+    
+    
+    void (*h_alrm)(int);
+    void (*h_abrt)(int);
+    void (*h_term)(int);
+    void (*h_int)(int);
+    h_alrm = signal(SIGALRM,  c_handler);
+    h_abrt = signal(SIGABRT, c_handler);
+    h_term = signal(SIGTERM, c_handler);
+    h_int = signal(SIGINT,  c_handler);
+    try {
+      sdd_manager_set_rr_time_limit(arg1,arg2);
+    } catch(SIGINT) {
+      SWIG_exception(SWIG_SystemError, "Process interrupted");
+    } catch(SIGTERM) {
+      SWIG_exception(SWIG_SystemError, "Process terminated");
+    } catch(SIGABRT) {
+      SWIG_exception(SWIG_SystemError, "Process aborted");
+    } catch(SIGALRM) {
+      SWIG_exception(SWIG_SystemError, "Process timeout");
+    }
+    signal(SIGTERM, h_term);
+    signal(SIGINT,  h_int);
+    signal(SIGABRT, h_abrt);
+    signal(SIGALRM, h_alrm);
+    
+  }
   resultobj = SWIG_Py_Void();
   return resultobj;
 fail:
@@ -6724,7 +10418,39 @@ SWIGINTERN PyObject *_wrap_sdd_manager_set_sw_time_limit(PyObject *SWIGUNUSEDPAR
     SWIG_exception_fail(SWIG_ArgError(res2), "in method '" "sdd_manager_set_sw_time_limit" "', argument " "2"" of type '" "SddManager *""'"); 
   }
   arg2 = (SddManager *)(argp2);
-  sdd_manager_set_sw_time_limit(arg1,arg2);
+  {
+    //
+    //    signal(SIGFPE,  handler);
+    //    signal(SIGILL,  handler);
+    
+    // signal(SIGSEGV, handler);
+    
+    
+    void (*h_alrm)(int);
+    void (*h_abrt)(int);
+    void (*h_term)(int);
+    void (*h_int)(int);
+    h_alrm = signal(SIGALRM,  c_handler);
+    h_abrt = signal(SIGABRT, c_handler);
+    h_term = signal(SIGTERM, c_handler);
+    h_int = signal(SIGINT,  c_handler);
+    try {
+      sdd_manager_set_sw_time_limit(arg1,arg2);
+    } catch(SIGINT) {
+      SWIG_exception(SWIG_SystemError, "Process interrupted");
+    } catch(SIGTERM) {
+      SWIG_exception(SWIG_SystemError, "Process terminated");
+    } catch(SIGABRT) {
+      SWIG_exception(SWIG_SystemError, "Process aborted");
+    } catch(SIGALRM) {
+      SWIG_exception(SWIG_SystemError, "Process timeout");
+    }
+    signal(SIGTERM, h_term);
+    signal(SIGINT,  h_int);
+    signal(SIGABRT, h_abrt);
+    signal(SIGALRM, h_alrm);
+    
+  }
   resultobj = SWIG_Py_Void();
   return resultobj;
 fail:
@@ -6754,7 +10480,39 @@ SWIGINTERN PyObject *_wrap_sdd_manager_set_lr_size_limit(PyObject *SWIGUNUSEDPAR
     SWIG_exception_fail(SWIG_ArgError(res2), "in method '" "sdd_manager_set_lr_size_limit" "', argument " "2"" of type '" "SddManager *""'"); 
   }
   arg2 = (SddManager *)(argp2);
-  sdd_manager_set_lr_size_limit(arg1,arg2);
+  {
+    //
+    //    signal(SIGFPE,  handler);
+    //    signal(SIGILL,  handler);
+    
+    // signal(SIGSEGV, handler);
+    
+    
+    void (*h_alrm)(int);
+    void (*h_abrt)(int);
+    void (*h_term)(int);
+    void (*h_int)(int);
+    h_alrm = signal(SIGALRM,  c_handler);
+    h_abrt = signal(SIGABRT, c_handler);
+    h_term = signal(SIGTERM, c_handler);
+    h_int = signal(SIGINT,  c_handler);
+    try {
+      sdd_manager_set_lr_size_limit(arg1,arg2);
+    } catch(SIGINT) {
+      SWIG_exception(SWIG_SystemError, "Process interrupted");
+    } catch(SIGTERM) {
+      SWIG_exception(SWIG_SystemError, "Process terminated");
+    } catch(SIGABRT) {
+      SWIG_exception(SWIG_SystemError, "Process aborted");
+    } catch(SIGALRM) {
+      SWIG_exception(SWIG_SystemError, "Process timeout");
+    }
+    signal(SIGTERM, h_term);
+    signal(SIGINT,  h_int);
+    signal(SIGABRT, h_abrt);
+    signal(SIGALRM, h_alrm);
+    
+  }
   resultobj = SWIG_Py_Void();
   return resultobj;
 fail:
@@ -6784,7 +10542,39 @@ SWIGINTERN PyObject *_wrap_sdd_manager_set_rr_size_limit(PyObject *SWIGUNUSEDPAR
     SWIG_exception_fail(SWIG_ArgError(res2), "in method '" "sdd_manager_set_rr_size_limit" "', argument " "2"" of type '" "SddManager *""'"); 
   }
   arg2 = (SddManager *)(argp2);
-  sdd_manager_set_rr_size_limit(arg1,arg2);
+  {
+    //
+    //    signal(SIGFPE,  handler);
+    //    signal(SIGILL,  handler);
+    
+    // signal(SIGSEGV, handler);
+    
+    
+    void (*h_alrm)(int);
+    void (*h_abrt)(int);
+    void (*h_term)(int);
+    void (*h_int)(int);
+    h_alrm = signal(SIGALRM,  c_handler);
+    h_abrt = signal(SIGABRT, c_handler);
+    h_term = signal(SIGTERM, c_handler);
+    h_int = signal(SIGINT,  c_handler);
+    try {
+      sdd_manager_set_rr_size_limit(arg1,arg2);
+    } catch(SIGINT) {
+      SWIG_exception(SWIG_SystemError, "Process interrupted");
+    } catch(SIGTERM) {
+      SWIG_exception(SWIG_SystemError, "Process terminated");
+    } catch(SIGABRT) {
+      SWIG_exception(SWIG_SystemError, "Process aborted");
+    } catch(SIGALRM) {
+      SWIG_exception(SWIG_SystemError, "Process timeout");
+    }
+    signal(SIGTERM, h_term);
+    signal(SIGINT,  h_int);
+    signal(SIGABRT, h_abrt);
+    signal(SIGALRM, h_alrm);
+    
+  }
   resultobj = SWIG_Py_Void();
   return resultobj;
 fail:
@@ -6814,7 +10604,39 @@ SWIGINTERN PyObject *_wrap_sdd_manager_set_sw_size_limit(PyObject *SWIGUNUSEDPAR
     SWIG_exception_fail(SWIG_ArgError(res2), "in method '" "sdd_manager_set_sw_size_limit" "', argument " "2"" of type '" "SddManager *""'"); 
   }
   arg2 = (SddManager *)(argp2);
-  sdd_manager_set_sw_size_limit(arg1,arg2);
+  {
+    //
+    //    signal(SIGFPE,  handler);
+    //    signal(SIGILL,  handler);
+    
+    // signal(SIGSEGV, handler);
+    
+    
+    void (*h_alrm)(int);
+    void (*h_abrt)(int);
+    void (*h_term)(int);
+    void (*h_int)(int);
+    h_alrm = signal(SIGALRM,  c_handler);
+    h_abrt = signal(SIGABRT, c_handler);
+    h_term = signal(SIGTERM, c_handler);
+    h_int = signal(SIGINT,  c_handler);
+    try {
+      sdd_manager_set_sw_size_limit(arg1,arg2);
+    } catch(SIGINT) {
+      SWIG_exception(SWIG_SystemError, "Process interrupted");
+    } catch(SIGTERM) {
+      SWIG_exception(SWIG_SystemError, "Process terminated");
+    } catch(SIGABRT) {
+      SWIG_exception(SWIG_SystemError, "Process aborted");
+    } catch(SIGALRM) {
+      SWIG_exception(SWIG_SystemError, "Process timeout");
+    }
+    signal(SIGTERM, h_term);
+    signal(SIGINT,  h_int);
+    signal(SIGABRT, h_abrt);
+    signal(SIGALRM, h_alrm);
+    
+  }
   resultobj = SWIG_Py_Void();
   return resultobj;
 fail:
@@ -6844,7 +10666,39 @@ SWIGINTERN PyObject *_wrap_sdd_manager_set_rr_cartesian_product_limit(PyObject *
     SWIG_exception_fail(SWIG_ArgError(res2), "in method '" "sdd_manager_set_rr_cartesian_product_limit" "', argument " "2"" of type '" "SddManager *""'"); 
   }
   arg2 = (SddManager *)(argp2);
-  sdd_manager_set_rr_cartesian_product_limit(arg1,arg2);
+  {
+    //
+    //    signal(SIGFPE,  handler);
+    //    signal(SIGILL,  handler);
+    
+    // signal(SIGSEGV, handler);
+    
+    
+    void (*h_alrm)(int);
+    void (*h_abrt)(int);
+    void (*h_term)(int);
+    void (*h_int)(int);
+    h_alrm = signal(SIGALRM,  c_handler);
+    h_abrt = signal(SIGABRT, c_handler);
+    h_term = signal(SIGTERM, c_handler);
+    h_int = signal(SIGINT,  c_handler);
+    try {
+      sdd_manager_set_rr_cartesian_product_limit(arg1,arg2);
+    } catch(SIGINT) {
+      SWIG_exception(SWIG_SystemError, "Process interrupted");
+    } catch(SIGTERM) {
+      SWIG_exception(SWIG_SystemError, "Process terminated");
+    } catch(SIGABRT) {
+      SWIG_exception(SWIG_SystemError, "Process aborted");
+    } catch(SIGALRM) {
+      SWIG_exception(SWIG_SystemError, "Process timeout");
+    }
+    signal(SIGTERM, h_term);
+    signal(SIGINT,  h_int);
+    signal(SIGABRT, h_abrt);
+    signal(SIGALRM, h_alrm);
+    
+  }
   resultobj = SWIG_Py_Void();
   return resultobj;
 fail:
@@ -6874,7 +10728,39 @@ SWIGINTERN PyObject *_wrap_sdd_manager_set_sw_cartesian_product_limit(PyObject *
     SWIG_exception_fail(SWIG_ArgError(res2), "in method '" "sdd_manager_set_sw_cartesian_product_limit" "', argument " "2"" of type '" "SddManager *""'"); 
   }
   arg2 = (SddManager *)(argp2);
-  sdd_manager_set_sw_cartesian_product_limit(arg1,arg2);
+  {
+    //
+    //    signal(SIGFPE,  handler);
+    //    signal(SIGILL,  handler);
+    
+    // signal(SIGSEGV, handler);
+    
+    
+    void (*h_alrm)(int);
+    void (*h_abrt)(int);
+    void (*h_term)(int);
+    void (*h_int)(int);
+    h_alrm = signal(SIGALRM,  c_handler);
+    h_abrt = signal(SIGABRT, c_handler);
+    h_term = signal(SIGTERM, c_handler);
+    h_int = signal(SIGINT,  c_handler);
+    try {
+      sdd_manager_set_sw_cartesian_product_limit(arg1,arg2);
+    } catch(SIGINT) {
+      SWIG_exception(SWIG_SystemError, "Process interrupted");
+    } catch(SIGTERM) {
+      SWIG_exception(SWIG_SystemError, "Process terminated");
+    } catch(SIGABRT) {
+      SWIG_exception(SWIG_SystemError, "Process aborted");
+    } catch(SIGALRM) {
+      SWIG_exception(SWIG_SystemError, "Process timeout");
+    }
+    signal(SIGTERM, h_term);
+    signal(SIGINT,  h_int);
+    signal(SIGABRT, h_abrt);
+    signal(SIGALRM, h_alrm);
+    
+  }
   resultobj = SWIG_Py_Void();
   return resultobj;
 fail:
@@ -6904,7 +10790,39 @@ SWIGINTERN PyObject *_wrap_sdd_manager_set_convergence_threshold(PyObject *SWIGU
     SWIG_exception_fail(SWIG_ArgError(res2), "in method '" "sdd_manager_set_convergence_threshold" "', argument " "2"" of type '" "SddManager *""'"); 
   }
   arg2 = (SddManager *)(argp2);
-  sdd_manager_set_convergence_threshold(arg1,arg2);
+  {
+    //
+    //    signal(SIGFPE,  handler);
+    //    signal(SIGILL,  handler);
+    
+    // signal(SIGSEGV, handler);
+    
+    
+    void (*h_alrm)(int);
+    void (*h_abrt)(int);
+    void (*h_term)(int);
+    void (*h_int)(int);
+    h_alrm = signal(SIGALRM,  c_handler);
+    h_abrt = signal(SIGABRT, c_handler);
+    h_term = signal(SIGTERM, c_handler);
+    h_int = signal(SIGINT,  c_handler);
+    try {
+      sdd_manager_set_convergence_threshold(arg1,arg2);
+    } catch(SIGINT) {
+      SWIG_exception(SWIG_SystemError, "Process interrupted");
+    } catch(SIGTERM) {
+      SWIG_exception(SWIG_SystemError, "Process terminated");
+    } catch(SIGABRT) {
+      SWIG_exception(SWIG_SystemError, "Process aborted");
+    } catch(SIGALRM) {
+      SWIG_exception(SWIG_SystemError, "Process timeout");
+    }
+    signal(SIGTERM, h_term);
+    signal(SIGINT,  h_int);
+    signal(SIGABRT, h_abrt);
+    signal(SIGALRM, h_alrm);
+    
+  }
   resultobj = SWIG_Py_Void();
   return resultobj;
 fail:
@@ -6944,7 +10862,39 @@ SWIGINTERN PyObject *_wrap_wmc_manager_new(PyObject *SWIGUNUSEDPARM(self), PyObj
     SWIG_exception_fail(SWIG_ArgError(res3), "in method '" "wmc_manager_new" "', argument " "3"" of type '" "SddManager *""'"); 
   }
   arg3 = (SddManager *)(argp3);
-  result = (WmcManager *)wmc_manager_new(arg1,arg2,arg3);
+  {
+    //
+    //    signal(SIGFPE,  handler);
+    //    signal(SIGILL,  handler);
+    
+    // signal(SIGSEGV, handler);
+    
+    
+    void (*h_alrm)(int);
+    void (*h_abrt)(int);
+    void (*h_term)(int);
+    void (*h_int)(int);
+    h_alrm = signal(SIGALRM,  c_handler);
+    h_abrt = signal(SIGABRT, c_handler);
+    h_term = signal(SIGTERM, c_handler);
+    h_int = signal(SIGINT,  c_handler);
+    try {
+      result = (WmcManager *)wmc_manager_new(arg1,arg2,arg3);
+    } catch(SIGINT) {
+      SWIG_exception(SWIG_SystemError, "Process interrupted");
+    } catch(SIGTERM) {
+      SWIG_exception(SWIG_SystemError, "Process terminated");
+    } catch(SIGABRT) {
+      SWIG_exception(SWIG_SystemError, "Process aborted");
+    } catch(SIGALRM) {
+      SWIG_exception(SWIG_SystemError, "Process timeout");
+    }
+    signal(SIGTERM, h_term);
+    signal(SIGINT,  h_int);
+    signal(SIGABRT, h_abrt);
+    signal(SIGALRM, h_alrm);
+    
+  }
   resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_wmc_manager_t, 0 |  0 );
   return resultobj;
 fail:
@@ -6965,7 +10915,39 @@ SWIGINTERN PyObject *_wrap_wmc_manager_free(PyObject *SWIGUNUSEDPARM(self), PyOb
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "wmc_manager_free" "', argument " "1"" of type '" "WmcManager *""'"); 
   }
   arg1 = (WmcManager *)(argp1);
-  wmc_manager_free(arg1);
+  {
+    //
+    //    signal(SIGFPE,  handler);
+    //    signal(SIGILL,  handler);
+    
+    // signal(SIGSEGV, handler);
+    
+    
+    void (*h_alrm)(int);
+    void (*h_abrt)(int);
+    void (*h_term)(int);
+    void (*h_int)(int);
+    h_alrm = signal(SIGALRM,  c_handler);
+    h_abrt = signal(SIGABRT, c_handler);
+    h_term = signal(SIGTERM, c_handler);
+    h_int = signal(SIGINT,  c_handler);
+    try {
+      wmc_manager_free(arg1);
+    } catch(SIGINT) {
+      SWIG_exception(SWIG_SystemError, "Process interrupted");
+    } catch(SIGTERM) {
+      SWIG_exception(SWIG_SystemError, "Process terminated");
+    } catch(SIGABRT) {
+      SWIG_exception(SWIG_SystemError, "Process aborted");
+    } catch(SIGALRM) {
+      SWIG_exception(SWIG_SystemError, "Process timeout");
+    }
+    signal(SIGTERM, h_term);
+    signal(SIGINT,  h_int);
+    signal(SIGABRT, h_abrt);
+    signal(SIGALRM, h_alrm);
+    
+  }
   resultobj = SWIG_Py_Void();
   return resultobj;
 fail:
@@ -7004,7 +10986,39 @@ SWIGINTERN PyObject *_wrap_wmc_set_literal_weight(PyObject *SWIGUNUSEDPARM(self)
     SWIG_exception_fail(SWIG_ArgError(res3), "in method '" "wmc_set_literal_weight" "', argument " "3"" of type '" "WmcManager *""'"); 
   }
   arg3 = (WmcManager *)(argp3);
-  wmc_set_literal_weight(arg1,arg2,arg3);
+  {
+    //
+    //    signal(SIGFPE,  handler);
+    //    signal(SIGILL,  handler);
+    
+    // signal(SIGSEGV, handler);
+    
+    
+    void (*h_alrm)(int);
+    void (*h_abrt)(int);
+    void (*h_term)(int);
+    void (*h_int)(int);
+    h_alrm = signal(SIGALRM,  c_handler);
+    h_abrt = signal(SIGABRT, c_handler);
+    h_term = signal(SIGTERM, c_handler);
+    h_int = signal(SIGINT,  c_handler);
+    try {
+      wmc_set_literal_weight(arg1,arg2,arg3);
+    } catch(SIGINT) {
+      SWIG_exception(SWIG_SystemError, "Process interrupted");
+    } catch(SIGTERM) {
+      SWIG_exception(SWIG_SystemError, "Process terminated");
+    } catch(SIGABRT) {
+      SWIG_exception(SWIG_SystemError, "Process aborted");
+    } catch(SIGALRM) {
+      SWIG_exception(SWIG_SystemError, "Process timeout");
+    }
+    signal(SIGTERM, h_term);
+    signal(SIGINT,  h_int);
+    signal(SIGABRT, h_abrt);
+    signal(SIGALRM, h_alrm);
+    
+  }
   resultobj = SWIG_Py_Void();
   return resultobj;
 fail:
@@ -7026,7 +11040,39 @@ SWIGINTERN PyObject *_wrap_wmc_propagate(PyObject *SWIGUNUSEDPARM(self), PyObjec
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "wmc_propagate" "', argument " "1"" of type '" "WmcManager *""'"); 
   }
   arg1 = (WmcManager *)(argp1);
-  result = (SddWmc)wmc_propagate(arg1);
+  {
+    //
+    //    signal(SIGFPE,  handler);
+    //    signal(SIGILL,  handler);
+    
+    // signal(SIGSEGV, handler);
+    
+    
+    void (*h_alrm)(int);
+    void (*h_abrt)(int);
+    void (*h_term)(int);
+    void (*h_int)(int);
+    h_alrm = signal(SIGALRM,  c_handler);
+    h_abrt = signal(SIGABRT, c_handler);
+    h_term = signal(SIGTERM, c_handler);
+    h_int = signal(SIGINT,  c_handler);
+    try {
+      result = (SddWmc)wmc_propagate(arg1);
+    } catch(SIGINT) {
+      SWIG_exception(SWIG_SystemError, "Process interrupted");
+    } catch(SIGTERM) {
+      SWIG_exception(SWIG_SystemError, "Process terminated");
+    } catch(SIGABRT) {
+      SWIG_exception(SWIG_SystemError, "Process aborted");
+    } catch(SIGALRM) {
+      SWIG_exception(SWIG_SystemError, "Process timeout");
+    }
+    signal(SIGTERM, h_term);
+    signal(SIGINT,  h_int);
+    signal(SIGABRT, h_abrt);
+    signal(SIGALRM, h_alrm);
+    
+  }
   resultobj = SWIG_From_double((double)(result));
   return resultobj;
 fail:
@@ -7048,7 +11094,39 @@ SWIGINTERN PyObject *_wrap_wmc_zero_weight(PyObject *SWIGUNUSEDPARM(self), PyObj
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "wmc_zero_weight" "', argument " "1"" of type '" "WmcManager *""'"); 
   }
   arg1 = (WmcManager *)(argp1);
-  result = (SddWmc)wmc_zero_weight(arg1);
+  {
+    //
+    //    signal(SIGFPE,  handler);
+    //    signal(SIGILL,  handler);
+    
+    // signal(SIGSEGV, handler);
+    
+    
+    void (*h_alrm)(int);
+    void (*h_abrt)(int);
+    void (*h_term)(int);
+    void (*h_int)(int);
+    h_alrm = signal(SIGALRM,  c_handler);
+    h_abrt = signal(SIGABRT, c_handler);
+    h_term = signal(SIGTERM, c_handler);
+    h_int = signal(SIGINT,  c_handler);
+    try {
+      result = (SddWmc)wmc_zero_weight(arg1);
+    } catch(SIGINT) {
+      SWIG_exception(SWIG_SystemError, "Process interrupted");
+    } catch(SIGTERM) {
+      SWIG_exception(SWIG_SystemError, "Process terminated");
+    } catch(SIGABRT) {
+      SWIG_exception(SWIG_SystemError, "Process aborted");
+    } catch(SIGALRM) {
+      SWIG_exception(SWIG_SystemError, "Process timeout");
+    }
+    signal(SIGTERM, h_term);
+    signal(SIGINT,  h_int);
+    signal(SIGABRT, h_abrt);
+    signal(SIGALRM, h_alrm);
+    
+  }
   resultobj = SWIG_From_double((double)(result));
   return resultobj;
 fail:
@@ -7070,7 +11148,39 @@ SWIGINTERN PyObject *_wrap_wmc_one_weight(PyObject *SWIGUNUSEDPARM(self), PyObje
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "wmc_one_weight" "', argument " "1"" of type '" "WmcManager *""'"); 
   }
   arg1 = (WmcManager *)(argp1);
-  result = (SddWmc)wmc_one_weight(arg1);
+  {
+    //
+    //    signal(SIGFPE,  handler);
+    //    signal(SIGILL,  handler);
+    
+    // signal(SIGSEGV, handler);
+    
+    
+    void (*h_alrm)(int);
+    void (*h_abrt)(int);
+    void (*h_term)(int);
+    void (*h_int)(int);
+    h_alrm = signal(SIGALRM,  c_handler);
+    h_abrt = signal(SIGABRT, c_handler);
+    h_term = signal(SIGTERM, c_handler);
+    h_int = signal(SIGINT,  c_handler);
+    try {
+      result = (SddWmc)wmc_one_weight(arg1);
+    } catch(SIGINT) {
+      SWIG_exception(SWIG_SystemError, "Process interrupted");
+    } catch(SIGTERM) {
+      SWIG_exception(SWIG_SystemError, "Process terminated");
+    } catch(SIGABRT) {
+      SWIG_exception(SWIG_SystemError, "Process aborted");
+    } catch(SIGALRM) {
+      SWIG_exception(SWIG_SystemError, "Process timeout");
+    }
+    signal(SIGTERM, h_term);
+    signal(SIGINT,  h_int);
+    signal(SIGABRT, h_abrt);
+    signal(SIGALRM, h_alrm);
+    
+  }
   resultobj = SWIG_From_double((double)(result));
   return resultobj;
 fail:
@@ -7101,7 +11211,39 @@ SWIGINTERN PyObject *_wrap_wmc_literal_weight(PyObject *SWIGUNUSEDPARM(self), Py
     SWIG_exception_fail(SWIG_ArgError(res2), "in method '" "wmc_literal_weight" "', argument " "2"" of type '" "WmcManager const *""'"); 
   }
   arg2 = (WmcManager *)(argp2);
-  result = (SddWmc)wmc_literal_weight(arg1,(struct wmc_manager_t const *)arg2);
+  {
+    //
+    //    signal(SIGFPE,  handler);
+    //    signal(SIGILL,  handler);
+    
+    // signal(SIGSEGV, handler);
+    
+    
+    void (*h_alrm)(int);
+    void (*h_abrt)(int);
+    void (*h_term)(int);
+    void (*h_int)(int);
+    h_alrm = signal(SIGALRM,  c_handler);
+    h_abrt = signal(SIGABRT, c_handler);
+    h_term = signal(SIGTERM, c_handler);
+    h_int = signal(SIGINT,  c_handler);
+    try {
+      result = (SddWmc)wmc_literal_weight(arg1,(struct wmc_manager_t const *)arg2);
+    } catch(SIGINT) {
+      SWIG_exception(SWIG_SystemError, "Process interrupted");
+    } catch(SIGTERM) {
+      SWIG_exception(SWIG_SystemError, "Process terminated");
+    } catch(SIGABRT) {
+      SWIG_exception(SWIG_SystemError, "Process aborted");
+    } catch(SIGALRM) {
+      SWIG_exception(SWIG_SystemError, "Process timeout");
+    }
+    signal(SIGTERM, h_term);
+    signal(SIGINT,  h_int);
+    signal(SIGABRT, h_abrt);
+    signal(SIGALRM, h_alrm);
+    
+  }
   resultobj = SWIG_From_double((double)(result));
   return resultobj;
 fail:
@@ -7132,7 +11274,39 @@ SWIGINTERN PyObject *_wrap_wmc_literal_derivative(PyObject *SWIGUNUSEDPARM(self)
     SWIG_exception_fail(SWIG_ArgError(res2), "in method '" "wmc_literal_derivative" "', argument " "2"" of type '" "WmcManager const *""'"); 
   }
   arg2 = (WmcManager *)(argp2);
-  result = (SddWmc)wmc_literal_derivative(arg1,(struct wmc_manager_t const *)arg2);
+  {
+    //
+    //    signal(SIGFPE,  handler);
+    //    signal(SIGILL,  handler);
+    
+    // signal(SIGSEGV, handler);
+    
+    
+    void (*h_alrm)(int);
+    void (*h_abrt)(int);
+    void (*h_term)(int);
+    void (*h_int)(int);
+    h_alrm = signal(SIGALRM,  c_handler);
+    h_abrt = signal(SIGABRT, c_handler);
+    h_term = signal(SIGTERM, c_handler);
+    h_int = signal(SIGINT,  c_handler);
+    try {
+      result = (SddWmc)wmc_literal_derivative(arg1,(struct wmc_manager_t const *)arg2);
+    } catch(SIGINT) {
+      SWIG_exception(SWIG_SystemError, "Process interrupted");
+    } catch(SIGTERM) {
+      SWIG_exception(SWIG_SystemError, "Process terminated");
+    } catch(SIGABRT) {
+      SWIG_exception(SWIG_SystemError, "Process aborted");
+    } catch(SIGALRM) {
+      SWIG_exception(SWIG_SystemError, "Process timeout");
+    }
+    signal(SIGTERM, h_term);
+    signal(SIGINT,  h_int);
+    signal(SIGABRT, h_abrt);
+    signal(SIGALRM, h_alrm);
+    
+  }
   resultobj = SWIG_From_double((double)(result));
   return resultobj;
 fail:
@@ -7163,7 +11337,39 @@ SWIGINTERN PyObject *_wrap_wmc_literal_pr(PyObject *SWIGUNUSEDPARM(self), PyObje
     SWIG_exception_fail(SWIG_ArgError(res2), "in method '" "wmc_literal_pr" "', argument " "2"" of type '" "WmcManager const *""'"); 
   }
   arg2 = (WmcManager *)(argp2);
-  result = (SddWmc)wmc_literal_pr(arg1,(struct wmc_manager_t const *)arg2);
+  {
+    //
+    //    signal(SIGFPE,  handler);
+    //    signal(SIGILL,  handler);
+    
+    // signal(SIGSEGV, handler);
+    
+    
+    void (*h_alrm)(int);
+    void (*h_abrt)(int);
+    void (*h_term)(int);
+    void (*h_int)(int);
+    h_alrm = signal(SIGALRM,  c_handler);
+    h_abrt = signal(SIGABRT, c_handler);
+    h_term = signal(SIGTERM, c_handler);
+    h_int = signal(SIGINT,  c_handler);
+    try {
+      result = (SddWmc)wmc_literal_pr(arg1,(struct wmc_manager_t const *)arg2);
+    } catch(SIGINT) {
+      SWIG_exception(SWIG_SystemError, "Process interrupted");
+    } catch(SIGTERM) {
+      SWIG_exception(SWIG_SystemError, "Process terminated");
+    } catch(SIGABRT) {
+      SWIG_exception(SWIG_SystemError, "Process aborted");
+    } catch(SIGALRM) {
+      SWIG_exception(SWIG_SystemError, "Process timeout");
+    }
+    signal(SIGTERM, h_term);
+    signal(SIGINT,  h_int);
+    signal(SIGABRT, h_abrt);
+    signal(SIGALRM, h_alrm);
+    
+  }
   resultobj = SWIG_From_double((double)(result));
   return resultobj;
 fail:
