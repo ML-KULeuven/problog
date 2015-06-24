@@ -54,7 +54,7 @@ class LogicFormula(ProbLogObject):
     def _create_disj( self, children, name=None):
         return self._disj(children, name)
     
-    def __init__(self, auto_compact=True, avoid_name_clash=False, keep_order=False, use_string_names=False, **kwdargs):
+    def __init__(self, auto_compact=True, avoid_name_clash=False, keep_order=False, use_string_names=False, keep_all=False, **kwdargs):
         ProbLogObject.__init__(self)
         
         # List of nodes
@@ -76,12 +76,15 @@ class LogicFormula(ProbLogObject):
         self.__auto_compact = auto_compact
         self.__avoid_name_clash = avoid_name_clash
         self.__keep_order = keep_order
-        
+        self.__keep_all = keep_all
+
         self.__constraints_me = {}
         self.__constraints = []
         self.__constraints_for_node = defaultdict(list)
         
         self.__use_string_names = use_string_names
+
+
         
     def constraintsForNode(self, node) :
         return self.__constraints_for_node[node]
@@ -267,7 +270,7 @@ class LogicFormula(ProbLogObject):
         * If ``group`` is given, a mutual exclusivity constraint is added for all nodes sharing the same group.
         * To add an explicitly present deterministic node you can set the probability to ``True``.
         """
-        if probability is None:
+        if probability is None and not self.__keep_all:
             return self.TRUE
         else:
             atom = self._create_atom(identifier, probability, group, name)
