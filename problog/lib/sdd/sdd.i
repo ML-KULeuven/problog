@@ -35,19 +35,35 @@ void c_handler(int sig)
     void (*h_abrt)(int);
     void (*h_term)(int);
     void (*h_int)(int);
-    h_alrm = signal(SIGALRM,  c_handler);
-    h_abrt = signal(SIGABRT, c_handler);
-    h_term = signal(SIGTERM, c_handler);
-    h_int = signal(SIGINT,  c_handler);
     try {
+        h_alrm = signal(SIGALRM,  c_handler);
+        h_abrt = signal(SIGABRT, c_handler);
+        h_term = signal(SIGTERM, c_handler);
+        h_int = signal(SIGINT,  c_handler);
         $action
     } catch(SIGINT) {
+        signal(SIGTERM, h_term);
+        signal(SIGINT,  h_int);
+        signal(SIGABRT, h_abrt);
+        signal(SIGALRM, h_alrm);
         SWIG_exception(SWIG_SystemError, "Process interrupted");
     } catch(SIGTERM) {
+        signal(SIGTERM, h_term);
+        signal(SIGINT,  h_int);
+        signal(SIGABRT, h_abrt);
+        signal(SIGALRM, h_alrm);
         SWIG_exception(SWIG_SystemError, "Process terminated");
     } catch(SIGABRT) {
+        signal(SIGTERM, h_term);
+        signal(SIGINT,  h_int);
+        signal(SIGABRT, h_abrt);
+        signal(SIGALRM, h_alrm);
         SWIG_exception(SWIG_SystemError, "Process aborted");
     } catch(SIGALRM) {
+        signal(SIGTERM, h_term);
+        signal(SIGINT,  h_int);
+        signal(SIGABRT, h_abrt);
+        signal(SIGALRM, h_alrm);
         SWIG_exception(SWIG_SystemError, "Process timeout");
     }
     signal(SIGTERM, h_term);
