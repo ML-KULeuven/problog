@@ -64,7 +64,7 @@ def main(filename=None):
     model = PrologString(data)
 
 
-    engine = DefaultEngine()
+    engine = DefaultEngine(label_all=True)
     for i in range(2, 10):
         engine.add_builtin('annotate', i, SimpleProbabilisticBuiltIn(builtin_annotate))
     db = engine.prepare(model)
