@@ -385,13 +385,15 @@ class DDEvaluator(Evaluator):
 def build_dd(source, destination, ddname, **kwdargs):
 
     with Timer('Compiling %s' % ddname):
+
+        # TODO maintain a translation table
         for i, n, t in source:
             if t == 'atom':
-                destination.addAtom(n.identifier, n.probability, n.group, source.get_name(i))
+                j = destination.addAtom(n.identifier, n.probability, n.group, source.get_name(i))
             elif t == 'conj':
-                destination.addAnd(n.children, source.get_name(i))
+                j = destination.addAnd(n.children, source.get_name(i))
             elif t == 'disj':
-                destination.addOr(n.children, source.get_name(i))
+                j = destination.addOr(n.children, source.get_name(i))
             else:
                 raise TypeError('Unknown node type')
 

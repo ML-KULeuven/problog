@@ -19,7 +19,7 @@ def timeout_handler(signum, frame):
 class ForwardInference(DD):
 
     def __init__(self, compile_timeout=None, **kwdargs):
-        super(ForwardInference, self).__init__(**kwdargs)
+        super(ForwardInference, self).__init__(auto_compact=False, **kwdargs)
 
         self._inodes_prev = None
         self._inodes_neg = None
@@ -91,7 +91,7 @@ class ForwardInference(DD):
         updated_nodes = OrderedSet()
         for i, nodes in enumerate(zip(self.inodes, self._inodes_prev)):
             if not self.get_manager().same(*nodes):
-                updated_nodes.add(i)
+                updated_nodes.add(i+1)
         self.get_manager().ref(*filter(None, self.inodes))
         self.get_manager().deref(*filter(None, self._inodes_prev))
         self.get_manager().deref(*filter(None, self._inodes_neg))
@@ -100,6 +100,9 @@ class ForwardInference(DD):
         return updated_nodes
 
     def build_dd(self):
+        required_nodes = set([abs(n) for q, n in self.queries() if self.isProbabilistic(n)])
+        required_nodes |= set([abs(n) for q, n in self.queries() if self.isProbabilistic(n)])
+
         if self.timeout:
             # signal.signal(signal.SIGALRM, timeout_handler)
             signal.alarm(self.timeout)
