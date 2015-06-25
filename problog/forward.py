@@ -43,7 +43,7 @@ class ForwardInference(DD):
                 # only include nodes that are reachable from a query or evidence
                 if nodetype == 'atom':   # it's a fact
                     self._facts.append(index)
-                    self.atom2var[index] = self.get_manager().add_variable(index)
+                    self.atom2var[index] = self.get_manager().add_variable()
                 else:    # it's a compound
                     for atom in node.children:
                         self._atoms_in_rules[abs(atom)].add(index)
@@ -113,6 +113,7 @@ class ForwardInference(DD):
         except SystemError as err:
             print (err)
         signal.alarm(0)
+        self.build_constraint_dd()
 
     def update_inode(self, index):
         """Recompute the inode at the given index."""
@@ -151,7 +152,11 @@ class ForwardInference(DD):
         """
         node = self.get_node(abs(index))
         if type(node).__name__ == 'atom':
-            result = self.get_manager().literal(self.atom2var[abs(index)])
+            av = self.atom2var.get(abs(index))
+            if av is None:
+                av = self.get_manager().add_variable()
+                self.atom2var[abs(index)] = av
+            result = self.get_manager().literal(av)
             if index < 0:
                 return self.get_manager().negate(result)
             else:
@@ -165,6 +170,19 @@ class ForwardInference(DD):
             return result
         else:
             return self.inodes[index-1]
+
+    def add_constraint(self, c):
+        LogicFormula.add_constraint(self, c)
+
+    def build_constraint_dd(self):
+        self._constraint_dd = self.get_manager().true()
+        for c in self.constraints():
+            for rule in c.encodeCNF():
+                rule_sdd = self.get_manager().disjoin(*[self.get_inode(r) for r in rule])
+                new_constraint_dd = self.get_manager().conjoin(self._constraint_dd, rule_sdd)
+                self.get_manager().deref(self._constraint_dd)
+                self.get_manager().deref(rule_sdd)
+                self._constraint_dd = new_constraint_dd
 
 class ForwardSDD(SDD, ForwardInference):
 

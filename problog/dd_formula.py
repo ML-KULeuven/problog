@@ -33,7 +33,7 @@ class DD(LogicFormula, Evaluatable):
 
     def _create_atom(self, identifier, probability, group, name=None):
         index = len(self)+1
-        self.atom2var[index] = self.get_manager().add_variable(index)
+        self.atom2var[index] = self.get_manager().add_variable()
         return self._atom(identifier, probability, group, name)
 
     def get_inode(self, index):
