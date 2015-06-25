@@ -824,7 +824,10 @@ def _break_cycles(source, target, nodeid, ancestors, cycles_broken, content, tra
             #       (cycles broken is a subset of ancestors)
             #   - no more cycles should be broken than those that have been broken in the previous
             #       (the previous node does not contain ancestors)
+
             if cb <= ancset and not ancset & cn:
+                cycles_broken |= cb
+                content |= cn
                 if negative_node:
                     return target.addNot(newnode)
                 else:
