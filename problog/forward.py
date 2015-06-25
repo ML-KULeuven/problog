@@ -178,15 +178,6 @@ class ForwardInference(DD):
     def add_constraint(self, c):
         LogicFormula.add_constraint(self, c)
 
-    def build_constraint_dd(self):
-        self._constraint_dd = self.get_manager().true()
-        for c in self.constraints():
-            for rule in c.encodeCNF():
-                rule_sdd = self.get_manager().disjoin(*[self.get_inode(r) for r in rule])
-                new_constraint_dd = self.get_manager().conjoin(self._constraint_dd, rule_sdd)
-                self.get_manager().deref(self._constraint_dd)
-                self.get_manager().deref(rule_sdd)
-                self._constraint_dd = new_constraint_dd
 
 class ForwardSDD(SDD, ForwardInference):
 
@@ -204,11 +195,9 @@ class ForwardBDD(BDD, ForwardInference):
 @transform(LogicFormula, ForwardSDD)
 def build_sdd(source, destination, **kwdargs):
     result = build_dd(source, destination, 'ForwardSDD', **kwdargs)
-    result.build_dd()
     return result
 
 @transform(LogicFormula, ForwardBDD)
 def build_sdd(source, destination, **kwdargs):
     result = build_dd(source, destination, 'ForwardBDD', **kwdargs)
-    result.build_dd()
     return result

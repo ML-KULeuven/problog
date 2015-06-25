@@ -85,19 +85,29 @@ class DD(LogicFormula, Evaluatable):
         else:
             return self._constraint_dd
 
-    def add_constraint(self, c):
-        if self._constraint_dd is None:
-            self._constraint_dd = self.get_manager().true()
-        LogicFormula.add_constraint(self, c)
-        for rule in c.encodeCNF():
-            rule_sdd = self.get_manager().disjoin(*[self.get_inode(r) for r in rule])
-            new_constraint_dd = self.get_manager().conjoin(self._constraint_dd, rule_sdd)
-            self.get_manager().deref(self._constraint_dd)
-            self.get_manager().deref(rule_sdd)
-            self._constraint_dd = new_constraint_dd
-
     def create_evaluator(self, semiring, weights):
         return DDEvaluator(self, semiring, weights)
+
+    def build_dd(self):
+        required_nodes = set([abs(n) for q, n in self.queries() if self.isProbabilistic(n)])
+        required_nodes |= set([abs(n) for q, n in self.queries() if self.isProbabilistic(n)])
+
+        for n in required_nodes:
+            self.get_inode(n)
+
+        self.build_constraint_dd()
+
+    def build_constraint_dd(self):
+        self._constraint_dd = self.get_manager().true()
+        for c in self.constraints():
+            for rule in c.encodeCNF():
+                rule_sdd = self.get_manager().disjoin(*[self.get_inode(r) for r in rule])
+                new_constraint_dd = self.get_manager().conjoin(self._constraint_dd, rule_sdd)
+                self.get_manager().deref(self._constraint_dd)
+                self.get_manager().deref(rule_sdd)
+                self._constraint_dd = new_constraint_dd
+
+
 
 
 class DDManager(object):
@@ -404,5 +414,6 @@ def build_dd(source, destination, ddname, **kwdargs):
         for c in source.constraints():
             if c.isActive():
                 destination.add_constraint(c)
+        destination.build_dd()
 
     return destination
