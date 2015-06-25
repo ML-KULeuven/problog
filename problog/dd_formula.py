@@ -396,6 +396,7 @@ def build_dd(source, destination, ddname, **kwdargs):
                 j = destination.addOr(n.children, source.get_name(i))
             else:
                 raise TypeError('Unknown node type')
+            assert i == j
 
         for name, node, label in source.getNamesWithLabel():
             destination.addName(name, node, label)

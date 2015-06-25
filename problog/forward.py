@@ -112,6 +112,7 @@ class ForwardInference(DD):
             self.init_build()
             updated_nodes = OrderedSet(self._facts)
             while updated_nodes:
+                # TODO only check nodes that are actually used in negation
                 updated_nodes = self.build_stratum(updated_nodes)
         except SystemError as err:
             print (err)
@@ -130,7 +131,7 @@ class ForwardInference(DD):
             else:
                 newnode = self.get_manager().conjoin(*children)
         elif nodetype == 'disj':
-            children = [oldnode] + [self.get_inode(c) for c in node.children]
+            children = [self.get_inode(c) for c in node.children]
             children = list(filter(None, children))   # discard children that are still unknown
             if children:
                 newnode = self.get_manager().disjoin(*children)
@@ -189,8 +190,8 @@ class ForwardInference(DD):
 
 class ForwardSDD(SDD, ForwardInference):
 
-    def __init__(self, **kwdargs):
-        SDD.__init__(self, sdd_auto_gc=True, **kwdargs)
+    def __init__(self, sdd_auto_gc=True, **kwdargs):
+        SDD.__init__(self, sdd_auto_gc=sdd_auto_gc, **kwdargs)
         ForwardInference.__init__(self, **kwdargs)
 
 class ForwardBDD(BDD, ForwardInference):
