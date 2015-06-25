@@ -11,14 +11,14 @@ from .core import transform
 
 import signal
 
-from collections import OrderedDict, defaultdict, namedtuple
+from collections import defaultdict
 
 def timeout_handler(signum, frame):
     raise SystemError('Process timeout (Python) [%s]' % signum)
 
 class ForwardInference(DD):
 
-    def __init__(self, timeout=None, **kwdargs):
+    def __init__(self, compile_timeout=None, **kwdargs):
         super(ForwardInference, self).__init__(**kwdargs)
 
         self._inodes_prev = None
@@ -26,7 +26,7 @@ class ForwardInference(DD):
         self._facts = None
         self._atoms_in_rules = None
 
-        self.timeout = timeout
+        self.timeout = compile_timeout
 
         self._node_depths = None
 

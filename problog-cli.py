@@ -15,6 +15,7 @@ from problog.evaluator import SemiringSymbolic, SemiringLogProbability
 from problog.nnf_formula import NNF
 from problog.sdd_formula import SDD
 from problog.bdd_formula import BDD
+from problog.forward import ForwardBDD, ForwardSDD
 from problog.formula import LogicFormula, LogicDAG
 from problog.cnf_formula import CNF
 from problog.util import Timer, start_timer, stop_timer
@@ -145,7 +146,7 @@ def argparser():
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument('filenames', metavar='MODEL', nargs='*', type=InputFile)
     parser.add_argument('--verbose', '-v', action='count', help='Verbose output')
-    parser.add_argument('--knowledge', '-k', dest='koption', choices=('sdd', 'nnf', 'ddnnf', 'bdd'),
+    parser.add_argument('--knowledge', '-k', dest='koption', choices=('sdd', 'nnf', 'ddnnf', 'bdd', 'fsdd', 'fbdd'),
                         default=None, help="Knowledge compilation tool.")
 
     # Evaluation semiring
@@ -163,6 +164,8 @@ def argparser():
                         default=sys.getrecursionlimit(), type=int)
     parser.add_argument('--timeout', '-t', type=int, default=0,
                         help="Set timeout (in seconds, default=off).")
+    parser.add_argument('--compile-timeout', type=int, default=0,
+                        help="Set timeout for compilation (in seconds, default=off).")
     parser.add_argument('--debug', '-d', action='store_true',
                         help="Enable debug mode (print full errors).")
 
@@ -260,8 +263,12 @@ def main(argv):
         knowledge = NNF
     elif args.koption == 'sdd':
         knowledge = SDD
+    elif args.koption == 'fsdd':
+        knowledge = ForwardSDD
     elif args.koption == 'bdd':
         knowledge = BDD
+    elif args.koption == 'fbdd':
+        knowledge = ForwardBDD
     elif args.koption is None:
         if SDD.is_available() and not args.symbolic:
             logger.info('Using SDD path')
