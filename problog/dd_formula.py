@@ -55,19 +55,20 @@ class DD(LogicFormula, Evaluatable):
             while len(self.inodes) < index:
                 self.inodes.append(None)
             if self.inodes[index-1] is None:
-                # Create SDD
-                if type(node).__name__ == 'conj':
-                    self.inodes[index-1] = \
-                        self.get_manager().conjoin(*[self.get_inode(c) for c in node.children])
-                else:
-                    self.inodes[index-1] = \
-                        self.get_manager().disjoin(*[self.get_inode(c) for c in node.children])
+                self.inodes[index-1] = self.create_inode(node)
             result = self.inodes[index-1]
         if negate:
             new_sdd = self.get_manager().negate(result)
             return new_sdd
         else:
             return result
+
+    def create_inode(self, node):
+        # Create SDD
+        if type(node).__name__ == 'conj':
+            return self.get_manager().conjoin(*[self.get_inode(c) for c in node.children])
+        else:
+            return self.get_manager().disjoin(*[self.get_inode(c) for c in node.children])
 
     def add_inode(self, node):
         self.inodes.append(node)
@@ -326,7 +327,9 @@ class DDEvaluator(Evaluator):
 
         weights = self.formula.extractWeights(self.semiring, self.original_weights)
         for atom, weight in weights.items():
-            self.weights[self.formula.atom2var[atom]] = weight
+            av = self.formula.atom2var.get(atom)
+            if av is not None:
+                self.weights[av] = weight
 
         if with_evidence:
             for ev in self.evidence():

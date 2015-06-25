@@ -164,7 +164,10 @@ class SDDManager(DDManager):
         :rtype: bool
         """
         # Assumes SDD library always reuses equivalent nodes.
-        return int(node1) == int(node2)
+        if node1 is None or node2 is None:
+            return node1 == node2
+        else:
+            return int(node1) == int(node2)
 
     def ref(self, *nodes):
         """
