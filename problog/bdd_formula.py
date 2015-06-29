@@ -31,6 +31,9 @@ class BDD(DD):
     def create_manager(self):
         return BDDManager()
 
+    def get_atom_from_inode(self, node):
+        return self.var2atom[self.get_manager().get_variable(node)]
+
     @classmethod
     def is_available(cls) :
         return bdd is not None
@@ -68,6 +71,9 @@ class BDDManager(DDManager):
             return self.varcount
         else:
             return label
+
+    def get_variable(self, node):
+        return int(bdd._VARS[node.root].name[1:])
 
     def literal(self, label):
         """
