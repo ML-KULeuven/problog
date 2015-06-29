@@ -2973,7 +2973,7 @@ static swig_module_info swig_module = {swig_types, 16, 0, 0, 0, 0};
 
 #include "except.h"
 
-void c_handler(int sig)
+static void c_handler(int sig)
 {
   throw(sig);
 }
@@ -3454,46 +3454,51 @@ SWIGINTERN PyObject *_wrap_sdd_array_element(PyObject *SWIGUNUSEDPARM(self), PyO
     
     // signal(SIGSEGV, handler);
     
+    struct sigaction new_action;
+    new_action.sa_handler = c_handler;
+    sigemptyset (&new_action.sa_mask);
+    new_action.sa_flags = SA_RESTART;
     
-    void (*h_alrm)(int);
-    void (*h_abrt)(int);
-    void (*h_term)(int);
-    void (*h_int)(int);
+    struct sigaction old_action_term;
+    struct sigaction old_action_abrt;
+    struct sigaction old_action_int;
+    struct sigaction old_action_alrm;
+    
+    sigaction(SIGTERM,  &new_action, &old_action_term);
+    sigaction(SIGABRT,  &new_action, &old_action_abrt);
+    sigaction(SIGINT,  &new_action, &old_action_int);
+    sigaction(SIGALRM,  &new_action, &old_action_alrm);
     try {
-      h_alrm = signal(SIGALRM,  c_handler);
-      h_abrt = signal(SIGABRT, c_handler);
-      h_term = signal(SIGTERM, c_handler);
-      h_int = signal(SIGINT,  c_handler);
       result = (SddNode *)sdd_array_element(arg1,arg2);
     } catch(SIGINT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process interrupted");
     } catch(SIGTERM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process terminated");
     } catch(SIGABRT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process aborted");
     } catch(SIGALRM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process timeout");
     }
-    signal(SIGTERM, h_term);
-    signal(SIGINT,  h_int);
-    signal(SIGABRT, h_abrt);
-    signal(SIGALRM, h_alrm);
+    sigaction(SIGTERM, &old_action_term, NULL);
+    sigaction(SIGABRT, &old_action_abrt, NULL);
+    sigaction(SIGINT, &old_action_int, NULL);
+    sigaction(SIGALRM, &old_action_alrm, NULL);
     
   }
   resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_sdd_node_t, 0 |  0 );
@@ -3533,46 +3538,51 @@ SWIGINTERN PyObject *_wrap_sdd_array_int_element(PyObject *SWIGUNUSEDPARM(self),
     
     // signal(SIGSEGV, handler);
     
+    struct sigaction new_action;
+    new_action.sa_handler = c_handler;
+    sigemptyset (&new_action.sa_mask);
+    new_action.sa_flags = SA_RESTART;
     
-    void (*h_alrm)(int);
-    void (*h_abrt)(int);
-    void (*h_term)(int);
-    void (*h_int)(int);
+    struct sigaction old_action_term;
+    struct sigaction old_action_abrt;
+    struct sigaction old_action_int;
+    struct sigaction old_action_alrm;
+    
+    sigaction(SIGTERM,  &new_action, &old_action_term);
+    sigaction(SIGABRT,  &new_action, &old_action_abrt);
+    sigaction(SIGINT,  &new_action, &old_action_int);
+    sigaction(SIGALRM,  &new_action, &old_action_alrm);
     try {
-      h_alrm = signal(SIGALRM,  c_handler);
-      h_abrt = signal(SIGABRT, c_handler);
-      h_term = signal(SIGTERM, c_handler);
-      h_int = signal(SIGINT,  c_handler);
       result = (int)sdd_array_int_element(arg1,arg2);
     } catch(SIGINT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process interrupted");
     } catch(SIGTERM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process terminated");
     } catch(SIGABRT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process aborted");
     } catch(SIGALRM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process timeout");
     }
-    signal(SIGTERM, h_term);
-    signal(SIGINT,  h_int);
-    signal(SIGABRT, h_abrt);
-    signal(SIGALRM, h_alrm);
+    sigaction(SIGTERM, &old_action_term, NULL);
+    sigaction(SIGABRT, &old_action_abrt, NULL);
+    sigaction(SIGINT, &old_action_int, NULL);
+    sigaction(SIGALRM, &old_action_alrm, NULL);
     
   }
   resultobj = SWIG_From_int((int)(result));
@@ -3680,46 +3690,51 @@ SWIGINTERN PyObject *_wrap_sdd_manager_new(PyObject *SWIGUNUSEDPARM(self), PyObj
     
     // signal(SIGSEGV, handler);
     
+    struct sigaction new_action;
+    new_action.sa_handler = c_handler;
+    sigemptyset (&new_action.sa_mask);
+    new_action.sa_flags = SA_RESTART;
     
-    void (*h_alrm)(int);
-    void (*h_abrt)(int);
-    void (*h_term)(int);
-    void (*h_int)(int);
+    struct sigaction old_action_term;
+    struct sigaction old_action_abrt;
+    struct sigaction old_action_int;
+    struct sigaction old_action_alrm;
+    
+    sigaction(SIGTERM,  &new_action, &old_action_term);
+    sigaction(SIGABRT,  &new_action, &old_action_abrt);
+    sigaction(SIGINT,  &new_action, &old_action_int);
+    sigaction(SIGALRM,  &new_action, &old_action_alrm);
     try {
-      h_alrm = signal(SIGALRM,  c_handler);
-      h_abrt = signal(SIGABRT, c_handler);
-      h_term = signal(SIGTERM, c_handler);
-      h_int = signal(SIGINT,  c_handler);
       result = (SddManager *)sdd_manager_new(arg1);
     } catch(SIGINT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process interrupted");
     } catch(SIGTERM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process terminated");
     } catch(SIGABRT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process aborted");
     } catch(SIGALRM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process timeout");
     }
-    signal(SIGTERM, h_term);
-    signal(SIGINT,  h_int);
-    signal(SIGABRT, h_abrt);
-    signal(SIGALRM, h_alrm);
+    sigaction(SIGTERM, &old_action_term, NULL);
+    sigaction(SIGABRT, &old_action_abrt, NULL);
+    sigaction(SIGINT, &old_action_int, NULL);
+    sigaction(SIGALRM, &old_action_alrm, NULL);
     
   }
   resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_sdd_manager_t, 0 |  0 );
@@ -3759,46 +3774,51 @@ SWIGINTERN PyObject *_wrap_sdd_manager_create(PyObject *SWIGUNUSEDPARM(self), Py
     
     // signal(SIGSEGV, handler);
     
+    struct sigaction new_action;
+    new_action.sa_handler = c_handler;
+    sigemptyset (&new_action.sa_mask);
+    new_action.sa_flags = SA_RESTART;
     
-    void (*h_alrm)(int);
-    void (*h_abrt)(int);
-    void (*h_term)(int);
-    void (*h_int)(int);
+    struct sigaction old_action_term;
+    struct sigaction old_action_abrt;
+    struct sigaction old_action_int;
+    struct sigaction old_action_alrm;
+    
+    sigaction(SIGTERM,  &new_action, &old_action_term);
+    sigaction(SIGABRT,  &new_action, &old_action_abrt);
+    sigaction(SIGINT,  &new_action, &old_action_int);
+    sigaction(SIGALRM,  &new_action, &old_action_alrm);
     try {
-      h_alrm = signal(SIGALRM,  c_handler);
-      h_abrt = signal(SIGABRT, c_handler);
-      h_term = signal(SIGTERM, c_handler);
-      h_int = signal(SIGINT,  c_handler);
       result = (SddManager *)sdd_manager_create(arg1,arg2);
     } catch(SIGINT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process interrupted");
     } catch(SIGTERM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process terminated");
     } catch(SIGABRT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process aborted");
     } catch(SIGALRM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process timeout");
     }
-    signal(SIGTERM, h_term);
-    signal(SIGINT,  h_int);
-    signal(SIGABRT, h_abrt);
-    signal(SIGALRM, h_alrm);
+    sigaction(SIGTERM, &old_action_term, NULL);
+    sigaction(SIGABRT, &old_action_abrt, NULL);
+    sigaction(SIGINT, &old_action_int, NULL);
+    sigaction(SIGALRM, &old_action_alrm, NULL);
     
   }
   resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_sdd_manager_t, 0 |  0 );
@@ -3828,46 +3848,51 @@ SWIGINTERN PyObject *_wrap_sdd_manager_free(PyObject *SWIGUNUSEDPARM(self), PyOb
     
     // signal(SIGSEGV, handler);
     
+    struct sigaction new_action;
+    new_action.sa_handler = c_handler;
+    sigemptyset (&new_action.sa_mask);
+    new_action.sa_flags = SA_RESTART;
     
-    void (*h_alrm)(int);
-    void (*h_abrt)(int);
-    void (*h_term)(int);
-    void (*h_int)(int);
+    struct sigaction old_action_term;
+    struct sigaction old_action_abrt;
+    struct sigaction old_action_int;
+    struct sigaction old_action_alrm;
+    
+    sigaction(SIGTERM,  &new_action, &old_action_term);
+    sigaction(SIGABRT,  &new_action, &old_action_abrt);
+    sigaction(SIGINT,  &new_action, &old_action_int);
+    sigaction(SIGALRM,  &new_action, &old_action_alrm);
     try {
-      h_alrm = signal(SIGALRM,  c_handler);
-      h_abrt = signal(SIGABRT, c_handler);
-      h_term = signal(SIGTERM, c_handler);
-      h_int = signal(SIGINT,  c_handler);
       sdd_manager_free(arg1);
     } catch(SIGINT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process interrupted");
     } catch(SIGTERM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process terminated");
     } catch(SIGABRT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process aborted");
     } catch(SIGALRM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process timeout");
     }
-    signal(SIGTERM, h_term);
-    signal(SIGINT,  h_int);
-    signal(SIGABRT, h_abrt);
-    signal(SIGALRM, h_alrm);
+    sigaction(SIGTERM, &old_action_term, NULL);
+    sigaction(SIGABRT, &old_action_abrt, NULL);
+    sigaction(SIGINT, &old_action_int, NULL);
+    sigaction(SIGALRM, &old_action_alrm, NULL);
     
   }
   resultobj = SWIG_Py_Void();
@@ -3897,46 +3922,51 @@ SWIGINTERN PyObject *_wrap_sdd_manager_print(PyObject *SWIGUNUSEDPARM(self), PyO
     
     // signal(SIGSEGV, handler);
     
+    struct sigaction new_action;
+    new_action.sa_handler = c_handler;
+    sigemptyset (&new_action.sa_mask);
+    new_action.sa_flags = SA_RESTART;
     
-    void (*h_alrm)(int);
-    void (*h_abrt)(int);
-    void (*h_term)(int);
-    void (*h_int)(int);
+    struct sigaction old_action_term;
+    struct sigaction old_action_abrt;
+    struct sigaction old_action_int;
+    struct sigaction old_action_alrm;
+    
+    sigaction(SIGTERM,  &new_action, &old_action_term);
+    sigaction(SIGABRT,  &new_action, &old_action_abrt);
+    sigaction(SIGINT,  &new_action, &old_action_int);
+    sigaction(SIGALRM,  &new_action, &old_action_alrm);
     try {
-      h_alrm = signal(SIGALRM,  c_handler);
-      h_abrt = signal(SIGABRT, c_handler);
-      h_term = signal(SIGTERM, c_handler);
-      h_int = signal(SIGINT,  c_handler);
       sdd_manager_print(arg1);
     } catch(SIGINT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process interrupted");
     } catch(SIGTERM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process terminated");
     } catch(SIGABRT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process aborted");
     } catch(SIGALRM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process timeout");
     }
-    signal(SIGTERM, h_term);
-    signal(SIGINT,  h_int);
-    signal(SIGABRT, h_abrt);
-    signal(SIGALRM, h_alrm);
+    sigaction(SIGTERM, &old_action_term, NULL);
+    sigaction(SIGABRT, &old_action_abrt, NULL);
+    sigaction(SIGINT, &old_action_int, NULL);
+    sigaction(SIGALRM, &old_action_alrm, NULL);
     
   }
   resultobj = SWIG_Py_Void();
@@ -3966,46 +3996,51 @@ SWIGINTERN PyObject *_wrap_sdd_manager_auto_gc_and_minimize_on(PyObject *SWIGUNU
     
     // signal(SIGSEGV, handler);
     
+    struct sigaction new_action;
+    new_action.sa_handler = c_handler;
+    sigemptyset (&new_action.sa_mask);
+    new_action.sa_flags = SA_RESTART;
     
-    void (*h_alrm)(int);
-    void (*h_abrt)(int);
-    void (*h_term)(int);
-    void (*h_int)(int);
+    struct sigaction old_action_term;
+    struct sigaction old_action_abrt;
+    struct sigaction old_action_int;
+    struct sigaction old_action_alrm;
+    
+    sigaction(SIGTERM,  &new_action, &old_action_term);
+    sigaction(SIGABRT,  &new_action, &old_action_abrt);
+    sigaction(SIGINT,  &new_action, &old_action_int);
+    sigaction(SIGALRM,  &new_action, &old_action_alrm);
     try {
-      h_alrm = signal(SIGALRM,  c_handler);
-      h_abrt = signal(SIGABRT, c_handler);
-      h_term = signal(SIGTERM, c_handler);
-      h_int = signal(SIGINT,  c_handler);
       sdd_manager_auto_gc_and_minimize_on(arg1);
     } catch(SIGINT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process interrupted");
     } catch(SIGTERM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process terminated");
     } catch(SIGABRT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process aborted");
     } catch(SIGALRM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process timeout");
     }
-    signal(SIGTERM, h_term);
-    signal(SIGINT,  h_int);
-    signal(SIGABRT, h_abrt);
-    signal(SIGALRM, h_alrm);
+    sigaction(SIGTERM, &old_action_term, NULL);
+    sigaction(SIGABRT, &old_action_abrt, NULL);
+    sigaction(SIGINT, &old_action_int, NULL);
+    sigaction(SIGALRM, &old_action_alrm, NULL);
     
   }
   resultobj = SWIG_Py_Void();
@@ -4035,46 +4070,51 @@ SWIGINTERN PyObject *_wrap_sdd_manager_auto_gc_and_minimize_off(PyObject *SWIGUN
     
     // signal(SIGSEGV, handler);
     
+    struct sigaction new_action;
+    new_action.sa_handler = c_handler;
+    sigemptyset (&new_action.sa_mask);
+    new_action.sa_flags = SA_RESTART;
     
-    void (*h_alrm)(int);
-    void (*h_abrt)(int);
-    void (*h_term)(int);
-    void (*h_int)(int);
+    struct sigaction old_action_term;
+    struct sigaction old_action_abrt;
+    struct sigaction old_action_int;
+    struct sigaction old_action_alrm;
+    
+    sigaction(SIGTERM,  &new_action, &old_action_term);
+    sigaction(SIGABRT,  &new_action, &old_action_abrt);
+    sigaction(SIGINT,  &new_action, &old_action_int);
+    sigaction(SIGALRM,  &new_action, &old_action_alrm);
     try {
-      h_alrm = signal(SIGALRM,  c_handler);
-      h_abrt = signal(SIGABRT, c_handler);
-      h_term = signal(SIGTERM, c_handler);
-      h_int = signal(SIGINT,  c_handler);
       sdd_manager_auto_gc_and_minimize_off(arg1);
     } catch(SIGINT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process interrupted");
     } catch(SIGTERM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process terminated");
     } catch(SIGABRT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process aborted");
     } catch(SIGALRM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process timeout");
     }
-    signal(SIGTERM, h_term);
-    signal(SIGINT,  h_int);
-    signal(SIGABRT, h_abrt);
-    signal(SIGALRM, h_alrm);
+    sigaction(SIGTERM, &old_action_term, NULL);
+    sigaction(SIGABRT, &old_action_abrt, NULL);
+    sigaction(SIGINT, &old_action_int, NULL);
+    sigaction(SIGALRM, &old_action_alrm, NULL);
     
   }
   resultobj = SWIG_Py_Void();
@@ -4112,46 +4152,51 @@ SWIGINTERN PyObject *_wrap_sdd_manager_set_minimize_function(PyObject *SWIGUNUSE
     
     // signal(SIGSEGV, handler);
     
+    struct sigaction new_action;
+    new_action.sa_handler = c_handler;
+    sigemptyset (&new_action.sa_mask);
+    new_action.sa_flags = SA_RESTART;
     
-    void (*h_alrm)(int);
-    void (*h_abrt)(int);
-    void (*h_term)(int);
-    void (*h_int)(int);
+    struct sigaction old_action_term;
+    struct sigaction old_action_abrt;
+    struct sigaction old_action_int;
+    struct sigaction old_action_alrm;
+    
+    sigaction(SIGTERM,  &new_action, &old_action_term);
+    sigaction(SIGABRT,  &new_action, &old_action_abrt);
+    sigaction(SIGINT,  &new_action, &old_action_int);
+    sigaction(SIGALRM,  &new_action, &old_action_alrm);
     try {
-      h_alrm = signal(SIGALRM,  c_handler);
-      h_abrt = signal(SIGABRT, c_handler);
-      h_term = signal(SIGTERM, c_handler);
-      h_int = signal(SIGINT,  c_handler);
       sdd_manager_set_minimize_function(arg1,arg2);
     } catch(SIGINT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process interrupted");
     } catch(SIGTERM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process terminated");
     } catch(SIGABRT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process aborted");
     } catch(SIGALRM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process timeout");
     }
-    signal(SIGTERM, h_term);
-    signal(SIGINT,  h_int);
-    signal(SIGABRT, h_abrt);
-    signal(SIGALRM, h_alrm);
+    sigaction(SIGTERM, &old_action_term, NULL);
+    sigaction(SIGABRT, &old_action_abrt, NULL);
+    sigaction(SIGINT, &old_action_int, NULL);
+    sigaction(SIGALRM, &old_action_alrm, NULL);
     
   }
   resultobj = SWIG_Py_Void();
@@ -4181,46 +4226,51 @@ SWIGINTERN PyObject *_wrap_sdd_manager_unset_minimize_function(PyObject *SWIGUNU
     
     // signal(SIGSEGV, handler);
     
+    struct sigaction new_action;
+    new_action.sa_handler = c_handler;
+    sigemptyset (&new_action.sa_mask);
+    new_action.sa_flags = SA_RESTART;
     
-    void (*h_alrm)(int);
-    void (*h_abrt)(int);
-    void (*h_term)(int);
-    void (*h_int)(int);
+    struct sigaction old_action_term;
+    struct sigaction old_action_abrt;
+    struct sigaction old_action_int;
+    struct sigaction old_action_alrm;
+    
+    sigaction(SIGTERM,  &new_action, &old_action_term);
+    sigaction(SIGABRT,  &new_action, &old_action_abrt);
+    sigaction(SIGINT,  &new_action, &old_action_int);
+    sigaction(SIGALRM,  &new_action, &old_action_alrm);
     try {
-      h_alrm = signal(SIGALRM,  c_handler);
-      h_abrt = signal(SIGABRT, c_handler);
-      h_term = signal(SIGTERM, c_handler);
-      h_int = signal(SIGINT,  c_handler);
       sdd_manager_unset_minimize_function(arg1);
     } catch(SIGINT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process interrupted");
     } catch(SIGTERM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process terminated");
     } catch(SIGABRT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process aborted");
     } catch(SIGALRM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process timeout");
     }
-    signal(SIGTERM, h_term);
-    signal(SIGINT,  h_int);
-    signal(SIGABRT, h_abrt);
-    signal(SIGALRM, h_alrm);
+    sigaction(SIGTERM, &old_action_term, NULL);
+    sigaction(SIGABRT, &old_action_abrt, NULL);
+    sigaction(SIGINT, &old_action_int, NULL);
+    sigaction(SIGALRM, &old_action_alrm, NULL);
     
   }
   resultobj = SWIG_Py_Void();
@@ -4251,46 +4301,51 @@ SWIGINTERN PyObject *_wrap_sdd_manager_options(PyObject *SWIGUNUSEDPARM(self), P
     
     // signal(SIGSEGV, handler);
     
+    struct sigaction new_action;
+    new_action.sa_handler = c_handler;
+    sigemptyset (&new_action.sa_mask);
+    new_action.sa_flags = SA_RESTART;
     
-    void (*h_alrm)(int);
-    void (*h_abrt)(int);
-    void (*h_term)(int);
-    void (*h_int)(int);
+    struct sigaction old_action_term;
+    struct sigaction old_action_abrt;
+    struct sigaction old_action_int;
+    struct sigaction old_action_alrm;
+    
+    sigaction(SIGTERM,  &new_action, &old_action_term);
+    sigaction(SIGABRT,  &new_action, &old_action_abrt);
+    sigaction(SIGINT,  &new_action, &old_action_int);
+    sigaction(SIGALRM,  &new_action, &old_action_alrm);
     try {
-      h_alrm = signal(SIGALRM,  c_handler);
-      h_abrt = signal(SIGABRT, c_handler);
-      h_term = signal(SIGTERM, c_handler);
-      h_int = signal(SIGINT,  c_handler);
       result = (void *)sdd_manager_options(arg1);
     } catch(SIGINT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process interrupted");
     } catch(SIGTERM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process terminated");
     } catch(SIGABRT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process aborted");
     } catch(SIGALRM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process timeout");
     }
-    signal(SIGTERM, h_term);
-    signal(SIGINT,  h_int);
-    signal(SIGABRT, h_abrt);
-    signal(SIGALRM, h_alrm);
+    sigaction(SIGTERM, &old_action_term, NULL);
+    sigaction(SIGABRT, &old_action_abrt, NULL);
+    sigaction(SIGINT, &old_action_int, NULL);
+    sigaction(SIGALRM, &old_action_alrm, NULL);
     
   }
   resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_void, 0 |  0 );
@@ -4327,46 +4382,51 @@ SWIGINTERN PyObject *_wrap_sdd_manager_set_options(PyObject *SWIGUNUSEDPARM(self
     
     // signal(SIGSEGV, handler);
     
+    struct sigaction new_action;
+    new_action.sa_handler = c_handler;
+    sigemptyset (&new_action.sa_mask);
+    new_action.sa_flags = SA_RESTART;
     
-    void (*h_alrm)(int);
-    void (*h_abrt)(int);
-    void (*h_term)(int);
-    void (*h_int)(int);
+    struct sigaction old_action_term;
+    struct sigaction old_action_abrt;
+    struct sigaction old_action_int;
+    struct sigaction old_action_alrm;
+    
+    sigaction(SIGTERM,  &new_action, &old_action_term);
+    sigaction(SIGABRT,  &new_action, &old_action_abrt);
+    sigaction(SIGINT,  &new_action, &old_action_int);
+    sigaction(SIGALRM,  &new_action, &old_action_alrm);
     try {
-      h_alrm = signal(SIGALRM,  c_handler);
-      h_abrt = signal(SIGABRT, c_handler);
-      h_term = signal(SIGTERM, c_handler);
-      h_int = signal(SIGINT,  c_handler);
       sdd_manager_set_options(arg1,arg2);
     } catch(SIGINT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process interrupted");
     } catch(SIGTERM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process terminated");
     } catch(SIGABRT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process aborted");
     } catch(SIGALRM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process timeout");
     }
-    signal(SIGTERM, h_term);
-    signal(SIGINT,  h_int);
-    signal(SIGABRT, h_abrt);
-    signal(SIGALRM, h_alrm);
+    sigaction(SIGTERM, &old_action_term, NULL);
+    sigaction(SIGABRT, &old_action_abrt, NULL);
+    sigaction(SIGINT, &old_action_int, NULL);
+    sigaction(SIGALRM, &old_action_alrm, NULL);
     
   }
   resultobj = SWIG_Py_Void();
@@ -4406,46 +4466,51 @@ SWIGINTERN PyObject *_wrap_sdd_manager_is_var_used(PyObject *SWIGUNUSEDPARM(self
     
     // signal(SIGSEGV, handler);
     
+    struct sigaction new_action;
+    new_action.sa_handler = c_handler;
+    sigemptyset (&new_action.sa_mask);
+    new_action.sa_flags = SA_RESTART;
     
-    void (*h_alrm)(int);
-    void (*h_abrt)(int);
-    void (*h_term)(int);
-    void (*h_int)(int);
+    struct sigaction old_action_term;
+    struct sigaction old_action_abrt;
+    struct sigaction old_action_int;
+    struct sigaction old_action_alrm;
+    
+    sigaction(SIGTERM,  &new_action, &old_action_term);
+    sigaction(SIGABRT,  &new_action, &old_action_abrt);
+    sigaction(SIGINT,  &new_action, &old_action_int);
+    sigaction(SIGALRM,  &new_action, &old_action_alrm);
     try {
-      h_alrm = signal(SIGALRM,  c_handler);
-      h_abrt = signal(SIGABRT, c_handler);
-      h_term = signal(SIGTERM, c_handler);
-      h_int = signal(SIGINT,  c_handler);
       result = (int)sdd_manager_is_var_used(arg1,arg2);
     } catch(SIGINT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process interrupted");
     } catch(SIGTERM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process terminated");
     } catch(SIGABRT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process aborted");
     } catch(SIGALRM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process timeout");
     }
-    signal(SIGTERM, h_term);
-    signal(SIGINT,  h_int);
-    signal(SIGABRT, h_abrt);
-    signal(SIGALRM, h_alrm);
+    sigaction(SIGTERM, &old_action_term, NULL);
+    sigaction(SIGABRT, &old_action_abrt, NULL);
+    sigaction(SIGINT, &old_action_int, NULL);
+    sigaction(SIGALRM, &old_action_alrm, NULL);
     
   }
   resultobj = SWIG_From_int((int)(result));
@@ -4485,46 +4550,51 @@ SWIGINTERN PyObject *_wrap_sdd_manager_vtree_of_var(PyObject *SWIGUNUSEDPARM(sel
     
     // signal(SIGSEGV, handler);
     
+    struct sigaction new_action;
+    new_action.sa_handler = c_handler;
+    sigemptyset (&new_action.sa_mask);
+    new_action.sa_flags = SA_RESTART;
     
-    void (*h_alrm)(int);
-    void (*h_abrt)(int);
-    void (*h_term)(int);
-    void (*h_int)(int);
+    struct sigaction old_action_term;
+    struct sigaction old_action_abrt;
+    struct sigaction old_action_int;
+    struct sigaction old_action_alrm;
+    
+    sigaction(SIGTERM,  &new_action, &old_action_term);
+    sigaction(SIGABRT,  &new_action, &old_action_abrt);
+    sigaction(SIGINT,  &new_action, &old_action_int);
+    sigaction(SIGALRM,  &new_action, &old_action_alrm);
     try {
-      h_alrm = signal(SIGALRM,  c_handler);
-      h_abrt = signal(SIGABRT, c_handler);
-      h_term = signal(SIGTERM, c_handler);
-      h_int = signal(SIGINT,  c_handler);
       result = (Vtree *)sdd_manager_vtree_of_var(arg1,(struct sdd_manager_t const *)arg2);
     } catch(SIGINT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process interrupted");
     } catch(SIGTERM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process terminated");
     } catch(SIGABRT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process aborted");
     } catch(SIGALRM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process timeout");
     }
-    signal(SIGTERM, h_term);
-    signal(SIGINT,  h_int);
-    signal(SIGABRT, h_abrt);
-    signal(SIGALRM, h_alrm);
+    sigaction(SIGTERM, &old_action_term, NULL);
+    sigaction(SIGABRT, &old_action_abrt, NULL);
+    sigaction(SIGINT, &old_action_int, NULL);
+    sigaction(SIGALRM, &old_action_alrm, NULL);
     
   }
   resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_vtree_t, 0 |  0 );
@@ -4573,46 +4643,51 @@ SWIGINTERN PyObject *_wrap_sdd_manager_lca_of_literals(PyObject *SWIGUNUSEDPARM(
     
     // signal(SIGSEGV, handler);
     
+    struct sigaction new_action;
+    new_action.sa_handler = c_handler;
+    sigemptyset (&new_action.sa_mask);
+    new_action.sa_flags = SA_RESTART;
     
-    void (*h_alrm)(int);
-    void (*h_abrt)(int);
-    void (*h_term)(int);
-    void (*h_int)(int);
+    struct sigaction old_action_term;
+    struct sigaction old_action_abrt;
+    struct sigaction old_action_int;
+    struct sigaction old_action_alrm;
+    
+    sigaction(SIGTERM,  &new_action, &old_action_term);
+    sigaction(SIGABRT,  &new_action, &old_action_abrt);
+    sigaction(SIGINT,  &new_action, &old_action_int);
+    sigaction(SIGALRM,  &new_action, &old_action_alrm);
     try {
-      h_alrm = signal(SIGALRM,  c_handler);
-      h_abrt = signal(SIGABRT, c_handler);
-      h_term = signal(SIGTERM, c_handler);
-      h_int = signal(SIGINT,  c_handler);
       result = (Vtree *)sdd_manager_lca_of_literals(arg1,arg2,arg3);
     } catch(SIGINT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process interrupted");
     } catch(SIGTERM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process terminated");
     } catch(SIGABRT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process aborted");
     } catch(SIGALRM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process timeout");
     }
-    signal(SIGTERM, h_term);
-    signal(SIGINT,  h_int);
-    signal(SIGABRT, h_abrt);
-    signal(SIGALRM, h_alrm);
+    sigaction(SIGTERM, &old_action_term, NULL);
+    sigaction(SIGABRT, &old_action_abrt, NULL);
+    sigaction(SIGINT, &old_action_int, NULL);
+    sigaction(SIGALRM, &old_action_alrm, NULL);
     
   }
   resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_vtree_t, 0 |  0 );
@@ -4643,46 +4718,51 @@ SWIGINTERN PyObject *_wrap_sdd_manager_var_count(PyObject *SWIGUNUSEDPARM(self),
     
     // signal(SIGSEGV, handler);
     
+    struct sigaction new_action;
+    new_action.sa_handler = c_handler;
+    sigemptyset (&new_action.sa_mask);
+    new_action.sa_flags = SA_RESTART;
     
-    void (*h_alrm)(int);
-    void (*h_abrt)(int);
-    void (*h_term)(int);
-    void (*h_int)(int);
+    struct sigaction old_action_term;
+    struct sigaction old_action_abrt;
+    struct sigaction old_action_int;
+    struct sigaction old_action_alrm;
+    
+    sigaction(SIGTERM,  &new_action, &old_action_term);
+    sigaction(SIGABRT,  &new_action, &old_action_abrt);
+    sigaction(SIGINT,  &new_action, &old_action_int);
+    sigaction(SIGALRM,  &new_action, &old_action_alrm);
     try {
-      h_alrm = signal(SIGALRM,  c_handler);
-      h_abrt = signal(SIGABRT, c_handler);
-      h_term = signal(SIGTERM, c_handler);
-      h_int = signal(SIGINT,  c_handler);
       result = (SddLiteral)sdd_manager_var_count(arg1);
     } catch(SIGINT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process interrupted");
     } catch(SIGTERM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process terminated");
     } catch(SIGABRT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process aborted");
     } catch(SIGALRM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process timeout");
     }
-    signal(SIGTERM, h_term);
-    signal(SIGINT,  h_int);
-    signal(SIGABRT, h_abrt);
-    signal(SIGALRM, h_alrm);
+    sigaction(SIGTERM, &old_action_term, NULL);
+    sigaction(SIGABRT, &old_action_abrt, NULL);
+    sigaction(SIGINT, &old_action_int, NULL);
+    sigaction(SIGALRM, &old_action_alrm, NULL);
     
   }
   resultobj = SWIG_From_long((long)(result));
@@ -4721,46 +4801,51 @@ SWIGINTERN PyObject *_wrap_sdd_manager_var_order(PyObject *SWIGUNUSEDPARM(self),
     
     // signal(SIGSEGV, handler);
     
+    struct sigaction new_action;
+    new_action.sa_handler = c_handler;
+    sigemptyset (&new_action.sa_mask);
+    new_action.sa_flags = SA_RESTART;
     
-    void (*h_alrm)(int);
-    void (*h_abrt)(int);
-    void (*h_term)(int);
-    void (*h_int)(int);
+    struct sigaction old_action_term;
+    struct sigaction old_action_abrt;
+    struct sigaction old_action_int;
+    struct sigaction old_action_alrm;
+    
+    sigaction(SIGTERM,  &new_action, &old_action_term);
+    sigaction(SIGABRT,  &new_action, &old_action_abrt);
+    sigaction(SIGINT,  &new_action, &old_action_int);
+    sigaction(SIGALRM,  &new_action, &old_action_alrm);
     try {
-      h_alrm = signal(SIGALRM,  c_handler);
-      h_abrt = signal(SIGABRT, c_handler);
-      h_term = signal(SIGTERM, c_handler);
-      h_int = signal(SIGINT,  c_handler);
       sdd_manager_var_order(arg1,arg2);
     } catch(SIGINT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process interrupted");
     } catch(SIGTERM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process terminated");
     } catch(SIGABRT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process aborted");
     } catch(SIGALRM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process timeout");
     }
-    signal(SIGTERM, h_term);
-    signal(SIGINT,  h_int);
-    signal(SIGABRT, h_abrt);
-    signal(SIGALRM, h_alrm);
+    sigaction(SIGTERM, &old_action_term, NULL);
+    sigaction(SIGABRT, &old_action_abrt, NULL);
+    sigaction(SIGINT, &old_action_int, NULL);
+    sigaction(SIGALRM, &old_action_alrm, NULL);
     
   }
   resultobj = SWIG_Py_Void();
@@ -4790,46 +4875,51 @@ SWIGINTERN PyObject *_wrap_sdd_manager_add_var_before_first(PyObject *SWIGUNUSED
     
     // signal(SIGSEGV, handler);
     
+    struct sigaction new_action;
+    new_action.sa_handler = c_handler;
+    sigemptyset (&new_action.sa_mask);
+    new_action.sa_flags = SA_RESTART;
     
-    void (*h_alrm)(int);
-    void (*h_abrt)(int);
-    void (*h_term)(int);
-    void (*h_int)(int);
+    struct sigaction old_action_term;
+    struct sigaction old_action_abrt;
+    struct sigaction old_action_int;
+    struct sigaction old_action_alrm;
+    
+    sigaction(SIGTERM,  &new_action, &old_action_term);
+    sigaction(SIGABRT,  &new_action, &old_action_abrt);
+    sigaction(SIGINT,  &new_action, &old_action_int);
+    sigaction(SIGALRM,  &new_action, &old_action_alrm);
     try {
-      h_alrm = signal(SIGALRM,  c_handler);
-      h_abrt = signal(SIGABRT, c_handler);
-      h_term = signal(SIGTERM, c_handler);
-      h_int = signal(SIGINT,  c_handler);
       sdd_manager_add_var_before_first(arg1);
     } catch(SIGINT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process interrupted");
     } catch(SIGTERM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process terminated");
     } catch(SIGABRT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process aborted");
     } catch(SIGALRM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process timeout");
     }
-    signal(SIGTERM, h_term);
-    signal(SIGINT,  h_int);
-    signal(SIGABRT, h_abrt);
-    signal(SIGALRM, h_alrm);
+    sigaction(SIGTERM, &old_action_term, NULL);
+    sigaction(SIGABRT, &old_action_abrt, NULL);
+    sigaction(SIGINT, &old_action_int, NULL);
+    sigaction(SIGALRM, &old_action_alrm, NULL);
     
   }
   resultobj = SWIG_Py_Void();
@@ -4859,46 +4949,51 @@ SWIGINTERN PyObject *_wrap_sdd_manager_add_var_after_last(PyObject *SWIGUNUSEDPA
     
     // signal(SIGSEGV, handler);
     
+    struct sigaction new_action;
+    new_action.sa_handler = c_handler;
+    sigemptyset (&new_action.sa_mask);
+    new_action.sa_flags = SA_RESTART;
     
-    void (*h_alrm)(int);
-    void (*h_abrt)(int);
-    void (*h_term)(int);
-    void (*h_int)(int);
+    struct sigaction old_action_term;
+    struct sigaction old_action_abrt;
+    struct sigaction old_action_int;
+    struct sigaction old_action_alrm;
+    
+    sigaction(SIGTERM,  &new_action, &old_action_term);
+    sigaction(SIGABRT,  &new_action, &old_action_abrt);
+    sigaction(SIGINT,  &new_action, &old_action_int);
+    sigaction(SIGALRM,  &new_action, &old_action_alrm);
     try {
-      h_alrm = signal(SIGALRM,  c_handler);
-      h_abrt = signal(SIGABRT, c_handler);
-      h_term = signal(SIGTERM, c_handler);
-      h_int = signal(SIGINT,  c_handler);
       sdd_manager_add_var_after_last(arg1);
     } catch(SIGINT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process interrupted");
     } catch(SIGTERM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process terminated");
     } catch(SIGABRT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process aborted");
     } catch(SIGALRM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process timeout");
     }
-    signal(SIGTERM, h_term);
-    signal(SIGINT,  h_int);
-    signal(SIGABRT, h_abrt);
-    signal(SIGALRM, h_alrm);
+    sigaction(SIGTERM, &old_action_term, NULL);
+    sigaction(SIGABRT, &old_action_abrt, NULL);
+    sigaction(SIGINT, &old_action_int, NULL);
+    sigaction(SIGALRM, &old_action_alrm, NULL);
     
   }
   resultobj = SWIG_Py_Void();
@@ -4937,46 +5032,51 @@ SWIGINTERN PyObject *_wrap_sdd_manager_add_var_before(PyObject *SWIGUNUSEDPARM(s
     
     // signal(SIGSEGV, handler);
     
+    struct sigaction new_action;
+    new_action.sa_handler = c_handler;
+    sigemptyset (&new_action.sa_mask);
+    new_action.sa_flags = SA_RESTART;
     
-    void (*h_alrm)(int);
-    void (*h_abrt)(int);
-    void (*h_term)(int);
-    void (*h_int)(int);
+    struct sigaction old_action_term;
+    struct sigaction old_action_abrt;
+    struct sigaction old_action_int;
+    struct sigaction old_action_alrm;
+    
+    sigaction(SIGTERM,  &new_action, &old_action_term);
+    sigaction(SIGABRT,  &new_action, &old_action_abrt);
+    sigaction(SIGINT,  &new_action, &old_action_int);
+    sigaction(SIGALRM,  &new_action, &old_action_alrm);
     try {
-      h_alrm = signal(SIGALRM,  c_handler);
-      h_abrt = signal(SIGABRT, c_handler);
-      h_term = signal(SIGTERM, c_handler);
-      h_int = signal(SIGINT,  c_handler);
       sdd_manager_add_var_before(arg1,arg2);
     } catch(SIGINT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process interrupted");
     } catch(SIGTERM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process terminated");
     } catch(SIGABRT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process aborted");
     } catch(SIGALRM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process timeout");
     }
-    signal(SIGTERM, h_term);
-    signal(SIGINT,  h_int);
-    signal(SIGABRT, h_abrt);
-    signal(SIGALRM, h_alrm);
+    sigaction(SIGTERM, &old_action_term, NULL);
+    sigaction(SIGABRT, &old_action_abrt, NULL);
+    sigaction(SIGINT, &old_action_int, NULL);
+    sigaction(SIGALRM, &old_action_alrm, NULL);
     
   }
   resultobj = SWIG_Py_Void();
@@ -5015,46 +5115,51 @@ SWIGINTERN PyObject *_wrap_sdd_manager_add_var_after(PyObject *SWIGUNUSEDPARM(se
     
     // signal(SIGSEGV, handler);
     
+    struct sigaction new_action;
+    new_action.sa_handler = c_handler;
+    sigemptyset (&new_action.sa_mask);
+    new_action.sa_flags = SA_RESTART;
     
-    void (*h_alrm)(int);
-    void (*h_abrt)(int);
-    void (*h_term)(int);
-    void (*h_int)(int);
+    struct sigaction old_action_term;
+    struct sigaction old_action_abrt;
+    struct sigaction old_action_int;
+    struct sigaction old_action_alrm;
+    
+    sigaction(SIGTERM,  &new_action, &old_action_term);
+    sigaction(SIGABRT,  &new_action, &old_action_abrt);
+    sigaction(SIGINT,  &new_action, &old_action_int);
+    sigaction(SIGALRM,  &new_action, &old_action_alrm);
     try {
-      h_alrm = signal(SIGALRM,  c_handler);
-      h_abrt = signal(SIGABRT, c_handler);
-      h_term = signal(SIGTERM, c_handler);
-      h_int = signal(SIGINT,  c_handler);
       sdd_manager_add_var_after(arg1,arg2);
     } catch(SIGINT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process interrupted");
     } catch(SIGTERM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process terminated");
     } catch(SIGABRT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process aborted");
     } catch(SIGALRM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process timeout");
     }
-    signal(SIGTERM, h_term);
-    signal(SIGINT,  h_int);
-    signal(SIGABRT, h_abrt);
-    signal(SIGALRM, h_alrm);
+    sigaction(SIGTERM, &old_action_term, NULL);
+    sigaction(SIGABRT, &old_action_abrt, NULL);
+    sigaction(SIGINT, &old_action_int, NULL);
+    sigaction(SIGALRM, &old_action_alrm, NULL);
     
   }
   resultobj = SWIG_Py_Void();
@@ -5085,46 +5190,51 @@ SWIGINTERN PyObject *_wrap_sdd_manager_true(PyObject *SWIGUNUSEDPARM(self), PyOb
     
     // signal(SIGSEGV, handler);
     
+    struct sigaction new_action;
+    new_action.sa_handler = c_handler;
+    sigemptyset (&new_action.sa_mask);
+    new_action.sa_flags = SA_RESTART;
     
-    void (*h_alrm)(int);
-    void (*h_abrt)(int);
-    void (*h_term)(int);
-    void (*h_int)(int);
+    struct sigaction old_action_term;
+    struct sigaction old_action_abrt;
+    struct sigaction old_action_int;
+    struct sigaction old_action_alrm;
+    
+    sigaction(SIGTERM,  &new_action, &old_action_term);
+    sigaction(SIGABRT,  &new_action, &old_action_abrt);
+    sigaction(SIGINT,  &new_action, &old_action_int);
+    sigaction(SIGALRM,  &new_action, &old_action_alrm);
     try {
-      h_alrm = signal(SIGALRM,  c_handler);
-      h_abrt = signal(SIGABRT, c_handler);
-      h_term = signal(SIGTERM, c_handler);
-      h_int = signal(SIGINT,  c_handler);
       result = (SddNode *)sdd_manager_true((struct sdd_manager_t const *)arg1);
     } catch(SIGINT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process interrupted");
     } catch(SIGTERM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process terminated");
     } catch(SIGABRT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process aborted");
     } catch(SIGALRM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process timeout");
     }
-    signal(SIGTERM, h_term);
-    signal(SIGINT,  h_int);
-    signal(SIGABRT, h_abrt);
-    signal(SIGALRM, h_alrm);
+    sigaction(SIGTERM, &old_action_term, NULL);
+    sigaction(SIGABRT, &old_action_abrt, NULL);
+    sigaction(SIGINT, &old_action_int, NULL);
+    sigaction(SIGALRM, &old_action_alrm, NULL);
     
   }
   resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_sdd_node_t, 0 |  0 );
@@ -5155,46 +5265,51 @@ SWIGINTERN PyObject *_wrap_sdd_manager_false(PyObject *SWIGUNUSEDPARM(self), PyO
     
     // signal(SIGSEGV, handler);
     
+    struct sigaction new_action;
+    new_action.sa_handler = c_handler;
+    sigemptyset (&new_action.sa_mask);
+    new_action.sa_flags = SA_RESTART;
     
-    void (*h_alrm)(int);
-    void (*h_abrt)(int);
-    void (*h_term)(int);
-    void (*h_int)(int);
+    struct sigaction old_action_term;
+    struct sigaction old_action_abrt;
+    struct sigaction old_action_int;
+    struct sigaction old_action_alrm;
+    
+    sigaction(SIGTERM,  &new_action, &old_action_term);
+    sigaction(SIGABRT,  &new_action, &old_action_abrt);
+    sigaction(SIGINT,  &new_action, &old_action_int);
+    sigaction(SIGALRM,  &new_action, &old_action_alrm);
     try {
-      h_alrm = signal(SIGALRM,  c_handler);
-      h_abrt = signal(SIGABRT, c_handler);
-      h_term = signal(SIGTERM, c_handler);
-      h_int = signal(SIGINT,  c_handler);
       result = (SddNode *)sdd_manager_false((struct sdd_manager_t const *)arg1);
     } catch(SIGINT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process interrupted");
     } catch(SIGTERM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process terminated");
     } catch(SIGABRT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process aborted");
     } catch(SIGALRM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process timeout");
     }
-    signal(SIGTERM, h_term);
-    signal(SIGINT,  h_int);
-    signal(SIGABRT, h_abrt);
-    signal(SIGALRM, h_alrm);
+    sigaction(SIGTERM, &old_action_term, NULL);
+    sigaction(SIGABRT, &old_action_abrt, NULL);
+    sigaction(SIGINT, &old_action_int, NULL);
+    sigaction(SIGALRM, &old_action_alrm, NULL);
     
   }
   resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_sdd_node_t, 0 |  0 );
@@ -5234,46 +5349,51 @@ SWIGINTERN PyObject *_wrap_sdd_manager_literal(PyObject *SWIGUNUSEDPARM(self), P
     
     // signal(SIGSEGV, handler);
     
+    struct sigaction new_action;
+    new_action.sa_handler = c_handler;
+    sigemptyset (&new_action.sa_mask);
+    new_action.sa_flags = SA_RESTART;
     
-    void (*h_alrm)(int);
-    void (*h_abrt)(int);
-    void (*h_term)(int);
-    void (*h_int)(int);
+    struct sigaction old_action_term;
+    struct sigaction old_action_abrt;
+    struct sigaction old_action_int;
+    struct sigaction old_action_alrm;
+    
+    sigaction(SIGTERM,  &new_action, &old_action_term);
+    sigaction(SIGABRT,  &new_action, &old_action_abrt);
+    sigaction(SIGINT,  &new_action, &old_action_int);
+    sigaction(SIGALRM,  &new_action, &old_action_alrm);
     try {
-      h_alrm = signal(SIGALRM,  c_handler);
-      h_abrt = signal(SIGABRT, c_handler);
-      h_term = signal(SIGTERM, c_handler);
-      h_int = signal(SIGINT,  c_handler);
       result = (SddNode *)sdd_manager_literal(arg1,arg2);
     } catch(SIGINT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process interrupted");
     } catch(SIGTERM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process terminated");
     } catch(SIGABRT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process aborted");
     } catch(SIGALRM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process timeout");
     }
-    signal(SIGTERM, h_term);
-    signal(SIGINT,  h_int);
-    signal(SIGABRT, h_abrt);
-    signal(SIGALRM, h_alrm);
+    sigaction(SIGTERM, &old_action_term, NULL);
+    sigaction(SIGABRT, &old_action_abrt, NULL);
+    sigaction(SIGINT, &old_action_int, NULL);
+    sigaction(SIGALRM, &old_action_alrm, NULL);
     
   }
   resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_sdd_node_t, 0 |  0 );
@@ -5331,46 +5451,51 @@ SWIGINTERN PyObject *_wrap_sdd_apply(PyObject *SWIGUNUSEDPARM(self), PyObject *a
     
     // signal(SIGSEGV, handler);
     
+    struct sigaction new_action;
+    new_action.sa_handler = c_handler;
+    sigemptyset (&new_action.sa_mask);
+    new_action.sa_flags = SA_RESTART;
     
-    void (*h_alrm)(int);
-    void (*h_abrt)(int);
-    void (*h_term)(int);
-    void (*h_int)(int);
+    struct sigaction old_action_term;
+    struct sigaction old_action_abrt;
+    struct sigaction old_action_int;
+    struct sigaction old_action_alrm;
+    
+    sigaction(SIGTERM,  &new_action, &old_action_term);
+    sigaction(SIGABRT,  &new_action, &old_action_abrt);
+    sigaction(SIGINT,  &new_action, &old_action_int);
+    sigaction(SIGALRM,  &new_action, &old_action_alrm);
     try {
-      h_alrm = signal(SIGALRM,  c_handler);
-      h_abrt = signal(SIGABRT, c_handler);
-      h_term = signal(SIGTERM, c_handler);
-      h_int = signal(SIGINT,  c_handler);
       result = (SddNode *)sdd_apply(arg1,arg2,arg3,arg4);
     } catch(SIGINT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process interrupted");
     } catch(SIGTERM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process terminated");
     } catch(SIGABRT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process aborted");
     } catch(SIGALRM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process timeout");
     }
-    signal(SIGTERM, h_term);
-    signal(SIGINT,  h_int);
-    signal(SIGABRT, h_abrt);
-    signal(SIGALRM, h_alrm);
+    sigaction(SIGTERM, &old_action_term, NULL);
+    sigaction(SIGABRT, &old_action_abrt, NULL);
+    sigaction(SIGINT, &old_action_int, NULL);
+    sigaction(SIGALRM, &old_action_alrm, NULL);
     
   }
   resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_sdd_node_t, 0 |  0 );
@@ -5437,46 +5562,51 @@ SWIGINTERN PyObject *_wrap_sdd_apply_in_vtree(PyObject *SWIGUNUSEDPARM(self), Py
     
     // signal(SIGSEGV, handler);
     
+    struct sigaction new_action;
+    new_action.sa_handler = c_handler;
+    sigemptyset (&new_action.sa_mask);
+    new_action.sa_flags = SA_RESTART;
     
-    void (*h_alrm)(int);
-    void (*h_abrt)(int);
-    void (*h_term)(int);
-    void (*h_int)(int);
+    struct sigaction old_action_term;
+    struct sigaction old_action_abrt;
+    struct sigaction old_action_int;
+    struct sigaction old_action_alrm;
+    
+    sigaction(SIGTERM,  &new_action, &old_action_term);
+    sigaction(SIGABRT,  &new_action, &old_action_abrt);
+    sigaction(SIGINT,  &new_action, &old_action_int);
+    sigaction(SIGALRM,  &new_action, &old_action_alrm);
     try {
-      h_alrm = signal(SIGALRM,  c_handler);
-      h_abrt = signal(SIGABRT, c_handler);
-      h_term = signal(SIGTERM, c_handler);
-      h_int = signal(SIGINT,  c_handler);
       result = (SddNode *)sdd_apply_in_vtree(arg1,arg2,arg3,arg4,arg5);
     } catch(SIGINT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process interrupted");
     } catch(SIGTERM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process terminated");
     } catch(SIGABRT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process aborted");
     } catch(SIGALRM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process timeout");
     }
-    signal(SIGTERM, h_term);
-    signal(SIGINT,  h_int);
-    signal(SIGABRT, h_abrt);
-    signal(SIGALRM, h_alrm);
+    sigaction(SIGTERM, &old_action_term, NULL);
+    sigaction(SIGABRT, &old_action_abrt, NULL);
+    sigaction(SIGINT, &old_action_int, NULL);
+    sigaction(SIGALRM, &old_action_alrm, NULL);
     
   }
   resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_sdd_node_t, 0 |  0 );
@@ -5525,46 +5655,51 @@ SWIGINTERN PyObject *_wrap_sdd_conjoin(PyObject *SWIGUNUSEDPARM(self), PyObject 
     
     // signal(SIGSEGV, handler);
     
+    struct sigaction new_action;
+    new_action.sa_handler = c_handler;
+    sigemptyset (&new_action.sa_mask);
+    new_action.sa_flags = SA_RESTART;
     
-    void (*h_alrm)(int);
-    void (*h_abrt)(int);
-    void (*h_term)(int);
-    void (*h_int)(int);
+    struct sigaction old_action_term;
+    struct sigaction old_action_abrt;
+    struct sigaction old_action_int;
+    struct sigaction old_action_alrm;
+    
+    sigaction(SIGTERM,  &new_action, &old_action_term);
+    sigaction(SIGABRT,  &new_action, &old_action_abrt);
+    sigaction(SIGINT,  &new_action, &old_action_int);
+    sigaction(SIGALRM,  &new_action, &old_action_alrm);
     try {
-      h_alrm = signal(SIGALRM,  c_handler);
-      h_abrt = signal(SIGABRT, c_handler);
-      h_term = signal(SIGTERM, c_handler);
-      h_int = signal(SIGINT,  c_handler);
       result = (SddNode *)sdd_conjoin(arg1,arg2,arg3);
     } catch(SIGINT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process interrupted");
     } catch(SIGTERM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process terminated");
     } catch(SIGABRT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process aborted");
     } catch(SIGALRM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process timeout");
     }
-    signal(SIGTERM, h_term);
-    signal(SIGINT,  h_int);
-    signal(SIGABRT, h_abrt);
-    signal(SIGALRM, h_alrm);
+    sigaction(SIGTERM, &old_action_term, NULL);
+    sigaction(SIGABRT, &old_action_abrt, NULL);
+    sigaction(SIGINT, &old_action_int, NULL);
+    sigaction(SIGALRM, &old_action_alrm, NULL);
     
   }
   resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_sdd_node_t, 0 |  0 );
@@ -5613,46 +5748,51 @@ SWIGINTERN PyObject *_wrap_sdd_disjoin(PyObject *SWIGUNUSEDPARM(self), PyObject 
     
     // signal(SIGSEGV, handler);
     
+    struct sigaction new_action;
+    new_action.sa_handler = c_handler;
+    sigemptyset (&new_action.sa_mask);
+    new_action.sa_flags = SA_RESTART;
     
-    void (*h_alrm)(int);
-    void (*h_abrt)(int);
-    void (*h_term)(int);
-    void (*h_int)(int);
+    struct sigaction old_action_term;
+    struct sigaction old_action_abrt;
+    struct sigaction old_action_int;
+    struct sigaction old_action_alrm;
+    
+    sigaction(SIGTERM,  &new_action, &old_action_term);
+    sigaction(SIGABRT,  &new_action, &old_action_abrt);
+    sigaction(SIGINT,  &new_action, &old_action_int);
+    sigaction(SIGALRM,  &new_action, &old_action_alrm);
     try {
-      h_alrm = signal(SIGALRM,  c_handler);
-      h_abrt = signal(SIGABRT, c_handler);
-      h_term = signal(SIGTERM, c_handler);
-      h_int = signal(SIGINT,  c_handler);
       result = (SddNode *)sdd_disjoin(arg1,arg2,arg3);
     } catch(SIGINT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process interrupted");
     } catch(SIGTERM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process terminated");
     } catch(SIGABRT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process aborted");
     } catch(SIGALRM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process timeout");
     }
-    signal(SIGTERM, h_term);
-    signal(SIGINT,  h_int);
-    signal(SIGABRT, h_abrt);
-    signal(SIGALRM, h_alrm);
+    sigaction(SIGTERM, &old_action_term, NULL);
+    sigaction(SIGABRT, &old_action_abrt, NULL);
+    sigaction(SIGINT, &old_action_int, NULL);
+    sigaction(SIGALRM, &old_action_alrm, NULL);
     
   }
   resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_sdd_node_t, 0 |  0 );
@@ -5692,46 +5832,51 @@ SWIGINTERN PyObject *_wrap_sdd_negate(PyObject *SWIGUNUSEDPARM(self), PyObject *
     
     // signal(SIGSEGV, handler);
     
+    struct sigaction new_action;
+    new_action.sa_handler = c_handler;
+    sigemptyset (&new_action.sa_mask);
+    new_action.sa_flags = SA_RESTART;
     
-    void (*h_alrm)(int);
-    void (*h_abrt)(int);
-    void (*h_term)(int);
-    void (*h_int)(int);
+    struct sigaction old_action_term;
+    struct sigaction old_action_abrt;
+    struct sigaction old_action_int;
+    struct sigaction old_action_alrm;
+    
+    sigaction(SIGTERM,  &new_action, &old_action_term);
+    sigaction(SIGABRT,  &new_action, &old_action_abrt);
+    sigaction(SIGINT,  &new_action, &old_action_int);
+    sigaction(SIGALRM,  &new_action, &old_action_alrm);
     try {
-      h_alrm = signal(SIGALRM,  c_handler);
-      h_abrt = signal(SIGABRT, c_handler);
-      h_term = signal(SIGTERM, c_handler);
-      h_int = signal(SIGINT,  c_handler);
       result = (SddNode *)sdd_negate(arg1,arg2);
     } catch(SIGINT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process interrupted");
     } catch(SIGTERM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process terminated");
     } catch(SIGABRT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process aborted");
     } catch(SIGALRM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process timeout");
     }
-    signal(SIGTERM, h_term);
-    signal(SIGINT,  h_int);
-    signal(SIGABRT, h_abrt);
-    signal(SIGALRM, h_alrm);
+    sigaction(SIGTERM, &old_action_term, NULL);
+    sigaction(SIGABRT, &old_action_abrt, NULL);
+    sigaction(SIGINT, &old_action_int, NULL);
+    sigaction(SIGALRM, &old_action_alrm, NULL);
     
   }
   resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_sdd_node_t, 0 |  0 );
@@ -5780,46 +5925,51 @@ SWIGINTERN PyObject *_wrap_sdd_condition(PyObject *SWIGUNUSEDPARM(self), PyObjec
     
     // signal(SIGSEGV, handler);
     
+    struct sigaction new_action;
+    new_action.sa_handler = c_handler;
+    sigemptyset (&new_action.sa_mask);
+    new_action.sa_flags = SA_RESTART;
     
-    void (*h_alrm)(int);
-    void (*h_abrt)(int);
-    void (*h_term)(int);
-    void (*h_int)(int);
+    struct sigaction old_action_term;
+    struct sigaction old_action_abrt;
+    struct sigaction old_action_int;
+    struct sigaction old_action_alrm;
+    
+    sigaction(SIGTERM,  &new_action, &old_action_term);
+    sigaction(SIGABRT,  &new_action, &old_action_abrt);
+    sigaction(SIGINT,  &new_action, &old_action_int);
+    sigaction(SIGALRM,  &new_action, &old_action_alrm);
     try {
-      h_alrm = signal(SIGALRM,  c_handler);
-      h_abrt = signal(SIGABRT, c_handler);
-      h_term = signal(SIGTERM, c_handler);
-      h_int = signal(SIGINT,  c_handler);
       result = (SddNode *)sdd_condition(arg1,arg2,arg3);
     } catch(SIGINT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process interrupted");
     } catch(SIGTERM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process terminated");
     } catch(SIGABRT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process aborted");
     } catch(SIGALRM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process timeout");
     }
-    signal(SIGTERM, h_term);
-    signal(SIGINT,  h_int);
-    signal(SIGABRT, h_abrt);
-    signal(SIGALRM, h_alrm);
+    sigaction(SIGTERM, &old_action_term, NULL);
+    sigaction(SIGABRT, &old_action_abrt, NULL);
+    sigaction(SIGINT, &old_action_int, NULL);
+    sigaction(SIGALRM, &old_action_alrm, NULL);
     
   }
   resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_sdd_node_t, 0 |  0 );
@@ -5868,46 +6018,51 @@ SWIGINTERN PyObject *_wrap_sdd_exists(PyObject *SWIGUNUSEDPARM(self), PyObject *
     
     // signal(SIGSEGV, handler);
     
+    struct sigaction new_action;
+    new_action.sa_handler = c_handler;
+    sigemptyset (&new_action.sa_mask);
+    new_action.sa_flags = SA_RESTART;
     
-    void (*h_alrm)(int);
-    void (*h_abrt)(int);
-    void (*h_term)(int);
-    void (*h_int)(int);
+    struct sigaction old_action_term;
+    struct sigaction old_action_abrt;
+    struct sigaction old_action_int;
+    struct sigaction old_action_alrm;
+    
+    sigaction(SIGTERM,  &new_action, &old_action_term);
+    sigaction(SIGABRT,  &new_action, &old_action_abrt);
+    sigaction(SIGINT,  &new_action, &old_action_int);
+    sigaction(SIGALRM,  &new_action, &old_action_alrm);
     try {
-      h_alrm = signal(SIGALRM,  c_handler);
-      h_abrt = signal(SIGABRT, c_handler);
-      h_term = signal(SIGTERM, c_handler);
-      h_int = signal(SIGINT,  c_handler);
       result = (SddNode *)sdd_exists(arg1,arg2,arg3);
     } catch(SIGINT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process interrupted");
     } catch(SIGTERM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process terminated");
     } catch(SIGABRT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process aborted");
     } catch(SIGALRM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process timeout");
     }
-    signal(SIGTERM, h_term);
-    signal(SIGINT,  h_int);
-    signal(SIGABRT, h_abrt);
-    signal(SIGALRM, h_alrm);
+    sigaction(SIGTERM, &old_action_term, NULL);
+    sigaction(SIGABRT, &old_action_abrt, NULL);
+    sigaction(SIGINT, &old_action_int, NULL);
+    sigaction(SIGALRM, &old_action_alrm, NULL);
     
   }
   resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_sdd_node_t, 0 |  0 );
@@ -5956,46 +6111,51 @@ SWIGINTERN PyObject *_wrap_sdd_forall(PyObject *SWIGUNUSEDPARM(self), PyObject *
     
     // signal(SIGSEGV, handler);
     
+    struct sigaction new_action;
+    new_action.sa_handler = c_handler;
+    sigemptyset (&new_action.sa_mask);
+    new_action.sa_flags = SA_RESTART;
     
-    void (*h_alrm)(int);
-    void (*h_abrt)(int);
-    void (*h_term)(int);
-    void (*h_int)(int);
+    struct sigaction old_action_term;
+    struct sigaction old_action_abrt;
+    struct sigaction old_action_int;
+    struct sigaction old_action_alrm;
+    
+    sigaction(SIGTERM,  &new_action, &old_action_term);
+    sigaction(SIGABRT,  &new_action, &old_action_abrt);
+    sigaction(SIGINT,  &new_action, &old_action_int);
+    sigaction(SIGALRM,  &new_action, &old_action_alrm);
     try {
-      h_alrm = signal(SIGALRM,  c_handler);
-      h_abrt = signal(SIGABRT, c_handler);
-      h_term = signal(SIGTERM, c_handler);
-      h_int = signal(SIGINT,  c_handler);
       result = (SddNode *)sdd_forall(arg1,arg2,arg3);
     } catch(SIGINT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process interrupted");
     } catch(SIGTERM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process terminated");
     } catch(SIGABRT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process aborted");
     } catch(SIGALRM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process timeout");
     }
-    signal(SIGTERM, h_term);
-    signal(SIGINT,  h_int);
-    signal(SIGABRT, h_abrt);
-    signal(SIGALRM, h_alrm);
+    sigaction(SIGTERM, &old_action_term, NULL);
+    sigaction(SIGABRT, &old_action_abrt, NULL);
+    sigaction(SIGINT, &old_action_int, NULL);
+    sigaction(SIGALRM, &old_action_alrm, NULL);
     
   }
   resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_sdd_node_t, 0 |  0 );
@@ -6035,46 +6195,51 @@ SWIGINTERN PyObject *_wrap_sdd_minimize_cardinality(PyObject *SWIGUNUSEDPARM(sel
     
     // signal(SIGSEGV, handler);
     
+    struct sigaction new_action;
+    new_action.sa_handler = c_handler;
+    sigemptyset (&new_action.sa_mask);
+    new_action.sa_flags = SA_RESTART;
     
-    void (*h_alrm)(int);
-    void (*h_abrt)(int);
-    void (*h_term)(int);
-    void (*h_int)(int);
+    struct sigaction old_action_term;
+    struct sigaction old_action_abrt;
+    struct sigaction old_action_int;
+    struct sigaction old_action_alrm;
+    
+    sigaction(SIGTERM,  &new_action, &old_action_term);
+    sigaction(SIGABRT,  &new_action, &old_action_abrt);
+    sigaction(SIGINT,  &new_action, &old_action_int);
+    sigaction(SIGALRM,  &new_action, &old_action_alrm);
     try {
-      h_alrm = signal(SIGALRM,  c_handler);
-      h_abrt = signal(SIGABRT, c_handler);
-      h_term = signal(SIGTERM, c_handler);
-      h_int = signal(SIGINT,  c_handler);
       result = (SddNode *)sdd_minimize_cardinality(arg1,arg2);
     } catch(SIGINT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process interrupted");
     } catch(SIGTERM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process terminated");
     } catch(SIGABRT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process aborted");
     } catch(SIGALRM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process timeout");
     }
-    signal(SIGTERM, h_term);
-    signal(SIGINT,  h_int);
-    signal(SIGABRT, h_abrt);
-    signal(SIGALRM, h_alrm);
+    sigaction(SIGTERM, &old_action_term, NULL);
+    sigaction(SIGABRT, &old_action_abrt, NULL);
+    sigaction(SIGINT, &old_action_int, NULL);
+    sigaction(SIGALRM, &old_action_alrm, NULL);
     
   }
   resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_sdd_node_t, 0 |  0 );
@@ -6105,46 +6270,51 @@ SWIGINTERN PyObject *_wrap_sdd_minimum_cardinality(PyObject *SWIGUNUSEDPARM(self
     
     // signal(SIGSEGV, handler);
     
+    struct sigaction new_action;
+    new_action.sa_handler = c_handler;
+    sigemptyset (&new_action.sa_mask);
+    new_action.sa_flags = SA_RESTART;
     
-    void (*h_alrm)(int);
-    void (*h_abrt)(int);
-    void (*h_term)(int);
-    void (*h_int)(int);
+    struct sigaction old_action_term;
+    struct sigaction old_action_abrt;
+    struct sigaction old_action_int;
+    struct sigaction old_action_alrm;
+    
+    sigaction(SIGTERM,  &new_action, &old_action_term);
+    sigaction(SIGABRT,  &new_action, &old_action_abrt);
+    sigaction(SIGINT,  &new_action, &old_action_int);
+    sigaction(SIGALRM,  &new_action, &old_action_alrm);
     try {
-      h_alrm = signal(SIGALRM,  c_handler);
-      h_abrt = signal(SIGABRT, c_handler);
-      h_term = signal(SIGTERM, c_handler);
-      h_int = signal(SIGINT,  c_handler);
       result = (SddLiteral)sdd_minimum_cardinality(arg1);
     } catch(SIGINT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process interrupted");
     } catch(SIGTERM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process terminated");
     } catch(SIGABRT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process aborted");
     } catch(SIGALRM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process timeout");
     }
-    signal(SIGTERM, h_term);
-    signal(SIGINT,  h_int);
-    signal(SIGABRT, h_abrt);
-    signal(SIGALRM, h_alrm);
+    sigaction(SIGTERM, &old_action_term, NULL);
+    sigaction(SIGABRT, &old_action_abrt, NULL);
+    sigaction(SIGINT, &old_action_int, NULL);
+    sigaction(SIGALRM, &old_action_alrm, NULL);
     
   }
   resultobj = SWIG_From_long((long)(result));
@@ -6184,46 +6354,51 @@ SWIGINTERN PyObject *_wrap_sdd_model_count(PyObject *SWIGUNUSEDPARM(self), PyObj
     
     // signal(SIGSEGV, handler);
     
+    struct sigaction new_action;
+    new_action.sa_handler = c_handler;
+    sigemptyset (&new_action.sa_mask);
+    new_action.sa_flags = SA_RESTART;
     
-    void (*h_alrm)(int);
-    void (*h_abrt)(int);
-    void (*h_term)(int);
-    void (*h_int)(int);
+    struct sigaction old_action_term;
+    struct sigaction old_action_abrt;
+    struct sigaction old_action_int;
+    struct sigaction old_action_alrm;
+    
+    sigaction(SIGTERM,  &new_action, &old_action_term);
+    sigaction(SIGABRT,  &new_action, &old_action_abrt);
+    sigaction(SIGINT,  &new_action, &old_action_int);
+    sigaction(SIGALRM,  &new_action, &old_action_alrm);
     try {
-      h_alrm = signal(SIGALRM,  c_handler);
-      h_abrt = signal(SIGABRT, c_handler);
-      h_term = signal(SIGTERM, c_handler);
-      h_int = signal(SIGINT,  c_handler);
       result = (SddModelCount)sdd_model_count(arg1,arg2);
     } catch(SIGINT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process interrupted");
     } catch(SIGTERM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process terminated");
     } catch(SIGABRT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process aborted");
     } catch(SIGALRM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process timeout");
     }
-    signal(SIGTERM, h_term);
-    signal(SIGINT,  h_int);
-    signal(SIGABRT, h_abrt);
-    signal(SIGALRM, h_alrm);
+    sigaction(SIGTERM, &old_action_term, NULL);
+    sigaction(SIGABRT, &old_action_abrt, NULL);
+    sigaction(SIGINT, &old_action_int, NULL);
+    sigaction(SIGALRM, &old_action_alrm, NULL);
     
   }
   resultobj = SWIG_From_unsigned_SS_long_SS_long((unsigned long long)(result));
@@ -6254,46 +6429,51 @@ SWIGINTERN PyObject *_wrap_sdd_node_is_true(PyObject *SWIGUNUSEDPARM(self), PyOb
     
     // signal(SIGSEGV, handler);
     
+    struct sigaction new_action;
+    new_action.sa_handler = c_handler;
+    sigemptyset (&new_action.sa_mask);
+    new_action.sa_flags = SA_RESTART;
     
-    void (*h_alrm)(int);
-    void (*h_abrt)(int);
-    void (*h_term)(int);
-    void (*h_int)(int);
+    struct sigaction old_action_term;
+    struct sigaction old_action_abrt;
+    struct sigaction old_action_int;
+    struct sigaction old_action_alrm;
+    
+    sigaction(SIGTERM,  &new_action, &old_action_term);
+    sigaction(SIGABRT,  &new_action, &old_action_abrt);
+    sigaction(SIGINT,  &new_action, &old_action_int);
+    sigaction(SIGALRM,  &new_action, &old_action_alrm);
     try {
-      h_alrm = signal(SIGALRM,  c_handler);
-      h_abrt = signal(SIGABRT, c_handler);
-      h_term = signal(SIGTERM, c_handler);
-      h_int = signal(SIGINT,  c_handler);
       result = (int)sdd_node_is_true(arg1);
     } catch(SIGINT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process interrupted");
     } catch(SIGTERM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process terminated");
     } catch(SIGABRT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process aborted");
     } catch(SIGALRM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process timeout");
     }
-    signal(SIGTERM, h_term);
-    signal(SIGINT,  h_int);
-    signal(SIGABRT, h_abrt);
-    signal(SIGALRM, h_alrm);
+    sigaction(SIGTERM, &old_action_term, NULL);
+    sigaction(SIGABRT, &old_action_abrt, NULL);
+    sigaction(SIGINT, &old_action_int, NULL);
+    sigaction(SIGALRM, &old_action_alrm, NULL);
     
   }
   resultobj = SWIG_From_int((int)(result));
@@ -6324,46 +6504,51 @@ SWIGINTERN PyObject *_wrap_sdd_node_is_false(PyObject *SWIGUNUSEDPARM(self), PyO
     
     // signal(SIGSEGV, handler);
     
+    struct sigaction new_action;
+    new_action.sa_handler = c_handler;
+    sigemptyset (&new_action.sa_mask);
+    new_action.sa_flags = SA_RESTART;
     
-    void (*h_alrm)(int);
-    void (*h_abrt)(int);
-    void (*h_term)(int);
-    void (*h_int)(int);
+    struct sigaction old_action_term;
+    struct sigaction old_action_abrt;
+    struct sigaction old_action_int;
+    struct sigaction old_action_alrm;
+    
+    sigaction(SIGTERM,  &new_action, &old_action_term);
+    sigaction(SIGABRT,  &new_action, &old_action_abrt);
+    sigaction(SIGINT,  &new_action, &old_action_int);
+    sigaction(SIGALRM,  &new_action, &old_action_alrm);
     try {
-      h_alrm = signal(SIGALRM,  c_handler);
-      h_abrt = signal(SIGABRT, c_handler);
-      h_term = signal(SIGTERM, c_handler);
-      h_int = signal(SIGINT,  c_handler);
       result = (int)sdd_node_is_false(arg1);
     } catch(SIGINT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process interrupted");
     } catch(SIGTERM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process terminated");
     } catch(SIGABRT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process aborted");
     } catch(SIGALRM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process timeout");
     }
-    signal(SIGTERM, h_term);
-    signal(SIGINT,  h_int);
-    signal(SIGABRT, h_abrt);
-    signal(SIGALRM, h_alrm);
+    sigaction(SIGTERM, &old_action_term, NULL);
+    sigaction(SIGABRT, &old_action_abrt, NULL);
+    sigaction(SIGINT, &old_action_int, NULL);
+    sigaction(SIGALRM, &old_action_alrm, NULL);
     
   }
   resultobj = SWIG_From_int((int)(result));
@@ -6394,46 +6579,51 @@ SWIGINTERN PyObject *_wrap_sdd_node_is_literal(PyObject *SWIGUNUSEDPARM(self), P
     
     // signal(SIGSEGV, handler);
     
+    struct sigaction new_action;
+    new_action.sa_handler = c_handler;
+    sigemptyset (&new_action.sa_mask);
+    new_action.sa_flags = SA_RESTART;
     
-    void (*h_alrm)(int);
-    void (*h_abrt)(int);
-    void (*h_term)(int);
-    void (*h_int)(int);
+    struct sigaction old_action_term;
+    struct sigaction old_action_abrt;
+    struct sigaction old_action_int;
+    struct sigaction old_action_alrm;
+    
+    sigaction(SIGTERM,  &new_action, &old_action_term);
+    sigaction(SIGABRT,  &new_action, &old_action_abrt);
+    sigaction(SIGINT,  &new_action, &old_action_int);
+    sigaction(SIGALRM,  &new_action, &old_action_alrm);
     try {
-      h_alrm = signal(SIGALRM,  c_handler);
-      h_abrt = signal(SIGABRT, c_handler);
-      h_term = signal(SIGTERM, c_handler);
-      h_int = signal(SIGINT,  c_handler);
       result = (int)sdd_node_is_literal(arg1);
     } catch(SIGINT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process interrupted");
     } catch(SIGTERM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process terminated");
     } catch(SIGABRT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process aborted");
     } catch(SIGALRM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process timeout");
     }
-    signal(SIGTERM, h_term);
-    signal(SIGINT,  h_int);
-    signal(SIGABRT, h_abrt);
-    signal(SIGALRM, h_alrm);
+    sigaction(SIGTERM, &old_action_term, NULL);
+    sigaction(SIGABRT, &old_action_abrt, NULL);
+    sigaction(SIGINT, &old_action_int, NULL);
+    sigaction(SIGALRM, &old_action_alrm, NULL);
     
   }
   resultobj = SWIG_From_int((int)(result));
@@ -6464,46 +6654,51 @@ SWIGINTERN PyObject *_wrap_sdd_node_is_decision(PyObject *SWIGUNUSEDPARM(self), 
     
     // signal(SIGSEGV, handler);
     
+    struct sigaction new_action;
+    new_action.sa_handler = c_handler;
+    sigemptyset (&new_action.sa_mask);
+    new_action.sa_flags = SA_RESTART;
     
-    void (*h_alrm)(int);
-    void (*h_abrt)(int);
-    void (*h_term)(int);
-    void (*h_int)(int);
+    struct sigaction old_action_term;
+    struct sigaction old_action_abrt;
+    struct sigaction old_action_int;
+    struct sigaction old_action_alrm;
+    
+    sigaction(SIGTERM,  &new_action, &old_action_term);
+    sigaction(SIGABRT,  &new_action, &old_action_abrt);
+    sigaction(SIGINT,  &new_action, &old_action_int);
+    sigaction(SIGALRM,  &new_action, &old_action_alrm);
     try {
-      h_alrm = signal(SIGALRM,  c_handler);
-      h_abrt = signal(SIGABRT, c_handler);
-      h_term = signal(SIGTERM, c_handler);
-      h_int = signal(SIGINT,  c_handler);
       result = (int)sdd_node_is_decision(arg1);
     } catch(SIGINT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process interrupted");
     } catch(SIGTERM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process terminated");
     } catch(SIGABRT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process aborted");
     } catch(SIGALRM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process timeout");
     }
-    signal(SIGTERM, h_term);
-    signal(SIGINT,  h_int);
-    signal(SIGABRT, h_abrt);
-    signal(SIGALRM, h_alrm);
+    sigaction(SIGTERM, &old_action_term, NULL);
+    sigaction(SIGABRT, &old_action_abrt, NULL);
+    sigaction(SIGINT, &old_action_int, NULL);
+    sigaction(SIGALRM, &old_action_alrm, NULL);
     
   }
   resultobj = SWIG_From_int((int)(result));
@@ -6534,46 +6729,51 @@ SWIGINTERN PyObject *_wrap_sdd_node_size(PyObject *SWIGUNUSEDPARM(self), PyObjec
     
     // signal(SIGSEGV, handler);
     
+    struct sigaction new_action;
+    new_action.sa_handler = c_handler;
+    sigemptyset (&new_action.sa_mask);
+    new_action.sa_flags = SA_RESTART;
     
-    void (*h_alrm)(int);
-    void (*h_abrt)(int);
-    void (*h_term)(int);
-    void (*h_int)(int);
+    struct sigaction old_action_term;
+    struct sigaction old_action_abrt;
+    struct sigaction old_action_int;
+    struct sigaction old_action_alrm;
+    
+    sigaction(SIGTERM,  &new_action, &old_action_term);
+    sigaction(SIGABRT,  &new_action, &old_action_abrt);
+    sigaction(SIGINT,  &new_action, &old_action_int);
+    sigaction(SIGALRM,  &new_action, &old_action_alrm);
     try {
-      h_alrm = signal(SIGALRM,  c_handler);
-      h_abrt = signal(SIGABRT, c_handler);
-      h_term = signal(SIGTERM, c_handler);
-      h_int = signal(SIGINT,  c_handler);
       result = (SddNodeSize)sdd_node_size(arg1);
     } catch(SIGINT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process interrupted");
     } catch(SIGTERM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process terminated");
     } catch(SIGABRT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process aborted");
     } catch(SIGALRM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process timeout");
     }
-    signal(SIGTERM, h_term);
-    signal(SIGINT,  h_int);
-    signal(SIGABRT, h_abrt);
-    signal(SIGALRM, h_alrm);
+    sigaction(SIGTERM, &old_action_term, NULL);
+    sigaction(SIGABRT, &old_action_abrt, NULL);
+    sigaction(SIGINT, &old_action_int, NULL);
+    sigaction(SIGALRM, &old_action_alrm, NULL);
     
   }
   resultobj = SWIG_From_unsigned_SS_int((unsigned int)(result));
@@ -6604,46 +6804,51 @@ SWIGINTERN PyObject *_wrap_sdd_node_literal(PyObject *SWIGUNUSEDPARM(self), PyOb
     
     // signal(SIGSEGV, handler);
     
+    struct sigaction new_action;
+    new_action.sa_handler = c_handler;
+    sigemptyset (&new_action.sa_mask);
+    new_action.sa_flags = SA_RESTART;
     
-    void (*h_alrm)(int);
-    void (*h_abrt)(int);
-    void (*h_term)(int);
-    void (*h_int)(int);
+    struct sigaction old_action_term;
+    struct sigaction old_action_abrt;
+    struct sigaction old_action_int;
+    struct sigaction old_action_alrm;
+    
+    sigaction(SIGTERM,  &new_action, &old_action_term);
+    sigaction(SIGABRT,  &new_action, &old_action_abrt);
+    sigaction(SIGINT,  &new_action, &old_action_int);
+    sigaction(SIGALRM,  &new_action, &old_action_alrm);
     try {
-      h_alrm = signal(SIGALRM,  c_handler);
-      h_abrt = signal(SIGABRT, c_handler);
-      h_term = signal(SIGTERM, c_handler);
-      h_int = signal(SIGINT,  c_handler);
       result = (SddLiteral)sdd_node_literal(arg1);
     } catch(SIGINT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process interrupted");
     } catch(SIGTERM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process terminated");
     } catch(SIGABRT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process aborted");
     } catch(SIGALRM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process timeout");
     }
-    signal(SIGTERM, h_term);
-    signal(SIGINT,  h_int);
-    signal(SIGABRT, h_abrt);
-    signal(SIGALRM, h_alrm);
+    sigaction(SIGTERM, &old_action_term, NULL);
+    sigaction(SIGABRT, &old_action_abrt, NULL);
+    sigaction(SIGINT, &old_action_int, NULL);
+    sigaction(SIGALRM, &old_action_alrm, NULL);
     
   }
   resultobj = SWIG_From_long((long)(result));
@@ -6674,46 +6879,51 @@ SWIGINTERN PyObject *_wrap_sdd_node_elements(PyObject *SWIGUNUSEDPARM(self), PyO
     
     // signal(SIGSEGV, handler);
     
+    struct sigaction new_action;
+    new_action.sa_handler = c_handler;
+    sigemptyset (&new_action.sa_mask);
+    new_action.sa_flags = SA_RESTART;
     
-    void (*h_alrm)(int);
-    void (*h_abrt)(int);
-    void (*h_term)(int);
-    void (*h_int)(int);
+    struct sigaction old_action_term;
+    struct sigaction old_action_abrt;
+    struct sigaction old_action_int;
+    struct sigaction old_action_alrm;
+    
+    sigaction(SIGTERM,  &new_action, &old_action_term);
+    sigaction(SIGABRT,  &new_action, &old_action_abrt);
+    sigaction(SIGINT,  &new_action, &old_action_int);
+    sigaction(SIGALRM,  &new_action, &old_action_alrm);
     try {
-      h_alrm = signal(SIGALRM,  c_handler);
-      h_abrt = signal(SIGABRT, c_handler);
-      h_term = signal(SIGTERM, c_handler);
-      h_int = signal(SIGINT,  c_handler);
       result = (SddNode **)sdd_node_elements(arg1);
     } catch(SIGINT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process interrupted");
     } catch(SIGTERM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process terminated");
     } catch(SIGABRT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process aborted");
     } catch(SIGALRM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process timeout");
     }
-    signal(SIGTERM, h_term);
-    signal(SIGINT,  h_int);
-    signal(SIGABRT, h_abrt);
-    signal(SIGALRM, h_alrm);
+    sigaction(SIGTERM, &old_action_term, NULL);
+    sigaction(SIGABRT, &old_action_abrt, NULL);
+    sigaction(SIGINT, &old_action_int, NULL);
+    sigaction(SIGALRM, &old_action_alrm, NULL);
     
   }
   resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_p_sdd_node_t, 0 |  0 );
@@ -6752,46 +6962,51 @@ SWIGINTERN PyObject *_wrap_sdd_node_set_bit(PyObject *SWIGUNUSEDPARM(self), PyOb
     
     // signal(SIGSEGV, handler);
     
+    struct sigaction new_action;
+    new_action.sa_handler = c_handler;
+    sigemptyset (&new_action.sa_mask);
+    new_action.sa_flags = SA_RESTART;
     
-    void (*h_alrm)(int);
-    void (*h_abrt)(int);
-    void (*h_term)(int);
-    void (*h_int)(int);
+    struct sigaction old_action_term;
+    struct sigaction old_action_abrt;
+    struct sigaction old_action_int;
+    struct sigaction old_action_alrm;
+    
+    sigaction(SIGTERM,  &new_action, &old_action_term);
+    sigaction(SIGABRT,  &new_action, &old_action_abrt);
+    sigaction(SIGINT,  &new_action, &old_action_int);
+    sigaction(SIGALRM,  &new_action, &old_action_alrm);
     try {
-      h_alrm = signal(SIGALRM,  c_handler);
-      h_abrt = signal(SIGABRT, c_handler);
-      h_term = signal(SIGTERM, c_handler);
-      h_int = signal(SIGINT,  c_handler);
       sdd_node_set_bit(arg1,arg2);
     } catch(SIGINT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process interrupted");
     } catch(SIGTERM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process terminated");
     } catch(SIGABRT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process aborted");
     } catch(SIGALRM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process timeout");
     }
-    signal(SIGTERM, h_term);
-    signal(SIGINT,  h_int);
-    signal(SIGABRT, h_abrt);
-    signal(SIGALRM, h_alrm);
+    sigaction(SIGTERM, &old_action_term, NULL);
+    sigaction(SIGABRT, &old_action_abrt, NULL);
+    sigaction(SIGINT, &old_action_int, NULL);
+    sigaction(SIGALRM, &old_action_alrm, NULL);
     
   }
   resultobj = SWIG_Py_Void();
@@ -6822,46 +7037,51 @@ SWIGINTERN PyObject *_wrap_sdd_node_bit(PyObject *SWIGUNUSEDPARM(self), PyObject
     
     // signal(SIGSEGV, handler);
     
+    struct sigaction new_action;
+    new_action.sa_handler = c_handler;
+    sigemptyset (&new_action.sa_mask);
+    new_action.sa_flags = SA_RESTART;
     
-    void (*h_alrm)(int);
-    void (*h_abrt)(int);
-    void (*h_term)(int);
-    void (*h_int)(int);
+    struct sigaction old_action_term;
+    struct sigaction old_action_abrt;
+    struct sigaction old_action_int;
+    struct sigaction old_action_alrm;
+    
+    sigaction(SIGTERM,  &new_action, &old_action_term);
+    sigaction(SIGABRT,  &new_action, &old_action_abrt);
+    sigaction(SIGINT,  &new_action, &old_action_int);
+    sigaction(SIGALRM,  &new_action, &old_action_alrm);
     try {
-      h_alrm = signal(SIGALRM,  c_handler);
-      h_abrt = signal(SIGABRT, c_handler);
-      h_term = signal(SIGTERM, c_handler);
-      h_int = signal(SIGINT,  c_handler);
       result = (int)sdd_node_bit(arg1);
     } catch(SIGINT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process interrupted");
     } catch(SIGTERM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process terminated");
     } catch(SIGABRT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process aborted");
     } catch(SIGALRM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process timeout");
     }
-    signal(SIGTERM, h_term);
-    signal(SIGINT,  h_int);
-    signal(SIGABRT, h_abrt);
-    signal(SIGALRM, h_alrm);
+    sigaction(SIGTERM, &old_action_term, NULL);
+    sigaction(SIGABRT, &old_action_abrt, NULL);
+    sigaction(SIGINT, &old_action_int, NULL);
+    sigaction(SIGALRM, &old_action_alrm, NULL);
     
   }
   resultobj = SWIG_From_int((int)(result));
@@ -6892,46 +7112,51 @@ SWIGINTERN PyObject *_wrap_sdd_id(PyObject *SWIGUNUSEDPARM(self), PyObject *args
     
     // signal(SIGSEGV, handler);
     
+    struct sigaction new_action;
+    new_action.sa_handler = c_handler;
+    sigemptyset (&new_action.sa_mask);
+    new_action.sa_flags = SA_RESTART;
     
-    void (*h_alrm)(int);
-    void (*h_abrt)(int);
-    void (*h_term)(int);
-    void (*h_int)(int);
+    struct sigaction old_action_term;
+    struct sigaction old_action_abrt;
+    struct sigaction old_action_int;
+    struct sigaction old_action_alrm;
+    
+    sigaction(SIGTERM,  &new_action, &old_action_term);
+    sigaction(SIGABRT,  &new_action, &old_action_abrt);
+    sigaction(SIGINT,  &new_action, &old_action_int);
+    sigaction(SIGALRM,  &new_action, &old_action_alrm);
     try {
-      h_alrm = signal(SIGALRM,  c_handler);
-      h_abrt = signal(SIGABRT, c_handler);
-      h_term = signal(SIGTERM, c_handler);
-      h_int = signal(SIGINT,  c_handler);
       result = sdd_id(arg1);
     } catch(SIGINT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process interrupted");
     } catch(SIGTERM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process terminated");
     } catch(SIGABRT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process aborted");
     } catch(SIGALRM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process timeout");
     }
-    signal(SIGTERM, h_term);
-    signal(SIGINT,  h_int);
-    signal(SIGABRT, h_abrt);
-    signal(SIGALRM, h_alrm);
+    sigaction(SIGTERM, &old_action_term, NULL);
+    sigaction(SIGABRT, &old_action_abrt, NULL);
+    sigaction(SIGINT, &old_action_int, NULL);
+    sigaction(SIGALRM, &old_action_alrm, NULL);
     
   }
   resultobj = SWIG_From_size_t((size_t)(result));
@@ -6971,46 +7196,51 @@ SWIGINTERN PyObject *_wrap_sdd_garbage_collected(PyObject *SWIGUNUSEDPARM(self),
     
     // signal(SIGSEGV, handler);
     
+    struct sigaction new_action;
+    new_action.sa_handler = c_handler;
+    sigemptyset (&new_action.sa_mask);
+    new_action.sa_flags = SA_RESTART;
     
-    void (*h_alrm)(int);
-    void (*h_abrt)(int);
-    void (*h_term)(int);
-    void (*h_int)(int);
+    struct sigaction old_action_term;
+    struct sigaction old_action_abrt;
+    struct sigaction old_action_int;
+    struct sigaction old_action_alrm;
+    
+    sigaction(SIGTERM,  &new_action, &old_action_term);
+    sigaction(SIGABRT,  &new_action, &old_action_abrt);
+    sigaction(SIGINT,  &new_action, &old_action_int);
+    sigaction(SIGALRM,  &new_action, &old_action_alrm);
     try {
-      h_alrm = signal(SIGALRM,  c_handler);
-      h_abrt = signal(SIGABRT, c_handler);
-      h_term = signal(SIGTERM, c_handler);
-      h_int = signal(SIGINT,  c_handler);
       result = (int)sdd_garbage_collected(arg1,arg2);
     } catch(SIGINT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process interrupted");
     } catch(SIGTERM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process terminated");
     } catch(SIGABRT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process aborted");
     } catch(SIGALRM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process timeout");
     }
-    signal(SIGTERM, h_term);
-    signal(SIGINT,  h_int);
-    signal(SIGABRT, h_abrt);
-    signal(SIGALRM, h_alrm);
+    sigaction(SIGTERM, &old_action_term, NULL);
+    sigaction(SIGABRT, &old_action_abrt, NULL);
+    sigaction(SIGINT, &old_action_int, NULL);
+    sigaction(SIGALRM, &old_action_alrm, NULL);
     
   }
   resultobj = SWIG_From_int((int)(result));
@@ -7041,46 +7271,51 @@ SWIGINTERN PyObject *_wrap_sdd_vtree_of(PyObject *SWIGUNUSEDPARM(self), PyObject
     
     // signal(SIGSEGV, handler);
     
+    struct sigaction new_action;
+    new_action.sa_handler = c_handler;
+    sigemptyset (&new_action.sa_mask);
+    new_action.sa_flags = SA_RESTART;
     
-    void (*h_alrm)(int);
-    void (*h_abrt)(int);
-    void (*h_term)(int);
-    void (*h_int)(int);
+    struct sigaction old_action_term;
+    struct sigaction old_action_abrt;
+    struct sigaction old_action_int;
+    struct sigaction old_action_alrm;
+    
+    sigaction(SIGTERM,  &new_action, &old_action_term);
+    sigaction(SIGABRT,  &new_action, &old_action_abrt);
+    sigaction(SIGINT,  &new_action, &old_action_int);
+    sigaction(SIGALRM,  &new_action, &old_action_alrm);
     try {
-      h_alrm = signal(SIGALRM,  c_handler);
-      h_abrt = signal(SIGABRT, c_handler);
-      h_term = signal(SIGTERM, c_handler);
-      h_int = signal(SIGINT,  c_handler);
       result = (Vtree *)sdd_vtree_of(arg1);
     } catch(SIGINT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process interrupted");
     } catch(SIGTERM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process terminated");
     } catch(SIGABRT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process aborted");
     } catch(SIGALRM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process timeout");
     }
-    signal(SIGTERM, h_term);
-    signal(SIGINT,  h_int);
-    signal(SIGABRT, h_abrt);
-    signal(SIGALRM, h_alrm);
+    sigaction(SIGTERM, &old_action_term, NULL);
+    sigaction(SIGABRT, &old_action_abrt, NULL);
+    sigaction(SIGINT, &old_action_int, NULL);
+    sigaction(SIGALRM, &old_action_alrm, NULL);
     
   }
   resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_vtree_t, 0 |  0 );
@@ -7120,46 +7355,51 @@ SWIGINTERN PyObject *_wrap_sdd_copy(PyObject *SWIGUNUSEDPARM(self), PyObject *ar
     
     // signal(SIGSEGV, handler);
     
+    struct sigaction new_action;
+    new_action.sa_handler = c_handler;
+    sigemptyset (&new_action.sa_mask);
+    new_action.sa_flags = SA_RESTART;
     
-    void (*h_alrm)(int);
-    void (*h_abrt)(int);
-    void (*h_term)(int);
-    void (*h_int)(int);
+    struct sigaction old_action_term;
+    struct sigaction old_action_abrt;
+    struct sigaction old_action_int;
+    struct sigaction old_action_alrm;
+    
+    sigaction(SIGTERM,  &new_action, &old_action_term);
+    sigaction(SIGABRT,  &new_action, &old_action_abrt);
+    sigaction(SIGINT,  &new_action, &old_action_int);
+    sigaction(SIGALRM,  &new_action, &old_action_alrm);
     try {
-      h_alrm = signal(SIGALRM,  c_handler);
-      h_abrt = signal(SIGABRT, c_handler);
-      h_term = signal(SIGTERM, c_handler);
-      h_int = signal(SIGINT,  c_handler);
       result = (SddNode *)sdd_copy(arg1,arg2);
     } catch(SIGINT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process interrupted");
     } catch(SIGTERM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process terminated");
     } catch(SIGABRT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process aborted");
     } catch(SIGALRM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process timeout");
     }
-    signal(SIGTERM, h_term);
-    signal(SIGINT,  h_int);
-    signal(SIGABRT, h_abrt);
-    signal(SIGALRM, h_alrm);
+    sigaction(SIGTERM, &old_action_term, NULL);
+    sigaction(SIGABRT, &old_action_abrt, NULL);
+    sigaction(SIGINT, &old_action_int, NULL);
+    sigaction(SIGALRM, &old_action_alrm, NULL);
     
   }
   resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_sdd_node_t, 0 |  0 );
@@ -7208,46 +7448,51 @@ SWIGINTERN PyObject *_wrap_sdd_rename_variables(PyObject *SWIGUNUSEDPARM(self), 
     
     // signal(SIGSEGV, handler);
     
+    struct sigaction new_action;
+    new_action.sa_handler = c_handler;
+    sigemptyset (&new_action.sa_mask);
+    new_action.sa_flags = SA_RESTART;
     
-    void (*h_alrm)(int);
-    void (*h_abrt)(int);
-    void (*h_term)(int);
-    void (*h_int)(int);
+    struct sigaction old_action_term;
+    struct sigaction old_action_abrt;
+    struct sigaction old_action_int;
+    struct sigaction old_action_alrm;
+    
+    sigaction(SIGTERM,  &new_action, &old_action_term);
+    sigaction(SIGABRT,  &new_action, &old_action_abrt);
+    sigaction(SIGINT,  &new_action, &old_action_int);
+    sigaction(SIGALRM,  &new_action, &old_action_alrm);
     try {
-      h_alrm = signal(SIGALRM,  c_handler);
-      h_abrt = signal(SIGABRT, c_handler);
-      h_term = signal(SIGTERM, c_handler);
-      h_int = signal(SIGINT,  c_handler);
       result = (SddNode *)sdd_rename_variables(arg1,arg2,arg3);
     } catch(SIGINT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process interrupted");
     } catch(SIGTERM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process terminated");
     } catch(SIGABRT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process aborted");
     } catch(SIGALRM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process timeout");
     }
-    signal(SIGTERM, h_term);
-    signal(SIGINT,  h_int);
-    signal(SIGABRT, h_abrt);
-    signal(SIGALRM, h_alrm);
+    sigaction(SIGTERM, &old_action_term, NULL);
+    sigaction(SIGABRT, &old_action_abrt, NULL);
+    sigaction(SIGINT, &old_action_int, NULL);
+    sigaction(SIGALRM, &old_action_alrm, NULL);
     
   }
   resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_sdd_node_t, 0 |  0 );
@@ -7287,46 +7532,51 @@ SWIGINTERN PyObject *_wrap_sdd_variables(PyObject *SWIGUNUSEDPARM(self), PyObjec
     
     // signal(SIGSEGV, handler);
     
+    struct sigaction new_action;
+    new_action.sa_handler = c_handler;
+    sigemptyset (&new_action.sa_mask);
+    new_action.sa_flags = SA_RESTART;
     
-    void (*h_alrm)(int);
-    void (*h_abrt)(int);
-    void (*h_term)(int);
-    void (*h_int)(int);
+    struct sigaction old_action_term;
+    struct sigaction old_action_abrt;
+    struct sigaction old_action_int;
+    struct sigaction old_action_alrm;
+    
+    sigaction(SIGTERM,  &new_action, &old_action_term);
+    sigaction(SIGABRT,  &new_action, &old_action_abrt);
+    sigaction(SIGINT,  &new_action, &old_action_int);
+    sigaction(SIGALRM,  &new_action, &old_action_alrm);
     try {
-      h_alrm = signal(SIGALRM,  c_handler);
-      h_abrt = signal(SIGABRT, c_handler);
-      h_term = signal(SIGTERM, c_handler);
-      h_int = signal(SIGINT,  c_handler);
       result = (int *)sdd_variables(arg1,arg2);
     } catch(SIGINT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process interrupted");
     } catch(SIGTERM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process terminated");
     } catch(SIGABRT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process aborted");
     } catch(SIGALRM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process timeout");
     }
-    signal(SIGTERM, h_term);
-    signal(SIGINT,  h_int);
-    signal(SIGABRT, h_abrt);
-    signal(SIGALRM, h_alrm);
+    sigaction(SIGTERM, &old_action_term, NULL);
+    sigaction(SIGABRT, &old_action_abrt, NULL);
+    sigaction(SIGINT, &old_action_int, NULL);
+    sigaction(SIGALRM, &old_action_alrm, NULL);
     
   }
   resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_int, 0 |  0 );
@@ -7367,46 +7617,51 @@ SWIGINTERN PyObject *_wrap_sdd_read(PyObject *SWIGUNUSEDPARM(self), PyObject *ar
     
     // signal(SIGSEGV, handler);
     
+    struct sigaction new_action;
+    new_action.sa_handler = c_handler;
+    sigemptyset (&new_action.sa_mask);
+    new_action.sa_flags = SA_RESTART;
     
-    void (*h_alrm)(int);
-    void (*h_abrt)(int);
-    void (*h_term)(int);
-    void (*h_int)(int);
+    struct sigaction old_action_term;
+    struct sigaction old_action_abrt;
+    struct sigaction old_action_int;
+    struct sigaction old_action_alrm;
+    
+    sigaction(SIGTERM,  &new_action, &old_action_term);
+    sigaction(SIGABRT,  &new_action, &old_action_abrt);
+    sigaction(SIGINT,  &new_action, &old_action_int);
+    sigaction(SIGALRM,  &new_action, &old_action_alrm);
     try {
-      h_alrm = signal(SIGALRM,  c_handler);
-      h_abrt = signal(SIGABRT, c_handler);
-      h_term = signal(SIGTERM, c_handler);
-      h_int = signal(SIGINT,  c_handler);
       result = (SddNode *)sdd_read((char const *)arg1,arg2);
     } catch(SIGINT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process interrupted");
     } catch(SIGTERM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process terminated");
     } catch(SIGABRT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process aborted");
     } catch(SIGALRM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process timeout");
     }
-    signal(SIGTERM, h_term);
-    signal(SIGINT,  h_int);
-    signal(SIGABRT, h_abrt);
-    signal(SIGALRM, h_alrm);
+    sigaction(SIGTERM, &old_action_term, NULL);
+    sigaction(SIGABRT, &old_action_abrt, NULL);
+    sigaction(SIGINT, &old_action_int, NULL);
+    sigaction(SIGALRM, &old_action_alrm, NULL);
     
   }
   resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_sdd_node_t, 0 |  0 );
@@ -7448,46 +7703,51 @@ SWIGINTERN PyObject *_wrap_sdd_save(PyObject *SWIGUNUSEDPARM(self), PyObject *ar
     
     // signal(SIGSEGV, handler);
     
+    struct sigaction new_action;
+    new_action.sa_handler = c_handler;
+    sigemptyset (&new_action.sa_mask);
+    new_action.sa_flags = SA_RESTART;
     
-    void (*h_alrm)(int);
-    void (*h_abrt)(int);
-    void (*h_term)(int);
-    void (*h_int)(int);
+    struct sigaction old_action_term;
+    struct sigaction old_action_abrt;
+    struct sigaction old_action_int;
+    struct sigaction old_action_alrm;
+    
+    sigaction(SIGTERM,  &new_action, &old_action_term);
+    sigaction(SIGABRT,  &new_action, &old_action_abrt);
+    sigaction(SIGINT,  &new_action, &old_action_int);
+    sigaction(SIGALRM,  &new_action, &old_action_alrm);
     try {
-      h_alrm = signal(SIGALRM,  c_handler);
-      h_abrt = signal(SIGABRT, c_handler);
-      h_term = signal(SIGTERM, c_handler);
-      h_int = signal(SIGINT,  c_handler);
       sdd_save((char const *)arg1,arg2);
     } catch(SIGINT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process interrupted");
     } catch(SIGTERM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process terminated");
     } catch(SIGABRT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process aborted");
     } catch(SIGALRM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process timeout");
     }
-    signal(SIGTERM, h_term);
-    signal(SIGINT,  h_int);
-    signal(SIGABRT, h_abrt);
-    signal(SIGALRM, h_alrm);
+    sigaction(SIGTERM, &old_action_term, NULL);
+    sigaction(SIGABRT, &old_action_abrt, NULL);
+    sigaction(SIGINT, &old_action_int, NULL);
+    sigaction(SIGALRM, &old_action_alrm, NULL);
     
   }
   resultobj = SWIG_Py_Void();
@@ -7529,46 +7789,51 @@ SWIGINTERN PyObject *_wrap_sdd_save_as_dot(PyObject *SWIGUNUSEDPARM(self), PyObj
     
     // signal(SIGSEGV, handler);
     
+    struct sigaction new_action;
+    new_action.sa_handler = c_handler;
+    sigemptyset (&new_action.sa_mask);
+    new_action.sa_flags = SA_RESTART;
     
-    void (*h_alrm)(int);
-    void (*h_abrt)(int);
-    void (*h_term)(int);
-    void (*h_int)(int);
+    struct sigaction old_action_term;
+    struct sigaction old_action_abrt;
+    struct sigaction old_action_int;
+    struct sigaction old_action_alrm;
+    
+    sigaction(SIGTERM,  &new_action, &old_action_term);
+    sigaction(SIGABRT,  &new_action, &old_action_abrt);
+    sigaction(SIGINT,  &new_action, &old_action_int);
+    sigaction(SIGALRM,  &new_action, &old_action_alrm);
     try {
-      h_alrm = signal(SIGALRM,  c_handler);
-      h_abrt = signal(SIGABRT, c_handler);
-      h_term = signal(SIGTERM, c_handler);
-      h_int = signal(SIGINT,  c_handler);
       sdd_save_as_dot((char const *)arg1,arg2);
     } catch(SIGINT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process interrupted");
     } catch(SIGTERM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process terminated");
     } catch(SIGABRT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process aborted");
     } catch(SIGALRM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process timeout");
     }
-    signal(SIGTERM, h_term);
-    signal(SIGINT,  h_int);
-    signal(SIGABRT, h_abrt);
-    signal(SIGALRM, h_alrm);
+    sigaction(SIGTERM, &old_action_term, NULL);
+    sigaction(SIGABRT, &old_action_abrt, NULL);
+    sigaction(SIGINT, &old_action_int, NULL);
+    sigaction(SIGALRM, &old_action_alrm, NULL);
     
   }
   resultobj = SWIG_Py_Void();
@@ -7610,46 +7875,51 @@ SWIGINTERN PyObject *_wrap_sdd_shared_save_as_dot(PyObject *SWIGUNUSEDPARM(self)
     
     // signal(SIGSEGV, handler);
     
+    struct sigaction new_action;
+    new_action.sa_handler = c_handler;
+    sigemptyset (&new_action.sa_mask);
+    new_action.sa_flags = SA_RESTART;
     
-    void (*h_alrm)(int);
-    void (*h_abrt)(int);
-    void (*h_term)(int);
-    void (*h_int)(int);
+    struct sigaction old_action_term;
+    struct sigaction old_action_abrt;
+    struct sigaction old_action_int;
+    struct sigaction old_action_alrm;
+    
+    sigaction(SIGTERM,  &new_action, &old_action_term);
+    sigaction(SIGABRT,  &new_action, &old_action_abrt);
+    sigaction(SIGINT,  &new_action, &old_action_int);
+    sigaction(SIGALRM,  &new_action, &old_action_alrm);
     try {
-      h_alrm = signal(SIGALRM,  c_handler);
-      h_abrt = signal(SIGABRT, c_handler);
-      h_term = signal(SIGTERM, c_handler);
-      h_int = signal(SIGINT,  c_handler);
       sdd_shared_save_as_dot((char const *)arg1,arg2);
     } catch(SIGINT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process interrupted");
     } catch(SIGTERM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process terminated");
     } catch(SIGABRT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process aborted");
     } catch(SIGALRM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process timeout");
     }
-    signal(SIGTERM, h_term);
-    signal(SIGINT,  h_int);
-    signal(SIGABRT, h_abrt);
-    signal(SIGALRM, h_alrm);
+    sigaction(SIGTERM, &old_action_term, NULL);
+    sigaction(SIGABRT, &old_action_abrt, NULL);
+    sigaction(SIGINT, &old_action_int, NULL);
+    sigaction(SIGALRM, &old_action_alrm, NULL);
     
   }
   resultobj = SWIG_Py_Void();
@@ -7682,46 +7952,51 @@ SWIGINTERN PyObject *_wrap_sdd_count(PyObject *SWIGUNUSEDPARM(self), PyObject *a
     
     // signal(SIGSEGV, handler);
     
+    struct sigaction new_action;
+    new_action.sa_handler = c_handler;
+    sigemptyset (&new_action.sa_mask);
+    new_action.sa_flags = SA_RESTART;
     
-    void (*h_alrm)(int);
-    void (*h_abrt)(int);
-    void (*h_term)(int);
-    void (*h_int)(int);
+    struct sigaction old_action_term;
+    struct sigaction old_action_abrt;
+    struct sigaction old_action_int;
+    struct sigaction old_action_alrm;
+    
+    sigaction(SIGTERM,  &new_action, &old_action_term);
+    sigaction(SIGABRT,  &new_action, &old_action_abrt);
+    sigaction(SIGINT,  &new_action, &old_action_int);
+    sigaction(SIGALRM,  &new_action, &old_action_alrm);
     try {
-      h_alrm = signal(SIGALRM,  c_handler);
-      h_abrt = signal(SIGABRT, c_handler);
-      h_term = signal(SIGTERM, c_handler);
-      h_int = signal(SIGINT,  c_handler);
       result = sdd_count(arg1);
     } catch(SIGINT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process interrupted");
     } catch(SIGTERM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process terminated");
     } catch(SIGABRT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process aborted");
     } catch(SIGALRM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process timeout");
     }
-    signal(SIGTERM, h_term);
-    signal(SIGINT,  h_int);
-    signal(SIGABRT, h_abrt);
-    signal(SIGALRM, h_alrm);
+    sigaction(SIGTERM, &old_action_term, NULL);
+    sigaction(SIGABRT, &old_action_abrt, NULL);
+    sigaction(SIGINT, &old_action_int, NULL);
+    sigaction(SIGALRM, &old_action_alrm, NULL);
     
   }
   resultobj = SWIG_From_size_t((size_t)(result));
@@ -7752,46 +8027,51 @@ SWIGINTERN PyObject *_wrap_sdd_size(PyObject *SWIGUNUSEDPARM(self), PyObject *ar
     
     // signal(SIGSEGV, handler);
     
+    struct sigaction new_action;
+    new_action.sa_handler = c_handler;
+    sigemptyset (&new_action.sa_mask);
+    new_action.sa_flags = SA_RESTART;
     
-    void (*h_alrm)(int);
-    void (*h_abrt)(int);
-    void (*h_term)(int);
-    void (*h_int)(int);
+    struct sigaction old_action_term;
+    struct sigaction old_action_abrt;
+    struct sigaction old_action_int;
+    struct sigaction old_action_alrm;
+    
+    sigaction(SIGTERM,  &new_action, &old_action_term);
+    sigaction(SIGABRT,  &new_action, &old_action_abrt);
+    sigaction(SIGINT,  &new_action, &old_action_int);
+    sigaction(SIGALRM,  &new_action, &old_action_alrm);
     try {
-      h_alrm = signal(SIGALRM,  c_handler);
-      h_abrt = signal(SIGABRT, c_handler);
-      h_term = signal(SIGTERM, c_handler);
-      h_int = signal(SIGINT,  c_handler);
       result = sdd_size(arg1);
     } catch(SIGINT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process interrupted");
     } catch(SIGTERM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process terminated");
     } catch(SIGABRT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process aborted");
     } catch(SIGALRM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process timeout");
     }
-    signal(SIGTERM, h_term);
-    signal(SIGINT,  h_int);
-    signal(SIGABRT, h_abrt);
-    signal(SIGALRM, h_alrm);
+    sigaction(SIGTERM, &old_action_term, NULL);
+    sigaction(SIGABRT, &old_action_abrt, NULL);
+    sigaction(SIGINT, &old_action_int, NULL);
+    sigaction(SIGALRM, &old_action_alrm, NULL);
     
   }
   resultobj = SWIG_From_size_t((size_t)(result));
@@ -7831,46 +8111,51 @@ SWIGINTERN PyObject *_wrap_sdd_shared_size(PyObject *SWIGUNUSEDPARM(self), PyObj
     
     // signal(SIGSEGV, handler);
     
+    struct sigaction new_action;
+    new_action.sa_handler = c_handler;
+    sigemptyset (&new_action.sa_mask);
+    new_action.sa_flags = SA_RESTART;
     
-    void (*h_alrm)(int);
-    void (*h_abrt)(int);
-    void (*h_term)(int);
-    void (*h_int)(int);
+    struct sigaction old_action_term;
+    struct sigaction old_action_abrt;
+    struct sigaction old_action_int;
+    struct sigaction old_action_alrm;
+    
+    sigaction(SIGTERM,  &new_action, &old_action_term);
+    sigaction(SIGABRT,  &new_action, &old_action_abrt);
+    sigaction(SIGINT,  &new_action, &old_action_int);
+    sigaction(SIGALRM,  &new_action, &old_action_alrm);
     try {
-      h_alrm = signal(SIGALRM,  c_handler);
-      h_abrt = signal(SIGABRT, c_handler);
-      h_term = signal(SIGTERM, c_handler);
-      h_int = signal(SIGINT,  c_handler);
       result = sdd_shared_size(arg1,arg2);
     } catch(SIGINT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process interrupted");
     } catch(SIGTERM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process terminated");
     } catch(SIGABRT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process aborted");
     } catch(SIGALRM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process timeout");
     }
-    signal(SIGTERM, h_term);
-    signal(SIGINT,  h_int);
-    signal(SIGABRT, h_abrt);
-    signal(SIGALRM, h_alrm);
+    sigaction(SIGTERM, &old_action_term, NULL);
+    sigaction(SIGABRT, &old_action_abrt, NULL);
+    sigaction(SIGINT, &old_action_int, NULL);
+    sigaction(SIGALRM, &old_action_alrm, NULL);
     
   }
   resultobj = SWIG_From_size_t((size_t)(result));
@@ -7901,46 +8186,51 @@ SWIGINTERN PyObject *_wrap_sdd_manager_size(PyObject *SWIGUNUSEDPARM(self), PyOb
     
     // signal(SIGSEGV, handler);
     
+    struct sigaction new_action;
+    new_action.sa_handler = c_handler;
+    sigemptyset (&new_action.sa_mask);
+    new_action.sa_flags = SA_RESTART;
     
-    void (*h_alrm)(int);
-    void (*h_abrt)(int);
-    void (*h_term)(int);
-    void (*h_int)(int);
+    struct sigaction old_action_term;
+    struct sigaction old_action_abrt;
+    struct sigaction old_action_int;
+    struct sigaction old_action_alrm;
+    
+    sigaction(SIGTERM,  &new_action, &old_action_term);
+    sigaction(SIGABRT,  &new_action, &old_action_abrt);
+    sigaction(SIGINT,  &new_action, &old_action_int);
+    sigaction(SIGALRM,  &new_action, &old_action_alrm);
     try {
-      h_alrm = signal(SIGALRM,  c_handler);
-      h_abrt = signal(SIGABRT, c_handler);
-      h_term = signal(SIGTERM, c_handler);
-      h_int = signal(SIGINT,  c_handler);
       result = sdd_manager_size((struct sdd_manager_t const *)arg1);
     } catch(SIGINT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process interrupted");
     } catch(SIGTERM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process terminated");
     } catch(SIGABRT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process aborted");
     } catch(SIGALRM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process timeout");
     }
-    signal(SIGTERM, h_term);
-    signal(SIGINT,  h_int);
-    signal(SIGABRT, h_abrt);
-    signal(SIGALRM, h_alrm);
+    sigaction(SIGTERM, &old_action_term, NULL);
+    sigaction(SIGABRT, &old_action_abrt, NULL);
+    sigaction(SIGINT, &old_action_int, NULL);
+    sigaction(SIGALRM, &old_action_alrm, NULL);
     
   }
   resultobj = SWIG_From_size_t((size_t)(result));
@@ -7971,46 +8261,51 @@ SWIGINTERN PyObject *_wrap_sdd_manager_live_size(PyObject *SWIGUNUSEDPARM(self),
     
     // signal(SIGSEGV, handler);
     
+    struct sigaction new_action;
+    new_action.sa_handler = c_handler;
+    sigemptyset (&new_action.sa_mask);
+    new_action.sa_flags = SA_RESTART;
     
-    void (*h_alrm)(int);
-    void (*h_abrt)(int);
-    void (*h_term)(int);
-    void (*h_int)(int);
+    struct sigaction old_action_term;
+    struct sigaction old_action_abrt;
+    struct sigaction old_action_int;
+    struct sigaction old_action_alrm;
+    
+    sigaction(SIGTERM,  &new_action, &old_action_term);
+    sigaction(SIGABRT,  &new_action, &old_action_abrt);
+    sigaction(SIGINT,  &new_action, &old_action_int);
+    sigaction(SIGALRM,  &new_action, &old_action_alrm);
     try {
-      h_alrm = signal(SIGALRM,  c_handler);
-      h_abrt = signal(SIGABRT, c_handler);
-      h_term = signal(SIGTERM, c_handler);
-      h_int = signal(SIGINT,  c_handler);
       result = sdd_manager_live_size((struct sdd_manager_t const *)arg1);
     } catch(SIGINT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process interrupted");
     } catch(SIGTERM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process terminated");
     } catch(SIGABRT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process aborted");
     } catch(SIGALRM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process timeout");
     }
-    signal(SIGTERM, h_term);
-    signal(SIGINT,  h_int);
-    signal(SIGABRT, h_abrt);
-    signal(SIGALRM, h_alrm);
+    sigaction(SIGTERM, &old_action_term, NULL);
+    sigaction(SIGABRT, &old_action_abrt, NULL);
+    sigaction(SIGINT, &old_action_int, NULL);
+    sigaction(SIGALRM, &old_action_alrm, NULL);
     
   }
   resultobj = SWIG_From_size_t((size_t)(result));
@@ -8041,46 +8336,51 @@ SWIGINTERN PyObject *_wrap_sdd_manager_dead_size(PyObject *SWIGUNUSEDPARM(self),
     
     // signal(SIGSEGV, handler);
     
+    struct sigaction new_action;
+    new_action.sa_handler = c_handler;
+    sigemptyset (&new_action.sa_mask);
+    new_action.sa_flags = SA_RESTART;
     
-    void (*h_alrm)(int);
-    void (*h_abrt)(int);
-    void (*h_term)(int);
-    void (*h_int)(int);
+    struct sigaction old_action_term;
+    struct sigaction old_action_abrt;
+    struct sigaction old_action_int;
+    struct sigaction old_action_alrm;
+    
+    sigaction(SIGTERM,  &new_action, &old_action_term);
+    sigaction(SIGABRT,  &new_action, &old_action_abrt);
+    sigaction(SIGINT,  &new_action, &old_action_int);
+    sigaction(SIGALRM,  &new_action, &old_action_alrm);
     try {
-      h_alrm = signal(SIGALRM,  c_handler);
-      h_abrt = signal(SIGABRT, c_handler);
-      h_term = signal(SIGTERM, c_handler);
-      h_int = signal(SIGINT,  c_handler);
       result = sdd_manager_dead_size((struct sdd_manager_t const *)arg1);
     } catch(SIGINT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process interrupted");
     } catch(SIGTERM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process terminated");
     } catch(SIGABRT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process aborted");
     } catch(SIGALRM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process timeout");
     }
-    signal(SIGTERM, h_term);
-    signal(SIGINT,  h_int);
-    signal(SIGABRT, h_abrt);
-    signal(SIGALRM, h_alrm);
+    sigaction(SIGTERM, &old_action_term, NULL);
+    sigaction(SIGABRT, &old_action_abrt, NULL);
+    sigaction(SIGINT, &old_action_int, NULL);
+    sigaction(SIGALRM, &old_action_alrm, NULL);
     
   }
   resultobj = SWIG_From_size_t((size_t)(result));
@@ -8111,46 +8411,51 @@ SWIGINTERN PyObject *_wrap_sdd_manager_count(PyObject *SWIGUNUSEDPARM(self), PyO
     
     // signal(SIGSEGV, handler);
     
+    struct sigaction new_action;
+    new_action.sa_handler = c_handler;
+    sigemptyset (&new_action.sa_mask);
+    new_action.sa_flags = SA_RESTART;
     
-    void (*h_alrm)(int);
-    void (*h_abrt)(int);
-    void (*h_term)(int);
-    void (*h_int)(int);
+    struct sigaction old_action_term;
+    struct sigaction old_action_abrt;
+    struct sigaction old_action_int;
+    struct sigaction old_action_alrm;
+    
+    sigaction(SIGTERM,  &new_action, &old_action_term);
+    sigaction(SIGABRT,  &new_action, &old_action_abrt);
+    sigaction(SIGINT,  &new_action, &old_action_int);
+    sigaction(SIGALRM,  &new_action, &old_action_alrm);
     try {
-      h_alrm = signal(SIGALRM,  c_handler);
-      h_abrt = signal(SIGABRT, c_handler);
-      h_term = signal(SIGTERM, c_handler);
-      h_int = signal(SIGINT,  c_handler);
       result = sdd_manager_count((struct sdd_manager_t const *)arg1);
     } catch(SIGINT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process interrupted");
     } catch(SIGTERM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process terminated");
     } catch(SIGABRT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process aborted");
     } catch(SIGALRM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process timeout");
     }
-    signal(SIGTERM, h_term);
-    signal(SIGINT,  h_int);
-    signal(SIGABRT, h_abrt);
-    signal(SIGALRM, h_alrm);
+    sigaction(SIGTERM, &old_action_term, NULL);
+    sigaction(SIGABRT, &old_action_abrt, NULL);
+    sigaction(SIGINT, &old_action_int, NULL);
+    sigaction(SIGALRM, &old_action_alrm, NULL);
     
   }
   resultobj = SWIG_From_size_t((size_t)(result));
@@ -8181,46 +8486,51 @@ SWIGINTERN PyObject *_wrap_sdd_manager_live_count(PyObject *SWIGUNUSEDPARM(self)
     
     // signal(SIGSEGV, handler);
     
+    struct sigaction new_action;
+    new_action.sa_handler = c_handler;
+    sigemptyset (&new_action.sa_mask);
+    new_action.sa_flags = SA_RESTART;
     
-    void (*h_alrm)(int);
-    void (*h_abrt)(int);
-    void (*h_term)(int);
-    void (*h_int)(int);
+    struct sigaction old_action_term;
+    struct sigaction old_action_abrt;
+    struct sigaction old_action_int;
+    struct sigaction old_action_alrm;
+    
+    sigaction(SIGTERM,  &new_action, &old_action_term);
+    sigaction(SIGABRT,  &new_action, &old_action_abrt);
+    sigaction(SIGINT,  &new_action, &old_action_int);
+    sigaction(SIGALRM,  &new_action, &old_action_alrm);
     try {
-      h_alrm = signal(SIGALRM,  c_handler);
-      h_abrt = signal(SIGABRT, c_handler);
-      h_term = signal(SIGTERM, c_handler);
-      h_int = signal(SIGINT,  c_handler);
       result = sdd_manager_live_count((struct sdd_manager_t const *)arg1);
     } catch(SIGINT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process interrupted");
     } catch(SIGTERM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process terminated");
     } catch(SIGABRT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process aborted");
     } catch(SIGALRM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process timeout");
     }
-    signal(SIGTERM, h_term);
-    signal(SIGINT,  h_int);
-    signal(SIGABRT, h_abrt);
-    signal(SIGALRM, h_alrm);
+    sigaction(SIGTERM, &old_action_term, NULL);
+    sigaction(SIGABRT, &old_action_abrt, NULL);
+    sigaction(SIGINT, &old_action_int, NULL);
+    sigaction(SIGALRM, &old_action_alrm, NULL);
     
   }
   resultobj = SWIG_From_size_t((size_t)(result));
@@ -8251,46 +8561,51 @@ SWIGINTERN PyObject *_wrap_sdd_manager_dead_count(PyObject *SWIGUNUSEDPARM(self)
     
     // signal(SIGSEGV, handler);
     
+    struct sigaction new_action;
+    new_action.sa_handler = c_handler;
+    sigemptyset (&new_action.sa_mask);
+    new_action.sa_flags = SA_RESTART;
     
-    void (*h_alrm)(int);
-    void (*h_abrt)(int);
-    void (*h_term)(int);
-    void (*h_int)(int);
+    struct sigaction old_action_term;
+    struct sigaction old_action_abrt;
+    struct sigaction old_action_int;
+    struct sigaction old_action_alrm;
+    
+    sigaction(SIGTERM,  &new_action, &old_action_term);
+    sigaction(SIGABRT,  &new_action, &old_action_abrt);
+    sigaction(SIGINT,  &new_action, &old_action_int);
+    sigaction(SIGALRM,  &new_action, &old_action_alrm);
     try {
-      h_alrm = signal(SIGALRM,  c_handler);
-      h_abrt = signal(SIGABRT, c_handler);
-      h_term = signal(SIGTERM, c_handler);
-      h_int = signal(SIGINT,  c_handler);
       result = sdd_manager_dead_count((struct sdd_manager_t const *)arg1);
     } catch(SIGINT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process interrupted");
     } catch(SIGTERM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process terminated");
     } catch(SIGABRT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process aborted");
     } catch(SIGALRM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process timeout");
     }
-    signal(SIGTERM, h_term);
-    signal(SIGINT,  h_int);
-    signal(SIGABRT, h_abrt);
-    signal(SIGALRM, h_alrm);
+    sigaction(SIGTERM, &old_action_term, NULL);
+    sigaction(SIGABRT, &old_action_abrt, NULL);
+    sigaction(SIGINT, &old_action_int, NULL);
+    sigaction(SIGALRM, &old_action_alrm, NULL);
     
   }
   resultobj = SWIG_From_size_t((size_t)(result));
@@ -8321,46 +8636,51 @@ SWIGINTERN PyObject *_wrap_sdd_vtree_size(PyObject *SWIGUNUSEDPARM(self), PyObje
     
     // signal(SIGSEGV, handler);
     
+    struct sigaction new_action;
+    new_action.sa_handler = c_handler;
+    sigemptyset (&new_action.sa_mask);
+    new_action.sa_flags = SA_RESTART;
     
-    void (*h_alrm)(int);
-    void (*h_abrt)(int);
-    void (*h_term)(int);
-    void (*h_int)(int);
+    struct sigaction old_action_term;
+    struct sigaction old_action_abrt;
+    struct sigaction old_action_int;
+    struct sigaction old_action_alrm;
+    
+    sigaction(SIGTERM,  &new_action, &old_action_term);
+    sigaction(SIGABRT,  &new_action, &old_action_abrt);
+    sigaction(SIGINT,  &new_action, &old_action_int);
+    sigaction(SIGALRM,  &new_action, &old_action_alrm);
     try {
-      h_alrm = signal(SIGALRM,  c_handler);
-      h_abrt = signal(SIGABRT, c_handler);
-      h_term = signal(SIGTERM, c_handler);
-      h_int = signal(SIGINT,  c_handler);
       result = sdd_vtree_size((struct vtree_t const *)arg1);
     } catch(SIGINT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process interrupted");
     } catch(SIGTERM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process terminated");
     } catch(SIGABRT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process aborted");
     } catch(SIGALRM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process timeout");
     }
-    signal(SIGTERM, h_term);
-    signal(SIGINT,  h_int);
-    signal(SIGABRT, h_abrt);
-    signal(SIGALRM, h_alrm);
+    sigaction(SIGTERM, &old_action_term, NULL);
+    sigaction(SIGABRT, &old_action_abrt, NULL);
+    sigaction(SIGINT, &old_action_int, NULL);
+    sigaction(SIGALRM, &old_action_alrm, NULL);
     
   }
   resultobj = SWIG_From_size_t((size_t)(result));
@@ -8391,46 +8711,51 @@ SWIGINTERN PyObject *_wrap_sdd_vtree_live_size(PyObject *SWIGUNUSEDPARM(self), P
     
     // signal(SIGSEGV, handler);
     
+    struct sigaction new_action;
+    new_action.sa_handler = c_handler;
+    sigemptyset (&new_action.sa_mask);
+    new_action.sa_flags = SA_RESTART;
     
-    void (*h_alrm)(int);
-    void (*h_abrt)(int);
-    void (*h_term)(int);
-    void (*h_int)(int);
+    struct sigaction old_action_term;
+    struct sigaction old_action_abrt;
+    struct sigaction old_action_int;
+    struct sigaction old_action_alrm;
+    
+    sigaction(SIGTERM,  &new_action, &old_action_term);
+    sigaction(SIGABRT,  &new_action, &old_action_abrt);
+    sigaction(SIGINT,  &new_action, &old_action_int);
+    sigaction(SIGALRM,  &new_action, &old_action_alrm);
     try {
-      h_alrm = signal(SIGALRM,  c_handler);
-      h_abrt = signal(SIGABRT, c_handler);
-      h_term = signal(SIGTERM, c_handler);
-      h_int = signal(SIGINT,  c_handler);
       result = sdd_vtree_live_size((struct vtree_t const *)arg1);
     } catch(SIGINT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process interrupted");
     } catch(SIGTERM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process terminated");
     } catch(SIGABRT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process aborted");
     } catch(SIGALRM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process timeout");
     }
-    signal(SIGTERM, h_term);
-    signal(SIGINT,  h_int);
-    signal(SIGABRT, h_abrt);
-    signal(SIGALRM, h_alrm);
+    sigaction(SIGTERM, &old_action_term, NULL);
+    sigaction(SIGABRT, &old_action_abrt, NULL);
+    sigaction(SIGINT, &old_action_int, NULL);
+    sigaction(SIGALRM, &old_action_alrm, NULL);
     
   }
   resultobj = SWIG_From_size_t((size_t)(result));
@@ -8461,46 +8786,51 @@ SWIGINTERN PyObject *_wrap_sdd_vtree_dead_size(PyObject *SWIGUNUSEDPARM(self), P
     
     // signal(SIGSEGV, handler);
     
+    struct sigaction new_action;
+    new_action.sa_handler = c_handler;
+    sigemptyset (&new_action.sa_mask);
+    new_action.sa_flags = SA_RESTART;
     
-    void (*h_alrm)(int);
-    void (*h_abrt)(int);
-    void (*h_term)(int);
-    void (*h_int)(int);
+    struct sigaction old_action_term;
+    struct sigaction old_action_abrt;
+    struct sigaction old_action_int;
+    struct sigaction old_action_alrm;
+    
+    sigaction(SIGTERM,  &new_action, &old_action_term);
+    sigaction(SIGABRT,  &new_action, &old_action_abrt);
+    sigaction(SIGINT,  &new_action, &old_action_int);
+    sigaction(SIGALRM,  &new_action, &old_action_alrm);
     try {
-      h_alrm = signal(SIGALRM,  c_handler);
-      h_abrt = signal(SIGABRT, c_handler);
-      h_term = signal(SIGTERM, c_handler);
-      h_int = signal(SIGINT,  c_handler);
       result = sdd_vtree_dead_size((struct vtree_t const *)arg1);
     } catch(SIGINT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process interrupted");
     } catch(SIGTERM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process terminated");
     } catch(SIGABRT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process aborted");
     } catch(SIGALRM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process timeout");
     }
-    signal(SIGTERM, h_term);
-    signal(SIGINT,  h_int);
-    signal(SIGABRT, h_abrt);
-    signal(SIGALRM, h_alrm);
+    sigaction(SIGTERM, &old_action_term, NULL);
+    sigaction(SIGABRT, &old_action_abrt, NULL);
+    sigaction(SIGINT, &old_action_int, NULL);
+    sigaction(SIGALRM, &old_action_alrm, NULL);
     
   }
   resultobj = SWIG_From_size_t((size_t)(result));
@@ -8531,46 +8861,51 @@ SWIGINTERN PyObject *_wrap_sdd_vtree_count(PyObject *SWIGUNUSEDPARM(self), PyObj
     
     // signal(SIGSEGV, handler);
     
+    struct sigaction new_action;
+    new_action.sa_handler = c_handler;
+    sigemptyset (&new_action.sa_mask);
+    new_action.sa_flags = SA_RESTART;
     
-    void (*h_alrm)(int);
-    void (*h_abrt)(int);
-    void (*h_term)(int);
-    void (*h_int)(int);
+    struct sigaction old_action_term;
+    struct sigaction old_action_abrt;
+    struct sigaction old_action_int;
+    struct sigaction old_action_alrm;
+    
+    sigaction(SIGTERM,  &new_action, &old_action_term);
+    sigaction(SIGABRT,  &new_action, &old_action_abrt);
+    sigaction(SIGINT,  &new_action, &old_action_int);
+    sigaction(SIGALRM,  &new_action, &old_action_alrm);
     try {
-      h_alrm = signal(SIGALRM,  c_handler);
-      h_abrt = signal(SIGABRT, c_handler);
-      h_term = signal(SIGTERM, c_handler);
-      h_int = signal(SIGINT,  c_handler);
       result = sdd_vtree_count((struct vtree_t const *)arg1);
     } catch(SIGINT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process interrupted");
     } catch(SIGTERM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process terminated");
     } catch(SIGABRT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process aborted");
     } catch(SIGALRM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process timeout");
     }
-    signal(SIGTERM, h_term);
-    signal(SIGINT,  h_int);
-    signal(SIGABRT, h_abrt);
-    signal(SIGALRM, h_alrm);
+    sigaction(SIGTERM, &old_action_term, NULL);
+    sigaction(SIGABRT, &old_action_abrt, NULL);
+    sigaction(SIGINT, &old_action_int, NULL);
+    sigaction(SIGALRM, &old_action_alrm, NULL);
     
   }
   resultobj = SWIG_From_size_t((size_t)(result));
@@ -8601,46 +8936,51 @@ SWIGINTERN PyObject *_wrap_sdd_vtree_live_count(PyObject *SWIGUNUSEDPARM(self), 
     
     // signal(SIGSEGV, handler);
     
+    struct sigaction new_action;
+    new_action.sa_handler = c_handler;
+    sigemptyset (&new_action.sa_mask);
+    new_action.sa_flags = SA_RESTART;
     
-    void (*h_alrm)(int);
-    void (*h_abrt)(int);
-    void (*h_term)(int);
-    void (*h_int)(int);
+    struct sigaction old_action_term;
+    struct sigaction old_action_abrt;
+    struct sigaction old_action_int;
+    struct sigaction old_action_alrm;
+    
+    sigaction(SIGTERM,  &new_action, &old_action_term);
+    sigaction(SIGABRT,  &new_action, &old_action_abrt);
+    sigaction(SIGINT,  &new_action, &old_action_int);
+    sigaction(SIGALRM,  &new_action, &old_action_alrm);
     try {
-      h_alrm = signal(SIGALRM,  c_handler);
-      h_abrt = signal(SIGABRT, c_handler);
-      h_term = signal(SIGTERM, c_handler);
-      h_int = signal(SIGINT,  c_handler);
       result = sdd_vtree_live_count((struct vtree_t const *)arg1);
     } catch(SIGINT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process interrupted");
     } catch(SIGTERM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process terminated");
     } catch(SIGABRT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process aborted");
     } catch(SIGALRM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process timeout");
     }
-    signal(SIGTERM, h_term);
-    signal(SIGINT,  h_int);
-    signal(SIGABRT, h_abrt);
-    signal(SIGALRM, h_alrm);
+    sigaction(SIGTERM, &old_action_term, NULL);
+    sigaction(SIGABRT, &old_action_abrt, NULL);
+    sigaction(SIGINT, &old_action_int, NULL);
+    sigaction(SIGALRM, &old_action_alrm, NULL);
     
   }
   resultobj = SWIG_From_size_t((size_t)(result));
@@ -8671,46 +9011,51 @@ SWIGINTERN PyObject *_wrap_sdd_vtree_dead_count(PyObject *SWIGUNUSEDPARM(self), 
     
     // signal(SIGSEGV, handler);
     
+    struct sigaction new_action;
+    new_action.sa_handler = c_handler;
+    sigemptyset (&new_action.sa_mask);
+    new_action.sa_flags = SA_RESTART;
     
-    void (*h_alrm)(int);
-    void (*h_abrt)(int);
-    void (*h_term)(int);
-    void (*h_int)(int);
+    struct sigaction old_action_term;
+    struct sigaction old_action_abrt;
+    struct sigaction old_action_int;
+    struct sigaction old_action_alrm;
+    
+    sigaction(SIGTERM,  &new_action, &old_action_term);
+    sigaction(SIGABRT,  &new_action, &old_action_abrt);
+    sigaction(SIGINT,  &new_action, &old_action_int);
+    sigaction(SIGALRM,  &new_action, &old_action_alrm);
     try {
-      h_alrm = signal(SIGALRM,  c_handler);
-      h_abrt = signal(SIGABRT, c_handler);
-      h_term = signal(SIGTERM, c_handler);
-      h_int = signal(SIGINT,  c_handler);
       result = sdd_vtree_dead_count((struct vtree_t const *)arg1);
     } catch(SIGINT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process interrupted");
     } catch(SIGTERM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process terminated");
     } catch(SIGABRT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process aborted");
     } catch(SIGALRM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process timeout");
     }
-    signal(SIGTERM, h_term);
-    signal(SIGINT,  h_int);
-    signal(SIGABRT, h_abrt);
-    signal(SIGALRM, h_alrm);
+    sigaction(SIGTERM, &old_action_term, NULL);
+    sigaction(SIGABRT, &old_action_abrt, NULL);
+    sigaction(SIGINT, &old_action_int, NULL);
+    sigaction(SIGALRM, &old_action_alrm, NULL);
     
   }
   resultobj = SWIG_From_size_t((size_t)(result));
@@ -8741,46 +9086,51 @@ SWIGINTERN PyObject *_wrap_sdd_vtree_size_at(PyObject *SWIGUNUSEDPARM(self), PyO
     
     // signal(SIGSEGV, handler);
     
+    struct sigaction new_action;
+    new_action.sa_handler = c_handler;
+    sigemptyset (&new_action.sa_mask);
+    new_action.sa_flags = SA_RESTART;
     
-    void (*h_alrm)(int);
-    void (*h_abrt)(int);
-    void (*h_term)(int);
-    void (*h_int)(int);
+    struct sigaction old_action_term;
+    struct sigaction old_action_abrt;
+    struct sigaction old_action_int;
+    struct sigaction old_action_alrm;
+    
+    sigaction(SIGTERM,  &new_action, &old_action_term);
+    sigaction(SIGABRT,  &new_action, &old_action_abrt);
+    sigaction(SIGINT,  &new_action, &old_action_int);
+    sigaction(SIGALRM,  &new_action, &old_action_alrm);
     try {
-      h_alrm = signal(SIGALRM,  c_handler);
-      h_abrt = signal(SIGABRT, c_handler);
-      h_term = signal(SIGTERM, c_handler);
-      h_int = signal(SIGINT,  c_handler);
       result = sdd_vtree_size_at((struct vtree_t const *)arg1);
     } catch(SIGINT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process interrupted");
     } catch(SIGTERM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process terminated");
     } catch(SIGABRT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process aborted");
     } catch(SIGALRM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process timeout");
     }
-    signal(SIGTERM, h_term);
-    signal(SIGINT,  h_int);
-    signal(SIGABRT, h_abrt);
-    signal(SIGALRM, h_alrm);
+    sigaction(SIGTERM, &old_action_term, NULL);
+    sigaction(SIGABRT, &old_action_abrt, NULL);
+    sigaction(SIGINT, &old_action_int, NULL);
+    sigaction(SIGALRM, &old_action_alrm, NULL);
     
   }
   resultobj = SWIG_From_size_t((size_t)(result));
@@ -8811,46 +9161,51 @@ SWIGINTERN PyObject *_wrap_sdd_vtree_live_size_at(PyObject *SWIGUNUSEDPARM(self)
     
     // signal(SIGSEGV, handler);
     
+    struct sigaction new_action;
+    new_action.sa_handler = c_handler;
+    sigemptyset (&new_action.sa_mask);
+    new_action.sa_flags = SA_RESTART;
     
-    void (*h_alrm)(int);
-    void (*h_abrt)(int);
-    void (*h_term)(int);
-    void (*h_int)(int);
+    struct sigaction old_action_term;
+    struct sigaction old_action_abrt;
+    struct sigaction old_action_int;
+    struct sigaction old_action_alrm;
+    
+    sigaction(SIGTERM,  &new_action, &old_action_term);
+    sigaction(SIGABRT,  &new_action, &old_action_abrt);
+    sigaction(SIGINT,  &new_action, &old_action_int);
+    sigaction(SIGALRM,  &new_action, &old_action_alrm);
     try {
-      h_alrm = signal(SIGALRM,  c_handler);
-      h_abrt = signal(SIGABRT, c_handler);
-      h_term = signal(SIGTERM, c_handler);
-      h_int = signal(SIGINT,  c_handler);
       result = sdd_vtree_live_size_at((struct vtree_t const *)arg1);
     } catch(SIGINT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process interrupted");
     } catch(SIGTERM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process terminated");
     } catch(SIGABRT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process aborted");
     } catch(SIGALRM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process timeout");
     }
-    signal(SIGTERM, h_term);
-    signal(SIGINT,  h_int);
-    signal(SIGABRT, h_abrt);
-    signal(SIGALRM, h_alrm);
+    sigaction(SIGTERM, &old_action_term, NULL);
+    sigaction(SIGABRT, &old_action_abrt, NULL);
+    sigaction(SIGINT, &old_action_int, NULL);
+    sigaction(SIGALRM, &old_action_alrm, NULL);
     
   }
   resultobj = SWIG_From_size_t((size_t)(result));
@@ -8881,46 +9236,51 @@ SWIGINTERN PyObject *_wrap_sdd_vtree_dead_size_at(PyObject *SWIGUNUSEDPARM(self)
     
     // signal(SIGSEGV, handler);
     
+    struct sigaction new_action;
+    new_action.sa_handler = c_handler;
+    sigemptyset (&new_action.sa_mask);
+    new_action.sa_flags = SA_RESTART;
     
-    void (*h_alrm)(int);
-    void (*h_abrt)(int);
-    void (*h_term)(int);
-    void (*h_int)(int);
+    struct sigaction old_action_term;
+    struct sigaction old_action_abrt;
+    struct sigaction old_action_int;
+    struct sigaction old_action_alrm;
+    
+    sigaction(SIGTERM,  &new_action, &old_action_term);
+    sigaction(SIGABRT,  &new_action, &old_action_abrt);
+    sigaction(SIGINT,  &new_action, &old_action_int);
+    sigaction(SIGALRM,  &new_action, &old_action_alrm);
     try {
-      h_alrm = signal(SIGALRM,  c_handler);
-      h_abrt = signal(SIGABRT, c_handler);
-      h_term = signal(SIGTERM, c_handler);
-      h_int = signal(SIGINT,  c_handler);
       result = sdd_vtree_dead_size_at((struct vtree_t const *)arg1);
     } catch(SIGINT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process interrupted");
     } catch(SIGTERM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process terminated");
     } catch(SIGABRT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process aborted");
     } catch(SIGALRM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process timeout");
     }
-    signal(SIGTERM, h_term);
-    signal(SIGINT,  h_int);
-    signal(SIGABRT, h_abrt);
-    signal(SIGALRM, h_alrm);
+    sigaction(SIGTERM, &old_action_term, NULL);
+    sigaction(SIGABRT, &old_action_abrt, NULL);
+    sigaction(SIGINT, &old_action_int, NULL);
+    sigaction(SIGALRM, &old_action_alrm, NULL);
     
   }
   resultobj = SWIG_From_size_t((size_t)(result));
@@ -8951,46 +9311,51 @@ SWIGINTERN PyObject *_wrap_sdd_vtree_count_at(PyObject *SWIGUNUSEDPARM(self), Py
     
     // signal(SIGSEGV, handler);
     
+    struct sigaction new_action;
+    new_action.sa_handler = c_handler;
+    sigemptyset (&new_action.sa_mask);
+    new_action.sa_flags = SA_RESTART;
     
-    void (*h_alrm)(int);
-    void (*h_abrt)(int);
-    void (*h_term)(int);
-    void (*h_int)(int);
+    struct sigaction old_action_term;
+    struct sigaction old_action_abrt;
+    struct sigaction old_action_int;
+    struct sigaction old_action_alrm;
+    
+    sigaction(SIGTERM,  &new_action, &old_action_term);
+    sigaction(SIGABRT,  &new_action, &old_action_abrt);
+    sigaction(SIGINT,  &new_action, &old_action_int);
+    sigaction(SIGALRM,  &new_action, &old_action_alrm);
     try {
-      h_alrm = signal(SIGALRM,  c_handler);
-      h_abrt = signal(SIGABRT, c_handler);
-      h_term = signal(SIGTERM, c_handler);
-      h_int = signal(SIGINT,  c_handler);
       result = sdd_vtree_count_at((struct vtree_t const *)arg1);
     } catch(SIGINT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process interrupted");
     } catch(SIGTERM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process terminated");
     } catch(SIGABRT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process aborted");
     } catch(SIGALRM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process timeout");
     }
-    signal(SIGTERM, h_term);
-    signal(SIGINT,  h_int);
-    signal(SIGABRT, h_abrt);
-    signal(SIGALRM, h_alrm);
+    sigaction(SIGTERM, &old_action_term, NULL);
+    sigaction(SIGABRT, &old_action_abrt, NULL);
+    sigaction(SIGINT, &old_action_int, NULL);
+    sigaction(SIGALRM, &old_action_alrm, NULL);
     
   }
   resultobj = SWIG_From_size_t((size_t)(result));
@@ -9021,46 +9386,51 @@ SWIGINTERN PyObject *_wrap_sdd_vtree_live_count_at(PyObject *SWIGUNUSEDPARM(self
     
     // signal(SIGSEGV, handler);
     
+    struct sigaction new_action;
+    new_action.sa_handler = c_handler;
+    sigemptyset (&new_action.sa_mask);
+    new_action.sa_flags = SA_RESTART;
     
-    void (*h_alrm)(int);
-    void (*h_abrt)(int);
-    void (*h_term)(int);
-    void (*h_int)(int);
+    struct sigaction old_action_term;
+    struct sigaction old_action_abrt;
+    struct sigaction old_action_int;
+    struct sigaction old_action_alrm;
+    
+    sigaction(SIGTERM,  &new_action, &old_action_term);
+    sigaction(SIGABRT,  &new_action, &old_action_abrt);
+    sigaction(SIGINT,  &new_action, &old_action_int);
+    sigaction(SIGALRM,  &new_action, &old_action_alrm);
     try {
-      h_alrm = signal(SIGALRM,  c_handler);
-      h_abrt = signal(SIGABRT, c_handler);
-      h_term = signal(SIGTERM, c_handler);
-      h_int = signal(SIGINT,  c_handler);
       result = sdd_vtree_live_count_at((struct vtree_t const *)arg1);
     } catch(SIGINT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process interrupted");
     } catch(SIGTERM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process terminated");
     } catch(SIGABRT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process aborted");
     } catch(SIGALRM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process timeout");
     }
-    signal(SIGTERM, h_term);
-    signal(SIGINT,  h_int);
-    signal(SIGABRT, h_abrt);
-    signal(SIGALRM, h_alrm);
+    sigaction(SIGTERM, &old_action_term, NULL);
+    sigaction(SIGABRT, &old_action_abrt, NULL);
+    sigaction(SIGINT, &old_action_int, NULL);
+    sigaction(SIGALRM, &old_action_alrm, NULL);
     
   }
   resultobj = SWIG_From_size_t((size_t)(result));
@@ -9091,46 +9461,51 @@ SWIGINTERN PyObject *_wrap_sdd_vtree_dead_count_at(PyObject *SWIGUNUSEDPARM(self
     
     // signal(SIGSEGV, handler);
     
+    struct sigaction new_action;
+    new_action.sa_handler = c_handler;
+    sigemptyset (&new_action.sa_mask);
+    new_action.sa_flags = SA_RESTART;
     
-    void (*h_alrm)(int);
-    void (*h_abrt)(int);
-    void (*h_term)(int);
-    void (*h_int)(int);
+    struct sigaction old_action_term;
+    struct sigaction old_action_abrt;
+    struct sigaction old_action_int;
+    struct sigaction old_action_alrm;
+    
+    sigaction(SIGTERM,  &new_action, &old_action_term);
+    sigaction(SIGABRT,  &new_action, &old_action_abrt);
+    sigaction(SIGINT,  &new_action, &old_action_int);
+    sigaction(SIGALRM,  &new_action, &old_action_alrm);
     try {
-      h_alrm = signal(SIGALRM,  c_handler);
-      h_abrt = signal(SIGABRT, c_handler);
-      h_term = signal(SIGTERM, c_handler);
-      h_int = signal(SIGINT,  c_handler);
       result = sdd_vtree_dead_count_at((struct vtree_t const *)arg1);
     } catch(SIGINT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process interrupted");
     } catch(SIGTERM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process terminated");
     } catch(SIGABRT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process aborted");
     } catch(SIGALRM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process timeout");
     }
-    signal(SIGTERM, h_term);
-    signal(SIGINT,  h_int);
-    signal(SIGABRT, h_abrt);
-    signal(SIGALRM, h_alrm);
+    sigaction(SIGTERM, &old_action_term, NULL);
+    sigaction(SIGABRT, &old_action_abrt, NULL);
+    sigaction(SIGINT, &old_action_int, NULL);
+    sigaction(SIGALRM, &old_action_alrm, NULL);
     
   }
   resultobj = SWIG_From_size_t((size_t)(result));
@@ -9171,46 +9546,51 @@ SWIGINTERN PyObject *_wrap_sdd_vtree_new(PyObject *SWIGUNUSEDPARM(self), PyObjec
     
     // signal(SIGSEGV, handler);
     
+    struct sigaction new_action;
+    new_action.sa_handler = c_handler;
+    sigemptyset (&new_action.sa_mask);
+    new_action.sa_flags = SA_RESTART;
     
-    void (*h_alrm)(int);
-    void (*h_abrt)(int);
-    void (*h_term)(int);
-    void (*h_int)(int);
+    struct sigaction old_action_term;
+    struct sigaction old_action_abrt;
+    struct sigaction old_action_int;
+    struct sigaction old_action_alrm;
+    
+    sigaction(SIGTERM,  &new_action, &old_action_term);
+    sigaction(SIGABRT,  &new_action, &old_action_abrt);
+    sigaction(SIGINT,  &new_action, &old_action_int);
+    sigaction(SIGALRM,  &new_action, &old_action_alrm);
     try {
-      h_alrm = signal(SIGALRM,  c_handler);
-      h_abrt = signal(SIGABRT, c_handler);
-      h_term = signal(SIGTERM, c_handler);
-      h_int = signal(SIGINT,  c_handler);
       result = (Vtree *)sdd_vtree_new(arg1,(char const *)arg2);
     } catch(SIGINT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process interrupted");
     } catch(SIGTERM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process terminated");
     } catch(SIGABRT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process aborted");
     } catch(SIGALRM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process timeout");
     }
-    signal(SIGTERM, h_term);
-    signal(SIGINT,  h_int);
-    signal(SIGABRT, h_abrt);
-    signal(SIGALRM, h_alrm);
+    sigaction(SIGTERM, &old_action_term, NULL);
+    sigaction(SIGABRT, &old_action_abrt, NULL);
+    sigaction(SIGINT, &old_action_int, NULL);
+    sigaction(SIGALRM, &old_action_alrm, NULL);
     
   }
   resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_vtree_t, 0 |  0 );
@@ -9262,46 +9642,51 @@ SWIGINTERN PyObject *_wrap_sdd_vtree_new_with_var_order(PyObject *SWIGUNUSEDPARM
     
     // signal(SIGSEGV, handler);
     
+    struct sigaction new_action;
+    new_action.sa_handler = c_handler;
+    sigemptyset (&new_action.sa_mask);
+    new_action.sa_flags = SA_RESTART;
     
-    void (*h_alrm)(int);
-    void (*h_abrt)(int);
-    void (*h_term)(int);
-    void (*h_int)(int);
+    struct sigaction old_action_term;
+    struct sigaction old_action_abrt;
+    struct sigaction old_action_int;
+    struct sigaction old_action_alrm;
+    
+    sigaction(SIGTERM,  &new_action, &old_action_term);
+    sigaction(SIGABRT,  &new_action, &old_action_abrt);
+    sigaction(SIGINT,  &new_action, &old_action_int);
+    sigaction(SIGALRM,  &new_action, &old_action_alrm);
     try {
-      h_alrm = signal(SIGALRM,  c_handler);
-      h_abrt = signal(SIGABRT, c_handler);
-      h_term = signal(SIGTERM, c_handler);
-      h_int = signal(SIGINT,  c_handler);
       result = (Vtree *)sdd_vtree_new_with_var_order(arg1,arg2,(char const *)arg3);
     } catch(SIGINT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process interrupted");
     } catch(SIGTERM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process terminated");
     } catch(SIGABRT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process aborted");
     } catch(SIGALRM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process timeout");
     }
-    signal(SIGTERM, h_term);
-    signal(SIGINT,  h_int);
-    signal(SIGABRT, h_abrt);
-    signal(SIGALRM, h_alrm);
+    sigaction(SIGTERM, &old_action_term, NULL);
+    sigaction(SIGABRT, &old_action_abrt, NULL);
+    sigaction(SIGINT, &old_action_int, NULL);
+    sigaction(SIGALRM, &old_action_alrm, NULL);
     
   }
   resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_vtree_t, 0 |  0 );
@@ -9333,46 +9718,51 @@ SWIGINTERN PyObject *_wrap_sdd_vtree_free(PyObject *SWIGUNUSEDPARM(self), PyObje
     
     // signal(SIGSEGV, handler);
     
+    struct sigaction new_action;
+    new_action.sa_handler = c_handler;
+    sigemptyset (&new_action.sa_mask);
+    new_action.sa_flags = SA_RESTART;
     
-    void (*h_alrm)(int);
-    void (*h_abrt)(int);
-    void (*h_term)(int);
-    void (*h_int)(int);
+    struct sigaction old_action_term;
+    struct sigaction old_action_abrt;
+    struct sigaction old_action_int;
+    struct sigaction old_action_alrm;
+    
+    sigaction(SIGTERM,  &new_action, &old_action_term);
+    sigaction(SIGABRT,  &new_action, &old_action_abrt);
+    sigaction(SIGINT,  &new_action, &old_action_int);
+    sigaction(SIGALRM,  &new_action, &old_action_alrm);
     try {
-      h_alrm = signal(SIGALRM,  c_handler);
-      h_abrt = signal(SIGABRT, c_handler);
-      h_term = signal(SIGTERM, c_handler);
-      h_int = signal(SIGINT,  c_handler);
       sdd_vtree_free(arg1);
     } catch(SIGINT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process interrupted");
     } catch(SIGTERM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process terminated");
     } catch(SIGABRT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process aborted");
     } catch(SIGALRM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process timeout");
     }
-    signal(SIGTERM, h_term);
-    signal(SIGINT,  h_int);
-    signal(SIGABRT, h_abrt);
-    signal(SIGALRM, h_alrm);
+    sigaction(SIGTERM, &old_action_term, NULL);
+    sigaction(SIGABRT, &old_action_abrt, NULL);
+    sigaction(SIGINT, &old_action_int, NULL);
+    sigaction(SIGALRM, &old_action_alrm, NULL);
     
   }
   resultobj = SWIG_Py_Void();
@@ -9412,46 +9802,51 @@ SWIGINTERN PyObject *_wrap_sdd_vtree_save(PyObject *SWIGUNUSEDPARM(self), PyObje
     
     // signal(SIGSEGV, handler);
     
+    struct sigaction new_action;
+    new_action.sa_handler = c_handler;
+    sigemptyset (&new_action.sa_mask);
+    new_action.sa_flags = SA_RESTART;
     
-    void (*h_alrm)(int);
-    void (*h_abrt)(int);
-    void (*h_term)(int);
-    void (*h_int)(int);
+    struct sigaction old_action_term;
+    struct sigaction old_action_abrt;
+    struct sigaction old_action_int;
+    struct sigaction old_action_alrm;
+    
+    sigaction(SIGTERM,  &new_action, &old_action_term);
+    sigaction(SIGABRT,  &new_action, &old_action_abrt);
+    sigaction(SIGINT,  &new_action, &old_action_int);
+    sigaction(SIGALRM,  &new_action, &old_action_alrm);
     try {
-      h_alrm = signal(SIGALRM,  c_handler);
-      h_abrt = signal(SIGABRT, c_handler);
-      h_term = signal(SIGTERM, c_handler);
-      h_int = signal(SIGINT,  c_handler);
       sdd_vtree_save((char const *)arg1,arg2);
     } catch(SIGINT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process interrupted");
     } catch(SIGTERM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process terminated");
     } catch(SIGABRT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process aborted");
     } catch(SIGALRM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process timeout");
     }
-    signal(SIGTERM, h_term);
-    signal(SIGINT,  h_int);
-    signal(SIGABRT, h_abrt);
-    signal(SIGALRM, h_alrm);
+    sigaction(SIGTERM, &old_action_term, NULL);
+    sigaction(SIGABRT, &old_action_abrt, NULL);
+    sigaction(SIGINT, &old_action_int, NULL);
+    sigaction(SIGALRM, &old_action_alrm, NULL);
     
   }
   resultobj = SWIG_Py_Void();
@@ -9485,46 +9880,51 @@ SWIGINTERN PyObject *_wrap_sdd_vtree_read(PyObject *SWIGUNUSEDPARM(self), PyObje
     
     // signal(SIGSEGV, handler);
     
+    struct sigaction new_action;
+    new_action.sa_handler = c_handler;
+    sigemptyset (&new_action.sa_mask);
+    new_action.sa_flags = SA_RESTART;
     
-    void (*h_alrm)(int);
-    void (*h_abrt)(int);
-    void (*h_term)(int);
-    void (*h_int)(int);
+    struct sigaction old_action_term;
+    struct sigaction old_action_abrt;
+    struct sigaction old_action_int;
+    struct sigaction old_action_alrm;
+    
+    sigaction(SIGTERM,  &new_action, &old_action_term);
+    sigaction(SIGABRT,  &new_action, &old_action_abrt);
+    sigaction(SIGINT,  &new_action, &old_action_int);
+    sigaction(SIGALRM,  &new_action, &old_action_alrm);
     try {
-      h_alrm = signal(SIGALRM,  c_handler);
-      h_abrt = signal(SIGABRT, c_handler);
-      h_term = signal(SIGTERM, c_handler);
-      h_int = signal(SIGINT,  c_handler);
       result = (Vtree *)sdd_vtree_read((char const *)arg1);
     } catch(SIGINT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process interrupted");
     } catch(SIGTERM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process terminated");
     } catch(SIGABRT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process aborted");
     } catch(SIGALRM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process timeout");
     }
-    signal(SIGTERM, h_term);
-    signal(SIGINT,  h_int);
-    signal(SIGABRT, h_abrt);
-    signal(SIGALRM, h_alrm);
+    sigaction(SIGTERM, &old_action_term, NULL);
+    sigaction(SIGABRT, &old_action_abrt, NULL);
+    sigaction(SIGINT, &old_action_int, NULL);
+    sigaction(SIGALRM, &old_action_alrm, NULL);
     
   }
   resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_vtree_t, 0 |  0 );
@@ -9566,46 +9966,51 @@ SWIGINTERN PyObject *_wrap_sdd_vtree_save_as_dot(PyObject *SWIGUNUSEDPARM(self),
     
     // signal(SIGSEGV, handler);
     
+    struct sigaction new_action;
+    new_action.sa_handler = c_handler;
+    sigemptyset (&new_action.sa_mask);
+    new_action.sa_flags = SA_RESTART;
     
-    void (*h_alrm)(int);
-    void (*h_abrt)(int);
-    void (*h_term)(int);
-    void (*h_int)(int);
+    struct sigaction old_action_term;
+    struct sigaction old_action_abrt;
+    struct sigaction old_action_int;
+    struct sigaction old_action_alrm;
+    
+    sigaction(SIGTERM,  &new_action, &old_action_term);
+    sigaction(SIGABRT,  &new_action, &old_action_abrt);
+    sigaction(SIGINT,  &new_action, &old_action_int);
+    sigaction(SIGALRM,  &new_action, &old_action_alrm);
     try {
-      h_alrm = signal(SIGALRM,  c_handler);
-      h_abrt = signal(SIGABRT, c_handler);
-      h_term = signal(SIGTERM, c_handler);
-      h_int = signal(SIGINT,  c_handler);
       sdd_vtree_save_as_dot((char const *)arg1,arg2);
     } catch(SIGINT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process interrupted");
     } catch(SIGTERM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process terminated");
     } catch(SIGABRT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process aborted");
     } catch(SIGALRM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process timeout");
     }
-    signal(SIGTERM, h_term);
-    signal(SIGINT,  h_int);
-    signal(SIGABRT, h_abrt);
-    signal(SIGALRM, h_alrm);
+    sigaction(SIGTERM, &old_action_term, NULL);
+    sigaction(SIGABRT, &old_action_abrt, NULL);
+    sigaction(SIGINT, &old_action_int, NULL);
+    sigaction(SIGALRM, &old_action_alrm, NULL);
     
   }
   resultobj = SWIG_Py_Void();
@@ -9638,46 +10043,51 @@ SWIGINTERN PyObject *_wrap_sdd_manager_vtree(PyObject *SWIGUNUSEDPARM(self), PyO
     
     // signal(SIGSEGV, handler);
     
+    struct sigaction new_action;
+    new_action.sa_handler = c_handler;
+    sigemptyset (&new_action.sa_mask);
+    new_action.sa_flags = SA_RESTART;
     
-    void (*h_alrm)(int);
-    void (*h_abrt)(int);
-    void (*h_term)(int);
-    void (*h_int)(int);
+    struct sigaction old_action_term;
+    struct sigaction old_action_abrt;
+    struct sigaction old_action_int;
+    struct sigaction old_action_alrm;
+    
+    sigaction(SIGTERM,  &new_action, &old_action_term);
+    sigaction(SIGABRT,  &new_action, &old_action_abrt);
+    sigaction(SIGINT,  &new_action, &old_action_int);
+    sigaction(SIGALRM,  &new_action, &old_action_alrm);
     try {
-      h_alrm = signal(SIGALRM,  c_handler);
-      h_abrt = signal(SIGABRT, c_handler);
-      h_term = signal(SIGTERM, c_handler);
-      h_int = signal(SIGINT,  c_handler);
       result = (Vtree *)sdd_manager_vtree((struct sdd_manager_t const *)arg1);
     } catch(SIGINT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process interrupted");
     } catch(SIGTERM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process terminated");
     } catch(SIGABRT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process aborted");
     } catch(SIGALRM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process timeout");
     }
-    signal(SIGTERM, h_term);
-    signal(SIGINT,  h_int);
-    signal(SIGABRT, h_abrt);
-    signal(SIGALRM, h_alrm);
+    sigaction(SIGTERM, &old_action_term, NULL);
+    sigaction(SIGABRT, &old_action_abrt, NULL);
+    sigaction(SIGINT, &old_action_int, NULL);
+    sigaction(SIGALRM, &old_action_alrm, NULL);
     
   }
   resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_vtree_t, 0 |  0 );
@@ -9708,46 +10118,51 @@ SWIGINTERN PyObject *_wrap_sdd_manager_vtree_copy(PyObject *SWIGUNUSEDPARM(self)
     
     // signal(SIGSEGV, handler);
     
+    struct sigaction new_action;
+    new_action.sa_handler = c_handler;
+    sigemptyset (&new_action.sa_mask);
+    new_action.sa_flags = SA_RESTART;
     
-    void (*h_alrm)(int);
-    void (*h_abrt)(int);
-    void (*h_term)(int);
-    void (*h_int)(int);
+    struct sigaction old_action_term;
+    struct sigaction old_action_abrt;
+    struct sigaction old_action_int;
+    struct sigaction old_action_alrm;
+    
+    sigaction(SIGTERM,  &new_action, &old_action_term);
+    sigaction(SIGABRT,  &new_action, &old_action_abrt);
+    sigaction(SIGINT,  &new_action, &old_action_int);
+    sigaction(SIGALRM,  &new_action, &old_action_alrm);
     try {
-      h_alrm = signal(SIGALRM,  c_handler);
-      h_abrt = signal(SIGABRT, c_handler);
-      h_term = signal(SIGTERM, c_handler);
-      h_int = signal(SIGINT,  c_handler);
       result = (Vtree *)sdd_manager_vtree_copy((struct sdd_manager_t const *)arg1);
     } catch(SIGINT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process interrupted");
     } catch(SIGTERM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process terminated");
     } catch(SIGABRT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process aborted");
     } catch(SIGALRM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process timeout");
     }
-    signal(SIGTERM, h_term);
-    signal(SIGINT,  h_int);
-    signal(SIGABRT, h_abrt);
-    signal(SIGALRM, h_alrm);
+    sigaction(SIGTERM, &old_action_term, NULL);
+    sigaction(SIGABRT, &old_action_abrt, NULL);
+    sigaction(SIGINT, &old_action_int, NULL);
+    sigaction(SIGALRM, &old_action_alrm, NULL);
     
   }
   resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_vtree_t, 0 |  0 );
@@ -9778,46 +10193,51 @@ SWIGINTERN PyObject *_wrap_sdd_vtree_left(PyObject *SWIGUNUSEDPARM(self), PyObje
     
     // signal(SIGSEGV, handler);
     
+    struct sigaction new_action;
+    new_action.sa_handler = c_handler;
+    sigemptyset (&new_action.sa_mask);
+    new_action.sa_flags = SA_RESTART;
     
-    void (*h_alrm)(int);
-    void (*h_abrt)(int);
-    void (*h_term)(int);
-    void (*h_int)(int);
+    struct sigaction old_action_term;
+    struct sigaction old_action_abrt;
+    struct sigaction old_action_int;
+    struct sigaction old_action_alrm;
+    
+    sigaction(SIGTERM,  &new_action, &old_action_term);
+    sigaction(SIGABRT,  &new_action, &old_action_abrt);
+    sigaction(SIGINT,  &new_action, &old_action_int);
+    sigaction(SIGALRM,  &new_action, &old_action_alrm);
     try {
-      h_alrm = signal(SIGALRM,  c_handler);
-      h_abrt = signal(SIGABRT, c_handler);
-      h_term = signal(SIGTERM, c_handler);
-      h_int = signal(SIGINT,  c_handler);
       result = (Vtree *)sdd_vtree_left((struct vtree_t const *)arg1);
     } catch(SIGINT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process interrupted");
     } catch(SIGTERM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process terminated");
     } catch(SIGABRT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process aborted");
     } catch(SIGALRM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process timeout");
     }
-    signal(SIGTERM, h_term);
-    signal(SIGINT,  h_int);
-    signal(SIGABRT, h_abrt);
-    signal(SIGALRM, h_alrm);
+    sigaction(SIGTERM, &old_action_term, NULL);
+    sigaction(SIGABRT, &old_action_abrt, NULL);
+    sigaction(SIGINT, &old_action_int, NULL);
+    sigaction(SIGALRM, &old_action_alrm, NULL);
     
   }
   resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_vtree_t, 0 |  0 );
@@ -9848,46 +10268,51 @@ SWIGINTERN PyObject *_wrap_sdd_vtree_right(PyObject *SWIGUNUSEDPARM(self), PyObj
     
     // signal(SIGSEGV, handler);
     
+    struct sigaction new_action;
+    new_action.sa_handler = c_handler;
+    sigemptyset (&new_action.sa_mask);
+    new_action.sa_flags = SA_RESTART;
     
-    void (*h_alrm)(int);
-    void (*h_abrt)(int);
-    void (*h_term)(int);
-    void (*h_int)(int);
+    struct sigaction old_action_term;
+    struct sigaction old_action_abrt;
+    struct sigaction old_action_int;
+    struct sigaction old_action_alrm;
+    
+    sigaction(SIGTERM,  &new_action, &old_action_term);
+    sigaction(SIGABRT,  &new_action, &old_action_abrt);
+    sigaction(SIGINT,  &new_action, &old_action_int);
+    sigaction(SIGALRM,  &new_action, &old_action_alrm);
     try {
-      h_alrm = signal(SIGALRM,  c_handler);
-      h_abrt = signal(SIGABRT, c_handler);
-      h_term = signal(SIGTERM, c_handler);
-      h_int = signal(SIGINT,  c_handler);
       result = (Vtree *)sdd_vtree_right((struct vtree_t const *)arg1);
     } catch(SIGINT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process interrupted");
     } catch(SIGTERM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process terminated");
     } catch(SIGABRT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process aborted");
     } catch(SIGALRM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process timeout");
     }
-    signal(SIGTERM, h_term);
-    signal(SIGINT,  h_int);
-    signal(SIGABRT, h_abrt);
-    signal(SIGALRM, h_alrm);
+    sigaction(SIGTERM, &old_action_term, NULL);
+    sigaction(SIGABRT, &old_action_abrt, NULL);
+    sigaction(SIGINT, &old_action_int, NULL);
+    sigaction(SIGALRM, &old_action_alrm, NULL);
     
   }
   resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_vtree_t, 0 |  0 );
@@ -9918,46 +10343,51 @@ SWIGINTERN PyObject *_wrap_sdd_vtree_parent(PyObject *SWIGUNUSEDPARM(self), PyOb
     
     // signal(SIGSEGV, handler);
     
+    struct sigaction new_action;
+    new_action.sa_handler = c_handler;
+    sigemptyset (&new_action.sa_mask);
+    new_action.sa_flags = SA_RESTART;
     
-    void (*h_alrm)(int);
-    void (*h_abrt)(int);
-    void (*h_term)(int);
-    void (*h_int)(int);
+    struct sigaction old_action_term;
+    struct sigaction old_action_abrt;
+    struct sigaction old_action_int;
+    struct sigaction old_action_alrm;
+    
+    sigaction(SIGTERM,  &new_action, &old_action_term);
+    sigaction(SIGABRT,  &new_action, &old_action_abrt);
+    sigaction(SIGINT,  &new_action, &old_action_int);
+    sigaction(SIGALRM,  &new_action, &old_action_alrm);
     try {
-      h_alrm = signal(SIGALRM,  c_handler);
-      h_abrt = signal(SIGABRT, c_handler);
-      h_term = signal(SIGTERM, c_handler);
-      h_int = signal(SIGINT,  c_handler);
       result = (Vtree *)sdd_vtree_parent((struct vtree_t const *)arg1);
     } catch(SIGINT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process interrupted");
     } catch(SIGTERM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process terminated");
     } catch(SIGABRT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process aborted");
     } catch(SIGALRM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process timeout");
     }
-    signal(SIGTERM, h_term);
-    signal(SIGINT,  h_int);
-    signal(SIGABRT, h_abrt);
-    signal(SIGALRM, h_alrm);
+    sigaction(SIGTERM, &old_action_term, NULL);
+    sigaction(SIGABRT, &old_action_abrt, NULL);
+    sigaction(SIGINT, &old_action_int, NULL);
+    sigaction(SIGALRM, &old_action_alrm, NULL);
     
   }
   resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_vtree_t, 0 |  0 );
@@ -9988,46 +10418,51 @@ SWIGINTERN PyObject *_wrap_sdd_vtree_is_leaf(PyObject *SWIGUNUSEDPARM(self), PyO
     
     // signal(SIGSEGV, handler);
     
+    struct sigaction new_action;
+    new_action.sa_handler = c_handler;
+    sigemptyset (&new_action.sa_mask);
+    new_action.sa_flags = SA_RESTART;
     
-    void (*h_alrm)(int);
-    void (*h_abrt)(int);
-    void (*h_term)(int);
-    void (*h_int)(int);
+    struct sigaction old_action_term;
+    struct sigaction old_action_abrt;
+    struct sigaction old_action_int;
+    struct sigaction old_action_alrm;
+    
+    sigaction(SIGTERM,  &new_action, &old_action_term);
+    sigaction(SIGABRT,  &new_action, &old_action_abrt);
+    sigaction(SIGINT,  &new_action, &old_action_int);
+    sigaction(SIGALRM,  &new_action, &old_action_alrm);
     try {
-      h_alrm = signal(SIGALRM,  c_handler);
-      h_abrt = signal(SIGABRT, c_handler);
-      h_term = signal(SIGTERM, c_handler);
-      h_int = signal(SIGINT,  c_handler);
       result = (int)sdd_vtree_is_leaf((struct vtree_t const *)arg1);
     } catch(SIGINT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process interrupted");
     } catch(SIGTERM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process terminated");
     } catch(SIGABRT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process aborted");
     } catch(SIGALRM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process timeout");
     }
-    signal(SIGTERM, h_term);
-    signal(SIGINT,  h_int);
-    signal(SIGABRT, h_abrt);
-    signal(SIGALRM, h_alrm);
+    sigaction(SIGTERM, &old_action_term, NULL);
+    sigaction(SIGABRT, &old_action_abrt, NULL);
+    sigaction(SIGINT, &old_action_int, NULL);
+    sigaction(SIGALRM, &old_action_alrm, NULL);
     
   }
   resultobj = SWIG_From_int((int)(result));
@@ -10067,46 +10502,51 @@ SWIGINTERN PyObject *_wrap_sdd_vtree_is_sub(PyObject *SWIGUNUSEDPARM(self), PyOb
     
     // signal(SIGSEGV, handler);
     
+    struct sigaction new_action;
+    new_action.sa_handler = c_handler;
+    sigemptyset (&new_action.sa_mask);
+    new_action.sa_flags = SA_RESTART;
     
-    void (*h_alrm)(int);
-    void (*h_abrt)(int);
-    void (*h_term)(int);
-    void (*h_int)(int);
+    struct sigaction old_action_term;
+    struct sigaction old_action_abrt;
+    struct sigaction old_action_int;
+    struct sigaction old_action_alrm;
+    
+    sigaction(SIGTERM,  &new_action, &old_action_term);
+    sigaction(SIGABRT,  &new_action, &old_action_abrt);
+    sigaction(SIGINT,  &new_action, &old_action_int);
+    sigaction(SIGALRM,  &new_action, &old_action_alrm);
     try {
-      h_alrm = signal(SIGALRM,  c_handler);
-      h_abrt = signal(SIGABRT, c_handler);
-      h_term = signal(SIGTERM, c_handler);
-      h_int = signal(SIGINT,  c_handler);
       result = (int)sdd_vtree_is_sub((struct vtree_t const *)arg1,(struct vtree_t const *)arg2);
     } catch(SIGINT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process interrupted");
     } catch(SIGTERM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process terminated");
     } catch(SIGABRT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process aborted");
     } catch(SIGALRM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process timeout");
     }
-    signal(SIGTERM, h_term);
-    signal(SIGINT,  h_int);
-    signal(SIGABRT, h_abrt);
-    signal(SIGALRM, h_alrm);
+    sigaction(SIGTERM, &old_action_term, NULL);
+    sigaction(SIGABRT, &old_action_abrt, NULL);
+    sigaction(SIGINT, &old_action_int, NULL);
+    sigaction(SIGALRM, &old_action_alrm, NULL);
     
   }
   resultobj = SWIG_From_int((int)(result));
@@ -10155,46 +10595,51 @@ SWIGINTERN PyObject *_wrap_sdd_vtree_lca(PyObject *SWIGUNUSEDPARM(self), PyObjec
     
     // signal(SIGSEGV, handler);
     
+    struct sigaction new_action;
+    new_action.sa_handler = c_handler;
+    sigemptyset (&new_action.sa_mask);
+    new_action.sa_flags = SA_RESTART;
     
-    void (*h_alrm)(int);
-    void (*h_abrt)(int);
-    void (*h_term)(int);
-    void (*h_int)(int);
+    struct sigaction old_action_term;
+    struct sigaction old_action_abrt;
+    struct sigaction old_action_int;
+    struct sigaction old_action_alrm;
+    
+    sigaction(SIGTERM,  &new_action, &old_action_term);
+    sigaction(SIGABRT,  &new_action, &old_action_abrt);
+    sigaction(SIGINT,  &new_action, &old_action_int);
+    sigaction(SIGALRM,  &new_action, &old_action_alrm);
     try {
-      h_alrm = signal(SIGALRM,  c_handler);
-      h_abrt = signal(SIGABRT, c_handler);
-      h_term = signal(SIGTERM, c_handler);
-      h_int = signal(SIGINT,  c_handler);
       result = (Vtree *)sdd_vtree_lca(arg1,arg2,arg3);
     } catch(SIGINT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process interrupted");
     } catch(SIGTERM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process terminated");
     } catch(SIGABRT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process aborted");
     } catch(SIGALRM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process timeout");
     }
-    signal(SIGTERM, h_term);
-    signal(SIGINT,  h_int);
-    signal(SIGABRT, h_abrt);
-    signal(SIGALRM, h_alrm);
+    sigaction(SIGTERM, &old_action_term, NULL);
+    sigaction(SIGABRT, &old_action_abrt, NULL);
+    sigaction(SIGINT, &old_action_int, NULL);
+    sigaction(SIGALRM, &old_action_alrm, NULL);
     
   }
   resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_vtree_t, 0 |  0 );
@@ -10225,46 +10670,51 @@ SWIGINTERN PyObject *_wrap_sdd_vtree_var_count(PyObject *SWIGUNUSEDPARM(self), P
     
     // signal(SIGSEGV, handler);
     
+    struct sigaction new_action;
+    new_action.sa_handler = c_handler;
+    sigemptyset (&new_action.sa_mask);
+    new_action.sa_flags = SA_RESTART;
     
-    void (*h_alrm)(int);
-    void (*h_abrt)(int);
-    void (*h_term)(int);
-    void (*h_int)(int);
+    struct sigaction old_action_term;
+    struct sigaction old_action_abrt;
+    struct sigaction old_action_int;
+    struct sigaction old_action_alrm;
+    
+    sigaction(SIGTERM,  &new_action, &old_action_term);
+    sigaction(SIGABRT,  &new_action, &old_action_abrt);
+    sigaction(SIGINT,  &new_action, &old_action_int);
+    sigaction(SIGALRM,  &new_action, &old_action_alrm);
     try {
-      h_alrm = signal(SIGALRM,  c_handler);
-      h_abrt = signal(SIGABRT, c_handler);
-      h_term = signal(SIGTERM, c_handler);
-      h_int = signal(SIGINT,  c_handler);
       result = (SddLiteral)sdd_vtree_var_count((struct vtree_t const *)arg1);
     } catch(SIGINT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process interrupted");
     } catch(SIGTERM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process terminated");
     } catch(SIGABRT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process aborted");
     } catch(SIGALRM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process timeout");
     }
-    signal(SIGTERM, h_term);
-    signal(SIGINT,  h_int);
-    signal(SIGABRT, h_abrt);
-    signal(SIGALRM, h_alrm);
+    sigaction(SIGTERM, &old_action_term, NULL);
+    sigaction(SIGABRT, &old_action_abrt, NULL);
+    sigaction(SIGINT, &old_action_int, NULL);
+    sigaction(SIGALRM, &old_action_alrm, NULL);
     
   }
   resultobj = SWIG_From_long((long)(result));
@@ -10295,46 +10745,51 @@ SWIGINTERN PyObject *_wrap_sdd_vtree_var(PyObject *SWIGUNUSEDPARM(self), PyObjec
     
     // signal(SIGSEGV, handler);
     
+    struct sigaction new_action;
+    new_action.sa_handler = c_handler;
+    sigemptyset (&new_action.sa_mask);
+    new_action.sa_flags = SA_RESTART;
     
-    void (*h_alrm)(int);
-    void (*h_abrt)(int);
-    void (*h_term)(int);
-    void (*h_int)(int);
+    struct sigaction old_action_term;
+    struct sigaction old_action_abrt;
+    struct sigaction old_action_int;
+    struct sigaction old_action_alrm;
+    
+    sigaction(SIGTERM,  &new_action, &old_action_term);
+    sigaction(SIGABRT,  &new_action, &old_action_abrt);
+    sigaction(SIGINT,  &new_action, &old_action_int);
+    sigaction(SIGALRM,  &new_action, &old_action_alrm);
     try {
-      h_alrm = signal(SIGALRM,  c_handler);
-      h_abrt = signal(SIGABRT, c_handler);
-      h_term = signal(SIGTERM, c_handler);
-      h_int = signal(SIGINT,  c_handler);
       result = (SddLiteral)sdd_vtree_var((struct vtree_t const *)arg1);
     } catch(SIGINT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process interrupted");
     } catch(SIGTERM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process terminated");
     } catch(SIGABRT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process aborted");
     } catch(SIGALRM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process timeout");
     }
-    signal(SIGTERM, h_term);
-    signal(SIGINT,  h_int);
-    signal(SIGABRT, h_abrt);
-    signal(SIGALRM, h_alrm);
+    sigaction(SIGTERM, &old_action_term, NULL);
+    sigaction(SIGABRT, &old_action_abrt, NULL);
+    sigaction(SIGINT, &old_action_int, NULL);
+    sigaction(SIGALRM, &old_action_alrm, NULL);
     
   }
   resultobj = SWIG_From_long((long)(result));
@@ -10365,46 +10820,51 @@ SWIGINTERN PyObject *_wrap_sdd_vtree_position(PyObject *SWIGUNUSEDPARM(self), Py
     
     // signal(SIGSEGV, handler);
     
+    struct sigaction new_action;
+    new_action.sa_handler = c_handler;
+    sigemptyset (&new_action.sa_mask);
+    new_action.sa_flags = SA_RESTART;
     
-    void (*h_alrm)(int);
-    void (*h_abrt)(int);
-    void (*h_term)(int);
-    void (*h_int)(int);
+    struct sigaction old_action_term;
+    struct sigaction old_action_abrt;
+    struct sigaction old_action_int;
+    struct sigaction old_action_alrm;
+    
+    sigaction(SIGTERM,  &new_action, &old_action_term);
+    sigaction(SIGABRT,  &new_action, &old_action_abrt);
+    sigaction(SIGINT,  &new_action, &old_action_int);
+    sigaction(SIGALRM,  &new_action, &old_action_alrm);
     try {
-      h_alrm = signal(SIGALRM,  c_handler);
-      h_abrt = signal(SIGABRT, c_handler);
-      h_term = signal(SIGTERM, c_handler);
-      h_int = signal(SIGINT,  c_handler);
       result = (SddLiteral)sdd_vtree_position((struct vtree_t const *)arg1);
     } catch(SIGINT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process interrupted");
     } catch(SIGTERM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process terminated");
     } catch(SIGABRT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process aborted");
     } catch(SIGALRM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process timeout");
     }
-    signal(SIGTERM, h_term);
-    signal(SIGINT,  h_int);
-    signal(SIGABRT, h_abrt);
-    signal(SIGALRM, h_alrm);
+    sigaction(SIGTERM, &old_action_term, NULL);
+    sigaction(SIGABRT, &old_action_abrt, NULL);
+    sigaction(SIGINT, &old_action_int, NULL);
+    sigaction(SIGALRM, &old_action_alrm, NULL);
     
   }
   resultobj = SWIG_From_long((long)(result));
@@ -10444,46 +10904,51 @@ SWIGINTERN PyObject *_wrap_sdd_vtree_location(PyObject *SWIGUNUSEDPARM(self), Py
     
     // signal(SIGSEGV, handler);
     
+    struct sigaction new_action;
+    new_action.sa_handler = c_handler;
+    sigemptyset (&new_action.sa_mask);
+    new_action.sa_flags = SA_RESTART;
     
-    void (*h_alrm)(int);
-    void (*h_abrt)(int);
-    void (*h_term)(int);
-    void (*h_int)(int);
+    struct sigaction old_action_term;
+    struct sigaction old_action_abrt;
+    struct sigaction old_action_int;
+    struct sigaction old_action_alrm;
+    
+    sigaction(SIGTERM,  &new_action, &old_action_term);
+    sigaction(SIGABRT,  &new_action, &old_action_abrt);
+    sigaction(SIGINT,  &new_action, &old_action_int);
+    sigaction(SIGALRM,  &new_action, &old_action_alrm);
     try {
-      h_alrm = signal(SIGALRM,  c_handler);
-      h_abrt = signal(SIGABRT, c_handler);
-      h_term = signal(SIGTERM, c_handler);
-      h_int = signal(SIGINT,  c_handler);
       result = (Vtree **)sdd_vtree_location(arg1,arg2);
     } catch(SIGINT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process interrupted");
     } catch(SIGTERM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process terminated");
     } catch(SIGABRT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process aborted");
     } catch(SIGALRM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process timeout");
     }
-    signal(SIGTERM, h_term);
-    signal(SIGINT,  h_int);
-    signal(SIGABRT, h_abrt);
-    signal(SIGALRM, h_alrm);
+    sigaction(SIGTERM, &old_action_term, NULL);
+    sigaction(SIGABRT, &old_action_abrt, NULL);
+    sigaction(SIGINT, &old_action_int, NULL);
+    sigaction(SIGALRM, &old_action_alrm, NULL);
     
   }
   resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_p_vtree_t, 0 |  0 );
@@ -10541,46 +11006,51 @@ SWIGINTERN PyObject *_wrap_sdd_vtree_rotate_left(PyObject *SWIGUNUSEDPARM(self),
     
     // signal(SIGSEGV, handler);
     
+    struct sigaction new_action;
+    new_action.sa_handler = c_handler;
+    sigemptyset (&new_action.sa_mask);
+    new_action.sa_flags = SA_RESTART;
     
-    void (*h_alrm)(int);
-    void (*h_abrt)(int);
-    void (*h_term)(int);
-    void (*h_int)(int);
+    struct sigaction old_action_term;
+    struct sigaction old_action_abrt;
+    struct sigaction old_action_int;
+    struct sigaction old_action_alrm;
+    
+    sigaction(SIGTERM,  &new_action, &old_action_term);
+    sigaction(SIGABRT,  &new_action, &old_action_abrt);
+    sigaction(SIGINT,  &new_action, &old_action_int);
+    sigaction(SIGALRM,  &new_action, &old_action_alrm);
     try {
-      h_alrm = signal(SIGALRM,  c_handler);
-      h_abrt = signal(SIGABRT, c_handler);
-      h_term = signal(SIGTERM, c_handler);
-      h_int = signal(SIGINT,  c_handler);
       result = (int)sdd_vtree_rotate_left(arg1,arg2,arg3,arg4);
     } catch(SIGINT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process interrupted");
     } catch(SIGTERM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process terminated");
     } catch(SIGABRT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process aborted");
     } catch(SIGALRM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process timeout");
     }
-    signal(SIGTERM, h_term);
-    signal(SIGINT,  h_int);
-    signal(SIGABRT, h_abrt);
-    signal(SIGALRM, h_alrm);
+    sigaction(SIGTERM, &old_action_term, NULL);
+    sigaction(SIGABRT, &old_action_abrt, NULL);
+    sigaction(SIGINT, &old_action_int, NULL);
+    sigaction(SIGALRM, &old_action_alrm, NULL);
     
   }
   resultobj = SWIG_From_int((int)(result));
@@ -10647,46 +11117,51 @@ SWIGINTERN PyObject *_wrap_sdd_vtree_rotate_right(PyObject *SWIGUNUSEDPARM(self)
     
     // signal(SIGSEGV, handler);
     
+    struct sigaction new_action;
+    new_action.sa_handler = c_handler;
+    sigemptyset (&new_action.sa_mask);
+    new_action.sa_flags = SA_RESTART;
     
-    void (*h_alrm)(int);
-    void (*h_abrt)(int);
-    void (*h_term)(int);
-    void (*h_int)(int);
+    struct sigaction old_action_term;
+    struct sigaction old_action_abrt;
+    struct sigaction old_action_int;
+    struct sigaction old_action_alrm;
+    
+    sigaction(SIGTERM,  &new_action, &old_action_term);
+    sigaction(SIGABRT,  &new_action, &old_action_abrt);
+    sigaction(SIGINT,  &new_action, &old_action_int);
+    sigaction(SIGALRM,  &new_action, &old_action_alrm);
     try {
-      h_alrm = signal(SIGALRM,  c_handler);
-      h_abrt = signal(SIGABRT, c_handler);
-      h_term = signal(SIGTERM, c_handler);
-      h_int = signal(SIGINT,  c_handler);
       result = (int)sdd_vtree_rotate_right(arg1,arg2,arg3,arg4,arg5);
     } catch(SIGINT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process interrupted");
     } catch(SIGTERM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process terminated");
     } catch(SIGABRT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process aborted");
     } catch(SIGALRM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process timeout");
     }
-    signal(SIGTERM, h_term);
-    signal(SIGINT,  h_int);
-    signal(SIGABRT, h_abrt);
-    signal(SIGALRM, h_alrm);
+    sigaction(SIGTERM, &old_action_term, NULL);
+    sigaction(SIGABRT, &old_action_abrt, NULL);
+    sigaction(SIGINT, &old_action_int, NULL);
+    sigaction(SIGALRM, &old_action_alrm, NULL);
     
   }
   resultobj = SWIG_From_int((int)(result));
@@ -10753,46 +11228,51 @@ SWIGINTERN PyObject *_wrap_sdd_vtree_swap(PyObject *SWIGUNUSEDPARM(self), PyObje
     
     // signal(SIGSEGV, handler);
     
+    struct sigaction new_action;
+    new_action.sa_handler = c_handler;
+    sigemptyset (&new_action.sa_mask);
+    new_action.sa_flags = SA_RESTART;
     
-    void (*h_alrm)(int);
-    void (*h_abrt)(int);
-    void (*h_term)(int);
-    void (*h_int)(int);
+    struct sigaction old_action_term;
+    struct sigaction old_action_abrt;
+    struct sigaction old_action_int;
+    struct sigaction old_action_alrm;
+    
+    sigaction(SIGTERM,  &new_action, &old_action_term);
+    sigaction(SIGABRT,  &new_action, &old_action_abrt);
+    sigaction(SIGINT,  &new_action, &old_action_int);
+    sigaction(SIGALRM,  &new_action, &old_action_alrm);
     try {
-      h_alrm = signal(SIGALRM,  c_handler);
-      h_abrt = signal(SIGABRT, c_handler);
-      h_term = signal(SIGTERM, c_handler);
-      h_int = signal(SIGINT,  c_handler);
       result = (int)sdd_vtree_swap(arg1,arg2,arg3,arg4,arg5);
     } catch(SIGINT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process interrupted");
     } catch(SIGTERM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process terminated");
     } catch(SIGABRT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process aborted");
     } catch(SIGALRM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process timeout");
     }
-    signal(SIGTERM, h_term);
-    signal(SIGINT,  h_int);
-    signal(SIGABRT, h_abrt);
-    signal(SIGALRM, h_alrm);
+    sigaction(SIGTERM, &old_action_term, NULL);
+    sigaction(SIGABRT, &old_action_abrt, NULL);
+    sigaction(SIGINT, &old_action_int, NULL);
+    sigaction(SIGALRM, &old_action_alrm, NULL);
     
   }
   resultobj = SWIG_From_int((int)(result));
@@ -10831,46 +11311,51 @@ SWIGINTERN PyObject *_wrap_sdd_manager_set_size_limit_context(PyObject *SWIGUNUS
     
     // signal(SIGSEGV, handler);
     
+    struct sigaction new_action;
+    new_action.sa_handler = c_handler;
+    sigemptyset (&new_action.sa_mask);
+    new_action.sa_flags = SA_RESTART;
     
-    void (*h_alrm)(int);
-    void (*h_abrt)(int);
-    void (*h_term)(int);
-    void (*h_int)(int);
+    struct sigaction old_action_term;
+    struct sigaction old_action_abrt;
+    struct sigaction old_action_int;
+    struct sigaction old_action_alrm;
+    
+    sigaction(SIGTERM,  &new_action, &old_action_term);
+    sigaction(SIGABRT,  &new_action, &old_action_abrt);
+    sigaction(SIGINT,  &new_action, &old_action_int);
+    sigaction(SIGALRM,  &new_action, &old_action_alrm);
     try {
-      h_alrm = signal(SIGALRM,  c_handler);
-      h_abrt = signal(SIGABRT, c_handler);
-      h_term = signal(SIGTERM, c_handler);
-      h_int = signal(SIGINT,  c_handler);
       sdd_manager_set_size_limit_context(arg1,arg2);
     } catch(SIGINT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process interrupted");
     } catch(SIGTERM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process terminated");
     } catch(SIGABRT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process aborted");
     } catch(SIGALRM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process timeout");
     }
-    signal(SIGTERM, h_term);
-    signal(SIGINT,  h_int);
-    signal(SIGABRT, h_abrt);
-    signal(SIGALRM, h_alrm);
+    sigaction(SIGTERM, &old_action_term, NULL);
+    sigaction(SIGABRT, &old_action_abrt, NULL);
+    sigaction(SIGINT, &old_action_int, NULL);
+    sigaction(SIGALRM, &old_action_alrm, NULL);
     
   }
   resultobj = SWIG_Py_Void();
@@ -10900,46 +11385,51 @@ SWIGINTERN PyObject *_wrap_sdd_manager_update_size_limit_context(PyObject *SWIGU
     
     // signal(SIGSEGV, handler);
     
+    struct sigaction new_action;
+    new_action.sa_handler = c_handler;
+    sigemptyset (&new_action.sa_mask);
+    new_action.sa_flags = SA_RESTART;
     
-    void (*h_alrm)(int);
-    void (*h_abrt)(int);
-    void (*h_term)(int);
-    void (*h_int)(int);
+    struct sigaction old_action_term;
+    struct sigaction old_action_abrt;
+    struct sigaction old_action_int;
+    struct sigaction old_action_alrm;
+    
+    sigaction(SIGTERM,  &new_action, &old_action_term);
+    sigaction(SIGABRT,  &new_action, &old_action_abrt);
+    sigaction(SIGINT,  &new_action, &old_action_int);
+    sigaction(SIGALRM,  &new_action, &old_action_alrm);
     try {
-      h_alrm = signal(SIGALRM,  c_handler);
-      h_abrt = signal(SIGABRT, c_handler);
-      h_term = signal(SIGTERM, c_handler);
-      h_int = signal(SIGINT,  c_handler);
       sdd_manager_update_size_limit_context(arg1);
     } catch(SIGINT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process interrupted");
     } catch(SIGTERM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process terminated");
     } catch(SIGABRT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process aborted");
     } catch(SIGALRM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process timeout");
     }
-    signal(SIGTERM, h_term);
-    signal(SIGINT,  h_int);
-    signal(SIGABRT, h_abrt);
-    signal(SIGALRM, h_alrm);
+    sigaction(SIGTERM, &old_action_term, NULL);
+    sigaction(SIGABRT, &old_action_abrt, NULL);
+    sigaction(SIGINT, &old_action_int, NULL);
+    sigaction(SIGALRM, &old_action_alrm, NULL);
     
   }
   resultobj = SWIG_Py_Void();
@@ -10970,46 +11460,51 @@ SWIGINTERN PyObject *_wrap_sdd_vtree_bit(PyObject *SWIGUNUSEDPARM(self), PyObjec
     
     // signal(SIGSEGV, handler);
     
+    struct sigaction new_action;
+    new_action.sa_handler = c_handler;
+    sigemptyset (&new_action.sa_mask);
+    new_action.sa_flags = SA_RESTART;
     
-    void (*h_alrm)(int);
-    void (*h_abrt)(int);
-    void (*h_term)(int);
-    void (*h_int)(int);
+    struct sigaction old_action_term;
+    struct sigaction old_action_abrt;
+    struct sigaction old_action_int;
+    struct sigaction old_action_alrm;
+    
+    sigaction(SIGTERM,  &new_action, &old_action_term);
+    sigaction(SIGABRT,  &new_action, &old_action_abrt);
+    sigaction(SIGINT,  &new_action, &old_action_int);
+    sigaction(SIGALRM,  &new_action, &old_action_alrm);
     try {
-      h_alrm = signal(SIGALRM,  c_handler);
-      h_abrt = signal(SIGABRT, c_handler);
-      h_term = signal(SIGTERM, c_handler);
-      h_int = signal(SIGINT,  c_handler);
       result = (int)sdd_vtree_bit((struct vtree_t const *)arg1);
     } catch(SIGINT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process interrupted");
     } catch(SIGTERM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process terminated");
     } catch(SIGABRT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process aborted");
     } catch(SIGALRM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process timeout");
     }
-    signal(SIGTERM, h_term);
-    signal(SIGINT,  h_int);
-    signal(SIGABRT, h_abrt);
-    signal(SIGALRM, h_alrm);
+    sigaction(SIGTERM, &old_action_term, NULL);
+    sigaction(SIGABRT, &old_action_abrt, NULL);
+    sigaction(SIGINT, &old_action_int, NULL);
+    sigaction(SIGALRM, &old_action_alrm, NULL);
     
   }
   resultobj = SWIG_From_int((int)(result));
@@ -11048,46 +11543,51 @@ SWIGINTERN PyObject *_wrap_sdd_vtree_set_bit(PyObject *SWIGUNUSEDPARM(self), PyO
     
     // signal(SIGSEGV, handler);
     
+    struct sigaction new_action;
+    new_action.sa_handler = c_handler;
+    sigemptyset (&new_action.sa_mask);
+    new_action.sa_flags = SA_RESTART;
     
-    void (*h_alrm)(int);
-    void (*h_abrt)(int);
-    void (*h_term)(int);
-    void (*h_int)(int);
+    struct sigaction old_action_term;
+    struct sigaction old_action_abrt;
+    struct sigaction old_action_int;
+    struct sigaction old_action_alrm;
+    
+    sigaction(SIGTERM,  &new_action, &old_action_term);
+    sigaction(SIGABRT,  &new_action, &old_action_abrt);
+    sigaction(SIGINT,  &new_action, &old_action_int);
+    sigaction(SIGALRM,  &new_action, &old_action_alrm);
     try {
-      h_alrm = signal(SIGALRM,  c_handler);
-      h_abrt = signal(SIGABRT, c_handler);
-      h_term = signal(SIGTERM, c_handler);
-      h_int = signal(SIGINT,  c_handler);
       sdd_vtree_set_bit(arg1,arg2);
     } catch(SIGINT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process interrupted");
     } catch(SIGTERM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process terminated");
     } catch(SIGABRT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process aborted");
     } catch(SIGALRM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process timeout");
     }
-    signal(SIGTERM, h_term);
-    signal(SIGINT,  h_int);
-    signal(SIGABRT, h_abrt);
-    signal(SIGALRM, h_alrm);
+    sigaction(SIGTERM, &old_action_term, NULL);
+    sigaction(SIGABRT, &old_action_abrt, NULL);
+    sigaction(SIGINT, &old_action_int, NULL);
+    sigaction(SIGALRM, &old_action_alrm, NULL);
     
   }
   resultobj = SWIG_Py_Void();
@@ -11118,46 +11618,51 @@ SWIGINTERN PyObject *_wrap_sdd_vtree_data(PyObject *SWIGUNUSEDPARM(self), PyObje
     
     // signal(SIGSEGV, handler);
     
+    struct sigaction new_action;
+    new_action.sa_handler = c_handler;
+    sigemptyset (&new_action.sa_mask);
+    new_action.sa_flags = SA_RESTART;
     
-    void (*h_alrm)(int);
-    void (*h_abrt)(int);
-    void (*h_term)(int);
-    void (*h_int)(int);
+    struct sigaction old_action_term;
+    struct sigaction old_action_abrt;
+    struct sigaction old_action_int;
+    struct sigaction old_action_alrm;
+    
+    sigaction(SIGTERM,  &new_action, &old_action_term);
+    sigaction(SIGABRT,  &new_action, &old_action_abrt);
+    sigaction(SIGINT,  &new_action, &old_action_int);
+    sigaction(SIGALRM,  &new_action, &old_action_alrm);
     try {
-      h_alrm = signal(SIGALRM,  c_handler);
-      h_abrt = signal(SIGABRT, c_handler);
-      h_term = signal(SIGTERM, c_handler);
-      h_int = signal(SIGINT,  c_handler);
       result = (void *)sdd_vtree_data(arg1);
     } catch(SIGINT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process interrupted");
     } catch(SIGTERM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process terminated");
     } catch(SIGABRT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process aborted");
     } catch(SIGALRM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process timeout");
     }
-    signal(SIGTERM, h_term);
-    signal(SIGINT,  h_int);
-    signal(SIGABRT, h_abrt);
-    signal(SIGALRM, h_alrm);
+    sigaction(SIGTERM, &old_action_term, NULL);
+    sigaction(SIGABRT, &old_action_abrt, NULL);
+    sigaction(SIGINT, &old_action_int, NULL);
+    sigaction(SIGALRM, &old_action_alrm, NULL);
     
   }
   resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_void, 0 |  0 );
@@ -11194,46 +11699,51 @@ SWIGINTERN PyObject *_wrap_sdd_vtree_set_data(PyObject *SWIGUNUSEDPARM(self), Py
     
     // signal(SIGSEGV, handler);
     
+    struct sigaction new_action;
+    new_action.sa_handler = c_handler;
+    sigemptyset (&new_action.sa_mask);
+    new_action.sa_flags = SA_RESTART;
     
-    void (*h_alrm)(int);
-    void (*h_abrt)(int);
-    void (*h_term)(int);
-    void (*h_int)(int);
+    struct sigaction old_action_term;
+    struct sigaction old_action_abrt;
+    struct sigaction old_action_int;
+    struct sigaction old_action_alrm;
+    
+    sigaction(SIGTERM,  &new_action, &old_action_term);
+    sigaction(SIGABRT,  &new_action, &old_action_abrt);
+    sigaction(SIGINT,  &new_action, &old_action_int);
+    sigaction(SIGALRM,  &new_action, &old_action_alrm);
     try {
-      h_alrm = signal(SIGALRM,  c_handler);
-      h_abrt = signal(SIGABRT, c_handler);
-      h_term = signal(SIGTERM, c_handler);
-      h_int = signal(SIGINT,  c_handler);
       sdd_vtree_set_data(arg1,arg2);
     } catch(SIGINT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process interrupted");
     } catch(SIGTERM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process terminated");
     } catch(SIGABRT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process aborted");
     } catch(SIGALRM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process timeout");
     }
-    signal(SIGTERM, h_term);
-    signal(SIGINT,  h_int);
-    signal(SIGABRT, h_abrt);
-    signal(SIGALRM, h_alrm);
+    sigaction(SIGTERM, &old_action_term, NULL);
+    sigaction(SIGABRT, &old_action_abrt, NULL);
+    sigaction(SIGINT, &old_action_int, NULL);
+    sigaction(SIGALRM, &old_action_alrm, NULL);
     
   }
   resultobj = SWIG_Py_Void();
@@ -11264,46 +11774,51 @@ SWIGINTERN PyObject *_wrap_sdd_vtree_search_state(PyObject *SWIGUNUSEDPARM(self)
     
     // signal(SIGSEGV, handler);
     
+    struct sigaction new_action;
+    new_action.sa_handler = c_handler;
+    sigemptyset (&new_action.sa_mask);
+    new_action.sa_flags = SA_RESTART;
     
-    void (*h_alrm)(int);
-    void (*h_abrt)(int);
-    void (*h_term)(int);
-    void (*h_int)(int);
+    struct sigaction old_action_term;
+    struct sigaction old_action_abrt;
+    struct sigaction old_action_int;
+    struct sigaction old_action_alrm;
+    
+    sigaction(SIGTERM,  &new_action, &old_action_term);
+    sigaction(SIGABRT,  &new_action, &old_action_abrt);
+    sigaction(SIGINT,  &new_action, &old_action_int);
+    sigaction(SIGALRM,  &new_action, &old_action_alrm);
     try {
-      h_alrm = signal(SIGALRM,  c_handler);
-      h_abrt = signal(SIGABRT, c_handler);
-      h_term = signal(SIGTERM, c_handler);
-      h_int = signal(SIGINT,  c_handler);
       result = (void *)sdd_vtree_search_state((struct vtree_t const *)arg1);
     } catch(SIGINT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process interrupted");
     } catch(SIGTERM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process terminated");
     } catch(SIGABRT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process aborted");
     } catch(SIGALRM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process timeout");
     }
-    signal(SIGTERM, h_term);
-    signal(SIGINT,  h_int);
-    signal(SIGABRT, h_abrt);
-    signal(SIGALRM, h_alrm);
+    sigaction(SIGTERM, &old_action_term, NULL);
+    sigaction(SIGABRT, &old_action_abrt, NULL);
+    sigaction(SIGINT, &old_action_int, NULL);
+    sigaction(SIGALRM, &old_action_alrm, NULL);
     
   }
   resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_void, 0 |  0 );
@@ -11341,46 +11856,51 @@ SWIGINTERN PyObject *_wrap_sdd_vtree_set_search_state(PyObject *SWIGUNUSEDPARM(s
     
     // signal(SIGSEGV, handler);
     
+    struct sigaction new_action;
+    new_action.sa_handler = c_handler;
+    sigemptyset (&new_action.sa_mask);
+    new_action.sa_flags = SA_RESTART;
     
-    void (*h_alrm)(int);
-    void (*h_abrt)(int);
-    void (*h_term)(int);
-    void (*h_int)(int);
+    struct sigaction old_action_term;
+    struct sigaction old_action_abrt;
+    struct sigaction old_action_int;
+    struct sigaction old_action_alrm;
+    
+    sigaction(SIGTERM,  &new_action, &old_action_term);
+    sigaction(SIGABRT,  &new_action, &old_action_abrt);
+    sigaction(SIGINT,  &new_action, &old_action_int);
+    sigaction(SIGALRM,  &new_action, &old_action_alrm);
     try {
-      h_alrm = signal(SIGALRM,  c_handler);
-      h_abrt = signal(SIGABRT, c_handler);
-      h_term = signal(SIGTERM, c_handler);
-      h_int = signal(SIGINT,  c_handler);
       result = (void *)sdd_vtree_set_search_state(arg1,(struct vtree_t const *)arg2);
     } catch(SIGINT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process interrupted");
     } catch(SIGTERM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process terminated");
     } catch(SIGABRT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process aborted");
     } catch(SIGALRM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process timeout");
     }
-    signal(SIGTERM, h_term);
-    signal(SIGINT,  h_int);
-    signal(SIGABRT, h_abrt);
-    signal(SIGALRM, h_alrm);
+    sigaction(SIGTERM, &old_action_term, NULL);
+    sigaction(SIGABRT, &old_action_abrt, NULL);
+    sigaction(SIGINT, &old_action_int, NULL);
+    sigaction(SIGALRM, &old_action_alrm, NULL);
     
   }
   resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_void, 0 |  0 );
@@ -11411,46 +11931,51 @@ SWIGINTERN PyObject *_wrap_sdd_ref_count(PyObject *SWIGUNUSEDPARM(self), PyObjec
     
     // signal(SIGSEGV, handler);
     
+    struct sigaction new_action;
+    new_action.sa_handler = c_handler;
+    sigemptyset (&new_action.sa_mask);
+    new_action.sa_flags = SA_RESTART;
     
-    void (*h_alrm)(int);
-    void (*h_abrt)(int);
-    void (*h_term)(int);
-    void (*h_int)(int);
+    struct sigaction old_action_term;
+    struct sigaction old_action_abrt;
+    struct sigaction old_action_int;
+    struct sigaction old_action_alrm;
+    
+    sigaction(SIGTERM,  &new_action, &old_action_term);
+    sigaction(SIGABRT,  &new_action, &old_action_abrt);
+    sigaction(SIGINT,  &new_action, &old_action_int);
+    sigaction(SIGALRM,  &new_action, &old_action_alrm);
     try {
-      h_alrm = signal(SIGALRM,  c_handler);
-      h_abrt = signal(SIGABRT, c_handler);
-      h_term = signal(SIGTERM, c_handler);
-      h_int = signal(SIGINT,  c_handler);
       result = (SddRefCount)sdd_ref_count(arg1);
     } catch(SIGINT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process interrupted");
     } catch(SIGTERM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process terminated");
     } catch(SIGABRT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process aborted");
     } catch(SIGALRM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process timeout");
     }
-    signal(SIGTERM, h_term);
-    signal(SIGINT,  h_int);
-    signal(SIGABRT, h_abrt);
-    signal(SIGALRM, h_alrm);
+    sigaction(SIGTERM, &old_action_term, NULL);
+    sigaction(SIGABRT, &old_action_abrt, NULL);
+    sigaction(SIGINT, &old_action_int, NULL);
+    sigaction(SIGALRM, &old_action_alrm, NULL);
     
   }
   resultobj = SWIG_From_unsigned_SS_int((unsigned int)(result));
@@ -11490,46 +12015,51 @@ SWIGINTERN PyObject *_wrap_sdd_ref(PyObject *SWIGUNUSEDPARM(self), PyObject *arg
     
     // signal(SIGSEGV, handler);
     
+    struct sigaction new_action;
+    new_action.sa_handler = c_handler;
+    sigemptyset (&new_action.sa_mask);
+    new_action.sa_flags = SA_RESTART;
     
-    void (*h_alrm)(int);
-    void (*h_abrt)(int);
-    void (*h_term)(int);
-    void (*h_int)(int);
+    struct sigaction old_action_term;
+    struct sigaction old_action_abrt;
+    struct sigaction old_action_int;
+    struct sigaction old_action_alrm;
+    
+    sigaction(SIGTERM,  &new_action, &old_action_term);
+    sigaction(SIGABRT,  &new_action, &old_action_abrt);
+    sigaction(SIGINT,  &new_action, &old_action_int);
+    sigaction(SIGALRM,  &new_action, &old_action_alrm);
     try {
-      h_alrm = signal(SIGALRM,  c_handler);
-      h_abrt = signal(SIGABRT, c_handler);
-      h_term = signal(SIGTERM, c_handler);
-      h_int = signal(SIGINT,  c_handler);
       result = (SddNode *)sdd_ref(arg1,arg2);
     } catch(SIGINT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process interrupted");
     } catch(SIGTERM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process terminated");
     } catch(SIGABRT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process aborted");
     } catch(SIGALRM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process timeout");
     }
-    signal(SIGTERM, h_term);
-    signal(SIGINT,  h_int);
-    signal(SIGABRT, h_abrt);
-    signal(SIGALRM, h_alrm);
+    sigaction(SIGTERM, &old_action_term, NULL);
+    sigaction(SIGABRT, &old_action_abrt, NULL);
+    sigaction(SIGINT, &old_action_int, NULL);
+    sigaction(SIGALRM, &old_action_alrm, NULL);
     
   }
   resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_sdd_node_t, 0 |  0 );
@@ -11569,46 +12099,51 @@ SWIGINTERN PyObject *_wrap_sdd_deref(PyObject *SWIGUNUSEDPARM(self), PyObject *a
     
     // signal(SIGSEGV, handler);
     
+    struct sigaction new_action;
+    new_action.sa_handler = c_handler;
+    sigemptyset (&new_action.sa_mask);
+    new_action.sa_flags = SA_RESTART;
     
-    void (*h_alrm)(int);
-    void (*h_abrt)(int);
-    void (*h_term)(int);
-    void (*h_int)(int);
+    struct sigaction old_action_term;
+    struct sigaction old_action_abrt;
+    struct sigaction old_action_int;
+    struct sigaction old_action_alrm;
+    
+    sigaction(SIGTERM,  &new_action, &old_action_term);
+    sigaction(SIGABRT,  &new_action, &old_action_abrt);
+    sigaction(SIGINT,  &new_action, &old_action_int);
+    sigaction(SIGALRM,  &new_action, &old_action_alrm);
     try {
-      h_alrm = signal(SIGALRM,  c_handler);
-      h_abrt = signal(SIGABRT, c_handler);
-      h_term = signal(SIGTERM, c_handler);
-      h_int = signal(SIGINT,  c_handler);
       result = (SddNode *)sdd_deref(arg1,arg2);
     } catch(SIGINT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process interrupted");
     } catch(SIGTERM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process terminated");
     } catch(SIGABRT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process aborted");
     } catch(SIGALRM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process timeout");
     }
-    signal(SIGTERM, h_term);
-    signal(SIGINT,  h_int);
-    signal(SIGABRT, h_abrt);
-    signal(SIGALRM, h_alrm);
+    sigaction(SIGTERM, &old_action_term, NULL);
+    sigaction(SIGABRT, &old_action_abrt, NULL);
+    sigaction(SIGINT, &old_action_int, NULL);
+    sigaction(SIGALRM, &old_action_alrm, NULL);
     
   }
   resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_sdd_node_t, 0 |  0 );
@@ -11638,46 +12173,51 @@ SWIGINTERN PyObject *_wrap_sdd_manager_garbage_collect(PyObject *SWIGUNUSEDPARM(
     
     // signal(SIGSEGV, handler);
     
+    struct sigaction new_action;
+    new_action.sa_handler = c_handler;
+    sigemptyset (&new_action.sa_mask);
+    new_action.sa_flags = SA_RESTART;
     
-    void (*h_alrm)(int);
-    void (*h_abrt)(int);
-    void (*h_term)(int);
-    void (*h_int)(int);
+    struct sigaction old_action_term;
+    struct sigaction old_action_abrt;
+    struct sigaction old_action_int;
+    struct sigaction old_action_alrm;
+    
+    sigaction(SIGTERM,  &new_action, &old_action_term);
+    sigaction(SIGABRT,  &new_action, &old_action_abrt);
+    sigaction(SIGINT,  &new_action, &old_action_int);
+    sigaction(SIGALRM,  &new_action, &old_action_alrm);
     try {
-      h_alrm = signal(SIGALRM,  c_handler);
-      h_abrt = signal(SIGABRT, c_handler);
-      h_term = signal(SIGTERM, c_handler);
-      h_int = signal(SIGINT,  c_handler);
       sdd_manager_garbage_collect(arg1);
     } catch(SIGINT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process interrupted");
     } catch(SIGTERM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process terminated");
     } catch(SIGABRT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process aborted");
     } catch(SIGALRM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process timeout");
     }
-    signal(SIGTERM, h_term);
-    signal(SIGINT,  h_int);
-    signal(SIGABRT, h_abrt);
-    signal(SIGALRM, h_alrm);
+    sigaction(SIGTERM, &old_action_term, NULL);
+    sigaction(SIGABRT, &old_action_abrt, NULL);
+    sigaction(SIGINT, &old_action_int, NULL);
+    sigaction(SIGALRM, &old_action_alrm, NULL);
     
   }
   resultobj = SWIG_Py_Void();
@@ -11716,46 +12256,51 @@ SWIGINTERN PyObject *_wrap_sdd_vtree_garbage_collect(PyObject *SWIGUNUSEDPARM(se
     
     // signal(SIGSEGV, handler);
     
+    struct sigaction new_action;
+    new_action.sa_handler = c_handler;
+    sigemptyset (&new_action.sa_mask);
+    new_action.sa_flags = SA_RESTART;
     
-    void (*h_alrm)(int);
-    void (*h_abrt)(int);
-    void (*h_term)(int);
-    void (*h_int)(int);
+    struct sigaction old_action_term;
+    struct sigaction old_action_abrt;
+    struct sigaction old_action_int;
+    struct sigaction old_action_alrm;
+    
+    sigaction(SIGTERM,  &new_action, &old_action_term);
+    sigaction(SIGABRT,  &new_action, &old_action_abrt);
+    sigaction(SIGINT,  &new_action, &old_action_int);
+    sigaction(SIGALRM,  &new_action, &old_action_alrm);
     try {
-      h_alrm = signal(SIGALRM,  c_handler);
-      h_abrt = signal(SIGABRT, c_handler);
-      h_term = signal(SIGTERM, c_handler);
-      h_int = signal(SIGINT,  c_handler);
       sdd_vtree_garbage_collect(arg1,arg2);
     } catch(SIGINT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process interrupted");
     } catch(SIGTERM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process terminated");
     } catch(SIGABRT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process aborted");
     } catch(SIGALRM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process timeout");
     }
-    signal(SIGTERM, h_term);
-    signal(SIGINT,  h_int);
-    signal(SIGABRT, h_abrt);
-    signal(SIGALRM, h_alrm);
+    sigaction(SIGTERM, &old_action_term, NULL);
+    sigaction(SIGABRT, &old_action_abrt, NULL);
+    sigaction(SIGINT, &old_action_int, NULL);
+    sigaction(SIGALRM, &old_action_alrm, NULL);
     
   }
   resultobj = SWIG_Py_Void();
@@ -11795,46 +12340,51 @@ SWIGINTERN PyObject *_wrap_sdd_manager_garbage_collect_if(PyObject *SWIGUNUSEDPA
     
     // signal(SIGSEGV, handler);
     
+    struct sigaction new_action;
+    new_action.sa_handler = c_handler;
+    sigemptyset (&new_action.sa_mask);
+    new_action.sa_flags = SA_RESTART;
     
-    void (*h_alrm)(int);
-    void (*h_abrt)(int);
-    void (*h_term)(int);
-    void (*h_int)(int);
+    struct sigaction old_action_term;
+    struct sigaction old_action_abrt;
+    struct sigaction old_action_int;
+    struct sigaction old_action_alrm;
+    
+    sigaction(SIGTERM,  &new_action, &old_action_term);
+    sigaction(SIGABRT,  &new_action, &old_action_abrt);
+    sigaction(SIGINT,  &new_action, &old_action_int);
+    sigaction(SIGALRM,  &new_action, &old_action_alrm);
     try {
-      h_alrm = signal(SIGALRM,  c_handler);
-      h_abrt = signal(SIGABRT, c_handler);
-      h_term = signal(SIGTERM, c_handler);
-      h_int = signal(SIGINT,  c_handler);
       result = (int)sdd_manager_garbage_collect_if(arg1,arg2);
     } catch(SIGINT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process interrupted");
     } catch(SIGTERM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process terminated");
     } catch(SIGABRT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process aborted");
     } catch(SIGALRM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process timeout");
     }
-    signal(SIGTERM, h_term);
-    signal(SIGINT,  h_int);
-    signal(SIGABRT, h_abrt);
-    signal(SIGALRM, h_alrm);
+    sigaction(SIGTERM, &old_action_term, NULL);
+    sigaction(SIGABRT, &old_action_abrt, NULL);
+    sigaction(SIGINT, &old_action_int, NULL);
+    sigaction(SIGALRM, &old_action_alrm, NULL);
     
   }
   resultobj = SWIG_From_int((int)(result));
@@ -11883,46 +12433,51 @@ SWIGINTERN PyObject *_wrap_sdd_vtree_garbage_collect_if(PyObject *SWIGUNUSEDPARM
     
     // signal(SIGSEGV, handler);
     
+    struct sigaction new_action;
+    new_action.sa_handler = c_handler;
+    sigemptyset (&new_action.sa_mask);
+    new_action.sa_flags = SA_RESTART;
     
-    void (*h_alrm)(int);
-    void (*h_abrt)(int);
-    void (*h_term)(int);
-    void (*h_int)(int);
+    struct sigaction old_action_term;
+    struct sigaction old_action_abrt;
+    struct sigaction old_action_int;
+    struct sigaction old_action_alrm;
+    
+    sigaction(SIGTERM,  &new_action, &old_action_term);
+    sigaction(SIGABRT,  &new_action, &old_action_abrt);
+    sigaction(SIGINT,  &new_action, &old_action_int);
+    sigaction(SIGALRM,  &new_action, &old_action_alrm);
     try {
-      h_alrm = signal(SIGALRM,  c_handler);
-      h_abrt = signal(SIGABRT, c_handler);
-      h_term = signal(SIGTERM, c_handler);
-      h_int = signal(SIGINT,  c_handler);
       result = (int)sdd_vtree_garbage_collect_if(arg1,arg2,arg3);
     } catch(SIGINT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process interrupted");
     } catch(SIGTERM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process terminated");
     } catch(SIGABRT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process aborted");
     } catch(SIGALRM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process timeout");
     }
-    signal(SIGTERM, h_term);
-    signal(SIGINT,  h_int);
-    signal(SIGABRT, h_abrt);
-    signal(SIGALRM, h_alrm);
+    sigaction(SIGTERM, &old_action_term, NULL);
+    sigaction(SIGABRT, &old_action_abrt, NULL);
+    sigaction(SIGINT, &old_action_int, NULL);
+    sigaction(SIGALRM, &old_action_alrm, NULL);
     
   }
   resultobj = SWIG_From_int((int)(result));
@@ -11952,46 +12507,51 @@ SWIGINTERN PyObject *_wrap_sdd_manager_minimize(PyObject *SWIGUNUSEDPARM(self), 
     
     // signal(SIGSEGV, handler);
     
+    struct sigaction new_action;
+    new_action.sa_handler = c_handler;
+    sigemptyset (&new_action.sa_mask);
+    new_action.sa_flags = SA_RESTART;
     
-    void (*h_alrm)(int);
-    void (*h_abrt)(int);
-    void (*h_term)(int);
-    void (*h_int)(int);
+    struct sigaction old_action_term;
+    struct sigaction old_action_abrt;
+    struct sigaction old_action_int;
+    struct sigaction old_action_alrm;
+    
+    sigaction(SIGTERM,  &new_action, &old_action_term);
+    sigaction(SIGABRT,  &new_action, &old_action_abrt);
+    sigaction(SIGINT,  &new_action, &old_action_int);
+    sigaction(SIGALRM,  &new_action, &old_action_alrm);
     try {
-      h_alrm = signal(SIGALRM,  c_handler);
-      h_abrt = signal(SIGABRT, c_handler);
-      h_term = signal(SIGTERM, c_handler);
-      h_int = signal(SIGINT,  c_handler);
       sdd_manager_minimize(arg1);
     } catch(SIGINT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process interrupted");
     } catch(SIGTERM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process terminated");
     } catch(SIGABRT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process aborted");
     } catch(SIGALRM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process timeout");
     }
-    signal(SIGTERM, h_term);
-    signal(SIGINT,  h_int);
-    signal(SIGABRT, h_abrt);
-    signal(SIGALRM, h_alrm);
+    sigaction(SIGTERM, &old_action_term, NULL);
+    sigaction(SIGABRT, &old_action_abrt, NULL);
+    sigaction(SIGINT, &old_action_int, NULL);
+    sigaction(SIGALRM, &old_action_alrm, NULL);
     
   }
   resultobj = SWIG_Py_Void();
@@ -12031,46 +12591,51 @@ SWIGINTERN PyObject *_wrap_sdd_vtree_minimize(PyObject *SWIGUNUSEDPARM(self), Py
     
     // signal(SIGSEGV, handler);
     
+    struct sigaction new_action;
+    new_action.sa_handler = c_handler;
+    sigemptyset (&new_action.sa_mask);
+    new_action.sa_flags = SA_RESTART;
     
-    void (*h_alrm)(int);
-    void (*h_abrt)(int);
-    void (*h_term)(int);
-    void (*h_int)(int);
+    struct sigaction old_action_term;
+    struct sigaction old_action_abrt;
+    struct sigaction old_action_int;
+    struct sigaction old_action_alrm;
+    
+    sigaction(SIGTERM,  &new_action, &old_action_term);
+    sigaction(SIGABRT,  &new_action, &old_action_abrt);
+    sigaction(SIGINT,  &new_action, &old_action_int);
+    sigaction(SIGALRM,  &new_action, &old_action_alrm);
     try {
-      h_alrm = signal(SIGALRM,  c_handler);
-      h_abrt = signal(SIGABRT, c_handler);
-      h_term = signal(SIGTERM, c_handler);
-      h_int = signal(SIGINT,  c_handler);
       result = (Vtree *)sdd_vtree_minimize(arg1,arg2);
     } catch(SIGINT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process interrupted");
     } catch(SIGTERM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process terminated");
     } catch(SIGABRT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process aborted");
     } catch(SIGALRM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process timeout");
     }
-    signal(SIGTERM, h_term);
-    signal(SIGINT,  h_int);
-    signal(SIGABRT, h_abrt);
-    signal(SIGALRM, h_alrm);
+    sigaction(SIGTERM, &old_action_term, NULL);
+    sigaction(SIGABRT, &old_action_abrt, NULL);
+    sigaction(SIGINT, &old_action_int, NULL);
+    sigaction(SIGALRM, &old_action_alrm, NULL);
     
   }
   resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_vtree_t, 0 |  0 );
@@ -12109,46 +12674,51 @@ SWIGINTERN PyObject *_wrap_sdd_manager_set_lr_time_limit(PyObject *SWIGUNUSEDPAR
     
     // signal(SIGSEGV, handler);
     
+    struct sigaction new_action;
+    new_action.sa_handler = c_handler;
+    sigemptyset (&new_action.sa_mask);
+    new_action.sa_flags = SA_RESTART;
     
-    void (*h_alrm)(int);
-    void (*h_abrt)(int);
-    void (*h_term)(int);
-    void (*h_int)(int);
+    struct sigaction old_action_term;
+    struct sigaction old_action_abrt;
+    struct sigaction old_action_int;
+    struct sigaction old_action_alrm;
+    
+    sigaction(SIGTERM,  &new_action, &old_action_term);
+    sigaction(SIGABRT,  &new_action, &old_action_abrt);
+    sigaction(SIGINT,  &new_action, &old_action_int);
+    sigaction(SIGALRM,  &new_action, &old_action_alrm);
     try {
-      h_alrm = signal(SIGALRM,  c_handler);
-      h_abrt = signal(SIGABRT, c_handler);
-      h_term = signal(SIGTERM, c_handler);
-      h_int = signal(SIGINT,  c_handler);
       sdd_manager_set_lr_time_limit(arg1,arg2);
     } catch(SIGINT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process interrupted");
     } catch(SIGTERM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process terminated");
     } catch(SIGABRT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process aborted");
     } catch(SIGALRM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process timeout");
     }
-    signal(SIGTERM, h_term);
-    signal(SIGINT,  h_int);
-    signal(SIGABRT, h_abrt);
-    signal(SIGALRM, h_alrm);
+    sigaction(SIGTERM, &old_action_term, NULL);
+    sigaction(SIGABRT, &old_action_abrt, NULL);
+    sigaction(SIGINT, &old_action_int, NULL);
+    sigaction(SIGALRM, &old_action_alrm, NULL);
     
   }
   resultobj = SWIG_Py_Void();
@@ -12187,46 +12757,51 @@ SWIGINTERN PyObject *_wrap_sdd_manager_set_rr_time_limit(PyObject *SWIGUNUSEDPAR
     
     // signal(SIGSEGV, handler);
     
+    struct sigaction new_action;
+    new_action.sa_handler = c_handler;
+    sigemptyset (&new_action.sa_mask);
+    new_action.sa_flags = SA_RESTART;
     
-    void (*h_alrm)(int);
-    void (*h_abrt)(int);
-    void (*h_term)(int);
-    void (*h_int)(int);
+    struct sigaction old_action_term;
+    struct sigaction old_action_abrt;
+    struct sigaction old_action_int;
+    struct sigaction old_action_alrm;
+    
+    sigaction(SIGTERM,  &new_action, &old_action_term);
+    sigaction(SIGABRT,  &new_action, &old_action_abrt);
+    sigaction(SIGINT,  &new_action, &old_action_int);
+    sigaction(SIGALRM,  &new_action, &old_action_alrm);
     try {
-      h_alrm = signal(SIGALRM,  c_handler);
-      h_abrt = signal(SIGABRT, c_handler);
-      h_term = signal(SIGTERM, c_handler);
-      h_int = signal(SIGINT,  c_handler);
       sdd_manager_set_rr_time_limit(arg1,arg2);
     } catch(SIGINT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process interrupted");
     } catch(SIGTERM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process terminated");
     } catch(SIGABRT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process aborted");
     } catch(SIGALRM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process timeout");
     }
-    signal(SIGTERM, h_term);
-    signal(SIGINT,  h_int);
-    signal(SIGABRT, h_abrt);
-    signal(SIGALRM, h_alrm);
+    sigaction(SIGTERM, &old_action_term, NULL);
+    sigaction(SIGABRT, &old_action_abrt, NULL);
+    sigaction(SIGINT, &old_action_int, NULL);
+    sigaction(SIGALRM, &old_action_alrm, NULL);
     
   }
   resultobj = SWIG_Py_Void();
@@ -12265,46 +12840,51 @@ SWIGINTERN PyObject *_wrap_sdd_manager_set_sw_time_limit(PyObject *SWIGUNUSEDPAR
     
     // signal(SIGSEGV, handler);
     
+    struct sigaction new_action;
+    new_action.sa_handler = c_handler;
+    sigemptyset (&new_action.sa_mask);
+    new_action.sa_flags = SA_RESTART;
     
-    void (*h_alrm)(int);
-    void (*h_abrt)(int);
-    void (*h_term)(int);
-    void (*h_int)(int);
+    struct sigaction old_action_term;
+    struct sigaction old_action_abrt;
+    struct sigaction old_action_int;
+    struct sigaction old_action_alrm;
+    
+    sigaction(SIGTERM,  &new_action, &old_action_term);
+    sigaction(SIGABRT,  &new_action, &old_action_abrt);
+    sigaction(SIGINT,  &new_action, &old_action_int);
+    sigaction(SIGALRM,  &new_action, &old_action_alrm);
     try {
-      h_alrm = signal(SIGALRM,  c_handler);
-      h_abrt = signal(SIGABRT, c_handler);
-      h_term = signal(SIGTERM, c_handler);
-      h_int = signal(SIGINT,  c_handler);
       sdd_manager_set_sw_time_limit(arg1,arg2);
     } catch(SIGINT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process interrupted");
     } catch(SIGTERM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process terminated");
     } catch(SIGABRT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process aborted");
     } catch(SIGALRM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process timeout");
     }
-    signal(SIGTERM, h_term);
-    signal(SIGINT,  h_int);
-    signal(SIGABRT, h_abrt);
-    signal(SIGALRM, h_alrm);
+    sigaction(SIGTERM, &old_action_term, NULL);
+    sigaction(SIGABRT, &old_action_abrt, NULL);
+    sigaction(SIGINT, &old_action_int, NULL);
+    sigaction(SIGALRM, &old_action_alrm, NULL);
     
   }
   resultobj = SWIG_Py_Void();
@@ -12343,46 +12923,51 @@ SWIGINTERN PyObject *_wrap_sdd_manager_set_lr_size_limit(PyObject *SWIGUNUSEDPAR
     
     // signal(SIGSEGV, handler);
     
+    struct sigaction new_action;
+    new_action.sa_handler = c_handler;
+    sigemptyset (&new_action.sa_mask);
+    new_action.sa_flags = SA_RESTART;
     
-    void (*h_alrm)(int);
-    void (*h_abrt)(int);
-    void (*h_term)(int);
-    void (*h_int)(int);
+    struct sigaction old_action_term;
+    struct sigaction old_action_abrt;
+    struct sigaction old_action_int;
+    struct sigaction old_action_alrm;
+    
+    sigaction(SIGTERM,  &new_action, &old_action_term);
+    sigaction(SIGABRT,  &new_action, &old_action_abrt);
+    sigaction(SIGINT,  &new_action, &old_action_int);
+    sigaction(SIGALRM,  &new_action, &old_action_alrm);
     try {
-      h_alrm = signal(SIGALRM,  c_handler);
-      h_abrt = signal(SIGABRT, c_handler);
-      h_term = signal(SIGTERM, c_handler);
-      h_int = signal(SIGINT,  c_handler);
       sdd_manager_set_lr_size_limit(arg1,arg2);
     } catch(SIGINT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process interrupted");
     } catch(SIGTERM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process terminated");
     } catch(SIGABRT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process aborted");
     } catch(SIGALRM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process timeout");
     }
-    signal(SIGTERM, h_term);
-    signal(SIGINT,  h_int);
-    signal(SIGABRT, h_abrt);
-    signal(SIGALRM, h_alrm);
+    sigaction(SIGTERM, &old_action_term, NULL);
+    sigaction(SIGABRT, &old_action_abrt, NULL);
+    sigaction(SIGINT, &old_action_int, NULL);
+    sigaction(SIGALRM, &old_action_alrm, NULL);
     
   }
   resultobj = SWIG_Py_Void();
@@ -12421,46 +13006,51 @@ SWIGINTERN PyObject *_wrap_sdd_manager_set_rr_size_limit(PyObject *SWIGUNUSEDPAR
     
     // signal(SIGSEGV, handler);
     
+    struct sigaction new_action;
+    new_action.sa_handler = c_handler;
+    sigemptyset (&new_action.sa_mask);
+    new_action.sa_flags = SA_RESTART;
     
-    void (*h_alrm)(int);
-    void (*h_abrt)(int);
-    void (*h_term)(int);
-    void (*h_int)(int);
+    struct sigaction old_action_term;
+    struct sigaction old_action_abrt;
+    struct sigaction old_action_int;
+    struct sigaction old_action_alrm;
+    
+    sigaction(SIGTERM,  &new_action, &old_action_term);
+    sigaction(SIGABRT,  &new_action, &old_action_abrt);
+    sigaction(SIGINT,  &new_action, &old_action_int);
+    sigaction(SIGALRM,  &new_action, &old_action_alrm);
     try {
-      h_alrm = signal(SIGALRM,  c_handler);
-      h_abrt = signal(SIGABRT, c_handler);
-      h_term = signal(SIGTERM, c_handler);
-      h_int = signal(SIGINT,  c_handler);
       sdd_manager_set_rr_size_limit(arg1,arg2);
     } catch(SIGINT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process interrupted");
     } catch(SIGTERM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process terminated");
     } catch(SIGABRT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process aborted");
     } catch(SIGALRM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process timeout");
     }
-    signal(SIGTERM, h_term);
-    signal(SIGINT,  h_int);
-    signal(SIGABRT, h_abrt);
-    signal(SIGALRM, h_alrm);
+    sigaction(SIGTERM, &old_action_term, NULL);
+    sigaction(SIGABRT, &old_action_abrt, NULL);
+    sigaction(SIGINT, &old_action_int, NULL);
+    sigaction(SIGALRM, &old_action_alrm, NULL);
     
   }
   resultobj = SWIG_Py_Void();
@@ -12499,46 +13089,51 @@ SWIGINTERN PyObject *_wrap_sdd_manager_set_sw_size_limit(PyObject *SWIGUNUSEDPAR
     
     // signal(SIGSEGV, handler);
     
+    struct sigaction new_action;
+    new_action.sa_handler = c_handler;
+    sigemptyset (&new_action.sa_mask);
+    new_action.sa_flags = SA_RESTART;
     
-    void (*h_alrm)(int);
-    void (*h_abrt)(int);
-    void (*h_term)(int);
-    void (*h_int)(int);
+    struct sigaction old_action_term;
+    struct sigaction old_action_abrt;
+    struct sigaction old_action_int;
+    struct sigaction old_action_alrm;
+    
+    sigaction(SIGTERM,  &new_action, &old_action_term);
+    sigaction(SIGABRT,  &new_action, &old_action_abrt);
+    sigaction(SIGINT,  &new_action, &old_action_int);
+    sigaction(SIGALRM,  &new_action, &old_action_alrm);
     try {
-      h_alrm = signal(SIGALRM,  c_handler);
-      h_abrt = signal(SIGABRT, c_handler);
-      h_term = signal(SIGTERM, c_handler);
-      h_int = signal(SIGINT,  c_handler);
       sdd_manager_set_sw_size_limit(arg1,arg2);
     } catch(SIGINT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process interrupted");
     } catch(SIGTERM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process terminated");
     } catch(SIGABRT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process aborted");
     } catch(SIGALRM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process timeout");
     }
-    signal(SIGTERM, h_term);
-    signal(SIGINT,  h_int);
-    signal(SIGABRT, h_abrt);
-    signal(SIGALRM, h_alrm);
+    sigaction(SIGTERM, &old_action_term, NULL);
+    sigaction(SIGABRT, &old_action_abrt, NULL);
+    sigaction(SIGINT, &old_action_int, NULL);
+    sigaction(SIGALRM, &old_action_alrm, NULL);
     
   }
   resultobj = SWIG_Py_Void();
@@ -12577,46 +13172,51 @@ SWIGINTERN PyObject *_wrap_sdd_manager_set_rr_cartesian_product_limit(PyObject *
     
     // signal(SIGSEGV, handler);
     
+    struct sigaction new_action;
+    new_action.sa_handler = c_handler;
+    sigemptyset (&new_action.sa_mask);
+    new_action.sa_flags = SA_RESTART;
     
-    void (*h_alrm)(int);
-    void (*h_abrt)(int);
-    void (*h_term)(int);
-    void (*h_int)(int);
+    struct sigaction old_action_term;
+    struct sigaction old_action_abrt;
+    struct sigaction old_action_int;
+    struct sigaction old_action_alrm;
+    
+    sigaction(SIGTERM,  &new_action, &old_action_term);
+    sigaction(SIGABRT,  &new_action, &old_action_abrt);
+    sigaction(SIGINT,  &new_action, &old_action_int);
+    sigaction(SIGALRM,  &new_action, &old_action_alrm);
     try {
-      h_alrm = signal(SIGALRM,  c_handler);
-      h_abrt = signal(SIGABRT, c_handler);
-      h_term = signal(SIGTERM, c_handler);
-      h_int = signal(SIGINT,  c_handler);
       sdd_manager_set_rr_cartesian_product_limit(arg1,arg2);
     } catch(SIGINT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process interrupted");
     } catch(SIGTERM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process terminated");
     } catch(SIGABRT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process aborted");
     } catch(SIGALRM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process timeout");
     }
-    signal(SIGTERM, h_term);
-    signal(SIGINT,  h_int);
-    signal(SIGABRT, h_abrt);
-    signal(SIGALRM, h_alrm);
+    sigaction(SIGTERM, &old_action_term, NULL);
+    sigaction(SIGABRT, &old_action_abrt, NULL);
+    sigaction(SIGINT, &old_action_int, NULL);
+    sigaction(SIGALRM, &old_action_alrm, NULL);
     
   }
   resultobj = SWIG_Py_Void();
@@ -12655,46 +13255,51 @@ SWIGINTERN PyObject *_wrap_sdd_manager_set_sw_cartesian_product_limit(PyObject *
     
     // signal(SIGSEGV, handler);
     
+    struct sigaction new_action;
+    new_action.sa_handler = c_handler;
+    sigemptyset (&new_action.sa_mask);
+    new_action.sa_flags = SA_RESTART;
     
-    void (*h_alrm)(int);
-    void (*h_abrt)(int);
-    void (*h_term)(int);
-    void (*h_int)(int);
+    struct sigaction old_action_term;
+    struct sigaction old_action_abrt;
+    struct sigaction old_action_int;
+    struct sigaction old_action_alrm;
+    
+    sigaction(SIGTERM,  &new_action, &old_action_term);
+    sigaction(SIGABRT,  &new_action, &old_action_abrt);
+    sigaction(SIGINT,  &new_action, &old_action_int);
+    sigaction(SIGALRM,  &new_action, &old_action_alrm);
     try {
-      h_alrm = signal(SIGALRM,  c_handler);
-      h_abrt = signal(SIGABRT, c_handler);
-      h_term = signal(SIGTERM, c_handler);
-      h_int = signal(SIGINT,  c_handler);
       sdd_manager_set_sw_cartesian_product_limit(arg1,arg2);
     } catch(SIGINT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process interrupted");
     } catch(SIGTERM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process terminated");
     } catch(SIGABRT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process aborted");
     } catch(SIGALRM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process timeout");
     }
-    signal(SIGTERM, h_term);
-    signal(SIGINT,  h_int);
-    signal(SIGABRT, h_abrt);
-    signal(SIGALRM, h_alrm);
+    sigaction(SIGTERM, &old_action_term, NULL);
+    sigaction(SIGABRT, &old_action_abrt, NULL);
+    sigaction(SIGINT, &old_action_int, NULL);
+    sigaction(SIGALRM, &old_action_alrm, NULL);
     
   }
   resultobj = SWIG_Py_Void();
@@ -12733,46 +13338,51 @@ SWIGINTERN PyObject *_wrap_sdd_manager_set_convergence_threshold(PyObject *SWIGU
     
     // signal(SIGSEGV, handler);
     
+    struct sigaction new_action;
+    new_action.sa_handler = c_handler;
+    sigemptyset (&new_action.sa_mask);
+    new_action.sa_flags = SA_RESTART;
     
-    void (*h_alrm)(int);
-    void (*h_abrt)(int);
-    void (*h_term)(int);
-    void (*h_int)(int);
+    struct sigaction old_action_term;
+    struct sigaction old_action_abrt;
+    struct sigaction old_action_int;
+    struct sigaction old_action_alrm;
+    
+    sigaction(SIGTERM,  &new_action, &old_action_term);
+    sigaction(SIGABRT,  &new_action, &old_action_abrt);
+    sigaction(SIGINT,  &new_action, &old_action_int);
+    sigaction(SIGALRM,  &new_action, &old_action_alrm);
     try {
-      h_alrm = signal(SIGALRM,  c_handler);
-      h_abrt = signal(SIGABRT, c_handler);
-      h_term = signal(SIGTERM, c_handler);
-      h_int = signal(SIGINT,  c_handler);
       sdd_manager_set_convergence_threshold(arg1,arg2);
     } catch(SIGINT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process interrupted");
     } catch(SIGTERM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process terminated");
     } catch(SIGABRT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process aborted");
     } catch(SIGALRM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process timeout");
     }
-    signal(SIGTERM, h_term);
-    signal(SIGINT,  h_int);
-    signal(SIGABRT, h_abrt);
-    signal(SIGALRM, h_alrm);
+    sigaction(SIGTERM, &old_action_term, NULL);
+    sigaction(SIGABRT, &old_action_abrt, NULL);
+    sigaction(SIGINT, &old_action_int, NULL);
+    sigaction(SIGALRM, &old_action_alrm, NULL);
     
   }
   resultobj = SWIG_Py_Void();
@@ -12821,46 +13431,51 @@ SWIGINTERN PyObject *_wrap_wmc_manager_new(PyObject *SWIGUNUSEDPARM(self), PyObj
     
     // signal(SIGSEGV, handler);
     
+    struct sigaction new_action;
+    new_action.sa_handler = c_handler;
+    sigemptyset (&new_action.sa_mask);
+    new_action.sa_flags = SA_RESTART;
     
-    void (*h_alrm)(int);
-    void (*h_abrt)(int);
-    void (*h_term)(int);
-    void (*h_int)(int);
+    struct sigaction old_action_term;
+    struct sigaction old_action_abrt;
+    struct sigaction old_action_int;
+    struct sigaction old_action_alrm;
+    
+    sigaction(SIGTERM,  &new_action, &old_action_term);
+    sigaction(SIGABRT,  &new_action, &old_action_abrt);
+    sigaction(SIGINT,  &new_action, &old_action_int);
+    sigaction(SIGALRM,  &new_action, &old_action_alrm);
     try {
-      h_alrm = signal(SIGALRM,  c_handler);
-      h_abrt = signal(SIGABRT, c_handler);
-      h_term = signal(SIGTERM, c_handler);
-      h_int = signal(SIGINT,  c_handler);
       result = (WmcManager *)wmc_manager_new(arg1,arg2,arg3);
     } catch(SIGINT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process interrupted");
     } catch(SIGTERM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process terminated");
     } catch(SIGABRT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process aborted");
     } catch(SIGALRM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process timeout");
     }
-    signal(SIGTERM, h_term);
-    signal(SIGINT,  h_int);
-    signal(SIGABRT, h_abrt);
-    signal(SIGALRM, h_alrm);
+    sigaction(SIGTERM, &old_action_term, NULL);
+    sigaction(SIGABRT, &old_action_abrt, NULL);
+    sigaction(SIGINT, &old_action_int, NULL);
+    sigaction(SIGALRM, &old_action_alrm, NULL);
     
   }
   resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_wmc_manager_t, 0 |  0 );
@@ -12890,46 +13505,51 @@ SWIGINTERN PyObject *_wrap_wmc_manager_free(PyObject *SWIGUNUSEDPARM(self), PyOb
     
     // signal(SIGSEGV, handler);
     
+    struct sigaction new_action;
+    new_action.sa_handler = c_handler;
+    sigemptyset (&new_action.sa_mask);
+    new_action.sa_flags = SA_RESTART;
     
-    void (*h_alrm)(int);
-    void (*h_abrt)(int);
-    void (*h_term)(int);
-    void (*h_int)(int);
+    struct sigaction old_action_term;
+    struct sigaction old_action_abrt;
+    struct sigaction old_action_int;
+    struct sigaction old_action_alrm;
+    
+    sigaction(SIGTERM,  &new_action, &old_action_term);
+    sigaction(SIGABRT,  &new_action, &old_action_abrt);
+    sigaction(SIGINT,  &new_action, &old_action_int);
+    sigaction(SIGALRM,  &new_action, &old_action_alrm);
     try {
-      h_alrm = signal(SIGALRM,  c_handler);
-      h_abrt = signal(SIGABRT, c_handler);
-      h_term = signal(SIGTERM, c_handler);
-      h_int = signal(SIGINT,  c_handler);
       wmc_manager_free(arg1);
     } catch(SIGINT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process interrupted");
     } catch(SIGTERM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process terminated");
     } catch(SIGABRT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process aborted");
     } catch(SIGALRM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process timeout");
     }
-    signal(SIGTERM, h_term);
-    signal(SIGINT,  h_int);
-    signal(SIGABRT, h_abrt);
-    signal(SIGALRM, h_alrm);
+    sigaction(SIGTERM, &old_action_term, NULL);
+    sigaction(SIGABRT, &old_action_abrt, NULL);
+    sigaction(SIGINT, &old_action_int, NULL);
+    sigaction(SIGALRM, &old_action_alrm, NULL);
     
   }
   resultobj = SWIG_Py_Void();
@@ -12977,46 +13597,51 @@ SWIGINTERN PyObject *_wrap_wmc_set_literal_weight(PyObject *SWIGUNUSEDPARM(self)
     
     // signal(SIGSEGV, handler);
     
+    struct sigaction new_action;
+    new_action.sa_handler = c_handler;
+    sigemptyset (&new_action.sa_mask);
+    new_action.sa_flags = SA_RESTART;
     
-    void (*h_alrm)(int);
-    void (*h_abrt)(int);
-    void (*h_term)(int);
-    void (*h_int)(int);
+    struct sigaction old_action_term;
+    struct sigaction old_action_abrt;
+    struct sigaction old_action_int;
+    struct sigaction old_action_alrm;
+    
+    sigaction(SIGTERM,  &new_action, &old_action_term);
+    sigaction(SIGABRT,  &new_action, &old_action_abrt);
+    sigaction(SIGINT,  &new_action, &old_action_int);
+    sigaction(SIGALRM,  &new_action, &old_action_alrm);
     try {
-      h_alrm = signal(SIGALRM,  c_handler);
-      h_abrt = signal(SIGABRT, c_handler);
-      h_term = signal(SIGTERM, c_handler);
-      h_int = signal(SIGINT,  c_handler);
       wmc_set_literal_weight(arg1,arg2,arg3);
     } catch(SIGINT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process interrupted");
     } catch(SIGTERM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process terminated");
     } catch(SIGABRT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process aborted");
     } catch(SIGALRM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process timeout");
     }
-    signal(SIGTERM, h_term);
-    signal(SIGINT,  h_int);
-    signal(SIGABRT, h_abrt);
-    signal(SIGALRM, h_alrm);
+    sigaction(SIGTERM, &old_action_term, NULL);
+    sigaction(SIGABRT, &old_action_abrt, NULL);
+    sigaction(SIGINT, &old_action_int, NULL);
+    sigaction(SIGALRM, &old_action_alrm, NULL);
     
   }
   resultobj = SWIG_Py_Void();
@@ -13047,46 +13672,51 @@ SWIGINTERN PyObject *_wrap_wmc_propagate(PyObject *SWIGUNUSEDPARM(self), PyObjec
     
     // signal(SIGSEGV, handler);
     
+    struct sigaction new_action;
+    new_action.sa_handler = c_handler;
+    sigemptyset (&new_action.sa_mask);
+    new_action.sa_flags = SA_RESTART;
     
-    void (*h_alrm)(int);
-    void (*h_abrt)(int);
-    void (*h_term)(int);
-    void (*h_int)(int);
+    struct sigaction old_action_term;
+    struct sigaction old_action_abrt;
+    struct sigaction old_action_int;
+    struct sigaction old_action_alrm;
+    
+    sigaction(SIGTERM,  &new_action, &old_action_term);
+    sigaction(SIGABRT,  &new_action, &old_action_abrt);
+    sigaction(SIGINT,  &new_action, &old_action_int);
+    sigaction(SIGALRM,  &new_action, &old_action_alrm);
     try {
-      h_alrm = signal(SIGALRM,  c_handler);
-      h_abrt = signal(SIGABRT, c_handler);
-      h_term = signal(SIGTERM, c_handler);
-      h_int = signal(SIGINT,  c_handler);
       result = (SddWmc)wmc_propagate(arg1);
     } catch(SIGINT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process interrupted");
     } catch(SIGTERM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process terminated");
     } catch(SIGABRT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process aborted");
     } catch(SIGALRM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process timeout");
     }
-    signal(SIGTERM, h_term);
-    signal(SIGINT,  h_int);
-    signal(SIGABRT, h_abrt);
-    signal(SIGALRM, h_alrm);
+    sigaction(SIGTERM, &old_action_term, NULL);
+    sigaction(SIGABRT, &old_action_abrt, NULL);
+    sigaction(SIGINT, &old_action_int, NULL);
+    sigaction(SIGALRM, &old_action_alrm, NULL);
     
   }
   resultobj = SWIG_From_double((double)(result));
@@ -13117,46 +13747,51 @@ SWIGINTERN PyObject *_wrap_wmc_zero_weight(PyObject *SWIGUNUSEDPARM(self), PyObj
     
     // signal(SIGSEGV, handler);
     
+    struct sigaction new_action;
+    new_action.sa_handler = c_handler;
+    sigemptyset (&new_action.sa_mask);
+    new_action.sa_flags = SA_RESTART;
     
-    void (*h_alrm)(int);
-    void (*h_abrt)(int);
-    void (*h_term)(int);
-    void (*h_int)(int);
+    struct sigaction old_action_term;
+    struct sigaction old_action_abrt;
+    struct sigaction old_action_int;
+    struct sigaction old_action_alrm;
+    
+    sigaction(SIGTERM,  &new_action, &old_action_term);
+    sigaction(SIGABRT,  &new_action, &old_action_abrt);
+    sigaction(SIGINT,  &new_action, &old_action_int);
+    sigaction(SIGALRM,  &new_action, &old_action_alrm);
     try {
-      h_alrm = signal(SIGALRM,  c_handler);
-      h_abrt = signal(SIGABRT, c_handler);
-      h_term = signal(SIGTERM, c_handler);
-      h_int = signal(SIGINT,  c_handler);
       result = (SddWmc)wmc_zero_weight(arg1);
     } catch(SIGINT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process interrupted");
     } catch(SIGTERM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process terminated");
     } catch(SIGABRT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process aborted");
     } catch(SIGALRM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process timeout");
     }
-    signal(SIGTERM, h_term);
-    signal(SIGINT,  h_int);
-    signal(SIGABRT, h_abrt);
-    signal(SIGALRM, h_alrm);
+    sigaction(SIGTERM, &old_action_term, NULL);
+    sigaction(SIGABRT, &old_action_abrt, NULL);
+    sigaction(SIGINT, &old_action_int, NULL);
+    sigaction(SIGALRM, &old_action_alrm, NULL);
     
   }
   resultobj = SWIG_From_double((double)(result));
@@ -13187,46 +13822,51 @@ SWIGINTERN PyObject *_wrap_wmc_one_weight(PyObject *SWIGUNUSEDPARM(self), PyObje
     
     // signal(SIGSEGV, handler);
     
+    struct sigaction new_action;
+    new_action.sa_handler = c_handler;
+    sigemptyset (&new_action.sa_mask);
+    new_action.sa_flags = SA_RESTART;
     
-    void (*h_alrm)(int);
-    void (*h_abrt)(int);
-    void (*h_term)(int);
-    void (*h_int)(int);
+    struct sigaction old_action_term;
+    struct sigaction old_action_abrt;
+    struct sigaction old_action_int;
+    struct sigaction old_action_alrm;
+    
+    sigaction(SIGTERM,  &new_action, &old_action_term);
+    sigaction(SIGABRT,  &new_action, &old_action_abrt);
+    sigaction(SIGINT,  &new_action, &old_action_int);
+    sigaction(SIGALRM,  &new_action, &old_action_alrm);
     try {
-      h_alrm = signal(SIGALRM,  c_handler);
-      h_abrt = signal(SIGABRT, c_handler);
-      h_term = signal(SIGTERM, c_handler);
-      h_int = signal(SIGINT,  c_handler);
       result = (SddWmc)wmc_one_weight(arg1);
     } catch(SIGINT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process interrupted");
     } catch(SIGTERM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process terminated");
     } catch(SIGABRT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process aborted");
     } catch(SIGALRM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process timeout");
     }
-    signal(SIGTERM, h_term);
-    signal(SIGINT,  h_int);
-    signal(SIGABRT, h_abrt);
-    signal(SIGALRM, h_alrm);
+    sigaction(SIGTERM, &old_action_term, NULL);
+    sigaction(SIGABRT, &old_action_abrt, NULL);
+    sigaction(SIGINT, &old_action_int, NULL);
+    sigaction(SIGALRM, &old_action_alrm, NULL);
     
   }
   resultobj = SWIG_From_double((double)(result));
@@ -13266,46 +13906,51 @@ SWIGINTERN PyObject *_wrap_wmc_literal_weight(PyObject *SWIGUNUSEDPARM(self), Py
     
     // signal(SIGSEGV, handler);
     
+    struct sigaction new_action;
+    new_action.sa_handler = c_handler;
+    sigemptyset (&new_action.sa_mask);
+    new_action.sa_flags = SA_RESTART;
     
-    void (*h_alrm)(int);
-    void (*h_abrt)(int);
-    void (*h_term)(int);
-    void (*h_int)(int);
+    struct sigaction old_action_term;
+    struct sigaction old_action_abrt;
+    struct sigaction old_action_int;
+    struct sigaction old_action_alrm;
+    
+    sigaction(SIGTERM,  &new_action, &old_action_term);
+    sigaction(SIGABRT,  &new_action, &old_action_abrt);
+    sigaction(SIGINT,  &new_action, &old_action_int);
+    sigaction(SIGALRM,  &new_action, &old_action_alrm);
     try {
-      h_alrm = signal(SIGALRM,  c_handler);
-      h_abrt = signal(SIGABRT, c_handler);
-      h_term = signal(SIGTERM, c_handler);
-      h_int = signal(SIGINT,  c_handler);
       result = (SddWmc)wmc_literal_weight(arg1,(struct wmc_manager_t const *)arg2);
     } catch(SIGINT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process interrupted");
     } catch(SIGTERM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process terminated");
     } catch(SIGABRT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process aborted");
     } catch(SIGALRM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process timeout");
     }
-    signal(SIGTERM, h_term);
-    signal(SIGINT,  h_int);
-    signal(SIGABRT, h_abrt);
-    signal(SIGALRM, h_alrm);
+    sigaction(SIGTERM, &old_action_term, NULL);
+    sigaction(SIGABRT, &old_action_abrt, NULL);
+    sigaction(SIGINT, &old_action_int, NULL);
+    sigaction(SIGALRM, &old_action_alrm, NULL);
     
   }
   resultobj = SWIG_From_double((double)(result));
@@ -13345,46 +13990,51 @@ SWIGINTERN PyObject *_wrap_wmc_literal_derivative(PyObject *SWIGUNUSEDPARM(self)
     
     // signal(SIGSEGV, handler);
     
+    struct sigaction new_action;
+    new_action.sa_handler = c_handler;
+    sigemptyset (&new_action.sa_mask);
+    new_action.sa_flags = SA_RESTART;
     
-    void (*h_alrm)(int);
-    void (*h_abrt)(int);
-    void (*h_term)(int);
-    void (*h_int)(int);
+    struct sigaction old_action_term;
+    struct sigaction old_action_abrt;
+    struct sigaction old_action_int;
+    struct sigaction old_action_alrm;
+    
+    sigaction(SIGTERM,  &new_action, &old_action_term);
+    sigaction(SIGABRT,  &new_action, &old_action_abrt);
+    sigaction(SIGINT,  &new_action, &old_action_int);
+    sigaction(SIGALRM,  &new_action, &old_action_alrm);
     try {
-      h_alrm = signal(SIGALRM,  c_handler);
-      h_abrt = signal(SIGABRT, c_handler);
-      h_term = signal(SIGTERM, c_handler);
-      h_int = signal(SIGINT,  c_handler);
       result = (SddWmc)wmc_literal_derivative(arg1,(struct wmc_manager_t const *)arg2);
     } catch(SIGINT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process interrupted");
     } catch(SIGTERM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process terminated");
     } catch(SIGABRT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process aborted");
     } catch(SIGALRM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process timeout");
     }
-    signal(SIGTERM, h_term);
-    signal(SIGINT,  h_int);
-    signal(SIGABRT, h_abrt);
-    signal(SIGALRM, h_alrm);
+    sigaction(SIGTERM, &old_action_term, NULL);
+    sigaction(SIGABRT, &old_action_abrt, NULL);
+    sigaction(SIGINT, &old_action_int, NULL);
+    sigaction(SIGALRM, &old_action_alrm, NULL);
     
   }
   resultobj = SWIG_From_double((double)(result));
@@ -13424,46 +14074,51 @@ SWIGINTERN PyObject *_wrap_wmc_literal_pr(PyObject *SWIGUNUSEDPARM(self), PyObje
     
     // signal(SIGSEGV, handler);
     
+    struct sigaction new_action;
+    new_action.sa_handler = c_handler;
+    sigemptyset (&new_action.sa_mask);
+    new_action.sa_flags = SA_RESTART;
     
-    void (*h_alrm)(int);
-    void (*h_abrt)(int);
-    void (*h_term)(int);
-    void (*h_int)(int);
+    struct sigaction old_action_term;
+    struct sigaction old_action_abrt;
+    struct sigaction old_action_int;
+    struct sigaction old_action_alrm;
+    
+    sigaction(SIGTERM,  &new_action, &old_action_term);
+    sigaction(SIGABRT,  &new_action, &old_action_abrt);
+    sigaction(SIGINT,  &new_action, &old_action_int);
+    sigaction(SIGALRM,  &new_action, &old_action_alrm);
     try {
-      h_alrm = signal(SIGALRM,  c_handler);
-      h_abrt = signal(SIGABRT, c_handler);
-      h_term = signal(SIGTERM, c_handler);
-      h_int = signal(SIGINT,  c_handler);
       result = (SddWmc)wmc_literal_pr(arg1,(struct wmc_manager_t const *)arg2);
     } catch(SIGINT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process interrupted");
     } catch(SIGTERM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process terminated");
     } catch(SIGABRT) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process aborted");
     } catch(SIGALRM) {
-      signal(SIGTERM, h_term);
-      signal(SIGINT,  h_int);
-      signal(SIGABRT, h_abrt);
-      signal(SIGALRM, h_alrm);
+      sigaction(SIGTERM, &old_action_term, NULL);
+      sigaction(SIGABRT, &old_action_abrt, NULL);
+      sigaction(SIGINT, &old_action_int, NULL);
+      sigaction(SIGALRM, &old_action_alrm, NULL);
       SWIG_exception(SWIG_SystemError, "Process timeout");
     }
-    signal(SIGTERM, h_term);
-    signal(SIGINT,  h_int);
-    signal(SIGABRT, h_abrt);
-    signal(SIGALRM, h_alrm);
+    sigaction(SIGTERM, &old_action_term, NULL);
+    sigaction(SIGABRT, &old_action_abrt, NULL);
+    sigaction(SIGINT, &old_action_int, NULL);
+    sigaction(SIGALRM, &old_action_alrm, NULL);
     
   }
   resultobj = SWIG_From_double((double)(result));

@@ -14,7 +14,7 @@
 
 #include "except.h"
 
-void c_handler(int sig)
+static void c_handler(int sig)
 {
   throw(sig);
 }
@@ -30,46 +30,51 @@ void c_handler(int sig)
 
 // signal(SIGSEGV, handler);
 
+    struct sigaction new_action;
+    new_action.sa_handler = c_handler;
+    sigemptyset (&new_action.sa_mask);
+    new_action.sa_flags = SA_RESTART;
 
-    void (*h_alrm)(int);
-    void (*h_abrt)(int);
-    void (*h_term)(int);
-    void (*h_int)(int);
+    struct sigaction old_action_term;
+    struct sigaction old_action_abrt;
+    struct sigaction old_action_int;
+    struct sigaction old_action_alrm;
+
+    sigaction(SIGTERM,  &new_action, &old_action_term);
+    sigaction(SIGABRT,  &new_action, &old_action_abrt);
+    sigaction(SIGINT,  &new_action, &old_action_int);
+    sigaction(SIGALRM,  &new_action, &old_action_alrm);
     try {
-        h_alrm = signal(SIGALRM,  c_handler);
-        h_abrt = signal(SIGABRT, c_handler);
-        h_term = signal(SIGTERM, c_handler);
-        h_int = signal(SIGINT,  c_handler);
         $action
     } catch(SIGINT) {
-        signal(SIGTERM, h_term);
-        signal(SIGINT,  h_int);
-        signal(SIGABRT, h_abrt);
-        signal(SIGALRM, h_alrm);
+        sigaction(SIGTERM, &old_action_term, NULL);
+        sigaction(SIGABRT, &old_action_abrt, NULL);
+        sigaction(SIGINT, &old_action_int, NULL);
+        sigaction(SIGALRM, &old_action_alrm, NULL);
         SWIG_exception(SWIG_SystemError, "Process interrupted");
     } catch(SIGTERM) {
-        signal(SIGTERM, h_term);
-        signal(SIGINT,  h_int);
-        signal(SIGABRT, h_abrt);
-        signal(SIGALRM, h_alrm);
+        sigaction(SIGTERM, &old_action_term, NULL);
+        sigaction(SIGABRT, &old_action_abrt, NULL);
+        sigaction(SIGINT, &old_action_int, NULL);
+        sigaction(SIGALRM, &old_action_alrm, NULL);
         SWIG_exception(SWIG_SystemError, "Process terminated");
     } catch(SIGABRT) {
-        signal(SIGTERM, h_term);
-        signal(SIGINT,  h_int);
-        signal(SIGABRT, h_abrt);
-        signal(SIGALRM, h_alrm);
+        sigaction(SIGTERM, &old_action_term, NULL);
+        sigaction(SIGABRT, &old_action_abrt, NULL);
+        sigaction(SIGINT, &old_action_int, NULL);
+        sigaction(SIGALRM, &old_action_alrm, NULL);
         SWIG_exception(SWIG_SystemError, "Process aborted");
     } catch(SIGALRM) {
-        signal(SIGTERM, h_term);
-        signal(SIGINT,  h_int);
-        signal(SIGABRT, h_abrt);
-        signal(SIGALRM, h_alrm);
+        sigaction(SIGTERM, &old_action_term, NULL);
+        sigaction(SIGABRT, &old_action_abrt, NULL);
+        sigaction(SIGINT, &old_action_int, NULL);
+        sigaction(SIGALRM, &old_action_alrm, NULL);
         SWIG_exception(SWIG_SystemError, "Process timeout");
     }
-    signal(SIGTERM, h_term);
-    signal(SIGINT,  h_int);
-    signal(SIGABRT, h_abrt);
-    signal(SIGALRM, h_alrm);
+    sigaction(SIGTERM, &old_action_term, NULL);
+    sigaction(SIGABRT, &old_action_abrt, NULL);
+    sigaction(SIGINT, &old_action_int, NULL);
+    sigaction(SIGALRM, &old_action_alrm, NULL);
 
 }
 
