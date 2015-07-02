@@ -310,23 +310,20 @@ class LFIProblem(SemiringProbability, LogicProgram) :
             process_atom = self._process_atom
 
         for clause in self.source:
-            if isinstance(clause, Clause) or isinstance(clause, AnnotatedDisjunction):
+            if isinstance(clause, Clause):
                 if clause.head.functor == 'query' and clause.head.arity == 1:
                     continue                
                 extra_clauses = process_atom(clause.head, clause.body)
                 #yield Clause(new_head, clause.body)
                 for extra in extra_clauses:
                     yield extra
-            # elif isinstance(clause, AnnotatedDisjunction):
-            #     new_heads = []
-            #     extra_clauses_all = []
-            #     for head in clause.heads:
-            #         new_head, extra_clauses = process_atom(head, clause.body)
-            #         new_heads.append(new_head)
-            #         extra_clauses_all += extra_clauses
-            #     yield AnnotatedDisjunction(new_heads, clause.body)
-            #     for extra in extra_clauses_all:
-            #         yield extra
+            elif isinstance(clause, AnnotatedDisjunction):
+                extra_clauses_all = []
+                for head in clause.heads:
+                    extra_clauses = process_atom(head, clause.body)
+                    extra_clauses_all += extra_clauses
+                for extra in extra_clauses_all:
+                    yield extra
             else:
                 if clause.functor == 'query' and clause.arity == 1:
                     continue
