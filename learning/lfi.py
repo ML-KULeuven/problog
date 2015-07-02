@@ -238,6 +238,8 @@ class LFIProblem(SemiringProbability, LogicProgram) :
                 else:
                     return [Clause(atoms_out[0], body)]
             else:
+                if body is None:
+                    body = Term('true')
                 return [AnnotatedDisjunction(atoms_out, body)]
 
     def _process_atom_output(self, atom, body):
@@ -318,11 +320,8 @@ class LFIProblem(SemiringProbability, LogicProgram) :
                 for extra in extra_clauses:
                     yield extra
             elif isinstance(clause, AnnotatedDisjunction):
-                extra_clauses_all = []
-                for head in clause.heads:
-                    extra_clauses = process_atom(head, clause.body)
-                    extra_clauses_all += extra_clauses
-                for extra in extra_clauses_all:
+                extra_clauses = process_atom(Or.fromList(clause.heads), clause.body)
+                for extra in extra_clauses:
                     yield extra
             else:
                 if clause.functor == 'query' and clause.arity == 1:
