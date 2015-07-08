@@ -640,6 +640,53 @@ class LogicFormula(ProbLogObject):
             children = node.children
         return children
 
+    def propagate(self, nodeid, current=None):
+        """Propagate the value of the given node (true if node is positive, false if node is negative)
+        The propagation algorithm is not complete.
+
+        :param nodeid:
+        :param current:
+        :return:
+        """
+        if current is None:
+            current = {}
+
+        values = {True: self.TRUE, False: self.FALSE}
+
+        updated = set()
+        queue = {nodeid}
+        while queue:
+            nid = queue.pop()
+            if nid not in current:
+                updated.add(abs(nid))
+                current[nid] = values[nid > 0]
+
+                n = self.get_node(abs(nid))
+                t = type(n).__name__
+                if t == 'atom':
+                    pass
+                else:
+                    children = [current.get(c, c) for c in n.children]
+                    if t == 'conj' and None in children and nid > 0:
+                        raise InconsistentEvidence()
+                    elif t == 'disj' and 0 in children and nid < 0:
+                        raise InconsistentEvidence()
+                    children = list(filter(lambda x: x != 0 and x is not None, children))
+                    if len(children) == 1:  # only one child
+                        if nid < 0:
+                            queue.add(-children[0])
+                        else:
+                            queue.add(children[0])
+                    elif nid > 0 and t == 'conj':
+                        # Conjunction is true
+                        for c in children:
+                            queue.add(c)
+                    elif nid < 0 and t == 'disj':
+                        # Disjunction is false
+                        for c in children:
+                            queue.add(-c)
+        return current
+
     def to_prolog(self, yap_style=False):
         """Convert the Logic Formula to a Prolog program.
 

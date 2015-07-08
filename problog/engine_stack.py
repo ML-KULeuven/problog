@@ -129,7 +129,7 @@ class StackBasedEngine(ClauseDBEngine):
                 raise NegativeCycle(location=exec_node.database.lineno(exec_node.node.location))
             current = exec_node.parent
         
-    def execute(self, node_id, target=None, database=None, subcall=False, **kwdargs):
+    def execute(self, node_id, target=None, database=None, subcall=False, is_root=False, **kwdargs):
         """
         Execute the given node.
         :param node_id: pointer of the node in the database
@@ -150,7 +150,7 @@ class StackBasedEngine(ClauseDBEngine):
             target._cache = DefineCache()
 
         # Retrieve the list of actions needed to evaluate the top-level node.
-        actions = self.eval(node_id, parent=None, database=database, target=target, is_root=True, **kwdargs)
+        actions = self.eval(node_id, parent=None, database=database, target=target, is_root=is_root, **kwdargs)
 
         # Initialize the action stack.
         actions = list(reversed(actions))
@@ -317,17 +317,7 @@ class StackBasedEngine(ClauseDBEngine):
 
     def propagate_evidence(self, db, target, functor, args, resultnode):
         if hasattr(target, 'lookup_evidence'):
-            term = Term(functor, *args)
-            value = target.lookup_evidence.get(term)
-            if value is None:
-                # print ('No value:', term)
-                return resultnode
-            elif value:
-                # print ('True:', term)
-                return 0
-            else:
-                # print ('False:', term)
-                return None
+            return target.lookup_evidence.get(resultnode, resultnode)
         else:
             return resultnode
 

@@ -262,24 +262,24 @@ class ClauseDBEngine(GenericEngine):
             if len(query) == 1:  # evidence/1
                 if query[0].is_negative():
                     logger.debug("Grounding evidence '%s'", query[0])
-                    target = self.ground(db, -query[0], target, label=target.LABEL_EVIDENCE_NEG)
+                    target = self.ground(db, -query[0], target, label=target.LABEL_EVIDENCE_NEG, is_root=True)
                     logger.debug("Ground program size: %s", len(target))
                 else:
                     logger.debug("Grounding evidence '%s'", query[0])
-                    target = self.ground(db, query[0], target, label=target.LABEL_EVIDENCE_POS)
+                    target = self.ground(db, query[0], target, label=target.LABEL_EVIDENCE_POS, is_root=True)
                     logger.debug("Ground program size: %s", len(target))
             else:  # evidence/2
                 if str(query[1]) == 'true':
                     logger.debug("Grounding evidence '%s'", query[0])
-                    target = self.ground(db, query[0], target, label=target.LABEL_EVIDENCE_POS)
+                    target = self.ground(db, query[0], target, label=target.LABEL_EVIDENCE_POS, is_root=True)
                     logger.debug("Ground program size: %s", len(target))
                 elif str(query[1]) == 'false':
                     logger.debug("Grounding evidence '%s'", query[0])
-                    target = self.ground(db, query[0], target, label=target.LABEL_EVIDENCE_NEG)
+                    target = self.ground(db, query[0], target, label=target.LABEL_EVIDENCE_NEG, is_root=True)
                     logger.debug("Ground program size: %s", len(target))
                 else:
                     logger.debug("Grounding evidence '%s'", query[0])
-                    target = self.ground(db, query[0], target, label=target.LABEL_EVIDENCE_MAYBE)
+                    target = self.ground(db, query[0], target, label=target.LABEL_EVIDENCE_MAYBE, is_root=True)
                     logger.debug("Ground program size: %s", len(target))
 
     def _ground_queries(self, db, target, queries):
@@ -311,17 +311,14 @@ class ClauseDBEngine(GenericEngine):
             if target is None:
                 target = LogicFormula()
             # Ground queries
-
             if propagate_evidence:
                 self._ground_evidence(db, target, evidence)
                 target.lookup_evidence = {}
-                for ev in evidence:
-                    if len(ev) == 1:
-                        target.lookup_evidence[ev[0]] = not ev[0].is_negative()
-                    elif str(ev[1]) == 'true':
-                        target.lookup_evidence[ev[0]] = True
-                    elif str(ev[1]) == 'false':
-                        target.lookup_evidence[ev[0]] = False
+                for name, node in target.evidence():
+                    if node == 0 or node is None:
+                        pass
+                    else:
+                        target.propagate(node, target.lookup_evidence)
                 self._ground_queries(db, target, queries)
             else:
                 self._ground_queries(db, target, queries)
