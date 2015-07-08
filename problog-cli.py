@@ -171,6 +171,9 @@ def argparser():
 
     # Additional arguments (passed through)
     parser.add_argument('--engine-debug', action='store_true', help=argparse.SUPPRESS)
+    parser.add_argument('--propagate-evidence', action='store_true',
+                                   dest='propagate_evidence',
+                                   default=argparse.SUPPRESS, help=argparse.SUPPRESS)
 
     # SDD garbage collection
     sdd_auto_gc_group = parser.add_mutually_exclusive_group()
@@ -186,6 +189,7 @@ def argparser():
     sdd_fixvars_group.add_argument('--sdd-no-preset-variables', action='store_false',
                                    dest='sdd_preset_variables',
                                    default=argparse.SUPPRESS, help=argparse.SUPPRESS)
+
     return parser
 
 
