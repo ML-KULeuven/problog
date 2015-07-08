@@ -835,10 +835,10 @@ def _break_cycles(source, target, nodeid, ancestors, cycles_broken, content, tra
                     return target.addNot(newnode)
                 else:
                     return newnode
+
     child_cycles_broken = set()
     child_content = set()
 
-    content.add(nodeid)
     node = source.get_node(nodeid)
     nodetype = type(node).__name__
     if nodetype == 'atom':
@@ -853,6 +853,12 @@ def _break_cycles(source, target, nodeid, ancestors, cycles_broken, content, tra
             newnode = target.addAnd(children, name=newname)
         else:
             newnode = target.addOr(children, name=newname)
+
+        if target.isProbabilistic(newnode):
+            # Don't add the node if it is None
+            # Also: don't add atoms (they can't be involved in cycles)
+            content.add(nodeid)
+
     translation[nodeid].append((newnode, child_cycles_broken, child_content-child_cycles_broken))
     content |= child_content
     cycles_broken |= child_cycles_broken
