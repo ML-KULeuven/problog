@@ -150,7 +150,7 @@ class StackBasedEngine(ClauseDBEngine):
             target._cache = DefineCache()
 
         # Retrieve the list of actions needed to evaluate the top-level node.
-        actions = self.eval(node_id, parent=None, database=database, target=target, **kwdargs)
+        actions = self.eval(node_id, parent=None, database=database, target=target, is_root=True, **kwdargs)
 
         # Initialize the action stack.
         actions = list(reversed(actions))
@@ -314,18 +314,35 @@ class StackBasedEngine(ClauseDBEngine):
             # Failed unification: don't send result.
             # Send complete message.
             return [complete(parent, identifier)]
-        
-            
-    def eval_define(engine, node, context, target, parent, identifier=None, transform=None, **kwdargs) :
-        goal = (node.functor, context)
+
+    def propagate_evidence(self, db, target, functor, args, resultnode):
+        if hasattr(target, 'lookup_evidence'):
+            term = Term(functor, *args)
+            value = target.lookup_evidence.get(term)
+            if value is None:
+                # print ('No value:', term)
+                return resultnode
+            elif value:
+                # print ('True:', term)
+                return 0
+            else:
+                # print ('False:', term)
+                return None
+        else:
+            return resultnode
+
+    def eval_define(self, node, context, target, parent, identifier=None, transform=None, is_root=False, **kwdargs) :
+        functor = node.functor
+        goal = (functor, context)
         results = target._cache.get(goal)
         if results != None :
             actions = []
             n = len(results)
-            engine.stats[7] += (n-1)
             if n > 0 :
                 for result, target_node in results :
                     n -= 1
+                    if not is_root:
+                        target_node = self.propagate_evidence(kwdargs['database'], target, node.functor, result, target_node)
                     if target_node != NODE_FALSE :
                         if transform : result = transform(result)
                         if result is None :
@@ -347,17 +364,19 @@ class StackBasedEngine(ClauseDBEngine):
                     active_node.is_cycle_parent = True  # Notify it that it's buffer was flushed
                     queue = []
                     for result, node in active_node.results :
+                        if not is_root:
+                            node = self.propagate_evidence(kwdargs['database'], target, functor, result, node)
                         if transform : result = transform(result)
                         if result is None :
                             queue += [ complete(parent, identifier) ]
                         else :
                             queue += [ newResult( parent, result, node, identifier, True ) ]
                     assert(len(queue) == 1)
-                    engine.checkCycle(parent, active_node.pointer)
+                    self.checkCycle(parent, active_node.pointer)
                     return queue
                 else :
-                    evalnode = EvalDefine( pointer=engine.pointer, engine=engine, node=node, context=context, target=target, identifier=identifier, parent=parent, transform=transform, **kwdargs )
-                    engine.add_record(evalnode)
+                    evalnode = EvalDefine( pointer=self.pointer, engine=self, node=node, context=context, target=target, identifier=identifier, parent=parent, transform=transform, is_root=is_root, **kwdargs )
+                    self.add_record(evalnode)
                     return evalnode.cycleDetected(active_node)
             else :
                 children = node.children.find( context )
@@ -367,8 +386,8 @@ class StackBasedEngine(ClauseDBEngine):
                     # No children, so complete immediately.
                     return [ complete(parent, identifier) ]
                 else :
-                    evalnode = EvalDefine( to_complete=to_complete, pointer=engine.pointer, engine=engine, node=node, context=context, target=target, identifier=identifier, transform=transform, parent=parent, **kwdargs )
-                    engine.add_record(evalnode)
+                    evalnode = EvalDefine( to_complete=to_complete, pointer=self.pointer, engine=self, node=node, context=context, target=target, identifier=identifier, transform=transform, parent=parent, **kwdargs )
+                    self.add_record(evalnode)
                     target._cache.activate(goal, evalnode)
                     actions = [ evalnode.createCall( child) for child in children ]
                     return actions
@@ -840,7 +859,7 @@ class ResultSet(object) :
 class EvalDefine(EvalNode) :
     
     # A buffered Define node.
-    def __init__(self, call=None, to_complete=None, **parent_args ) : 
+    def __init__(self, call=None, to_complete=None, is_root=False, **parent_args ) :
         EvalNode.__init__(self,  **parent_args)
         # self.__buffer = defaultdict(list)
         # self.results = None
@@ -856,8 +875,14 @@ class EvalDefine(EvalNode) :
         self.call = ( self.node.functor, self.context )
         self.to_complete = to_complete
         self.is_ground = is_ground(*self.context)
+        self.is_root = is_root
         self.engine.stats[1] += 1
-        
+
+    def notifyResult(self, arguments, node=0, is_last=False, parent=None):
+        if not self.is_root:
+            node = self.engine.propagate_evidence(self.database, self.target, self.node.functor, arguments, node)
+        return super(EvalDefine, self).notifyResult(arguments, node, is_last, parent)
+
     def notifyResultMe(self, arguments, node=0, is_last=False ) :
         parent = self.pointer
         return [ newResult( parent, arguments, node, self.identifier, is_last ) ]
