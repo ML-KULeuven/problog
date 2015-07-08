@@ -77,6 +77,7 @@ def ground(argv):
     parser.add_argument('--break-cycles', action='store_true', help='perform cycle breaking')
     parser.add_argument('--keep-all', action='store_true', help='also output deterministic nodes')
     parser.add_argument('--propagate-evidence', action='store_true', help='propagate evidence')
+    parser.add_argument('--compact', action='store_true', help='allow compact model (may remove some predicates)')
     parser.add_argument('-o', '--output', type=str, help='output file', default=None)
     args = parser.parse_args(argv)
 
@@ -97,7 +98,7 @@ def ground(argv):
 
     gp = target.createFrom(
         PrologFile(args.filename, parser=DefaultPrologParser(ExtendedPrologFactory())),
-        label_all=True, avoid_name_clash=True, keep_order=True, keep_all=args.keep_all, propagate_evidence=args.propagate_evidence)
+        label_all=True, avoid_name_clash=not args.compact, keep_order=True, keep_all=args.keep_all, propagate_evidence=args.propagate_evidence)
 
     if outformat == 'pl':
         print (gp.to_prolog(), file=outfile)

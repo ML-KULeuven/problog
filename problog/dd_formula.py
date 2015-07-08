@@ -373,7 +373,11 @@ class DDEvaluator(Evaluator):
         query_def_inode = self.formula.get_inode(node)
         evidence_inode = self.evidence_inode
         # Construct the query SDD
+        # if not evidence propagated or (query and evidence share variables):
         query_sdd = self.get_manager().conjoin(query_def_inode, evidence_inode)
+        # else:
+        #    query_sdd = query_def_inode
+
         result = self.get_manager().wmc(query_sdd, self.weights, self.semiring)
         self.get_manager().deref(query_sdd)
         # TODO only normalize when there are evidence or constraints.

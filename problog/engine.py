@@ -291,6 +291,7 @@ class ClauseDBEngine(GenericEngine):
 
     def ground_all(self, db, target=None, queries=None, evidence=None, propagate_evidence=False):
         db = self.prepare(db)
+        logger = logging.getLogger('problog')
         with Timer('Grounding'):
             # Load queries: use argument if available, otherwise load from database.
             if queries is None:
@@ -312,14 +313,17 @@ class ClauseDBEngine(GenericEngine):
                 target = LogicFormula()
             # Ground queries
             if propagate_evidence:
-                self._ground_evidence(db, target, evidence)
-                target.lookup_evidence = {}
-                for name, node in target.evidence():
-                    if node == 0 or node is None:
-                        pass
-                    else:
-                        target.propagate(node, target.lookup_evidence)
-                self._ground_queries(db, target, queries)
+                with Timer('Propagating evidence'):
+                    self._ground_evidence(db, target, evidence)
+                    # delattr(target, '_cache')
+                    target.lookup_evidence = {}
+                    for name, node in target.evidence():
+                        if node == 0 or node is None:
+                            pass
+                        else:
+                            target.propagate(node, target.lookup_evidence)
+                    self._ground_queries(db, target, queries)
+                logger.debug('Propagated evidence: %s' % list(target.lookup_evidence))
             else:
                 self._ground_queries(db, target, queries)
                 self._ground_evidence(db, target, evidence)

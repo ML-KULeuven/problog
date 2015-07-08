@@ -848,8 +848,9 @@ def break_cycles(source, target, **kwdargs):
                 newnode = n
             target.addName(q, newnode, target.LABEL_QUERY)
 
+        translation = defaultdict(list)
         for q, n in source.evidence():
-            newnode = _break_cycles(source, target, abs(n), [], cycles_broken, content, translation)
+            newnode = _break_cycles(source, target, abs(n), [], cycles_broken, content, translation, is_evidence=True)
             if n < 0:
                 target.addName(q, newnode, target.LABEL_EVIDENCE_NEG)
             else:
@@ -858,12 +859,14 @@ def break_cycles(source, target, **kwdargs):
         logger.debug("Ground program size: %s", len(target))
         return target
 
-def _break_cycles(source, target, nodeid, ancestors, cycles_broken, content, translation):
+def _break_cycles(source, target, nodeid, ancestors, cycles_broken, content, translation, is_evidence=False):
     # TODO reuse from translation
     negative_node = nodeid < 0
     nodeid = abs(nodeid)
 
-    if nodeid in ancestors:
+    if not is_evidence and hasattr(source, 'lookup_evidence') and nodeid in source.lookup_evidence:
+        return source.lookup_evidence[nodeid]
+    elif nodeid in ancestors:
         cycles_broken.add(nodeid)
         return None     # cyclic node: node is False
     elif nodeid in translation:
@@ -891,7 +894,7 @@ def _break_cycles(source, target, nodeid, ancestors, cycles_broken, content, tra
     if nodetype == 'atom':
         newnode = target.addAtom(node.identifier, node.probability, node.group, node.name)
     else:
-        children = [_break_cycles(source, target, child, ancestors + [nodeid], child_cycles_broken, child_content, translation) for child in node.children]
+        children = [_break_cycles(source, target, child, ancestors + [nodeid], child_cycles_broken, child_content, translation, is_evidence) for child in node.children]
         newname = node.name
         if newname is not None and child_cycles_broken:
             newfunc = newname.functor + '_cb_' + str(len(translation[nodeid]))
