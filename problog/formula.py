@@ -3,7 +3,7 @@ from __future__ import print_function
 from collections import namedtuple, defaultdict
 import warnings
 
-from .core import transform, ProbLogObject, ProbLogError, deprecated_function, deprecated
+from .core import transform, ProbLogObject, deprecated_function, InconsistentEvidenceError
 
 from .util import Timer
 from .logic import Term
@@ -668,9 +668,9 @@ class LogicFormula(ProbLogObject):
                 else:
                     children = [current.get(c, c) for c in n.children]
                     if t == 'conj' and None in children and nid > 0:
-                        raise InconsistentEvidence()
+                        raise InconsistentEvidenceError()
                     elif t == 'disj' and 0 in children and nid < 0:
-                        raise InconsistentEvidence()
+                        raise InconsistentEvidenceError()
                     children = list(filter(lambda x: x != 0 and x is not None, children))
                     if len(children) == 1:  # only one child
                         if nid < 0:

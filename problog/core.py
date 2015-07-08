@@ -111,6 +111,12 @@ class InstallError(ProbLogError):
     pass
 
 
+class InconsistentEvidenceError(ProbLogError):
+
+    def __init__(self, message=None):
+        ProbLogError.__init__(self, 'The given evidence is inconsistent.')
+
+
 
 def process_error( err, debug=False ) :
     """Take the given error raise by ProbLog and produce a meaningful error message."""

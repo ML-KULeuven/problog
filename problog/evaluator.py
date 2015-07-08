@@ -5,13 +5,7 @@ from collections import defaultdict
 import subprocess
 import sys, os, tempfile
 import math
-from .core import ProbLogError, deprecated_function
-
-
-class InconsistentEvidenceError(ProbLogError):
-
-    def __init__(self, message=None):
-        ProbLogError.__init__(self, 'The given evidence is inconsistent.')
+from .core import InconsistentEvidenceError
 
 class Semiring(object) :
     
