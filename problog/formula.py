@@ -682,7 +682,10 @@ class LogicFormula(ProbLogObject):
         # Keep track of mutually disjunctive nodes.
         clusters = defaultdict(list)
         
-        queries = self.get_names()
+        queries = set(self.get_names())
+        for i, n, t in self:
+            if n.name is not None:
+                queries.add((n.name, i))
         
         # Keep a list of introduced not nodes to prevent duplicates.
         negative = set([])
