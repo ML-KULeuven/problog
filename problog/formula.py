@@ -54,9 +54,9 @@ class LogicFormula(ProbLogObject):
     def _create_disj( self, children, name=None):
         return self._disj(children, name)
     
-    def __init__(self, auto_compact=True, avoid_name_clash=False, keep_order=False, use_string_names=False, keep_all=False, **kwdargs):
+    def __init__(self, auto_compact=True, avoid_name_clash=False, keep_order=False, use_string_names=False, keep_all=False, propagate_weights=None, **kwdargs):
         ProbLogObject.__init__(self)
-        
+
         # List of nodes
         self.__nodes = []
         # Lookup index for 'atom' nodes, key is identifier passed to addAtom()
@@ -81,11 +81,11 @@ class LogicFormula(ProbLogObject):
         self.__constraints_me = {}
         self.__constraints = []
         self.__constraints_for_node = defaultdict(list)
+
+        self.semiring = propagate_weights
         
         self.__use_string_names = use_string_names
 
-
-        
     def constraintsForNode(self, node) :
         return self.__constraints_for_node[node]
         
@@ -246,14 +246,17 @@ class LogicFormula(ProbLogObject):
         assert(key > 0)            
         self.__nodes[ key - 1 ] = value
     
-    def _addConstraintME(self, group, node) :
-        if group is None : return
+    def _addConstraintME(self, group, node):
+        if group is None:
+            return node
         constraint = self.__constraints_me.get(group)
-        if constraint is None :
+        if constraint is None:
             constraint = ConstraintAD(group)
             self.__constraints_me[group] = constraint
-        constraint.add(node, self)
-        self.addConstraintOnNode(constraint, node)
+        node = constraint.add(node, self)
+        if node:
+            self.addConstraintOnNode(constraint, node)
+        return node
         
     def addAtom(self, identifier, probability, group=None, name=None):
         """Add an atom to the formula.
@@ -272,12 +275,15 @@ class LogicFormula(ProbLogObject):
         """
         if probability is None and not self.__keep_all:
             return self.TRUE
+        elif probability != True and self.semiring and self.semiring.is_zero(self.semiring.value(probability)):
+            return self.FALSE
+        elif probability != True and self.semiring and self.semiring.is_one(self.semiring.value(probability)):
+            return self.TRUE
         else:
             atom = self._create_atom(identifier, probability, group, name)
             node_id = self._add(atom, key=identifier)
             self.__atom_count += 1  # TODO doesn't take reuse into account
-            self._addConstraintME(group, node_id)
-            return node_id
+            return self._addConstraintME(group, node_id)
     
     def addAnd(self, components, key=None, name=None):
         """Add a conjunction to the logic formula.
@@ -445,8 +451,7 @@ class LogicFormula(ProbLogObject):
         """
         for i, n in enumerate(self.__nodes):
             yield (i+1, n, type(n).__name__)
-        
-        
+
     def iterNodes(self) :
         """Iterate over the nodes in the formula.
             
@@ -534,6 +539,16 @@ class LogicFormula(ProbLogObject):
                 if n.probability != True :
                     weights[i] = n.probability
         return weights
+
+    def get_weight(self, nodeid, semiring):
+        if self.isFalse(nodeid):
+            return semiring.zero()
+        elif self.isTrue(nodeid):
+            return semiring.one()
+        elif nodeid < 0:
+            return semiring.neg_value(self.get_node(-nodeid).probability)
+        else:
+            return semiring.pos_value(self.get_node(nodeid).probability)
         
     def extractWeights(self, semiring, weights=None) :
         """Extracts the positive and negative weights for all atoms in the data structure.
@@ -640,7 +655,29 @@ class LogicFormula(ProbLogObject):
             children = node.children
         return children
 
-    def propagate(self, nodeid, current=None):
+    def has_evidence_values(self):
+        return hasattr(self, 'lookup_evidence')
+
+    def get_evidence_value(self, node):
+        if node == 0 or node is None:
+            return node
+        elif self.has_evidence_values():
+            result = self.lookup_evidence.get(abs(node), abs(node))
+            if node < 0:
+                return self.addNot(result)
+            else:
+                return result
+        else:
+            return node
+
+    def set_evidence_value(self, node, value):
+        if node < 0:
+            self.lookup_evidence[-node] = self.addNot(value)
+        else:
+            self.lookup_evidence[node] = value
+
+
+    def propagate(self, nodeids, current=None):
         """Propagate the value of the given node (true if node is positive, false if node is negative)
         The propagation algorithm is not complete.
 
@@ -652,39 +689,60 @@ class LogicFormula(ProbLogObject):
             current = {}
 
         values = {True: self.TRUE, False: self.FALSE}
+        atoms_in_rules = defaultdict(set)
 
         updated = set()
-        queue = {nodeid}
+        queue = set(nodeids)
         while queue:
             nid = queue.pop()
-            if nid not in current:
-                updated.add(abs(nid))
-                current[nid] = values[nid > 0]
 
-                n = self.get_node(abs(nid))
-                t = type(n).__name__
-                if t == 'atom':
-                    pass
-                else:
-                    children = [current.get(c, c) for c in n.children]
-                    if t == 'conj' and None in children and nid > 0:
-                        raise InconsistentEvidenceError()
-                    elif t == 'disj' and 0 in children and nid < 0:
-                        raise InconsistentEvidenceError()
-                    children = list(filter(lambda x: x != 0 and x is not None, children))
-                    if len(children) == 1:  # only one child
+            if abs(nid) not in current:
+                updated.add(abs(nid))
+                for at in atoms_in_rules[abs(nid)]:
+                    if at in current:
+                        if current[abs(at)] == 0:
+                            queue.add(abs(at))
+                        else:
+                            queue.add(-abs(at))
+                current[abs(nid)] = values[nid > 0]
+
+            n = self.get_node(abs(nid))
+            t = type(n).__name__
+            if t == 'atom':
+                pass
+            else:
+                children = []
+                for c in n.children:
+                    ch = current.get(abs(c), abs(c))
+                    if c < 0:
+                        ch = self.addNot(ch)
+                    children.append(ch)
+                if t == 'conj' and None in children and nid > 0:
+                    raise InconsistentEvidenceError()
+                elif t == 'disj' and 0 in children and nid < 0:
+                    raise InconsistentEvidenceError()
+                children = list(filter(lambda x: x != 0 and x is not None, children))
+                if len(children) == 1:  # only one child
+                    if abs(children[0]) not in current:
                         if nid < 0:
                             queue.add(-children[0])
                         else:
                             queue.add(children[0])
-                    elif nid > 0 and t == 'conj':
-                        # Conjunction is true
-                        for c in children:
+                        atoms_in_rules[abs(children[0])].discard(abs(nid))
+                elif nid > 0 and t == 'conj':
+                    # Conjunction is true
+                    for c in children:
+                        if abs(c) not in current:
                             queue.add(c)
-                    elif nid < 0 and t == 'disj':
-                        # Disjunction is false
-                        for c in children:
+                    atoms_in_rules[abs(c)].discard(abs(nid))
+                elif nid < 0 and t == 'disj':
+                    # Disjunction is false
+                    for c in children:
+                        if abs(c) not in current:
                             queue.add(-c)
+                else:
+                    for c in children:
+                        atoms_in_rules[abs(c)].add(abs(nid))
         return current
 
     def to_prolog(self, yap_style=False):
@@ -850,7 +908,10 @@ def break_cycles(source, target, **kwdargs):
 
         translation = defaultdict(list)
         for q, n in source.evidence():
-            newnode = _break_cycles(source, target, abs(n), [], cycles_broken, content, translation, is_evidence=True)
+            if source.isProbabilistic(n):
+                newnode = _break_cycles(source, target, abs(n), [], cycles_broken, content, translation, is_evidence=True)
+            else:
+                newnode = n
             if n < 0:
                 target.addName(q, newnode, target.LABEL_EVIDENCE_NEG)
             else:
@@ -864,8 +925,8 @@ def _break_cycles(source, target, nodeid, ancestors, cycles_broken, content, tra
     negative_node = nodeid < 0
     nodeid = abs(nodeid)
 
-    if not is_evidence and hasattr(source, 'lookup_evidence') and nodeid in source.lookup_evidence:
-        return source.lookup_evidence[nodeid]
+    if not is_evidence and not source.isProbabilistic(source.get_evidence_value(nodeid)):
+        return source.get_evidence_value(nodeid)
     elif nodeid in ancestors:
         cycles_broken.add(nodeid)
         return None     # cyclic node: node is False
@@ -1168,11 +1229,39 @@ class ConstraintAD(Constraint) :
     def isActive(self) :
         return not self.isTrue() and not self.isFalse()
     
-    def add(self, node, formula) :
+    def add(self, node, formula):
+        if formula.has_evidence_values():
+            # Propagate constraint: if one of the other nodes is True: this one is false
+            for n in self.nodes:
+                if formula.get_evidence_value(n) == 0:
+                    return formula.FALSE
+            if formula.get_evidence_value(node) is None:
+                return node
+
+            if formula.semiring:
+                sr = formula.semiring
+                w = formula.get_weight(node, sr)
+                for n in self.nodes:
+                    w = sr.plus(w, formula.get_weight(n, sr))
+                if sr.is_one(w):
+                    unknown = None
+                    if formula.get_evidence_value(node) is not formula.FALSE:
+                        unknown = node
+                    for n in self.nodes:
+                        if formula.get_evidence_value(n) is not formula.FALSE:
+                            if unknown is not None:
+                                unknown = None
+                                break
+                            else:
+                                unknown = n
+                    if unknown is not None:
+                        formula.set_evidence_value(unknown, formula.TRUE)
+
         self.nodes.add(node)
-        if len(self.nodes) > 1 and self.extra_node is None :
+        if len(self.nodes) > 1 and self.extra_node is None:
             # If there are two or more choices -> add extra choice node
-            self.updateLogic( formula )
+            self.updateLogic(formula)
+        return node
     
     def encodeCNF(self) :
         if self.isActive() :

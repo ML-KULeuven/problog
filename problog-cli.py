@@ -77,6 +77,7 @@ def ground(argv):
     parser.add_argument('--break-cycles', action='store_true', help='perform cycle breaking')
     parser.add_argument('--keep-all', action='store_true', help='also output deterministic nodes')
     parser.add_argument('--propagate-evidence', action='store_true', help='propagate evidence')
+    parser.add_argument('--propagate-weights', action='store_true', help='propagate evidence')
     parser.add_argument('--compact', action='store_true', help='allow compact model (may remove some predicates)')
     parser.add_argument('-o', '--output', type=str, help='output file', default=None)
     args = parser.parse_args(argv)
@@ -96,9 +97,14 @@ def ground(argv):
     else:
         target = LogicFormula
 
+    if args.propagate_weights:
+        semiring = SemiringLogProbability()
+    else:
+        semiring = None
+
     gp = target.createFrom(
         PrologFile(args.filename, parser=DefaultPrologParser(ExtendedPrologFactory())),
-        label_all=True, avoid_name_clash=not args.compact, keep_order=True, keep_all=args.keep_all, propagate_evidence=args.propagate_evidence)
+        label_all=True, avoid_name_clash=not args.compact, keep_order=True, keep_all=args.keep_all, propagate_evidence=args.propagate_evidence, propagate_weights=semiring)
 
     if outformat == 'pl':
         print (gp.to_prolog(), file=outfile)
@@ -176,6 +182,7 @@ def argparser():
     parser.add_argument('--propagate-evidence', action='store_true',
                                    dest='propagate_evidence',
                                    default=argparse.SUPPRESS, help=argparse.SUPPRESS)
+    parser.add_argument('--propagate-weights', action='store_true', default=None, help=argparse.SUPPRESS)
 
     # SDD garbage collection
     sdd_auto_gc_group = parser.add_mutually_exclusive_group()
@@ -291,6 +298,9 @@ def main(argv):
         semiring = SemiringLogProbability()
     else:
         semiring = None
+
+    if args.propagate_weights:
+        args.propagate_weights = semiring
 
     for filename in args.filenames:
         if len(args.filenames) > 1:

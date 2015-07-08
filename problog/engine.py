@@ -317,11 +317,9 @@ class ClauseDBEngine(GenericEngine):
                     self._ground_evidence(db, target, evidence)
                     # delattr(target, '_cache')
                     target.lookup_evidence = {}
-                    for name, node in target.evidence():
-                        if node == 0 or node is None:
-                            pass
-                        else:
-                            target.propagate(node, target.lookup_evidence)
+                    ev_nodes = [node for name, node in target.evidence()
+                                if node != 0 and node is not None]
+                    target.propagate(ev_nodes, target.lookup_evidence)
                     self._ground_queries(db, target, queries)
                 logger.debug('Propagated evidence: %s' % list(target.lookup_evidence))
             else:

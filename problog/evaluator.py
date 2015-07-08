@@ -11,10 +11,16 @@ class Semiring(object) :
     
     def one(self) :
         raise NotImplementedError()
-    
+
     def zero(self) :
         raise NotImplementedError()
-        
+
+    def is_one(self, value):
+        return value == self.one
+
+    def is_zero(self, value):
+        return value == self.zero
+
     def plus(self, a, b) :
         raise NotImplementedError()
 
@@ -49,6 +55,12 @@ class SemiringProbability(Semiring) :
 
     def zero(self) :
         return 0.0
+
+    def is_one(self, value):
+        return 1.0-1e-16 < value < 1.0+1e-16
+
+    def is_zero(self, value):
+        return -1e-16 < value < 1e-16
         
     def plus(self, a, b) :
         return a + b
@@ -77,6 +89,12 @@ class SemiringLogProbability(SemiringProbability) :
 
     def zero(self) :
         return self.ninf
+
+    def is_zero(self, value):
+        return value <= -1e100
+
+    def is_one(self, value):
+        return -1e-16 < value < 1e-16
 
     def plus(self, a, b) :
         if a < b:
