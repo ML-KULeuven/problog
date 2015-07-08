@@ -314,6 +314,7 @@ class ClauseDBEngine(GenericEngine):
             # Ground queries
 
             if propagate_evidence:
+                self._ground_evidence(db, target, evidence)
                 target.lookup_evidence = {}
                 for ev in evidence:
                     if len(ev) == 1:
