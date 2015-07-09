@@ -1233,10 +1233,13 @@ class ConstraintAD(Constraint) :
         if formula.has_evidence_values():
             # Propagate constraint: if one of the other nodes is True: this one is false
             for n in self.nodes:
-                if formula.get_evidence_value(n) == 0:
+                if formula.get_evidence_value(n) == formula.TRUE:
                     return formula.FALSE
-            if formula.get_evidence_value(node) is None:
+            if formula.get_evidence_value(node) == formula.FALSE:
                 return node
+            elif formula.get_evidence_value(node) == formula.TRUE:
+                for n in self.nodes:
+                    formula.set_evidence_value(n, formula.FALSE)
 
             if formula.semiring:
                 sr = formula.semiring
@@ -1245,10 +1248,10 @@ class ConstraintAD(Constraint) :
                     w = sr.plus(w, formula.get_weight(n, sr))
                 if sr.is_one(w):
                     unknown = None
-                    if formula.get_evidence_value(node) is not formula.FALSE:
+                    if formula.get_evidence_value(node) != formula.FALSE:
                         unknown = node
                     for n in self.nodes:
-                        if formula.get_evidence_value(n) is not formula.FALSE:
+                        if formula.get_evidence_value(n) != formula.FALSE:
                             if unknown is not None:
                                 unknown = None
                                 break
