@@ -1048,16 +1048,32 @@ def builtin_sample_uniform(key, list, result, database=None, target=None, **kwda
     :param kwdargs:
     :return:
     """
-    mode = check_mode((key, list, result,), ['aLv'], database=database, **kwdargs)
+    mode = check_mode((key, list, result,), ['gLv', 'gLn'], database=database, **kwdargs)
     identifier = '_uniform_%s' % key
     elements, tail = list_elements(list)
-    prob = Constant(1/float(len(elements)))
-    results = []
-    for i, elem in enumerate(elements):
-        elem_identifier = (identifier, i)
-        # res = unify_value(result, elem)
-        results.append(((key, list, elem), target.addAtom(identifier=elem_identifier, probability=prob, group=identifier)))
-    return results
+    if len(elements) == 0:
+        return []
+    else:
+        prob = Constant(1/float(len(elements)))
+        results = []
+        if mode == 0:
+            for i, elem in enumerate(elements):
+                elem_identifier = (identifier, i)
+                # res = unify_value(result, elem)
+                results.append(((key, list, elem),
+                                target.addAtom(identifier=elem_identifier, probability=prob, group=identifier)))
+        else:
+            res = None
+            for el in elements:
+                try:
+                    res = unify_value(el, result, {})
+                    break
+                except UnifyError:
+                    pass
+            if res is not None:
+                results.append(((key, list, res),
+                                target.addAtom(identifier=identifier, probability=prob)))
+        return results
 
 
 
