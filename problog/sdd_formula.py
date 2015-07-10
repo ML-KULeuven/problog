@@ -218,6 +218,38 @@ class SDDManager(DDManager):
         sdd.wmc_manager_free(wmc_manager)
         return result
 
+    def wmc_literal(self, node, weights, semiring, literal):
+        logspace = 0
+        if semiring.isLogspace():
+            logspace = 1
+        wmc_manager = sdd.wmc_manager_new(node, logspace, self.get_manager())
+        for i, n in enumerate(sorted(weights)):
+            i += 1
+            pos, neg = weights[n]
+            sdd.wmc_set_literal_weight(n, pos, wmc_manager)   # Set positive literal weight
+            sdd.wmc_set_literal_weight(-n, neg, wmc_manager)  # Set negative literal weight
+        sdd.wmc_propagate(wmc_manager)
+
+        result = sdd.wmc_literal_pr(literal, wmc_manager)
+        sdd.wmc_manager_free(wmc_manager)
+        return result
+
+    def wmc_true(self, weights, semiring):
+        logspace = 0
+        if semiring.isLogspace():
+            logspace = 1
+        wmc_manager = sdd.wmc_manager_new(self.true(), logspace, self.get_manager())
+        for i, n in enumerate(sorted(weights)):
+            i += 1
+            pos, neg = weights[n]
+            sdd.wmc_set_literal_weight(n, pos, wmc_manager)   # Set positive literal weight
+            sdd.wmc_set_literal_weight(-n, neg, wmc_manager)  # Set negative literal weight
+        result = sdd.wmc_propagate(wmc_manager)
+        sdd.wmc_manager_free(wmc_manager)
+        return result
+
+
+
     def __del__(self):
         """
         Clean up the SDD manager.

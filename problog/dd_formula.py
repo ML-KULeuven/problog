@@ -323,7 +323,7 @@ class DDEvaluator(Evaluator):
         self.weights = {}
         self.original_weights = weights
         self.normalization = None
-
+        self.evidence_weight = None
         self.evidence_inode = None
 
     def get_manager(self):
@@ -352,16 +352,19 @@ class DDEvaluator(Evaluator):
 
     def propagate(self):
         self.initialize()
-        self.normalization = self.evaluate_evidence()
+        self.normalization = self.get_manager().wmc_true(self.weights, self.semiring)
+        self.evaluate_evidence()
 
-    def evaluate_evidence(self):
-        constraint_inode = self.formula.get_constraint_inode()
-        evidence_nodes = [self.formula.get_inode(ev) for ev in self.evidence()]
-        self.evidence_inode = self.get_manager().conjoin(constraint_inode, *evidence_nodes)
-        result = self.get_manager().wmc(self.evidence_inode, self.weights, self.semiring)
-        if result == self.semiring.zero():
-            raise InconsistentEvidenceError()
-        return result
+    def evaluate_evidence(self, recompute=False):
+        if self.evidence_weight is None or recompute:
+            constraint_inode = self.formula.get_constraint_inode()
+            evidence_nodes = [self.formula.get_inode(ev) for ev in self.evidence()]
+            self.evidence_inode = self.get_manager().conjoin(constraint_inode, *evidence_nodes)
+            result = self.get_manager().wmc(self.evidence_inode, self.weights, self.semiring)
+            if result == self.semiring.zero():
+                raise InconsistentEvidenceError()
+            self.evidence_weight = self.semiring.normalize(result, self.normalization)
+        return self.evidence_weight
 
     def evaluate(self, node):
         # Trivial case: node is deterministically True or False
@@ -382,6 +385,19 @@ class DDEvaluator(Evaluator):
         self.get_manager().deref(query_sdd)
         # TODO only normalize when there are evidence or constraints.
         result = self.semiring.normalize(result, self.normalization)
+        result = self.semiring.normalize(result, self.evidence_weight)
+        return result
+
+    def evaluate_fact(self, node):
+        if node == self.formula.TRUE:
+            return self.semiring.one()
+        elif node is self.formula.FALSE:
+            return self.semiring.zero()
+
+        inode = self.evidence_inode
+
+        result = self.get_manager().wmc_literal(inode, self.weights, self.semiring,
+                                                self.formula.atom2var[node])
         return result
 
     def set_evidence(self, index, value):

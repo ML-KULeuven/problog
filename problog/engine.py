@@ -21,13 +21,12 @@ def ground(model, target=None, queries=None, evidence=None, propagate_evidence=F
    :param target: formula in which to store ground program
    :type target: LogicFormula
    :param queries: list of queries to override the default
-   :type queries: list of Term
    :param evidence: list of evidence atoms to override the default
-   :type evidence: list of Term
    :return: the ground program
    :rtype: LogicFormula
     """
-    return DefaultEngine(**kwdargs).ground_all(model, target, queries=queries, evidence=evidence, propagate_evidence=propagate_evidence)
+    return DefaultEngine(**kwdargs).ground_all(model, target, queries=queries, evidence=evidence,
+                                               propagate_evidence=propagate_evidence)
 
 
 class GenericEngine(object):  # pragma: no cover

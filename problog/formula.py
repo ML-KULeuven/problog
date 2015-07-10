@@ -921,7 +921,6 @@ def break_cycles(source, target, **kwdargs):
         return target
 
 def _break_cycles(source, target, nodeid, ancestors, cycles_broken, content, translation, is_evidence=False):
-    # TODO reuse from translation
     negative_node = nodeid < 0
     nodeid = abs(nodeid)
 
