@@ -1108,6 +1108,8 @@ class problog_export(object):
             return float(a)
         elif t == 'list':
             return term2list(a)
+        elif t == 'term':
+            return a
         else:
             raise ValueError("Unknown type specifier '%s'!" % t)
 
@@ -1122,6 +1124,8 @@ class problog_export(object):
                 callmode += 'f'
             elif t == 'list':
                 callmode += 'L'
+            elif t == 'term':
+                callmode += '*'
             else:
                 raise ValueError("Unknown type specifier '%s'!" % t)
         for t in self.output_arguments:
@@ -1137,6 +1141,10 @@ class problog_export(object):
             return Constant(a)
         elif t == 'list':
             return list2term(a)
+        elif t == 'term':
+            if not isinstance(t, Term):
+                raise ValueError("Expected term output, got '%s' instead." % t)
+            return a
         else:
             raise ValueError("Unknown type specifier '%s'!" % t)
 
