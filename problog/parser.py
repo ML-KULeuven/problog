@@ -366,25 +366,25 @@ class PrologParser(object) :
         else :
             return Token(token, pos, special=SPECIAL_INTEGER), pos+len(token)
 
-    def _token_action(self, char) :
+    def _token_action(self, char):
         c = ord(char)
-        if c < 33 :
-            return self._skip # whitespace
-        elif c < 48 :
+        if c < 33:
+            return self._skip  # whitespace
+        elif c < 48:
             return self._token_act1[c-33]
-        elif c < 58 :
+        elif c < 58:
             return self._token_number
-        elif c < 65 :
+        elif c < 65:
             return self._token_act2[c-58]
-        elif c < 91 :
+        elif c < 91:
             return self._token_upper
-        elif c < 97 :
+        elif c < 97:
             return self._token_act3[c-91]
-        elif c < 123 :
+        elif c < 123:
             return self._token_lower
-        elif c < 127 :
+        elif c < 127:
             return self._token_act4[c-123]
-        else :
+        else:
             return None
             
     def _build_clause( self, functor, operand1, operand2, location ) :
@@ -396,14 +396,14 @@ class PrologParser(object) :
         heads.append(current)
         return self.factory.build_clause(functor=functor, operand1=heads, operand2=operand2, location=location)
         
-    def next_token(self, s, pos) :
+    def next_token(self, s, pos):
         action = self._token_action(s[pos])
         if action is None:
             raise UnexpectedCharacter(s, pos)
-        result = action(s,pos)
-        if result is None : # pragma: no cover
+        result = action(s, pos)
+        if result is None:  # pragma: no cover
             raise RuntimeError("Undefined action: '%s'" % action)
-        else :
+        else:
             return result
             
     def prepare(self) :
@@ -458,25 +458,29 @@ class PrologParser(object) :
             'div' : { 'binop': (400,'yfx',self.factory.build_binop) }
         }
         
-    def _tokenize(self, s ) :
+    def _tokenize(self, s):
         s_len = len(s)
+
         p = 0
-        while p < s_len :
+        if s[:2] == '#!':
+            p = skip_comment_line(s, p)
+        while p < s_len:
             t, p = self.next_token(s, p)
-            if t is not None :
+            if t is not None:
                 yield t
     
-    def _extract_statements(self, string, s) :
+    def _extract_statements(self, string, s):
         statement = []
-        for token in s :
-            if token.is_special(SPECIAL_END) :
+
+        for token in s:
+            if token.is_special(SPECIAL_END):
                 if not statement:
                     raise ParseError(string, 'Empty statement found', token.location)
                 yield statement
                 statement = []
-            else :
+            else:
                 statement.append(token)
-        if statement :
+        if statement:
             raise ParseError(string, 'Incomplete statement', len(string))
     
 
