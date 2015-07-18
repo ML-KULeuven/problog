@@ -280,9 +280,11 @@ class StackBasedEngine(ClauseDBEngine):
     def call(self, query, database, target, transform=None, **kwdargs ) :
         node_id = database.find(query)
         if node_id is None:
-            raise UnknownClauseInternal()
-        else:
-            return self.execute( node_id, database=database, target=target, context=self._create_context(query.args), **kwdargs)
+            node_id = database.get_builtin(query.signature)
+            if node_id is None:
+                raise UnknownClause(query.signature, database.lineno(query.location))
+
+        return self.execute(node_id, database=database, target=target, context=self._create_context(query.args), **kwdargs)
     
     def printStack(self, pointer=None) :   # pragma: no cover
         print ('===========================')
