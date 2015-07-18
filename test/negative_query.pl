@@ -1,5 +1,5 @@
 %Expected outcome:
-%  \+(p) 0.7
+%  \+p 0.7
 
 0.3::p.
 

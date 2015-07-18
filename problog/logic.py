@@ -780,11 +780,14 @@ class Not(Term) :
         Term.__init__(self, functor, child, location=location)
         self.child = child
     
-    def __repr__(self) :
+    def __repr__(self):
         c = str(self.child)
-        if isinstance(self.child, And) :
+        if isinstance(self.child, And) or isinstance(self.child, Or):
             c = '(%s)' % c
-        return '%s(%s)' % (self.functor, c)
+        if self.functor == 'not':
+            return 'not %s' % c
+        else:
+            return '%s%s' % (self.functor, c)
         
     def is_negative(self) :
         return True
