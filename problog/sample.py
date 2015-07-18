@@ -29,10 +29,11 @@ import sys
 from .program import PrologFile
 from .logic import Term, Constant, ArithmeticError
 from .engine import DefaultEngine
-from .engine_builtin import check_mode
+from .engine_builtin import check_mode, builtin_call
 from .formula import LogicFormula
 from .core import process_result
 from .util import start_timer, stop_timer
+from .engine_unify import UnifyError, unify_value
 import random
 import math
 import signal
@@ -134,7 +135,7 @@ class SampledFormula(LogicFormula):
         if key == 0:
             return None
         return self.values[key-1]
-
+    
     def addAtom(self, identifier, probability, group=None, name=None):
         if probability is None:
             return 0
@@ -160,7 +161,6 @@ class SampledFormula(LogicFormula):
             else:
                 return self.facts[identifier]
         else:
-            group_result_choice = identifier
             choice = identifier[-1]
             origin = identifier[:-1]
             if identifier not in self.facts:
@@ -218,6 +218,10 @@ class SampledFormula(LogicFormula):
             if i > 1:
                 raise ValueError("Can't combine sampled predicates. Make sure bodies are mutually exclusive.")
         return LogicFormula.addOr(self, content, **kwd)
+        
+    def isProbabilistic(self, key) :
+            """Indicates whether the given node is probabilistic."""
+            return False        
 
     def toString(self, db, with_facts=False, with_probability=False, oneline=False,
                  as_evidence=False, **extra):
@@ -291,13 +295,44 @@ def builtin_sample(term, result, target=None, engine=None, callback=None, **kwda
     actions += callback.notifyComplete()
     return True, actions
 
+def builtin_previous(term, default, engine=None, target=None, callback=None, **kwdargs):
+    # retrieve term from previous sample, default action if no previous sample
 
+    if engine.previous_result is None:
+        results = engine.call(default, subcall=True, target=target, **kwdargs)
+        actions = []
+        for res, node in results:
+            try:
+                source_values = {}
+                result_default = unify_value(default, default(*res), source_values)
+                result_term = term.apply(source_values)
+                actions += callback.notifyResult((result_term, result_default), 0, False)
+            except UnifyError:
+                pass
+        actions += callback.notifyComplete()
+
+    else:
+        actions = []
+        for n, i in engine.previous_result.queries():
+            try:
+                source_values = {}
+                result_term = unify_value(term, n, source_values)
+                result_default = default.apply(source_values)
+                actions += callback.notifyResult((result_term, result_default), 0, False)
+            except UnifyError:
+                pass
+        actions += callback.notifyComplete()
+    return True, actions
+            
+            
 def sample(model, n=1, tuples=False, **kwdargs):
     engine = DefaultEngine()
     engine.add_builtin('sample', 2, builtin_sample)
+    engine.add_builtin('value', 2, builtin_sample)
+    engine.add_builtin('previous', 2, builtin_previous)
     db = engine.prepare(model)
-
     i = 0
+    engine.previous_result = None
     while i < n:
         result = engine.ground_all(db, target=SampledFormula())
         evidence_ok = True
@@ -311,6 +346,7 @@ def sample(model, n=1, tuples=False, **kwdargs):
             else:
                 yield result.toString(db, **kwdargs)
             i += 1
+        engine.previous_result = result
 
 
 def estimate(model, n=0, **kwdargs):
