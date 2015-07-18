@@ -134,7 +134,7 @@ class SampledFormula(LogicFormula):
         if key == 0:
             return None
         return self.values[key-1]
-    
+
     def addAtom(self, identifier, probability, group=None, name=None):
         if probability is None:
             return 0
@@ -160,8 +160,9 @@ class SampledFormula(LogicFormula):
             else:
                 return self.facts[identifier]
         else:
-            group, result, choice = identifier
-            origin = (group, result)
+            group_result_choice = identifier
+            choice = identifier[-1]
+            origin = identifier[:-1]
             if identifier not in self.facts:
                 if self._isSimpleProbability(probability):
                     p = float(probability)
