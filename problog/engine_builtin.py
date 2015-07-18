@@ -89,6 +89,14 @@ def add_standard_builtins(engine, b=None, s=None, sp=None):
 
     engine.add_builtin('sample_uniform1', 3, sp(builtin_sample_uniform))
 
+    for i in range(1, 10):
+        engine.add_builtin('debugprint', i, b(builtin_debugprint))
+
+
+def builtin_debugprint(*args, **kwd):
+    print(' '.join(map(str,args)))
+    return True
+
 
 class CallModeError(GroundingError):
     """
