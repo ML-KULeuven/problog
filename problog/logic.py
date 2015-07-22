@@ -223,6 +223,9 @@ class Term(object):
         """Value of the Term obtained by computing the function is represents"""
         return computeFunction(self.functor, self.args)
 
+    def compute_value(self, functions=None):
+        return computeFunction(self.functor, self.args, functions)
+    
     @property
     def signature(self):
         """Term's signature ``functor/arity``"""
@@ -594,6 +597,10 @@ class Var(Term) :
         """Value of the constant."""
         raise ValueError('Variables do not support evaluation: {}.'.format(self.name))
 
+    def compute_value(self, functions=None):
+        """Value of the constant."""
+        raise ValueError('Variables do not support evaluation: {}.'.format(self.name))
+
     def isVar(self) :
         """Checks whether this Term represents a variable.
 
@@ -626,6 +633,9 @@ class Constant(Term) :
         """Value of the constant."""
         return self.functor
 
+    def compute_value(self, functions=None):
+        return self.functor
+                
     def isConstant(self) :
         """Checks whether this Term represents a constant.
 
@@ -950,7 +960,7 @@ def unquote(s) :
     return s.strip("'")
 
 
-def computeFunction(func, args):
+def computeFunction(func, args, extra_functions=None):
     """Compute the result of an arithmetic function given by a functor and a list of arguments.
 
     :param func: functor
@@ -967,12 +977,20 @@ def computeFunction(func, args):
         ``+/1``, ``-/1``, ``\\/1``.
 
     """
+
+    if extra_functions is None:
+        extra_functions = {}
+
     function = functions.get((unquote(func), len(args)))
     if function is None:
-        raise ArithmeticError("Unknown function '%s'/%s" % (func, len(args)))
-    else :
-        try:
-            values = [arg.value for arg in args]
+        function = extra_functions.get((unquote(func), len(args)))
+        if function is None:
+            raise ArithmeticError("Unknown function '%s'/%s" % (func, len(args)))
+    try:
+        values = [arg.compute_value(extra_functions) for arg in args]
+        if None in values:
+            return None
+        else:
             return function(*values)
-        except ZeroDivisionError:
-            raise ArithmeticError("Division by zero.")
+    except ZeroDivisionError:
+        raise ArithmeticError("Division by zero.")

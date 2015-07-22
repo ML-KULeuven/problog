@@ -120,11 +120,42 @@ def sample_value(term):
         return Constant(random.gammavariate(a, b)), 0.0
     elif term.functor == 'uniform':
         a, b = map(float, term.args)
-        return Constant(random.randrange(a, b)), 0.0
-    elif term.functor == 'constant':
+        return Constant(random.uniform(a, b)), 0.0
+    elif term.functor == 'triangular':
+        a, b, c = map(float, term.args)
+        return Constant(random.triangular(a, b, c)), 0.0
+    elif term.functor == 'vonmises':
+        a, b = map(float, term.args)
+        return Constant(random.vonmisesvariate(a, b)), 0.0
+    elif term.functor == 'weibull':
+        a, b = map(float, term.args)
+        return Constant(random.weibullvariate(a, b)), 0.0
+    elif term.functor == 'fixed':
         return term.args[0], 1.0
     else:
         raise ValueError("Unknown distribution: '%s'" % term.functor)
+
+
+class FunctionStore(object):
+
+    def __init__(self, target=None, engine=None, database=None):
+        self.target = target
+        self.engine = engine
+        self.database = database
+
+    def get(self, key, default=None):
+        functor, arity = key
+        def _function(*args):
+            term = Term(functor, *args)
+            results = self.engine.call(term, subcall=True, target=self.target, database=self.database)
+            if len(results) == 1:
+                value_id = results[0][-1]
+                return float(self.target.getValue(value_id))
+            elif len(results) == 0:
+                return None
+            else:
+                raise ValueError('Unexpected multiple results.')
+        return _function
 
 class SampledFormula(LogicFormula):
 
@@ -250,6 +281,8 @@ class SampledFormula(LogicFormula):
 
         lines = []
         for k, v in self.queries():
+            if k.functor.startswith('hidden_'):
+                continue
             if v is not None:
                 val = self.getValue(v)
                 if val is None:
@@ -322,7 +355,7 @@ def builtin_previous(term, default, engine=None, target=None, callback=None, **k
                 source_values = {}
                 result_default = unify_value(default, default(*res), source_values)
                 result_term = term.apply(source_values)
-                actions += callback.notifyResult((result_term, result_default), 0, False)
+                actions += callback.notifyResult((result_term, result_default), node, False)
             except UnifyError:
                 pass
         actions += callback.notifyComplete()
@@ -334,7 +367,11 @@ def builtin_previous(term, default, engine=None, target=None, callback=None, **k
                 source_values = {}
                 result_term = unify_value(term, n, source_values)
                 result_default = default.apply(source_values)
-                actions += callback.notifyResult((result_term, result_default), 0, False)
+                if i == 0 or i is None:
+                    v = i
+                else:
+                    v = target.addValue(engine.previous_result.getValue(i))
+                actions += callback.notifyResult((result_term, result_default), v, False)
             except UnifyError:
                 pass
         actions += callback.notifyComplete()
@@ -350,7 +387,9 @@ def sample(model, n=1, tuples=False, **kwdargs):
     i = 0
     engine.previous_result = None
     while i < n:
-        result = engine.ground_all(db, target=SampledFormula())
+        target = SampledFormula()
+        engine.functions = FunctionStore(target=target, database=db, engine=engine)
+        result = engine.ground_all(db, target=target)
         evidence_ok = True
         for name, node in result.evidence():
             if node is None:

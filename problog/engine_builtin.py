@@ -470,63 +470,102 @@ def builtin_same(arg1, arg2, **kwdargs):
     return arg1 == arg2
 
 
-def builtin_gt(arg1, arg2, **kwdargs):
+def builtin_gt(arg1, arg2, engine=None, **kwdargs):
     """``A > B``
         A and B are ground
     """
     mode = check_mode((arg1, arg2), ['gg'], functor='>', **kwdargs)
-    return arg1.value > arg2.value
+    a_value = arg1.compute_value(engine.functions)
+    b_value = arg2.compute_value(engine.functions)
+    if a_value is None or b_value is None:
+        return False
+    else:
+        return a_value > b_value
 
 
-def builtin_lt(arg1, arg2, **kwdargs):
+def builtin_lt(arg1, arg2, engine=None, **kwdargs):
     """``A > B``
         A and B are ground
     """
     mode = check_mode((arg1, arg2), ['gg'], functor='<', **kwdargs)
-    return arg1.value < arg2.value
+    a_value = arg1.compute_value(engine.functions)
+    b_value = arg2.compute_value(engine.functions)
+    if a_value is None or b_value is None:
+        return False
+    else:
+        return a_value < b_value
 
 
-def builtin_le( A, B, **k ):
+def builtin_le(arg1, arg2, engine=None, **k):
     """``A =< B``
         A and B are ground
     """
-    mode = check_mode( (A,B), ['gg'], functor='=<', **k )
-    return A.value <= B.value
+    mode = check_mode((arg1, arg2), ['gg'], functor='=<', **k)
+    a_value = arg1.compute_value(engine.functions)
+    b_value = arg2.compute_value(engine.functions)
+    if a_value is None or b_value is None:
+        return False
+    else:
+        return a_value <= b_value
 
 
-def builtin_ge( A, B, **k ):
+def builtin_ge(arg1, arg2, engine=None, **k):
     """``A >= B``
         A and B are ground
     """
-    mode = check_mode( (A,B), ['gg'], functor='>=', **k )
-    return A.value >= B.value
+    mode = check_mode((arg1, arg2), ['gg'], functor='>=', **k)
+    a_value = arg1.compute_value(engine.functions)
+    b_value = arg2.compute_value(engine.functions)
+    if a_value is None or b_value is None:
+        return False
+    else:
+        return a_value >= b_value
 
 
-def builtin_val_neq( A, B, **k ):
+def builtin_val_neq( A, B, engine=None, **k ):
     """``A =\= B``
         A and B are ground
     """
     mode = check_mode( (A,B), ['gg'], functor='=\=', **k )
-    return A.value != B.value
+    a_value = A.compute_value(engine.functions)
+    b_value = B.compute_value(engine.functions)
+    if a_value is None or b_value is None:
+        return False
+    else:
+        return a_value != b_value
 
 
-def builtin_val_eq( A, B, **k ):
+def builtin_val_eq( A, B, engine=None, **k ):
     """``A =:= B``
         A and B are ground
     """
     mode = check_mode( (A,B), ['gg'], functor='=:=', **k )
-    return A.value == B.value
+    a_value = A.compute_value(engine.functions)
+    b_value = B.compute_value(engine.functions)
+    if a_value is None or b_value is None:
+        return False
+    else:
+        return a_value == b_value
 
 
-def builtin_is( A, B, **k ):
+def builtin_is(a, b, engine=None, **k):
     """``A is B``
         B is ground
+
+        @param a:
+        @param b:
+        @param engine:
+        @param k:
     """
-    mode = check_mode( (A,B), ['*g'], functor='is', **k )
+    mode = check_mode((a, b), ['*g'], functor='is', **k)
     try:
-        R = Constant(B.value)
-        unify_value(A, R, {})
-        return [(R,B)]
+        b_value = b.compute_value(engine.functions)
+        if b_value is None:
+            return []
+        else:
+            r = Constant(b_value)
+            unify_value(a, r, {})
+            return [(r, b)]
     except UnifyError:
         return []
 

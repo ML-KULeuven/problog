@@ -107,6 +107,8 @@ class ClauseDBEngine(GenericEngine):
         if builtins:
             self.load_builtins()
 
+        self.functions = {}
+
     def load_builtins(self):
         """Load default builtins."""
         raise NotImplementedError("ClauseDBEngine.loadBuiltIns is an abstract function.")
