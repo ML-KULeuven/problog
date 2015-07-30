@@ -1,3 +1,20 @@
+"""
+Part of the ProbLog distribution.
+
+Copyright 2015 KU Leuven, DTAI Research Group
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+"""
 from __future__ import print_function
 
 from .logic import *
@@ -11,7 +28,7 @@ import os, logging, sys
 
 class SimpleProgram(LogicProgram) :
     """LogicProgram implementation as a list of clauses."""
-    
+
     def __init__(self):
         self.__clauses = []
 
@@ -21,16 +38,16 @@ class SimpleProgram(LogicProgram) :
                 self.__clauses.append(c)
         else:
             self.__clauses.append(clause)
-        
+
     def add_fact(self, fact):
         self.__clauses.append(fact)
-    
+
     def __iter__(self):
         return iter(self.__clauses)
 
 
 class PrologString(LogicProgram):
-    
+
     def __init__(self, string, parser=None, source_root='.', source_files=None) :
         self.__string = string
         self.__program = None
@@ -40,7 +57,7 @@ class PrologString(LogicProgram):
             self.parser = DefaultPrologParser(PrologFactory())
         else :
             self.parser = parser
-    
+
     def _program(self):
         """Parsed program"""
         if self.__program is None:
@@ -69,11 +86,11 @@ class PrologString(LogicProgram):
 
 class PrologFile(PrologString):
     """LogicProgram implementation as a pointer to a Prolog file.
-    
+
     :param filename: filename of the Prolog file (optional)
     :type filename: string
     """
-    
+
     def __init__(self, filename, parser=None) :
         if filename == '-':
             source_root = ''
@@ -87,37 +104,37 @@ class PrologFile(PrologString):
                     source_text = f.read()
             except IOError as err :
                 raise ProbLogError(str(err))
-        PrologString.__init__(self, source_text, parser=parser, source_root=source_root, source_files=source_files)                
-        
-        
+        PrologString.__init__(self, source_text, parser=parser, source_root=source_root, source_files=source_files)
+
+
 class PrologFactory(Factory) :
     """Factory object for creating suitable objects from the parse tree."""
-        
+
     def build_program(self, clauses) :
         return clauses
-    
+
     def build_function(self, functor, arguments, location=None) :
         return Term( functor, *arguments, location=location )
-        
+
     def build_variable(self, name, location=None) :
         return Var(name, location=location)
-        
+
     def build_constant(self, value, location=None) :
         return Constant(value, location=location)
-        
+
     def build_binop(self, functor, operand1, operand2, function=None, location=None, **extra) :
         return self.build_function("'" + functor + "'", (operand1, operand2), location=location)
 
     def build_directive(self, functor, operand, location=None, **extra) :
         head = self.build_function( '_directive', [] )
         return self.build_clause( functor, [head], operand, **extra)
-            
+
     def build_unop(self, functor, operand, location=None, **extra) :
         if functor == '-' and operand.isConstant() and (operand.isFloat() or operand.isInteger()) :
             return Constant(-operand.value)
-        
+
         return self.build_function("'" + functor + "'", (operand,) , location=location)
-        
+
     def build_list(self, values, tail=None, location=None, **extra) :
         if tail is None :
             current = Term('[]')
@@ -126,13 +143,13 @@ class PrologFactory(Factory) :
         for value in reversed(values) :
             current = self.build_function('.', (value, current), location=location )
         return current
-        
+
     def build_string(self, value, location=None) :
         return self.build_constant('"' + value + '"', location=location);
-    
+
     def build_cut(self, location=None) :
         raise NotImplementedError('Not supported!')
-        
+
     def build_clause(self, functor, operand1, operand2, location=None, **extra) :
         heads = operand1
         # TODO move this to parser code
@@ -146,30 +163,30 @@ class PrologFactory(Factory) :
             return AnnotatedDisjunction(heads, operand2, location=location)
         else :
             return Clause(operand1[0], operand2, location=location)
-        
+
     def build_disjunction(self, functor, operand1, operand2, location=None, **extra) :
         return Or(operand1, operand2, location=location)
-    
+
     def build_conjunction(self, functor, operand1, operand2, location=None, **extra) :
         return And(operand1, operand2, location=location)
-    
+
     def build_not(self, functor, operand, location=None, **extra) :
         return Not(functor, operand, location=location)
-        
+
     def build_probabilistic(self, operand1, operand2, location=None, **extra) :
         operand2.probability = operand1
         return operand2
-        
+
     def _uncurry(self, term, func=None) :
         if func is None : func = term.functor
-        
+
         body = []
         current = term
         while isinstance(current, Term) and current.functor == func :
             body.append(current.args[0])
             current = current.args[1]
         body.append(current)
-        return body    
+        return body
 
 
 class ExtendedPrologFactory(PrologFactory):
@@ -240,4 +257,3 @@ class ExtendedPrologFactory(PrologFactory):
             operand2.functor = self.neg_head_lits[operand2.signature]['n']
         operand2.probability = operand1
         return operand2
-

@@ -1,3 +1,20 @@
+"""
+Part of the ProbLog distribution.
+
+Copyright 2015 KU Leuven, DTAI Research Group
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+"""
 from __future__ import print_function
 
 from collections import defaultdict
@@ -17,16 +34,16 @@ class TransformationUnavailable(Exception):
 
 class ProbLog(object) :
     """This is a static class"""
-    
+
     def __init__(self) :
         raise Exception("This is a static class!")
-        
-    transformations = defaultdict(list)    
-        
+
+    transformations = defaultdict(list)
+
     @classmethod
     def registerTransformation(cls, src, target, action=None) :
         cls.transformations[target].append( (src, action) )
-    
+
     @classmethod
     def findPaths( cls, src, target, stack=() ) :
         # Create a destination object or any of its subclasses
@@ -37,10 +54,10 @@ class ProbLog(object) :
             #     if issubclass(d,target) :
                     d = target
                     for s, action in cls.transformations[d] :
-                        if not s in stack :                        
+                        if not s in stack :
                             for path in cls.findPaths( src, s, stack+(s,) ) :
                                 yield path + (action,d)
-    
+
     @classmethod
     def convert(cls, src, target, **kwdargs):
         """
@@ -75,7 +92,7 @@ class ProbLogError(Exception):
     """General Problog error."""
     pass
 
-class ParseError(ProbLogError) : pass 
+class ParseError(ProbLogError) : pass
 
 
 class GroundingError(ProbLogError):
@@ -120,7 +137,7 @@ class InconsistentEvidenceError(ProbLogError):
 
 def process_error( err, debug=False ) :
     """Take the given error raise by ProbLog and produce a meaningful error message."""
-    
+
     if debug :
         traceback.print_exc()
 
@@ -178,20 +195,20 @@ class ProbLogObject(object) :
 
 class transform(object) :
     """Decorator"""
-    
+
     def __init__(self, cls1, cls2, func=None) :
         self.cls1 = cls1
         self.cls2 = cls2
         if not issubclass(cls2, ProbLogObject) :
-            raise TypeError("Conversion only possible for subclasses of ProbLogObject.")        
+            raise TypeError("Conversion only possible for subclasses of ProbLogObject.")
         if func != None :
             self(func)
-        
+
     def __call__(self, f) :
         # TODO check type contract?
         ProbLog.registerTransformation( self.cls1, self.cls2, f )
         return f
-        
+
 def list_transformations() :
     print ('Available transformations:')
     for target in ProbLog.transformations :
@@ -216,4 +233,3 @@ def deprecated_function(name, func):
         warnings.warn('%s is deprecated. Use %s instead.' % (name, func.__name__), FutureWarning)
         return func(*args, **kwdargs)
     return _wrapped
-

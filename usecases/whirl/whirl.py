@@ -1,17 +1,17 @@
-# Whirl ProbLog implementation
-#
-# Builds a TF-IDF model in the background using NLTK and Scikit-learn, such
-# that ProbLog can make use of document similarity while reasoning.
-#
-# From:
-# W. W. Cohen. Whirl: A word-based information representation language.
-# Artificial Intelligence, 118(1):163-196, 2000.
-#
-# Author:
-# - Wannes Meert
-# - Anton Dries
-#
+"""
+Whirl ProbLog implementation
 
+Builds a TF-IDF model in the background using NLTK and Scikit-learn, such
+that ProbLog can make use of document similarity while reasoning.
+
+From:
+W. W. Cohen. Whirl: A word-based information representation language.
+Artificial Intelligence, 118(1):163-196, 2000.
+
+Author:
+- Wannes Meert
+- Anton Dries
+"""
 from __future__ import print_function
 
 import os, sys
@@ -132,4 +132,3 @@ if __name__ == "__main__":
   print('Sim(0,2): {}'.format(cosine_similarity(texts_weights[0], texts_weights[2])))
 
   #print(tokens)
-

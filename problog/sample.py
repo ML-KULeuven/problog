@@ -1,5 +1,4 @@
 #! /usr/bin/env python
-
 """
 Query-based sampler for ProbLog 2.1
 ===================================
@@ -20,6 +19,23 @@ Query-based sampler for ProbLog 2.1
           -> query evidence first
           -> if evidence is false, restart immediately
   Currently, evidence is supported through post-processing.
+
+
+Part of the ProbLog distribution.
+
+Copyright 2015 KU Leuven, DTAI Research Group
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+     http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
 """
 
 from __future__ import print_function
@@ -111,14 +127,14 @@ def sample_value(term):
         raise ValueError("Unknown distribution: '%s'" % term.functor)
 
 class SampledFormula(LogicFormula):
-    
+
     def __init__(self):
         LogicFormula.__init__(self)
         self.facts = {}
         self.groups = {}
         self.probability = 1.0  # Try to compute
         self.values = []
-        
+
     def _isSimpleProbability(self, term):
         try:
             t = float(term)
@@ -126,20 +142,20 @@ class SampledFormula(LogicFormula):
         except ArithmeticError as e:
             return False
         #return type(term) == float or term.isConstant()
-        
+
     def addValue(self, value):
         self.values.append(value)
         return len(self.values)
-        
+
     def getValue(self, key):
         if key == 0:
             return None
         return self.values[key-1]
-    
+
     def addAtom(self, identifier, probability, group=None, name=None):
         if probability is None:
             return 0
-        
+
         if group is None:  # Simple fact
             if identifier not in self.facts:
                 if self._isSimpleProbability(probability):
@@ -170,7 +186,7 @@ class SampledFormula(LogicFormula):
                         r = self.groups[origin]  # remaining probability in the group
                     else:
                         r = 1.0
-                    
+
                     if r is None or r < 1e-8:   # r is too small or another choice was made for this origin
                         value = False
                         q = 0
@@ -200,7 +216,7 @@ class SampledFormula(LogicFormula):
             if p is not None:
                 self.probability *= p
         self.groups = {}
-                
+
     def addAnd(self, content, **kwdargs):
         i = 0
         for c in content:
@@ -209,7 +225,7 @@ class SampledFormula(LogicFormula):
             if i > 1:
                 raise ValueError("Can't combine sampled predicates. Use sample/2 to extract sample.")
         return LogicFormula.addAnd(self, content)
-        
+
     def addOr(self, content, **kwd):
         i = 0
         for c in content:
@@ -218,10 +234,10 @@ class SampledFormula(LogicFormula):
             if i > 1:
                 raise ValueError("Can't combine sampled predicates. Make sure bodies are mutually exclusive.")
         return LogicFormula.addOr(self, content, **kwd)
-        
+
     def isProbabilistic(self, key) :
             """Indicates whether the given node is probabilistic."""
-            return False        
+            return False
 
     def toString(self, db, with_facts=False, with_probability=False, oneline=False,
                  as_evidence=False, **extra):
@@ -269,7 +285,7 @@ class SampledFormula(LogicFormula):
                 else:
                     lines.append((k.functor,) + k.args + (val,))
         return list(set(lines))
-        
+
 
 def translate(db, atom_id):
     if type(atom_id) == tuple:
@@ -323,8 +339,8 @@ def builtin_previous(term, default, engine=None, target=None, callback=None, **k
                 pass
         actions += callback.notifyComplete()
     return True, actions
-            
-            
+
+
 def sample(model, n=1, tuples=False, **kwdargs):
     engine = DefaultEngine()
     engine.add_builtin('sample', 2, builtin_sample)
@@ -420,6 +436,6 @@ def main(args):
     if args.timeout:
         stop_timer()
 
-    
+
 if __name__ == '__main__':
     main(sys.argv[1:])

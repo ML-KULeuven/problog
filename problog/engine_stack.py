@@ -1,3 +1,20 @@
+"""
+Part of the ProbLog distribution.
+
+Copyright 2015 KU Leuven, DTAI Research Group
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+"""
 from __future__ import print_function
 
 import sys
@@ -11,11 +28,11 @@ from .engine_builtin import add_standard_builtins, IndirectCallCycleError
 
 class NegativeCycle(GroundingError):
     """The engine does not support negative cycles."""
-    
+
     def __init__(self, location=None):
         GroundingError.__init__(self, 'Negative cycle detected', location)
 
-        
+
 class InvalidEngineState(Exception):
     pass
 
@@ -23,20 +40,20 @@ NODE_TRUE = 0
 NODE_FALSE = None
 
 def call(obj, args, kwdargs) :
-    return ( 'e', obj, args, kwdargs ) 
+    return ( 'e', obj, args, kwdargs )
 
 def newResult(obj, result, ground_node, source, is_last) :
     return ( 'r', obj, (result, ground_node, source, is_last), {} )
 
 def complete(obj, source) :
     return ( 'c', obj, (source,), {} )
-    
+
 
 class StackBasedEngine(ClauseDBEngine):
 
     def __init__(self, label_all=False, **kwdargs):
         ClauseDBEngine.__init__(self, **kwdargs)
-        
+
         self.node_types = {}
         self.node_types['fact'] = self.eval_fact
         self.node_types['conj'] = self.eval_conj
@@ -48,17 +65,17 @@ class StackBasedEngine(ClauseDBEngine):
         self.node_types['choice'] = self.eval_choice
         self.node_types['builtin'] = self.eval_builtin
         self.node_types['extern'] = self.eval_extern
-        
+
         self.cycle_root = None
         self.pointer = 0
         self.stack_size = 128
         self.stack = [None] * self.stack_size
-        
+
         self.stats = [0] * 10
-        
+
         self.debug = False
         self.trace = False
-        
+
         self.label_all = label_all
 
         self.debugger = kwdargs.get('debugger')
@@ -78,29 +95,29 @@ class StackBasedEngine(ClauseDBEngine):
             else :
                 raise UnknownClauseInternal()
         return exec_func(node_id=node_id, node=node, **kwdargs)
-        
+
     def create_node_type(self, node_type) :
         return self.node_types.get(node_type)
-            
+
     def load_builtins(self):
         addBuiltIns(self)
 
     def add_simple_builtin(self, predicate, arity, function):
         return self.add_builtin(predicate, arity, SimpleBuiltIn(function))
-    
+
     def grow_stack(self) :
         self.stack += [None] * self.stack_size
         self.stack_size = self.stack_size * 2
-        
+
     def shrink_stack(self) :
         self.stack_size = 128
         self.stack = [None] * self.stack_size
-            
+
     def add_record(self, record) :
         if self.pointer >= self.stack_size : self.grow_stack()
         self.stack[self.pointer] = record
         self.pointer += 1
-    
+
     def notifyCycle(self, childnode) :
         # Optimization: we can usually stop when we reach a node on_cycle.
         #   However, when we swap the cycle root we need to also notify the old cycle root up to the new cycle root.
@@ -112,13 +129,13 @@ class StackBasedEngine(ClauseDBEngine):
         while current != root :
             if current is None : raise IndirectCallCycleError(location=childnode.database.lineno(childnode.node.location))
             exec_node = self.stack[current]
-            if exec_node.on_cycle : 
+            if exec_node.on_cycle :
                 break
             new_actions = exec_node.createCycle()
             actions += new_actions
             current = exec_node.parent
         return actions
-        
+
     def checkCycle(self, child, parent) :
         current = child
         while current > parent :
@@ -128,7 +145,7 @@ class StackBasedEngine(ClauseDBEngine):
             if isinstance(exec_node, EvalNot) :
                 raise NegativeCycle(location=exec_node.database.lineno(exec_node.node.location))
             current = exec_node.parent
-        
+
     def execute(self, node_id, target=None, database=None, subcall=False, is_root=False, **kwdargs):
         """
         Execute the given node.
@@ -263,7 +280,7 @@ class StackBasedEngine(ClauseDBEngine):
         self.printStack()     # pragma: no cover
         print ('Collected results:', solutions)    # pragma: no cover
         raise InvalidEngineState('Engine did not complete correctly!')    # pragma: no cover
-    
+
     def cleanup(self, obj):
         """
         Remove the given node from the stack and lower the pointer.
@@ -275,8 +292,8 @@ class StackBasedEngine(ClauseDBEngine):
         self.stack[obj] = None
         while self.pointer > 0 and self.stack[self.pointer-1] is None:
             self.pointer -= 1
-        
-        
+
+
     def call(self, query, database, target, transform=None, **kwdargs ) :
         node_id = database.find(query)
         if node_id is None:
@@ -285,7 +302,7 @@ class StackBasedEngine(ClauseDBEngine):
                 raise UnknownClause(query.signature, database.lineno(query.location))
 
         return self.execute(node_id, database=database, target=target, context=self._create_context(query.args), **kwdargs)
-    
+
     def printStack(self, pointer=None) :   # pragma: no cover
         print ('===========================')
         for i,x in enumerate(self.stack) :
@@ -295,8 +312,8 @@ class StackBasedEngine(ClauseDBEngine):
                 elif self.cycle_root != None and i == self.cycle_root.pointer  :
                     print ('ccc %s: %s' % (i,x) )
                 else :
-                    print ('    %s: %s' % (i,x) )        
-        
+                    print ('    %s: %s' % (i,x) )
+
     def eval_fact(self, parent, node_id, node, context, target, identifier, **kwdargs):
         try:
             # Verify that fact arguments unify with call arguments.
@@ -373,7 +390,7 @@ class StackBasedEngine(ClauseDBEngine):
             else :
                 children = node.children.find( context )
                 to_complete = len(children)
-            
+
                 if to_complete == 0 :
                     # No children, so complete immediately.
                     return [ complete(parent, identifier) ]
@@ -383,10 +400,10 @@ class StackBasedEngine(ClauseDBEngine):
                     target._cache.activate(goal, evalnode)
                     actions = [ evalnode.createCall( child) for child in children ]
                     return actions
-    
+
     def eval_conj(engine, **kwdargs) :
         return engine.eval_default(EvalAnd, **kwdargs)
-    
+
     def eval_disj(engine, parent, node, **kwdargs) :
         if len(node.children) == 0 :
             # No children, so complete immediately.
@@ -395,7 +412,7 @@ class StackBasedEngine(ClauseDBEngine):
             evalnode = EvalOr( pointer=engine.pointer, engine=engine, parent=parent, node=node, **kwdargs)
             engine.add_record( evalnode )
             return [ evalnode.createCall( child ) for child in node.children ]
-            
+
     def eval_neg(engine, **kwdargs) :
         return engine.eval_default(EvalNot, **kwdargs)
 
@@ -418,10 +435,10 @@ class StackBasedEngine(ClauseDBEngine):
                 return output
             except UnifyError:
                 pass
-            
+
         if transform is None:
             transform = Transformations()
-        
+
         transform.addFunction(result_transform)
 
         origin = '%s/%s' % (node.functor,len(node.args))
@@ -472,7 +489,7 @@ class StackBasedEngine(ClauseDBEngine):
         except UnifyError:
             # Call and clause head are not unifiable, just fail (complete without results).
             return [complete(parent, identifier)]
-            
+
     def handle_nonground(self, location=None, database=None, node=None, **kwdargs) :
         raise NonGroundProbabilisticClause(location=database.lineno(node.location))
 
@@ -496,7 +513,7 @@ class StackBasedEngine(ClauseDBEngine):
         origin = (node.group, result)
         ground_node = target.addAtom(origin + (node.choice,), probability, group=origin, name=name)
         # Notify parent.
-        
+
         if ground_node is not None:
             return [newResult(parent, result, ground_node, identifier, True)]
         else:
@@ -507,7 +524,7 @@ class StackBasedEngine(ClauseDBEngine):
 
     def eval_builtin(self, **kwdargs):
         return self.eval_default(EvalBuiltIn, **kwdargs)
-    
+
     def eval_default(self, eval_type, **kwdargs) :
         node = eval_type(pointer=self.pointer, engine=self, **kwdargs)
         cleanup, actions = node()    # Evaluate the node
@@ -531,7 +548,7 @@ class EvalNode(object):
         self.transform = transform
         self.call = call
         self.on_cycle = False
-        
+
     def notifyResult(self, arguments, node=0, is_last=False, parent=None ) :
         if parent is None : parent = self.parent
         if self.transform : arguments = self.transform(arguments)
@@ -542,15 +559,15 @@ class EvalNode(object):
                 return []
         else :
             return [ newResult( parent, arguments, node, self.identifier, is_last ) ]
-            
+
     def notifyComplete(self, parent=None) :
         if parent is None : parent = self.parent
         return [ complete( parent, self.identifier ) ]
-        
+
     def createCall(self, node_id, *args, **kwdargs) :
         base_args = {}
         base_args['database'] = self.database
-        base_args['target'] = self.target 
+        base_args['target'] = self.target
         base_args['context'] = self.context
         base_args['parent'] = self.pointer
         base_args['identifier'] = self.identifier
@@ -558,14 +575,14 @@ class EvalNode(object):
         base_args['call'] = self.call
         base_args.update(kwdargs)
         return call( node_id, args, base_args )
-        
+
     def createCycle(self) :
         self.on_cycle = True
         return []
-        
+
     def node_str(self) :      # pragma: no cover
         return str(self.node)
-        
+
     def __str__(self) :       # pragma: no cover
         if hasattr(self.node, 'location') :
             pos = self.database.lineno(self.node.location)
@@ -585,20 +602,20 @@ class EvalOr(EvalNode) :
     # - 'newResult' is forwarded to parent
     # - 'complete' waits until it is called C times, then sends signal to parent
     # Can be cleanup after 'complete' was sent
-    
-    def __init__(self, **parent_args ) : 
+
+    def __init__(self, **parent_args ) :
         EvalNode.__init__(self, **parent_args)
         self.results = ResultSet()
         self.to_complete = len(self.node.children)
         self.engine.stats[0] += 1
-            
+
     def isOnCycle(self) :
         return self.on_cycle
-    
+
     def flushBuffer(self, cycle=False):
         func = lambda result, nodes: self.target.addOr(nodes, readonly=(not cycle), name=None)
         self.results.collapse(func)
-            
+
     def newResult(self, result, node=NODE_TRUE, source=None, is_last=False ) :
         if self.isOnCycle() :
             res = self.engine._fix_context(result)
@@ -612,7 +629,7 @@ class EvalOr(EvalNode) :
                 self.results[ res ] = result_node
                 actions = []
                 if self.isOnCycle() : actions += self.notifyResult(res, result_node)
-                if is_last : 
+                if is_last :
                     a, act = self.complete(source)
                     actions += act
                 else :
@@ -626,40 +643,40 @@ class EvalOr(EvalNode) :
                 return self.complete(source)
             else :
                 return False, []
-    
+
     def complete(self, source=None) :
         self.to_complete -= 1
         if self.to_complete == 0:
             self.flushBuffer()
             actions = []
-            if not self.isOnCycle() : 
+            if not self.isOnCycle() :
                 for result, node in self.results :
                     actions += self.notifyResult(result,node)
             actions += self.notifyComplete()
             return True, actions
         else :
             return False, []
-            
+
     def createCycle(self) :
         self.on_cycle = True
         self.flushBuffer(True)
         actions = []
         for result, node in self.results :
-            actions += self.notifyResult(result,node) 
+            actions += self.notifyResult(result,node)
         return actions
-        
+
     def node_str(self) :  # pragma: no cover
         return ''
-    
+
     def __str__(self) :   # pragma: no cover
         return EvalNode.__str__(self) + ' tc: ' + str(self.to_complete)
 
 
 class NestedDict(object) :
-    
+
     def __init__(self) :
         self.__base = {}
-        
+
     def __getitem__(self, key) :
         p_key, s_key = key
         p_key = (p_key, len(s_key))
@@ -667,13 +684,13 @@ class NestedDict(object) :
         for s in s_key :
             elem = elem[s]
         return elem
-        
+
     def get(self, key, default=None) :
         try :
             return self[key]
         except KeyError :
             return default
-        
+
     def __contains__(self, key) :
         p_key, s_key = key
         p_key = (p_key, len(s_key))
@@ -684,10 +701,10 @@ class NestedDict(object) :
             return True
         except KeyError :
             return False
-            
+
     def __setitem__(self, key, value) :
         p_key, s_key = key
-        p_key = (p_key, len(s_key))        
+        p_key = (p_key, len(s_key))
         if s_key :
             elem = self.__base.get(p_key)
             if elem is None :
@@ -702,7 +719,7 @@ class NestedDict(object) :
             elem[s_key[-1]] = value
         else :
             self.__base[p_key] = value
-        
+
     def __delitem__(self, key) :
         p_key, s_key = key
         p_key = (p_key, len(s_key))
@@ -722,30 +739,30 @@ class NestedDict(object) :
                     break
         else :
             del self.__base[p_key]
-    
+
     def __str__(self) :       # pragma: no cover
         return str(self.__base)
 
 
-class DefineCache(object) : 
-    
+class DefineCache(object) :
+
     def __init__(self) :
         self.__non_ground = NestedDict()
         self.__ground = NestedDict()
         self.__active = NestedDict()
-        
+
     def is_dont_cache(self, goal) :
         return goal[0][:9] == '_nocache_'
-    
+
     def activate(self, goal, node) :
         self.__active[goal] = node
-        
+
     def deactivate(self, goal) :
         del self.__active[goal]
-        
+
     def getEvalNode(self, goal) :
         return self.__active.get(goal)
-        
+
     def __setitem__(self, goal, results) :
         if self.is_dont_cache(goal) : return
         # Results
@@ -765,13 +782,13 @@ class DefineCache(object) :
             for res_key in res_keys :
                 key = (functor, res_key)
                 self.__ground[ key ] = results[res_key]
-                
+
     def get(self, key, default=None) :
         try :
             return self[key]
         except KeyError :
             return default
-                
+
     def __getitem__(self, goal) :
         functor, args = goal
         if is_ground(*args) :
@@ -779,24 +796,24 @@ class DefineCache(object) :
         else :
             #res_keys = self.__non_ground[goal]
             return self.__non_ground[goal].items()
-            
+
     def __contains__(self, goal) :
         functor, args = goal
         if is_ground(*args) :
             return goal in self.__ground
         else :
             return goal in self.__non_ground
-            
+
     def __str__(self) :       # pragma: no cover
         return '%s\n%s' % (self.__non_ground, self.__ground)
 
 class ResultSet(object) :
-    
+
     def __init__(self) :
         self.results = []
         self.index = {}
         self.collapsed = False
-    
+
     def __setitem__(self, result, node) :
         index = self.index.get(result)
         if index is None :
@@ -809,27 +826,27 @@ class ResultSet(object) :
         else :
             assert(not self.collapsed)
             self.results[index][1].append( node )
-        
+
     def __getitem__(self, result) :
         index = self.index[result]
         result, node = self.results[index]
         return node
-        
+
     def get(self, key, default=None) :
         try :
             return self[key]
         except KeyError :
             return None
-        
+
     def keys(self) :
-        return [ result for result, node in self.results ] 
-        
+        return [ result for result, node in self.results ]
+
     def items(self) :
         return self.results
-        
+
     def __len__(self) :
         return len(self.results)
-        
+
     def collapse(self, function) :
         if not self.collapsed :
             for i,v in enumerate(self.results) :
@@ -837,33 +854,33 @@ class ResultSet(object) :
                 collapsed_node = function(result, node)
                 self.results[i] = (result,collapsed_node)
             self.collapsed = True
-    
+
     def __contains__(self, key) :
         return key in self.index
-    
+
     def __iter__(self) :
         return iter(self.results)
-        
+
     def __str__(self) :   # pragma: no cover
         return str(self.results)
-        
-        
+
+
 class EvalDefine(EvalNode) :
-    
+
     # A buffered Define node.
     def __init__(self, call=None, to_complete=None, is_root=False, **parent_args ) :
         EvalNode.__init__(self,  **parent_args)
         # self.__buffer = defaultdict(list)
         # self.results = None
-        
+
         self.results = ResultSet()
-        
+
         self.cycle_children = []
         self.cycle_close = set()
         self.is_cycle_root = False
         self.is_cycle_child = False
         self.is_cycle_parent = False
-        
+
         self.call = ( self.node.functor, self.context )
         self.to_complete = to_complete
         self.is_ground = is_ground(*self.context)
@@ -878,18 +895,18 @@ class EvalDefine(EvalNode) :
     def notifyResultMe(self, arguments, node=0, is_last=False ) :
         parent = self.pointer
         return [ newResult( parent, arguments, node, self.identifier, is_last ) ]
-        
+
     def notifyResultChildren(self, arguments, node=0, is_last=False ) :
         parents = self.cycle_children
         return [ newResult( parent, arguments, node, self.identifier, is_last ) for parent in parents ]
-    
+
     def newResult(self, result, node=NODE_TRUE, source=None, is_last=False ) :
         if self.is_cycle_child :
             if is_last :
                 return True, self.notifyResult(result, node, is_last=is_last)
             else :
                 return False, self.notifyResult(result, node, is_last=is_last)
-        else :    
+        else :
             if self.isOnCycle() or self.isCycleParent() :
                 assert(self.results.collapsed)
                 res = self.engine._fix_context(result)
@@ -934,14 +951,14 @@ class EvalDefine(EvalNode) :
                     # if self.is_ground :
                     #     self.engine.cycle_root.cycle_close -= set(self.cycle_children)
 
-                    if is_last : 
+                    if is_last :
                         a, act = self.complete(source)
                         actions += act
                     else :
                         a = False
                     return a, actions
             else :
-#                print ('RESULT', self.node, result)    
+#                print ('RESULT', self.node, result)
                 assert(not self.results.collapsed)
                 res = self.engine._fix_context(result)
                 self.results[res] = node
@@ -949,7 +966,7 @@ class EvalDefine(EvalNode) :
                     return self.complete(source)
                 else :
                     return False, []
-    
+
     def complete(self, source=None) :
         if self.is_cycle_child :
             return True, self.notifyComplete()
@@ -962,7 +979,7 @@ class EvalDefine(EvalNode) :
                 self.target._cache[ cache_key ] = self.results
                 self.target._cache.deactivate(cache_key)
                 actions = []
-                if not self.isOnCycle() : 
+                if not self.isOnCycle() :
                     n = len(self.results)
                     if n :
                         for result, node in self.results :
@@ -975,13 +992,13 @@ class EvalDefine(EvalNode) :
                 return True, actions
             else :
                 return False, []
-            
+
     def flushBuffer(self, cycle=False) :
         def func( res, nodes ) :
             cache_key = (self.node.functor, res)
             if cache_key in self.target._cache :
                 stored_result = self.target._cache[ cache_key ]
-                assert(len(stored_result)==1) 
+                assert(len(stored_result)==1)
                 node = stored_result[0][1]
             else :
                 if self.engine.label_all:
@@ -995,13 +1012,13 @@ class EvalDefine(EvalNode) :
             #     self.target.addName(name, node, self.target.LABEL_NAMED)
             return node
         self.results.collapse(func)
-                
+
     def isOnCycle(self) :
         return self.on_cycle
-        
+
     def isCycleParent(self) :
         return bool(self.cycle_children) or self.is_cycle_parent
-            
+
     def cycleDetected(self, cycle_parent) :
         queue = []
         goal = (self.node.functor, self.context)
@@ -1011,11 +1028,11 @@ class EvalDefine(EvalNode) :
         self.is_cycle_child = True
         # Register this node as a cycle child of cycle_parent
         cycle_parent.cycle_children.append(self.pointer)
-        
+
         cycle_parent.flushBuffer(True)
         for result, node in cycle_parent.results :
-            queue += self.notifyResultMe(result,node) 
-        
+            queue += self.notifyResultMe(result,node)
+
         if cycle_root != None and cycle_parent.pointer < cycle_root.pointer :
             # New parent is earlier in call stack as current cycle root
             # Unset current root
@@ -1045,17 +1062,17 @@ class EvalDefine(EvalNode) :
             # Queue a create cycle message that will be passed up the call stack.
             queue += self.engine.notifyCycle(self)
         return queue
-    
+
     def closeCycle(self, toplevel) :
         if self.is_cycle_root and toplevel :
             self.engine.cycle_root = None
             actions = []
             for cc in self.cycle_close :
-                actions += self.notifyComplete(parent=cc) 
+                actions += self.notifyComplete(parent=cc)
             return actions
         else :
             return []
-    
+
     def createCycle(self) :
         if self.on_cycle :  # Already on cycle
             # Pass message to parent
@@ -1068,17 +1085,17 @@ class EvalDefine(EvalNode) :
             self.flushBuffer(True)
             actions = []
             for result, node in self.results :
-                actions += self.notifyResult(result,node) 
+                actions += self.notifyResult(result,node)
             return actions
 
     def node_str(self) :  # pragma: no cover
         return str(Term(self.node.functor, *self.context))
-        
+
     def __str__(self) :   # pragma: no cover
          extra = ['tc: %s' % self.to_complete]
          if self.is_cycle_child : extra.append('CC')
          if self.is_cycle_root : extra.append('CR')
-         if self.isCycleParent() : extra.append('CP') 
+         if self.isCycleParent() : extra.append('CP')
          if self.on_cycle : extra.append('*')
          if self.cycle_children : extra.append('c_ch: %s' % (self.cycle_children,))
          if self.cycle_close : extra.append('c_cl: %s' % (self.cycle_close,))
@@ -1091,15 +1108,15 @@ class EvalNot(EvalNode) :
     # - 'newResult' stores results and does not request actions
     # - 'complete: sends out newResults and complete signals
     # Can be cleanup after 'complete' was sent
-    
-    def __init__(self, **parent_args ) : 
+
+    def __init__(self, **parent_args ) :
         EvalNode.__init__(self, **parent_args)
         self.nodes = set()  # Store ground nodes
         self.engine.stats[2] += 1
-        
+
     def __call__(self) :
         return False, [ self.createCall( self.node.child ) ]
-        
+
     def newResult(self, result, node=NODE_TRUE, source=None, is_last=False ) :
         if node != NODE_FALSE :
             self.nodes.add( node )
@@ -1107,7 +1124,7 @@ class EvalNot(EvalNode) :
             return self.complete(source)
         else :
             return False, []
-    
+
     def complete(self, source=None) :
         actions = []
         if self.nodes :
@@ -1118,30 +1135,30 @@ class EvalNot(EvalNode) :
             actions += self.notifyResult(self.context, NODE_TRUE)
         actions += self.notifyComplete()
         return True, actions
-        
+
     def createCycle(self) :
         raise NegativeCycle(location=self.database.lineno(self.node.location))
-        
+
     def node_str(self) :  # pragma: no cover
         return ''
-        
+
 class Transformations(object) :
-    
+
     def __init__(self) :
         self.functions = []
         self.constant = None
-    
+
     def addConstant( self, constant ) :
         pass
         # if self.constant is None :
         #     self.constant = self(constant)
         #     self.functions = []
-            
+
     def addFunction( self, function ) :
         # print ('add', function, self.constant)
         # if self.constant is None :
             self.functions.append(function)
-            
+
     def __call__(self, result) :
         # if self.constant != None :
         #     return self.constant
@@ -1150,18 +1167,18 @@ class Transformations(object) :
                 if result is None : return None
                 result = f(result)
             return result
-            
-        
+
+
 class EvalAnd(EvalNode) :
-    
+
     def __init__(self, **parent_args) :
         EvalNode.__init__(self, **parent_args)
         self.to_complete = 1
         self.engine.stats[3] += 1
-        
+
     def __call__(self) :
         return False, [ self.createCall(  self.node.children[0], identifier=None ) ]
-        
+
     def newResult(self, result, node=0, source=None, is_last=False) :
         if source is None :     # Result from the first conjunct.
             # We will create a second conjunct, which needs to send a 'complete' signal.
@@ -1193,7 +1210,7 @@ class EvalAnd(EvalNode) :
                 return True, self.notifyResult(result, target_node, is_last=True)
             else:
                 return False, self.notifyResult(result, target_node, is_last=False)
-    
+
     def complete(self, source=None) :
         self.to_complete -= 1
         if self.to_complete == 0 :
@@ -1201,15 +1218,15 @@ class EvalAnd(EvalNode) :
         else :
             assert(self.to_complete > 0)
             return False, []
-    
+
     def node_str(self) :  # pragma: no cover
         return ''
-    
+
     def __str__(self) :   # pragma: no cover
         return EvalNode.__str__(self) + ' tc: %s' % self.to_complete
-    
-class EvalBuiltIn(EvalNode) : 
-    
+
+class EvalBuiltIn(EvalNode) :
+
     def __init__(self, call_origin=None, **kwdargs) :
         EvalNode.__init__(self, **kwdargs)
         if call_origin != None :
@@ -1218,7 +1235,7 @@ class EvalBuiltIn(EvalNode) :
             self.location = None
         self.call_origin = call_origin
         self.engine.stats[4] += 1
-    
+
     def __call__(self) :
         try:
             return self.node(*self.context, engine=self.engine, database=self.database, target=self.target, location=self.location, callback=self, transform=self.transform)
@@ -1233,14 +1250,14 @@ class EvalBuiltIn(EvalNode) :
 
 
 
-        
+
 
 class BooleanBuiltIn(object) :
     """Simple builtin that consist of a check without unification. (e.g. var(X), integer(X), ... )."""
-    
+
     def __init__(self, base_function) :
         self.base_function = base_function
-    
+
     def __call__( self, *args, **kwdargs ):
         callback = kwdargs.get('callback')
         if self.base_function(*args, **kwdargs) :
@@ -1248,7 +1265,7 @@ class BooleanBuiltIn(object) :
             return True, callback.notifyResult(args,NODE_TRUE,True)
         else :
             return True, callback.notifyComplete()
-            
+
     def __str__(self) :   # pragma: no cover
         return str(self.base_function)
 
@@ -1258,7 +1275,7 @@ class SimpleBuiltIn(object) :
 
     def __init__(self, base_function) :
         self.base_function = base_function
-    
+
     def __call__(self, *args, **kwdargs ) :
         callback = kwdargs.get('callback')
         results = self.base_function(*args, **kwdargs)
@@ -1274,13 +1291,13 @@ class SimpleBuiltIn(object) :
 
     def __str__(self) :    # pragma: no cover
         return str(self.base_function)
-        
+
 class SimpleProbabilisticBuiltIn(object) :
     """Simple builtin that does cannot be involved in a cycle or require engine information and has 0 or more results."""
 
     def __init__(self, base_function) :
         self.base_function = base_function
-    
+
     def __call__(self, *args, **kwdargs ) :
         callback = kwdargs.get('callback')
         results = self.base_function(*args, **kwdargs)
@@ -1297,7 +1314,5 @@ class SimpleProbabilisticBuiltIn(object) :
 
 
 def addBuiltIns(engine) :
-    
-    add_standard_builtins(engine, BooleanBuiltIn, SimpleBuiltIn, SimpleProbabilisticBuiltIn )
-    
 
+    add_standard_builtins(engine, BooleanBuiltIn, SimpleBuiltIn, SimpleProbabilisticBuiltIn )

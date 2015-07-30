@@ -1,3 +1,20 @@
+"""
+Part of the ProbLog distribution.
+
+Copyright 2015 KU Leuven, DTAI Research Group
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+"""
 from __future__ import print_function
 
 import tempfile, os, sys, subprocess
@@ -12,12 +29,12 @@ from .core import transform, CompilationError
 from .util import Timer, subprocess_check_call
 
 class DSharpError(CompilationError) :
-    
+
     def __init__(self) :
         CompilationError.__init__(self, 'DSharp has encountered an error. See INSTALL for instructions on how to install an alternative knowledge compiler.')
 
 class NNF(LogicDAG, Evaluatable) :
-    
+
     def __init__(self, **kwdargs):
         LogicDAG.__init__(self, auto_compact=False)
 
@@ -26,10 +43,10 @@ class NNF(LogicDAG, Evaluatable) :
 
 
 class SimpleNNFEvaluator(Evaluator) :
-    
+
     def __init__(self, formula, semiring, weights=None) :
         Evaluator.__init__(self, formula, semiring)
-        self.__nnf = formula        
+        self.__nnf = formula
         self.__probs = {}
         self.__given_weights = weights
 
@@ -38,12 +55,12 @@ class SimpleNNFEvaluator(Evaluator) :
 
     def initialize(self, with_evidence=True) :
         self.__probs.clear()
-        
+
         model_weights = self.__nnf.extractWeights(self.semiring, self.__given_weights)
         for n, p in model_weights.items() :
             self.__probs[n] = p[0]
             self.__probs[-n] = p[1]
-                        
+
         if with_evidence :
             for ev in self.evidence() :
                 self.set_evidence( abs(ev), ev > 0 )
@@ -54,26 +71,26 @@ class SimpleNNFEvaluator(Evaluator) :
 
     def propagate(self) :
         self.initialize()
-        
+
     def get_z(self) :
         result = self.get_weight( len(self.__nnf) )
         return result
-        
+
     def evaluate_evidence(self):
         self.initialize(False)
         for ev in self.evidence():
             self.set_value( abs(ev), ev > 0 )
-        
+
         result = self.get_weight( len(self.__nnf) )
-        
+
         return result
-        
+
     def evaluate(self, node) :
-        if node == 0 : 
+        if node == 0 :
             return self.semiring.one()
         elif node is None :
             return self.semiring.zero()
-        else :        
+        else :
             p = self.get_weight(abs(node))
             n = self.get_weight(-abs(node))
             self.set_value(abs(node), (node > 0) )
@@ -83,10 +100,10 @@ class SimpleNNFEvaluator(Evaluator) :
                 return self.semiring.normalize(result,self.get_z())
             else :
                 return result
-        
+
     def reset_value(self, index, pos, neg) :
         self.set_weight( index, pos, neg)
-            
+
     def get_weight(self, index) :
         if index == 0 :
             return self.semiring.one()
@@ -99,11 +116,11 @@ class SimpleNNFEvaluator(Evaluator) :
                 return w
             else :
                 return w
-                
+
     def set_weight(self, index, pos, neg) :
         self.__probs[index] = pos
         self.__probs[-index] = neg
-        
+
     def set_evidence(self, index, value ) :
         pos = self.semiring.one()
         neg = self.semiring.zero()
@@ -111,7 +128,7 @@ class SimpleNNFEvaluator(Evaluator) :
             self.set_weight(index, pos, neg)
         else :
             self.set_weight(index, neg, pos)
-            
+
     def set_value(self, index, value ) :
         if value :
             pos = self.get_weight(index)
@@ -123,12 +140,12 @@ class SimpleNNFEvaluator(Evaluator) :
     def _calculateWeight(self, key) :
         assert(key != 0)
         assert(key != None)
-        assert(key > 0) 
-        
+        assert(key > 0)
+
         node = self.__nnf.getNode(key)
         ntype = type(node).__name__
         assert(ntype != 'atom')
-        
+
         childprobs = [ self.get_weight(c) for c in node.children ]
         if ntype == 'conj' :
             p = self.semiring.one()
@@ -141,26 +158,26 @@ class SimpleNNFEvaluator(Evaluator) :
                 p = self.semiring.plus(p,c)
             return p
         else :
-            raise TypeError("Unexpected node type: '%s'." % nodetype)    
+            raise TypeError("Unexpected node type: '%s'." % nodetype)
 
 
 class Compiler(object) :
-    
+
     __compilers = {}
-    
+
     @classmethod
     def getDefault(cls) :
         if system_info.get('c2d', False) :
             return _compile_with_c2d
         else :
             return _compile_with_dsharp
-    
+
     @classmethod
     def get(cls, name) :
         result = cls.__compilers.get(name)
         if result is None : result = cls.getDefault()
         return result
-        
+
     @classmethod
     def add(cls, name, func) :
         cls.__compilers[name] = func
@@ -173,16 +190,16 @@ if system_info.get('c2d', False) :
         os.close(fd)
         nnf_file = cnf_file + '.nnf'
         cmd = ['cnf2dDNNF', '-dt_method', '0', '-smooth_all', '-reduce', '-in', cnf_file ]
-        
+
         try :
             os.remove(cnf_file)
         except OSError :
-            pass        
+            pass
         try :
             os.remove(nnf_file)
         except OSError :
             pass
-        
+
         return _compile( cnf, cmd, cnf_file, nnf_file )
     Compiler.add( 'c2d', _compile_with_c2d )
 
@@ -191,36 +208,36 @@ if system_info.get('c2d', False) :
 def _compile_with_dsharp( cnf, nnf=None, **kwdargs) :
     with Timer('DSharp compilation'):
         cnf_file = tempfile.mkstemp('.cnf')[1]
-        nnf_file = tempfile.mkstemp('.nnf')[1]    
+        nnf_file = tempfile.mkstemp('.nnf')[1]
         cmd = ['dsharp', '-Fnnf', nnf_file, '-smoothNNF','-disableAllLits', cnf_file ] #
-        
+
         try :
             result = _compile( cnf, cmd, cnf_file, nnf_file )
         except subprocess.CalledProcessError :
             raise DSharpError()
-        
+
         try :
             os.remove(cnf_file)
         except OSError :
-            pass        
+            pass
         try :
             os.remove(nnf_file)
         except OSError :
             pass
-        
+
     return result
 Compiler.add( 'dsharp', _compile_with_dsharp )
 
 
 def _compile(cnf, cmd, cnf_file, nnf_file) :
     names = cnf.getNamesWithLabel()
-    
+
     if cnf.isTrivial() :
         nnf = NNF()
         weights = cnf.getWeights()
         for i in range(1,cnf.getAtomCount()+1) :
             nnf.addAtom( i, weights.get(i))
-        or_nodes = []  
+        or_nodes = []
         for i in range(1,cnf.getAtomCount()+1) :
             or_nodes.append( nnf.addOr( (i, -i) ) )
         if or_nodes :
@@ -230,7 +247,7 @@ def _compile(cnf, cmd, cnf_file, nnf_file) :
             nnf.addName(name, node, label)
         for c in cnf.constraints() :
             nnf.add_constraint(c.copy())
-            
+
         return nnf
     else :
         with open(cnf_file, 'w') as f :
@@ -251,15 +268,15 @@ def _compile(cnf, cmd, cnf_file, nnf_file) :
 
 
 def _load_nnf(filename, cnf) :
-    
+
     nnf = NNF()
 
     weights = cnf.getWeights()
-    
+
     names_inv = defaultdict(list)
     for name,node,label in cnf.getNamesWithLabel() :
         names_inv[node].append((name,label))
-    
+
     with open(filename) as f :
         line2node = {}
         rename = {}
@@ -286,7 +303,7 @@ def _load_nnf(filename, cnf) :
                 lnum += 1
             elif line[0] == 'O' :
                 children = map(lambda x : line2node[int(x)], line[3:])
-                line2node[lnum] = nnf.addOr( children )        
+                line2node[lnum] = nnf.addOr( children )
                 lnum += 1
             else :
                 print ('Unknown line type')
@@ -295,5 +312,5 @@ def _load_nnf(filename, cnf) :
                 nnf.addName(actual_name, None, label)
     for c in cnf.constraints() :
         nnf.add_constraint(c.copy(rename))
-                
+
     return nnf

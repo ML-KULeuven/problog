@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 # encoding: utf-8
-
 """Simple HTTP server for ProbLog.
 
 This module only defines the server interface.
@@ -12,7 +11,7 @@ The operation of the server is determined by four options:
     timeout (default: 60)       Maximum *processing* time of the ProbLog subprocess
     memout (default: 1Gb)       Maximum memory usage of the ProbLog subprocess
     servefiles (default: No)    Whether to serve a file for undefined paths. (This is potentially unsafe.)
-    
+
 The server defines the following paths:
 
     http://hostname:port/problog?model=... [GET,POST]
@@ -21,11 +20,25 @@ The server defines the following paths:
 
 If ``servefiles`` is enabled other paths will be treated as file access requests.
 
-Copyright 2015 Anton Dries, Wannes Meert.
-All rights reserved.
+__author__ = Anton Dries
+__author__ = Wannes Meert
 
+Part of the ProbLog distribution.
+
+Copyright 2015 KU Leuven, DTAI Research Group
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
 """
-
 from __future__ import print_function
 
 # Load general Python modules
@@ -72,9 +85,9 @@ if sys.version_info.major == 2 :
     import hashlib
     def compute_hash(model) :
         return hashlib.md5(model).hexdigest() # Python 2
-    
+
 else :
-    import http.server as BaseHTTPServer    
+    import http.server as BaseHTTPServer
     import urllib.parse as urlparse
     def toBytes( string ) :
         return bytes(string, 'UTF-8')
@@ -88,17 +101,17 @@ PATHS = {}
 
 class handle_url(object) :
     """Decorator for adding a handler for a URL.
-    
+
     Example: to add a handler for GET /hello?name=World
 
     @handle_url('/hello')
     def hello(name) :
         return 200, 'text/plain', 'Hello %s!' % name
     """
-    
+
     def __init__(self, path) :
         self.path = path
-    
+
     def __call__(self, f) :
         PATHS[self.path] = f
 
@@ -113,21 +126,21 @@ def model_path(*args) :
 
 def call_process( cmd, timeout, memout ) :
     """Call a subprocess with time and memory restrictions.
-    
-        Note: 
+
+        Note:
             - the time restriction only works on Linux and Mac OS X
             - the memory restriction only works on Linux
-            
+
         :param:timeout: CPU time in seconds
         :param:memout: Maximum memory in bytes
         :return: Output of the subprocess.
-        
+
     """
 
     def setlimits() :
         resource.setrlimit(resource.RLIMIT_CPU, (timeout, timeout))
         resource.setrlimit(resource.RLIMIT_AS, (memout, memout))
-        
+
     return subprocess.check_output(cmd, preexec_fn=setlimits)
 
 def wrap_callback(callback, jsonstr):
@@ -137,18 +150,18 @@ def wrap_callback(callback, jsonstr):
 #def run_problog( model ) :
     #"""Evaluate the given model and return the probabilities."""
     #model = model[0]
-    
+
     #handle, tmpfile = tempfile.mkstemp('.pl')
     #with open(tmpfile, 'w') as f :
         #f.write(model)
-    
+
     #handle, outfile = tempfile.mkstemp('.out')
-    
+
     #cmd = [ 'python', root_path('run_problog.py'), tmpfile, outfile ]
-    
+
     #try :
         #call_process(cmd, DEFAULT_TIMEOUT, DEFAULT_MEMOUT * (1 << 30))
-        
+
         #with open(outfile) as f :
             #result = f.read()
         #code, datatype, datavalue = result.split(None,2)
@@ -336,7 +349,7 @@ class ProbLogHTTP(BaseHTTPServer.BaseHTTPRequestHandler) :
                 else :
                     self.send_response(404)
                     self.end_headers()
-                    self.wfile.write(toBytes('File not found!'))  
+                    self.wfile.write(toBytes('File not found!'))
             else :
                 code, datatype, data = action( **query )
                 self.send_response(code)
@@ -351,7 +364,7 @@ class ProbLogHTTP(BaseHTTPServer.BaseHTTPRequestHandler) :
     def serveFile(self, filename) :
         """Serve a file."""
         if filename == '/' : filename = '/index.html'
-        
+
         filetype, encoding = mimetypes.guess_type(filename)
         filename = root_path(filename)
         try :
@@ -362,12 +375,12 @@ class ProbLogHTTP(BaseHTTPServer.BaseHTTPRequestHandler) :
             if encoding :
                 self.send_header("Content-Encoding", encoding)
             self.end_headers()
-            self.wfile.write(toBytes(data))            
+            self.wfile.write(toBytes(data))
         except :
             self.send_response(404)
             self.end_headers()
-            self.wfile.write(toBytes('File not found!'))  
-        
+            self.wfile.write(toBytes('File not found!'))
+
     def log_message(self,format, *args) :
         try :
             # Remove arguments from GET request, only keep path
@@ -380,9 +393,9 @@ class ProbLogHTTP(BaseHTTPServer.BaseHTTPRequestHandler) :
                 args = (args0,) + args[1:]
         except Exception :
             pass
-        
+
         args = (self.client_address[0],) + args
-        format = '[%s] ' + format        
+        format = '[%s] ' + format
         logger.info(format % args)
 
 if __name__ == '__main__' :
@@ -401,7 +414,7 @@ if __name__ == '__main__' :
     DEFAULT_MEMOUT = args.memout
     SERVE_FILES = args.servefiles
     CACHE_MODELS = not args.nocaching
-    logger.info('Starting server on port %d (timeout=%d, memout=%dGb)' % (args.port, DEFAULT_TIMEOUT, DEFAULT_MEMOUT ))    
+    logger.info('Starting server on port %d (timeout=%d, memout=%dGb)' % (args.port, DEFAULT_TIMEOUT, DEFAULT_MEMOUT ))
 
     server_address = ('', args.port)
     httpd = BaseHTTPServer.HTTPServer( server_address, ProbLogHTTP )
@@ -409,4 +422,3 @@ if __name__ == '__main__' :
         import webbrowser
         webbrowser.open( 'file://' + os.path.join(os.path.abspath(here), 'index_local.html'), new=2, autoraise=True)
     httpd.serve_forever()
-

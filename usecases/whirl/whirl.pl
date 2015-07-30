@@ -111,20 +111,53 @@ q5a(Movie, Cat) :- review(Movie ,Review),
               similar(Movie, Movie2).
 %query(q5a(M,C)).
 
-% Many predicate
+% Many predicate (naive)
 many_int_prob(L) :- many_int(L, 0, 0, L).
-
 many_int([], P, N, L) :- T is P+N, T > 0, S is P/T, w(S,L).
 S::w(S,_).
 many_int([H|T], PA, NA, S) :-
    (  call(H), PAN is PA + 1, NAN is NA;      % Test: true
     \+call(H), PAN is PA,     NAN is NA + 1), % Test: false
    many_int(T, PAN, NAN, S).
-
-many(Template, Test) :-
+many(Template, Test) :- 
     findall(Test, Template, L),
     many_int_prob(L).
 
+% Many predicate
+sample_uniform(L,E) :- sample_uniform(L,E,1).
+sample_uniform(L,E,ID) :-
+    length(L,N),
+    sample_u(L,N,E,ID).
+sample_u([E|L],N,E,ID) :-
+    P is 1/N,
+    su(P,E,L,ID).
+sample_u([H|L],N,E,ID) :-
+    P is 1/N,
+    \+ su(P,H,L,ID),
+    M is N-1,
+    sample_u(L,M,E,ID).
+P::su(P,_,_,_).
+help(F1,F2,In,N,T) :-
+    append_vars_to_list(N,In,L),
+    X=..[F2|L],
+    call(X),
+    X=..[F2|Vs],
+    T=..[F1|Vs].
+append_vars_to_list(0,In,In).
+append_vars_to_list(N,In,[_|Out]) :-
+    N > 0,
+    NN is N-1,
+    append_vars_to_list(NN,In,Out).
+many_uniform(Test,Template,In,A) :-
+    findall(X,help(Test,Template,In,A,X),List),
+    sample_uniform(List,E),
+    call(E).
+many_uniform(Test,Template,In,A,ID) :-
+    findall(X,help(Test,Template,In,A,X),List),
+    sample_uniform(List,E,ID),
+    call(E).
+many_linear(Template, Test) :- 
+    many_uniform(Test, Template, [], 1, q).
 
 % Movie that is currently playing and has many academy awards
 q5(M) :-

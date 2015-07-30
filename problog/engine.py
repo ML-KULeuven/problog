@@ -1,3 +1,20 @@
+"""
+Part of the ProbLog distribution.
+
+Copyright 2015 KU Leuven, DTAI Research Group
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+"""
 from __future__ import print_function
 
 import logging
@@ -31,28 +48,28 @@ def ground(model, target=None, queries=None, evidence=None, propagate_evidence=F
 
 class GenericEngine(object):  # pragma: no cover
     """Generic interface to a grounding engine."""
-    
+
     def prepare(self, db):
         """Prepare the given database for querying.
         Calling this method is optional.
-        
+
        :param db: logic program
-       :returns: logic program in optimized format where builtins are initialized and directives have been evaluated 
+       :returns: logic program in optimized format where builtins are initialized and directives have been evaluated
         """
         raise NotImplementedError('GenericEngine.prepare is an abstract method.')
-        
+
     def query(self, db, term):
         """Evaluate a query without generating a ground program.
-        
+
        :param db: logic program
        :param term: term to query; variables should be represented as None
        :returns: list of tuples of argument for which the query succeeds.
         """
         raise NotImplementedError('GenericEngine.query is an abstract method.')
-        
+
     def ground(self, db, term, target=None, label=None):
         """Ground a given query term and store the result in the given ground program.
-        
+
        :param db: logic program
        :param term: term to ground; variables should be represented as None
        :param target: target logic formula to store grounding in (a new one is created if none is given)
@@ -60,10 +77,10 @@ class GenericEngine(object):  # pragma: no cover
        :returns: logic formula (target if given)
         """
         raise NotImplementedError('GenericEngine.ground is an abstract method.')
-        
+
     def ground_all(self, db, target=None, queries=None, evidence=None):
         """Ground all queries and evidence found in the the given database.
-        
+
        :param db: logic program
        :param target: logic formula to ground into
        :param queries: list of queries to evaluate instead of the ones in the logic program
@@ -71,7 +88,7 @@ class GenericEngine(object):  # pragma: no cover
        :returns: ground program
         """
         raise NotImplementedError('GenericEngine.ground_all is an abstract method.')
-        
+
 
 class ClauseDBEngine(GenericEngine):
     """Parent class for all Python ClauseDB-based engines."""
@@ -83,7 +100,7 @@ class ClauseDBEngine(GenericEngine):
         self.__builtin_index = {}
         self.__builtins = []
         self.__externals = {}
-        
+
         self._unique_number = 0
         self.unknown = self.UNKNOWN_ERROR
 
@@ -93,7 +110,7 @@ class ClauseDBEngine(GenericEngine):
     def load_builtins(self):
         """Load default builtins."""
         raise NotImplementedError("ClauseDBEngine.loadBuiltIns is an abstract function.")
-            
+
     def get_builtin(self, index):
         """Get builtin's evaluation function based on its identifier.
        :param index: index of the builtin
@@ -101,7 +118,7 @@ class ClauseDBEngine(GenericEngine):
         """
         real_index = -(index + 1)
         return self.__builtins[real_index]
-        
+
     def add_builtin(self, predicate, arity, function):
         """
         Add a builtin.
@@ -116,7 +133,7 @@ class ClauseDBEngine(GenericEngine):
     def get_builtins(self):
         """Get the list of builtins."""
         return self.__builtin_index
-        
+
     def prepare(self, db):
         """Convert given logic program to suitable format for this engine.
         Calling this method is optional, but it allows to perform multiple operations on the same database.
@@ -135,7 +152,7 @@ class ClauseDBEngine(GenericEngine):
 
     def execute(self, node_id, database=None, context=None, target=None, **kwdargs):
         raise NotImplementedError("ClauseDBEngine.execute is an abstract function.")
-        
+
     def get_non_cache_functor(self):
         """
         Get a unique functor that is excluded from caching.
@@ -144,7 +161,7 @@ class ClauseDBEngine(GenericEngine):
         """
         self._unique_number += 1
         return '_nocache_%s' % self._unique_number
-        
+
     def _process_directives(self, db):
         """Process directives present in the database."""
         term = Term('_directive')
@@ -152,13 +169,13 @@ class ClauseDBEngine(GenericEngine):
         if directive_node is None:
             return True    # no directives
         directives = db.getNode(directive_node).children
-        
+
         gp = LogicFormula()
         while directives:
             current = directives.pop(0)
             self.execute(current, database=db, context=self._create_context((), define=None), target=gp)
         return True
-            
+
     def _create_context(self, content, define=None):
         """Create a variable context."""
         return content
@@ -191,10 +208,10 @@ class ClauseDBEngine(GenericEngine):
                 return []
         else:
             return [x for x, y in result]
-    
+
     def ground(self, db, term, gp=None, label=None, **kwdargs):
         """Ground a query on the given database.
-        
+
        :param db: logic program
        :type db: LogicProgram
        :param term: query term
@@ -222,7 +239,7 @@ class ClauseDBEngine(GenericEngine):
         if not results:
             gp.addName(term, None, label)
         return gp
-        
+
     def _ground(self, db, term, gp=None, silent_fail=True, assume_prepared=False, **kwdargs):
         # Convert logic program if needed.
         if not assume_prepared:
@@ -251,7 +268,7 @@ class ClauseDBEngine(GenericEngine):
                 return gp, []
             else:
                 raise UnknownClause(term.signature, location=db.lineno(term.location))
-    
+
         return gp, results
 
     def _ground_evidence(self, db, target, evidence):
@@ -325,15 +342,15 @@ class ClauseDBEngine(GenericEngine):
                 self._ground_queries(db, target, queries)
                 self._ground_evidence(db, target, evidence)
         return target
-    
+
     def add_external_calls(self, externals):
         self.__externals.update(externals)
-        
+
     def get_external_call(self, func_name):
         if self.__externals is None or func_name not in self.__externals:
             return None
         return self.__externals[func_name]
-    
+
 
 class UnknownClauseInternal(Exception):
     """Undefined clause in call used internally."""
@@ -349,11 +366,11 @@ class NonGroundProbabilisticClause(GroundingError):
 
 class UnknownClause(GroundingError):
     """Undefined clause in call."""
-    
+
     def __init__(self, signature, location):
         GroundingError.__init__(self, "No clauses found for '%s'" % signature, location)
 
-    
+
 from .engine_stack import StackBasedEngine as DefaultEngine
 
 
@@ -377,12 +394,12 @@ def intersection(l1, l2):
     return r
 
 class ClauseIndex(list):
-    
+
     def __init__(self, parent, arity):
         self.__parent = parent
         self.__index = [ defaultdict(set) for i in range(0,arity) ]
         self.__optimized = False
-        
+
     def optimize(self):
         if not self.__optimized:
             self.__optimized = True
@@ -391,7 +408,7 @@ class ClauseIndex(list):
                 arg_none = arg_index[None]
                 self.__index[i] = { k: tuple(sorted(v | arg_none)) for k,v in arg_index.items() if k != None }
                 self.__index[i][None] = tuple(sorted(arg_none))
-        
+
     def find(self, arguments):
         self.optimize()
         results = None
@@ -408,7 +425,7 @@ class ClauseIndex(list):
                     results = curr
                 else:  # Already have a selection
                     results = intersection(results, curr)
-            if results == []: 
+            if results == []:
                 # print ('FIND', arguments, results)
                 return []
         if results is None:
@@ -417,11 +434,11 @@ class ClauseIndex(list):
         else:
             # print ('FIND', arguments, results)
             return results
-    
+
     def _add(self, key, item):
         for i, k in enumerate(key):
             self.__index[i][k].add(item)
-        
+
     def append(self, item):
         list.append(self, item)
         key = []
@@ -432,50 +449,50 @@ class ClauseIndex(list):
             else:
                 key.append(None)
         self._add(key, item)
-        
+
 
 class ClauseDB(LogicProgram):
     """Compiled logic program.
-    
+
     A logic program is compiled into a table of instructions.
     The types of instructions are:
-    
+
     define( functor, arity, defs )
         Pointer to all definitions of functor/arity.
         Definitions can be: ``fact``, ``clause`` or ``adc``.
-    
+
     clause( functor, arguments, bodynode, varcount )
         Single clause. Functor is the head functor, Arguments are the head arguments. Body node is a pointer to the node representing the body. Var count is the number of variables in head and body.
-        
+
     fact( functor, arguments, probability )
-        Single fact. 
-        
+        Single fact.
+
     adc( functor, arguments, bodynode, varcount, parent )
         Single annotated disjunction choice. Fields have same meaning as with ``clause``, parent_node points to the parent ``ad`` node.
-        
+
     ad( childnodes )
         Annotated disjunction group. Child nodes point to the ``adc`` nodes of the clause.
 
     call( functor, arguments, defnode )
         Body literal with call to clause or builtin. Arguments contains the call arguments, definition node is the pointer to the definition node of the given functor/arity.
-    
+
     conj( childnodes )
         Logical and. Currently, only 2 children are supported.
-    
+
     disj( childnodes )
         Logical or. Currently, only 2 children are supported.
-    
+
     neg( childnode )
         Logical not.
-                
-    .. todo:: 
-        
+
+    .. todo::
+
         * add annotated disjunctions (*ad*)
         * add probability field
         * remove empty nodes -> replace by None pointer in call => requires prior knowledge of builtins
-    
+
     """
-    
+
     _define = namedtuple('define', ('functor', 'arity', 'children', 'location'))
     _clause = namedtuple('clause', ('functor', 'args', 'probability', 'child',
                                     'varcount', 'locvars', 'group', 'location'))
@@ -486,14 +503,14 @@ class ClauseDB(LogicProgram):
     _neg = namedtuple('neg', ('child', 'location'))
     _choice = namedtuple('choice', ('functor', 'args', 'probability', 'locvars', 'group', 'choice', 'location'))
     _extern = namedtuple('extern', ('functor', 'arity', 'function',))
-    
+
     def __init__(self, builtins=None, parent=None):
         LogicProgram.__init__(self)
         self.__nodes = []   # list of nodes
         self.__heads = {}   # head.sig => node index
-        
+
         self.__builtins = builtins
-        
+
         self.__parent = parent
         if parent is None:
             self.__offset = 0
@@ -501,13 +518,13 @@ class ClauseDB(LogicProgram):
             if hasattr(parent, 'line_info'):
                 self.line_info = parent.line_info
             self.__offset = len(parent)
-    
+
     def __len__(self):
         return len(self.__nodes) + self.__offset
-        
+
     def extend(self):
         return ClauseDB(parent=self)
-        
+
     def get_builtin(self, signature):
         if self.__builtins is None:
             if self.__parent is not None:
@@ -516,23 +533,23 @@ class ClauseDB(LogicProgram):
                 return None
         else:
             return self.__builtins.get(signature)
-    
+
     def _create_index(self, arity):
         # return []
         return ClauseIndex(self, arity)
-            
+
     def _add_and_node(self, op1, op2, location=None):
         """Add an *and* node."""
         return self._append_node(self._conj((op1, op2), location))
-        
+
     def _add_not_node(self, op1, location=None):
         """Add a *not* node."""
         return self._append_node(self._neg(op1, location))
-        
+
     def _add_or_node(self, op1, op2, location=None):
         """Add an *or* node."""
         return self._append_node(self._disj((op1, op2), location))
-    
+
     def _add_define_node(self, head, childnode):
         define_index = self._add_head(head)
         define_node = self.getNode(define_index)
@@ -543,59 +560,59 @@ class ClauseDB(LogicProgram):
             clauses = define_node.children
         clauses.append(childnode)
         return childnode
-    
+
     def _add_choice_node(self, choice, functor, args, probability, locvars, group, location=None):
         choice_node = self._append_node(self._choice(functor, args, probability, locvars, group, choice, location))
         return choice_node
-        
+
     def _add_clause_node(self, head, body, varcount, locvars, group=None):
         clause_node = self._append_node(self._clause(
             head.functor, head.args, head.probability, body, varcount, locvars, group, head.location))
         return self._add_define_node(head, clause_node)
-        
+
     def _add_call_node(self, term):
         """Add a *call* node."""
         if term.signature in ('query/1', 'evidence/1', 'evidence/2'):
             raise AccessError("Can\'t call %s directly." % term.signature)
-        
+
         defnode = self._add_head(term, create=False)
         return self._append_node(self._call(term.functor, term.args, defnode, term.location))
-    
+
     def getNode(self, index):
         """Get the instruction node at the given index.
-        
+
        :param index: index of the node to retrieve
        :type index::class:`int`
        :returns: requested node
        :rtype::class:`tuple`
        :raises IndexError: the given index does not point to a node
-        
+
         """
         if index < self.__offset:
             return self.__parent.getNode(index)
         else:
             return self.__nodes[index-self.__offset]
-        
+
     def _set_node(self, index, node):
         if index < self.__offset:
             raise IndexError('Can\'t update node in parent.')
         else:
             self.__nodes[index-self.__offset] = node
-        
+
     def _append_node(self, node=()):
         index = len(self)
         self.__nodes.append(node)
         return index
-    
+
     def _get_head(self, head):
         node = self.__heads.get(head.signature)
         if node is None and self.__parent:
             node = self.__parent._get_head(head)
         return node
-        
+
     def _set_head(self, head, index):
         self.__heads[head.signature] = index
-    
+
     def _add_head( self, head, create=True):
         node = self.get_builtin(head.signature)
         if node is not None:
@@ -603,7 +620,7 @@ class ClauseDB(LogicProgram):
                 raise AccessError("Can not overwrite built-in '%s'." % head.signature)
             else:
                 return node
-        
+
         node = self._get_head(head)
         if node is None:
             if create:
@@ -616,14 +633,14 @@ class ClauseDB(LogicProgram):
 
     def find(self, head):
         """Find the ``define`` node corresponding to the given head.
-        
+
        :param head: clause head to match
        :type head::class:`.basic.Term`
        :returns: location of the clause node in the database, returns ``None`` if no such node exists
        :rtype::class:`int` or ``None``
         """
         return self._get_head(head)
-       
+
     def __repr__(self):
         s = ''
         for i, n in enumerate(self.__nodes):
@@ -631,10 +648,10 @@ class ClauseDB(LogicProgram):
             s += '%s: %s\n' % (i, n)
         s += str(self.__heads)
         return s
-        
+
     def add_clause(self, clause):
         """Add a clause to the database.
-        
+
        :param clause: Clause to add
        :type clause: Clause
        :returns: location of the definition node in the database
@@ -672,7 +689,7 @@ class ClauseDB(LogicProgram):
                 self._set_node(node_id, self._extern(predicate, arity, function))
             else:
                 raise AccessError("External function overrides already defined predicate '%s'" % head.signature)
-    
+
     def _compile(self, struct, variables=None):
         """
         Compile the given structure and add it to the database.
@@ -703,7 +720,7 @@ class ClauseDB(LogicProgram):
 
             # Group id
             group = len(self.__nodes)
-            
+
             # Create the body clause
             body_node = self._compile(struct.body, variables)
             body_count = len(variables)
@@ -753,19 +770,19 @@ class ClauseDB(LogicProgram):
                 return self._add_call_node(struct.apply(variables))
         else:
             raise ValueError("Unknown structure type: '%s'" % struct)
-    
+
     def _create_vars(self, term):
         if type(term) == int:
             return Var('V_' + str(term))
         else:
             args = [ self._create_vars(arg) for arg in term.args ]
             return term.withArgs(*args)
-        
+
     def _extract(self, node_id):
         node = self.getNode(node_id)
         if not node:
-            raise ValueError("Unexpected empty node.")    
-        
+            raise ValueError("Unexpected empty node.")
+
         nodetype = type(node).__name__
         if nodetype == 'fact':
             return Term(node.functor, *node.args, p=node.probability)
@@ -782,8 +799,8 @@ class ClauseDB(LogicProgram):
         elif nodetype == 'neg':
             return Not('\+', self._extract(node.child))
         else:
-            raise ValueError("Unknown node type: '%s'" % nodetype)    
-        
+            raise ValueError("Unknown node type: '%s'" % nodetype)
+
     def __iter__(self):
         clause_groups = defaultdict(list)
         for index, node in enumerate(self.__nodes):
@@ -817,7 +834,7 @@ class AccessError(GroundingError):
 
 
 class _AutoDict(dict):
-    
+
     def __init__(self):
         dict.__init__(self)
         self.__record = set()
@@ -830,7 +847,7 @@ class _AutoDict(dict):
 
     def exit_local(self):
         self.__localmode = False
-    
+
     def __getitem__(self, key):
         if key == '_':
             value = len(self)
@@ -849,17 +866,16 @@ class _AutoDict(dict):
                 self.local_variables.remove(value)
             self.__record.add(value)
             return value
-            
+
     def __len__(self):
         return dict.__len__(self) + self.__anon
-        
+
     def usedVars(self):
         result = set(self.__record)
         self.__record.clear()
         return result
-        
+
     def define(self, key):
         if key not in self:
             value = len(self)
             self[key] = value
-

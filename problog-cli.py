@@ -1,6 +1,20 @@
 #! /usr/bin/env python
 """
 ProbLog command-line interface.
+
+Copyright 2015 KU Leuven, DTAI Research Group
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
 """
 
 from __future__ import print_function
@@ -127,7 +141,7 @@ def argparser():
     :rtype: argparse.ArgumentParser
     """
     import argparse
-    
+
     class InputFile(str):
         """Stub class for file input arguments."""
         pass
@@ -254,9 +268,9 @@ def main(argv):
         output = sys.stdout
     else:
         output = open(args.output, 'w')
-    
+
     parse_class = DefaultPrologParser
-    
+
     if args.timeout:
         start_timer(args.timeout)
 
@@ -312,7 +326,7 @@ def main(argv):
 
     if args.output is not None:
         output.close()
-    
+
     if args.timeout:
         stop_timer()
 

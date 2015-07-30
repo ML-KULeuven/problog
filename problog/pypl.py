@@ -1,10 +1,27 @@
+"""
+Part of the ProbLog distribution.
+
+Copyright 2015 KU Leuven, DTAI Research Group
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+"""
 from __future__ import print_function
 
 from .logic import *
 
 def py2pl(d):
     """Translate a given Python datastructure into a Prolog datastructure."""
-    
+
     if type(d) == list or type(d) == tuple:
         if type(d) == tuple :
             f = ','
@@ -23,7 +40,7 @@ def py2pl(d):
 
     if type(d) == int or type(d) == float:
         return Constant(d)
-        
+
     if type(d) == Term :
         return d
 
@@ -33,12 +50,12 @@ def py2pl(d):
 
 def pl2py(d):
     """Translate a given Prolog datastructure into a Python datastructure."""
-    
+
     if isinstance(d, Constant):
         if type(d.value) == str:
             return d.value.replace('"','')
         return d.value
-        
+
     if isinstance(d, Term):
         if d.functor == "." and d.arity == 2:
             # list
@@ -65,4 +82,3 @@ def pl2py(d):
 
     raise Exception("Cannot convert from Prolog to Python: {} ({}).".format(d, type(d)))
     return None
-
