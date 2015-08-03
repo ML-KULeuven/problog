@@ -55,7 +55,9 @@ from collections import defaultdict
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../')))
 
 from problog.engine import DefaultEngine, ground
-from problog.sdd_formula import SDD as knowledge
+from problog.nnf_formula import NNF
+from problog.sdd_formula import SDD
+from problog.bdd_formula import BDD
 from problog.evaluator import SemiringProbability
 from problog.logic import Term, Constant, Clause, AnnotatedDisjunction, LogicProgram, Or
 from problog.program import PrologString, PrologFile
@@ -73,7 +75,7 @@ def str2bool(s):
 
 class LFIProblem(SemiringProbability, LogicProgram) :
     
-    def __init__(self, source, examples, max_iter=10000, min_improv=1e-10, verbose=0, **extra):
+    def __init__(self, source, examples, max_iter=10000, min_improv=1e-10, verbose=0, knowledge=SDD, **extra):
         SemiringProbability.__init__(self)
         LogicProgram.__init__(self)
         self.source = source
@@ -87,6 +89,8 @@ class LFIProblem(SemiringProbability, LogicProgram) :
         self.min_improv = min_improv
         self.verbose = verbose
         self.iteration = 0
+
+        self.knowledge = knowledge
 
         self.output_mode = False
     
@@ -148,7 +152,7 @@ class LFIProblem(SemiringProbability, LogicProgram) :
                     logger.debug('Compiling example %s ...' % n)
 
                 ground_program = ground(baseprogram, ground_program, evidence=zip(atoms, example))
-                compiled_program = knowledge.createFrom(ground_program)
+                compiled_program = self.knowledge.createFrom(ground_program)
                 result.append((atoms, example, compiled_program))
         self._compiled_examples = result
 
@@ -462,6 +466,8 @@ def argparser():
     parser.add_argument('-n', dest='max_iter', default=10000, type=int )
     parser.add_argument('-d', dest='min_improv', default=1e-10, type=float )
     parser.add_argument('-o', '--output', type=str, default=None, help='write resulting model to given file')
+    parser.add_argument('-k', '--knowledge', dest='koption', choices=("sdd", "nnf", "bdd", "ddnnf"),
+                        default=None, help='knowledge compilation tool')
     parser.add_argument('-v', '--verbose', action='count', default=0)
     return parser
 
@@ -479,6 +485,22 @@ def main():
     parser = argparser()
     args = parser.parse_args()
 
+    if args.koption in ('nnf', 'ddnnf'):
+        knowledge = NNF
+    elif args.koption == 'sdd':
+        knowledge = SDD
+    elif args.koption == 'bdd':
+        knowledge = BDD
+    elif args.koption is None:
+        if SDD.is_available():
+            # logger.info('Using SDD path')
+            knowledge = SDD
+        else:
+            # logger.info('Using d-DNNF path')
+            knowledge = NNF
+    else:
+        raise ValueError("Unknown option for --knowledge: '%s'" % args.knowledge)
+
     create_logger('problog_lfi', args.verbose)
     create_logger('problog', args.verbose-1)
 
@@ -486,7 +508,7 @@ def main():
     examples = list(read_examples(*args.examples))
     options = vars(args)
     del options['examples']
-    score, weights, names, iterations = run_lfi(program, examples, **options)
+    score, weights, names, iterations = run_lfi(program, examples, knowledge=knowledge, **options)
 
     print(score, weights, names, iterations)
 

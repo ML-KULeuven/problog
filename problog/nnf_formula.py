@@ -85,6 +85,9 @@ class SimpleNNFEvaluator(Evaluator) :
 
         return result
 
+    def evaluate_fact(self, node):
+        return self.evaluate(node)
+
     def evaluate(self, node) :
         if node == 0 :
             return self.semiring.one()
