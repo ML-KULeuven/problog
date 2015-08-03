@@ -146,6 +146,7 @@ class FunctionStore(object):
     def get(self, key, default=None):
         functor, arity = key
         def _function(*args):
+            args = tuple(map(Constant, args))
             term = Term(functor, *args)
             results = self.engine.call(term, subcall=True, target=self.target, database=self.database)
             if len(results) == 1:
@@ -266,9 +267,17 @@ class SampledFormula(LogicFormula):
                 raise ValueError("Can't combine sampled predicates. Make sure bodies are mutually exclusive.")
         return LogicFormula.addOr(self, content, **kwd)
 
-    def isProbabilistic(self, key) :
-            """Indicates whether the given node is probabilistic."""
-            return False
+    def addNot(self, child):
+        if child == self.TRUE:
+            return self.FALSE
+        elif child == self.FALSE:
+            return self.TRUE
+        else:
+            raise ValueError("Can't negate a sampled predicate.")
+        
+    def isProbabilistic(self, key):
+        """Indicates whether the given node is probabilistic."""
+        return False
 
     def toString(self, db, with_facts=False, with_probability=False, oneline=False,
                  as_evidence=False, **extra):
