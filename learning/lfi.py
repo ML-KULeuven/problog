@@ -506,6 +506,10 @@ def main():
 
     program = PrologFile(args.model)
     examples = list(read_examples(*args.examples))
+    if len(examples) == 0:
+        logging.getLogger('problog_lfi').warn('no examples specified')
+    else:
+        logging.getLogger('problog_lfi').info('Number of examples: %s' % len(examples))
     options = vars(args)
     del options['examples']
     score, weights, names, iterations = run_lfi(program, examples, knowledge=knowledge, **options)
