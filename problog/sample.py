@@ -417,6 +417,7 @@ def estimate(model, n=0, **kwdargs):
     from collections import defaultdict
     engine = DefaultEngine()
     engine.add_builtin('sample', 2, builtin_sample)
+    engine.add_builtin('value', 2, builtin_sample)
     db = engine.prepare(model)
 
     estimates = defaultdict(float)
