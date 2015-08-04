@@ -1249,13 +1249,20 @@ class problog_export_nondet(problog_export):
         return function
 
 
-def builtin_use_module(filename, engine=None, database=None, location=None, **kwdargs ):
-    filename = os.path.join(database.source_root, atom_to_filename(filename))
-    try:
-        load_external_module(database, filename)
-    except IOError as err:
-        raise ConsultError('Error while reading external library: %s' % str(err), database.lineno(location))
-    return True
+def builtin_use_module(filename, database=None, location=None, **kwdargs ):
+    if filename.functor == 'library' and filename.arity == 1:
+        filename = os.path.join(os.path.dirname(__file__), 'library', atom_to_filename(filename.args[0]))
+    else:
+        filename = os.path.join(database.source_root, atom_to_filename(filename))
+
+    if filename[-3:] == '.py':
+        try:
+            load_external_module(database, filename)
+        except IOError as err:
+            raise ConsultError('Error while reading external library: %s' % str(err), database.lineno(location))
+        return True
+    else:
+        return builtin_consult(Term(filename), database=database, location=location, **kwdargs)
 
 
 def load_external_module(database, filename):
