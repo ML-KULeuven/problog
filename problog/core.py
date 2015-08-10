@@ -106,7 +106,11 @@ class GroundingError(ProbLogError):
         if self.location is None:
             return ''
         if type(self.location) == tuple:
-            return ' at %s:%s' % self.location
+            fn, ln, cn = self.location
+            if fn is None:
+                return ' at %s:%s' % (ln, cn)
+            else:
+                return ' at %s:%s in %s' % (ln, cn, fn)
         else:
             return ' at character %s' % self.location
 

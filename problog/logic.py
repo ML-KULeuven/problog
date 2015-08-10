@@ -832,9 +832,14 @@ class LogicProgram(object):
     """LogicProgram"""
 
     def __init__(self, source_root='.', source_files=None, line_info=None):
-        if source_files is None : source_files = []
+        if source_files is None:
+            source_files = [None]
+        if line_info is None:
+            line_info = [None]
         self.source_root = source_root
         self.source_files = source_files
+        self.source_parent = [None]
+        # line_info should be array, corresponding to 'source_files'.
         self.line_info = line_info
 
     def __iter__(self):
@@ -884,29 +889,45 @@ class LogicProgram(object):
 
         If the original LogicProgram already has the right class and force_copy is False, then the original program is returned.
         """
-        if not force_copy and src.__class__ == cls :
+        if not force_copy and src.__class__ == cls:
             return src
         else :
             obj = cls(**extra)
-            if hasattr(src,'source_root') and hasattr(src,'source_files') :
+            if hasattr(src, 'source_root') and hasattr(src, 'source_files'):
                 obj.source_root = src.source_root
-                obj.source_files = src.source_files
-            if hasattr(src,'line_info') :
-                obj.line_info = src.line_info
-            for clause in src :
+                obj.source_files = src.source_files[:]
+                obj.source_parent = src.source_parent[:]
+            if hasattr(src, 'line_info'):
+                obj.line_info = src.line_info[:]
+            for clause in src:
                 obj += clause
             return obj
 
-    def lineno(self, char) :
-        if self.line_info is None or char is None :
+    def lineno(self, char, force_filename=False):
+        """Transform character position to line:column format.
+
+        :param char: character position
+        :return: line, column (or None if information is not available)
+        """
+        # Input should be tuple (file, char)
+        if isinstance(char, tuple):
+            fn, char = char
+        else:
+            fn = 0
+
+        if self.line_info[fn] is None or char is None:
             # No line info available
             return None
-        else :
+        else:
             import bisect
-            i = bisect.bisect_right(self.line_info, char)
+            i = bisect.bisect_right(self.line_info[fn], char)
             lineno = i
-            charno = char - self.line_info[i-1]
-            return lineno, charno
+            charno = char - self.line_info[fn][i-1]
+            if fn == 0 and not force_filename:
+                filename = None
+            else:
+                filename = self.source_files[fn]
+            return filename, lineno, charno
 
 functions = {
     ("+", 2) : (lambda a,b : a + b),

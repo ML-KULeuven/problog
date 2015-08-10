@@ -942,8 +942,11 @@ def builtin_consult(filename, database=None, **kwdargs):
 
     # Prevent loading the same file twice
     if filename not in database.source_files:
+        identifier = len(database.source_files)
         database.source_files.append(filename)
-        pl = PrologFile(filename)
+        database.source_parent.append(kwdargs.get('location'))
+        pl = PrologFile(filename, identifier=identifier)
+        database.line_info.append(pl.line_info[0])
         for clause in pl:
             database += clause
     return True

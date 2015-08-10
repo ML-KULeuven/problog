@@ -168,7 +168,7 @@ def is_comment_start(c) :
 
 class PrologParser(object) :
 
-    def __init__(self, factory) :
+    def __init__(self, factory):
         self.factory = factory
         self.prepare()
 
@@ -806,8 +806,8 @@ class ParenExpression(SubExpression) :
 class Factory(object) :
     """Factory object for creating suitable objects from the parse tree."""
 
-    def build_program(self, clauses, locations=None) :
-        return '\n'.join(map(str,clauses))
+    def build_program(self, clauses):
+        return '\n'.join(map(str, clauses))
 
     def build_function(self, functor, arguments, location=None) :
         return '%s(%s)' % (functor, ', '.join(map(str,arguments)))
