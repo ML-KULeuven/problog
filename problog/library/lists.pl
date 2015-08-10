@@ -37,7 +37,7 @@ sw(ID,PW,[W|WT],[X|XT],Y,[X|RT]) :-
     sw(ID,PW1,WT,XT,Y,RT).
 
 % S is sum of elements of list L
-sum_list(L,S) :- sum_list(S,0,L).
+sum_list(L,S) :- sum_list(L,0,S).
 sum_list([],S,S).
 sum_list([X|T],A,S) :-
     B is A+X,
