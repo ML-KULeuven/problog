@@ -44,10 +44,10 @@ import sys
 
 from .program import PrologFile
 from .logic import Term, Constant, ArithmeticError
-from .engine import DefaultEngine
+from .engine import DefaultEngine, UnknownClause
 from .engine_builtin import check_mode, builtin_call
 from .formula import LogicFormula
-from .core import process_result
+from .core import process_result, process_error
 from .util import start_timer, stop_timer
 from .engine_unify import UnifyError, unify_value
 import random
@@ -148,14 +148,18 @@ class FunctionStore(object):
         def _function(*args):
             args = tuple(map(Constant, args))
             term = Term(functor, *args)
-            results = self.engine.call(term, subcall=True, target=self.target, database=self.database)
-            if len(results) == 1:
-                value_id = results[0][-1]
-                return float(self.target.getValue(value_id))
-            elif len(results) == 0:
-                return None
-            else:
-                raise ValueError('Unexpected multiple results.')
+            try:
+                results = self.engine.call(term, subcall=True, target=self.target, database=self.database)
+                if len(results) == 1:
+                    value_id = results[0][-1]
+                    return float(self.target.getValue(value_id))
+                elif len(results) == 0:
+                    return None
+                else:
+                    raise ValueError('Unexpected multiple results.')
+            except UnknownClause as err:
+                sig = err.signature
+                raise ArithmeticError("Unknown function %s" % sig)
         return _function
 
 class SampledFormula(LogicFormula):
@@ -471,16 +475,20 @@ def main(args):
 
     signal.signal(signal.SIGTERM, signal_term_handler)
 
-    if args.estimate:
-        results = estimate(pl, **vars(args))
-        print (process_result(results))
-    else:
-        first = True
-        for s in sample(pl, **vars(args)):
-            if not args.oneline and not first:
-                print ('----------------')
-            first = False
-            print (s)
+    try:
+        if args.estimate:
+            results = estimate(pl, **vars(args))
+            print (process_result(results))
+        else:
+            first = True
+            for s in sample(pl, **vars(args)):
+                if not args.oneline and not first:
+                    print ('----------------')
+                first = False
+                print (s)
+    except Exception as err:
+        print (process_error(err))
+
 
     if args.timeout:
         stop_timer()

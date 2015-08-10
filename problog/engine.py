@@ -371,6 +371,7 @@ class UnknownClause(GroundingError):
 
     def __init__(self, signature, location):
         GroundingError.__init__(self, "No clauses found for '%s'" % signature, location)
+        self.signature = signature
 
 
 from .engine_stack import StackBasedEngine as DefaultEngine
