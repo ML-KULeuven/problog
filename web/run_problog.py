@@ -36,7 +36,7 @@ def print_result( d, output, precision=8 ) :
     result = {}
     if success :
         result['SUCCESS'] = True
-        result['probs'] = [[str(n),round(p,12),l,c] for n,p,l,c in d]
+        result['probs'] = [[str(n),round(p,12),l,c] for n,p,l,c,f in d]
         print (200, 'application/json', json.dumps(result), file=output)
     else :
         #print (400, 'application/json', json.dumps(d), file=output)
