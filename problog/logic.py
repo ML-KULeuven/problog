@@ -504,6 +504,11 @@ class Term(object):
             elif t1 is None:
                 if t2 is not None:
                     return False
+            elif isinstance(t1, Constant):  # t2 too
+                if type(t1.functor) != type(t2.functor):
+                    return False
+                elif t1.functor != t2.functor:
+                    return False
             else:  # t1 and t2 are Terms
                 if t1.__functor != t2.__functor:
                     return False
