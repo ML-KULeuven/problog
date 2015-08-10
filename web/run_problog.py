@@ -58,7 +58,7 @@ def process_error( err ) :
         try :
             location = err.location
             if location :
-                return { 'message': 'Error during grounding: %s' % err, 'lineno' : location[0], 'col' : location[1] }
+                return { 'message': 'Error during grounding: %s' % err, 'lineno' : location[1], 'col' : location[2] }
             else :
                 return { 'message': 'Error during grounding: %s' % err }
         except AttributeError :
