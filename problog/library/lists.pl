@@ -69,11 +69,11 @@ zip(A,B,AB) :- unzip(AB,A,B).
     
 % make_list(X,N,L)
 %  make a list of length N filled with element X
-make_list(_,0,[]).
-make_list(X,Len,[X|L]) :-
+make_list(0,X,[]).
+make_list(Len,X,[X|L]) :-
     Len > 0,
     Len1 is Len-1,
-    make_list(X,Len1,L).
+    make_list(Len1,X,L).
     
 append([],T,T).
 append([X|R],S,[X|T]) :- append(R,S,T).
