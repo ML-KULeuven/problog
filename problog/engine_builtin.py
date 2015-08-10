@@ -110,7 +110,7 @@ def add_standard_builtins(engine, b=None, s=None, sp=None):
 
 
 def builtin_debugprint(*args, **kwd):
-    print(' '.join(map(str,args)))
+    print(' '.join(map(term2str,args)))
     return True
 
 
