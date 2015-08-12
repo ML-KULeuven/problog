@@ -22,6 +22,7 @@ select_uniform(ID, Values, Value, Rest) :-
 
 select_weighted(ID, Weights, Values, Value, Rest) :-
     sum_list(Weights,Total),
+    Total > 0,
     sw(ID, Total, Weights, Values, Value, Rest).
 select_weighted(ID, WeightsValues, Value, Rest) :-
     unzip(WeightsValues,Weights,Values),
