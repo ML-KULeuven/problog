@@ -15,6 +15,7 @@ select(X,[Y|T],[Y|S]) :-
 %  
 select_uniform(ID, Values, Value, Rest) :-
     length(Values, Len),
+    Len > 0,
     Weight is 1/Len,
     make_list(Len, Weight, Weights),
     select_weighted(ID, Weights, Values, Value, Rest).
