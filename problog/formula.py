@@ -534,7 +534,6 @@ class LogicFormula(ProbLogObject):
                         to_enumerate |= (OrderedSet(map(abs, body)) - enumerated)
                         yield i, body
                     else:
-                        assert not negc
                         yield i, [c_i]
                         if abs(c_i) not in enumerated:
                             to_enumerate.add(abs(c_i))
