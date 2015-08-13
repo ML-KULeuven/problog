@@ -521,17 +521,20 @@ class LogicFormula(ProbLogObject):
                 yield i, body
             else:   # t == 'disj'
                 for c_i in n.children:
-                    c_n = self.get_node(c_i)
+                    negc = (c_i < 0)
+                    c_n = self.get_node(abs(c_i))
                     c_t = type(c_n).__name__
                     if c_t == 'atom':
                         yield i, [c_i]
                         if abs(c_i) not in enumerated:
                             to_enumerate.add(abs(c_i))
                     elif c_t == 'conj':
+                        assert not negc
                         body = self._unroll_conj(c_n)
                         to_enumerate |= (OrderedSet(map(abs, body)) - enumerated)
                         yield i, body
                     else:
+                        assert not negc
                         yield i, [c_i]
                         if abs(c_i) not in enumerated:
                             to_enumerate.add(abs(c_i))
