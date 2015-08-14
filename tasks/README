@@ -1,0 +1,12 @@
+This folder contains the implementations of different tasks that ProbLog supports.
+
+These tasks can be performed through the main problog-cli interface by specifying a keyword as the first argument.
+
+Currently, the following tasks are supported:
+
+  * prob [default]: Compute the probability of a query.
+  * ground: Compute the ground program of a ProbLog program.
+  * mpe: Compute the Maximal Probable Explanation.
+  * lfi: Learn a models parameters from interpretations.
+  * sample: Sample from a ProbLog program.
+

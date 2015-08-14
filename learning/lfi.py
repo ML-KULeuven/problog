@@ -481,9 +481,9 @@ def create_logger(name, verbose):
     logger.addHandler(ch)
     logger.setLevel(levels[verbose])
 
-def main():
+def main(argv):
     parser = argparser()
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
 
     if args.koption in ('nnf', 'ddnnf'):
         knowledge = NNF
@@ -517,4 +517,4 @@ def main():
     print(score, weights, names, iterations)
 
 if __name__ == '__main__' :
-    main()
+    main(sys.argv[1:])

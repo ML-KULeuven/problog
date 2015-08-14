@@ -42,14 +42,14 @@ from __future__ import print_function
 
 import sys
 
-from .program import PrologFile
-from .logic import Term, Constant, ArithmeticError
-from .engine import DefaultEngine, UnknownClause
-from .engine_builtin import check_mode, builtin_call
-from .formula import LogicFormula
-from .core import process_result, process_error
-from .util import start_timer, stop_timer
-from .engine_unify import UnifyError, unify_value
+from problog.program import PrologFile
+from problog.logic import Term, Constant, ArithmeticError
+from problog.engine import DefaultEngine, UnknownClause
+from problog.engine_builtin import check_mode, builtin_call
+from problog.formula import LogicFormula
+from problog.core import process_result, process_error
+from problog.util import start_timer, stop_timer
+from problog.engine_unify import UnifyError, unify_value
 import random
 import math
 import signal

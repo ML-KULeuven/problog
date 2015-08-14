@@ -1,8 +1,23 @@
 #! /usr/bin/env python
-"""Implementation of MPE (most probable explanation) as a constrained optimization problem.
 
-    Requires fzn-gecode to be installed.
 """
+ProbLog command-line interface.
+
+Copyright 2015 KU Leuven, DTAI Research Group
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+"""
+
 
 
 from __future__ import print_function
@@ -196,6 +211,7 @@ def groundprogram2lp(gp):
                     if formula:
                         formula += '+'
                     formula += 'x%s' % c
+            formula += '- %s x%s' % (len(n.children), i)
             constraints.append(formula + ' >= ' + str(low_bound))
             constraints.append(formula + ' <= ' + str(high_bound-1))
         elif t == 'disj':
@@ -211,8 +227,9 @@ def groundprogram2lp(gp):
                     formula += 'x%s' % -c
                 else:
                     formula += '-x%s' % c
+            formula += '+ %s x%s' % (len(n.children), i)
             constraints.append(formula + ' >= ' + str(low_bound))
-            constraints.append(formula + ' < ' + str(high_bound))
+            constraints.append(formula + ' <= ' + str(high_bound))
         else:
             pp, pn = weights[i]
             atom_vars.append(varname)
@@ -228,15 +245,17 @@ def groundprogram2lp(gp):
     obj = ' + '.join(obj)
 
     for q, n in gp.queries():
-        constraints.append('x%s >= 1' % n)
+        if n > 0:
+            constraints.append('x%s >= 1' % n)
+        else:
+            constraints.append('x%s <= 0' % -n)
 
     for q, n in gp.evidence():
         if n > 0:
-            constraints.append('x%s >= 1;' % n)
+            constraints.append('x%s >= 1' % n)
         else:
-            constraints.append('x%s <= 0;' % n)
+            constraints.append('x%s <= 0' % n)
 
-    # TODO constraints
     for c in gp.constraints():
         for r in c.encodeCNF():
             rule = []
@@ -250,7 +269,7 @@ def groundprogram2lp(gp):
                 else:
                     rule.append('- x%s' % -x)
                     rhs -= 1
-            constraints.append(''.join(rule) + ' > ' + str(rhs))
+            constraints.append(''.join(rule) + ' >= ' + str(rhs))
 
     result = """
 maximize
@@ -266,13 +285,12 @@ end
 
     return result, probs_offset
 
-def call_scip(lp, solver):
+def call_scip(lp, solver, **extra):
     filename = '/tmp/mpe.lp'
     with open(filename, 'w') as f:
         f.write(lp)
 
     output = subprocess.check_output(solver.split(' ') + ['-f', filename])
-
     obj_value = None
     facts = set()
 
@@ -294,7 +312,6 @@ def call_flatzinc_solver(fzn, solver, **kwdargs):
     with open(filename, 'w') as f:
         f.write(fzn)
     output = subprocess.check_output(solver.split(' ') + [filename])
-
     score = None
     facts = {}
     for line in output.split('\n'):
@@ -313,7 +330,10 @@ def call_flatzinc_solver(fzn, solver, **kwdargs):
                 facts[fact] = val
 
 
-def main(inputfile, **kwdargs):
+def main(args):
+    kwdargs = vars(argparser().parse_args(args))
+    inputfile = kwdargs['inputfile']
+
     pl = PrologFile(inputfile)
     with Timer('Grounding...', output=sys.stderr):
         gp = LogicFormula.createFrom(pl, label_all=True)
@@ -324,38 +344,24 @@ def main(inputfile, **kwdargs):
         lp, score_offset = groundprogram2lp(dag)
 
     with Timer('Solving...', output=sys.stderr):
-        score, facts = call_scip(lp, **kwdargs)
-    score -= score_offset
+        scip_result = call_scip(lp, **kwdargs)
+        if scip_result is None:
+            score = None
+            print ('%% The model is not satisfiable.')
+        else:
+            score, facts = scip_result
 
-    for name, node in gp.getNames():
-        if node in facts:
-            facts.remove(node)
-            print (name)
-    for f in facts:
-        print ('node_%s' % f)
+    if score is not None:
+        score -= score_offset
 
-    print ('%% Probability: %s [log: %s]' % (math.exp(score), score))
+        for name, node in gp.get_names():
+            if node in facts:
+                facts.remove(node)
+                print (name)
+        for f in facts:
+            print ('node_%s' % f)
 
-
-
-    # flatzinc = groundprogram2flatzinc(gp)
-    # score, facts = call_solver(flatzinc, **kwdargs)
-    # for name, node in gp.getNames():
-    #     val = facts.get(node)
-    #     if val == True:
-    #         del facts[node]
-    #         print (name)
-    #     elif val == False:
-    #         del facts[node]
-    #         print ('\+' + str(name))
-    # for f, v in facts.items():
-    #     if v:
-    #         print ('node_%s' % f)
-    #     else:
-    #         print ('\+node_%s' % f)
-    #
-    # print ('Probability:', score)
-
+        print ('%% Probability: %s [log: %s]' % (math.exp(score), score))
 
 def argparser():
     import argparse
@@ -367,4 +373,4 @@ def argparser():
 
 
 if __name__ == '__main__':
-    main(**vars(argparser().parse_args()))
+    main()
