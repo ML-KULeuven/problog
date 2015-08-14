@@ -529,10 +529,14 @@ class LogicFormula(ProbLogObject):
                         if abs(c_i) not in enumerated:
                             to_enumerate.add(abs(c_i))
                     elif c_t == 'conj':
-                        assert not negc
-                        body = self._unroll_conj(c_n)
-                        to_enumerate |= (OrderedSet(map(abs, body)) - enumerated)
-                        yield i, body
+                        if negc:
+                            yield i, [c_i]
+                            if abs(c_i) not in enumerated:
+                                to_enumerate.add(abs(c_i))
+                        else:
+                            body = self._unroll_conj(c_n)
+                            to_enumerate |= (OrderedSet(map(abs, body)) - enumerated)
+                            yield i, body
                     else:
                         yield i, [c_i]
                         if abs(c_i) not in enumerated:
