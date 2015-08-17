@@ -447,7 +447,7 @@ def build_dd(source, destination, ddname, **kwdargs):
                 raise TypeError('Unknown node type')
             assert i == j
 
-        for name, node, label in source.getNamesWithLabel():
+        for name, node, label in source.get_names_with_label():
             destination.addName(name, node, label)
 
         for c in source.constraints():

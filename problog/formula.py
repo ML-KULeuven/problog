@@ -47,9 +47,10 @@ class LogicFormula(ProbLogObject):
     by simplifying nodes or by reusing existing nodes.
     """
 
-
     TRUE = 0
     FALSE = None
+
+    NEUTRAL_WEIGHT = True
 
     LABEL_QUERY = "query"
     LABEL_EVIDENCE_POS = "evidence+"
@@ -88,7 +89,7 @@ class LogicFormula(ProbLogObject):
         self.__names_order = []
         self.__names_reverse = {}
 
-        self.__atom_count = 0
+        self._atomcount = 0
 
         self.__auto_compact = auto_compact
         self.__avoid_name_clash = avoid_name_clash
@@ -109,8 +110,13 @@ class LogicFormula(ProbLogObject):
     def addConstraintOnNode(self, node, constraint) :
         self.__constraints_for_node[node].append(constraint)
 
-    def getAtomCount(self) :
-        return self.__atom_count
+    @property
+    def atomcount(self) :
+        return self._atomcount
+
+    def getAtomCount(self):
+        warnings.warn('getAtomCount() is deprecated', FutureWarning)
+        return self.atomcount
 
     def isTrivial(self) :
         return self.getAtomCount() == len(self)
@@ -119,14 +125,14 @@ class LogicFormula(ProbLogObject):
     ###                          Manage labels                         ###
     ######################################################################
 
-    def addName(self, name, node_id, label=None) :
+    def addName(self, name, node_id, label=None, external=False) :
         """Associates a name to the given node identifier.
 
             :param name: name of the node
             :param node_id: id of the node
             :param label: type of node (see LogicFormula.LABEL_*)
         """
-        if self.isProbabilistic(node_id):
+        if self.isProbabilistic(node_id) and not external:
             node = self.get_node(abs(node_id))
             node = type(node)(*(node[:-1] + (name,)))
             self._update(abs(node_id), node)
@@ -176,7 +182,11 @@ class LogicFormula(ProbLogObject):
             result = self.__names.get( label, {} ).items()
         return result
 
-    def getNamesWithLabel(self) :
+    def getNamesWithLabel(self):
+        warnings.warn('getNamesWithLabel() is deprecated', FutureWarning)
+        return self.get_names_with_label()
+
+    def get_names_with_label(self) :
         """Get a list of named nodes with label type.
             :return: list of tuples (name, node_id, label)
         """
@@ -299,7 +309,7 @@ class LogicFormula(ProbLogObject):
         else:
             atom = self._create_atom(identifier, probability, group, name)
             node_id = self._add(atom, key=identifier)
-            self.__atom_count += 1  # TODO doesn't take reuse into account
+            self._atomcount += 1  # TODO doesn't take reuse into account
             return self._addConstraintME(group, node_id)
 
     def addAnd(self, components, key=None, name=None):
@@ -551,17 +561,22 @@ class LogicFormula(ProbLogObject):
     ###                         Manage weights                         ###
     ######################################################################
 
-    def getWeights(self) :
+    def get_weights(self):
         """Get the weights for all atoms in the data structure.
             Atoms with weight `True` are not returned.
             :returns: dictionary { key: weight }
         """
         weights = {}
-        for i, n, t in self :
-            if t == 'atom' :
-                if n.probability != True :
+        for i, n, t in self:
+            if t == 'atom':
+                if n.probability != self.NEUTRAL_WEIGHT:
                     weights[i] = n.probability
         return weights
+
+    def getWeights(self) :
+        """deprecated: see get_weights"""
+        warnings.warn('LogicFormula.getWeights() is deprecated. Use LogicFormula.get_weights() instead.', FutureWarning)
+        return self.get_weights()
 
     def get_weight(self, nodeid, semiring):
         if self.isFalse(nodeid):
@@ -585,24 +600,21 @@ class LogicFormula(ProbLogObject):
             All constraints are applied to the weights.
         """
 
-
-        if weights != None :
-            weights = { self.getNodeByName(n) : v for n,v in weights.items() }
+        if weights is None:
+            weights = self.get_weights()
+        else:
+            weights = {self.getNodeByName(n): v for n, v in weights.items()}
 
         result = {}
-        for i, n, t in self :
-            if t == 'atom' :
-                if weights != None :
-                    p = weights.get( i, n.probability )
-                else :
-                    p = n.probability
-                if p != True :
-                    result[i] = semiring.pos_value(p), semiring.neg_value(p)
-                else :
-                    result[i] = semiring.one(), semiring.one()
 
-        for c in self.constraints() :
-            c.updateWeights( result, semiring )
+        for n, w in weights.items():
+            if w == self.NEUTRAL_WEIGHT:
+                result[n] = semiring.one(), semiring.one()
+            else:
+                result[n] = semiring.pos_value(w), semiring.neg_value(w)
+
+        for c in self.constraints():
+            c.updateWeights(result, semiring)
 
         return result
 

@@ -140,28 +140,31 @@ class SimpleNNFEvaluator(Evaluator) :
             neg = self.get_weight(-index)
             self.set_weight( index, self.semiring.zero(), neg )
 
-    def _calculateWeight(self, key) :
+    def _calculateWeight(self, key):
         assert(key != 0)
-        assert(key != None)
-        assert(key > 0)
+        assert(key is not None)
+        # assert(key > 0)
 
-        node = self.__nnf.getNode(key)
+        node = self.__nnf.getNode(abs(key))
         ntype = type(node).__name__
-        assert(ntype != 'atom')
 
-        childprobs = [ self.get_weight(c) for c in node.children ]
-        if ntype == 'conj' :
-            p = self.semiring.one()
-            for c in childprobs :
-                p = self.semiring.times(p,c)
-            return p
-        elif ntype == 'disj' :
-            p = self.semiring.zero()
-            for c in childprobs :
-                p = self.semiring.plus(p,c)
-            return p
-        else :
-            raise TypeError("Unexpected node type: '%s'." % nodetype)
+        if ntype == 'atom':
+            return self.semiring.one()
+        else:
+            assert key > 0
+            childprobs = [self.get_weight(c) for c in node.children]
+            if ntype == 'conj':
+                p = self.semiring.one()
+                for c in childprobs:
+                    p = self.semiring.times(p, c)
+                return p
+            elif ntype == 'disj':
+                p = self.semiring.zero()
+                for c in childprobs:
+                    p = self.semiring.plus(p, c)
+                return p
+            else :
+                raise TypeError("Unexpected node type: '%s'." % ntype)
 
 
 class Compiler(object) :
@@ -233,20 +236,20 @@ Compiler.add( 'dsharp', _compile_with_dsharp )
 
 
 def _compile(cnf, cmd, cnf_file, nnf_file) :
-    names = cnf.getNamesWithLabel()
+    names = cnf.get_names_with_label()
 
-    if cnf.isTrivial() :
+    if cnf.is_trivial() :
         nnf = NNF()
-        weights = cnf.getWeights()
-        for i in range(1,cnf.getAtomCount()+1) :
+        weights = cnf.get_weights()
+        for i in range(1,cnf.atomcount+1) :
             nnf.addAtom( i, weights.get(i))
         or_nodes = []
-        for i in range(1,cnf.getAtomCount()+1) :
+        for i in range(1,cnf.atomcount+1) :
             or_nodes.append( nnf.addOr( (i, -i) ) )
         if or_nodes :
             nnf.addAnd( or_nodes )
 
-        for name, node, label in cnf.getNamesWithLabel() :
+        for name, node, label in names:
             nnf.addName(name, node, label)
         for c in cnf.constraints() :
             nnf.add_constraint(c.copy())
@@ -274,10 +277,10 @@ def _load_nnf(filename, cnf) :
 
     nnf = NNF()
 
-    weights = cnf.getWeights()
+    weights = cnf.get_weights()
 
     names_inv = defaultdict(list)
-    for name,node,label in cnf.getNamesWithLabel() :
+    for name,node,label in cnf.get_names_with_label():
         names_inv[node].append((name,label))
 
     with open(filename) as f :
