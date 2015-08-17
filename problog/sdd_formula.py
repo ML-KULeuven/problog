@@ -107,7 +107,7 @@ class SDDManager(DDManager):
         :return: SDD node representing the literal
         :rtype: SDDNode
         """
-        self.add_variable(label)
+        self.add_variable(abs(label))
         return sdd.sdd_manager_literal(label, self.__manager)
 
     def is_true(self, node):
