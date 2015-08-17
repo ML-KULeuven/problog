@@ -30,7 +30,7 @@ from problog.evaluator import SemiringSymbolic, SemiringLogProbability, Evaluato
 from problog.parser import DefaultPrologParser
 from problog.nnf_formula import NNF
 from problog.sdd_formula import SDD
-import example_sampling_alt as plsample
+import problog.tasks.sample as plsample
 
 if SDD.is_available():
     knowledge_default = SDD

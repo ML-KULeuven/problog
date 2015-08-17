@@ -23,16 +23,16 @@ import stat
 import sys
 import os
 
-from problog.program import PrologFile, ExtendedPrologFactory
-from problog.evaluator import SemiringSymbolic, SemiringLogProbability
-from problog.nnf_formula import NNF
-from problog.sdd_formula import SDD
-from problog.bdd_formula import BDD
-from problog.forward import ForwardBDD, ForwardSDD
-from problog.util import Timer, start_timer, stop_timer
-from problog.core import process_error, process_result
-from problog.parser import DefaultPrologParser
-from problog.debug import EngineTracer
+from ..program import PrologFile, ExtendedPrologFactory
+from ..evaluator import SemiringSymbolic, SemiringLogProbability
+from ..nnf_formula import NNF
+from ..sdd_formula import SDD
+from ..bdd_formula import BDD
+from ..forward import ForwardBDD, ForwardSDD
+from ..util import Timer, start_timer, stop_timer
+from ..core import process_error, process_result
+from ..parser import DefaultPrologParser
+from ..debug import EngineTracer
 
 
 def main(argv):

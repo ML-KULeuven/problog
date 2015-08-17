@@ -28,7 +28,7 @@ def main(argv):
     :param argv: command line arguments
     """
 
-    from tasks import problog_tasks, problog_default_task, load_extension
+    from problog.tasks import run_task
 
     if len(argv) > 0:
         if argv[0] == 'install':
@@ -44,12 +44,8 @@ def main(argv):
             test_results = unittest.TextTestResult(sys.stderr, False, 1)
             unittest.TestLoader().discover(os.path.dirname(__file__)).run(test_results)
             return
-        elif argv[0] in problog_tasks:
-            extension = load_extension(problog_tasks[argv[0]])
-            return extension.main(argv[1:])
         else:
-            extension = load_extension(problog_tasks[problog_default_task])
-            return extension.main(argv)
+            return run_task(argv)
 
 if __name__ == '__main__':
     main(sys.argv[1:])
