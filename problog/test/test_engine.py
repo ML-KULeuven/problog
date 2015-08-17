@@ -217,7 +217,7 @@ def _list_paths( source, node_id, path ) :
         yield [node_id]
     else :
         add = [node_id]
-        node = source.getNode(node_id)
+        node = source.get_node(node_id)
         nodetype = type(node).__name__
         if nodetype == 'conj' :
             c1, c2 = node.children

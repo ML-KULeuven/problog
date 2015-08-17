@@ -1055,7 +1055,7 @@ def builtin_findall_base(pattern, goal, result, top_only=False, database=None, t
         if results:
             # Only return the maximal list.
             l, n = zip(*results)
-            node = target.addAnd(n)
+            node = target.add_and(n)
             if node is not None:
                 res = build_list(l, Term('[]'))
                 if mode == 0:  # var
@@ -1070,7 +1070,7 @@ def builtin_findall_base(pattern, goal, result, top_only=False, database=None, t
                         pass
     else:
         for l, n in select_sublist(results, target):
-            node = target.addAnd(n)
+            node = target.add_and(n)
             if node is not None:
                 res = build_list(l, Term('[]'))
                 if mode == 0:  # var
@@ -1127,7 +1127,7 @@ def builtin_sample_uniform(key, list, result, database=None, target=None, **kwda
                 elem_identifier = (identifier, i)
                 # res = unify_value(result, elem)
                 results.append(((key, list, elem),
-                                target.addAtom(identifier=elem_identifier, probability=prob, group=identifier)))
+                                target.add_atom(identifier=elem_identifier, probability=prob, group=identifier)))
         else:
             res = None
             for el in elements:
@@ -1138,7 +1138,7 @@ def builtin_sample_uniform(key, list, result, database=None, target=None, **kwda
                     pass
             if res is not None:
                 results.append(((key, list, res),
-                                target.addAtom(identifier=identifier, probability=prob)))
+                                target.add_atom(identifier=identifier, probability=prob)))
         return results
 
 

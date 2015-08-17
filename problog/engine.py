@@ -235,11 +235,11 @@ class ClauseDBEngine(GenericEngine):
         for args, node_id in results:
             term_store = term.withArgs(*args)
             if negated:
-                gp.addName(-term_store, -node_id, label)
+                gp.add_name(-term_store, -node_id, label)
             else:
-                gp.addName(term_store, node_id, label)
+                gp.add_name(term_store, node_id, label)
         if not results:
-            gp.addName(term, None, label)
+            gp.add_name(term, None, label)
         return gp
 
     def _ground(self, db, term, gp=None, silent_fail=True, assume_prepared=False, **kwdargs):

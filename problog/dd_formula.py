@@ -66,7 +66,7 @@ class DD(LogicFormula, Evaluatable):
         if index < 0:
             index = -index
             negate = True
-        node = self.getNode(index)
+        node = self.get_node(index)
         if type(node).__name__ == 'atom':
             result = self.get_manager().literal(self.atom2var[index])
         else:
@@ -108,8 +108,8 @@ class DD(LogicFormula, Evaluatable):
         return DDEvaluator(self, semiring, weights)
 
     def build_dd(self):
-        required_nodes = set([abs(n) for q, n in self.queries() if self.isProbabilistic(n)])
-        required_nodes |= set([abs(n) for q, n in self.queries() if self.isProbabilistic(n)])
+        required_nodes = set([abs(n) for q, n in self.queries() if self.is_probabilistic(n)])
+        required_nodes |= set([abs(n) for q, n in self.queries() if self.is_probabilistic(n)])
 
         for n in required_nodes:
             self.get_inode(n)
@@ -354,7 +354,7 @@ class DDEvaluator(Evaluator):
     def initialize(self, with_evidence=True):
         self.weights.clear()
 
-        weights = self.formula.extractWeights(self.semiring, self.original_weights)
+        weights = self.formula.extract_weights(self.semiring, self.original_weights)
         for atom, weight in weights.items():
             av = self.formula.atom2var.get(atom)
             if av is not None:
@@ -438,17 +438,17 @@ def build_dd(source, destination, ddname, **kwdargs):
         # TODO maintain a translation table
         for i, n, t in source:
             if t == 'atom':
-                j = destination.addAtom(n.identifier, n.probability, n.group, source.get_name(i))
+                j = destination.add_atom(n.identifier, n.probability, n.group, source.get_name(i))
             elif t == 'conj':
-                j = destination.addAnd(n.children, source.get_name(i))
+                j = destination.add_and(n.children, source.get_name(i))
             elif t == 'disj':
-                j = destination.addOr(n.children, source.get_name(i))
+                j = destination.add_or(n.children, source.get_name(i))
             else:
                 raise TypeError('Unknown node type')
             assert i == j
 
         for name, node, label in source.get_names_with_label():
-            destination.addName(name, node, label)
+            destination.add_name(name, node, label)
 
         for c in source.constraints():
             if c.isActive():

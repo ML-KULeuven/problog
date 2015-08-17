@@ -21,6 +21,7 @@ from .formula import LogicDAG
 
 from .core import ProbLogObject, transform, deprecated, deprecated_function
 from .util import Timer
+from .base_formula import BaseFormula
 
 from .evaluator import SemiringLogProbability
 
@@ -162,11 +163,11 @@ import tempfile
 #         return destination
 
 
-class CNF(LogicDAG):
+class CNF(BaseFormula):
     """A logic formula in Conjunctive Normal Form."""
 
     def __init__(self, **kwdargs):
-        LogicDAG.__init__(self)
+        BaseFormula.__init__(self)
         self._clauses = []        # All clauses in the CNF (incl. comment)
         self._clausecount = 0     # Number of actual clauses (not incl. comment)
 
@@ -367,6 +368,6 @@ def clarks_completion(source, destination, **kwdargs):
 
         # Copy node names.
         for n, i, l in source.get_names_with_label():
-            destination.addName(n, i, l, external=True)
+            destination.add_name(n, i, l)
 
         return destination

@@ -188,7 +188,7 @@ class SampledFormula(LogicFormula):
             return None
         return self.values[key-1]
 
-    def addAtom(self, identifier, probability, group=None, name=None):
+    def add_atom(self, identifier, probability, group=None, name=None):
         if probability is None:
             return 0
 
@@ -253,25 +253,25 @@ class SampledFormula(LogicFormula):
                 self.probability *= p
         self.groups = {}
 
-    def addAnd(self, content, **kwdargs):
+    def add_and(self, content, **kwdargs):
         i = 0
         for c in content:
             if c is not None and c != 0:
                 i += 1
             if i > 1:
                 raise ValueError("Can't combine sampled predicates. Use sample/2 to extract sample.")
-        return LogicFormula.addAnd(self, content)
+        return LogicFormula.add_and(self, content)
 
-    def addOr(self, content, **kwd):
+    def add_or(self, content, **kwd):
         i = 0
         for c in content:
             if c is not None and c != 0:
                 i += 1
             if i > 1:
                 raise ValueError("Can't combine sampled predicates. Make sure bodies are mutually exclusive.")
-        return LogicFormula.addOr(self, content, **kwd)
+        return LogicFormula.add_or(self, content, **kwd)
 
-    def addNot(self, child):
+    def add_not(self, child):
         if child == self.TRUE:
             return self.FALSE
         elif child == self.FALSE:
@@ -279,7 +279,7 @@ class SampledFormula(LogicFormula):
         else:
             raise ValueError("Can't negate a sampled predicate.")
         
-    def isProbabilistic(self, key):
+    def is_probabilistic(self, key):
         """Indicates whether the given node is probabilistic."""
         return False
 

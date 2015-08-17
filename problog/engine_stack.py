@@ -324,7 +324,7 @@ class StackBasedEngine(ClauseDBEngine):
             else:
                 name = None
             # Successful unification: notify parent callback.
-            target_node = target.addAtom(node_id, node.probability, name=name)
+            target_node = target.add_atom(node_id, node.probability, name=name)
             if target_node is not None:
                 return [newResult(parent, self._create_context(node.args), target_node, identifier, True)]
             else:
@@ -511,7 +511,7 @@ class StackBasedEngine(ClauseDBEngine):
             name = None
 
         origin = (node.group, result)
-        ground_node = target.addAtom(origin + (node.choice,), probability, group=origin, name=name)
+        ground_node = target.add_atom(origin + (node.choice,), probability, group=origin, name=name)
         # Notify parent.
 
         if ground_node is not None:
@@ -613,7 +613,7 @@ class EvalOr(EvalNode) :
         return self.on_cycle
 
     def flushBuffer(self, cycle=False):
-        func = lambda result, nodes: self.target.addOr(nodes, readonly=(not cycle), name=None)
+        func = lambda result, nodes: self.target.add_or(nodes, readonly=(not cycle), name=None)
         self.results.collapse(func)
 
     def newResult(self, result, node=NODE_TRUE, source=None, is_last=False ) :
@@ -622,10 +622,10 @@ class EvalOr(EvalNode) :
             assert(self.results.collapsed)
             if res in self.results :
                 res_node = self.results[res]
-                self.target.addDisjunct( res_node, node )
+                self.target.add_disjunct( res_node, node )
                 return False, []
             else :
-                result_node = self.target.addOr((node,), readonly=False, name=None)
+                result_node = self.target.add_or((node,), readonly=False, name=None)
                 self.results[ res ] = result_node
                 actions = []
                 if self.isOnCycle() : actions += self.notifyResult(res, result_node)
@@ -912,7 +912,7 @@ class EvalDefine(EvalNode) :
                 res = self.engine._fix_context(result)
                 res_node = self.results.get(res)
                 if res_node != None :
-                    self.target.addDisjunct( res_node, node )
+                    self.target.add_disjunct( res_node, node )
                     actions = []
                     if is_last :
                         a, act = self.complete(source)
@@ -932,7 +932,7 @@ class EvalDefine(EvalNode) :
                             name = Term(self.node.functor, *res)
                         else:
                             name = None
-                        result_node = self.target.addOr((node,), readonly=False, name=name)
+                        result_node = self.target.add_or((node,), readonly=False, name=name)
                     # if self.engine.label_all :
                     #     name = str(Term(self.node.functor, *res))
                     #     self.target.addName(name, result_node, self.target.LABEL_NAMED)
@@ -1005,8 +1005,8 @@ class EvalDefine(EvalNode) :
                     name = Term(self.node.functor, *res)
                 else:
                     name = None
-                node = self.target.addOr(nodes, readonly=(not cycle), name=name)
-            #node = self.target.addOr( nodes, readonly=(not cycle) )
+                node = self.target.add_or(nodes, readonly=(not cycle), name=name)
+            #node = self.target.add_or( nodes, readonly=(not cycle) )
             # if self.engine.label_all:
             #     name = str(Term(self.node.functor, *res))
             #     self.target.addName(name, node, self.target.LABEL_NAMED)
@@ -1128,7 +1128,7 @@ class EvalNot(EvalNode) :
     def complete(self, source=None) :
         actions = []
         if self.nodes :
-            or_node = self.target.addNot(self.target.addOr(self.nodes, name=None))
+            or_node = self.target.add_not(self.target.add_or(self.nodes, name=None))
             if or_node != NODE_FALSE :
                 actions += self.notifyResult(self.context, or_node)
         else :
@@ -1200,7 +1200,7 @@ class EvalAnd(EvalNode) :
                 return False, [ self.createCall( self.node.children[1], context=result, identifier=node ) ]
         else :  # Result from the second node
             # Make a ground node
-            target_node = self.target.addAnd((source, node), name=None)
+            target_node = self.target.add_and((source, node), name=None)
             if is_last:
                 # Notify self of child completion
                 all_complete, complete_actions = self.complete()

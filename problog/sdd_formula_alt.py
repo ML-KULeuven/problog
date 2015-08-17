@@ -235,7 +235,7 @@ class SDDtp(LogicFormula, Evaluatable):
         """Replace the node with the given node."""
         raise NotImplementedError('SDD formula does not support node updates.')
 
-    def addDisjunct( self, key, component ) :
+    def add_disjunct( self, key, component ) :
         """Add a component to the node with the given key."""
         raise NotImplementedError('SDD formula does not support node updates.')
 
@@ -259,18 +259,18 @@ def buildSDD( source, destination ) :
         destination.setVarCount(size)
         for i, n, t in source :
             if t == 'atom' :
-                destination.addAtom( n.identifier, n.probability, n.group )
+                destination.add_atom( n.identifier, n.probability, n.group )
             elif t == 'conj' :
-                destination.addAnd( n.children )
+                destination.add_and( n.children )
             elif t == 'disj' :
-                destination.addOr( n.children )
+                destination.add_or( n.children )
             else :
                 raise TypeError('Unknown node type')
 
-        for name, node, label in source.getNamesWithLabel() :
-            destination.addName(name, node, label)
+        for name, node, label in source.get_names_with_label():
+            destination.add_name(name, node, label)
 
         for c in source.constraints() :
-            destination.addConstraint(c)
+            destination.add_constraint(c)
         destination.build_sdd()
     return destination

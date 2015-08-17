@@ -56,7 +56,7 @@ class SimpleNNFEvaluator(Evaluator) :
     def initialize(self, with_evidence=True) :
         self.__probs.clear()
 
-        model_weights = self.__nnf.extractWeights(self.semiring, self.__given_weights)
+        model_weights = self.__nnf.extract_weights(self.semiring, self.__given_weights)
         for n, p in model_weights.items() :
             self.__probs[n] = p[0]
             self.__probs[-n] = p[1]
@@ -145,7 +145,7 @@ class SimpleNNFEvaluator(Evaluator) :
         assert(key is not None)
         # assert(key > 0)
 
-        node = self.__nnf.getNode(abs(key))
+        node = self.__nnf.get_node(abs(key))
         ntype = type(node).__name__
 
         if ntype == 'atom':
@@ -242,15 +242,15 @@ def _compile(cnf, cmd, cnf_file, nnf_file) :
         nnf = NNF()
         weights = cnf.get_weights()
         for i in range(1,cnf.atomcount+1) :
-            nnf.addAtom( i, weights.get(i))
+            nnf.add_atom( i, weights.get(i))
         or_nodes = []
         for i in range(1,cnf.atomcount+1) :
-            or_nodes.append( nnf.addOr( (i, -i) ) )
+            or_nodes.append( nnf.add_or( (i, -i) ) )
         if or_nodes :
-            nnf.addAnd( or_nodes )
+            nnf.add_and( or_nodes )
 
         for name, node, label in names:
-            nnf.addName(name, node, label)
+            nnf.add_name(name, node, label)
         for c in cnf.constraints() :
             nnf.add_constraint(c.copy())
 
@@ -294,28 +294,28 @@ def _load_nnf(filename, cnf) :
             elif line[0] == 'L' :
                 name = int(line[1])
                 prob = weights.get(abs(name), True)
-                node = nnf.addAtom( abs(name), prob )
+                node = nnf.add_atom( abs(name), prob )
                 rename[abs(name)] = node
                 if name < 0 : node = -node
                 line2node[lnum] = node
                 if name in names_inv :
                     for actual_name, label in names_inv[name] :
-                        nnf.addName(actual_name, node, label)
+                        nnf.add_name(actual_name, node, label)
                     del names_inv[name]
                 lnum += 1
             elif line[0] == 'A' :
                 children = map(lambda x : line2node[int(x)] , line[2:])
-                line2node[lnum] = nnf.addAnd( children )
+                line2node[lnum] = nnf.add_and( children )
                 lnum += 1
             elif line[0] == 'O' :
                 children = map(lambda x : line2node[int(x)], line[3:])
-                line2node[lnum] = nnf.addOr( children )
+                line2node[lnum] = nnf.add_or( children )
                 lnum += 1
             else :
                 print ('Unknown line type')
         for name in names_inv :
             for actual_name, label in names_inv[name] :
-                nnf.addName(actual_name, None, label)
+                nnf.add_name(actual_name, None, label)
     for c in cnf.constraints() :
         nnf.add_constraint(c.copy(rename))
 

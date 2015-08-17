@@ -120,7 +120,7 @@ class EventBasedEngine(ClauseDBEngine) :
             for a,b in zip(node.args, call_args) :
                 unify(a, b)
             # Successful unification: notify parent callback.
-            parent.newResult( node.args, ground_node=gp.addAtom(node_id, node.probability) )
+            parent.newResult( node.args, ground_node=gp.add_atom(node_id, node.probability) )
         except UnifyError :
             # Failed unification: don't send result.
             pass
@@ -139,7 +139,7 @@ class EventBasedEngine(ClauseDBEngine) :
         probability = instantiate( node.probability, call_args )
         # Create a new atom in ground program.
         origin = (node.group, result)
-        ground_node = gp.addAtom( (node.group, result, node.choice) , probability, group=(node.group, result) )
+        ground_node = gp.add_atom( (node.group, result, node.choice) , probability, group=(node.group, result) )
         # Notify parent.
         parent.newResult( result, ground_node )
         parent.complete()
@@ -356,7 +356,7 @@ class ProcessNot(ProcessNode) :
     def complete(self) :
         EngineLogger.get().receiveComplete(self)
         if self.ground_nodes :
-            or_node = self.gp.addNot(self.gp.addOr( self.ground_nodes ))
+            or_node = self.gp.add_not(self.gp.add_or( self.ground_nodes ))
             if or_node != None :
                 self.notifyListeners(self.context, ground_node=or_node)
         else :
@@ -404,7 +404,7 @@ class ProcessAnd(ProcessNode) :
 
     def newResult(self, result, ground_node=0) :
         EngineLogger.get().receiveResult(self, result, ground_node)
-        and_node = self.gp.addAnd( (self.first_node, ground_node) )
+        and_node = self.gp.add_and( (self.first_node, ground_node) )
         self.notifyListeners(result, and_node)
 
 class ProcessDefineCycle(ProcessNode) :
@@ -530,9 +530,9 @@ class ProcessDefine(ProcessNode) :
         res = (tuple(result))
         if res in self.results :
             res_node = self.results[res]
-            self.gp.addDisjunct( res_node, ground_node )
+            self.gp.add_disjunct( res_node, ground_node )
         else :
-            result_node = self.gp.addOr( (ground_node,), readonly=False )
+            result_node = self.gp.add_or( (ground_node,), readonly=False )
             self.results[ res ] = result_node
 
             self.notifyListeners(result, result_node )
@@ -549,7 +549,7 @@ class ProcessDefine(ProcessNode) :
         for result, nodes in self.__buffer.items() :
             if len(nodes) > 1 or cycle :
                 # Must make an 'or' node
-                node = self.gp.addOr( nodes, readonly=(not cycle) )
+                node = self.gp.add_or( nodes, readonly=(not cycle) )
             else :
                 node = nodes[0]
             self.results[result] = node
