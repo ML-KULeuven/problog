@@ -210,6 +210,9 @@ class BDDManager(DDManager):
             pall = semiring.plus(pw, pall)
         return pall
 
+    def wmc_true(self, weights, semiring):
+        return semiring.one()
+
     def __del__(self):
         """
         Clean up the BDD manager.
