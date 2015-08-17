@@ -19,148 +19,11 @@ from __future__ import print_function
 
 from .formula import LogicDAG
 
-from .core import ProbLogObject, transform, deprecated, deprecated_function
+from .core import transform
 from .util import Timer
 from .base_formula import BaseFormula
 
 from .evaluator import SemiringLogProbability
-
-import warnings
-import tempfile
-
-
-# class CNF(ProbLogObject) :
-#     """A logic formula in Conjunctive Normal Form.
-#
-#     This class does not derive from LogicFormula. (Although it could.)
-#
-#     """
-#
-#     def __init__(self, **kwdargs):
-#         self.__atom_count = 0
-#         self.__lines = []
-#         self.__constraints = []
-#
-#         self.__names = []
-#         self.__weights = []
-#
-#     def addAtom(self, *args) :
-#         self.__atom_count += 1
-#
-#     def addAnd(self, content) :
-#         raise TypeError('This data structure does not support conjunctions.')
-#
-#     def addOr(self, content) :
-#         self.__lines.append( ' '.join(map(str, content)) + ' 0' )
-#
-#     def addNot(self, content) :
-#         return -content
-#
-#     def addConstraint(self, constraint) :
-#         self.__constraints.append(constraint)
-#         for l in constraint.encodeCNF() :
-#             self.__lines.append(' '.join(map(str,l)) + ' 0')
-#
-#     def constraints(self) :
-#         return self.__constraints
-#
-#     def getNamesWithLabel(self) :
-#         return self.__names
-#
-#     def setNamesWithLabel(self, names) :
-#         self.__names = names
-#
-#     def getWeights(self) :
-#         return self.__weights
-#
-#     def setWeights(self, weights) :
-#         self.__weights = weights
-#
-#     def ready(self) :
-#         pass
-#
-#     def to_dimacs(self):
-#         return 'p cnf %s %s\n' % (self.__atom_count, len(self.__lines)) + '\n'.join( self.__lines )
-#
-#     toDimacs = deprecated_function('toDimacs', to_dimacs)
-#
-#     def getAtomCount(self) :
-#         return self.__atom_count
-#
-#     def isTrivial(self) :
-#         return len(self.__lines) == 0
-
-
-# class CNFFormula(LogicDAG):
-#     """A CNF stored in memory."""
-#
-#     def __init__(self, **kwdargs):
-#         LogicDAG.__init__(auto_compact=False, **kwdargs)
-#
-#     def __iter__(self) :
-#         for n in LogicDAG.__iter__(self) :
-#             yield n
-#         yield self._create_conj( tuple(range(self.getAtomCount()+1, len(self)+1) ) )
-#
-#     def addAnd(self, content) :
-#         raise TypeError('This data structure does not support conjunctions.')
-#
-# class CNFFile(CNF) :
-#     """A CNF stored in a file."""
-#
-#     # TODO add read functionality???
-#
-#     def __init__(self, filename=None, readonly=True, **kwdargs):
-#         self.filename = filename
-#         self.readonly = readonly
-#
-#         if filename is None :
-#             self.filename = tempfile.mkstemp('.cnf')[1]
-#             self.readonly = False
-#         else :
-#             self.filename = filename
-#             self.readonly = readonly
-#
-#     def ready(self) :
-#         if self.readonly :
-#             raise TypeError('This data structure is read only.')
-#         with open(self.filename, 'w') as f :
-#             f.write('p cnf %s %s\n' % (self.__atom_count, len(self.__lines)))
-#             f.write('\n'.join(self.__lines))
-
-# @transform(LogicDAG, CNF)
-# def clarks_completion(source, destination, **kwdargs):
-#     with Timer('Clark\'s completion'):
-#         # Every node in original gets a literal
-#         num_atoms = len(source)
-#
-#         # Add atoms
-#         for i in range(0, num_atoms) :
-#             destination.addAtom( (i+1), True, (i+1) )
-#
-#         # Complete other nodes
-#         for index, node, nodetype in source :
-#             if nodetype == 'conj' :
-#                 destination.addOr( (index,) + tuple( map( lambda x : destination.addNot(x), node.children ) ) )
-#                 for x in node.children  :
-#                     destination.addOr( (destination.addNot(index), x) )
-#             elif nodetype == 'disj' :
-#                 destination.addOr( (destination.addNot(index),) + tuple( node.children ) )
-#                 for x in node.children  :
-#                     destination.addOr( (index, destination.addNot(x)) )
-#             elif nodetype == 'atom' :
-#                 pass
-#             else :
-#                 raise ValueError("Unexpected node type: '%s'" % nodetype)
-#
-#         for c in source.constraints() :
-#             destination.addConstraint(c)
-#
-#         destination.setNamesWithLabel(source.getNamesWithLabel())
-#         destination.setWeights(source.getWeights())
-#
-#         destination.ready()
-#         return destination
 
 
 class CNF(BaseFormula):
@@ -170,11 +33,6 @@ class CNF(BaseFormula):
         BaseFormula.__init__(self)
         self._clauses = []        # All clauses in the CNF (incl. comment)
         self._clausecount = 0     # Number of actual clauses (not incl. comment)
-
-        self._weights = {}        # Weights of atoms in the CNF
-        self._constraints = []  # Constraints
-
-        # names, constraints, ...
 
     def add_atom(self, atom):
         self._atomcount += 1
@@ -193,7 +51,7 @@ class CNF(BaseFormula):
         :type constraint: Constraint
         :return:
         """
-        self._constraints.append(constraint)
+        BaseFormula.add_constraint(self, constraint)
         for c in constraint.encodeCNF():
             self.add_clause(None, c)
 
@@ -216,6 +74,53 @@ class CNF(BaseFormula):
 
         result = 'p %s %s\n' % (t, ' '.join(map(str, header)))
         result += '\n'.join(map(lambda cl: ' '.join(map(str, cl)) + ' 0', content))
+        return result
+
+    def to_lp(self, partial=False, semiring=None):
+        header, content = self.contents(partial=partial, weighted=False, semiring=semiring)
+
+        if semiring is None:
+            semiring = SemiringLogProbability()
+
+        var2str = lambda v: 'x%s' % v if v > 0 else '-x%s' % -v
+
+        if partial:
+            ct = lambda i: 2*i
+            pt = lambda i: ct(i) - 1
+
+            weights = self.extract_weights(semiring)
+            objective = []
+            for v in range(0, self.atomcount+1):
+                w_pos, w_neg = weights.get(v, (semiring.one(), semiring.one()))
+                if not semiring.is_one(w_pos):
+                    w_ct = w_pos
+                    objective.append('%s x%s' % (w_ct, ct(v)))
+                if not semiring.is_one(w_neg):
+                    w_pt = -w_neg
+                    objective.append('%s x%s' % (w_pt, pt(v)))
+            objective = ' + '.join(objective)
+
+        else:
+            weights = {}
+            for i, w in self.extract_weights(semiring).items():
+                w = w[0]-w[1]
+                if w != 0:
+                    weights[i] = str(w)
+
+            objective = ' + '.join(['%s x%s' % (weights[i], i)
+                                    for i in range(0, self.atomcount+1) if i in weights])
+        result = 'maximize\n'
+        result += '    obj:' + objective + '\n'
+        result += 'subject to\n'
+        for clause in content:
+            n_neg = len([c for c in clause if c < 0])
+            result += '    ' + ' + '.join(map(var2str, clause)) + ' >= ' + str(1 - n_neg) + '\n'
+        result += 'bounds\n'
+        for i in range(1, self.atomcount + 1):
+            result += '    0 <= x%s <= 1\n' % i
+        result += 'binary\n'
+        result += '    ' + ' '.join(map(var2str, range(1, self.atomcount + 1))) + '\n'
+        result += 'end\n'
         return result
 
     def contents(self, partial=False, weighted=False, semiring=None):
@@ -241,7 +146,7 @@ class CNF(BaseFormula):
         if weighted:
             if semiring is None:
                 semiring = SemiringLogProbability()
-            weights = self.extractWeights(semiring)
+            weights = self.extract_weights(semiring)
 
             w_sum = 0.0
             for w_pos, w_neg in weights.values():
@@ -299,14 +204,32 @@ class CNF(BaseFormula):
 
         return [atomcount, len(clauses)] + w_max, clauses
 
-    def constraints(self):
-        return self._constraints
+    def from_partial(self, atoms):
+        """Translates a (complete) conjunction in the partial formula back to the complete formula.
 
-    def set_weights(self, weights):
-        self._weights = weights
+        For example: given an original formula with one atom '1',
+         this atom is translated to two atoms '1' (pt) and '2' (ct).
+        The possible conjunctions are:
 
-    def get_weights(self):
-        return self._weights
+            [1, 2]    => [1]  certainly true (and possibly true) => true
+            [-1, -2]  => [-1] not possibly true (and certainly true) => false
+            [1, -2]   => []   possibly true but not certainly true => unknown
+            [-1, 2]   => INVALID   certainly true but not possible => invalid (not checked)
+
+        :param atoms: complete list of atoms in partial CNF
+        :return: partial list of atoms in full CNF
+        """
+        result = []
+        for s in atoms:
+            if s % 2 == 1 and s < 0:
+                r = (abs(s)+1)/2
+                if r in self.get_weights():
+                    result.append(-r)
+            elif s % 2 == 0 and s > 0:
+                r = (abs(s)+1)/2
+                if r in self.get_weights():
+                    result.append(r)
+        return result
 
     def is_trivial(self):
         return self.clausecount == 0
@@ -318,18 +241,6 @@ class CNF(BaseFormula):
     @property
     def clausecount(self):
         return self._clausecount
-
-
-class PartialCNF(CNF):
-
-    def __init__(self):
-        CNF.__init__(self)
-        self.is_partial = True
-
-
-
-
-
 
 
 @transform(LogicDAG, CNF)

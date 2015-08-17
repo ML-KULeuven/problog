@@ -1358,6 +1358,27 @@ class TrueConstraint(Constraint) :
     def __str__(self) :
         return '%s is true' % self.node
 
+
+class ClauseConstraint(Constraint):
+
+    def __init__(self, nodes):
+        self.nodes = nodes
+
+    def isActive(self):
+        return True
+
+    def encodeCNF(self):
+        return [self.nodes]
+
+    def copy(self, rename={}):
+        return ClauseConstraint(map(lambda x: rename.get(x, x), self.nodes))
+
+    # def updateWeights(self, weights, semiring) :
+    #     weights[self.node] = (semiring.one(), semiring.zero())
+
+    def __str__(self) :
+        return '%s is true' % self.nodes
+
 def copyFormula(source, target) :
     for i, n, t in source :
         if t == 'atom' :

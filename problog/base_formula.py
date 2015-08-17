@@ -67,6 +67,9 @@ class BaseFormula(ProbLogObject):
     def get_weights(self):
         return self._weights
 
+    def set_weights(self, weights):
+        self._weights = weights
+
     def get_weight(self, key, semiring):
         if self.is_false(key):
             return semiring.zero()
