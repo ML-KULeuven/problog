@@ -1,6 +1,11 @@
 *.pyc
 __pycache__
 *.class
+.coverage
+.coveragerc
+.idea/
+.ipynb_checkpoints
+
 
 build/
 trash/
@@ -17,3 +22,4 @@ problog/lib/python3/
 .DS_Store
 
 web/cache
+web/logs
