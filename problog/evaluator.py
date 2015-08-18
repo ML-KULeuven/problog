@@ -191,13 +191,14 @@ class SemiringSymbolic(Semiring) :
         else :
             return "%s / %s" % (a,Z)
 
-class Evaluatable(object) :
+
+class Evaluatable(object):
 
     def create_evaluator(self, semiring, weights):
         raise NotImplementedError('Evaluatable.create_evaluator is an abstract method')
 
     def get_evaluator(self, semiring=None, evidence=None, weights=None):
-        if semiring is None :
+        if semiring is None:
             semiring = SemiringProbability()
 
         evaluator = self.create_evaluator(semiring, weights)
@@ -237,38 +238,33 @@ class Evaluatable(object) :
 
         if evidence != None :
             for n_ev, node_ev in evaluator.get_names(self.LABEL_EVIDENCE_MAYBE) :
+                print ('EV?', n_ev, node_ev)
                 value = evidence.get( n_ev, None )
                 if value == True :
                     evaluator.add_evidence( node_ev )
                 elif value == False :
                     evaluator.add_evidence( -node_ev )
 
-
         evaluator.propagate()
         return evaluator
 
-    def evaluate(self, index=None, semiring=None, evidence=None, weights=None) :
+    def evaluate(self, index=None, semiring=None, evidence=None, weights=None):
         evaluator = self.get_evaluator(semiring, evidence, weights)
 
-        if index is None :
+        if index is None:
             result = {}
             # Probability of query given evidence
-            for name, node in evaluator.get_names(self.LABEL_QUERY):
+            for name, node in evaluator.formula.queries():
                 w = evaluator.evaluate(node)
-                if not semiring is None:
-                    w = semiring.result(w)
                 result[name] = w
             return result
-        else :
-            return evaluator.evaluate(node)
+        else:
+            return evaluator.evaluate(index)
 
 
+class Evaluator(object):
 
-
-
-class Evaluator(object) :
-
-    def __init__(self, formula, semiring) :
+    def __init__(self, formula, semiring):
         self.formula = formula
         self.__semiring = semiring
 
@@ -277,6 +273,9 @@ class Evaluator(object) :
     @property
     def semiring(self):
         return self.__semiring
+
+    def get_names(self, label=None):
+        return self.formula.get_names(label)
 
     def initialize(self):
         raise NotImplementedError('Evaluator.initialize() is an abstract method.')

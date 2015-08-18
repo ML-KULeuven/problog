@@ -345,9 +345,6 @@ class DDEvaluator(Evaluator):
     def get_manager(self):
         return self.formula.get_manager()
 
-    def get_names(self, label=None):
-        return self.formula.get_names(label)
-
     def get_z(self):
         return self.normalization
 
@@ -385,24 +382,24 @@ class DDEvaluator(Evaluator):
     def evaluate(self, node):
         # Trivial case: node is deterministically True or False
         if node == self.formula.TRUE:
-            return self.semiring.one()
+            result = self.semiring.one()
         elif node is self.formula.FALSE:
-            return self.semiring.zero()
+            result = self.semiring.zero()
+        else:
+            query_def_inode = self.formula.get_inode(node)
+            evidence_inode = self.evidence_inode
+            # Construct the query SDD
+            # if not evidence propagated or (query and evidence share variables):
+            query_sdd = self.get_manager().conjoin(query_def_inode, evidence_inode)
+            # else:
+            #    query_sdd = query_def_inode
 
-        query_def_inode = self.formula.get_inode(node)
-        evidence_inode = self.evidence_inode
-        # Construct the query SDD
-        # if not evidence propagated or (query and evidence share variables):
-        query_sdd = self.get_manager().conjoin(query_def_inode, evidence_inode)
-        # else:
-        #    query_sdd = query_def_inode
-
-        result = self.get_manager().wmc(query_sdd, self.weights, self.semiring)
-        self.get_manager().deref(query_sdd)
-        # TODO only normalize when there are evidence or constraints.
-        result = self.semiring.normalize(result, self.normalization)
-        result = self.semiring.normalize(result, self.evidence_weight)
-        return result
+            result = self.get_manager().wmc(query_sdd, self.weights, self.semiring)
+            self.get_manager().deref(query_sdd)
+            # TODO only normalize when there are evidence or constraints.
+            result = self.semiring.normalize(result, self.normalization)
+            result = self.semiring.normalize(result, self.evidence_weight)
+        return self.semiring.result(result)
 
     def evaluate_fact(self, node):
         if node == self.formula.TRUE:

@@ -262,8 +262,6 @@ class SDDManager(DDManager):
         sdd.wmc_manager_free(wmc_manager)
         return result
 
-
-
     def __del__(self):
         """
         Clean up the SDD manager.

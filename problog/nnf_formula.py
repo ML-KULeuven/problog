@@ -79,33 +79,31 @@ class SimpleNNFEvaluator(Evaluator) :
     def evaluate_evidence(self):
         self.initialize(False)
         for ev in self.evidence():
-            self.set_value( abs(ev), ev > 0 )
+            self.set_value(abs(ev), ev > 0)
 
-        result = self.get_weight( len(self.__nnf) )
-
+        result = self.get_weight(len(self.__nnf))
         return result
 
     def evaluate_fact(self, node):
         return self.evaluate(node)
 
-    def evaluate(self, node) :
-        if node == 0 :
-            return self.semiring.one()
-        elif node is None :
-            return self.semiring.zero()
-        else :
+    def evaluate(self, node):
+        if node == 0:
+            result = self.semiring.one()
+        elif node is None:
+            result = self.semiring.zero()
+        else:
             p = self.get_weight(abs(node))
             n = self.get_weight(-abs(node))
-            self.set_value(abs(node), (node > 0) )
-            result = self.get_weight( len(self.__nnf) )
-            self.reset_value(abs(node),p,n)
+            self.set_value(abs(node), (node > 0))
+            result = self.get_weight(len(self.__nnf))
+            self.reset_value(abs(node), p, n)
             if self.has_evidence():
-                return self.semiring.normalize(result,self.get_z())
-            else :
-                return result
+                result = self.semiring.normalize(result, self.get_z())
+        return self.semiring.result(result)
 
-    def reset_value(self, index, pos, neg) :
-        self.set_weight( index, pos, neg)
+    def reset_value(self, index, pos, neg):
+        self.set_weight(index, pos, neg)
 
     def get_weight(self, index) :
         if index == 0 :
