@@ -81,9 +81,9 @@ def get_solver(prefer=None):
         return MaxSATSolver(['java', '-jar',
                              root_path('problog', 'bin', 'java', 'sat4j-maxsat.jar')])
     else:
-        return SCIPSolver()
+        return MaxSATSolver(['maxsatz'])
 
 
 def get_available_solvers():
-    # TODO check whether they are available
-    return ['scip', 'sat4j']
+    # TODO check whether they are actually available
+    return ['maxsatz', 'scip', 'sat4j']
