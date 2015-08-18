@@ -23,7 +23,7 @@ from __future__ import print_function
 import sys
 
 from problog.program import PrologFile
-from problog.formula import TrueConstraint
+from problog.formula import TrueConstraint, LogicFormula
 from problog.cnf_formula import CNF
 from problog.maxsat import get_solver, get_available_solvers
 
@@ -32,7 +32,7 @@ def main(argv):
     args = argparser().parse_args(argv)
     inputfile = args.inputfile
 
-    cnf = CNF.createFrom(PrologFile(inputfile), label_all=True)
+    cnf = CNF.createFrom(PrologFile(inputfile), label_all=True, avoid_name_clash=True)
 
     for qn, qi in cnf.evidence():
         cnf.add_constraint(TrueConstraint(qi))
@@ -47,18 +47,17 @@ def main(argv):
         print ('%% The model is not satisfiable.')
     else:
         facts = set(result)
+        pfacts = cnf.get_weights()
         for name, node in cnf.get_names():
-            if node in facts:
-                facts.remove(node)
-                print (name)
-            elif -node in facts:
-                facts.remove(-node)
-                print (-name)
-        for f in facts:
-            if f < 0:
-                print ('\+node_%s' % -f)
-            else:
-                print ('node_%s' % f)
+            if node in pfacts:
+                if node in facts:
+                    facts.remove(node)
+                    print (name)
+                elif -node in facts:
+                    facts.remove(-node)
+                    print (-name)
+                else:
+                    print (-name)
 
 
 def argparser():
