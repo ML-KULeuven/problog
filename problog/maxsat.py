@@ -33,7 +33,7 @@ class MaxSATSolver(object):
         filename = mktempfile('.' + self.extension)
         with open(filename, 'w') as f:
             f.write(inputf)
-        return subprocess.check_output(self.command + [filename])
+        return subprocess.check_output(self.command + [filename]).decode()
 
     def evaluate(self, formula, **kwargs):
         inputf = self.prepare_input(formula, **kwargs)
