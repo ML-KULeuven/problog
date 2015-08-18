@@ -29,6 +29,7 @@ from ..nnf_formula import NNF
 from ..sdd_formula import SDD
 from ..bdd_formula import BDD
 from ..forward import ForwardBDD, ForwardSDD
+from ..kbest import KBestFormula
 from ..util import Timer, start_timer, stop_timer, init_logger
 from ..core import process_error, process_result
 from ..parser import DefaultPrologParser
@@ -76,6 +77,8 @@ def main(argv):
         knowledge = BDD
     elif args.koption == 'fbdd':
         knowledge = ForwardBDD
+    elif args.koption == 'kbest':
+        knowledge = KBestFormula
     elif args.koption is None:
         if SDD.is_available() and not args.symbolic:
             logger.info('Using SDD path')
@@ -189,7 +192,7 @@ def argparser():
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument('filenames', metavar='MODEL', nargs='*', type=InputFile)
     parser.add_argument('--verbose', '-v', action='count', help='Verbose output')
-    parser.add_argument('--knowledge', '-k', dest='koption', choices=('sdd', 'nnf', 'ddnnf', 'bdd', 'fsdd', 'fbdd'),
+    parser.add_argument('--knowledge', '-k', dest='koption', choices=('sdd', 'nnf', 'ddnnf', 'bdd', 'fsdd', 'fbdd', 'kbest'),
                         default=None, help="Knowledge compilation tool.")
 
     # Evaluation semiring
