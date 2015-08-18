@@ -21,6 +21,7 @@ from __future__ import print_function
 from collections import defaultdict, OrderedDict
 
 from .core import ProbLogObject
+from .util import OrderedSet
 
 class BaseFormula(ProbLogObject):
     """Defines a basic logic formula consisting of nodes in some logical relation.
@@ -140,8 +141,15 @@ class BaseFormula(ProbLogObject):
         else:
             self.add_name(name, key, self.LABEL_EVIDENCE_NEG)
 
-    def get_names(self, label):
-        return self._names.get(label, {}).items()
+    def get_names(self, label=None):
+        if label is None:
+            result = OrderedSet()
+            for names in self._names.values():
+                for name, node in names.items():
+                    result.add((name, node))
+            return result
+        else:
+            return self._names.get(label, {}).items()
 
     def get_names_with_label(self):
         result = []
