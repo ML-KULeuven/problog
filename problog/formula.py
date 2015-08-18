@@ -214,6 +214,8 @@ class LogicFormula(BaseFormula):
             self.set_weight(node_id, probability)
             if node_id == len(self._nodes):
                 self._atomcount += 1
+            if name is not None:
+                self.add_name(name, node_id, self.LABEL_NAMED)
             return self._add_constraint_me(group, node_id)
 
     def add_and(self, components, key=None, name=None):
