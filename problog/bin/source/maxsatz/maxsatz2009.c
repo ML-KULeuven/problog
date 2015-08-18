@@ -64,7 +64,9 @@ a cycle structure do not form a chain).
 */
 
 /*
-Update 2015 by Anton Dries: change program return code
+Update 2015 by Anton Dries: 
+  - change program return code to be 0 on success and 1 on failure
+  - replace CLK_TCK with CLOCKS_PER_SEC
 */
 
 #include <stdio.h>
@@ -3067,15 +3069,15 @@ int main(int argc, char *argv[]) {
   }
 
   printf ("Program terminated in %5.3f seconds.\n",
-	  ((double)(endtime-begintime)/CLK_TCK));
+	  ((double)(endtime-begintime)/CLOCKS_PER_SEC));
 
   fp_time = fopen("resulttable", "a");
   fprintf(fp_time, "wpmsz-2.5 %s %5.3f %lld %lld %lld %d %d %d %d\n", 
-	  saved_input_file, ((double)(endtime-begintime)/CLK_TCK), 
+	  saved_input_file, ((double)(endtime-begintime)/CLOCKS_PER_SEC), 
 	  NB_BRANCHE, NB_BACK,  
 	  UB, NB_VAR, INIT_NB_CLAUSE, NB_CLAUSE-INIT_NB_CLAUSE, CMTR[0]+CMTR[1]);
   printf("wpmsz-2.5 %s %5.3f %lld %lld %lld %d %d %d %d\n", 
-	 	 saved_input_file, ((double)(endtime-begintime)/CLK_TCK), 
+	 	 saved_input_file, ((double)(endtime-begintime)/CLOCKS_PER_SEC), 
 	 NB_BRANCHE, NB_BACK,
 	 UB, NB_VAR, INIT_NB_CLAUSE, NB_CLAUSE-INIT_NB_CLAUSE, CMTR[0]+CMTR[1]);
   fclose(fp_time);
