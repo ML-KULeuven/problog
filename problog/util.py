@@ -24,6 +24,7 @@ import os
 import subprocess
 import sys
 import distutils.spawn
+import tempfile
 
 class Timer(object) :
 
@@ -158,3 +159,9 @@ class OrderedSet(collections.MutableSet):
         elif isinstance(other, OrderedSet):
             return len(self) == len(other) and list(self) == list(other)
         return set(self) == set(other)
+
+
+def mktempfile(suffix):
+    fd, filename = tempfile.mkstemp(suffix)
+    os.close(fd)
+    return filename
