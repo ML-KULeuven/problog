@@ -29,7 +29,7 @@ from ..nnf_formula import NNF
 from ..sdd_formula import SDD
 from ..bdd_formula import BDD
 from ..forward import ForwardBDD, ForwardSDD
-from ..util import Timer, start_timer, stop_timer
+from ..util import Timer, start_timer, stop_timer, init_logger
 from ..core import process_error, process_result
 from ..parser import DefaultPrologParser
 from ..debug import EngineTracer
@@ -39,22 +39,7 @@ def main(argv):
     parser = argparser()
     args = parser.parse_args(argv)
 
-    logger = logging.getLogger('problog')
-    ch = logging.StreamHandler(sys.stdout)
-    formatter = logging.Formatter('[%(levelname)s] %(message)s')
-    ch.setFormatter(formatter)
-    logger.addHandler(ch)
-    if args.debug:
-        logger.setLevel(logging.DEBUG)
-        logger.debug('Output level: DEBUG')
-    elif args.verbose is None:
-        logger.setLevel(logging.WARNING)
-    elif args.verbose == 1:
-        logger.setLevel(logging.INFO)
-        logger.info('Output level: INFO')
-    else:
-        logger.setLevel(logging.DEBUG)
-        logger.debug('Output level: DEBUG')
+    logger = init_logger(args.verbose)
 
     if args.recursion_limit:
         sys.setrecursionlimit(args.recursion_limit)
@@ -169,6 +154,7 @@ def run_problog(filename, knowledge=NNF, semiring=None, parse_class=DefaultProlo
         return True, result
     except Exception as err:
         return False, process_error(err, debug=debug)
+
 
 def argparser():
     """Create the default argument parser for ProbLog.

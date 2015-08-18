@@ -17,14 +17,32 @@ limitations under the License.
 """
 from __future__ import print_function
 
-import logging, time
+import logging
+import time
 
 import signal
+import sys
 import os
 import subprocess
-import sys
 import distutils.spawn
 import tempfile
+
+
+def init_logger(verbose=None):
+    logger = logging.getLogger('problog')
+    ch = logging.StreamHandler(sys.stdout)
+    formatter = logging.Formatter('[%(levelname)s] %(message)s')
+    ch.setFormatter(formatter)
+    logger.addHandler(ch)
+    if not verbose:
+        logger.setLevel(logging.WARNING)
+    elif verbose == 1:
+        logger.setLevel(logging.INFO)
+        logger.info('Output level: INFO')
+    else:
+        logger.setLevel(logging.DEBUG)
+        logger.debug('Output level: DEBUG')
+    return logger
 
 class Timer(object) :
 
