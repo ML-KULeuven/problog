@@ -151,7 +151,8 @@ class LFIProblem(SemiringProbability, LogicProgram) :
                     n += 1
                     logger.debug('Compiling example %s ...' % n)
 
-                ground_program = ground(baseprogram, ground_program, evidence=zip(atoms, example))
+                ground_program = ground(baseprogram, ground_program,
+                                        evidence=list(zip(atoms, example)))
                 compiled_program = self.knowledge.createFrom(ground_program)
                 result.append((atoms, example, compiled_program))
         self._compiled_examples = result
@@ -351,17 +352,17 @@ class LFIProblem(SemiringProbability, LogicProgram) :
         for at, val, comp in self._compiled_examples:
             evidence = dict(zip(at, map(str2bool, val)))
             evaluator = comp.get_evaluator(semiring=self, evidence=evidence)
-            pQueries = {}
+            p_queries = {}
             # Probability of query given evidence
-            for name, node in evaluator.get_names('query'):
+            for name, node in evaluator.formula.queries():
                 w = evaluator.evaluate_fact(node)
-                if w < 1e-6 : 
-                    pQueries[name] = 0.0
-                else :
-                    pQueries[name] = w
-            pEvidence = evaluator.evaluate_evidence()
-            i+=1
-            results.append((pEvidence, pQueries))
+                if w < 1e-6:
+                    p_queries[name] = 0.0
+                else:
+                    p_queries[name] = w
+            p_evidence = evaluator.evaluate_evidence()
+            i += 1
+            results.append((p_evidence, p_queries))
         return results
     
     def _update(self, results) :
