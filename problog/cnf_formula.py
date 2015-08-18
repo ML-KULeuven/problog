@@ -222,11 +222,11 @@ class CNF(BaseFormula):
         result = []
         for s in atoms:
             if s % 2 == 1 and s < 0:
-                r = (abs(s)+1)/2
+                r = (abs(s)+1)//2
                 if r in self.get_weights():
                     result.append(-r)
             elif s % 2 == 0 and s > 0:
-                r = (abs(s)+1)/2
+                r = (abs(s)+1)//2
                 if r in self.get_weights():
                     result.append(r)
         return result
