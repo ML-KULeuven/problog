@@ -115,8 +115,8 @@ class ForwardInference(DD):
         return updated_nodes
 
     def build_dd(self):
-        required_nodes = set([abs(n) for q, n in self.queries() if self.isProbabilistic(n)])
-        required_nodes |= set([abs(n) for q, n in self.queries() if self.isProbabilistic(n)])
+        required_nodes = set([abs(n) for q, n in self.queries() if self.is_probabilistic(n)])
+        required_nodes |= set([abs(n) for q, n in self.queries() if self.is_probabilistic(n)])
 
         if self.timeout:
             # signal.signal(signal.SIGALRM, timeout_handler)
