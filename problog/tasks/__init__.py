@@ -26,11 +26,17 @@ problog_tasks['lfi'] = '../../learning/lfi.py'
 
 problog_default_task = 'prob'
 
-import os
-import imp
+from problog.util import load_module
 
 
 def run_task(argv):
+    """Execute a task in ProbLog.
+    If the first argument is a known task name, that task is executed.
+    Otherwise the default task is executed.
+
+    :param argv: list of arguments for the task
+    :return: result of the task (typically None)
+    """
     if argv[0] in problog_tasks:
         task = argv[0]
         args = argv[1:]
@@ -41,19 +47,11 @@ def run_task(argv):
 
 
 def load_task(name):
-    return _load_extension(problog_tasks[name])
+    """Load the module for executing the given task.
 
-
-def _load_extension(filename):
-    if filename.endswith('.py'):
-        filename = os.path.abspath(os.path.join(os.path.dirname(__file__), filename))
-        (path, name) = os.path.split(filename)
-        (name, ext) = os.path.splitext(name)
-        (extfile, filename, data) = imp.find_module(name, [path])
-        return imp.load_module(name, extfile, filename, data)
-    else:
-        mod = __import__(filename)
-        components = filename.split('.')
-        for c in components[1:]:
-            mod = getattr(mod, c)
-        return mod
+    :param name: task name
+    :type name: str
+    :return: loaded module
+    :rtype: module
+    """
+    return load_module(problog_tasks[name])
