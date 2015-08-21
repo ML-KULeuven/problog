@@ -1,19 +1,25 @@
 """
-Part of the ProbLog distribution.
+problog.evaluator - Commone interface for evaluation
+----------------------------------------------------
 
-Copyright 2015 KU Leuven, DTAI Research Group
+Common interface to decision diagrams (BDD, SDD).
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
+..
+    Part of the ProbLog distribution.
 
-    http://www.apache.org/licenses/LICENSE-2.0
+    Copyright 2015 KU Leuven, DTAI Research Group
 
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+    Licensed under the Apache License, Version 2.0 (the "License");
+    you may not use this file except in compliance with the License.
+    You may obtain a copy of the License at
+
+        http://www.apache.org/licenses/LICENSE-2.0
+
+    Unless required by applicable law or agreed to in writing, software
+    distributed under the License is distributed on an "AS IS" BASIS,
+    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+    See the License for the specific language governing permissions and
+    limitations under the License.
 """
 from __future__ import print_function
 
@@ -24,12 +30,12 @@ import sys, os, tempfile
 import math
 from .core import InconsistentEvidenceError
 
-class Semiring(object) :
+class Semiring(object):
 
-    def one(self) :
+    def one(self):
         raise NotImplementedError()
 
-    def zero(self) :
+    def zero(self):
         raise NotImplementedError()
 
     def is_one(self, value):
@@ -38,34 +44,41 @@ class Semiring(object) :
     def is_zero(self, value):
         return value == self.zero
 
-    def plus(self, a, b) :
+    def plus(self, a, b):
         raise NotImplementedError()
 
-    def times(self, a, b) :
+    def times(self, a, b):
         raise NotImplementedError()
 
-    def negate(self, a) :
+    def negate(self, a):
         raise NotImplementedError()
 
-    def value(self, a) :
+    def value(self, a):
         raise NotImplementedError()
 
-    def result(self, a) :
+    def result(self, a):
         raise NotImplementedError()
 
-    def normalize(self, a, Z) :
+    def normalize(self, a, z):
         raise NotImplementedError()
 
-    def isLogspace(self) :
+    def isLogspace(self):
         return False
 
-    def pos_value(self, a) :
+    def pos_value(self, a):
         return self.value(a)
 
-    def neg_value(self, a) :
+    def neg_value(self, a):
         return self.negate(self.value(a))
 
-class SemiringProbability(Semiring) :
+    def result_zero(self):
+        return self.result(self.zero())
+
+    def result_one(self):
+        return self.result(self.one())
+
+
+class SemiringProbability(Semiring):
 
     def one(self) :
         return 1.0
