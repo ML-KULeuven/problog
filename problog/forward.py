@@ -126,7 +126,7 @@ class ForwardInference(DD):
         self._node_depths = [None] * len(self)
         self._node_levels = []
         # Start with current nodes
-        current_nodes = set(n for q, n in self.queries()) | set(n for q, n in self.evidence())
+        current_nodes = set(abs(n) for q, n in self.queries()) | set(abs(n) for q, n in self.evidence())
         current_level = 0
         while current_nodes:
             self._node_levels.append(current_nodes)

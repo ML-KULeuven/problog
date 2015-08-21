@@ -30,7 +30,7 @@ from ..sdd_formula import SDD
 from ..bdd_formula import BDD
 from ..forward import ForwardBDD, ForwardSDD
 from ..kbest import KBestFormula
-from ..util import Timer, start_timer, stop_timer, init_logger
+from ..util import Timer, start_timer, stop_timer, init_logger, format_dictionary
 from ..core import process_error, process_result
 from ..parser import DefaultPrologParser
 from ..debug import EngineTracer
@@ -124,7 +124,7 @@ def print_result(d, output, precision=8):
     """
     success, d = d
     if success:
-        print(process_result(d, precision), file=output)
+        print(format_dictionary(d, precision), file=output)
         return 0
     else:
         print (d, file=output)
