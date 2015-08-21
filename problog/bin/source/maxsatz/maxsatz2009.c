@@ -101,8 +101,8 @@ typedef long long int lli_type;
 /* the tables of variables and clauses are statically allocated. Modify the 
    parameters tab_variable_size and tab_clause_size before compilation if 
    necessary */
-#define tab_variable_size  300000
-#define tab_clause_size 10000000
+#define tab_variable_size 30000
+#define tab_clause_size 1000000
 #define tab_unitclause_size ((tab_clause_size/4<2000) ? 2000 : tab_clause_size/4)
 #define my_tab_variable_size ((tab_variable_size/2<1000) ? 1000 : tab_variable_size/2)
 #define my_tab_clause_size ((tab_clause_size/2<2000) ? 2000 : tab_clause_size/2)
