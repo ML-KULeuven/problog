@@ -135,13 +135,17 @@ class CNF(BaseFormula):
         weights = None
         if weighted == int:
             w_mult = 10000
-            wt = lambda w: int(w * w_mult)
+            w_min = -10000
+            wt = lambda w: int(max(w_min, w) * w_mult)
         elif weighted == float:
             w_mult = 1
+            w_min = -10000
             wt = lambda w: w
         elif weighted:
+            w_min = -10000
             w_mult = 10000
-            wt = lambda w: int(w * w_mult)
+            wt = lambda w: int(max(w_min, w) * w_mult)
+
 
         if weighted:
             if semiring is None:
@@ -150,7 +154,7 @@ class CNF(BaseFormula):
 
             w_sum = 0.0
             for w_pos, w_neg in weights.values():
-                w_sum += w_pos + w_neg
+                w_sum += max(w_pos, w_min) + max(w_neg, w_min)
             w_max = [int(-w_sum*w_mult) + 1]
 
         atomcount = self.atomcount
