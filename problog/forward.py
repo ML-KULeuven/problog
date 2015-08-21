@@ -85,7 +85,7 @@ class ForwardInference(DD):
                 # only include nodes that are reachable from a query or evidence
                 if nodetype == 'atom':   # it's a fact
                     self._facts.append(index)
-                    self.atom2var[index] = self.get_manager().add_variable()
+                    # self.atom2var[index] = self.get_manager().add_variable()
                     self.set_complete(index)
                 else:    # it's a compound
                     for atom in node.children:
