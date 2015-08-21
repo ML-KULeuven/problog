@@ -126,7 +126,8 @@ class ForwardInference(DD):
         self._node_depths = [None] * len(self)
         self._node_levels = []
         # Start with current nodes
-        current_nodes = set(abs(n) for q, n in self.queries()) | set(abs(n) for q, n in self.evidence())
+        current_nodes = set(abs(n) for q, n in self.queries() if n is not None and n > 0) \
+                        | set(abs(n) for q, n in self.evidence() if n is not None and n > 0)
         current_level = 0
         while current_nodes:
             self._node_levels.append(current_nodes)
@@ -397,9 +398,10 @@ class ForwardSDD(LogicFormula, Evaluatable):
     def __init__(self, **kwargs):
         LogicFormula.__init__(self, **kwargs)
         Evaluatable.__init__(self)
+        self.kwargs = kwargs
 
     def create_evaluator(self, semiring, weights):
-        return ForwardEvaluator(self, semiring, _ForwardSDD(), weights)
+        return ForwardEvaluator(self, semiring, _ForwardSDD(**self.kwargs), weights)
 
 
 class ForwardBDD(LogicFormula, Evaluatable):
@@ -407,9 +409,10 @@ class ForwardBDD(LogicFormula, Evaluatable):
     def __init__(self, **kwargs):
         LogicFormula.__init__(self, **kwargs)
         Evaluatable.__init__(self)
+        self.kwargs = kwargs
 
     def create_evaluator(self, semiring, weights):
-        return ForwardEvaluator(self, semiring, _ForwardBDD(), weights)
+        return ForwardEvaluator(self, semiring, _ForwardBDD(**self.kwargs), weights)
 
 
 # Inform the system that we can create a ForwardFormula in the same way as a LogicFormula.
