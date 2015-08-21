@@ -27,7 +27,7 @@ from __future__ import print_function
 import os
 import sys
 import distutils.spawn
-import glob
+import distutils.ccompiler
 
 def get_system() :
     system = sys.platform
@@ -143,6 +143,18 @@ def build_sdd() :
     os.chdir(curr)
 
 
+def build_maxsatz():
+
+    compiler = distutils.ccompiler.new_compiler()
+
+    dest_dir, source_dir = get_binary_paths()
+    source_dir = os.path.join(source_dir, 'source', 'maxsatz')
+    source_file = 'maxsatz2009.c'
+    curdir = os.curdir
+    os.chdir(source_dir)
+    objfile = compiler.compile([source_file], output_dir=dest_dir)
+    compiler.link_executable(objfile, os.path.join(dest_dir, 'maxsatz'))
+
 
 def install(force=True) :
     info = gather_info()
@@ -151,6 +163,8 @@ def install(force=True) :
     if force or not info.get('sdd_module') :
         build_sdd()
         update = True
+
+    build_maxsatz()
 
     if update :
         info = gather_info()
