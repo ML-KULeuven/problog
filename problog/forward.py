@@ -449,9 +449,10 @@ class ForwardEvaluator(Evaluator):
         self._start_time = None
 
     def node_updated(self, source, node, complete):
-        qs = set(qi for qn, qi in source.queries())
 
-        if node in qs:
+        name = [n for n, i in self.formula.queries() if i == node]
+        if name:
+            name = name[0]
             weights = {}
             for atom, weight in self._weights.items():
                 av = source.atom2var.get(atom)
@@ -464,8 +465,8 @@ class ForwardEvaluator(Evaluator):
                 result = self.semiring.normalize(value, tvalue)
                 self._results[node] = result
 
-                debug_msg = 'query update: %s %s after %ss' % \
-                            (node, self.semiring.result(result), '%.4f' % (time.time()-self._start_time))
+                debug_msg = 'update query %s: %s after %ss' % \
+                            (name, self.semiring.result(result), '%.4f' % (time.time()-self._start_time))
                 logging.getLogger('problog').debug(debug_msg)
             if complete:
                 self._complete.add(node)
