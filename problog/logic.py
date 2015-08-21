@@ -969,7 +969,8 @@ functions = {
     ("exp",2) : math.pow,
     ("epsilon",0) : lambda : sys.float_info.epsilon,
     ("inf",0) : lambda : float('inf'),
-    ("nan",0) : lambda : float('nan')
+    ("nan",0) : lambda : float('nan'),
+    ("sign",1): lambda x: x if x >= 0 else -x
 
 }
 
