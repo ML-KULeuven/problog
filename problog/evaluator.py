@@ -254,9 +254,16 @@ class Evaluatable(object):
         if index is None:
             result = {}
             # Probability of query given evidence
+
+            interrupted = False
             for name, node in evaluator.formula.queries():
-                w = evaluator.evaluate(node)
-                result[name] = w
+                if interrupted:
+                    result[name] = 0.0, 1.0
+                else:
+                    w = evaluator.evaluate(node)
+                    result[name] = w
+                    if isinstance(w, tuple):
+                        interrupted = True
             return result
         else:
             return evaluator.evaluate(index)

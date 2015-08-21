@@ -298,6 +298,10 @@ class ForwardInference(DD):
         except SystemError as err:
             self._propagate_complete(True)
             logging.getLogger('problog').warning(err)
+        except KeyboardInterrupt as err:
+            self._propagate_complete(True)
+            logging.getLogger('problog').warning(err)
+
         signal.alarm(0)
         self.build_constraint_dd()
 

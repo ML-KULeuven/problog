@@ -61,22 +61,39 @@ class KBestEvaluator(Evaluator):
     def evaluate(self, index):
         """Compute the value of the given node."""
 
+        name = [n for n, i in self.get_names() if i == index]
+        if name:
+            name = name[0]
+        else:
+            name = index
+
         logger = logging.getLogger('problog')
+        logger.debug('evaluating query %s' % name)
+
         if index is None:
-            return 0.0, 0.0
+            return 0.0
         elif index == 0:
-            return 1.0, 1.0
+            return 1.0
         else:
             lb = Border(self.formula, self.sdd_manager, self.semiring, index)
             ub = Border(self.formula, self.sdd_manager, self.semiring, -index)
 
-            # Select the border with most improvement
-            nborder = max(lb, ub)
-            while not nborder.is_complete():
-                solution = nborder.update()
-
-                logger.debug('Bounds: %s < p < %s [%s]' % (lb.value, 1-ub.value, solution))
+            try:
+                # Select the border with most improvement
                 nborder = max(lb, ub)
+                while not nborder.is_complete():
+                    solution = nborder.update()
+                    if nborder.is_complete():
+                        if nborder == lb:
+                            return lb.value
+                        else:
+                            return 1.0-ub.value
+                    logger.debug('  update: %s < p < %s' % (lb.value, 1-ub.value))
+                    nborder = max(lb, ub)
+            except KeyboardInterrupt:
+                pass
+            except SystemError:
+                pass
             return lb.value, 1.0-ub.value
 
     def evaluate_evidence(self):
