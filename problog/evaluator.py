@@ -255,15 +255,10 @@ class Evaluatable(object):
             result = {}
             # Probability of query given evidence
 
-            interrupted = False
+            # interrupted = False
             for name, node in evaluator.formula.queries():
-                if interrupted:
-                    result[name] = 0.0, 1.0
-                else:
-                    w = evaluator.evaluate(node)
-                    result[name] = w
-                    if isinstance(w, tuple):
-                        interrupted = True
+                w = evaluator.evaluate(node)
+                result[name] = w
             return result
         else:
             return evaluator.evaluate(index)
