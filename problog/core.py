@@ -39,24 +39,36 @@ class ProbLog(object) :
         raise Exception("This is a static class!")
 
     transformations = defaultdict(list)
+    create_as = defaultdict(list)
 
     @classmethod
-    def registerTransformation(cls, src, target, action=None) :
-        cls.transformations[target].append( (src, action) )
+    def register_transformation(cls, src, target, action=None):
+        cls.transformations[target].append((src, action))
 
     @classmethod
-    def findPaths( cls, src, target, stack=() ) :
+    def register_create_as(cls, repl, orig):
+        """Register that we can create objects of class `repl' in the same way as objects \
+        of class `orig'.
+
+        :param repl: object we want to create
+        :param orig: object construction we can use instead
+        """
+        cls.create_as[repl].append(orig)
+
+    @classmethod
+    def find_paths(cls, src, target, stack=()):
         # Create a destination object or any of its subclasses
-        if isinstance(src, target) :
+        if isinstance(src, target):
             yield (target,)
-        else :
+        else:
             # for d in list(cls.transformations) :
             #     if issubclass(d,target) :
-                    d = target
-                    for s, action in cls.transformations[d] :
-                        if not s in stack :
-                            for path in cls.findPaths( src, s, stack+(s,) ) :
-                                yield path + (action,d)
+            targets = [target] + cls.create_as[target]
+            for d in targets:
+                for s, action in cls.transformations[d]:
+                    if s not in stack:
+                        for path in cls.find_paths(src, s, stack+(s,)):
+                            yield path + (action, target)
 
     @classmethod
     def convert(cls, src, target, **kwdargs):
@@ -67,7 +79,7 @@ class ProbLog(object) :
         :param kwdargs: additional arguments passed to transformation functions
         """
         # Find transformation paths from source to target.
-        for path in cls.findPaths(src, target):
+        for path in cls.find_paths(src, target):
             try:
                 # A path is a sequence of obj, function, obj/class, function, obj/class, ..., obj_class
                 current_obj = src
@@ -197,20 +209,31 @@ class ProbLogObject(object) :
     def createFromDefaultAction(cls, src) :
         raise ProbLogError("No default conversion strategy defined.")
 
-class transform(object) :
+
+def transform_create_as(cls1, cls2):
+    """Informs the system that cls1 can be used instead of cls2 in any transformations.
+
+    :param cls1:
+    :param cls2:
+    :return:
+    """
+    ProbLog.register_create_as(cls1, cls2)
+
+
+class transform(object):
     """Decorator"""
 
-    def __init__(self, cls1, cls2, func=None) :
+    def __init__(self, cls1, cls2, func=None):
         self.cls1 = cls1
         self.cls2 = cls2
-        if not issubclass(cls2, ProbLogObject) :
+        if not issubclass(cls2, ProbLogObject):
             raise TypeError("Conversion only possible for subclasses of ProbLogObject.")
-        if func != None :
+        if func is not None:
             self(func)
 
-    def __call__(self, f) :
+    def __call__(self, f):
         # TODO check type contract?
-        ProbLog.registerTransformation( self.cls1, self.cls2, f )
+        ProbLog.register_transformation(self.cls1, self.cls2, f)
         return f
 
 def list_transformations() :

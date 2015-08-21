@@ -249,8 +249,8 @@ class ExtendedPrologFactory(PrologFactory):
                                 And(Term(v['p'], *cur_vars), Not('\+', Term(v['n'], *cur_vars))))
             clauses.append(new_clause)
 
-        logger = logging.getLogger('problog')
-        logger.debug('Transformed program:\n{}'.format('\n'.join([str(c) for c in clauses])))
+        # logger = logging.getLogger('problog')
+        # logger.debug('Transformed program:\n{}'.format('\n'.join([str(c) for c in clauses])))
 
         return clauses
 

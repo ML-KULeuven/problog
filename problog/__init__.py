@@ -16,6 +16,9 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 import os
+import sys
+
+sys.setrecursionlimit(10000)
 
 # Set the PATH and PYTHON_PATH variables
 from .setup import set_environment, gather_info

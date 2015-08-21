@@ -67,7 +67,8 @@ class LogicFormula(BaseFormula):
         return self._disj(children, name)
 
     def __init__(self, auto_compact=True, avoid_name_clash=False, keep_order=False,
-                 use_string_names=False, keep_all=False, propagate_weights=None, **kwdargs):
+                 use_string_names=False, keep_all=False, propagate_weights=None,
+                 max_arity=0, **kwdargs):
         BaseFormula.__init__(self)
 
         # List of nodes
@@ -85,6 +86,8 @@ class LogicFormula(BaseFormula):
         self._avoid_name_clash = avoid_name_clash
         self._keep_order = keep_order
         self._keep_all = keep_all
+
+        self._max_arity = max_arity
 
         self._constraints_me = {}
 
@@ -273,7 +276,12 @@ class LogicFormula(BaseFormula):
             elif component == 0:
                 return self._update(key, self._create_disj((0,), name=node.name))
             else:
-                return self._update(key, self._create_disj(node.children + (component,),
+                if self._max_arity > 0 and len(node.children) == self._max_arity:
+                    # TODO do binary split
+                    child = self.add_or(node.children)
+                    return self._update(key, self._create_disj((child, component), name=node.name))
+                else:
+                    return self._update(key, self._create_disj(node.children + (component,),
                                                            name=node.name))
             return key
 

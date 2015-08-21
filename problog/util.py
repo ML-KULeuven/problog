@@ -350,3 +350,140 @@ def format_dictionary(data, precision=8, keysep=':', columnsep='\t'):
             val = format_tuple(it[1], precision=precision, columnsep=columnsep)
             s.append(fmt.format(it[0], keysep, columnsep, val))
         return '\n'.join(s)
+
+
+class UHeap(object):
+    """Updatable heap.
+
+    Each element is represented as a pair (key, item).
+    The operation ``pop()'' always returns the item with the smallest key.
+    The operation ``push(item)'' either adds item (returns True) or updates its key (return False)
+    A function for computing an item's key can be passed.
+
+    :param key: function for computing the sort key of an item
+    """
+
+    def __init__(self, key=None):
+        self._heap = []
+        self._index = {}
+        self._key = key
+
+    def _compute_key(self, item):
+        if self._key is None:
+            return item
+        else:
+            return self._key(item)
+
+    def push(self, item):
+        """Add the item or update it's key in case it already exists.
+
+        :param item: item to add
+        :return: True is item was not in the collection
+        """
+        # Compute the item's key
+        key = self._compute_key(item)
+        # Check if element is already there.
+        index = self._index.get(item)
+        if index is None:
+            # It is not: normal add
+            self._heap.append((key, item))
+            index = len(self._heap) - 1
+            self._index[item] = index
+            self._swim_up(index)
+            is_new = True
+        else:
+            # Element is there
+            oldkey, item = self._heap[index]
+            if oldkey == key:
+                # Keys are the same, nothing to do.
+                pass
+            else:
+                # Replace value
+                self._heap[index] = (key, item)
+                # Compare value with parent and swim up or sink down accordingly.
+                parent = self._parent(index)
+                if parent is not None and key < self._heap[parent][0]:
+                    self._swim_up(index)
+                else:
+                    self._sink_down(index)
+            is_new = False
+        return is_new
+
+    def pop(self):
+        """Returns the element with the smallest key.
+
+        :return: item with the smallest key
+        """
+        return self.pop_with_key()[1]
+
+    def pop_with_key(self):
+        assert bool(self)
+        # Get top element
+        key, item = self._heap[0]
+        # Swap top and last
+        self._swap(0, len(self._heap)-1)
+        # Remove last element (former top)
+        del self._index[item]
+        self._heap.pop(-1)
+        # Sink down new top element
+        if self:
+            self._sink_down(0)
+        return key, item
+
+    def peek(self):
+        """Returns the element with the smallest key without removing it.
+
+        :return: item with the smallest key
+        """
+        assert bool(self)
+        # Get top element
+        key, item = self._heap[0]
+        return item
+
+    def _parent(self, index):
+        if index == 0:
+            return None
+        else:
+            return (index-1) // 2
+
+    def _children(self, index):
+        return (2*index)+1, (2*index)+2
+
+    def _swim_up(self, index):
+        p = self._parent(index)
+        if p is not None and self._heap[p][0] > self._heap[index][0]:
+            self._swap(p, index)
+            self._swim_up(p)
+
+    def _sink_down(self, index):
+        c1, c2 = self._children(index)
+        k1 = None
+        k2 = None
+        if c1 < len(self._heap):
+            k1 = self._heap[c1][0]
+            if c2 < len(self._heap):
+                k2 = self._heap[c2][0]
+        k = self._heap[index][0]
+        if k1 is not None and k > k1:
+            if k2 is not None and k1 > k2:
+                self._swap(index, c2)
+                self._sink_down(c2)
+            else:
+                self._swap(index, c1)
+                self._sink_down(c1)
+        elif k2 is not None and k > k2:
+            self._swap(index, c2)
+            self._sink_down(c2)
+
+    def _swap(self, index1, index2):
+        key1, item1 = self._heap[index1]
+        key2, item2 = self._heap[index2]
+        # Update index
+        self._index[item1] = index2
+        self._index[item2] = index1
+        # Update heap
+        self._heap[index1] = key2, item2
+        self._heap[index2] = key1, item1
+
+    def __len__(self):
+        return len(self._heap)

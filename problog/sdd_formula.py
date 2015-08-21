@@ -223,11 +223,13 @@ class SDDManager(DDManager):
         if semiring.isLogspace():
             logspace = 1
         wmc_manager = sdd.wmc_manager_new(node, logspace, self.get_manager())
+        varcount = sdd.sdd_manager_var_count(self.get_manager())
         for i, n in enumerate(sorted(weights)):
             i += 1
             pos, neg = weights[n]
-            sdd.wmc_set_literal_weight(n, pos, wmc_manager)   # Set positive literal weight
-            sdd.wmc_set_literal_weight(-n, neg, wmc_manager)  # Set negative literal weight
+            if n <= varcount:
+                sdd.wmc_set_literal_weight(n, pos, wmc_manager)   # Set positive literal weight
+                sdd.wmc_set_literal_weight(-n, neg, wmc_manager)  # Set negative literal weight
         result = sdd.wmc_propagate(wmc_manager)
         sdd.wmc_manager_free(wmc_manager)
         return result
@@ -237,11 +239,13 @@ class SDDManager(DDManager):
         if semiring.isLogspace():
             logspace = 1
         wmc_manager = sdd.wmc_manager_new(node, logspace, self.get_manager())
+        varcount = sdd.sdd_manager_var_count(self.get_manager())
         for i, n in enumerate(sorted(weights)):
             i += 1
             pos, neg = weights[n]
-            sdd.wmc_set_literal_weight(n, pos, wmc_manager)   # Set positive literal weight
-            sdd.wmc_set_literal_weight(-n, neg, wmc_manager)  # Set negative literal weight
+            if n <= varcount:
+                sdd.wmc_set_literal_weight(n, pos, wmc_manager)   # Set positive literal weight
+                sdd.wmc_set_literal_weight(-n, neg, wmc_manager)  # Set negative literal weight
         sdd.wmc_propagate(wmc_manager)
 
         result = sdd.wmc_literal_pr(literal, wmc_manager)
@@ -253,11 +257,13 @@ class SDDManager(DDManager):
         if semiring.isLogspace():
             logspace = 1
         wmc_manager = sdd.wmc_manager_new(self.true(), logspace, self.get_manager())
+        varcount = sdd.sdd_manager_var_count(self.get_manager())
         for i, n in enumerate(sorted(weights)):
             i += 1
             pos, neg = weights[n]
-            sdd.wmc_set_literal_weight(n, pos, wmc_manager)   # Set positive literal weight
-            sdd.wmc_set_literal_weight(-n, neg, wmc_manager)  # Set negative literal weight
+            if n <= varcount:
+                sdd.wmc_set_literal_weight(n, pos, wmc_manager)   # Set positive literal weight
+                sdd.wmc_set_literal_weight(-n, neg, wmc_manager)  # Set negative literal weight
         result = sdd.wmc_propagate(wmc_manager)
         sdd.wmc_manager_free(wmc_manager)
         return result

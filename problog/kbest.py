@@ -63,9 +63,9 @@ class KBestEvaluator(Evaluator):
 
         logger = logging.getLogger('problog')
         if index is None:
-            return self.semiring.zero(), self.semiring.zero()
+            return 0.0, 0.0
         elif index == 0:
-            return self.semiring.one(), self.semiring.one()
+            return 1.0, 1.0
         else:
             lb = Border(self.formula, self.sdd_manager, self.semiring, index)
             ub = Border(self.formula, self.sdd_manager, self.semiring, -index)
