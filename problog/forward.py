@@ -85,11 +85,11 @@ class ForwardInference(DD):
                 # only include nodes that are reachable from a query or evidence
                 if nodetype == 'atom':   # it's a fact
                     self._facts.append(index)
-                    # self.atom2var[index] = self.get_manager().add_variable()
                     self.set_complete(index)
                 else:    # it's a compound
                     for atom in node.children:
                         self._atoms_in_rules[abs(atom)].add(index)
+        self.build_constraint_dd()
         self.inodes = [None] * len(self)
         self._inodes_prev = [None] * len(self)
         self._inodes_neg = [None] * len(self)
@@ -327,6 +327,13 @@ class ForwardInference(DD):
                 self.set_complete(index)
         else:
             raise TypeError('Unexpected node type.')
+
+        # Add constraints
+        if newnode is not None:
+            newernode = self.get_manager().conjoin(newnode, self.get_constraint_inode())
+            self.get_manager().deref(newnode)
+            newnode = newernode
+
         if self.get_manager().same(oldnode, newnode):
             return False   # no change occurred
         else:
