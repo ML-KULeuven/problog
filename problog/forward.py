@@ -497,22 +497,31 @@ class ForwardEvaluator(Evaluator):
         elif index == 0:
             return 1.0
         else:
-            if index < 0:
-                if -index in self._results:
-                    if -index in self._complete:
-                        return self.semiring.result(self.semiring.negate(self._results[-index]))
-                    else:
-                        return 0.0, self.semiring.result(self.semiring.negate(self._results[-index]))
+            n = self.formula.get_node(abs(index))
+            nt = type(n).__name__
+            if nt == 'atom':
+                wp, wn = self._weights.get(abs(index))
+                if index < 0:
+                    return self.semiring.result(wn)
                 else:
-                    return 0.0, 1.0
+                    return self.semiring.result(wp)
             else:
-                if index in self._results:
-                    if index in self._complete:
-                        return self.semiring.result(self._results[index])
+                if index < 0:
+                    if -index in self._results:
+                        if -index in self._complete:
+                            return self.semiring.result(self.semiring.negate(self._results[-index]))
+                        else:
+                            return 0.0, self.semiring.result(self.semiring.negate(self._results[-index]))
                     else:
-                        return self.semiring.result(self._results[index]), 1.0
+                        return 0.0, 1.0
                 else:
-                    return 0.0, 1.0
+                    if index in self._results:
+                        if index in self._complete:
+                            return self.semiring.result(self._results[index])
+                        else:
+                            return self.semiring.result(self._results[index]), 1.0
+                    else:
+                        return 0.0, 1.0
 
     def evaluate_evidence(self):
         raise NotImplementedError('Evaluator.evaluate_evidence is an abstract method.')
