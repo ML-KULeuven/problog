@@ -120,7 +120,7 @@ def translate(db, atom_id) :
         atom_id, args, choice = atom_id
         return Term('ad_%s_%s' % (atom_id, choice), *args)
     else :
-        node = db.getNode(atom_id)
+        node = db.get_node(atom_id)
         return Term(node.functor, *node.args)
 
 def sample( filename, N=1, with_facts=False, oneline=False ) :

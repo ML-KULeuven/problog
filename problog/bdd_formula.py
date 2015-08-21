@@ -28,10 +28,13 @@ from .formula import LogicDAG
 from .core import transform, InstallError
 from .dd_formula import DD, build_dd, DDManager
 
+# noinspection PyBroadException
+# noinspection PyUnresolvedReferences
 try:
+    # noinspection PyPackageRequirements
     import pyeda.boolalg.bdd as bdd
+    # noinspection PyPackageRequirements
     import pyeda.boolalg.expr as bdd_expr
-
 except Exception:
     bdd = None
 
@@ -45,14 +48,20 @@ class BDD(DD):
 
         DD.__init__(self, auto_compact=False, **kwdargs)
 
-    def create_manager(self):
+    def _create_manager(self):
         return BDDManager()
 
     def get_atom_from_inode(self, node):
+        """Get the original atom given an internal node.
+
+        :param node: internal node
+        :return: atom represented by the internal node
+        """
         return self.var2atom[self.get_manager().get_variable(node)]
 
     @classmethod
-    def is_available(cls) :
+    def is_available(cls):
+        """Checks whether the BDD library is available."""
         return bdd is not None
 
 
@@ -62,9 +71,10 @@ class BDDManager(DDManager):
     It wraps around the pyeda BDD module
     """
 
+    # noinspection PyUnusedLocal
     def __init__(self, varcount=0, auto_gc=True):
-        """
-        Create a new BDD manager.
+        """Create a new BDD manager.
+
         :param varcount: number of initial variables
         :type varcount: int
         :param auto_gc: use automatic garbage collection and minimization
@@ -76,13 +86,6 @@ class BDDManager(DDManager):
         self.ONE = bdd.expr2bdd(bdd_expr.expr('1'))
 
     def add_variable(self, label=0):
-        """
-        Add a variable to the manager and return its label.
-        :param label: suggested label of the variable
-        :type label: int
-        :return: label of the new variable
-        :rtype: int
-        """
         if label == 0 or label > self.varcount:
             self.varcount += 1
             return self.varcount
@@ -90,50 +93,27 @@ class BDDManager(DDManager):
             return label
 
     def get_variable(self, node):
+        """Get the variable represented by the given node.
+
+        :param node: internal node
+        :return: original node
+        """
+        # noinspection PyProtectedMember
         return int(bdd._VARS[node.root].name[1:])
 
     def literal(self, label):
-        """
-        Return an BDD node representing a literal.
-        :param label: label of the literal
-        :type label: int
-        :return: BDD node representing the literal
-        :rtype: BDDNode
-        """
         return bdd.bddvar('v' + str(self.add_variable(label)))
 
     def is_true(self, node):
-        """
-        Checks whether the BDD node represents True
-        :param node: node to verify
-        :type node: BDDNode
-        :return: True if the node represents True
-        :rtype: bool
-        """
         return node.is_one()
 
     def true(self):
-        """
-        Return an BDD node representing True
-        :return:
-        """
         return self.ONE
 
     def is_false(self, node):
-        """
-        Checks whether the BDD node represents False
-        :param node: node to verify
-        :type node: BDDNode
-        :return: False if the node represents False
-        :rtype: bool
-        """
         return node.is_zero()
 
     def false(self):
-        """
-        Return an BDD node representing False
-        :return:
-        """
         return self.ZERO
 
     def conjoin2(self, r, s):
@@ -143,59 +123,21 @@ class BDDManager(DDManager):
         return r | s
 
     def negate(self, node):
-        """
-        Create the negation of the given node.
-        :param node: negation of the given node
-        :type node: BDDNode
-        :return: negation of the given node
-        :rtype: BDDNode
-
-        This method handles node reference counting, that is, all intermediate results
-         are marked for garbage collection, and the output node has a reference count greater than one.
-        Reference count on input nodes is not touched (unless one of the inputs becomes the output).
-
-        """
         return ~node
 
     def same(self, node1, node2):
-        """
-        Checks whether two BDD nodes are equivalent.
-        :param node1: first node
-        :type: BDDNode
-        :param node2: second node
-        :type: BDDNode
-        :return: True if the given nodes are equivalent, False otherwise.
-        :rtype: bool
-        """
         # Assumes BDD library always reuses equivalent nodes.
         return node1 is node2
 
     def ref(self, *nodes):
-        """
-        Increase the reference count for the given nodes.
-        :param nodes: nodes to increase count on
-        :type nodes: tuple of BDDNode
-        """
         pass
 
     def deref(self, *nodes):
-        """
-        Decrease the reference count for the given nodes.
-        :param nodes: nodes to decrease count on
-        :type nodes: tuple of BDDNode
-        """
         pass
 
     def write_to_dot(self, node, filename):
-        """
-        Write BDD node to a DOT file.
-        :param node: BDD node to output
-        :type node: BDDNode
-        :param filename: filename to write to
-        :type filename: basestring
-        """
         with open(filename, 'w') as f:
-            print (node.to_dot(), file=f)
+            print(node.to_dot(), file=f)
 
     def wmc(self, node, weights, semiring):
         pall = semiring.zero()
@@ -212,16 +154,23 @@ class BDDManager(DDManager):
             pall = semiring.plus(pw, pall)
         return pall
 
+    def wmc_literal(self, node, weights, semiring, literal):
+        raise NotImplementedError('not supported')
+
     def wmc_true(self, weights, semiring):
         return semiring.one()
 
     def __del__(self):
-        """
-        Clean up the BDD manager.
-        """
         pass
 
 
 @transform(LogicDAG, BDD)
 def build_bdd(source, destination, **kwdargs):
-    return build_dd(source, destination, 'BDD', **kwdargs)
+    """Build an SDD from another formula.
+
+    :param source: source formula
+    :param destination: destination formula
+    :param kwdargs: extra arguments
+    :return: destination
+    """
+    return build_dd(source, destination, **kwdargs)

@@ -28,13 +28,46 @@ from __future__ import print_function
 class Constraint(object):
     """A propositional constraint."""
 
-    def getNodes(self):
+    def get_nodes(self):
         """Get all nodes involved in this constraint."""
-        return NotImplemented('Constraint.getNodes() is an abstract method.')
+        return NotImplemented('abstract method')
 
-    def updateWeights(self, weights, semiring):
+    def update_weights(self, weights, semiring):
+        """Update the weights in the given dictionary according to the constraints.
+
+        :param weights: dictionary of weights (see result of :func:`LogicFormula.extract_weights`)
+        :param semiring: semiring to use for weight transformation
+        """
         # Typically, constraints don't update weights
         pass
+
+    def is_true(self):
+        """Checks whether the constraint is trivially true."""
+        return False
+
+    def is_false(self):
+        """Checks whether the constraint is trivially false."""
+        return False
+
+    def is_nontrivial(self):
+        """Checks whether the constraint is non-trivial."""
+        return not self.is_true() and not self.is_false()
+
+    def as_clauses(self):
+        """Represent the constraint as a list of clauses (CNF form).
+
+        :return: list of clauses where each clause is represent as a list of node keys
+        :rtype: list[list[int]]
+        """
+        return NotImplemented('abstract method')
+
+    def copy(self, rename=None):
+        """Copy this constraint while applying the given node renaming.
+
+        :param rename: node rename map (or None if no rename is required)
+        :return: copy of the current constraint
+        """
+        return NotImplemented('abstract method')
 
 
 class ConstraintAD(Constraint):
@@ -48,22 +81,25 @@ class ConstraintAD(Constraint):
     def __str__(self):
         return 'annotated_disjunction(%s, %s)' % (list(self.nodes), self.extra_node)
 
-    def getNodes(self):
+    def get_nodes(self):
         if self.extra_node:
             return list(self.nodes) + [self.extra_node]
-        else :
+        else:
             return self.nodes
 
-    def isTrue(self):
+    def is_true(self):
         return len(self.nodes) <= 1
 
-    def isFalse(self):
+    def is_false(self):
         return False
 
-    def isActive(self):
-        return not self.isTrue() and not self.isFalse()
-
     def add(self, node, formula):
+        """Add a node to the constraint from the given formula.
+
+        :param node: node to add
+        :param formula: formula from which the node is taken
+        :return: value of the node after constraint propagation
+        """
         if formula.has_evidence_values():
             # Propagate constraint: if one of the other nodes is True: this one is false
             for n in self.nodes:
@@ -97,31 +133,32 @@ class ConstraintAD(Constraint):
         self.nodes.add(node)
         if len(self.nodes) > 1 and self.extra_node is None:
             # If there are two or more choices -> add extra choice node
-            self.updateLogic(formula)
+            self._update_logic(formula)
         return node
 
-    def encodeCNF(self):
-        if self.isActive():
+    def as_clauses(self):
+        if self.is_nontrivial():
             nodes = list(self.nodes) + [self.extra_node]
             lines = []
             for i, n in enumerate(nodes):
-                for m in nodes[i+1:]:
+                for m in nodes[i + 1:]:
                     lines.append((-n, -m))    # mutually exclusive
             lines.append(nodes)   # pick one
             return lines
         else:
             return []
 
-    def updateLogic(self, formula):
-        """Add extra information to the logic structure of the formula."""
+    def _update_logic(self, formula):
+        """Add extra information to the logic structure of the formula.
 
-        if self.isActive():
+        :param formula: formula to update
+        """
+        if self.is_nontrivial():
             self.extra_node = formula.add_atom(('%s_extra' % (self.group,)), True, None)
             # formula.addConstraintOnNode(self, self.extra_node)
 
-    def updateWeights(self, weights, semiring):
-        """Update the weights of the logic formula accordingly."""
-        if self.isActive():
+    def update_weights(self, weights, semiring):
+        if self.is_nontrivial():
             s = semiring.zero()
             for n in self.nodes:
                 pos, neg = weights.get(n, (semiring.one(), semiring.one()))
@@ -130,30 +167,13 @@ class ConstraintAD(Constraint):
             complement = semiring.negate(s)
             weights[self.extra_node] = (complement, semiring.one())
 
-    def copy(self, rename={}):
+    def copy(self, rename=None):
+        if rename is None:
+            rename = {}
         result = ConstraintAD(self.group)
         result.nodes = set(rename.get(x, x) for x in self.nodes)
         result.extra_node = rename.get(self.extra_node, self.extra_node)
         return result
-
-
-class TrueConstraint(Constraint):
-    """A constraint specifying that a given node should be true."""
-
-    def __init__(self, node):
-        self.node = node
-
-    def isActive(self):
-        return True
-
-    def encodeCNF(self):
-        return [[self.node]]
-
-    def copy(self, rename={}):
-        return TrueConstraint(rename.get(self.node, self.node))
-
-    def __str__(self):
-        return '%s is true' % self.node
 
 
 class ClauseConstraint(Constraint):
@@ -162,14 +182,31 @@ class ClauseConstraint(Constraint):
     def __init__(self, nodes):
         self.nodes = nodes
 
-    def isActive(self):
-        return True
-
-    def encodeCNF(self):
+    def as_clauses(self):
         return [self.nodes]
 
-    def copy(self, rename={}):
+    def copy(self, rename=None):
+        if rename is None:
+            rename = {}
         return ClauseConstraint(map(lambda x: rename.get(x, x), self.nodes))
 
     def __str__(self):
         return '%s is true' % self.nodes
+
+
+class TrueConstraint(Constraint):
+    """A constraint specifying that a given node should be true."""
+
+    def __init__(self, node):
+        self.node = node
+
+    def as_clauses(self):
+        return [[self.node]]
+
+    def copy(self, rename=None):
+        if rename is None:
+            rename = {}
+        return TrueConstraint(rename.get(self.node, self.node))
+
+    def __str__(self):
+        return '%s is true' % self.node

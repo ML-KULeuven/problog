@@ -24,17 +24,148 @@ Provides tools for loading logic programs.
 from __future__ import print_function
 
 from .core import GroundingError
-from .logic import LogicProgram, Term, Var, Constant, AnnotatedDisjunction, Clause, And, Or, Not
+from .logic import Term, Var, Constant, AnnotatedDisjunction, Clause, And, Or, Not
 
 from .parser import DefaultPrologParser, Factory
 from .core import ProbLogError
 
 import os
-import logging
 import sys
 
 
-class SimpleProgram(LogicProgram) :
+class LogicProgram(object):
+    """LogicProgram"""
+
+    def __init__(self, source_root='.', source_files=None, line_info=None):
+        if source_files is None:
+            source_files = [None]
+        if line_info is None:
+            line_info = [None]
+        self.source_root = source_root
+        self.source_files = source_files
+        self.source_parent = [None]
+        # line_info should be array, corresponding to 'source_files'.
+        self.line_info = line_info
+
+    def __iter__(self):
+        """Iterator for the clauses in the program."""
+        raise NotImplementedError("LogicProgram.__iter__ is an abstract method.")
+
+    def add_clause(self, clause):
+        """Add a clause to the logic program.
+
+        :param clause: add a clause
+        """
+        raise NotImplementedError("LogicProgram.addClause is an abstract method.")
+
+    def add_fact(self, fact):
+        """Add a fact to the logic program.
+
+        :param fact: add a fact
+        """
+        raise NotImplementedError("LogicProgram.addFact is an abstract method.")
+
+    def __iadd__(self, clausefact):
+        """Add clause or fact using the ``+=`` operator."""
+        if isinstance(clausefact, Or):
+            heads = clausefact.to_list()
+            # TODO move this to parser code
+            for head in heads:
+                if not type(head) == Term:
+                    # TODO compute correct location
+                    raise GroundingError("Unexpected fact '%s'" % head)
+                elif len(heads) > 1 and head.probability is None:
+                    raise GroundingError("Non-probabilistic head in multi-head clause '%s'" % head)
+            self.add_clause(AnnotatedDisjunction(heads, Term('true')))
+        elif isinstance(clausefact, AnnotatedDisjunction):
+            self.add_clause(clausefact)
+        elif isinstance(clausefact, Clause):
+            self.add_clause(clausefact)
+        elif type(clausefact) == Term:
+            self.add_fact(clausefact)
+        else:
+            raise GroundingError("Unexpected fact '%s'" % clausefact,
+                                 self.lineno(clausefact.location))
+        return self
+
+    @classmethod
+    def create_from(cls, src, force_copy=False, **extra):
+        """Create a LogicProgram of the current class from another LogicProgram.
+
+        :param src: logic program to convert
+        :type src: :class:`.LogicProgram`
+        :param force_copy: default False, If true, always create a copy of the original logic \
+        program.
+        :type force_copy: bool
+        :param extra: additional arguments passed to all constructors and action functions
+        :returns: LogicProgram that is (externally) identical to given one
+        :rtype: object of the class on which this method is invoked
+
+        If the original LogicProgram already has the right class and force_copy is False, then \
+        the original program is returned.
+        """
+        return cls.createFrom(src, force_copy=force_copy, **extra)
+
+    # noinspection PyPep8Naming
+    @classmethod
+    def createFrom(cls, src, force_copy=False, **extra):
+        """Create a LogicProgram of the current class from another LogicProgram.
+
+        :param src: logic program to convert
+        :type src: :class:`.LogicProgram`
+        :param force_copy: default False, If true, always create a copy of the original logic \
+        program.
+        :type force_copy: bool
+        :param extra: additional arguments passed to all constructors and action functions
+        :returns: LogicProgram that is (externally) identical to given one
+        :rtype: object of the class on which this method is invoked
+
+        If the original LogicProgram already has the right class and force_copy is False, then \
+        the original program is returned.
+        """
+        if not force_copy and src.__class__ == cls:
+            return src
+        else:
+            obj = cls(**extra)
+            if hasattr(src, 'source_root') and hasattr(src, 'source_files'):
+                obj.source_root = src.source_root
+                obj.source_files = src.source_files[:]
+                obj.source_parent = src.source_parent[:]
+            if hasattr(src, 'line_info'):
+                obj.line_info = src.line_info[:]
+            for clause in src:
+                obj += clause
+            return obj
+
+    def lineno(self, char, force_filename=False):
+        """Transform character position to line:column format.
+
+        :param char: character position
+        :param force_filename: always add filename even for top-level file
+        :return: line, column (or None if information is not available)
+        """
+        # Input should be tuple (file, char)
+        if isinstance(char, tuple):
+            fn, char = char
+        else:
+            fn = 0
+
+        if self.line_info[fn] is None or char is None:
+            # No line info available
+            return None
+        else:
+            import bisect
+            i = bisect.bisect_right(self.line_info[fn], char)
+            lineno = i
+            charno = char - self.line_info[fn][i - 1]
+            if fn == 0 and not force_filename:
+                filename = None
+            else:
+                filename = self.source_files[fn]
+            return filename, lineno, charno
+
+
+class SimpleProgram(LogicProgram):
     """LogicProgram implementation as a list of clauses."""
 
     def __init__(self):
@@ -42,6 +173,10 @@ class SimpleProgram(LogicProgram) :
         self.__clauses = []
 
     def add_clause(self, clause):
+        """Add a clause to the logic program.
+
+        :param clause: add a clause
+        """
         if type(clause) is list:
             for c in clause:
                 self.__clauses.append(c)
@@ -49,6 +184,10 @@ class SimpleProgram(LogicProgram) :
             self.__clauses.append(clause)
 
     def add_fact(self, fact):
+        """Add a fact to the logic program.
+
+        :param fact: add a fact
+        """
         self.__clauses.append(fact)
 
     def __iter__(self):
@@ -56,6 +195,7 @@ class SimpleProgram(LogicProgram) :
 
 
 class PrologString(LogicProgram):
+    """Read a logic program from a string of ProbLog code."""
 
     def __init__(self, string, parser=None, source_root='.', source_files=None, identifier=0):
         self.__string = string
@@ -79,9 +219,9 @@ class PrologString(LogicProgram):
         """Find line-end positions."""
         lines = [-1]
         f = s.find('\n')
-        while f >= 0 :
+        while f >= 0:
             lines.append(f)
-            f = s.find('\n', f+1)
+            f = s.find('\n', f + 1)
         lines.append(len(s))
         return lines
 
@@ -89,9 +229,23 @@ class PrologString(LogicProgram):
         """Iterator for the clauses in the program."""
         return iter(self._program())
 
-    def __getitem__(self, slice):
+    def __getitem__(self, sl):
         program = self._program()
-        return program[slice]
+        return program[sl]
+
+    def add_clause(self, clause):
+        """Add a clause to the logic program.
+
+        :param clause: add a clause
+        """
+        raise AttributeError('not supported')
+
+    def add_fact(self, fact):
+        """Add a fact to the logic program.
+
+        :param fact: add a fact
+        """
+        raise AttributeError('not supported')
 
 
 class PrologFile(PrologString):
@@ -119,6 +273,20 @@ class PrologFile(PrologString):
         PrologString.__init__(self, source_text, parser=parser, source_root=source_root,
                               source_files=source_files, identifier=identifier)
 
+    def add_clause(self, clause):
+        """Add a clause to the logic program.
+
+        :param clause: add a clause
+        """
+        raise AttributeError('not supported')
+
+    def add_fact(self, fact):
+        """Add a fact to the logic program.
+
+        :param fact: add a fact
+        """
+        raise AttributeError('not supported')
+
 
 class PrologFactory(Factory):
     """Factory object for creating suitable objects from the parse tree."""
@@ -145,27 +313,29 @@ class PrologFactory(Factory):
         head = self.build_function('_directive', [])
         return self.build_clause(functor, [head], operand, **extra)
 
-    def build_unop(self, functor, operand, location=None, **extra) :
-        if functor == '-' and operand.is_constant() and (operand.is_float() or operand.is_integer()):
+    def build_unop(self, functor, operand, location=None, **extra):
+        if functor == '-' and operand.is_constant() and \
+                (operand.is_float() or operand.is_integer()):
             return Constant(-operand.value)
-        return self.build_function("'" + functor + "'", (operand,) , location=location)
+        return self.build_function("'" + functor + "'", (operand,), location=location)
 
-    def build_list(self, values, tail=None, location=None, **extra) :
-        if tail is None :
+    def build_list(self, values, tail=None, location=None, **extra):
+        if tail is None:
             current = Term('[]')
-        else :
+        else:
             current = tail
-        for value in reversed(values) :
+        for value in reversed(values):
             current = self.build_function('.', (value, current), location=location)
         return current
 
-    def build_string(self, value, location=None) :
+    def build_string(self, value, location=None):
         return self.build_constant('"' + value + '"', location=location)
 
-    def build_cut(self, location=None) :
-        raise NotImplementedError('Not supported!')
+    def build_cut(self, location=None):
+        raise AttributeError('not supported')
 
-    def build_clause(self, functor, operand1, operand2, location=None, **extra) :
+    # noinspection PyUnusedLocal
+    def build_clause(self, functor, operand1, operand2, location=None, **extra):
         heads = operand1
         # TODO move this to parser code
         for head in heads:
@@ -179,12 +349,15 @@ class PrologFactory(Factory):
         else:
             return Clause(operand1[0], operand2, location=(self.loc_id, location))
 
+    # noinspection PyUnusedLocal
     def build_disjunction(self, functor, operand1, operand2, location=None, **extra):
         return Or(operand1, operand2, location=(self.loc_id, location))
 
+    # noinspection PyUnusedLocal
     def build_conjunction(self, functor, operand1, operand2, location=None, **extra):
         return And(operand1, operand2, location=(self.loc_id, location))
 
+    # noinspection PyUnusedLocal
     def build_not(self, functor, operand, location=None, **extra):
         return Not(functor, operand, location=(self.loc_id, location))
 
@@ -212,31 +385,32 @@ class ExtendedPrologFactory(PrologFactory):
     - Negative head literals [Meert and Vennekens, PGM 2014]:
       0.5::\+a :- b.
     """
+
     def __init__(self, identifier=0):
         PrologFactory.__init__(self, identifier)
         self.neg_head_lits = dict()
 
-    def update_functors(self, t):
+    def _update_functors(self, t):
         """Adapt functors that appear as a negative literal to be f_p and f_n
         where f appears in the head.
         """
         if type(t) is Clause:
-            self.update_functors(t.head)
+            self._update_functors(t.head)
         elif type(t) is AnnotatedDisjunction:
-            self.update_functors(t.heads)
+            self._update_functors(t.heads)
         elif type(t) is Term:
             if t.signature in self.neg_head_lits:
                 t.functor = self.neg_head_lits[t.signature]['p']
         elif type(t) is Not:
-            self.update_functors(t.child)
+            self._update_functors(t.child)
         elif type(t) is Or or type(t) is And:
-            self.update_functors(t.op1)
-            self.update_functors(t.op2)
+            self._update_functors(t.op1)
+            self._update_functors(t.op2)
         elif type(t) is None or type(t) is Var or type(t) is Constant:
             pass
         elif type(t) is list:
             for term in t:
-                self.update_functors(term)
+                self._update_functors(term)
         else:
             raise Exception("Unknown type: {} -- {}".format(t, type(t)))
 
@@ -244,12 +418,12 @@ class ExtendedPrologFactory(PrologFactory):
         # Update functor f that appear as a negative head literal to f_p and
         # f_n
         for clause in clauses:
-            self.update_functors(clause)
+            self._update_functors(clause)
 
         # Add extra rule for a functor f that appears a as a negative head
         # literal such that:
         # f :- f_p, \+f_n.
-        for k,v in self.neg_head_lits.items():
+        for k, v in self.neg_head_lits.items():
             cur_vars = [Var("v{}".format(i)) for i in range(v['c'])]
             new_clause = Clause(Term(v['f'], *cur_vars),
                                 And(Term(v['p'], *cur_vars), Not('\+', Term(v['n'], *cur_vars))))
@@ -266,8 +440,8 @@ class ExtendedPrologFactory(PrologFactory):
             if operand2.signature not in self.neg_head_lits:
                 self.neg_head_lits[operand2.signature] = {
                     'c': operand2.arity,
-                    'p': operand2.functor+"_p",
-                    'n': operand2.functor+"_n",
+                    'p': operand2.functor + "_p",
+                    'n': operand2.functor + "_n",
                     'f': operand2.functor
                 }
             operand2.functor = self.neg_head_lits[operand2.signature]['n']

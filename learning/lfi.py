@@ -59,8 +59,8 @@ from problog.nnf_formula import NNF
 from problog.sdd_formula import SDD
 from problog.bdd_formula import BDD
 from problog.evaluator import SemiringProbability
-from problog.logic import Term, Constant, Clause, AnnotatedDisjunction, LogicProgram, Or
-from problog.program import PrologString, PrologFile
+from problog.logic import Term, Constant, Clause, AnnotatedDisjunction, Or
+from problog.program import PrologString, PrologFile, LogicProgram
 from problog.core import ProbLogError
 
     

@@ -35,7 +35,6 @@ import warnings
 import time
 import logging
 
-
 import signal
 from .core import transform_create_as
 
@@ -45,11 +44,12 @@ import random
 
 from collections import defaultdict
 
+
 def timeout_handler(signum, frame):
     raise SystemError('Process timeout (Python) [%s]' % signum)
 
-class ForwardInference(DD):
 
+class ForwardInference(DD):
     def __init__(self, compile_timeout=None, **kwdargs):
         super(ForwardInference, self).__init__(auto_compact=False, **kwdargs)
 
@@ -73,24 +73,24 @@ class ForwardInference(DD):
 
     def is_complete(self, node):
         node = abs(node)
-        return self._completed[node-1]
+        return self._completed[node - 1]
 
     def set_complete(self, node):
-        self._completed[node-1] = True
+        self._completed[node - 1] = True
 
     def init_build(self):
-        self._facts = []    # list of facts
-        self._atoms_in_rules = defaultdict(set)    # lookup all rules in which an atom is used
+        self._facts = []  # list of facts
+        self._atoms_in_rules = defaultdict(set)  # lookup all rules in which an atom is used
         self._completed = [False] * len(self)
 
         self._compute_node_depths()
         for index, node, nodetype in self:
-            if self._node_depths[index-1] is not None:
+            if self._node_depths[index - 1] is not None:
                 # only include nodes that are reachable from a query or evidence
-                if nodetype == 'atom':   # it's a fact
+                if nodetype == 'atom':  # it's a fact
                     self._facts.append(index)
                     self.set_complete(index)
-                else:    # it's a compound
+                else:  # it's a compound
                     for atom in node.children:
                         self._atoms_in_rules[abs(atom)].add(index)
         self.build_constraint_dd()
@@ -104,9 +104,9 @@ class ForwardInference(DD):
             for i, c in enumerate(self._completed):
                 if not c:
                     self._completed[i] = True
-                    self.notify_node_completed(i+1)
+                    self.notify_node_completed(i + 1)
         else:
-            updated_nodes = set([(i+1) for i, c in enumerate(self._completed) if c])
+            updated_nodes = set([(i + 1) for i, c in enumerate(self._completed) if c])
             while updated_nodes:
                 next_updates = set()
                 # Find all heads that are affected
@@ -130,19 +130,19 @@ class ForwardInference(DD):
         self._node_depths = [None] * len(self)
         self._node_levels = []
         # Start with current nodes
-        current_nodes = set(abs(n) for q, n in self.queries() if n is not None and n > 0) \
-                        | set(abs(n) for q, n in self.evidence() if n is not None and n > 0)
+        current_nodes = set(abs(n) for q, n in self.queries() if n is not None and n > 0)
+        current_nodes |= set(abs(n) for q, n in self.evidence() if n is not None and n > 0)
         current_level = 0
         while current_nodes:
             self._node_levels.append(current_nodes)
             next_nodes = set()
             for index in current_nodes:
-                self._node_depths[index-1] = current_level
+                self._node_depths[index - 1] = current_level
                 node = self.get_node(index)
                 nodetype = type(node).__name__
                 if nodetype != 'atom':
                     for c in node.children:
-                        if self._node_depths[abs(c)-1] is None:
+                        if self._node_depths[abs(c) - 1] is None:
                             next_nodes.add(abs(c))
             current_nodes = next_nodes
             current_level += 1
@@ -152,13 +152,13 @@ class ForwardInference(DD):
         for level, nodes in reversed(list(enumerate(self._node_levels))):
             for index in nodes:
                 # Get current node's minmax
-                minmax = self._node_minmax[index-1]
+                minmax = self._node_minmax[index - 1]
                 if minmax is None:
                     minmax = level
                 for rule in self._atoms_in_rules[index]:
-                    rule_minmax = self._node_minmax[rule-1]
+                    rule_minmax = self._node_minmax[rule - 1]
                     if rule_minmax is None:
-                        self._node_minmax[rule-1] = minmax
+                        self._node_minmax[rule - 1] = minmax
                     else:
                         node = self.get_node(rule)
                         nodetype = type(node).__name__
@@ -166,7 +166,7 @@ class ForwardInference(DD):
                             rule_minmax = max(minmax, rule_minmax)
                         else:  # disj
                             rule_minmax = min(minmax, rule_minmax)
-                        self._node_minmax[rule-1] = rule_minmax
+                        self._node_minmax[rule - 1] = rule_minmax
 
     def _update_minmax_depths(self, index, new_minmax=0):
         """Update the minmax depth data structure when the given node is completed.
@@ -174,17 +174,17 @@ class ForwardInference(DD):
         :param index:
         :return:
         """
-        current_minmax = self._node_minmax[index-1]
-        self._node_minmax[index-1] = new_minmax
+        current_minmax = self._node_minmax[index - 1]
+        self._node_minmax[index - 1] = new_minmax
 
         for parent in self._atoms_in_rules[index]:
-            parent_minmax = self._node_minmax[parent-1]
+            parent_minmax = self._node_minmax[parent - 1]
 
             if current_minmax == parent_minmax:
                 # Current node is best child => we need to recompute
                 parent_node = self.get_node(parent)
                 parent_nodetype = type(parent_node).__name__
-                parent_children_minmax = [self._node_minmax[c-1]
+                parent_children_minmax = [self._node_minmax[c - 1]
                                           for c in parent_node.children
                                           if not self.is_complete(c)]
                 if not parent_children_minmax:
@@ -198,7 +198,7 @@ class ForwardInference(DD):
                 self._update_minmax_depths(parent, parent_minmax)
 
     def sort_nodes(self, nodes):
-        return sorted(nodes, key=lambda i: self._node_depths[i-1])
+        return sorted(nodes, key=lambda i: self._node_depths[i - 1])
 
     def notify_node_updated(self, node, complete):
         for obj in self._update_listeners:
@@ -208,24 +208,10 @@ class ForwardInference(DD):
         for obj in self._update_listeners:
             obj.node_completed(self, node)
 
-    def _heuristic_key_completeness(self, node):
-        nodeobj = self.get_node(node)
-        children = nodeobj.children
-        children_complete = sum(self.is_complete(c) for c in children)
-
-        completeness = 1 - (float(children_complete) / len(children))
-
-        if completeness == 0.0:
-            self.set_complete(node)
-
-        return completeness != 0.0, self._node_depths[node-1], len(self.get_node(node).children), random.random()
-
-        return self._node_depths[node-1], len(self.get_node(node).children)
-
     def _heuristic_key_depth(self, node):
         # For OR: D(n) is min(D(c) for c in children)
         # For AND: D(n) is max(D(c) for c in children)
-        return self._node_minmax[node-1], self._node_depths[node-1], random.random()
+        return self._node_minmax[node - 1], self._node_depths[node - 1], random.random()
 
     def _heuristic_key(self, node):
         return self._heuristic_key_depth(node)
@@ -248,8 +234,8 @@ class ForwardInference(DD):
                 self.notify_node_updated(node, self.is_complete(node))
             elif self.is_complete(node):
                 self.notify_node_completed(node)
-            # if self.is_complete(node):
-            #     self._update_minmax_depths(node)
+                # if self.is_complete(node):
+                #     self._update_minmax_depths(node)
 
     def build_iteration_levelwise(self, updated_nodes):
         while updated_nodes:
@@ -275,7 +261,7 @@ class ForwardInference(DD):
         updated_nodes = OrderedSet()
         for i, nodes in enumerate(zip(self.inodes, self._inodes_prev)):
             if not self.get_manager().same(*nodes):
-                updated_nodes.add(i+1)
+                updated_nodes.add(i + 1)
         self.get_manager().ref(*filter(None, self.inodes))
         self.get_manager().deref(*filter(None, self._inodes_prev))
         self.get_manager().deref(*filter(None, self._inodes_neg))
@@ -326,7 +312,7 @@ class ForwardInference(DD):
         elif nodetype == 'disj':
             children = [self.get_inode(c) for c in node.children]
             children_complete = [self.is_complete(c) for c in node.children]
-            children = list(filter(None, children))   # discard children that are still unknown
+            children = list(filter(None, children))  # discard children that are still unknown
             if children:
                 newnode = self.get_manager().disjoin(*children)
             else:
@@ -343,7 +329,7 @@ class ForwardInference(DD):
             newnode = newernode
 
         if self.get_manager().same(oldnode, newnode):
-            return False   # no change occurred
+            return False  # no change occurred
         else:
             if oldnode is not None:
                 self.get_manager().deref(oldnode)
@@ -370,27 +356,25 @@ class ForwardInference(DD):
                 return result
         elif index < 0:
             # We are requesting a negated node => use previous stratum's result
-            result = self._inodes_neg[-index-1]
-            if result is None and self._inodes_prev[-index-1] is not None:
-                result = self.get_manager().negate(self._inodes_prev[-index-1])
-                self._inodes_neg[-index-1] = result
+            result = self._inodes_neg[-index - 1]
+            if result is None and self._inodes_prev[-index - 1] is not None:
+                result = self.get_manager().negate(self._inodes_prev[-index - 1])
+                self._inodes_neg[-index - 1] = result
             return result
         else:
-            return self.inodes[index-1]
+            return self.inodes[index - 1]
 
     def add_constraint(self, c):
         LogicFormula.add_constraint(self, c)
 
 
 class _ForwardSDD(SDD, ForwardInference):
-
     def __init__(self, sdd_auto_gc=True, **kwdargs):
         SDD.__init__(self, sdd_auto_gc=sdd_auto_gc, **kwdargs)
         ForwardInference.__init__(self, **kwdargs)
 
 
 class _ForwardBDD(BDD, ForwardInference):
-
     def __init__(self, **kwdargs):
         BDD.__init__(self, **kwdargs)
         ForwardInference.__init__(self, **kwdargs)
@@ -398,35 +382,33 @@ class _ForwardBDD(BDD, ForwardInference):
 
 @transform(LogicFormula, _ForwardSDD)
 def build_sdd(source, destination, **kwdargs):
-    result = build_dd(source, destination, 'ForwardSDD', **kwdargs)
+    result = build_dd(source, destination, **kwdargs)
     return result
 
 
 @transform(LogicFormula, _ForwardBDD)
 def build_sdd(source, destination, **kwdargs):
-    result = build_dd(source, destination, 'ForwardBDD', **kwdargs)
+    result = build_dd(source, destination, **kwdargs)
     return result
 
 
 class ForwardSDD(LogicFormula, Evaluatable):
-
     def __init__(self, **kwargs):
         LogicFormula.__init__(self, **kwargs)
         Evaluatable.__init__(self)
         self.kwargs = kwargs
 
-    def create_evaluator(self, semiring, weights):
+    def _create_evaluator(self, semiring, weights):
         return ForwardEvaluator(self, semiring, _ForwardSDD(**self.kwargs), weights)
 
 
 class ForwardBDD(LogicFormula, Evaluatable):
-
     def __init__(self, **kwargs):
         LogicFormula.__init__(self, **kwargs)
         Evaluatable.__init__(self)
         self.kwargs = kwargs
 
-    def create_evaluator(self, semiring, weights):
+    def _create_evaluator(self, semiring, weights):
         return ForwardEvaluator(self, semiring, _ForwardBDD(**self.kwargs), weights)
 
 
@@ -439,12 +421,10 @@ class ForwardEvaluator(Evaluator):
     """An evaluator using anytime forward compilation."""
 
     def __init__(self, formula, semiring, fdd, weights=None, verbose=None, **kwargs):
-        Evaluator.__init__(self, formula, semiring)
+        Evaluator.__init__(self, formula, semiring, weights)
 
         self.fsdd = fdd
         self._z = None
-        self._weights = None
-        self._given_weights = weights
         self._verbose = verbose
 
         self._results = {}
@@ -458,7 +438,7 @@ class ForwardEvaluator(Evaluator):
         if name:
             name = name[0]
             weights = {}
-            for atom, weight in self._weights.items():
+            for atom, weight in self.weights.items():
                 av = source.atom2var.get(atom)
                 if av is not None:
                     weights[av] = weight
@@ -470,7 +450,8 @@ class ForwardEvaluator(Evaluator):
                 self._results[node] = result
 
                 debug_msg = 'update query %s: %s after %ss' % \
-                            (name, self.semiring.result(result), '%.4f' % (time.time()-self._start_time))
+                            (name, self.semiring.result(result),
+                             '%.4f' % (time.time() - self._start_time))
                 logging.getLogger('problog').debug(debug_msg)
             if complete:
                 self._complete.add(node)
@@ -481,12 +462,12 @@ class ForwardEvaluator(Evaluator):
             self._complete.add(node)
 
     def initialize(self):
-        self._weights = self.formula.extract_weights(self.semiring, self._given_weights)
+        self.weights = self.formula.extract_weights(self.semiring, self.given_weights)
 
         # We should do all compilation here.
         self.fsdd.register_update_listener(self)
         self._start_time = time.time()
-        build_dd(self.formula, self.fsdd, 'ForwardSDD')
+        build_dd(self.formula, self.fsdd)
 
     def propagate(self):
         self.initialize()
@@ -504,7 +485,7 @@ class ForwardEvaluator(Evaluator):
             n = self.formula.get_node(abs(index))
             nt = type(n).__name__
             if nt == 'atom':
-                wp, wn = self._weights.get(abs(index))
+                wp, wn = self.weights.get(abs(index))
                 if index < 0:
                     return self.semiring.result(wn)
                 else:
@@ -515,7 +496,8 @@ class ForwardEvaluator(Evaluator):
                         if -index in self._complete:
                             return self.semiring.result(self.semiring.negate(self._results[-index]))
                         else:
-                            return 0.0, self.semiring.result(self.semiring.negate(self._results[-index]))
+                            return 0.0, self.semiring.result(
+                                self.semiring.negate(self._results[-index]))
                     else:
                         return 0.0, 1.0
                 else:
@@ -530,10 +512,6 @@ class ForwardEvaluator(Evaluator):
     def evaluate_evidence(self):
         raise NotImplementedError('Evaluator.evaluate_evidence is an abstract method.')
 
-    def get_z(self):
-        """Get the normalization constant."""
-        return self._z
-
     def add_evidence(self, node):
         """Add evidence"""
         warnings.warn('Evidence is not supported by this evaluation method and will be ignored.')
@@ -546,4 +524,3 @@ class ForwardEvaluator(Evaluator):
 
     def evidence(self):
         return iter(self.__evidence)
-

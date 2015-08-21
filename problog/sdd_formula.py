@@ -27,6 +27,7 @@ from .formula import LogicDAG
 from .core import transform, InstallError
 from .dd_formula import DD, build_dd, DDManager
 
+# noinspection PyBroadException
 try:
     import sdd
 except Exception:
@@ -51,11 +52,12 @@ class SDD(DD):
         self.auto_gc = sdd_auto_gc
         DD.__init__(self, auto_compact=False, **kwdargs)
 
-    def create_manager(self):
+    def _create_manager(self):
         return SDDManager(auto_gc=self.auto_gc)
 
     @classmethod
-    def is_available(cls) :
+    def is_available(cls):
+        """Checks whether the SDD library is available."""
         return sdd is not None
 
 
@@ -66,8 +68,8 @@ class SDDManager(DDManager):
     """
 
     def __init__(self, varcount=0, auto_gc=True):
-        """
-        Create a new SDD manager.
+        """Create a new SDD manager.
+
         :param varcount: number of initial variables
         :type varcount: int
         :param auto_gc: use automatic garbage collection and minimization
@@ -80,20 +82,10 @@ class SDDManager(DDManager):
         self.varcount = varcount
 
     def get_manager(self):
-        """
-        Get the underlying sdd manager.
-        :return:
-        """
+        """Get the underlying sdd manager."""
         return self.__manager
 
     def add_variable(self, label=0):
-        """
-        Add a variable to the manager and return its label.
-        :param label: suggested label of the variable
-        :type label: int
-        :return: label of the new variable
-        :rtype: int
-        """
         if label == 0 or label > self.varcount:
             sdd.sdd_manager_add_var_after_last(self.__manager)
             self.varcount += 1
@@ -102,83 +94,33 @@ class SDDManager(DDManager):
             return label
 
     def literal(self, label):
-        """
-        Return an SDD node representing a literal.
-        :param label: label of the literal
-        :type label: int
-        :return: SDD node representing the literal
-        :rtype: SDDNode
-        """
         self.add_variable(abs(label))
         return sdd.sdd_manager_literal(label, self.__manager)
 
     def is_true(self, node):
-        """
-        Checks whether the SDD node represents True
-        :param node: node to verify
-        :type node: SDDNode
-        :return: True if the node represents True
-        :rtype: bool
-        """
         return sdd.sdd_node_is_true(node)
 
     def true(self):
-        """
-        Return an SDD node representing True
-        :return:
-        """
         return sdd.sdd_manager_true(self.__manager)
 
     def is_false(self, node):
-        """
-        Checks whether the SDD node represents False
-        :param node: node to verify
-        :type node: SDDNode
-        :return: False if the node represents False
-        :rtype: bool
-        """
         return sdd.sdd_node_is_false(node)
 
     def false(self):
-        """
-        Return an SDD node representing False
-        :return:
-        """
         return sdd.sdd_manager_false(self.__manager)
 
-    def conjoin2(self, node1, node2):
-        return sdd.sdd_conjoin(node1, node2, self.__manager)
+    def conjoin2(self, a, b):
+        return sdd.sdd_conjoin(a, b, self.__manager)
 
-    def disjoin2(self, node1, node2):
-        return sdd.sdd_disjoin(node1, node2, self.__manager)
+    def disjoin2(self, a, b):
+        return sdd.sdd_disjoin(a, b, self.__manager)
 
     def negate(self, node):
-        """
-        Create the negation of the given node.
-        :param node: negation of the given node
-        :type node: SDDNode
-        :return: negation of the given node
-        :rtype: SDDNode
-
-        This method handles node reference counting, that is, all intermediate results
-         are marked for garbage collection, and the output node has a reference count greater than one.
-        Reference count on input nodes is not touched (unless one of the inputs becomes the output).
-
-        """
         new_sdd = sdd.sdd_negate(node, self.__manager)
         self.ref(new_sdd)
         return new_sdd
 
     def same(self, node1, node2):
-        """
-        Checks whether two SDD nodes are equivalent.
-        :param node1: first node
-        :type: SDDNode
-        :param node2: second node
-        :type: SDDNode
-        :return: True if the given nodes are equivalent, False otherwise.
-        :rtype: bool
-        """
         # Assumes SDD library always reuses equivalent nodes.
         if node1 is None or node2 is None:
             return node1 == node2
@@ -186,43 +128,19 @@ class SDDManager(DDManager):
             return int(node1) == int(node2)
 
     def ref(self, *nodes):
-        """
-        Increase the reference count for the given nodes.
-        :param nodes: nodes to increase count on
-        :type nodes: tuple of SDDNode
-        """
         for node in nodes:
             sdd.sdd_ref(node, self.__manager)
 
     def deref(self, *nodes):
-        """
-        Decrease the reference count for the given nodes.
-        :param nodes: nodes to decrease count on
-        :type nodes: tuple of SDDNode
-        """
         for node in nodes:
             sdd.sdd_deref(node, self.__manager)
 
     def write_to_dot(self, node, filename):
-        """
-        Write SDD node to a DOT file.
-        :param node: SDD node to output
-        :type node: SDDNode
-        :param filename: filename to write to
-        :type filename: basestring
-        """
         sdd.sdd_save_as_dot(filename, node)
 
     def wmc(self, node, weights, semiring):
-        """
-        Perform Weighted Model Count on the given node.
-        :param node: node to evaluate
-        :param weights: weights for the variables in the node
-        :param semiring: use the operations defined by this semiring
-        :return: weighted model count
-        """
         logspace = 0
-        if semiring.isLogspace():
+        if semiring.is_logspace():
             logspace = 1
         wmc_manager = sdd.wmc_manager_new(node, logspace, self.get_manager())
         varcount = sdd.sdd_manager_var_count(self.get_manager())
@@ -230,7 +148,7 @@ class SDDManager(DDManager):
             i += 1
             pos, neg = weights[n]
             if n <= varcount:
-                sdd.wmc_set_literal_weight(n, pos, wmc_manager)   # Set positive literal weight
+                sdd.wmc_set_literal_weight(n, pos, wmc_manager)  # Set positive literal weight
                 sdd.wmc_set_literal_weight(-n, neg, wmc_manager)  # Set negative literal weight
         result = sdd.wmc_propagate(wmc_manager)
         sdd.wmc_manager_free(wmc_manager)
@@ -238,7 +156,7 @@ class SDDManager(DDManager):
 
     def wmc_literal(self, node, weights, semiring, literal):
         logspace = 0
-        if semiring.isLogspace():
+        if semiring.is_logspace():
             logspace = 1
         wmc_manager = sdd.wmc_manager_new(node, logspace, self.get_manager())
         varcount = sdd.sdd_manager_var_count(self.get_manager())
@@ -246,7 +164,7 @@ class SDDManager(DDManager):
             i += 1
             pos, neg = weights[n]
             if n <= varcount:
-                sdd.wmc_set_literal_weight(n, pos, wmc_manager)   # Set positive literal weight
+                sdd.wmc_set_literal_weight(n, pos, wmc_manager)  # Set positive literal weight
                 sdd.wmc_set_literal_weight(-n, neg, wmc_manager)  # Set negative literal weight
         sdd.wmc_propagate(wmc_manager)
 
@@ -256,7 +174,7 @@ class SDDManager(DDManager):
 
     def wmc_true(self, weights, semiring):
         logspace = 0
-        if semiring.isLogspace():
+        if semiring.is_logspace():
             logspace = 1
         wmc_manager = sdd.wmc_manager_new(self.true(), logspace, self.get_manager())
         varcount = sdd.sdd_manager_var_count(self.get_manager())
@@ -264,20 +182,24 @@ class SDDManager(DDManager):
             i += 1
             pos, neg = weights[n]
             if n <= varcount:
-                sdd.wmc_set_literal_weight(n, pos, wmc_manager)   # Set positive literal weight
+                sdd.wmc_set_literal_weight(n, pos, wmc_manager)  # Set positive literal weight
                 sdd.wmc_set_literal_weight(-n, neg, wmc_manager)  # Set negative literal weight
         result = sdd.wmc_propagate(wmc_manager)
         sdd.wmc_manager_free(wmc_manager)
         return result
 
     def __del__(self):
-        """
-        Clean up the SDD manager.
-        """
         sdd.sdd_manager_free(self.__manager)
         self.__manager = None
 
 
 @transform(LogicDAG, SDD)
 def build_sdd(source, destination, **kwdargs):
-    return build_dd(source, destination, 'SDD', **kwdargs)
+    """Build an SDD from another formula.
+
+    :param source: source formula
+    :param destination: destination formula
+    :param kwdargs: extra arguments
+    :return: destination
+    """
+    return build_dd(source, destination, **kwdargs)

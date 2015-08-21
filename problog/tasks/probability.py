@@ -18,7 +18,6 @@ limitations under the License.
 
 from __future__ import print_function
 
-import logging
 import stat
 import sys
 import os
@@ -31,7 +30,7 @@ from ..bdd_formula import BDD
 from ..forward import ForwardBDD, ForwardSDD
 from ..kbest import KBestFormula
 from ..util import Timer, start_timer, stop_timer, init_logger, format_dictionary
-from ..core import process_error, process_result
+from ..core import process_error
 from ..parser import DefaultPrologParser
 from ..debug import EngineTracer
 
@@ -151,7 +150,8 @@ def run_problog(filename, knowledge=NNF, semiring=None, parse_class=DefaultProlo
     try:
         with Timer('Total time to process model'):
             parser = parse_class(ExtendedPrologFactory())
-            formula = knowledge.createFrom(PrologFile(filename, parser=parser), debugger=debugger, **kwdargs)
+            formula = knowledge.createFrom(PrologFile(filename, parser=parser), debugger=debugger,
+                                           **kwdargs)
         with Timer('Evaluation'):
             result = formula.evaluate(semiring=semiring)
         return True, result
@@ -192,7 +192,8 @@ def argparser():
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument('filenames', metavar='MODEL', nargs='*', type=InputFile)
     parser.add_argument('--verbose', '-v', action='count', help='Verbose output')
-    parser.add_argument('--knowledge', '-k', dest='koption', choices=('sdd', 'nnf', 'ddnnf', 'bdd', 'fsdd', 'fbdd', 'kbest'),
+    parser.add_argument('--knowledge', '-k', dest='koption',
+                        choices=('sdd', 'nnf', 'ddnnf', 'bdd', 'fsdd', 'fbdd', 'kbest'),
                         default=None, help="Knowledge compilation tool.")
 
     # Evaluation semiring
@@ -218,9 +219,10 @@ def argparser():
     # Additional arguments (passed through)
     parser.add_argument('--engine-debug', action='store_true', help=argparse.SUPPRESS)
     parser.add_argument('--propagate-evidence', action='store_true',
-                                   dest='propagate_evidence',
-                                   default=argparse.SUPPRESS, help=argparse.SUPPRESS)
-    parser.add_argument('--propagate-weights', action='store_true', default=None, help=argparse.SUPPRESS)
+                        dest='propagate_evidence',
+                        default=argparse.SUPPRESS, help=argparse.SUPPRESS)
+    parser.add_argument('--propagate-weights', action='store_true', default=None,
+                        help=argparse.SUPPRESS)
 
     # SDD garbage collection
     sdd_auto_gc_group = parser.add_mutually_exclusive_group()

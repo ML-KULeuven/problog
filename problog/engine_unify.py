@@ -32,7 +32,6 @@ class UnifyError(Exception):
 
 
 class _SubstitutionWrapper(object):
-
     def __init__(self, subst):
         self.subst = subst
 
@@ -74,8 +73,6 @@ def instantiate(term, context):
 
 
 class OccursCheck(GroundingError):
-
-
     def __init__(self):
         GroundingError.__init__(self, 'Infinite unification')
 
@@ -127,13 +124,12 @@ def unify_value(value1, value2, source_values):
             return value
     elif value1.signature == value2.signature:  # Assume Term
         return value1.with_args(*[unify_value(a1, a2, source_values)
-                                 for a1, a2 in zip(value1.args, value2.args)])
+                                  for a1, a2 in zip(value1.args, value2.args)])
     else:
         raise UnifyError()
 
 
 class _ContextWrapper(object):
-
     def __init__(self, context):
         self.context = context
         self.numbers = {}
@@ -240,21 +236,23 @@ def _unify_call_head_single(source_value, target_value, target_context, source_v
     :param source_value: value occuring in clause call
     :type source_value: Term or variable. All variables are represented as negative numbers.
     :param target_value: value occuring in clause head
-    :type target_value: Term or variable. All variables are represented as positive numbers corresponding to positions
+    :type target_value: Term or variable. All variables are represented as positive numbers \
+    corresponding to positions
     in target_context.
     :param target_context: values of the variables in the current context. Output argument.
     :param source_values:
     :raise UnifyError: unification failed
 
-    The values in the target_context contain only variables from the source context (i.e. negative numbers) (or Terms).
+    The values in the target_context contain only variables from the source context \
+    (i.e. negative numbers) (or Terms).
     Initially values are set to None.
     """
-    if is_variable(target_value):   # target_value is variable (integer >= 0)
+    if is_variable(target_value):  # target_value is variable (integer >= 0)
         assert type(target_value) == int and target_value >= 0
         target_context[target_value] = \
             unify_value(source_value, target_context[target_value], source_values)
-    else:   # target_value is a Term (which can still contain variables)
-        if is_variable(source_value):   # source value is variable (integer < 0)
+    else:  # target_value is a Term (which can still contain variables)
+        if is_variable(source_value):  # source value is variable (integer < 0)
             if source_value is None:
                 pass
             else:
@@ -264,7 +262,7 @@ def _unify_call_head_single(source_value, target_value, target_context, source_v
                 # Note that we unify two values in the same scope.
                 source_values[source_value] = \
                     unify_value(source_values.get(source_value), target_value, source_values)
-        else:   # source value is a Term (which can still contain variables)
+        else:  # source value is a Term (which can still contain variables)
             if target_value.signature == source_value.signature:
                 # When signatures match, recursively unify the arguments.
                 for s_arg, t_arg in zip(source_value.args, target_value.args):
@@ -274,7 +272,6 @@ def _unify_call_head_single(source_value, target_value, target_context, source_v
 
 
 class _VarTranslateWrapper(object):
-
     def __init__(self, var_translate, min_var):
         self.base = var_translate
         self.min_var = min_var
@@ -342,11 +339,11 @@ def _unify_call_return_single(source_value, target_value, target_context, source
             assert not target_value < 0
     else:
         # Target value is Term (which can contain variables)
-        if is_variable(source_value):   # source value is variable (integer < 0)
+        if is_variable(source_value):  # source value is variable (integer < 0)
             assert type(source_value) == int and source_value < 0
             source_values[source_value] = \
                 unify_value(source_values.get(source_value), target_value, source_values)
-        else:   # source value is a Term (which can still contain variables)
+        else:  # source value is a Term (which can still contain variables)
             if target_value.signature == source_value.signature:
                 # When signatures match, recursively unify the arguments.
                 for s_arg, t_arg in zip(source_value.args, target_value.args):

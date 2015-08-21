@@ -28,39 +28,43 @@ import sys
 import distutils.spawn
 import distutils.ccompiler
 
-def get_system() :
+
+def get_system():
     system = sys.platform
-    if system.lower().startswith('java') :
+    if system.lower().startswith('java'):
         import java.lang.System
         system = java.lang.System.getProperty('os.name').lower()
-    if system.startswith('linux') :
+    if system.startswith('linux'):
         system = 'linux'
-    elif system.startswith('win') :
+    elif system.startswith('win'):
         system = 'windows'
-    elif system.startswith('mac') :
+    elif system.startswith('mac'):
         system = 'darwin'
     return system
 
-def set_environment() :
+
+def set_environment():
     """Updates local PATH and PYTHONPATH to include additional component directories."""
     # Set PATH environment
-    PATH = os.environ.get('PATH', [])
-    if PATH :
-        PATH = [PATH]
-    PATH = os.pathsep.join( PATH + list(get_binary_paths()) )
-    os.environ['PATH'] = PATH
+    path = os.environ.get('PATH', [])
+    if path:
+        path = [path]
+    path = os.pathsep.join(path + list(get_binary_paths()))
+    os.environ['PATH'] = path
     # Set PYTHONPATH environment
     sys.path += get_module_paths()
 
-def get_binary_paths() :
-    """Get a list of additional binary search paths."""
-    binary_root = os.path.join(os.path.dirname(__file__), 'bin' )
-    system = get_system()  # Darwin, Linux, ?
-    return list(map(os.path.abspath,[ os.path.join(binary_root, system), binary_root ]))
 
-def get_module_paths() :
+def get_binary_paths():
+    """Get a list of additional binary search paths."""
+    binary_root = os.path.join(os.path.dirname(__file__), 'bin')
+    system = get_system()  # Darwin, Linux, ?
+    return list(map(os.path.abspath, [os.path.join(binary_root, system), binary_root]))
+
+
+def get_module_paths():
     """Get a list of additional module search paths."""
-    binary_root = os.path.join(os.path.dirname(__file__), 'lib' )
+    binary_root = os.path.join(os.path.dirname(__file__), 'lib')
     system = get_system()  # Darwin, Linux, ?
     python = 'python%s' % sys.version_info[0]
     return list(map(os.path.abspath,
@@ -69,7 +73,7 @@ def get_module_paths() :
                      binary_root]))
 
 
-def gather_info() :
+def gather_info():
     """Collect info about the system and its installed software."""
 
     system_info = {}
@@ -77,45 +81,36 @@ def gather_info() :
     system_info['root_path'] = os.path.join(os.path.dirname(__file__), '..')
 
     system_info['os'] = get_system()
-    #system_info['arch'] = os.uname()[-1]
+    # system_info['arch'] = os.uname()[-1]
 
     system_info['python_version'] = sys.version_info
 
     # Module pyparsing
-    try :
+    try:
         import pyparsing
         system_info['pyparsing'] = pyparsing.__version__
-    except ImportError :
+    except ImportError:
         pass
 
-    # Yap
-    # try :
-    #     test_program =  "prolog_flag(version,V), write(V), nl, (prolog_flag(system_options,tabling) -> write(1) ; write(0)), nl, halt."
-    #     with open(os.devnull, 'w') as OUT_NULL :
-    #         output = subprocess.check_output( ['yap', '-g', test_program ], stderr=OUT_NULL ).decode('utf-8').split('\n')
-    #     system_info['yap_version'] = output[0].split()[1]
-    #     system_info['yap_tabling'] = output[1].strip() == "1"
-    # except Exception :
-    #     pass
-
     # SDD module
-    try :
+    # noinspection PyBroadException
+    try:
         import sdd
         system_info['sdd_module'] = True
-    except Exception :
+    except Exception:
         pass
 
     # DSharp
-    system_info['dsharp'] = distutils.spawn.find_executable('dsharp') != None
+    system_info['dsharp'] = distutils.spawn.find_executable('dsharp') is not None
 
     # c2d
-    system_info['c2d'] = distutils.spawn.find_executable('cnf2dDNNF') != None
+    system_info['c2d'] = distutils.spawn.find_executable('cnf2dDNNF') is not None
     return system_info
 
-def build_sdd() :
 
-    if get_system() == 'windows' :
-        print ('The SDD library is not yet available for Windows.')
+def build_sdd():
+    if get_system() == 'windows':
+        print('The SDD library is not yet available for Windows.')
         return
 
     build_lib = get_module_paths()[0]
@@ -127,23 +122,23 @@ def build_sdd() :
     os.chdir(build_dir)
 
     from distutils.core import setup, Extension
-    sdd_module = Extension('_sdd', sources=['sdd/sdd_wrap.c', 'sdd/except.c'], libraries=['sdd'], library_dirs=[lib_dir] )
+    sdd_module = Extension('_sdd', sources=['sdd/sdd_wrap.c', 'sdd/except.c'], libraries=['sdd'],
+                           library_dirs=[lib_dir])
 
-    setup (name = 'sdd',
-           version = '1.0',
-           author      = "",
-           description = """SDD Library""",
-           ext_modules = [sdd_module],
-           py_modules = ["sdd"],
-           script_name = '',
-           script_args = ['build_ext', '--build-lib', build_lib, '--rpath', lib_dir ]
-    )
+    setup(name='sdd',
+          version='1.0',
+          author="",
+          description="""SDD Library""",
+          ext_modules=[sdd_module],
+          py_modules=["sdd"],
+          script_name='',
+          script_args=['build_ext', '--build-lib', build_lib, '--rpath', lib_dir]
+          )
 
     os.chdir(curr)
 
 
 def build_maxsatz():
-
     compiler = distutils.ccompiler.new_compiler()
 
     dest_dir, source_dir = get_binary_paths()
@@ -155,33 +150,34 @@ def build_maxsatz():
     compiler.link_executable(objfile, os.path.join(dest_dir, 'maxsatz'))
 
 
-def install(force=True) :
+def install(force=True):
     info = gather_info()
     update = False
 
-    if force or not info.get('sdd_module') :
+    if force or not info.get('sdd_module'):
         build_sdd()
         update = True
 
     build_maxsatz()
 
-    if update :
+    if update:
         info = gather_info()
     return info
 
-def system_info() :
+
+def system_info():
     info = gather_info()
 
     ok = True
-    s  = 'System information:\n'
+    s = 'System information:\n'
     s += '------------------:\n'
-    s += 'Operating system: %s\n' % info.get('os','unknown')
+    s += 'Operating system: %s\n' % info.get('os', 'unknown')
     s += 'System architecture: %s\n' % info.get('arch', 'unknown')
-    s += 'Python version: %s.%s.%s\n' % ( info['python_version'].major, info['python_version'].minor, info['python_version'].micro )
+    s += 'Python version: %s.%s.%s\n' % (
+        info['python_version'].major, info['python_version'].minor, info['python_version'].micro)
     s += '\n'
     s += 'ProbLog components:\n'
     s += '-------------------\n'
-
 
     # PrologFile, PrologString  => require pyparsing
     # SDD => requires sdd_library
@@ -202,7 +198,8 @@ def system_info() :
     #
     return s
 
-if __name__ == '__main__' :
+
+if __name__ == '__main__':
     set_environment()
     info = install()
-    print (info)
+    print(info)

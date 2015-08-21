@@ -43,7 +43,7 @@ def init_logger(verbose=None, name='problog'):
     :type verbose: int
     :param name: name of the logger (default: problog)
     :type name: str
-    :return: result of ``logging.getLogger(name)''
+    :return: result of ``logging.getLogger(name)``
     :rtype: logging.Logger
     """
     logger = logging.getLogger(name)
@@ -64,11 +64,11 @@ def init_logger(verbose=None, name='problog'):
 
 class Timer(object):
     """Report timing information for a block of code.
-    To be used as a ``with'' block.
+    To be used as a ``with`` block.
 
     :param msg: message to print
     :type msg: str
-    :param output: file object to write to (default: write to logger ``problog'')
+    :param output: file object to write to (default: write to logger ``problog``)
     :type output: file
     """
 
@@ -80,14 +80,16 @@ class Timer(object):
     def __enter__(self):
         self.start_time = time.time()
 
+    # noinspection PyUnusedLocal
     def __exit__(self, *args):
         if self.output is None:
             logger = logging.getLogger('problog')
-            logger.info('%s: %.4fs' % (self.message, time.time()-self.start_time))
+            logger.info('%s: %.4fs' % (self.message, time.time() - self.start_time))
         else:
-            print ('%s: %.4fs' % (self.message, time.time()-self.start_time), file=self.output)
+            print ('%s: %.4fs' % (self.message, time.time() - self.start_time), file=self.output)
 
 
+# noinspection PyUnusedLocal
 def _raise_timeout(*args):
     """Raise global timeout exception (used by global timer)
 
@@ -171,6 +173,7 @@ def kill_proc_tree(process, including_parent=True):
     :type including_parent: bool
     """
     try:
+        # noinspection PyPackageRequirements
         import psutil
         pid = process.pid
         parent = psutil.Process(pid)
@@ -182,6 +185,7 @@ def kill_proc_tree(process, including_parent=True):
             parent.kill()
             parent.wait(5)
     except ImportError:
+        # noinspection PyUnusedLocal
         psutil = None
         process.kill()
 
@@ -198,6 +202,7 @@ class OrderedSet(collections.MutableSet):
         end += [None, end, end]         # sentinel node for doubly linked list
         self.map = {}                   # key --> [key, prev, next]
         if iterable is not None:
+            # noinspection PyMethodFirstArgAssignment
             self |= iterable
 
     def __len__(self):
@@ -207,16 +212,24 @@ class OrderedSet(collections.MutableSet):
         return key in self.map
 
     def add(self, key):
+        """Add element.
+
+        :param key: element to add
+        """
         if key not in self.map:
             end = self.end
             curr = end[1]
             curr[2] = end[1] = self.map[key] = [key, curr, end]
 
     def discard(self, key):
+        """Discard element.
+
+        :param key: element to remove
+        """
         if key in self.map:
-            key, prev, next = self.map.pop(key)
-            prev[2] = next
-            next[1] = prev
+            key, prv, nxt = self.map.pop(key)
+            prv[2] = nxt
+            nxt[1] = prv
 
     def __iter__(self):
         end = self.end
@@ -233,6 +246,11 @@ class OrderedSet(collections.MutableSet):
             curr = curr[1]
 
     def pop(self, last=True):
+        """Remove and return first or last element.
+
+        :param last: remove last element
+        :return: last element
+        """
         if not self:
             raise KeyError('set is empty')
         key = self.end[1][0] if last else self.end[2][0]
@@ -245,7 +263,7 @@ class OrderedSet(collections.MutableSet):
         return '%s(%r)' % (self.__class__.__name__, list(self))
 
     def __eq__(self, other):
-        if other is None :
+        if other is None:
             return False
         elif isinstance(other, OrderedSet):
             return len(self) == len(other) and list(self) == list(other)
@@ -267,7 +285,7 @@ def mktempfile(suffix=''):
 def load_module(filename):
     """Load a Python module from a filename or qualified module name.
 
-    If filename ends with ``.py'', the module is loaded from the given file.
+    If filename ends with ``.py``, the module is loaded from the given file.
     Otherwise it is taken to be a module name reachable from the path.
 
     Example:
@@ -307,7 +325,7 @@ def format_value(data, precision=8):
     """
     if isinstance(data, float):
         data = ('%.' + str(precision) + 'g') % data
-    return ('{:<' + str(precision+2) + '}').format(data)
+    return ('{:<' + str(precision + 2) + '}').format(data)
 
 
 def format_tuple(data, precision=8, columnsep='\t'):
@@ -338,9 +356,9 @@ def format_dictionary(data, precision=8, keysep=':', columnsep='\t'):
     :type data: dict
     :param precision: max. number of digits
     :type precision: int
-    :param keysep: separator between key and value (default: ``;'')
+    :param keysep: separator between key and value (default: ``;``)
     :type keysep: str
-    :param columnsep: column separator (default: ``tab'')
+    :param columnsep: column separator (default: ``tab``)
     :type columnsep: str
     :return: pretty printed result
     :rtype: str
@@ -362,8 +380,8 @@ class UHeap(object):
     """Updatable heap.
 
     Each element is represented as a pair (key, item).
-    The operation ``pop()'' always returns the item with the smallest key.
-    The operation ``push(item)'' either adds item (returns True) or updates its key (return False)
+    The operation ``pop()`` always returns the item with the smallest key.
+    The operation ``push(item)`` either adds item (returns True) or updates its key (return False)
     A function for computing an item's key can be passed.
 
     :param key: function for computing the sort key of an item
@@ -416,18 +434,22 @@ class UHeap(object):
         return is_new
 
     def pop(self):
-        """Returns the element with the smallest key.
+        """Removes and returns the element with the smallest key.
 
         :return: item with the smallest key
         """
         return self.pop_with_key()[1]
 
     def pop_with_key(self):
+        """Removes and returns the smallest element and its key.
+
+        :return: smallest element (key, element)
+        """
         assert bool(self)
         # Get top element
         key, item = self._heap[0]
         # Swap top and last
-        self._swap(0, len(self._heap)-1)
+        self._swap(0, len(self._heap) - 1)
         # Remove last element (former top)
         del self._index[item]
         self._heap.pop(-1)
@@ -450,10 +472,10 @@ class UHeap(object):
         if index == 0:
             return None
         else:
-            return (index-1) // 2
+            return (index - 1) // 2
 
     def _children(self, index):
-        return (2*index)+1, (2*index)+2
+        return (2 * index) + 1, (2 * index) + 2
 
     def _swim_up(self, index):
         p = self._parent(index)

@@ -45,10 +45,10 @@ import sys
 from problog.program import PrologFile
 from problog.logic import Term, Constant, ArithmeticError
 from problog.engine import DefaultEngine, UnknownClause
-from problog.engine_builtin import check_mode, builtin_call
+from problog.engine_builtin import check_mode
 from problog.formula import LogicFormula
-from problog.core import process_result, process_error
-from problog.util import start_timer, stop_timer
+from problog.core import process_error
+from problog.util import start_timer, stop_timer, format_dictionary
 from problog.engine_unify import UnifyError, unify_value
 import random
 import math
@@ -81,7 +81,7 @@ except ImportError:
                 v = random.random()
                 y = alpha - beta * x
                 lhs = y + math.log(v / (1.0 + math.exp(y)) ** 2)
-                rhs = k + n * math.log(l) - math.lgamma(n+1)
+                rhs = k + n * math.log(l) - math.lgamma(n + 1)
                 if lhs <= rhs:
                     return n
         else:
@@ -143,16 +143,19 @@ class FunctionStore(object):
         self.engine = engine
         self.database = database
 
+    # noinspection PyUnusedLocal
     def get(self, key, default=None):
         functor, arity = key
+
         def _function(*args):
             args = tuple(map(Constant, args))
             term = Term(functor, *args)
             try:
-                results = self.engine.call(term, subcall=True, target=self.target, database=self.database)
+                results = self.engine.call(term, subcall=True, target=self.target,
+                                           database=self.database)
                 if len(results) == 1:
                     value_id = results[0][-1]
-                    return float(self.target.getValue(value_id))
+                    return float(self.target.get_value(value_id))
                 elif len(results) == 0:
                     return None
                 else:
@@ -161,6 +164,7 @@ class FunctionStore(object):
                 sig = err.signature
                 raise ArithmeticError("Unknown function %s" % sig)
         return _function
+
 
 class SampledFormula(LogicFormula):
 
@@ -171,22 +175,21 @@ class SampledFormula(LogicFormula):
         self.probability = 1.0  # Try to compute
         self.values = []
 
-    def _isSimpleProbability(self, term):
+    def _is_simple_probability(self, term):
         try:
-            t = float(term)
+            float(term)
             return True
-        except ArithmeticError as e:
+        except ArithmeticError:
             return False
-        #return type(term) == float or term.is_constant()
 
-    def addValue(self, value):
+    def add_value(self, value):
         self.values.append(value)
         return len(self.values)
 
-    def getValue(self, key):
+    def get_value(self, key):
         if key == 0:
             return None
-        return self.values[key-1]
+        return self.values[key - 1]
 
     def add_atom(self, identifier, probability, group=None, name=None):
         if probability is None:
@@ -194,7 +197,7 @@ class SampledFormula(LogicFormula):
 
         if group is None:  # Simple fact
             if identifier not in self.facts:
-                if self._isSimpleProbability(probability):
+                if self._is_simple_probability(probability):
                     p = random.random()
                     prob = float(probability)
                     value = p < prob
@@ -203,37 +206,36 @@ class SampledFormula(LogicFormula):
                         self.probability *= prob
                     else:
                         result_node = self.FALSE
-                        self.probability *= (1-prob)
+                        self.probability *= (1 - prob)
                 else:
                     value, prob = sample_value(probability)
                     self.probability *= prob
-                    result_node = self.addValue(value)
+                    result_node = self.add_value(value)
                 self.facts[identifier] = result_node
                 return result_node
             else:
                 return self.facts[identifier]
         else:
-            choice = identifier[-1]
+            # choice = identifier[-1]
             origin = identifier[:-1]
             if identifier not in self.facts:
-                if self._isSimpleProbability(probability):
+                if self._is_simple_probability(probability):
                     p = float(probability)
                     if origin in self.groups:
                         r = self.groups[origin]  # remaining probability in the group
                     else:
                         r = 1.0
 
-                    if r is None or r < 1e-8:   # r is too small or another choice was made for this origin
+                    if r is None or r < 1e-8:
+                        # r is too small or another choice was made for this origin
                         value = False
-                        q = 0
                     else:
-                        q = p/r
-                        value = (random.random() <= q)
+                        value = (random.random() <= p / r)
                     if value:
                         self.probability *= p
                         self.groups[origin] = None   # Other choices in group are not allowed
                     elif r is not None:
-                        self.groups[origin] = r-p   # Adjust remaining probability
+                        self.groups[origin] = r - p   # Adjust remaining probability
                     if value:
                         result_node = self.TRUE
                     else:
@@ -241,13 +243,13 @@ class SampledFormula(LogicFormula):
                 else:
                     value, prob = sample_value(probability)
                     self.probability *= prob
-                    result_node = self.addValue(value)
+                    result_node = self.add_value(value)
                 self.facts[identifier] = result_node
                 return result_node
             else:
                 return self.facts[identifier]
 
-    def computeProbability(self) :
+    def compute_probability(self):
         for k, p in self.groups.items():
             if p is not None:
                 self.probability *= p
@@ -259,7 +261,7 @@ class SampledFormula(LogicFormula):
             if c is not None and c != 0:
                 i += 1
             if i > 1:
-                raise ValueError("Can't combine sampled predicates. Use sample/2 to extract sample.")
+                raise ValueError("Can't combine sampled predicates.")
         return LogicFormula.add_and(self, content)
 
     def add_or(self, content, **kwd):
@@ -268,7 +270,7 @@ class SampledFormula(LogicFormula):
             if c is not None and c != 0:
                 i += 1
             if i > 1:
-                raise ValueError("Can't combine sampled predicates. Make sure bodies are mutually exclusive.")
+                raise ValueError("Bodies for same head should be mutually exclusive.")
         return LogicFormula.add_or(self, content, **kwd)
 
     def add_not(self, child):
@@ -283,9 +285,10 @@ class SampledFormula(LogicFormula):
         """Indicates whether the given node is probabilistic."""
         return False
 
-    def toString(self, db, with_facts=False, with_probability=False, oneline=False,
-                 as_evidence=False, **extra):
-        self.computeProbability()
+    # noinspection PyUnusedLocal
+    def to_string(self, db, with_facts=False, with_probability=False, oneline=False,
+                  as_evidence=False, **extra):
+        self.compute_probability()
 
         if as_evidence:
             base = 'evidence(%s).'
@@ -297,7 +300,7 @@ class SampledFormula(LogicFormula):
             if k.functor.startswith('hidden_'):
                 continue
             if v is not None:
-                val = self.getValue(v)
+                val = self.get_value(v)
                 if val is None:
                     lines.append(base % (str(k)))
                 else:
@@ -321,11 +324,11 @@ class SampledFormula(LogicFormula):
             lines.append('%% Probability: %.8g' % self.probability)
         return sep.join(lines)
 
-    def toTuples(self):
+    def to_tuples(self):
         lines = []
         for k, v in self.queries():
             if v is not None:
-                val = self.getValue(v)
+                val = self.get_value(v)
                 if val is None:
                     lines.append((k.functor,) + k.args + (None,))
                 else:
@@ -338,13 +341,13 @@ def translate(db, atom_id):
         atom_id, args, choice = atom_id
         return Term('ad_%s_%s' % (atom_id, choice), *args)
     else:
-        node = db.getNode(atom_id)
+        node = db.get_node(atom_id)
         return Term(node.functor, *node.args)
 
 
 def builtin_sample(term, result, target=None, engine=None, callback=None, **kwdargs):
     # TODO wrong error message when call argument is wrong
-    check_mode((term, result), 'cv', functor='sample')
+    check_mode((term, result), ['cv'], functor='sample')
     # Find the define node for the given query term.
     term_call = term.with_args(*term.args)
     results = engine.call(term_call, subcall=True, target=target, **kwdargs)
@@ -352,10 +355,11 @@ def builtin_sample(term, result, target=None, engine=None, callback=None, **kwda
     n = len(term.args)
     for res, node in results:
         res1 = res[:n]
-        res_pass = (term.with_args(*res1), target.getValue(node))
+        res_pass = (term.with_args(*res1), target.get_value(node))
         actions += callback.notifyResult(res_pass, 0, False)
     actions += callback.notifyComplete()
     return True, actions
+
 
 def builtin_previous(term, default, engine=None, target=None, callback=None, **kwdargs):
     # retrieve term from previous sample, default action if no previous sample
@@ -383,7 +387,7 @@ def builtin_previous(term, default, engine=None, target=None, callback=None, **k
                 if i == 0 or i is None:
                     v = i
                 else:
-                    v = target.addValue(engine.previous_result.getValue(i))
+                    v = target.add_value(engine.previous_result.get_value(i))
                 actions += callback.notifyResult((result_term, result_default), v, False)
             except UnifyError:
                 pass
@@ -410,13 +414,14 @@ def sample(model, n=1, tuples=False, **kwdargs):
                 break
         if evidence_ok:
             if tuples:
-                yield result.toTuples()
+                yield result.to_tuples()
             else:
-                yield result.toString(db, **kwdargs)
+                yield result.to_string(db, **kwdargs)
             i += 1
         engine.previous_result = result
 
 
+# noinspection PyUnusedLocal
 def estimate(model, n=0, **kwdargs):
     from collections import defaultdict
     engine = DefaultEngine()
@@ -454,12 +459,15 @@ def main(args):
     parser = argparse.ArgumentParser()
 
     parser.add_argument('filename')
-    parser.add_argument('-N', type=int, dest='n', default=argparse.SUPPRESS, help="Number of samples.")
-    parser.add_argument('--with-facts', action='store_true', help="Also output choice facts (default: just queries).")
+    parser.add_argument('-N', type=int, dest='n', default=argparse.SUPPRESS,
+                        help="Number of samples.")
+    parser.add_argument('--with-facts', action='store_true',
+                        help="Also output choice facts (default: just queries).")
     parser.add_argument('--with-probability', action='store_true', help="Show probability.")
     parser.add_argument('--as-evidence', action='store_true', help="Output as evidence.")
     parser.add_argument('--oneline', action='store_true', help="Format samples on one line.")
-    parser.add_argument('--estimate', action='store_true', help='Estimate probability of queries from samples.')
+    parser.add_argument('--estimate', action='store_true',
+                        help='Estimate probability of queries from samples.')
     parser.add_argument('--timeout', '-t', type=int, default=0,
                         help="Set timeout (in seconds, default=off).")
 
@@ -470,7 +478,8 @@ def main(args):
     if args.timeout:
         start_timer(args.timeout)
 
-    def signal_term_handler(signal, frame):
+    # noinspection PyUnusedLocal
+    def signal_term_handler(*sigargs):
         sys.exit(143)
 
     signal.signal(signal.SIGTERM, signal_term_handler)
@@ -478,7 +487,7 @@ def main(args):
     try:
         if args.estimate:
             results = estimate(pl, **vars(args))
-            print (process_result(results))
+            print (format_dictionary(results))
         else:
             first = True
             for s in sample(pl, **vars(args)):
@@ -488,7 +497,6 @@ def main(args):
                 print (s)
     except Exception as err:
         print (process_error(err))
-
 
     if args.timeout:
         stop_timer()

@@ -101,7 +101,7 @@ def term2str(term):
         return '_'
     elif type(term) is int:
         if term >= 0:
-            return 'A%s' % (term+1)
+            return 'A%s' % (term + 1)
         else:
             return 'X%s' % (-term)
     elif isinstance(term, And):
@@ -181,7 +181,8 @@ class Term(object):
     :type functor: str
     :param args: the arguments of the Term ('X' and 'Y' in the example)
     :type args: tuple of (Term | None | int)
-    :param kwdargs: additional arguments; currently 'p' (probability) and 'location' (character position in input)
+    :param kwdargs: additional arguments; currently 'p' (probability) and 'location' \
+    (character position in input)
     """
 
     def __init__(self, functor, *args, **kwdargs):
@@ -233,7 +234,7 @@ class Term(object):
         :return: value of the Term
         """
         return compute_function(self.functor, self.args, functions)
-    
+
     @property
     def signature(self):
         """Term's signature ``functor/arity``"""
@@ -309,7 +310,7 @@ class Term(object):
                 if current < 0:
                     put('X%s' % -current)
                 else:
-                    put('A%s' % (current+1))
+                    put('A%s' % (current + 1))
             elif type(current) == And:  # Depends on level
                 q = deque()
                 q.append('(')
@@ -365,7 +366,7 @@ class Term(object):
                 stack.append(q)
             elif isinstance(current, Term):
                 if current.probability is not None:
-                    put(str(current.probability))       # This is a recursive call.
+                    put(str(current.probability))  # This is a recursive call.
                     put('::')
                 put(str(current.functor))
                 if current.args:
@@ -426,14 +427,14 @@ class Term(object):
         """
         return self.__class__(self.functor, *self.args, p=p)
 
-    def is_var(self) :
+    def is_var(self):
         """Checks whether this Term represents a variable.
 
             :returns: ``False``
         """
         return False
 
-    def is_constant(self) :
+    def is_constant(self):
         """Checks whether this Term represents a constant.
 
             :returns: ``False``
@@ -449,8 +450,9 @@ class Term(object):
                 if term is None or type(term) == int or term.is_var():
                     self._cache_is_ground = False
                     return False
-                elif not term._cache_is_ground:
-                    queue.extend(term.args)
+                elif isinstance(term, Term):
+                    if not term._cache_is_ground:
+                        queue.extend(term.args)
             self._cache_is_ground = True
             return True
         else:
@@ -607,21 +609,12 @@ class Var(Term):
         return self.functor
 
     def compute_value(self, functions=None):
-        """Value of the constant."""
         raise InstantiationError('Variables do not support evaluation: {}.'.format(self.name))
 
     def is_var(self):
-        """Checks whether this Term represents a variable.
-
-        :returns: ``True``
-        """
         return True
 
     def is_ground(self):
-        """Checks whether the term contains any variables.
-
-        :returns: ``False``
-        """
         return False
 
     def __hash__(self):
@@ -644,12 +637,8 @@ class Constant(Term):
 
     def compute_value(self, functions=None):
         return self.functor
-                
-    def is_constant(self) :
-        """Checks whether this Term represents a constant.
 
-        :returns: True
-        """
+    def is_constant(self):
         return True
 
     def __hash__(self):
@@ -707,7 +696,7 @@ class AnnotatedDisjunction(Term):
         self.body = body
 
     def __repr__(self):
-        return "%s <- %s" % ('; '.join(map(str,self.heads)), self.body)
+        return "%s <- %s" % ('; '.join(map(str, self.heads)), self.body)
 
 
 class Or(Term):
@@ -720,6 +709,11 @@ class Or(Term):
 
     @classmethod
     def from_list(cls, lst):
+        """Create a disjunction based on the terms in the list.
+
+        :param lst: list of terms
+        :return: disjunction over the given terms
+        """
         if lst:
             n = len(lst) - 1
             tail = lst[n]
@@ -727,10 +721,14 @@ class Or(Term):
                 n -= 1
                 tail = Or(lst[n], tail)
             return tail
-        else :
+        else:
             return Term('fail')
 
     def to_list(self):
+        """Extract the terms of the disjunction into the list.
+
+        :return: list of disjuncts
+        """
         body = []
         current = self
         while isinstance(current, Term) and current.functor == self.functor:
@@ -751,14 +749,6 @@ class Or(Term):
         return "%s; %s" % (lhs, rhs)
 
     def with_args(self, *args):
-        """Creates a new Term with the same functor and the given arguments.
-
-        :param args: new arguments for the term
-        :type args: tuple of (Term | int | None)
-        :returns: a new term with the given arguments
-        :rtype: :class:`Term`
-
-        """
         return self.__class__(*args, location=self.location)
 
 
@@ -772,6 +762,11 @@ class And(Term):
 
     @classmethod
     def from_list(cls, lst):
+        """Create a conjunction based on the terms in the list.
+
+        :param lst: list of terms
+        :return: conjunction over the given terms
+        """
         if lst:
             n = len(lst) - 1
             tail = lst[n]
@@ -781,6 +776,19 @@ class And(Term):
             return tail
         else:
             return Term('true')
+
+    def to_list(self):
+        """Extract the terms of the conjunction into the list.
+
+        :return: list of disjuncts
+        """
+        body = []
+        current = self
+        while isinstance(current, Term) and current.functor == self.functor:
+            body.append(current.args[0])
+            current = current.args[1]
+        body.append(current)
+        return body
 
     def __and__(self, rhs):
         return And(self.op1, self.op2 & rhs)
@@ -799,14 +807,6 @@ class And(Term):
         return "%s, %s" % (lhs, rhs)
 
     def with_args(self, *args):
-        """Creates a new Term with the same functor and the given arguments.
-
-        :param args: new arguments for the term
-        :type args: tuple of (Term | int | None)
-        :returns: a new term with the given arguments
-        :rtype: :class:`Term`
-
-        """
         return self.__class__(*args, location=self.location)
 
 
@@ -827,6 +827,10 @@ class Not(Term):
             return '%s%s' % (self.functor, c)
 
     def is_negated(self):
+        """Checks whether this Term represents a negated literal.
+
+        :return: ``True''
+        """
         return True
 
     def __neg__(self):
@@ -835,109 +839,6 @@ class Not(Term):
     def __abs__(self):
         return -self
 
-
-class LogicProgram(object):
-    """LogicProgram"""
-
-    def __init__(self, source_root='.', source_files=None, line_info=None):
-        if source_files is None:
-            source_files = [None]
-        if line_info is None:
-            line_info = [None]
-        self.source_root = source_root
-        self.source_files = source_files
-        self.source_parent = [None]
-        # line_info should be array, corresponding to 'source_files'.
-        self.line_info = line_info
-
-    def __iter__(self):
-        """Iterator for the clauses in the program."""
-        raise NotImplementedError("LogicProgram.__iter__ is an abstract method." )
-
-    def add_clause(self, clause):
-        """Add a clause to the logic program."""
-        raise NotImplementedError("LogicProgram.addClause is an abstract method." )
-
-    def add_fact(self, fact):
-        """Add a fact to the logic program."""
-        raise NotImplementedError("LogicProgram.addFact is an abstract method." )
-
-    def __iadd__(self, clausefact):
-        """Add clause or fact using the ``+=`` operator."""
-        if isinstance(clausefact, Or):
-            heads = clausefact.to_list()
-            # TODO move this to parser code
-            for head in heads:
-                if not type(head) == Term:
-                    # TODO compute correct location
-                    raise GroundingError("Unexpected fact '%s'" % head)
-                elif len(heads) > 1 and head.probability is None:
-                    raise GroundingError("Non-probabilistic head in multi-head clause '%s'" % head)
-            self.add_clause(AnnotatedDisjunction(heads, Term('true')))
-        elif isinstance(clausefact, AnnotatedDisjunction):
-            self.add_clause(clausefact)
-        elif isinstance(clausefact, Clause):
-            self.add_clause(clausefact)
-        elif type(clausefact) == Term:
-            self.add_fact(clausefact)
-        else:
-            raise GroundingError("Unexpected fact '%s'" % clausefact,
-                                 self.lineno(clausefact.location))
-        return self
-
-    @classmethod
-    def createFrom(cls, src, force_copy=False, **extra):
-        """Create a LogicProgram of the current class from another LogicProgram.
-
-        :param src: logic program to convert
-        :type src: :class:`.LogicProgram`
-        :param force_copy: default False, If true, always create a copy of the original logic program.
-        :type force_copy: bool
-        :returns: LogicProgram that is (externally) identical to given one
-        :rtype: object of the class on which this method is invoked
-
-        If the original LogicProgram already has the right class and force_copy is False, then the original program is returned.
-        """
-        if not force_copy and src.__class__ == cls:
-            return src
-        else :
-            obj = cls(**extra)
-            if hasattr(src, 'source_root') and hasattr(src, 'source_files'):
-                obj.source_root = src.source_root
-                obj.source_files = src.source_files[:]
-                obj.source_parent = src.source_parent[:]
-            if hasattr(src, 'line_info'):
-                obj.line_info = src.line_info[:]
-            for clause in src:
-                obj += clause
-            return obj
-
-    def lineno(self, char, force_filename=False):
-        """Transform character position to line:column format.
-
-        :param char: character position
-        :param force_filename: always add filename even for top-level file
-        :return: line, column (or None if information is not available)
-        """
-        # Input should be tuple (file, char)
-        if isinstance(char, tuple):
-            fn, char = char
-        else:
-            fn = 0
-
-        if self.line_info[fn] is None or char is None:
-            # No line info available
-            return None
-        else:
-            import bisect
-            i = bisect.bisect_right(self.line_info[fn], char)
-            lineno = i
-            charno = char - self.line_info[fn][i-1]
-            if fn == 0 and not force_filename:
-                filename = None
-            else:
-                filename = self.source_files[fn]
-            return filename, lineno, charno
 
 _arithmetic_functions = {
     ("+", 2): (lambda a, b: a + b),
@@ -978,8 +879,8 @@ _arithmetic_functions = {
     ("max", 2): max,
     ("exp", 2): math.pow,
     ("epsilon", 0): lambda: sys.float_info.epsilon,
-    ("inf", 0): lambda : float('inf'),
-    ("nan", 0): lambda : float('nan'),
+    ("inf", 0): lambda: float('inf'),
+    ("nan", 0): lambda: float('nan'),
     ("sign", 1): lambda x: x if x >= 0 else -x
 
 }
@@ -996,7 +897,11 @@ for _f in _from_math_0:
 
 
 def unquote(s):
-    """Strip single quotes from the string."""
+    """Strip single quotes from the string.
+
+    :param s: string to remove quotes from
+    :return: string with quotes removed
+    """
     return s.strip("'")
 
 
@@ -1035,6 +940,7 @@ class InstantiationError(GroundingError):
     pass
 
 
+# noinspection PyShadowingBuiltins
 class ArithmeticError(GroundingError):
     """Error used when an error occurs during evaluation of an arithmetic expression."""
     pass

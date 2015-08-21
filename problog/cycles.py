@@ -34,8 +34,16 @@ from collections import defaultdict
 import logging
 
 
+# noinspection PyUnusedLocal
 @transform(LogicFormula, LogicDAG)
 def break_cycles(source, target, **kwdargs):
+    """Break cycles in the source logic formula.
+
+    :param source: logic formula with cycles
+    :param target: target logic formula without cycles
+    :param kwdargs: additional arguments (ignored)
+    :return: target
+    """
     logger = logging.getLogger('problog')
     with Timer('Cycle breaking'):
         cycles_broken = set()
@@ -52,7 +60,8 @@ def break_cycles(source, target, **kwdargs):
         translation = defaultdict(list)
         for q, n in source.evidence():
             if source.is_probabilistic(n):
-                newnode = _break_cycles(source, target, abs(n), [], cycles_broken, content, translation, is_evidence=True)
+                newnode = _break_cycles(source, target, abs(n), [], cycles_broken,
+                                        content, translation, is_evidence=True)
             else:
                 newnode = n
             if n < 0:
@@ -64,7 +73,8 @@ def break_cycles(source, target, **kwdargs):
         return target
 
 
-def _break_cycles(source, target, nodeid, ancestors, cycles_broken, content, translation, is_evidence=False):
+def _break_cycles(source, target, nodeid, ancestors, cycles_broken, content, translation,
+                  is_evidence=False):
     negative_node = nodeid < 0
     nodeid = abs(nodeid)
 
@@ -98,7 +108,9 @@ def _break_cycles(source, target, nodeid, ancestors, cycles_broken, content, tra
     if nodetype == 'atom':
         newnode = target.add_atom(node.identifier, node.probability, node.group, node.name)
     else:
-        children = [_break_cycles(source, target, child, ancestors + [nodeid], child_cycles_broken, child_content, translation, is_evidence) for child in node.children]
+        children = [_break_cycles(source, target, child, ancestors + [nodeid], child_cycles_broken,
+                                  child_content, translation, is_evidence)
+                    for child in node.children]
         newname = node.name
         if newname is not None and child_cycles_broken:
             newfunc = newname.functor + '_cb_' + str(len(translation[nodeid]))
@@ -113,7 +125,7 @@ def _break_cycles(source, target, nodeid, ancestors, cycles_broken, content, tra
             # Also: don't add atoms (they can't be involved in cycles)
             content.add(nodeid)
 
-    translation[nodeid].append((newnode, child_cycles_broken, child_content-child_cycles_broken))
+    translation[nodeid].append((newnode, child_cycles_broken, child_content - child_cycles_broken))
     content |= child_content
     cycles_broken |= child_cycles_broken
 

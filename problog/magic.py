@@ -20,13 +20,14 @@ Based on:
 https://gist.github.com/cjdrake/7982333
 """
 
-import sys, os
-sys.path.append(os.path.join(os.path.dirname(__file__),'..'))
-sys.path.append(os.path.join(os.path.dirname(__file__),'../examples'))
+import sys
+import os
 
-from problog.core import ProbLog
-from problog.program import PrologString, ExtendedPrologFactory
-from problog.evaluator import SemiringSymbolic, SemiringLogProbability, Evaluator
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+sys.path.append(os.path.join(os.path.dirname(__file__), '../examples'))
+
+from problog.program import PrologString, ExtendedPrologFactory, LogicProgram
+from problog.evaluator import SemiringLogProbability
 from problog.parser import DefaultPrologParser
 from problog.nnf_formula import NNF
 from problog.sdd_formula import SDD
@@ -48,14 +49,15 @@ from IPython.core.magic_arguments import (
 from IPython.utils.warn import info, error
 
 
-def runproblog(s, knowledge=knowledge_default, semiring=None, parser_class=DefaultPrologParser, output='html'):
+def runproblog(s, knowledge=knowledge_default, semiring=None, parser_class=DefaultPrologParser,
+               output='html'):
     """Execute problog and return an html snippet, or None."""
     try:
         parser = parser_class(ExtendedPrologFactory())
         model = PrologString(s, parser=parser)
         formula = knowledge.createFrom(model)
         result = formula.evaluate(semiring=semiring)
-        #result = ProbLog.convert(model, knowledge).evaluate()
+        # result = ProbLog.convert(model, knowledge).evaluate()
     except Exception as e:
         return '<pre>{}</pre>'.format(e)
     if result is None:
@@ -64,14 +66,13 @@ def runproblog(s, knowledge=knowledge_default, semiring=None, parser_class=Defau
     else:
         return formatoutput(result, output=output)
 
-def runproblogsampling(s,n=5,output='html'):
-    from example_sampling_alt import print_result
 
+def runproblogsampling(s, n=5, output='html'):
     model = PrologString(s)
     samples, db = plsample.sample_object(model, N=n)
     result = ''
     for sample in samples:
-        result += sample.toString(db,False,True)+'<br>'
+        result += sample.toString(db, False, True) + '<br>'
     if output == 'html':
         return '<pre>{}</pre>'.format(result)
     return result
@@ -80,28 +81,31 @@ def runproblogsampling(s,n=5,output='html'):
 def formatoutput(result, output='html'):
     if output == 'html':
         html = '<table style="width:100%;"><tr><th style="width:66%;">Atom<th>Probability'
-        atomprobs = [(str(atom),prob) for atom,prob in result.items()]
-        atomprobs.sort(key=lambda x:x[0])
-        for atom,prob in atomprobs:
-            p = prob*100
+        atomprobs = [(str(atom), prob) for atom, prob in result.items()]
+        atomprobs.sort(key=lambda x: x[0])
+        for atom, prob in atomprobs:
+            p = prob * 100
             html += '<tr><td>{a}'.format(a=atom)
             color = 'black'
-            html += '<td><div class="progress-bar" role="progressbar" aria-valuenow="{perc}" aria-valuemin="0" aria-valuemax="100" style="text-align:left;width:{perc}%;padding:3px;color:{c};background-color:#9ac2f4;">{prob:6.4f}</div>'.format(perc=prob*100,prob=prob,c=color)
+            html += '<td><div class="progress-bar" role="progressbar" aria-valuenow="{perc}" ' \
+                    'aria-valuemin="0" aria-valuemax="100" style="text-align:left;' \
+                    'width:{perc}%;padding:3px;color:{c};background-color:#9ac2f4;">' \
+                    '{prob:6.4f}</div>'.format(perc=prob * 100, prob=prob, c=color)
         html += '</table>'
         return html
     else:
         txt = ''
-        for atom,prob in result.items():
-            txt += '{:<40}: {}'.format(atom,prob)
+        for atom, prob in result.items():
+            txt += '{:<40}: {}'.format(atom, prob)
         return txt
 
 
 @magics_class
 class ProbLogMagics(Magics):
-
     @line_cell_magic
     @magic_arguments()
-    @argument('--knowledge', '-k', choices=('sdd','nnf'), default=None, help="Knowledge compilation tool.")
+    @argument('--knowledge', '-k', choices=('sdd', 'nnf'), default=None,
+              help="Knowledge compilation tool.")
     @argument('--logspace', action='store_true', help="Use log space evaluation.")
     def problog(self, line, cell=None):
         """problog line/cell magic"""
@@ -110,18 +114,17 @@ class ProbLogMagics(Magics):
             knowledge = NNF
         elif args.knowledge == 'sdd':
             knowledge = SDD
-        elif args.knowledge == None:
+        elif args.knowledge is None:
             if SDD.is_available():
                 knowledge = SDD
             else:
                 knowledge = NNF
-        else :
+        else:
             error("Unknown option for --knowledge: '%s'" % args.knowledge)
         if args.logspace:
             semiring = SemiringLogProbability()
-        else :
+        else:
             semiring = None
-
 
         s = cell
         data = runproblog(s, knowledge=knowledge, semiring=semiring, output='html')
@@ -167,7 +170,7 @@ class ProbLogMagics(Magics):
         """problog line/cell magic"""
         args = parse_argstring(self.problogsample, line)
         n = 5
-        if not args.N is None:
+        if args.N is not None:
             n = int(args.N)
         s = cell
         data = runproblogsampling(s, n=n, output='html')
@@ -178,4 +181,3 @@ class ProbLogMagics(Magics):
 def load_ipython_extension(ipython):
     """Load the extension in IPython."""
     ipython.register_magics(ProbLogMagics)
-

@@ -22,12 +22,15 @@ sys.setrecursionlimit(10000)
 
 # Set the PATH and PYTHON_PATH variables
 from .setup import set_environment, gather_info
+
 set_environment()
 
 system_info = gather_info()
 
-def root_path(*args) :
-    return os.path.abspath( os.path.join( os.path.dirname(__file__), '..', *args ) )
+
+def root_path(*args):
+    return os.path.abspath(os.path.join(os.path.dirname(__file__), '..', *args))
+
 
 # Load all submodules. This has two reasons:
 #   - initializes all transformations (@transform)

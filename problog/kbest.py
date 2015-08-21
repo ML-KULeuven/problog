@@ -51,7 +51,7 @@ class KBestFormula(CNF, Evaluatable):
         CNF.__init__(self)
         Evaluatable.__init__(self)
 
-    def create_evaluator(self, semiring, weights):
+    def _create_evaluator(self, semiring, weights):
         return KBestEvaluator(self, semiring, weights)
 
 transform(LogicDAG, KBestFormula, clarks_completion)
@@ -60,10 +60,10 @@ transform(LogicDAG, KBestFormula, clarks_completion)
 class KBestEvaluator(Evaluator):
 
     def __init__(self, formula, semiring, weights=None, verbose=None, **kwargs):
-        Evaluator.__init__(self, formula, semiring)
+        Evaluator.__init__(self, formula, semiring, weights)
 
         self.sdd_manager = SDDManager()
-        for l in range(1, formula.atomcount+1):
+        for l in range(1, formula.atomcount + 1):
             self.sdd_manager.add_variable(l)
 
         self._z = None
@@ -107,21 +107,17 @@ class KBestEvaluator(Evaluator):
                         if nborder == lb:
                             return lb.value
                         else:
-                            return 1.0-ub.value
-                    logger.debug('  update: %s < p < %s' % (lb.value, 1-ub.value))
+                            return 1.0 - ub.value
+                    logger.debug('  update: %s < p < %s' % (lb.value, 1 - ub.value))
                     nborder = max(lb, ub)
             except KeyboardInterrupt:
                 pass
             except SystemError:
                 pass
-            return lb.value, 1.0-ub.value
+            return lb.value, 1.0 - ub.value
 
     def evaluate_evidence(self):
         raise NotImplementedError('Evaluator.evaluate_evidence is an abstract method.')
-
-    def get_z(self):
-        """Get the normalization constant."""
-        return self._z
 
     def add_evidence(self, node):
         """Add evidence"""

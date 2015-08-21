@@ -24,11 +24,10 @@ Provides access to CNF and weighted CNF.
 """
 from __future__ import print_function
 
-from .formula import LogicDAG
+from .formula import BaseFormula, LogicDAG
 
 from .core import transform
 from .util import Timer
-from .base_formula import BaseFormula
 
 from .evaluator import SemiringLogProbability
 
@@ -36,30 +35,44 @@ from .evaluator import SemiringLogProbability
 class CNF(BaseFormula):
     """A logic formula in Conjunctive Normal Form."""
 
+    # noinspection PyUnusedLocal
     def __init__(self, **kwdargs):
         BaseFormula.__init__(self)
         self._clauses = []        # All clauses in the CNF (incl. comment)
         self._clausecount = 0     # Number of actual clauses (not incl. comment)
 
+    # noinspection PyUnusedLocal
     def add_atom(self, atom):
+        """Add an atom to the CNF.
+
+        :param atom: name of the atom
+        """
         self._atomcount += 1
 
     def add_comment(self, comment):
+        """Add a comment clause.
+
+        :param comment: text of the comment
+        """
         self._clauses.append(['c', comment])
 
     def add_clause(self, head, body):
+        """Add a clause to the CNF.
+
+        :param head: head of the clause (i.e. atom it defines)
+        :param body: body of the clause
+        """
         self._clauses.append([head] + list(body))
         self._clausecount += 1
 
     def add_constraint(self, constraint):
         """Add a constraint.
 
-        :param constraint:
-        :type constraint: Constraint
-        :return:
+        :param constraint: constraint to add
+        :type constraint: problog.constraint.Constraint
         """
         BaseFormula.add_constraint(self, constraint)
-        for c in constraint.encodeCNF():
+        for c in constraint.as_clauses():
             self.add_clause(None, c)
 
     def _clause2str(self, clause, weighted=False):
@@ -72,32 +85,46 @@ class CNF(BaseFormula):
                 return ' '.join(map(str, clause[1:])) + ' 0'
 
     def to_dimacs(self, partial=False, weighted=False, semiring=None):
+        """Transform to a string in DIMACS format.
+
+        :param partial: split variables if possibly true / certainly true
+        :param weighted: created a weighted (False, :class:`int`, :class:`float`)
+        :param semiring: semiring for weight transformation (if weighted)
+        :return: string in DIMACS format
+        """
         if weighted:
             t = 'wcnf'
         else:
             t = 'cnf'
 
-        header, content = self.contents(partial=partial, weighted=weighted, semiring=semiring)
+        header, content = self._contents(partial=partial, weighted=weighted, semiring=semiring)
 
         result = 'p %s %s\n' % (t, ' '.join(map(str, header)))
         result += '\n'.join(map(lambda cl: ' '.join(map(str, cl)) + ' 0', content))
         return result
 
     def to_lp(self, partial=False, semiring=None):
-        header, content = self.contents(partial=partial, weighted=False, semiring=semiring)
+        """Transfrom to CPLEX lp format (MIP program).
+        This is always weighted.
+
+        :param partial: split variables in possibly true / certainly true
+        :param semiring: semiring for weight transformation (if weighted)
+        :return: string in LP format
+        """
+        header, content = self._contents(partial=partial, weighted=False, semiring=semiring)
 
         if semiring is None:
             semiring = SemiringLogProbability()
 
-        var2str = lambda v: 'x%s' % v if v > 0 else '-x%s' % -v
+        var2str = lambda var: 'x%s' % var if var > 0 else '-x%s' % -var
 
         if partial:
-            ct = lambda i: 2*i
-            pt = lambda i: ct(i) - 1
+            ct = lambda it: 2 * it
+            pt = lambda it: ct(it) - 1
 
             weights = self.extract_weights(semiring)
             objective = []
-            for v in range(0, self.atomcount+1):
+            for v in range(0, self.atomcount + 1):
                 w_pos, w_neg = weights.get(v, (semiring.one(), semiring.one()))
                 if not semiring.is_one(w_pos):
                     w_ct = w_pos
@@ -110,12 +137,12 @@ class CNF(BaseFormula):
         else:
             weights = {}
             for i, w in self.extract_weights(semiring).items():
-                w = w[0]-w[1]
+                w = w[0] - w[1]
                 if w != 0:
                     weights[i] = str(w)
 
             objective = ' + '.join(['%s x%s' % (weights[i], i)
-                                    for i in range(0, self.atomcount+1) if i in weights])
+                                    for i in range(0, self.atomcount + 1) if i in weights])
         result = 'maximize\n'
         result += '    obj:' + objective + '\n'
         result += 'subject to\n'
@@ -130,10 +157,10 @@ class CNF(BaseFormula):
         result += 'end\n'
         return result
 
-    def contents(self, partial=False, weighted=False, semiring=None):
+    def _contents(self, partial=False, weighted=False, semiring=None):
         # Helper function to determine the certainly true / possibly true names (for partial)
 
-        ct = lambda i: 2*i
+        ct = lambda i: 2 * i
         pt = lambda i: ct(i) - 1
         cpt = lambda i: -pt(-i) if i < 0 else ct(i)
 
@@ -153,7 +180,6 @@ class CNF(BaseFormula):
             w_mult = 10000
             wt = lambda w: int(max(w_min, w) * w_mult)
 
-
         if weighted:
             if semiring is None:
                 semiring = SemiringLogProbability()
@@ -162,7 +188,7 @@ class CNF(BaseFormula):
             w_sum = 0.0
             for w_pos, w_neg in weights.values():
                 w_sum += max(w_pos, w_min) + max(w_neg, w_min)
-            w_max = [int(-w_sum*w_mult) + 1]
+            w_max = [int(-w_sum * w_mult) + 1]
 
         atomcount = self.atomcount
         if partial:
@@ -175,7 +201,7 @@ class CNF(BaseFormula):
 
         if partial:
             # For each atom: add constraint
-            for a in range(1, self.atomcount+1):
+            for a in range(1, self.atomcount + 1):
                 clauses.append(w_max + [pt(a), -ct(a)])
 
                 if weighted:
@@ -200,7 +226,7 @@ class CNF(BaseFormula):
                     clauses.append(w_max + list(map(cpt, body)))
         else:
             if weighted:
-                for a in range(1, self.atomcount+1):
+                for a in range(1, self.atomcount + 1):
                     w_pos, w_neg = weights.get(a, (semiring.one(), semiring.one()))
                     if not semiring.is_one(w_pos):
                         clauses.append([-wt(w_pos), -a])
@@ -220,12 +246,13 @@ class CNF(BaseFormula):
 
         For example: given an original formula with one atom '1',
          this atom is translated to two atoms '1' (pt) and '2' (ct).
+
         The possible conjunctions are:
 
-            [1, 2]    => [1]  certainly true (and possibly true) => true
-            [-1, -2]  => [-1] not possibly true (and certainly true) => false
-            [1, -2]   => []   possibly true but not certainly true => unknown
-            [-1, 2]   => INVALID   certainly true but not possible => invalid (not checked)
+            * [1, 2]    => [1]  certainly true (and possibly true) => true
+            * [-1, -2]  => [-1] not possibly true (and certainly true) => false
+            * [1, -2]   => []   possibly true but not certainly true => unknown
+            * [-1, 2]   => INVALID   certainly true but not possible => invalid (not checked)
 
         :param atoms: complete list of atoms in partial CNF
         :return: partial list of atoms in full CNF
@@ -243,20 +270,30 @@ class CNF(BaseFormula):
         return result
 
     def is_trivial(self):
+        """Checks whether the CNF is trivial (i.e. contains no clauses)"""
         return self.clausecount == 0
 
     @property
     def clauses(self):
+        """Return the list of clauses"""
         return self._clauses
 
     @property
     def clausecount(self):
+        """Return the number of clauses"""
         return self._clausecount
 
 
+# noinspection PyUnusedLocal
 @transform(LogicDAG, CNF)
 def clarks_completion(source, destination, **kwdargs):
+    """Transform an acyclic propositional program to a CNF using Clark's completion.
 
+    :param source: acyclic program to transform
+    :param destination: target CNF
+    :param kwdargs: additional options (ignored)
+    :return: destination
+    """
     with Timer('Clark\'s completion'):
         # Each rule in the source formula will correspond to an atom.
         num_atoms = len(source)

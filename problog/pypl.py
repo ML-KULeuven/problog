@@ -19,16 +19,17 @@ from __future__ import print_function
 
 from .logic import *
 
+
 def py2pl(d):
     """Translate a given Python datastructure into a Prolog datastructure."""
 
     if type(d) == list or type(d) == tuple:
-        if type(d) == tuple :
+        if type(d) == tuple:
             f = ','
             tail = py2pl(d[-1])
-        else :
+        else:
             f = '.'
-            if not d :
+            if not d:
                 return Term('[]')
             tail = Term(f, py2pl(d[-1]), Term('[]'))
         for el in reversed(d[:-1]):
@@ -41,11 +42,10 @@ def py2pl(d):
     if type(d) == int or type(d) == float:
         return Constant(d)
 
-    if type(d) == Term :
+    if type(d) == Term:
         return d
 
-    raise Exception("Cannot convert from Python to Prolog: {} ({}).".format(d, type(d)))
-    return None
+    raise ValueError("Cannot convert from Python to Prolog: {} ({}).".format(d, type(d)))
 
 
 def pl2py(d):
@@ -53,7 +53,7 @@ def pl2py(d):
 
     if isinstance(d, Constant):
         if type(d.value) == str:
-            return d.value.replace('"','')
+            return d.value.replace('"', '')
         return d.value
 
     if isinstance(d, Term):
@@ -61,7 +61,7 @@ def pl2py(d):
             # list
             elements = []
             tail = d
-            while isinstance(tail,Term) and tail.arity == 2 and tail.functor == '.' :
+            while isinstance(tail, Term) and tail.arity == 2 and tail.functor == '.':
                 elements.append(pl2py(tail.args[0]))
                 tail = tail.args[1]
             if str(tail) != '[]':
@@ -71,14 +71,14 @@ def pl2py(d):
             # list
             elements = []
             tail = d
-            while isinstance(tail,Term) and tail.arity == 2 and tail.functor == ',' :
+            while isinstance(tail, Term) and tail.arity == 2 and tail.functor == ',':
                 elements.append(pl2py(tail.args[0]))
                 tail = tail.args[1]
             if str(tail) != '[]':
                 elements.append(pl2py(tail))
             return elements
-        elif d.arity == 0 :
+        elif d.arity == 0:
             return d.functor
 
-    raise Exception("Cannot convert from Prolog to Python: {} ({}).".format(d, type(d)))
-    return None
+    raise ValueError("Cannot convert from Prolog to Python: {} ({}).".format(d, type(d)))
+

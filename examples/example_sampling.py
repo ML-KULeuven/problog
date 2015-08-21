@@ -80,10 +80,10 @@ class SamplingEngine(EventBasedEngine) :
         for f, v in self.facts.items() :
             if v :                
                 if type(f) == tuple :
-                    node = db.getNode(f[0])
+                    node = db.get_node(f[0])
                     args = f[1]
                 else :
-                    node = db.getNode(f)
+                    node = db.get_node(f)
                     args = node.args
                 if node.functor != 'query' :
                     if args :

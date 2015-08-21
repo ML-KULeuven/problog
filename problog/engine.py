@@ -27,6 +27,7 @@ import logging
 
 from collections import defaultdict, namedtuple
 
+from .program import LogicProgram
 from .logic import *
 from .formula import LogicFormula
 from .engine_unify import *
@@ -60,7 +61,8 @@ class GenericEngine(object):  # pragma: no cover
         Calling this method is optional.
 
        :param db: logic program
-       :returns: logic program in optimized format where builtins are initialized and directives have been evaluated
+       :returns: logic program in optimized format where builtins are initialized and directives \
+       have been evaluated
         """
         raise NotImplementedError('GenericEngine.prepare is an abstract method.')
 
@@ -78,7 +80,8 @@ class GenericEngine(object):  # pragma: no cover
 
        :param db: logic program
        :param term: term to ground; variables should be represented as None
-       :param target: target logic formula to store grounding in (a new one is created if none is given)
+       :param target: target logic formula to store grounding in (a new one is created if none is \
+       given)
        :param label: optional label (query, evidence, ...)
        :returns: logic formula (target if given)
         """
@@ -144,7 +147,8 @@ class ClauseDBEngine(GenericEngine):
 
     def prepare(self, db):
         """Convert given logic program to suitable format for this engine.
-        Calling this method is optional, but it allows to perform multiple operations on the same database.
+        Calling this method is optional, but it allows to perform multiple operations on the same \
+        database.
         This also executes any directives in the input model.
        :param db: logic program to prepare for evaluation
        :type db: LogicProgram
@@ -176,15 +180,17 @@ class ClauseDBEngine(GenericEngine):
         directive_node = db.find(term)
         if directive_node is None:
             return True    # no directives
-        directives = db.getNode(directive_node).children
+        directives = db.get_node(directive_node).children
 
         gp = LogicFormula()
         while directives:
             current = directives.pop(0)
-            self.execute(current, database=db, context=self._create_context((), define=None), target=gp)
+            self.execute(current, database=db, context=self.create_context((), define=None),
+                         target=gp)
         return True
 
-    def _create_context(self, content, define=None):
+    # noinspection PyUnusedLocal
+    def create_context(self, content, define=None):
         """Create a variable context."""
         return content
 
@@ -249,6 +255,17 @@ class ClauseDBEngine(GenericEngine):
         return gp
 
     def _ground(self, db, term, gp=None, silent_fail=True, assume_prepared=False, **kwdargs):
+        """
+
+        :param db:
+        :type db: LogicProgram
+        :param term:
+        :param gp:
+        :param silent_fail:
+        :param assume_prepared:
+        :param kwdargs:
+        :return:
+        """
         # Convert logic program if needed.
         if not assume_prepared:
             db = self.prepare(db)
@@ -268,7 +285,7 @@ class ClauseDBEngine(GenericEngine):
                 raise UnknownClause(term.signature, location=db.lineno(term.location))
 
         try:
-            context = self._create_context(term.args)
+            context = self.create_context(term.args)
             context, xxx = substitute_call_args(context, context)
             results = self.execute(clause_node, database=db, target=gp, context=context, **kwdargs)
         except UnknownClauseInternal:
@@ -399,23 +416,25 @@ def intersection(l1, l2):
             i += 1
         else:
             j += 1
-    #print ('I', l1, l2, r)
     return r
+
 
 class ClauseIndex(list):
 
     def __init__(self, parent, arity):
+        list.__init__(self)
         self.__parent = parent
-        self.__index = [ defaultdict(set) for i in range(0,arity) ]
+        self.__index = [defaultdict(set) for _ in range(0, arity)]
         self.__optimized = False
 
     def optimize(self):
         if not self.__optimized:
             self.__optimized = True
-            for i in range(0,len(self.__index)):
+            for i in range(0, len(self.__index)):
                 arg_index = self.__index[i]
                 arg_none = arg_index[None]
-                self.__index[i] = { k: tuple(sorted(v | arg_none)) for k,v in arg_index.items() if k != None }
+                self.__index[i] = {k: tuple(sorted(v | arg_none)) for k, v in arg_index.items() if
+                                   k is not None}
                 self.__index[i][None] = tuple(sorted(arg_none))
 
     def find(self, arguments):
@@ -425,7 +444,7 @@ class ClauseIndex(list):
         #     print ('\t', i, xx)
         for i, arg in enumerate(arguments):
             if not is_ground(arg):
-                pass # Variable => no restrictions
+                pass  # Variable => no restrictions
             else:
                 curr = self.__index[i].get(arg)
                 if curr is None:   # No facts matching this argument exactly.
@@ -451,7 +470,7 @@ class ClauseIndex(list):
     def append(self, item):
         list.append(self, item)
         key = []
-        args = self.__parent.getNode(item).args
+        args = self.__parent.get_node(item).args
         for arg in args:
             if is_ground(arg):
                 key.append(arg)
@@ -494,14 +513,7 @@ class ClauseDB(LogicProgram):
     neg( childnode )
         Logical not.
 
-    .. todo::
-
-        * add annotated disjunctions (*ad*)
-        * add probability field
-        * remove empty nodes -> replace by None pointer in call => requires prior knowledge of builtins
-
     """
-
     _define = namedtuple('define', ('functor', 'arity', 'children', 'location'))
     _clause = namedtuple('clause', ('functor', 'args', 'probability', 'child',
                                     'varcount', 'locvars', 'group', 'location'))
@@ -561,7 +573,7 @@ class ClauseDB(LogicProgram):
 
     def _add_define_node(self, head, childnode):
         define_index = self._add_head(head)
-        define_node = self.getNode(define_index)
+        define_node = self.get_node(define_index)
         if not define_node:
             clauses = self._create_index(head.arity)
             self._set_node(define_index, self._define(head.functor, head.arity, clauses, head.location))
@@ -587,7 +599,7 @@ class ClauseDB(LogicProgram):
         defnode = self._add_head(term, create=False)
         return self._append_node(self._call(term.functor, term.args, defnode, term.location))
 
-    def getNode(self, index):
+    def get_node(self, index):
         """Get the instruction node at the given index.
 
        :param index: index of the node to retrieve
@@ -598,15 +610,15 @@ class ClauseDB(LogicProgram):
 
         """
         if index < self.__offset:
-            return self.__parent.getNode(index)
+            return self.__parent.get_node(index)
         else:
-            return self.__nodes[index-self.__offset]
+            return self.__nodes[index - self.__offset]
 
     def _set_node(self, index, node):
         if index < self.__offset:
             raise IndexError('Can\'t update node in parent.')
         else:
-            self.__nodes[index-self.__offset] = node
+            self.__nodes[index - self.__offset] = node
 
     def _append_node(self, node=()):
         index = len(self)
@@ -622,7 +634,7 @@ class ClauseDB(LogicProgram):
     def _set_head(self, head, index):
         self.__heads[head.signature] = index
 
-    def _add_head( self, head, create=True):
+    def _add_head(self, head, create=True):
         node = self.get_builtin(head.signature)
         if node is not None:
             if create:
@@ -681,23 +693,25 @@ class ClauseDB(LogicProgram):
         term.apply(variables)
         # If the fact has variables, threat is as a clause.
         if len(variables) == 0:
-            fact_node = self._append_node(self._fact(term.functor, term.args, term.probability, term.location))
+            fact_node = self._append_node(self._fact(term.functor, term.args,
+                                                     term.probability, term.location))
             return self._add_define_node(term, fact_node)
         else:
             return self.add_clause(Clause(term, Term('true')))
 
     def add_extern(self, predicate, arity, function):
-        head = Term(predicate, *[None]*arity)
+        head = Term(predicate, *[None] * arity)
         node_id = self._get_head(head)
         if node_id is None:
             node_id = self._append_node(self._extern(predicate, arity, function))
             self._set_head(head, node_id)
         else:
-            node = self.getNode(node_id)
+            node = self.get_node(node_id)
             if node == ():
                 self._set_node(node_id, self._extern(predicate, arity, function))
             else:
-                raise AccessError("External function overrides already defined predicate '%s'" % head.signature)
+                raise AccessError("External function overrides already defined predicate '%s'"
+                                  % head.signature)
 
     def _compile(self, struct, variables=None):
         """
@@ -736,7 +750,7 @@ class ClauseDB(LogicProgram):
             # Body arguments
             body_args = tuple(range(0, len(variables)))
             if len(new_heads) > 1:
-                body_functor = 'ad_%s_body' % (group)
+                body_functor = 'ad_%s_body' % group
             else:
                 body_functor = '%s_%s_body' % (new_heads[0].functor, group)
             body_head = Term(body_functor, *body_args)
@@ -784,11 +798,11 @@ class ClauseDB(LogicProgram):
         if type(term) == int:
             return Var('V_' + str(term))
         else:
-            args = [ self._create_vars(arg) for arg in term.args ]
+            args = [self._create_vars(arg) for arg in term.args]
             return term.with_args(*args)
 
     def _extract(self, node_id):
-        node = self.getNode(node_id)
+        node = self.get_node(node_id)
         if not node:
             raise ValueError("Unexpected empty node.")
 
@@ -829,11 +843,11 @@ class ClauseDB(LogicProgram):
             heads = []
             body = None
             for index in group:
-                node = self.getNode(index)
+                node = self.get_node(index)
                 heads.append(self._create_vars(Term(node.functor, *node.args, p=node.probability)))
                 if body is None:
-                    body_node = self.getNode(node.child)
-                    body_node = self.getNode(body_node.children[0])
+                    body_node = self.get_node(node.child)
+                    body_node = self.get_node(body_node.children[0])
                     body = self._create_vars(Term(body_node.functor, *body_node.args))
             yield AnnotatedDisjunction(heads, body)
 

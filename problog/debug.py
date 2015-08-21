@@ -17,30 +17,31 @@ limitations under the License.
 """
 from __future__ import print_function
 
-
 from .logic import Term
 from collections import defaultdict
 
+
 def printtrace(func):
     def _wrapped_function(*args, **kwdargs):
-        print ('CALL:', func.__name__, args, kwdargs)
+        print('CALL:', func.__name__, args, kwdargs)
         result = func(*args, **kwdargs)
-        print ('RETURN:', func.__name__, args, kwdargs, result)
+        print('RETURN:', func.__name__, args, kwdargs, result)
         return result
+
     return _wrapped_function
 
 
 def printtrace_self(func):
     def _wrapped_function(self, *args, **kwdargs):
-        print ('CALL:', func.__name__, args, kwdargs)
+        print('CALL:', func.__name__, args, kwdargs)
         result = func(self, *args, **kwdargs)
-        print ('RETURN:', func.__name__, args, kwdargs, result)
+        print('RETURN:', func.__name__, args, kwdargs, result)
         return result
+
     return _wrapped_function
 
 
 class EngineTracer(object):
-
     def __init__(self):
         self.call_redirect = {}
         self.call_results = defaultdict(int)
@@ -53,24 +54,24 @@ class EngineTracer(object):
             self.call_return(*self.call_redirect[msgtarget])
 
     def call_create(self, node_id, functor, context, parent):
-        print ('  ' * self.level, "call", Term(functor, *context))
+        print('  ' * self.level, "call", Term(functor, *context))
         self.level += 1
         self.call_redirect[parent] = (node_id, functor, context)
 
     def call_result(self, node_id, functor, context, result):
-        print ('  ' * self.level, "result", Term(functor, *result))
+        print('  ' * self.level, "result", Term(functor, *result))
         self.call_results[(node_id, functor, tuple(context))] += 1
 
     def call_return(self, node_id, functor, context):
         self.level -= 1
         if self.call_results[(node_id, functor, tuple(context))] > 0:
             # print ('  ' * self.level, "return success")
-            print ('  ' * self.level, "complete", Term(functor, *context))
+            print('  ' * self.level, "complete", Term(functor, *context))
         else:
-            print ('  ' * self.level, "fail", Term(functor, *context))
+            print('  ' * self.level, "fail", Term(functor, *context))
         self.call_results[(node_id, functor, tuple(context))] = 0
 
-#  Assume the program
+# Assume the program
 #   a(1).
 #   a(2).
 #   p(X,Y) :- a(X), a(Y), X \= Y.

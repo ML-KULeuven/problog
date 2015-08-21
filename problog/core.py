@@ -28,21 +28,23 @@ from collections import defaultdict
 import traceback
 
 
-class TransformationUnavailable(Exception):
-    pass
+class ProbLog(object):
+    """Static class containing transformation information"""
 
-
-class ProbLog(object) :
-    """This is a static class"""
-
-    def __init__(self) :
-        raise Exception("This is a static class!")
+    def __init__(self):
+        raise RuntimeError("This is a static class!")
 
     transformations = defaultdict(list)
     create_as = defaultdict(list)
 
     @classmethod
     def register_transformation(cls, src, target, action=None):
+        """Register a transformation from class src to class target using function action.
+
+        :param src: source function
+        :param target: target function
+        :param action: transformation function
+        """
         cls.transformations[target].append((src, action))
 
     @classmethod
@@ -57,6 +59,13 @@ class ProbLog(object) :
 
     @classmethod
     def find_paths(cls, src, target, stack=()):
+        """Find all possible paths to transform the src object into the target class.
+
+        :param src: object to transform
+        :param target: class to tranform the object to
+        :param stack: stack of intermediate classes
+        :return: list of class, action, class, action, ..., class
+        """
         # Create a destination object or any of its subclasses
         if isinstance(src, target):
             yield (target,)
@@ -67,13 +76,13 @@ class ProbLog(object) :
             for d in targets:
                 for s, action in cls.transformations[d]:
                     if s not in stack:
-                        for path in cls.find_paths(src, s, stack+(s,)):
+                        for path in cls.find_paths(src, s, stack + (s,)):
                             yield path + (action, target)
 
     @classmethod
     def convert(cls, src, target, **kwdargs):
-        """
-        Convert the source object into an object of the target class.
+        """Convert the source object into an object of the target class.
+
         :param src: source object
         :param target: target class
         :param kwdargs: additional arguments passed to transformation functions
@@ -81,7 +90,7 @@ class ProbLog(object) :
         # Find transformation paths from source to target.
         for path in cls.find_paths(src, target):
             try:
-                # A path is a sequence of obj, function, obj/class, function, obj/class, ..., obj_class
+                # A path is a sequence of obj, function, obj/class, ..., obj/class
                 current_obj = src
                 path = path[1:]
                 # Invariant: path[0] is a function, path[1] is an obj/class
@@ -89,22 +98,36 @@ class ProbLog(object) :
                     if path[1] is not None:
                         next_obj = path[0](current_obj, path[1](**kwdargs), **kwdargs)
                     else:
-                        next_obj = path[1].createFromDefaultAction(current_obj, **kwdargs)
+                        next_obj = path[1].create_from_default_action(current_obj, **kwdargs)
                     path = path[2:]
                     current_obj = next_obj
                 return current_obj
             except TransformationUnavailable:
                 # The current transformation strategy didn't work for some reason. Try another one.
                 pass
-        raise ProbLogError("No conversion strategy found from an object of class '%s' to an object of class '%s'."
-                           % (type(src).__name__, target.__name__))
+        raise ProbLogError("No conversion strategy found from an object of "
+                           "class '%s' to an object of class '%s'."
+                           % (type(src).__name__, getattr(target, '__name__')))
 
 
 class ProbLogError(Exception):
-    """General Problog error."""
+    """General Problog error. Root of all user-caused ProbLog errors."""
     pass
 
-class ParseError(ProbLogError) : pass
+
+class TransformationUnavailable(Exception):
+    """Exception thrown when no valid transformation between two ProbLogObjects can be found."""
+    pass
+
+
+class ParseError(ProbLogError):
+    """Error during parsing."""
+    def __init__(self, message, lineno, col, line):
+        self.lineno = lineno
+        self.col = col
+        self.msg = message
+        self.line = line
+        Exception.__init__(self, '%s (at %s:%s)' % (self.msg, self.lineno, self.col))
 
 
 class GroundingError(ProbLogError):
@@ -134,79 +157,83 @@ class GroundingError(ProbLogError):
 
 
 class CompilationError(ProbLogError):
+    """Error during compilation"""
     pass
 
 
 class InstallError(ProbLogError):
-    """
-    Missing component that should be installed.
-    """
+    """Error during installation"""
     pass
 
 
 class InconsistentEvidenceError(ProbLogError):
+    """Error when evidence is inconsistent"""
 
     def __init__(self, message=None):
-        ProbLogError.__init__(self, 'The given evidence is inconsistent.')
+        if message is None:
+            message = 'The given evidence is inconsistent.'
+        ProbLogError.__init__(self, message)
 
 
+def process_error(err, debug=False):
+    """Take the given error raise by ProbLog and produce a meaningful error message.
 
-def process_error( err, debug=False ) :
-    """Take the given error raise by ProbLog and produce a meaningful error message."""
-
-    if debug :
+    :param err: error that was raised
+    :param debug: if True, also print original stack trace
+    :return: textual representation of the error
+    """
+    if debug:
         traceback.print_exc()
 
     err_type = type(err).__name__
-    if err_type == 'ParseException' :
-        return 'Parsing error on %s:%s: %s.\n%s' % (err.lineno, err.col, err.msg, err.line )
-    elif isinstance(err, ParseError) :
-        return 'Parsing error on %s:%s: %s.\n%s' % (err.lineno, err.col, err.msg, err.line )
-    elif isinstance(err, GroundingError) :
+    if err_type == 'ParseException':
+        return 'Parsing error on %s:%s: %s.\n%s' % (err.lineno, err.col, err.msg, err.line)
+    elif isinstance(err, ParseError):
+        return 'Parsing error on %s:%s: %s.\n%s' % (err.lineno, err.col, err.msg, err.line)
+    elif isinstance(err, GroundingError):
         return 'Error during grounding: %s' % err
-    elif isinstance(err, CompilationError) :
+    elif isinstance(err, CompilationError):
         return 'Error during compilation: %s' % err
-    elif isinstance(err, ProbLogError) :
+    elif isinstance(err, ProbLogError):
         return 'Error: %s' % err
-    else :
-        if not debug : traceback.print_exc()
-        return 'Unknown error: %s' % (err_type)
-
-
-def process_result(d, precision=8):
-    """
-    Pretty print result
-    :param d: result
-    :type d: dict
-    :param precision: max. number of digits
-    :type precision: int
-    :return: pretty printed result
-    :rtype: basestring
-    """
-    if not d:
-        return ""  # no queries
     else:
-        s = []
-        l = max(len(str(k)) for k in d)
-        f_flt = '\t%' + str(l) + 's : %.' + str(precision) + 'g'
-        f_str = '\t%' + str(l) + 's : %s'
-        for it in sorted([(str(k), v) for k, v in d.items()]):
-            if type(it[1]) == float:
-                s.append(f_flt % it)
-            else:
-                s.append(f_str % it)
-        return '\n'.join(s)
+        if not debug:
+            traceback.print_exc()
+        return 'Unknown error: %s' % err_type
 
-class ProbLogObject(object) :
+
+class ProbLogObject(object):
     """Root class for all convertible objects in the ProbLog system."""
 
-
     @classmethod
-    def createFrom(cls, obj, **kwdargs):
+    def create_from(cls, obj, **kwdargs):
+        """Transform the given object into an object of the current class using transformations.
+
+        :param obj: obj to transform
+        :param kwdargs: additional options
+        :return: object of current class
+        """
         return ProbLog.convert(obj, cls, **kwdargs)
 
+    # noinspection PyPep8Naming
     @classmethod
-    def createFromDefaultAction(cls, src) :
+    def createFrom(cls, obj, **kwdargs):
+        """Transform the given object into an object of the current class using transformations.
+
+        :param obj: obj to transform
+        :param kwdargs: additional options
+        :return: object of current class
+        """
+        return cls.create_from(obj, **kwdargs)
+
+    @classmethod
+    def create_from_default_action(cls, src):
+        """Create object of this class from given source object using default action.
+
+        :param src: source object to transform
+        :return: transformed object
+        """
+
         raise ProbLogError("No default conversion strategy defined.")
 
 
@@ -220,9 +247,14 @@ def transform_create_as(cls1, cls2):
     ProbLog.register_create_as(cls1, cls2)
 
 
+# noinspection PyPep8Naming
 class transform(object):
-    """Decorator"""
+    """Decorator for registering a transformation between two classes.
 
+    :param cls1: source class
+    :param cls2: target class
+    :param func: transformation function (for direct use instead of decorator)
+    """
     def __init__(self, cls1, cls2, func=None):
         self.cls1 = cls1
         self.cls2 = cls2
@@ -232,31 +264,15 @@ class transform(object):
             self(func)
 
     def __call__(self, f):
-        # TODO check type contract?
         ProbLog.register_transformation(self.cls1, self.cls2, f)
         return f
 
-def list_transformations() :
+
+def list_transformations():
+    """Print an overview of available transformations."""
     print ('Available transformations:')
-    for target in ProbLog.transformations :
-        print ('\tcreate %s.%s' % (target.__module__, target.__name__) )
-        for src, func in ProbLog.transformations[target] :
-            print ('\t\tfrom %s.%s by %s.%s' % (src.__module__, src.__name__, func.__module__, func.__name__) )
-
-
-import warnings
-
-
-def deprecated(func):
-
-    def _wrapped(*args, **kwdargs):
-        warnings.warn('%s is deprecated' % func.__name__ , FutureWarning)
-        return func(*args, **kwdargs)
-    return _wrapped
-
-
-def deprecated_function(name, func):
-    def _wrapped(*args, **kwdargs):
-        warnings.warn('%s is deprecated. Use %s instead.' % (name, func.__name__), FutureWarning)
-        return func(*args, **kwdargs)
-    return _wrapped
+    for target in ProbLog.transformations:
+        print ('\tcreate %s.%s' % (target.__module__, target.__name__))
+        for src, func in ProbLog.transformations[target]:
+            print ('\t\tfrom %s.%s by %s.%s' %
+                   (src.__module__, src.__name__, func.__module__, func.__name__))
