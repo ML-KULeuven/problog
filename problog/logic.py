@@ -1,4 +1,8 @@
 """
+
+problog.logic - Basic logic
+---------------------------
+
 This module contains basic logic constructs.
 
     A Term can be:
@@ -55,23 +59,23 @@ This module contains basic logic constructs.
         c4 = ( parent( al2, phil ) )
 
 
-.. moduleauthor:: Anton Dries <anton.dries@cs.kuleuven.be>
+..
+    Part of the ProbLog distribution.
 
-Part of the ProbLog distribution.
+    Copyright 2015 KU Leuven, DTAI Research Group
 
-Copyright 2015 KU Leuven, DTAI Research Group
+    Licensed under the Apache License, Version 2.0 (the "License");
+    you may not use this file except in compliance with the License.
+    You may obtain a copy of the License at
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
+        http://www.apache.org/licenses/LICENSE-2.0
 
-    http://www.apache.org/licenses/LICENSE-2.0
+    Unless required by applicable law or agreed to in writing, software
+    distributed under the License is distributed on an "AS IS" BASIS,
+    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+    See the License for the specific language governing permissions and
+    limitations under the License.
 
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
 """
 from __future__ import print_function
 from __future__ import division  # consistent behaviour of / and // in python 2 and 3
@@ -85,18 +89,8 @@ from .core import GroundingError
 from collections import deque
 
 
-class InstantiationError(GroundingError):
-    pass
-
-
-class ArithmeticError(GroundingError):
-    pass
-
-
 def term2str(term):
-    """
-    Convert a Term argument to string.
-    This also works for variables represented as None or an integer.
+    """Convert a term argument to string.
 
     :param term: the term to convert
     :type term: Term | None | int
@@ -117,8 +111,8 @@ def term2str(term):
 
 
 def list2term(lst):
-    """
-    Transform a Python list of terms in to a Prolog Term.
+    """Transform a Python list of terms in to a Prolog Term.
+
     :param lst: list of Terms
     :type lst: list of Term
     :return: Term representing a Prolog list
@@ -131,8 +125,8 @@ def list2term(lst):
 
 
 def term2list(term):
-    """
-    Transform a Prolog list to a Python list of terms.
+    """Transform a Prolog list to a Python list of terms.
+
     :param term: term representing a fixed length Prolog list
     :type term: Term
     :raise ValueError: given term is not a valid fixed length Prolog list
@@ -172,20 +166,25 @@ def is_variable(term):
 
 
 def is_list(term):
+    """Test whether a Term is a list.
+
+    :param term: term to check
+    :return: True if the term is a list.
+    """
     return not is_variable(term) and term.functor == '.' and term.arity == 2
 
 
 class Term(object):
+    """
+    A first order term, for example 'p(X,Y)'.
+    :param functor: the functor of the term ('p' in the example)
+    :type functor: str
+    :param args: the arguments of the Term ('X' and 'Y' in the example)
+    :type args: tuple of (Term | None | int)
+    :param kwdargs: additional arguments; currently 'p' (probability) and 'location' (character position in input)
+    """
 
     def __init__(self, functor, *args, **kwdargs):
-        """
-        A first order term, for example 'p(X,Y)'.
-        :param functor: the functor of the term ('p' in the example)
-        :type functor: str
-        :param args: the arguments of the Term ('X' and 'Y' in the example)
-        :type args: tuple of (Term | None | int)
-        :param kwdargs: additional arguments; currently 'p' (probability) and 'location' (character position in input)
-        """
         self.__functor = functor
         self.__args = args
         self.__arity = len(self.__args)
@@ -204,6 +203,10 @@ class Term(object):
 
     @functor.setter
     def functor(self, value):
+        """Term functor
+
+        :param value: new value
+        """
         self.__functor = value
         self.__signature = None
         self.__hash = None
@@ -221,10 +224,15 @@ class Term(object):
     @property
     def value(self):
         """Value of the Term obtained by computing the function is represents"""
-        return computeFunction(self.functor, self.args)
+        return self.compute_value()
 
     def compute_value(self, functions=None):
-        return computeFunction(self.functor, self.args, functions)
+        """Compute value of the Term by computing the function it represents.
+
+        :param functions: dictionary of user-defined functions
+        :return: value of the Term
+        """
+        return compute_function(self.functor, self.args, functions)
     
     @property
     def signature(self):
@@ -258,7 +266,7 @@ class Term(object):
                     new_stack[-1].append(subst[current])
                 else:
                     return subst[current]
-            elif current.isVar():
+            elif current.is_var():
                 if new_stack:
                     new_stack[-1].append(subst[current.name])
                 else:
@@ -276,9 +284,9 @@ class Term(object):
                 new_args = new_stack.pop(-1)
                 term = term_stack.pop(-1)
                 if term.probability is not None:
-                    new_term = term.withArgs(*new_args[:-1], p=new_args[-1])
+                    new_term = term.with_args(*new_args[:-1], p=new_args[-1])
                 else:
-                    new_term = term.withArgs(*new_args)
+                    new_term = term.with_args(*new_args)
                 if new_stack:
                     new_stack[-1].append(new_term)
                 else:
@@ -341,7 +349,7 @@ class Term(object):
                 q.append('; ')
                 q.append(tail)
                 stack.append(q)
-            elif isinstance(current, Term) and current.functor == '.' and current.arity == 2:  # List
+            elif isinstance(current, Term) and current.functor == '.' and current.arity == 2:
                 q = deque()
                 q.append('[')
                 q.append(current.args[0])
@@ -376,16 +384,16 @@ class Term(object):
         return ''.join(parts)
 
     def __call__(self, *args, **kwdargs):
-        """
-        Create a new Term with the same functor and the given arguments.
+        """Create a new Term with the same functor and the given arguments.
+
         :param args: new arguments
         :type args: tuple of (Term | None | int)
         :return:
         :rtype: Term
         """
-        return self.withArgs(*args, **kwdargs)
+        return self.with_args(*args, **kwdargs)
 
-    def withArgs(self, *args, **kwdargs):
+    def with_args(self, *args, **kwdargs):
         """Creates a new Term with the same functor and the given arguments.
 
         :param args: new arguments for the term
@@ -410,17 +418,22 @@ class Term(object):
         else:
             return self.__class__(self.functor, *args, location=self.location)
 
-    def withProbability(self, p=None):
+    def with_probability(self, p=None):
+        """Creates a new Term with the same functor and arguments but with a different probability.
+
+        :param p: new probability (None clears the probability)
+        :return: copy of the Term
+        """
         return self.__class__(self.functor, *self.args, p=p)
 
-    def isVar(self) :
+    def is_var(self) :
         """Checks whether this Term represents a variable.
 
             :returns: ``False``
         """
         return False
 
-    def isConstant(self) :
+    def is_constant(self) :
         """Checks whether this Term represents a constant.
 
             :returns: ``False``
@@ -433,7 +446,7 @@ class Term(object):
             queue = deque([self])
             while queue:
                 term = queue.popleft()
-                if term is None or type(term) == int or term.isVar():
+                if term is None or type(term) == int or term.is_var():
                     self._cache_is_ground = False
                     return False
                 elif not term._cache_is_ground:
@@ -443,18 +456,25 @@ class Term(object):
         else:
             return self._cache_is_ground
 
-    def variables(self):
+    def is_negated(self):
+        """Checks whether the term represent a negated term.
+
+        :returns: ``False``
         """
-        Extract the variables present in the term.
+        return False
+
+    def variables(self):
+        """Extract the variables present in the term.
+
         :return: set of variables
-        :rtype: OrderedSet
+        :rtype: :class:`problog.util.OrderedSet`
         """
         if self._cache_variables is None:
             variables = OrderedSet()
             queue = deque([self])
             while queue:
                 term = queue.popleft()
-                if term is None or type(term) == int or term.isVar():
+                if term is None or type(term) == int or term.is_var():
                     variables.add(term)
                 else:
                     queue.extend(term.args)
@@ -518,7 +538,13 @@ class Term(object):
                 l2.extend(t2.__args)
         return l1 == l2  # Should both be empty.
 
-    def __eq__list(self, other):
+    def _eq__list(self, other):
+        """Custom equivalence test for lists.
+
+        :param other: other Term representing a list
+        :type other: Term
+        :return: True if lists contain the same elements, False otherwise
+        """
 
         if self._list_length() != other._list_length():
             return False
@@ -534,54 +560,37 @@ class Term(object):
                     return False
         return True
 
-
-
-    def __eq__rec(self, other) :
-        # TODO: this can be very slow?
-        if other is None :
-            return False
-        try :
-            return (self.functor, self.args) == (other.functor, other.args)
-        except AttributeError :
-            # Other is wrong type
-            return False
-
     def __hash__(self):
         if self.__hash is None:
             self.__hash = hash((self.__functor, self.__arity, self._list_length()))
         return self.__hash
 
-    def __lshift__(self, body) :
+    def __lshift__(self, body):
         return Clause(self, body)
 
-    def __and__(self, rhs) :
+    def __and__(self, rhs):
         return And(self, rhs)
 
-    def __or__(self, rhs) :
+    def __or__(self, rhs):
         return Or(self, rhs)
 
-    def __invert__(self) :
-        return Not(self)
-
-    def __float__(self) :
-        return float(self.value)
-
-    def __int__(self) :
-        return int(self.value)
-
-    def is_positive(self) :
-        return not self.is_negative()
-
-    def is_negative(self) :
-        return False
-
-    def __neg__(self) :
+    def __invert__(self):
         return Not('\+', self)
 
-    def __abs__(self) :
+    def __float__(self):
+        return float(self.value)
+
+    def __int__(self):
+        return int(self.value)
+
+    def __neg__(self):
+        return Not('\+', self)
+
+    def __abs__(self):
         return self
 
-class Var(Term) :
+
+class Var(Term):
     """A Term representing a variable.
 
     :param name: name of the variable
@@ -589,40 +598,40 @@ class Var(Term) :
 
     """
 
-    def __init__(self, name, location=None) :
-        Term.__init__(self,name, location=location)
+    def __init__(self, name, location=None):
+        Term.__init__(self, name, location=location)
 
     @property
-    def name(self) :
+    def name(self):
         """Name of the variable"""
         return self.functor
 
-    @property
-    def value(self) :
-        """Value of the constant."""
-        raise ValueError('Variables do not support evaluation: {}.'.format(self.name))
-
     def compute_value(self, functions=None):
         """Value of the constant."""
-        raise ValueError('Variables do not support evaluation: {}.'.format(self.name))
+        raise InstantiationError('Variables do not support evaluation: {}.'.format(self.name))
 
-    def isVar(self) :
+    def is_var(self):
         """Checks whether this Term represents a variable.
 
         :returns: ``True``
         """
         return True
 
-    def isGround(self) :
+    def is_ground(self):
+        """Checks whether the term contains any variables.
+
+        :returns: ``False``
+        """
         return False
 
-    def __hash__(self) :
+    def __hash__(self):
         return hash(self.name)
 
-    def __eq__(self, other) :
+    def __eq__(self, other):
         return str(other) == str(self)
 
-class Constant(Term) :
+
+class Constant(Term):
     """A constant.
 
         :param value: the value of the constant
@@ -630,31 +639,26 @@ class Constant(Term) :
 
     """
 
-    def __init__(self, value, location=None) :
-        Term.__init__(self,value,location=location)
-
-    @property
-    def value(self) :
-        """Value of the constant."""
-        return self.functor
+    def __init__(self, value, location=None):
+        Term.__init__(self, value, location=location)
 
     def compute_value(self, functions=None):
         return self.functor
                 
-    def isConstant(self) :
+    def is_constant(self) :
         """Checks whether this Term represents a constant.
 
         :returns: True
         """
         return True
 
-    def __hash__(self) :
+    def __hash__(self):
         return hash(self.functor)
 
-    def __str__(self) :
+    def __str__(self):
         return str(self.functor)
 
-    def isString(self) :
+    def is_string(self):
         """Check whether this constant is a string.
 
             :returns: true if the value represents a string
@@ -662,7 +666,7 @@ class Constant(Term) :
         """
         return type(self.value) == str
 
-    def isFloat(self) :
+    def is_float(self):
         """Check whether this constant is a float.
 
             :returns: true if the value represents a float
@@ -670,7 +674,7 @@ class Constant(Term) :
         """
         return type(self.value) == float
 
-    def isInteger(self) :
+    def is_integer(self):
         """Check whether this constant is an integer.
 
             :returns: true if the value represents an integer
@@ -678,51 +682,55 @@ class Constant(Term) :
         """
         return type(self.value) == int
 
-    def __eq__(self, other) :
+    def __eq__(self, other):
         return str(self) == str(other)
 
-class Clause(Term) :
+
+class Clause(Term):
     """A clause."""
 
-    def __init__(self, head, body, location=None) :
-        Term.__init__(self,':-',head,body,location=location)
+    def __init__(self, head, body, location=None):
+        Term.__init__(self, ':-', head, body, location=location)
         self.head = head
         self.body = body
 
-    def __repr__(self) :
+    def __repr__(self):
         return "%s :- %s" % (self.head, self.body)
 
-class AnnotatedDisjunction(Term) :
 
-    def __init__(self, heads, body, location=None) :
-        Term.__init__(self, '<-', heads, body,location=location)
+class AnnotatedDisjunction(Term):
+    """An annotated disjunction."""
+
+    def __init__(self, heads, body, location=None):
+        Term.__init__(self, ':-', heads, body, location=location)
         self.heads = heads
         self.body = body
 
-    def __repr__(self) :
+    def __repr__(self):
         return "%s <- %s" % ('; '.join(map(str,self.heads)), self.body)
 
-class Or(Term) :
+
+class Or(Term):
     """Or"""
 
-    def __init__(self, op1, op2, location=None) :
+    def __init__(self, op1, op2, location=None):
         Term.__init__(self, ';', op1, op2, location=location)
         self.op1 = op1
         self.op2 = op2
 
     @classmethod
-    def fromList(cls, lst):
-        if lst :
+    def from_list(cls, lst):
+        if lst:
             n = len(lst) - 1
             tail = lst[n]
-            while n > 0 :
+            while n > 0:
                 n -= 1
-                tail = Or(lst[n],tail)
+                tail = Or(lst[n], tail)
             return tail
         else :
             return Term('fail')
 
-    def toList(self):
+    def to_list(self):
         body = []
         current = self
         while isinstance(current, Term) and current.functor == self.functor:
@@ -731,18 +739,18 @@ class Or(Term) :
         body.append(current)
         return body
 
-    def __or__(self, rhs) :
+    def __or__(self, rhs):
         return Or(self.op1, self.op2 | rhs)
 
-    def __and__(self, rhs) :
+    def __and__(self, rhs):
         return And(self, rhs)
 
-    def __repr__(self) :
+    def __repr__(self):
         lhs = term2str(self.op1)
         rhs = term2str(self.op2)
         return "%s; %s" % (lhs, rhs)
 
-    def withArgs(self, *args):
+    def with_args(self, *args):
         """Creates a new Term with the same functor and the given arguments.
 
         :param args: new arguments for the term
@@ -754,44 +762,43 @@ class Or(Term) :
         return self.__class__(*args, location=self.location)
 
 
-
-class And(Term) :
+class And(Term):
     """And"""
 
-    def __init__(self, op1, op2, location=None) :
+    def __init__(self, op1, op2, location=None):
         Term.__init__(self, ',', op1, op2, location=location)
         self.op1 = op1
         self.op2 = op2
 
     @classmethod
-    def fromList(self, lst) :
-        if lst :
+    def from_list(cls, lst):
+        if lst:
             n = len(lst) - 1
             tail = lst[n]
-            while n > 0 :
+            while n > 0:
                 n -= 1
-                tail = And(lst[n],tail)
+                tail = And(lst[n], tail)
             return tail
-        else :
+        else:
             return Term('true')
 
-    def __and__(self, rhs) :
+    def __and__(self, rhs):
         return And(self.op1, self.op2 & rhs)
 
-    def __or__(self, rhs) :
+    def __or__(self, rhs):
         return Or(self, rhs)
 
-    def __repr__(self) :
+    def __repr__(self):
         lhs = term2str(self.op1)
         rhs = term2str(self.op2)
-        if isinstance(self.op2, Or) :
+        if isinstance(self.op2, Or):
             rhs = '(%s)' % rhs
-        if isinstance(self.op1, Or) :
+        if isinstance(self.op1, Or):
             lhs = '(%s)' % lhs
 
         return "%s, %s" % (lhs, rhs)
 
-    def withArgs(self, *args):
+    def with_args(self, *args):
         """Creates a new Term with the same functor and the given arguments.
 
         :param args: new arguments for the term
@@ -802,10 +809,11 @@ class And(Term) :
         """
         return self.__class__(*args, location=self.location)
 
-class Not(Term) :
+
+class Not(Term):
     """Not"""
 
-    def __init__(self, functor, child, location=None) :
+    def __init__(self, functor, child, location=None):
         Term.__init__(self, functor, child, location=location)
         self.child = child
 
@@ -818,13 +826,13 @@ class Not(Term) :
         else:
             return '%s%s' % (self.functor, c)
 
-    def is_negative(self) :
+    def is_negated(self):
         return True
 
-    def __neg__(self) :
+    def __neg__(self):
         return self.child
 
-    def __abs__(self) :
+    def __abs__(self):
         return -self
 
 
@@ -857,7 +865,7 @@ class LogicProgram(object):
     def __iadd__(self, clausefact):
         """Add clause or fact using the ``+=`` operator."""
         if isinstance(clausefact, Or):
-            heads = clausefact.toList()
+            heads = clausefact.to_list()
             # TODO move this to parser code
             for head in heads:
                 if not type(head) == Term:
@@ -873,15 +881,16 @@ class LogicProgram(object):
         elif type(clausefact) == Term:
             self.add_fact(clausefact)
         else:
-            raise GroundingError("Unexpected fact '%s'" % clausefact, self.lineno(clausefact.location))
+            raise GroundingError("Unexpected fact '%s'" % clausefact,
+                                 self.lineno(clausefact.location))
         return self
 
     @classmethod
-    def createFrom(cls, src, force_copy=False, **extra) :
+    def createFrom(cls, src, force_copy=False, **extra):
         """Create a LogicProgram of the current class from another LogicProgram.
 
-        :param lp: logic program to convert
-        :type lp: :class:`.LogicProgram`
+        :param src: logic program to convert
+        :type src: :class:`.LogicProgram`
         :param force_copy: default False, If true, always create a copy of the original logic program.
         :type force_copy: bool
         :returns: LogicProgram that is (externally) identical to given one
@@ -907,6 +916,7 @@ class LogicProgram(object):
         """Transform character position to line:column format.
 
         :param char: character position
+        :param force_filename: always add filename even for top-level file
         :return: line, column (or None if information is not available)
         """
         # Input should be tuple (file, char)
@@ -929,86 +939,83 @@ class LogicProgram(object):
                 filename = self.source_files[fn]
             return filename, lineno, charno
 
-functions = {
-    ("+", 2) : (lambda a,b : a + b),
-    ("-", 2) : (lambda a,b : a - b),
-    ("/\\", 2) : (lambda a,b : a & b),
-    ("\\/", 2) : (lambda a,b : a | b),
-    ("xor", 2) : (lambda a,b : a ^ b),
-    ("xor", 2) : (lambda a,b : a ^ b),
-    ("#", 2) : (lambda a,b : a ^ b),
-    ("><", 2) : (lambda a,b : a ^ b),
-    ("*", 2) : (lambda a,b : a * b),
-    ("/", 2) : (lambda a,b : a / b),
-    ("//", 2) : (lambda a,b : a // b),
-    ("<<", 2) : (lambda a,b : a << b),
-    (">>", 2) : (lambda a,b : a >> b),
-    ("mod", 2) : (lambda a,b : a % b),
-    ("mod", 2) : (lambda a,b : a % b),
-    ("rem", 2) : (lambda a,b : a % b),
-    ("rem", 2) : (lambda a,b : a % b),
-    ("div", 2) : (lambda a, b : ( a - (a % b) ) // b),
-    ("div", 2) : (lambda a, b : ( a - (a % b) ) // b),
-    ("**", 2) : (lambda a,b : a ** b),
-    ("^", 2) : (lambda a,b : a ** b),
-    ("+", 1) : (lambda a : a),
-    ("-", 1) : (lambda a : -a),
-    ("\\", 1) : (lambda a : ~a),
-    ("atan",2) : math.atan2,
-    ("atan2",2) : math.atan2,
-    ("integer",1) : int,
-    ("float",1) : float,
-    ("float_integer_part",1) : lambda f : int(f) ,
-    ("float_fractional_part",1) : lambda f : f - int(f),
-    ("abs",1) : abs,
-    ("ceiling",1) : math.ceil,
-    ("round",1) : round,
-    ("truncate",1) : math.trunc,
-    ("min",2) : min,
-    ("max",2) : max,
-    ("exp",2) : math.pow,
-    ("epsilon",0) : lambda : sys.float_info.epsilon,
-    ("inf",0) : lambda : float('inf'),
-    ("nan",0) : lambda : float('nan'),
-    ("sign",1): lambda x: x if x >= 0 else -x
+_arithmetic_functions = {
+    ("+", 2): (lambda a, b: a + b),
+    ("-", 2): (lambda a, b: a - b),
+    ("/\\", 2): (lambda a, b: a & b),
+    ("\\/", 2): (lambda a, b: a | b),
+    ("xor", 2): (lambda a, b: a ^ b),
+    ("xor", 2): (lambda a, b: a ^ b),
+    ("#", 2): (lambda a, b: a ^ b),
+    ("><", 2): (lambda a, b: a ^ b),
+    ("*", 2): (lambda a, b: a * b),
+    ("/", 2): (lambda a, b: a / b),
+    ("//", 2): (lambda a, b: a // b),
+    ("<<", 2): (lambda a, b: a << b),
+    (">>", 2): (lambda a, b: a >> b),
+    ("mod", 2): (lambda a, b: a % b),
+    ("mod", 2): (lambda a, b: a % b),
+    ("rem", 2): (lambda a, b: a % b),
+    ("rem", 2): (lambda a, b: a % b),
+    ("div", 2): (lambda a, b: (a - (a % b)) // b),
+    ("div", 2): (lambda a, b: (a - (a % b)) // b),
+    ("**", 2): (lambda a, b: a ** b),
+    ("^", 2): (lambda a, b: a ** b),
+    ("+", 1): (lambda a: a),
+    ("-", 1): (lambda a: -a),
+    ("\\", 1): (lambda a: ~a),
+    ("atan", 2): math.atan2,
+    ("atan2", 2): math.atan2,
+    ("integer", 1): int,
+    ("float", 1): float,
+    ("float_integer_part", 1): lambda f: int(f),
+    ("float_fractional_part", 1): lambda f: f - int(f),
+    ("abs", 1): abs,
+    ("ceiling", 1): math.ceil,
+    ("round", 1): round,
+    ("truncate", 1): math.trunc,
+    ("min", 2): min,
+    ("max", 2): max,
+    ("exp", 2): math.pow,
+    ("epsilon", 0): lambda: sys.float_info.epsilon,
+    ("inf", 0): lambda : float('inf'),
+    ("nan", 0): lambda : float('nan'),
+    ("sign", 1): lambda x: x if x >= 0 else -x
 
 }
 
-from_math_1 = ['exp', 'log', 'log10', 'sqrt', 'sin', 'cos', 'tan', 'asin', 'acos', 'atan', 'sinh', 'cosh',
-             'tanh', 'asinh', 'acosh', 'atanh', 'lgamma', 'gamma', 'erf', 'erfc', 'floor'  ]
-for f in from_math_1 :
-    functions[(f,1)] = getattr(math,f)
+_from_math_1 = ['exp', 'log', 'log10', 'sqrt', 'sin', 'cos', 'tan', 'asin', 'acos', 'atan',
+                'sinh', 'cosh', 'tanh', 'asinh', 'acosh', 'atanh', 'lgamma', 'gamma', 'erf',
+                'erfc', 'floor']
+for _f in _from_math_1:
+    _arithmetic_functions[(_f, 1)] = getattr(math, _f)
 
-from_math_0 = [ 'pi', 'e' ]
-for f in from_math_0 :
-    functions[(f,0)] = lambda: getattr(math,f)
+_from_math_0 = ['pi', 'e']
+for _f in _from_math_0:
+    _arithmetic_functions[(_f, 0)] = lambda: getattr(math, _f)
 
-def unquote(s) :
+
+def unquote(s):
+    """Strip single quotes from the string."""
     return s.strip("'")
 
 
-def computeFunction(func, args, extra_functions=None):
+def compute_function(func, args, extra_functions=None):
     """Compute the result of an arithmetic function given by a functor and a list of arguments.
 
     :param func: functor
     :type: basestring
     :param args: arguments
-    :type args: list of Term
+    :type args: (list | tuple) of (Term | int | None)
+    :param extra_functions: additional user-defined functions
     :raises: ArithmeticError if the function is unknown or if an error occurs while computing it
     :return: result of the function
     :rtype: Constant
-
-    Currently the following functions are supported:
-        ``+/2``, ``-/2``, ``/\/2``, ``\//2``, ``xor/2``, ``*/2``, ``//2``,
-        ``///2``, ``<</2``, ``>>/2``, ``mod/2``, ``rem/2``, ``**/2``, ``^/2``,
-        ``+/1``, ``-/1``, ``\\/1``.
-
     """
-
     if extra_functions is None:
         extra_functions = {}
 
-    function = functions.get((unquote(func), len(args)))
+    function = _arithmetic_functions.get((unquote(func), len(args)))
     if function is None:
         function = extra_functions.get((unquote(func), len(args)))
         if function is None:
@@ -1021,3 +1028,13 @@ def computeFunction(func, args, extra_functions=None):
             return function(*values)
     except ZeroDivisionError:
         raise ArithmeticError("Division by zero.")
+
+
+class InstantiationError(GroundingError):
+    """Error used when performing arithmetic with a non-ground term."""
+    pass
+
+
+class ArithmeticError(GroundingError):
+    """Error used when an error occurs during evaluation of an arithmetic expression."""
+    pass

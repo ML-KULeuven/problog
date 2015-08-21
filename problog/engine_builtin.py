@@ -171,7 +171,7 @@ class StructSort(object):
 
 
 def is_var(term):
-    return is_variable(term) or term.isVar()
+    return is_variable(term) or term.is_var()
 
 
 def is_nonvar(term):
@@ -183,7 +183,7 @@ def is_term(term):
 
 
 def is_float_pos(term):
-    return is_constant(term) and term.isFloat()
+    return is_constant(term) and term.is_float()
 
 
 def is_float_neg(term):
@@ -195,7 +195,7 @@ def is_float(term):
 
 
 def is_integer_pos(term):
-    return is_constant(term) and term.isInteger()
+    return is_constant(term) and term.is_integer()
 
 
 def is_integer_neg(term):
@@ -207,7 +207,7 @@ def is_integer(term):
 
 
 def is_string(term):
-    return is_constant(term) and term.isString()
+    return is_constant(term) and term.is_string()
 
 
 def is_number(term):
@@ -215,7 +215,7 @@ def is_number(term):
 
 
 def is_constant(term):
-    return not is_var(term) and term.isConstant()
+    return not is_var(term) and term.is_constant()
 
 
 def is_atom(term):
@@ -382,7 +382,7 @@ def builtin_split_call(term, parts, database=None, location=None, **kwdargs):
             term_part = elements[0](*elements[1:])
             return [(term_part, parts)]
     else:
-        part_list = (term.withArgs(), ) + term.args
+        part_list = (term.with_args(), ) + term.args
         current = Term('[]')
         for t in reversed(part_list):
             current = Term('.', t, current)
@@ -1279,7 +1279,7 @@ def builtin_call( term, args=(), engine=None, callback=None, **kwdargs ) :
     # TODO does not support cycle through call!
     check_mode( (term,), 'c', functor='call' )
     # Find the define node for the given query term.
-    term_call = term.withArgs( *(term.args + args ))
+    term_call = term.with_args( *(term.args + args ))
 
     try:
         results = engine.call( term_call, subcall=True, **kwdargs )
@@ -1290,7 +1290,7 @@ def builtin_call( term, args=(), engine=None, callback=None, **kwdargs ) :
     for res, node in results :
         res1 = res[:n]
         res2 = res[n:]
-        res_pass = (term.withArgs(*res1),) + tuple(res2)
+        res_pass = (term.with_args(*res1),) + tuple(res2)
         actions += callback.notifyResult(engine._create_context(res_pass), node, False)
     actions += callback.notifyComplete()
     return True, actions

@@ -77,7 +77,7 @@ def main( filename) :
 
         new_result= []
         for n,p in result.items():
-            new_result.append((str(n.withProbability()),p,) + model.lineno(n.location))
+            new_result.append((str(n.with_probability()),p,) + model.lineno(n.location))
 
         return True, new_result
     except Exception as err :

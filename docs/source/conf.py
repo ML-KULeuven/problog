@@ -85,8 +85,6 @@ exclude_patterns = []
 
 todo_include_todos = True
 
-autodoc_member_order = 'bysource'
-
 # The reST default role (used for this markup: `text`) to use for all
 # documents.
 #default_role = None
@@ -96,7 +94,7 @@ autodoc_member_order = 'bysource'
 
 # If true, the current module name will be prepended to all description
 # unit titles (such as .. function::).
-#add_module_names = True
+add_module_names = False
 
 # If true, sectionauthor and moduleauthor directives will be shown in the
 # output. They are ignored by default.
@@ -357,3 +355,5 @@ epub_exclude_files = ['search.html']
 intersphinx_mapping = {'http://docs.python.org/': None}
 
 # autoclass_content = 'both'
+
+autodoc_member_order = 'bysource'

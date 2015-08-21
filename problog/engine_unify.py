@@ -122,7 +122,7 @@ def unify_value(value1, value2, source_values):
             source_values[value2] = value
             return value
     elif value1.signature == value2.signature:  # Assume Term
-        return value1.withArgs(*[unify_value(a1, a2, source_values)
+        return value1.with_args(*[unify_value(a1, a2, source_values)
                                  for a1, a2 in zip(value1.args, value2.args)])
     else:
         raise UnifyError()

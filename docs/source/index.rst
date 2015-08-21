@@ -15,11 +15,10 @@ Contents:
    intro
    cli
    basic
-   logic
    learning
    prolog
    cycles
-   formula
+   api
 .. notes
 ..   engine   
 

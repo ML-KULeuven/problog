@@ -46,3 +46,4 @@ from . import sdd_formula
 from . import util
 from . import bdd_formula
 from . import forward
+from . import cycles

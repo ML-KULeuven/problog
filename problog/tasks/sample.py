@@ -177,7 +177,7 @@ class SampledFormula(LogicFormula):
             return True
         except ArithmeticError as e:
             return False
-        #return type(term) == float or term.isConstant()
+        #return type(term) == float or term.is_constant()
 
     def addValue(self, value):
         self.values.append(value)
@@ -346,13 +346,13 @@ def builtin_sample(term, result, target=None, engine=None, callback=None, **kwda
     # TODO wrong error message when call argument is wrong
     check_mode((term, result), 'cv', functor='sample')
     # Find the define node for the given query term.
-    term_call = term.withArgs(*term.args)
+    term_call = term.with_args(*term.args)
     results = engine.call(term_call, subcall=True, target=target, **kwdargs)
     actions = []
     n = len(term.args)
     for res, node in results:
         res1 = res[:n]
-        res_pass = (term.withArgs(*res1), target.getValue(node))
+        res_pass = (term.with_args(*res1), target.getValue(node))
         actions += callback.notifyResult(res_pass, 0, False)
     actions += callback.notifyComplete()
     return True, actions

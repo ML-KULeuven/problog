@@ -33,7 +33,7 @@ def builtin_annotate(annotation, *terms, **kwdargs):
     return builtin_annotate_help(annotation, terms, **kwdargs)
 
 def builtin_annotate_help(annotation, terms, target=None, database=None, engine=None, **kwdargs):
-    body = And.fromList(terms)
+    body = And.from_list(terms)
     body_vars = body.variables()
 
     clause_head = Term(engine.get_non_cache_functor(), *body_vars)

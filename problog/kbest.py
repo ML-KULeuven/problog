@@ -25,7 +25,8 @@ from __future__ import print_function
 
 from .core import transform
 from .program import PrologFile
-from .formula import TrueConstraint, ClauseConstraint, LogicDAG
+from .formula import LogicDAG
+from .constraint import TrueConstraint, ClauseConstraint
 from .sdd_formula import SDDManager
 from .cnf_formula import CNF, clarks_completion
 from .maxsat import get_solver

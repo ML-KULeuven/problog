@@ -23,7 +23,7 @@ from __future__ import print_function
 import sys
 
 from problog.program import PrologFile
-from problog.formula import TrueConstraint, LogicFormula
+from problog.constraint import TrueConstraint
 from problog.cnf_formula import CNF
 from problog.maxsat import get_solver, get_available_solvers
 

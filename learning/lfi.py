@@ -161,7 +161,7 @@ class LFIProblem(SemiringProbability, LogicProgram) :
         """Returns tuple ( prob_atom, [ additional clauses ] )"""
         if isinstance(atom, Or):
             # Annotated disjunction
-            atoms = atom.toList()
+            atoms = atom.to_list()
         else:
             atoms = [atom]
 
@@ -179,7 +179,7 @@ class LFIProblem(SemiringProbability, LogicProgram) :
                     available_probability -= float(start_value)
                 else:
                     num_random_weights += 1
-            elif atom.probability and atom.isConstant():
+            elif atom.probability and atom.is_constant():
                 available_probability -= float(atom.probability)
 
         random_weights = [random.random() for i in range(0, num_random_weights+1)]
@@ -209,14 +209,14 @@ class LFIProblem(SemiringProbability, LogicProgram) :
                 lfi_prob = Term('lfi', Constant(self.count))
 
                 # 2) Replacement atom
-                replacement = lfi_fact.withProbability(lfi_prob)
+                replacement = lfi_fact.with_probability(lfi_prob)
                 if body is None:
                     new_body = lfi_fact
                 else:
                     new_body = body & lfi_fact
 
                 # 3) Create redirection clause
-                extra_clauses += [Clause(atom.withProbability(), new_body)]
+                extra_clauses += [Clause(atom.with_probability(), new_body)]
 
                 # 4) Set initial weight
                 if isinstance(start_value, Constant):
@@ -258,7 +258,7 @@ class LFIProblem(SemiringProbability, LogicProgram) :
         """Returns tuple ( prob_atom, [ additional clauses ] )"""
 
         if isinstance(atom, Or):
-            atoms = atom.toList()
+            atoms = atom.to_list()
         else:
             atoms = [atom]
 
@@ -269,7 +269,7 @@ class LFIProblem(SemiringProbability, LogicProgram) :
                 index = self.output_names.index(atom)
                 self.output_names[index] = None
                 weight = self.weights[index]
-                result = atom.withProbability(weight)
+                result = atom.with_probability(weight)
                 atoms_out.append(result)
             else:
                 atoms_out.append(atom)
@@ -332,7 +332,7 @@ class LFIProblem(SemiringProbability, LogicProgram) :
                 for extra in extra_clauses:
                     yield extra
             elif isinstance(clause, AnnotatedDisjunction):
-                extra_clauses = process_atom(Or.fromList(clause.heads), clause.body)
+                extra_clauses = process_atom(Or.from_list(clause.heads), clause.body)
                 for extra in extra_clauses:
                     yield extra
             else:
@@ -421,7 +421,7 @@ def extract_evidence(pl):
     atoms1 = engine.query(pl, Term('evidence', None))
     for atom in atoms1:
         atom = atom[0]
-        if atom.is_negative():
+        if atom.is_negated():
             atoms.append((-atom, Term('false')))
         else:
             atoms.append((atom, Term('true')))

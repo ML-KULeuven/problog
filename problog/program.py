@@ -140,7 +140,7 @@ class PrologFactory(Factory):
         return self.build_clause(functor, [head], operand, **extra)
 
     def build_unop(self, functor, operand, location=None, **extra) :
-        if functor == '-' and operand.isConstant() and (operand.isFloat() or operand.isInteger()):
+        if functor == '-' and operand.is_constant() and (operand.is_float() or operand.is_integer()):
             return Constant(-operand.value)
         return self.build_function("'" + functor + "'", (operand,) , location=location)
 
@@ -255,7 +255,7 @@ class ExtendedPrologFactory(PrologFactory):
         return clauses
 
     def build_probabilistic(self, operand1, operand2, location=None, **extra):
-        if ('unaryop' in extra and extra['unaryop'] == '\\+') or operand2.is_negative():
+        if ('unaryop' in extra and extra['unaryop'] == '\\+') or operand2.is_negated():
             operand2 = abs(operand2)
             if operand2.signature not in self.neg_head_lits:
                 self.neg_head_lits[operand2.signature] = {

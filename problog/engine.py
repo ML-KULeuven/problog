@@ -197,7 +197,7 @@ class ClauseDBEngine(GenericEngine):
        :return:
         """
         gp = LogicFormula()
-        if term.is_negative():
+        if term.is_negated():
             term = -term
             negative = True
         else:
@@ -226,14 +226,14 @@ class ClauseDBEngine(GenericEngine):
        :return: ground program containing the query
        :rtype: LogicFormula
         """
-        if term.is_negative():
+        if term.is_negated():
             negated = True
             term = -term
         else:
             negated = False
         gp, results = self._ground(db, term, gp, silent_fail=False, **kwdargs)
         for args, node_id in results:
-            term_store = term.withArgs(*args)
+            term_store = term.with_args(*args)
             if negated:
                 gp.add_name(-term_store, -node_id, label)
             else:
@@ -278,7 +278,7 @@ class ClauseDBEngine(GenericEngine):
         # Ground evidence
         for query in evidence:
             if len(query) == 1:  # evidence/1
-                if query[0].is_negative():
+                if query[0].is_negated():
                     logger.debug("Grounding evidence '%s'", query[0])
                     target = self.ground(db, -query[0], target, label=target.LABEL_EVIDENCE_NEG, is_root=True)
                     logger.debug("Ground program size: %s", len(target))
@@ -779,7 +779,7 @@ class ClauseDB(LogicProgram):
             return Var('V_' + str(term))
         else:
             args = [ self._create_vars(arg) for arg in term.args ]
-            return term.withArgs(*args)
+            return term.with_args(*args)
 
     def _extract(self, node_id):
         node = self.getNode(node_id)

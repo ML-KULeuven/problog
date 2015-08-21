@@ -54,7 +54,7 @@ def main(filename, examplefile) :
 
         new_names = []
         for n in names:
-            new_names.append((str(n.withProbability()),) + program.lineno(n.location)[1:])
+            new_names.append((str(n.with_probability()),) + program.lineno(n.location)[1:])
 
         return True, (score, weights, new_names, iterations)
     except Exception as err :
