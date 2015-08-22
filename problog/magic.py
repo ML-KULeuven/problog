@@ -26,6 +26,7 @@ import os
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.append(os.path.join(os.path.dirname(__file__), '../examples'))
 
+from problog.logic import Term
 from problog.program import PrologString, ExtendedPrologFactory, LogicProgram
 from problog.evaluator import SemiringLogProbability
 from problog.parser import DefaultPrologParser
@@ -69,10 +70,10 @@ def runproblog(s, knowledge=knowledge_default, semiring=None, parser_class=Defau
 
 def runproblogsampling(s, n=5, output='html'):
     model = PrologString(s)
-    samples, db = plsample.sample_object(model, N=n)
+    samples = plsample.sample(model, n=n, tuples=True)
     result = ''
     for sample in samples:
-        result += sample.toString(db, False, True) + '<br>'
+        result += ','.join(str(Term(query[0], *query[1:-1])) for query in sample) + '<br/>'
     if output == 'html':
         return '<pre>{}</pre>'.format(result)
     return result
