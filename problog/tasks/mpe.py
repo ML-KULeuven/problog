@@ -54,29 +54,26 @@ def main(argv):
 
     if result is None:
         print ('%% The model is not satisfiable.')
-    elif not args.output_all:
-        # Old output
-        facts = set(result)
-        pfacts = cnf.get_weights()
-        true_facts = set()
-        for name, node in cnf.get_names():
-            if node in pfacts:
-                if node in facts:
-                    facts.remove(node)
-                    # print (name)
-                    if name.functor.startswith('problog_'):
-                        functor = name.functor.split('_', 1)[1].rsplit('_', 2)[0]
-                        name = Term(functor, *name.args)
-                    true_facts.add(name)
-                elif -node in facts:
-                    facts.remove(-node)
-                    # print (-name)
-                else:
-                    pass
-                    # print (-name)
-
-        for n in true_facts:
-            print (n)
+    # elif not args.output_all:
+    #     # Old output
+    #     facts = set(result)
+    #     pfacts = cnf.get_weights()
+    #     true_facts = set()
+    #     for name, node in cnf.get_names():
+    #         if node in pfacts:
+    #             if node in facts:
+    #                 facts.remove(node)
+    #                 # print (name)
+    #                 true_facts.add(name)
+    #             elif -node in facts:
+    #                 facts.remove(-node)
+    #                 # print (-name)
+    #             else:
+    #                 pass
+    #                 # print (-name)
+    #
+    #     for n in true_facts:
+    #         print (n)
     else:
         # TODO do this on original ground program before cycle-breaking
         truthvalues = reduce_formula(dag, result)
@@ -139,9 +136,9 @@ def argparser():
     parser.add_argument('inputfile')
     parser.add_argument('--solver', choices=get_available_solvers(),
                         default=None, help="MaxSAT solver to use")
-    parser.add_argument('--full', dest='output_all', action='store_true',
-                        help='Show all true atoms in ground program '
-                             '(instead of probabilistic facts only.')
+    # parser.add_argument('--full', dest='output_all', action='store_true',
+    #                     help='Show all true atoms in ground program '
+    #                          '(instead of probabilistic facts only.')
     return parser
 
 
