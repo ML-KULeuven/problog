@@ -130,8 +130,8 @@ class ForwardInference(DD):
         self._node_depths = [None] * len(self)
         self._node_levels = []
         # Start with current nodes
-        current_nodes = set(abs(n) for q, n in self.queries() if n is not None and n > 0)
-        current_nodes |= set(abs(n) for q, n in self.evidence() if n is not None and n > 0)
+        current_nodes = set(abs(n) for q, n in self.queries() if n is not None and n != 0)
+        current_nodes |= set(abs(n) for q, n in self.evidence() if n is not None and n != 0)
         current_level = 0
         while current_nodes:
             self._node_levels.append(current_nodes)
@@ -262,6 +262,7 @@ class ForwardInference(DD):
         for i, nodes in enumerate(zip(self.inodes, self._inodes_prev)):
             if not self.get_manager().same(*nodes):
                 updated_nodes.add(i + 1)
+                # self.notify_node_updated(i + 1)
         self.get_manager().ref(*filter(None, self.inodes))
         self.get_manager().deref(*filter(None, self._inodes_prev))
         self.get_manager().deref(*filter(None, self._inodes_neg))
@@ -434,7 +435,7 @@ class ForwardEvaluator(Evaluator):
 
     def node_updated(self, source, node, complete):
 
-        name = [n for n, i in self.formula.queries() if i == node]
+        name = [n for n, i in self.formula.queries() if abs(i) == node]
         if name:
             name = name[0]
             weights = {}
@@ -458,7 +459,7 @@ class ForwardEvaluator(Evaluator):
                 self._complete.add(node)
 
     def node_completed(self, source, node):
-        qs = set(qi for qn, qi in source.queries())
+        qs = set(abs(qi) for qn, qi in source.queries())
         if node in qs:
             self._complete.add(node)
 
