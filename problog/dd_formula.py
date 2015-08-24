@@ -268,13 +268,12 @@ class DDManager(object):
     def negate(self, node):
         """Create the negation of the given node.
 
+        This method handles node reference counting, that is, all intermediate results are marked \
+        for garbage collection, and the output node has a reference count greater than one.
+        Reference count on input nodes is not touched (unless one of the inputs becomes the output).
+
         :param node: negation of the given node
         :return: negation of the given node
-
-        This method handles node reference counting, that is, all intermediate results
-         are marked for garbage collection, and the output node has a reference count greater \
-         than one.
-        Reference count on input nodes is not touched (unless one of the inputs becomes the output).
         """
         raise NotImplementedError('abstract method')
 

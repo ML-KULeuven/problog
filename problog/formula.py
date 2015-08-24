@@ -1048,15 +1048,6 @@ class DeterministicLogicFormula(LogicFormula):
         LogicFormula.__init__(self, **kwdargs)
 
     def add_atom(self, identifier, probability, group=None, name=None):
-        """Add an atom to the formula.
-
-        :param identifier: a unique identifier for the atom
-        :param probability: probability of the atom
-        :param group: a group identifier that identifies mutually exclusive atoms (or None if no \
-        constraint)
-        :param name: name of the new node
-        :returns: ``TRUE''
-        """
         return self.TRUE
 
 

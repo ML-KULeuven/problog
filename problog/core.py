@@ -49,8 +49,8 @@ class ProbLog(object):
 
     @classmethod
     def register_create_as(cls, repl, orig):
-        """Register that we can create objects of class `repl' in the same way as objects \
-        of class `orig'.
+        """Register that we can create objects of class `repl` in the same way as objects \
+        of class `orig`.
 
         :param repl: object we want to create
         :param orig: object construction we can use instead

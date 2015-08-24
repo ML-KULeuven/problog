@@ -840,18 +840,6 @@ def _builtin_length(l, n, **k):
         return [(new_l, n)]
 
 
-# def extract_vars(*args, **kwd):
-#     counter = kwd.get('counter', defaultdict(int))
-#     for arg in args:
-#         if type(arg) == int:
-#             counter[arg] += 1
-#         elif isinstance(arg,Term):
-#             extract_vars(*arg.args, counter=counter)
-#         else:
-#            raise VariableUnification()
-#     return counter
-
-
 def _builtin_sort(l, s, **k):
     # TODO doesn't work properly with variables e.g. gives sort([X,Y,Y],[_])
     # should be sort([X,Y,Y],[X,Y])
@@ -1042,16 +1030,17 @@ def _builtin_unknown(arg, engine=None, **kwdargs):
     return True
 
 
-def select_sublist(lst, target):
+def _select_sublist(lst, target):
     """
     Enumerate all possible selection of elements from a list.
     This function is used to generate all solutions to findall/3.
     An element must be selected if it is TRUE in the target formula.
-   :param lst: list to select elements from
-   :type lst: list of tuple
-   :param target: data structure containing truth value of nodes
-   :type target: LogicFormula
-   :return: generator of sublists
+
+    :param lst: list to select elements from
+    :type lst: list of tuple
+    :param target: data structure containing truth value of nodes
+    :type target: LogicFormula
+    :return: generator of sublists
     """
     l = len(lst)
 
@@ -1139,7 +1128,7 @@ def _builtin_findall_base(pattern, goal, result, top_only=False, database=None, 
                     except UnifyError:
                         pass
     else:
-        for l, n in select_sublist(results, target):
+        for l, n in _select_sublist(results, target):
             node = target.add_and(n)
             if node is not None:
                 res = build_list(l, Term('[]'))

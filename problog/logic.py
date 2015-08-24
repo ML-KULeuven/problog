@@ -428,17 +428,11 @@ class Term(object):
         return self.__class__(self.functor, *self.args, p=p)
 
     def is_var(self):
-        """Checks whether this Term represents a variable.
-
-            :returns: ``False``
-        """
+        """Checks whether this Term represents a variable."""
         return False
 
     def is_constant(self):
-        """Checks whether this Term represents a constant.
-
-            :returns: ``False``
-        """
+        """Checks whether this Term represents a constant."""
         return False
 
     def is_ground(self):
@@ -459,10 +453,7 @@ class Term(object):
             return self._cache_is_ground
 
     def is_negated(self):
-        """Checks whether the term represent a negated term.
-
-        :returns: ``False``
-        """
+        """Checks whether the term represent a negated term."""
         return False
 
     def variables(self):
@@ -827,10 +818,6 @@ class Not(Term):
             return '%s%s' % (self.functor, c)
 
     def is_negated(self):
-        """Checks whether this Term represents a negated literal.
-
-        :return: ``True''
-        """
         return True
 
     def __neg__(self):

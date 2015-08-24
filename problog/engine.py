@@ -38,16 +38,16 @@ from .util import Timer
 
 @transform(LogicProgram, LogicFormula)
 def ground(model, target=None, queries=None, evidence=None, propagate_evidence=False, **kwdargs):
-    """
-    Ground a given model.
-   :param model: logic program to ground
-   :type model: LogicProgram
-   :param target: formula in which to store ground program
-   :type target: LogicFormula
-   :param queries: list of queries to override the default
-   :param evidence: list of evidence atoms to override the default
-   :return: the ground program
-   :rtype: LogicFormula
+    """Ground a given model.
+
+    :param model: logic program to ground
+    :type model: LogicProgram
+    :param target: formula in which to store ground program
+    :type target: LogicFormula
+    :param queries: list of queries to override the default
+    :param evidence: list of evidence atoms to override the default
+    :return: the ground program
+    :rtype: LogicFormula
     """
     return DefaultEngine(**kwdargs).ground_all(model, target, queries=queries, evidence=evidence,
                                                propagate_evidence=propagate_evidence)
@@ -131,11 +131,11 @@ class ClauseDBEngine(GenericEngine):
         return self.__builtins[real_index]
 
     def add_builtin(self, predicate, arity, function):
-        """
-        Add a builtin.
-       :param predicate: name of builtin predicate
-       :param arity: arity of builtin predicate
-       :param function: function to execute builtin
+        """Add a builtin.
+
+        :param predicate: name of builtin predicate
+        :param arity: arity of builtin predicate
+        :param function: function to execute builtin
         """
         sig = '%s/%s' % (predicate, arity)
         self.__builtin_index[sig] = -(len(self.__builtins) + 1)
@@ -150,10 +150,11 @@ class ClauseDBEngine(GenericEngine):
         Calling this method is optional, but it allows to perform multiple operations on the same \
         database.
         This also executes any directives in the input model.
-       :param db: logic program to prepare for evaluation
-       :type db: LogicProgram
-       :return: logic program in a suitable format for this engine
-       :rtype: ClauseDB
+
+        :param db: logic program to prepare for evaluation
+        :type db: LogicProgram
+        :return: logic program in a suitable format for this engine
+        :rtype: ClauseDB
         """
         result = ClauseDB.createFrom(db, builtins=self.get_builtins())
         self._process_directives(result)
@@ -166,10 +167,10 @@ class ClauseDBEngine(GenericEngine):
         raise NotImplementedError("ClauseDBEngine.execute is an abstract function.")
 
     def get_non_cache_functor(self):
-        """
-        Get a unique functor that is excluded from caching.
-       :return: unique functor that is excluded from caching
-       :rtype: basestring
+        """Get a unique functor that is excluded from caching.
+
+        :return: unique functor that is excluded from caching
+        :rtype: basestring
         """
         self._unique_number += 1
         return '_nocache_%s' % self._unique_number
@@ -602,12 +603,11 @@ class ClauseDB(LogicProgram):
     def get_node(self, index):
         """Get the instruction node at the given index.
 
-       :param index: index of the node to retrieve
-       :type index::class:`int`
-       :returns: requested node
-       :rtype::class:`tuple`
-       :raises IndexError: the given index does not point to a node
-
+        :param index: index of the node to retrieve
+        :type index: :class:`int`
+        :returns: requested node
+        :rtype: :class:`tuple`
+        :raises IndexError: the given index does not point to a node
         """
         if index < self.__offset:
             return self.__parent.get_node(index)
@@ -655,10 +655,11 @@ class ClauseDB(LogicProgram):
     def find(self, head):
         """Find the ``define`` node corresponding to the given head.
 
-       :param head: clause head to match
-       :type head::class:`.basic.Term`
-       :returns: location of the clause node in the database, returns ``None`` if no such node exists
-       :rtype::class:`int` or ``None``
+        :param head: clause head to match
+        :type head: :class:`.basic.Term`
+        :returns: location of the clause node in the database, \
+                     returns ``None`` if no such node exists
+        :rtype: :class:`int` or ``None``
         """
         return self._get_head(head)
 

@@ -382,8 +382,7 @@ class ExtendedPrologFactory(PrologFactory):
     """Prolog with some extra syntactic sugar.
 
     Non-standard syntax:
-    - Negative head literals [Meert and Vennekens, PGM 2014]:
-      0.5::\+a :- b.
+    - Negative head literals [Meert and Vennekens, PGM 2014]: 0.5::\+a :- b.
     """
 
     def __init__(self, identifier=0):
