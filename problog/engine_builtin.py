@@ -34,8 +34,8 @@ import inspect  # For load_external
 
 
 def add_standard_builtins(engine, b=None, s=None, sp=None):
-    """
-    Adds standard builtins to the given engine.
+    """Adds standard builtins to the given engine.
+
     :param engine: engine to add builtins to
     :type engine: ClauseDBEngine
     :param b: wrapper for boolean builtins (returning True/False)

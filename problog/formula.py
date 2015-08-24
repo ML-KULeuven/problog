@@ -240,6 +240,17 @@ class BaseFormula(ProbLogObject):
         evidence_false = self.get_names(self.LABEL_EVIDENCE_NEG)
         return list(evidence_true) + [(name, self.negate(node)) for name, node in evidence_false]
 
+    def evidence_all(self):
+        """Get a list of all evidence (including undetermined).
+
+        :return: list of tuples (name, key, value) where value can be -1, 0 or 1
+        """
+        evidence_true = [x + (1,) for x in self.get_names(self.LABEL_EVIDENCE_POS)]
+        evidence_false = [x + (-1,) for x in self.get_names(self.LABEL_EVIDENCE_NEG)]
+        evidence_maybe = [x + (0,) for x in self.get_names(self.LABEL_EVIDENCE_MAYBE)]
+        return evidence_true + evidence_false + evidence_maybe
+
+
     # ====================================================================================== #
     # ==========                        KEY MANIPULATION                         =========== #
     # ====================================================================================== #

@@ -140,7 +140,7 @@ class SDDManager(DDManager):
 
     def wmc(self, node, weights, semiring):
         logspace = 0
-        if semiring.is_logspace():
+        if semiring.one() == 0.0:
             logspace = 1
         wmc_manager = sdd.wmc_manager_new(node, logspace, self.get_manager())
         varcount = sdd.sdd_manager_var_count(self.get_manager())
@@ -156,7 +156,7 @@ class SDDManager(DDManager):
 
     def wmc_literal(self, node, weights, semiring, literal):
         logspace = 0
-        if semiring.is_logspace():
+        if semiring.one() == 0.0:
             logspace = 1
         wmc_manager = sdd.wmc_manager_new(node, logspace, self.get_manager())
         varcount = sdd.sdd_manager_var_count(self.get_manager())
@@ -174,7 +174,7 @@ class SDDManager(DDManager):
 
     def wmc_true(self, weights, semiring):
         logspace = 0
-        if semiring.is_logspace():
+        if semiring.one() == 0.0:
             logspace = 1
         wmc_manager = sdd.wmc_manager_new(self.true(), logspace, self.get_manager())
         varcount = sdd.sdd_manager_var_count(self.get_manager())

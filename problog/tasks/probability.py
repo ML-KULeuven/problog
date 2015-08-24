@@ -23,7 +23,7 @@ import sys
 import os
 
 from ..program import PrologFile, ExtendedPrologFactory
-from ..evaluator import SemiringSymbolic, SemiringLogProbability
+from ..evaluator import SemiringLogProbability, SemiringProbability
 from ..nnf_formula import NNF
 from ..sdd_formula import SDD
 from ..bdd_formula import BDD
@@ -79,7 +79,7 @@ def main(argv):
     elif args.koption == 'kbest':
         knowledge = KBestFormula
     elif args.koption is None:
-        if SDD.is_available() and not args.symbolic:
+        if SDD.is_available():
             logger.info('Using SDD path')
             knowledge = SDD
         else:
@@ -88,12 +88,10 @@ def main(argv):
     else:
         raise ValueError("Unknown option for --knowledge: '%s'" % args.knowledge)
 
-    if args.symbolic:
-        semiring = SemiringSymbolic()
-    elif args.logspace:
+    if args.logspace:
         semiring = SemiringLogProbability()
     else:
-        semiring = None
+        semiring = SemiringProbability()
 
     if args.propagate_weights:
         args.propagate_weights = semiring
@@ -198,8 +196,6 @@ def argparser():
 
     # Evaluation semiring
     ls_group = parser.add_mutually_exclusive_group()
-    ls_group.add_argument('--symbolic', action='store_true',
-                          help="Use symbolic evaluation.")
     ls_group.add_argument('--logspace', action='store_true',
                           help="Use log space evaluation (default).", default=True)
     ls_group.add_argument('--nologspace', dest='logspace', action='store_false',
