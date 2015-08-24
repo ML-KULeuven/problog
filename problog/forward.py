@@ -444,7 +444,8 @@ class ForwardEvaluator(Evaluator):
                     weights[av] = weight
             inode = source.get_inode(node)
             if inode is not None:
-                tvalue = source.get_manager().wmc_true(weights, self.semiring)
+                tvalue = source.get_manager().wmc(source.get_constraint_inode(), weights,
+                                                  self.semiring)
                 value = source.get_manager().wmc(inode, weights, self.semiring)
                 result = self.semiring.normalize(value, tvalue)
                 self._results[node] = result
