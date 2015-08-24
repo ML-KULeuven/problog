@@ -79,13 +79,21 @@ def main(argv):
         truthvalues = reduce_formula(dag, result)
 
         true_facts = set()
+        false_facts = set()
         for i, n, t in dag:
             if n.name is not None and truthvalues[i - 1]:
                 if not n.name.functor.startswith('problog_'):
                     true_facts.add(n.name)
+            if n.name is not None and not truthvalues[i - 1]:
+                if not n.name.functor.startswith('problog_'):
+                    false_facts.add(n.name)
 
         for n in true_facts:
             print (n)
+
+        if args.output_all:
+            for n in false_facts:
+                print (-n)
 
 
 
@@ -136,9 +144,8 @@ def argparser():
     parser.add_argument('inputfile')
     parser.add_argument('--solver', choices=get_available_solvers(),
                         default=None, help="MaxSAT solver to use")
-    # parser.add_argument('--full', dest='output_all', action='store_true',
-    #                     help='Show all true atoms in ground program '
-    #                          '(instead of probabilistic facts only.')
+    parser.add_argument('--full', dest='output_all', action='store_true',
+                        help='Also show false atoms.')
     return parser
 
 
