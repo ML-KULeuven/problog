@@ -114,6 +114,35 @@ def stop_timer():
     signal.alarm(0)
 
 
+def subprocess_check_output(*popenargs, **kwargs):
+    """Wrapper for subprocess.check_output that recursively kills subprocesses when Python is \
+    interrupted.
+
+    Additionally expands executable name to full path.
+
+    :param popenargs: positional arguments of subprocess.call
+    :param kwargs: keyword arguments of subprocess.call
+    :return: result of subprocess.call
+    """
+    popenargs = _find_process(*popenargs)
+    process = subprocess.Popen(stdout=subprocess.PIPE, *popenargs, **kwargs)
+    try:
+        output, unused_err = process.communicate()
+        retcode = process.poll()
+        if retcode:
+            cmd = kwargs.get("args")
+            if cmd is None:
+                cmd = popenargs[0]
+            raise subprocess.CalledProcessError(retcode, cmd, output=output)
+        return output
+    except KeyboardInterrupt:
+        kill_proc_tree(process)
+        raise
+    except SystemExit:
+        kill_proc_tree(process)
+        raise
+
+
 def subprocess_check_call(*popenargs, **kwargs):
     """Wrapper for subprocess.check_call that recursively kills subprocesses when Python is \
     interrupted.

@@ -23,11 +23,8 @@ Interface to MaxSAT solvers.
 """
 from __future__ import print_function
 
-from .util import mktempfile
+from .util import mktempfile, subprocess_check_output
 from . import root_path
-
-
-import subprocess
 
 
 class MaxSATSolver(object):
@@ -52,7 +49,7 @@ class MaxSATSolver(object):
         filename = mktempfile('.' + self.extension)
         with open(filename, 'w') as f:
             f.write(inputf)
-        return subprocess.check_output(self.command + [filename]).decode()
+        return subprocess_check_output(self.command + [filename]).decode()
 
     def evaluate(self, formula, **kwargs):
         inputf = self.prepare_input(formula, **kwargs)
