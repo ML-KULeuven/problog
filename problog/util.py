@@ -373,7 +373,10 @@ def format_tuple(data, precision=8, columnsep='\t'):
         # is a string -> return string itself
         return data
     elif isinstance(data, collections.Sequence):
-        return columnsep.join(map(lambda v: format_value(v, precision=precision), data))
+        values = list(map(lambda v: format_value(v, precision=precision), data))
+        if len(values) == 2 and values[0] == values[1]:
+            values = [values[0]]
+        return columnsep.join(values)
     else:
         return format_value(data, precision=precision)
 

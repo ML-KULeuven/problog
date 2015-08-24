@@ -112,8 +112,8 @@ class DD(LogicFormula, Evaluatable):
         else:
             return self._constraint_dd
 
-    def _create_evaluator(self, semiring, weights):
-        return DDEvaluator(self, semiring, weights)
+    def _create_evaluator(self, semiring, weights, **kwargs):
+        return DDEvaluator(self, semiring, weights, **kwargs)
 
     def build_dd(self):
         """Build the internal representation of the formula."""
@@ -361,8 +361,8 @@ class DDEvaluator(Evaluator):
 
     """
 
-    def __init__(self, formula, semiring, weights=None):
-        Evaluator.__init__(self, formula, semiring, weights)
+    def __init__(self, formula, semiring, weights=None, **kwargs):
+        Evaluator.__init__(self, formula, semiring, weights, **kwargs)
         self.formula = formula
         self.normalization = None
         self._evidence_weight = None

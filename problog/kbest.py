@@ -2,7 +2,7 @@
 problog.kbest - K-Best inference using MaxSat
 ---------------------------------------------
 
-Common interface to decision diagrams (BDD, SDD).
+Anytime evaluation using best proofs.
 
 ..
     Part of the ProbLog distribution.
@@ -51,16 +51,16 @@ class KBestFormula(CNF, Evaluatable):
         CNF.__init__(self)
         Evaluatable.__init__(self)
 
-    def _create_evaluator(self, semiring, weights):
-        return KBestEvaluator(self, semiring, weights)
+    def _create_evaluator(self, semiring, weights, **kwargs):
+        return KBestEvaluator(self, semiring, weights, **kwargs)
 
 transform(LogicDAG, KBestFormula, clarks_completion)
 
 
 class KBestEvaluator(Evaluator):
 
-    def __init__(self, formula, semiring, weights=None, verbose=None, **kwargs):
-        Evaluator.__init__(self, formula, semiring, weights)
+    def __init__(self, formula, semiring, weights=None, verbose=None, convergence=1e-9, **kwargs):
+        Evaluator.__init__(self, formula, semiring, weights, **kwargs)
 
         self.sdd_manager = SDDManager()
         for l in range(1, formula.atomcount + 1):
@@ -70,6 +70,8 @@ class KBestEvaluator(Evaluator):
         self._weights = None
         self._given_weights = weights
         self._verbose = verbose
+
+        self._convergence = convergence
 
     def initialize(self):
         raise NotImplementedError('Evaluator.initialize() is an abstract method.')
@@ -81,7 +83,7 @@ class KBestEvaluator(Evaluator):
     def evaluate(self, index):
         """Compute the value of the given node."""
 
-        name = [n for n, i in self.get_names() if i == index]
+        name = [n for n, i in self.formula.queries() if i == index]
         if name:
             name = name[0]
         else:
@@ -103,12 +105,17 @@ class KBestEvaluator(Evaluator):
                 nborder = max(lb, ub)
                 while not nborder.is_complete():
                     solution = nborder.update()
+                    logger.debug('  update: %s < p < %s' %
+                                 (lb.value, 1.0-ub.value))
                     if nborder.is_complete():
                         if nborder == lb:
                             return lb.value
                         else:
                             return 1.0 - ub.value
-                    logger.debug('  update: %s < p < %s' % (lb.value, 1 - ub.value))
+
+                    if ub.value + lb.value > 1.0 - self._convergence:
+                        logger.debug('  convergence reached')
+                        return lb.value, 1.0 - ub.value
                     nborder = max(lb, ub)
             except KeyboardInterrupt:
                 pass

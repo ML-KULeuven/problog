@@ -250,7 +250,6 @@ class BaseFormula(ProbLogObject):
         evidence_maybe = [x + (0,) for x in self.get_names(self.LABEL_EVIDENCE_MAYBE)]
         return evidence_true + evidence_false + evidence_maybe
 
-
     # ====================================================================================== #
     # ==========                        KEY MANIPULATION                         =========== #
     # ====================================================================================== #
@@ -822,12 +821,9 @@ class LogicFormula(BaseFormula):
 
         .. code-block:: python
 
-            pl = problog.program.PrologFile(inFile)
-            eng = problog.engine.DefaultEngine(label_all=True)
-
-            gp = problog.formula.LogicFormula(avoid_name_clash=True, keep_order=True)
-            gp = eng.ground_all(pl, target=gp)
-
+            pl = problog.program.PrologFile(input_file)
+            problog.formula.LogicFormula.create_from(avoid_name_clash=True, keep_order=True, \
+label_all=True)
             prologfile = gp.to_prolog()
 
         :return: Prolog program

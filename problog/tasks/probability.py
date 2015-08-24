@@ -151,7 +151,7 @@ def run_problog(filename, knowledge=NNF, semiring=None, parse_class=DefaultProlo
             formula = knowledge.createFrom(PrologFile(filename, parser=parser), debugger=debugger,
                                            **kwdargs)
         with Timer('Evaluation'):
-            result = formula.evaluate(semiring=semiring)
+            result = formula.evaluate(semiring=semiring, **kwdargs)
         return True, result
     except Exception as err:
         return False, process_error(err, debug=debug)
@@ -219,6 +219,8 @@ def argparser():
                         default=argparse.SUPPRESS, help=argparse.SUPPRESS)
     parser.add_argument('--propagate-weights', action='store_true', default=None,
                         help=argparse.SUPPRESS)
+    parser.add_argument('--convergence', '-c', type=float, default=argparse.SUPPRESS,
+                        help='stop anytime when bounds are within this range')
 
     # SDD garbage collection
     sdd_auto_gc_group = parser.add_mutually_exclusive_group()

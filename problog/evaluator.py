@@ -204,7 +204,7 @@ class Evaluatable(object):
     def evidence_all(self):
         raise NotImplementedError()
 
-    def _create_evaluator(self, semiring, weights):
+    def _create_evaluator(self, semiring, weights, **kwargs):
         """Create a new evaluator.
 
         :param semiring: semiring to use
@@ -214,8 +214,9 @@ class Evaluatable(object):
         """
         raise NotImplementedError('Evaluatable._create_evaluator is an abstract method')
 
-    def get_evaluator(self, semiring=None, evidence=None, weights=None):
+    def get_evaluator(self, semiring=None, evidence=None, weights=None, **kwargs):
         """Get an evaluator for computing queries on this formula.
+        It creates an new evaluator and initializes it with the given or predefined evidence.
 
         :param semiring: semiring to use
         :param evidence: evidence values (override values defined in formula)
@@ -226,7 +227,7 @@ class Evaluatable(object):
         if semiring is None:
             semiring = SemiringProbability()
 
-        evaluator = self._create_evaluator(semiring, weights)
+        evaluator = self._create_evaluator(semiring, weights, **kwargs)
 
         for ev_name, ev_index, ev_value in self.evidence_all():
             if ev_index == 0 and ev_value > 0:
@@ -252,16 +253,17 @@ class Evaluatable(object):
         evaluator.propagate()
         return evaluator
 
-    def evaluate(self, index=None, semiring=None, evidence=None, weights=None):
+    def evaluate(self, index=None, semiring=None, evidence=None, weights=None, **kwargs):
         """Evaluate a set of nodes.
 
         :param index: node to evaluate (default: all queries)
         :param semiring: use the given semiring
         :param evidence: use the given evidence values (overrides formula)
         :param weights: use the given weights (overrides formula)
-        :return: the result of the evaluation (as a single value or a dict)
+        :return: The result of the evaluation expressed as an external value of the semiring. \
+         If index is ``None`` (all queries) then the result is a dictionary of name to value.
         """
-        evaluator = self.get_evaluator(semiring, evidence, weights)
+        evaluator = self.get_evaluator(semiring, evidence, weights, **kwargs)
 
         if index is None:
             result = {}
@@ -279,7 +281,8 @@ class Evaluatable(object):
 class Evaluator(object):
     """Generic evaluator."""
 
-    def __init__(self, formula, semiring, weights):
+    # noinspection PyUnusedLocal
+    def __init__(self, formula, semiring, weights, **kwargs):
         self.formula = formula
         self.weights = {}
         self.given_weights = weights

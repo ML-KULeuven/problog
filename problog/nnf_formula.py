@@ -50,15 +50,15 @@ class NNF(LogicDAG, Evaluatable):
     def __init__(self, **kwdargs):
         LogicDAG.__init__(self, auto_compact=False)
 
-    def _create_evaluator(self, semiring, weights):
+    def _create_evaluator(self, semiring, weights, **kwargs):
         return SimpleNNFEvaluator(self, semiring, weights)
 
 
 class SimpleNNFEvaluator(Evaluator):
     """Evaluator for d-DNNFs."""
 
-    def __init__(self, formula, semiring, weights=None):
-        Evaluator.__init__(self, formula, semiring, weights)
+    def __init__(self, formula, semiring, weights=None, **kwargs):
+        Evaluator.__init__(self, formula, semiring, weights, **kwargs)
 
     def _initialize(self, with_evidence=True):
         self.weights.clear()

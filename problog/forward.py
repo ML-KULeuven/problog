@@ -399,8 +399,8 @@ class ForwardSDD(LogicFormula, Evaluatable):
         Evaluatable.__init__(self)
         self.kwargs = kwargs
 
-    def _create_evaluator(self, semiring, weights):
-        return ForwardEvaluator(self, semiring, _ForwardSDD(**self.kwargs), weights)
+    def _create_evaluator(self, semiring, weights, **kwargs):
+        return ForwardEvaluator(self, semiring, _ForwardSDD(**self.kwargs), weights, **kwargs)
 
 
 class ForwardBDD(LogicFormula, Evaluatable):
@@ -409,8 +409,8 @@ class ForwardBDD(LogicFormula, Evaluatable):
         Evaluatable.__init__(self)
         self.kwargs = kwargs
 
-    def _create_evaluator(self, semiring, weights):
-        return ForwardEvaluator(self, semiring, _ForwardBDD(**self.kwargs), weights)
+    def _create_evaluator(self, semiring, weights, **kwargs):
+        return ForwardEvaluator(self, semiring, _ForwardBDD(**self.kwargs), weights, **kwargs)
 
 
 # Inform the system that we can create a ForwardFormula in the same way as a LogicFormula.
@@ -422,7 +422,7 @@ class ForwardEvaluator(Evaluator):
     """An evaluator using anytime forward compilation."""
 
     def __init__(self, formula, semiring, fdd, weights=None, verbose=None, **kwargs):
-        Evaluator.__init__(self, formula, semiring, weights)
+        Evaluator.__init__(self, formula, semiring, weights, **kwargs)
 
         self.fsdd = fdd
         self._z = None
