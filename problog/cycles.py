@@ -113,7 +113,7 @@ def _break_cycles(source, target, nodeid, ancestors, cycles_broken, content, tra
                     for child in node.children]
         newname = node.name
         if newname is not None and child_cycles_broken:
-            newfunc = newname.functor + '_cb_' + str(len(translation[nodeid]))
+            newfunc = 'problog_' + newname.functor + '_cb_' + str(len(translation[nodeid]))
             newname = Term(newfunc, *newname.args)
         if nodetype == 'conj':
             newnode = target.add_and(children, name=newname)
