@@ -28,7 +28,7 @@ from __future__ import print_function
 from .util import Timer
 from .formula import LogicFormula
 from .evaluator import Evaluatable, Evaluator
-from .evaluator import InconsistentEvidenceError
+from .errors import InconsistentEvidenceError
 
 
 class DD(LogicFormula, Evaluatable):

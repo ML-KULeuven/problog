@@ -25,8 +25,8 @@ from __future__ import print_function
 
 import math
 
-from .core import InconsistentEvidenceError
-
+from .core import ProbLogObject, transform_allow_subclass
+from .errors import InconsistentEvidenceError
 
 class OperationNotSupported(Exception):
 
@@ -198,7 +198,8 @@ class SemiringLogProbability(SemiringProbability):
         return a - z
 
 
-class Evaluatable(object):
+@transform_allow_subclass
+class Evaluatable(ProbLogObject):
     """Interface for evaluatable formulae."""
 
     def evidence_all(self):
@@ -225,7 +226,7 @@ class Evaluatable(object):
         :return: evaluator for this formula
         """
         if semiring is None:
-            semiring = SemiringProbability()
+            semiring = SemiringLogProbability()
 
         evaluator = self._create_evaluator(semiring, weights, **kwargs)
 

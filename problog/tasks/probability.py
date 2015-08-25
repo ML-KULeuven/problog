@@ -21,99 +21,19 @@ from __future__ import print_function
 import stat
 import sys
 import os
+import traceback
 
-from ..program import PrologFile, ExtendedPrologFactory
+from ..program import PrologFile
 from ..evaluator import SemiringLogProbability, SemiringProbability
-from ..nnf_formula import NNF
-from ..sdd_formula import SDD
-from ..bdd_formula import BDD
-from ..forward import ForwardBDD, ForwardSDD
-from ..kbest import KBestFormula
+from .. import get_evaluatable, get_evaluatables
+
 from ..util import Timer, start_timer, stop_timer, init_logger, format_dictionary
-from ..core import process_error
-from ..parser import DefaultPrologParser
-from ..debug import EngineTracer
-
-
-def main(argv):
-    parser = argparser()
-    args = parser.parse_args(argv)
-
-    logger = init_logger(args.verbose)
-
-    if args.recursion_limit:
-        sys.setrecursionlimit(args.recursion_limit)
-
-    if args.output is None:
-        output = sys.stdout
-    else:
-        output = open(args.output, 'w')
-
-    parse_class = DefaultPrologParser
-
-    if args.timeout:
-        start_timer(args.timeout)
-
-    if len(args.filenames) == 0:
-        mode = os.fstat(0).st_mode
-        if stat.S_ISFIFO(mode) or stat.S_ISREG(mode):
-            # stdin is piped or redirected
-            args.filenames = ['-']
-        else:
-            # stdin is terminal
-            # No interactive input, exit
-            print('ERROR: Expected a file or stream as input.\n', file=sys.stderr)
-            parser.print_help()
-            sys.exit(1)
-
-    if args.koption in ('nnf', 'ddnnf'):
-        knowledge = NNF
-    elif args.koption == 'sdd':
-        knowledge = SDD
-    elif args.koption == 'fsdd':
-        knowledge = ForwardSDD
-    elif args.koption == 'bdd':
-        knowledge = BDD
-    elif args.koption == 'fbdd':
-        knowledge = ForwardBDD
-    elif args.koption == 'kbest':
-        knowledge = KBestFormula
-    elif args.koption is None:
-        if SDD.is_available():
-            logger.info('Using SDD path')
-            knowledge = SDD
-        else:
-            logger.info('Using d-DNNF path')
-            knowledge = NNF
-    else:
-        raise ValueError("Unknown option for --knowledge: '%s'" % args.knowledge)
-
-    if args.logspace:
-        semiring = SemiringLogProbability()
-    else:
-        semiring = SemiringProbability()
-
-    if args.propagate_weights:
-        args.propagate_weights = semiring
-
-    for filename in args.filenames:
-        if len(args.filenames) > 1:
-            print ('Results for %s:' % filename)
-        result = run_problog(filename, knowledge, semiring, parse_class, **vars(args))
-        retcode = print_result(result, output)
-        if len(args.filenames) == 1:
-            sys.exit(retcode)
-
-    if args.output is not None:
-        output.close()
-
-    if args.timeout:
-        stop_timer()
+from ..errors import process_error
 
 
 def print_result(d, output, precision=8):
-    """
-    Pretty print result.
+    """Pretty print result.
+
     :param d: result from run_problog
     :param output: output file
     :param precision:
@@ -124,15 +44,15 @@ def print_result(d, output, precision=8):
         print(format_dictionary(d, precision), file=output)
         return 0
     else:
-        print (d, file=output)
+        print (process_error(d), file=output)
         return 1
 
 
-def run_problog(filename, knowledge=NNF, semiring=None, parse_class=DefaultPrologParser,
-                debug=False, engine_debug=False, **kwdargs):
+def execute(filename, knowledge=None, semiring=None, debug=False, **kwdargs):
     """Run ProbLog.
+
     :param filename: input file
-    :param knowledge: knowledge compilation class
+    :param knowledge: knowledge compilation class or identifier
     :param semiring: semiring to use
     :param parse_class: prolog parser to use
     :param debug: enable advanced error output
@@ -140,21 +60,25 @@ def run_problog(filename, knowledge=NNF, semiring=None, parse_class=DefaultProlo
     :param kwdargs: additional arguments
     :return: tuple where first value indicates success, and second value contains result details
     """
-    if engine_debug:
-        debugger = EngineTracer()
-    else:
-        debugger = None
 
+    if knowledge is None or type(knowledge) == str:
+        knowledge = get_evaluatable(knowledge)
     try:
-        with Timer('Total time to process model'):
-            parser = parse_class(ExtendedPrologFactory())
-            formula = knowledge.createFrom(PrologFile(filename, parser=parser), debugger=debugger,
-                                           **kwdargs)
-        with Timer('Evaluation'):
+        with Timer('Total time'):
+            model = PrologFile(filename)
+            formula = knowledge.create_from(model, **kwdargs)
             result = formula.evaluate(semiring=semiring, **kwdargs)
+
+            # Update location information on result terms
+            for n, p in result.items():
+                if not n.location or not n.location[0]:
+                    # Only get location for primary file (other file information is not available).
+                    n.loc = model.lineno(n.location)
         return True, result
     except Exception as err:
-        return False, process_error(err, debug=debug)
+        trace = traceback.format_exc()
+        err.trace = trace
+        return False, err
 
 
 def argparser():
@@ -191,7 +115,7 @@ def argparser():
     parser.add_argument('filenames', metavar='MODEL', nargs='*', type=InputFile)
     parser.add_argument('--verbose', '-v', action='count', help='Verbose output')
     parser.add_argument('--knowledge', '-k', dest='koption',
-                        choices=('sdd', 'nnf', 'ddnnf', 'bdd', 'fsdd', 'fbdd', 'kbest'),
+                        choices=get_evaluatables(),
                         default=None, help="Knowledge compilation tool.")
 
     # Evaluation semiring
@@ -238,6 +162,59 @@ def argparser():
                                    default=argparse.SUPPRESS, help=argparse.SUPPRESS)
 
     return parser
+
+
+def main(argv, result_handler=None):
+    if result_handler is None:
+        result_handler = print_result
+
+    parser = argparser()
+    args = parser.parse_args(argv)
+
+    init_logger(args.verbose)
+
+    if args.output is None:
+        output = sys.stdout
+    else:
+        output = open(args.output, 'w')
+
+    if args.timeout:
+        start_timer(args.timeout)
+
+    if len(args.filenames) == 0:
+        mode = os.fstat(0).st_mode
+        if stat.S_ISFIFO(mode) or stat.S_ISREG(mode):
+            # stdin is piped or redirected
+            args.filenames = ['-']
+        else:
+            # stdin is terminal
+            # No interactive input, exit
+            print('ERROR: Expected a file or stream as input.\n', file=sys.stderr)
+            parser.print_help()
+            sys.exit(1)
+
+    if args.logspace:
+        semiring = SemiringLogProbability()
+    else:
+        semiring = SemiringProbability()
+
+    if args.propagate_weights:
+        args.propagate_weights = semiring
+
+    for filename in args.filenames:
+        if len(args.filenames) > 1:
+            print ('Results for %s:' % filename)
+        result = execute(filename, args.koption, semiring, **vars(args))
+        retcode = result_handler(result, output)
+        if len(args.filenames) == 1:
+            sys.exit(retcode)
+
+    if args.output is not None:
+        output.close()
+
+    if args.timeout:
+        stop_timer()
+
 
 if __name__ == '__main__':
     main(sys.argv[1:])

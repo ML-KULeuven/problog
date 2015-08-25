@@ -29,10 +29,12 @@ import subprocess
 from collections import defaultdict
 
 from . import system_info
-from .evaluator import Evaluator, Evaluatable, InconsistentEvidenceError
+from .evaluator import Evaluator, Evaluatable
+from .errors import InconsistentEvidenceError
 from .formula import LogicDAG
 from .cnf_formula import CNF
-from .core import transform, CompilationError
+from .core import transform
+from .errors import CompilationError
 from .util import Timer, subprocess_check_call
 
 
@@ -45,6 +47,8 @@ class DSharpError(CompilationError):
 
 class NNF(LogicDAG, Evaluatable):
     """A d-DNNF formula."""
+
+    transform_preference = 20
 
     # noinspection PyUnusedLocal,PyUnusedLocal,PyUnusedLocal
     def __init__(self, **kwdargs):

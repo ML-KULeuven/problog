@@ -370,15 +370,29 @@ class ForwardInference(DD):
 
 
 class _ForwardSDD(SDD, ForwardInference):
+
+    transform_preference = 1000
+
     def __init__(self, sdd_auto_gc=True, **kwdargs):
         SDD.__init__(self, sdd_auto_gc=sdd_auto_gc, **kwdargs)
         ForwardInference.__init__(self, **kwdargs)
 
+    @classmethod
+    def is_available(cls):
+        return SDD.is_available()
+
 
 class _ForwardBDD(BDD, ForwardInference):
+
+    transform_preference = 1000
+
     def __init__(self, **kwdargs):
         BDD.__init__(self, **kwdargs)
         ForwardInference.__init__(self, **kwdargs)
+
+    @classmethod
+    def is_available(cls):
+        return BDD.is_available()
 
 
 @transform(LogicFormula, _ForwardSDD)
@@ -394,20 +408,34 @@ def build_sdd(source, destination, **kwdargs):
 
 
 class ForwardSDD(LogicFormula, Evaluatable):
+
+    transform_preference = 30
+
     def __init__(self, **kwargs):
         LogicFormula.__init__(self, **kwargs)
         Evaluatable.__init__(self)
         self.kwargs = kwargs
+
+    @classmethod
+    def is_available(cls):
+        return SDD.is_available()
 
     def _create_evaluator(self, semiring, weights, **kwargs):
         return ForwardEvaluator(self, semiring, _ForwardSDD(**self.kwargs), weights, **kwargs)
 
 
 class ForwardBDD(LogicFormula, Evaluatable):
+
+    transform_preference = 40
+
     def __init__(self, **kwargs):
         LogicFormula.__init__(self, **kwargs)
         Evaluatable.__init__(self)
         self.kwargs = kwargs
+
+    @classmethod
+    def is_available(cls):
+        return BDD.is_available()
 
     def _create_evaluator(self, semiring, weights, **kwargs):
         return ForwardEvaluator(self, semiring, _ForwardBDD(**self.kwargs), weights, **kwargs)

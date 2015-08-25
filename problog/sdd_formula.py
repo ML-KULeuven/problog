@@ -24,7 +24,8 @@ Interface to Sentential Decision Diagrams (SDD)
 from __future__ import print_function
 
 from .formula import LogicDAG
-from .core import transform, InstallError
+from .core import transform
+from .errors import InstallError
 from .dd_formula import DD, build_dd, DDManager
 
 # noinspection PyBroadException
@@ -45,6 +46,8 @@ class SDD(DD):
     This means that this class can not be used directly during grounding.
     It can be used as a target for the ``makeAcyclic`` method.
     """
+
+    transform_preference = 10
 
     def __init__(self, sdd_auto_gc=False, **kwdargs):
         if sdd is None:

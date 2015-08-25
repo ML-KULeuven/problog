@@ -25,7 +25,8 @@ from __future__ import print_function
 
 from collections import namedtuple, defaultdict, OrderedDict
 
-from .core import InconsistentEvidenceError, ProbLogObject
+from .core import ProbLogObject
+from .errors import InconsistentEvidenceError
 
 from .util import OrderedSet
 from .logic import Term

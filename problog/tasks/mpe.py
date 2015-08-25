@@ -26,7 +26,6 @@ from problog.program import PrologFile
 from problog.constraint import TrueConstraint
 from problog.formula import LogicFormula, LogicDAG
 from problog.cnf_formula import CNF
-from problog.logic import Term
 from problog.maxsat import get_solver, get_available_solvers
 
 

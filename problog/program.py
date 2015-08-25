@@ -23,7 +23,7 @@ Provides tools for loading logic programs.
 """
 from __future__ import print_function
 
-from .core import GroundingError
+from .errors import GroundingError
 from .logic import Term, Var, Constant, AnnotatedDisjunction, Clause, And, Or, Not
 
 from .parser import DefaultPrologParser, Factory
@@ -205,7 +205,7 @@ class PrologString(LogicProgram):
         LogicProgram.__init__(self, source_root=source_root, source_files=source_files,
                               line_info=lines)
         if parser is None:
-            self.parser = DefaultPrologParser(PrologFactory(identifier=identifier))
+            self.parser = DefaultPrologParser(DefaultPrologFactory(identifier=identifier))
         else:
             self.parser = parser
 
@@ -446,3 +446,5 @@ class ExtendedPrologFactory(PrologFactory):
             operand2.functor = self.neg_head_lits[operand2.signature]['n']
         operand2.probability = operand1
         return operand2
+
+DefaultPrologFactory = ExtendedPrologFactory

@@ -23,7 +23,7 @@ Efficient low-level parser for Prolog programs.
 """
 from __future__ import print_function
 
-from .core import ParseError as CoreParseError
+from .errors import ParseError as CoreParseError
 
 LINE_COMMENT = '%'
 BLOCK_COMMENT_START = '/*'
@@ -35,7 +35,8 @@ WHITESPACE = frozenset('\n\t ')
 
 class ParseError(CoreParseError):
     def __init__(self, string, message, location):
-        CoreParseError.__init__(self, message, *self._convert_pos(string, location))
+        line, col, text = self._convert_pos(string, location)
+        CoreParseError.__init__(self, message, location=(None, line, col), line=text)
 
     def _convert_pos(self, string, location):
         """Find line number, column number and text of offending line."""

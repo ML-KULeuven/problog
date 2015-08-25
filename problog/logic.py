@@ -84,7 +84,7 @@ import math
 import sys
 
 from .util import OrderedSet
-from .core import GroundingError
+from .errors import GroundingError
 
 from collections import deque
 

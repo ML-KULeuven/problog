@@ -228,9 +228,14 @@ problog.initDiv = function(el, resize) {
           p = data.err;
           var msg = p.message;
           if (msg == undefined) msg = p;
-          var row = p.lineno;
-          var col = p.colno;
 
+          if (p.location) {
+            var row = p.location[1];
+            var col = p.location[2];
+          } else {
+            var row = p.lineno;
+            var col = p.colno;
+          }
           var result = $('<div>', { 'class': 'alert alert-danger' } ).text(msg);
           if (row !== undefined) {
             var editor = ace.edit(editor_container[0]);

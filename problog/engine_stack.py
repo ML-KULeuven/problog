@@ -27,7 +27,8 @@ import sys
 
 from .logic import Term, ArithmeticError, is_ground
 from .engine import UnifyError, instantiate, UnknownClause, UnknownClauseInternal, is_variable
-from .engine import GroundingError, NonGroundProbabilisticClause
+from .engine import NonGroundProbabilisticClause
+from .errors import GroundingError
 from .engine import ClauseDBEngine, substitute_head_args, substitute_call_args, unify_call_head, \
     unify_call_return
 from .engine_builtin import add_standard_builtins, IndirectCallCycleError

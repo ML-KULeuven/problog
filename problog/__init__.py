@@ -50,3 +50,25 @@ from . import util
 from . import bdd_formula
 from . import forward
 from . import cycles
+from . import kbest
+
+
+_evaluatables = {'sdd': sdd_formula.SDD,
+                 'bdd': bdd_formula.BDD,
+                 'nnf': nnf_formula.NNF,
+                 'ddnnf': nnf_formula.NNF,
+                 'kbest': kbest.KBestFormula,
+                 'fsdd': forward.ForwardSDD,
+                 'fbdd': forward.ForwardBDD}
+
+
+def get_evaluatables():
+    return _evaluatables.keys()
+
+
+def get_evaluatable(name=None):
+    if name is None:
+        return evaluator.Evaluatable
+    else:
+        return _evaluatables[name]
+

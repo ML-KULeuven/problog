@@ -47,12 +47,20 @@ from functools import total_ordering
 
 class KBestFormula(CNF, Evaluatable):
 
+    transform_preference = 40
+
     def __init__(self, **kwargs):
         CNF.__init__(self)
         Evaluatable.__init__(self)
 
     def _create_evaluator(self, semiring, weights, **kwargs):
         return KBestEvaluator(self, semiring, weights, **kwargs)
+
+    @classmethod
+    def is_available(cls):
+        """Checks whether the SDD library is available."""
+        return True
+
 
 transform(LogicDAG, KBestFormula, clarks_completion)
 

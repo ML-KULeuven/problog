@@ -32,7 +32,8 @@ from .logic import *
 from .formula import LogicFormula
 from .engine_unify import *
 
-from .core import transform, GroundingError
+from .core import transform
+from .errors import GroundingError
 from .util import Timer
 
 

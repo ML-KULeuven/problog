@@ -24,7 +24,7 @@ Implementation of Prolog / ProbLog builtins.
 
 from .logic import term2str, Term, Clause, Constant, term2list, list2term, is_ground, is_variable
 from .program import PrologFile
-from .core import GroundingError
+from .errors import GroundingError
 from .engine_unify import unify_value, UnifyError, substitute_simple
 from .engine import UnknownClauseInternal, UnknownClause
 
@@ -983,8 +983,8 @@ def _builtin_consult(filename, database=None, **kwdargs):
     if not os.path.exists(filename):
         filename += '.pl'
     if not os.path.exists(filename):
-        raise ConsultError(location=database.lineno(kwdargs.get('location')),
-                           message="Consult: file not found '%s'" % filename)
+        raise ConsultError(message="Consult: file not found '%s'" % filename,
+                           location=database.lineno(kwdargs.get('location')))
 
     # Prevent loading the same file twice
     if filename not in database.source_files:
@@ -1005,8 +1005,8 @@ def _builtin_load_external(arg, engine=None, database=None, location=None, **kwd
     externals = {}
     filename = os.path.join(database.source_root, _atom_to_filename(arg))
     if not os.path.exists(filename):
-        raise ConsultError(location=database.lineno(location),
-                           message="Load external: file not found '%s'" % filename)
+        raise ConsultError(message="Load external: file not found '%s'" % filename,
+                           location=database.lineno(location))
     try:
         with open(filename, 'r') as extfile:
             ext = imp.load_module('externals', extfile, filename, ('.py', 'U', 1))
@@ -1014,8 +1014,8 @@ def _builtin_load_external(arg, engine=None, database=None, location=None, **kwd
                 externals[func_name] = func
         engine.add_external_calls(externals)
     except ImportError:
-        raise ConsultError(location=database.lineno(location),
-                           message="Error while loading external file '%s'" % filename)
+        raise ConsultError(message="Error while loading external file '%s'" % filename,
+                           location=database.lineno(location))
 
     return True
 

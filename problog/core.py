@@ -25,7 +25,7 @@ from __future__ import print_function
 
 from collections import defaultdict
 
-import traceback
+from .errors import ProbLogError
 
 
 class ProbLog(object):
@@ -36,6 +36,7 @@ class ProbLog(object):
 
     transformations = defaultdict(list)
     create_as = defaultdict(list)
+    allow_subclass = set()
 
     @classmethod
     def register_transformation(cls, src, target, action=None):
@@ -58,6 +59,14 @@ class ProbLog(object):
         cls.create_as[repl].append(orig)
 
     @classmethod
+    def register_allow_subclass(cls, orig):
+        """Register that we can create objects of class `repl` by creating an object of a subclass.
+
+        :param orig:
+        """
+        cls.allow_subclass.add(orig)
+
+    @classmethod
     def find_paths(cls, src, target, stack=()):
         """Find all possible paths to transform the src object into the target class.
 
@@ -70,14 +79,21 @@ class ProbLog(object):
         if isinstance(src, target):
             yield (target,)
         else:
-            # for d in list(cls.transformations) :
-            #     if issubclass(d,target) :
-            targets = [target] + cls.create_as[target]
-            for d in targets:
+            targets = [(0, target, target)] + [(0, target, d) for d in cls.create_as[target]]
+            if target in cls.allow_subclass:
+                for d in set(list(cls.transformations) + list(cls.create_as)):
+                    if issubclass(d, target) and \
+                            (not hasattr(d, 'is_available') or getattr(d, 'is_available')()):
+                        if hasattr(d, 'transform_preference'):
+                            w = getattr(d, 'transform_preference')
+                        else:
+                            w = 1000
+                        targets.append((w, d, d))
+            for w, tar, d in sorted(targets, key=lambda v: v[0]):
                 for s, action in cls.transformations[d]:
                     if s not in stack:
                         for path in cls.find_paths(src, s, stack + (s,)):
-                            yield path + (action, target)
+                            yield path + (action, tar)
 
     @classmethod
     def convert(cls, src, target, **kwdargs):
@@ -110,96 +126,9 @@ class ProbLog(object):
                            % (type(src).__name__, getattr(target, '__name__')))
 
 
-class ProbLogError(Exception):
-    """General Problog error. Root of all user-caused ProbLog errors."""
-    pass
-
-
 class TransformationUnavailable(Exception):
     """Exception thrown when no valid transformation between two ProbLogObjects can be found."""
     pass
-
-
-class ParseError(ProbLogError):
-    """Error during parsing."""
-    def __init__(self, message, lineno, col, line):
-        self.lineno = lineno
-        self.col = col
-        self.msg = message
-        self.line = line
-        Exception.__init__(self, '%s (at %s:%s)' % (self.msg, self.lineno, self.col))
-
-
-class GroundingError(ProbLogError):
-    """Represents an error that occurred during grounding."""
-
-    def __init__(self, base_message, location=None):
-        self.base_message = base_message
-        self.location = location
-
-    def _location_string(self):
-        if self.location is None:
-            return ''
-        if type(self.location) == tuple:
-            fn, ln, cn = self.location
-            if fn is None:
-                return ' at %s:%s' % (ln, cn)
-            else:
-                return ' at %s:%s in %s' % (ln, cn, fn)
-        else:
-            return ' at character %s' % self.location
-
-    def _message(self):
-        return '%s: %s%s.' % (self.__class__.__name__, self.base_message, self._location_string())
-
-    def __str__(self):
-        return self._message()
-
-
-class CompilationError(ProbLogError):
-    """Error during compilation"""
-    pass
-
-
-class InstallError(ProbLogError):
-    """Error during installation"""
-    pass
-
-
-class InconsistentEvidenceError(ProbLogError):
-    """Error when evidence is inconsistent"""
-
-    def __init__(self, message=None):
-        if message is None:
-            message = 'The given evidence is inconsistent.'
-        ProbLogError.__init__(self, message)
-
-
-def process_error(err, debug=False):
-    """Take the given error raise by ProbLog and produce a meaningful error message.
-
-    :param err: error that was raised
-    :param debug: if True, also print original stack trace
-    :return: textual representation of the error
-    """
-    if debug:
-        traceback.print_exc()
-
-    err_type = type(err).__name__
-    if err_type == 'ParseException':
-        return 'Parsing error on %s:%s: %s.\n%s' % (err.lineno, err.col, err.msg, err.line)
-    elif isinstance(err, ParseError):
-        return 'Parsing error on %s:%s: %s.\n%s' % (err.lineno, err.col, err.msg, err.line)
-    elif isinstance(err, GroundingError):
-        return 'Error during grounding: %s' % err
-    elif isinstance(err, CompilationError):
-        return 'Error during compilation: %s' % err
-    elif isinstance(err, ProbLogError):
-        return 'Error: %s' % err
-    else:
-        if not debug:
-            traceback.print_exc()
-        return 'Unknown error: %s' % err_type
 
 
 class ProbLogObject(object):
@@ -247,6 +176,11 @@ def transform_create_as(cls1, cls2):
     ProbLog.register_create_as(cls1, cls2)
 
 
+def transform_allow_subclass(cls):
+    ProbLog.register_allow_subclass(cls)
+    return cls
+
+
 # noinspection PyPep8Naming
 class transform(object):
     """Decorator for registering a transformation between two classes.
@@ -276,3 +210,4 @@ def list_transformations():
         for src, func in ProbLog.transformations[target]:
             print ('\t\tfrom %s.%s by %s.%s' %
                    (src.__module__, src.__name__, func.__module__, func.__name__))
+

@@ -22,7 +22,7 @@ Implementation of unification for the grounding engine.
     limitations under the License.
 """
 from __future__ import print_function
-from .core import GroundingError
+from .errors import GroundingError
 from .logic import is_variable
 
 
