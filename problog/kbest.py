@@ -72,9 +72,10 @@ class KBestEvaluator(Evaluator):
                  verbose=None, convergence=1e-9, explain=False, **kwargs):
         Evaluator.__init__(self, formula, semiring, weights, **kwargs)
 
-        self.sdd_manager = SDDManager()
-        for l in range(1, formula.atomcount + 1):
-            self.sdd_manager.add_variable(l)
+        self.sdd_manager = None
+        # self.sdd_manager = SDDManager()
+        # for l in range(1, formula.atomcount + 1):
+        #     self.sdd_manager.add_variable(l)
 
         self._z = None
         self._weights = None
@@ -94,7 +95,8 @@ class KBestEvaluator(Evaluator):
 
     def propagate(self):
         self._weights = self.formula.extract_weights(self.semiring, self._given_weights)
-        self._z = self.sdd_manager.wmc_true(self._weights, self.semiring)
+        self._z = self.semiring.one()
+        # self._z = self.sdd_manager.wmc_true(self._weights, self.semiring)
 
     def evaluate(self, index):
         """Compute the value of the given node."""
@@ -202,7 +204,7 @@ class Border(object):
         self.semiring = semiring
 
         self.weights = self.wcnf.extract_weights(self.semiring)
-        self.compiled = self.manager.false()
+        # self.compiled = self.manager.false()
 
         self.value = 0.0
         self.improvement = 1.0

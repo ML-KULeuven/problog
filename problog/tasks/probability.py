@@ -103,6 +103,7 @@ def argparser():
 
       - (default): inference
       - install: run the installer
+      - explain: compute the probability of a query and explain how to get there
       - ground: generate ground program (see ground --help)
       - sample: generate samples from the model (see sample --help)
       - unittest: run the testsuite

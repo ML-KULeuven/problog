@@ -74,8 +74,8 @@ Update 2015 by Anton Dries:
 #include <stdlib.h>
 #include <time.h>
 
-#include <sys/times.h>
-#include <sys/types.h>
+// #include <sys/times.h>
+// #include <sys/types.h>
 #include <limits.h>
 
 #include <unistd.h>
@@ -3020,8 +3020,8 @@ int main(int argc, char *argv[]) {
   for (i=0; i<WORD_LENGTH; i++)
     saved_input_file[i]=argv[1][i];
   
-  a_tms = ( struct tms *) malloc( sizeof (struct tms));
-  mess=times(a_tms); begintime = a_tms->tms_utime;
+  // a_tms = ( struct tms *) malloc( sizeof (struct tms));
+  // mess=times(a_tms); begintime = a_tms->tms_utime;
 
   printf("c ----------------------------\n");
   printf("c - Weighted Partial MaxSATZ -\n");
@@ -3049,7 +3049,7 @@ int main(int argc, char *argv[]) {
   case NONE:
     printf("An empty resolvant is found!\n"); break;
   }
-  mess=times(a_tms); endtime = a_tms->tms_utime;
+  // mess=times(a_tms); endtime = a_tms->tms_utime;
   
   printf("c Learned clauses = %i\n", INIT_BASE_NB_CLAUSE - BASE_NB_CLAUSE);
   printf("c NB_MONO= %lli, NB_BRANCHE= %lli, NB_BACK= %lli \n", 
