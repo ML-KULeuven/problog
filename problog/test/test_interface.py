@@ -35,6 +35,9 @@ class TestInterfaces(unittest.TestCase):
     def test_cli_ground(self):
         return self._test_cmd('ground')
 
+    def test_cli_sample(self):
+        return self._test_cmd('sample')
+
     def test_cli_default(self):
         return self._test_cmd(None)
 
