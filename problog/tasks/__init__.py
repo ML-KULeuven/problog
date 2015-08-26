@@ -23,6 +23,7 @@ problog_tasks['mpe'] = 'problog.tasks.mpe'
 problog_tasks['sample'] = 'problog.tasks.sample'
 problog_tasks['ground'] = 'problog.tasks.ground'
 problog_tasks['lfi'] = '../learning/lfi.py'
+problog_tasks['explain'] = 'problog.kbest'
 
 problog_default_task = 'prob'
 

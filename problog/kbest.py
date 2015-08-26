@@ -32,8 +32,9 @@ from .constraint import TrueConstraint, ClauseConstraint
 from .sdd_formula import SDDManager
 from .cnf_formula import CNF, clarks_completion
 from .maxsat import get_solver
-from .util import init_logger
+from .util import init_logger, format_dictionary
 from .evaluator import Evaluator, Evaluatable
+from .logic import Term
 
 from copy import deepcopy
 
@@ -67,7 +68,8 @@ transform(LogicDAG, KBestFormula, clarks_completion)
 
 class KBestEvaluator(Evaluator):
 
-    def __init__(self, formula, semiring, weights=None, verbose=None, convergence=1e-9, **kwargs):
+    def __init__(self, formula, semiring, weights=None, lower_only=False,
+                 verbose=None, convergence=1e-9, explain=False, **kwargs):
         Evaluator.__init__(self, formula, semiring, weights, **kwargs)
 
         self.sdd_manager = SDDManager()
@@ -78,6 +80,12 @@ class KBestEvaluator(Evaluator):
         self._weights = None
         self._given_weights = weights
         self._verbose = verbose
+        self._lower_only = lower_only
+        self._explain = explain
+        if explain:
+            self._lower_only = True
+
+        self._reverse_names = {index: name for name, index in self.formula.get_names()}
 
         self._convergence = convergence
 
@@ -101,22 +109,55 @@ class KBestEvaluator(Evaluator):
         logger.debug('evaluating query %s' % name)
 
         if index is None:
+            if self._explain:
+                print ('%s :- fail.' % name)
             return 0.0
         elif index == 0:
+            if self._explain:
+                print ('%s :- true.' % name)
             return 1.0
         else:
-            lb = Border(self.formula, self.sdd_manager, self.semiring, index)
-            ub = Border(self.formula, self.sdd_manager, self.semiring, -index)
+            lb = Border(self.formula, self.sdd_manager, self.semiring, index, 'lower')
+            ub = Border(self.formula, self.sdd_manager, self.semiring, -index, 'upper')
+
+            k = 0
+            # Select the border with most improvement
+            if self._lower_only:
+                nborder = lb
+            else:
+                nborder = max(lb, ub)
 
             try:
-                # Select the border with most improvement
-                nborder = max(lb, ub)
                 while not nborder.is_complete():
                     solution = nborder.update()
-                    logger.debug('  update: %s < p < %s' %
-                                 (lb.value, 1.0-ub.value))
+                    logger.debug('  update: %s %s < p < %s ' %
+                                 (nborder.name, lb.value, 1.0 - ub.value))
+                    if self._explain and solution is not None:
+                        solution_names = []
+
+                        probability = self.semiring.one()
+                        for s in solution:
+                            n = self._reverse_names.get(abs(s), Term('choice_%s' % (abs(s))))
+                            wp, wn = self._weights[abs(s)]
+                            if s < 0:
+                                probability = self.semiring.times(probability, wn)
+                                solution_names.append(-n)
+                            else:
+                                probability = self.semiring.times(probability, wp)
+                                solution_names.append(n)
+                        proof = ', '.join(map(str, solution_names))
+                        probability = self.semiring.result(probability)
+                        print('%s :- %s.  %% P=%.8g' % (name, proof, probability))
+
+                    if solution is not None:
+                        k += 1
+
                     if nborder.is_complete():
                         if nborder == lb:
+                            if self._explain:
+                                if k == 0:
+                                    print('%s :- fail.' % name)
+                                print()
                             return lb.value
                         else:
                             return 1.0 - ub.value
@@ -124,11 +165,15 @@ class KBestEvaluator(Evaluator):
                     if ub.value + lb.value > 1.0 - self._convergence:
                         logger.debug('  convergence reached')
                         return lb.value, 1.0 - ub.value
-                    nborder = max(lb, ub)
+                    if self._lower_only:
+                        nborder = lb
+                    else:
+                        nborder = max(lb, ub)
             except KeyboardInterrupt:
                 pass
             except SystemError:
                 pass
+
             return lb.value, 1.0 - ub.value
 
     def evaluate_evidence(self):
@@ -151,9 +196,11 @@ class KBestEvaluator(Evaluator):
 @total_ordering
 class Border(object):
 
-    def __init__(self, cnf, manager, semiring, query):
+    def __init__(self, cnf, manager, semiring, query, name):
         self.wcnf = deepcopy(cnf)
         self.wcnf.add_constraint(TrueConstraint(query))
+
+        self.name = name
 
         self.manager = manager
         self.semiring = semiring
@@ -172,23 +219,41 @@ class Border(object):
             self.improvement = None
             return None
         else:
-            m = self.manager
+            # m = self.manager
 
             solution = self.wcnf.from_partial(solution)
+
+            probability = self.semiring.one()
+            for s in solution:
+                wp, wn = self.weights[abs(s)]
+                if s < 0:
+                    probability = self.semiring.times(probability, wn)
+                else:
+                    probability = self.semiring.times(probability, wp)
+            probability = self.semiring.result(probability)
+
             self.wcnf.add_constraint(ClauseConstraint(list(map(lambda x: -x, solution))))
-            literals = list(map(m.literal, solution))
-            proof_sdd = m.conjoin(*literals)
-            sdd_query_new = m.disjoin(self.compiled, proof_sdd)
-            m.deref(proof_sdd, self.compiled)
-            self.compiled = sdd_query_new
+            # literals = list(map(m.literal, solution))
 
-            pquery = m.wmc(self.compiled, self.weights, self.semiring)
-            ptrue = m.wmc_true(self.weights, self.semiring)
-            res = self.semiring.normalize(pquery, ptrue)
+            # proof_sdd = m.conjoin(*literals)
+            # sdd_query_new = m.disjoin(self.compiled, proof_sdd)
+            # m.deref(proof_sdd, self.compiled)
+            # self.compiled = sdd_query_new
+            #
+            # pquery = m.wmc(self.compiled, self.weights, self.semiring)
+            # ptrue = m.wmc_true(self.weights, self.semiring)
+            # res = self.semiring.normalize(pquery, ptrue)
 
-            value = self.semiring.result(res)
-            self.improvement = value - self.value
-            self.value = value
+            # value = self.semiring.result(res)
+
+            # self.improvement = value - self.value
+            # self.value = value
+
+            self.improvement = probability
+            self.value = self.value + probability
+
+            assert abs(self.improvement - probability) < 1e-8
+
             return solution
 
     def is_complete(self):
@@ -206,7 +271,7 @@ class Border(object):
         return self.improvement == other.improvement
 
 
-def main(argv):
+def main(argv, result_handler=None):
 
     parser = argparse.ArgumentParser()
     parser.add_argument('filename')
@@ -215,12 +280,16 @@ def main(argv):
 
     init_logger(args.verbose)
 
-    cnf = KBestFormula.createFrom(PrologFile(args.filename))
+    cnf = KBestFormula.createFrom(PrologFile(args.filename), label_all=True)
 
-    results = cnf.evaluate()
-    for k, v in results.items():
-        print (k, v[0], v[1])
+    print ('Proofs')
+    print ('------')
+    results = cnf.evaluate(explain=True)
 
+    print ()
+    print ('Probabilities')
+    print ('-------------')
+    print (format_dictionary(results))
 
 if __name__ == '__main__':
     main(sys.argv[1:])
