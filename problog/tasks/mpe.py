@@ -27,73 +27,100 @@ from problog.constraint import TrueConstraint
 from problog.formula import LogicFormula, LogicDAG
 from problog.cnf_formula import CNF
 from problog.maxsat import get_solver, get_available_solvers
+from problog.errors import process_error
 
 
 def main(argv, result_handler=None):
+    if result_handler is None:
+        result_handler = print_result
+
     args = argparser().parse_args(argv)
     inputfile = args.inputfile
 
-    pl = PrologFile(inputfile)
-
-    gp = LogicFormula.createFrom(pl, label_all=True, avoid_name_clash=True)
-
-    dag = LogicDAG.createFrom(pl, label_all=True, avoid_name_clash=True)
-
-    cnf = CNF.createFrom(dag)
-
-    for qn, qi in cnf.evidence():
-        cnf.add_constraint(TrueConstraint(qi))
-
-    for qn, qi in cnf.queries():
-        cnf.add_constraint(TrueConstraint(qi))
-
-    solver = get_solver(args.solver)
-
-    result = solver.evaluate(cnf)
-
-    if result is None:
-        print ('%% The model is not satisfiable.')
-    # elif not args.output_all:
-    #     # Old output
-    #     facts = set(result)
-    #     pfacts = cnf.get_weights()
-    #     true_facts = set()
-    #     for name, node in cnf.get_names():
-    #         if node in pfacts:
-    #             if node in facts:
-    #                 facts.remove(node)
-    #                 # print (name)
-    #                 true_facts.add(name)
-    #             elif -node in facts:
-    #                 facts.remove(-node)
-    #                 # print (-name)
-    #             else:
-    #                 pass
-    #                 # print (-name)
-    #
-    #     for n in true_facts:
-    #         print (n)
+    if args.output is not None:
+        outf = open(args.output, 'w')
     else:
-        # TODO do this on original ground program before cycle-breaking
-        truthvalues = reduce_formula(dag, result)
+        outf = sys.stdout
 
-        true_facts = set()
-        false_facts = set()
-        for i, n, t in dag:
-            if n.name is not None and truthvalues[i - 1]:
-                if not n.name.functor.startswith('problog_'):
-                    true_facts.add(n.name)
-            if n.name is not None and not truthvalues[i - 1]:
-                if not n.name.functor.startswith('problog_'):
-                    false_facts.add(n.name)
+    try:
+        pl = PrologFile(inputfile)
 
-        for n in true_facts:
-            print (n)
+        gp = LogicFormula.createFrom(pl, label_all=True, avoid_name_clash=True)
 
-        if args.output_all:
-            for n in false_facts:
-                print (-n)
+        dag = LogicDAG.createFrom(pl, label_all=True, avoid_name_clash=True)
 
+        cnf = CNF.createFrom(dag)
+
+        for qn, qi in cnf.evidence():
+            cnf.add_constraint(TrueConstraint(qi))
+
+        for qn, qi in cnf.queries():
+            cnf.add_constraint(TrueConstraint(qi))
+
+        solver = get_solver(args.solver)
+
+        result = solver.evaluate(cnf)
+
+        output_facts = None
+        if result is None:
+            print ('%% The model is not satisfiable.', file=outf)
+        # elif not args.output_all:
+        #     # Old output
+        #     facts = set(result)
+        #     pfacts = cnf.get_weights()
+        #     true_facts = set()
+        #     for name, node in cnf.get_names():
+        #         if node in pfacts:
+        #             if node in facts:
+        #                 facts.remove(node)
+        #                 # print (name)
+        #                 true_facts.add(name)
+        #             elif -node in facts:
+        #                 facts.remove(-node)
+        #                 # print (-name)
+        #             else:
+        #                 pass
+        #                 # print (-name)
+        #
+        #     for n in true_facts:
+        #         print (n)
+        else:
+            # TODO do this on original ground program before cycle-breaking
+            truthvalues = reduce_formula(dag, result)
+
+            output_facts = set()
+            true_facts = set()
+            false_facts = set()
+            for i, n, t in dag:
+                if n.name is not None and truthvalues[i - 1]:
+                    if not n.name.functor.startswith('problog_'):
+                        true_facts.add(n.name)
+                if n.name is not None and not truthvalues[i - 1]:
+                    if not n.name.functor.startswith('problog_'):
+                        false_facts.add(n.name)
+
+            for n in true_facts:
+                output_facts.add(n)
+
+            if args.output_all:
+                for n in false_facts:
+                    output_facts.add(-n)
+
+        result_handler((True, output_facts), outf)
+    except Exception as err:
+        result_handler((False, err), outf)
+
+    if args.output is not None:
+        outf.close()
+
+
+def print_result(result, output=sys.stdout):
+    success, result = result
+    if success:
+        for atom in result:
+            print(atom, file=output)
+    else:
+        print(process_error(result), file=output)
 
 
 def reduce_formula(formula, facts):
@@ -145,6 +172,8 @@ def argparser():
                         default=None, help="MaxSAT solver to use")
     parser.add_argument('--full', dest='output_all', action='store_true',
                         help='Also show false atoms.')
+    parser.add_argument('-o', '--output', type=str, default=None,
+                        help='Write output to given file (default: write to stdout)')
     return parser
 
 

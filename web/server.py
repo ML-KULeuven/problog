@@ -44,23 +44,23 @@ from __future__ import print_function
 # Load general Python modules
 import sys
 import os
-import glob
 import tempfile
 import traceback
 import subprocess
 import resource
-import logging, logging.config
+import logging
+import logging.config
 
 DEFAULT_PORT = 5100
 DEFAULT_TIMEOUT = 60
-DEFAULT_MEMOUT = 1.0 # gigabyte
+DEFAULT_MEMOUT = 1.0  # gigabyte
 
-SERVE_FILES=False
-CACHE_MODELS=True
-CACHE_DIR="cache"
+SERVE_FILES = False
+CACHE_MODELS = True
+CACHE_DIR = "cache"
 
-PYTHON_EXEC='python'    # Python 2
-# PYTHON_EXEC=sys.executable  # Match with server
+PYTHON_EXEC = 'python'    # Python 2
+# PYTHON_EXEC = sys.executable  # Match with server
 
 api_root = '/'
 
@@ -213,8 +213,106 @@ def run_problog_jsonp(model, callback):
             datavalue = '{}({});'.format(callback, datavalue)
 
         return int(code), datatype, datavalue
-    except subprocess.CalledProcessError :
-        return 200, 'application/json', wrap_callback(callback, json.dumps({'SUCCESS':False, 'err':'ProbLog evaluation exceeded time or memory limit'}))
+    except subprocess.CalledProcessError as err:
+        result = {'SUCCESS': False, 'err': 'ProbLog evaluation exceeded time or memory limit (code: %s)' % err.returncode}
+        return 200, 'application/json', wrap_callback(callback, json.dumps(result))
+
+
+@handle_url(api_root + 'mpe')
+def run_mpe_jsonp(model, callback):
+    """Evaluate the given model and return the probabilities using the JSONP
+       standard.
+       This mode is required to send an API request when Problog is
+       running on a different server (to avoid cross-side-scripting
+       limitations).
+    """
+    model = model[0]
+    callback = callback[0]
+
+    if CACHE_MODELS:
+        try:
+            inhash = compute_hash(model)
+        except UnicodeDecodeError as e:
+            logger.error('Unicode error catched: {}'.format(e))
+            result = {'SUCCESS': False, 'err': 'Cannot decode character in program: {}'.format(e)}
+            return 200, 'application/json', wrap_callback(callback, json.dumps(result))
+        if not os.path.exists(CACHE_DIR):
+            os.mkdir(CACHE_DIR)
+        infile = os.path.join(CACHE_DIR, inhash + '.pl')
+        outfile = os.path.join(CACHE_DIR, inhash + '.out')
+        logger.info('Saved file: {}'.format(infile))
+    else:
+        _, infile = tempfile.mkstemp('.pl')
+        _, outfile = tempfile.mkstemp('.out')
+
+    with open(infile, 'w') as f:
+        f.write(model)
+
+    cmd = [PYTHON_EXEC, root_path('run_problog.py'), 'mpe', '--full', infile, outfile]
+
+    try:
+        call_process(cmd, DEFAULT_TIMEOUT, DEFAULT_MEMOUT * (1 << 30))
+
+        with open(outfile) as f:
+            result = f.read()
+        code, datatype, datavalue = result.split(None, 2)
+
+        if datatype == 'application/json':
+            datavalue = '{}({});'.format(callback, datavalue)
+
+        return int(code), datatype, datavalue
+    except subprocess.CalledProcessError as err:
+        result = {'SUCCESS': False, 'err': 'ProbLog evaluation exceeded time or memory limit (code: %s)' % err.returncode}
+        return 200, 'application/json', wrap_callback(callback, json.dumps(result))
+
+
+@handle_url(api_root + 'sample')
+def run_mpe_jsonp(model, callback):
+    """Evaluate the given model and return the probabilities using the JSONP
+       standard.
+       This mode is required to send an API request when Problog is
+       running on a different server (to avoid cross-side-scripting
+       limitations).
+    """
+    model = model[0]
+    callback = callback[0]
+
+    if CACHE_MODELS:
+        try:
+            inhash = compute_hash(model)
+        except UnicodeDecodeError as e:
+            logger.error('Unicode error catched: {}'.format(e))
+            result = {'SUCCESS': False, 'err': 'Cannot decode character in program: {}'.format(e)}
+            return 200, 'application/json', wrap_callback(callback, json.dumps(result))
+        if not os.path.exists(CACHE_DIR):
+            os.mkdir(CACHE_DIR)
+        infile = os.path.join(CACHE_DIR, inhash + '.pl')
+        outfile = os.path.join(CACHE_DIR, inhash + '.out')
+        logger.info('Saved file: {}'.format(infile))
+    else:
+        _, infile = tempfile.mkstemp('.pl')
+        _, outfile = tempfile.mkstemp('.out')
+
+    with open(infile, 'w') as f:
+        f.write(model)
+
+    cmd = [PYTHON_EXEC, root_path('run_problog.py'), 'sample', infile, outfile]
+
+    try:
+        call_process(cmd, DEFAULT_TIMEOUT, DEFAULT_MEMOUT * (1 << 30))
+
+        with open(outfile) as f:
+            result = f.read()
+        code, datatype, datavalue = result.split(None, 2)
+
+        if datatype == 'application/json':
+            datavalue = '{}({});'.format(callback, datavalue)
+
+        return int(code), datatype, datavalue
+    except subprocess.CalledProcessError as err:
+        result = {'SUCCESS': False, 'err': 'ProbLog evaluation exceeded time or memory limit (code: %s)' % err.returncode}
+        return 200, 'application/json', wrap_callback(callback, json.dumps(result))
+
 
 @handle_url(api_root+'learning')
 def run_learning_jsonp(model, examples, callback) :

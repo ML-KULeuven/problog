@@ -454,6 +454,15 @@ def estimate(model, n=0, **kwdargs):
     return estimates
 
 
+def print_result(result, output=sys.stdout):
+    success, result = result
+    if success:
+        for atom in result:
+            print(atom, file=output)
+    else:
+        print(process_error(result), file=output)
+
+
 def main(args, result_handler=None):
     import argparse
     parser = argparse.ArgumentParser()

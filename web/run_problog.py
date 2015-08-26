@@ -29,7 +29,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../'
 from problog.errors import ProbLogError
 
 
-def print_result(d, output, precision=8):
+def print_result_prob(d, output, precision=8):
     """Pretty print result.
 
     :param d: result from run_problog
@@ -49,6 +49,27 @@ def print_result(d, output, precision=8):
     return 0
 
 
+def print_result_mpe(d, output, precision=8):
+    """Pretty print result.
+
+    :param d: result from run_problog
+    :param output: output file
+    :param precision:
+    :return:
+    """
+    result = {}
+    success, d = d
+    print (d, file=sys.stderr)
+    if success:
+        result['SUCCESS'] = True
+        result['atoms'] = list(map(lambda n: (str(-n), False) if n.is_negated() else (str(n), True), d))
+    else:
+        result['SUCCESS'] = False
+        result['err'] = process_error(d)
+    print (200, 'application/json', json.dumps(result), file=output)
+    return 0
+
+
 def process_error(err):
     if isinstance(err, ProbLogError):
         return vars(err)
@@ -57,8 +78,15 @@ def process_error(err):
 
 
 def main(args):
+    task = args[0]
     args = list(args[:-1]) + ['-o', args[-1]]
     from problog.tasks import run_task
+
+    if task == 'mpe' or task == 'sample':
+        print_result = print_result_mpe
+    else:
+        print_result = print_result_prob
+
     run_task(args, print_result)
 
 
