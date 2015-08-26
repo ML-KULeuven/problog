@@ -482,7 +482,7 @@ def create_logger(name, verbose):
     logger.addHandler(ch)
     logger.setLevel(levels[verbose])
 
-def main(argv):
+def main(argv, result_handler=None):
     parser = argparser()
     args = parser.parse_args(argv)
 

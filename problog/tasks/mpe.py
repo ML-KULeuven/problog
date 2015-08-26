@@ -29,7 +29,7 @@ from problog.cnf_formula import CNF
 from problog.maxsat import get_solver, get_available_solvers
 
 
-def main(argv):
+def main(argv, result_handler=None):
     args = argparser().parse_args(argv)
     inputfile = args.inputfile
 

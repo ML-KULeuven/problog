@@ -28,7 +28,7 @@ from problog.program import ExtendedPrologFactory, PrologFile
 from problog.cnf_formula import CNF
 
 
-def main(argv):
+def main(argv, result_handler=None):
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument('filename', metavar='MODEL', type=str, help='input ProbLog model')

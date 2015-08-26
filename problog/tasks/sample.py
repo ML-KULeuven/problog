@@ -454,7 +454,7 @@ def estimate(model, n=0, **kwdargs):
     return estimates
 
 
-def main(args):
+def main(args, result_handler=None):
     import argparse
     parser = argparse.ArgumentParser()
 
