@@ -147,11 +147,11 @@ else :
     filenames = glob.glob( root_path('test', '*.pl' ) )
 
 for testfile in filenames :
-    testname = 'test_system_' + os.path.splitext(os.path.basename(testfile))[0]
-    setattr( TestSystemSDD, testname, createSystemTestSDD(testfile) )
-    setattr( TestSystemNNF, testname, createSystemTestNNF(testfile) )
+    # testname = 'test_system_' + os.path.splitext(os.path.basename(testfile))[0]
+    # setattr( TestSystemSDD, testname, createSystemTestSDD(testfile) )
+    # setattr( TestSystemNNF, testname, createSystemTestNNF(testfile) )
 
-    testname = 'test_system_' + os.path.splitext(os.path.basename(testfile))[0] + '_logspace'
+    testname = 'test_system_' + os.path.splitext(os.path.basename(testfile))[0]
     setattr( TestSystemSDD, testname, createSystemTestSDD(testfile, True) )
     setattr( TestSystemNNF, testname, createSystemTestNNF(testfile, True) )
 

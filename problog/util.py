@@ -134,7 +134,7 @@ def subprocess_check_output(*popenargs, **kwargs):
             if cmd is None:
                 cmd = popenargs[0]
             raise subprocess.CalledProcessError(retcode, cmd, output=output)
-        return output
+        return output.decode()
     except KeyboardInterrupt:
         kill_proc_tree(process)
         raise
