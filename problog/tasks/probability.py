@@ -24,7 +24,7 @@ import os
 import traceback
 
 from ..program import PrologFile
-from ..evaluator import SemiringLogProbability, SemiringProbability
+from ..evaluator import SemiringLogProbability, SemiringProbability, SemiringSymbolic
 from .. import get_evaluatable, get_evaluatables
 
 from ..util import Timer, start_timer, stop_timer, init_logger, format_dictionary
@@ -124,6 +124,9 @@ def argparser():
                           help="Use log space evaluation (default).", default=True)
     ls_group.add_argument('--nologspace', dest='logspace', action='store_false',
                           help="Use normal space evaluation.")
+    ls_group.add_argument('--symbolic', dest='symbolic', action='store_true',
+                          help="Use symbolic computations.")
+
 
     parser.add_argument('--output', '-o', help="Output file (default stdout)", type=OutputFile)
     parser.add_argument('--recursion-limit',
@@ -198,8 +201,13 @@ def main(argv, result_handler=None):
     else:
         semiring = SemiringProbability()
 
+    if args.symbolic:
+        args.koption = 'nnf'
+        semiring = SemiringSymbolic()
+
     if args.propagate_weights:
         args.propagate_weights = semiring
+
 
     for filename in args.filenames:
         if len(args.filenames) > 1:

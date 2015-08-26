@@ -198,6 +198,54 @@ class SemiringLogProbability(SemiringProbability):
         return a - z
 
 
+class SemiringSymbolic(Semiring):
+    """Implementation of the semiring interface for probabilities using symbolic calculations."""
+
+    def one(self):
+        return "1"
+
+    def zero(self):
+        return "0"
+
+    def plus(self, a, b):
+        if a == "0":
+            return b
+        elif b == "0":
+            return a
+        else:
+            return "(%s + %s)" % (a, b)
+
+    def times(self, a, b):
+        if a == "0" or b == "0":
+            return "0"
+        elif a == "1":
+            return b
+        elif b == "1":
+            return a
+        else:
+            return "%s*%s" % (a, b)
+
+    def negate(self, a):
+        if a == "0":
+            return "1"
+        elif a == "1":
+            return "0"
+        else:
+            return "(1-%s)" % a
+
+    def value(self, a):
+        return str(a)
+
+    def result(self, a):
+        return a
+
+    def normalize(self, a, z):
+        if z == "1":
+            return a
+        else:
+            return "%s / %s" % (a, z)
+
+
 @transform_allow_subclass
 class Evaluatable(ProbLogObject):
     """Interface for evaluatable formulae."""
