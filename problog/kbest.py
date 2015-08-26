@@ -135,18 +135,14 @@ class KBestEvaluator(Evaluator):
                     if self._explain and solution is not None:
                         solution_names = []
 
-                        probability = self.semiring.one()
+                        probability = nborder.improvement
                         for s in solution:
                             n = self._reverse_names.get(abs(s), Term('choice_%s' % (abs(s))))
-                            wp, wn = self._weights[abs(s)]
                             if s < 0:
-                                probability = self.semiring.times(probability, wn)
                                 solution_names.append(-n)
                             else:
-                                probability = self.semiring.times(probability, wp)
                                 solution_names.append(n)
                         proof = ', '.join(map(str, solution_names))
-                        probability = self.semiring.result(probability)
                         print('%s :- %s.  %% P=%.8g' % (name, proof, probability))
 
                     if solution is not None:
