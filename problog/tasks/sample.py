@@ -47,7 +47,7 @@ from problog.logic import Term, Constant, ArithmeticError
 from problog.engine import DefaultEngine, UnknownClause
 from problog.engine_builtin import check_mode
 from problog.formula import LogicFormula
-from problog.core import process_error
+from problog.errors import process_error
 from problog.util import start_timer, stop_timer, format_dictionary
 from problog.engine_unify import UnifyError, unify_value
 import random
