@@ -1,0 +1,30 @@
+Known Issues
+============
+
+This document is an overview of known issues in ProbLog and their resolution.
+
+Issue 1: DSharp error (on Mac OSX)
+-----------------------------------------------
+
+Compilation to d-DNNFs using the default DSharp compiler on Mac OSX can cause issues.
+
+There are three solutions:
+
+    - Use SDDs instead of d-DNNFs.
+        In most cases d-DNNFs can be replaced by SDDs. 
+        You can install the SDD library by running the ProbLog installer:
+            
+            ./problog-cli.py install
+            
+        Once the library is installed, it will be used by default.
+        
+    - Use BDDs instead of d-DNNFs.
+        This requires Python3 and the external library PyEDA.
+        Once the library is installed, you can use the option '-k bdd' to use BDDs.
+        
+    - Use the Windows version of the c2d knowledge compiler through Wine.
+        Instructions can be found in problog/bin/darwin/cnf2dDNNF_wine
+        
+        When c2d is found, it will be used automatically instead of DSharp.
+        
+For most cases option 1 is sufficient.

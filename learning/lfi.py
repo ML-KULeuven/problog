@@ -62,8 +62,11 @@ from problog.evaluator import SemiringProbability
 from problog.logic import Term, Constant, Clause, AnnotatedDisjunction, Or
 from problog.program import PrologString, PrologFile, LogicProgram
 from problog.core import ProbLogError
+from problog.errors import process_error
 
-    
+from problog import get_evaluatable, get_evaluatables
+
+
 def str2bool(s):
     if str(s) == 'true':
         return True
@@ -467,7 +470,7 @@ def argparser():
     parser.add_argument('-n', dest='max_iter', default=10000, type=int )
     parser.add_argument('-d', dest='min_improv', default=1e-10, type=float )
     parser.add_argument('-o', '--output', type=str, default=None, help='write resulting model to given file')
-    parser.add_argument('-k', '--knowledge', dest='koption', choices=("sdd", "nnf", "bdd", "ddnnf"),
+    parser.add_argument('-k', '--knowledge', dest='koption', choices=get_evaluatables(),
                         default=None, help='knowledge compilation tool')
     parser.add_argument('-v', '--verbose', action='count', default=0)
     return parser
@@ -486,21 +489,7 @@ def main(argv, result_handler=None):
     parser = argparser()
     args = parser.parse_args(argv)
 
-    if args.koption in ('nnf', 'ddnnf'):
-        knowledge = NNF
-    elif args.koption == 'sdd':
-        knowledge = SDD
-    elif args.koption == 'bdd':
-        knowledge = BDD
-    elif args.koption is None:
-        if SDD.is_available():
-            # logger.info('Using SDD path')
-            knowledge = SDD
-        else:
-            # logger.info('Using d-DNNF path')
-            knowledge = NNF
-    else:
-        raise ValueError("Unknown option for --knowledge: '%s'" % args.knowledge)
+    knowledge = get_evaluatable(args.koption)
 
     create_logger('problog_lfi', args.verbose)
     create_logger('problog', args.verbose-1)
@@ -513,9 +502,13 @@ def main(argv, result_handler=None):
         logging.getLogger('problog_lfi').info('Number of examples: %s' % len(examples))
     options = vars(args)
     del options['examples']
-    score, weights, names, iterations = run_lfi(program, examples, knowledge=knowledge, **options)
 
-    print(score, weights, names, iterations)
+    try:
+        score, weights, names, iterations = run_lfi(program, examples, knowledge=knowledge, **options)
+        print(score, weights, names, iterations)
+    except Exception as err:
+        print (process_error(err), file=sys.stderr)
+
 
 if __name__ == '__main__' :
     main(sys.argv[1:])

@@ -42,7 +42,10 @@ class DSharpError(CompilationError):
     """DSharp has crashed."""
 
     def __init__(self):
-        CompilationError.__init__(self, 'DSharp has encountered an error.')
+        msg = 'DSharp has encountered an error'
+        if system_info['os'] == 'darwin':
+            msg += '. This is a known issue. See KNOWN_ISSUES for details on how to resolve this problem'
+        CompilationError.__init__(self, msg)
 
 
 class NNF(LogicDAG, Evaluatable):

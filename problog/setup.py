@@ -161,7 +161,7 @@ def install(force=True):
         build_sdd()
         update = True
 
-    build_maxsatz()
+    # build_maxsatz()
 
     if update:
         info = gather_info()
