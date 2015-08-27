@@ -55,9 +55,6 @@ from collections import defaultdict
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../')))
 
 from problog.engine import DefaultEngine, ground
-from problog.nnf_formula import NNF
-from problog.sdd_formula import SDD
-from problog.bdd_formula import BDD
 from problog.evaluator import SemiringProbability
 from problog.logic import Term, Constant, Clause, AnnotatedDisjunction, Or
 from problog.program import PrologString, PrologFile, LogicProgram
@@ -65,6 +62,7 @@ from problog.core import ProbLogError
 from problog.errors import process_error
 
 from problog import get_evaluatable, get_evaluatables
+import traceback
 
 
 def str2bool(s):
@@ -78,7 +76,7 @@ def str2bool(s):
 
 class LFIProblem(SemiringProbability, LogicProgram) :
     
-    def __init__(self, source, examples, max_iter=10000, min_improv=1e-10, verbose=0, knowledge=SDD, **extra):
+    def __init__(self, source, examples, max_iter=10000, min_improv=1e-10, verbose=0, knowledge=None, **extra):
         SemiringProbability.__init__(self)
         LogicProgram.__init__(self)
         self.source = source
@@ -507,6 +505,8 @@ def main(argv, result_handler=None):
         score, weights, names, iterations = run_lfi(program, examples, knowledge=knowledge, **options)
         print(score, weights, names, iterations)
     except Exception as err:
+        trace = traceback.format_exc()
+        err.trace = trace
         print (process_error(err), file=sys.stderr)
 
 
