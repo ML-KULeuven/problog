@@ -139,6 +139,9 @@ def build_sdd():
 
 
 def build_maxsatz():
+    if get_system() == 'windows':
+        return  # We include the binary
+
     compiler = distutils.ccompiler.new_compiler()
 
     dest_dir, source_dir = get_binary_paths()
