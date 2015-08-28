@@ -92,6 +92,7 @@ class StackBasedEngine(ClauseDBEngine):
         self.debugger = kwdargs.get('debugger')
 
     def eval(self, node_id, **kwdargs):
+        # print (kwdargs.get('parent'))
         database = kwdargs['database']
         if node_id < 0:
             node_type = 'builtin'
@@ -183,8 +184,11 @@ class StackBasedEngine(ClauseDBEngine):
             target._cache = DefineCache()
 
         # Retrieve the list of actions needed to evaluate the top-level node.
-        actions = self.eval(node_id, parent=None, database=database, target=target, is_root=is_root,
-                            **kwdargs)
+        # parent = kwdargs.get('parent')
+        # kwdargs['parent'] = parent
+
+        actions = self.eval(node_id, parent=None, database=database, target=target,
+                            is_root=is_root, **kwdargs)
 
         # Initialize the action stack.
         actions = list(reversed(actions))
@@ -312,7 +316,7 @@ class StackBasedEngine(ClauseDBEngine):
         while self.pointer > 0 and self.stack[self.pointer - 1] is None:
             self.pointer -= 1
 
-    def call(self, query, database, target, transform=None, **kwdargs):
+    def call(self, query, database, target, transform=None, parent=None, **kwdargs):
         node_id = database.find(query)
         if node_id is None:
             node_id = database.get_builtin(query.signature)
@@ -321,6 +325,21 @@ class StackBasedEngine(ClauseDBEngine):
 
         return self.execute(node_id, database=database, target=target,
                             context=self.create_context(query.args), **kwdargs)
+
+    def call_intern(self, query, **kwdargs):
+        database = kwdargs.get('database')
+        node_id = database.find(query)
+        if node_id is None:
+            node_id = database.get_builtin(query.signature)
+            if node_id is None:
+                raise UnknownClause(query.signature, database.lineno(query.location))
+
+        call_args = range(0, len(query.args))
+        call_term = query.with_args(*call_args)
+        call_term.defnode = node_id
+
+        return self.eval_call(None, call_term,
+                              context=self.create_context(query.args), **kwdargs)
 
     def printStack(self, pointer=None):  # pragma: no cover
         print('===========================')
@@ -1297,7 +1316,7 @@ class EvalBuiltIn(EvalNode):
         try:
             return self.node(*self.context, engine=self.engine, database=self.database,
                              target=self.target, location=self.location, callback=self,
-                             transform=self.transform)
+                             transform=self.transform, parent=self.parent)
         except ArithmeticError as err:
             if self.database and self.location:
                 functor = self.call_origin[0].split('/')[0]

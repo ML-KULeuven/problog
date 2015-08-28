@@ -1342,24 +1342,26 @@ def load_external_module(database, filename):
         imp.load_module('externals', extfile, filename, ('.py', 'U', 1))
 
 
-def _builtin_call(term, args=(), engine=None, callback=None, **kwdargs):
-    # TODO does not support cycle through call!
+def _builtin_call(term, args=(), engine=None, callback=None, transform=None, **kwdargs):
     check_mode((term,), ['c'], functor='call')
     # Find the define node for the given query term.
     term_call = term.with_args(*(term.args + args))
 
     try:
-        results = engine.call(term_call, subcall=True, **kwdargs)
+        if transform is None:
+            from .engine_stack import Transformations
+            transform = Transformations()
+
+        def _trans(result):
+            n = len(term.args)
+            res1 = result[:n]
+            res2 = result[n:]
+            return [term.with_args(*res1)] + list(res2)
+        transform.addFunction(_trans)
+
+        actions = engine.call_intern(term_call, transform=transform, **kwdargs)
     except UnknownClauseInternal:
         raise UnknownClause(term_call.signature, kwdargs['database'].lineno(kwdargs['location']))
-    actions = []
-    n = len(term.args)
-    for res, node in results:
-        res1 = res[:n]
-        res2 = res[n:]
-        res_pass = (term.with_args(*res1),) + tuple(res2)
-        actions += callback.notifyResult(engine.create_context(res_pass), node, False)
-    actions += callback.notifyComplete()
     return True, actions
 
 
