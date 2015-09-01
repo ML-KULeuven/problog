@@ -12,12 +12,12 @@ Contents:
    :maxdepth: 2
    :numbered:
 
-   intro
+   install
    cli
-   basic
-   learning
+   python
+   modeling_basic
+   modeling_advanced
    prolog
-   cycles
    api
 .. notes
 ..   engine   

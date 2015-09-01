@@ -1,7 +1,0 @@
-
-Learning
-========
-
-.. automodule:: learning.lfi
-
-
