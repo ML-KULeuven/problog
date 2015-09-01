@@ -496,7 +496,13 @@ class ProbLogHTTP(BaseHTTPServer.BaseHTTPRequestHandler) :
         format = '[%s] ' + format
         logger.info(format % args)
 
-if __name__ == '__main__' :
+
+def main(argv, **extra):
+    global DEFAULT_MEMOUT
+    global DEFAULT_TIMEOUT
+    global SERVE_FILES
+    global CACHE_MODELS
+
     import argparse
 
     parser = argparse.ArgumentParser()
@@ -506,17 +512,21 @@ if __name__ == '__main__' :
     parser.add_argument('--servefiles', '-F', action='store_true', help="Attempt to serve a file for undefined paths (unsafe?).")
     parser.add_argument('--nocaching', action='store_true', help="Disable caching of submitted models")
     parser.add_argument('--browser', action='store_true', help="Open editor in web browser.")
-    args = parser.parse_args(sys.argv[1:])
+    args = parser.parse_args(argv)
 
     DEFAULT_TIMEOUT = args.timeout
     DEFAULT_MEMOUT = args.memout
     SERVE_FILES = args.servefiles
     CACHE_MODELS = not args.nocaching
-    logger.info('Starting server on port %d (timeout=%d, memout=%dGb)' % (args.port, DEFAULT_TIMEOUT, DEFAULT_MEMOUT ))
+    logger.info('Starting server on port %d (timeout=%d, memout=%dGb)' % (args.port, DEFAULT_TIMEOUT, DEFAULT_MEMOUT))
 
     server_address = ('', args.port)
-    httpd = BaseHTTPServer.HTTPServer( server_address, ProbLogHTTP )
+    httpd = BaseHTTPServer.HTTPServer(server_address, ProbLogHTTP)
     if args.browser :
         import webbrowser
         webbrowser.open( 'file://' + os.path.join(os.path.abspath(here), 'index_local.html'), new=2, autoraise=True)
     httpd.serve_forever()
+
+
+if __name__ == '__main__':
+    main(sys.argv[1:])

@@ -69,7 +69,7 @@ def execute(filename, knowledge=None, semiring=None, debug=False, **kwdargs):
             formula = knowledge.create_from(model, **kwdargs)
             result = formula.evaluate(semiring=semiring, **kwdargs)
 
-            # Update location information on result terms
+            # Update loceation information on result terms
             for n, p in result.items():
                 if not n.location or not n.location[0]:
                     # Only get location for primary file (other file information is not available).

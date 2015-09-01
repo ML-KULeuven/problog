@@ -16,14 +16,18 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
+import os
+import sys
+
 
 problog_tasks = {}
 problog_tasks['prob'] = 'problog.tasks.probability'
 problog_tasks['mpe'] = 'problog.tasks.mpe'
 problog_tasks['sample'] = 'problog.tasks.sample'
 problog_tasks['ground'] = 'problog.tasks.ground'
-problog_tasks['lfi'] = '../learning/lfi.py'
+problog_tasks['lfi'] = 'problog.learning.lfi'
 problog_tasks['explain'] = 'problog.kbest'
+problog_tasks['web'] = 'problog.web.server'
 
 problog_default_task = 'prob'
 
@@ -56,3 +60,28 @@ def load_task(name):
     :rtype: module
     """
     return load_module(problog_tasks[name])
+
+
+def main(argv=None):
+    """Main function.
+    :param argv: command line arguments
+    """
+    if argv is None:
+        argv = sys.argv[1:]
+
+    if len(argv) > 0:
+        if argv[0] == 'install':
+            from .. import setup
+            setup.install()
+            return
+        elif argv[0] == 'info':
+            from problog.core import list_transformations
+            list_transformations()
+            return
+        elif argv[0] == 'unittest':
+            import unittest
+            test_results = unittest.TextTestResult(sys.stderr, False, 1)
+            unittest.TestLoader().discover(os.path.dirname(__file__)).run(test_results)
+            return
+        else:
+            return run_task(argv)
