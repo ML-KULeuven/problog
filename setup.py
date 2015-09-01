@@ -35,7 +35,7 @@ package_data = {
 
 setup(
     name='problog',
-    version='2.1.0',
+    version='2.1.0.2',
     description='ProbLog2: Probabilistic Logic Programming toolbox',
     url='https://dtai.cs.kuleuven.be/problog',
     author='ProbLog team',
@@ -53,7 +53,7 @@ setup(
         'Topic :: Scientific/Engineering :: Artificial Intelligence',
     ],
     keywords='prolog probabilistic logic',
-    packages=['problog'],
+    packages=find_packages(),
     entry_points={
         'console_scripts': ['problog=problog.tasks:main']       
     },

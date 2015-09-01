@@ -51,6 +51,7 @@ from . import bdd_formula
 from . import forward
 from . import cycles
 from . import kbest
+from . import tasks
 
 
 _evaluatables = {'sdd': sdd_formula.SDD,

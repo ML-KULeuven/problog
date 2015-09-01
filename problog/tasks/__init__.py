@@ -42,7 +42,7 @@ def run_task(argv, result_handler=None):
     :param argv: list of arguments for the task
     :return: result of the task (typically None)
     """
-    if argv[0] in problog_tasks:
+    if len(argv) > 1 and argv[0] in problog_tasks:
         task = argv[0]
         args = argv[1:]
     else:
@@ -85,3 +85,5 @@ def main(argv=None):
             return
         else:
             return run_task(argv)
+    else:
+        return run_task(argv)
