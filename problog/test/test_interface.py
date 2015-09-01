@@ -47,8 +47,8 @@ class TestInterfaces(unittest.TestCase):
     def test_cli_learn(self):
         problogcli = root_path('problog-cli.py')
 
-        model = root_path('learning', 'test1_model.pl')
-        examples = root_path('learning', 'test1_examples.pl')
+        model = root_path('problog', 'learning', 'test1_model.pl')
+        examples = root_path('problog', 'learning', 'test1_examples.pl')
 
         out = subprocess_check_output([sys.executable, problogcli, 'lfi', model, examples])
         outline = out.strip().split()
