@@ -35,7 +35,7 @@ package_data = {
 
 setup(
     name='problog',
-    version='2.1.0.2',
+    version='2.1.0.3',
     description='ProbLog2: Probabilistic Logic Programming toolbox',
     url='https://dtai.cs.kuleuven.be/problog',
     author='ProbLog team',
