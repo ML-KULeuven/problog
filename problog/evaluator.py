@@ -26,7 +26,8 @@ from __future__ import print_function
 import math
 
 from .core import ProbLogObject, transform_allow_subclass
-from .errors import InconsistentEvidenceError
+from .errors import InconsistentEvidenceError, InvalidValue
+
 
 class OperationNotSupported(Exception):
 
@@ -148,6 +149,13 @@ class SemiringProbability(Semiring):
     def normalize(self, a, z):
         return a / z
 
+    def value(self, a):
+        v = float(a)
+        if 0.0 <= v <= 1.0:
+            return v
+        else:
+            raise InvalidValue("Not a valid value for this semiring: '%s'" % a, location=a.location)
+
 
 class SemiringLogProbability(SemiringProbability):
     """Implementation of the semiring interface for probabilities with logspace calculations."""
@@ -185,10 +193,14 @@ class SemiringLogProbability(SemiringProbability):
         return math.log1p(-math.exp(a))
 
     def value(self, a):
-        if float(a) < 1e-10:
+        v = float(a)
+        if 0 <= v < 1e-10:
             return self.zero()
         else:
-            return math.log(float(a))
+            if 0.0 <= v <= 1.0:
+                return math.log(v)
+            else:
+                raise InvalidValue("Not a valid value for this semiring: '%s'" % a, location=a.location)
 
     def result(self, a):
         return math.exp(a)

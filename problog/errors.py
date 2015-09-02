@@ -62,6 +62,10 @@ class InstallError(ProbLogError):
     pass
 
 
+class InvalidValue(ProbLogError):
+    pass
+
+
 class InconsistentEvidenceError(ProbLogError):
     """Error when evidence is inconsistent"""
 
