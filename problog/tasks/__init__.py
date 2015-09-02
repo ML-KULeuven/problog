@@ -87,3 +87,7 @@ def main(argv=None):
             return run_task(argv)
     else:
         return run_task(argv)
+
+
+if __name__ == '__main__':
+    main(sys.argv[1:])

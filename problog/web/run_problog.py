@@ -59,10 +59,29 @@ def print_result_mpe(d, output, precision=8):
     """
     result = {}
     success, d = d
-    print (d, file=sys.stderr)
     if success:
         result['SUCCESS'] = True
         result['atoms'] = list(map(lambda n: (str(-n), False) if n.is_negated() else (str(n), True), d))
+    else:
+        result['SUCCESS'] = False
+        result['err'] = process_error(d)
+    print (200, 'application/json', json.dumps(result), file=output)
+    return 0
+
+
+def print_result_sample(d, output, **kwdargs):
+    """Pretty print result.
+
+    :param d: result from run_problog
+    :param output: output file
+    :param precision:
+    :return:
+    """
+    result = {}
+    success, d = d
+    if success:
+        result['SUCCESS'] = True
+        result['results'] = [[(str(k), str(v)) for k, v in dc.items()] for dc in d]
     else:
         result['SUCCESS'] = False
         result['err'] = process_error(d)
@@ -74,7 +93,7 @@ def process_error(err):
     if isinstance(err, ProbLogError):
         return vars(err)
     else:
-        return {'message': 'An unexpected error has occurred.'}
+        return {'message': 'An unexpected error has occurred (%s).' % err}
 
 
 def main(args):
@@ -82,8 +101,10 @@ def main(args):
     args = list(args[:-1]) + ['-o', args[-1]]
     from problog.tasks import run_task
 
-    if task == 'mpe' or task == 'sample':
+    if task == 'mpe':
         print_result = print_result_mpe
+    elif task == 'sample':
+        print_result = print_result_sample
     else:
         print_result = print_result_prob
 

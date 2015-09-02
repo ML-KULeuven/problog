@@ -48,6 +48,27 @@ def print_result(d, output, precision=8):
         return 1
 
 
+def print_result_json(d, output, precision=8):
+    """Pretty print result.
+
+    :param d: result from run_problog
+    :param output: output file
+    :param precision:
+    :return:
+    """
+    import json
+    result = {}
+    success, d = d
+    if success:
+        result['SUCCESS'] = True
+        result['probs'] = [[str(n), round(p, precision), n.loc[1], n.loc[2]] for n, p in d.items()]
+    else:
+        result['SUCCESS'] = False
+        result['err'] = process_error(d)
+    print (json.dumps(result), file=output)
+    return 0
+
+
 def execute(filename, knowledge=None, semiring=None, debug=False, **kwdargs):
     """Run ProbLog.
 
@@ -128,7 +149,6 @@ def argparser():
     ls_group.add_argument('--symbolic', dest='symbolic', action='store_true',
                           help="Use symbolic computations.")
 
-
     parser.add_argument('--output', '-o', help="Output file (default stdout)", type=OutputFile)
     parser.add_argument('--recursion-limit',
                         help="Set Python recursion limit. (default: %d)" % sys.getrecursionlimit(),
@@ -139,6 +159,7 @@ def argparser():
                         help="Set timeout for compilation (in seconds, default=off).")
     parser.add_argument('--debug', '-d', action='store_true',
                         help="Enable debug mode (print full errors).")
+    parser.add_argument('--web', action='store_true', help=argparse.SUPPRESS)
 
     # Additional arguments (passed through)
     parser.add_argument('--engine-debug', action='store_true', help=argparse.SUPPRESS)
@@ -169,11 +190,14 @@ def argparser():
 
 
 def main(argv, result_handler=None):
-    if result_handler is None:
-        result_handler = print_result
-
     parser = argparser()
     args = parser.parse_args(argv)
+
+    if result_handler is None:
+        if args.web:
+            result_handler = print_result_json
+        else:
+            result_handler = print_result
 
     init_logger(args.verbose)
 
@@ -208,7 +232,6 @@ def main(argv, result_handler=None):
 
     if args.propagate_weights:
         args.propagate_weights = semiring
-
 
     for filename in args.filenames:
         if len(args.filenames) > 1:
