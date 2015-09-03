@@ -2,6 +2,8 @@
 
 import sys
 
+version = '2.1.0.4'
+
 if len(sys.argv) == 1:
     from problog import setup as problog_setup
     problog_setup.install()
@@ -42,7 +44,7 @@ else:
 
     setup(
         name='problog',
-        version='2.1.0.3',
+        version=version,
         description='ProbLog2: Probabilistic Logic Programming toolbox',
         url='https://dtai.cs.kuleuven.be/problog',
         author='ProbLog team',
