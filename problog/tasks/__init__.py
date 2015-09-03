@@ -19,6 +19,8 @@ limitations under the License.
 import os
 import sys
 
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
+
 
 problog_tasks = {}
 problog_tasks['prob'] = 'problog.tasks.probability'
