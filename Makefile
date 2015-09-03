@@ -52,3 +52,8 @@ update_server:
 	ssh ssh.cs.kuleuven.be ssh -p 2222 problog@adams.cs.kuleuven.be python3 /home/problog/problog2.1/problog-cli.py install
 	@echo "======================================================================"
 
+deploy: test2 test3
+	git push public master
+	rm -f dist/*
+	python setup.py sdist
+	twine upload dist/*
