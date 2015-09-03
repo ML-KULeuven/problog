@@ -64,7 +64,7 @@ def print_result_json(d, output, precision=8):
         result['probs'] = [[str(n), round(p, precision), n.loc[1], n.loc[2]] for n, p in d.items()]
     else:
         result['SUCCESS'] = False
-        result['err'] = process_error(d)
+        result['err'] = vars(d)
     print (json.dumps(result), file=output)
     return 0
 

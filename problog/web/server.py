@@ -181,6 +181,20 @@ def run_problog_task(task, model, callback=None, data=None, options=None):
         # Add default and given options to the command.
         cmd += ['-o', outfile, '--web'] + options
 
+    except UnicodeDecodeError as err:
+        logger.error('Unicode error catched: {}'.format(err))
+        result = {'SUCCESS': False, 'err': 'Cannot decode character in program: {}'.format(err)}
+        return 200, 'application/json', wrap_callback(callback, json.dumps(result))
+
+    if CACHE_MODELS:
+        url = 'task=%s' % task
+        url += '&hash=%s' % os.path.splitext(os.path.basename(infile))[0]
+        if data is not None:
+            url += '&ehash=%s' % os.path.splitext(os.path.basename(infile))[0]
+    else:
+        url = None
+
+    try:
         # Execute ProbLog
         call_process(cmd, DEFAULT_TIMEOUT, DEFAULT_MEMOUT * (1 << 30))
 
@@ -188,19 +202,27 @@ def run_problog_task(task, model, callback=None, data=None, options=None):
         with open(outfile) as f:
             result = f.read()
 
+        if url is not None:
+            result = json.loads(result)
+            result['url'] = url
+            result = json.dumps(result)
+
         # Wrap the output in a JSON wrapper.
         datavalue = wrap_callback(callback, result)
         return 200, 'application/json', datavalue
-    except UnicodeDecodeError as err:
-        logger.error('Unicode error catched: {}'.format(err))
-        result = {'SUCCESS': False, 'err': 'Cannot decode character in program: {}'.format(err)}
-        return 200, 'application/json', wrap_callback(callback, json.dumps(result))
-    except subprocess.CalledProcessError:
-        result = {'SUCCESS': False, 'err': 'ProbLog learning exceeded time or memory limit'}
+    except subprocess.CalledProcessError as err:
+        logger.error('ProbLog didn\'t finish correctly: %s' % err)
+        result = {'SUCCESS': False, 'url': url,
+                  'err': 'ProbLog learning exceeded time or memory limit'}
         return 200, 'application/json', wrap_callback(callback, json.dumps(result))
 
 
 @handle_url(api_root + 'inference')
+def run_problog_jsonp(model, callback):
+    return run_problog_task('prob', model[0], callback[0])
+
+
+@handle_url(api_root + 'prob')
 def run_problog_jsonp(model, callback):
     return run_problog_task('prob', model[0], callback[0])
 
@@ -215,8 +237,13 @@ def run_sample_jsonp(model, callback):
     return run_problog_task('sample', model[0], callback[0])
 
 
+@handle_url(api_root + 'lfi')
+def run_lfi_jsonp(model, examples, callback):
+    return run_problog_task('lfi', model[0], callback[0], data=examples[0])
+
+
 @handle_url(api_root + 'learning')
-def run_sample_jsonp(model, examples, callback):
+def run_lfi_jsonp(model, examples, callback):
     return run_problog_task('lfi', model[0], callback[0], data=examples[0])
 
 
@@ -248,23 +275,23 @@ def get_hash(hashcode, datatype):
 
 
 @handle_url(api_root + 'model')
-def get_model_from_hash_jsonp(hashcode, callback):
-    data = get_hash(hashcode, 'pl')
+def get_model_from_hash_jsonp(hash, callback):
+    data = get_hash(hash[0], 'pl')
     if data is None:
-        result = {'SUCCESS': False, 'err': 'Model hash not available: {}'.format(hash)}
+        result = {'SUCCESS': False, 'err': 'Model hash not available: {}'.format(hash[0])}
     else:
         result = {'SUCCESS': True, 'model': data}
-    return 200, 'application/json', wrap_callback(callback, json.dumps(result))
+    return 200, 'application/json', wrap_callback(callback[0], json.dumps(result))
 
 
 @handle_url(api_root + 'examples')
-def get_data_from_hash_jsonp(hashcode, callback):
-    data = get_hash(hashcode, 'data')
+def get_data_from_hash_jsonp(hash, callback):
+    data = get_hash(hash[0], 'data')
     if data is None:
-        result = {'SUCCESS': False, 'err': 'Model hash not available: {}'.format(hash)}
+        result = {'SUCCESS': False, 'err': 'Model hash not available: {}'.format(hash[0])}
     else:
         result = {'SUCCESS': True, 'examples': data}
-    return 200, 'application/json', wrap_callback(callback, json.dumps(result))
+    return 200, 'application/json', wrap_callback(callback[0], json.dumps(result))
 
 
 class ProbLogHTTP(BaseHTTPServer.BaseHTTPRequestHandler):
@@ -377,7 +404,7 @@ def main(argv, **extra):
 
     server_address = ('', args.port)
     httpd = BaseHTTPServer.HTTPServer(server_address, ProbLogHTTP)
-    if args.browser :
+    if args.browser:
         import webbrowser
         webbrowser.open( 'file://' + os.path.join(os.path.abspath(here), 'index_local.html'), new=2, autoraise=True)
     httpd.serve_forever()

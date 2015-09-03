@@ -47,7 +47,7 @@ from problog.logic import Term, Constant, ArithmeticError
 from problog.engine import DefaultEngine, UnknownClause
 from problog.engine_builtin import check_mode
 from problog.formula import LogicFormula
-from problog.errors import process_error
+from problog.errors import process_error, ProbLogError
 from problog.util import start_timer, stop_timer, format_dictionary
 from problog.engine_unify import UnifyError, unify_value
 import random
@@ -484,7 +484,9 @@ def print_result_json(d, output, **kwdargs):
         result['results'] = [[(str(k), str(v)) for k, v in dc.items()] for dc in d]
     else:
         result['SUCCESS'] = False
+        result['test'] = str(type(d))
         result['err'] = process_error(d)
+        result['original'] = str(d)
     print (json.dumps(result), file=output)
     return 0
 
@@ -541,8 +543,7 @@ def main(args, result_handler=None):
             result_handler((True, sample(pl, format=outformat, **vars(args))),
                            output=outf, oneline=args.oneline)
     except Exception as err:
-        print (err)
-        result_handler((False, process_error(err)), output=outf)
+        result_handler((False, err), output=outf)
 
     if args.timeout:
         stop_timer()

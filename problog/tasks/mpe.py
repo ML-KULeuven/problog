@@ -127,6 +127,7 @@ def print_result_json(d, output):
     else:
         result['SUCCESS'] = False
         result['err'] = process_error(d)
+        result['original'] = str(d)
     print (json.dumps(result), file=output)
     return 0
 
