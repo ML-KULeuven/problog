@@ -47,7 +47,7 @@ from problog.logic import Term, Constant, ArithmeticError
 from problog.engine import DefaultEngine, UnknownClause
 from problog.engine_builtin import check_mode
 from problog.formula import LogicFormula
-from problog.errors import process_error
+from problog.errors import process_error, ProbLogError
 from problog.util import start_timer, stop_timer, format_dictionary
 from problog.engine_unify import UnifyError, unify_value
 import random
@@ -324,16 +324,16 @@ class SampledFormula(LogicFormula):
             lines.append('%% Probability: %.8g' % self.probability)
         return sep.join(lines)
 
-    def to_tuples(self):
-        lines = []
+    def to_dict(self):
+        result = {}
         for k, v in self.queries():
             if v is not None:
                 val = self.get_value(v)
                 if val is None:
-                    lines.append((k.functor,) + k.args + (None,))
+                    result[k] = True
                 else:
-                    lines.append((k.functor,) + k.args + (val,))
-        return list(set(lines))
+                    result[k] = val
+        return result
 
 
 def translate(db, atom_id):
@@ -395,7 +395,7 @@ def builtin_previous(term, default, engine=None, target=None, callback=None, **k
     return True, actions
 
 
-def sample(model, n=1, tuples=False, **kwdargs):
+def sample(model, n=1, format='str', **kwdargs):
     engine = DefaultEngine()
     engine.add_builtin('sample', 2, builtin_sample)
     engine.add_builtin('value', 2, builtin_sample)
@@ -413,10 +413,10 @@ def sample(model, n=1, tuples=False, **kwdargs):
                 evidence_ok = False
                 break
         if evidence_ok:
-            if tuples:
-                yield result.to_tuples()
-            else:
+            if format == 'str':
                 yield result.to_string(db, **kwdargs)
+            else:
+                yield result.to_dict()
             i += 1
         engine.previous_result = result
 
@@ -454,13 +454,41 @@ def estimate(model, n=0, **kwdargs):
     return estimates
 
 
-def print_result(result, output=sys.stdout):
+def print_result(result, output=sys.stdout, oneline=False):
     success, result = result
     if success:
-        for atom in result:
-            print(atom, file=output)
+        # result is a sequence of samples
+        first = True
+        for s in result:
+            if not oneline and not first:
+                print ('----------------', file=output)
+            first = False
+            print (s, file=output)
     else:
-        print(process_error(result), file=output)
+        print (process_error(result), file=output)
+
+
+def print_result_json(d, output, **kwdargs):
+    """Pretty print result.
+
+    :param d: result from run_problog
+    :param output: output file
+    :param precision:
+    :return:
+    """
+    import json
+    result = {}
+    success, d = d
+    if success:
+        result['SUCCESS'] = True
+        result['results'] = [[(str(k), str(v)) for k, v in dc.items()] for dc in d]
+    else:
+        result['SUCCESS'] = False
+        result['test'] = str(type(d))
+        result['err'] = process_error(d)
+        result['original'] = str(d)
+    print (json.dumps(result), file=output)
+    return 0
 
 
 def main(args, result_handler=None):
@@ -479,10 +507,16 @@ def main(args, result_handler=None):
                         help='Estimate probability of queries from samples.')
     parser.add_argument('--timeout', '-t', type=int, default=0,
                         help="Set timeout (in seconds, default=off).")
+    parser.add_argument('--output', '-o', type=str, default=None, help="Filename of output file.")
+    parser.add_argument('--web', action='store_true', help=argparse.SUPPRESS)
 
     args = parser.parse_args(args)
 
     pl = PrologFile(args.filename)
+
+    outf = sys.stdout
+    if args.output is not None:
+        outf = open(args.output, 'w')
 
     if args.timeout:
         start_timer(args.timeout)
@@ -493,22 +527,29 @@ def main(args, result_handler=None):
 
     signal.signal(signal.SIGTERM, signal_term_handler)
 
+    if result_handler is not None or args.web:
+        outformat = 'dict'
+        if result_handler is None:
+            result_handler = print_result_json
+    else:
+        outformat = 'str'
+        result_handler = print_result
+
     try:
         if args.estimate:
             results = estimate(pl, **vars(args))
             print (format_dictionary(results))
         else:
-            first = True
-            for s in sample(pl, **vars(args)):
-                if not args.oneline and not first:
-                    print ('----------------')
-                first = False
-                print (s)
+            result_handler((True, sample(pl, format=outformat, **vars(args))),
+                           output=outf, oneline=args.oneline)
     except Exception as err:
-        print (process_error(err))
+        result_handler((False, err), output=outf)
 
     if args.timeout:
         stop_timer()
+
+    if args.output is not None:
+        outf.close()
 
 
 if __name__ == '__main__':

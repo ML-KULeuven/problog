@@ -68,36 +68,46 @@ here = os.path.dirname(__file__)
 
 try :
     logging.config.fileConfig(os.path.join(here,'logging.conf'))
-except IOError :
-    pass
+except IOError:
+    logger = logging.getLogger('server')
+    ch = logging.StreamHandler(sys.stdout)
+    formatter = logging.Formatter('[%(levelname)s] %(message)s')
+    ch.setFormatter(formatter)
+    logger.addHandler(ch)
+    logger.setLevel(logging.DEBUG)
 logger = logging.getLogger('server')
 
 # Load Python standard web-related modules (based on Python version)
 import json
 import mimetypes
-if sys.version_info.major == 2 :
+if sys.version_info.major == 2:
     import BaseHTTPServer
     import urlparse
-    def toBytes( string ) :
+
+    def to_bytes(string):
         return bytes(string)
     import urllib
     url_decode = urllib.unquote_plus
     import hashlib
-    def compute_hash(model) :
-        return hashlib.md5(model).hexdigest() # Python 2
 
-else :
+    def compute_hash(model):
+        return hashlib.md5(model).hexdigest()  # Python 2
+
+else:
     import http.server as BaseHTTPServer
     import urllib.parse as urlparse
-    def toBytes( string ) :
+
+    def to_bytes(string):
         return bytes(string, 'UTF-8')
     url_decode = urlparse.unquote_plus
     import hashlib
-    def compute_hash(model) :
-        return hashlib.md5(toBytes(model)).hexdigest() # Python 3
+
+    def compute_hash(model):
+        return hashlib.md5(to_bytes(model)).hexdigest() # Python 3
 
 # Contains special URL paths. Initialize with @handle_url
 PATHS = {}
+
 
 class handle_url(object) :
     """Decorator for adding a handler for a URL.
@@ -116,15 +126,14 @@ class handle_url(object) :
         PATHS[self.path] = f
 
 
-def root_path(relative_path) :
+def root_path(*relative_path):
     """Translate URL path to file system path."""
-    return os.path.abspath( os.path.join(os.path.dirname(__file__), relative_path.lstrip('/') ) )
+    return os.path.abspath(os.path.join(os.path.dirname(__file__), *relative_path))
 
-def model_path(*args) :
-    """Translate model path to file system path."""
-    return os.path.abspath( os.path.join(os.path.dirname(__file__), '../test/', *args ) )
+PROB_EXEC = root_path('..', 'tasks', '__init__.py')
 
-def call_process( cmd, timeout, memout ) :
+
+def call_process(cmd, timeout, memout):
     """Call a subprocess with time and memory restrictions.
 
         Note:
@@ -137,284 +146,155 @@ def call_process( cmd, timeout, memout ) :
 
     """
 
-    def setlimits() :
+    def setlimits():
         resource.setrlimit(resource.RLIMIT_CPU, (timeout, timeout))
         resource.setrlimit(resource.RLIMIT_AS, (memout, memout))
 
     return subprocess.check_output(cmd, preexec_fn=setlimits)
 
+
 def wrap_callback(callback, jsonstr):
     return '{}({});'.format(callback, jsonstr)
 
-#@handle_url('/problog')
-#def run_problog( model ) :
-    #"""Evaluate the given model and return the probabilities."""
-    #model = model[0]
 
-    #handle, tmpfile = tempfile.mkstemp('.pl')
-    #with open(tmpfile, 'w') as f :
-        #f.write(model)
+def run_problog_task(task, model, callback=None, data=None, options=None):
+    if options is None:
+        options = []
 
-    #handle, outfile = tempfile.mkstemp('.out')
+    try:
+        # Write the model to a temporary or cached file.
+        infile = store_hash(model, 'pl')
 
-    #cmd = [ 'python', root_path('run_problog.py'), tmpfile, outfile ]
+        # Construct the basic command
+        cmd = [PYTHON_EXEC, PROB_EXEC, task, infile]
 
-    #try :
-        #call_process(cmd, DEFAULT_TIMEOUT, DEFAULT_MEMOUT * (1 << 30))
+        # Write the data to a temporary or cached file (if given)
+        if data is not None:
+            datafile = store_hash(data, 'data')
+            outfile = os.path.splitext(infile)[0] + '_' + \
+                os.path.splitext(os.path.basename(datafile))[0] + '.out'
+            cmd += [datafile]
+        else:
+            outfile = os.path.splitext(infile)[0] + '.out'
+        logger.info('Output file: {}'.format(outfile))
 
-        #with open(outfile) as f :
-            #result = f.read()
-        #code, datatype, datavalue = result.split(None,2)
-        #return int(code), datatype, datavalue
-    #except subprocess.CalledProcessError :
-        #return 500, 'text/plain', 'ProbLog evaluation exceeded time or memory limit'
+        # Add default and given options to the command.
+        cmd += ['-o', outfile, '--web'] + options
 
-
-@handle_url(api_root+'inference')
-def run_problog_jsonp(model, callback):
-    """Evaluate the given model and return the probabilities using the JSONP
-       standard.
-       This mode is required to send an API request when Problog is
-       running on a different server (to avoid cross-side-scripting
-       limitations).
-    """
-    model = model[0]
-    callback = callback[0]
+    except UnicodeDecodeError as err:
+        logger.error('Unicode error catched: {}'.format(err))
+        result = {'SUCCESS': False, 'err': 'Cannot decode character in program: {}'.format(err)}
+        return 200, 'application/json', wrap_callback(callback, json.dumps(result))
 
     if CACHE_MODELS:
-      try:
-          inhash = compute_hash(model)
-      except UnicodeDecodeError as e:
-          logger.error('Unicode error catched: {}'.format(e))
-          return 200, 'application/json', wrap_callback(callback, json.dumps({'SUCCESS':False,'err':'Cannot decode character in program: {}'.format(e)}))
-      if not os.path.exists(CACHE_DIR):
-          os.mkdir(CACHE_DIR)
-      infile = os.path.join(CACHE_DIR, inhash+'.pl')
-      outfile = os.path.join(CACHE_DIR, inhash+'.out')
-      logger.info('Saved file: {}'.format(infile))
+        url = 'task=%s' % task
+        url += '&hash=%s' % os.path.splitext(os.path.basename(infile))[0]
+        if data is not None:
+            url += '&ehash=%s' % os.path.splitext(os.path.basename(infile))[0]
     else:
-      _, infile = tempfile.mkstemp('.pl')
-      _, outfile = tempfile.mkstemp('.out')
+        url = None
 
-    with open(infile, 'w') as f :
-        f.write(model)
-
-
-    cmd = [ PYTHON_EXEC, root_path('run_problog.py'), infile, outfile ]
-
-    try :
+    try:
+        # Execute ProbLog
         call_process(cmd, DEFAULT_TIMEOUT, DEFAULT_MEMOUT * (1 << 30))
 
-        with open(outfile) as f :
+        # Read output produced by ProbLog
+        with open(outfile) as f:
             result = f.read()
-        code, datatype, datavalue = result.split(None,2)
 
-        if datatype == 'application/json':
-            datavalue = '{}({});'.format(callback, datavalue)
+        if url is not None:
+            result = json.loads(result)
+            result['url'] = url
+            result = json.dumps(result)
 
-        return int(code), datatype, datavalue
+        # Wrap the output in a JSON wrapper.
+        datavalue = wrap_callback(callback, result)
+        return 200, 'application/json', datavalue
     except subprocess.CalledProcessError as err:
-        result = {'SUCCESS': False, 'err': 'ProbLog evaluation exceeded time or memory limit (code: %s)' % err.returncode}
+        logger.error('ProbLog didn\'t finish correctly: %s' % err)
+        result = {'SUCCESS': False, 'url': url,
+                  'err': 'ProbLog learning exceeded time or memory limit'}
         return 200, 'application/json', wrap_callback(callback, json.dumps(result))
+
+
+@handle_url(api_root + 'inference')
+def run_problog_jsonp(model, callback):
+    return run_problog_task('prob', model[0], callback[0])
+
+
+@handle_url(api_root + 'prob')
+def run_problog_jsonp(model, callback):
+    return run_problog_task('prob', model[0], callback[0])
 
 
 @handle_url(api_root + 'mpe')
 def run_mpe_jsonp(model, callback):
-    """Evaluate the given model and return the probabilities using the JSONP
-       standard.
-       This mode is required to send an API request when Problog is
-       running on a different server (to avoid cross-side-scripting
-       limitations).
-    """
-    model = model[0]
-    callback = callback[0]
-
-    if CACHE_MODELS:
-        try:
-            inhash = compute_hash(model)
-        except UnicodeDecodeError as e:
-            logger.error('Unicode error catched: {}'.format(e))
-            result = {'SUCCESS': False, 'err': 'Cannot decode character in program: {}'.format(e)}
-            return 200, 'application/json', wrap_callback(callback, json.dumps(result))
-        if not os.path.exists(CACHE_DIR):
-            os.mkdir(CACHE_DIR)
-        infile = os.path.join(CACHE_DIR, inhash + '.pl')
-        outfile = os.path.join(CACHE_DIR, inhash + '.out')
-        logger.info('Saved file: {}'.format(infile))
-    else:
-        _, infile = tempfile.mkstemp('.pl')
-        _, outfile = tempfile.mkstemp('.out')
-
-    with open(infile, 'w') as f:
-        f.write(model)
-
-    cmd = [PYTHON_EXEC, root_path('run_problog.py'), 'mpe', '--full', infile, outfile]
-
-    try:
-        call_process(cmd, DEFAULT_TIMEOUT, DEFAULT_MEMOUT * (1 << 30))
-
-        with open(outfile) as f:
-            result = f.read()
-        code, datatype, datavalue = result.split(None, 2)
-
-        if datatype == 'application/json':
-            datavalue = '{}({});'.format(callback, datavalue)
-
-        return int(code), datatype, datavalue
-    except subprocess.CalledProcessError as err:
-        result = {'SUCCESS': False, 'err': 'ProbLog evaluation exceeded time or memory limit (code: %s)' % err.returncode}
-        return 200, 'application/json', wrap_callback(callback, json.dumps(result))
+    return run_problog_task('mpe', model[0], callback[0], options=['--full'])
 
 
 @handle_url(api_root + 'sample')
-def run_mpe_jsonp(model, callback):
-    """Evaluate the given model and return the probabilities using the JSONP
-       standard.
-       This mode is required to send an API request when Problog is
-       running on a different server (to avoid cross-side-scripting
-       limitations).
-    """
-    model = model[0]
-    callback = callback[0]
+def run_sample_jsonp(model, callback):
+    return run_problog_task('sample', model[0], callback[0])
 
+
+@handle_url(api_root + 'lfi')
+def run_lfi_jsonp(model, examples, callback):
+    return run_problog_task('lfi', model[0], callback[0], data=examples[0])
+
+
+@handle_url(api_root + 'learning')
+def run_lfi_jsonp(model, examples, callback):
+    return run_problog_task('lfi', model[0], callback[0], data=examples[0])
+
+
+def store_hash(data, datatype):
+    # Can raise UnicodeDecodeError
     if CACHE_MODELS:
-        try:
-            inhash = compute_hash(model)
-        except UnicodeDecodeError as e:
-            logger.error('Unicode error catched: {}'.format(e))
-            result = {'SUCCESS': False, 'err': 'Cannot decode character in program: {}'.format(e)}
-            return 200, 'application/json', wrap_callback(callback, json.dumps(result))
+        datahash = compute_hash(data)
         if not os.path.exists(CACHE_DIR):
             os.mkdir(CACHE_DIR)
-        infile = os.path.join(CACHE_DIR, inhash + '.pl')
-        outfile = os.path.join(CACHE_DIR, inhash + '.out')
-        logger.info('Saved file: {}'.format(infile))
+        datafile = os.path.join(CACHE_DIR, datahash + '.' + datatype)
+        logger.info('Saved file: {}'.format(datafile))
     else:
-        _, infile = tempfile.mkstemp('.pl')
-        _, outfile = tempfile.mkstemp('.out')
+        _, datafile = tempfile.mkstemp('.' + datatype)
 
-    with open(infile, 'w') as f:
-        f.write(model)
+    with open(datafile, 'w') as f:
+        f.write(data)
 
-    cmd = [PYTHON_EXEC, root_path('run_problog.py'), 'sample', infile, outfile]
-
-    try:
-        call_process(cmd, DEFAULT_TIMEOUT, DEFAULT_MEMOUT * (1 << 30))
-
-        with open(outfile) as f:
-            result = f.read()
-        code, datatype, datavalue = result.split(None, 2)
-
-        if datatype == 'application/json':
-            datavalue = '{}({});'.format(callback, datavalue)
-
-        return int(code), datatype, datavalue
-    except subprocess.CalledProcessError as err:
-        result = {'SUCCESS': False, 'err': 'ProbLog evaluation exceeded time or memory limit (code: %s)' % err.returncode}
-        return 200, 'application/json', wrap_callback(callback, json.dumps(result))
+    return datafile
 
 
-@handle_url(api_root+'learning')
-def run_learning_jsonp(model, examples, callback) :
-    """Evaluate the given model and return the probabilities using the JSONP
-       standard.
-       This mode is required to send an API request when Problog is
-       running on a different server (to avoid cross-side-scripting
-       limitations).
-    """
-    model = model[0]
-    examples = examples[0]
-    callback = callback[0]
-
-    if CACHE_MODELS:
-      import hashlib
-      try:
-          inhash = hashlib.md5(model.decode('utf-8')).hexdigest()
-      except UnicodeDecodeError as e:
-          logger.error('Unicode error catched: {}'.format(e))
-          return 200, 'application/json', wrap_callback(callback, json.dumps({'SUCCESS':False,'err':'Cannot decode character in program: {}'.format(e)}))
-      try:
-          datahash = hashlib.md5(examples.decode('utf-8')).hexdigest()
-      except UnicodeDecodeError as e:
-          logger.error('Unicode error catched: {}'.format(e))
-          return 200, 'application/json', wrap_callback(callback, json.dumps({'SUCCESS':False,'err':'Cannot decode character in examples: {}'.format(e)}))
-      if not os.path.exists(CACHE_DIR):
-          os.mkdir(CACHE_DIR)
-      infile = os.path.join(CACHE_DIR, inhash+'.pl')
-      datafile = os.path.join(CACHE_DIR, datahash+'.data')
-      logger.info('Saved files: {} and {}'.format(infile, datafile))
-      outfile = os.path.join(CACHE_DIR, inhash+'_'+datahash+'.out')
+def get_hash(hashcode, datatype):
+    datafile = os.path.join(CACHE_DIR, hashcode + '.' + datatype)
+    if not CACHE_MODELS or not os.path.exists(datafile):
+        return None
     else:
-      _, infile = tempfile.mkstemp('.pl')
-      _, datafile = tempfile.mkstemp('.data')
-      _, outfile = tempfile.mkstemp('.out')
-
-    with open(infile, 'w') as f :
-        f.write(model)
-
-    with open(datafile, 'w') as f :
-        f.write(examples)
-
-    cmd = [ PYTHON_EXEC, root_path('run_learning.py'), infile, datafile, outfile ]
-
-    try :
-        call_process(cmd, DEFAULT_TIMEOUT, DEFAULT_MEMOUT * (1 << 30))
-
-        with open(outfile) as f :
-            result = f.read()
-        code, datatype, datavalue = result.split(None,2)
-
-        if datatype == 'application/json':
-            datavalue = wrap_callback(callback, datavalue)
-
-        return int(code), datatype, datavalue
-    except subprocess.CalledProcessError :
-        return 200, 'application/json', wrap_callback(callback, json.dumps({'SUCCESS':False, 'err':'ProbLog learning exceeded time or memory limit'}))
+        with open(datafile, 'r') as f:
+            data = f.read()
+        return data
 
 
-@handle_url(api_root+'model')
+@handle_url(api_root + 'model')
 def get_model_from_hash_jsonp(hash, callback):
-    hash = hash[0]
-    callback = callback[0]
-    infile = os.path.join(CACHE_DIR, hash+'.pl')
-
-    if not CACHE_MODELS or not os.path.exists(infile):
-        return 200, 'application/json', wrap_callback(callback, json.dumps({'SUCCESS': False, 'err': 'Model hash not available: {}'.format(hash)}))
-
-    result = {'SUCCESS': True}
-    with open(infile, 'r') as f:
-         result['model'] = f.read()
-
-    datatype = 'application/json'
-    datavalue = json.dumps(result)
-    datavalue = wrap_callback(callback, datavalue)
-    code = 200
-
-    return int(code), datatype, datavalue
+    data = get_hash(hash[0], 'pl')
+    if data is None:
+        result = {'SUCCESS': False, 'err': 'Model hash not available: {}'.format(hash[0])}
+    else:
+        result = {'SUCCESS': True, 'model': data}
+    return 200, 'application/json', wrap_callback(callback[0], json.dumps(result))
 
 
-@handle_url(api_root+'examples')
-def get_example_from_hash_jsonp(ehash, callback):
-    ehash = ehash[0]
-    callback = callback[0]
-    infile = os.path.join(CACHE_DIR, ehash+'.data')
-
-    if not CACHE_MODELS or not os.path.exists(infile):
-        return 200, 'application/json', wrap_callback(callback, json.dumps({'SUCCESS': False, 'err': 'Examples hash not available: {}'.format(ehash)}))
-
-    result = {'SUCCESS': True}
-    with open(infile, 'r') as f:
-         result['examples'] = f.read()
-
-    datatype = 'application/json'
-    datavalue = json.dumps(result)
-    datavalue = wrap_callback(callback, datavalue)
-    code = 200
-
-    return int(code), datatype, datavalue
+@handle_url(api_root + 'examples')
+def get_data_from_hash_jsonp(hash, callback):
+    data = get_hash(hash[0], 'data')
+    if data is None:
+        result = {'SUCCESS': False, 'err': 'Model hash not available: {}'.format(hash[0])}
+    else:
+        result = {'SUCCESS': True, 'examples': data}
+    return 200, 'application/json', wrap_callback(callback[0], json.dumps(result))
 
 
-class ProbLogHTTP(BaseHTTPServer.BaseHTTPRequestHandler) :
+class ProbLogHTTP(BaseHTTPServer.BaseHTTPRequestHandler):
 
     def do_POST(self) :
         numberOfBytes = int(self.headers["Content-Length"])
@@ -434,30 +314,31 @@ class ProbLogHTTP(BaseHTTPServer.BaseHTTPRequestHandler) :
         try:
             url = urlparse.urlparse( self.path )
             path = url.path
-            if query == None :
+            if query is None:
                 query = urlparse.parse_qs(url.query)
             if '_' in query:
                 # Used by jquery to avoid caching
                 del query['_']
 
             action = PATHS.get(path)
-            if action == None :
-                if SERVE_FILES :
+            if action is None:
+                if SERVE_FILES:
                     self.serveFile(path)
-                else :
+                else:
                     self.send_response(404)
                     self.end_headers()
-                    self.wfile.write(toBytes('File not found!'))
+                    self.wfile.write(to_bytes('File not found!'))
             else :
-                code, datatype, data = action( **query )
+                code, datatype, data = action(**query)
                 self.send_response(code)
                 self.send_header("Content-type", datatype)
                 self.end_headers()
-                if data :
-                    self.wfile.write(toBytes(data))
+                if data:
+                    self.wfile.write(to_bytes(data))
         except Exception as e:
-          import traceback
-          logger.error('Uncaught exception: {}\n{}'.format(e, traceback.format_exc()))
+            import traceback
+            logger.error('Uncaught exception: {}\n{}'.format(e, traceback.format_exc()))
+
 
     def serveFile(self, filename) :
         """Serve a file."""
@@ -473,11 +354,12 @@ class ProbLogHTTP(BaseHTTPServer.BaseHTTPRequestHandler) :
             if encoding :
                 self.send_header("Content-Encoding", encoding)
             self.end_headers()
-            self.wfile.write(toBytes(data))
+            self.wfile.write(to_bytes(data))
         except :
             self.send_response(404)
             self.end_headers()
-            self.wfile.write(toBytes('File not found!'))
+            self.wfile.write(to_bytes('File not found!'))
+
 
     def log_message(self,format, *args) :
         try :
@@ -522,7 +404,7 @@ def main(argv, **extra):
 
     server_address = ('', args.port)
     httpd = BaseHTTPServer.HTTPServer(server_address, ProbLogHTTP)
-    if args.browser :
+    if args.browser:
         import webbrowser
         webbrowser.open( 'file://' + os.path.join(os.path.abspath(here), 'index_local.html'), new=2, autoraise=True)
     httpd.serve_forever()

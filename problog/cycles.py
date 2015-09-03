@@ -64,7 +64,7 @@ def break_cycles(source, target, **kwdargs):
                                         content, translation, is_evidence=True)
             else:
                 newnode = n
-            if n < 0:
+            if n is not None and n < 0:
                 target.add_name(q, newnode, target.LABEL_EVIDENCE_NEG)
             else:
                 target.add_name(q, newnode, target.LABEL_EVIDENCE_POS)

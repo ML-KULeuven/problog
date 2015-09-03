@@ -31,11 +31,14 @@ from problog.errors import process_error
 
 
 def main(argv, result_handler=None):
-    if result_handler is None:
-        result_handler = print_result
-
     args = argparser().parse_args(argv)
     inputfile = args.inputfile
+
+    if result_handler is None:
+        if args.web:
+            result_handler = print_result_json
+        else:
+            result_handler = print_result
 
     if args.output is not None:
         outf = open(args.output, 'w')
@@ -62,29 +65,7 @@ def main(argv, result_handler=None):
         result = solver.evaluate(cnf)
 
         output_facts = None
-        if result is None:
-            print ('%% The model is not satisfiable.', file=outf)
-        # elif not args.output_all:
-        #     # Old output
-        #     facts = set(result)
-        #     pfacts = cnf.get_weights()
-        #     true_facts = set()
-        #     for name, node in cnf.get_names():
-        #         if node in pfacts:
-        #             if node in facts:
-        #                 facts.remove(node)
-        #                 # print (name)
-        #                 true_facts.add(name)
-        #             elif -node in facts:
-        #                 facts.remove(-node)
-        #                 # print (-name)
-        #             else:
-        #                 pass
-        #                 # print (-name)
-        #
-        #     for n in true_facts:
-        #         print (n)
-        else:
+        if result is not None:
             # TODO do this on original ground program before cycle-breaking
             truthvalues = reduce_formula(dag, result)
 
@@ -117,10 +98,38 @@ def main(argv, result_handler=None):
 def print_result(result, output=sys.stdout):
     success, result = result
     if success:
-        for atom in result:
-            print(atom, file=output)
+        if result is None:
+            print ('%% The model is not satisfiable.', file=output)
+        else:
+            for atom in result:
+                print(atom, file=output)
+        return 0
     else:
         print(process_error(result), file=output)
+        return 1
+
+
+def print_result_json(d, output):
+    """Pretty print result.
+
+    :param d: result from run_problog
+    :param output: output file
+    :param precision:
+    :return:
+    """
+    import json
+    result = {}
+    success, d = d
+    if success:
+        result['SUCCESS'] = True
+        if d is not None:
+            result['atoms'] = list(map(lambda n: (str(-n), False) if n.is_negated() else (str(n), True), d))
+    else:
+        result['SUCCESS'] = False
+        result['err'] = process_error(d)
+        result['original'] = str(d)
+    print (json.dumps(result), file=output)
+    return 0
 
 
 def reduce_formula(formula, facts):
@@ -174,6 +183,7 @@ def argparser():
                         help='Also show false atoms.')
     parser.add_argument('-o', '--output', type=str, default=None,
                         help='Write output to given file (default: write to stdout)')
+    parser.add_argument('--web', action='store_true', help=argparse.SUPPRESS)
     return parser
 
 

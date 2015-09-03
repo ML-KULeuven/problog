@@ -455,7 +455,8 @@ class DDEvaluator(Evaluator):
         self.weights[index] = (pos, neg)
 
     def __del__(self):
-        self._get_manager().deref(self.evidence_inode)
+        if self.evidence_inode is not None:
+            self._get_manager().deref(self.evidence_inode)
 
 
 # noinspection PyUnusedLocal

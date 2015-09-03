@@ -60,6 +60,7 @@ from problog.logic import Term, Constant, Clause, AnnotatedDisjunction, Or
 from problog.program import PrologString, PrologFile, LogicProgram
 from problog.core import ProbLogError
 from problog.errors import process_error
+from problog.sdd_formula import SDD
 
 from problog import get_evaluatable, get_evaluatables
 import traceback
@@ -76,7 +77,7 @@ def str2bool(s):
 
 class LFIProblem(SemiringProbability, LogicProgram) :
     
-    def __init__(self, source, examples, max_iter=10000, min_improv=1e-10, verbose=0, knowledge=None, **extra):
+    def __init__(self, source, examples, max_iter=10000, min_improv=1e-10, verbose=0, knowledge=SDD, **extra):
         SemiringProbability.__init__(self)
         LogicProgram.__init__(self)
         self.source = source
@@ -451,14 +452,15 @@ def read_examples(*filenames):
                     yield atoms
     
     
-def run_lfi( program, examples, output=None, **kwdargs):
-    lfi = LFIProblem( program, examples, **kwdargs)
+def run_lfi( program, examples, output_model=None, **kwdargs):
+    lfi = LFIProblem(program, examples, **kwdargs)
     score = lfi.run()
 
-    if output is not None:
-        with open(output,'w') as f:
+    if output_model is not None:
+        with open(output_model, 'w') as f:
             f.write(lfi.get_model())
     return score, lfi.weights, lfi.names, lfi.iteration
+
 
 def argparser():
     import argparse
@@ -467,11 +469,16 @@ def argparser():
     parser.add_argument('examples', nargs='+')
     parser.add_argument('-n', dest='max_iter', default=10000, type=int )
     parser.add_argument('-d', dest='min_improv', default=1e-10, type=float )
-    parser.add_argument('-o', '--output', type=str, default=None, help='write resulting model to given file')
+    parser.add_argument('-O', '--output-model', type=str, default=None,
+                        help='write resulting model to given file')
+    parser.add_argument('-o', '--output', type=str, default=None,
+                        help='write output to file')
     parser.add_argument('-k', '--knowledge', dest='koption', choices=get_evaluatables(),
                         default=None, help='knowledge compilation tool')
     parser.add_argument('-v', '--verbose', action='count', default=0)
+    parser.add_argument('--web', action='store_true', help=argparse.SUPPRESS)
     return parser
+
 
 def create_logger(name, verbose):
     levels = [logging.WARNING, logging.INFO, logging.DEBUG] + list(range(9, 0, -1))
@@ -483,14 +490,26 @@ def create_logger(name, verbose):
     logger.addHandler(ch)
     logger.setLevel(levels[verbose])
 
+
 def main(argv, result_handler=None):
     parser = argparser()
     args = parser.parse_args(argv)
 
+    if result_handler is None:
+        if args.web:
+            result_handler = print_result_json
+        else:
+            result_handler = print_result
+
     knowledge = get_evaluatable(args.koption)
 
+    if args.output is None:
+        outf = sys.stdout
+    else:
+        outf = open(args.output, 'w')
+
     create_logger('problog_lfi', args.verbose)
-    create_logger('problog', args.verbose-1)
+    create_logger('problog', args.verbose - 1)
 
     program = PrologFile(args.model)
     examples = list(read_examples(*args.examples))
@@ -502,13 +521,52 @@ def main(argv, result_handler=None):
     del options['examples']
 
     try:
-        score, weights, names, iterations = run_lfi(program, examples, knowledge=knowledge, **options)
-        print(score, weights, names, iterations)
+        results = run_lfi(program, examples, knowledge=knowledge, **options)
+
+        for n in results[2]:
+            n.loc = program.lineno(n.location)
+        retcode = result_handler((True, results), output=outf)
     except Exception as err:
         trace = traceback.format_exc()
         err.trace = trace
-        print (process_error(err), file=sys.stderr)
+        retcode = result_handler((False, err), output=outf)
+
+    if args.output is not None:
+        outf.close()
+
+    if retcode:
+        sys.exit(retcode)
 
 
-if __name__ == '__main__' :
+def print_result(d, output, precision=8):
+    success, d = d
+    if success:
+        score, weights, names, iterations = d
+        weights = list(map(lambda x: round(x, precision), weights))
+        print (score, weights, names, iterations, file=output)
+        return 0
+    else:
+        print (process_error(d), file=output)
+        return 1
+
+
+def print_result_json(d, output, precision=8):
+    import json
+    success, d = d
+    if success:
+        score, weights, names, iterations = d
+        results = {'SUCCESS': True,
+                   'score': score,
+                   'iterations': iterations,
+                   'weights': [[str(n.with_probability()), round(w, precision), n.loc[1], n.loc[2]]
+                               for n, w in zip(names, weights)],
+                   }
+        print (json.dumps(results), file=output)
+    else:
+        results = {'SUCCESS': False, 'err': d}
+        print (json.dumps(results), file=output)
+    return 0
+
+
+if __name__ == '__main__':
     main(sys.argv[1:])

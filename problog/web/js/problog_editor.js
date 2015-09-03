@@ -215,7 +215,7 @@ problog.initDiv = function(el, resize) {
             var meta_str = "<p><strong>Stats</strong>:";
             var sep = " ";
             for (var k in data) {
-              if (k !== 'weights' && k !== 'probs' && k !== 'SUCCESS') {
+              if (k !== 'weights' && k !== 'probs' && k !== 'SUCCESS' && k !== 'url') {
                 meta_str += sep+k+"="+data[k];
                 sep = ", ";
               }
