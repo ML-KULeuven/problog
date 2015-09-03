@@ -1,8 +1,8 @@
-ProbLog 2.1 command line interface
+Using ProbLog as a standalone tool
 ==================================
 
 The command line interface (CLI) gives access to the basic functionality of ProbLog 2.1.
-It is accessible through the script ``problog-cli.py``.
+It is accessible through the script ``problog-cli.py`` or ``problog`` if installed through pip.
 
 The CLI has different modes of operation. These can be accessed by adding a keyword as the first \
 argument.
@@ -11,9 +11,13 @@ Currently, the following modes are supported
 
   * (default, no keyword): standard ProbLog inference
   * ``sample``: generate samples from a ProbLog program
+  * ``mpe``: most probable explanation
+  * ``lfi``: learning from interpretations
+  * ``explain``: evaluate using mutually exclusive proofs
   * ``ground``: generate a ground program
   * ``install``: run the installer
   * ``unittest``: run the testsuite
+  * ``web``: start a web server
 
 Default (no keyword)
 --------------------
@@ -139,6 +143,20 @@ The number of samples used for estimation can be determined in three ways:
     someHeads : 0.79249841
 
 
+Most Probable Explanation (``mpe``)
+-----------------------------------
+
+
+
+Learning from interpretations (``lfi``)
+---------------------------------------
+
+
+
+Explanation mode (``explain``)
+------------------------------
+
+
 
 Grounding (``ground``)
 ----------------------
@@ -147,6 +165,11 @@ Grounding (``ground``)
 
 Installation (``install``)
 --------------------------
+
+
+
+Web server (``web``)
+--------------------
 
 
 
