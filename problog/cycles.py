@@ -58,16 +58,20 @@ def break_cycles(source, target, **kwdargs):
             target.add_name(q, newnode, target.LABEL_QUERY)
 
         translation = defaultdict(list)
-        for q, n in source.evidence():
+        for q, n, v in source.evidence_all():
             if source.is_probabilistic(n):
                 newnode = _break_cycles(source, target, abs(n), [], cycles_broken,
                                         content, translation, is_evidence=True)
             else:
                 newnode = n
             if n is not None and n < 0:
+                newnode = target.negate(newnode)
+            if v > 0:
+                target.add_name(q, newnode, target.LABEL_EVIDENCE_POS)
+            elif v < 0:
                 target.add_name(q, newnode, target.LABEL_EVIDENCE_NEG)
             else:
-                target.add_name(q, newnode, target.LABEL_EVIDENCE_POS)
+                target.add_name(q, newnode, target.LABEL_EVIDENCE_MAYBE)
 
         logger.debug("Ground program size: %s", len(target))
         return target
