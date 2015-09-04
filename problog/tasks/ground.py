@@ -26,13 +26,15 @@ from problog.evaluator import SemiringLogProbability
 from problog.parser import DefaultPrologParser
 from problog.program import ExtendedPrologFactory, PrologFile
 from problog.cnf_formula import CNF
+from problog.errors import process_error
+from problog.util import subprocess_check_output, mktempfile
 
 
 def main(argv, result_handler=None):
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument('filename', metavar='MODEL', type=str, help='input ProbLog model')
-    parser.add_argument('--format', choices=('dot', 'pl', 'cnf', 'internal'), default=None,
+    parser.add_argument('--format', choices=('dot', 'pl', 'cnf', 'svg', 'internal'), default=None,
                         help='output format')
     parser.add_argument('--break-cycles', action='store_true', help='perform cycle breaking')
     parser.add_argument('--keep-all', action='store_true', help='also output deterministic nodes')
@@ -40,6 +42,7 @@ def main(argv, result_handler=None):
     parser.add_argument('--propagate-weights', action='store_true', help='propagate evidence')
     parser.add_argument('--compact', action='store_true',
                         help='allow compact model (may remove some predicates)')
+    parser.add_argument('--web', action='store_true', help=argparse.SUPPRESS)
     parser.add_argument('-o', '--output', type=str, help='output file', default=None)
     args = parser.parse_args(argv)
 
@@ -64,21 +67,63 @@ def main(argv, result_handler=None):
     else:
         semiring = None
 
-    gp = target.createFrom(
-        PrologFile(args.filename, parser=DefaultPrologParser(ExtendedPrologFactory())),
-        label_all=True, avoid_name_clash=not args.compact, keep_order=True, keep_all=args.keep_all,
-        propagate_evidence=args.propagate_evidence, propagate_weights=semiring)
-
-    if outformat == 'pl':
-        print(gp.to_prolog(), file=outfile)
-    elif outformat == 'dot':
-        print(gp.to_dot(), file=outfile)
-    elif outformat == 'cnf':
-        print(CNF.createFrom(gp).to_dimacs(), file=outfile)
-    elif outformat == 'internal':
-        print(str(gp), file=outfile)
+    if args.web:
+        print_result = print_result_json
     else:
-        print(gp.to_prolog(), file=outfile)
+        print_result = print_result_standard
+
+    try:
+        gp = target.createFrom(
+            PrologFile(args.filename, parser=DefaultPrologParser(ExtendedPrologFactory())),
+            label_all=True, avoid_name_clash=not args.compact, keep_order=True, keep_all=args.keep_all,
+            propagate_evidence=args.propagate_evidence, propagate_weights=semiring)
+
+        if outformat == 'pl':
+            rc = print_result((True, gp.to_prolog()), output=outfile)
+        elif outformat == 'dot':
+            rc = print_result((True, gp.to_dot()), output=outfile)
+        elif outformat == 'svg':
+            dot = gp.to_dot()
+            tmpfile = mktempfile('.dot')
+            with open(tmpfile, 'w') as f:
+                print(dot, file=f)
+            svg = subprocess_check_output(['dot', tmpfile, '-Tsvg'])
+            rc = print_result((True, svg), output=outfile)
+        elif outformat == 'cnf':
+            rc = print_result((True, CNF.createFrom(gp).to_dimacs()), output=outfile)
+        elif outformat == 'internal':
+            rc = print_result((True, str(gp)), output=outfile)
+        else:
+            rc = print_result((True, gp.to_prolog()), output=outfile)
+    except Exception as err:
+        import traceback
+        err.trace = traceback.print_exc()
+        rc = print_result((False, err))
 
     if args.output:
         outfile.close()
+
+    if rc:
+        sys.exit(rc)
+
+
+def print_result_standard(result, output=sys.stdout):
+    success, result = result
+    if success:
+        print (result, file=output)
+        return 0
+    else:
+        print (process_error(result), file=output)
+        return 1
+
+
+def print_result_json(result, output=sys.stdout):
+    success, result = result
+    import json
+    out = {'SUCCESS': success}
+    if success:
+        out['result'] = str(result)
+    else:
+        out['err'] = vars(result)
+    print (json.dumps(out), file=output)
+    return 0
