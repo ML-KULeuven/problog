@@ -64,20 +64,10 @@ var problog = {
                     name: "Learning",
                     text: "Learning from interpretations.",
                     action: 'Learn',
-                    choices: [
-                        {name:"-exact"},
-                        {name:"SDD"},
-                        {name:"d-DNNF"},
-                        {name:"BDD"},
-                        {name:"-approximate"},
-                        {name:"forward"},
-                        {name:"k-best"},
-                        {name:"sample"}
-                    ],
                     select: function(pbl) {
                         var editor = $('<div>').addClass("problog-edit-editor-small");
                         pbl.editor_data = ace.edit(editor[0]);
-                        pbl.editor_data.getSession().setMode('ace/mode/prolog');
+                        pbl.editor_data.getSession().setMode('ace/mode/problog');
                         pbl.editor_data.getSession().setUseWrapMode(true);
                         pbl.editor_data.setShowInvisibles(true);
                         pbl.dom.edit_options.append($('<strong>').text('Examples (specified as evidence, separated by ---):'));
@@ -117,7 +107,7 @@ var problog = {
                         var meta_str = "<p><strong>Stats</strong>:";
                         var sep = " ";
                         for (var k in data) {
-                            if (k !== 'weights' && k !== 'probs' && k !== 'SUCCESS') {
+                            if (k !== 'weights' && k !== 'probs' && k != 'url' && k !== 'SUCCESS') {
                                 meta_str += sep+k+"="+data[k];
                                 sep = ", ";
                             }
@@ -219,7 +209,7 @@ problog.init = function(hostname) {
         problog.hostname = hostname;
     }
 
-    $('head').append('<style type="text/css">.problog-edit-editor {height: 300px; width: 100%;} .problog-editor {width:100%;} .problog-editor-hash {float:right; margin-right:5px;} .problog-edit-editor-small {height: 200px; width: 100%;} .glyphicon-refresh-animate {-animation: spin .7s infinite linear; -webkit-animation: spin2 .7s infinite linear;} @-webkit-keyframes spin2 { from { -webkit-transform: rotate(0deg);} to { -webkit-transform: rotate(360deg); } @keyframes spin { from { transform: scale(1) rotate(0deg);} to { transform: scale(1) rotate(360deg);}  </style>')
+    $('head').append('<style type="text/css">.problog-edit-editor {height: 400px; width: 100%;} .problog-editor {width:100%;} .problog-editor-hash {float:right; margin-right:5px;} .problog-edit-editor-small {height: 200px; width: 100%;} .glyphicon-refresh-animate {-animation: spin .7s infinite linear; -webkit-animation: spin2 .7s infinite linear;} @-webkit-keyframes spin2 { from { -webkit-transform: rotate(0deg);} to { -webkit-transform: rotate(360deg); } @keyframes spin { from { transform: scale(1) rotate(0deg);} to { transform: scale(1) rotate(360deg);}  </style>')
     $.each($(problog.selector), problog.init_editor);
 }
 
@@ -448,7 +438,7 @@ problog.init_editor = function(index, object) {
     // Initialize editor
     pbl.dom.edit_editor = $('<div>').addClass("problog-edit-editor").appendTo(pbl.dom.editpane);
     pbl.editor = ace.edit(pbl.dom.edit_editor[0]);
-    pbl.editor.getSession().setMode('ace/mode/prolog');
+    pbl.editor.getSession().setMode('ace/mode/problog');
     pbl.editor.getSession().setUseWrapMode(true);
     pbl.editor.setShowInvisibles(true);
 

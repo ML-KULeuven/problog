@@ -59,10 +59,25 @@ SERVE_FILES = False
 CACHE_MODELS = True
 CACHE_DIR = "cache"
 
+RUN_LOCAL = False
+
 PYTHON_EXEC = 'python'    # Python 2
 # PYTHON_EXEC = sys.executable  # Match with server
 
 api_root = '/'
+
+FILES_WHITELIST = [
+    api_root + 'js/problog_editor_advanced.js',
+    api_root + 'js/lib/ace.js',
+    api_root + 'js/lib/bootstrap-theme.min.css',
+    api_root + 'js/lib/bootstrap.min.css',
+    api_root + 'js/lib/bootstrap.min.js',
+    api_root + 'js/lib/jquery-2.1.0.min.js',
+    api_root + 'js/lib/jquery-ui.min.js',
+    api_root + 'js/lib/mode-prolog.js',
+    api_root + 'tutorial.html',
+    api_root + 'sidebar.css'
+]
 
 here = os.path.dirname(__file__)
 
@@ -169,6 +184,7 @@ def run_problog_task(task, model, callback=None, data=None, options=None):
         cmd = [PYTHON_EXEC, PROB_EXEC, task, infile]
 
         # Write the data to a temporary or cached file (if given)
+        datafile = None
         if data is not None:
             datafile = store_hash(data, 'data')
             outfile = os.path.splitext(infile)[0] + '_' + \
@@ -190,7 +206,7 @@ def run_problog_task(task, model, callback=None, data=None, options=None):
         url = 'task=%s' % task
         url += '&hash=%s' % os.path.splitext(os.path.basename(infile))[0]
         if data is not None:
-            url += '&ehash=%s' % os.path.splitext(os.path.basename(infile))[0]
+            url += '&ehash=%s' % os.path.splitext(os.path.basename(datafile))[0]
     else:
         url = None
 
@@ -247,6 +263,11 @@ def run_lfi_jsonp(model, examples, callback):
     return run_problog_task('lfi', model[0], callback[0], data=examples[0])
 
 
+@handle_url(api_root + 'ground')
+def run_lfi_jsonp(model, callback):
+    return run_problog_task('ground', model[0], callback[0], options=['--format', 'svg'])
+
+
 def store_hash(data, datatype):
     # Can raise UnicodeDecodeError
     if CACHE_MODELS:
@@ -294,6 +315,44 @@ def get_data_from_hash_jsonp(hash, callback):
     return 200, 'application/json', wrap_callback(callback[0], json.dumps(result))
 
 
+@handle_url(api_root + 'models')
+def get_example_models(callback):
+    return
+
+
+@handle_url(api_root)
+def get_editor():
+    with open(root_path('editor_adv.html')) as f:
+        data = f.read()
+    data = data.replace('problog.init()', 'problog.init(\'\');')
+    data = make_local(data)
+    return 200, 'text/html', data
+
+
+def make_local(html):
+    import re
+
+    if RUN_LOCAL:
+        html = re.sub('<link rel="stylesheet" href="(http([^/"]*/)+)', '<link rel="stylesheet" href="js/lib/', html)
+        html = re.sub('<script src="(http([^/"]*/)+)', '<script src="js/lib/', html)
+        return html
+    else:
+        return html
+
+
+# @handle_url(api_root + 'js/problog_editor_advanced.js')
+# def get_javascript():
+#     with open(root_path('js/problog_editor_advanced.js')) as f:
+#         data = f.read()
+#     return 200, 'application/javascript', data
+#
+#
+# @handle_url(api_root + 'tutorial.html')
+# def get_javascript():
+#     with open(root_path('js/problog_editor_advanced.js')) as f:
+#         data = f.read()
+#     return 200, 'application/javascript', data
+
 class ProbLogHTTP(BaseHTTPServer.BaseHTTPRequestHandler):
 
     def do_POST(self) :
@@ -302,7 +361,6 @@ class ProbLogHTTP(BaseHTTPServer.BaseHTTPRequestHandler):
         query = urlparse.parse_qs(data)
 
         self.do_GET(query=query)
-
 
     def do_GET(self, query=None) :
         """Handle a GET request.
@@ -322,7 +380,7 @@ class ProbLogHTTP(BaseHTTPServer.BaseHTTPRequestHandler):
 
             action = PATHS.get(path)
             if action is None:
-                if SERVE_FILES:
+                if SERVE_FILES or str(path) in FILES_WHITELIST:
                     self.serveFile(path)
                 else:
                     self.send_response(404)
@@ -339,16 +397,18 @@ class ProbLogHTTP(BaseHTTPServer.BaseHTTPRequestHandler):
             import traceback
             logger.error('Uncaught exception: {}\n{}'.format(e, traceback.format_exc()))
 
-
     def serveFile(self, filename) :
         """Serve a file."""
-        if filename == '/' : filename = '/index.html'
+        if filename == '/':
+            filename = '/index.html'
+        filename = filename.lstrip('/')
 
         filetype, encoding = mimetypes.guess_type(filename)
         filename = root_path(filename)
         try :
-            with open(filename) as f :
+            with open(filename) as f:
                 data = f.read()
+            data = make_local(data)
             self.send_response(200)
             self.send_header("Content-type", filetype)
             if encoding :
@@ -359,7 +419,6 @@ class ProbLogHTTP(BaseHTTPServer.BaseHTTPRequestHandler):
             self.send_response(404)
             self.end_headers()
             self.wfile.write(to_bytes('File not found!'))
-
 
     def log_message(self,format, *args) :
         try :
@@ -384,6 +443,7 @@ def main(argv, **extra):
     global DEFAULT_TIMEOUT
     global SERVE_FILES
     global CACHE_MODELS
+    global RUN_LOCAL
 
     import argparse
 
@@ -393,8 +453,13 @@ def main(argv, **extra):
     parser.add_argument('--memout', '-m', type=float, default=DEFAULT_MEMOUT, help="Memory limit in Gb")
     parser.add_argument('--servefiles', '-F', action='store_true', help="Attempt to serve a file for undefined paths (unsafe?).")
     parser.add_argument('--nocaching', action='store_true', help="Disable caching of submitted models")
-    parser.add_argument('--browser', action='store_true', help="Open editor in web browser.")
+    parser.add_argument('--browser', '-B', action='store_true', help="Open editor in web browser.")
+    parser.add_argument('--local', '-l', action='store_true', help="Use local javascript libraries.")
     args = parser.parse_args(argv)
+
+    RUN_LOCAL = args.local
+    if args.local:
+        args.servefiles = True
 
     DEFAULT_TIMEOUT = args.timeout
     DEFAULT_MEMOUT = args.memout
@@ -406,7 +471,7 @@ def main(argv, **extra):
     httpd = BaseHTTPServer.HTTPServer(server_address, ProbLogHTTP)
     if args.browser:
         import webbrowser
-        webbrowser.open( 'file://' + os.path.join(os.path.abspath(here), 'index_local.html'), new=2, autoraise=True)
+        webbrowser.open('http://localhost:%s/' % args.port, new=2, autoraise=True)
     httpd.serve_forever()
 
 
