@@ -1,8 +1,9 @@
 #! /usr/bin/env python
 
+from __future__ import print_function
 import sys
 
-version = '2.1.0.4'
+version = '2.1.0.5'
 
 if len(sys.argv) == 1:
     from problog import setup as problog_setup
@@ -17,8 +18,10 @@ else:
         def run(self):
             install.run(self)
             from problog import setup as problog_setup
-            problog_setup.install()
-        
+            try:
+                problog_setup.install()
+            except Exception as err:
+                print ('Optional ProbLog installation failed: %s' % err, file=sys.stderr)
 
     package_data = {
         'problog': [
@@ -37,6 +40,7 @@ else:
             'lib/sdd/*.py',
             'web/*.py',
             'web/editor_local.html',
+            'web/editor_adv.html',
             'web/js/problog_editor.js'
         ]
     }

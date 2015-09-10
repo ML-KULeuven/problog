@@ -396,7 +396,11 @@ class LogicFormula(BaseFormula):
 
         if self.is_probabilistic(key):
             node = self.get_node(abs(key))
-            node = type(node)(*(node[:-1] + (name,)))
+            if key < 0:
+                lname = -name
+            else:
+                lname = name
+            node = type(node)(*(node[:-1] + (lname,)))
             self._update(abs(key), node)
 
         BaseFormula.add_name(self, name, key, label)
@@ -830,18 +834,26 @@ label_all=True)
         :return: Prolog program
         :rtype: str
         """
-
         lines = []
+        neg_heads = set()
         for head, body in self.enumerate_clauses():
+            head_name = self.get_name(head)
+            if head_name.is_negated():
+                pos_name = -head_name
+                head_name = Term(pos_name.functor + '_aux', *pos_name.args)
+                if head not in neg_heads:
+                    lines.append('%s :- %s.' % (pos_name, -head_name))
+                    neg_heads.add(head)
             if body:    # clause with a body
                 body = ', '.join(map(str, map(self.get_name, body)))
-                lines.append('%s :- %s.' % (self.get_name(head), body))
+                lines.append('%s :- %s.' % (head_name, body))
             else:   # fact
                 prob = self.get_node(head).probability
+
                 if prob is not None:
-                    lines.append('%s::%s.' % (prob, self.get_name(head)))
+                    lines.append('%s::%s.' % (prob, head_name))
                 else:
-                    lines.append('%s.' % self.get_name(head))
+                    lines.append('%s.' % head_name)
         return '\n'.join(lines)
 
     def get_name(self, key):
@@ -1014,6 +1026,9 @@ label_all=True)
 
         q = 0
         for name, index in set(queries):
+            if name.is_negated():
+                pos_name = -name
+                name = Term(pos_name.functor + '_aux', *pos_name.args)
             opt = ''
             if index is None:
                 index = 'false'
