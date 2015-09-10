@@ -61,8 +61,8 @@ CACHE_DIR = "cache"
 
 RUN_LOCAL = False
 
-PYTHON_EXEC = 'python'    # Python 2
-# PYTHON_EXEC = sys.executable  # Match with server
+# PYTHON_EXEC = 'python'    # Python 2
+PYTHON_EXEC = sys.executable  # Match with server
 
 api_root = '/'
 
