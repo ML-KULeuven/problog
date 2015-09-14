@@ -64,6 +64,7 @@ class ForwardInference(DD):
         self._update_listeners = []
 
         self._node_depths = None
+        self.evidence_node = 0
 
     def register_update_listener(self, obj):
         self._update_listeners.append(obj)
@@ -79,6 +80,8 @@ class ForwardInference(DD):
         self._completed[node - 1] = True
 
     def init_build(self):
+        if self.evidence():
+            self.evidence_node = self.add_and([n for q, n in self.evidence()])
         self._facts = []  # list of facts
         self._atoms_in_rules = defaultdict(set)  # lookup all rules in which an atom is used
         self._completed = [False] * len(self)
@@ -131,7 +134,8 @@ class ForwardInference(DD):
         self._node_levels = []
         # Start with current nodes
         current_nodes = set(abs(n) for q, n in self.queries() if n is not None and n != 0)
-        current_nodes |= set(abs(n) for q, n in self.evidence() if n is not None and n != 0)
+        if self.is_probabilistic(self.evidence_node):
+            current_nodes.add(self.evidence_node)
         current_level = 0
         while current_nodes:
             self._node_levels.append(current_nodes)
@@ -272,7 +276,7 @@ class ForwardInference(DD):
 
     def build_dd(self):
         required_nodes = set([abs(n) for q, n in self.queries() if self.is_probabilistic(n)])
-        required_nodes |= set([abs(n) for q, n in self.queries() if self.is_probabilistic(n)])
+        required_nodes |= set([abs(n) for q, n, v in self.evidence_all() if self.is_probabilistic(n)])
 
         if self.timeout:
             # signal.signal(signal.SIGALRM, timeout_handler)
@@ -336,6 +340,16 @@ class ForwardInference(DD):
                 self.get_manager().deref(oldnode)
             self.set_inode(index, newnode)
             return True
+
+    def get_evidence_inode(self):
+        if not self.is_probabilistic(self.evidence_node):
+            return self.get_manager().true()
+        else:
+            inode = self.get_inode(self.evidence_node)
+            if inode:
+                return inode
+            else:
+                return self.get_manager().true()
 
     def get_inode(self, index):
         """
@@ -464,6 +478,8 @@ class ForwardEvaluator(Evaluator):
     def node_updated(self, source, node, complete):
 
         name = [n for n, i in self.formula.queries() if abs(i) == node]
+        if node == abs(source.evidence_node):
+            name = ('evidence',)
         if name:
             name = name[0]
             weights = {}
@@ -473,9 +489,11 @@ class ForwardEvaluator(Evaluator):
                     weights[av] = weight
             inode = source.get_inode(node)
             if inode is not None:
-                tvalue = source.get_manager().wmc(source.get_constraint_inode(), weights,
-                                                  self.semiring)
-                value = source.get_manager().wmc(inode, weights, self.semiring)
+                enode = source.get_manager().conjoin(source.get_evidence_inode(),
+                                                     source.get_constraint_inode())
+                qnode = source.get_manager().conjoin(inode, enode)
+                tvalue = source.get_manager().wmc(enode, weights, self.semiring)
+                value = source.get_manager().wmc(qnode, weights, self.semiring)
                 result = self.semiring.normalize(value, tvalue)
                 self._results[node] = result
 
@@ -521,6 +539,7 @@ class ForwardEvaluator(Evaluator):
                 else:
                     return self.semiring.result(wp)
             else:
+                # TODO report correct bounds in case of evidence
                 if index < 0:
                     if -index in self._results:
                         if -index in self._complete:
@@ -542,9 +561,9 @@ class ForwardEvaluator(Evaluator):
     def evaluate_evidence(self):
         raise NotImplementedError('Evaluator.evaluate_evidence is an abstract method.')
 
-    def add_evidence(self, node):
-        """Add evidence"""
-        warnings.warn('Evidence is not supported by this evaluation method and will be ignored.')
+    # def add_evidence(self, node):
+    #     """Add evidence"""
+    #     warnings.warn('Evidence is not supported by this evaluation method and will be ignored.')
 
     def has_evidence(self):
         return self.__evidence != []
