@@ -505,7 +505,7 @@ class ForwardEvaluator(Evaluator):
                 self._complete.add(node)
 
     def node_completed(self, source, node):
-        qs = set(abs(qi) for qn, qi in source.queries())
+        qs = set(abs(qi) for qn, qi in source.queries() if source.is_probabilistic(qi))
         if node in qs:
             self._complete.add(node)
 
