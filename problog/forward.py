@@ -477,7 +477,8 @@ class ForwardEvaluator(Evaluator):
 
     def node_updated(self, source, node, complete):
 
-        name = [n for n, i in self.formula.queries() if abs(i) == node]
+        name = [n for n, i in self.formula.queries()
+                if source.is_probabilistic(i) and abs(i) == node]
         if node == abs(source.evidence_node):
             name = ('evidence',)
         if name:
