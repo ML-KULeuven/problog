@@ -49,10 +49,10 @@ max_list([X|L],S) :- max_list(L,X,S).
 max_list([],S,S).
 max_list([X|L],M,S) :-
     M > X,
-    max_list(L,X,S).
+    max_list(L,M,S).
 max_list([X|L],M,S) :-
     M =< X,
-    max_list(L,M,S).
+    max_list(L,X,S).
 
 min_list([X|L],S) :- min_list(L,X,S).
 min_list([],S,S).
