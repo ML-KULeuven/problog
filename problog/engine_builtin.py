@@ -110,6 +110,8 @@ def add_standard_builtins(engine, b=None, s=None, sp=None):
     for i in range(2, 10):
         engine.add_builtin('call', i, _builtin_calln)
 
+    engine.add_builtin('subquery', 2, s(_builtin_subquery))
+
     engine.add_builtin('sample_uniform1', 3, sp(_builtin_sample_uniform))
 
     for i in range(1, 10):
@@ -1363,6 +1365,19 @@ def _builtin_call(term, args=(), engine=None, callback=None, transform=None, **k
     except UnknownClauseInternal:
         raise UnknownClause(term_call.signature, kwdargs['database'].lineno(kwdargs['location']))
     return True, actions
+
+
+def _builtin_subquery(term, prob, engine=None, database=None, **kwdargs):
+
+    from .sdd_formula import SDD
+
+    eng = engine.__class__()
+
+    target = eng.ground(database, term, label='query')
+
+    results = SDD.create_from(target).evaluate()
+
+    return [(t, Constant(p)) for t, p in results.items()]
 
 
 def _builtin_calln(term, *args, **kwdargs):
