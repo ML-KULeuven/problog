@@ -111,6 +111,7 @@ def add_standard_builtins(engine, b=None, s=None, sp=None):
         engine.add_builtin('call', i, _builtin_calln)
 
     engine.add_builtin('subquery', 2, s(_builtin_subquery))
+    engine.add_builtin('subquery', 3, s(_builtin_subquery))
 
     engine.add_builtin('sample_uniform1', 3, sp(_builtin_sample_uniform))
 
@@ -1367,7 +1368,11 @@ def _builtin_call(term, args=(), engine=None, callback=None, transform=None, **k
     return True, actions
 
 
-def _builtin_subquery(term, prob, engine=None, database=None, **kwdargs):
+def _builtin_subquery(term, prob, evidence=None, engine=None, database=None, **kwdargs):
+    if evidence:
+        check_mode((term, prob, evidence), ['cvL'], functor='subquery')
+    else:
+        check_mode((term, prob), ['cv'], functor='subquery')
 
     from .sdd_formula import SDD
 
@@ -1375,9 +1380,15 @@ def _builtin_subquery(term, prob, engine=None, database=None, **kwdargs):
 
     target = eng.ground(database, term, label='query')
 
-    results = SDD.create_from(target).evaluate()
+    if evidence:
+        for ev in term2list(evidence):
+            target = eng.ground(database, ev, target=target, label=target.LABEL_EVIDENCE_POS)
 
-    return [(t, Constant(p)) for t, p in results.items()]
+    results = SDD.create_from(target).evaluate()
+    if evidence:
+        return [(t, Constant(p), evidence) for t, p in results.items()]
+    else:
+        return [(t, Constant(p)) for t, p in results.items()]
 
 
 def _builtin_calln(term, *args, **kwdargs):

@@ -225,7 +225,7 @@ class ClauseDBEngine(GenericEngine):
         else:
             return [x for x, y in result]
 
-    def ground(self, db, term, gp=None, label=None, **kwdargs):
+    def ground(self, db, term, target=None, label=None, **kwdargs):
         """Ground a query on the given database.
 
        :param db: logic program
@@ -245,16 +245,17 @@ class ClauseDBEngine(GenericEngine):
             term = -term
         else:
             negated = False
-        gp, results = self._ground(db, term, gp, silent_fail=False, **kwdargs)
+
+        target, results = self._ground(db, term, target, silent_fail=False, **kwdargs)
         for args, node_id in results:
             term_store = term.with_args(*args)
             if negated:
-                gp.add_name(-term_store, -node_id, label)
+                target.add_name(-term_store, -node_id, label)
             else:
-                gp.add_name(term_store, node_id, label)
+                target.add_name(term_store, node_id, label)
         if not results:
-            gp.add_name(term, None, label)
-        return gp
+            target.add_name(term, None, label)
+        return target
 
     def _ground(self, db, term, gp=None, silent_fail=True, assume_prepared=False, **kwdargs):
         """
