@@ -518,6 +518,24 @@ class ForwardEvaluator(Evaluator):
         self._start_time = time.time()
         build_dd(self.formula, self.fsdd)
 
+        # Update weights with constraints and evidence
+        enode = self.fsdd.get_manager().conjoin(self.fsdd.get_evidence_inode(),
+                                                self.fsdd.get_constraint_inode())
+
+        weights = {}
+        for atom, weight in self.weights.items():
+            av = self.fsdd.atom2var.get(atom)
+            if av is not None:
+                weights[av] = weight
+
+        for name, node in self.fsdd.queries():
+            inode = self.fsdd.get_inode(node)
+            qnode = self.fsdd.get_manager().conjoin(inode, enode)
+            tvalue = self.fsdd.get_manager().wmc(enode, weights, self.semiring)
+            value = self.fsdd.get_manager().wmc(qnode, weights, self.semiring)
+            result = self.semiring.normalize(value, tvalue)
+            self._results[node] = result
+
     def propagate(self):
         self.initialize()
 
@@ -534,8 +552,10 @@ class ForwardEvaluator(Evaluator):
             n = self.formula.get_node(abs(index))
             nt = type(n).__name__
             if nt == 'atom':
-                wp, wn = self.weights.get(abs(index))
+                wp = self._results[abs(index)]
+                # wp, wn = self.weights.get(abs(index))
                 if index < 0:
+                    wn = self.semiring.negate(wp)
                     return self.semiring.result(wn)
                 else:
                     return self.semiring.result(wp)
