@@ -81,7 +81,7 @@ class ForwardInference(DD):
 
     def init_build(self):
         if self.evidence():
-            self.evidence_node = self.add_and([n for q, n in self.evidence()])
+            self.evidence_node = self.add_and([n for q, n in self.evidence() if n is None or n != 0])
         self._facts = []  # list of facts
         self._atoms_in_rules = defaultdict(set)  # lookup all rules in which an atom is used
         self._completed = [False] * len(self)
@@ -521,6 +521,10 @@ class ForwardEvaluator(Evaluator):
         # Update weights with constraints and evidence
         enode = self.fsdd.get_manager().conjoin(self.fsdd.get_evidence_inode(),
                                                 self.fsdd.get_constraint_inode())
+
+        # Make sure all atoms exist in atom2var.
+        for name, node in self.fsdd.queries():
+            self.fsdd.get_inode(node)
 
         weights = {}
         for atom, weight in self.weights.items():
