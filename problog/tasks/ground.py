@@ -97,7 +97,7 @@ def main(argv, result_handler=None):
             rc = print_result((True, gp.to_prolog()), output=outfile)
     except Exception as err:
         import traceback
-        err.trace = traceback.print_exc()
+        err.trace = traceback.format_exc()
         rc = print_result((False, err))
 
     if args.output:
