@@ -938,6 +938,7 @@ label_all=True)
         :return: Prolog program
         :rtype: str
         """
+
         lines = ['%s.' % c for c in self.enum_clauses()]
 
         for qn, qi in self.queries():
@@ -1116,8 +1117,12 @@ label_all=True)
                 if processed:
                     processed[abs(index)] = True
                 return self.get_body(node.children[0])
+            elif ntype == 'disj':
+                return node.name
             else:
-                assert False
+                print (self)
+                print (index, node)
+                raise Exception('Unexpected')
 
     def enum_clauses(self):
         relevant = self.extract_relevant()
@@ -1132,7 +1137,9 @@ label_all=True)
                 elif t == 'disj':
                     for c in n.children:
                         if not processed[abs(c)]:
-                            yield Clause(n.name, self.get_body(c))
+                            b = self.get_body(c)
+                            if str(n.name) != str(b):   # TODO bit of a hack?
+                                yield Clause(n.name, b)
                 elif t == 'conj' and n.name is None:
                     pass
                 else:
@@ -1152,7 +1159,7 @@ label_all=True)
                 if ntype != 'atom':
                     for c in node.children:
                         if not relevant[c]:
-                            roots.add(c)
+                            roots.add(abs(c))
         return relevant
 
     def _unroll_conj(self, node):
