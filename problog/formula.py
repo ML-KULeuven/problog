@@ -29,7 +29,7 @@ from .core import ProbLogObject
 from .errors import InconsistentEvidenceError
 
 from .util import OrderedSet
-from .logic import Term
+from .logic import Term, Or, Clause, And, is_ground
 
 from .constraint import ConstraintAD
 
@@ -636,8 +636,15 @@ class LogicFormula(BaseFormula):
                 if self._avoid_name_clash:
                     name_old = self.get_node(abs(content[0])).name
                     if name is None or name_old is None or name == name_old:
+                        if name is not None:
+                            self.add_name(name, content[0], self.LABEL_NAMED)
                         return content[0]
                 else:
+                    if name is not None:
+                        name_old = self.get_node(abs(content[0])).name
+                        if name_old is None:
+                            self.add_name(name, content[0], self.LABEL_NAMED)
+
                     return content[0]
         else:
             content = tuple(content)
@@ -729,9 +736,6 @@ class LogicFormula(BaseFormula):
         :param current: current set of nodes with deterministic value
         :return: dictionary of nodes with deterministic value
         """
-
-        # 'current' contains a mapping between nodeid and deterministic truth value
-        # 'nodeids' contains nodes that have a deterministic value according to evidence
 
         # Initialize current in case nothing is known yet.
         if current is None:
@@ -825,7 +829,6 @@ class LogicFormula(BaseFormula):
                         # We can't propagate yet. Mark current rule as parent of its children.
                         for c in children:
                             atoms_in_rules[abs(c)].add(abs(nid))
-
         return current
 
     # def propagate(self, nodeids, current=None):
@@ -935,27 +938,41 @@ label_all=True)
         :return: Prolog program
         :rtype: str
         """
-        lines = []
-        neg_heads = set()
-        for head, body in self.enumerate_clauses():
-            head_name = self.get_name(head)
-            if head_name.is_negated():
-                pos_name = -head_name
-                head_name = Term(pos_name.functor + '_aux', *pos_name.args)
-                if head not in neg_heads:
-                    lines.append('%s :- %s.' % (pos_name, -head_name))
-                    neg_heads.add(head)
-            if body:    # clause with a body
-                body = ', '.join(map(str, map(self.get_name, body)))
-                lines.append('%s :- %s.' % (head_name, body))
-            else:   # fact
-                prob = self.get_node(head).probability
+        lines = ['%s.' % c for c in self.enum_clauses()]
 
-                if prob is not None:
-                    lines.append('%s::%s.' % (prob, head_name))
-                else:
-                    lines.append('%s.' % head_name)
+        for qn, qi in self.queries():
+            if is_ground(qn):
+                lines.append('query(%s).' % qn)
+
+        for qn, qi in self.evidence():
+            if qi < 0:
+                lines.append('evidence(%s).' % -qn)
+            else:
+                lines.append('evidence(%s).' % qn)
+
         return '\n'.join(lines)
+
+        # lines = []
+        # neg_heads = set()
+        # for head, body in self.enumerate_clauses():
+        #     head_name = self.get_name(head)
+        #     if head_name.is_negated():
+        #         pos_name = -head_name
+        #         head_name = Term(pos_name.functor + '_aux', *pos_name.args)
+        #         if head not in neg_heads:
+        #             lines.append('%s :- %s.' % (pos_name, -head_name))
+        #             neg_heads.add(head)
+        #     if body:    # clause with a body
+        #         body = ', '.join(map(str, map(self.get_name, body)))
+        #         lines.append('%s :- %s.' % (head_name, body))
+        #     else:   # fact
+        #         prob = self.get_node(head).probability
+        #
+        #         if prob is not None:
+        #             lines.append('%s::%s.' % (prob, head_name))
+        #         else:
+        #             lines.append('%s.' % head_name)
+        # return '\n'.join(lines)
 
     def get_name(self, key):
         """Get the name of the given node.
@@ -1030,6 +1047,113 @@ label_all=True)
                         yield i, [c_i]
                         if abs(c_i) not in enumerated:
                             to_enumerate.add(abs(c_i))
+
+    def extract_ads(self, relevant, processed):
+
+        # Collect information about annotated disjunctions
+        choices = set([])
+        choice_group = {}
+        choice_by_group = defaultdict(list)
+        choice_parent = {}
+        choice_by_parent = {}
+        choice_body = {}
+        choice_name = {}
+        choice_prob = {}
+
+        for i, n, t in self:
+            if not relevant[i]:
+                continue
+            if t == 'atom' and n.group is not None:
+                choice_group[i] = n.group
+                choice_prob[i] = n.probability
+                choice_by_group[n.group].append(i)
+                choices.add(i)
+                processed[i] = True
+            elif t == 'conj' and n.children[-1] in choices:
+                choice = n.children[-1]
+                choice_parent[choice_group[choice]] = i
+                choice_by_parent[i] = choice
+                choice_body[choice_group[choice]] = n.children[0]
+                if n.name is not None:
+                    choice_name[choice] = n.name
+                processed[i] = True
+                processed[n.children[0]] = True
+
+        for i, n, t in self:
+            if t == 'disj':
+                overlap = set(n.children) & set(choice_by_parent.keys()) | set(n.children) & set(choices)
+                for o in overlap:
+                    choice_name[choice_by_parent.get(o,o)] = n.name
+
+        for group, choices in choice_by_group.items():
+            # Construct head
+
+            # print (choice_name, choice_prob)
+
+            head = Or.from_list([choice_name[c].with_probability(choice_prob[c]) for c in choices])
+
+            # Construct body
+            body = self.get_body(choice_body.get(group, self.TRUE), processed)
+
+            if body is None:
+                yield head
+            else:
+                yield (Clause(head, body))
+
+    def get_body(self, index, processed=None):
+        if index == self.TRUE:
+            return None
+        else:
+            node = self.get_node(abs(index))
+            ntype = type(node).__name__
+            if ntype == 'atom':
+                # Easy case: atom
+                return node.name
+            elif ntype == 'conj':
+                children = self._unroll_conj(node)
+                return And.from_list(list(map(self.get_name, children)))
+            elif ntype == 'disj' and len(node.children) == 1:
+                if processed:
+                    processed[abs(index)] = True
+                return self.get_body(node.children[0])
+            else:
+                assert False
+
+    def enum_clauses(self):
+        relevant = self.extract_relevant()
+        processed = [False] * (len(self) + 1)
+        for ad in self.extract_ads(relevant, processed):
+            yield ad
+        for i, n, t in self:
+            if relevant[i] and not processed[i]:
+                if t == 'atom':
+                    if n.name is not None:
+                        yield n.name.with_probability(n.probability)
+                elif t == 'disj':
+                    for c in n.children:
+                        if not processed[abs(c)]:
+                            yield Clause(n.name, self.get_body(c))
+                elif t == 'conj' and n.name is None:
+                    pass
+                else:
+                    yield Clause(n.name, self.get_body(i))
+
+    def extract_relevant(self):
+        relevant = [False] * (len(self)+1)
+        roots = set(abs(n) for q, n in self.queries() if self.is_probabilistic(n))
+        roots |= set(abs(n) for q, n in self.evidence() if self.is_probabilistic(n))
+
+        while roots:
+            root = roots.pop()
+            if not relevant[root]:
+                relevant[root] = True
+                node = self.get_node(root)
+                ntype = type(node).__name__
+                if ntype != 'atom':
+                    for c in node.children:
+                        if not relevant[c]:
+                            roots.add(c)
+        return relevant
 
     def _unroll_conj(self, node):
         assert type(node).__name__ == 'conj'
