@@ -721,72 +721,173 @@ class LogicFormula(BaseFormula):
             self.get_evidence_values()[key] = value
 
     def propagate(self, nodeids, current=None):
-        """Propagate the value of the given node (true if node is positive, false if node is negative)
+        """Propagate the value of the given node
+          (true if node is positive, false if node is negative)
         The propagation algorithm is not complete.
 
-        :param nodeids:
-        :param current:
-        :return:
+        :param nodeids: evidence nodes to set (> 0 means true, < 0 means false)
+        :param current: current set of nodes with deterministic value
+        :return: dictionary of nodes with deterministic value
         """
+
+        # 'current' contains a mapping between nodeid and deterministic truth value
+        # 'nodeids' contains nodes that have a deterministic value according to evidence
+
+        # Initialize current in case nothing is known yet.
         if current is None:
             current = {}
 
+        # Provide easy access to values
         values = {True: self.TRUE, False: self.FALSE}
+
+        # Reverse mapping between a node and its parents
         atoms_in_rules = defaultdict(set)
 
-        updated = set()
+        # Queue of nodes that need to be handled.
+        # INVARIANT: elements in queue have deterministic value
+        # INVARIANT: elements in queue are not yet listed in current
         queue = set(nodeids)
+
         while queue:
             nid = queue.pop()
 
+            # Get information about the node
+            n = self.get_node(abs(nid))
+            t = type(n).__name__
+
             if abs(nid) not in current:
-                updated.add(abs(nid))
+                # This is the first time we process this node.
+                # We should process its parents again.
                 for at in atoms_in_rules[abs(nid)]:
                     if at in current:
-                        if current[abs(at)] == 0:
+                        # Parent has a truth value.
+                        # Try to propagate parent again.
+                        if current[abs(at)] == self.TRUE:
                             queue.add(abs(at))
                         else:
                             queue.add(-abs(at))
-                current[abs(nid)] = values[nid > 0]
 
-            n = self.get_node(abs(nid))
-            t = type(n).__name__
+            # Record node value in current
+            current[abs(nid)] = values[nid > 0]
+
+            # Process node and propagate to children
             if t == 'atom':
+                # Nothing to do.
                 pass
             else:
+                # Get the list of children with their actual (propagated) values.
                 children = []
                 for c in n.children:
                     ch = current.get(abs(c), abs(c))
                     if c < 0:
                         ch = self.negate(ch)
                     children.append(ch)
-                if t == 'conj' and None in children and nid > 0:
+
+                # Handle trivial cases:
+                # Node should be true, but is a conjunction with a false child
+                if t == 'conj' and self.FALSE in children and nid > 0:
                     raise InconsistentEvidenceError()
-                elif t == 'disj' and 0 in children and nid < 0:
+                # Node should be false, but is a disjunction with a true child
+                elif t == 'disj' and self.TRUE in children and nid < 0:
                     raise InconsistentEvidenceError()
-                children = list(filter(lambda x: x != 0 and x is not None, children))
-                if len(children) == 1:  # only one child
-                    if abs(children[0]) not in current:
-                        if nid < 0:
-                            queue.add(-children[0])
-                        else:
-                            queue.add(children[0])
-                        atoms_in_rules[abs(children[0])].discard(abs(nid))
-                elif nid > 0 and t == 'conj':
-                    # Conjunction is true
-                    for c in children:
-                        if abs(c) not in current:
-                            queue.add(c)
-                        atoms_in_rules[abs(c)].discard(abs(nid))
-                elif nid < 0 and t == 'disj':
-                    # Disjunction is false
-                    for c in children:
-                        if abs(c) not in current:
-                            queue.add(-c)
+                # Node should be false, and is a conjunction with a false child
+                elif t == 'conj' and self.FALSE in children and nid < 0:
+                    # Already satisfied, nothing else to do
+                    pass
+                # Node should be true and is a disjunction with a true child
+                elif t == 'disj' and self.TRUE in children and nid > 0:
+                    # Already satisfied, nothing else to do
+                    pass
                 else:
-                    for c in children:
-                        atoms_in_rules[abs(c)].add(abs(nid))
+                    # Filter out deterministic children
+                    children = list(filter(lambda x: x != 0 and x is not None, children))
+                    if len(children) == 1:
+                        # One child left: propagate value to the child
+                        if abs(children[0]) not in current:
+                            if nid < 0:
+                                queue.add(-children[0])
+                            else:
+                                queue.add(children[0])
+                            atoms_in_rules[abs(children[0])].discard(abs(nid))
+                    elif nid > 0 and t == 'conj':
+                        # Conjunction is true => all children are true
+                        for c in children:
+                            if abs(c) not in current:
+                                queue.add(c)
+                            atoms_in_rules[abs(c)].discard(abs(nid))
+                    elif nid < 0 and t == 'disj':
+                        # Disjunction is false => all children are false
+                        for c in children:
+                            if abs(c) not in current:
+                                queue.add(-c)
+                            atoms_in_rules[abs(c)].discard(abs(nid))
+                    else:
+                        # We can't propagate yet. Mark current rule as parent of its children.
+                        for c in children:
+                            atoms_in_rules[abs(c)].add(abs(nid))
+
         return current
+
+    # def propagate(self, nodeids, current=None):
+    #     if current is None:
+    #         current = {}
+    #
+    #     values = {True: self.TRUE, False: self.FALSE}
+    #     atoms_in_rules = defaultdict(set)
+    #
+    #     updated = set()
+    #     queue = set(nodeids)
+    #     while queue:
+    #         nid = queue.pop()
+    #
+    #         if abs(nid) not in current:
+    #             updated.add(abs(nid))
+    #             for at in atoms_in_rules[abs(nid)]:
+    #                 if at in current:
+    #                     if current[abs(at)] == 0:
+    #                         queue.add(abs(at))
+    #                     else:
+    #                         queue.add(-abs(at))
+    #             current[abs(nid)] = values[nid > 0]
+    #
+    #         n = self.get_node(abs(nid))
+    #         t = type(n).__name__
+    #         if t == 'atom':
+    #             pass
+    #         else:
+    #             children = []
+    #             for c in n.children:
+    #                 ch = current.get(abs(c), abs(c))
+    #                 if c < 0:
+    #                     ch = self.negate(ch)
+    #                 children.append(ch)
+    #             if t == 'conj' and None in children and nid > 0:
+    #                 raise InconsistentEvidenceError()
+    #             elif t == 'disj' and 0 in children and nid < 0:
+    #                 raise InconsistentEvidenceError()
+    #             children = list(filter(lambda x: x != 0 and x is not None, children))
+    #             if len(children) == 1:  # only one child
+    #                 if abs(children[0]) not in current:
+    #                     if nid < 0:
+    #                         queue.add(-children[0])
+    #                     else:
+    #                         queue.add(children[0])
+    #                     atoms_in_rules[abs(children[0])].discard(abs(nid))
+    #             elif nid > 0 and t == 'conj':
+    #                 # Conjunction is true
+    #                 for c in children:
+    #                     if abs(c) not in current:
+    #                         queue.add(c)
+    #                     atoms_in_rules[abs(c)].discard(abs(nid))
+    #             elif nid < 0 and t == 'disj':
+    #                 # Disjunction is false
+    #                 for c in children:
+    #                     if abs(c) not in current:
+    #                         queue.add(-c)
+    #             else:
+    #                 for c in children:
+    #                     atoms_in_rules[abs(c)].add(abs(nid))
+    #     return current
 
     # ====================================================================================== #
     # ==========                        EXPORT TO STRING                         =========== #
@@ -1055,6 +1156,32 @@ label_all=True)
             s += 'q_%s -> %s [style="dotted" %s];\n' % (q, index, opt)
             q += 1
         return s + '}'
+
+    def clone(self, destination):
+        source = self
+        # TODO maintain a translation table
+        for i, n, t in source:
+            if t == 'atom':
+                j = destination.add_atom(n.identifier, n.probability, n.group, source.get_name(i))
+            elif t == 'conj':
+                j = destination.add_and(n.children, source.get_name(i))
+            elif t == 'disj':
+                j = destination.add_or(n.children, source.get_name(i))
+            else:
+                raise TypeError('Unknown node type')
+            assert i == j
+
+        for name, node, label in source.get_names_with_label():
+            destination.add_name(name, node, label)
+
+        for c in source.constraints():
+            if c.is_nontrivial():
+                destination.add_constraint(c)
+
+        return destination
+
+
+
 
 
 class LogicDAG(LogicFormula):
