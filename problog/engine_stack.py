@@ -497,6 +497,7 @@ class StackBasedEngine(ClauseDBEngine):
         kwdargs['call_origin'] = (origin, node.location)
         kwdargs['context'] = self.create_context(call_args)
         kwdargs['transform'] = transform
+
         try:
             return self.eval(node.defnode, parent=parent, identifier=identifier, **kwdargs)
         except UnknownClauseInternal:
@@ -989,11 +990,15 @@ class EvalDefine(EvalNode):
                         stored_result = self.target._cache[cache_key]
                         assert (len(stored_result) == 1)
                         result_node = stored_result[0][1]
+                        if not self.is_root:
+                            result_node = self.engine.propagate_evidence(self.database, self.target, self.node.functor, res, result_node)
                     else:
                         if self.engine.label_all:
                             name = Term(self.node.functor, *res)
                         else:
                             name = None
+                            if not self.is_root:
+                                node = self.engine.propagate_evidence(self.database, self.target, self.node.functor, res, node)
                         result_node = self.target.add_or((node,), readonly=False, name=name)
                     # if self.engine.label_all :
                     #     name = str(Term(self.node.functor, *res))
@@ -1005,9 +1010,10 @@ class EvalDefine(EvalNode):
                     # if self.pointer == 49336 :
                     #     self.engine.debug = True
                     #     self.engine.trace = True
-                    if self.isOnCycle():
+                    if self.isOnCycle() and result_node is not NODE_FALSE:
                         actions += self.notifyResult(res, result_node)
 
+                    # TODO what if result_node is NONE?
                     actions += self.notifyResultChildren(res, result_node, is_last=False)
                     # TODO the following optimization doesn't always work, see test/some_cycles.pl
                     # actions += self.notifyResultChildren(res, result_node, is_last=self.is_ground)
@@ -1021,7 +1027,6 @@ class EvalDefine(EvalNode):
                         a = False
                     return a, actions
             else:
-                #                print ('RESULT', self.node, result)
                 assert (not self.results.collapsed)
                 res = self.engine._fix_context(result)
                 self.results[res] = node
@@ -1047,7 +1052,8 @@ class EvalDefine(EvalNode):
                     if n:
                         for result, node in self.results:
                             n -= 1
-                            actions += self.notifyResult(result, node, is_last=(n == 0))
+                            if node is not None:
+                                actions += self.notifyResult(result, node, is_last=(n == 0))
                     else:
                         actions += self.notifyComplete()
                 else:
@@ -1063,18 +1069,26 @@ class EvalDefine(EvalNode):
                 stored_result = self.target._cache[cache_key]
                 assert (len(stored_result) == 1)
                 node = stored_result[0][1]
+                if not self.is_root:
+                    node = self.engine.propagate_evidence(self.database, self.target, self.node.functor, res, node)
             else:
                 if self.engine.label_all:
                     name = Term(self.node.functor, *res)
                 else:
                     name = None
+
+                if not self.is_root:
+                    new_nodes = []
+                    for node in nodes:
+                        node = self.engine.propagate_evidence(self.database, self.target, self.node.functor, res, node)
+                        new_nodes.append(node)
+                    nodes = new_nodes
                 node = self.target.add_or(nodes, readonly=(not cycle), name=name)
             # node = self.target.add_or( nodes, readonly=(not cycle) )
             # if self.engine.label_all:
             #     name = str(Term(self.node.functor, *res))
             #     self.target.addName(name, node, self.target.LABEL_NAMED)
             return node
-
         self.results.collapse(func)
 
     def isOnCycle(self):
