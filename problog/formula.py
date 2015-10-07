@@ -1084,12 +1084,11 @@ label_all=True)
             if t == 'disj':
                 overlap = set(n.children) & set(choice_by_parent.keys()) | set(n.children) & set(choices)
                 for o in overlap:
-                    choice_name[choice_by_parent.get(o,o)] = n.name
+                    if n.name is not None and not n.name.functor.startswith('problog_'):
+                        choice_name[choice_by_parent.get(o, o)] = n.name
 
         for group, choices in choice_by_group.items():
             # Construct head
-
-            # print (choice_name, choice_prob)
 
             head = Or.from_list([choice_name[c].with_probability(choice_prob[c]) for c in choices])
 
@@ -1107,13 +1106,16 @@ label_all=True)
         else:
             node = self.get_node(abs(index))
             ntype = type(node).__name__
-            if ntype == 'atom':
+
+            if node.name is not None and not node.name.functor.startswith('problog_'):
+                return node.name
+            elif ntype == 'atom':
                 # Easy case: atom
                 return node.name
             elif ntype == 'conj':
                 children = self._unroll_conj(node)
                 return And.from_list(list(map(self.get_name, children)))
-            elif ntype == 'disj' and len(node.children) == 1:
+            elif ntype == 'disj' and len(node.children) == 1 and (node.name is None or node.name.functor.startswith('problog_')):
                 if processed:
                     processed[abs(index)] = True
                 return self.get_body(node.children[0])
