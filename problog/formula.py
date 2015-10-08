@@ -943,6 +943,8 @@ label_all=True)
 
         for qn, qi in self.queries():
             if is_ground(qn):
+                if qi == self.TRUE:
+                    lines.append('%s.' % qn)
                 lines.append('query(%s).' % qn)
 
         for qn, qi in self.evidence():
@@ -1100,27 +1102,42 @@ label_all=True)
             else:
                 yield (Clause(head, body))
 
-    def get_body(self, index, processed=None):
+    def get_body(self, index, processed=None, parent_name=None):
         if index == self.TRUE:
             return None
         else:
             node = self.get_node(abs(index))
             ntype = type(node).__name__
-
-            if node.name is not None and not node.name.functor.startswith('problog_'):
-                return node.name
+            # TODO negate if node is negative
+            if node.name is not None and not node.name.functor.startswith('problog_') and str(node.name) != str(parent_name):
+                if index < 0:
+                    return -node.name
+                else:
+                    return node.name
             elif ntype == 'atom':
                 # Easy case: atom
-                return node.name
+                if index < 0:
+                    return -node.name
+                else:
+                    return node.name
             elif ntype == 'conj':
-                children = self._unroll_conj(node)
-                return And.from_list(list(map(self.get_name, children)))
+                if index < 0:
+                    return -node.name
+                else:
+                    children = self._unroll_conj(node)
+                    return And.from_list(list(map(self.get_name, children)))
             elif ntype == 'disj' and len(node.children) == 1 and (node.name is None or node.name.functor.startswith('problog_')):
                 if processed:
                     processed[abs(index)] = True
-                return self.get_body(node.children[0])
+                if index < 0:
+                    return self.get_body(-node.children[0], parent_name=parent_name)
+                else:
+                    return self.get_body(node.children[0], parent_name=parent_name)
             elif ntype == 'disj':
-                return node.name
+                if index < 0:
+                    return -node.name
+                else:
+                    return node.name
             else:
                 print (self)
                 print (index, node)
@@ -1139,19 +1156,18 @@ label_all=True)
                 elif t == 'disj':
                     for c in n.children:
                         if not processed[abs(c)]:
-                            b = self.get_body(c)
+                            b = self.get_body(c, parent_name=n.name)
                             if str(n.name) != str(b):   # TODO bit of a hack?
                                 yield Clause(n.name, b)
                 elif t == 'conj' and n.name is None:
                     pass
                 else:
-                    yield Clause(n.name, self.get_body(i))
+                    yield Clause(n.name, self.get_body(i, parent_name=n.name))
 
     def extract_relevant(self):
         relevant = [False] * (len(self)+1)
         roots = set(abs(n) for q, n in self.queries() if self.is_probabilistic(n))
         roots |= set(abs(n) for q, n in self.evidence() if self.is_probabilistic(n))
-
         while roots:
             root = roots.pop()
             if not relevant[root]:
@@ -1160,7 +1176,7 @@ label_all=True)
                 ntype = type(node).__name__
                 if ntype != 'atom':
                     for c in node.children:
-                        if not relevant[c]:
+                        if not relevant[abs(c)]:
                             roots.add(abs(c))
         return relevant
 
