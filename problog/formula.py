@@ -991,6 +991,13 @@ label_all=True)
         else:
             node = self.get_node(abs(key))
             name = node.name
+
+            # if name is None or name.functor.startswith('problog_') and type(node).__name__ == 'disj' and node.children:
+            #     if key < 0:
+            #         name = self.get_name(-node.children[0])
+            #     else:
+            #         name = self.get_name(node.children[0])
+
             if name is None:
                 name = Term('node_%s' % abs(key))
             if key < 0:
@@ -1108,7 +1115,6 @@ label_all=True)
         else:
             node = self.get_node(abs(index))
             ntype = type(node).__name__
-            # TODO negate if node is negative
             if node.name is not None and not node.name.functor.startswith('problog_') and str(node.name) != str(parent_name):
                 if index < 0:
                     return -node.name
@@ -1130,9 +1136,10 @@ label_all=True)
                 if processed:
                     processed[abs(index)] = True
                 if index < 0:
-                    return self.get_body(-node.children[0], parent_name=parent_name)
+                    b = self.get_body(-node.children[0], parent_name=parent_name)
                 else:
-                    return self.get_body(node.children[0], parent_name=parent_name)
+                    b = self.get_body(node.children[0], parent_name=parent_name)
+                return b
             elif ntype == 'disj':
                 if index < 0:
                     return -node.name
@@ -1189,7 +1196,7 @@ label_all=True)
             children = [node.children[0]]
             current = node.children[1]
             current_node = self.get_node(current)
-            while type(current_node).__name__ == 'conj' and len(current_node.children) == 2:
+            while type(current_node).__name__ == 'conj' and len(current_node.children) == 2 and (current_node.name is None or current_node.name.functor.startswith('problog_')):
                 children.append(current_node.children[0])
                 current = current_node.children[1]
                 if current > 0:
