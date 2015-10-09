@@ -618,10 +618,7 @@ class LogicFormula(BaseFormula):
             content = filter(lambda x: x != f, content)
 
             # Put into fixed order and eliminate duplicate nodes
-            if self._keep_order:
-                content = tuple(content)
-            else:
-                content = tuple(sorted(set(content)))
+            content = tuple(OrderedSet(content))
 
             # Empty OR node fails, AND node is true
             if not content:
