@@ -1,7 +1,7 @@
 
 var problog = {
   //hostname: 'https://adams.cs.kuleuven.be/problog/api/',
-  hostname: '//adams.cs.kuleuven.be/problog/api/',
+  hostname: 'https://adams.cs.kuleuven.be/problog/api/',
   main_editor_url: 'https://dtai.cs.kuleuven.be/problog/editor_adv.html',
   editors: [],
   selector: '.problog-editor',
@@ -222,6 +222,9 @@ problog.init_editor = function(index, object) {
     // Create container object for editor settings and DOM.
     var pbl = { dom: {} };
 
+    var initial = $(object).text();
+    $(object).empty();
+
     pbl.solve = function() {
         if (pbl.running) {
 
@@ -441,6 +444,8 @@ problog.init_editor = function(index, object) {
     pbl.editor.getSession().setMode('ace/mode/problog');
     pbl.editor.getSession().setUseWrapMode(true);
     pbl.editor.setShowInvisibles(true);
+    pbl.editor.setValue(initial, -1);
+
 
     // Initialize edit options
     pbl.dom.edit_options = $('<div>').addClass("problog-edit-options").appendTo(pbl.dom.editpane);
