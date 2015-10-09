@@ -1113,7 +1113,7 @@ label_all=True)
                 yield (Clause(head, body))
 
     def _is_valid_name(self, name):
-        return name is not None and not name.functor.startswith('problog_')
+        return name is not None and not name.functor.startswith('_problog_')
 
     def get_body(self, index, processed=None, parent_name=None):
         if index == self.TRUE:
@@ -1202,7 +1202,7 @@ label_all=True)
             children = [node.children[0]]
             current = node.children[1]
             current_node = self.get_node(current)
-            while type(current_node).__name__ == 'conj' and len(current_node.children) == 2 and (current_node.name is None or current_node.name.functor.startswith('problog_')):
+            while type(current_node).__name__ == 'conj' and len(current_node.children) == 2 and not self._is_valid_name(current_node.name):
                 children.append(current_node.children[0])
                 current = current_node.children[1]
                 if current > 0:
