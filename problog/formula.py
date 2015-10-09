@@ -608,6 +608,7 @@ class LogicFormula(BaseFormula):
         """Add a compound term (AND or OR)."""
         assert content   # Content should not be empty
 
+        name_clash = False
         if self._auto_compact:
             # If there is a t node, (true for OR, false for AND)
             if t in content:
@@ -639,6 +640,8 @@ class LogicFormula(BaseFormula):
                         if name is not None:
                             self.add_name(name, content[0], self.LABEL_NAMED)
                         return content[0]
+                    else:
+                        name_clash = True
                 else:
                     if name is not None:
                         name_old = self.get_node(abs(content[0])).name
@@ -659,10 +662,12 @@ class LogicFormula(BaseFormula):
                 return self._update(update, node)
             elif readonly:
                 # If the node is readonly, we can try to reuse an existing node.
-                return self._add(node, reuse=self._auto_compact)
+                new_node = self._add(node, reuse=self._auto_compact and not name_clash)
+                return new_node
             else:
                 # If node is modifiable, we shouldn't reuse an existing node.
                 return self._add(node, reuse=False)
+
         else:
             raise TypeError("Unexpected node type: '%s'." % nodetype)
 
