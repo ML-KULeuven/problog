@@ -945,6 +945,8 @@ label_all=True)
             if is_ground(qn):
                 if qi == self.TRUE:
                     lines.append('%s.' % qn)
+                elif qi == self.FALSE:
+                    lines.append('%s :- fail.' % qn)
                 lines.append('query(%s).' % qn)
 
         for qn, qi in self.evidence():
@@ -992,11 +994,11 @@ label_all=True)
             node = self.get_node(abs(key))
             name = node.name
 
-            # if name is None or name.functor.startswith('problog_') and type(node).__name__ == 'disj' and node.children:
-            #     if key < 0:
-            #         name = self.get_name(-node.children[0])
-            #     else:
-            #         name = self.get_name(node.children[0])
+            if not self._is_valid_name(name) and type(node).__name__ == 'disj' and node.children:
+                if key < 0:
+                    name = self.get_name(-node.children[0])
+                else:
+                    name = self.get_name(node.children[0])
 
             if name is None:
                 name = Term('node_%s' % abs(key))
@@ -1087,13 +1089,14 @@ label_all=True)
                 if n.name is not None:
                     choice_name[choice] = n.name
                 processed[i] = True
-                processed[n.children[0]] = True
+                if not self._is_valid_name(self.get_node(abs(n.children[0])).name):
+                    processed[n.children[0]] = True
 
         for i, n, t in self:
             if t == 'disj':
                 overlap = set(n.children) & set(choice_by_parent.keys()) | set(n.children) & set(choices)
                 for o in overlap:
-                    if n.name is not None and not n.name.functor.startswith('problog_'):
+                    if self._is_valid_name(n.name):
                         choice_name[choice_by_parent.get(o, o)] = n.name
 
         for group, choices in choice_by_group.items():
@@ -1109,13 +1112,16 @@ label_all=True)
             else:
                 yield (Clause(head, body))
 
+    def _is_valid_name(self, name):
+        return name is not None and not name.functor.startswith('problog_')
+
     def get_body(self, index, processed=None, parent_name=None):
         if index == self.TRUE:
             return None
         else:
             node = self.get_node(abs(index))
             ntype = type(node).__name__
-            if node.name is not None and not node.name.functor.startswith('problog_') and str(node.name) != str(parent_name):
+            if self._is_valid_name(node.name) and str(node.name) != str(parent_name):
                 if index < 0:
                     return -node.name
                 else:
@@ -1132,7 +1138,7 @@ label_all=True)
                 else:
                     children = self._unroll_conj(node)
                     return And.from_list(list(map(self.get_name, children)))
-            elif ntype == 'disj' and len(node.children) == 1 and (node.name is None or node.name.functor.startswith('problog_')):
+            elif ntype == 'disj' and len(node.children) == 1 and not self._is_valid_name(node.name):
                 if processed:
                     processed[abs(index)] = True
                 if index < 0:
