@@ -353,7 +353,7 @@ class LogicFormula(BaseFormula):
     # noinspection PyUnusedLocal
     def __init__(self, auto_compact=True, avoid_name_clash=False, keep_order=False,
                  use_string_names=False, keep_all=False, propagate_weights=None,
-                 max_arity=0, **kwdargs):
+                 max_arity=0, keep_duplicates=False, **kwdargs):
         BaseFormula.__init__(self)
 
         # List of nodes
@@ -371,6 +371,7 @@ class LogicFormula(BaseFormula):
         self._avoid_name_clash = avoid_name_clash
         self._keep_order = keep_order
         self._keep_all = keep_all
+        self._keep_duplicates = keep_duplicates
 
         self._max_arity = max_arity
 
@@ -618,7 +619,10 @@ class LogicFormula(BaseFormula):
             content = filter(lambda x: x != f, content)
 
             # Put into fixed order and eliminate duplicate nodes
-            content = tuple(OrderedSet(content))
+            if self._keep_duplicates:
+                content = tuple(content)
+            else:
+                content = tuple(OrderedSet(content))
 
             # Empty OR node fails, AND node is true
             if not content:
