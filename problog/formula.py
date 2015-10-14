@@ -655,7 +655,7 @@ class LogicFormula(BaseFormula):
 
         if nodetype == 'conj':
             node = self._create_conj(content, name)
-            return self._add(node, reuse=self._auto_compact)
+            return self._add(node, reuse=self._auto_compact and not self._keep_all)
         elif nodetype == 'disj':
             node = self._create_disj(content, name)
             if update is not None:
@@ -663,7 +663,7 @@ class LogicFormula(BaseFormula):
                 return self._update(update, node)
             elif readonly:
                 # If the node is readonly, we can try to reuse an existing node.
-                new_node = self._add(node, reuse=self._auto_compact and not name_clash)
+                new_node = self._add(node, reuse=self._auto_compact and not name_clash and not self._keep_all)
                 return new_node
             else:
                 # If node is modifiable, we shouldn't reuse an existing node.
