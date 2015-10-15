@@ -1180,7 +1180,7 @@ label_all=True)
         for i, n, t in self:
             if relevant[i] and not processed[i]:
                 if t == 'atom':
-                    if n.name is not None and n.source != 'builtin':
+                    if n.name is not None and n.source not in ('builtin', 'negation'):
                         yield n.name.with_probability(n.probability)
                 elif t == 'disj':
                     for c in n.children:

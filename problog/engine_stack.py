@@ -400,6 +400,11 @@ class StackBasedEngine(ClauseDBEngine):
                             if n == 0:
                                 actions += [complete(parent, identifier)]
                         else:
+                            if target_node == NODE_TRUE and target.flag('keep_all') and not functor.startswith('_problog'):
+                                # print (goal, result)
+                                name = Term(functor, *result)
+                                target_node = target.add_atom(name, None, None, name=name, source=None)
+
                             actions += [new_result(parent, result, target_node, identifier, n == 0)]
                     elif n == 0:
                         actions += [complete(parent, identifier)]
@@ -990,6 +995,7 @@ class EvalDefine(EvalNode):
                         stored_result = self.target._cache[cache_key]
                         assert (len(stored_result) == 1)
                         result_node = stored_result[0][1]
+
                         if not self.is_root:
                             result_node = self.engine.propagate_evidence(self.database, self.target, self.node.functor, res, result_node)
                     else:
@@ -1053,6 +1059,8 @@ class EvalDefine(EvalNode):
                         for result, node in self.results:
                             n -= 1
                             if node is not None:
+                            #     if node == 0 and self.target.flag('keep_all') and not self.node.functor.startswith('_problog'):
+                            #         print (self.node.functor, result)
                                 actions += self.notifyResult(result, node, is_last=(n == 0))
                     else:
                         actions += self.notifyComplete()
@@ -1218,7 +1226,15 @@ class EvalNot(EvalNode):
             if or_node != NODE_FALSE:
                 actions += self.notifyResult(self.context, or_node)
         else:
-            actions += self.notifyResult(self.context, NODE_TRUE)
+            if self.target.flag('keep_all'):
+                src_node = self.database.get_node(self.node.child)
+                args, _ = substitute_call_args(src_node.args, self.context)
+                name = Term(src_node.functor, *args)
+                node = -self.target.add_atom(name, False, None, name=name, source='negation')
+            else:
+                node = NODE_TRUE
+
+            actions += self.notifyResult(self.context, node)
         actions += self.notifyComplete()
         return True, actions
 
