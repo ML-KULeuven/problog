@@ -1375,7 +1375,7 @@ class DeterministicLogicFormula(LogicFormula):
     def __init__(self, **kwdargs):
         LogicFormula.__init__(self, **kwdargs)
 
-    def add_atom(self, identifier, probability, group=None, name=None):
+    def add_atom(self, identifier, probability, group=None, name=None, source=None):
         return self.TRUE
 
 

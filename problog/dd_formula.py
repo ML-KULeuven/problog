@@ -55,7 +55,7 @@ class DD(LogicFormula, Evaluatable):
             self.inode_manager = self._create_manager()
         return self.inode_manager
 
-    def _create_atom(self, identifier, probability, group, name=None):
+    def _create_atom(self, identifier, probability, group, name=None, source=None):
         index = len(self) + 1
         var = self.get_manager().add_variable()
         self.atom2var[index] = var

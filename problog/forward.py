@@ -69,7 +69,7 @@ class ForwardInference(DD):
     def register_update_listener(self, obj):
         self._update_listeners.append(obj)
 
-    def _create_atom(self, identifier, probability, group, name=None):
+    def _create_atom(self, identifier, probability, group, name=None, source=None):
         return self._atom(identifier, probability, group, name)
 
     def is_complete(self, node):
