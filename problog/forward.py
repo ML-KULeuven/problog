@@ -70,7 +70,7 @@ class ForwardInference(DD):
         self._update_listeners.append(obj)
 
     def _create_atom(self, identifier, probability, group, name=None, source=None):
-        return self._atom(identifier, probability, group, name)
+        return self._atom(identifier, probability, group, name, source)
 
     def is_complete(self, node):
         node = abs(node)

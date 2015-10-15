@@ -60,7 +60,7 @@ class DD(LogicFormula, Evaluatable):
         var = self.get_manager().add_variable()
         self.atom2var[index] = var
         self.var2atom[var] = index
-        return self._atom(identifier, probability, group, name)
+        return self._atom(identifier, probability, group, name, source)
 
     def get_inode(self, index):
         """Get the internal node corresponding to the entry at the given index.
