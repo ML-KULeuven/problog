@@ -81,9 +81,6 @@ def main(argv, result_handler=None):
 
     knowledge = get_evaluatable(args.koption).create_from(gp)
 
-    with open('/tmp/nnf.dot', 'w') as f:
-        print (knowledge.to_dot(), file=f)
-
     best_choice = None
     best_score = None
 
