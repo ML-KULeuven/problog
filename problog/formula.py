@@ -316,6 +316,10 @@ class BaseFormula(ProbLogObject):
         """
         self._constraints.append(constraint)
 
+    def flag(self, flag):
+        flag = '_%s' % flag
+        return hasattr(self, flag) and getattr(self, flag)
+
 
 class LogicFormula(BaseFormula):
     """A logic formula is a data structure that is used to represent generic And-Or graphs.
@@ -336,13 +340,13 @@ class LogicFormula(BaseFormula):
     by simplifying nodes or by reusing existing nodes.
     """
 
-    _atom = namedtuple('atom', ('identifier', 'probability', 'group', 'name'))
+    _atom = namedtuple('atom', ('identifier', 'probability', 'group', 'name', 'source'))
     _conj = namedtuple('conj', ('children', 'name'))
     _disj = namedtuple('disj', ('children', 'name'))
     # negation is encoded by using a negative number for the key
 
-    def _create_atom(self, identifier, probability, group, name=None):
-        return self._atom(identifier, probability, group, name)
+    def _create_atom(self, identifier, probability, group, name=None, source=None):
+        return self._atom(identifier, probability, group, name, source)
 
     def _create_conj(self, children, name=None):
         return self._conj(children, name)
@@ -353,7 +357,7 @@ class LogicFormula(BaseFormula):
     # noinspection PyUnusedLocal
     def __init__(self, auto_compact=True, avoid_name_clash=False, keep_order=False,
                  use_string_names=False, keep_all=False, propagate_weights=None,
-                 max_arity=0, keep_duplicates=False, **kwdargs):
+                 max_arity=0, keep_duplicates=False, keep_builtins=False, **kwdargs):
         BaseFormula.__init__(self)
 
         # List of nodes
@@ -371,6 +375,7 @@ class LogicFormula(BaseFormula):
         self._avoid_name_clash = avoid_name_clash
         self._keep_order = keep_order
         self._keep_all = keep_all
+        self._keep_builtins = keep_all or keep_builtins
         self._keep_duplicates = keep_duplicates
 
         self._max_arity = max_arity
@@ -397,11 +402,15 @@ class LogicFormula(BaseFormula):
 
         if self.is_probabilistic(key):
             node = self.get_node(abs(key))
+            ntype = type(node).__name__
             if key < 0:
                 lname = -name
             else:
                 lname = name
-            node = type(node)(*(node[:-1] + (lname,)))
+            if ntype == 'atom':
+                node = type(node)(*(node[:-2] + (lname, node[-1])))
+            else:
+                node = type(node)(*(node[:-1] + (lname,)))
             self._update(abs(key), node)
 
         BaseFormula.add_name(self, name, key, label)
@@ -480,7 +489,7 @@ class LogicFormula(BaseFormula):
         node = constraint.add(node, self)
         return node
 
-    def add_atom(self, identifier, probability, group=None, name=None):
+    def add_atom(self, identifier, probability, group=None, name=None, source=None):
         """Add an atom to the formula.
 
         :param identifier: a unique identifier for the atom
@@ -509,7 +518,7 @@ class LogicFormula(BaseFormula):
                 self.semiring.is_one(self.semiring.value(probability)):
             return self.TRUE
         else:
-            atom = self._create_atom(identifier, probability, group, name)
+            atom = self._create_atom(identifier, probability, group, name, source)
             node_id = self._add(atom, key=identifier)
             self.get_weights()[node_id] = probability
             if node_id == len(self._nodes):
@@ -1170,7 +1179,7 @@ label_all=True)
         for i, n, t in self:
             if relevant[i] and not processed[i]:
                 if t == 'atom':
-                    if n.name is not None:
+                    if n.name is not None and n.source != 'builtin':
                         yield n.name.with_probability(n.probability)
                 elif t == 'disj':
                     for c in n.children:

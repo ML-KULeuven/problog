@@ -1330,7 +1330,8 @@ class EvalBuiltIn(EvalNode):
         try:
             return self.node(*self.context, engine=self.engine, database=self.database,
                              target=self.target, location=self.location, callback=self,
-                             transform=self.transform, parent=self.parent)
+                             transform=self.transform, parent=self.parent, call=self.call,
+                             call_origin=self.call_origin)
         except ArithmeticError as err:
             if self.database and self.location:
                 functor = self.call_origin[0].split('/')[0]
@@ -1351,7 +1352,14 @@ class BooleanBuiltIn(object):
         callback = kwdargs.get('callback')
         if self.base_function(*args, **kwdargs):
             args = kwdargs['engine'].create_context(args)
-            return True, callback.notifyResult(args, NODE_TRUE, True)
+            if kwdargs['target'].flag('keep_builtins'):
+                call = kwdargs['call_origin'][0].split('/')[0]
+                name = Term(call, *args)
+                node = kwdargs['target'].add_atom(name, None, None, name=name, source='builtin')
+
+                return True, callback.notifyResult(args, node, True)
+            else:
+                return True, callback.notifyResult(args, NODE_TRUE, True)
         else:
             return True, callback.notifyComplete()
 
@@ -1373,7 +1381,16 @@ class SimpleBuiltIn(object):
         if results:
             for i, result in enumerate(results):
                 result = kwdargs['engine'].create_context(result)
-                output += callback.notifyResult(result, NODE_TRUE, i == len(results) - 1)
+
+                if kwdargs['target'].flag('keep_builtins'):
+                    # kwdargs['target'].add_node()
+                    # print (kwdargs.keys(), args)
+                    call = kwdargs['call_origin'][0].split('/')[0]
+                    name = Term(call, *result)
+                    node = kwdargs['target'].add_atom(name, None, None, name=name, source='builtin')
+                    output += callback.notifyResult(result, node, i == len(results) - 1)
+                else:
+                    output += callback.notifyResult(result, NODE_TRUE, i == len(results) - 1)
             return True, output
         else:
             return True, callback.notifyComplete()
