@@ -69,6 +69,9 @@ var problog = {
                         pbl.editor_data = ace.edit(editor[0]);
                         pbl.editor_data.getSession().setMode('ace/mode/problog');
                         pbl.editor_data.getSession().setUseWrapMode(true);
+                        if (pbl.initial_data) {
+                            pbl.editor_data.setValue(pbl.initial_data, -1);
+                        }
                         pbl.editor_data.setShowInvisibles(true);
                         pbl.dom.edit_options.append($('<strong>').text('Examples (specified as evidence, separated by ---):'));
                         pbl.dom.edit_options.append(editor);
@@ -222,7 +225,14 @@ problog.init_editor = function(index, object) {
     // Create container object for editor settings and DOM.
     var pbl = { dom: {} };
 
-    var initial = $(object).text();
+    pbl.initial_data = '';
+    var ex_data = $(object).find('.examples')[0];
+    if (ex_data) {
+        pbl.initial_data = $(ex_data).text();
+        $(ex_data).empty();
+    }
+
+    pbl.initial = $(object).text();
     $(object).empty();
 
     pbl.solve = function() {
@@ -444,7 +454,7 @@ problog.init_editor = function(index, object) {
     pbl.editor.getSession().setMode('ace/mode/problog');
     pbl.editor.getSession().setUseWrapMode(true);
     pbl.editor.setShowInvisibles(true);
-    pbl.editor.setValue(initial, -1);
+    pbl.editor.setValue(pbl.initial, -1);
 
 
     // Initialize edit options
