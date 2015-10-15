@@ -1330,7 +1330,7 @@ class EvalBuiltIn(EvalNode):
         try:
             return self.node(*self.context, engine=self.engine, database=self.database,
                              target=self.target, location=self.location, callback=self,
-                             transform=self.transform, parent=self.parent, call=self.call,
+                             transform=self.transform, parent=self.parent,
                              call_origin=self.call_origin)
         except ArithmeticError as err:
             if self.database and self.location:
