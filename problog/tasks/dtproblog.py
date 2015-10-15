@@ -24,7 +24,7 @@ import sys
 
 from problog.program import PrologFile
 from problog.engine import DefaultEngine
-from problog.logic import Term
+from problog.logic import Term, Constant
 from problog.nnf_formula import NNF
 from problog.constraint import TrueConstraint
 from problog.formula import LogicFormula, LogicDAG
@@ -76,6 +76,9 @@ def main(argv, result_handler=None):
 
     decisions = dict((d[0], None) for d in eng.query(db, Term('decision', None)))
     utilities = dict(eng.query(db, Term('utility', None, None)))
+
+    for d in decisions:
+        db += d.with_probability(Constant(0.5))
 
     gp = eng.ground_all(db, target=None, queries=utilities.keys(), evidence=decisions.items())
 

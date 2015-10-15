@@ -1,7 +1,7 @@
 0.3::rain.
 0.5::wind.
-0.5::umbrella.
-0.5::raincoat.
+% 0.5::umbrella.
+% 0.5::raincoat.
 
 broken_umbrella :- umbrella, rain, wind.
 dry :- rain, raincoat.
