@@ -357,7 +357,8 @@ class LogicFormula(BaseFormula):
     # noinspection PyUnusedLocal
     def __init__(self, auto_compact=True, avoid_name_clash=False, keep_order=False,
                  use_string_names=False, keep_all=False, propagate_weights=None,
-                 max_arity=0, keep_duplicates=False, keep_builtins=False, **kwdargs):
+                 max_arity=0, keep_duplicates=False, keep_builtins=False, hide_builtins=False,
+                 **kwdargs):
         BaseFormula.__init__(self)
 
         # List of nodes
@@ -375,7 +376,7 @@ class LogicFormula(BaseFormula):
         self._avoid_name_clash = avoid_name_clash
         self._keep_order = keep_order
         self._keep_all = keep_all
-        self._keep_builtins = keep_all or keep_builtins
+        self._keep_builtins = (keep_all or keep_builtins) and not hide_builtins
         self._keep_duplicates = keep_duplicates
 
         self._max_arity = max_arity
