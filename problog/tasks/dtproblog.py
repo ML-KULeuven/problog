@@ -29,6 +29,7 @@ from problog.logic import Term, Constant
 from problog.errors import process_error
 from problog import get_evaluatables, get_evaluatable
 from problog.util import init_logger, Timer
+from problog.program import ExtendedPrologFactory
 
 
 def main(argv, result_handler=None):
@@ -51,7 +52,7 @@ def main(argv, result_handler=None):
     try:
 
         with Timer('Parse input'):
-            pl = PrologFile(inputfile)
+            pl = PrologFile(inputfile, factory=DTProbLogFactory())
 
             eng = DefaultEngine()
             db = eng.prepare(pl)
@@ -186,6 +187,15 @@ def print_result_json(d, output):
         result['original'] = str(d)
     print (json.dumps(result), file=output)
     return 0
+
+
+class DTProbLogFactory(ExtendedPrologFactory):
+
+    def build_probabilistic(self, operand1, operand2, location=None, **extra):
+        if str(operand1.functor) in 'd?':
+            return Term('decision', operand2, location=location)
+        else:
+            return ExtendedPrologFactory.build_probabilistic(self, operand1, operand2, location, **extra)
 
 
 def argparser():
