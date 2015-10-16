@@ -72,10 +72,11 @@ class Timer(object):
     :type output: file
     """
 
-    def __init__(self, msg, output=None):
+    def __init__(self, msg, output=None, logger='problog'):
         self.message = msg
         self.start_time = None
         self.output = output
+        self.logger = logger
 
     def __enter__(self):
         self.start_time = time.time()
@@ -83,7 +84,7 @@ class Timer(object):
     # noinspection PyUnusedLocal
     def __exit__(self, *args):
         if self.output is None:
-            logger = logging.getLogger('problog')
+            logger = logging.getLogger(self.logger)
             logger.info('%s: %.4fs' % (self.message, time.time() - self.start_time))
         else:
             print ('%s: %.4fs' % (self.message, time.time() - self.start_time), file=self.output)
