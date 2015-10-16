@@ -16,4 +16,4 @@ utility(broken_umbrella, -40).
 utility(raincoat, -20).
 utility(umbrella, -2).
 utility(dry, 60).
-% utility(dry, 20).
+%utility(dry, 20).

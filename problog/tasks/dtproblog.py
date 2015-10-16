@@ -21,41 +21,21 @@ limitations under the License.
 from __future__ import print_function
 
 import sys
+import logging
 
 from problog.program import PrologFile
 from problog.engine import DefaultEngine
 from problog.logic import Term, Constant
-from problog.nnf_formula import NNF
-from problog.constraint import TrueConstraint
-from problog.formula import LogicFormula, LogicDAG
-from problog.cnf_formula import CNF
-from problog.maxsat import get_solver, get_available_solvers
 from problog.errors import process_error
-from problog.evaluator import SemiringProbability
 from problog import get_evaluatables, get_evaluatable
-
-
-class WeightSemiring(SemiringProbability):
-
-    def value(self, a):
-        return float(a)
-
-    # def times(self, a, b):
-    #     return a + b
-    #
-    # def plus(self, a, b):
-    #     raise Exception()
-
-    def pos_value(self, a):
-        return self.value(a)
-
-    def neg_value(self, a):
-        return 0.0
+from problog.util import init_logger, Timer
 
 
 def main(argv, result_handler=None):
     args = argparser().parse_args(argv)
     inputfile = args.inputfile
+
+    init_logger(args.verbose)
 
     if result_handler is None:
         if args.web:
@@ -68,48 +48,99 @@ def main(argv, result_handler=None):
     else:
         outf = sys.stdout
 
-    # try:
-    pl = PrologFile(inputfile)
+    try:
 
-    eng = DefaultEngine()
-    db = eng.prepare(pl)
+        with Timer('Parse input'):
+            pl = PrologFile(inputfile)
 
-    decisions = dict((d[0], None) for d in eng.query(db, Term('decision', None)))
-    utilities = dict(eng.query(db, Term('utility', None, None)))
+            eng = DefaultEngine()
+            db = eng.prepare(pl)
 
-    for d in decisions:
-        db += d.with_probability(Constant(0.5))
+        decisions = dict((d[0], None) for d in eng.query(db, Term('decision', None)))
+        utilities = dict(eng.query(db, Term('utility', None, None)))
 
-    gp = eng.ground_all(db, target=None, queries=utilities.keys(), evidence=decisions.items())
+        for d in decisions:
+            db += d.with_probability(Constant(0.5))
 
-    knowledge = get_evaluatable(args.koption).create_from(gp)
+        gp = eng.ground_all(db, target=None, queries=utilities.keys(), evidence=decisions.items())
 
-    best_choice = None
+        knowledge = get_evaluatable(args.koption).create_from(gp)
+
+        with Timer('Optimize'):
+            if args.search == 'local':
+                result = search_local(knowledge, decisions, utilities, **vars(args))
+            else:
+                result = search_exhaustive(knowledge, decisions, utilities, **vars(args))
+
+        print (*result)
+
+        # result_handler((True, best_choice), outf)
+    except Exception as err:
+        result_handler((False, err), outf)
+
+    if args.output is not None:
+        outf.close()
+
+
+def evaluate(formula, decisions, utilities):
+    result = formula.evaluate(evidence=decisions)
+
+    score = 0.0
+    for r in result:
+        score += result[r] * float(utilities[r])
+    return score
+
+
+def search_exhaustive(formula, decisions, utilities, verbose=0, **kwargs):
+    stats = {'eval': 0}
     best_score = None
-
+    best_choice = None
     decision_names = decisions.keys()
     for i in range(0, 1 << len(decisions)):
         choices = num2bits(i, len(decisions))
 
         evidence = dict(zip(decision_names, choices))
-        result = knowledge.evaluate(evidence=evidence)
-
-        score = 0.0
-        for r in result:
-            score += result[r] * float(utilities[r])
-        # print (result, score)
-
+        score = evaluate(formula, evidence, utilities)
+        stats['eval'] += 1
         if best_score is None or score > best_score:
             best_score = score
             best_choice = dict(evidence)
-    print (best_choice, best_score)
+            logging.getLogger('problog').debug('Improvement: %s -> %s' % (best_choice, best_score))
+    return best_choice, best_score, stats
 
-    # result_handler((True, best_choice), outf)
-    # except Exception as err:
-    #    result_handler((False, err), outf)
 
-    if args.output is not None:
-        outf.close()
+def search_local(formula, decisions, utilities, verbose=0, **kwargs):
+    stats = {'eval': 0}
+
+    for key in decisions:
+        if key in utilities and float(utilities[key]) > 0:
+            decisions[key] = True
+        else:
+            decisions[key] = False
+
+    best_score = evaluate(formula, decisions, utilities)
+
+    last_update = None
+    stop = False
+    while not stop:
+        for key in decisions:
+            if last_update == key:
+                stop = True
+                break
+            # Flip a decision
+            decisions[key] = not decisions[key]
+            flip_score = evaluate(formula, decisions, utilities)
+            stats['eval'] += 1
+            if flip_score <= best_score:
+                decisions[key] = not decisions[key]
+            else:
+                last_update = key
+                best_score = flip_score
+                logging.getLogger('problog').debug('Improvement: %s -> %s' % (decisions, best_score))
+        if last_update is None:
+            stop = True
+
+    return decisions, best_score, stats
 
 
 def num2bits(n, nbits):
@@ -165,7 +196,8 @@ def argparser():
     parser.add_argument('--knowledge', '-k', dest='koption',
                         choices=get_evaluatables(),
                         default=None, help="Knowledge compilation tool.")
-
+    parser.add_argument('-s', '--search', choices=('local', 'exhaustive'), default='exhaustive')
+    parser.add_argument('-v', '--verbose', action='count', help='Set verbosity level')
     parser.add_argument('-o', '--output', type=str, default=None,
                         help='Write output to given file (default: write to stdout)')
     parser.add_argument('--web', action='store_true', help=argparse.SUPPRESS)

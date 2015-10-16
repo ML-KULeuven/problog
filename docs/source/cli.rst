@@ -142,6 +142,11 @@ The number of samples used for estimation can be determined in three ways:
     % Probability estimate after 7865 samples:
     someHeads : 0.79249841
 
+References:
++++++++++++
+
+    https://lirias.kuleuven.be/handle/123456789/510199
+
 
 Most Probable Explanation (``mpe``)
 -----------------------------------
@@ -150,6 +155,24 @@ Most Probable Explanation (``mpe``)
 
 Learning from interpretations (``lfi``)
 ---------------------------------------
+
+
+
+Decision Theoretic ProbLog (``dt``)
+-----------------------------------
+
+
+
+
+References:
+
+    https://lirias.kuleuven.be/handle/123456789/270066
+
+
+.. note::
+
+    The current implementation is extremily naive (and therefore slow).
+
 
 
 
