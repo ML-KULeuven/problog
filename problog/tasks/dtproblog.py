@@ -22,6 +22,7 @@ from __future__ import print_function
 
 import sys
 import logging
+import traceback
 
 from problog.program import PrologFile
 from problog.engine import DefaultEngine
@@ -77,6 +78,7 @@ def main(argv, result_handler=None):
 
         # result_handler((True, best_choice), outf)
     except Exception as err:
+        err.trace = traceback.format_exc()
         result_handler((False, err), outf)
 
     if args.output is not None:
