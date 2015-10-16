@@ -24,20 +24,20 @@ import sys
 import logging
 import traceback
 
-from problog.program import PrologFile
-from problog.engine import DefaultEngine
-from problog.logic import Term, Constant
-from problog.errors import process_error
-from problog import get_evaluatables, get_evaluatable
-from problog.util import init_logger, Timer
-from problog.program import ExtendedPrologFactory
+from ..program import PrologFile
+from ..engine import DefaultEngine
+from ..logic import Term, Constant
+from ..errors import process_error
+from .. import get_evaluatables, get_evaluatable
+from ..util import init_logger, Timer
+from ..program import ExtendedPrologFactory
 
 
 def main(argv, result_handler=None):
     args = argparser().parse_args(argv)
     inputfile = args.inputfile
 
-    init_logger(args.verbose)
+    init_logger(args.verbose, name='dtproblog')
 
     if result_handler is None:
         if args.web:
@@ -52,27 +52,32 @@ def main(argv, result_handler=None):
 
     try:
 
-        with Timer('Parse input'):
-            pl = PrologFile(inputfile, factory=DTProbLogFactory())
+        with Timer('Total', logger='dtproblog'):
+            with Timer('Parse input', logger='dtproblog'):
+                pl = PrologFile(inputfile, factory=DTProbLogFactory())
+                eng = DefaultEngine()
+                db = eng.prepare(pl)
 
-            eng = DefaultEngine()
-            db = eng.prepare(pl)
+            with Timer('Ground', logger='dtproblog'):
+                decisions = dict((d[0], None) for d in eng.query(db, Term('decision', None)))
+                utilities = dict(eng.query(db, Term('utility', None, None)))
 
-        decisions = dict((d[0], None) for d in eng.query(db, Term('decision', None)))
-        utilities = dict(eng.query(db, Term('utility', None, None)))
+                logging.getLogger('dtproblog').debug('Decisions: %s' % decisions)
+                logging.getLogger('dtproblog').debug('Utilities: %s' % utilities)
 
-        for d in decisions:
-            db += d.with_probability(Constant(0.5))
+                for d in decisions:
+                    db += d.with_probability(Constant(0.5))
 
-        gp = eng.ground_all(db, target=None, queries=utilities.keys(), evidence=decisions.items())
+                gp = eng.ground_all(db, target=None, queries=utilities.keys(), evidence=decisions.items())
 
-        knowledge = get_evaluatable(args.koption).create_from(gp)
+            with Timer('Compile', logger='dtproblog'):
+                knowledge = get_evaluatable(args.koption).create_from(gp)
 
-        with Timer('Optimize'):
-            if args.search == 'local':
-                result = search_local(knowledge, decisions, utilities, **vars(args))
-            else:
-                result = search_exhaustive(knowledge, decisions, utilities, **vars(args))
+            with Timer('Optimize', logger='dtproblog'):
+                if args.search == 'local':
+                    result = search_local(knowledge, decisions, utilities, **vars(args))
+                else:
+                    result = search_exhaustive(knowledge, decisions, utilities, **vars(args))
 
         print (*result)
 
@@ -108,7 +113,7 @@ def search_exhaustive(formula, decisions, utilities, verbose=0, **kwargs):
         if best_score is None or score > best_score:
             best_score = score
             best_choice = dict(evidence)
-            logging.getLogger('problog').debug('Improvement: %s -> %s' % (best_choice, best_score))
+            logging.getLogger('dtproblog').debug('Improvement: %s -> %s' % (best_choice, best_score))
     return best_choice, best_score, stats
 
 
@@ -139,7 +144,7 @@ def search_local(formula, decisions, utilities, verbose=0, **kwargs):
             else:
                 last_update = key
                 best_score = flip_score
-                logging.getLogger('problog').debug('Improvement: %s -> %s' % (decisions, best_score))
+                logging.getLogger('dtproblog').debug('Improvement: %s -> %s' % (decisions, best_score))
         if last_update is None:
             stop = True
 
