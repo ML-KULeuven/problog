@@ -79,7 +79,10 @@ def main(argv, result_handler=None):
                 else:
                     result = search_exhaustive(knowledge, decisions, utilities, **vars(args))
 
-        print (*result)
+        choices, score, stats = result
+        logging.getLogger('dtproblog').info('Number of strategies evaluated: %s' % stats.get('eval'))
+
+        print (choices, score)
 
         # result_handler((True, best_choice), outf)
     except Exception as err:
@@ -118,34 +121,57 @@ def search_exhaustive(formula, decisions, utilities, verbose=0, **kwargs):
 
 
 def search_local(formula, decisions, utilities, verbose=0, **kwargs):
-    stats = {'eval': 0}
+    """Performs local search.
 
+    :param formula:
+    :param decisions:
+    :param utilities:
+    :param verbose:
+    :param kwargs:
+    :return:
+    """
+    stats = {'eval': 1}
+
+    # Create the initial strategy:
+    #  for each decision, take option that has highest local utility
+    #   (takes false if no utility is given for the decision variable)
     for key in decisions:
         if key in utilities and float(utilities[key]) > 0:
             decisions[key] = True
         else:
             decisions[key] = False
 
+    # Compute the score of the initial strategy.
     best_score = evaluate(formula, decisions, utilities)
 
-    last_update = None
+    # Perform local search by flipping one decision at a time
+    last_update = None  # Last decision that was flipped and improved the score
     stop = False
     while not stop:
+        # This loop stops when either of these conditions is met:
+        #   - at the end of the (first) iteration no decision was flipped successfully
+        #   - while iterating we again reach the last decision that was flipped
+        #       (this means we tried to flip all decisions, but none were successfull)
         for key in decisions:
             if last_update == key:
+                # We went through all decisions without flipping since the last flip.
                 stop = True
                 break
             # Flip a decision
             decisions[key] = not decisions[key]
+            # Compute the score of the new strategy
             flip_score = evaluate(formula, decisions, utilities)
             stats['eval'] += 1
             if flip_score <= best_score:
+                # The score is not better: undo the flip
                 decisions[key] = not decisions[key]
             else:
+                # The score is better: update best score and pointer to last_update
                 last_update = key
                 best_score = flip_score
                 logging.getLogger('dtproblog').debug('Improvement: %s -> %s' % (decisions, best_score))
         if last_update is None:
+            # We went through all decisions without flipping.
             stop = True
 
     return decisions, best_score, stats
