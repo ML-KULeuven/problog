@@ -29,7 +29,7 @@ from ..engine import DefaultEngine
 from ..logic import Term, Constant
 from ..errors import process_error
 from .. import get_evaluatables, get_evaluatable
-from ..util import init_logger, Timer
+from ..util import init_logger, Timer, format_dictionary
 from ..program import ExtendedPrologFactory
 
 
@@ -60,6 +60,9 @@ def main(argv, result_handler=None):
 
             with Timer('Ground', logger='dtproblog'):
                 decisions = dict((d[0], None) for d in eng.query(db, Term('decision', None)))
+                if args.web:
+                    for d in decisions:
+                        d.loc = db.lineno(d.location)
                 utilities = dict(eng.query(db, Term('utility', None, None)))
 
                 logging.getLogger('dtproblog').debug('Decisions: %s' % decisions)
@@ -82,9 +85,7 @@ def main(argv, result_handler=None):
         choices, score, stats = result
         logging.getLogger('dtproblog').info('Number of strategies evaluated: %s' % stats.get('eval'))
 
-        print (choices, score)
-
-        # result_handler((True, best_choice), outf)
+        result_handler((True, (choices, score)), outf)
     except Exception as err:
         err.trace = traceback.format_exc()
         result_handler((False, err), outf)
@@ -188,11 +189,9 @@ def num2bits(n, nbits):
 def print_result(result, output=sys.stdout):
     success, result = result
     if success:
-        if result is None:
-            print ('%% The model is not satisfiable.', file=output)
-        else:
-            for atom in result.items():
-                print('%s: %s' % atom, file=output)
+        choices, score = result
+        print(format_dictionary(choices, 0), file=output)
+        print('SCORE: %s' % score)
         return 0
     else:
         print(process_error(result), file=output)
@@ -204,20 +203,19 @@ def print_result_json(d, output):
 
     :param d: result from run_problog
     :param output: output file
-    :param precision:
     :return:
     """
     import json
     result = {}
     success, d = d
     if success:
+        choices, score = d
         result['SUCCESS'] = True
-        if d is not None:
-            result['atoms'] = list(map(lambda n: (str(-n), False) if n.is_negated() else (str(n), True), d))
+        result['choices'] = [[str(n), int(p), n.loc[1], n.loc[2]] for n, p in choices.items()]
+        result['score'] = score
     else:
         result['SUCCESS'] = False
-        result['err'] = process_error(d)
-        result['original'] = str(d)
+        result['err'] = vars(d)
     print (json.dumps(result), file=output)
     return 0
 
