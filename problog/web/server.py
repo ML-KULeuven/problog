@@ -243,6 +243,15 @@ def run_problog_jsonp(model, callback):
     return run_problog_task('prob', model[0], callback[0])
 
 
+@handle_url(api_root + 'dt')
+def run_problog_jsonp(model, callback, solve=None):
+    if solve == 'local':
+        options = ['--solve', 'local']
+    else:
+        options = []
+    return run_problog_task('dt', model[0], callback[0], options=options)
+
+
 @handle_url(api_root + 'mpe')
 def run_mpe_jsonp(model, callback):
     return run_problog_task('mpe', model[0], callback[0], options=['--full'])

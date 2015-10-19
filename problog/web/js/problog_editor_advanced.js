@@ -13,16 +13,16 @@ var problog = {
                     name: "Inference",
                     text: "Standard ProbLog inference task.",
                     action: 'Evaluate',
-                    choices: [
-                        {name:"-exact"},
-                        {name:"SDD"},
-                        {name:"d-DNNF"},
-                        {name:"BDD"},
-                        {name:"-approximate"},
-                        {name:"forward"},
-                        {name:"k-best"},
-                        {name:"sample"}
-                    ],
+//                    choices: [
+//                        {name:"-exact"},
+//                        {name:"SDD"},
+//                        {name:"d-DNNF"},
+//                        {name:"BDD"},
+//                        {name:"-approximate"},
+//                        {name:"forward"},
+//                        {name:"k-best"},
+//                        {name:"sample"}
+//                    ],
                     select: function(pbl) {},
                     deselect: function(pbl) {},
                     collectData: function(pbl) {
@@ -147,7 +147,50 @@ var problog = {
                     }
                 },
 //                {id: 'map', name: "MAP", select: function(pbl){}, deselect: function(pbl){}},
-//                {id: 'dt', name: "DT-ProbLog", select: function(pbl){}, deselect: function(pbl){}},
+                                {
+                    id: 'dt',
+                    name: "DTProbLog",
+                    action: 'Solve',
+                    text: "Compute the optimal strategy.",
+                    choices: [{'name': 'exact'}, {'name': 'local search', 'identifier': 'local'}],
+                    select: function(pbl){},
+                    deselect: function(pbl){},
+                    collectData: function(pbl){
+                        var model = pbl.editor.getSession().getValue();
+                        if (model) {
+                            result = {'model': model};
+                            if (pbl.solve_choice > 0) {
+                                result['solve'] = pbl.task.choices[pbl.solve_choice].identifier;
+                            }
+                            return result;
+                        } else {
+                            return undefined;
+                        }
+
+                    },
+                    formatResult: function(pbl, data) {
+                        var facts = data.choices;
+
+                        // Create table body
+                        var result = $('<tbody>');
+                        for (var k in facts) {
+                            var n = facts[k][0];
+                            var p = facts[k][1];
+                            result.append($('<tr>')
+                                  .append($('<td>').text(n))
+                                  .append($('<td>').append(problog.makeProgressBar(p))));
+                        }
+                        var result = problog.createTable(result, [['Atom','50%'],['Value','50%']]);
+                        pbl.dom.results.html(result);
+
+                        var meta_str = "<p><strong>Score</strong>: ";
+                        var sep = " ";
+                        meta_str += data.score;
+                        meta_str += "</p>";
+                        $(meta_str).appendTo(pbl.dom.results);
+
+                    }
+                },
                 {
                     id: 'ground',
                     name: "Ground",
