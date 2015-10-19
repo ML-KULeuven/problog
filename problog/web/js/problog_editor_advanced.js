@@ -189,6 +189,16 @@ var problog = {
                         meta_str += "</p>";
                         $(meta_str).appendTo(pbl.dom.results);
 
+                        var meta_str = "<p><strong>Stats</strong>:";
+                        var sep = " ";
+                        for (var k in data.stats) {
+                            meta_str += sep+k+"="+data.stats[k];
+                            sep = ", ";
+                        }
+                        meta_str += "</p>";
+                        $(meta_str).appendTo(pbl.dom.results);
+
+
                     }
                 },
                 {

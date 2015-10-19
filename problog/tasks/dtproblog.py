@@ -85,7 +85,7 @@ def main(argv, result_handler=None):
         choices, score, stats = result
         logging.getLogger('dtproblog').info('Number of strategies evaluated: %s' % stats.get('eval'))
 
-        result_handler((True, (choices, score)), outf)
+        result_handler((True, (choices, score, stats)), outf)
     except Exception as err:
         err.trace = traceback.format_exc()
         result_handler((False, err), outf)
@@ -189,7 +189,7 @@ def num2bits(n, nbits):
 def print_result(result, output=sys.stdout):
     success, result = result
     if success:
-        choices, score = result
+        choices, score, stats = result
         print(format_dictionary(choices, 0), file=output)
         print('SCORE: %s' % score)
         return 0
@@ -209,10 +209,11 @@ def print_result_json(d, output):
     result = {}
     success, d = d
     if success:
-        choices, score = d
+        choices, score, stats = d
         result['SUCCESS'] = True
         result['choices'] = [[str(n), int(p), n.loc[1], n.loc[2]] for n, p in choices.items()]
         result['score'] = score
+        result['stats'] = stats
     else:
         result['SUCCESS'] = False
         result['err'] = vars(d)

@@ -245,8 +245,8 @@ def run_problog_jsonp(model, callback):
 
 @handle_url(api_root + 'dt')
 def run_problog_jsonp(model, callback, solve=None):
-    if solve == 'local':
-        options = ['--solve', 'local']
+    if solve is not None and solve[0] == 'local':
+        options = ['--search', 'local']
     else:
         options = []
     return run_problog_task('dt', model[0], callback[0], options=options)
