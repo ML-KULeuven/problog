@@ -38,6 +38,8 @@ def main(argv, result_handler=None):
                         help='output format')
     parser.add_argument('--break-cycles', action='store_true', help='perform cycle breaking')
     parser.add_argument('--keep-all', action='store_true', help='also output deterministic nodes')
+    parser.add_argument('--keep-duplicates', action='store_true', help='don\'t eliminate duplicate literals')
+    parser.add_argument('--hide-builtins', action='store_true', help='hide deterministic part based on builtins')
     parser.add_argument('--propagate-evidence', action='store_true', help='propagate evidence')
     parser.add_argument('--propagate-weights', action='store_true', help='propagate evidence')
     parser.add_argument('--compact', action='store_true',
@@ -75,7 +77,9 @@ def main(argv, result_handler=None):
     try:
         gp = target.createFrom(
             PrologFile(args.filename, parser=DefaultPrologParser(ExtendedPrologFactory())),
-            label_all=True, avoid_name_clash=not args.compact, keep_order=True, keep_all=args.keep_all,
+            label_all=True, avoid_name_clash=not args.compact, keep_order=True,
+            keep_all=args.keep_all, keep_duplicates=args.keep_duplicates,
+            hide_builtins=args.hide_builtins,
             propagate_evidence=args.propagate_evidence, propagate_weights=semiring)
 
         if outformat == 'pl':
@@ -97,7 +101,7 @@ def main(argv, result_handler=None):
             rc = print_result((True, gp.to_prolog()), output=outfile)
     except Exception as err:
         import traceback
-        err.trace = traceback.print_exc()
+        err.trace = traceback.format_exc()
         rc = print_result((False, err))
 
     if args.output:

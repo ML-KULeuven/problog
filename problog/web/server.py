@@ -61,8 +61,8 @@ CACHE_DIR = "cache"
 
 RUN_LOCAL = False
 
-PYTHON_EXEC = 'python'    # Python 2
-# PYTHON_EXEC = sys.executable  # Match with server
+# PYTHON_EXEC = 'python'    # Python 2
+PYTHON_EXEC = sys.executable  # Match with server
 
 api_root = '/'
 
@@ -241,6 +241,15 @@ def run_problog_jsonp(model, callback):
 @handle_url(api_root + 'prob')
 def run_problog_jsonp(model, callback):
     return run_problog_task('prob', model[0], callback[0])
+
+
+@handle_url(api_root + 'dt')
+def run_problog_jsonp(model, callback, solve=None):
+    if solve is not None and solve[0] == 'local':
+        options = ['--search', 'local']
+    else:
+        options = []
+    return run_problog_task('dt', model[0], callback[0], options=options)
 
 
 @handle_url(api_root + 'mpe')

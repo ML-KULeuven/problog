@@ -103,6 +103,11 @@ class ProbLog(object):
         :param target: target class
         :param kwdargs: additional arguments passed to transformation functions
         """
+
+        for d in cls.create_as[target]:
+            if type(src) == d:
+                return src.clone(target(**kwdargs))
+
         # Find transformation paths from source to target.
         for path in cls.find_paths(src, target):
             try:
@@ -122,7 +127,7 @@ class ProbLog(object):
                 # The current transformation strategy didn't work for some reason. Try another one.
                 pass
         raise ProbLogError("No conversion strategy found from an object of "
-                           "class '%s' to an object of class '%s'."
+                           "class '%s' to an object of class '%s'"
                            % (type(src).__name__, getattr(target, '__name__')))
 
 

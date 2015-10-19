@@ -1,7 +1,7 @@
 
 var problog = {
   //hostname: 'https://adams.cs.kuleuven.be/problog/api/',
-  hostname: '//adams.cs.kuleuven.be/problog/api/',
+  hostname: 'https://adams.cs.kuleuven.be/problog/api/',
   main_editor_url: 'https://dtai.cs.kuleuven.be/problog/editor_adv.html',
   editors: [],
   selector: '.problog-editor',
@@ -13,16 +13,16 @@ var problog = {
                     name: "Inference",
                     text: "Standard ProbLog inference task.",
                     action: 'Evaluate',
-                    choices: [
-                        {name:"-exact"},
-                        {name:"SDD"},
-                        {name:"d-DNNF"},
-                        {name:"BDD"},
-                        {name:"-approximate"},
-                        {name:"forward"},
-                        {name:"k-best"},
-                        {name:"sample"}
-                    ],
+//                    choices: [
+//                        {name:"-exact"},
+//                        {name:"SDD"},
+//                        {name:"d-DNNF"},
+//                        {name:"BDD"},
+//                        {name:"-approximate"},
+//                        {name:"forward"},
+//                        {name:"k-best"},
+//                        {name:"sample"}
+//                    ],
                     select: function(pbl) {},
                     deselect: function(pbl) {},
                     collectData: function(pbl) {
@@ -69,6 +69,9 @@ var problog = {
                         pbl.editor_data = ace.edit(editor[0]);
                         pbl.editor_data.getSession().setMode('ace/mode/problog');
                         pbl.editor_data.getSession().setUseWrapMode(true);
+                        if (pbl.initial_data) {
+                            pbl.editor_data.setValue(pbl.initial_data, -1);
+                        }
                         pbl.editor_data.setShowInvisibles(true);
                         pbl.dom.edit_options.append($('<strong>').text('Examples (specified as evidence, separated by ---):'));
                         pbl.dom.edit_options.append(editor);
@@ -144,7 +147,60 @@ var problog = {
                     }
                 },
 //                {id: 'map', name: "MAP", select: function(pbl){}, deselect: function(pbl){}},
-//                {id: 'dt', name: "DT-ProbLog", select: function(pbl){}, deselect: function(pbl){}},
+                                {
+                    id: 'dt',
+                    name: "DTProbLog",
+                    action: 'Solve',
+                    text: "Compute the optimal strategy.",
+                    choices: [{'name': 'exact'}, {'name': 'local search', 'identifier': 'local'}],
+                    select: function(pbl){},
+                    deselect: function(pbl){},
+                    collectData: function(pbl){
+                        var model = pbl.editor.getSession().getValue();
+                        if (model) {
+                            result = {'model': model};
+                            if (pbl.solve_choice > 0) {
+                                result['solve'] = pbl.task.choices[pbl.solve_choice].identifier;
+                            }
+                            return result;
+                        } else {
+                            return undefined;
+                        }
+
+                    },
+                    formatResult: function(pbl, data) {
+                        var facts = data.choices;
+
+                        // Create table body
+                        var result = $('<tbody>');
+                        for (var k in facts) {
+                            var n = facts[k][0];
+                            var p = facts[k][1];
+                            result.append($('<tr>')
+                                  .append($('<td>').text(n))
+                                  .append($('<td>').append(problog.makeProgressBar(p))));
+                        }
+                        var result = problog.createTable(result, [['Atom','50%'],['Value','50%']]);
+                        pbl.dom.results.html(result);
+
+                        var meta_str = "<p><strong>Score</strong>: ";
+                        var sep = " ";
+                        meta_str += data.score;
+                        meta_str += "</p>";
+                        $(meta_str).appendTo(pbl.dom.results);
+
+                        var meta_str = "<p><strong>Stats</strong>:";
+                        var sep = " ";
+                        for (var k in data.stats) {
+                            meta_str += sep+k+"="+data.stats[k];
+                            sep = ", ";
+                        }
+                        meta_str += "</p>";
+                        $(meta_str).appendTo(pbl.dom.results);
+
+
+                    }
+                },
                 {
                     id: 'ground',
                     name: "Ground",
@@ -221,6 +277,16 @@ problog.init_editor = function(index, object) {
 
     // Create container object for editor settings and DOM.
     var pbl = { dom: {} };
+
+    pbl.initial_data = '';
+    var ex_data = $(object).find('.examples')[0];
+    if (ex_data) {
+        pbl.initial_data = $(ex_data).text();
+        $(ex_data).empty();
+    }
+
+    pbl.initial = $(object).text();
+    $(object).empty();
 
     pbl.solve = function() {
         if (pbl.running) {
@@ -441,6 +507,8 @@ problog.init_editor = function(index, object) {
     pbl.editor.getSession().setMode('ace/mode/problog');
     pbl.editor.getSession().setUseWrapMode(true);
     pbl.editor.setShowInvisibles(true);
+    pbl.editor.setValue(pbl.initial, -1);
+
 
     // Initialize edit options
     pbl.dom.edit_options = $('<div>').addClass("problog-edit-options").appendTo(pbl.dom.editpane);

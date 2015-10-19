@@ -29,7 +29,7 @@ from .core import ProbLogObject
 from .errors import InconsistentEvidenceError
 
 from .util import OrderedSet
-from .logic import Term
+from .logic import Term, Or, Clause, And, is_ground
 
 from .constraint import ConstraintAD
 
@@ -316,6 +316,10 @@ class BaseFormula(ProbLogObject):
         """
         self._constraints.append(constraint)
 
+    def flag(self, flag):
+        flag = '_%s' % flag
+        return hasattr(self, flag) and getattr(self, flag)
+
 
 class LogicFormula(BaseFormula):
     """A logic formula is a data structure that is used to represent generic And-Or graphs.
@@ -336,13 +340,13 @@ class LogicFormula(BaseFormula):
     by simplifying nodes or by reusing existing nodes.
     """
 
-    _atom = namedtuple('atom', ('identifier', 'probability', 'group', 'name'))
+    _atom = namedtuple('atom', ('identifier', 'probability', 'group', 'name', 'source'))
     _conj = namedtuple('conj', ('children', 'name'))
     _disj = namedtuple('disj', ('children', 'name'))
     # negation is encoded by using a negative number for the key
 
-    def _create_atom(self, identifier, probability, group, name=None):
-        return self._atom(identifier, probability, group, name)
+    def _create_atom(self, identifier, probability, group, name=None, source=None):
+        return self._atom(identifier, probability, group, name, source)
 
     def _create_conj(self, children, name=None):
         return self._conj(children, name)
@@ -353,7 +357,8 @@ class LogicFormula(BaseFormula):
     # noinspection PyUnusedLocal
     def __init__(self, auto_compact=True, avoid_name_clash=False, keep_order=False,
                  use_string_names=False, keep_all=False, propagate_weights=None,
-                 max_arity=0, **kwdargs):
+                 max_arity=0, keep_duplicates=False, keep_builtins=False, hide_builtins=False,
+                 **kwdargs):
         BaseFormula.__init__(self)
 
         # List of nodes
@@ -371,6 +376,8 @@ class LogicFormula(BaseFormula):
         self._avoid_name_clash = avoid_name_clash
         self._keep_order = keep_order
         self._keep_all = keep_all
+        self._keep_builtins = (keep_all or keep_builtins) and not hide_builtins
+        self._keep_duplicates = keep_duplicates
 
         self._max_arity = max_arity
 
@@ -396,11 +403,15 @@ class LogicFormula(BaseFormula):
 
         if self.is_probabilistic(key):
             node = self.get_node(abs(key))
+            ntype = type(node).__name__
             if key < 0:
                 lname = -name
             else:
                 lname = name
-            node = type(node)(*(node[:-1] + (lname,)))
+            if ntype == 'atom':
+                node = type(node)(*(node[:-2] + (lname, node[-1])))
+            else:
+                node = type(node)(*(node[:-1] + (lname,)))
             self._update(abs(key), node)
 
         BaseFormula.add_name(self, name, key, label)
@@ -479,7 +490,7 @@ class LogicFormula(BaseFormula):
         node = constraint.add(node, self)
         return node
 
-    def add_atom(self, identifier, probability, group=None, name=None):
+    def add_atom(self, identifier, probability, group=None, name=None, source=None):
         """Add an atom to the formula.
 
         :param identifier: a unique identifier for the atom
@@ -508,7 +519,7 @@ class LogicFormula(BaseFormula):
                 self.semiring.is_one(self.semiring.value(probability)):
             return self.TRUE
         else:
-            atom = self._create_atom(identifier, probability, group, name)
+            atom = self._create_atom(identifier, probability, group, name, source)
             node_id = self._add(atom, key=identifier)
             self.get_weights()[node_id] = probability
             if node_id == len(self._nodes):
@@ -608,6 +619,7 @@ class LogicFormula(BaseFormula):
         """Add a compound term (AND or OR)."""
         assert content   # Content should not be empty
 
+        name_clash = False
         if self._auto_compact:
             # If there is a t node, (true for OR, false for AND)
             if t in content:
@@ -617,10 +629,10 @@ class LogicFormula(BaseFormula):
             content = filter(lambda x: x != f, content)
 
             # Put into fixed order and eliminate duplicate nodes
-            if self._keep_order:
+            if self._keep_duplicates:
                 content = tuple(content)
             else:
-                content = tuple(sorted(set(content)))
+                content = tuple(OrderedSet(content))
 
             # Empty OR node fails, AND node is true
             if not content:
@@ -636,15 +648,24 @@ class LogicFormula(BaseFormula):
                 if self._avoid_name_clash:
                     name_old = self.get_node(abs(content[0])).name
                     if name is None or name_old is None or name == name_old:
+                        if name is not None:
+                            self.add_name(name, content[0], self.LABEL_NAMED)
                         return content[0]
+                    else:
+                        name_clash = True
                 else:
+                    if name is not None:
+                        name_old = self.get_node(abs(content[0])).name
+                        if name_old is None:
+                            self.add_name(name, content[0], self.LABEL_NAMED)
+
                     return content[0]
         else:
             content = tuple(content)
 
         if nodetype == 'conj':
             node = self._create_conj(content, name)
-            return self._add(node, reuse=self._auto_compact)
+            return self._add(node, reuse=self._auto_compact and not self._keep_all)
         elif nodetype == 'disj':
             node = self._create_disj(content, name)
             if update is not None:
@@ -652,10 +673,12 @@ class LogicFormula(BaseFormula):
                 return self._update(update, node)
             elif readonly:
                 # If the node is readonly, we can try to reuse an existing node.
-                return self._add(node, reuse=self._auto_compact)
+                new_node = self._add(node, reuse=self._auto_compact and not name_clash and not self._keep_all)
+                return new_node
             else:
                 # If node is modifiable, we shouldn't reuse an existing node.
                 return self._add(node, reuse=False)
+
         else:
             raise TypeError("Unexpected node type: '%s'." % nodetype)
 
@@ -721,72 +744,169 @@ class LogicFormula(BaseFormula):
             self.get_evidence_values()[key] = value
 
     def propagate(self, nodeids, current=None):
-        """Propagate the value of the given node (true if node is positive, false if node is negative)
+        """Propagate the value of the given node
+          (true if node is positive, false if node is negative)
         The propagation algorithm is not complete.
 
-        :param nodeids:
-        :param current:
-        :return:
+        :param nodeids: evidence nodes to set (> 0 means true, < 0 means false)
+        :param current: current set of nodes with deterministic value
+        :return: dictionary of nodes with deterministic value
         """
+
+        # Initialize current in case nothing is known yet.
         if current is None:
             current = {}
 
+        # Provide easy access to values
         values = {True: self.TRUE, False: self.FALSE}
+
+        # Reverse mapping between a node and its parents
         atoms_in_rules = defaultdict(set)
 
-        updated = set()
+        # Queue of nodes that need to be handled.
+        # INVARIANT: elements in queue have deterministic value
+        # INVARIANT: elements in queue are not yet listed in current
         queue = set(nodeids)
+
         while queue:
             nid = queue.pop()
 
+            # Get information about the node
+            n = self.get_node(abs(nid))
+            t = type(n).__name__
+
             if abs(nid) not in current:
-                updated.add(abs(nid))
+                # This is the first time we process this node.
+                # We should process its parents again.
                 for at in atoms_in_rules[abs(nid)]:
                     if at in current:
-                        if current[abs(at)] == 0:
+                        # Parent has a truth value.
+                        # Try to propagate parent again.
+                        if current[abs(at)] == self.TRUE:
                             queue.add(abs(at))
                         else:
                             queue.add(-abs(at))
-                current[abs(nid)] = values[nid > 0]
 
-            n = self.get_node(abs(nid))
-            t = type(n).__name__
+            # Record node value in current
+            current[abs(nid)] = values[nid > 0]
+
+            # Process node and propagate to children
             if t == 'atom':
+                # Nothing to do.
                 pass
             else:
+                # Get the list of children with their actual (propagated) values.
                 children = []
                 for c in n.children:
                     ch = current.get(abs(c), abs(c))
                     if c < 0:
                         ch = self.negate(ch)
                     children.append(ch)
-                if t == 'conj' and None in children and nid > 0:
+
+                # Handle trivial cases:
+                # Node should be true, but is a conjunction with a false child
+                if t == 'conj' and self.FALSE in children and nid > 0:
                     raise InconsistentEvidenceError()
-                elif t == 'disj' and 0 in children and nid < 0:
+                # Node should be false, but is a disjunction with a true child
+                elif t == 'disj' and self.TRUE in children and nid < 0:
                     raise InconsistentEvidenceError()
-                children = list(filter(lambda x: x != 0 and x is not None, children))
-                if len(children) == 1:  # only one child
-                    if abs(children[0]) not in current:
-                        if nid < 0:
-                            queue.add(-children[0])
-                        else:
-                            queue.add(children[0])
-                        atoms_in_rules[abs(children[0])].discard(abs(nid))
-                elif nid > 0 and t == 'conj':
-                    # Conjunction is true
-                    for c in children:
-                        if abs(c) not in current:
-                            queue.add(c)
-                        atoms_in_rules[abs(c)].discard(abs(nid))
-                elif nid < 0 and t == 'disj':
-                    # Disjunction is false
-                    for c in children:
-                        if abs(c) not in current:
-                            queue.add(-c)
+                # Node should be false, and is a conjunction with a false child
+                elif t == 'conj' and self.FALSE in children and nid < 0:
+                    # Already satisfied, nothing else to do
+                    pass
+                # Node should be true and is a disjunction with a true child
+                elif t == 'disj' and self.TRUE in children and nid > 0:
+                    # Already satisfied, nothing else to do
+                    pass
                 else:
-                    for c in children:
-                        atoms_in_rules[abs(c)].add(abs(nid))
+                    # Filter out deterministic children
+                    children = list(filter(lambda x: x != 0 and x is not None, children))
+                    if len(children) == 1:
+                        # One child left: propagate value to the child
+                        if abs(children[0]) not in current:
+                            if nid < 0:
+                                queue.add(-children[0])
+                            else:
+                                queue.add(children[0])
+                            atoms_in_rules[abs(children[0])].discard(abs(nid))
+                    elif nid > 0 and t == 'conj':
+                        # Conjunction is true => all children are true
+                        for c in children:
+                            if abs(c) not in current:
+                                queue.add(c)
+                            atoms_in_rules[abs(c)].discard(abs(nid))
+                    elif nid < 0 and t == 'disj':
+                        # Disjunction is false => all children are false
+                        for c in children:
+                            if abs(c) not in current:
+                                queue.add(-c)
+                            atoms_in_rules[abs(c)].discard(abs(nid))
+                    else:
+                        # We can't propagate yet. Mark current rule as parent of its children.
+                        for c in children:
+                            atoms_in_rules[abs(c)].add(abs(nid))
         return current
+
+    # def propagate(self, nodeids, current=None):
+    #     if current is None:
+    #         current = {}
+    #
+    #     values = {True: self.TRUE, False: self.FALSE}
+    #     atoms_in_rules = defaultdict(set)
+    #
+    #     updated = set()
+    #     queue = set(nodeids)
+    #     while queue:
+    #         nid = queue.pop()
+    #
+    #         if abs(nid) not in current:
+    #             updated.add(abs(nid))
+    #             for at in atoms_in_rules[abs(nid)]:
+    #                 if at in current:
+    #                     if current[abs(at)] == 0:
+    #                         queue.add(abs(at))
+    #                     else:
+    #                         queue.add(-abs(at))
+    #             current[abs(nid)] = values[nid > 0]
+    #
+    #         n = self.get_node(abs(nid))
+    #         t = type(n).__name__
+    #         if t == 'atom':
+    #             pass
+    #         else:
+    #             children = []
+    #             for c in n.children:
+    #                 ch = current.get(abs(c), abs(c))
+    #                 if c < 0:
+    #                     ch = self.negate(ch)
+    #                 children.append(ch)
+    #             if t == 'conj' and None in children and nid > 0:
+    #                 raise InconsistentEvidenceError()
+    #             elif t == 'disj' and 0 in children and nid < 0:
+    #                 raise InconsistentEvidenceError()
+    #             children = list(filter(lambda x: x != 0 and x is not None, children))
+    #             if len(children) == 1:  # only one child
+    #                 if abs(children[0]) not in current:
+    #                     if nid < 0:
+    #                         queue.add(-children[0])
+    #                     else:
+    #                         queue.add(children[0])
+    #                     atoms_in_rules[abs(children[0])].discard(abs(nid))
+    #             elif nid > 0 and t == 'conj':
+    #                 # Conjunction is true
+    #                 for c in children:
+    #                     if abs(c) not in current:
+    #                         queue.add(c)
+    #                     atoms_in_rules[abs(c)].discard(abs(nid))
+    #             elif nid < 0 and t == 'disj':
+    #                 # Disjunction is false
+    #                 for c in children:
+    #                     if abs(c) not in current:
+    #                         queue.add(-c)
+    #             else:
+    #                 for c in children:
+    #                     atoms_in_rules[abs(c)].add(abs(nid))
+    #     return current
 
     # ====================================================================================== #
     # ==========                        EXPORT TO STRING                         =========== #
@@ -834,27 +954,46 @@ label_all=True)
         :return: Prolog program
         :rtype: str
         """
-        lines = []
-        neg_heads = set()
-        for head, body in self.enumerate_clauses():
-            head_name = self.get_name(head)
-            if head_name.is_negated():
-                pos_name = -head_name
-                head_name = Term(pos_name.functor + '_aux', *pos_name.args)
-                if head not in neg_heads:
-                    lines.append('%s :- %s.' % (pos_name, -head_name))
-                    neg_heads.add(head)
-            if body:    # clause with a body
-                body = ', '.join(map(str, map(self.get_name, body)))
-                lines.append('%s :- %s.' % (head_name, body))
-            else:   # fact
-                prob = self.get_node(head).probability
 
-                if prob is not None:
-                    lines.append('%s::%s.' % (prob, head_name))
-                else:
-                    lines.append('%s.' % head_name)
+        lines = ['%s.' % c for c in self.enum_clauses()]
+
+        for qn, qi in self.queries():
+            if is_ground(qn):
+                if qi == self.TRUE:
+                    lines.append('%s.' % qn)
+                elif qi == self.FALSE:
+                    lines.append('%s :- fail.' % qn)
+                lines.append('query(%s).' % qn)
+
+        for qn, qi in self.evidence():
+            if qi < 0:
+                lines.append('evidence(%s).' % -qn)
+            else:
+                lines.append('evidence(%s).' % qn)
+
         return '\n'.join(lines)
+
+        # lines = []
+        # neg_heads = set()
+        # for head, body in self.enumerate_clauses():
+        #     head_name = self.get_name(head)
+        #     if head_name.is_negated():
+        #         pos_name = -head_name
+        #         head_name = Term(pos_name.functor + '_aux', *pos_name.args)
+        #         if head not in neg_heads:
+        #             lines.append('%s :- %s.' % (pos_name, -head_name))
+        #             neg_heads.add(head)
+        #     if body:    # clause with a body
+        #         body = ', '.join(map(str, map(self.get_name, body)))
+        #         lines.append('%s :- %s.' % (head_name, body))
+        #     else:   # fact
+        #         prob = self.get_node(head).probability
+        #
+        #         if prob is not None:
+        #             lines.append('%s::%s.' % (prob, head_name))
+        #         else:
+        #             lines.append('%s.' % head_name)
+        # return '\n'.join(lines)
 
     def get_name(self, key):
         """Get the name of the given node.
@@ -870,6 +1009,13 @@ label_all=True)
         else:
             node = self.get_node(abs(key))
             name = node.name
+
+            if not self._is_valid_name(name) and type(node).__name__ == 'disj' and node.children:
+                if key < 0:
+                    name = self.get_name(-node.children[0])
+                else:
+                    name = self.get_name(node.children[0])
+
             if name is None:
                 name = Term('node_%s' % abs(key))
             if key < 0:
@@ -930,6 +1076,139 @@ label_all=True)
                         if abs(c_i) not in enumerated:
                             to_enumerate.add(abs(c_i))
 
+    def extract_ads(self, relevant, processed):
+
+        # Collect information about annotated disjunctions
+        choices = set([])
+        choice_group = {}
+        choice_by_group = defaultdict(list)
+        choice_parent = {}
+        choice_by_parent = {}
+        choice_body = {}
+        choice_name = {}
+        choice_prob = {}
+
+        for i, n, t in self:
+            if not relevant[i]:
+                continue
+            if t == 'atom' and n.group is not None:
+                choice_group[i] = n.group
+                choice_prob[i] = n.probability
+                choice_by_group[n.group].append(i)
+                choices.add(i)
+                processed[i] = True
+            elif t == 'conj' and n.children[-1] in choices:
+                choice = n.children[-1]
+                choice_parent[choice_group[choice]] = i
+                choice_by_parent[i] = choice
+                choice_body[choice_group[choice]] = n.children[0]
+                if n.name is not None:
+                    choice_name[choice] = n.name
+                processed[i] = True
+                if not self._is_valid_name(self.get_node(abs(n.children[0])).name):
+                    processed[n.children[0]] = True
+
+        for i, n, t in self:
+            if t == 'disj':
+                overlap = set(n.children) & set(choice_by_parent.keys()) | set(n.children) & set(choices)
+                for o in overlap:
+                    if self._is_valid_name(n.name):
+                        choice_name[choice_by_parent.get(o, o)] = n.name
+
+        for group, choices in choice_by_group.items():
+            # Construct head
+
+            head = Or.from_list([choice_name[c].with_probability(choice_prob[c]) for c in choices])
+
+            # Construct body
+            body = self.get_body(choice_body.get(group, self.TRUE), processed)
+
+            if body is None:
+                yield head
+            else:
+                yield (Clause(head, body))
+
+    def _is_valid_name(self, name):
+        return name is not None and not name.functor.startswith('_problog_')
+
+    def get_body(self, index, processed=None, parent_name=None):
+        if index == self.TRUE:
+            return None
+        else:
+            node = self.get_node(abs(index))
+            ntype = type(node).__name__
+            if self._is_valid_name(node.name) and str(node.name) != str(parent_name):
+                if index < 0:
+                    return -node.name
+                else:
+                    return node.name
+            elif ntype == 'atom':
+                # Easy case: atom
+                if index < 0:
+                    return -node.name
+                else:
+                    return node.name
+            elif ntype == 'conj':
+                if index < 0:
+                    return -node.name
+                else:
+                    children = self._unroll_conj(node)
+                    return And.from_list(list(map(self.get_name, children)))
+            elif ntype == 'disj' and len(node.children) == 1 and not self._is_valid_name(node.name):
+                if processed:
+                    processed[abs(index)] = True
+                if index < 0:
+                    b = self.get_body(-node.children[0], parent_name=parent_name)
+                else:
+                    b = self.get_body(node.children[0], parent_name=parent_name)
+                return b
+            elif ntype == 'disj':
+                if index < 0:
+                    return -node.name
+                else:
+                    return node.name
+            else:
+                print (self)
+                print (index, node)
+                raise Exception('Unexpected')
+
+    def enum_clauses(self):
+        relevant = self.extract_relevant()
+        processed = [False] * (len(self) + 1)
+        for ad in self.extract_ads(relevant, processed):
+            yield ad
+        for i, n, t in self:
+            if relevant[i] and not processed[i]:
+                if t == 'atom':
+                    if n.name is not None and n.source not in ('builtin', 'negation'):
+                        yield n.name.with_probability(n.probability)
+                elif t == 'disj':
+                    for c in n.children:
+                        if not processed[abs(c)]:
+                            b = self.get_body(c, parent_name=n.name)
+                            if str(n.name) != str(b):   # TODO bit of a hack?
+                                yield Clause(n.name, b)
+                elif t == 'conj' and n.name is None:
+                    pass
+                else:
+                    yield Clause(n.name, self.get_body(i, parent_name=n.name))
+
+    def extract_relevant(self):
+        relevant = [False] * (len(self)+1)
+        roots = set(abs(n) for q, n in self.queries() if self.is_probabilistic(n))
+        roots |= set(abs(n) for q, n in self.evidence() if self.is_probabilistic(n))
+        while roots:
+            root = roots.pop()
+            if not relevant[root]:
+                relevant[root] = True
+                node = self.get_node(root)
+                ntype = type(node).__name__
+                if ntype != 'atom':
+                    for c in node.children:
+                        if not relevant[abs(c)]:
+                            roots.add(abs(c))
+        return relevant
+
     def _unroll_conj(self, node):
         assert type(node).__name__ == 'conj'
 
@@ -939,7 +1218,7 @@ label_all=True)
             children = [node.children[0]]
             current = node.children[1]
             current_node = self.get_node(current)
-            while type(current_node).__name__ == 'conj' and len(current_node.children) == 2:
+            while type(current_node).__name__ == 'conj' and len(current_node.children) == 2 and not self._is_valid_name(current_node.name):
                 children.append(current_node.children[0])
                 current = current_node.children[1]
                 if current > 0:
@@ -1056,6 +1335,32 @@ label_all=True)
             q += 1
         return s + '}'
 
+    def clone(self, destination):
+        source = self
+        # TODO maintain a translation table
+        for i, n, t in source:
+            if t == 'atom':
+                j = destination.add_atom(n.identifier, n.probability, n.group, source.get_name(i))
+            elif t == 'conj':
+                j = destination.add_and(n.children, source.get_name(i))
+            elif t == 'disj':
+                j = destination.add_or(n.children, source.get_name(i))
+            else:
+                raise TypeError('Unknown node type')
+            assert i == j
+
+        for name, node, label in source.get_names_with_label():
+            destination.add_name(name, node, label)
+
+        for c in source.constraints():
+            if c.is_nontrivial():
+                destination.add_constraint(c)
+
+        return destination
+
+
+
+
 
 class LogicDAG(LogicFormula):
     """A propositional logic formula without cycles."""
@@ -1070,7 +1375,7 @@ class DeterministicLogicFormula(LogicFormula):
     def __init__(self, **kwdargs):
         LogicFormula.__init__(self, **kwdargs)
 
-    def add_atom(self, identifier, probability, group=None, name=None):
+    def add_atom(self, identifier, probability, group=None, name=None, source=None):
         return self.TRUE
 
 

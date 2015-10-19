@@ -359,7 +359,8 @@ class PrologParser(object):
                          functor=self._next_paren_open(s, pos)), pos + 1
 
     def _token_question(self, s, pos):
-        raise UnexpectedCharacter(s, pos)
+        return Token('?', pos, atom=True), pos + 1
+        # raise UnexpectedCharacter(s, pos)
 
     def _token_at(self, s, pos):
         if s[pos:pos + 2] == '@<':

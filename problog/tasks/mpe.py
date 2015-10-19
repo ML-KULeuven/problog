@@ -74,10 +74,10 @@ def main(argv, result_handler=None):
             false_facts = set()
             for i, n, t in dag:
                 if n.name is not None and truthvalues[i - 1]:
-                    if not n.name.functor.startswith('problog_'):
+                    if not n.name.functor.startswith('_problog_'):
                         true_facts.add(n.name)
                 if n.name is not None and not truthvalues[i - 1]:
-                    if not n.name.functor.startswith('problog_'):
+                    if not n.name.functor.startswith('_problog_'):
                         false_facts.add(n.name)
 
             for n in true_facts:

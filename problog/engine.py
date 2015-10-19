@@ -225,7 +225,7 @@ class ClauseDBEngine(GenericEngine):
         else:
             return [x for x, y in result]
 
-    def ground(self, db, term, gp=None, label=None, **kwdargs):
+    def ground(self, db, term, target=None, label=None, **kwdargs):
         """Ground a query on the given database.
 
        :param db: logic program
@@ -245,16 +245,17 @@ class ClauseDBEngine(GenericEngine):
             term = -term
         else:
             negated = False
-        gp, results = self._ground(db, term, gp, silent_fail=False, **kwdargs)
+
+        target, results = self._ground(db, term, target, silent_fail=False, **kwdargs)
         for args, node_id in results:
             term_store = term.with_args(*args)
             if negated:
-                gp.add_name(-term_store, -node_id, label)
+                target.add_name(-term_store, -node_id, label)
             else:
-                gp.add_name(term_store, node_id, label)
+                target.add_name(term_store, node_id, label)
         if not results:
-            gp.add_name(term, None, label)
-        return gp
+            target.add_name(term, None, label)
+        return target
 
     def _ground(self, db, term, gp=None, silent_fail=True, assume_prepared=False, **kwdargs):
         """
@@ -752,18 +753,18 @@ class ClauseDB(LogicProgram):
             # Body arguments
             body_args = tuple(range(0, len(variables)))
             if len(new_heads) > 1:
-                body_functor = 'problog_ad_%s_body' % group
+                body_functor = '_problog_ad_%s_body' % group
             else:
-                body_functor = 'problog_%s_%s_body' % (new_heads[0].functor, group)
+                body_functor = '_problog_%s_%s_body' % (new_heads[0].functor, group)
             body_head = Term(body_functor, *body_args)
             self._add_clause_node(body_head, body_node, len(variables), variables.local_variables)
             clause_body = self._add_head(body_head)
             for choice, head in enumerate(new_heads):
                 # For each head: add choice node
                 if len(new_heads) > 1:
-                    choice_functor = 'problog_%s_cf_%s_%s' % (head.functor, group, choice)
+                    choice_functor = '_problog_%s_cf_%s_%s' % (head.functor, group, choice)
                 else:
-                    choice_functor = 'problog_%s_%s_choice' % (head.functor, group)
+                    choice_functor = '_problog_%s_%s_choice' % (head.functor, group)
                 choice_node = self._add_choice_node(choice, choice_functor, body_args, head.probability, variables.local_variables,
                                                     group, head.location)
                 choice_call = self._append_node(self._call(choice_functor, body_args, choice_node,

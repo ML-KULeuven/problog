@@ -132,10 +132,10 @@ class SemiringProbability(Semiring):
         return 0.0
 
     def is_one(self, value):
-        return 1.0 - 1e-16 < value < 1.0 + 1e-16
+        return 1.0 - 1e-12 < value < 1.0 + 1e-12
 
     def is_zero(self, value):
-        return -1e-16 < value < 1e-16
+        return -1e-12 < value < 1e-12
 
     def plus(self, a, b):
         return a + b
@@ -151,7 +151,7 @@ class SemiringProbability(Semiring):
 
     def value(self, a):
         v = float(a)
-        if 0.0 <= v <= 1.0:
+        if 0.0 - 1e-12 <= v <= 1.0 + 1e-12:
             return v
         else:
             raise InvalidValue("Not a valid value for this semiring: '%s'" % a, location=a.location)
@@ -172,7 +172,7 @@ class SemiringLogProbability(SemiringProbability):
         return value <= -1e100
 
     def is_one(self, value):
-        return -1e-16 < value < 1e-16
+        return -1e-12 < value < 1e-12
 
     def plus(self, a, b):
         if a < b:
@@ -194,10 +194,10 @@ class SemiringLogProbability(SemiringProbability):
 
     def value(self, a):
         v = float(a)
-        if 0 <= v < 1e-10:
+        if -1e-12 <= v < 1e-12:
             return self.zero()
         else:
-            if 0.0 <= v <= 1.0:
+            if 0.0 - 1e-12 <= v <= 1.0 + 1e-12:
                 return math.log(v)
             else:
                 raise InvalidValue("Not a valid value for this semiring: '%s'" % a, location=a.location)

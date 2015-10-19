@@ -142,6 +142,11 @@ The number of samples used for estimation can be determined in three ways:
     % Probability estimate after 7865 samples:
     someHeads : 0.79249841
 
+References:
++++++++++++
+
+    https://lirias.kuleuven.be/handle/123456789/510199
+
 
 Most Probable Explanation (``mpe``)
 -----------------------------------
@@ -150,6 +155,43 @@ Most Probable Explanation (``mpe``)
 
 Learning from interpretations (``lfi``)
 ---------------------------------------
+
+
+
+Decision Theoretic ProbLog (``dt``)
+-----------------------------------
+
+DTProbLog is a decision-theoretic extension of ProbLog.
+
+A model in DTProbLog differs from standard ProbLog models in a number of ways:
+
+  * There are no queries and evidence.
+  * Certain facts are annotated as being a decision fact for which the optimal choice must be determined.
+  * Certain atoms are annotated with an utility, indicating their contribution to the final score.
+
+Decision facts can be annotated in any of the following ways:
+
+.. code-block:: prolog
+
+   ?::a.
+   decision(a).
+
+Utilities can be defined using the ``utility/2`` predicate:
+
+.. code-block:: prolog
+
+   utility(win, 10).
+   utility(buy, -1).
+
+
+The current implementation supports two evaluation strategies: exhaustive search (exact) and local search (approximate).
+Exhaustive search is the default.
+Local search can be enabled with the argument ``-s local``.
+
+
+References:
+
+    https://lirias.kuleuven.be/handle/123456789/270066
 
 
 
