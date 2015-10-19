@@ -143,7 +143,7 @@ class LFIProblem(SemiringProbability, LogicProgram) :
 
         baseprogram = DefaultEngine().prepare(self)
         examples = self._process_examples()
-    
+
         result = []
         n = 0
         for atoms, example_group in examples.items():
@@ -155,7 +155,7 @@ class LFIProblem(SemiringProbability, LogicProgram) :
 
                 ground_program = ground(baseprogram, ground_program,
                                         evidence=list(zip(atoms, example)))
-                compiled_program = self.knowledge.createFrom(ground_program)
+                compiled_program = self.knowledge.create_from(ground_program)
                 result.append((atoms, example, compiled_program))
         self._compiled_examples = result
 

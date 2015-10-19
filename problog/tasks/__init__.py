@@ -30,6 +30,7 @@ problog_tasks['ground'] = 'problog.tasks.ground'
 problog_tasks['lfi'] = 'problog.learning.lfi'
 problog_tasks['explain'] = 'problog.kbest'
 problog_tasks['web'] = 'problog.web.server'
+problog_tasks['dt'] = 'problog.tasks.dtproblog'
 
 problog_default_task = 'prob'
 

@@ -61,6 +61,55 @@ def complete(obj, source):
     return 'c', obj, (source,), {}
 
 
+def results_to_actions(resultlist, engine, node, context, target, parent, identifier,
+                        transform, is_root, database, **kwdargs):
+    """Translates a list of results to actions.
+
+    :param results:
+    :param node:
+    :param context:
+    :param target:
+    :param parent:
+    :param identifier:
+    :param transform:
+    :param is_root:
+    :param database:
+    :param kwdargs:
+    :return:
+    """
+
+    # Output
+    actions = []
+
+    n = len(resultlist)
+    if n > 0:
+        # Transform all the results to result messages.
+        for result, target_node in resultlist:
+            n -= 1
+            if not is_root:
+                target_node = engine.propagate_evidence(database, target,
+                                                        node.functor, result, target_node)
+            if target_node != NODE_FALSE:
+                if transform:
+                    result = transform(result)
+                if result is None:
+                    if n == 0:
+                        actions += [complete(parent, identifier)]
+                else:
+                    if target_node == NODE_TRUE and target.flag('keep_all') \
+                            and not node.functor.startswith('_problog'):
+                        name = Term(node.functor, *result)
+                        target_node = target.add_atom(name, None, None, name=name, source=None)
+
+                    actions += [new_result(parent, result, target_node, identifier, n == 0)]
+            elif n == 0:
+                actions += [complete(parent, identifier)]
+    else:
+        # The goal does not have results: send the completion message.
+        actions += [complete(parent, identifier)]
+    return actions
+
+
 class StackBasedEngine(ClauseDBEngine):
     def __init__(self, label_all=False, **kwdargs):
         ClauseDBEngine.__init__(self, **kwdargs)
@@ -381,53 +430,40 @@ class StackBasedEngine(ClauseDBEngine):
 
     def eval_define(self, node, context, target, parent, identifier=None, transform=None,
                     is_root=False, **kwdargs):
+
+        # This function evaluates the 'define' nodes in the database.
+        # This is basically the same as evaluating a goal in Prolog.
+        # There are three possible situations:
+        #   - the goal has been evaluated before (it is in cache)
+        #   - the goal is currently being evaluated (i.e. we have a cycle)
+        #        we make a distinction between ground goals and non-ground goals
+        #   - we have not seen this goal before
+
+        # Extract a descriptor for the current goal being evaluated.
         functor = node.functor
         goal = (functor, context)
+
+        # Look up the results in the cache.
         results = target._cache.get(goal)
         if results is not None:
-            actions = []
-            n = len(results)
-            if n > 0:
-                for result, target_node in results:
-                    n -= 1
-                    if not is_root:
-                        target_node = self.propagate_evidence(kwdargs['database'], target,
-                                                              node.functor, result, target_node)
-                    if target_node != NODE_FALSE:
-                        if transform:
-                            result = transform(result)
-                        if result is None:
-                            if n == 0:
-                                actions += [complete(parent, identifier)]
-                        else:
-                            actions += [new_result(parent, result, target_node, identifier, n == 0)]
-                    elif n == 0:
-                        actions += [complete(parent, identifier)]
-            else:
-                actions += [complete(parent, identifier)]
-            return actions
+            # We have results for this goal, i.e. it has been fully evaluated before.
+            # Transform the results to actions and return.
+            return results_to_actions(results, self, node, context, target, parent, identifier, transform, is_root, **kwdargs)
         else:
+            # Look up the results in the currently active nodes.
             active_node = target._cache.getEvalNode(goal)
             if active_node is not None:
-                # If current node is ground and active node has results already, then we can simple send that result.
+                # There is an active node.
                 if active_node.is_ground and active_node.results:
+                    # If the node is ground, we can simply return the current result node.
                     active_node.flushBuffer(True)
                     active_node.is_cycle_parent = True  # Notify it that it's buffer was flushed
-                    queue = []
-                    for result, node in active_node.results:
-                        if not is_root:
-                            node = self.propagate_evidence(kwdargs['database'], target, functor,
-                                                           result, node)
-                        if transform:
-                            result = transform(result)
-                        if result is None:
-                            queue += [complete(parent, identifier)]
-                        else:
-                            queue += [new_result(parent, result, node, identifier, True)]
+                    queue = results_to_actions(active_node.results, self, node, context, target, parent, identifier, transform, is_root, **kwdargs)
                     assert (len(queue) == 1)
                     self.checkCycle(parent, active_node.pointer)
                     return queue
                 else:
+                    # If the node in non-ground, we need to create an evaluation node.
                     evalnode = EvalDefine(pointer=self.pointer, engine=self, node=node,
                                           context=context, target=target, identifier=identifier,
                                           parent=parent, transform=transform, is_root=is_root,
@@ -435,6 +471,8 @@ class StackBasedEngine(ClauseDBEngine):
                     self.add_record(evalnode)
                     return evalnode.cycleDetected(active_node)
             else:
+                # The node has not been seen before.
+                # Get the children that may fit the context (can contain false positives).
                 children = node.children.find(context)
                 to_complete = len(children)
 
@@ -442,6 +480,7 @@ class StackBasedEngine(ClauseDBEngine):
                     # No children, so complete immediately.
                     return [complete(parent, identifier)]
                 else:
+                    # Children to evaluate, so start evaluation node.
                     evalnode = EvalDefine(to_complete=to_complete, pointer=self.pointer,
                                           engine=self, node=node, context=context, target=target,
                                           identifier=identifier, transform=transform, parent=parent,
@@ -497,6 +536,7 @@ class StackBasedEngine(ClauseDBEngine):
         kwdargs['call_origin'] = (origin, node.location)
         kwdargs['context'] = self.create_context(call_args)
         kwdargs['transform'] = transform
+
         try:
             return self.eval(node.defnode, parent=parent, identifier=identifier, **kwdargs)
         except UnknownClauseInternal:
@@ -989,11 +1029,16 @@ class EvalDefine(EvalNode):
                         stored_result = self.target._cache[cache_key]
                         assert (len(stored_result) == 1)
                         result_node = stored_result[0][1]
+
+                        if not self.is_root:
+                            result_node = self.engine.propagate_evidence(self.database, self.target, self.node.functor, res, result_node)
                     else:
                         if self.engine.label_all:
                             name = Term(self.node.functor, *res)
                         else:
                             name = None
+                            if not self.is_root:
+                                node = self.engine.propagate_evidence(self.database, self.target, self.node.functor, res, node)
                         result_node = self.target.add_or((node,), readonly=False, name=name)
                     # if self.engine.label_all :
                     #     name = str(Term(self.node.functor, *res))
@@ -1005,9 +1050,10 @@ class EvalDefine(EvalNode):
                     # if self.pointer == 49336 :
                     #     self.engine.debug = True
                     #     self.engine.trace = True
-                    if self.isOnCycle():
+                    if self.isOnCycle() and result_node is not NODE_FALSE:
                         actions += self.notifyResult(res, result_node)
 
+                    # TODO what if result_node is NONE?
                     actions += self.notifyResultChildren(res, result_node, is_last=False)
                     # TODO the following optimization doesn't always work, see test/some_cycles.pl
                     # actions += self.notifyResultChildren(res, result_node, is_last=self.is_ground)
@@ -1021,7 +1067,6 @@ class EvalDefine(EvalNode):
                         a = False
                     return a, actions
             else:
-                #                print ('RESULT', self.node, result)
                 assert (not self.results.collapsed)
                 res = self.engine._fix_context(result)
                 self.results[res] = node
@@ -1043,13 +1088,7 @@ class EvalDefine(EvalNode):
                 self.target._cache.deactivate(cache_key)
                 actions = []
                 if not self.isOnCycle():
-                    n = len(self.results)
-                    if n:
-                        for result, node in self.results:
-                            n -= 1
-                            actions += self.notifyResult(result, node, is_last=(n == 0))
-                    else:
-                        actions += self.notifyComplete()
+                    actions = results_to_actions(self.results, **vars(self))
                 else:
                     actions += self.notifyComplete()
                 return True, actions
@@ -1063,18 +1102,26 @@ class EvalDefine(EvalNode):
                 stored_result = self.target._cache[cache_key]
                 assert (len(stored_result) == 1)
                 node = stored_result[0][1]
+                if not self.is_root:
+                    node = self.engine.propagate_evidence(self.database, self.target, self.node.functor, res, node)
             else:
                 if self.engine.label_all:
                     name = Term(self.node.functor, *res)
                 else:
                     name = None
+
+                if not self.is_root:
+                    new_nodes = []
+                    for node in nodes:
+                        node = self.engine.propagate_evidence(self.database, self.target, self.node.functor, res, node)
+                        new_nodes.append(node)
+                    nodes = new_nodes
                 node = self.target.add_or(nodes, readonly=(not cycle), name=name)
             # node = self.target.add_or( nodes, readonly=(not cycle) )
             # if self.engine.label_all:
             #     name = str(Term(self.node.functor, *res))
             #     self.target.addName(name, node, self.target.LABEL_NAMED)
             return node
-
         self.results.collapse(func)
 
     def isOnCycle(self):
@@ -1204,7 +1251,15 @@ class EvalNot(EvalNode):
             if or_node != NODE_FALSE:
                 actions += self.notifyResult(self.context, or_node)
         else:
-            actions += self.notifyResult(self.context, NODE_TRUE)
+            if self.target.flag('keep_all'):
+                src_node = self.database.get_node(self.node.child)
+                args, _ = substitute_call_args(src_node.args, self.context)
+                name = Term(src_node.functor, *args)
+                node = -self.target.add_atom(name, False, None, name=name, source='negation')
+            else:
+                node = NODE_TRUE
+
+            actions += self.notifyResult(self.context, node)
         actions += self.notifyComplete()
         return True, actions
 
@@ -1316,7 +1371,8 @@ class EvalBuiltIn(EvalNode):
         try:
             return self.node(*self.context, engine=self.engine, database=self.database,
                              target=self.target, location=self.location, callback=self,
-                             transform=self.transform, parent=self.parent)
+                             transform=self.transform, parent=self.parent,
+                             call_origin=self.call_origin)
         except ArithmeticError as err:
             if self.database and self.location:
                 functor = self.call_origin[0].split('/')[0]
@@ -1337,7 +1393,14 @@ class BooleanBuiltIn(object):
         callback = kwdargs.get('callback')
         if self.base_function(*args, **kwdargs):
             args = kwdargs['engine'].create_context(args)
-            return True, callback.notifyResult(args, NODE_TRUE, True)
+            if kwdargs['target'].flag('keep_builtins'):
+                call = kwdargs['call_origin'][0].split('/')[0]
+                name = Term(call, *args)
+                node = kwdargs['target'].add_atom(name, None, None, name=name, source='builtin')
+
+                return True, callback.notifyResult(args, node, True)
+            else:
+                return True, callback.notifyResult(args, NODE_TRUE, True)
         else:
             return True, callback.notifyComplete()
 
@@ -1359,7 +1422,16 @@ class SimpleBuiltIn(object):
         if results:
             for i, result in enumerate(results):
                 result = kwdargs['engine'].create_context(result)
-                output += callback.notifyResult(result, NODE_TRUE, i == len(results) - 1)
+
+                if kwdargs['target'].flag('keep_builtins'):
+                    # kwdargs['target'].add_node()
+                    # print (kwdargs.keys(), args)
+                    call = kwdargs['call_origin'][0].split('/')[0]
+                    name = Term(call, *result)
+                    node = kwdargs['target'].add_atom(name, None, None, name=name, source='builtin')
+                    output += callback.notifyResult(result, node, i == len(results) - 1)
+                else:
+                    output += callback.notifyResult(result, NODE_TRUE, i == len(results) - 1)
             return True, output
         else:
             return True, callback.notifyComplete()

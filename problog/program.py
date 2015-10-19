@@ -197,7 +197,8 @@ class SimpleProgram(LogicProgram):
 class PrologString(LogicProgram):
     """Read a logic program from a string of ProbLog code."""
 
-    def __init__(self, string, parser=None, source_root='.', source_files=None, identifier=0):
+    def __init__(self, string, parser=None, factory=None, source_root='.', source_files=None,
+                 identifier=0):
         self.__string = string
         self.__program = None
         self.__identifier = identifier
@@ -205,7 +206,9 @@ class PrologString(LogicProgram):
         LogicProgram.__init__(self, source_root=source_root, source_files=source_files,
                               line_info=lines)
         if parser is None:
-            self.parser = DefaultPrologParser(DefaultPrologFactory(identifier=identifier))
+            if factory is None:
+                factory = DefaultPrologFactory(identifier=identifier)
+            self.parser = DefaultPrologParser(factory)
         else:
             self.parser = parser
 
@@ -256,7 +259,7 @@ class PrologFile(PrologString):
     :type filename: string
     """
 
-    def __init__(self, filename, parser=None, identifier=0):
+    def __init__(self, filename, parser=None, factory=None, identifier=0):
         if filename == '-':
             source_root = ''
             source_files = ['-']
@@ -270,8 +273,9 @@ class PrologFile(PrologString):
                     source_text = f.read()
             except IOError as err:
                 raise ProbLogError(str(err))
-        PrologString.__init__(self, source_text, parser=parser, source_root=source_root,
-                              source_files=source_files, identifier=identifier)
+        PrologString.__init__(self, source_text, parser=parser, factory=factory,
+                              source_root=source_root, source_files=source_files,
+                              identifier=identifier)
 
     def add_clause(self, clause):
         """Add a clause to the logic program.

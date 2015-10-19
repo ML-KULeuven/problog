@@ -191,7 +191,7 @@ class SampledFormula(LogicFormula):
             return None
         return self.values[key - 1]
 
-    def add_atom(self, identifier, probability, group=None, name=None):
+    def add_atom(self, identifier, probability, group=None, name=None, source=None):
         if probability is None:
             return 0
 

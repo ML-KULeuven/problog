@@ -55,12 +55,12 @@ class DD(LogicFormula, Evaluatable):
             self.inode_manager = self._create_manager()
         return self.inode_manager
 
-    def _create_atom(self, identifier, probability, group, name=None):
+    def _create_atom(self, identifier, probability, group, name=None, source=None):
         index = len(self) + 1
         var = self.get_manager().add_variable()
         self.atom2var[index] = var
         self.var2atom[var] = index
-        return self._atom(identifier, probability, group, name)
+        return self._atom(identifier, probability, group, name, source)
 
     def get_inode(self, index):
         """Get the internal node corresponding to the entry at the given index.
