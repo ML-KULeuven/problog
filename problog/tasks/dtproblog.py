@@ -191,7 +191,7 @@ def print_result(result, output=sys.stdout):
     if success:
         choices, score, stats = result
         print(format_dictionary(choices, 0), file=output)
-        print('SCORE: %s' % score)
+        print('SCORE: %s' % score, file=output)
         return 0
     else:
         print(process_error(result), file=output)
