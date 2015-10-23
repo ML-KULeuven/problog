@@ -53,6 +53,8 @@ from problog.engine_unify import UnifyError, unify_value
 import random
 import math
 import signal
+import time
+
 
 try:
 
@@ -429,6 +431,7 @@ def estimate(model, n=0, **kwdargs):
     engine.add_builtin('value', 2, builtin_sample)
     db = engine.prepare(model)
 
+    start_time = time.time()
     estimates = defaultdict(float)
     counts = 0.0
     try:
@@ -448,7 +451,10 @@ def estimate(model, n=0, **kwdargs):
         pass
     except SystemExit:
         pass
-    print ('%% Probability estimate after %d samples:' % counts)
+
+    total_time = time.time() - start_time
+    rate = counts / total_time
+    print ('%% Probability estimate after %d samples (%.4f samples/second):' % (counts, rate))
     for k in estimates:
         estimates[k] = estimates[k] / counts
     return estimates
