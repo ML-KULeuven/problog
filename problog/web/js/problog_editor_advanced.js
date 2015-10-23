@@ -13,16 +13,16 @@ var problog = {
                     name: "Inference",
                     text: "Standard ProbLog inference task.",
                     action: 'Evaluate',
-//                    choices: [
-//                        {name:"-exact"},
-//                        {name:"SDD"},
-//                        {name:"d-DNNF"},
-//                        {name:"BDD"},
-//                        {name:"-approximate"},
-//                        {name:"forward"},
-//                        {name:"k-best"},
-//                        {name:"sample"}
-//                    ],
+                    choices: [
+                        {name:"-exact"},
+                        {name:"SDD"},
+                        {name:"d-DNNF"},
+                        {name:"BDD"},
+                        {name:"-approximate"},
+                        {name:"forward"},
+                        {name:"k-best"},
+                        {name:"sample"}
+                    ],
                     select: function(pbl) {},
                     deselect: function(pbl) {},
                     collectData: function(pbl) {
