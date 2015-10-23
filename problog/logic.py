@@ -859,9 +859,10 @@ _arithmetic_functions = {
     ("float_integer_part", 1): lambda f: int(f),
     ("float_fractional_part", 1): lambda f: f - int(f),
     ("abs", 1): abs,
-    ("ceiling", 1): math.ceil,
-    ("round", 1): round,
-    ("truncate", 1): math.trunc,
+    ("ceiling", 1): lambda x: int(math.ceil(x)),
+    ("round", 1): lambda x: int(round(x)),
+    ("floor", 1): lambda x: int(math.floor(x)),
+    ("truncate", 1): lambda x: int(math.trunc),
     ("min", 2): min,
     ("max", 2): max,
     ("exp", 2): math.pow,
@@ -874,7 +875,7 @@ _arithmetic_functions = {
 
 _from_math_1 = ['exp', 'log', 'log10', 'sqrt', 'sin', 'cos', 'tan', 'asin', 'acos', 'atan',
                 'sinh', 'cosh', 'tanh', 'asinh', 'acosh', 'atanh', 'lgamma', 'gamma', 'erf',
-                'erfc', 'floor']
+                'erfc']
 for _f in _from_math_1:
     _arithmetic_functions[(_f, 1)] = getattr(math, _f)
 
