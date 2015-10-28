@@ -28,6 +28,7 @@ from .core import transform
 from .errors import InstallError
 from .dd_formula import DD, build_dd, DDManager
 
+
 # noinspection PyBroadException
 try:
     import sdd
@@ -147,8 +148,12 @@ class SDDManager(DDManager):
             logspace = 1
         wmc_manager = sdd.wmc_manager_new(node, logspace, self.get_manager())
         varcount = sdd.sdd_manager_var_count(self.get_manager())
-        for i, n in enumerate(sorted(weights)):
-            i += 1
+
+        # varlist_intern = sdd.sdd_variables(node, self.get_manager())
+        # vc = sdd.sdd_manager_var_count(self.get_manager()) + 1
+        # varlist = [i for i in range(0, vc) if sdd.sdd_array_int_element(varlist_intern, i)]
+
+        for n in weights:
             pos, neg = weights[n]
             if n <= varcount:
                 sdd.wmc_set_literal_weight(n, pos, wmc_manager)  # Set positive literal weight
