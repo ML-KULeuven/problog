@@ -3,7 +3,7 @@
 from __future__ import print_function
 import sys
 
-version = '2.1.0.6'
+version = '2.1.0.7'
 
 if len(sys.argv) == 1:
     from problog import setup as problog_setup
