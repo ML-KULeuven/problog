@@ -555,7 +555,11 @@ class Term(object):
 
     def __hash__(self):
         if self.__hash is None:
-            self.__hash = hash((self.__functor, self.__arity, self._list_length()))
+            firstarg = None
+            if len(self.__args) > 0:
+                firstarg = self.__args[0]
+
+            self.__hash = hash((self.__functor, self.__arity, firstarg, self._list_length()))
         return self.__hash
 
     def __lshift__(self, body):
