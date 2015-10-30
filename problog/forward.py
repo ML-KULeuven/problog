@@ -133,7 +133,7 @@ class ForwardInference(DD):
         self._node_depths = [None] * len(self)
         self._node_levels = []
         # Start with current nodes
-        current_nodes = set(abs(n) for q, n in self.queries() if n is not None and n != 0)
+        current_nodes = set(abs(n) for q, n in self.queries() if self.is_probabilistic(n))
         if self.is_probabilistic(self.evidence_node):
             current_nodes.add(self.evidence_node)
         current_level = 0
@@ -146,8 +146,9 @@ class ForwardInference(DD):
                 nodetype = type(node).__name__
                 if nodetype != 'atom':
                     for c in node.children:
-                        if self._node_depths[abs(c) - 1] is None:
-                            next_nodes.add(abs(c))
+                        if self.is_probabilistic(c):
+                            if self._node_depths[abs(c) - 1] is None:
+                                next_nodes.add(abs(c))
             current_nodes = next_nodes
             current_level += 1
 
@@ -261,7 +262,6 @@ class ForwardInference(DD):
 
     def build_stratum(self, updated_nodes):
         self.build_iteration(updated_nodes)
-
         updated_nodes = OrderedSet()
         for i, nodes in enumerate(zip(self.inodes, self._inodes_prev)):
             if not self.get_manager().same(*nodes):
@@ -270,7 +270,12 @@ class ForwardInference(DD):
         self.get_manager().ref(*filter(None, self.inodes))
         self.get_manager().deref(*filter(None, self._inodes_prev))
         self.get_manager().deref(*filter(None, self._inodes_neg))
-        self._inodes_prev = self.inodes[:]
+
+        # Only completed nodes should be used for negation in the next stratum.
+        self._inodes_prev = [None] * len(self)
+        for i, n in enumerate(self.inodes):
+            if self._completed[i]:
+                self._inodes_prev[i] = n
         self._inodes_neg = [None] * len(self)
         return updated_nodes
 
@@ -300,10 +305,40 @@ class ForwardInference(DD):
         signal.alarm(0)
         self.build_constraint_dd()
 
+    def current(self):
+        destination = LogicFormula(auto_compact=False)
+        source = self
+        # TODO maintain a translation table
+        for i, n, t in source:
+            inode = self.get_inode(i)
+            if inode is not None:
+                inode = int(inode)
+            if t == 'atom':
+                j = destination.add_atom(n.identifier, n.probability, n.group, name=inode)
+            elif t == 'conj':
+                children = [c for c in n.children if self.get_inode(c) is not None]
+                j = destination.add_and(children, name=inode)
+            elif t == 'disj':
+                children = [c for c in n.children if self.get_inode(c) is not None]
+                j = destination.add_or(children, name=inode)
+            else:
+                raise TypeError('Unknown node type')
+            assert i == j
+
+        for name, node, label in source.get_names_with_label():
+            if label != self.LABEL_NAMED:
+                destination.add_name(name, node, label)
+
+        for c in source.constraints():
+            if c.is_nontrivial():
+                destination.add_constraint(c)
+        return destination
+
     def update_inode(self, index):
         """Recompute the inode at the given index."""
         oldnode = self.get_inode(index)
         node = self.get_node(index)
+        assert index > 0
         nodetype = type(node).__name__
         if nodetype == 'conj':
             children = [self.get_inode(c) for c in node.children]
@@ -358,6 +393,8 @@ class ForwardInference(DD):
         :return: SDD node corresponding to the given index
         :rtype: SDDNode
         """
+        assert self.is_probabilistic(index)
+
         node = self.get_node(abs(index))
         if type(node).__name__ == 'atom':
             av = self.atom2var.get(abs(index))
@@ -502,6 +539,7 @@ class ForwardEvaluator(Evaluator):
                             (name, self.semiring.result(result),
                              '%.4f' % (time.time() - self._start_time))
                 logging.getLogger('problog').debug(debug_msg)
+
             if complete:
                 self._complete.add(node)
 
