@@ -508,7 +508,11 @@ problog.init_editor = function(index, object) {
     pbl.editor.getSession().setUseWrapMode(true);
     pbl.editor.setShowInvisibles(true);
     pbl.editor.setValue(pbl.initial, -1);
-
+    if (pbl.dom.root.data('autosize')) {
+        pbl.editor.setOptions({
+            maxLines: Infinity
+        });
+    }
 
     // Initialize edit options
     pbl.dom.edit_options = $('<div>').addClass("problog-edit-options").appendTo(pbl.dom.editpane);
