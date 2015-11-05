@@ -562,7 +562,8 @@ class ForwardEvaluator(Evaluator):
 
         # Make sure all atoms exist in atom2var.
         for name, node in self.fsdd.queries():
-            self.fsdd.get_inode(node)
+            if self.fsdd.is_probabilistic(node):
+                self.fsdd.get_inode(node)
 
         weights = {}
         for atom, weight in self.weights.items():
@@ -571,12 +572,18 @@ class ForwardEvaluator(Evaluator):
                 weights[av] = weight
 
         for name, node in self.fsdd.queries():
-            inode = self.fsdd.get_inode(node)
-            qnode = self.fsdd.get_manager().conjoin(inode, enode)
-            tvalue = self.fsdd.get_manager().wmc(enode, weights, self.semiring)
-            value = self.fsdd.get_manager().wmc(qnode, weights, self.semiring)
-            result = self.semiring.normalize(value, tvalue)
+            if self.fsdd.is_probabilistic(node):
+                inode = self.fsdd.get_inode(node)
+                qnode = self.fsdd.get_manager().conjoin(inode, enode)
+                tvalue = self.fsdd.get_manager().wmc(enode, weights, self.semiring)
+                value = self.fsdd.get_manager().wmc(qnode, weights, self.semiring)
+                result = self.semiring.normalize(value, tvalue)
+            elif self.fsdd.is_true(node):
+                result = self.semiring.one()
+            else:
+                result = self.semiring.zero()
             self._results[node] = result
+
 
     def propagate(self):
         self.initialize()
