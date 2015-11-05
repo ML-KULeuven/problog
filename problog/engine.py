@@ -541,6 +541,8 @@ class ClauseDB(LogicProgram):
         else:
             if hasattr(parent, 'line_info'):
                 self.line_info = parent.line_info
+            if hasattr(parent, 'source_files'):
+                self.source_files = parent.source_files[:]
             self.__offset = len(parent)
 
     def __len__(self):

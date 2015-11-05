@@ -74,6 +74,8 @@ def main(argv, **kwdargs):
     db = DefaultEngine().prepare([])
     knowledge = get_evaluatable()
 
+    nonprob = ['consult/1', 'use_module/1']
+
     while True:
         try:
             cmd = prompt()
@@ -84,9 +86,9 @@ def main(argv, **kwdargs):
                     print ('\n'.join(map(str, db)))
                 elif c.signature == 'help/0':
                     print (usage)
-                elif c.signature == 'consult/1':
+                elif c.signature in nonprob:
                     DefaultEngine().query(db, c)
-                    show('%% Consulted file %s' % c.args[0])
+                    # show('%% Consulted file %s' % c.args[0])
                 elif c.signature == 'query/1':
                     gp = DefaultEngine().ground(db, c.args[0], label='query')
                     result = knowledge.create_from(gp).evaluate()
