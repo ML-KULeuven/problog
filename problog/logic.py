@@ -456,13 +456,15 @@ class Term(object):
         """Checks whether the term represent a negated term."""
         return False
 
-    def variables(self):
+    def variables(self, exclude_local=False):
         """Extract the variables present in the term.
 
         :return: set of variables
         :rtype: :class:`problog.util.OrderedSet`
         """
-        if self._cache_variables is None:
+        if exclude_local and self.__functor == 'findall' and self.__arity == 3:
+            return self.args[2].variables()
+        elif self._cache_variables is None:
             variables = OrderedSet()
             queue = deque([self])
             while queue:
