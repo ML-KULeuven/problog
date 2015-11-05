@@ -1,7 +1,13 @@
 from __future__ import print_function
 
 import sys
-import readline     # provides better input
+import os
+import atexit
+
+try:
+    import readline     # provides better input
+except:
+    readline = None
 
 from ..program import PrologString
 from ..engine import DefaultEngine
@@ -24,6 +30,14 @@ def prompt(txt='?- '):
 
 
 def main(argv, **kwdargs):
+
+    if readline:
+        histfile = os.path.join(os.path.expanduser('~'), '.probloghistory')
+        try:
+            readline.read_history_file(histfile)
+        except IOError:
+            pass
+        atexit.register(readline.write_history_file, histfile)
 
     usage = """
     This is the interactive shell of ProbLog 2.1.
@@ -65,6 +79,14 @@ def main(argv, **kwdargs):
         ---------------
         ...
 
+    Evidence can be provided using a pipe (|):
+
+        ?- someHeads | not heads(c1).
+        p: 0.936;
+        ---------------
+
+    Note that variables are not shared between query and evidence.
+
     """
 
     show('% Welcome to ProbLog 2.1')
@@ -94,21 +116,26 @@ def main(argv, **kwdargs):
                     result = knowledge.create_from(gp).evaluate()
                     print (format_dictionary(result))
                 else:
-                    varnames = c.variables(exclude_local=True)
-                    # varnames_all = c.variables(exclude_local=False)
-                    #
-                    # translate = {k: v for v, k in enumerate(varnames)}
-                    # for v in varnames_all:
-                    #     if v not in translate:
-                    #         translate[v] = v
-                    #
-                    # c_t = c.apply(translate)
-
+                    gp = LogicFormula()
                     dbq = db.extend()
+                    if c.functor == "'|'":
+                        ev_c = c.args[1]
+                        c = c.args[0]
+                        varnames = ev_c.variables(exclude_local=True)
+                        query_head = Term('_e', *varnames)
+                        dbq += Clause(query_head, ev_c)
+                        results = DefaultEngine().call(query_head(*range(0, len(varnames))), dbq, gp)
+
+                        for args, node in results:
+                            name = ''
+                            for vn, vv in zip(varnames, args):
+                                name += ('%s = %s,\n' % (vn, vv))
+                            gp.add_evidence(Term(name), node, True)
+
+                    varnames = c.variables(exclude_local=True)
                     query_head = Term('_q', *varnames)
                     dbq += Clause(query_head, c)
 
-                    gp = LogicFormula()
                     results = DefaultEngine().call(query_head(*range(0, len(varnames))), dbq, gp)
 
                     for args, node in results:
@@ -116,6 +143,7 @@ def main(argv, **kwdargs):
                         for vn, vv in zip(varnames, args):
                             name += ('%s = %s,\n' % (vn, vv))
                         gp.add_query(Term(name), node)
+
 
                     results = knowledge.create_from(gp).evaluate()
                     for n, p in results.items():
