@@ -1360,9 +1360,6 @@ label_all=True)
         return destination
 
 
-
-
-
 class LogicDAG(LogicFormula):
     """A propositional logic formula without cycles."""
 
