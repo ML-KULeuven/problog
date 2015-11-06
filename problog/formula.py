@@ -1219,7 +1219,8 @@ label_all=True)
             children = [node.children[0]]
             current = node.children[1]
             current_node = self.get_node(current)
-            while type(current_node).__name__ == 'conj' and len(current_node.children) == 2 and not self._is_valid_name(current_node.name):
+            while type(current_node).__name__ == 'conj' and len(current_node.children) == 2 and \
+                    not self._is_valid_name(current_node.name):
                 children.append(current_node.children[0])
                 current = current_node.children[1]
                 if current > 0:
