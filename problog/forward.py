@@ -54,6 +54,7 @@ class ForwardInference(DD):
         super(ForwardInference, self).__init__(auto_compact=False, **kwdargs)
 
         self._inodes_prev = None
+        self._inodes_old = None
         self._inodes_neg = None
         self._facts = None
         self._atoms_in_rules = None
@@ -99,6 +100,7 @@ class ForwardInference(DD):
         self.build_constraint_dd()
         self.inodes = [None] * len(self)
         self._inodes_prev = [None] * len(self)
+        self._inodes_old = [None] * len(self)
         self._inodes_neg = [None] * len(self)
         self._compute_minmax_depths()
 
@@ -263,7 +265,7 @@ class ForwardInference(DD):
     def build_stratum(self, updated_nodes):
         self.build_iteration(updated_nodes)
         updated_nodes = OrderedSet()
-        for i, nodes in enumerate(zip(self.inodes, self._inodes_prev)):
+        for i, nodes in enumerate(zip(self.inodes, self._inodes_old)):
             if not self.get_manager().same(*nodes):
                 updated_nodes.add(i + 1)
                 # self.notify_node_updated(i + 1)
@@ -272,6 +274,7 @@ class ForwardInference(DD):
         self.get_manager().deref(*filter(None, self._inodes_neg))
 
         # Only completed nodes should be used for negation in the next stratum.
+        self._inodes_old = self.inodes[:]
         self._inodes_prev = [None] * len(self)
         for i, n in enumerate(self.inodes):
             if self._completed[i]:
