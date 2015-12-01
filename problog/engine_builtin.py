@@ -971,7 +971,7 @@ def _builtin_consult_as_list(op1, op2, **kwdargs):
     return True
 
 
-def _builtin_consult(filename, database=None, **kwdargs):
+def _builtin_consult(filename, database=None, engine=None, **kwdargs):
     """
     Implementation of consult/1 builtin.
     A file will be loaded only once.
@@ -998,6 +998,7 @@ def _builtin_consult(filename, database=None, **kwdargs):
         database.line_info.append(pl.line_info[0])
         for clause in pl:
             database += clause
+        engine._process_directives(database)
     return True
 
 
