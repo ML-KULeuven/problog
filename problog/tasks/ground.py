@@ -44,6 +44,7 @@ def main(argv, result_handler=None):
     parser.add_argument('--propagate-weights', action='store_true', help='propagate evidence')
     parser.add_argument('--compact', action='store_true',
                         help='allow compact model (may remove some predicates)')
+    parser.add_argument('--noninterpretable', action='store_true')
     parser.add_argument('--web', action='store_true', help=argparse.SUPPRESS)
     parser.add_argument('-o', '--output', type=str, help='output file', default=None)
     args = parser.parse_args(argv)
@@ -77,7 +78,7 @@ def main(argv, result_handler=None):
     try:
         gp = target.createFrom(
             PrologFile(args.filename, parser=DefaultPrologParser(ExtendedPrologFactory())),
-            label_all=True, avoid_name_clash=not args.compact, keep_order=True,
+            label_all=not args.noninterpretable, avoid_name_clash=not args.compact, keep_order=True,
             keep_all=args.keep_all, keep_duplicates=args.keep_duplicates,
             hide_builtins=args.hide_builtins,
             propagate_evidence=args.propagate_evidence, propagate_weights=semiring)
