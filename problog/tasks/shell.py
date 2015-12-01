@@ -14,7 +14,7 @@ from ..engine import DefaultEngine
 from .. import get_evaluatable
 from ..util import format_dictionary
 from ..core import ProbLogError
-from ..logic import Term, Clause
+from ..logic import Term, Clause, term2str
 from ..formula import LogicFormula
 
 
@@ -29,17 +29,7 @@ def prompt(txt='?- '):
         return input(txt)
 
 
-def main(argv, **kwdargs):
-
-    if readline:
-        histfile = os.path.join(os.path.expanduser('~'), '.probloghistory')
-        try:
-            readline.read_history_file(histfile)
-        except IOError:
-            pass
-        atexit.register(readline.write_history_file, histfile)
-
-    usage = """
+usage = """
     This is the interactive shell of ProbLog 2.1.
 
     You probably want to load a program first:
@@ -89,6 +79,17 @@ def main(argv, **kwdargs):
 
     """
 
+
+def main(argv, **kwdargs):
+
+    if readline:
+        histfile = os.path.join(os.path.expanduser('~'), '.probloghistory')
+        try:
+            readline.read_history_file(histfile)
+        except IOError:
+            pass
+        atexit.register(readline.write_history_file, histfile)
+
     show('% Welcome to ProbLog 2.1')
     show('% Type \'help.\' for more information.')
 
@@ -101,6 +102,7 @@ def main(argv, **kwdargs):
     while True:
         try:
             cmd = prompt()
+
             cmd_pl = PrologString(cmd)
 
             for c in cmd_pl:
@@ -141,9 +143,8 @@ def main(argv, **kwdargs):
                     for args, node in results:
                         name = ''
                         for vn, vv in zip(varnames, args):
-                            name += ('%s = %s,\n' % (vn, vv))
+                            name += ('%s = %s,\n' % (vn, term2str(vv)))
                         gp.add_query(Term(name), node)
-
 
                     results = knowledge.create_from(gp).evaluate()
                     for n, p in results.items():
