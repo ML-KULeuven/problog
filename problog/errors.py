@@ -69,8 +69,11 @@ class InvalidValue(ProbLogError):
 class InconsistentEvidenceError(ProbLogError):
     """Error when evidence is inconsistent"""
 
-    def __init__(self):
-        ProbLogError.__init__(self, "Inconsistent evidence detected")
+    def __init__(self, source=None):
+        if source is None:
+            ProbLogError.__init__(self, "Inconsistent evidence detected")
+        else:
+            ProbLogError.__init__(self, "Inconsistent evidence detected: '%s'" % source)
 
 
 def process_error(err, debug=False):
