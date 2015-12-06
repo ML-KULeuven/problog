@@ -104,8 +104,6 @@ def term2str(term):
             return 'A%s' % (term + 1)
         else:
             return 'X%s' % (-term)
-    elif isinstance(term, And):
-        return '(%s)' % term
     else:
         return str(term)
 
