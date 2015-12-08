@@ -23,6 +23,7 @@ import sys
 import os
 import traceback
 import itertools
+import logging
 
 from ..program import PrologFile
 from ..evaluator import SemiringLogProbability, SemiringProbability, SemiringSymbolic
@@ -32,7 +33,6 @@ from problog.parser import DefaultPrologParser
 from problog.program import ExtendedPrologFactory, PrologFile
 from problog.logic import Term, Or, Clause, And, is_ground, Not
 from problog.bn.cpd import CPT, OrCPT, PGM
-
 
 from ..util import Timer, start_timer, stop_timer, init_logger, format_dictionary
 from ..errors import process_error
@@ -46,7 +46,6 @@ def print_result_standard(result, output=sys.stdout, precision=8):
     :param precision:
     :return:
     """
-    print('Bayesnet print_result')
     success, result = result
     if success:
         print (result, file=output)
@@ -65,7 +64,6 @@ def print_result_json(d, output, precision=8):
     :return:
     """
     import json
-    print('Bayesnet print_result_json')
     return 0
 
 
@@ -81,7 +79,7 @@ def execute(filename, knowledge=None, semiring=None, debug=False, **kwdargs):
     :param kwdargs: additional arguments
     :return: tuple where first value indicates success, and second value contains result details
     """
-    print('Bayesnet execute')
+    print('NOT USED Bayesnet execute')
 
 
 def termToAtoms(terms):
@@ -107,6 +105,7 @@ def termToBool(term, truth_values):
     :param: truth_values: Dictionary atom -> True/False
     :return: term
     """
+    logger = logging.getLogger('problog')
     if isinstance(term, And):
         op1 = termToBool(term.op1, truth_values)
         if op1 == False:
@@ -118,10 +117,10 @@ def termToBool(term, truth_values):
             elif op2 == True:
                 return True
             else:
-                print('ERROR: and.op2 is not a boolean'.format(op2))
+                logger.error('and.op2 is not a boolean'.format(op2))
                 return None
         else:
-            print('ERROR: and.op1 is not a boolean'.format(op1))
+            logger.error('and.op1 is not a boolean'.format(op1))
             return None
     elif isinstance(term, Or):
         op1 = termToBool(term.op1, truth_values)
@@ -134,10 +133,10 @@ def termToBool(term, truth_values):
             elif op2 == False:
                 return False
             else:
-                print('ERROR: or.op2 is not a boolean'.format(op2))
+                logger.error('or.op2 is not a boolean'.format(op2))
                 return None
         else:
-            print('ERROR: or.op1 is not a boolean'.format(op1))
+            logger.error('or.op1 is not a boolean'.format(op1))
             return None
     elif isinstance(term, Not):
         child = termToBool(term.child, truth_values)
@@ -146,18 +145,18 @@ def termToBool(term, truth_values):
         elif child == False:
             return True
         else:
-            print('ERROR: not.child is not a boolean: {}'.format(child))
+            logger.error('not.child is not a boolean: {}'.format(child))
             return None
     else:
         if term in truth_values:
             return truth_values[term]
         else:
-            print('ERROR: Unknown term: {} ({})'.format(term, type(term)))
+            logger.error('Unknown term: {} ({})'.format(term, type(term)))
             None
 
 
 def clauseToCPT(clause, number):
-    # print('-----')
+    logger = logging.getLogger('problog')
     if isinstance(clause, Clause):
         # print('Head: {} -- {}'.format(clause.head, type(clause.head)))
         # print('Body: {} -- {}'.format(clause.body, type(clause.body)))
@@ -171,7 +170,7 @@ def clauseToCPT(clause, number):
             truth_values = dict(zip(parents, keys))
             truth_value = termToBool(clause.body, truth_values)
             if truth_value is None:
-                print('ERROR: expected truth value. {} -> {}'.format(truth_values, truth_value))
+                logger.error('Expected truth value. {} -> {}'.format(truth_values, truth_value))
                 table_cn[keys] = [1.0, 0.0]
             elif truth_value:
                 table_cn[keys] = [1.0-prob, prob]
@@ -204,31 +203,32 @@ def formulaToBN(formula):
     #     factors.append('{}: {}'.format(i, n))
     #     factors.append('{}: {}'.format(i, t))
 
+    logger = logging.getLogger('problog')
     clauses = []
     bn = PGM()
     for idx, clause in enumerate(formula.enum_clauses()):
-        # print('clause: {} -- {}'.format(clause, type(clause)))
+        logger.debug('clause: {}'.format(clause))
         clauses.append(clause)
         (cpd,cpd_cn) = clauseToCPT(clause, idx)
         bn.add(cpd)
         bn.add(cpd_cn)
 
-    lines = ['{}'.format(c) for c in clauses]
-    for qn, qi in formula.queries():
-        if is_ground(qn):
-            if qi == formula.TRUE:
-                lines.append('%s.' % qn)
-            elif qi == formula.FALSE:
-                lines.append('%s :- fail.' % qn)
-            lines.append('query(%s).' % qn)
+    # lines = ['{}'.format(c) for c in clauses]
+    # for qn, qi in formula.queries():
+    #     if is_ground(qn):
+    #         if qi == formula.TRUE:
+    #             lines.append('%s.' % qn)
+    #         elif qi == formula.FALSE:
+    #             lines.append('%s :- fail.' % qn)
+    #         lines.append('query(%s).' % qn)
+    #
+    # for qn, qi in formula.evidence():
+    #     if qi < 0:
+    #         lines.append('evidence(%s).' % -qn)
+    #     else:
+    #         lines.append('evidence(%s).' % qn)
 
-    for qn, qi in formula.evidence():
-        if qi < 0:
-            lines.append('evidence(%s).' % -qn)
-        else:
-            lines.append('evidence(%s).' % qn)
-
-    return str(bn)
+    return bn
 
 
 def argparser():
@@ -236,14 +236,16 @@ def argparser():
     :return: argument parser
     :rtype: argparse.ArgumentParser
     """
-    print('Bayesnet argparser')
     import argparse
     description = """Translate a ProbLog program to a Bayesian network.
     """
     parser = argparse.ArgumentParser(description=description,
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument('filename', metavar='MODEL', type=str, help='input ProbLog model')
+    parser.add_argument('--verbose', '-v', action='count', help='Verbose output')
     parser.add_argument('-o', '--output', type=str, help='output file', default=None)
+    parser.add_argument('--format', choices=('hugin', 'xdsl', 'uai08', 'dot', 'internal'), default=None,
+                        help='Output format')
     parser.add_argument('--keep-all', action='store_true', help='also output deterministic nodes')
     parser.add_argument('--keep-duplicates', action='store_true', help='don\'t eliminate duplicate literals')
     parser.add_argument('--hide-builtins', action='store_true', help='hide deterministic part based on builtins')
@@ -251,9 +253,9 @@ def argparser():
 
 
 def main(argv, result_handler=None):
-    print('Bayesnet main')
     parser = argparser()
     args = parser.parse_args(argv)
+    init_logger(args.verbose)
 
     outfile = sys.stdout
     if args.output:
@@ -267,9 +269,19 @@ def main(argv, result_handler=None):
             label_all=True, avoid_name_clash=True, keep_order=True, # Necessary for to prolog
             keep_all=args.keep_all, keep_duplicates=args.keep_duplicates,
             hide_builtins=args.hide_builtins)
-        rc = print_result((True, gp), output=outfile)
+        # rc = print_result((True, gp), output=outfile)
         bn = formulaToBN(gp)
-        rc = print_result((True, bn), output=outfile)
+        if args.format == 'hugin':
+            bn_str = bn.hugin_net()
+        elif args.format == 'xdsl':
+            bn_str = bn.xdsl()
+        elif args.format == 'uai08':
+            bn_str = bn.uai08()
+        elif args.format == 'dot':
+            bn_str = bn.graphviz()
+        else:
+            bn_str = str(bn)
+        rc = print_result((True, bn_str), output=outfile)
 
     except Exception as err:
         import traceback

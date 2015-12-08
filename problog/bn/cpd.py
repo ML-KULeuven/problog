@@ -19,6 +19,9 @@ limitations under the License.
 from __future__ import print_function
 
 import itertools
+from datetime import datetime
+import re
+from functools import reduce
 
 class PGM(object):
     def __init__(self):
@@ -30,10 +33,89 @@ class PGM(object):
         else:
             self.cpds[cpd.rv] = cpd
 
+    def cpds_topological(self):
+        links = dict()
+        for cpd in self.cpds.values():
+            for parent in cpd.parents:
+                if parent in links:
+                    links[parent].add(cpd.rv)
+                else:
+                    links[parent] = set([cpd.rv])
+        all = set(links.keys())
+        nonroot = reduce(set.union, links.values())
+        root = all - nonroot
+        queue = root
+        visited = set()
+        cpds = []
+        while len(queue) > 0:
+            cpds += [self.cpds[rv] for rv in queue if rv not in visited]
+            visited.update(queue)
+            queue2 = set()
+            for rv in queue:
+                if rv in links:
+                    for next_rv in links[rv]:
+                        queue2.add(next_rv)
+            queue = queue2
+        return cpds
+
+    def hugin_net(self):
+        cpds = [cpd.to_CPT(self) for cpd in self.cpds_topological()]
+        lines = ["%% Hugin Net format",
+                 "%% Created on {}\n".format(datetime.now()),
+                 "%% Network\n",
+                 "net {",
+                 "  node_size = (50,50);",
+                 "}\n",
+                 "%% Nodes\n"]
+        lines += [cpd.to_HuginNetNode() for cpd in cpds]
+        lines += ["%% Potentials\n"]
+        lines += [cpd.to_HuginNetPotential() for cpd in cpds]
+        return '\n'.join(lines)
+
+    def xdsl(self):
+        cpds = [cpd.to_CPT(self) for cpd in self.cpds_topological()]
+        lines = ['<?xml version="1.0" encoding="ISO-8859-1" ?>',
+                 '<smile version="1.0" id="Aa" numsamples="1000">',
+                 '  <nodes>']
+        lines += [cpd.to_XdslCpt() for cpd in cpds]
+        lines += ['  </nodes>',
+                  '  <extensions>',
+                  '    <genie version="1.0" app="ProbLog" name="Network1" faultnameformat="nodestate">']
+        lines += [cpd.to_XdslNode() for cpd in cpds]
+        lines += ['    </genie>',
+                  '  </extensions>',
+                  '</smile>']
+        return '\n'.join(lines)
+
+    def uai08(self):
+        cpds = [cpd.to_CPT(self) for cpd in self.cpds_topological()]
+        number_variables = str(len(cpds))
+        domain_sizes = [str(len(cpd.values)) for cpd in cpds]
+        number_functions = str(len(cpds))
+        lines = ['BAYES',
+                 number_variables,
+                 ' '.join(domain_sizes),
+                 number_functions]
+        lines += [cpd.to_Uai08Preamble(cpds) for cpd in cpds]
+        lines += ['']
+        lines += [cpd.to_Uai08Function() for cpd in cpds]
+        return '\n'.join(lines)
+
+    def graphviz(self):
+        lines = ['digraph bayesnet {']
+        for cpd in self.cpds.values():
+            lines.append('  {} [label="{}"];'.format(cpd.rv_clean(), cpd.rv))
+            for p in cpd.parents:
+                lines.append('  {} -> {}'.format(cpd.rv_clean(p), cpd.rv_clean()))
+        lines += ['}']
+        return '\n'.join(lines)
+
     def __str__(self):
-        cpds = [cpd.to_CPT(self) for cpd in self.cpds.values()]
+        cpds = [cpd.to_CPT(self) for cpd in self.cpds_topological()]
         return '\n'.join([str(cpd) for cpd in cpds])
 
+
+re_clean = re.compile(r"[\(\),]")
 
 class CPD(object):
     def __init__(self, rv, values, parents):
@@ -43,6 +125,14 @@ class CPD(object):
             self.parents = []
         else:
             self.parents = parents
+
+    def rv_clean(self, rv=None):
+        if rv is None:
+            rv = self.rv
+        return re_clean.sub('_', rv)
+
+    def has(self, rv):
+        return rv == self.rv or rv in self.parents
 
     def to_CPT(self, pgm):
         return self
@@ -71,6 +161,67 @@ class CPT(CPD):
         else:
             self.table = table
 
+    def to_HuginNetNode(self):
+        lines = ["node {} {{".format(self.rv_clean()),
+                 "  label = \"{}\";".format(self.rv),
+                 "  position = (100,100);",
+                 "  states = ({});".format(' '.join(['"{}"'.format(v) for v in self.values])),
+                 "}\n"]
+        return '\n'.join(lines)
+
+    def to_HuginNetPotential(self):
+        name = self.rv_clean()
+        if len(self.parents) > 0:
+            name += ' | '+' '.join([self.rv_clean(p) for p in self.parents])
+        lines = ['potential ({}) {{'.format(name),
+                 '  % '+' '.join([str(v) for v in self.values]),
+                 '  data = (']
+        table = sorted(self.table.items())
+        for k, v in table:
+            lines.append('    '+' '.join([str(vv) for vv in v])+' % '+' '.join([str(kk) for kk in k]))
+        lines += ['  );',
+                  '}\n']
+        return '\n'.join(lines)
+
+    def to_XdslCpt(self):
+        lines = ['    <cpt id="{}">'.format(self.rv_clean())]
+        for v in self.values:
+            lines.append('      <state id="{}" />'.format(v))
+        if len(self.parents) > 0:
+            lines.append('      <parents>{}</parents>'.format(' '.join([self.rv_clean(p) for p in self.parents])))
+        table = sorted(self.table.items())
+        probs = ' '.join([str(value) for k,values in table for value in values])
+        lines.append('      <probabilities>{}</probabilities>'.format(probs))
+        lines.append('    </cpt>')
+        return '\n'.join(lines)
+
+    def to_XdslNode(self):
+        lines = ['      <node id="{}">'.format(self.rv_clean()),
+                 '        <name>{}</name>'.format(self.rv),
+                 '        <interior color="e5f6f7" />',
+				 '        <outline color="000080" />',
+                 '        <font color="000000" name="Arial" size="8" />',
+                 '        <position>100 100 150 150</position>',
+                 '      </node>']
+        return '\n'.join(lines)
+
+    def to_Uai08Preamble(self, cpds):
+        function_size = 1 + len(self.parents)
+        rvToIdx = {}
+        for idx, cpd in enumerate(cpds):
+            rvToIdx[cpd.rv] = idx
+        variables = [str(rvToIdx[rv]) for rv in self.parents] + [str(rvToIdx[self.rv])]
+        return '{} {}'.format(function_size, ' '.join(variables))
+
+    def to_Uai08Function(self):
+        number_entries = str(len(self.table)*len(self.values))
+        lines = [number_entries]
+        table = sorted(self.table.items())
+        for k, v in table:
+            lines.append(' '+' '.join([str(vv) for vv in v]))
+        lines.append('')
+        return '\n'.join(lines)
+
     def __str__(self):
         lines = []
         table = sorted(self.table.items())
@@ -85,15 +236,17 @@ class CPT(CPD):
 
 class OrCPT(CPD):
     def __init__(self, rv, parentvalues=None):
-        super(OrCPT, self).__init__(rv, [False, True], [])
+        super(OrCPT, self).__init__(rv, [False, True], set())
         if parentvalues is None:
             self.parentvalues = []
         else:
             self.parentvalues = parentvalues
+        self.parents.update([pv[0] for pv in self.parentvalues])
 
     def add(self, parentvalues):
         """Add list of tupes [('a', 1)]."""
         self.parentvalues += parentvalues
+        self.parents.update([pv[0] for pv in parentvalues])
 
     def to_CPT(self, pgm):
         parents = sorted(list(set([pv[0] for pv in self.parentvalues])))
