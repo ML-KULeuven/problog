@@ -157,10 +157,10 @@ def termToBool(term, truth_values):
 
 
 def clauseToCPT(clause, number):
-    print('-----')
+    # print('-----')
     if isinstance(clause, Clause):
-        print('Head: {} -- {}'.format(clause.head, type(clause.head)))
-        print('Body: {} -- {}'.format(clause.body, type(clause.body)))
+        # print('Head: {} -- {}'.format(clause.head, type(clause.head)))
+        # print('Body: {} -- {}'.format(clause.body, type(clause.body)))
         # CPT for the choice node
         rv_cn = 'c{}'.format(number)
         parents = termToAtoms(clause.body)
@@ -184,13 +184,15 @@ def clauseToCPT(clause, number):
         return cpd, cpd_cn
 
     if isinstance(clause, Term):
-        rv = str(clause.with_probability())
-        parents = []
-        table = [1.0, 0.0]
-        table_or = [1.0, 0.0]
+        # CPT for the choice node
         rv_cn = 'c{}'.format(number)
-        cpd_cn = CPT(rv_cn, [0, 1], parents, table)
-        cpd = CPT(rv, [False, True], [rv_cn], table_or)
+        parents = []
+        prob = clause.probability.compute_value()
+        table_cn = [1.0-prob, prob]
+        cpd_cn = CPT(rv_cn, [0, 1], parents, table_cn)
+        # CPT  for the head random variable
+        rv = str(clause.with_probability())
+        cpd = OrCPT(rv, [(rv_cn, 1)])
         return cpd, cpd_cn
 
     return None, None
@@ -205,7 +207,7 @@ def formulaToBN(formula):
     clauses = []
     bn = PGM()
     for idx, clause in enumerate(formula.enum_clauses()):
-        print('clause: {} -- {}'.format(clause, type(clause)))
+        # print('clause: {} -- {}'.format(clause, type(clause)))
         clauses.append(clause)
         (cpd,cpd_cn) = clauseToCPT(clause, idx)
         bn.add(cpd)

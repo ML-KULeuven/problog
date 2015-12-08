@@ -73,7 +73,8 @@ class CPT(CPD):
 
     def __str__(self):
         lines = []
-        for k, v in self.table.items():
+        table = sorted(self.table.items())
+        for k, v in table:
             lines.append('{}: {}'.format(k, v))
         table = '\n'.join(lines)
         parents = ''
@@ -84,7 +85,7 @@ class CPT(CPD):
 
 class OrCPT(CPD):
     def __init__(self, rv, parentvalues=None):
-        super(OrCPT, self).__init__(rv, ['f','t'], [])
+        super(OrCPT, self).__init__(rv, [False, True], [])
         if parentvalues is None:
             self.parentvalues = []
         else:
@@ -97,11 +98,16 @@ class OrCPT(CPD):
     def to_CPT(self, pgm):
         parents = sorted(list(set([pv[0] for pv in self.parentvalues])))
         table = dict()
-        for keys in itertools.product([0,1], repeat=len(parents)):
-            table[keys] = [1.0, 0.0]
-        for parent, value in self.parentvalues:
-            pass
-        # TODO
+        parent_values = [pgm.cpds[parent].values for parent in parents]
+        for keys in itertools.product(*parent_values):
+            is_true = False
+            for parent, value in zip(parents, keys):
+                if (parent, value) in self.parentvalues:
+                    is_true = True
+            if is_true:
+                table[keys] = [0.0, 1.0]
+            else:
+                table[keys] = [1.0, 0.0]
         return CPT(self.rv, self.values, parents, table)
 
     def __add__(self, other):
