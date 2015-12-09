@@ -211,6 +211,13 @@ class StackBasedEngine(ClauseDBEngine):
                 raise NegativeCycle(location=exec_node.database.lineno(exec_node.node.location))
             current = exec_node.parent
 
+    def _transform_act(self, action):
+        if action[0] in 'rc':
+            return action
+        else:
+            return action[:2] + (action[3]['parent'], action[3]['context'], action[3]['identifier'])
+
+
     def execute(self, node_id, target=None, database=None, subcall=False, is_root=False, **kwdargs):
         """
         Execute the given node.
@@ -1372,7 +1379,7 @@ class EvalBuiltIn(EvalNode):
             return self.node(*self.context, engine=self.engine, database=self.database,
                              target=self.target, location=self.location, callback=self,
                              transform=self.transform, parent=self.parent,
-                             call_origin=self.call_origin)
+                             identifier=self.identifier, call_origin=self.call_origin)
         except ArithmeticError as err:
             if self.database and self.location:
                 functor = self.call_origin[0].split('/')[0]
