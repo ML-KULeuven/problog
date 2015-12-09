@@ -157,7 +157,35 @@ def termToBool(term, truth_values):
 
 def clauseToCPT(clause, number):
     logger = logging.getLogger('problog')
-    if isinstance(clause, Clause):
+    # print('Clause: {} -- {}'.format(clause, type(clause)))
+    if isinstance(clause, Clause) and isinstance(clause.head, Or):
+        heads = clause.head.to_list()
+        # CPT for the choice node
+        rv_cn = 'c{}'.format(number)
+        parents = termToAtoms(clause.body)
+        parents_str = [str(t) for t in parents]
+        probs_heads = [head.probability.compute_value() for head in heads]
+        probs = [1.0-sum(probs_heads)]+probs_heads
+        table_cn = dict()
+        for keys in itertools.product([False, True], repeat=len(parents)):
+            truth_values = dict(zip(parents, keys))
+            truth_value = termToBool(clause.body, truth_values)
+            if truth_value is None:
+                logger.error('Expected truth value. {} -> {}'.format(truth_values, truth_value))
+                table_cn[keys] = [1.0] + [0.0]*len(heads)
+            elif truth_value:
+                table_cn[keys] = probs
+            else:
+                table_cn[keys] = [1.0] + [0.0]*len(heads)
+        cpd_cn = CPT(rv_cn, list(range(len(heads)+1)), parents_str, table_cn)
+        # CPT for the head random variable
+        cpds = []
+        for idx, head in enumerate(heads):
+            rv = str(head.with_probability())
+            cpds.append(OrCPT(rv, [(rv_cn, idx+1)]))
+        return cpds + [cpd_cn]
+
+    elif isinstance(clause, Clause) and isinstance(clause.head, Term):
         # print('Head: {} -- {}'.format(clause.head, type(clause.head)))
         # print('Body: {} -- {}'.format(clause.body, type(clause.body)))
         # CPT for the choice node
@@ -182,7 +210,22 @@ def clauseToCPT(clause, number):
         # CPT for the head random variable
         rv = str(clause.head.with_probability())
         cpd = OrCPT(rv, [(rv_cn, 1)])
-        return cpd, cpd_cn
+        return [cpd, cpd_cn]
+
+    elif isinstance(clause, Or):
+        heads = clause.to_list()
+        # CPT for the choice node
+        rv_cn = 'c{}'.format(number)
+        parents = []
+        probs_heads = [head.probability.compute_value() for head in heads]
+        table_cn = [1.0-sum(probs_heads)]+probs_heads
+        cpd_cn = CPT(rv_cn, list(range(len(heads)+1)), parents, table_cn)
+        # CPT for the head random variable
+        cpds = []
+        for idx, head in enumerate(heads):
+            rv = str(head.with_probability())
+            cpds.append(OrCPT(rv, [(rv_cn, idx+1)]))
+        return cpds + [cpd_cn]
 
     if isinstance(clause, Term):
         # CPT for the choice node
@@ -194,9 +237,9 @@ def clauseToCPT(clause, number):
         # CPT  for the head random variable
         rv = str(clause.with_probability())
         cpd = OrCPT(rv, [(rv_cn, 1)])
-        return cpd, cpd_cn
+        return [cpd, cpd_cn]
 
-    return None, None
+    return None
 
 
 def formulaToBN(formula):
@@ -211,9 +254,8 @@ def formulaToBN(formula):
     for idx, clause in enumerate(formula.enum_clauses()):
         logger.debug('clause: {}'.format(clause))
         clauses.append(clause)
-        (cpd,cpd_cn) = clauseToCPT(clause, idx)
-        bn.add(cpd)
-        bn.add(cpd_cn)
+        for cpd in clauseToCPT(clause, idx):
+            bn.add(cpd)
 
     # lines = ['{}'.format(c) for c in clauses]
     # for qn, qi in formula.queries():
