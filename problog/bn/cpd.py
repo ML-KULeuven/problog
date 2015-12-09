@@ -1,5 +1,6 @@
 """
-ProbLog command-line interface.
+Conditional Probability Distributions (CPD) to expert ProbLog to a
+Probabilistic Graphical Model (PGM).
 
 Copyright 2015 KU Leuven, DTAI Research Group
 
@@ -25,15 +26,18 @@ from functools import reduce
 
 class PGM(object):
     def __init__(self):
+        """Probabilistic Graphical Model."""
         self.cpds = {}
 
     def add(self, cpd):
+        """Add a CPD."""
         if cpd.rv in self.cpds:
             self.cpds[cpd.rv] += cpd
         else:
             self.cpds[cpd.rv] = cpd
 
     def cpds_topological(self):
+        """Return the CPDs in a topological order."""
         links = dict()
         for cpd in self.cpds.values():
             for parent in cpd.parents:
@@ -59,6 +63,9 @@ class PGM(object):
         return cpds
 
     def hugin_net(self):
+        """Export PGM to the Hugin net format.
+        http://www.hugin.com/technology/documentation/api-manuals
+        """
         cpds = [cpd.to_CPT(self) for cpd in self.cpds_topological()]
         lines = ["%% Hugin Net format",
                  "%% Created on {}\n".format(datetime.now()),
@@ -73,6 +80,9 @@ class PGM(object):
         return '\n'.join(lines)
 
     def xdsl(self):
+        """Export PGM to the XDSL format defined by SMILE.
+        https://dslpitt.org/genie/wiki/Appendices:_XDSL_File_Format_-_XML_Schema_Definitions
+        """
         cpds = [cpd.to_CPT(self) for cpd in self.cpds_topological()]
         lines = ['<?xml version="1.0" encoding="ISO-8859-1" ?>',
                  '<smile version="1.0" id="Aa" numsamples="1000">',
@@ -88,6 +98,9 @@ class PGM(object):
         return '\n'.join(lines)
 
     def uai08(self):
+        """Export PGM to the format used in the UAI 2008 competition.
+        http://graphmod.ics.uci.edu/uai08/FileFormat
+        """
         cpds = [cpd.to_CPT(self) for cpd in self.cpds_topological()]
         number_variables = str(len(cpds))
         domain_sizes = [str(len(cpd.values)) for cpd in cpds]
@@ -102,6 +115,9 @@ class PGM(object):
         return '\n'.join(lines)
 
     def graphviz(self):
+        """Export PGM to Graphviz dot format.
+        http://www.graphviz.org
+        """
         lines = ['digraph bayesnet {']
         for cpd in self.cpds.values():
             lines.append('  {} [label="{}"];'.format(cpd.rv_clean(), cpd.rv))
@@ -119,6 +135,7 @@ re_clean = re.compile(r"[\(\),]")
 
 class CPD(object):
     def __init__(self, rv, values, parents):
+        """Conditional Probability Distribution."""
         self.rv = rv
         self.values = values
         if parents is None:

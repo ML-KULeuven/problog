@@ -67,21 +67,6 @@ def print_result_json(d, output, precision=8):
     return 0
 
 
-def execute(filename, knowledge=None, semiring=None, debug=False, **kwdargs):
-    """Run ProbLog.
-
-    :param filename: input file
-    :param knowledge: knowledge compilation class or identifier
-    :param semiring: semiring to use
-    :param parse_class: prolog parser to use
-    :param debug: enable advanced error output
-    :param engine_debug: enable engine debugging output
-    :param kwdargs: additional arguments
-    :return: tuple where first value indicates success, and second value contains result details
-    """
-    print('NOT USED Bayesnet execute')
-
-
 def termToAtoms(terms):
     """Visitor to list atoms in term."""
     if not isinstance(terms, list):
@@ -291,7 +276,7 @@ def argparser():
     parser.add_argument('--format', choices=('hugin', 'xdsl', 'uai08', 'dot', 'internal'), default=None,
                         help='Output format')
     parser.add_argument('--keep-all', action='store_true', help='also output deterministic nodes')
-    parser.add_argument('--keep-duplicates', action='store_true', help='don\'t eliminate duplicate literals')
+    # parser.add_argument('--keep-duplicates', action='store_true', help='don\'t eliminate duplicate literals')
     parser.add_argument('--hide-builtins', action='store_true', help='hide deterministic part based on builtins')
     return parser
 
@@ -311,7 +296,7 @@ def main(argv, result_handler=None):
         gp = target.createFrom(
             PrologFile(args.filename, parser=DefaultPrologParser(ExtendedPrologFactory())),
             label_all=True, avoid_name_clash=True, keep_order=True, # Necessary for to prolog
-            keep_all=args.keep_all, keep_duplicates=args.keep_duplicates,
+            keep_all=args.keep_all, keep_duplicates=False,#args.keep_duplicates,
             hide_builtins=args.hide_builtins)
         # rc = print_result((True, gp), output=outfile)
         bn = formulaToBN(gp)
