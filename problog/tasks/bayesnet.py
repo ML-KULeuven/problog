@@ -164,7 +164,9 @@ def clauseToCPT(clause, number):
         rv_cn = 'c{}'.format(number)
         parents = termToAtoms(clause.body)
         parents_str = [str(t) for t in parents]
-        prob = clause.head.probability.compute_value()
+        prob = 1.0
+        if clause.head.probability is not None:
+            prob = clause.head.probability.compute_value()
         table_cn = dict()
         for keys in itertools.product([False, True], repeat=len(parents)):
             truth_values = dict(zip(parents, keys))
