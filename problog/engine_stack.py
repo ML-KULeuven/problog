@@ -243,11 +243,12 @@ class StackBasedEngine(ClauseDBEngine):
         # parent = kwdargs.get('parent')
         # kwdargs['parent'] = parent
 
-        actions = self.eval(node_id, parent=None, database=database, target=target,
+        initial_actions = self.eval(node_id, parent=None, database=database, target=target,
                             is_root=is_root, **kwdargs)
 
         # Initialize the action stack.
-        actions = list(reversed(actions))
+        actions = MessageFIFO(self)
+        actions += reversed(initial_actions)
         solutions = []
 
         # Main loop: process actions until there are no more.
@@ -258,46 +259,53 @@ class StackBasedEngine(ClauseDBEngine):
             #   - obj: the pointer on which to call the action
             #   - args: the arguments of the action
             #   - context: the execution context
-            act, obj, args, context = actions.pop(-1)
 
-            # Inform the debugger.
-            if debugger:
-                debugger.process_message(act, obj, args, context)
-
-            if obj is None:
-                # We have reached the top-level.
-                if act == 'r':
-                    # A new result is available
-                    solutions.append((args[0], args[1]))
-                    if args[3]:
-                        # Last result received
-                        if not subcall and self.pointer != 0:  # pragma: no cover
-                            # ERROR: the engine stack should be empty.
-                            self.printStack()
-                            raise InvalidEngineState('Stack not empty at end of execution!')
-                        if not subcall:
-                            # Clean up the stack to save memory.
-                            self.shrink_stack()
-                        return solutions
-                elif act == 'c':
-                    # Indicates completion of the execution.
-                    return solutions
-                else:
-                    # ERROR: unknown message
-                    raise InvalidEngineState('Unknown message!')
+            if self.cycle_root is not None and actions.cycle_exhausted():
+                next_actions = self.cycle_root.closeCycle(True)
+                actions += reversed(next_actions)
             else:
-                # We are not at the top-level.
-                if act == 'e':
-                    # Never clean up in this case because 'obj' doesn't contain a pointer.
-                    cleanup = False
-                    # We need to execute another node.
-                    if self.cycle_root is not None and context['parent'] < self.cycle_root.pointer:
-                        # There is an active cycle and we are about to execute a node
-                        # outside that cycle.
-                        # We first need to close the cycle.
-                        next_actions = self.cycle_root.closeCycle(True) + [
-                            (act, obj, args, context)]
+
+                act, obj, args, context = actions.pop()
+
+                # Inform the debugger.
+                if debugger:
+                    debugger.process_message(act, obj, args, context)
+
+                if obj is None:
+                    # We have reached the top-level.
+                    if act == 'r':
+                        # A new result is available
+                        solutions.append((args[0], args[1]))
+                        if args[3]:
+                            # Last result received
+                            if not subcall and self.pointer != 0:  # pragma: no cover
+                                # ERROR: the engine stack should be empty.
+                                self.printStack()
+                                raise InvalidEngineState('Stack not empty at end of execution!')
+                            if not subcall:
+                                # Clean up the stack to save memory.
+                                self.shrink_stack()
+                            return solutions
+                    elif act == 'c':
+                        # Indicates completion of the execution.
+                        return solutions
                     else:
+                        # ERROR: unknown message
+                        raise InvalidEngineState('Unknown message!')
+                else:
+                    # We are not at the top-level.
+                    if act == 'e':
+                        # Never clean up in this case because 'obj' doesn't contain a pointer.
+                        cleanup = False
+                        # We need to execute another node.
+                        # if self.cycle_root is not None and context['parent'] < self.cycle_root.pointer:
+                        #     print ('Cycle exhausted indeed:', len(actions) + 1)
+                        #     # There is an active cycle and we are about to execute a node
+                        #     # outside that cycle.
+                        #     # We first need to close the cycle.
+                        #     next_actions = self.cycle_root.closeCycle(True) + [
+                        #         (act, obj, args, context)]
+                        # else:
                         try:
                             # Evaluate the next node.
                             next_actions = self.eval(obj, **context)
@@ -312,48 +320,48 @@ class StackBasedEngine(ClauseDBEngine):
                             else:
                                 loc = database.lineno(call_origin[1])
                                 raise UnknownClause(call_origin[0], location=loc)
-                else:
-                    # The message is 'r' or 'c'. This means 'obj' should be a valid pointer.
-                    try:
-                        # Retrieve the execution node from the stack.
-                        exec_node = self.stack[obj]
-                    except IndexError:  # pragma: no cover
-                        self.printStack()
-                        raise InvalidEngineState('Non-existing pointer: %s' % obj)
-                    if exec_node is None:  # pragma: no cover
-                        print(act, obj)
-                        raise InvalidEngineState('Invalid node at given pointer: %s' % obj)
+                    else:
+                        # The message is 'r' or 'c'. This means 'obj' should be a valid pointer.
+                        try:
+                            # Retrieve the execution node from the stack.
+                            exec_node = self.stack[obj]
+                        except IndexError:  # pragma: no cover
+                            self.printStack()
+                            raise InvalidEngineState('Non-existing pointer: %s' % obj)
+                        if exec_node is None:  # pragma: no cover
+                            print(act, obj)
+                            raise InvalidEngineState('Invalid node at given pointer: %s' % obj)
 
-                    if act == 'r':
-                        # A new result was received.
-                        cleanup, next_actions = exec_node.new_result(*args, **context)
-                    elif act == 'c':
-                        # A completion message was received.
-                        cleanup, next_actions = exec_node.complete(*args, **context)
-                    else:  # pragma: no cover
-                        raise InvalidEngineState('Unknown message')
+                        if act == 'r':
+                            # A new result was received.
+                            cleanup, next_actions = exec_node.new_result(*args, **context)
+                        elif act == 'c':
+                            # A completion message was received.
+                            cleanup, next_actions = exec_node.complete(*args, **context)
+                        else:  # pragma: no cover
+                            raise InvalidEngineState('Unknown message')
 
-                if not actions and not next_actions and self.cycle_root is not None:
-                    # If there are no more actions and we have an active cycle, we should close the cycle.
-                    next_actions = self.cycle_root.closeCycle(True)
-                # Update the list of actions.
-                actions += list(reversed(next_actions))
+                    if not actions and not next_actions and self.cycle_root is not None:
+                        # If there are no more actions and we have an active cycle, we should close the cycle.
+                        next_actions = self.cycle_root.closeCycle(True)
+                    # Update the list of actions.
+                    actions += list(reversed(next_actions))
 
-                # Do debugging.
-                if self.debug:  # pragma: no cover
-                    self.printStack(obj)
-                    if act in 'rco':
-                        print(obj, act, args)
-                    print([(a, o, x) for a, o, x, t in actions[-10:]])
-                    if self.trace:
-                        a = sys.stdin.readline()
-                        if a.strip() == 'gp':
-                            print(target)
-                        elif a.strip() == 'l':
-                            self.trace = False
-                            self.debug = False
-                if cleanup:
-                    self.cleanup(obj)
+                    # Do debugging.
+                    if self.debug:  # pragma: no cover
+                        self.printStack(obj)
+                        if act in 'rco':
+                            print(obj, act, args)
+                        print([(a, o, x) for a, o, x, t in actions[-10:]])
+                        if self.trace:
+                            a = sys.stdin.readline()
+                            if a.strip() == 'gp':
+                                print(target)
+                            elif a.strip() == 'l':
+                                self.trace = False
+                                self.debug = False
+                    if cleanup:
+                        self.cleanup(obj)
 
         # This should never happen.
         self.printStack()  # pragma: no cover
@@ -635,6 +643,88 @@ class StackBasedEngine(ClauseDBEngine):
         if not cleanup:
             self.add_record(node)
         return actions
+
+
+class MessageQueue(object):
+    """A queue of messages."""
+
+    def __init__(self):
+        pass
+
+    def append(self, message):
+        """Add a message to the queue.
+
+        :param message:
+        :return:
+        """
+        raise NotImplementedError('Abstract method')
+
+    def __iadd__(self, messages):
+        """Add a list of message to the queue.
+
+        :param messages:
+        :return:
+        """
+        for message in messages:
+            self.append(message)
+        return self
+
+    def cycle_exhausted(self):
+        """Check whether there are messages inside the cycle.
+
+        :return:
+        """
+        raise NotImplementedError('Abstract method')
+
+    def pop(self):
+        """Pop a message from the queue.
+
+        :return:
+        """
+        raise NotImplementedError('Abstract method')
+
+    def __nonzero__(self):
+        raise NotImplementedError('Abstract method')
+
+    def __bool__(self):
+        raise NotImplementedError('Abstract method')
+
+    def __len__(self):
+        raise NotImplementedError('Abstract method')
+
+
+class MessageFIFO(MessageQueue):
+
+    def __init__(self, engine):
+        MessageQueue.__init__(self)
+        self.engine = engine
+        self.messages = []
+
+    def append(self, message):
+        self.messages.append(message)
+
+    def pop(self):
+        return self.messages.pop(-1)
+
+    def peek(self):
+        return self.messages[-1]
+
+    def cycle_exhausted(self):
+        if self.engine.cycle_root is None:
+            return True
+        else:
+            last_message = self.peek()
+            return last_message[0] == 'e' and \
+                last_message[3]['parent'] < self.engine.cycle_root.pointer
+
+    def __nonzero__(self):
+        return bool(self.messages)
+
+    def __bool__(self):
+        return bool(self.messages)
+
+    def __len__(self):
+        return len(self.messages)
 
 
 class EvalNode(object):
