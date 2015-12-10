@@ -143,20 +143,33 @@ def termToBool(term, truth_values):
 def clauseToCPT(clause, number):
     logger = logging.getLogger('problog')
     # print('Clause: {} -- {}'.format(clause, type(clause)))
-    if isinstance(clause, Clause) and isinstance(clause.head, Or):
-        heads = clause.head.to_list()
+    if isinstance(clause, Clause):
+        if isinstance(clause.head, Or):
+            heads = clause.head.to_list()
+        elif isinstance(clause.head, Term):
+            heads = [clause.head]
+        else:
+            heads = []
+            logger.error('Unknown head type: {} ({})'.format(clause.head,
+                                                             type(clause.head)))
         # CPT for the choice node
         rv_cn = 'c{}'.format(number)
         parents = termToAtoms(clause.body)
         parents_str = [str(t) for t in parents]
-        probs_heads = [head.probability.compute_value() for head in heads]
+        probs_heads = []
+        for head in heads:
+            if head.probability is not None:
+                probs_heads.append(head.probability.compute_value())
+            else:
+                probs_heads.append(1.0)
         probs = [1.0-sum(probs_heads)]+probs_heads
         table_cn = dict()
         for keys in itertools.product([False, True], repeat=len(parents)):
             truth_values = dict(zip(parents, keys))
             truth_value = termToBool(clause.body, truth_values)
             if truth_value is None:
-                logger.error('Expected truth value. {} -> {}'.format(truth_values, truth_value))
+                logger.error('Expected a truth value. Instead god:\n'
+                             ' {} -> {}'.format(truth_values, truth_value))
                 table_cn[keys] = [1.0] + [0.0]*len(heads)
             elif truth_value:
                 table_cn[keys] = probs
@@ -169,33 +182,6 @@ def clauseToCPT(clause, number):
             rv = str(head.with_probability())
             cpds.append(OrCPT(rv, [(rv_cn, idx+1)]))
         return cpds + [cpd_cn]
-
-    elif isinstance(clause, Clause) and isinstance(clause.head, Term):
-        # print('Head: {} -- {}'.format(clause.head, type(clause.head)))
-        # print('Body: {} -- {}'.format(clause.body, type(clause.body)))
-        # CPT for the choice node
-        rv_cn = 'c{}'.format(number)
-        parents = termToAtoms(clause.body)
-        parents_str = [str(t) for t in parents]
-        prob = 1.0
-        if clause.head.probability is not None:
-            prob = clause.head.probability.compute_value()
-        table_cn = dict()
-        for keys in itertools.product([False, True], repeat=len(parents)):
-            truth_values = dict(zip(parents, keys))
-            truth_value = termToBool(clause.body, truth_values)
-            if truth_value is None:
-                logger.error('Expected truth value. {} -> {}'.format(truth_values, truth_value))
-                table_cn[keys] = [1.0, 0.0]
-            elif truth_value:
-                table_cn[keys] = [1.0-prob, prob]
-            else:
-                table_cn[keys] = [1.0, 0.0]
-        cpd_cn = CPT(rv_cn, [0, 1], parents_str, table_cn)
-        # CPT for the head random variable
-        rv = str(clause.head.with_probability())
-        cpd = OrCPT(rv, [(rv_cn, 1)])
-        return [cpd, cpd_cn]
 
     elif isinstance(clause, Or):
         heads = clause.to_list()

@@ -247,8 +247,8 @@ class CPT(CPD):
         table = '\n'.join(lines)
         parents = ''
         if len(self.parents) > 0:
-            parents = ' -- {}'.format(','.join(self.parents))
-        return 'CPT {} [{}]{}\n{}'.format(self.rv, ','.join([str(v) for v in self.values]), parents, table)
+            parents = ' | {}'.format(','.join(self.parents))
+        return 'CPT ({}{}) = {}\n{}'.format(self.rv, parents, ','.join([str(v) for v in self.values]), table)
 
 
 class OrCPT(CPD):
