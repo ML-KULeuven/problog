@@ -176,6 +176,7 @@ def clauseToCPT(clause, number):
             else:
                 table_cn[keys] = [1.0] + [0.0]*len(heads)
         cpd_cn = CPT(rv_cn, list(range(len(heads)+1)), parents_str, table_cn)
+        cpd_cn.latent = True
         # CPT for the head random variable
         cpds = []
         for idx, head in enumerate(heads):
@@ -191,6 +192,7 @@ def clauseToCPT(clause, number):
         probs_heads = [head.probability.compute_value() for head in heads]
         table_cn = [1.0-sum(probs_heads)]+probs_heads
         cpd_cn = CPT(rv_cn, list(range(len(heads)+1)), parents, table_cn)
+        cpd_cn.latent = True
         # CPT for the head random variable
         cpds = []
         for idx, head in enumerate(heads):
@@ -205,6 +207,7 @@ def clauseToCPT(clause, number):
         prob = clause.probability.compute_value()
         table_cn = [1.0-prob, prob]
         cpd_cn = CPT(rv_cn, [0, 1], parents, table_cn)
+        cpd_cn.latent = True
         # CPT  for the head random variable
         rv = str(clause.with_probability())
         cpd = OrCPT(rv, [(rv_cn, 1)])
@@ -242,6 +245,8 @@ def formulaToBN(formula):
     #         lines.append('evidence(%s).' % -qn)
     #     else:
     #         lines.append('evidence(%s).' % qn)
+
+    bn.marginalizeLatentVariables()
 
     return bn
 

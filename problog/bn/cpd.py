@@ -62,6 +62,31 @@ class PGM(object):
             queue = queue2
         return cpds
 
+    def marginalizeLatentVariables(self):
+        marg_sets = []
+        # Find nodes with only latent variables that are only parent for that node
+        for cpd in self.cpds.values():
+            # print('cpd: {} | {}'.format(cpd.rv, cpd.parents))
+            if len(cpd.parents) == 0:
+                continue
+            all_latent = True
+            for parent in cpd.parents:
+                if not self.cpds[parent].latent:
+                    all_latent = False
+            if not all_latent:
+                continue
+            marg_sets.append((cpd.rv, cpd.parents))
+        print(marg_sets)
+        # Eliminate
+        for (child_rv, parent_rvs) in marg_sets:
+            cpds = [self.cpds[child_rv]] + [self.cpds[rv] for rv in parent_rvs]
+            cpd = CPT.marginalize(cpds, parent_rvs)
+            if not cpd is None:
+                print(cpd)
+                self.cpds[child_rv] = cpd
+                for rv in parent_rvs:
+                    del self.cpds[rv]
+
     def hugin_net(self):
         """Export PGM to the Hugin net format.
         http://www.hugin.com/technology/documentation/api-manuals
@@ -138,6 +163,7 @@ class CPD(object):
         """Conditional Probability Distribution."""
         self.rv = rv
         self.values = values
+        self.latent = False
         if parents is None:
             self.parents = []
         else:
@@ -178,6 +204,18 @@ class CPT(CPD):
         else:
             self.table = table
 
+    @staticmethod
+    def marginalize(cpds, margvars):
+        children = set([cpd.rv for cpd in cpds])
+        print('children: {}'.format(children))
+        child = children - margvars
+        print('child: {}'.format(child))
+        parents = reduce(set.union, [cpd.parents for cpd in cpds])
+        parents -= margvars
+        print('parents: {}'.format(parents))
+
+        return None
+
     def to_HuginNetNode(self):
         lines = ["node {} {{".format(self.rv_clean()),
                  "  label = \"{}\";".format(self.rv),
@@ -213,13 +251,14 @@ class CPT(CPD):
         return '\n'.join(lines)
 
     def to_XdslNode(self):
-        lines = ['      <node id="{}">'.format(self.rv_clean()),
-                 '        <name>{}</name>'.format(self.rv),
-                 '        <interior color="e5f6f7" />',
-				 '        <outline color="000080" />',
-                 '        <font color="000000" name="Arial" size="8" />',
-                 '        <position>100 100 150 150</position>',
-                 '      </node>']
+        lines = [
+            '      <node id="{}">'.format(self.rv_clean()),
+            '        <name>{}</name>'.format(self.rv),
+            '        <interior color="e5f6f7" />',
+			'        <outline color="000080" />',
+            '        <font color="000000" name="Arial" size="8" />',
+            '        <position>100 100 150 150</position>',
+            '      </node>']
         return '\n'.join(lines)
 
     def to_Uai08Preamble(self, cpds):
