@@ -246,7 +246,7 @@ def formulaToBN(formula):
     #     else:
     #         lines.append('evidence(%s).' % qn)
 
-    bn.marginalizeLatentVariables()
+    # bn.marginalizeLatentVariables()
 
     return bn
 

@@ -38,6 +38,7 @@ class PGM(object):
 
     def cpds_topological(self):
         """Return the CPDs in a topological order."""
+        # Links from parent-node to child-node
         links = dict()
         for cpd in self.cpds.values():
             for parent in cpd.parents:
@@ -45,15 +46,27 @@ class PGM(object):
                     links[parent].add(cpd.rv)
                 else:
                     links[parent] = set([cpd.rv])
+        # print(links)
         all = set(links.keys())
         nonroot = reduce(set.union, links.values())
         root = all - nonroot
+        # print(root)
         queue = root
         visited = set()
         cpds = []
         while len(queue) > 0:
-            cpds += [self.cpds[rv] for rv in queue if rv not in visited]
-            visited.update(queue)
+            for rv in queue:
+                if rv in visited:
+                    continue
+                all_parents_visited = True
+                cpd = self.cpds[rv]
+                for parent_rv in cpd.parents:
+                    if parent_rv not in visited:
+                        all_parents_visited = False
+                        break
+                if all_parents_visited:
+                    cpds.append(cpd)
+                    visited.add(rv)
             queue2 = set()
             for rv in queue:
                 if rv in links:
