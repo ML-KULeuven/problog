@@ -46,7 +46,7 @@ from problog.sdd_formula import SDD
 from problog.cnf_formula import CNF
 from problog.util import Timer, start_timer, stop_timer, init_logger, format_dictionary
 from problog.constraint import ClauseConstraint, ConstraintAD
-from problog.evaluator import SemiringProbability
+from problog.evaluator import SemiringProbability, OperationNotSupported
 
 
 def multfact(source):
@@ -65,7 +65,7 @@ def multfact(source):
             if len(node.children) > 4:
                 # Replace disjunction node with atom node.
                 tseitin_vars.append(Term('z_{}'.format(len(tseitin_vars))))
-                print('-> {}: replace disj with {}'.format(key, tseitin_vars[-1]))
+                print('-> {}: replace disj with tseitin {}'.format(key, tseitin_vars[-1]))
                 skolem_vars.append(Term('s_{}'.format(len(skolem_vars))))
                 tseitin = target.add_atom(identifier=key, probability=(1.0,1.0), name=tseitin_vars[-1])
                 target.add_name(tseitin_vars[-1], tseitin, target.LABEL_QUERY)
@@ -116,6 +116,7 @@ def multfact(source):
     for tseitin, skolem_var, children in extra_clauses:
         cur_key += 1
         skolem = target.add_atom(identifier=cur_key, probability=(1.0,-1.0), name=skolem_var)
+        print('-> Add skolem {}'.format(skolem_var))
         target.add_name(skolem_var, skolem, target.LABEL_QUERY)
         target.add_constraint(ClauseConstraint([tseitin, skolem]))
         for c in children:
@@ -138,7 +139,52 @@ def multfact(source):
     return target
 
 class NegativeProbability(SemiringProbability):
+
+    def is_one(self, value):
+        if isinstance(value, tuple):
+            raise OperationNotSupported()
+        return 1.0 - 1e-12 < value < 1.0 + 1e-12
+
+    def is_zero(self, value):
+        if isinstance(value, tuple):
+            raise OperationNotSupported()
+        return -1e-12 < value < 1e-12
+
+    def plus(self, a, b):
+        if isinstance(a, tuple) or isinstance(b, tuple):
+            raise OperationNotSupported()
+        return a + b
+
+    def times(self, a, b):
+        if isinstance(a, tuple) or isinstance(b, tuple):
+            raise OperationNotSupported()
+        return a * b
+
+    def negate(self, a):
+        if isinstance(a, tuple):
+            raise OperationNotSupported()
+        return 1.0 - a
+
+    def normalize(self, a, z):
+        if isinstance(a, tuple) or isinstance(z, tuple):
+            raise OperationNotSupported()
+        return a / z
+
+    def pos_value(self, a):
+        if isinstance(a, tuple):
+            print('pos_value({})'.format(a))
+            return self.value(a[0])
+        return self.value(a)
+
+    def neg_value(self, a):
+        if isinstance(a, tuple):
+            print('neg_value({})'.format(a))
+            return self.value(a[1])
+        else:
+            return self.negate(self.value(a))
+
     def value(self, a):
+        print('value({})'.format(a))
         v = float(a)
         return v
 
@@ -158,7 +204,7 @@ def probability(filename, with_fact=True):
             print(gp2)
             nnf = SDD.createFrom(gp2)
             semiring = NegativeProbability()
-            result = nnf.evaluate(semiring=semiring)
+            result = nnf.evaluate(semiring=semiring, propagate=False)
     else:
         with Timer('No factorization'):
             with open('/Users/wannes/Desktop/test_nf.dot', 'w') as dotfile:
