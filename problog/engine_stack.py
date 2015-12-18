@@ -220,9 +220,7 @@ class StackBasedEngine(ClauseDBEngine):
             return action[:2] + (action[3]['parent'], action[3]['context'], action[3]['identifier'])
 
     def init_message_stack(self):
-        return MessageOrder1(self)
-        # return MessageAnyOrder(self)
-        #return MessageFIFO(self)
+        return MessageFIFO(self)
 
     def in_cycle(self, pointer):
         """Check whether the node at the given pointer is inside a cycle.
