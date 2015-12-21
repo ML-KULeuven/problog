@@ -523,7 +523,7 @@ class LogicFormula(BaseFormula):
             node_id = self._add(atom, key=identifier)
             if isinstance(probability, tuple):
                 self.get_weights()[node_id] = probability
-                print('new weights: {}'.format(self.get_weights()))
+                # print('new weights: {}'.format(self.get_weights()))
             else:
                 self.get_weights()[node_id] = probability
             if node_id == len(self._nodes):

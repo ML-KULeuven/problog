@@ -29,6 +29,7 @@ from .logic import Term
 from .core import transform
 from .util import Timer
 from .formula import LogicFormula, LogicDAG
+from .constraint import ClauseConstraint
 
 from collections import defaultdict
 import logging
@@ -57,6 +58,13 @@ def break_cycles(source, target, **kwdargs):
                 newnode = n
             target.add_name(q, newnode, target.LABEL_QUERY)
 
+        rename = dict()
+        for k,v in translation.items():
+            rename[k] = v[0][0] # TODO how to correctly interpret translation?
+        for c in source.constraints():
+            if isinstance(c, ClauseConstraint):
+                target.add_constraint(c.copy(rename=rename))
+
         translation = defaultdict(list)
         for q, n, v in source.evidence_all():
             if source.is_probabilistic(n):
@@ -74,6 +82,9 @@ def break_cycles(source, target, **kwdargs):
                 target.add_name(q, newnode, target.LABEL_EVIDENCE_MAYBE)
 
         logger.debug("Ground program size: %s", len(target))
+        print('\n----- after cycle breaking ------')
+        print(target)
+        print('---------\n')
         return target
 
 

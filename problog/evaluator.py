@@ -52,6 +52,10 @@ class Semiring(object):
 
     """
 
+    @property
+    def inconsistent_evidence_is_zero(self):
+        return True
+
     def one(self):
         """Returns the identity element of the multiplication."""
         raise NotImplementedError()
@@ -275,7 +279,7 @@ class Evaluatable(ProbLogObject):
         """
         raise NotImplementedError('Evaluatable._create_evaluator is an abstract method')
 
-    def get_evaluator(self, semiring=None, evidence=None, weights=None, propagate=True, **kwargs):
+    def get_evaluator(self, semiring=None, evidence=None, weights=None, **kwargs):
         """Get an evaluator for computing queries on this formula.
         It creates an new evaluator and initializes it with the given or predefined evidence.
 
@@ -311,11 +315,10 @@ class Evaluatable(ProbLogObject):
                 except KeyError:
                     pass
 
-        if propagate:
-            evaluator.propagate()
+        evaluator.propagate()
         return evaluator
 
-    def evaluate(self, index=None, semiring=None, evidence=None, weights=None, propagate=True, **kwargs):
+    def evaluate(self, index=None, semiring=None, evidence=None, weights=None, **kwargs):
         """Evaluate a set of nodes.
 
         :param index: node to evaluate (default: all queries)
@@ -325,7 +328,7 @@ class Evaluatable(ProbLogObject):
         :return: The result of the evaluation expressed as an external value of the semiring. \
          If index is ``None`` (all queries) then the result is a dictionary of name to value.
         """
-        evaluator = self.get_evaluator(semiring, evidence, weights, propagate, **kwargs)
+        evaluator = self.get_evaluator(semiring, evidence, weights, **kwargs)
 
         if index is None:
             result = {}

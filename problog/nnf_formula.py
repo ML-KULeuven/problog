@@ -79,7 +79,7 @@ class SimpleNNFEvaluator(Evaluator):
             for ev in self.evidence():
                 self.set_evidence(abs(ev), ev > 0)
 
-        if self.semiring.result(self._get_z()) == 0.0:
+        if self.semiring.inconsistent_evidence_is_zero and self.semiring.result(self._get_z()) == 0.0:
             raise InconsistentEvidenceError()
 
     def propagate(self):
@@ -131,6 +131,7 @@ class SimpleNNFEvaluator(Evaluator):
             w = self.weights.get(index)
             if w is None:
                 w = self._calculate_weight(index)
+                # print('Computed weight: {} = {}'.format(index,w))
                 return w
             else:
                 return w
@@ -178,10 +179,12 @@ class SimpleNNFEvaluator(Evaluator):
         ntype = type(node).__name__
 
         if ntype == 'atom':
+            # TODO: why is this one for atom (an atom contains prob, no?)
             return self.semiring.one()
         else:
             assert key > 0
             childprobs = [self._get_weight(c) for c in node.children]
+            # print('childprobs: {}'.format(childprobs))
             if ntype == 'conj':
                 p = self.semiring.one()
                 for c in childprobs:
@@ -264,12 +267,14 @@ def _compile_with_dsharp(cnf, nnf=None, **kwdargs):
         cmd = ['dsharp', '-Fnnf', nnf_file, '-smoothNNF', '-disableAllLits', cnf_file]  #
 
         try:
+            print('DSharp with {}'.format(cnf_file))
             result = _compile(cnf, cmd, cnf_file, nnf_file)
         except subprocess.CalledProcessError:
             raise DSharpError()
 
         try:
-            os.remove(cnf_file)
+            # os.remove(cnf_file)
+            pass
         except OSError:
             pass
         try:

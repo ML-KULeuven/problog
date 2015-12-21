@@ -43,7 +43,7 @@ from problog.logic import Term
 from problog.engine import DefaultEngine
 from problog.formula import LogicFormula
 from problog.sdd_formula import SDD
-from problog.cnf_formula import CNF
+from problog.nnf_formula import NNF
 from problog.util import Timer, start_timer, stop_timer, init_logger, format_dictionary
 from problog.constraint import ClauseConstraint, ConstraintAD
 from problog.evaluator import SemiringProbability, OperationNotSupported
@@ -62,7 +62,7 @@ def multfact(source):
         # print(type(node.name))
         # print(nodetype)
         if nodetype == 'disj':
-            if len(node.children) > 4:
+            if len(node.children) > 1: #4:
                 # Replace disjunction node with atom node.
                 tseitin_vars.append(Term('z_{}'.format(len(tseitin_vars))))
                 print('-> {}: replace disj with tseitin {}'.format(key, tseitin_vars[-1]))
@@ -139,6 +139,17 @@ def multfact(source):
     return target
 
 class NegativeProbability(SemiringProbability):
+    """Represent negative probabilities (probably the same as just weights)."""
+
+    @property
+    def inconsistent_evidence_is_zero(self):
+        return False
+
+    def one(self):
+        return 1.0
+
+    def zero(self):
+        return 0.0
 
     def is_one(self, value):
         if isinstance(value, tuple):
@@ -171,20 +182,20 @@ class NegativeProbability(SemiringProbability):
         return a / z
 
     def pos_value(self, a):
+        # print('pos_value({})'.format(a))
         if isinstance(a, tuple):
-            print('pos_value({})'.format(a))
             return self.value(a[0])
         return self.value(a)
 
     def neg_value(self, a):
+        # print('neg_value({})'.format(a))
         if isinstance(a, tuple):
-            print('neg_value({})'.format(a))
             return self.value(a[1])
         else:
             return self.negate(self.value(a))
 
     def value(self, a):
-        print('value({})'.format(a))
+        # print('value({})'.format(a))
         v = float(a)
         return v
 
@@ -195,6 +206,8 @@ def probability(filename, with_fact=True):
     gp = engine.ground_all(db)
     print('type gp = '+str(type(gp)))
 
+    semiring = NegativeProbability()
+
     print('-----')
     if with_fact:
         with Timer('With factorization'):
@@ -202,15 +215,22 @@ def probability(filename, with_fact=True):
             with open('/Users/wannes/Desktop/test_f.dot', 'w') as dotfile:
                 print_result((True, gp2.to_dot()), output=dotfile)
             print(gp2)
-            nnf = SDD.createFrom(gp2)
-            semiring = NegativeProbability()
-            result = nnf.evaluate(semiring=semiring, propagate=False)
+            # nnf = SDD.createFrom(gp2) # SDD lib doesn't support negative weights? Runtime error
+            nnf = NNF.createFrom(gp2)
+            print('--- start evaluating ---')
+            print(nnf)
+            with open ('/Users/wannes/Desktop/test_f_nnf.dot', 'w') as dotfile:
+                print(nnf.to_dot(), file=dotfile)
+            # TODO: propage should not try to simplify based on probs in this case
+            result = nnf.evaluate(semiring=semiring)
+            # TODO: problog evaluates graph to query, for skolemization we need P(x) = WMC(x=T)/WMC
     else:
         with Timer('No factorization'):
             with open('/Users/wannes/Desktop/test_nf.dot', 'w') as dotfile:
                 print_result((True, gp.to_dot()), output=dotfile)
-            nnf = SDD.createFrom(gp)
-            result = nnf.evaluate()
+            # nnf = SDD.createFrom(gp)
+            nnf = NNF.createFrom(gp)
+            result = nnf.evaluate(semiring=semiring)
 
     print('-----')
     return result

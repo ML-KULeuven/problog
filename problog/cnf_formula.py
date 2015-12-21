@@ -308,11 +308,14 @@ def clarks_completion(source, destination, **kwdargs):
         # Complete other nodes
         # Note: assumes negation is encoded as negative number.
         for index, node, nodetype in source:
+            print('{} {} {}'.format(index,node,nodetype))
             if nodetype == 'conj':
+                print('conj: {}'.format(node.children))
                 destination.add_clause(index, list(map(lambda x: -x, node.children)))
                 for c in node.children:
                     destination.add_clause(-index, [c])
             elif nodetype == 'disj':
+                print('disj: {}'.format(node.children))
                 destination.add_clause(-index, node.children)
                 for c in node.children:
                     destination.add_clause(index, [-c])
@@ -322,11 +325,18 @@ def clarks_completion(source, destination, **kwdargs):
                 raise ValueError("Unexpected node type: '%s'" % nodetype)
 
         # Copy constraints.
+        print('Copy constraints from logicdag to cnf')
         for c in source.constraints():
+            print(c)
             destination.add_constraint(c)
 
         # Copy node names.
         for n, i, l in source.get_names_with_label():
             destination.add_name(n, i, l)
 
+        print('\n----- after cnf conversion ------')
+        print(destination.clauses)
+        for n,i,l in destination.get_names_with_label():
+            print('{} {} {}'.format(n,i,l))
+        print('---------\n')
         return destination
