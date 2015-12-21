@@ -212,24 +212,26 @@ def probability(filename, with_fact=True):
     if with_fact:
         with Timer('With factorization'):
             gp2 = multfact(gp)
-            with open('/Users/wannes/Desktop/test_f.dot', 'w') as dotfile:
+            with open('test_f.dot', 'w') as dotfile:
                 print_result((True, gp2.to_dot()), output=dotfile)
             print(gp2)
             # nnf = SDD.createFrom(gp2) # SDD lib doesn't support negative weights? Runtime error
             nnf = NNF.createFrom(gp2)
             print('--- start evaluating ---')
             print(nnf)
-            with open ('/Users/wannes/Desktop/test_f_nnf.dot', 'w') as dotfile:
+            with open ('test_f_nnf.dot', 'w') as dotfile:
                 print(nnf.to_dot(), file=dotfile)
             # TODO: propage should not try to simplify based on probs in this case
             result = nnf.evaluate(semiring=semiring)
-            # TODO: problog evaluates graph to query, for skolemization we need P(x) = WMC(x=T)/WMC
+            # TODO: problog evaluates graph to query? for skolemization we need P(x) = WMC(x=T)/WMC
     else:
         with Timer('No factorization'):
-            with open('/Users/wannes/Desktop/test_nf.dot', 'w') as dotfile:
+            with open('test_nf.dot', 'w') as dotfile:
                 print_result((True, gp.to_dot()), output=dotfile)
             # nnf = SDD.createFrom(gp)
             nnf = NNF.createFrom(gp)
+            with open ('test_nf_nnf.dot', 'w') as dotfile:
+                print(nnf.to_dot(), file=dotfile)
             result = nnf.evaluate(semiring=semiring)
 
     print('-----')
