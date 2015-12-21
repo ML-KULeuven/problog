@@ -61,6 +61,8 @@ def break_cycles(source, target, **kwdargs):
         rename = dict()
         for k,v in translation.items():
             rename[k] = v[0][0] # TODO how to correctly interpret translation?
+            rename[-k] = -v[0][0]
+        print('rename: {}'.format(rename))
         for c in source.constraints():
             if isinstance(c, ClauseConstraint):
                 target.add_constraint(c.copy(rename=rename))

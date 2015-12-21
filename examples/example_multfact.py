@@ -62,7 +62,7 @@ def multfact(source):
         # print(type(node.name))
         # print(nodetype)
         if nodetype == 'disj':
-            if len(node.children) > 1: #4:
+            if len(node.children) > 4:
                 # Replace disjunction node with atom node.
                 tseitin_vars.append(Term('z_{}'.format(len(tseitin_vars))))
                 print('-> {}: replace disj with tseitin {}'.format(key, tseitin_vars[-1]))
@@ -215,7 +215,8 @@ def probability(filename, with_fact=True):
             with open('test_f.dot', 'w') as dotfile:
                 print_result((True, gp2.to_dot()), output=dotfile)
             print(gp2)
-            # nnf = SDD.createFrom(gp2) # SDD lib doesn't support negative weights? Runtime error
+            # nnf = SDD.createFrom(gp2) # TODO: SDD lib doesn't support negative weights? Runtime error
+                                        # TODO: How can I use the Python evaluator with SDDs?
             nnf = NNF.createFrom(gp2)
             print('--- start evaluating ---')
             print(nnf)
