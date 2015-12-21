@@ -113,6 +113,7 @@ class SimpleNNFEvaluator(Evaluator):
             z =self._get_z()
             p = self._get_weight(abs(node))
             n = self._get_weight(-abs(node))
+            # TODO: Why does it work without z normalization?
             print('p = {}, n = {}, z = {}'.format(p, n, z))
             self._set_value(abs(node), (node > 0))
             result = self._get_weight(len(self.formula))
