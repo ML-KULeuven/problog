@@ -521,11 +521,7 @@ class LogicFormula(BaseFormula):
         else:
             atom = self._create_atom(identifier, probability, group, name, source)
             node_id = self._add(atom, key=identifier)
-            if isinstance(probability, tuple):
-                self.get_weights()[node_id] = probability
-                # print('new weights: {}'.format(self.get_weights()))
-            else:
-                self.get_weights()[node_id] = probability
+            self.get_weights()[node_id] = probability
             if node_id == len(self._nodes):
                 self._atomcount += 1
             if name is not None:

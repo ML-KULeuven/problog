@@ -182,7 +182,6 @@ class SimpleNNFEvaluator(Evaluator):
         else:
             assert key > 0
             childprobs = [self._get_weight(c) for c in node.children]
-            # print('childprobs: {}'.format(childprobs))
             if ntype == 'conj':
                 p = self.semiring.one()
                 for c in childprobs:
@@ -265,14 +264,12 @@ def _compile_with_dsharp(cnf, nnf=None, **kwdargs):
         cmd = ['dsharp', '-Fnnf', nnf_file, '-smoothNNF', '-disableAllLits', cnf_file]  #
 
         try:
-            print('DSharp with {}'.format(cnf_file))
             result = _compile(cnf, cmd, cnf_file, nnf_file)
         except subprocess.CalledProcessError:
             raise DSharpError()
 
         try:
-            # os.remove(cnf_file)
-            pass
+            os.remove(cnf_file)
         except OSError:
             pass
         try:

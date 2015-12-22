@@ -84,9 +84,6 @@ def break_cycles(source, target, **kwdargs):
                 target.add_name(q, newnode, target.LABEL_EVIDENCE_MAYBE)
 
         logger.debug("Ground program size: %s", len(target))
-        print('\n----- after cycle breaking ------')
-        print(target)
-        print('---------\n')
         return target
 
 
