@@ -41,7 +41,8 @@ else:
             'web/*.py',
             'web/editor_local.html',
             'web/editor_adv.html',
-            'web/js/problog_editor.js'
+            'web/js/problog_editor.js',
+            'library/lists.pl'
         ]
     }
 
