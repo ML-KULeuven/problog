@@ -873,7 +873,7 @@ _arithmetic_functions = {
     ("epsilon", 0): lambda: sys.float_info.epsilon,
     ("inf", 0): lambda: float('inf'),
     ("nan", 0): lambda: float('nan'),
-    ("sign", 1): lambda x: x if x >= 0 else -x
+    ("sign", 1): lambda x: 1 if x > 0 else -1 if x < 0 else 0
 
 }
 

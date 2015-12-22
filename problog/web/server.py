@@ -53,7 +53,7 @@ import logging.config
 
 DEFAULT_PORT = 5100
 DEFAULT_TIMEOUT = 60
-DEFAULT_MEMOUT = 1.0  # gigabyte
+DEFAULT_MEMOUT = 2.0  # gigabyte
 
 SERVE_FILES = False
 CACHE_MODELS = True
