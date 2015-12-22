@@ -35,6 +35,7 @@ with w(z) = w(¬z) = w(s) = 1 and w(¬s) = -1
 from __future__ import print_function
 
 import sys, os
+import logging
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
@@ -49,29 +50,33 @@ from problog.constraint import ClauseConstraint, ConstraintAD
 from problog.evaluator import SemiringProbability, OperationNotSupported
 
 
-def multfact(source):
+def multiplicative_factorization(source):
+    """
+    Copy the source LogicFormula and replace large disjunctions with Skolemization variables
+    to obtain a formula that is similar to the result of multiplicative factorization.
+    :param source: Input formula
+    :return: new formula, additional query atoms
+    """
+    logger = logging.getLogger('problog')
     target = LogicFormula()
     tseitin_vars = []
     skolem_vars = []
     extra_clauses = []
     extra_queries = []
 
+    # Copy formulas and replace large disjunctions with a Tseitin variable z_i
     for key,node,t in source:
-        print('Rule: {:<3}: {} -- {}'.format(key,node,t))
+        logger.debug('Rule: {:<3}: {} -- {}'.format(key,node,t))
         nodetype = type(node).__name__
-        # print(node.name)
-        # print(type(node.name))
-        # print(nodetype)
         if nodetype == 'disj':
             if len(node.children) > 4:
                 # Replace disjunction node with atom node.
                 tseitin_vars.append(Term('z_{}'.format(len(tseitin_vars))))
-                print('-> {}: replace disj with tseitin {}'.format(key, tseitin_vars[-1]))
+                logger.debug('-> {}: replace disj with tseitin {}'.format(key, tseitin_vars[-1]))
                 skolem_vars.append(Term('s_{}'.format(len(skolem_vars))))
                 tseitin = target.add_atom(identifier=key, probability=(1.0,1.0), name=tseitin_vars[-1])
-                extra_queries.append(target.add_name(tseitin_vars[-1], tseitin, target.LABEL_QUERY))
-                # print('Added nodes: {} {} -- {} {}'.format(tseitin_vars[-1], tseitin, skolem_vars[-1], skolem))
-                # print('Child nodes: {}'.format(node.children))
+                target.add_name(tseitin_vars[-1], tseitin, target.LABEL_QUERY)
+                extra_queries.append(tseitin_vars[-1])
                 extra_clauses += [(tseitin, skolem_vars[-1], node.children)]
             else:
                 target.add_or(components=node.children, key=key, name=node.name)
@@ -84,51 +89,49 @@ def multfact(source):
             raise Exception('Unknown type when performing multiplicative factorization:\n'
                             '{:<2}: {} ({})'.format(key, node, t))
 
+    # Copy labels
     for name, key, label in source.get_names_with_label():
-        print('Name: {:<3} {} -> {}'.format(key, name, label))
+        logger.debug('Name: {:<3} {} -> {}'.format(key, name, label))
         target.add_name(name, key, label)
 
+    # Copy constraints
     for c in source.constraints():
         if not isinstance(c, ConstraintAD): # TODO correct?
             target.add_constraint(c)
-            print('Constraint: {}'.format(c))
+            logger.debug('Constraint: {}'.format(c))
         else:
-            print('Constraint(ignored): {}'.format(c))
+            logger.debug('Constraint(ignored): {}'.format(c))
 
-    # Add compensating clauses
-    # ∧ (z ∨ ¬c1)
-    # ∧ (z ∨ ¬c2)
-    # ∧ (z ∨ ¬c3)
-    # ∧ (z ∨ s)
-    # ∧ (s ∨ ¬c1)
-    # ∧ (s ∨ ¬c2)
-    # ∧ (s ∨ ¬c3)
+    # Add compensating clauses for Tseitin variables
     cur_key = max([key for key,_,_ in target]) # TODO: more efficient way?
     cur_body = 0
     for tseitin, skolem_var, children in extra_clauses:
         cur_key += 1
         skolem = target.add_atom(identifier=cur_key, probability=(1.0,-1.0), name=skolem_var)
-        print('-> Add skolem {}'.format(skolem_var))
-        extra_queries.append(target.add_name(skolem_var, skolem, target.LABEL_QUERY))
+        logger.debug('-> Add skolem {}'.format(skolem_var))
+        target.add_name(skolem_var, skolem, target.LABEL_QUERY)
+        extra_queries.append(skolem_var)
         target.add_constraint(ClauseConstraint([tseitin, skolem]))
         for c in children:
-            extra_queries.append(target.add_name(Term('b_{}'.format(cur_body)), c, target.LABEL_QUERY))
+            term = Term('b_{}'.format(cur_body))
+            target.add_name(term, c, target.LABEL_QUERY)
+            extra_queries.append(term)
             cur_body += 1
             target.add_constraint(ClauseConstraint([tseitin, -c]))
             target.add_constraint(ClauseConstraint([skolem, -c]))
 
-    print('\n----- after multfact -----')
+    logger.debug('\n----- after multfact -----')
     for key,node,t in target:
-        print('{:<2}: {} -- {}'.format(key,node,t))
+        logger.debug('{:<2}: {} -- {}'.format(key,node,t))
     for c in target.constraints():
-        print('constraint: {}'.format(c))
+        logger.debug('constraint: {}'.format(c))
     for q, n in source.queries():
-        print('query: {} {}'.format(q,n))
+        logger.debug('query: {} {}'.format(q,n))
     for q, n, v in source.evidence_all():
-        print('evidence: {} {} {}'.format(q,n,v))
-    print('-----\n')
+        logger.debug('evidence: {} {} {}'.format(q,n,v))
+    logger.debug('-----\n')
 
-    return target
+    return target, extra_queries
 
 class NegativeProbability(SemiringProbability):
     """Represent negative probabilities (probably the same as just weights)."""
@@ -174,20 +177,17 @@ class NegativeProbability(SemiringProbability):
         return a / z
 
     def pos_value(self, a):
-        # print('pos_value({})'.format(a))
         if isinstance(a, tuple):
             return self.value(a[0])
         return self.value(a)
 
     def neg_value(self, a):
-        # print('neg_value({})'.format(a))
         if isinstance(a, tuple):
             return self.value(a[1])
         else:
             return self.negate(self.value(a))
 
     def value(self, a):
-        # print('value({})'.format(a))
         v = float(a)
         return v
 
@@ -196,36 +196,34 @@ def probability(filename, with_fact=True):
     engine = DefaultEngine(label_all=True)#, keep_all=True, keep_duplicates=True)
     db = engine.prepare(pl)
     gp = engine.ground_all(db)
-    print('type gp = '+str(type(gp)))
-
     semiring = NegativeProbability()
 
-    print('-----')
     if with_fact:
-        with Timer('With factorization'):
-            gp2 = multfact(gp)
-            with open('test_f.dot', 'w') as dotfile:
-                print_result((True, gp2.to_dot()), output=dotfile)
-            print(gp2)
+        with Timer('ProbLog with multiplicative factorization'):
+            gp2, extra_queries = multiplicative_factorization(gp)
+            # with open('test_f.dot', 'w') as dotfile:
+                # print_result((True, gp2.to_dot()), output=dotfile)
             # nnf = SDD.createFrom(gp2) # TODO: SDD lib doesn't support negative weights? Runtime error
                                         # TODO: How can I use the Python evaluator with SDDs?
-            nnf = NNF.createFrom(gp2)
-            print('--- start evaluating ---')
-            print(nnf)
-            with open ('test_f_nnf.dot', 'w') as dotfile:
-                print(nnf.to_dot(), file=dotfile)
-            result = nnf.evaluate(semiring=semiring)
+            with Timer('Compilation'):
+                nnf = NNF.createFrom(gp2)
+            # with open ('test_f_nnf.dot', 'w') as dotfile:
+            #     print(nnf.to_dot(), file=dotfile)
+            for query in extra_queries:
+                nnf.del_name(query, nnf.LABEL_QUERY)
+            with Timer('Evalation'):
+                result = nnf.evaluate(semiring=semiring)
     else:
-        with Timer('No factorization'):
-            with open('test_nf.dot', 'w') as dotfile:
-                print_result((True, gp.to_dot()), output=dotfile)
+        with Timer('ProbLog without multiplicative factorization'):
+            # with open('test_nf.dot', 'w') as dotfile:
+            #     print_result((True, gp.to_dot()), output=dotfile)
             # nnf = SDD.createFrom(gp)
-            nnf = NNF.createFrom(gp)
-            with open ('test_nf_nnf.dot', 'w') as dotfile:
-                print(nnf.to_dot(), file=dotfile)
-            result = nnf.evaluate(semiring=semiring)
-
-    print('-----')
+            with Timer('Compilation'):
+                nnf = NNF.createFrom(gp)
+            # with open ('test_nf_nnf.dot', 'w') as dotfile:
+            #     print(nnf.to_dot(), file=dotfile)
+            with Timer('Evaluation'):
+                result = nnf.evaluate(semiring=semiring)
     return result
 
 
@@ -238,6 +236,7 @@ def print_result( d, output, precision=8 ) :
     else :
         print ('Error:', d, file=output)
         return 1
+
 
 if __name__ == '__main__' :
     import argparse

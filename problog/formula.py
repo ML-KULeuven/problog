@@ -158,6 +158,19 @@ class BaseFormula(ProbLogObject):
             label = self.LABEL_NAMED
         self._names[label][name] = key
 
+    def del_name(self, name, label=None):
+        """Delete a name
+
+        :param name: name of the node
+        :param label: type of label (one of LABEL_*)
+        """
+        if label is None:
+            label = self.LABEL_NAMED
+        try:
+            del self._names[label][name]
+        except:
+            pass
+
     def get_node_by_name(self, name):
         """Get node corresponding to the given name.
 
