@@ -541,6 +541,8 @@ class ClauseDB(LogicProgram):
         else:
             if hasattr(parent, 'line_info'):
                 self.line_info = parent.line_info
+            if hasattr(parent, 'source_files'):
+                self.source_files = parent.source_files[:]
             self.__offset = len(parent)
 
     def __len__(self):
@@ -761,10 +763,11 @@ class ClauseDB(LogicProgram):
             clause_body = self._add_head(body_head)
             for choice, head in enumerate(new_heads):
                 # For each head: add choice node
-                if len(new_heads) > 1:
-                    choice_functor = '_problog_%s_cf_%s_%s' % (head.functor, group, choice)
-                else:
-                    choice_functor = '_problog_%s_%s_choice' % (head.functor, group)
+                # if len(new_heads) > 1:
+
+                choice_functor = Term('choice', Constant(group), Constant(choice), head.with_probability())
+                # else:
+                #    choice_functor = '_problog_%s_%s_choice' % (head.functor, group)
                 choice_node = self._add_choice_node(choice, choice_functor, body_args, head.probability, variables.local_variables,
                                                     group, head.location)
                 choice_call = self._append_node(self._call(choice_functor, body_args, choice_node,

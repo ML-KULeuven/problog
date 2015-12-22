@@ -2,7 +2,7 @@
 var problog = {
   //hostname: 'https://adams.cs.kuleuven.be/problog/api/',
   hostname: 'https://adams.cs.kuleuven.be/problog/api/',
-  main_editor_url: 'https://dtai.cs.kuleuven.be/problog/editor_adv.html',
+  main_editor_url: 'https://dtai.cs.kuleuven.be/problog/editor.html',
   editors: [],
   selector: '.problog-editor',
   trackurl: false,
@@ -16,12 +16,12 @@ var problog = {
                     choices: [
                         {name:"-exact"},
                         {name:"SDD"},
-                        {name:"d-DNNF"},
-                        {name:"BDD"},
-                        {name:"-approximate"},
-                        {name:"forward"},
-                        {name:"k-best"},
-                        {name:"sample"}
+                        // {name:"d-DNNF"},
+                        // {name:"BDD"},
+                        // {name:"-approximate"},
+                        // {name:"forward"},
+                        // {name:"k-best"},
+                        // {name:"sample"}
                     ],
                     select: function(pbl) {},
                     deselect: function(pbl) {},
@@ -201,29 +201,29 @@ var problog = {
 
                     }
                 },
-                {
-                    id: 'ground',
-                    name: "Ground",
-                    action: 'Ground',
-                    select: function(pbl){},
-                    deselect: function(pbl){},
-                    collectData: function(pbl) {
-                        var model = pbl.editor.getSession().getValue();
-                        if (model) {
-                            return {
-                                'model': model
-                            };
-                        } else {
-                            return undefined;
-                        }
-                    },
-                    formatResult: function(pbl, data) {
-                        var facts = data.probs
-                        // Create table body
-                        pbl.dom.results.html(data.result);
-
-                    }
-                },
+                // {
+                //     id: 'ground',
+                //     name: "Ground",
+                //     action: 'Ground',
+                //     select: function(pbl){},
+                //     deselect: function(pbl){},
+                //     collectData: function(pbl) {
+                //         var model = pbl.editor.getSession().getValue();
+                //         if (model) {
+                //             return {
+                //                 'model': model
+                //             };
+                //         } else {
+                //             return undefined;
+                //         }
+                //     },
+                //     formatResult: function(pbl, data) {
+                //         var facts = data.probs
+                //         // Create table body
+                //         pbl.dom.results.html(data.result);
+                //
+                //     }
+                // },
                 {
                     id: 'sample',
                     name: "Sampling",
@@ -508,7 +508,11 @@ problog.init_editor = function(index, object) {
     pbl.editor.getSession().setUseWrapMode(true);
     pbl.editor.setShowInvisibles(true);
     pbl.editor.setValue(pbl.initial, -1);
-
+    if (pbl.dom.root.data('autosize')) {
+        pbl.editor.setOptions({
+            maxLines: Infinity
+        });
+    }
 
     // Initialize edit options
     pbl.dom.edit_options = $('<div>').addClass("problog-edit-options").appendTo(pbl.dom.editpane);

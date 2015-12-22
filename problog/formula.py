@@ -128,11 +128,13 @@ class BaseFormula(ProbLogObject):
         if weights is None:
             weights = self.get_weights()
         else:
-            weights = {self.get_node_by_name(n): v for n, v in weights.items()}
+            oweights = dict(self.get_weights().items())
+            oweights.update({self.get_node_by_name(n): v for n, v in weights.items()})
+            weights = oweights
 
         result = {}
         for n, w in weights.items():
-            if w == self.WEIGHT_NEUTRAL:
+            if w == self.WEIGHT_NEUTRAL and type(self.WEIGHT_NEUTRAL) == type(w):
                 result[n] = semiring.one(), semiring.one()
             else:
                 result[n] = semiring.pos_value(w), semiring.neg_value(w)
@@ -1112,8 +1114,9 @@ label_all=True)
             if t == 'disj':
                 overlap = set(n.children) & set(choice_by_parent.keys()) | set(n.children) & set(choices)
                 for o in overlap:
-                    if self._is_valid_name(n.name):
-                        choice_name[choice_by_parent.get(o, o)] = n.name
+                    p = choice_by_parent.get(o, o)
+                    if self._is_valid_name(n.name) and not self._is_valid_name(choice_name.get(p)):
+                        choice_name[p] = n.name
 
         for group, choices in choice_by_group.items():
             # Construct head
@@ -1184,7 +1187,7 @@ label_all=True)
                         yield n.name.with_probability(n.probability)
                 elif t == 'disj':
                     for c in n.children:
-                        if not processed[abs(c)]:
+                        if not processed[abs(c)] or self._is_valid_name(self.get_node(abs(c)).name):
                             b = self.get_body(c, parent_name=n.name)
                             if str(n.name) != str(b):   # TODO bit of a hack?
                                 yield Clause(n.name, b)
@@ -1218,7 +1221,8 @@ label_all=True)
             children = [node.children[0]]
             current = node.children[1]
             current_node = self.get_node(current)
-            while type(current_node).__name__ == 'conj' and len(current_node.children) == 2 and not self._is_valid_name(current_node.name):
+            while type(current_node).__name__ == 'conj' and len(current_node.children) == 2 and \
+                    not self._is_valid_name(current_node.name):
                 children.append(current_node.children[0])
                 current = current_node.children[1]
                 if current > 0:
@@ -1357,9 +1361,6 @@ label_all=True)
                 destination.add_constraint(c)
 
         return destination
-
-
-
 
 
 class LogicDAG(LogicFormula):

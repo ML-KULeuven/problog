@@ -104,8 +104,6 @@ def term2str(term):
             return 'A%s' % (term + 1)
         else:
             return 'X%s' % (-term)
-    elif isinstance(term, And):
-        return '(%s)' % term
     else:
         return str(term)
 
@@ -456,13 +454,15 @@ class Term(object):
         """Checks whether the term represent a negated term."""
         return False
 
-    def variables(self):
+    def variables(self, exclude_local=False):
         """Extract the variables present in the term.
 
         :return: set of variables
         :rtype: :class:`problog.util.OrderedSet`
         """
-        if self._cache_variables is None:
+        if exclude_local and self.__functor == 'findall' and self.__arity == 3:
+            return self.args[2].variables()
+        elif self._cache_variables is None:
             variables = OrderedSet()
             queue = deque([self])
             while queue:
@@ -873,7 +873,7 @@ _arithmetic_functions = {
     ("epsilon", 0): lambda: sys.float_info.epsilon,
     ("inf", 0): lambda: float('inf'),
     ("nan", 0): lambda: float('nan'),
-    ("sign", 1): lambda x: x if x >= 0 else -x
+    ("sign", 1): lambda x: 1 if x > 0 else -1 if x < 0 else 0
 
 }
 

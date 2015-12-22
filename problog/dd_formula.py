@@ -446,13 +446,23 @@ class DDEvaluator(Evaluator):
     def set_evidence(self, index, value):
         pos = self.semiring.one()
         neg = self.semiring.zero()
+
+        current_weight = self.weights.get(index)
         if value:
+            if current_weight and self.semiring.is_zero(current_weight[0]):
+                raise InconsistentEvidenceError(self._deref_node(index))
             self.set_weight(index, pos, neg)
         else:
+            if current_weight and self.semiring.is_one(current_weight[0]):
+                raise InconsistentEvidenceError(self._deref_node(index))
             self.set_weight(index, neg, pos)
 
     def set_weight(self, index, pos, neg):
         self.weights[index] = (pos, neg)
+
+    def _deref_node(self, index):
+        term = self.formula.get_node(self.formula.var2atom[index]).name
+        return term
 
     def __del__(self):
         if self.evidence_inode is not None:

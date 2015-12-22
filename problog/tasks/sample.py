@@ -54,6 +54,7 @@ import random
 import math
 import signal
 import time
+import traceback
 
 
 try:
@@ -61,12 +62,14 @@ try:
     import numpy.random
 
     def sample_poisson(l):
+        l = list(l)
         return numpy.random.poisson(l)[0]
 
 except ImportError:
     numpy = None
 
     def sample_poisson(l):
+        l = list(l)[0]
         # http://www.johndcook.com/blog/2010/06/14/generating-poisson-random-values/
         if l >= 30:
             c = 0.767 - 3.36 / l
@@ -549,6 +552,8 @@ def main(args, result_handler=None):
             result_handler((True, sample(pl, format=outformat, **vars(args))),
                            output=outf, oneline=args.oneline)
     except Exception as err:
+        trace = traceback.format_exc()
+        err.trace = trace
         result_handler((False, err), output=outf)
 
     if args.timeout:

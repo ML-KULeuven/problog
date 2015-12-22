@@ -21,7 +21,7 @@ See the file INSTALL for detailed installation instructions.
 
 See documentation_.
 
-.. _documentation: http://problog.readthedocs.org/
+.. _documentation: http://problog.readthedocs.org/en/latest/cli.html
 
 4. License
 ----------

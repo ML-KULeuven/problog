@@ -204,6 +204,52 @@ Grounding (``ground``)
 ----------------------
 
 
+Interactive shell (``shell``)
+-----------------------------
+
+ProbLog also has an interactive shell, similar to Prolog.
+You can start it using the keyword ``shell`` as first command line argument.
+
+The shell allows you to load models and query them interactively.
+
+To load a file:
+
+.. code-block:: prolog
+
+    ?- consult('test/3_tossing_coin.pl').
+
+Queries can be specified as in Prolog:
+
+.. code-block:: prolog
+
+    ?- heads(X).
+    X = c4,
+    p: 0.6;
+    ---------------
+    X = c3,
+    p: 0.6;
+    ---------------
+    X = c2,
+    p: 0.6;
+    ---------------
+    X = c1,
+    p: 0.6;
+    ---------------
+
+.. code-block:: prolog
+
+    ?- someHeads.
+    p: 0.9744;
+    ---------------
+
+Evidence can be specified using a pipe (``|``):
+
+.. code-block:: prolog
+
+    ?- someHeads | not heads(c1).
+
+Type ``help.`` for more information.
+
 
 Installation (``install``)
 --------------------------

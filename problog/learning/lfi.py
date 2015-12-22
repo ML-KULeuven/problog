@@ -563,7 +563,7 @@ def print_result_json(d, output, precision=8):
                    }
         print (json.dumps(results), file=output)
     else:
-        results = {'SUCCESS': False, 'err': d}
+        results = {'SUCCESS': False, 'err': vars(d)}
         print (json.dumps(results), file=output)
     return 0
 

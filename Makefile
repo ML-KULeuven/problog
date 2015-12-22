@@ -58,6 +58,8 @@ update_server: update_server_js
 	@echo "======================================================================"
 
 deploy: test2 test3
+	git checkout master
+	git push
 	git push public master
 	rm -f dist/*
 	python setup.py sdist
