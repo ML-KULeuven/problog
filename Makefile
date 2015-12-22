@@ -49,7 +49,7 @@ update_server_js:
 	rsync -avzr --chmod=u=rwx,g=rx,o=rx ./problog/web/editor.html ssh.cs.kuleuven.be:/cw/vwww1/dtai_static/public_html/problog/
 	@echo "======================================================================"
 
-update_server: update_server_js
+update_server: 
 	@echo "Updating server"
 	@echo "==============="
 	git archive master --format tar | tar -t | rsync -avz --no-dirs --rsh='ssh ssh.cs.kuleuven.be ssh -p 2222' --chmod=u=rwx,g=rx,o=rx --files-from=- ./ problog@adams.cs.kuleuven.be:/home/problog/problog2.1
