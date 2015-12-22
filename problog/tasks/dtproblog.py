@@ -57,7 +57,7 @@ def main(argv, result_handler=None):
         with Timer('Total', logger='dtproblog'):
             with Timer('Parse input', logger='dtproblog'):
                 pl = PrologFile(inputfile)  # factory=factory
-                eng = DefaultEngine()
+                eng = DefaultEngine(label_all=True)
                 db = eng.prepare(pl)
 
                 # print (db)
