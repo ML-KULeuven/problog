@@ -57,7 +57,7 @@ def main(argv, result_handler=None):
         with Timer('Total', logger='dtproblog'):
             with Timer('Parse input', logger='dtproblog'):
                 pl = PrologFile(inputfile)  # factory=factory
-                eng = DefaultEngine(label_all=True)
+                eng = DefaultEngine()
                 db = eng.prepare(pl)
 
                 # print (db)
@@ -88,6 +88,8 @@ def main(argv, result_handler=None):
                     if set(c.get_nodes()) & decision_nodes:
                         constraints.append(c)
 
+                # print (gp)
+
             with Timer('Compile', logger='dtproblog'):
                 knowledge = get_evaluatable(args.koption).create_from(gp)
 
@@ -100,9 +102,16 @@ def main(argv, result_handler=None):
         choices, score, stats = result
         logging.getLogger('dtproblog').info('Number of strategies evaluated: %s' % stats.get('eval'))
 
-        result_handler((True, (choices, score, stats)), outf)
+        renamed_choices = {}
+        for k, v in choices.items():
+            if k.functor == 'choice':
+                k = k.args[2]
+            renamed_choices[k] = v
+
+        result_handler((True, (renamed_choices, score, stats)), outf)
     except Exception as err:
         err.trace = traceback.format_exc()
+        print (err.trace)
         result_handler((False, err), outf)
 
     if args.output is not None:
@@ -113,7 +122,6 @@ def evaluate(formula, decisions, utilities):
     result = formula.evaluate(weights=decisions)
 
     score = 0.0
-    # print (decisions, result, sum([result[r] * float(utilities[r]) for r in result]))
     for r in result:
         score += result[r] * float(utilities[r])
     return score

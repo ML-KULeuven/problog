@@ -181,8 +181,13 @@ class ConstraintAD(Constraint):
         :param values: dictionary of values for nodes
         :return: True if constraint succeeds, False otherwise
         """
-        actual = [values.get(i) for i in self.nodes if values.get(i) is not None]
-        return sum(actual) == 1
+        if self.is_true():
+            return True
+        elif self.is_false():
+            return False
+        else:
+            actual = [values.get(i) for i in self.nodes if values.get(i) is not None]
+            return sum(actual) == 1
 
 
 class ClauseConstraint(Constraint):
