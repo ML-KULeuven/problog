@@ -110,11 +110,8 @@ class SimpleNNFEvaluator(Evaluator):
         elif node is None:
             result = self.semiring.zero()
         else:
-            z =self._get_z()
             p = self._get_weight(abs(node))
             n = self._get_weight(-abs(node))
-            # TODO: Why does it work without z normalization?
-            print('p = {}, n = {}, z = {}'.format(p, n, z))
             self._set_value(abs(node), (node > 0))
             result = self._get_weight(len(self.formula))
             self._reset_value(abs(node), p, n)
@@ -134,7 +131,6 @@ class SimpleNNFEvaluator(Evaluator):
             w = self.weights.get(index)
             if w is None:
                 w = self._calculate_weight(index)
-                # print('Computed weight: {} = {}'.format(index,w))
                 return w
             else:
                 return w
@@ -182,7 +178,6 @@ class SimpleNNFEvaluator(Evaluator):
         ntype = type(node).__name__
 
         if ntype == 'atom':
-            # TODO: why is this one for atom (an atom contains prob, no?)
             return self.semiring.one()
         else:
             assert key > 0

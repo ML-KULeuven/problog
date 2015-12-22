@@ -54,6 +54,7 @@ def multfact(source):
     tseitin_vars = []
     skolem_vars = []
     extra_clauses = []
+    extra_queries = []
 
     for key,node,t in source:
         print('Rule: {:<3}: {} -- {}'.format(key,node,t))
@@ -68,7 +69,7 @@ def multfact(source):
                 print('-> {}: replace disj with tseitin {}'.format(key, tseitin_vars[-1]))
                 skolem_vars.append(Term('s_{}'.format(len(skolem_vars))))
                 tseitin = target.add_atom(identifier=key, probability=(1.0,1.0), name=tseitin_vars[-1])
-                target.add_name(tseitin_vars[-1], tseitin, target.LABEL_QUERY)
+                extra_queries.append(target.add_name(tseitin_vars[-1], tseitin, target.LABEL_QUERY))
                 # print('Added nodes: {} {} -- {} {}'.format(tseitin_vars[-1], tseitin, skolem_vars[-1], skolem))
                 # print('Child nodes: {}'.format(node.children))
                 extra_clauses += [(tseitin, skolem_vars[-1], node.children)]
@@ -94,14 +95,6 @@ def multfact(source):
         else:
             print('Constraint(ignored): {}'.format(c))
 
-    # for q, n in source.queries():
-    #     print('query: {} {}'.format(q,n))
-    #     target.add_name(q, n, target.LABEL_QUERY)
-    #
-    # for q, n, v in source.evidence_all():
-    #     print('evidence: {} {} {}'.format(q,n,v))
-    #     target.add_name(q, n, v)
-
     # Add compensating clauses
     # ∧ (z ∨ ¬c1)
     # ∧ (z ∨ ¬c2)
@@ -111,16 +104,15 @@ def multfact(source):
     # ∧ (s ∨ ¬c2)
     # ∧ (s ∨ ¬c3)
     cur_key = max([key for key,_,_ in target]) # TODO: more efficient way?
-    # print('current key: {}'.format(cur_key))
     cur_body = 0
     for tseitin, skolem_var, children in extra_clauses:
         cur_key += 1
         skolem = target.add_atom(identifier=cur_key, probability=(1.0,-1.0), name=skolem_var)
         print('-> Add skolem {}'.format(skolem_var))
-        target.add_name(skolem_var, skolem, target.LABEL_QUERY)
+        extra_queries.append(target.add_name(skolem_var, skolem, target.LABEL_QUERY))
         target.add_constraint(ClauseConstraint([tseitin, skolem]))
         for c in children:
-            target.add_name(Term('b_{}'.format(cur_body)), c, target.LABEL_QUERY)
+            extra_queries.append(target.add_name(Term('b_{}'.format(cur_body)), c, target.LABEL_QUERY))
             cur_body += 1
             target.add_constraint(ClauseConstraint([tseitin, -c]))
             target.add_constraint(ClauseConstraint([skolem, -c]))
@@ -222,9 +214,7 @@ def probability(filename, with_fact=True):
             print(nnf)
             with open ('test_f_nnf.dot', 'w') as dotfile:
                 print(nnf.to_dot(), file=dotfile)
-            # TODO: propage should not try to simplify based on probs in this case
             result = nnf.evaluate(semiring=semiring)
-            # TODO: problog evaluates graph to query? for skolemization we need P(x) = WMC(x=T)/WMC
     else:
         with Timer('No factorization'):
             with open('test_nf.dot', 'w') as dotfile:
