@@ -26,7 +26,7 @@ from __future__ import print_function
 import sys
 import random
 
-from .logic import Term, ArithmeticError, is_ground
+from .logic import Term, ArithmeticError, is_ground, list2term
 from .engine import UnifyError, instantiate, UnknownClause, UnknownClauseInternal, is_variable
 from .engine import NonGroundProbabilisticClause
 from .errors import GroundingError
@@ -713,8 +713,11 @@ class StackBasedEngine(ClauseDBEngine):
         probability = instantiate(node.probability, result)
         # Create a new atom in ground program.
 
-        if self.label_all:
-            name = Term(node.functor, *result)
+        if True or self.label_all:
+            if isinstance(node.functor, Term):
+                name = node.functor.with_args(*(node.functor.apply(result).args + (Term('vars', *result),)))
+            else:
+                name = Term(node.functor, *result)
         else:
             name = None
 
