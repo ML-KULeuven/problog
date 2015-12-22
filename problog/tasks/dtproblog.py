@@ -64,9 +64,6 @@ def main(argv, result_handler=None):
 
             with Timer('Ground', logger='dtproblog'):
                 # decisions = dict((d[0], None) for d in eng.query(db, Term('decision', None)))
-                # if args.web:
-                #     for d in decisions:
-                #         d.loc = db.lineno(d.location)
                 utilities = dict(eng.query(db, Term('utility', None, None)))
 
                 # logging.getLogger('dtproblog').debug('Decisions: %s' % decisions)
@@ -105,7 +102,12 @@ def main(argv, result_handler=None):
         renamed_choices = {}
         for k, v in choices.items():
             if k.functor == 'choice':
+                if args.web:
+                    k.args[2].loc = db.lineno(k.args[2].location)
                 k = k.args[2]
+            else:
+                if args.web:
+                    k.loc = db.lineno(k.location)
             renamed_choices[k] = v
 
         result_handler((True, (renamed_choices, score, stats)), outf)
@@ -247,12 +249,20 @@ def print_result_json(d, output):
     if success:
         choices, score, stats = d
         result['SUCCESS'] = True
-        result['choices'] = [[str(n), int(p), n.loc[1], n.loc[2]] for n, p in choices.items()]
+
+        resout = []
+        for n, p in choices.items():
+            if hasattr(n, 'loc') and n.loc is not None:
+                resout.append([str(n), int(p), n.loc[1], n.loc[2]])
+            else:
+                resout.append([str(n), int(p), None, None])
+        result['choices'] = resout
         result['score'] = score
         result['stats'] = stats
     else:
         result['SUCCESS'] = False
         result['err'] = vars(d)
+        result['err']['message'] = process_error(result)
     print (json.dumps(result), file=output)
     return 0
 
