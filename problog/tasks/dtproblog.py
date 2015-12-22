@@ -27,6 +27,7 @@ import traceback
 from ..program import PrologFile
 from ..engine import DefaultEngine
 from ..logic import Term, Constant
+from ..formula import LogicFormula
 from ..errors import process_error
 from .. import get_evaluatables, get_evaluatable
 from ..util import init_logger, Timer, format_dictionary
@@ -52,35 +53,49 @@ def main(argv, result_handler=None):
 
     try:
 
+        # factory = DTProbLogFactory()
         with Timer('Total', logger='dtproblog'):
             with Timer('Parse input', logger='dtproblog'):
-                pl = PrologFile(inputfile, factory=DTProbLogFactory())
-                eng = DefaultEngine()
+                pl = PrologFile(inputfile)  # factory=factory
+                eng = DefaultEngine(label_all=True)
                 db = eng.prepare(pl)
 
+                # print (db)
+
             with Timer('Ground', logger='dtproblog'):
-                decisions = dict((d[0], None) for d in eng.query(db, Term('decision', None)))
-                if args.web:
-                    for d in decisions:
-                        d.loc = db.lineno(d.location)
+                # decisions = dict((d[0], None) for d in eng.query(db, Term('decision', None)))
+                # if args.web:
+                #     for d in decisions:
+                #         d.loc = db.lineno(d.location)
                 utilities = dict(eng.query(db, Term('utility', None, None)))
 
-                logging.getLogger('dtproblog').debug('Decisions: %s' % decisions)
+                # logging.getLogger('dtproblog').debug('Decisions: %s' % decisions)
                 logging.getLogger('dtproblog').debug('Utilities: %s' % utilities)
 
-                for d in decisions:
-                    db += d.with_probability(Constant(0.5))
+                # for d in decisions:
+                #     db += d.with_probability(Constant(0.5))
 
-                gp = eng.ground_all(db, target=None, queries=utilities.keys(), evidence=decisions.items())
+                gp = eng.ground_all(db, target=None, queries=utilities.keys())
+                decisions = []
+                decision_nodes = set()
+                for i, n, t in gp:
+                    if t == 'atom' and n.probability == Term('?'):
+                        decisions.append((i, n.name))
+                        decision_nodes.add(i)
+
+                constraints = []
+                for c in gp.constraints():
+                    if set(c.get_nodes()) & decision_nodes:
+                        constraints.append(c)
 
             with Timer('Compile', logger='dtproblog'):
                 knowledge = get_evaluatable(args.koption).create_from(gp)
 
             with Timer('Optimize', logger='dtproblog'):
                 if args.search == 'local':
-                    result = search_local(knowledge, decisions, utilities, **vars(args))
+                    result = search_local(knowledge, decisions, utilities, constraints, **vars(args))
                 else:
-                    result = search_exhaustive(knowledge, decisions, utilities, **vars(args))
+                    result = search_exhaustive(knowledge, decisions, utilities, constraints, **vars(args))
 
         choices, score, stats = result
         logging.getLogger('dtproblog').info('Number of strategies evaluated: %s' % stats.get('eval'))
@@ -95,23 +110,36 @@ def main(argv, result_handler=None):
 
 
 def evaluate(formula, decisions, utilities):
-    result = formula.evaluate(evidence=decisions)
+    result = formula.evaluate(weights=decisions)
 
     score = 0.0
+    # print (decisions, result, sum([result[r] * float(utilities[r]) for r in result]))
     for r in result:
         score += result[r] * float(utilities[r])
     return score
 
 
-def search_exhaustive(formula, decisions, utilities, verbose=0, **kwargs):
+def search_exhaustive(formula, decisions, utilities, constraints, verbose=0, **kwargs):
     stats = {'eval': 0}
     best_score = None
     best_choice = None
-    decision_names = decisions.keys()
+
+    decision_ids, decision_names = zip(*decisions)
+
+    # decision_names = decisions.keys()
     for i in range(0, 1 << len(decisions)):
         choices = num2bits(i, len(decisions))
 
-        evidence = dict(zip(decision_names, choices))
+        evidence = dict(zip(decision_names, map(int, choices)))
+
+        constraints_ok = True
+        for c in constraints:
+            if not c.check(dict(zip(decision_ids, map(int, choices)))):
+                constraints_ok = False
+                break
+        if not constraints_ok:
+            continue
+
         score = evaluate(formula, evidence, utilities)
         stats['eval'] += 1
         if best_score is None or score > best_score:
@@ -121,7 +149,7 @@ def search_exhaustive(formula, decisions, utilities, verbose=0, **kwargs):
     return best_choice, best_score, stats
 
 
-def search_local(formula, decisions, utilities, verbose=0, **kwargs):
+def search_local(formula, decisions, utilities, constraints, verbose=0, **kwargs):
     """Performs local search.
 
     :param formula:
@@ -221,13 +249,13 @@ def print_result_json(d, output):
     return 0
 
 
-class DTProbLogFactory(ExtendedPrologFactory):
-
-    def build_probabilistic(self, operand1, operand2, location=None, **extra):
-        if str(operand1.functor) in 'd?':
-            return Term('decision', operand2, location=location)
-        else:
-            return ExtendedPrologFactory.build_probabilistic(self, operand1, operand2, location, **extra)
+# class DTProbLogFactory(ExtendedPrologFactory):
+#
+#     def build_probabilistic(self, operand1, operand2, location=None, **extra):
+#         if str(operand1.functor) in 'd?':
+#             return Term('decision', operand2, location=location)
+#         else:
+#             return ExtendedPrologFactory.build_probabilistic(self, operand1, operand2, location, **extra)
 
 
 def argparser():

@@ -128,11 +128,13 @@ class BaseFormula(ProbLogObject):
         if weights is None:
             weights = self.get_weights()
         else:
-            weights = {self.get_node_by_name(n): v for n, v in weights.items()}
+            oweights = dict(self.get_weights().items())
+            oweights.update({self.get_node_by_name(n): v for n, v in weights.items()})
+            weights = oweights
 
         result = {}
         for n, w in weights.items():
-            if w == self.WEIGHT_NEUTRAL:
+            if w == self.WEIGHT_NEUTRAL and type(self.WEIGHT_NEUTRAL) == type(w):
                 result[n] = semiring.one(), semiring.one()
             else:
                 result[n] = semiring.pos_value(w), semiring.neg_value(w)
