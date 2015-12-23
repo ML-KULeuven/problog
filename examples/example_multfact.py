@@ -245,9 +245,19 @@ if __name__ == '__main__' :
     parser.add_argument('filename')
     parser.add_argument('--verbose', '-v', action='count', help='Verbose output')
     parser.add_argument('--nomf', action='store_true', help='Disable multiplicative factorization')
+    parser.add_argument('--profile', action='store_true', help='Profile Python script')
     args = parser.parse_args()
 
     init_logger(args.verbose)
 
-    result = probability( args.filename, not args.nomf)
-    print_result((True,result), sys.stdout)
+    if args.profile:
+        import cProfile, pstats
+        cProfile.run('probability( args.filename, not args.nomf)', 'prstats')
+        p = pstats.Stats('prstats')
+        p.strip_dirs()
+        # p.sort_stats('cumulative')
+        p.sort_stats('time')
+        p.print_stats()
+    else:
+        result = probability( args.filename, not args.nomf)
+        print_result((True,result), sys.stdout)
