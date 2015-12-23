@@ -77,8 +77,9 @@ def multiplicative_factorization(source, as_constraints=True):
                 logger.debug('-> {}: replace disj with tseitin {}'.format(key, tseitin_vars[-1]))
                 skolem_vars.append(Term('s_{}'.format(len(skolem_vars))))
                 tseitin = target.add_atom(identifier=key, probability=(1.0,1.0), name=tseitin_vars[-1])
-                target.add_name(tseitin_vars[-1], tseitin, target.LABEL_QUERY)
-                extra_queries.append(tseitin_vars[-1])
+                if not as_constraints:
+                    target.add_name(tseitin_vars[-1], tseitin, target.LABEL_QUERY)
+                    extra_queries.append(tseitin_vars[-1])
                 extra_clauses += [(tseitin, skolem_vars[-1], node.children)]
             else:
                 target.add_or(components=node.children, key=key, name=node.name)
