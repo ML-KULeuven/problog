@@ -47,10 +47,10 @@ from problog.sdd_formula import SDD
 from problog.nnf_formula import NNF
 from problog.util import Timer, start_timer, stop_timer, init_logger, format_dictionary
 from problog.constraint import ClauseConstraint, ConstraintAD
-from problog.evaluator import SemiringProbability, OperationNotSupported
+from problog.evaluator import SemiringProbability, FormulaEvaluator, OperationNotSupported
 
 
-def multiplicative_factorization(source):
+def multiplicative_factorization(source, as_constraints=True):
     """
     Copy the source LogicFormula and replace large disjunctions with Skolemization variables
     to obtain a formula that is similar to the result of multiplicative factorization.
@@ -63,6 +63,8 @@ def multiplicative_factorization(source):
     skolem_vars = []
     extra_clauses = []
     extra_queries = []
+
+    logger.debug('Use constraints: {}'.format(as_constraints))
 
     # Copy formulas and replace large disjunctions with a Tseitin variable z_i
     for key,node,t in source:
@@ -103,24 +105,35 @@ def multiplicative_factorization(source):
             logger.debug('Constraint(ignored): {}'.format(c))
 
     # Add compensating clauses for Tseitin variables
-    cur_key = max([key for key,_,_ in target]) # TODO: more efficient way?
     cur_body = 0
+    all_top = [len(target)]
     for tseitin, skolem_var, children in extra_clauses:
-        cur_key += 1
-        skolem = target.add_atom(identifier=cur_key, probability=(1.0,-1.0), name=skolem_var)
+        skolem = target.add_atom(identifier=len(target)+1, probability=(1.0,-1.0), name=skolem_var)
         logger.debug('-> Add skolem {}'.format(skolem_var))
-        target.add_name(skolem_var, skolem, target.LABEL_QUERY)
-        extra_queries.append(skolem_var)
-        target.add_constraint(ClauseConstraint([tseitin, skolem]))
+        if as_constraints:
+            target.add_name(skolem_var, skolem, target.LABEL_QUERY)
+            extra_queries.append(skolem_var)
+            target.add_constraint(ClauseConstraint([tseitin, skolem]))
+        else:
+            all_top.append(target.add_or([tseitin, skolem]))
         for c in children:
-            term = Term('b_{}'.format(cur_body))
-            target.add_name(term, c, target.LABEL_QUERY)
-            extra_queries.append(term)
-            cur_body += 1
-            target.add_constraint(ClauseConstraint([tseitin, -c]))
-            target.add_constraint(ClauseConstraint([skolem, -c]))
+            if as_constraints:
+                term = Term('b_{}'.format(cur_body))
+                target.add_name(term, c, target.LABEL_QUERY)
+                extra_queries.append(term)
+                cur_body += 1
+                target.add_constraint(ClauseConstraint([tseitin, -c]))
+                target.add_constraint(ClauseConstraint([skolem,  -c]))
+            else:
+                all_top.append(target.add_or([tseitin, -c]))
+                all_top.append(target.add_or([skolem,  -c]))
+    if not as_constraints:
+        top_key = target.add_and(all_top)
+        term = Term('top_')
+        target.add_name(term, top_key, target.LABEL_QUERY)
+        # extra_queries.append(term)
 
-    logger.debug('\n----- after multfact -----')
+    logger.debug('----- after multfact -----')
     for key,node,t in target:
         logger.debug('{:<2}: {} -- {}'.format(key,node,t))
     for c in target.constraints():
@@ -172,8 +185,11 @@ class NegativeProbability(SemiringProbability):
         return 1.0 - a
 
     def normalize(self, a, z):
+        print('normailze {} {}'.format(a,z))
         if isinstance(a, tuple) or isinstance(z, tuple):
             raise OperationNotSupported()
+        if -0.0001 < a < 0.0001:
+            return a
         return a / z
 
     def pos_value(self, a, key=None):
@@ -191,7 +207,7 @@ class NegativeProbability(SemiringProbability):
         v = float(a)
         return v
 
-def probability(filename, with_fact=True):
+def probability(filename, with_fact=True, knowledge='nnf', constraints=True):
     pl = PrologFile(filename)
     engine = DefaultEngine(label_all=True)#, keep_all=True, keep_duplicates=True)
     db = engine.prepare(pl)
@@ -200,15 +216,23 @@ def probability(filename, with_fact=True):
 
     if with_fact:
         with Timer('ProbLog with multiplicative factorization'):
-            gp2, extra_queries = multiplicative_factorization(gp)
-            # with open('test_f.dot', 'w') as dotfile:
-                # print_result((True, gp2.to_dot()), output=dotfile)
-            # nnf = SDD.createFrom(gp2) # TODO: SDD lib doesn't support negative weights? Runtime error
-                                        # TODO: How can I use the Python evaluator with SDDs?
-            with Timer('Compilation'):
-                nnf = NNF.createFrom(gp2)
-            # with open ('test_f_nnf.dot', 'w') as dotfile:
-            #     print(nnf.to_dot(), file=dotfile)
+            gp2, extra_queries = multiplicative_factorization(gp, constraints)
+            with open('test_f.dot', 'w') as dotfile:
+                print_result((True, gp2.to_dot()), output=dotfile)
+            with Timer('Compilation with {}'.format(knowledge)):
+                if knowledge == 'sdd':
+                    nnf = SDD.create_from(gp2)
+                    ev = nnf.to_formula()
+                    print(ev)
+                    fe = FormulaEvaluator(ev, semiring)
+                    weights = ev.extract_weights(semiring=semiring)
+                    fe.set_weights(weights)
+                    # TODO: SDD lib doesn't support negative weights? Runtime error
+                    # TODO: How can I use the Python evaluator with SDDs?
+                else:
+                    nnf = NNF.createFrom(gp2)
+            with open ('test_f_nnf.dot', 'w') as dotfile:
+                print(nnf.to_dot(), file=dotfile)
             for query in extra_queries:
                 nnf.del_name(query, nnf.LABEL_QUERY)
             with Timer('Evalation'):
@@ -217,9 +241,11 @@ def probability(filename, with_fact=True):
         with Timer('ProbLog without multiplicative factorization'):
             # with open('test_nf.dot', 'w') as dotfile:
             #     print_result((True, gp.to_dot()), output=dotfile)
-            # nnf = SDD.createFrom(gp)
-            with Timer('Compilation'):
-                nnf = NNF.createFrom(gp)
+            with Timer('Compilation with {}'.format(knowledge)):
+                if knowledge == 'sdd':
+                    nnf = SDD.createFrom(gp)
+                else:
+                    nnf = NNF.createFrom(gp)
             # with open ('test_nf_nnf.dot', 'w') as dotfile:
             #     print(nnf.to_dot(), file=dotfile)
             with Timer('Evaluation'):
@@ -246,18 +272,20 @@ if __name__ == '__main__' :
     parser.add_argument('--verbose', '-v', action='count', help='Verbose output')
     parser.add_argument('--nomf', action='store_true', help='Disable multiplicative factorization')
     parser.add_argument('--profile', action='store_true', help='Profile Python script')
+    parser.add_argument('--knowledge', '-k', help='Knowledge compilation (sdd, nnf)')
+    parser.add_argument('--noconstraints', dest='constraints', action='store_false', help='Do not use constraints')
     args = parser.parse_args()
 
     init_logger(args.verbose)
 
     if args.profile:
         import cProfile, pstats
-        cProfile.run('probability( args.filename, not args.nomf)', 'prstats')
+        cProfile.run('probability( args.filename, not args.nomf, args.knowledge)', 'prstats')
         p = pstats.Stats('prstats')
         p.strip_dirs()
         # p.sort_stats('cumulative')
         p.sort_stats('time')
         p.print_stats()
     else:
-        result = probability( args.filename, not args.nomf)
+        result = probability( args.filename, not args.nomf, args.knowledge, args.constraints)
         print_result((True,result), sys.stdout)
