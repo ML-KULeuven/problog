@@ -106,9 +106,9 @@ class BaseFormula(ProbLogObject):
         elif self.is_true(key):
             return semiring.one()
         elif key < 0:
-            return semiring.neg_value(self._weights[-key])
+            return semiring.neg_value(self._weights[-key], key)
         else:
-            return semiring.pos_value(self._weights[key])
+            return semiring.pos_value(self._weights[key], key)
 
     def extract_weights(self, semiring, weights=None):
         """Extracts the positive and negative weights for all atoms in the data structure.
@@ -137,7 +137,7 @@ class BaseFormula(ProbLogObject):
             if w == self.WEIGHT_NEUTRAL and type(self.WEIGHT_NEUTRAL) == type(w):
                 result[n] = semiring.one(), semiring.one()
             else:
-                result[n] = semiring.pos_value(w), semiring.neg_value(w)
+                result[n] = semiring.pos_value(w, n), semiring.neg_value(w, n)
 
         for c in self.constraints():
             c.update_weights(result, semiring)

@@ -79,7 +79,7 @@ class SimpleNNFEvaluator(Evaluator):
             for ev in self.evidence():
                 self.set_evidence(abs(ev), ev > 0)
 
-        if self.semiring.inconsistent_evidence_is_zero and self.semiring.result(self._get_z()) == 0.0:
+        if self.semiring.inconsistent_evidence_is_zero and self.semiring.result(self._get_z(), self.formula) == 0.0:
             raise InconsistentEvidenceError()
 
     def propagate(self):
@@ -90,7 +90,7 @@ class SimpleNNFEvaluator(Evaluator):
         return result
 
     def evaluate_evidence(self, recompute=False):
-        return self.semiring.result(self._evaluate_evidence(recompute=recompute))
+        return self.semiring.result(self._evaluate_evidence(recompute=recompute), self.formula)
 
     # noinspection PyUnusedLocal
     def _evaluate_evidence(self, recompute=False):
@@ -117,7 +117,7 @@ class SimpleNNFEvaluator(Evaluator):
             self._reset_value(abs(node), p, n)
             if self.has_evidence():
                 result = self.semiring.normalize(result, self._get_z())
-        return self.semiring.result(result)
+        return self.semiring.result(result, self.formula)
 
     def _reset_value(self, index, pos, neg):
         self.set_weight(index, pos, neg)

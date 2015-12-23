@@ -176,12 +176,12 @@ class NegativeProbability(SemiringProbability):
             raise OperationNotSupported()
         return a / z
 
-    def pos_value(self, a):
+    def pos_value(self, a, key=None):
         if isinstance(a, tuple):
             return self.value(a[0])
         return self.value(a)
 
-    def neg_value(self, a):
+    def neg_value(self, a, key=None):
         if isinstance(a, tuple):
             return self.value(a[1])
         else:
