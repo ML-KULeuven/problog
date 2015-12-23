@@ -406,7 +406,7 @@ class DDEvaluator(Evaluator):
         return self._evidence_weight
 
     def evaluate_evidence(self, recompute=False):
-        return self.semiring.result(self._evaluate_evidence(recompute=recompute))
+        return self.semiring.result(self._evaluate_evidence(recompute=recompute), self.formula)
 
     def evaluate(self, node):
         # Trivial case: node is deterministically True or False
@@ -428,7 +428,7 @@ class DDEvaluator(Evaluator):
             # TODO only normalize when there are evidence or constraints.
             result = self.semiring.normalize(result, self.normalization)
             result = self.semiring.normalize(result, self._evidence_weight)
-        return self.semiring.result(result)
+        return self.semiring.result(result, self.formula)
 
     def evaluate_fact(self, node):
         if node == self.formula.TRUE:
@@ -440,7 +440,7 @@ class DDEvaluator(Evaluator):
 
         result = self.semiring.result(
             self._get_manager().wmc_literal(
-                inode, self.weights, self.semiring, self.formula.atom2var[node]))
+                inode, self.weights, self.semiring, self.formula.atom2var[node]), self.formula)
         return result
 
     def set_evidence(self, index, value):
