@@ -838,7 +838,8 @@ def _builtin_length(l, n, **k):
         if remain < 0:
             raise UnifyError()
         else:
-            extra = [None] * remain
+            min_var = k.get('engine')._context_min_var(k.get('context'))
+            extra = list(range(min_var, min_var - remain, -1))  # [None] * remain
         new_l = build_list(elements + extra, Term('[]'))
         return [(new_l, n)]
 
@@ -1077,7 +1078,7 @@ def _select_sublist(lst, target):
 
 
 def _builtin_findall_base(pattern, goal, result, top_only=False, database=None, target=None,
-                          engine=None, **kwdargs):
+                          engine=None, context=None, **kwdargs):
     """
     Implementation of findall/3 builtin.
    :param pattern: pattern to extract
@@ -1346,7 +1347,7 @@ def load_external_module(database, filename):
         imp.load_module('externals', extfile, filename, ('.py', 'U', 1))
 
 
-def _builtin_call(term, args=(), engine=None, callback=None, transform=None, **kwdargs):
+def _builtin_call(term, args=(), engine=None, callback=None, transform=None, context=None, **kwdargs):
     check_mode((term,), ['c'], functor='call')
     # Find the define node for the given query term.
     term_call = term.with_args(*(term.args + args))
