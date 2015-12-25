@@ -19,33 +19,9 @@ limitations under the License.
 
 from __future__ import print_function
 
-import os
 import sys
 
-
-def main(argv):
-    """Main function.
-    :param argv: command line arguments
-    """
-
-    from problog.tasks import run_task
-
-    if len(argv) > 0:
-        if argv[0] == 'install':
-            from problog import setup
-            setup.install()
-            return
-        elif argv[0] == 'info':
-            from problog.core import list_transformations
-            list_transformations()
-            return
-        elif argv[0] == 'unittest':
-            import unittest
-            test_results = unittest.TextTestResult(sys.stderr, False, 1)
-            unittest.TestLoader().discover(os.path.dirname(__file__)).run(test_results)
-            return
-        else:
-            return run_task(argv)
+from problog.tasks import main
 
 if __name__ == '__main__':
     main(sys.argv[1:])

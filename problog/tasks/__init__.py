@@ -38,7 +38,7 @@ problog_default_task = 'prob'
 from problog.util import load_module
 
 
-def run_task(argv, result_handler=None):
+def run_task(argv):
     """Execute a task in ProbLog.
     If the first argument is a known task name, that task is executed.
     Otherwise the default task is executed.
@@ -52,7 +52,7 @@ def run_task(argv, result_handler=None):
     else:
         task = problog_default_task
         args = argv
-    return load_task(task).main(args, result_handler=result_handler)
+    return load_task(task).main(args)
 
 
 def load_task(name):
