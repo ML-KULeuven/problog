@@ -23,6 +23,7 @@ Data structures for specifying propositional constraints.
 """
 
 from __future__ import print_function
+from .errors import InvalidValue
 
 
 class Constraint(object):
@@ -164,6 +165,10 @@ class ConstraintAD(Constraint):
                 pos, neg = weights.get(n, (semiring.one(), semiring.one()))
                 weights[n] = (pos, semiring.one())
                 s = semiring.plus(s, pos)
+            if not semiring.in_domain(s):
+                raise InvalidValue('Sum of annotated disjunction weigths exceed acceptable value')
+                # TODO add location
+
             complement = semiring.negate(s)
             weights[self.extra_node] = (complement, semiring.one())
 

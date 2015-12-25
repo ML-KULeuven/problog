@@ -129,6 +129,10 @@ class Semiring(object):
         """Indicates whether this semiring requires solving a neutral sum problem."""
         return False
 
+    def in_domain(self, a):
+        """Checks whether the given (internal) value is valid."""
+        return True
+
 
 class SemiringProbability(Semiring):
     """Implementation of the semiring interface for probabilities."""
@@ -167,6 +171,9 @@ class SemiringProbability(Semiring):
     def is_dsp(self):
         """Indicates whether this semiring requires solving a disjoint sum problem."""
         return True
+
+    def in_domain(self, a):
+        return 0.0 - 1e-12 <= a <= 1.0 + 1e-12
 
 
 class SemiringLogProbability(SemiringProbability):
@@ -224,6 +231,9 @@ class SemiringLogProbability(SemiringProbability):
     def is_dsp(self):
         """Indicates whether this semiring requires solving a disjoint sum problem."""
         return True
+
+    def in_domain(self, a):
+        return a <= 1e-12
 
 
 class SemiringSymbolic(Semiring):
