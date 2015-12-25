@@ -521,7 +521,7 @@ class ClauseDB(LogicProgram):
     _clause = namedtuple('clause', ('functor', 'args', 'probability', 'child',
                                     'varcount', 'locvars', 'group', 'location'))
     _fact = namedtuple('fact', ('functor', 'args', 'probability', 'location'))
-    _call = namedtuple('call', ('functor', 'args', 'defnode', 'location'))
+    _call = namedtuple('call', ('functor', 'args', 'defnode', 'location', 'op_priority', 'op_spec'))
     _disj = namedtuple('disj', ('children', 'location'))
     _conj = namedtuple('conj', ('children', 'location'))
     _neg = namedtuple('neg', ('child', 'location'))
@@ -611,7 +611,8 @@ class ClauseDB(LogicProgram):
             raise AccessError("Can\'t call %s directly." % term.signature)
 
         defnode = self._add_head(term, create=False)
-        return self._append_node(self._call(term.functor, term.args, defnode, term.location))
+        return self._append_node(self._call(term.functor, term.args, defnode, term.location,
+                                            term.op_priority, term.op_spec))
 
     def get_node(self, index):
         """Get the instruction node at the given index.
@@ -787,9 +788,9 @@ class ClauseDB(LogicProgram):
                                                     head.probability, variables.local_variables,
                                                     group, head.location)
                 choice_call = self._append_node(self._call(choice_functor, body_args, choice_node,
-                                                           head.location))
+                                                           head.location, None, None))
                 body_call = self._append_node(self._call(body_functor, body_head.args, clause_body,
-                                                         head.location))
+                                                         head.location, None, None))
                 choice_body = self._add_and_node(body_call, choice_call)
                 self._add_clause_node(head, choice_body, body_count, {}, group=group)
             return None
@@ -843,9 +844,10 @@ class ClauseDB(LogicProgram):
             func = node.functor
             args = node.args
             if isinstance(func, Term):
-                return self._create_vars(Term(func.functor, *(func.args + args)))
+                return self._create_vars(func(*(func.args + args)))
             else:
-                return self._create_vars(Term(func, *args))
+                return self._create_vars(Term(func, *args,
+                                              priority=node.op_priority, opspec=node.op_spec))
         elif nodetype == 'conj':
             a, b = node.children
             return And(self._extract(a), self._extract(b))
