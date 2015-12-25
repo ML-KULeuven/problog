@@ -29,7 +29,7 @@ from .core import transform
 from .program import PrologFile
 from .formula import LogicDAG
 from .constraint import TrueConstraint, ClauseConstraint
-from .sdd_formula import SDDManager
+from .engine import DefaultEngine
 from .cnf_formula import CNF, clarks_completion
 from .maxsat import get_solver
 from .util import init_logger, format_dictionary
@@ -278,7 +278,15 @@ def main(argv, result_handler=None):
 
     init_logger(args.verbose)
 
-    cnf = KBestFormula.createFrom(PrologFile(args.filename), label_all=True)
+    pl = PrologFile(args.filename)
+    db = DefaultEngine().prepare(pl)
+
+    print ('Transformed program')
+    print ('-------------------')
+    print ('\n'.join(map(lambda s: '%s.' % s, db.iter_raw())))
+    print ()
+
+    cnf = KBestFormula.create_from(db, label_all=True)
 
     print ('Proofs')
     print ('------')

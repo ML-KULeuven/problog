@@ -715,7 +715,7 @@ class StackBasedEngine(ClauseDBEngine):
 
         if True or self.label_all:
             if isinstance(node.functor, Term):
-                name = node.functor.with_args(*(node.functor.apply(result).args + (Term('vars', *result),)))
+                name = node.functor.with_args(*(node.functor.apply(result).args + result))
             else:
                 name = Term(node.functor, *result)
         else:

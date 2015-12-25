@@ -157,7 +157,7 @@ class ConstraintAD(Constraint):
         :param formula: formula to update
         """
         if self.is_nontrivial():
-            name = Term('choice', Constant(self.group[0]), Term('e'), Term('null'), Term('vars', *self.group[1]))
+            name = Term('choice', Constant(self.group[0]), Term('e'), Term('null'), *self.group[1])
             self.extra_node = formula.add_atom(('%s_extra' % (self.group,)), True, name=name)
             # formula.addConstraintOnNode(self, self.extra_node)
 
