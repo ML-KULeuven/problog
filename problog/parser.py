@@ -633,7 +633,8 @@ class PrologParser(object):
                         rf = self.fold(string, operators, max_i + 1, hi, max_op[0], max_order[2],
                                        level + 1)
                         return max_op[2](functor=operators[max_i].string, operand1=lf, operand2=rf,
-                                         location=operators[max_i].location, priority=max_op[0])
+                                         location=operators[max_i].location,
+                                         priority=max_op[0], opspec=max_op[1])
                     else:  # unop
                         if max_i != lo:
                             raise ParseError(string, 'Operator priority clash',
@@ -641,7 +642,8 @@ class PrologParser(object):
                         lf = self.fold(string, operators, lo + 1, hi, max_op[0], max_order[1],
                                        level + 1)
                         return max_op[2](functor=operators[max_i].string, operand=lf,
-                                         location=operators[max_i].location, priority=max_op[0])
+                                         location=operators[max_i].location,
+                                         priority=max_op[0], opspec=max_op[1])
 
     def label_tokens(self, string, tokens):
         l = len(tokens) - 1

@@ -189,6 +189,8 @@ class Term(object):
         self.__arity = len(self.__args)
         self.probability = kwdargs.get('p')
         self.location = kwdargs.get('location')
+        self.op_priority = kwdargs.get('priority')
+        self.op_spec = kwdargs.get('opspec')
         self.__signature = None
         self.__hash = None
         self._cache_is_ground = None
@@ -362,6 +364,37 @@ class Term(object):
                     q.append(tail)
                 q.append(']')
                 stack.append(q)
+            elif isinstance(current, Term) and current.op_spec is not None:
+                # Is a binary or unary operator.
+                if len(current.op_spec) == 2:  # unary operator
+                    put(str(current.functor).strip("'"))
+                    q = deque()
+                    q.append(current.args[0])
+                    stack.append(q)
+                else:
+                    a = current.args[0]
+                    b = current.args[1]
+                    q = deque()
+                    if not isinstance(a, Term) or a.op_priority is None or \
+                            a.op_priority < current.op_priority or \
+                            (a.op_priority == current.op_priority and current.op_spec == 'yfx'):
+                        # no parenthesis around a
+                        q.append(a)
+                    else:
+                        q.append('(')
+                        q.append(a)
+                        q.append(')')
+                    q.append(' %s ' % str(current.functor).strip("'"))
+                    if not isinstance(b, Term) or \
+                            b.op_priority is None or b.op_priority < current.op_priority or \
+                            (b.op_priority == current.op_priority and current.op_spec == 'xfy'):
+                        # no parenthesis around b
+                        q.append(b)
+                    else:
+                        q.append('(')
+                        q.append(b)
+                        q.append(')')
+                    stack.append(q)
             elif isinstance(current, Term):
                 if current.probability is not None:
                     put(str(current.probability))  # This is a recursive call.
@@ -412,10 +445,12 @@ class Term(object):
                 p = Constant(p)
         else:
             p = self.probability
+
+        extra = {}
         if p is not None:
-            return self.__class__(self.functor, *args, p=p, location=self.location)
+            return self.__class__(self.functor, *args, p=p, location=self.location, priority=self.op_priority, opspec=self.op_spec)
         else:
-            return self.__class__(self.functor, *args, location=self.location)
+            return self.__class__(self.functor, *args, location=self.location, priority=self.op_priority, opspec=self.op_spec)
 
     def with_probability(self, p=None):
         """Creates a new Term with the same functor and arguments but with a different probability.

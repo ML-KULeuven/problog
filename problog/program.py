@@ -301,8 +301,8 @@ class PrologFactory(Factory):
     def build_program(self, clauses):
         return clauses
 
-    def build_function(self, functor, arguments, location=None):
-        return Term(functor, *arguments, location=(self.loc_id, location))
+    def build_function(self, functor, arguments, location=None, **extra):
+        return Term(functor, *arguments, location=(self.loc_id, location), **extra)
 
     def build_variable(self, name, location=None):
         return Var(name, location=(self.loc_id, location))
@@ -311,7 +311,7 @@ class PrologFactory(Factory):
         return Constant(value, location=(self.loc_id, location))
 
     def build_binop(self, functor, operand1, operand2, function=None, location=None, **extra):
-        return self.build_function("'" + functor + "'", (operand1, operand2), location=location)
+        return self.build_function("'" + functor + "'", (operand1, operand2), location=location, **extra)
 
     def build_directive(self, functor, operand, **extra):
         head = self.build_function('_directive', [])
@@ -321,7 +321,7 @@ class PrologFactory(Factory):
         if functor == '-' and operand.is_constant() and \
                 (operand.is_float() or operand.is_integer()):
             return Constant(-operand.value)
-        return self.build_function("'" + functor + "'", (operand,), location=location)
+        return self.build_function("'" + functor + "'", (operand,), location=location, **extra)
 
     def build_list(self, values, tail=None, location=None, **extra):
         if tail is None:
