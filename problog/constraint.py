@@ -23,7 +23,9 @@ Data structures for specifying propositional constraints.
 """
 
 from __future__ import print_function
+
 from .errors import InvalidValue
+from .logic import Term, Constant
 
 
 class Constraint(object):
@@ -155,7 +157,8 @@ class ConstraintAD(Constraint):
         :param formula: formula to update
         """
         if self.is_nontrivial():
-            self.extra_node = formula.add_atom(('%s_extra' % (self.group,)), True, None)
+            name = Term('choice', Constant(self.group[0]), Term('e'), Term('null'), Term('vars', *self.group[1]))
+            self.extra_node = formula.add_atom(('%s_extra' % (self.group,)), True, name=name)
             # formula.addConstraintOnNode(self, self.extra_node)
 
     def update_weights(self, weights, semiring):
