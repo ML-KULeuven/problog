@@ -21,6 +21,7 @@ limitations under the License.
 from __future__ import print_function
 
 import sys
+import traceback
 
 from problog.program import PrologFile
 from problog.constraint import TrueConstraint
@@ -48,9 +49,7 @@ def main(argv, result_handler=None):
     try:
         pl = PrologFile(inputfile)
 
-        gp = LogicFormula.createFrom(pl, label_all=True, avoid_name_clash=True)
-
-        dag = LogicDAG.createFrom(pl, label_all=True, avoid_name_clash=True)
+        dag = LogicDAG.createFrom(pl)
 
         cnf = CNF.createFrom(dag)
 
@@ -62,33 +61,22 @@ def main(argv, result_handler=None):
 
         solver = get_solver(args.solver)
 
-        result = solver.evaluate(cnf)
+        result = frozenset(solver.evaluate(cnf))
 
         output_facts = None
         if result is not None:
-            # TODO do this on original ground program before cycle-breaking
-            truthvalues = reduce_formula(dag, result)
-
-            output_facts = set()
-            true_facts = set()
-            false_facts = set()
+            output_facts = []
             for i, n, t in dag:
-                if n.name is not None and truthvalues[i - 1]:
-                    if not n.name.functor.startswith('_problog_'):
-                        true_facts.add(n.name)
-                if n.name is not None and not truthvalues[i - 1]:
-                    if not n.name.functor.startswith('_problog_'):
-                        false_facts.add(n.name)
-
-            for n in true_facts:
-                output_facts.add(n)
-
-            if args.output_all:
-                for n in false_facts:
-                    output_facts.add(-n)
+                if t == 'atom':
+                    if i in result:
+                        output_facts.append(n.name)
+                    elif args.output_all and -i in result:
+                        output_facts.append(-n.name)
 
         result_handler((True, output_facts), outf)
     except Exception as err:
+        trace = traceback.format_exc()
+        err.trace = trace
         result_handler((False, err), outf)
 
     if args.output is not None:
