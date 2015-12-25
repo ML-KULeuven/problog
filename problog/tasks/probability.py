@@ -65,6 +65,7 @@ def print_result_json(d, output, precision=8):
     else:
         result['SUCCESS'] = False
         result['err'] = vars(d)
+        result['err']['message'] = str(process_error(d))
     print (json.dumps(result), file=output)
     return 0
 
