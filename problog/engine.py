@@ -787,8 +787,8 @@ class ClauseDB(LogicProgram):
             raise InstantiationError('Unexpected variable in clause body', self.lineno(struct.location))
         elif isinstance(struct, Term):
             if struct.functor == 'findall' and struct.arity == 3:
-                # Special case for findall: any variables added by the first two arguments of findall
-                #  are 'local' variables
+                # Special case for findall: any variables added by the first
+                #  two arguments of findall are 'local' variables.
                 variables.enter_local()
                 a1 = struct.args[0].apply(variables)
                 a2 = struct.args[1].apply(variables)
@@ -878,6 +878,9 @@ class _AutoDict(dict):
         self.__localmode = False
 
     def __getitem__(self, key):
+        if key == '_' and self.__localmode:
+            key = '_#%s' % self.__anon
+
         if key == '_':
             value = len(self)
             self.__anon += 1
