@@ -773,7 +773,7 @@ class ClauseDB(LogicProgram):
             body_args = tuple(range(0, len(variables)))
             body_functor = self.FUNCTOR_BODY
             if len(new_heads) > 1:
-                heads_list = list2term(new_heads)
+                heads_list = Term('multi')  # list2term(new_heads)
             else:
                 heads_list = new_heads[0]
             body_head = Term(body_functor, Constant(group), heads_list, *body_args)
@@ -842,7 +842,10 @@ class ClauseDB(LogicProgram):
         elif nodetype == 'call':
             func = node.functor
             args = node.args
-            return self._create_vars(Term(func, *args))
+            if isinstance(func, Term):
+                return self._create_vars(Term(func.functor, *(func.args + args)))
+            else:
+                return self._create_vars(Term(func, *args))
         elif nodetype == 'conj':
             a, b = node.children
             return And(self._extract(a), self._extract(b))
@@ -880,6 +883,49 @@ class ClauseDB(LogicProgram):
                     body_node = self.get_node(body_node.children[0])
                     body = self._create_vars(Term(body_node.functor, *body_node.args))
             yield AnnotatedDisjunction(heads, body)
+
+    def iter_raw(self):
+        """Iterate over clauses of model as represented in the database i.e. with choice facts and
+         without annotated disjunctions.
+        """
+
+        clause_groups = defaultdict(list)
+        for index, node in enumerate(self.__nodes):
+            index += self.__offset
+            if not node:
+                continue
+            nodetype = type(node).__name__
+            if nodetype == 'fact':
+                yield Term(node.functor, *node.args, p=node.probability)
+            elif nodetype == 'clause':
+                if node.group is None:
+                    head = self._create_vars(Term(node.functor, *node.args, p=node.probability))
+                    yield Clause(head, self._extract(node.child))
+                else:
+                    head = self._create_vars(Term(node.functor, *node.args))
+                    yield Clause(head, self._extract(node.child))
+            elif nodetype == 'choice':
+                group = node.functor.args[0]
+                c = node.functor(*(node.functor.args + node.args))
+                clause_groups[group].append(c)
+                yield c.with_probability(node.probability)
+
+        for group in clause_groups.values():
+            if len(group) > 1:
+                yield Term('mutual_exclusive', list2term(group))
+        #
+        #
+        #     heads = []
+        #     body = None
+        #     for index in group:
+        #         node = self.get_node(index)
+        #         heads.append(self._create_vars(Term(node.functor, *node.args, p=node.probability)))
+        #         if body is None:
+        #             body_node = self.get_node(node.child)
+        #             body_node = self.get_node(body_node.children[0])
+        #             body = self._create_vars(Term(body_node.functor, *body_node.args))
+        #     yield AnnotatedDisjunction(heads, body)
+
 
 
 class AccessError(GroundingError):
