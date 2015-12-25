@@ -803,9 +803,8 @@ class ClauseDB(LogicProgram):
                 return self._add_clause_node(new_head, body_node, len(variables),
                                              variables.local_variables)
         elif isinstance(struct, Var):
-            # TODO wrap with call?
-            raise InstantiationError('Unexpected variable in clause body',
-                                     self.lineno(struct.location))
+            return self._add_call_node(Term('call', struct.apply(variables),
+                                            location=struct.location))
         elif isinstance(struct, Term):
             local_scope = self.get_local_scope(struct.signature)
             if local_scope:
