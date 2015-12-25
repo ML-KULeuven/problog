@@ -517,7 +517,7 @@ class StackBasedEngine(ClauseDBEngine):
             # Verify that fact arguments unify with call arguments.
             unify_call_head(context, node.args, context)
 
-            if self.label_all:
+            if True or self.label_all:
                 name = Term(node.functor, *node.args)
             else:
                 name = None
