@@ -523,12 +523,16 @@ class LogicFormula(BaseFormula):
         else:
             atom = self._create_atom(identifier, probability, group, name, source)
             node_id = self._add(atom, key=identifier)
+
             self.get_weights()[node_id] = probability
-            if node_id == len(self._nodes):
-                self._atomcount += 1
             if name is not None:
                 self.add_name(name, node_id, self.LABEL_NAMED)
-            return self._add_constraint_me(group, node_id)
+            if node_id == len(self._nodes):
+                # The node was not reused?
+                self._atomcount += 1
+                # TODO if the next call return 0 or None, the node is still added?
+                node_id = self._add_constraint_me(group, node_id)
+            return node_id
 
     def add_and(self, components, key=None, name=None):
         """Add a conjunction to the logic formula.

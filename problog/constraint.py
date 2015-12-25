@@ -103,6 +103,9 @@ class ConstraintAD(Constraint):
         :param formula: formula from which the node is taken
         :return: value of the node after constraint propagation
         """
+        if node in self.nodes:
+            return node
+
         if formula.has_evidence_values():
             # Propagate constraint: if one of the other nodes is True: this one is false
             for n in self.nodes:
