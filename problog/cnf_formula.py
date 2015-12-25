@@ -84,7 +84,7 @@ class CNF(BaseFormula):
             else:
                 return ' '.join(map(str, clause[1:])) + ' 0'
 
-    def to_dimacs(self, partial=False, weighted=False, semiring=None):
+    def to_dimacs(self, partial=False, weighted=False, semiring=None, smart_constraints=False):
         """Transform to a string in DIMACS format.
 
         :param partial: split variables if possibly true / certainly true
@@ -97,21 +97,24 @@ class CNF(BaseFormula):
         else:
             t = 'cnf'
 
-        header, content = self._contents(partial=partial, weighted=weighted, semiring=semiring)
+        header, content = self._contents(partial=partial, weighted=weighted,
+                                         semiring=semiring, smart_constraints=smart_constraints)
 
         result = 'p %s %s\n' % (t, ' '.join(map(str, header)))
         result += '\n'.join(map(lambda cl: ' '.join(map(str, cl)) + ' 0', content))
         return result
 
-    def to_lp(self, partial=False, semiring=None):
+    def to_lp(self, partial=False, semiring=None, smart_constraints=False):
         """Transfrom to CPLEX lp format (MIP program).
         This is always weighted.
 
         :param partial: split variables in possibly true / certainly true
         :param semiring: semiring for weight transformation (if weighted)
+        :param smart_constraints: only enforce constraints when variables are set
         :return: string in LP format
         """
-        header, content = self._contents(partial=partial, weighted=False, semiring=semiring)
+        header, content = self._contents(partial=partial, weighted=False,
+                                         semiring=semiring, smart_constraints=smart_constraints)
 
         if semiring is None:
             semiring = SemiringLogProbability()
@@ -157,7 +160,7 @@ class CNF(BaseFormula):
         result += 'end\n'
         return result
 
-    def _contents(self, partial=False, weighted=False, semiring=None):
+    def _contents(self, partial=False, weighted=False, semiring=None, smart_constraints=False):
         # Helper function to determine the certainly true / possibly true names (for partial)
 
         ct = lambda i: 2 * i
@@ -222,6 +225,18 @@ class CNF(BaseFormula):
                     if head_neg:
                         head1, head2 = -head1, -head2
                     clauses.append(w_max + [head1, head2] + list(map(cpt, body)))
+                elif len(body) > 1 and smart_constraints:
+                    # It's a constraint => add an indicator variable.
+                    # a \/ -b ===> -pt(a) \/ I  => for all
+                    atomcount += 1
+                    ind = atomcount
+                    v = []
+                    for b in body:
+                        clauses.append(w_max + [-ct(abs(b)), ind])
+                        clauses.append(w_max + [pt(abs(b)), ind])
+                        v += [ct(abs(b)), -pt(abs(b))]
+                    clauses.append(w_max + v + [-ind])
+                    clauses.append(w_max + list(map(cpt, body)) + [-ind])
                 else:
                     clauses.append(w_max + list(map(cpt, body)))
         else:

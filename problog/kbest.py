@@ -211,7 +211,7 @@ class Border(object):
 
     def update(self):
         solver = get_solver()
-        solution = solver.evaluate(self.wcnf, partial=True)
+        solution = solver.evaluate(self.wcnf, partial=True, smart_constraints=True)
 
         if solution is None:
             self.improvement = None
