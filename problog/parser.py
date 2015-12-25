@@ -477,7 +477,7 @@ class PrologParser(object):
         else:
             return None
 
-    def _build_clause(self, functor, operand1, operand2, location):
+    def _build_clause(self, functor, operand1, operand2, location, **extra):
         heads = []
         current = operand1
         while current.functor == ';':
@@ -485,7 +485,7 @@ class PrologParser(object):
             current = current.args[1]
         heads.append(current)
         return self.factory.build_clause(functor=functor, operand1=heads, operand2=operand2,
-                                         location=location)
+                                         location=location, **extra)
 
     def next_token(self, s, pos):
         action = self._token_action(s[pos])
@@ -633,7 +633,7 @@ class PrologParser(object):
                         rf = self.fold(string, operators, max_i + 1, hi, max_op[0], max_order[2],
                                        level + 1)
                         return max_op[2](functor=operators[max_i].string, operand1=lf, operand2=rf,
-                                         location=operators[max_i].location)
+                                         location=operators[max_i].location, priority=max_op[0])
                     else:  # unop
                         if max_i != lo:
                             raise ParseError(string, 'Operator priority clash',
@@ -641,7 +641,7 @@ class PrologParser(object):
                         lf = self.fold(string, operators, lo + 1, hi, max_op[0], max_order[1],
                                        level + 1)
                         return max_op[2](functor=operators[max_i].string, operand=lf,
-                                         location=operators[max_i].location)
+                                         location=operators[max_i].location, priority=max_op[0])
 
     def label_tokens(self, string, tokens):
         l = len(tokens) - 1
