@@ -26,20 +26,16 @@ from __future__ import print_function
 
 
 from .core import transform
-from .program import PrologFile
 from .formula import LogicDAG
 from .constraint import TrueConstraint, ClauseConstraint
-from .engine import DefaultEngine
+
 from .cnf_formula import CNF, clarks_completion
 from .maxsat import get_solver
-from .util import init_logger, format_dictionary
 from .evaluator import Evaluator, Evaluatable
 from .logic import Term
 
 from copy import deepcopy
 
-import argparse
-import sys
 import warnings
 import logging
 
@@ -69,7 +65,7 @@ transform(LogicDAG, KBestFormula, clarks_completion)
 class KBestEvaluator(Evaluator):
 
     def __init__(self, formula, semiring, weights=None, lower_only=False,
-                 verbose=None, convergence=1e-9, explain=False, **kwargs):
+                 verbose=None, convergence=1e-9, explain=None, **kwargs):
         Evaluator.__init__(self, formula, semiring, weights, **kwargs)
 
         self.sdd_manager = None
@@ -83,7 +79,7 @@ class KBestEvaluator(Evaluator):
         self._verbose = verbose
         self._lower_only = lower_only
         self._explain = explain
-        if explain:
+        if explain is not None:
             self._lower_only = True
 
         self._reverse_names = {index: name for name, index in self.formula.get_names()}
@@ -111,12 +107,12 @@ class KBestEvaluator(Evaluator):
         logger.debug('evaluating query %s' % name)
 
         if index is None:
-            if self._explain:
-                print ('%s :- fail.' % name)
+            if self._explain is not None:
+                self._explain.append('%s :- fail.' % name)
             return 0.0
         elif index == 0:
-            if self._explain:
-                print ('%s :- true.' % name)
+            if self._explain is not None:
+                self._explain.append('%s :- true.' % name)
             return 1.0
         else:
             lb = Border(self.formula, self.sdd_manager, self.semiring, index, 'lower')
@@ -134,7 +130,7 @@ class KBestEvaluator(Evaluator):
                     solution = nborder.update()
                     logger.debug('  update: %s %s < p < %s ' %
                                  (nborder.name, lb.value, 1.0 - ub.value))
-                    if self._explain and solution is not None:
+                    if self._explain is not None and solution is not None:
                         solution_names = []
 
                         probability = nborder.improvement
@@ -145,17 +141,17 @@ class KBestEvaluator(Evaluator):
                             else:
                                 solution_names.append(n)
                         proof = ', '.join(map(str, solution_names))
-                        print('%s :- %s.  %% P=%.8g' % (name, proof, probability))
+                        self._explain.append('%s :- %s.  %% P=%.8g' % (name, proof, probability))
 
                     if solution is not None:
                         k += 1
 
                     if nborder.is_complete():
                         if nborder == lb:
-                            if self._explain:
+                            if self._explain is not None:
                                 if k == 0:
-                                    print('%s :- fail.' % name)
-                                print()
+                                    self._explain.append('%s :- fail.' % name)
+                                self._explain.append('')
                             return lb.value
                         else:
                             return 1.0 - ub.value
@@ -194,9 +190,9 @@ class KBestEvaluator(Evaluator):
 @total_ordering
 class Border(object):
 
-    def __init__(self, cnf, manager, semiring, query, name):
+    def __init__(self, cnf, manager, semiring, query, name, smart_constraints=False):
         self.wcnf = deepcopy(cnf)
-        self.wcnf.add_constraint(TrueConstraint(query))
+        self.wcnf.add_constraint(TrueConstraint(query), True)
 
         self.name = name
 
@@ -209,8 +205,11 @@ class Border(object):
         self.value = 0.0
         self.improvement = 1.0
 
+        self.smart_constraints = smart_constraints
+
     def update(self):
         solver = get_solver()
+
         solution = solver.evaluate(self.wcnf, partial=True, smart_constraints=True)
 
         if solution is None:
@@ -230,7 +229,8 @@ class Border(object):
                     probability = self.semiring.times(probability, wp)
             probability = self.semiring.result(probability)
 
-            self.wcnf.add_constraint(ClauseConstraint(list(map(lambda x: -x, solution))))
+            constraint = ClauseConstraint(list(map(lambda x: -x, solution)))
+            self.wcnf.add_constraint(constraint, True)
             # literals = list(map(m.literal, solution))
 
             # proof_sdd = m.conjoin(*literals)
@@ -269,33 +269,3 @@ class Border(object):
         return self.improvement == other.improvement
 
 
-def main(argv, result_handler=None):
-
-    parser = argparse.ArgumentParser()
-    parser.add_argument('filename')
-    parser.add_argument('-v', '--verbose', action='count')
-    args = parser.parse_args(argv)
-
-    init_logger(args.verbose)
-
-    pl = PrologFile(args.filename)
-    db = DefaultEngine().prepare(pl)
-
-    print ('Transformed program')
-    print ('-------------------')
-    print ('\n'.join(map(lambda s: '%s.' % s, db.iter_raw())))
-    print ()
-
-    cnf = KBestFormula.create_from(db, label_all=True)
-
-    print ('Proofs')
-    print ('------')
-    results = cnf.evaluate(explain=True)
-
-    print ()
-    print ('Probabilities')
-    print ('-------------')
-    print (format_dictionary(results))
-
-if __name__ == '__main__':
-    main(sys.argv[1:])

@@ -65,15 +65,16 @@ class CNF(BaseFormula):
         self._clauses.append([head] + list(body))
         self._clausecount += 1
 
-    def add_constraint(self, constraint):
+    def add_constraint(self, constraint, force=False):
         """Add a constraint.
 
         :param constraint: constraint to add
+        :param force: force constraint to be true even though none of its values are set
         :type constraint: problog.constraint.Constraint
         """
         BaseFormula.add_constraint(self, constraint)
         for c in constraint.as_clauses():
-            self.add_clause(None, c)
+            self.add_clause(force, c)
 
     def _clause2str(self, clause, weighted=False):
         if weighted:
@@ -217,7 +218,7 @@ class CNF(BaseFormula):
             # For each clause:
             for c in self.clauses:
                 head, body = c[0], c[1:]
-                if head is not None:
+                if type(head) != bool:
                     # Clause does not represent a constraint.
                     head_neg = (head < 0)
                     head = abs(head)
@@ -225,7 +226,7 @@ class CNF(BaseFormula):
                     if head_neg:
                         head1, head2 = -head1, -head2
                     clauses.append(w_max + [head1, head2] + list(map(cpt, body)))
-                elif len(body) > 1 and smart_constraints:
+                elif smart_constraints and not head:
                     # It's a constraint => add an indicator variable.
                     # a \/ -b ===> -pt(a) \/ I  => for all
                     atomcount += 1
