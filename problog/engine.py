@@ -528,6 +528,9 @@ class ClauseDB(LogicProgram):
     _choice = namedtuple('choice', ('functor', 'args', 'probability', 'locvars', 'group', 'choice', 'location'))
     _extern = namedtuple('extern', ('functor', 'arity', 'function',))
 
+    FUNCTOR_CHOICE = 'choice'
+    FUNCTOR_BODY = 'body'
+
     def __init__(self, builtins=None, parent=None):
         LogicProgram.__init__(self)
         self.__nodes = []   # list of nodes
@@ -559,6 +562,12 @@ class ClauseDB(LogicProgram):
                 return None
         else:
             return self.__builtins.get(signature)
+
+    def get_reserved_names(self):
+        return {self.FUNCTOR_CHOICE, self.FUNCTOR_BODY}
+
+    def is_reserved_name(self, name):
+        return name is self.get_reserved_names()
 
     def _create_index(self, arity):
         # return []
@@ -639,6 +648,8 @@ class ClauseDB(LogicProgram):
         self.__heads[head.signature] = index
 
     def _add_head(self, head, create=True):
+        if self.is_reserved_name(head.functor):
+            raise AccessError("'%s' is a reserved name" % head.functor)
         node = self.get_builtin(head.signature)
         if node is not None:
             if create:
@@ -718,15 +729,21 @@ class ClauseDB(LogicProgram):
                 raise AccessError("External function overrides already defined predicate '%s'"
                                   % head.signature)
 
+    def get_local_scope(self, signature):
+        if signature == 'findall/3':
+            return 0, 1
+        else:
+            return []
+
     def _compile(self, struct, variables=None):
-        """
-        Compile the given structure and add it to the database.
-       :param struct: structure to compile
-       :type struct: Term
-       :param variables: mapping between variable names and variable index
-       :type variables: _AutoDict
-       :return: position of the compiled structure in the database
-       :rtype: int
+        """Compile the given structure and add it to the database.
+
+        :param struct: structure to compile
+        :type struct: Term
+        :param variables: mapping between variable names and variable index
+        :type variables: _AutoDict
+        :return: position of the compiled structure in the database
+        :rtype: int
         """
         if variables is None:
             variables = _AutoDict()
@@ -754,25 +771,25 @@ class ClauseDB(LogicProgram):
             body_count = len(variables)
             # Body arguments
             body_args = tuple(range(0, len(variables)))
+            body_functor = self.FUNCTOR_BODY
             if len(new_heads) > 1:
-                body_functor = '_problog_ad_%s_body' % group
+                heads_list = list2term(new_heads)
             else:
-                body_functor = '_problog_%s_%s_body' % (new_heads[0].functor, group)
-            body_head = Term(body_functor, *body_args)
+                heads_list = new_heads[0]
+            body_head = Term(body_functor, Constant(group), heads_list, *body_args)
             self._add_clause_node(body_head, body_node, len(variables), variables.local_variables)
             clause_body = self._add_head(body_head)
             for choice, head in enumerate(new_heads):
                 # For each head: add choice node
-                # if len(new_heads) > 1:
-
-                choice_functor = Term('choice', Constant(group), Constant(choice), head.with_probability())
-                # else:
-                #    choice_functor = '_problog_%s_%s_choice' % (head.functor, group)
-                choice_node = self._add_choice_node(choice, choice_functor, body_args, head.probability, variables.local_variables,
+                choice_functor = Term(self.FUNCTOR_CHOICE,
+                                      Constant(group), Constant(choice), head.with_probability())
+                choice_node = self._add_choice_node(choice, choice_functor, body_args,
+                                                    head.probability, variables.local_variables,
                                                     group, head.location)
                 choice_call = self._append_node(self._call(choice_functor, body_args, choice_node,
                                                            head.location))
-                body_call = self._append_node(self._call(body_functor, body_args, clause_body, head.location))
+                body_call = self._append_node(self._call(body_functor, body_head.args, clause_body,
+                                                         head.location))
                 choice_body = self._add_and_node(body_call, choice_call)
                 self._add_clause_node(head, choice_body, body_count, {}, group=group)
             return None
@@ -782,19 +799,26 @@ class ClauseDB(LogicProgram):
             else:
                 new_head = struct.head.apply(variables)
                 body_node = self._compile(struct.body, variables)
-                return self._add_clause_node(new_head, body_node, len(variables), variables.local_variables)
+                return self._add_clause_node(new_head, body_node, len(variables),
+                                             variables.local_variables)
         elif isinstance(struct, Var):
-            raise InstantiationError('Unexpected variable in clause body', self.lineno(struct.location))
+            # TODO wrap with call?
+            raise InstantiationError('Unexpected variable in clause body',
+                                     self.lineno(struct.location))
         elif isinstance(struct, Term):
-            if struct.functor == 'findall' and struct.arity == 3:
+            local_scope = self.get_local_scope(struct.signature)
+            if local_scope:
                 # Special case for findall: any variables added by the first
                 #  two arguments of findall are 'local' variables.
-                variables.enter_local()
-                a1 = struct.args[0].apply(variables)
-                a2 = struct.args[1].apply(variables)
-                variables.exit_local()
-                a3 = struct.args[2].apply(variables)
-                return self._add_call_node(struct(a1, a2, a3))
+                args = []
+                for i, a in enumerate(struct.args):
+                    if i in local_scope:
+                        variables.enter_local()
+                        args.append(a.apply(variables))
+                        variables.exit_local()
+                    else:
+                        args.append(a.apply(variables))
+                return self._add_call_node(struct(*args))
             else:
                 return self._add_call_node(struct.apply(variables))
         else:

@@ -691,7 +691,7 @@ class AnnotatedDisjunction(Term):
         self.body = body
 
     def __repr__(self):
-        return "%s <- %s" % ('; '.join(map(str, self.heads)), self.body)
+        return "%s :- %s" % ('; '.join(map(str, self.heads)), self.body)
 
 
 class Or(Term):
