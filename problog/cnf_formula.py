@@ -250,10 +250,10 @@ class CNF(BaseFormula):
                         clauses.append([-wt(w_neg), a])
             for c in self.clauses:
                 head, body = c[0], c[1:]
-                if head is not None:
-                    clauses.append(w_max + [head] + list(body))
-                else:
+                if head is None or type(head) == bool and not head:
                     clauses.append(w_max + list(body))
+                else:
+                    clauses.append(w_max + [head] + list(body))
 
         return [atomcount, len(clauses)] + w_max, clauses
 
