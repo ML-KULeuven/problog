@@ -29,6 +29,7 @@ from ..errors import process_error
 import argparse
 import sys
 import json
+import traceback
 
 
 def main(argv):
