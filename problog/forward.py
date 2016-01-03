@@ -539,7 +539,7 @@ class ForwardEvaluator(Evaluator):
                 self._results[node] = result
 
                 debug_msg = 'update query %s: %s after %ss' % \
-                            (name, self.semiring.result(result),
+                            (name, self.semiring.result(result, self.formula),
                              '%.4f' % (time.time() - self._start_time))
                 logging.getLogger('problog').debug(debug_msg)
 
@@ -608,26 +608,27 @@ class ForwardEvaluator(Evaluator):
                 # wp, wn = self.weights.get(abs(index))
                 if index < 0:
                     wn = self.semiring.negate(wp)
-                    return self.semiring.result(wn)
+                    return self.semiring.result(wn, self.formula)
                 else:
-                    return self.semiring.result(wp)
+                    return self.semiring.result(wp, self.formula)
             else:
                 # TODO report correct bounds in case of evidence
                 if index < 0:
                     if -index in self._results:
                         if -index in self._complete:
-                            return self.semiring.result(self.semiring.negate(self._results[-index]))
+                            return self.semiring.result(self.semiring.negate(self._results[-index]),
+                                                        self.formula)
                         else:
                             return 0.0, self.semiring.result(
-                                self.semiring.negate(self._results[-index]))
+                                self.semiring.negate(self._results[-index]), self.formula)
                     else:
                         return 0.0, 1.0
                 else:
                     if index in self._results:
                         if index in self._complete:
-                            return self.semiring.result(self._results[index])
+                            return self.semiring.result(self._results[index], self.formula)
                         else:
-                            return self.semiring.result(self._results[index]), 1.0
+                            return self.semiring.result(self._results[index], self.formula), 1.0
                     else:
                         return 0.0, 1.0
 

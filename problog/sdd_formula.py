@@ -23,7 +23,7 @@ Interface to Sentential Decision Diagrams (SDD)
 """
 from __future__ import print_function
 
-from .formula import LogicDAG
+from .formula import LogicDAG, LogicFormula
 from .core import transform
 from .errors import InstallError
 from .dd_formula import DD, build_dd, DDManager
@@ -63,6 +63,43 @@ class SDD(DD):
     def is_available(cls):
         """Checks whether the SDD library is available."""
         return sdd is not None
+
+    def to_formula(self):
+        """Extracts a LogicFormula from the SDD."""
+        formula = LogicFormula()
+
+        for n, q in self.queries():
+            node = self.get_inode(q)
+            i = self._to_formula(formula, node)
+            formula.add_name(n, i, formula.LABEL_QUERY)
+        return formula
+
+    def _to_formula(self, formula, current_node):
+        if self.get_manager().is_true(current_node):
+            return formula.TRUE
+        elif self.get_manager().is_false(current_node):
+            return formula.FALSE
+        elif sdd.sdd_node_is_literal(current_node):  # it's a literal
+            lit = sdd.sdd_node_literal(current_node)
+            at = self.var2atom[abs(lit)]
+            if lit < 0:
+                return -formula.add_atom(-lit, probability=self.get_node(at).probability)
+            else:
+                return formula.add_atom(lit, probability=self.get_node(at).probability)
+        else:  # is decision
+            size = sdd.sdd_node_size(current_node)
+            elements = sdd.sdd_node_elements(current_node)
+            primes = [sdd.sdd_array_element(elements, i) for i in range(0, size * 2, 2)]
+            subs = [sdd.sdd_array_element(elements, i) for i in range(1, size * 2, 2)]
+
+            # Formula: (p1^s1) v (p2^s2) v ...
+            children = []
+            for p, s in zip(primes, subs):
+                p_n = self._to_formula(formula, p)
+                s_n = self._to_formula(formula, s)
+                c_n = formula.add_and((p_n, s_n))
+                children.append(c_n)
+            return formula.add_or(children)
 
 
 class SDDManager(DDManager):

@@ -301,8 +301,8 @@ class PrologFactory(Factory):
     def build_program(self, clauses):
         return clauses
 
-    def build_function(self, functor, arguments, location=None):
-        return Term(functor, *arguments, location=(self.loc_id, location))
+    def build_function(self, functor, arguments, location=None, **extra):
+        return Term(functor, *arguments, location=(self.loc_id, location), **extra)
 
     def build_variable(self, name, location=None):
         return Var(name, location=(self.loc_id, location))
@@ -311,7 +311,7 @@ class PrologFactory(Factory):
         return Constant(value, location=(self.loc_id, location))
 
     def build_binop(self, functor, operand1, operand2, function=None, location=None, **extra):
-        return self.build_function("'" + functor + "'", (operand1, operand2), location=location)
+        return self.build_function("'" + functor + "'", (operand1, operand2), location=location, **extra)
 
     def build_directive(self, functor, operand, **extra):
         head = self.build_function('_directive', [])
@@ -321,7 +321,7 @@ class PrologFactory(Factory):
         if functor == '-' and operand.is_constant() and \
                 (operand.is_float() or operand.is_integer()):
             return Constant(-operand.value)
-        return self.build_function("'" + functor + "'", (operand,), location=location)
+        return self.build_function("'" + functor + "'", (operand,), location=location, **extra)
 
     def build_list(self, values, tail=None, location=None, **extra):
         if tail is None:
@@ -418,7 +418,10 @@ class ExtendedPrologFactory(PrologFactory):
             raise Exception("Unknown type: {} -- {}".format(t, type(t)))
 
     def build_program(self, clauses):
-        # Update functor f that appear as a negative head literal to f_p and
+        """Update functor f that appear as a negative head literal to f_p and
+        :param clauses:
+        :return:
+        """
         # f_n
         for clause in clauses:
             self._update_functors(clause)
@@ -431,24 +434,55 @@ class ExtendedPrologFactory(PrologFactory):
             new_clause = Clause(Term(v['f'], *cur_vars),
                                 And(Term(v['p'], *cur_vars), Not('\+', Term(v['n'], *cur_vars))))
             clauses.append(new_clause)
-
-        # logger = logging.getLogger('problog')
-        # logger.debug('Transformed program:\n{}'.format('\n'.join([str(c) for c in clauses])))
-
         return clauses
 
+    def neg_head_literal_to_pos_literal(self, literal):
+        """Translate a negated literal into a positive literal and remember
+        the literal to update the complete program later (in build_program).
+        :param literal:
+        :return:
+        """
+        literal = abs(literal)
+        if literal.signature not in self.neg_head_lits:
+            self.neg_head_lits[literal.signature] = {
+                'c': literal.arity,
+                'p': literal.functor + "_p",
+                'n': literal.functor + "_n",
+                'f': literal.functor
+            }
+        literal.functor = self.neg_head_lits[literal.signature]['n']
+        return literal
+
     def build_probabilistic(self, operand1, operand2, location=None, **extra):
+        """Detect probabilistic negated head literal and translate to positive literal
+        :param operand1:
+        :param operand2:
+        :param location:
+        :param extra:
+        :return:
+        """
         if ('unaryop' in extra and extra['unaryop'] == '\\+') or operand2.is_negated():
-            operand2 = abs(operand2)
-            if operand2.signature not in self.neg_head_lits:
-                self.neg_head_lits[operand2.signature] = {
-                    'c': operand2.arity,
-                    'p': operand2.functor + "_p",
-                    'n': operand2.functor + "_n",
-                    'f': operand2.functor
-                }
-            operand2.functor = self.neg_head_lits[operand2.signature]['n']
+            operand2 = self.neg_head_literal_to_pos_literal(operand2)
         operand2.probability = operand1
         return operand2
+
+    def build_clause(self, functor, operand1, operand2, location=None, **extra):
+        """Detect deterministic head literal and translate to positive literal
+        :param functor:
+        :param operand1:
+        :param operand2:
+        :param location:
+        :param extra:
+        :return:
+        """
+        heads = operand1
+        new_heads = []
+        for head in heads:
+            if type(head) == Not:
+                new_head = self.neg_head_literal_to_pos_literal(head)
+                new_heads.append(new_head)
+            else:
+                new_heads.append(head)
+        return super(ExtendedPrologFactory, self).build_clause(functor, new_heads, operand2, location, **extra)
 
 DefaultPrologFactory = ExtendedPrologFactory

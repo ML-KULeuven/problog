@@ -108,7 +108,7 @@ def sample_value(term):
    :rtype: Constant
     """
     # TODO add discrete distribution
-    if term.functor == 'normal':
+    if term.functor == 'normal' or term.functor == 'gaussian':
         a, b = map(float, term.args)
         return Constant(random.normalvariate(a, b)), 0.0
     elif term.functor == 'poisson':

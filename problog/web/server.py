@@ -262,6 +262,11 @@ def run_sample_jsonp(model, callback):
     return run_problog_task('sample', model[0], callback[0])
 
 
+@handle_url(api_root + 'explain')
+def run_sample_jsonp(model, callback):
+    return run_problog_task('explain', model[0], callback[0])
+
+
 @handle_url(api_root + 'lfi')
 def run_lfi_jsonp(model, examples, callback):
     return run_problog_task('lfi', model[0], callback[0], data=examples[0])

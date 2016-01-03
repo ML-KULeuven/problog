@@ -106,9 +106,9 @@ class BaseFormula(ProbLogObject):
         elif self.is_true(key):
             return semiring.one()
         elif key < 0:
-            return semiring.neg_value(self._weights[-key])
+            return semiring.neg_value(self._weights[-key], key)
         else:
-            return semiring.pos_value(self._weights[key])
+            return semiring.pos_value(self._weights[key], key)
 
     def extract_weights(self, semiring, weights=None):
         """Extracts the positive and negative weights for all atoms in the data structure.
@@ -137,7 +137,7 @@ class BaseFormula(ProbLogObject):
             if w == self.WEIGHT_NEUTRAL and type(self.WEIGHT_NEUTRAL) == type(w):
                 result[n] = semiring.one(), semiring.one()
             else:
-                result[n] = semiring.pos_value(w), semiring.neg_value(w)
+                result[n] = semiring.pos_value(w, n), semiring.neg_value(w, n)
 
         for c in self.constraints():
             c.update_weights(result, semiring)
@@ -523,12 +523,16 @@ class LogicFormula(BaseFormula):
         else:
             atom = self._create_atom(identifier, probability, group, name, source)
             node_id = self._add(atom, key=identifier)
+
             self.get_weights()[node_id] = probability
-            if node_id == len(self._nodes):
-                self._atomcount += 1
             if name is not None:
                 self.add_name(name, node_id, self.LABEL_NAMED)
-            return self._add_constraint_me(group, node_id)
+            if node_id == len(self._nodes):
+                # The node was not reused?
+                self._atomcount += 1
+                # TODO if the next call return 0 or None, the node is still added?
+                node_id = self._add_constraint_me(group, node_id)
+            return node_id
 
     def add_and(self, components, key=None, name=None):
         """Add a conjunction to the logic formula.
@@ -1132,7 +1136,9 @@ label_all=True)
                 yield (Clause(head, body))
 
     def _is_valid_name(self, name):
-        return name is not None and not name.functor.startswith('_problog_')
+        return name is not None and \
+            not name.functor.startswith('_problog_') and \
+            not name.functor == 'choice' and not name.functor == 'body'
 
     def get_body(self, index, processed=None, parent_name=None):
         if index == self.TRUE:

@@ -517,7 +517,7 @@ class StackBasedEngine(ClauseDBEngine):
             # Verify that fact arguments unify with call arguments.
             unify_call_head(context, node.args, context)
 
-            if self.label_all:
+            if True or self.label_all:
                 name = Term(node.functor, *node.args)
             else:
                 name = None
@@ -715,7 +715,7 @@ class StackBasedEngine(ClauseDBEngine):
 
         if True or self.label_all:
             if isinstance(node.functor, Term):
-                name = node.functor.with_args(*(node.functor.apply(result).args + (Term('vars', *result),)))
+                name = node.functor.with_args(*(node.functor.apply(result).args + result))
             else:
                 name = Term(node.functor, *result)
         else:
@@ -1646,7 +1646,7 @@ class EvalBuiltIn(EvalNode):
         try:
             return self.node(*self.context, engine=self.engine, database=self.database,
                              target=self.target, location=self.location, callback=self,
-                             transform=self.transform, parent=self.parent,
+                             transform=self.transform, parent=self.parent, context=self.context,
                              identifier=self.identifier, call_origin=self.call_origin)
         except ArithmeticError as err:
             if self.database and self.location:

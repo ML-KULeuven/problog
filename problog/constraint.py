@@ -24,6 +24,9 @@ Data structures for specifying propositional constraints.
 
 from __future__ import print_function
 
+from .errors import InvalidValue
+from .logic import Term, Constant
+
 
 class Constraint(object):
     """A propositional constraint."""
@@ -100,6 +103,9 @@ class ConstraintAD(Constraint):
         :param formula: formula from which the node is taken
         :return: value of the node after constraint propagation
         """
+        if node in self.nodes:
+            return node
+
         if formula.has_evidence_values():
             # Propagate constraint: if one of the other nodes is True: this one is false
             for n in self.nodes:
@@ -154,7 +160,8 @@ class ConstraintAD(Constraint):
         :param formula: formula to update
         """
         if self.is_nontrivial():
-            self.extra_node = formula.add_atom(('%s_extra' % (self.group,)), True, None)
+            name = Term('choice', Constant(self.group[0]), Term('e'), Term('null'), *self.group[1])
+            self.extra_node = formula.add_atom(('%s_extra' % (self.group,)), True, name=name)
             # formula.addConstraintOnNode(self, self.extra_node)
 
     def update_weights(self, weights, semiring):
@@ -164,6 +171,10 @@ class ConstraintAD(Constraint):
                 pos, neg = weights.get(n, (semiring.one(), semiring.one()))
                 weights[n] = (pos, semiring.one())
                 s = semiring.plus(s, pos)
+            if not semiring.in_domain(s):
+                raise InvalidValue('Sum of annotated disjunction weigths exceed acceptable value')
+                # TODO add location
+
             complement = semiring.negate(s)
             weights[self.extra_node] = (complement, semiring.one())
 
