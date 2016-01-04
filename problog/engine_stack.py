@@ -141,9 +141,16 @@ class StackBasedEngine(ClauseDBEngine):
 
         self.debugger = kwdargs.get('debugger')
 
+        self.ignoring = set()
+
     def eval(self, node_id, **kwdargs):
         # print (kwdargs.get('parent'))
         database = kwdargs['database']
+
+        if kwdargs.get('parent') in self.ignoring:
+            # The parent node is ignoring new results, so there is no point in generating them.
+            return [complete(kwdargs['parent'], kwdargs.get('identifier'))]
+
         if node_id < 0:
             node_type = 'builtin'
             node = self.get_builtin(node_id)
@@ -470,6 +477,9 @@ class StackBasedEngine(ClauseDBEngine):
         :param obj: pointer of the object to remove
         :type obj: int
         """
+
+        self.ignoring.discard(obj)
+
         if self.cycle_root and self.cycle_root.pointer == obj:
             self.cycle_root = None
         self.stack[obj] = None
@@ -1253,6 +1263,10 @@ class EvalDefine(EvalNode):
         return [new_result(parent, arguments, node, self.identifier, is_last) for parent in parents]
 
     def new_result(self, result, node=NODE_TRUE, source=None, is_last=False):
+        if self.is_ground and node == NODE_TRUE and not self.target.flag('keep_all'):
+            # We have a ground node with a deterministically true proof.
+            # We can ignore the remaining proofs.
+            self.engine.ignoring.add(self.pointer)
         if self.is_cycle_child:
             assert not self.siblings
             if is_last:

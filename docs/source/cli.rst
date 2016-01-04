@@ -13,8 +13,10 @@ Currently, the following modes are supported
   * ``sample``: generate samples from a ProbLog program
   * ``mpe``: most probable explanation
   * ``lfi``: learning from interpretations
+  * ``dt``: decision-theoretic problog
   * ``explain``: evaluate using mutually exclusive proofs
   * ``ground``: generate a ground program
+  * ``shell``: interactive shell
   * ``install``: run the installer
   * ``unittest``: run the testsuite
   * ``web``: start a web server
@@ -124,6 +126,12 @@ The sampling algorithm supports **evidence** through rejection sampling.  All ge
 are guaranteed to satisfy the evidence.  Note that this process can be slow if the evidence has \
 low probability.
 
+The sampling algorithm support evidence propagation, that is, in certain cases it can ensure the \
+ evidence holds without the use of rejection sampling.
+To enable this feature use the ``--propagate-evidence`` argument. Evidence propagation is not \
+ supported on programs with continuous distributions, or on programs where the evidence has \
+ infinite support.
+
 Sample based inference
 ++++++++++++++++++++++
 
@@ -141,6 +149,8 @@ The number of samples used for estimation can be determined in three ways:
     $ ./problog-cli.py sample some_heads.pl  --estimate -t 5
     % Probability estimate after 7865 samples:
     someHeads : 0.79249841
+
+This mode also support the ``--propagate-evidence`` flag.
 
 References:
 +++++++++++
@@ -198,10 +208,35 @@ References:
 Explanation mode (``explain``)
 ------------------------------
 
+The ``explain`` mode offers insight in how probabilities can be computed for a ProbLog program.
+Given a model, the output consists of three parts:
 
+  * a reformulation of the model in which annotated disjunctions and probabilistic clauses are \
+   rewritten
+  * for each query, a list of mutually exclusive proofs with their probability
+  * for each query, the success probability determined by taking the sum of the probabilities of \
+   the individual proofs
+
+This mode currently does not support evidence.
 
 Grounding (``ground``)
 ----------------------
+
+The ``ground`` mode provides access to the ProbLog grounder.
+Given a model, the output consists of the ground program.
+
+The output can be formatted in different formats:
+
+  * pl: ProbLog format
+  * dot: GraphViz representation of the AND-OR tree
+  * svg: GraphViz representation of the AND-OR tree as SVG (requires GraphViz)
+  * cnf: DIMACS encoding as CNF
+  * internal: Internal representation (for debugging)
+
+These can be provided using the ``--format`` option.
+
+By default, the output is the ground program before cycle breaking (except for ``cnf``).
+To perform cycle breaking, provide the ``--break-cycles`` argument.
 
 
 Interactive shell (``shell``)
@@ -254,15 +289,21 @@ Type ``help.`` for more information.
 Installation (``install``)
 --------------------------
 
+Run the installer.
+This installs the SDD library.
+This currently only has effect on Mac OSX and Linux.
 
 
 Web server (``web``)
 --------------------
 
+Starts the web server.
+
+To load libraries locally (no internet connection required), use ``--local``.
+To open a web-browser with the editor use ``--browser``.
 
 
 Testing (``unittest``)
 ----------------------
 
-
-
+Run the unittests.

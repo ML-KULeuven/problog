@@ -299,7 +299,7 @@ class ClauseDBEngine(GenericEngine):
 
         return gp, results
 
-    def _ground_evidence(self, db, target, evidence):
+    def ground_evidence(self, db, target, evidence):
         logger = logging.getLogger('problog')
         # Ground evidence
         for query in evidence:
@@ -326,7 +326,7 @@ class ClauseDBEngine(GenericEngine):
                     target = self.ground(db, query[0], target, label=target.LABEL_EVIDENCE_MAYBE, is_root=True)
                     logger.debug("Ground program size: %s", len(target))
 
-    def _ground_queries(self, db, target, queries):
+    def ground_queries(self, db, target, queries):
         logger = logging.getLogger('problog')
         for query in queries:
             logger.debug("Grounding query '%s'", query)
@@ -358,17 +358,17 @@ class ClauseDBEngine(GenericEngine):
             # Ground queries
             if propagate_evidence:
                 with Timer('Propagating evidence'):
-                    self._ground_evidence(db, target, evidence)
+                    self.ground_evidence(db, target, evidence)
                     # delattr(target, '_cache')
                     target.lookup_evidence = {}
                     ev_nodes = [node for name, node in target.evidence()
                                 if node != 0 and node is not None]
                     target.propagate(ev_nodes, target.lookup_evidence)
-                    self._ground_queries(db, target, queries)
+                    self.ground_queries(db, target, queries)
                 logger.debug('Propagated evidence: %s' % list(target.lookup_evidence))
             else:
-                self._ground_queries(db, target, queries)
-                self._ground_evidence(db, target, evidence)
+                self.ground_queries(db, target, queries)
+                self.ground_evidence(db, target, evidence)
         return target
 
     def add_external_calls(self, externals):
