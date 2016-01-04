@@ -503,6 +503,15 @@ def verify_evidence(engine, db, ev_target, q_target):
             weights[i] = p
             weights[-i] = 1.0 - p
 
+        for k, n, t in ev_target:
+            if t == 'atom' and n.group is not None and not k in weights:
+                if q_target.groups[n.group] is None:
+                    p = 0.0
+                else:
+                    p = 1.0
+                weights[k] = p
+                weights[-k] = 1.0 - p
+
         relevant_nodes = set([x for x, y in enumerate(ev_target.extract_relevant()) if y])
 
         update = True
