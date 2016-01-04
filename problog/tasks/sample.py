@@ -416,32 +416,9 @@ def ground(engine, db, target):
         if not isinstance(ev[0], Term):
             raise GroundingError('Invalid evidence')   # TODO can we add a location?
 
-    # Ground evidence first
-    ground_evidence(engine, db, target, evidence)
-    for name, node in target.evidence():
-        if target.is_false(node):
-            return None
-
     # Ground queries
     engine.ground_queries(db, target, queries)
     return target
-
-
-def ground_evidence(engine, db, target, evidence):
-    # Ground evidence
-    for query in evidence:
-        if len(query) == 1:  # evidence/1
-            if query[0].is_negated():
-                target = engine.ground(db, -query[0], target, label=target.LABEL_EVIDENCE_NEG, is_root=True)
-            else:
-                target = engine.ground(db, query[0], target, label=target.LABEL_EVIDENCE_POS, is_root=True)
-        else:  # evidence/2
-            if str(query[1]) == 'true':
-                target = engine.ground(db, query[0], target, label=target.LABEL_EVIDENCE_POS, is_root=True)
-            elif str(query[1]) == 'false':
-                target = engine.ground(db, query[0], target, label=target.LABEL_EVIDENCE_NEG, is_root=True)
-            else:
-                target = engine.ground(db, query[0], target, label=target.LABEL_EVIDENCE_MAYBE, is_root=True)
 
 
 def init_engine():
@@ -473,16 +450,17 @@ def init_db(engine, model, propagate_evidence=False):
             if ev_target.is_true(value):
                 evidence_facts.append((node[0], 1.0) + node[2:])
             elif ev_target.is_false(value):
-                evidence_facts.append((node[0], 1.0) + node[2:])
+                evidence_facts.append((node[0], 0.0) + node[2:])
     else:
         evidence_facts = []
+        ev_target = None
 
-    return db, evidence_facts
+    return db, evidence_facts, ev_target
 
 
 def sample(model, n=1, format='str', propagate_evidence=False, **kwdargs):
     engine = init_engine()
-    db, evidence = init_db(engine, model, propagate_evidence)
+    db, evidence, ev_target = init_db(engine, model, propagate_evidence)
     i = 0
     r = 0
 
@@ -493,7 +471,7 @@ def sample(model, n=1, format='str', propagate_evidence=False, **kwdargs):
 
         engine.functions = FunctionStore(target=target, database=db, engine=engine)
         result = ground(engine, db, target=target)
-        if result is not None:
+        if verify_evidence(engine, db, ev_target, target):
             if format == 'str':
                 yield result.to_string(db, **kwdargs)
             else:
@@ -506,12 +484,91 @@ def sample(model, n=1, format='str', propagate_evidence=False, **kwdargs):
         logging.getLogger('problog_sample').info('Rejected samples: %s' % r)
 
 
+def verify_evidence(engine, db, ev_target, q_target):
+
+    if ev_target is None:
+        evidence = engine.query(db, Term('evidence', None, None))
+        evidence += engine.query(db, Term('evidence', None))
+
+        engine.ground_evidence(db, q_target, evidence)
+        for name, node in q_target.evidence():
+            if q_target.is_false(node):
+                return False
+        return True
+    else:
+        weights = {}
+        for k, v in q_target.facts.items():
+            p = 1.0 if q_target.is_true(v) else 0.0
+            i = ev_target.add_atom(k, p)
+            weights[i] = p
+            weights[-i] = 1.0 - p
+
+        relevant_nodes = set([x for x, y in enumerate(ev_target.extract_relevant()) if y])
+
+        update = True
+        while relevant_nodes and update:
+            update = False
+            next_iteration = set()
+            while relevant_nodes:
+                i = relevant_nodes.pop()
+                if i in weights:
+                    w = weights[i]
+                else:
+                    n = ev_target.get_node(i)
+                    t = type(n).__name__
+                    if t == 'atom':
+                        w = float(n.probability)
+                        weights[i] = w
+                        weights[-i] = 1.0 - w
+                        update = True
+                    elif t == 'disj':
+                        cn = [weights[c] for c in n.children if c in weights]
+                        if cn:
+                            w = max(cn)
+                        else:
+                            w = 0.0
+                        if w > 0.0:
+                            weights[i] = w
+                            weights[-i] = 1.0 - w
+                            update = True
+                        elif len(cn) != len(n.children):
+                            next_iteration.add(i)
+                        else:
+                            weights[i] = w
+                            weights[-i] = 1.0 - w
+                            update = True
+
+                    elif t == 'conj':
+                        cn = [weights[c] for c in n.children if c in weights]
+                        if cn:
+                            w = min(cn)
+                        else:
+                            w = 1.0
+
+                        if w == 0.0:
+                            weights[i] = w
+                            update = True
+                        elif len(cn) != len(n.children):
+                            next_iteration.add(i)
+                        else:
+                            weights[i] = w
+                            update = True
+            relevant_nodes = next_iteration
+
+        for e, v in ev_target.evidence():
+            if weights.get(v, 0.0) == 0.0:
+                return False
+        return True
+
+
+
+
 # noinspection PyUnusedLocal
 def estimate(model, n=0, propagate_evidence=False, **kwdargs):
     from collections import defaultdict
 
     engine = init_engine()
-    db, evidence = init_db(engine, model, propagate_evidence)
+    db, evidence, ev_target = init_db(engine, model, propagate_evidence)
 
     start_time = time.time()
     estimates = defaultdict(float)
@@ -523,13 +580,8 @@ def estimate(model, n=0, propagate_evidence=False, **kwdargs):
             for ev_fact in evidence:
                 target.add_atom(*ev_fact)
 
-            result = engine.ground_all(db, target=target)
-            evidence_ok = True
-            for name, node in result.evidence():
-                if node is None:
-                    evidence_ok = False
-                    break
-            if evidence_ok:
+            result = ground(engine, db, target=target)
+            if verify_evidence(engine, db, ev_target, target):
                 for k, v in result.queries():
                     if v == 0:
                         estimates[k] += 1.0
@@ -548,7 +600,6 @@ def estimate(model, n=0, propagate_evidence=False, **kwdargs):
 
     if r:
         logging.getLogger('problog_sample').info('Rejected samples: %s' % r)
-
 
     for k in estimates:
         estimates[k] = estimates[k] / counts
