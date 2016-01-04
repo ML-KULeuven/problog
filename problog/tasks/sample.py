@@ -48,13 +48,14 @@ from problog.engine import DefaultEngine, UnknownClause
 from problog.engine_builtin import check_mode
 from problog.formula import LogicFormula
 from problog.errors import process_error, GroundingError
-from problog.util import start_timer, stop_timer, format_dictionary
+from problog.util import start_timer, stop_timer, format_dictionary, init_logger
 from problog.engine_unify import UnifyError, unify_value
 import random
 import math
 import signal
 import time
 import traceback
+import logging
 
 
 try:
@@ -443,6 +444,52 @@ def ground_evidence(engine, db, target, evidence):
                 target = engine.ground(db, query[0], target, label=target.LABEL_EVIDENCE_MAYBE, is_root=True)
 
 
+def sample_prop(model, n=1, format='str', **kwdargs):
+    engine = DefaultEngine()
+    engine.add_builtin('sample', 2, builtin_sample)
+    engine.add_builtin('value', 2, builtin_sample)
+    engine.add_builtin('previous', 2, builtin_previous)
+    db = engine.prepare(model)
+    i = 0
+    r = 0
+    engine.previous_result = None
+
+    db = engine.prepare(db)
+    # Load queries: use argument if available, otherwise load from database.
+    evidence = engine.query(db, Term('evidence', None, None))
+    evidence += engine.query(db, Term('evidence', None))
+
+    ev_target = LogicFormula()
+    engine.ground_evidence(db, ev_target, evidence)
+    # delattr(target, '_cache')
+    ev_target.lookup_evidence = {}
+    ev_nodes = [node for name, node in ev_target.evidence()
+                if node != 0 and node is not None]
+    ev_target.propagate(ev_nodes, ev_target.lookup_evidence)
+
+    while i < n:
+        target = SampledFormula()
+
+        for index, value in ev_target.lookup_evidence.items():
+            node = ev_target.get_node(index)
+            if ev_target.is_true(value):
+                target.add_atom(node[0], 1.0, *node[2:])
+            elif ev_target.is_false(value):
+                target.add_atom(node[0], 0.0, *node[2:])
+
+        engine.functions = FunctionStore(target=target, database=db, engine=engine)
+        result = ground(engine, db, target=target)
+        if result is not None:
+            if format == 'str':
+                yield result.to_string(db, **kwdargs)
+            else:
+                yield result.to_dict()
+            i += 1
+        else:
+            r += 1
+        engine.previous_result = result
+
+
 def sample(model, n=1, format='str', **kwdargs):
     engine = DefaultEngine()
     engine.add_builtin('sample', 2, builtin_sample)
@@ -450,23 +497,23 @@ def sample(model, n=1, format='str', **kwdargs):
     engine.add_builtin('previous', 2, builtin_previous)
     db = engine.prepare(model)
     i = 0
+    r = 0
     engine.previous_result = None
     while i < n:
         target = SampledFormula()
         engine.functions = FunctionStore(target=target, database=db, engine=engine)
         result = ground(engine, db, target=target)
-        # evidence_ok = True
-        # for name, node in result.evidence():
-        #     if node is None:
-        #         evidence_ok = False
-        #         break
         if result is not None:
             if format == 'str':
                 yield result.to_string(db, **kwdargs)
             else:
                 yield result.to_dict()
             i += 1
+        else:
+            r += 1
         engine.previous_result = result
+    if r:
+        logging.getLogger('problog').info('Rejected samples: %s' % r)
 
 
 # noinspection PyUnusedLocal
@@ -561,8 +608,11 @@ def main(args, result_handler=None):
                         help="Set timeout (in seconds, default=off).")
     parser.add_argument('--output', '-o', type=str, default=None, help="Filename of output file.")
     parser.add_argument('--web', action='store_true', help=argparse.SUPPRESS)
+    parser.add_argument('--verbose', '-v', action='count', help='Verbose output')
 
     args = parser.parse_args(args)
+
+    init_logger(args.verbose)
 
     pl = PrologFile(args.filename)
 
@@ -592,7 +642,7 @@ def main(args, result_handler=None):
             results = estimate(pl, **vars(args))
             print (format_dictionary(results))
         else:
-            result_handler((True, sample(pl, format=outformat, **vars(args))),
+            result_handler((True, sample_prop(pl, format=outformat, **vars(args))),
                            output=outf, oneline=args.oneline)
     except Exception as err:
         trace = traceback.format_exc()
