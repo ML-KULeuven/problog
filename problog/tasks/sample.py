@@ -444,63 +444,53 @@ def ground_evidence(engine, db, target, evidence):
                 target = engine.ground(db, query[0], target, label=target.LABEL_EVIDENCE_MAYBE, is_root=True)
 
 
-def sample_prop(model, n=1, format='str', **kwdargs):
+def init_engine():
     engine = DefaultEngine()
     engine.add_builtin('sample', 2, builtin_sample)
     engine.add_builtin('value', 2, builtin_sample)
     engine.add_builtin('previous', 2, builtin_previous)
-    db = engine.prepare(model)
-    i = 0
-    r = 0
     engine.previous_result = None
+    return engine
 
-    db = engine.prepare(db)
-    # Load queries: use argument if available, otherwise load from database.
-    evidence = engine.query(db, Term('evidence', None, None))
-    evidence += engine.query(db, Term('evidence', None))
 
-    ev_target = LogicFormula()
-    engine.ground_evidence(db, ev_target, evidence)
-    # delattr(target, '_cache')
-    ev_target.lookup_evidence = {}
-    ev_nodes = [node for name, node in ev_target.evidence()
-                if node != 0 and node is not None]
-    ev_target.propagate(ev_nodes, ev_target.lookup_evidence)
+def init_db(engine, model, propagate_evidence=False):
+    db = engine.prepare(model)
 
-    while i < n:
-        target = SampledFormula()
+    if propagate_evidence:
+        evidence = engine.query(db, Term('evidence', None, None))
+        evidence += engine.query(db, Term('evidence', None))
 
+        ev_target = LogicFormula()
+        engine.ground_evidence(db, ev_target, evidence)
+        ev_target.lookup_evidence = {}
+        ev_nodes = [node for name, node in ev_target.evidence()
+                    if node != 0 and node is not None]
+        ev_target.propagate(ev_nodes, ev_target.lookup_evidence)
+
+        evidence_facts = []
         for index, value in ev_target.lookup_evidence.items():
             node = ev_target.get_node(index)
             if ev_target.is_true(value):
-                target.add_atom(node[0], 1.0, *node[2:])
+                evidence_facts.append((node[0], 1.0) + node[2:])
             elif ev_target.is_false(value):
-                target.add_atom(node[0], 0.0, *node[2:])
+                evidence_facts.append((node[0], 1.0) + node[2:])
+    else:
+        evidence_facts = []
 
-        engine.functions = FunctionStore(target=target, database=db, engine=engine)
-        result = ground(engine, db, target=target)
-        if result is not None:
-            if format == 'str':
-                yield result.to_string(db, **kwdargs)
-            else:
-                yield result.to_dict()
-            i += 1
-        else:
-            r += 1
-        engine.previous_result = result
+    return db, evidence_facts
 
 
-def sample(model, n=1, format='str', **kwdargs):
-    engine = DefaultEngine()
-    engine.add_builtin('sample', 2, builtin_sample)
-    engine.add_builtin('value', 2, builtin_sample)
-    engine.add_builtin('previous', 2, builtin_previous)
-    db = engine.prepare(model)
+def sample(model, n=1, format='str', propagate_evidence=False, **kwdargs):
+    engine = init_engine()
+    db, evidence = init_db(engine, model, propagate_evidence)
     i = 0
     r = 0
-    engine.previous_result = None
+
     while i < n:
         target = SampledFormula()
+        for ev_fact in evidence:
+            target.add_atom(*ev_fact)
+
         engine.functions = FunctionStore(target=target, database=db, engine=engine)
         result = ground(engine, db, target=target)
         if result is not None:
@@ -513,23 +503,27 @@ def sample(model, n=1, format='str', **kwdargs):
             r += 1
         engine.previous_result = result
     if r:
-        logging.getLogger('problog').info('Rejected samples: %s' % r)
+        logging.getLogger('problog_sample').info('Rejected samples: %s' % r)
 
 
 # noinspection PyUnusedLocal
-def estimate(model, n=0, **kwdargs):
+def estimate(model, n=0, propagate_evidence=False, **kwdargs):
     from collections import defaultdict
-    engine = DefaultEngine()
-    engine.add_builtin('sample', 2, builtin_sample)
-    engine.add_builtin('value', 2, builtin_sample)
-    db = engine.prepare(model)
+
+    engine = init_engine()
+    db, evidence = init_db(engine, model, propagate_evidence)
 
     start_time = time.time()
     estimates = defaultdict(float)
     counts = 0.0
+    r = 0
     try:
         while n == 0 or counts < n:
-            result = engine.ground_all(db, target=SampledFormula())
+            target = SampledFormula()
+            for ev_fact in evidence:
+                target.add_atom(*ev_fact)
+
+            result = engine.ground_all(db, target=target)
             evidence_ok = True
             for name, node in result.evidence():
                 if node is None:
@@ -540,6 +534,9 @@ def estimate(model, n=0, **kwdargs):
                     if v == 0:
                         estimates[k] += 1.0
                 counts += 1.0
+            else:
+                r += 1
+            engine.previous_result = result
     except KeyboardInterrupt:
         pass
     except SystemExit:
@@ -548,6 +545,11 @@ def estimate(model, n=0, **kwdargs):
     total_time = time.time() - start_time
     rate = counts / total_time
     print ('%% Probability estimate after %d samples (%.4f samples/second):' % (counts, rate))
+
+    if r:
+        logging.getLogger('problog_sample').info('Rejected samples: %s' % r)
+
+
     for k in estimates:
         estimates[k] = estimates[k] / counts
     return estimates
@@ -601,6 +603,8 @@ def main(args, result_handler=None):
                         help="Also output choice facts (default: just queries).")
     parser.add_argument('--with-probability', action='store_true', help="Show probability.")
     parser.add_argument('--as-evidence', action='store_true', help="Output as evidence.")
+    parser.add_argument('--propagate-evidence', dest='propagate_evidence',
+                        action='store_true', help="Evidence propagation")
     parser.add_argument('--oneline', action='store_true', help="Format samples on one line.")
     parser.add_argument('--estimate', action='store_true',
                         help='Estimate probability of queries from samples.')
@@ -612,7 +616,7 @@ def main(args, result_handler=None):
 
     args = parser.parse_args(args)
 
-    init_logger(args.verbose)
+    init_logger(args.verbose, 'problog_sample')
 
     pl = PrologFile(args.filename)
 
@@ -642,7 +646,7 @@ def main(args, result_handler=None):
             results = estimate(pl, **vars(args))
             print (format_dictionary(results))
         else:
-            result_handler((True, sample_prop(pl, format=outformat, **vars(args))),
+            result_handler((True, sample(pl, format=outformat, **vars(args))),
                            output=outf, oneline=args.oneline)
     except Exception as err:
         trace = traceback.format_exc()
