@@ -570,8 +570,6 @@ def verify_evidence(engine, db, ev_target, q_target):
         return True
 
 
-
-
 # noinspection PyUnusedLocal
 def estimate(model, n=0, propagate_evidence=False, **kwdargs):
     from collections import defaultdict
@@ -663,8 +661,8 @@ def main(args, result_handler=None):
                         help="Also output choice facts (default: just queries).")
     parser.add_argument('--with-probability', action='store_true', help="Show probability.")
     parser.add_argument('--as-evidence', action='store_true', help="Output as evidence.")
-    parser.add_argument('--dont-propagate-evidence', dest='propagate_evidence',
-                        action='store_false', help="Evidence propagation")
+    parser.add_argument('--propagate-evidence', dest='propagate_evidence',
+                        action='store_true', help="Enable evidence propagation")
     parser.add_argument('--oneline', action='store_true', help="Format samples on one line.")
     parser.add_argument('--estimate', action='store_true',
                         help='Estimate probability of queries from samples.')
