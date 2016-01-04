@@ -47,7 +47,7 @@ from problog.logic import Term, Constant, ArithmeticError
 from problog.engine import DefaultEngine, UnknownClause
 from problog.engine_builtin import check_mode
 from problog.formula import LogicFormula
-from problog.errors import process_error, ProbLogError
+from problog.errors import process_error, GroundingError
 from problog.util import start_timer, stop_timer, format_dictionary
 from problog.engine_unify import UnifyError, unify_value
 import random
@@ -400,6 +400,49 @@ def builtin_previous(term, default, engine=None, target=None, callback=None, **k
     return True, actions
 
 
+def ground(engine, db, target):
+    db = engine.prepare(db)
+    # Load queries: use argument if available, otherwise load from database.
+    queries = [q[0] for q in engine.query(db, Term('query', None))]
+    evidence = engine.query(db, Term('evidence', None, None))
+    evidence += engine.query(db, Term('evidence', None))
+
+    for query in queries:
+        if not isinstance(query, Term):
+            raise GroundingError('Invalid query')   # TODO can we add a location?
+
+    for ev in evidence:
+        if not isinstance(ev[0], Term):
+            raise GroundingError('Invalid evidence')   # TODO can we add a location?
+
+    # Ground evidence first
+    ground_evidence(engine, db, target, evidence)
+    for name, node in target.evidence():
+        if target.is_false(node):
+            return None
+
+    # Ground queries
+    engine.ground_queries(db, target, queries)
+    return target
+
+
+def ground_evidence(engine, db, target, evidence):
+    # Ground evidence
+    for query in evidence:
+        if len(query) == 1:  # evidence/1
+            if query[0].is_negated():
+                target = engine.ground(db, -query[0], target, label=target.LABEL_EVIDENCE_NEG, is_root=True)
+            else:
+                target = engine.ground(db, query[0], target, label=target.LABEL_EVIDENCE_POS, is_root=True)
+        else:  # evidence/2
+            if str(query[1]) == 'true':
+                target = engine.ground(db, query[0], target, label=target.LABEL_EVIDENCE_POS, is_root=True)
+            elif str(query[1]) == 'false':
+                target = engine.ground(db, query[0], target, label=target.LABEL_EVIDENCE_NEG, is_root=True)
+            else:
+                target = engine.ground(db, query[0], target, label=target.LABEL_EVIDENCE_MAYBE, is_root=True)
+
+
 def sample(model, n=1, format='str', **kwdargs):
     engine = DefaultEngine()
     engine.add_builtin('sample', 2, builtin_sample)
@@ -411,13 +454,13 @@ def sample(model, n=1, format='str', **kwdargs):
     while i < n:
         target = SampledFormula()
         engine.functions = FunctionStore(target=target, database=db, engine=engine)
-        result = engine.ground_all(db, target=target)
-        evidence_ok = True
-        for name, node in result.evidence():
-            if node is None:
-                evidence_ok = False
-                break
-        if evidence_ok:
+        result = ground(engine, db, target=target)
+        # evidence_ok = True
+        # for name, node in result.evidence():
+        #     if node is None:
+        #         evidence_ok = False
+        #         break
+        if result is not None:
             if format == 'str':
                 yield result.to_string(db, **kwdargs)
             else:
