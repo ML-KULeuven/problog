@@ -421,8 +421,8 @@ def ground(engine, db, target):
     return target
 
 
-def init_engine():
-    engine = DefaultEngine()
+def init_engine(**kwdargs):
+    engine = DefaultEngine(**kwdargs)
     engine.add_builtin('sample', 2, builtin_sample)
     engine.add_builtin('value', 2, builtin_sample)
     engine.add_builtin('previous', 2, builtin_previous)
@@ -459,7 +459,7 @@ def init_db(engine, model, propagate_evidence=False):
 
 
 def sample(model, n=1, format='str', propagate_evidence=False, **kwdargs):
-    engine = init_engine()
+    engine = init_engine(**kwdargs)
     db, evidence, ev_target = init_db(engine, model, propagate_evidence)
     i = 0
     r = 0
@@ -505,7 +505,7 @@ def verify_evidence(engine, db, ev_target, q_target):
 
         for k, n, t in ev_target:
             if t == 'atom' and n.group is not None and not k in weights:
-                if q_target.groups[n.group] is None:
+                if q_target.groups.get(n.group, 1.0) is None:
                     p = 0.0
                 else:
                     p = 1.0
@@ -574,7 +574,7 @@ def verify_evidence(engine, db, ev_target, q_target):
 def estimate(model, n=0, propagate_evidence=False, **kwdargs):
     from collections import defaultdict
 
-    engine = init_engine()
+    engine = init_engine(**kwdargs)
     db, evidence, ev_target = init_db(engine, model, propagate_evidence)
 
     start_time = time.time()
@@ -671,10 +671,19 @@ def main(args, result_handler=None):
     parser.add_argument('--output', '-o', type=str, default=None, help="Filename of output file.")
     parser.add_argument('--web', action='store_true', help=argparse.SUPPRESS)
     parser.add_argument('--verbose', '-v', action='count', help='Verbose output')
+    parser.add_argument('--seed', '-s', type=float, help='Random seed', default=None)
+    parser.add_argument('--full-trace', action='store_true')
 
     args = parser.parse_args(args)
 
     init_logger(args.verbose, 'problog_sample')
+
+    if args.seed is not None:
+        random.seed(args.seed)
+    else:
+        seed = random.random()
+        logging.getLogger('problog_sample').debug('Seed: %s', seed)
+        random.seed(seed)
 
     pl = PrologFile(args.filename)
 
@@ -698,7 +707,6 @@ def main(args, result_handler=None):
     else:
         outformat = 'str'
         result_handler = print_result
-
     try:
         if args.estimate:
             results = estimate(pl, **vars(args))
