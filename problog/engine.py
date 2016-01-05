@@ -772,7 +772,7 @@ class ClauseDB(LogicProgram):
             body_count = len(variables)
             # Body arguments
             body_args = tuple(range(0, len(variables)))
-            body_functor = self.FUNCTOR_BODY
+            body_functor = self.FUNCTOR_BODY + '_' + str(len(self))
             if len(new_heads) > 1:
                 heads_list = Term('multi')  # list2term(new_heads)
             else:

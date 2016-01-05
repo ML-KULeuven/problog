@@ -250,20 +250,23 @@ class StackBasedEngine(ClauseDBEngine):
             res = node.on_cycle or self.in_cycle(node.parent)
             return res
 
-    def find_cycle(self, child, parent):
+    def find_cycle(self, child, parent, force=False):
         cycle = []
         while child is not None:
             cycle.append(child)
             childnode = self.stack[child]
             if hasattr(childnode, 'siblings'):
                 for s in childnode.siblings:
-                    cycle_rest = self.find_cycle(s, parent)
+                    cycle_rest = self.find_cycle(s, parent, force=False)
                     if cycle_rest:
                         return cycle + cycle_rest
             child = childnode.parent
             if childnode.parent == parent:
                 return cycle
-        return None
+        if force:
+            return cycle
+        else:
+            return None
 
     def notify_cycle(self, cycle):
         actions = []
@@ -368,8 +371,8 @@ class StackBasedEngine(ClauseDBEngine):
                 next_actions = self.cycle_root.closeCycle(True)
                 actions += reversed(next_actions)
             else:
-
                 act, obj, args, context = actions.pop()
+
 
                 # Inform the debugger.
                 if debugger:
@@ -815,6 +818,20 @@ class MessageQueue(object):
     def __len__(self):
         raise NotImplementedError('Abstract method')
 
+    def repr_message(self, msg):
+        if msg[0] == 'c':
+            return 'c(%s)' % msg[1]
+        elif msg[0] == 'r':
+            return 'r(%s, %s)' % (msg[1], msg[2])
+        elif msg[0] == 'e':
+            return 'e(%s, %s, %s, %s)' % (msg[1], msg[3].get('call'), msg[3].get('context'), msg[3].get('parent'))
+
+    def __iter__(self):
+        raise NotImplementedError('Abstract method')
+
+    def __repr__(self):
+        return '[%s]' % ', '.join(map(self.repr_message, self))
+
 
 class MessageFIFO(MessageQueue):
 
@@ -849,8 +866,8 @@ class MessageFIFO(MessageQueue):
     def __len__(self):
         return len(self.messages)
 
-    def __repr__(self):
-        return repr([x[:3] for x in self.messages])
+    def __iter__(self):
+        return iter(self.messages)
 
 
 class MessageAnyOrder(MessageQueue):
@@ -899,8 +916,6 @@ class MessageOrderD(MessageAnyOrder):
 
     def __iter__(self):
         return iter(self.messages)
-
-
 
 
 class EvalNode(object):
@@ -1440,7 +1455,8 @@ class EvalDefine(EvalNode):
 
     def cycleDetected(self, cycle_parent):
         queue = []
-        cycle = self.engine.find_cycle(self.pointer, cycle_parent.pointer)
+        cycle = self.engine.find_cycle(self.pointer, cycle_parent.pointer, cycle_parent.isCycleParent())
+
         if not cycle:
             cycle_parent.siblings.append(self.pointer)
             self.is_cycle_child = True
@@ -1542,6 +1558,8 @@ class EvalDefine(EvalNode):
             extra.append('c_cl: %s' % (self.cycle_close,))
         if self.siblings:
             extra.append('sbl: %s' % (self.siblings,))
+        if not self.is_buffered():
+            extra.append('U')
         return EvalNode.__str__(self) + ' ' + ' '.join(extra)
 
 
@@ -1826,6 +1844,3 @@ class MessageOrder1(MessageAnyOrder):
 
     def __iter__(self):
         return iter(self.messages_e + self.messages_rc)
-
-    def __str__(self):
-        return str(self.messages_rc + self.messages_e)
