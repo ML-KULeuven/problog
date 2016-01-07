@@ -843,7 +843,7 @@ class And(Term):
 class Not(Term):
     """Not"""
 
-    def __init__(self, functor, child, location=None):
+    def __init__(self, functor, child, location=None, **kwdargs):
         Term.__init__(self, functor, child, location=location)
         self.child = child
 
