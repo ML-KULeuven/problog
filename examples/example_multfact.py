@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 # coding=utf-8
 
 """
@@ -45,6 +45,7 @@ from problog.engine import DefaultEngine
 from problog.formula import LogicFormula
 from problog.sdd_formula import SDD
 from problog.nnf_formula import NNF
+from problog.forward import ForwardInference, ForwardBDD
 from problog.util import Timer, start_timer, stop_timer, init_logger, format_dictionary
 from problog.constraint import ClauseConstraint, ConstraintAD
 from problog.evaluator import SemiringProbability, FormulaEvaluator, OperationNotSupported
@@ -186,7 +187,7 @@ class NegativeProbability(SemiringProbability):
         return 1.0 - a
 
     def normalize(self, a, z):
-        print('normailze {} {}'.format(a,z))
+        print('normalize {} {}'.format(a,z))
         if isinstance(a, tuple) or isinstance(z, tuple):
             raise OperationNotSupported()
         if -0.0001 < a < 0.0001:
@@ -230,6 +231,8 @@ def probability(filename, with_fact=True, knowledge='nnf', constraints=True):
                     fe.set_weights(weights)
                     # TODO: SDD lib doesn't support negative weights? Runtime error
                     # TODO: How can I use the Python evaluator with SDDs?
+                elif knowledge == 'fbdd':
+                    nnf = ForwardBDD.createFrom(gp2)
                 else:
                     nnf = NNF.createFrom(gp2)
             with open ('test_f_nnf.dot', 'w') as dotfile:
@@ -245,6 +248,8 @@ def probability(filename, with_fact=True, knowledge='nnf', constraints=True):
             with Timer('Compilation with {}'.format(knowledge)):
                 if knowledge == 'sdd':
                     nnf = SDD.createFrom(gp)
+                elif knowledge == 'fbdd':
+                    nnf = ForwardBDD.createFrom(gp)
                 else:
                     nnf = NNF.createFrom(gp)
             # with open ('test_nf_nnf.dot', 'w') as dotfile:
@@ -273,7 +278,7 @@ if __name__ == '__main__' :
     parser.add_argument('--verbose', '-v', action='count', help='Verbose output')
     parser.add_argument('--nomf', action='store_true', help='Disable multiplicative factorization')
     parser.add_argument('--profile', action='store_true', help='Profile Python script')
-    parser.add_argument('--knowledge', '-k', help='Knowledge compilation (sdd, nnf)')
+    parser.add_argument('--knowledge', '-k', help='Knowledge compilation (sdd, nnf, fbdd)')
     parser.add_argument('--noconstraints', dest='constraints', action='store_false', help='Do not use constraints')
     args = parser.parse_args()
 

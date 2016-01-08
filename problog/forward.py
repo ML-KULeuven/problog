@@ -411,6 +411,7 @@ class ForwardInference(DD):
                 return result
         elif index < 0:
             # We are requesting a negated node => use previous stratum's result
+            print(self._inodes_neg)
             result = self._inodes_neg[-index - 1]
             if result is None and self._inodes_prev[-index - 1] is not None:
                 result = self.get_manager().negate(self._inodes_prev[-index - 1])
