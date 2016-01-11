@@ -384,7 +384,11 @@ class Term(object):
                         q.append('(')
                         q.append(a)
                         q.append(')')
-                    q.append(' %s ' % str(current.functor).strip("'"))
+                    op = str(current.functor)
+                    if 'a' <= op[0] <= 'z':
+                        q.append(' %s ' % str(current.functor).strip("'"))
+                    else:
+                        q.append('%s' % str(current.functor).strip("'"))
                     if not isinstance(b, Term) or \
                             b.op_priority is None or b.op_priority < current.op_priority or \
                             (b.op_priority == current.op_priority and current.op_spec == 'xfy'):
@@ -458,7 +462,7 @@ class Term(object):
         :param p: new probability (None clears the probability)
         :return: copy of the Term
         """
-        return self.__class__(self.functor, *self.args, p=p)
+        return self.__class__(self.functor, *self.args, p=p, priority=self.op_priority, opspec=self.op_spec)
 
     def is_var(self):
         """Checks whether this Term represents a variable."""
