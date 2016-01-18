@@ -22,6 +22,8 @@ Implementation of Prolog / ProbLog builtins.
     limitations under the License.
 """
 
+from __future__ import print_function
+
 from .logic import term2str, Term, Clause, Constant, term2list, list2term, is_ground, is_variable
 from .program import PrologFile
 from .errors import GroundingError
@@ -118,11 +120,40 @@ def add_standard_builtins(engine, b=None, s=None, sp=None):
     for i in range(1, 10):
         engine.add_builtin('debugprint', i, b(_builtin_debugprint))
 
+    for i in range(1, 10):
+        engine.add_builtin('write', i, b(_builtin_write))
+
+    for i in range(1, 10):
+        engine.add_builtin('writenl', i, b(_builtin_writenl))
+
+    engine.add_builtin('nl', 0, b(_builtin_nl))
+
+
 
 # noinspection PyUnusedLocal
 def _builtin_debugprint(*args, **kwd):
     print(' '.join(map(term2str, args)))
     return True
+
+
+def term2str_noquote(term):
+    res = term2str(term)
+    if res[0] == res[-1] == "'":
+        res = res[1:-1]
+    return res
+
+def _builtin_write(*args, **kwd):
+    print(' '.join(map(term2str_noquote, args)), end='')
+    return True
+
+def _builtin_writenl(*args, **kwd):
+    print(' '.join(map(term2str_noquote, args)))
+    return True
+
+def _builtin_nl(**kwd):
+    print()
+    return True
+
 
 
 class CallModeError(GroundingError):
