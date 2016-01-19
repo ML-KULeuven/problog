@@ -1013,8 +1013,12 @@ def _builtin_consult(filename, database=None, engine=None, **kwdargs):
    :param kwdargs: additional arguments
    :return: True
     """
+
+    root = database.source_root
+    if filename.location:
+        root = os.path.dirname(database.source_files[filename.location[0]])
     check_mode((filename,), ['a'], functor='consult', **kwdargs)
-    filename = os.path.join(database.source_root, _atom_to_filename(filename))
+    filename = os.path.join(root, _atom_to_filename(filename))
     if not os.path.exists(filename):
         filename += '.pl'
     if not os.path.exists(filename):
