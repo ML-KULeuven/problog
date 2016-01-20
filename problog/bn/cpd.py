@@ -23,6 +23,7 @@ import itertools
 from datetime import datetime
 import re
 from functools import reduce
+import sys
 
 class PGM(object):
     def __init__(self):
@@ -59,7 +60,13 @@ class PGM(object):
                 if rv in visited:
                     continue
                 all_parents_visited = True
-                cpd = self.cpds[rv]
+                try:
+                    cpd = self.cpds[rv]
+                except KeyError as exc:
+                    print('Error: random variable has no CPD associated:')
+                    print(exc)
+                    # print('\n'.join(self.cpds.keys()))
+                    sys.exit(1)
                 for parent_rv in cpd.parents:
                     if parent_rv not in visited:
                         all_parents_visited = False
