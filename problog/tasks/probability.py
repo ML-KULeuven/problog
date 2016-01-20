@@ -65,6 +65,7 @@ def print_result_json(d, output, precision=8):
     else:
         result['SUCCESS'] = False
         result['err'] = vars(d)
+        result['err']['message'] = str(process_error(d))
     print (json.dumps(result), file=output)
     return 0
 
@@ -165,9 +166,10 @@ def argparser():
     parser.add_argument('--engine-debug', action='store_true', help=argparse.SUPPRESS)
     parser.add_argument('--propagate-evidence', action='store_true',
                         dest='propagate_evidence',
-                        default=argparse.SUPPRESS, help=argparse.SUPPRESS)
+                        default=argparse.SUPPRESS,
+                        help="Enable evidence propagation")
     parser.add_argument('--propagate-weights', action='store_true', default=None,
-                        help=argparse.SUPPRESS)
+                        help="Enable weight propagation")
     parser.add_argument('--convergence', '-c', type=float, default=argparse.SUPPRESS,
                         help='stop anytime when bounds are within this range')
 

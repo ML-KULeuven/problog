@@ -88,7 +88,7 @@ class Semiring(object):
         """Transform the given external value into an internal value."""
         return float(a)
 
-    def result(self, a):
+    def result(self, a, formula=None):
         """Transform the given internal value into an external value."""
         return a
 
@@ -105,11 +105,11 @@ class Semiring(object):
         else:
             raise OperationNotSupported()
 
-    def pos_value(self, a):
+    def pos_value(self, a, key=None):
         """Extract the positive internal value for the given external value."""
         return self.value(a)
 
-    def neg_value(self, a):
+    def neg_value(self, a, key=None):
         """Extract the negative internal value for the given external value."""
         return self.negate(self.value(a))
 
@@ -120,6 +120,18 @@ class Semiring(object):
     def result_one(self):
         """Give the external representation of the identity element of the multiplication."""
         return self.result(self.one())
+
+    def is_dsp(self):
+        """Indicates whether this semiring requires solving a disjoint sum problem."""
+        return False
+
+    def is_nsp(self):
+        """Indicates whether this semiring requires solving a neutral sum problem."""
+        return False
+
+    def in_domain(self, a):
+        """Checks whether the given (internal) value is valid."""
+        return True
 
 
 class SemiringProbability(Semiring):
@@ -151,10 +163,17 @@ class SemiringProbability(Semiring):
 
     def value(self, a):
         v = float(a)
-        if 0.0 - 1e-12 <= v <= 1.0 + 1e-12:
+        if 0.0 - 1e-9 <= v <= 1.0 + 1e-9:
             return v
         else:
             raise InvalidValue("Not a valid value for this semiring: '%s'" % a, location=a.location)
+
+    def is_dsp(self):
+        """Indicates whether this semiring requires solving a disjoint sum problem."""
+        return True
+
+    def in_domain(self, a):
+        return 0.0 - 1e-9 <= a <= 1.0 + 1e-9
 
 
 class SemiringLogProbability(SemiringProbability):
@@ -194,20 +213,27 @@ class SemiringLogProbability(SemiringProbability):
 
     def value(self, a):
         v = float(a)
-        if -1e-12 <= v < 1e-12:
+        if -1e-9 <= v < 1e-9:
             return self.zero()
         else:
-            if 0.0 - 1e-12 <= v <= 1.0 + 1e-12:
+            if 0.0 - 1e-9 <= v <= 1.0 + 1e-9:
                 return math.log(v)
             else:
                 raise InvalidValue("Not a valid value for this semiring: '%s'" % a, location=a.location)
 
-    def result(self, a):
+    def result(self, a, formula=None):
         return math.exp(a)
 
     def normalize(self, a, z):
         # Assumes Z is in log
         return a - z
+
+    def is_dsp(self):
+        """Indicates whether this semiring requires solving a disjoint sum problem."""
+        return True
+
+    def in_domain(self, a):
+        return a <= 1e-12
 
 
 class SemiringSymbolic(Semiring):
@@ -248,14 +274,16 @@ class SemiringSymbolic(Semiring):
     def value(self, a):
         return str(a)
 
-    def result(self, a):
-        return a
-
     def normalize(self, a, z):
         if z == "1":
             return a
         else:
             return "%s / %s" % (a, z)
+
+    def is_dsp(self):
+        """Indicates whether this semiring requires solving a disjoint sum problem."""
+        return True
+
 
 
 @transform_allow_subclass
@@ -408,3 +436,182 @@ class Evaluator(object):
     def evidence(self):
         """Iterate over evidence."""
         return iter(self.__evidence)
+
+
+class FormulaEvaluator(object):
+    """Standard evaluator for boolean formula."""
+
+    def __init__(self, formula, semiring):
+        self._computed_weights = {}
+        self._semiring = semiring
+        self._formula = formula
+        self._fact_weights = {}
+
+    @property
+    def semiring(self):
+        return self._semiring
+
+    @property
+    def formula(self):
+        return self._formula
+
+    def set_weights(self, weights):
+        """Set known weights.
+
+        :param weights: dictionary of weights
+        :return:
+        """
+        self._computed_weights.clear()
+        self._fact_weights = weights
+
+    def get_weight(self, index):
+        """Get the weight of the node with the given index.
+
+        :param index: integer or formula.TRUE or formula.FALSE
+        :return: weight of the node
+        """
+
+        if index == self.formula.TRUE:
+            return self.semiring.one()
+        elif index == self.formula.FALSE:
+            return self.semiring.zero()
+        elif index < 0:
+            weight = self._fact_weights.get(index)
+            if weight is None:
+                # This will only work if the semiring support negation!
+                nw = self.get_weight(-index)
+                return self.semiring.negate(nw)
+            else:
+                return weight[1]
+        else:
+            weight = self._fact_weights.get(index)
+            if weight is None:
+                weight = self._computed_weights.get(index)
+                if weight is None:
+                    weight = self.compute_weight(index)
+                    self._computed_weights[index] = weight
+                return weight
+            else:
+                return weight[0]
+
+    def evaluate(self, index):
+        return self.semiring.result(self.get_weight(index), self.formula)
+
+    def compute_weight(self, index):
+        """Compute the weight of the node with the given index.
+
+        :param index: integer or formula.TRUE or formula.FALSE
+        :return: weight of the node
+        """
+
+        if index == self.formula.TRUE:
+            return self.semiring.one()
+        elif index == self.formula.FALSE:
+            return self.semiring.zero()
+        else:
+            node = self.formula.get_node(abs(index))
+            ntype = type(node).__name__
+
+            if ntype == 'atom':
+                return self.semiring.one()
+            else:
+                childprobs = [self.get_weight(c) for c in node.children]
+                if ntype == 'conj':
+                    p = self.semiring.one()
+                    for c in childprobs:
+                        p = self.semiring.times(p, c)
+                    return p
+                elif ntype == 'disj':
+                    p = self.semiring.zero()
+                    for c in childprobs:
+                        p = self.semiring.plus(p, c)
+                    return p
+                else:
+                    raise TypeError("Unexpected node type: '%s'." % ntype)
+
+
+class FormulaEvaluatorNSP(FormulaEvaluator):
+    """Evaluator for boolean formula that addresses the Neutral Sum Problem."""
+
+    def __init__(self, formula, semiring):
+        FormulaEvaluator.__init__(self, formula, semiring)
+
+    def get_weight(self, index):
+        """Get the weight of the node with the given index.
+
+        :param index: integer or formula.TRUE or formula.FALSE
+        :return: weight of the node
+        """
+
+        if index == self.formula.TRUE:
+            return self.semiring.one()
+        elif index == self.formula.FALSE:
+            return self.semiring.zero()
+        elif index < 0:
+            weight = self._fact_weights.get(-index)
+            if weight is None:
+                # This will only work if the semiring support negation!
+                nw, nu = self.get_weight(-index)
+                return self.semiring.negate(nw), nu
+            else:
+                return weight[1], {index}
+        else:
+            weight = self._fact_weights.get(index)
+            if weight is None:
+                weight = self._computed_weights.get(index)
+                if weight is None:
+                    weight = self.compute_weight(index)
+                    self._computed_weights[index] = weight
+                return weight
+            else:
+                return weight[0], {index}
+
+    def evaluate(self, index):
+        cp, cu = self.get_weight(index)
+        all_used = set(self._fact_weights.keys())
+
+        not_used = all_used - cu
+        for nu in not_used:
+            nu_p, a = self.get_weight(nu)
+            nu_n, b = self.get_weight(-nu)
+            cp = self.semiring.times(cp, self.semiring.plus(nu_p, nu_n))
+
+        return self.semiring.result(cp, self.formula)
+
+    def compute_weight(self, index):
+        """Compute the weight of the node with the given index.
+
+        :param index: integer or formula.TRUE or formula.FALSE
+        :return: weight of the node
+        """
+
+        node = self.formula.get_node(index)
+        ntype = type(node).__name__
+
+        if ntype == 'atom':
+            return self.semiring.one(), {index}
+        else:
+            childprobs = [self.get_weight(c) for c in node.children]
+            if ntype == 'conj':
+                p = self.semiring.one()
+                all_used = set()
+                for cp, cu in childprobs:
+                    all_used |= cu
+                    p = self.semiring.times(p, cp)
+                return p, all_used
+            elif ntype == 'disj':
+                p = self.semiring.zero()
+                all_used = set()
+                for cp, cu in childprobs:
+                    all_used |= cu
+
+                for cp, cu in childprobs:
+                    not_used = all_used - cu
+                    for nu in not_used:
+                        nu_p, u = self.get_weight(nu)
+                        nu_n, u = self.get_weight(-nu)
+                        cp = self.semiring.times(cp, self.semiring.plus(nu_p, nu_n))
+                    p = self.semiring.plus(p, cp)
+                return p, all_used
+            else:
+                raise TypeError("Unexpected node type: '%s'." % ntype)

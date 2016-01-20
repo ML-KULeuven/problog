@@ -299,7 +299,7 @@ class ClauseDBEngine(GenericEngine):
 
         return gp, results
 
-    def _ground_evidence(self, db, target, evidence):
+    def ground_evidence(self, db, target, evidence):
         logger = logging.getLogger('problog')
         # Ground evidence
         for query in evidence:
@@ -326,7 +326,7 @@ class ClauseDBEngine(GenericEngine):
                     target = self.ground(db, query[0], target, label=target.LABEL_EVIDENCE_MAYBE, is_root=True)
                     logger.debug("Ground program size: %s", len(target))
 
-    def _ground_queries(self, db, target, queries):
+    def ground_queries(self, db, target, queries):
         logger = logging.getLogger('problog')
         for query in queries:
             logger.debug("Grounding query '%s'", query)
@@ -358,17 +358,17 @@ class ClauseDBEngine(GenericEngine):
             # Ground queries
             if propagate_evidence:
                 with Timer('Propagating evidence'):
-                    self._ground_evidence(db, target, evidence)
+                    self.ground_evidence(db, target, evidence)
                     # delattr(target, '_cache')
                     target.lookup_evidence = {}
                     ev_nodes = [node for name, node in target.evidence()
                                 if node != 0 and node is not None]
                     target.propagate(ev_nodes, target.lookup_evidence)
-                    self._ground_queries(db, target, queries)
+                    self.ground_queries(db, target, queries)
                 logger.debug('Propagated evidence: %s' % list(target.lookup_evidence))
             else:
-                self._ground_queries(db, target, queries)
-                self._ground_evidence(db, target, evidence)
+                self.ground_queries(db, target, queries)
+                self.ground_evidence(db, target, evidence)
         return target
 
     def add_external_calls(self, externals):
@@ -521,12 +521,15 @@ class ClauseDB(LogicProgram):
     _clause = namedtuple('clause', ('functor', 'args', 'probability', 'child',
                                     'varcount', 'locvars', 'group', 'location'))
     _fact = namedtuple('fact', ('functor', 'args', 'probability', 'location'))
-    _call = namedtuple('call', ('functor', 'args', 'defnode', 'location'))
+    _call = namedtuple('call', ('functor', 'args', 'defnode', 'location', 'op_priority', 'op_spec'))
     _disj = namedtuple('disj', ('children', 'location'))
     _conj = namedtuple('conj', ('children', 'location'))
     _neg = namedtuple('neg', ('child', 'location'))
     _choice = namedtuple('choice', ('functor', 'args', 'probability', 'locvars', 'group', 'choice', 'location'))
     _extern = namedtuple('extern', ('functor', 'arity', 'function',))
+
+    FUNCTOR_CHOICE = 'choice'
+    FUNCTOR_BODY = 'body'
 
     def __init__(self, builtins=None, parent=None):
         LogicProgram.__init__(self)
@@ -559,6 +562,12 @@ class ClauseDB(LogicProgram):
                 return None
         else:
             return self.__builtins.get(signature)
+
+    def get_reserved_names(self):
+        return {self.FUNCTOR_CHOICE, self.FUNCTOR_BODY}
+
+    def is_reserved_name(self, name):
+        return name is self.get_reserved_names()
 
     def _create_index(self, arity):
         # return []
@@ -602,7 +611,8 @@ class ClauseDB(LogicProgram):
             raise AccessError("Can\'t call %s directly." % term.signature)
 
         defnode = self._add_head(term, create=False)
-        return self._append_node(self._call(term.functor, term.args, defnode, term.location))
+        return self._append_node(self._call(term.functor, term.args, defnode, term.location,
+                                            term.op_priority, term.op_spec))
 
     def get_node(self, index):
         """Get the instruction node at the given index.
@@ -639,6 +649,8 @@ class ClauseDB(LogicProgram):
         self.__heads[head.signature] = index
 
     def _add_head(self, head, create=True):
+        if self.is_reserved_name(head.functor):
+            raise AccessError("'%s' is a reserved name" % head.functor)
         node = self.get_builtin(head.signature)
         if node is not None:
             if create:
@@ -718,15 +730,21 @@ class ClauseDB(LogicProgram):
                 raise AccessError("External function overrides already defined predicate '%s'"
                                   % head.signature)
 
+    def get_local_scope(self, signature):
+        if signature == 'findall/3':
+            return 0, 1
+        else:
+            return []
+
     def _compile(self, struct, variables=None):
-        """
-        Compile the given structure and add it to the database.
-       :param struct: structure to compile
-       :type struct: Term
-       :param variables: mapping between variable names and variable index
-       :type variables: _AutoDict
-       :return: position of the compiled structure in the database
-       :rtype: int
+        """Compile the given structure and add it to the database.
+
+        :param struct: structure to compile
+        :type struct: Term
+        :param variables: mapping between variable names and variable index
+        :type variables: _AutoDict
+        :return: position of the compiled structure in the database
+        :rtype: int
         """
         if variables is None:
             variables = _AutoDict()
@@ -754,25 +772,25 @@ class ClauseDB(LogicProgram):
             body_count = len(variables)
             # Body arguments
             body_args = tuple(range(0, len(variables)))
+            body_functor = self.FUNCTOR_BODY + '_' + str(len(self))
             if len(new_heads) > 1:
-                body_functor = '_problog_ad_%s_body' % group
+                heads_list = Term('multi')  # list2term(new_heads)
             else:
-                body_functor = '_problog_%s_%s_body' % (new_heads[0].functor, group)
-            body_head = Term(body_functor, *body_args)
+                heads_list = new_heads[0]
+            body_head = Term(body_functor, Constant(group), heads_list, *body_args)
             self._add_clause_node(body_head, body_node, len(variables), variables.local_variables)
             clause_body = self._add_head(body_head)
             for choice, head in enumerate(new_heads):
                 # For each head: add choice node
-                # if len(new_heads) > 1:
-
-                choice_functor = Term('choice', Constant(group), Constant(choice), head.with_probability())
-                # else:
-                #    choice_functor = '_problog_%s_%s_choice' % (head.functor, group)
-                choice_node = self._add_choice_node(choice, choice_functor, body_args, head.probability, variables.local_variables,
+                choice_functor = Term(self.FUNCTOR_CHOICE,
+                                      Constant(group), Constant(choice), head.with_probability())
+                choice_node = self._add_choice_node(choice, choice_functor, body_args,
+                                                    head.probability, variables.local_variables,
                                                     group, head.location)
                 choice_call = self._append_node(self._call(choice_functor, body_args, choice_node,
-                                                           head.location))
-                body_call = self._append_node(self._call(body_functor, body_args, clause_body, head.location))
+                                                           head.location, None, None))
+                body_call = self._append_node(self._call(body_functor, body_head.args, clause_body,
+                                                         head.location, None, None))
                 choice_body = self._add_and_node(body_call, choice_call)
                 self._add_clause_node(head, choice_body, body_count, {}, group=group)
             return None
@@ -782,19 +800,25 @@ class ClauseDB(LogicProgram):
             else:
                 new_head = struct.head.apply(variables)
                 body_node = self._compile(struct.body, variables)
-                return self._add_clause_node(new_head, body_node, len(variables), variables.local_variables)
+                return self._add_clause_node(new_head, body_node, len(variables),
+                                             variables.local_variables)
         elif isinstance(struct, Var):
-            raise InstantiationError('Unexpected variable in clause body', self.lineno(struct.location))
+            return self._add_call_node(Term('call', struct.apply(variables),
+                                            location=struct.location))
         elif isinstance(struct, Term):
-            if struct.functor == 'findall' and struct.arity == 3:
-                # Special case for findall: any variables added by the first two arguments of findall
-                #  are 'local' variables
-                variables.enter_local()
-                a1 = struct.args[0].apply(variables)
-                a2 = struct.args[1].apply(variables)
-                variables.exit_local()
-                a3 = struct.args[2].apply(variables)
-                return self._add_call_node(struct(a1, a2, a3))
+            local_scope = self.get_local_scope(struct.signature)
+            if local_scope:
+                # Special case for findall: any variables added by the first
+                #  two arguments of findall are 'local' variables.
+                args = []
+                for i, a in enumerate(struct.args):
+                    if i in local_scope:
+                        variables.enter_local()
+                        args.append(a.apply(variables))
+                        variables.exit_local()
+                    else:
+                        args.append(a.apply(variables))
+                return self._add_call_node(struct(*args))
             else:
                 return self._add_call_node(struct.apply(variables))
         else:
@@ -818,7 +842,11 @@ class ClauseDB(LogicProgram):
         elif nodetype == 'call':
             func = node.functor
             args = node.args
-            return self._create_vars(Term(func, *args))
+            if isinstance(func, Term):
+                return self._create_vars(func(*(func.args + args)))
+            else:
+                return self._create_vars(Term(func, *args,
+                                              priority=node.op_priority, opspec=node.op_spec))
         elif nodetype == 'conj':
             a, b = node.children
             return And(self._extract(a), self._extract(b))
@@ -857,6 +885,49 @@ class ClauseDB(LogicProgram):
                     body = self._create_vars(Term(body_node.functor, *body_node.args))
             yield AnnotatedDisjunction(heads, body)
 
+    def iter_raw(self):
+        """Iterate over clauses of model as represented in the database i.e. with choice facts and
+         without annotated disjunctions.
+        """
+
+        clause_groups = defaultdict(list)
+        for index, node in enumerate(self.__nodes):
+            index += self.__offset
+            if not node:
+                continue
+            nodetype = type(node).__name__
+            if nodetype == 'fact':
+                yield Term(node.functor, *node.args, p=node.probability)
+            elif nodetype == 'clause':
+                if node.group is None:
+                    head = self._create_vars(Term(node.functor, *node.args, p=node.probability))
+                    yield Clause(head, self._extract(node.child))
+                else:
+                    head = self._create_vars(Term(node.functor, *node.args))
+                    yield Clause(head, self._extract(node.child))
+            elif nodetype == 'choice':
+                group = node.functor.args[0]
+                c = node.functor(*(node.functor.args + node.args))
+                clause_groups[group].append(c)
+                yield c.with_probability(node.probability)
+
+        for group in clause_groups.values():
+            if len(group) > 1:
+                yield Term('mutual_exclusive', list2term(group))
+        #
+        #
+        #     heads = []
+        #     body = None
+        #     for index in group:
+        #         node = self.get_node(index)
+        #         heads.append(self._create_vars(Term(node.functor, *node.args, p=node.probability)))
+        #         if body is None:
+        #             body_node = self.get_node(node.child)
+        #             body_node = self.get_node(body_node.children[0])
+        #             body = self._create_vars(Term(body_node.functor, *body_node.args))
+        #     yield AnnotatedDisjunction(heads, body)
+
+
 
 class AccessError(GroundingError):
     pass
@@ -878,6 +949,9 @@ class _AutoDict(dict):
         self.__localmode = False
 
     def __getitem__(self, key):
+        if key == '_' and self.__localmode:
+            key = '_#%s' % self.__anon
+
         if key == '_':
             value = len(self)
             self.__anon += 1

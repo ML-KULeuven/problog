@@ -22,6 +22,8 @@ Implementation of Prolog / ProbLog builtins.
     limitations under the License.
 """
 
+from __future__ import print_function
+
 from .logic import term2str, Term, Clause, Constant, term2list, list2term, is_ground, is_variable
 from .program import PrologFile
 from .errors import GroundingError
@@ -118,11 +120,40 @@ def add_standard_builtins(engine, b=None, s=None, sp=None):
     for i in range(1, 10):
         engine.add_builtin('debugprint', i, b(_builtin_debugprint))
 
+    for i in range(1, 10):
+        engine.add_builtin('write', i, b(_builtin_write))
+
+    for i in range(1, 10):
+        engine.add_builtin('writenl', i, b(_builtin_writenl))
+
+    engine.add_builtin('nl', 0, b(_builtin_nl))
+
+
 
 # noinspection PyUnusedLocal
 def _builtin_debugprint(*args, **kwd):
     print(' '.join(map(term2str, args)))
     return True
+
+
+def term2str_noquote(term):
+    res = term2str(term)
+    if res[0] == res[-1] == "'":
+        res = res[1:-1]
+    return res
+
+def _builtin_write(*args, **kwd):
+    print(' '.join(map(term2str_noquote, args)), end='')
+    return True
+
+def _builtin_writenl(*args, **kwd):
+    print(' '.join(map(term2str_noquote, args)))
+    return True
+
+def _builtin_nl(**kwd):
+    print()
+    return True
+
 
 
 class CallModeError(GroundingError):
@@ -838,7 +869,8 @@ def _builtin_length(l, n, **k):
         if remain < 0:
             raise UnifyError()
         else:
-            extra = [None] * remain
+            min_var = k.get('engine')._context_min_var(k.get('context'))
+            extra = list(range(min_var, min_var - remain, -1))  # [None] * remain
         new_l = build_list(elements + extra, Term('[]'))
         return [(new_l, n)]
 
@@ -981,8 +1013,12 @@ def _builtin_consult(filename, database=None, engine=None, **kwdargs):
    :param kwdargs: additional arguments
    :return: True
     """
+
+    root = database.source_root
+    if filename.location:
+        root = os.path.dirname(database.source_files[filename.location[0]])
     check_mode((filename,), ['a'], functor='consult', **kwdargs)
-    filename = os.path.join(database.source_root, _atom_to_filename(filename))
+    filename = os.path.join(root, _atom_to_filename(filename))
     if not os.path.exists(filename):
         filename += '.pl'
     if not os.path.exists(filename):
@@ -1077,7 +1113,7 @@ def _select_sublist(lst, target):
 
 
 def _builtin_findall_base(pattern, goal, result, top_only=False, database=None, target=None,
-                          engine=None, **kwdargs):
+                          engine=None, context=None, **kwdargs):
     """
     Implementation of findall/3 builtin.
    :param pattern: pattern to extract
@@ -1346,7 +1382,7 @@ def load_external_module(database, filename):
         imp.load_module('externals', extfile, filename, ('.py', 'U', 1))
 
 
-def _builtin_call(term, args=(), engine=None, callback=None, transform=None, **kwdargs):
+def _builtin_call(term, args=(), engine=None, callback=None, transform=None, context=None, **kwdargs):
     check_mode((term,), ['c'], functor='call')
     # Find the define node for the given query term.
     term_call = term.with_args(*(term.args + args))

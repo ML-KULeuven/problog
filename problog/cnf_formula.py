@@ -65,15 +65,16 @@ class CNF(BaseFormula):
         self._clauses.append([head] + list(body))
         self._clausecount += 1
 
-    def add_constraint(self, constraint):
+    def add_constraint(self, constraint, force=False):
         """Add a constraint.
 
         :param constraint: constraint to add
+        :param force: force constraint to be true even though none of its values are set
         :type constraint: problog.constraint.Constraint
         """
         BaseFormula.add_constraint(self, constraint)
         for c in constraint.as_clauses():
-            self.add_clause(None, c)
+            self.add_clause(force, c)
 
     def _clause2str(self, clause, weighted=False):
         if weighted:
@@ -84,7 +85,7 @@ class CNF(BaseFormula):
             else:
                 return ' '.join(map(str, clause[1:])) + ' 0'
 
-    def to_dimacs(self, partial=False, weighted=False, semiring=None):
+    def to_dimacs(self, partial=False, weighted=False, semiring=None, smart_constraints=False):
         """Transform to a string in DIMACS format.
 
         :param partial: split variables if possibly true / certainly true
@@ -97,21 +98,24 @@ class CNF(BaseFormula):
         else:
             t = 'cnf'
 
-        header, content = self._contents(partial=partial, weighted=weighted, semiring=semiring)
+        header, content = self._contents(partial=partial, weighted=weighted,
+                                         semiring=semiring, smart_constraints=smart_constraints)
 
         result = 'p %s %s\n' % (t, ' '.join(map(str, header)))
         result += '\n'.join(map(lambda cl: ' '.join(map(str, cl)) + ' 0', content))
         return result
 
-    def to_lp(self, partial=False, semiring=None):
+    def to_lp(self, partial=False, semiring=None, smart_constraints=False):
         """Transfrom to CPLEX lp format (MIP program).
         This is always weighted.
 
         :param partial: split variables in possibly true / certainly true
         :param semiring: semiring for weight transformation (if weighted)
+        :param smart_constraints: only enforce constraints when variables are set
         :return: string in LP format
         """
-        header, content = self._contents(partial=partial, weighted=False, semiring=semiring)
+        header, content = self._contents(partial=partial, weighted=False,
+                                         semiring=semiring, smart_constraints=smart_constraints)
 
         if semiring is None:
             semiring = SemiringLogProbability()
@@ -157,7 +161,7 @@ class CNF(BaseFormula):
         result += 'end\n'
         return result
 
-    def _contents(self, partial=False, weighted=False, semiring=None):
+    def _contents(self, partial=False, weighted=False, semiring=None, smart_constraints=False):
         # Helper function to determine the certainly true / possibly true names (for partial)
 
         ct = lambda i: 2 * i
@@ -214,7 +218,7 @@ class CNF(BaseFormula):
             # For each clause:
             for c in self.clauses:
                 head, body = c[0], c[1:]
-                if head is not None:
+                if type(head) != bool:
                     # Clause does not represent a constraint.
                     head_neg = (head < 0)
                     head = abs(head)
@@ -222,6 +226,18 @@ class CNF(BaseFormula):
                     if head_neg:
                         head1, head2 = -head1, -head2
                     clauses.append(w_max + [head1, head2] + list(map(cpt, body)))
+                elif smart_constraints and not head:
+                    # It's a constraint => add an indicator variable.
+                    # a \/ -b ===> -pt(a) \/ I  => for all
+                    atomcount += 1
+                    ind = atomcount
+                    v = []
+                    for b in body:
+                        clauses.append(w_max + [-ct(abs(b)), ind])
+                        clauses.append(w_max + [pt(abs(b)), ind])
+                        v += [ct(abs(b)), -pt(abs(b))]
+                    clauses.append(w_max + v + [-ind])
+                    clauses.append(w_max + list(map(cpt, body)) + [-ind])
                 else:
                     clauses.append(w_max + list(map(cpt, body)))
         else:
@@ -234,10 +250,10 @@ class CNF(BaseFormula):
                         clauses.append([-wt(w_neg), a])
             for c in self.clauses:
                 head, body = c[0], c[1:]
-                if head is not None:
-                    clauses.append(w_max + [head] + list(body))
-                else:
+                if head is None or type(head) == bool and not head:
                     clauses.append(w_max + list(body))
+                else:
+                    clauses.append(w_max + [head] + list(body))
 
         return [atomcount, len(clauses)] + w_max, clauses
 

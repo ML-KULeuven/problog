@@ -257,7 +257,53 @@ var problog = {
                         pbl.dom.results.html(result);
                     }
 
-                }]
+                },
+                {
+                    id: 'explain',
+                    name: "Explain",
+                    action: 'Explain',
+                    text: "Explain how to obtain the probability.",
+                    choices: [{'name': 'exact'}],
+                    select: function(pbl){},
+                    deselect: function(pbl){},
+                    collectData: function(pbl){
+                        var model = pbl.editor.getSession().getValue();
+                        if (model) {
+                            result = {'model': model};
+                            if (pbl.solve_choice > 0) {
+                                result['solve'] = pbl.task.choices[pbl.solve_choice].identifier;
+                            }
+                            return result;
+                        } else {
+                            return undefined;
+                        }
+
+                    },
+                    formatResult: function(pbl, data) {
+                        var program = data.program;
+                        var proofs = data.proofs;
+                        var facts = data.probabilities;
+
+                        // Create table body
+                        var result = $('<tbody>');
+                        for (var k in facts) {
+                            var n = facts[k][0];
+                            var p = facts[k][1];
+                            result.append($('<tr>')
+                                  .append($('<td>').text(n))
+                                  .append($('<td>').append(problog.makeProgressBar(p))));
+                        }
+                        var result = problog.createTable(result, [['Atom','50%'],['Value','50%']]);
+
+                        var div_program = $('<div>').append($('<strong>').html('Transformed program')).append($('<pre>').html(program.join('<br>')));
+                        var div_proofs = $('<div>').append($('<strong>').html('Mutually exclusive proofs')).append($('<pre>').html(proofs.join('<br>')));
+
+                        var result = $('<div>').append(div_program).append(div_proofs).append(result);
+
+                        pbl.dom.results.html(result);
+
+                    }
+                },]
 }
 
 problog.init = function(hostname) {
