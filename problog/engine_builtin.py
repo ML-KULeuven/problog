@@ -1043,7 +1043,10 @@ def _builtin_load_external(arg, engine=None, database=None, location=None, **kwd
     check_mode((arg,), ['a'], functor='load_external')
     # Load external (python) files that are referenced in the model
     externals = {}
-    filename = os.path.join(database.source_root, _atom_to_filename(arg))
+    root = database.source_root
+    if arg.location:
+        root = os.path.dirname(database.source_files[arg.location[0]])
+    filename = os.path.join(root, _atom_to_filename(arg))
     if not os.path.exists(filename):
         raise ConsultError(message="Load external: file not found '%s'" % filename,
                            location=database.lineno(location))
@@ -1362,7 +1365,11 @@ def _builtin_use_module(filename, database=None, location=None, **kwdargs):
         filename = os.path.join(os.path.dirname(__file__), 'library',
                                 _atom_to_filename(filename.args[0]))
     else:
-        filename = os.path.join(database.source_root, _atom_to_filename(filename))
+        root = database.source_root
+        if filename.location:
+            root = os.path.dirname(database.source_files[filename.location[0]])
+
+        filename = os.path.join(root, _atom_to_filename(filename))
 
     if filename[-3:] == '.py':
         try:
