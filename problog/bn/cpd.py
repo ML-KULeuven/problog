@@ -176,7 +176,7 @@ class PGM(object):
         return '\n'.join([str(cpd) for cpd in cpds])
 
 
-re_clean = re.compile(r"[\(\),]")
+re_clean = re.compile(r"[\(\),\]\[ ]")
 
 class CPD(object):
     def __init__(self, rv, values, parents):
