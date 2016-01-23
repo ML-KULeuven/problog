@@ -43,7 +43,8 @@ else:
             'web/editor_adv.html',
             'web/js/problog_editor.js',
             'library/lists.pl',
-            'library/apply.pl'
+            'library/apply.pl',
+            'library/control.pl'
         ]
     }
 
