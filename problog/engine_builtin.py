@@ -26,7 +26,7 @@ from __future__ import print_function
 
 from .logic import term2str, Term, Clause, Constant, term2list, list2term, is_ground, is_variable
 from .program import PrologFile
-from .errors import GroundingError
+from .errors import GroundingError, UserError
 from .engine_unify import unify_value, UnifyError, substitute_simple
 from .engine import UnknownClauseInternal, UnknownClause
 
@@ -126,6 +126,9 @@ def add_standard_builtins(engine, b=None, s=None, sp=None):
     for i in range(1, 10):
         engine.add_builtin('writenl', i, b(_builtin_writenl))
 
+    for i in range(1, 10):
+        engine.add_builtin('error', i, b(_builtin_error))
+
     engine.add_builtin('nl', 0, b(_builtin_nl))
 
 
@@ -145,6 +148,15 @@ def term2str_noquote(term):
 def _builtin_write(*args, **kwd):
     print(' '.join(map(term2str_noquote, args)), end='')
     return True
+
+
+def _builtin_error(*args, **kwd):
+    location = kwd.get('call_origin', (None, None))[1]
+    database = kwd['database']
+    location = database.lineno(location)
+    message = ''.join(map(term2str_noquote, args))
+    raise UserError(message, location=location)
+
 
 def _builtin_writenl(*args, **kwd):
     print(' '.join(map(term2str_noquote, args)))
