@@ -66,6 +66,10 @@ class InvalidValue(ProbLogError):
     pass
 
 
+class UserError(ProbLogError):
+    pass
+
+
 class InconsistentEvidenceError(ProbLogError):
     """Error when evidence is inconsistent"""
 
