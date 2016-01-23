@@ -32,7 +32,7 @@ from .dd_formula import DD, build_dd, DDManager
 # noinspection PyBroadException
 try:
     import sdd
-except Exception:
+except Exception as err:
     sdd = None
 
 
@@ -234,7 +234,8 @@ class SDDManager(DDManager):
         return result
 
     def __del__(self):
-        sdd.sdd_manager_free(self.__manager)
+        if sdd is not None and sdd.sdd_manager_free is not None:
+            sdd.sdd_manager_free(self.__manager)
         self.__manager = None
 
 

@@ -26,7 +26,7 @@ from __future__ import print_function
 
 from .logic import term2str, Term, Clause, Constant, term2list, list2term, is_ground, is_variable
 from .program import PrologFile
-from .errors import GroundingError
+from .errors import GroundingError, UserError
 from .engine_unify import unify_value, UnifyError, substitute_simple
 from .engine import UnknownClauseInternal, UnknownClause
 
@@ -126,6 +126,9 @@ def add_standard_builtins(engine, b=None, s=None, sp=None):
     for i in range(1, 10):
         engine.add_builtin('writenl', i, b(_builtin_writenl))
 
+    for i in range(1, 10):
+        engine.add_builtin('error', i, b(_builtin_error))
+
     engine.add_builtin('nl', 0, b(_builtin_nl))
 
 
@@ -145,6 +148,15 @@ def term2str_noquote(term):
 def _builtin_write(*args, **kwd):
     print(' '.join(map(term2str_noquote, args)), end='')
     return True
+
+
+def _builtin_error(*args, **kwd):
+    location = kwd.get('call_origin', (None, None))[1]
+    database = kwd['database']
+    location = database.lineno(location)
+    message = ''.join(map(term2str_noquote, args))
+    raise UserError(message, location=location)
+
 
 def _builtin_writenl(*args, **kwd):
     print(' '.join(map(term2str_noquote, args)))
@@ -1043,7 +1055,10 @@ def _builtin_load_external(arg, engine=None, database=None, location=None, **kwd
     check_mode((arg,), ['a'], functor='load_external')
     # Load external (python) files that are referenced in the model
     externals = {}
-    filename = os.path.join(database.source_root, _atom_to_filename(arg))
+    root = database.source_root
+    if arg.location:
+        root = os.path.dirname(database.source_files[arg.location[0]])
+    filename = os.path.join(root, _atom_to_filename(arg))
     if not os.path.exists(filename):
         raise ConsultError(message="Load external: file not found '%s'" % filename,
                            location=database.lineno(location))
@@ -1362,7 +1377,11 @@ def _builtin_use_module(filename, database=None, location=None, **kwdargs):
         filename = os.path.join(os.path.dirname(__file__), 'library',
                                 _atom_to_filename(filename.args[0]))
     else:
-        filename = os.path.join(database.source_root, _atom_to_filename(filename))
+        root = database.source_root
+        if filename.location:
+            root = os.path.dirname(database.source_files[filename.location[0]])
+
+        filename = os.path.join(root, _atom_to_filename(filename))
 
     if filename[-3:] == '.py':
         try:
