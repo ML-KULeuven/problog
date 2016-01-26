@@ -450,13 +450,22 @@ class ClauseIndex(list):
                 pass  # Variable => no restrictions
             else:
                 curr = self.__index[i].get(arg)
+                if not self.__optimized:
+                    none = self.__index[i].get(None, set())
+                    if curr is None:
+                        curr = none
+                    else:
+                        curr |= none
+
                 if curr is None:   # No facts matching this argument exactly.
                     results = self.__index[i].get(None)
                 elif results is None:  # First argument with restriction
                     results = curr
-                else:  # Already have a selection
+                elif self.__optimized:  # Already have a selection
                     results = intersection(results, curr)
-            if results == []:
+                else:
+                    results = results & curr
+            if results is not None and not results:
                 # print ('FIND', arguments, results)
                 return []
         if results is None:
