@@ -1046,7 +1046,8 @@ def _builtin_consult(filename, database=None, engine=None, **kwdargs):
         database.line_info.append(pl.line_info[0])
         for clause in pl:
             database += clause
-        engine._process_directives(database)
+        # engine._process_directives(database)
+
     return True
 
 

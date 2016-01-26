@@ -441,7 +441,7 @@ class ClauseIndex(list):
                 self.__index[i][None] = tuple(sorted(arg_none))
 
     def find(self, arguments):
-        self.optimize()
+        # self.optimize()
         results = None
         # for i, xx in enumerate(self.__index):
         #     print ('\t', i, xx)
@@ -467,6 +467,7 @@ class ClauseIndex(list):
             return results
 
     def _add(self, key, item):
+        assert not self.__optimized
         for i, k in enumerate(key):
             self.__index[i][k].add(item)
 
