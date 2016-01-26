@@ -541,7 +541,7 @@ class PrologParser(object):
 
         self.string_operators = {
             'is': {'binop': (700, 'xfx', self.factory.build_binop)},
-            'not': {'unop': (900, 'fy', self.factory.build_not), 'atom': False},
+            'not': {'unop': (900, 'fy', self.factory.build_not), 'atom': True},
             'xor': {'binop': (500, 'yfx', self.factory.build_binop)},
             'rdiv': {'binop': (400, 'yfx', self.factory.build_binop)},
             'mod': {'binop': (400, 'yfx', self.factory.build_binop)},
@@ -690,7 +690,6 @@ class PrologParser(object):
                     t.atom = False
             p = t
             if t.count_options() != 1:
-                print(str(t))
                 raise ParseError(string, 'Ambiguous token role', t.location)
 
         return tokens
@@ -933,11 +932,8 @@ class Factory(object):
     build_directive = build_unop
 
 
-if __name__ == '__main__':
-
-    import sys
-
-    for filename in sys.argv[1:]:
+def main(filenames):
+    for filename in filenames:
         print(filename)
         print('------------------------------------')
         from problog.program import ExtendedPrologFactory
@@ -949,6 +945,7 @@ if __name__ == '__main__':
         except ParseError as e:
             print('ParseError:', e)
         print('====================================')
+
 
 DefaultPrologParser = PrologParser
 

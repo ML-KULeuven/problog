@@ -770,6 +770,9 @@ class ClauseDB(LogicProgram):
         elif isinstance(struct, Not):
             child = self._compile(struct.child, variables)
             return self._add_not_node(child, location=struct.location)
+        elif isinstance(struct, Term) and struct.signature == 'not/1':
+            child = self._compile(struct.args[0], variables)
+            return self._add_not_node(child, location=struct.location)
         elif isinstance(struct, AnnotatedDisjunction):
             # Determine number of variables in the head
             new_heads = [head.apply(variables) for head in struct.heads]
