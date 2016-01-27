@@ -121,12 +121,16 @@ def makeProblog(nodes,potentials):
         if not(len(p.data)): #TODO fix
             continue
         if p.dimension() == 1:
-            if (len(mainNode.states) == 2):
+            # Potential without parents
+            if len(mainNode.states) == 2 and \
+               (mainNode.states in GoodBoolStates or \
+                reversed(mainNode.states) in GoodBoolStates):
                 output += p.data[0] + "::" + mainNode.nameWithState()[0] + ".\n"
             else:
                 for i in range(0,len(p.data)):
                     output += p.data[i] + "::" + mainNode.nameWithState()[i] + ".\n"
         else:
+            # Potential with parents
             cartlist = []
             for n in p.othernodes:
                 node = findnode(n,nodes)
