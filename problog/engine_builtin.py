@@ -94,7 +94,7 @@ def add_standard_builtins(engine, b=None, s=None, sp=None):
     engine.add_builtin('compare', 3, s(_builtin_compare))
 
     engine.add_builtin('length', 2, s(_builtin_length))
-    engine.add_builtin('call_external', 2, s(_builtin_call_external))
+    # engine.add_builtin('call_external', 2, s(_builtin_call_external))
 
     engine.add_builtin('sort', 2, s(_builtin_sort))
     engine.add_builtin('between', 3, s(_builtin_between))
@@ -103,7 +103,7 @@ def add_standard_builtins(engine, b=None, s=None, sp=None):
 
     engine.add_builtin('consult', 1, b(_builtin_consult))
     engine.add_builtin('.', 2, b(_builtin_consult_as_list))
-    engine.add_builtin('load_external', 1, b(_builtin_load_external))
+    # engine.add_builtin('load_external', 1, b(_builtin_load_external))
     engine.add_builtin('unknown', 1, b(_builtin_unknown))
 
     engine.add_builtin('use_module', 1, b(_builtin_use_module))
@@ -838,26 +838,26 @@ def build_list(elements, tail):
     return current
 
 
-class UnknownExternal(GroundingError):
-    """Undefined clause in call."""
+# class UnknownExternal(GroundingError):
+#     """Undefined clause in call."""
+#
+#     def __init__(self, signature, location):
+#         GroundingError.__init__(self, "Unknown external function '%s'" % signature, location)
 
-    def __init__(self, signature, location):
-        GroundingError.__init__(self, "Unknown external function '%s'" % signature, location)
 
-
-def _builtin_call_external(call, result, database=None, location=None, **k):
-    from . import pypl
-    check_mode((call, result), ['gv'], function='call_external', database=database,
-               location=location, **k)
-
-    func = k['engine'].get_external_call(call.functor)
-    if func is None:
-        raise UnknownExternal(call.functor, database.lineno(location))
-
-    values = [pypl.pl2py(arg) for arg in call.args]
-    computed_result = func(*values)
-
-    return [(call, pypl.py2pl(computed_result))]
+# def _builtin_call_external(call, result, database=None, location=None, **k):
+#     from . import pypl
+#     check_mode((call, result), ['gv'], function='call_external', database=database,
+#                location=location, **k)
+#
+#     func = k['engine'].get_external_call(call.functor)
+#     if func is None:
+#         raise UnknownExternal(call.functor, database.lineno(location))
+#
+#     values = [pypl.pl2py(arg) for arg in call.args]
+#     computed_result = func(*values)
+#
+#     return [(call, pypl.py2pl(computed_result))]
 
 
 def _builtin_length(l, n, **k):
@@ -1051,29 +1051,29 @@ def _builtin_consult(filename, database=None, engine=None, **kwdargs):
     return True
 
 
-# noinspection PyUnusedLocal
-def _builtin_load_external(arg, engine=None, database=None, location=None, **kwdargs):
-    check_mode((arg,), ['a'], functor='load_external')
-    # Load external (python) files that are referenced in the model
-    externals = {}
-    root = database.source_root
-    if arg.location:
-        root = os.path.dirname(database.source_files[arg.location[0]])
-    filename = os.path.join(root, _atom_to_filename(arg))
-    if not os.path.exists(filename):
-        raise ConsultError(message="Load external: file not found '%s'" % filename,
-                           location=database.lineno(location))
-    try:
-        with open(filename, 'r') as extfile:
-            ext = imp.load_module('externals', extfile, filename, ('.py', 'U', 1))
-            for func_name, func in inspect.getmembers(ext, inspect.isfunction):
-                externals[func_name] = func
-        engine.add_external_calls(externals)
-    except ImportError:
-        raise ConsultError(message="Error while loading external file '%s'" % filename,
-                           location=database.lineno(location))
-
-    return True
+# # noinspection PyUnusedLocal
+# def _builtin_load_external(arg, engine=None, database=None, location=None, **kwdargs):
+#     check_mode((arg,), ['a'], functor='load_external')
+#     # Load external (python) files that are referenced in the model
+#     externals = {}
+#     root = database.source_root
+#     if arg.location:
+#         root = os.path.dirname(database.source_files[arg.location[0]])
+#     filename = os.path.join(root, _atom_to_filename(arg))
+#     if not os.path.exists(filename):
+#         raise ConsultError(message="Load external: file not found '%s'" % filename,
+#                            location=database.lineno(location))
+#     try:
+#         with open(filename, 'r') as extfile:
+#             ext = imp.load_module('externals', extfile, filename, ('.py', 'U', 1))
+#             for func_name, func in inspect.getmembers(ext, inspect.isfunction):
+#                 externals[func_name] = func
+#         engine.add_external_calls(externals)
+#     except ImportError:
+#         raise ConsultError(message="Error while loading external file '%s'" % filename,
+#                            location=database.lineno(location))
+#
+#     return True
 
 
 # noinspection PyUnusedLocal
