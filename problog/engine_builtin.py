@@ -1296,24 +1296,40 @@ class problog_export(object):
         else:
             raise ValueError("Unknown type specifier '%s'!" % t)
 
+    def _type_to_callmode(self, t):
+        if t == 'str':
+            return 'a'
+        elif t == 'int':
+            return 'i'
+        elif t == 'float':
+            return 'f'
+        elif t == 'list':
+            return 'L'
+        elif t == 'term':
+            return '*'
+        else:
+            raise ValueError("Unknown type specifier '%s'!" % t)
+
     def _extract_callmode(self):
-        callmode = ''
+        callmode_in = ''
         for t in self.input_arguments:
-            if t == 'str':
-                callmode += 'a'
-            elif t == 'int':
-                callmode += 'i'
-            elif t == 'float':
-                callmode += 'f'
-            elif t == 'list':
-                callmode += 'L'
-            elif t == 'term':
-                callmode += '*'
-            else:
-                raise ValueError("Unknown type specifier '%s'!" % t)
-        for _ in self.output_arguments:
-            callmode += 'v'
-        return callmode
+            callmode_in += self._type_to_callmode(t)
+
+        # multiple call modes: index = binary encoding on whether the output is bound
+        # 0 -> all unbound
+        # 1 -> first output arg is bound
+        # 2 -> second output arg is bound
+        # 3 -> first and second are bound
+
+        n = len(self.output_arguments)
+        for i in range(0, 1 << n):
+            callmode = callmode_in
+            for j, t in enumerate(self.output_arguments):
+                if i & (1 << (n - j - 1)):
+                    callmode += self._type_to_callmode(t)
+                else:
+                    callmode += 'v'
+            yield callmode
 
     def _convert_output(self, a, t):
         if t == 'str':
@@ -1339,14 +1355,23 @@ class problog_export(object):
 
     def __call__(self, function):
         def _wrapped_function(*args, **kwdargs):
-            check_mode(args, [self._extract_callmode()], function.__name__, **kwdargs)
-            # TODO check that output arguments are variables
+            bound = check_mode(args, list(self._extract_callmode()), function.__name__, **kwdargs)
             converted_args = self._convert_inputs(args)
             result = function(*converted_args)
             if len(self.output_arguments) == 1:
                 result = [result]
-            result = args[:len(self.input_arguments)] + tuple(self._convert_outputs(result))
-            return [result]
+
+            try:
+                transformed = []
+                for i, r in enumerate(result):
+                    r = self._convert_output(r, self.output_arguments[i])
+                    if bound & (1 << (len(self.output_arguments) - i - 1)):
+                        r = unify_value(r, args[len(self.input_arguments) + i], {})
+                    transformed.append(r)
+                result = args[:len(self.input_arguments)] + tuple(transformed)
+                return [result]
+            except UnifyError:
+                return []
 
         problog_export.add_function(function.__name__, len(self.input_arguments),
                                     len(self.output_arguments), _wrapped_function)
@@ -1357,15 +1382,24 @@ class problog_export(object):
 class problog_export_nondet(problog_export):
     def __call__(self, function):
         def _wrapped_function(*args, **kwdargs):
-            check_mode(args, [self._extract_callmode()], function.__name__, **kwdargs)
-            # TODO check that output arguments are variables
+            bound = check_mode(args, list(self._extract_callmode()), function.__name__, **kwdargs)
             converted_args = self._convert_inputs(args)
             results = []
             for result in function(*converted_args):
                 if len(self.output_arguments) == 1:
                     result = [result]
-                result = args[:len(self.input_arguments)] + tuple(self._convert_outputs(result))
-                results.append(result)
+
+                try:
+                    transformed = []
+                    for i, r in enumerate(result):
+                        r = self._convert_output(r, self.output_arguments[i])
+                        if bound & (1 << (len(self.output_arguments) - i - 1)):
+                            r = unify_value(r, args[len(self.input_arguments) + i], {})
+                        transformed.append(r)
+                    result = args[:len(self.input_arguments)] + tuple(transformed)
+                    results.append(result)
+                except UnifyError:
+                    pass
             return results
 
         problog_export.add_function(function.__name__, len(self.input_arguments),
