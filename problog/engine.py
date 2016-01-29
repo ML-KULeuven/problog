@@ -825,12 +825,20 @@ class ClauseDB(LogicProgram):
                 #  two arguments of findall are 'local' variables.
                 args = []
                 for i, a in enumerate(struct.args):
+                    if not isinstance(a, Term):
+                        # For nested findalls: 'a' can be a raw variable pointer
+                        # Temporarily wrap it in a Term, so we can call 'apply' on it.
+                        a = Term('_', a)
                     if i in local_scope:
                         variables.enter_local()
-                        args.append(a.apply(variables))
+                        new_arg = a.apply(variables)
                         variables.exit_local()
                     else:
-                        args.append(a.apply(variables))
+                        new_arg = a.apply(variables)
+                    if a.functor == '_':
+                        # If the argument was temporarily wrapped: unwrap it.
+                        new_arg = new_arg.args[0]
+                    args.append(new_arg)
                 return self._add_call_node(struct(*args))
             else:
                 return self._add_call_node(struct.apply(variables))
