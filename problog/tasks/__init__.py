@@ -33,6 +33,7 @@ problog_tasks['web'] = 'problog.web.server'
 problog_tasks['dt'] = 'problog.tasks.dtproblog'
 problog_tasks['shell'] = 'problog.tasks.shell'
 problog_tasks['bn'] = 'problog.tasks.bayesnet'
+problog_tasks['parse'] = 'problog.parser'
 
 problog_default_task = 'prob'
 

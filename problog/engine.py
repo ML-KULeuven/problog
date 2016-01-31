@@ -441,7 +441,7 @@ class ClauseIndex(list):
                 self.__index[i][None] = tuple(sorted(arg_none))
 
     def find(self, arguments):
-        self.optimize()
+        # self.optimize()
         results = None
         # for i, xx in enumerate(self.__index):
         #     print ('\t', i, xx)
@@ -450,13 +450,22 @@ class ClauseIndex(list):
                 pass  # Variable => no restrictions
             else:
                 curr = self.__index[i].get(arg)
+                if not self.__optimized:
+                    none = self.__index[i].get(None, set())
+                    if curr is None:
+                        curr = none
+                    else:
+                        curr |= none
+
                 if curr is None:   # No facts matching this argument exactly.
                     results = self.__index[i].get(None)
                 elif results is None:  # First argument with restriction
                     results = curr
-                else:  # Already have a selection
+                elif self.__optimized:  # Already have a selection
                     results = intersection(results, curr)
-            if results == []:
+                else:
+                    results = results & curr
+            if results is not None and not results:
                 # print ('FIND', arguments, results)
                 return []
         if results is None:
@@ -467,6 +476,7 @@ class ClauseIndex(list):
             return results
 
     def _add(self, key, item):
+        assert not self.__optimized
         for i, k in enumerate(key):
             self.__index[i][k].add(item)
 
@@ -760,6 +770,9 @@ class ClauseDB(LogicProgram):
         elif isinstance(struct, Not):
             child = self._compile(struct.child, variables)
             return self._add_not_node(child, location=struct.location)
+        elif isinstance(struct, Term) and struct.signature == 'not/1':
+            child = self._compile(struct.args[0], variables)
+            return self._add_not_node(child, location=struct.location)
         elif isinstance(struct, AnnotatedDisjunction):
             # Determine number of variables in the head
             new_heads = [head.apply(variables) for head in struct.heads]
@@ -812,12 +825,20 @@ class ClauseDB(LogicProgram):
                 #  two arguments of findall are 'local' variables.
                 args = []
                 for i, a in enumerate(struct.args):
+                    if not isinstance(a, Term):
+                        # For nested findalls: 'a' can be a raw variable pointer
+                        # Temporarily wrap it in a Term, so we can call 'apply' on it.
+                        a = Term('_', a)
                     if i in local_scope:
                         variables.enter_local()
-                        args.append(a.apply(variables))
+                        new_arg = a.apply(variables)
                         variables.exit_local()
                     else:
-                        args.append(a.apply(variables))
+                        new_arg = a.apply(variables)
+                    if a.functor == '_':
+                        # If the argument was temporarily wrapped: unwrap it.
+                        new_arg = new_arg.args[0]
+                    args.append(new_arg)
                 return self._add_call_node(struct(*args))
             else:
                 return self._add_call_node(struct.apply(variables))

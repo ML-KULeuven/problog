@@ -94,7 +94,7 @@ def add_standard_builtins(engine, b=None, s=None, sp=None):
     engine.add_builtin('compare', 3, s(_builtin_compare))
 
     engine.add_builtin('length', 2, s(_builtin_length))
-    engine.add_builtin('call_external', 2, s(_builtin_call_external))
+    # engine.add_builtin('call_external', 2, s(_builtin_call_external))
 
     engine.add_builtin('sort', 2, s(_builtin_sort))
     engine.add_builtin('between', 3, s(_builtin_between))
@@ -103,7 +103,7 @@ def add_standard_builtins(engine, b=None, s=None, sp=None):
 
     engine.add_builtin('consult', 1, b(_builtin_consult))
     engine.add_builtin('.', 2, b(_builtin_consult_as_list))
-    engine.add_builtin('load_external', 1, b(_builtin_load_external))
+    # engine.add_builtin('load_external', 1, b(_builtin_load_external))
     engine.add_builtin('unknown', 1, b(_builtin_unknown))
 
     engine.add_builtin('use_module', 1, b(_builtin_use_module))
@@ -838,26 +838,26 @@ def build_list(elements, tail):
     return current
 
 
-class UnknownExternal(GroundingError):
-    """Undefined clause in call."""
+# class UnknownExternal(GroundingError):
+#     """Undefined clause in call."""
+#
+#     def __init__(self, signature, location):
+#         GroundingError.__init__(self, "Unknown external function '%s'" % signature, location)
 
-    def __init__(self, signature, location):
-        GroundingError.__init__(self, "Unknown external function '%s'" % signature, location)
 
-
-def _builtin_call_external(call, result, database=None, location=None, **k):
-    from . import pypl
-    check_mode((call, result), ['gv'], function='call_external', database=database,
-               location=location, **k)
-
-    func = k['engine'].get_external_call(call.functor)
-    if func is None:
-        raise UnknownExternal(call.functor, database.lineno(location))
-
-    values = [pypl.pl2py(arg) for arg in call.args]
-    computed_result = func(*values)
-
-    return [(call, pypl.py2pl(computed_result))]
+# def _builtin_call_external(call, result, database=None, location=None, **k):
+#     from . import pypl
+#     check_mode((call, result), ['gv'], function='call_external', database=database,
+#                location=location, **k)
+#
+#     func = k['engine'].get_external_call(call.functor)
+#     if func is None:
+#         raise UnknownExternal(call.functor, database.lineno(location))
+#
+#     values = [pypl.pl2py(arg) for arg in call.args]
+#     computed_result = func(*values)
+#
+#     return [(call, pypl.py2pl(computed_result))]
 
 
 def _builtin_length(l, n, **k):
@@ -1046,33 +1046,34 @@ def _builtin_consult(filename, database=None, engine=None, **kwdargs):
         database.line_info.append(pl.line_info[0])
         for clause in pl:
             database += clause
-        engine._process_directives(database)
-    return True
-
-
-# noinspection PyUnusedLocal
-def _builtin_load_external(arg, engine=None, database=None, location=None, **kwdargs):
-    check_mode((arg,), ['a'], functor='load_external')
-    # Load external (python) files that are referenced in the model
-    externals = {}
-    root = database.source_root
-    if arg.location:
-        root = os.path.dirname(database.source_files[arg.location[0]])
-    filename = os.path.join(root, _atom_to_filename(arg))
-    if not os.path.exists(filename):
-        raise ConsultError(message="Load external: file not found '%s'" % filename,
-                           location=database.lineno(location))
-    try:
-        with open(filename, 'r') as extfile:
-            ext = imp.load_module('externals', extfile, filename, ('.py', 'U', 1))
-            for func_name, func in inspect.getmembers(ext, inspect.isfunction):
-                externals[func_name] = func
-        engine.add_external_calls(externals)
-    except ImportError:
-        raise ConsultError(message="Error while loading external file '%s'" % filename,
-                           location=database.lineno(location))
+        # engine._process_directives(database)
 
     return True
+
+
+# # noinspection PyUnusedLocal
+# def _builtin_load_external(arg, engine=None, database=None, location=None, **kwdargs):
+#     check_mode((arg,), ['a'], functor='load_external')
+#     # Load external (python) files that are referenced in the model
+#     externals = {}
+#     root = database.source_root
+#     if arg.location:
+#         root = os.path.dirname(database.source_files[arg.location[0]])
+#     filename = os.path.join(root, _atom_to_filename(arg))
+#     if not os.path.exists(filename):
+#         raise ConsultError(message="Load external: file not found '%s'" % filename,
+#                            location=database.lineno(location))
+#     try:
+#         with open(filename, 'r') as extfile:
+#             ext = imp.load_module('externals', extfile, filename, ('.py', 'U', 1))
+#             for func_name, func in inspect.getmembers(ext, inspect.isfunction):
+#                 externals[func_name] = func
+#         engine.add_external_calls(externals)
+#     except ImportError:
+#         raise ConsultError(message="Error while loading external file '%s'" % filename,
+#                            location=database.lineno(location))
+#
+#     return True
 
 
 # noinspection PyUnusedLocal
@@ -1295,24 +1296,40 @@ class problog_export(object):
         else:
             raise ValueError("Unknown type specifier '%s'!" % t)
 
+    def _type_to_callmode(self, t):
+        if t == 'str':
+            return 'a'
+        elif t == 'int':
+            return 'i'
+        elif t == 'float':
+            return 'f'
+        elif t == 'list':
+            return 'L'
+        elif t == 'term':
+            return '*'
+        else:
+            raise ValueError("Unknown type specifier '%s'!" % t)
+
     def _extract_callmode(self):
-        callmode = ''
+        callmode_in = ''
         for t in self.input_arguments:
-            if t == 'str':
-                callmode += 'a'
-            elif t == 'int':
-                callmode += 'i'
-            elif t == 'float':
-                callmode += 'f'
-            elif t == 'list':
-                callmode += 'L'
-            elif t == 'term':
-                callmode += '*'
-            else:
-                raise ValueError("Unknown type specifier '%s'!" % t)
-        for _ in self.output_arguments:
-            callmode += 'v'
-        return callmode
+            callmode_in += self._type_to_callmode(t)
+
+        # multiple call modes: index = binary encoding on whether the output is bound
+        # 0 -> all unbound
+        # 1 -> first output arg is bound
+        # 2 -> second output arg is bound
+        # 3 -> first and second are bound
+
+        n = len(self.output_arguments)
+        for i in range(0, 1 << n):
+            callmode = callmode_in
+            for j, t in enumerate(self.output_arguments):
+                if i & (1 << (n - j - 1)):
+                    callmode += self._type_to_callmode(t)
+                else:
+                    callmode += 'v'
+            yield callmode
 
     def _convert_output(self, a, t):
         if t == 'str':
@@ -1338,14 +1355,23 @@ class problog_export(object):
 
     def __call__(self, function):
         def _wrapped_function(*args, **kwdargs):
-            check_mode(args, [self._extract_callmode()], function.__name__, **kwdargs)
-            # TODO check that output arguments are variables
+            bound = check_mode(args, list(self._extract_callmode()), function.__name__, **kwdargs)
             converted_args = self._convert_inputs(args)
             result = function(*converted_args)
             if len(self.output_arguments) == 1:
                 result = [result]
-            result = args[:len(self.input_arguments)] + tuple(self._convert_outputs(result))
-            return [result]
+
+            try:
+                transformed = []
+                for i, r in enumerate(result):
+                    r = self._convert_output(r, self.output_arguments[i])
+                    if bound & (1 << (len(self.output_arguments) - i - 1)):
+                        r = unify_value(r, args[len(self.input_arguments) + i], {})
+                    transformed.append(r)
+                result = args[:len(self.input_arguments)] + tuple(transformed)
+                return [result]
+            except UnifyError:
+                return []
 
         problog_export.add_function(function.__name__, len(self.input_arguments),
                                     len(self.output_arguments), _wrapped_function)
@@ -1356,15 +1382,24 @@ class problog_export(object):
 class problog_export_nondet(problog_export):
     def __call__(self, function):
         def _wrapped_function(*args, **kwdargs):
-            check_mode(args, [self._extract_callmode()], function.__name__, **kwdargs)
-            # TODO check that output arguments are variables
+            bound = check_mode(args, list(self._extract_callmode()), function.__name__, **kwdargs)
             converted_args = self._convert_inputs(args)
             results = []
             for result in function(*converted_args):
                 if len(self.output_arguments) == 1:
                     result = [result]
-                result = args[:len(self.input_arguments)] + tuple(self._convert_outputs(result))
-                results.append(result)
+
+                try:
+                    transformed = []
+                    for i, r in enumerate(result):
+                        r = self._convert_output(r, self.output_arguments[i])
+                        if bound & (1 << (len(self.output_arguments) - i - 1)):
+                            r = unify_value(r, args[len(self.input_arguments) + i], {})
+                        transformed.append(r)
+                    result = args[:len(self.input_arguments)] + tuple(transformed)
+                    results.append(result)
+                except UnifyError:
+                    pass
             return results
 
         problog_export.add_function(function.__name__, len(self.input_arguments),

@@ -554,7 +554,7 @@ class FormulaEvaluatorNSP(FormulaEvaluator):
                 nw, nu = self.get_weight(-index)
                 return self.semiring.negate(nw), nu
             else:
-                return weight[1], {index}
+                return weight[1], {abs(index)}
         else:
             weight = self._fact_weights.get(index)
             if weight is None:
@@ -564,7 +564,7 @@ class FormulaEvaluatorNSP(FormulaEvaluator):
                     self._computed_weights[index] = weight
                 return weight
             else:
-                return weight[0], {index}
+                return weight[0], {abs(index)}
 
     def evaluate(self, index):
         cp, cu = self.get_weight(index)
