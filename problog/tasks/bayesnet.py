@@ -292,13 +292,13 @@ def main(argv, result_handler=None):
         # rc = print_result((True, gp), output=outfile)
         bn = formulaToBN(gp)
         if args.format == 'hugin':
-            bn_str = bn.hugin_net()
+            bn_str = bn.to_hugin_net()
         elif args.format == 'xdsl':
-            bn_str = bn.xdsl()
+            bn_str = bn.to_xdsl()
         elif args.format == 'uai08':
-            bn_str = bn.uai08()
+            bn_str = bn.to_uai08()
         elif args.format == 'dot':
-            bn_str = bn.graphviz()
+            bn_str = bn.to_graphviz()
         else:
             bn_str = str(bn)
         rc = print_result((True, bn_str), output=outfile)

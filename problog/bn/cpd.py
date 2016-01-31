@@ -107,7 +107,7 @@ class PGM(object):
                 for rv in parent_rvs:
                     del self.cpds[rv]
 
-    def hugin_net(self):
+    def to_hugin_net(self):
         """Export PGM to the Hugin net format.
         http://www.hugin.com/technology/documentation/api-manuals
         """
@@ -124,7 +124,7 @@ class PGM(object):
         lines += [cpd.to_HuginNetPotential() for cpd in cpds]
         return '\n'.join(lines)
 
-    def xdsl(self):
+    def to_xdsl(self):
         """Export PGM to the XDSL format defined by SMILE.
         https://dslpitt.org/genie/wiki/Appendices:_XDSL_File_Format_-_XML_Schema_Definitions
         """
@@ -142,7 +142,7 @@ class PGM(object):
                   '</smile>']
         return '\n'.join(lines)
 
-    def uai08(self):
+    def to_uai08(self):
         """Export PGM to the format used in the UAI 2008 competition.
         http://graphmod.ics.uci.edu/uai08/FileFormat
         """
@@ -159,7 +159,16 @@ class PGM(object):
         lines += [cpd.to_Uai08Function() for cpd in cpds]
         return '\n'.join(lines)
 
-    def graphviz(self):
+    def to_problog(self):
+        """Export PGM to ProbLog.
+        """
+        cpds = [cpd.to_CPT(self) for cpd in self.cpds_topological()]
+        lines = ["%% ProbLog program",
+                 "%% Created on {}\n".format(datetime.now())]
+        lines += [cpd.to_ProbLog(self) for cpd in cpds]
+        return '\n'.join(lines)
+
+    def to_graphviz(self):
         """Export PGM to Graphviz dot format.
         http://www.graphviz.org
         """
@@ -177,6 +186,16 @@ class PGM(object):
 
 
 re_clean = re.compile(r"[\(\),\]\[ ]")
+boolean_values = [
+  ['t','f'],
+  ['true','false'],
+  ['True','False'],
+  ['yes','no'],
+  ['Yes','No'],
+  ['y','n'],
+  ['pos','neg'],
+  ['aye','nay']
+]
 
 class CPD(object):
     def __init__(self, rv, values, parents):
@@ -188,6 +207,15 @@ class CPD(object):
             self.parents = []
         else:
             self.parents = parents
+        self.booleantrue = None # Value that represents true
+        if len(self.values) == 2:
+            for values in boolean_values:
+                if values == self.values:
+                    self.booleantrue = 0
+                    break
+                elif values[::-1] == self.values:
+                    self.booleantrue = 1
+                    break
 
     def rv_clean(self, rv=None):
         if rv is None:
@@ -275,7 +303,7 @@ class CPT(CPD):
             '      <node id="{}">'.format(self.rv_clean()),
             '        <name>{}</name>'.format(self.rv),
             '        <interior color="e5f6f7" />',
-			'        <outline color="000080" />',
+            '        <outline color="000080" />',
             '        <font color="000000" name="Arial" size="8" />',
             '        <position>100 100 150 150</position>',
             '      </node>']
@@ -296,6 +324,40 @@ class CPT(CPD):
         for k, v in table:
             lines.append(' '+' '.join([str(vv) for vv in v]))
         lines.append('')
+        return '\n'.join(lines)
+
+    def to_ProbLogValue(self, value):
+        if self.booleantrue is None:
+            return self.rv_clean()+'_'+str(value)
+        else:
+            if self.values[self.booleantrue] == value:
+                return self.rv_clean()
+            elif self.values[1-self.booleantrue] == value:
+                return '\+'+self.rv_clean()
+            else:
+                raise Exception('Unknown value: {} = {}'.format(self.rv, value))
+
+    def to_ProbLog(self, pgm):
+        lines = []
+        name = self.rv_clean()
+        # if len(self.parents) > 0:
+            # name += ' | '+' '.join([self.rv_clean(p) for p in self.parents])
+        table = sorted(self.table.items())
+        # value_assignments = itertools.product(*[pgm.cpds[parent].value for parent in self.parents)
+
+        for k, v in table:
+            head_lits = []
+            for idx,vv in enumerate(v):
+                if self.booleantrue is None or self.booleantrue == idx:
+                    head_lits.append('{}::{}'.format(vv, self.to_ProbLogValue(self.values[idx])))
+            body_lits = []
+            for parent,parent_value in zip(self.parents, k):
+                parent_cpd = pgm.cpds[parent]
+                body_lits.append(parent_cpd.to_ProbLogValue(parent_value))
+            if len(body_lits) > 0:
+                lines.append('{} :- {}.'.format('; '.join(head_lits), ', '.join(body_lits)))
+            else:
+                lines.append('{}.'.format('; '.join(head_lits)))
         return '\n'.join(lines)
 
     def __str__(self):
