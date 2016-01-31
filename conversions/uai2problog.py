@@ -14,6 +14,8 @@ import itertools
 
 verbose = 0
 force_bool = False
+drop_zero = False
+use_neglit = False
 
 num_vars = 0
 num_funcs = 0
@@ -159,7 +161,9 @@ def print_datastructures():
 def main(argv=None):
     parser = argparse.ArgumentParser(description='Translate Bayesian net in UAI08 format to ProbLog')
     parser.add_argument('--verbose', '-v', action='count', help='Verbose output')
-    parser.add_argument('--forcebool', action='store_true', help='Force binary nodes to be represented as boolean predicates (0=f, 1=t')
+    parser.add_argument('--forcebool', action='store_true', help='Force binary nodes to be represented as boolean predicates (0=f, 1=t)')
+    parser.add_argument('--dropzero', action='store_true', help='Drop zero probabilities (if possible)')
+    parser.add_argument('--useneglit', action='store_true', help='Use negative head literals')
     parser.add_argument('--output', '-o', help='Output file')
     parser.add_argument('input', help='Input UAI08 file')
     args = parser.parse_args(argv)
@@ -170,6 +174,12 @@ def main(argv=None):
     global force_bool
     if args.forcebool:
         force_bool = args.forcebool
+    global drop_zero
+    if args.dropzero:
+        drop_zero = args.dropzero
+    global use_neglit
+    if args.useneglit:
+        use_neglit = args.useneglit
 
     with open(args.input, 'r') as ifile:
         parse(ifile)
@@ -180,7 +190,7 @@ def main(argv=None):
         ofile = sys.stdout
     else:
         ofile = open(args.output, 'w')
-    print(pgm.to_problog(), file=ofile)
+    print(pgm.to_problog(drop_zero=drop_zero, use_neglit=use_neglit), file=ofile)
 
 
 if __name__ == "__main__":

@@ -159,13 +159,13 @@ class PGM(object):
         lines += [cpd.to_Uai08Function() for cpd in cpds]
         return '\n'.join(lines)
 
-    def to_problog(self):
+    def to_problog(self, drop_zero=False, use_neglit=False):
         """Export PGM to ProbLog.
         """
         cpds = [cpd.to_CPT(self) for cpd in self.cpds_topological()]
         lines = ["%% ProbLog program",
                  "%% Created on {}\n".format(datetime.now())]
-        lines += [cpd.to_ProbLog(self) for cpd in cpds]
+        lines += [cpd.to_ProbLog(self, drop_zero=drop_zero, use_neglit=use_neglit) for cpd in cpds]
         return '\n'.join(lines)
 
     def to_graphviz(self):
@@ -337,7 +337,7 @@ class CPT(CPD):
             else:
                 raise Exception('Unknown value: {} = {}'.format(self.rv, value))
 
-    def to_ProbLog(self, pgm):
+    def to_ProbLog(self, pgm, drop_zero=False, use_neglit=False):
         lines = []
         name = self.rv_clean()
         # if len(self.parents) > 0:
@@ -346,10 +346,20 @@ class CPT(CPD):
         # value_assignments = itertools.product(*[pgm.cpds[parent].value for parent in self.parents)
 
         for k, v in table:
+            if self.booleantrue is not None and drop_zero and v[self.booleantrue] == 0.0 and not use_neglit:
+                continue
             head_lits = []
-            for idx,vv in enumerate(v):
-                if self.booleantrue is None or self.booleantrue == idx:
-                    head_lits.append('{}::{}'.format(vv, self.to_ProbLogValue(self.values[idx])))
+            if self.booleantrue is None:
+                for idx,vv in enumerate(v):
+                    if not (drop_zero and vv == 0.0):
+                        head_lits.append('{}::{}'.format(vv, self.to_ProbLogValue(self.values[idx])))
+            else:
+                if drop_zero and v[self.booleantrue] == 0.0 and use_neglit:
+                    head_lits.append(self.to_ProbLogValue(self.values[1-self.booleantrue]))
+                elif v[self.booleantrue] == 1.0:
+                    head_lits.append(self.to_ProbLogValue(self.values[self.booleantrue]))
+                else:
+                    head_lits.append('{}::{}'.format(v[self.booleantrue], self.to_ProbLogValue(self.values[self.booleantrue])))
             body_lits = []
             for parent,parent_value in zip(self.parents, k):
                 parent_cpd = pgm.cpds[parent]
