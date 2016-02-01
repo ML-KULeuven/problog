@@ -34,7 +34,7 @@ from .engine_unify import *
 
 from .core import transform
 from .errors import GroundingError
-from .util import Timer
+from .util import Timer, OrderedSet
 
 
 @transform(LogicProgram, LogicFormula)
@@ -427,56 +427,34 @@ class ClauseIndex(list):
     def __init__(self, parent, arity):
         list.__init__(self)
         self.__parent = parent
-        self.__index = [defaultdict(set) for _ in range(0, arity)]
-        self.__optimized = False
-
-    def optimize(self):
-        if not self.__optimized:
-            self.__optimized = True
-            for i in range(0, len(self.__index)):
-                arg_index = self.__index[i]
-                arg_none = arg_index[None]
-                self.__index[i] = {k: tuple(sorted(v | arg_none)) for k, v in arg_index.items() if
-                                   k is not None}
-                self.__index[i][None] = tuple(sorted(arg_none))
+        self.__basetype = OrderedSet
+        self.__index = [defaultdict(self.__basetype) for _ in range(0, arity)]
 
     def find(self, arguments):
-        # self.optimize()
         results = None
-        # for i, xx in enumerate(self.__index):
-        #     print ('\t', i, xx)
         for i, arg in enumerate(arguments):
             if not is_ground(arg):
                 pass  # Variable => no restrictions
             else:
                 curr = self.__index[i].get(arg)
-                if not self.__optimized:
-                    none = self.__index[i].get(None, set())
-                    if curr is None:
-                        curr = none
-                    else:
-                        curr |= none
-
-                if curr is None:   # No facts matching this argument exactly.
-                    results = self.__index[i].get(None)
-                elif results is None:  # First argument with restriction
-                    results = curr
-                elif self.__optimized:  # Already have a selection
-                    results = intersection(results, curr)
+                none = self.__index[i].get(None, self.__basetype())
+                if curr is None:
+                    curr = none
                 else:
-                    results = results & curr
-            if results is not None and not results:
-                # print ('FIND', arguments, results)
+                    curr |= none
+
+                if results is None:  # First argument with restriction
+                    results = curr
+                else:  # Combine the restrictions from the previous argument with the current one
+                    results &= curr
+            if results is not None and not results:  # If solution is empty stop early
                 return []
         if results is None:
-            # print ('FIND', arguments, 'all')
             return self
         else:
-            # print ('FIND', arguments, results)
             return results
 
     def _add(self, key, item):
-        assert not self.__optimized
         for i, k in enumerate(key):
             self.__index[i][k].add(item)
 
