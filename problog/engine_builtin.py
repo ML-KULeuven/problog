@@ -270,7 +270,7 @@ def _is_string(term):
 
 
 def _is_number(term):
-    return _is_float(term) and _is_integer(term)
+    return _is_float(term) or _is_integer(term)
 
 
 def _is_constant(term):
