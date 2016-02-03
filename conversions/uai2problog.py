@@ -164,6 +164,7 @@ def main(argv=None):
     parser.add_argument('--forcebool', action='store_true', help='Force binary nodes to be represented as boolean predicates (0=f, 1=t)')
     parser.add_argument('--dropzero', action='store_true', help='Drop zero probabilities (if possible)')
     parser.add_argument('--useneglit', action='store_true', help='Use negative head literals')
+    parser.add_argument('--compress', action='store_true', help='Compress tables')
     parser.add_argument('--output', '-o', help='Output file')
     parser.add_argument('input', help='Input UAI08 file')
     args = parser.parse_args(argv)
@@ -184,6 +185,8 @@ def main(argv=None):
     with open(args.input, 'r') as ifile:
         parse(ifile)
     pgm = construct_pgm()
+    if args.compress:
+        pgm = pgm.compress_tables()
     if pgm is None:
         error('Could not build PGM structure', halt=True)
     if args.output is None:

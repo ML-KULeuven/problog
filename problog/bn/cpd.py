@@ -28,9 +28,12 @@ import math
 from collections import Counter
 
 class PGM(object):
-    def __init__(self):
+    def __init__(self, cpds=None):
         """Probabilistic Graphical Model."""
         self.cpds = {}
+        if cpds:
+            for cpd in cpds:
+                self.add(cpd)
 
     def add(self, cpd):
         """Add a CPD."""
@@ -108,6 +111,10 @@ class PGM(object):
                 self.cpds[child_rv] = cpd
                 for rv in parent_rvs:
                     del self.cpds[rv]
+
+    def compress_tables(self):
+        cpds = [cpd.compress(self) for cpd in self.cpds.values()]
+        return PGM(cpds)
 
     def to_hugin_net(self):
         """Export PGM to the Hugin net format.
@@ -273,44 +280,34 @@ class CPT(CPD):
         table = []
         for k,v in self.table.items():
             # Tuples allow hashing for IG
-            table.append(k, tuple(v))
-        nodes = [([None]*len(self.parents), table)]
+            table.append((k, tuple(v)))
+        nodes = [(tuple([None]*len(self.parents)), table)]
         new_table = {}
         while len(nodes) > 0:
             curpath, node = nodes.pop()
             # All the same?
-            firstval = node[0][1]
-            allsimilar = True
-            for nextval in zip(*node[1:])[1]:
-                if nextval != firstval:
-                    allsimilar = False
-                    break
-            if allsimilar:
-                for k,v in node:
-                    new_table[curpath] = v
+            k,v = zip(*node)
+            c = Counter(v)
+            if len(c.keys()) == 1:
+                new_table[curpath] = node[0][1]
                 continue
             # Find max information gain
             # ig_idx = self.maxinformationgainparent(node)
             ig_idx = None
-            ig_max = 0
+            ig_max = -1
             for parent_idx, parent in enumerate(self.parents):
-                print('test parent {}'.format(parent))
-                if curpath[parent] is not None:
-                    print('skip')
+                if curpath[parent_idx] is not None:
                     continue
                 bins = {}
                 for value in pgm.cpds[parent].values:
                     bins[value] = []
                 for k,v in node:
-                    bins[k[parent]].append(v)
-                print('bins:\n{}'.format(bins))
+                    bins[k[parent_idx]].append(v)
                 ig = 0
-                for bin in bins:
-                    labels = Counter(bin)
-                    print('labels: {}'.format(labels))
-                    h = -sum([c/len(bin)*math.log(c/len(bin),2) for c in labels.values()])
-                    ig += len(bin)/len(node)*h
-                print('IG: {}'.format(ig)
+                for bin_value, bin_labels in bins.items():
+                    label_cnt = Counter(bin_labels)
+                    h = -sum([cnt/len(bin_labels)*math.log(cnt/len(bin_labels),2) for cnt in label_cnt.values()])
+                    ig += -len(bin_labels)/len(node)*h
                 if ig > ig_max:
                     ig_max = ig
                     ig_idx = parent_idx
@@ -318,15 +315,12 @@ class CPT(CPD):
             for value in pgm.cpds[self.parents[ig_idx]].values:
                 newpath = [v for v in curpath]
                 newpath[ig_idx] = value
-                newnode = [newpath, []]
+                newnode = [tuple(newpath), []]
                 for parent_values, prob in node:
                     if parent_values[ig_idx] == value:
                         newnode[1].append((parent_values, prob))
                 nodes.append(newnode)
-            print('----------------')
-            print(nodes)
-        print(new_table)
-        return new_table
+        return CPT(self.rv, self.values, self.parents, new_table)
 
     def to_HuginNetNode(self):
         lines = ["node {} {{".format(self.rv_clean()),
@@ -406,7 +400,8 @@ class CPT(CPD):
         name = self.rv_clean()
         # if len(self.parents) > 0:
             # name += ' | '+' '.join([self.rv_clean(p) for p in self.parents])
-        table = sorted(self.table.items())
+        # table = sorted(self.table.items())
+        table = self.table.items()
         # value_assignments = itertools.product(*[pgm.cpds[parent].value for parent in self.parents)
 
         for k, v in table:
@@ -426,8 +421,9 @@ class CPT(CPD):
                     head_lits.append('{}::{}'.format(v[self.booleantrue], self.to_ProbLogValue(self.values[self.booleantrue])))
             body_lits = []
             for parent,parent_value in zip(self.parents, k):
-                parent_cpd = pgm.cpds[parent]
-                body_lits.append(parent_cpd.to_ProbLogValue(parent_value))
+                if parent_value is not None:
+                    parent_cpd = pgm.cpds[parent]
+                    body_lits.append(parent_cpd.to_ProbLogValue(parent_value))
             if len(body_lits) > 0:
                 lines.append('{} :- {}.'.format('; '.join(head_lits), ', '.join(body_lits)))
             else:
