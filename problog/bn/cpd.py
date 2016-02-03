@@ -24,6 +24,8 @@ from datetime import datetime
 import re
 from functools import reduce
 import sys
+import math
+from collections import Counter
 
 class PGM(object):
     def __init__(self):
@@ -263,6 +265,68 @@ class CPT(CPD):
         print('parents: {}'.format(parents))
 
         return None
+
+    def compress(self, pgm):
+        """Table to tree using the ID3 decision tree algorithm."""
+        # Traverse through the tree
+        # First tuple is path with no value assignment and all rows in the table
+        table = []
+        for k,v in self.table.items():
+            # Tuples allow hashing for IG
+            table.append(k, tuple(v))
+        nodes = [([None]*len(self.parents), table)]
+        new_table = {}
+        while len(nodes) > 0:
+            curpath, node = nodes.pop()
+            # All the same?
+            firstval = node[0][1]
+            allsimilar = True
+            for nextval in zip(*node[1:])[1]:
+                if nextval != firstval:
+                    allsimilar = False
+                    break
+            if allsimilar:
+                for k,v in node:
+                    new_table[curpath] = v
+                continue
+            # Find max information gain
+            # ig_idx = self.maxinformationgainparent(node)
+            ig_idx = None
+            ig_max = 0
+            for parent_idx, parent in enumerate(self.parents):
+                print('test parent {}'.format(parent))
+                if curpath[parent] is not None:
+                    print('skip')
+                    continue
+                bins = {}
+                for value in pgm.cpds[parent].values:
+                    bins[value] = []
+                for k,v in node:
+                    bins[k[parent]].append(v)
+                print('bins:\n{}'.format(bins))
+                ig = 0
+                for bin in bins:
+                    labels = Counter(bin)
+                    print('labels: {}'.format(labels))
+                    h = -sum([c/len(bin)*math.log(c/len(bin),2) for c in labels.values()])
+                    ig += len(bin)/len(node)*h
+                print('IG: {}'.format(ig)
+                if ig > ig_max:
+                    ig_max = ig
+                    ig_idx = parent_idx
+            # Create next nodes
+            for value in pgm.cpds[self.parents[ig_idx]].values:
+                newpath = [v for v in curpath]
+                newpath[ig_idx] = value
+                newnode = [newpath, []]
+                for parent_values, prob in node:
+                    if parent_values[ig_idx] == value:
+                        newnode[1].append((parent_values, prob))
+                nodes.append(newnode)
+            print('----------------')
+            print(nodes)
+        print(new_table)
+        return new_table
 
     def to_HuginNetNode(self):
         lines = ["node {} {{".format(self.rv_clean()),

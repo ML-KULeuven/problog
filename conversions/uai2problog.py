@@ -44,13 +44,13 @@ def error(string, halt=False):
 
 def construct_cpt(var):
     global domains
-    rv = 'v'+str(var)
+    rv = 'v{}'.format(var)
     if force_bool and dom_sizes[var] == 2:
         values = ['f', 't']
     else:
         values = [str(d) for d in range(dom_sizes[var])]
     domains.append(values)
-    parents = ['v'+str(p) for p in var_parents[var]]
+    parents = ['v{}'.format(p) for p in var_parents[var]]
     if len(parents) == 0:
         table = func_values[var]
         return CPT(rv, values, parents, table)
