@@ -171,17 +171,18 @@ def search_local(formula, decisions, utilities, constraints, verbose=0, **kwargs
     """
     stats = {'eval': 1}
 
+    choices = {}
     # Create the initial strategy:
     #  for each decision, take option that has highest local utility
     #   (takes false if no utility is given for the decision variable)
-    for key in decisions:
+    for ident, key in decisions:
         if key in utilities and float(utilities[key]) > 0:
-            decisions[key] = True
+            choices[key] = 1
         else:
-            decisions[key] = False
+            choices[key] = 0
 
     # Compute the score of the initial strategy.
-    best_score = evaluate(formula, decisions, utilities)
+    best_score = evaluate(formula, choices, utilities)
 
     # Perform local search by flipping one decision at a time
     last_update = None  # Last decision that was flipped and improved the score
@@ -191,29 +192,29 @@ def search_local(formula, decisions, utilities, constraints, verbose=0, **kwargs
         #   - at the end of the (first) iteration no decision was flipped successfully
         #   - while iterating we again reach the last decision that was flipped
         #       (this means we tried to flip all decisions, but none were successfull)
-        for key in decisions:
+        for ident, key in decisions:
             if last_update == key:
                 # We went through all decisions without flipping since the last flip.
                 stop = True
                 break
             # Flip a decision
-            decisions[key] = not decisions[key]
+            choices[key] = 1 - choices[key]
             # Compute the score of the new strategy
-            flip_score = evaluate(formula, decisions, utilities)
+            flip_score = evaluate(formula, choices, utilities)
             stats['eval'] += 1
             if flip_score <= best_score:
                 # The score is not better: undo the flip
-                decisions[key] = not decisions[key]
+                choices[key] = 1 - choices[key]
             else:
                 # The score is better: update best score and pointer to last_update
                 last_update = key
                 best_score = flip_score
-                logging.getLogger('dtproblog').debug('Improvement: %s -> %s' % (decisions, best_score))
+                logging.getLogger('dtproblog').debug('Improvement: %s -> %s' % (choices, best_score))
         if last_update is None:
             # We went through all decisions without flipping.
             stop = True
 
-    return decisions, best_score, stats
+    return choices, best_score, stats
 
 
 def num2bits(n, nbits):
