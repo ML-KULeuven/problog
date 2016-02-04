@@ -180,6 +180,10 @@ def search_local(formula, decisions, utilities, constraints, verbose=0, **kwargs
     """
     stats = {'eval': 1}
 
+    for c in constraints:
+        if not c.is_true():
+            raise ProbLogError('Local search does not support constraints')
+
     choices = {}
     # Create the initial strategy:
     #  for each decision, take option that has highest local utility
