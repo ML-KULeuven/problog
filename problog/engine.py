@@ -313,11 +313,11 @@ class ClauseDBEngine(GenericEngine):
                     target = self.ground(db, query[0], target, label=target.LABEL_EVIDENCE_POS, is_root=True)
                     logger.debug("Ground program size: %s", len(target))
             else:  # evidence/2
-                if str(query[1]) == 'true':
+                if str(query[1]) == 'true' or query[1] == True:
                     logger.debug("Grounding evidence '%s'", query[0])
                     target = self.ground(db, query[0], target, label=target.LABEL_EVIDENCE_POS, is_root=True)
                     logger.debug("Ground program size: %s", len(target))
-                elif str(query[1]) == 'false':
+                elif str(query[1]) == 'false' or query[1] == False:
                     logger.debug("Grounding evidence '%s'", query[0])
                     target = self.ground(db, query[0], target, label=target.LABEL_EVIDENCE_NEG, is_root=True)
                     logger.debug("Ground program size: %s", len(target))
