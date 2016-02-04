@@ -71,13 +71,14 @@ def main(argv, result_handler=None):
         outf.close()
 
 
-def dtproblog(model, search=None, koption=None, web=False, **kwargs):
+def dtproblog(model, search=None, koption=None, locations=False, web=False, **kwargs):
     """Evaluate a DT ProbLog model
 
     :param model: ProbLog model
     :type model: problog.logic.LogicProgram
     :param search: specifies search ('exhaustive' or 'local')
     :param koption: specifies knowledge compilation tool (omit for system default)
+    :param locations: add Term locations to results
     :param web: prepare for web mode
     :param kwargs: additional arguments (passed to search procedure)
     :return: best decisions, score of best decision, statistics
@@ -120,7 +121,7 @@ def dtproblog(model, search=None, koption=None, web=False, **kwargs):
             else:
                 result = search_exhaustive(knowledge, decisions, utilities, constraints, **kwargs)
 
-        if web:
+        if web or locations:
             for k, v in result[0].items():
                 if k.functor == 'choice':
                     k.args[2].loc = db.lineno(k.args[2].location)
