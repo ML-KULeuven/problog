@@ -113,6 +113,8 @@ class PGM(object):
                     del self.cpds[rv]
 
     def compress_tables(self):
+        """Analyze CPTs and join rows that have the same probability
+        distribution."""
         cpds = [cpd.compress(self) for cpd in self.cpds.values()]
         return PGM(cpds)
 
@@ -274,7 +276,18 @@ class CPT(CPD):
         return None
 
     def compress(self, pgm):
-        """Table to tree using the ID3 decision tree algorithm."""
+        """Table to tree using the ID3 decision tree algorithm.
+
+        From:
+            {('f', 'f'): (0.2, 0.8),
+             ('f', 't'): (0.2, 0.8),
+             ('t', 'f'): (0.1, 0.9),
+             ('t', 't'): (0.6, 0.4)}
+        To:
+            {('f', None): (0.2, 0.8),
+             ('t', 'f'):  (0.1, 0.9),
+             ('t', 't'):  (0.6, 0.4)}
+        """
         # Traverse through the tree
         # First tuple is path with no value assignment and all rows in the table
         table = []
@@ -285,15 +298,19 @@ class CPT(CPD):
         new_table = {}
         while len(nodes) > 0:
             curpath, node = nodes.pop()
-            # All the same?
+            # All the same or all different? Then stop.
             k,v = zip(*node)
             c = Counter(v)
             if len(c.keys()) == 1:
                 new_table[curpath] = node[0][1]
                 continue
+            if len(c.keys()) == len(v):
+                for new_path, new_probs in node:
+                    new_table[new_path] = new_probs
+                continue
             # Find max information gain
             # ig_idx = self.maxinformationgainparent(node)
-            ig_idx = None
+            ig_idx = 0
             ig_max = -1
             for parent_idx, parent in enumerate(self.parents):
                 if curpath[parent_idx] is not None:
