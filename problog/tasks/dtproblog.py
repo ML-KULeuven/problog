@@ -51,7 +51,7 @@ def main(argv, result_handler=None):
 
     try:
         model = PrologFile(inputfile)  # factory=factory
-        result = execute(model, **vars(args))
+        result = dtproblog(model, **vars(args))
 
         choices, score, stats = result
         logging.getLogger('dtproblog').info('Number of strategies evaluated: %s' % stats.get('eval'))
@@ -71,7 +71,7 @@ def main(argv, result_handler=None):
         outf.close()
 
 
-def execute(model, search=None, koption=None, web=False, **kwargs):
+def dtproblog(model, search=None, koption=None, web=False, **kwargs):
     """Evaluate a DT ProbLog model
 
     :param model: ProbLog model
