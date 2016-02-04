@@ -26,12 +26,10 @@ import traceback
 
 from ..program import PrologFile
 from ..engine import DefaultEngine
-from ..logic import Term, Constant
-from ..formula import LogicFormula
-from ..errors import process_error
+from ..logic import Term
+from ..errors import process_error, ProbLogError
 from .. import get_evaluatables, get_evaluatable
 from ..util import init_logger, Timer, format_dictionary
-from ..program import ExtendedPrologFactory
 
 
 def main(argv, result_handler=None):
@@ -52,49 +50,8 @@ def main(argv, result_handler=None):
         outf = sys.stdout
 
     try:
-
-        # factory = DTProbLogFactory()
-        with Timer('Total', logger='dtproblog'):
-            with Timer('Parse input', logger='dtproblog'):
-                pl = PrologFile(inputfile)  # factory=factory
-                eng = DefaultEngine(label_all=True)
-                db = eng.prepare(pl)
-
-                # print (db)
-
-            with Timer('Ground', logger='dtproblog'):
-                # decisions = dict((d[0], None) for d in eng.query(db, Term('decision', None)))
-                utilities = dict(eng.query(db, Term('utility', None, None)))
-
-                # logging.getLogger('dtproblog').debug('Decisions: %s' % decisions)
-                logging.getLogger('dtproblog').debug('Utilities: %s' % utilities)
-
-                # for d in decisions:
-                #     db += d.with_probability(Constant(0.5))
-
-                gp = eng.ground_all(db, target=None, queries=utilities.keys())
-                decisions = []
-                decision_nodes = set()
-                for i, n, t in gp:
-                    if t == 'atom' and n.probability == Term('?'):
-                        decisions.append((i, n.name))
-                        decision_nodes.add(i)
-
-                constraints = []
-                for c in gp.constraints():
-                    if set(c.get_nodes()) & decision_nodes:
-                        constraints.append(c)
-
-                # print (gp)
-
-            with Timer('Compile', logger='dtproblog'):
-                knowledge = get_evaluatable(args.koption).create_from(gp)
-
-            with Timer('Optimize', logger='dtproblog'):
-                if args.search == 'local':
-                    result = search_local(knowledge, decisions, utilities, constraints, **vars(args))
-                else:
-                    result = search_exhaustive(knowledge, decisions, utilities, constraints, **vars(args))
+        model = PrologFile(inputfile)  # factory=factory
+        result = execute(model, **vars(args))
 
         choices, score, stats = result
         logging.getLogger('dtproblog').info('Number of strategies evaluated: %s' % stats.get('eval'))
@@ -102,22 +59,75 @@ def main(argv, result_handler=None):
         renamed_choices = {}
         for k, v in choices.items():
             if k.functor == 'choice':
-                if args.web:
-                    k.args[2].loc = db.lineno(k.args[2].location)
                 k = k.args[2]
-            else:
-                if args.web:
-                    k.loc = db.lineno(k.location)
             renamed_choices[k] = v
 
         result_handler((True, (renamed_choices, score, stats)), outf)
     except Exception as err:
         err.trace = traceback.format_exc()
-        print (err.trace)
         result_handler((False, err), outf)
 
     if args.output is not None:
         outf.close()
+
+
+def execute(model, search=None, koption=None, web=False, **kwargs):
+    """Evaluate a DT ProbLog model
+
+    :param model: ProbLog model
+    :type model: problog.logic.LogicProgram
+    :param search: specifies search ('exhaustive' or 'local')
+    :param koption: specifies knowledge compilation tool (omit for system default)
+    :param web: prepare for web mode
+    :param kwargs: additional arguments (passed to search procedure)
+    :return: best decisions, score of best decision, statistics
+    """
+
+    with Timer('Total', logger='dtproblog'):
+        with Timer('Parse input', logger='dtproblog'):
+            eng = DefaultEngine(label_all=True)
+            db = eng.prepare(model)
+
+        with Timer('Ground', logger='dtproblog'):
+            # decisions = dict((d[0], None) for d in eng.query(db, Term('decision', None)))
+            utilities = dict(eng.query(db, Term('utility', None, None)))
+
+            # logging.getLogger('dtproblog').debug('Decisions: %s' % decisions)
+            logging.getLogger('dtproblog').debug('Utilities: %s' % utilities)
+
+            # for d in decisions:
+            #     db += d.with_probability(Constant(0.5))
+
+            gp = eng.ground_all(db, target=None, queries=utilities.keys())
+            decisions = []
+            decision_nodes = set()
+            for i, n, t in gp:
+                if t == 'atom' and n.probability == Term('?'):
+                    decisions.append((i, n.name))
+                    decision_nodes.add(i)
+
+            constraints = []
+            for c in gp.constraints():
+                if set(c.get_nodes()) & decision_nodes:
+                    constraints.append(c)
+
+        with Timer('Compile', logger='dtproblog'):
+            knowledge = get_evaluatable(koption).create_from(gp)
+
+        with Timer('Optimize', logger='dtproblog'):
+            if search == 'local':
+                result = search_local(knowledge, decisions, utilities, constraints, **kwargs)
+            else:
+                result = search_exhaustive(knowledge, decisions, utilities, constraints, **kwargs)
+
+        if web:
+            for k, v in result[0].items():
+                if k.functor == 'choice':
+                    k.args[2].loc = db.lineno(k.args[2].location)
+                else:
+                    k.loc = db.lineno(k.location)
+
+    return result
 
 
 def evaluate(formula, decisions, utilities):
@@ -136,7 +146,6 @@ def search_exhaustive(formula, decisions, utilities, constraints, verbose=0, **k
 
     decision_ids, decision_names = zip(*decisions)
 
-    # decision_names = decisions.keys()
     for i in range(0, 1 << len(decisions)):
         choices = num2bits(i, len(decisions))
 
