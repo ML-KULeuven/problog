@@ -26,12 +26,10 @@ import traceback
 
 from ..program import PrologFile
 from ..engine import DefaultEngine
-from ..logic import Term, Constant
-from ..formula import LogicFormula
-from ..errors import process_error
+from ..logic import Term
+from ..errors import process_error, ProbLogError
 from .. import get_evaluatables, get_evaluatable
 from ..util import init_logger, Timer, format_dictionary
-from ..program import ExtendedPrologFactory
 
 
 def main(argv, result_handler=None):
@@ -52,49 +50,8 @@ def main(argv, result_handler=None):
         outf = sys.stdout
 
     try:
-
-        # factory = DTProbLogFactory()
-        with Timer('Total', logger='dtproblog'):
-            with Timer('Parse input', logger='dtproblog'):
-                pl = PrologFile(inputfile)  # factory=factory
-                eng = DefaultEngine(label_all=True)
-                db = eng.prepare(pl)
-
-                # print (db)
-
-            with Timer('Ground', logger='dtproblog'):
-                # decisions = dict((d[0], None) for d in eng.query(db, Term('decision', None)))
-                utilities = dict(eng.query(db, Term('utility', None, None)))
-
-                # logging.getLogger('dtproblog').debug('Decisions: %s' % decisions)
-                logging.getLogger('dtproblog').debug('Utilities: %s' % utilities)
-
-                # for d in decisions:
-                #     db += d.with_probability(Constant(0.5))
-
-                gp = eng.ground_all(db, target=None, queries=utilities.keys())
-                decisions = []
-                decision_nodes = set()
-                for i, n, t in gp:
-                    if t == 'atom' and n.probability == Term('?'):
-                        decisions.append((i, n.name))
-                        decision_nodes.add(i)
-
-                constraints = []
-                for c in gp.constraints():
-                    if set(c.get_nodes()) & decision_nodes:
-                        constraints.append(c)
-
-                # print (gp)
-
-            with Timer('Compile', logger='dtproblog'):
-                knowledge = get_evaluatable(args.koption).create_from(gp)
-
-            with Timer('Optimize', logger='dtproblog'):
-                if args.search == 'local':
-                    result = search_local(knowledge, decisions, utilities, constraints, **vars(args))
-                else:
-                    result = search_exhaustive(knowledge, decisions, utilities, constraints, **vars(args))
+        model = PrologFile(inputfile)  # factory=factory
+        result = dtproblog(model, **vars(args))
 
         choices, score, stats = result
         logging.getLogger('dtproblog').info('Number of strategies evaluated: %s' % stats.get('eval'))
@@ -102,22 +59,76 @@ def main(argv, result_handler=None):
         renamed_choices = {}
         for k, v in choices.items():
             if k.functor == 'choice':
-                if args.web:
-                    k.args[2].loc = db.lineno(k.args[2].location)
                 k = k.args[2]
-            else:
-                if args.web:
-                    k.loc = db.lineno(k.location)
             renamed_choices[k] = v
 
         result_handler((True, (renamed_choices, score, stats)), outf)
     except Exception as err:
         err.trace = traceback.format_exc()
-        print (err.trace)
         result_handler((False, err), outf)
 
     if args.output is not None:
         outf.close()
+
+
+def dtproblog(model, search=None, koption=None, locations=False, web=False, **kwargs):
+    """Evaluate a DT ProbLog model
+
+    :param model: ProbLog model
+    :type model: problog.logic.LogicProgram
+    :param search: specifies search ('exhaustive' or 'local')
+    :param koption: specifies knowledge compilation tool (omit for system default)
+    :param locations: add Term locations to results
+    :param web: prepare for web mode
+    :param kwargs: additional arguments (passed to search procedure)
+    :return: best decisions, score of best decision, statistics
+    """
+
+    with Timer('Total', logger='dtproblog'):
+        with Timer('Parse input', logger='dtproblog'):
+            eng = DefaultEngine(label_all=True)
+            db = eng.prepare(model)
+
+        with Timer('Ground', logger='dtproblog'):
+            # decisions = dict((d[0], None) for d in eng.query(db, Term('decision', None)))
+            utilities = dict(eng.query(db, Term('utility', None, None)))
+
+            # logging.getLogger('dtproblog').debug('Decisions: %s' % decisions)
+            logging.getLogger('dtproblog').debug('Utilities: %s' % utilities)
+
+            # for d in decisions:
+            #     db += d.with_probability(Constant(0.5))
+
+            gp = eng.ground_all(db, target=None, queries=utilities.keys())
+            decisions = []
+            decision_nodes = set()
+            for i, n, t in gp:
+                if t == 'atom' and n.probability == Term('?'):
+                    decisions.append((i, n.name))
+                    decision_nodes.add(i)
+
+            constraints = []
+            for c in gp.constraints():
+                if set(c.get_nodes()) & decision_nodes:
+                    constraints.append(c)
+
+        with Timer('Compile', logger='dtproblog'):
+            knowledge = get_evaluatable(koption).create_from(gp)
+
+        with Timer('Optimize', logger='dtproblog'):
+            if search == 'local':
+                result = search_local(knowledge, decisions, utilities, constraints, **kwargs)
+            else:
+                result = search_exhaustive(knowledge, decisions, utilities, constraints, **kwargs)
+
+        if web or locations:
+            for k, v in result[0].items():
+                if k.functor == 'choice':
+                    k.args[2].loc = db.lineno(k.args[2].location)
+                else:
+                    k.loc = db.lineno(k.location)
+
+    return result
 
 
 def evaluate(formula, decisions, utilities):
@@ -136,7 +147,6 @@ def search_exhaustive(formula, decisions, utilities, constraints, verbose=0, **k
 
     decision_ids, decision_names = zip(*decisions)
 
-    # decision_names = decisions.keys()
     for i in range(0, 1 << len(decisions)):
         choices = num2bits(i, len(decisions))
 
@@ -171,17 +181,22 @@ def search_local(formula, decisions, utilities, constraints, verbose=0, **kwargs
     """
     stats = {'eval': 1}
 
+    for c in constraints:
+        if not c.is_true():
+            raise ProbLogError('Local search does not support constraints')
+
+    choices = {}
     # Create the initial strategy:
     #  for each decision, take option that has highest local utility
     #   (takes false if no utility is given for the decision variable)
-    for key in decisions:
+    for ident, key in decisions:
         if key in utilities and float(utilities[key]) > 0:
-            decisions[key] = True
+            choices[key] = 1
         else:
-            decisions[key] = False
+            choices[key] = 0
 
     # Compute the score of the initial strategy.
-    best_score = evaluate(formula, decisions, utilities)
+    best_score = evaluate(formula, choices, utilities)
 
     # Perform local search by flipping one decision at a time
     last_update = None  # Last decision that was flipped and improved the score
@@ -191,29 +206,29 @@ def search_local(formula, decisions, utilities, constraints, verbose=0, **kwargs
         #   - at the end of the (first) iteration no decision was flipped successfully
         #   - while iterating we again reach the last decision that was flipped
         #       (this means we tried to flip all decisions, but none were successfull)
-        for key in decisions:
+        for ident, key in decisions:
             if last_update == key:
                 # We went through all decisions without flipping since the last flip.
                 stop = True
                 break
             # Flip a decision
-            decisions[key] = not decisions[key]
+            choices[key] = 1 - choices[key]
             # Compute the score of the new strategy
-            flip_score = evaluate(formula, decisions, utilities)
+            flip_score = evaluate(formula, choices, utilities)
             stats['eval'] += 1
             if flip_score <= best_score:
                 # The score is not better: undo the flip
-                decisions[key] = not decisions[key]
+                choices[key] = 1 - choices[key]
             else:
                 # The score is better: update best score and pointer to last_update
                 last_update = key
                 best_score = flip_score
-                logging.getLogger('dtproblog').debug('Improvement: %s -> %s' % (decisions, best_score))
+                logging.getLogger('dtproblog').debug('Improvement: %s -> %s' % (choices, best_score))
         if last_update is None:
             # We went through all decisions without flipping.
             stop = True
 
-    return decisions, best_score, stats
+    return choices, best_score, stats
 
 
 def num2bits(n, nbits):

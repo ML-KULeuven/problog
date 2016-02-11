@@ -3,7 +3,7 @@
 from __future__ import print_function
 import sys
 
-version = '2.1.0.11'
+version = '2.1.0.12'
 
 if len(sys.argv) == 1:
     from problog import setup as problog_setup
@@ -42,7 +42,9 @@ else:
             'web/editor_local.html',
             'web/editor_adv.html',
             'web/js/problog_editor.js',
-            'library/lists.pl'
+            'library/lists.pl',
+            'library/apply.pl',
+            'library/control.pl'
         ]
     }
 

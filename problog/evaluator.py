@@ -163,7 +163,7 @@ class SemiringProbability(Semiring):
 
     def value(self, a):
         v = float(a)
-        if 0.0 - 1e-12 <= v <= 1.0 + 1e-12:
+        if 0.0 - 1e-9 <= v <= 1.0 + 1e-9:
             return v
         else:
             raise InvalidValue("Not a valid value for this semiring: '%s'" % a, location=a.location)
@@ -173,7 +173,7 @@ class SemiringProbability(Semiring):
         return True
 
     def in_domain(self, a):
-        return 0.0 - 1e-12 <= a <= 1.0 + 1e-12
+        return 0.0 - 1e-9 <= a <= 1.0 + 1e-9
 
 
 class SemiringLogProbability(SemiringProbability):
@@ -213,10 +213,10 @@ class SemiringLogProbability(SemiringProbability):
 
     def value(self, a):
         v = float(a)
-        if -1e-12 <= v < 1e-12:
+        if -1e-9 <= v < 1e-9:
             return self.zero()
         else:
-            if 0.0 - 1e-12 <= v <= 1.0 + 1e-12:
+            if 0.0 - 1e-9 <= v <= 1.0 + 1e-9:
                 return math.log(v)
             else:
                 raise InvalidValue("Not a valid value for this semiring: '%s'" % a, location=a.location)
@@ -554,7 +554,7 @@ class FormulaEvaluatorNSP(FormulaEvaluator):
                 nw, nu = self.get_weight(-index)
                 return self.semiring.negate(nw), nu
             else:
-                return weight[1], {index}
+                return weight[1], {abs(index)}
         else:
             weight = self._fact_weights.get(index)
             if weight is None:
@@ -564,7 +564,7 @@ class FormulaEvaluatorNSP(FormulaEvaluator):
                     self._computed_weights[index] = weight
                 return weight
             else:
-                return weight[0], {index}
+                return weight[0], {abs(index)}
 
     def evaluate(self, index):
         cp, cu = self.get_weight(index)

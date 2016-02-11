@@ -18,7 +18,7 @@ The functionality is provided by the ``problog.extern`` module.
 This module introduces two decorators.
 
   * ``problog_export``: for deterministic functions (i.e. that return exactly one result)
-  * ``problog_export_nondet``: for non-deterministic function (i.e. that return any number of results)
+  * ``problog_export_nondet``: for non-deterministic functions (i.e. that return any number of results)
 
 These decorators take as arguments the types of the arguments.
 The possible argument types are
@@ -42,17 +42,30 @@ For example, consider the following Python module ``numbers.py`` which defines t
 
 .. code-block:: python
 
-    from problog.extern import problog_export
+    from problog.extern import problog_export, problog_export_nondet
 
     @problog_export('+int', '+int', '-int')
     def sum(a, b):
         """Computes the sum of two numbers."""
         return a + b
 
+    @problog_export('+int', '+int', '-int', '-int')
+    def sum_and_product(a, b):
+        """Computes the sum and product of two numbers."""
+        return a + b, a * b
+
     @problog_export_nondet('+int', '+int', '-int')
     def in_range(a, b):
         """Returns all numbers between a and b (not including b)."""
-        return list(range(a, b))
+        return list(range(a, b))    # list can be empty
+
+    @problog_export_nondet('+int')
+    def is_positive(a):
+        """Checks whether the number is positive."""
+        if a > 0:
+            return [()] # one result (empty tuple)
+        else:
+            return []   # no results
 
 
 This module can be used in ProbLog by loading it using the ``use_module`` directive.
@@ -62,7 +75,10 @@ This module can be used in ProbLog by loading it using the ``use_module`` direct
     :- use_module('numbers.py').
 
     query(sum(2,4,X)).
+    query(sum_and_product(2,3,X,Y)).
     query(in_range(1,4,X)).
+    query(is_positive(3)).
+    query(is_positive(-3)).
 
 The result of this model is
 
@@ -72,6 +88,9 @@ The result of this model is
     in_range(1,4,2):        1
     in_range(1,4,3):        1
          sum(2,4,6):        1
+       sum(2,3,5,6):        1
+    is_positive(-3):        0
+     is_positive(3):        1
 
 It is possible to store persistent information in the internal database.
 This database can be accessed as ``problog_export.database``.

@@ -143,6 +143,8 @@ class StackBasedEngine(ClauseDBEngine):
 
         self.unbuffered = kwdargs.get('unbuffered')
 
+        self.full_trace = kwdargs.get('full_trace')
+
         self.ignoring = set()
 
     def eval(self, node_id, **kwdargs):
@@ -251,20 +253,26 @@ class StackBasedEngine(ClauseDBEngine):
             return res
 
     def find_cycle(self, child, parent, force=False):
+        root_encountered = None
         cycle = []
         while child is not None:
             cycle.append(child)
             childnode = self.stack[child]
             if hasattr(childnode, 'siblings'):
                 for s in childnode.siblings:
-                    cycle_rest = self.find_cycle(s, parent, force=False)
+                    cycle_rest = self.find_cycle(s, parent, force=force)
                     if cycle_rest:
                         return cycle + cycle_rest
             child = childnode.parent
-            if childnode.parent == parent:
+            if child == parent:
                 return cycle
-        if force:
-            return cycle
+            if self.cycle_root is not None and child == self.cycle_root.pointer:
+                root_encountered = len(cycle)
+        # if force:
+        #     return cycle
+        # else:
+        if root_encountered is not None:
+            return cycle[:root_encountered]
         else:
             return None
 
@@ -351,8 +359,9 @@ class StackBasedEngine(ClauseDBEngine):
 
         # Main loop: process actions until there are no more.
         while actions:
-            # self.printStack()
-            # print (actions)
+            if self.full_trace:
+                self.printStack()
+                print (actions)
             # Pop the next action.
             # An action consists of 4 parts:
             #   - act: the type of action (r, c, e)
@@ -361,13 +370,12 @@ class StackBasedEngine(ClauseDBEngine):
             #   - context: the execution context
 
             if self.cycle_root is not None and actions.cycle_exhausted():
-                # self.printStack()
+                if self.full_trace:
+                    print ('CLOSING CYCLE')
+                    sys.stdin.readline()
                 # for message in actions:   # TODO cache
                 #     parent = actions._msg_parent(message)
                 #     print (parent, self.in_cycle(parent))
-
-
-                # print ('CLOSE CYCLE', self.cycle_root, actions)
                 next_actions = self.cycle_root.closeCycle(True)
                 actions += reversed(next_actions)
             else:
@@ -458,6 +466,9 @@ class StackBasedEngine(ClauseDBEngine):
                             raise InvalidEngineState('Unknown message')
 
                     if not actions and not next_actions and self.cycle_root is not None:
+                        if self.full_trace:
+                            print ('CLOSE CYCLE')
+                            sys.stdin.readline()
                         # If there are no more actions and we have an active cycle, we should close the cycle.
                         next_actions = self.cycle_root.closeCycle(True)
                     # Update the list of actions.
@@ -1506,7 +1517,10 @@ class EvalDefine(EvalNode):
                 cycle_root.cycle_close.add(self.pointer)
                 # Queue a create cycle message that will be passed up the call stack.
                 queue += self.engine.notify_cycle(cycle)
-                # queue += self.engine.notifyCycle(self)
+                if cycle_parent.pointer != self.engine.cycle_root.pointer:
+                    to_cycle_root = self.engine.find_cycle(cycle_parent.pointer, self.engine.cycle_root.pointer)
+                    queue += cycle_parent.createCycle()
+                    queue += self.engine.notify_cycle(to_cycle_root)
         return queue
 
     def closeCycle(self, toplevel):

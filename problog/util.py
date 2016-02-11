@@ -548,3 +548,103 @@ class UHeap(object):
 
     def __len__(self):
         return len(self._heap)
+
+
+class BitVector(object):
+
+    def __init__(self):
+        self.binsize_bits = 5
+        self.binsize = 1 << self.binsize_bits
+        # self.blocks = array.array('L')
+        self.blocks = []
+        self.blocks_size = []
+
+    def add(self, index):
+        # b = index // self.binsize
+        # i = index % self.binsize
+        mask = ((1 << self.binsize_bits) - 1)
+        b = index >> self.binsize_bits
+        i = index & mask
+        n = len(self.blocks)
+        if n <= b:
+            self.blocks.extend([0] * (b - n + 1))
+        self.blocks[b] |= (1 << i)
+
+    def __contains__(self, index):
+        mask = ((1 << self.binsize_bits) - 1)
+        b = index >> self.binsize_bits
+        i = index & mask
+        n = len(self.blocks)
+        if n <= b:
+            return False
+        else:
+            return self.blocks[b] & (1 << i)
+
+    def __iter__(self):
+        o = 0
+        for b, block in enumerate(self.blocks):
+            if block != 0:
+                for i in range(0, self.binsize):
+                    if (1 << i) & block:
+                        yield o + i
+            o += self.binsize
+
+    def __and__(self, other):
+        result = BitVector()
+        for a, b in zip(self.blocks, other.blocks):
+            result.blocks.append(a & b)
+        return result
+
+    def __iand__(self, other):
+        la = len(self.blocks)
+        for i, b in enumerate(other.blocks[:la]):
+            self.blocks[i] &= b
+        return self
+
+    def __or__(self, other):
+        result = BitVector()
+        for a, b in zip(self.blocks, other.blocks):
+            result.blocks.append(a | b)
+
+        la = len(self.blocks)
+        lb = len(other.blocks)
+
+        result.blocks.extend(self.blocks[lb:])
+        result.blocks.extend(other.blocks[la:])
+        return result
+
+    def __ior__(self, other):
+        la = len(self.blocks)
+        for i, b in enumerate(other.blocks[:la]):
+            self.blocks[i] |= b
+        self.blocks.extend(other.blocks[la:])
+        return self
+
+    def __len__(self):
+        n = 0
+        for block in self.blocks:
+            if block != 0:
+                n += bin(block).count("1")
+                # n += self._countbits(block)
+        return n
+
+    def __nonzero__(self):
+        for b in self.blocks:
+            if b:
+                return True
+        return False
+
+    def __bool__(self):
+        for b in self.blocks:
+            if b:
+                return True
+        return False
+
+    def _countbits(self, n):
+        n = (n & 0x5555555555555555) + ((n & 0xAAAAAAAAAAAAAAAA) >> 1)
+        n = (n & 0x3333333333333333) + ((n & 0xCCCCCCCCCCCCCCCC) >> 2)
+        n = (n & 0x0F0F0F0F0F0F0F0F) + ((n & 0xF0F0F0F0F0F0F0F0) >> 4)
+        n = (n & 0x00FF00FF00FF00FF) + ((n & 0xFF00FF00FF00FF00) >> 8)
+        n = (n & 0x0000FFFF0000FFFF) + ((n & 0xFFFF0000FFFF0000) >> 16)
+        n = (n & 0x00000000FFFFFFFF) + ((n & 0xFFFFFFFF00000000) >> 32)  # This last & isn't strictly necessary.
+        return n
