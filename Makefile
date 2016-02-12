@@ -64,3 +64,8 @@ deploy: test2 test3
 	rm -f dist/*
 	python setup.py sdist
 	twine upload dist/*
+
+deploy_dev: test2 test3
+	rm -f dist/*
+	python setup.py sdist
+	twine upload dist/*
