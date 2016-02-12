@@ -28,7 +28,7 @@ from collections import namedtuple, defaultdict, OrderedDict
 from .core import ProbLogObject
 from .errors import InconsistentEvidenceError
 
-from .util import OrderedSet
+from .util import OrderedSet, nodups
 from .logic import Term, Or, Clause, And, is_ground
 
 from .constraint import ConstraintAD
@@ -592,6 +592,8 @@ class LogicFormula(BaseFormula):
                 pass
             elif component == 0:
                 return self._update(key, self._create_disj((0,), name=node.name))
+            elif component in node.children and not self._keep_duplicates:
+                pass    # already there
             else:
                 if 0 < self._max_arity == len(node.children):
                     child = self.add_or(node.children)
