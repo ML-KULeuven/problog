@@ -313,11 +313,11 @@ class ClauseDBEngine(GenericEngine):
                     target = self.ground(db, query[0], target, label=target.LABEL_EVIDENCE_POS, is_root=True)
                     logger.debug("Ground program size: %s", len(target))
             else:  # evidence/2
-                if str(query[1]) == 'true':
+                if str(query[1]) == 'true' or query[1] == True:
                     logger.debug("Grounding evidence '%s'", query[0])
                     target = self.ground(db, query[0], target, label=target.LABEL_EVIDENCE_POS, is_root=True)
                     logger.debug("Ground program size: %s", len(target))
-                elif str(query[1]) == 'false':
+                elif str(query[1]) == 'false' or query[1] == False:
                     logger.debug("Grounding evidence '%s'", query[0])
                     target = self.ground(db, query[0], target, label=target.LABEL_EVIDENCE_NEG, is_root=True)
                     logger.debug("Ground program size: %s", len(target))
@@ -427,52 +427,32 @@ class ClauseIndex(list):
     def __init__(self, parent, arity):
         list.__init__(self)
         self.__parent = parent
-        self.__index = [defaultdict(set) for _ in range(0, arity)]
+        self.__basetype = OrderedSet
+        self.__index = [defaultdict(self.__basetype) for _ in range(0, arity)]
         self.__optimized = False
 
-    def optimize(self):
-        if not self.__optimized:
-            self.__optimized = True
-            for i in range(0, len(self.__index)):
-                arg_index = self.__index[i]
-                arg_none = arg_index[None]
-                self.__index[i] = {k: tuple(sorted(v | arg_none)) for k, v in arg_index.items() if
-                                   k is not None}
-                self.__index[i][None] = tuple(sorted(arg_none))
-
     def find(self, arguments):
-        # self.optimize()
         results = None
-        # for i, xx in enumerate(self.__index):
-        #     print ('\t', i, xx)
         for i, arg in enumerate(arguments):
             if not is_ground(arg):
                 pass  # Variable => no restrictions
             else:
                 curr = self.__index[i].get(arg)
-                if not self.__optimized:
-                    none = self.__index[i].get(None, set())
-                    if curr is None:
-                        curr = none
-                    else:
-                        curr |= none
-
-                if curr is None:   # No facts matching this argument exactly.
-                    results = self.__index[i].get(None)
-                elif results is None:  # First argument with restriction
-                    results = curr
-                elif self.__optimized:  # Already have a selection
-                    results = intersection(results, curr)
+                none = self.__index[i].get(None, self.__basetype())
+                if curr is None:
+                    curr = none
                 else:
-                    results = results & curr
+                    curr |= none
+
+                if results is None:  # First argument with restriction
+                    results = curr
+                else:
+                    results = results & curr       # for some reason &= doesn't work here
             if results is not None and not results:
-                # print ('FIND', arguments, results)
                 return []
         if results is None:
-            # print ('FIND', arguments, 'all')
             return self
         else:
-            # print ('FIND', arguments, results)
             return results
 
     def _add(self, key, item):

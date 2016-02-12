@@ -462,7 +462,7 @@ class Term(object):
         :param p: new probability (None clears the probability)
         :return: copy of the Term
         """
-        return self.__class__(self.functor, *self.args, p=p, priority=self.op_priority, opspec=self.op_spec)
+        return self.__class__(self.functor, *self.args, p=p, priority=self.op_priority, opspec=self.op_spec, location=self.location)
 
     def is_var(self):
         """Checks whether this Term represents a variable."""

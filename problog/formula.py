@@ -592,6 +592,8 @@ class LogicFormula(BaseFormula):
                 pass
             elif component == 0:
                 return self._update(key, self._create_disj((0,), name=node.name))
+            elif component in node.children and not self._keep_duplicates:
+                pass    # already there
             else:
                 if 0 < self._max_arity == len(node.children):
                     child = self.add_or(node.children)

@@ -270,7 +270,7 @@ def _is_string(term):
 
 
 def _is_number(term):
-    return _is_float(term) and _is_integer(term)
+    return _is_float(term) or _is_integer(term)
 
 
 def _is_constant(term):
@@ -1028,7 +1028,9 @@ def _builtin_consult(filename, database=None, engine=None, **kwdargs):
 
     root = database.source_root
     if filename.location:
-        root = os.path.dirname(database.source_files[filename.location[0]])
+        source_root = database.source_files[filename.location[0]]
+        if source_root:
+            root = os.path.dirname(source_root)
     check_mode((filename,), ['a'], functor='consult', **kwdargs)
     filename = os.path.join(root, _atom_to_filename(filename))
     if not os.path.exists(filename):
@@ -1414,7 +1416,9 @@ def _builtin_use_module(filename, database=None, location=None, **kwdargs):
     else:
         root = database.source_root
         if filename.location:
-            root = os.path.dirname(database.source_files[filename.location[0]])
+            source_root = database.source_files[filename.location[0]]
+            if source_root:
+                root = os.path.dirname(source_root)
 
         filename = os.path.join(root, _atom_to_filename(filename))
 
