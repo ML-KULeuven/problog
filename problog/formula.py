@@ -28,7 +28,7 @@ from collections import namedtuple, defaultdict, OrderedDict
 from .core import ProbLogObject
 from .errors import InconsistentEvidenceError
 
-from .util import OrderedSet, nodups
+from .util import OrderedSet
 from .logic import Term, Or, Clause, And, is_ground
 
 from .constraint import ConstraintAD
