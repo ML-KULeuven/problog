@@ -1362,7 +1362,8 @@ class EvalDefine(EvalNode):
                                 node = self.engine.propagate_evidence(self.database, self.target, self.node.functor, res, node)
                         result_node = self.target.add_or((node,), readonly=False, name=name)
                     self.results[res] = result_node
-                    self.target._cache[cache_key] = {res: result_node}
+                    if is_ground(*res):
+                        self.target._cache[cache_key] = {res: result_node}
                     actions = []
                     # Send results to cycle
                     if not self.is_buffered() and result_node is not NODE_FALSE:
@@ -1446,7 +1447,8 @@ class EvalDefine(EvalNode):
                         new_nodes.append(node)
                     nodes = new_nodes
                 node = self.target.add_or(nodes, readonly=(not cycle), name=name)
-                self.target._cache[cache_key] = {res: node}
+                if is_ground(*res):
+                    self.target._cache[cache_key] = {res: node}
 
             # node = self.target.add_or( nodes, readonly=(not cycle) )
             # if self.engine.label_all:
