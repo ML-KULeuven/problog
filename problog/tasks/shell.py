@@ -16,7 +16,7 @@ from ..util import format_dictionary
 from ..core import ProbLogError
 from ..logic import Term, Clause, term2str
 from ..formula import LogicFormula
-
+from ..version import version
 
 def show(txt):
     print (txt)
@@ -90,7 +90,7 @@ def main(argv, **kwdargs):
             pass
         atexit.register(readline.write_history_file, histfile)
 
-    show('% Welcome to ProbLog 2.1')
+    show('%% Welcome to ProbLog 2.1 (version %s)' % version)
     show('% Type \'help.\' for more information.')
 
     # engine = DefaultEngine()

@@ -65,7 +65,14 @@ deploy: test2 test3
 	python setup.py sdist
 	twine upload dist/*
 
-deploy_dev: test2 test3
+deploy_dev: test2 test3 incr_version_dev
 	rm -f dist/*
 	python setup.py sdist
 	twine upload dist/*
+
+incr_version_dev:
+	python -c 'import setup; setup.increment_version_dev()'
+	git commit -m "Increment version number" problog/version.py
+
+incr_version_release:
+	python -c 'import setup; setup.increment_version_release()'
