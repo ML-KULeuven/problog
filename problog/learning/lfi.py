@@ -77,7 +77,22 @@ def str2bool(s):
 
 class LFIProblem(SemiringProbability, LogicProgram) :
     
-    def __init__(self, source, examples, max_iter=10000, min_improv=1e-10, verbose=0, knowledge=SDD, **extra):
+    def __init__(self, source, examples, max_iter=10000, min_improv=1e-10, verbose=0, knowledge=SDD, leakprob=None, **extra):
+        """
+        :param source:
+        :param examples:
+        :param max_iter:
+        :param min_improv:
+        :param verbose:
+        :param knowledge:
+        :param leakprob: Add all true evidence atoms with the given probability
+                         to avoid 'inconsistent evidence' errors. This also
+                         allows to learn a program without constants and
+                         retrieve the constants from the evidence file.
+                         (default: None)
+        :param extra:
+        :return:
+        """
         SemiringProbability.__init__(self)
         LogicProgram.__init__(self)
         self.source = source
@@ -85,6 +100,7 @@ class LFIProblem(SemiringProbability, LogicProgram) :
         self.queries = []
         self.weights = []
         self.examples = examples
+        self.leakprob = leakprob
         self._compiled_examples = None
         
         self.max_iter = max_iter
@@ -317,7 +333,10 @@ class LFIProblem(SemiringProbability, LogicProgram) :
             p(X) :- lfi_fact_1(X).
             query(lfi_fact_0(X)).
             query(lfi_fact_1(X)).
-        
+
+        If ``self.leakprobs`` is a value, then during learning all true
+        examples are added to the program with the given leak probability.
+
         """
 
         if self.output_mode:
@@ -344,6 +363,12 @@ class LFIProblem(SemiringProbability, LogicProgram) :
                 extra_clauses = process_atom(clause, None)
                 for extra in extra_clauses:
                     yield extra
+
+        if not self.output_mode and self.leakprob is not None:
+            for examples in self.examples:
+                for example, obs in examples:
+                    if obs:
+                        yield example.with_probability(Constant(self.leakprob))
 
     def _evaluate_examples( self ) :
         """Evaluate the model with its current estimates for all examples."""
@@ -475,6 +500,8 @@ def argparser():
                         help='write output to file')
     parser.add_argument('-k', '--knowledge', dest='koption', choices=get_evaluatables(),
                         default=None, help='knowledge compilation tool')
+    parser.add_argument('-l', '--leak-probabilities', dest='leakprob', type=float,
+                        help='Add leak probabilities for evidence atoms.')
     parser.add_argument('-v', '--verbose', action='count', default=0)
     parser.add_argument('--web', action='store_true', help=argparse.SUPPRESS)
     return parser
