@@ -324,9 +324,9 @@ class Evaluatable(ProbLogObject):
             elif ev_index is None and ev_value < 0:
                 pass  # false evidence is deterministically false
             elif ev_index == 0 and ev_value < 0:
-                raise InconsistentEvidenceError(evidence='evidence('+str(ev_name)+',false)')  # true evidence is false
+                raise InconsistentEvidenceError(source='evidence('+str(ev_name)+',false)')  # true evidence is false
             elif ev_index is None and ev_value > 0:
-                raise InconsistentEvidenceError(evidence='evidence('+str(ev_name)+',true)')  # false evidence is true
+                raise InconsistentEvidenceError(source='evidence('+str(ev_name)+',true)')  # false evidence is true
             elif evidence is None and ev_value != 0:
                 evaluator.add_evidence(ev_value * ev_index)
             else:

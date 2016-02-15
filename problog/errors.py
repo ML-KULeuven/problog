@@ -73,14 +73,11 @@ class UserError(ProbLogError):
 class InconsistentEvidenceError(ProbLogError):
     """Error when evidence is inconsistent"""
 
-    def __init__(self, source=None, evidence=None):
-        explanation = ''
-        if evidence is not None:
-            explanation = ' ({})'.format(evidence)
+    def __init__(self, source=None):
         if source is None:
-            ProbLogError.__init__(self, "Inconsistent evidence detected%s" % explanation)
+            ProbLogError.__init__(self, "Inconsistent evidence detected")
         else:
-            ProbLogError.__init__(self, "Inconsistent evidence detected%s: '%s'" % explanation, source)
+            ProbLogError.__init__(self, "Inconsistent evidence detected: '%s'" % source)
 
 
 def process_error(err, debug=False):

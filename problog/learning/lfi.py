@@ -364,7 +364,7 @@ class LFIProblem(SemiringProbability, LogicProgram) :
                 for extra in extra_clauses:
                     yield extra
 
-        if not self.output_mode and self.leakprob is not None:
+        if self.leakprob is not None:
             for examples in self.examples:
                 for example, obs in examples:
                     if obs:
