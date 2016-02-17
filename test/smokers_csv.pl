@@ -2,7 +2,7 @@
 % smokes(bob)   0.73289308
 
 
-:- use_module(library(sqlite)).
+:- use_module(library(db)).
 
 :- csv_load('smokers_person.csv', 'person').
 :- csv_load('smokers_friend_of.csv', 'friend_of').
