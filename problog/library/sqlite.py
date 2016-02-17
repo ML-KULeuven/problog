@@ -64,10 +64,10 @@ def csv_load(filename, predicate):
     if not os.path.exists(filename):
         raise UserError('Can\'t find csv file \'%s\'' % filename)
 
-    csvfile = open(filename, 'rb')
+    csvfile = open(filename, 'r')
     reader = csv.reader(csvfile)
     # Column names
-    row = reader.next()
+    row = next(reader)
     columns = ["c"+str(i) for i in range(len(row))]
 
     filepath, ext = os.path.splitext(os.path.basename(filename))
@@ -82,7 +82,7 @@ def csv_load(filename, predicate):
 
     cursor = conn.cursor()
 
-    row = reader.next()
+    row = next(reader)
     column_types_sql = []
     column_types_py = []
     for field in row:
