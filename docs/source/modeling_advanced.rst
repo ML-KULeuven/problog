@@ -98,7 +98,7 @@ This database can be accessed as ``problog_export.database``.
 Using data from an SQLite database
 ++++++++++++++++++++++++++++++++++
 
-ProbLog offers a library that offers a very simple interface to an SQLite database.
+ProbLog provides a library that offers a very simple interface to an SQLite database.
 
 Assume we have an SQLite database ``friends.db`` with two tables:
 
