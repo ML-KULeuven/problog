@@ -1110,8 +1110,8 @@ def _select_sublist(lst, target):
         if lst[i][1] != target.TRUE:
             choice_bits[i] = x
             x += 1
-    # We have 2^x distinct lists. Each can be represented as a number between 0 and n.
-    n = (1 << x)
+    # We have 2^x distinct lists. Each can be represented as a number between 0 and 2^x-1=n.
+    n = (1 << x) - 1
 
     while n >= 0:
         # Generate the list of positive values and node identifiers
