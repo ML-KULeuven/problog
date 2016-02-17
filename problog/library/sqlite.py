@@ -6,8 +6,12 @@ from problog.logic import Term, Constant
 from problog.errors import UserError
 
 import sqlite3
+import csv
 import os
+import tempfile
+import logging
 
+logger = logging.getLogger('problog')
 
 def db2pl(dbvalue):
     if type(dbvalue) == str:
@@ -49,6 +53,80 @@ def sqlite_load(filename):
         columns = get_colnames(conn, table)
         types = ['+term'] * len(columns)
         problog_export_raw(*types)(QueryFunc(conn, table, columns), funcname=table)
+
+    return ()
+
+
+@problog_export('+str', '+str')
+def csv_load(filename, predicate):
+
+    filename = problog_export.database.resolve_filename(filename)
+    if not os.path.exists(filename):
+        raise UserError('Can\'t find csv file \'%s\'' % filename)
+
+    csvfile = open(filename, 'rb')
+    reader = csv.reader(csvfile)
+    # Column names
+    row = reader.next()
+    columns = ["c"+str(i) for i in range(len(row))]
+
+    filepath, ext = os.path.splitext(os.path.basename(filename))
+    sql_dir = tempfile.mkdtemp()
+    sql_filename = os.path.join(sql_dir, filepath+'.sqlite')
+    idx = 1
+    while os.path.exists(sql_filename):
+        sql_filename = os.path.join(sql_dir, filepath+'_'+str(idx)+'.sqlite')
+        idx += 1
+    logger.debug('CSV->SQLite: '+sql_filename)
+    conn = sqlite3.connect(sql_filename)
+
+    cursor = conn.cursor()
+
+    row = reader.next()
+    column_types_sql = []
+    column_types_py = []
+    for field in row:
+        try:
+            value = float(field)
+            column_types_sql.append('REAL')
+            column_types_py.append(float)
+            continue
+        except ValueError:
+            pass
+        try:
+            value = int(field)
+            column_types_sql.append('INTEGER')
+            column_types_py.append(int)
+            continue
+        except ValueError:
+            pass
+        column_types_sql.append('TEXT')
+        column_types_py.append(str)
+
+    coldefs = [n+" "+t for n,t in zip(columns,column_types_sql)]
+    cursor.execute("CREATE TABLE "+predicate+"("+",".join(coldefs)+");")
+
+    def insert_statement(row):
+        values = []
+        for value, sqltype, pytype in zip(row, column_types_sql, column_types_py):
+            if sqltype == 'TEXT':
+                values.append("'"+pytype(value.strip())+"'")
+            else:
+                values.append(str(pytype(value)))
+        return "INSERT INTO "+predicate+"("+",".join(columns)+") VALUES ("+",".join(values)+");"
+
+    cursor.execute(insert_statement(row))
+    for row in reader:
+        if len(row) == 0:
+            continue
+        cursor.execute(insert_statement(row))
+
+    conn.commit()
+    cursor.close()
+    csvfile.close()
+
+    types = ['+term'] * len(columns)
+    problog_export_raw(*types)(QueryFunc(conn, predicate, columns), funcname=predicate)
 
     return ()
 
