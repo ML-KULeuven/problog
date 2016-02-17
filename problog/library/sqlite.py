@@ -6,9 +6,7 @@ from problog.logic import Term, Constant
 from problog.errors import UserError, InvalidValue
 
 import sqlite3
-import csv
 import os
-import tempfile
 import logging
 
 logger = logging.getLogger('problog')
@@ -59,6 +57,9 @@ def sqlite_load(filename):
 
 @problog_export('+str', '+str')
 def csv_load(filename, predicate):
+    import tempfile
+    import csv
+    import re
 
     filename = problog_export.database.resolve_filename(filename)
     if not os.path.exists(filename):
@@ -70,7 +71,8 @@ def csv_load(filename, predicate):
     # Column names
     row = next(reader)
     line += 1
-    columns = ["c"+str(i) for i in range(len(row))]
+    invalid_chars = re.compile(r'''[^a-zA-Z0-9_]''')
+    columns = [invalid_chars.sub('',field) for field in row]
 
     filepath, ext = os.path.splitext(os.path.basename(filename))
     sql_dir = tempfile.mkdtemp()
