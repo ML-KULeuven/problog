@@ -101,6 +101,7 @@ class LFIProblem(SemiringProbability, LogicProgram) :
         self.weights = []
         self.examples = examples
         self.leakprob = leakprob
+        self.leakprobatoms = None
         self._compiled_examples = None
         
         self.max_iter = max_iter
@@ -365,10 +366,19 @@ class LFIProblem(SemiringProbability, LogicProgram) :
                     yield extra
 
         if self.leakprob is not None:
-            for examples in self.examples:
-                for example, obs in examples:
-                    if obs:
-                        yield example.with_probability(Constant(self.leakprob))
+            leakprob_atoms = self._get_leakprobatoms()
+            for example_atom in leakprob_atoms:
+                yield example_atom.with_probability(Constant(self.leakprob))
+
+    def _get_leakprobatoms(self):
+        if self.leakprobatoms is not None:
+            return self.leakprobatoms
+        self.leakprobatoms = set()
+        for examples in self.examples:
+            for example, obs in examples:
+                if obs:
+                    self.leakprobatoms.add(example)
+        return self.leakprobatoms
 
     def _evaluate_examples( self ) :
         """Evaluate the model with its current estimates for all examples."""
