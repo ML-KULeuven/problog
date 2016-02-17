@@ -80,6 +80,8 @@ class InconsistentEvidenceError(ProbLogError):
         :param context: extra message describing the context (e.g. example number in lfi)
         :return:
         """
+        self.source = source
+        self.context = context
         if source is None:
             ProbLogError.__init__(self, "Inconsistent evidence detected%s" % context)
         else:

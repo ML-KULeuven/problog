@@ -162,18 +162,16 @@ class LFIProblem(SemiringProbability, LogicProgram) :
         examples = self._process_examples()
 
         result = []
-        n = 0
         for atoms, example_group in examples.items():
             ground_program = None   # Let the grounder decide
-            for example in example_group :
+            for n, example in enumerate(example_group):
                 if self.verbose:
-                    n += 1
                     logger.debug('Compiling example %s ...' % n)
 
                 ground_program = ground(baseprogram, ground_program,
                                         evidence=list(zip(atoms, example)))
                 compiled_program = self.knowledge.create_from(ground_program)
-                result.append((atoms, example, compiled_program))
+                result.append((atoms, example, compiled_program, n))
         self._compiled_examples = result
 
     def _process_atom(self, atom, body):
@@ -349,7 +347,7 @@ class LFIProblem(SemiringProbability, LogicProgram) :
         for clause in self.source:
             if isinstance(clause, Clause):
                 if clause.head.functor == 'query' and clause.head.arity == 1:
-                    continue                
+                    continue
                 extra_clauses = process_atom(clause.head, clause.body)
                 for extra in extra_clauses:
                     yield extra
@@ -386,15 +384,23 @@ class LFIProblem(SemiringProbability, LogicProgram) :
         results = []
         i = 0
         logging.getLogger('problog_lfi').debug('Evaluating examples ...')
-        for at, val, comp in self._compiled_examples:
+        for at, val, comp, n in self._compiled_examples:
             evidence = {}
             for a, v in zip(at, map(str2bool, val)):
                 if a in evidence:
                     if evidence[a] != v:
-                        raise InconsistentEvidenceError(a)
+                        context = ' (found evidence({},{}) and evidence({},{}) in example {})'.format(a, evidence[a], a, v, n+1)
+                        raise InconsistentEvidenceError(source=a, context=context)
                 else:
                     evidence[a] = v
-            evaluator = comp.get_evaluator(semiring=self, evidence=evidence)
+            try:
+                evaluator = comp.get_evaluator(semiring=self, evidence=evidence)
+            except InconsistentEvidenceError as err:
+                if err.context == '':
+                    context = ' (example {})'.format(n+1)
+                else:
+                    context = err.context + ' (example {})'.format(n+1)
+                raise InconsistentEvidenceError(err.source, context)
             p_queries = {}
             # Probability of query given evidence
             for name, node in evaluator.formula.queries():
