@@ -95,6 +95,48 @@ The result of this model is
 It is possible to store persistent information in the internal database.
 This database can be accessed as ``problog_export.database``.
 
+Using data from an SQLite database
+++++++++++++++++++++++++++++++++++
+
+ProbLog offers a library that offers a very simple interface to an SQLite database.
+
+Assume we have an SQLite database ``friends.db`` with two tables:
+
+    *person(name)*
+        A list of persons.
+
+    *friend_of(name1, name2, probability)*
+        A list of friendship relations.
+
+We can load this database into ProbLog using the library ``sqlite`` and the predicate \
+``sqlite_load(+Filename)``.
+
+.. code-block:: prolog
+
+    :- use_module(library(sqlite)).
+    :- sqlite_load('friends.db').
+
+This will create a predicate for each table in the database with as arity the number of columns \
+of that table.
+We can thus write the following variation of the smokers examples:
+
+.. code-block:: prolog
+
+    :- use_module(library(sqlite)).
+    :- sqlite_load('friends.db').
+
+    P :: influences(X, Y) :- friend_of(X, Y, P).
+
+    0.3::smokes(X) :- person(X).       % stress
+    smokes(X) :- influences(Y, X), smokes(Y).
+
+The library will automatically translate a call to a database predicate into a query on the \
+database, for example, the call ``friend_of(ann, B, P)`` will be translated to the query
+
+.. code-block:: sql
+
+    SELECT name1, name2, probability FROM friend_of WHERE name1 = 'ann'
+
 
 Using continuous distributions (sampling only)
 ++++++++++++++++++++++++++++++++++++++++++++++
