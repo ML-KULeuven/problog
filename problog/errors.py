@@ -73,11 +73,17 @@ class UserError(ProbLogError):
 class InconsistentEvidenceError(ProbLogError):
     """Error when evidence is inconsistent"""
 
-    def __init__(self, source=None):
+    def __init__(self, source=None, context=''):
+        """
+
+        :param source: evidence term that causes the problem
+        :param context: extra message describing the context (e.g. example number in lfi)
+        :return:
+        """
         if source is None:
-            ProbLogError.__init__(self, "Inconsistent evidence detected")
+            ProbLogError.__init__(self, "Inconsistent evidence detected%s" % context)
         else:
-            ProbLogError.__init__(self, "Inconsistent evidence detected: '%s'" % source)
+            ProbLogError.__init__(self, "Inconsistent evidence detected%s: '%s'" % (context, source))
 
 
 def process_error(err, debug=False):

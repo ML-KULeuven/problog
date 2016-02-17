@@ -24,6 +24,7 @@ Grounding engine to transform a ProbLog program into a propositional formula.
 from __future__ import print_function
 
 import logging
+import os
 
 from collections import defaultdict, namedtuple
 
@@ -528,6 +529,8 @@ class ClauseDB(LogicProgram):
 
         self.__builtins = builtins
 
+        self.data = {}
+
         self.__parent = parent
         if parent is None:
             self.__offset = 0
@@ -543,6 +546,26 @@ class ClauseDB(LogicProgram):
 
     def extend(self):
         return ClauseDB(parent=self)
+
+    def set_data(self, key, value):
+        self.data[key] = value
+
+    def update_data(self, key, value):
+        if self.has_data(key):
+            if type(value) == list:
+                self.data[key] += value
+            elif type(value) == dict:
+                self.data[key].update(value)
+            else:
+                raise TypeError('Can\'t update data of type \'%s\'' % type(value))
+        else:
+            self.data[key] = value
+
+    def has_data(self, key):
+        return key in self.data
+
+    def get_data(self, key, default=None):
+        return self.data.get(key, default)
 
     def get_builtin(self, signature):
         if self.__builtins is None:
@@ -915,19 +938,19 @@ class ClauseDB(LogicProgram):
         for group in clause_groups.values():
             if len(group) > 1:
                 yield Term('mutual_exclusive', list2term(group))
-        #
-        #
-        #     heads = []
-        #     body = None
-        #     for index in group:
-        #         node = self.get_node(index)
-        #         heads.append(self._create_vars(Term(node.functor, *node.args, p=node.probability)))
-        #         if body is None:
-        #             body_node = self.get_node(node.child)
-        #             body_node = self.get_node(body_node.children[0])
-        #             body = self._create_vars(Term(body_node.functor, *body_node.args))
-        #     yield AnnotatedDisjunction(heads, body)
 
+    def resolve_filename(self, filename):
+        root = self.source_root
+        if hasattr(filename, 'location') and filename.location:
+            source_root = self.source_files[filename.location[0]]
+            if source_root:
+                root = os.path.dirname(source_root)
+
+        atomstr = str(filename)
+        if atomstr[0] == atomstr[-1] == "'":
+            atomstr = atomstr[1:-1]
+        filename = os.path.join(root, atomstr)
+        return filename
 
 
 class AccessError(GroundingError):
