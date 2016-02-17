@@ -3,7 +3,7 @@ from __future__ import print_function
 from problog.extern import problog_export, problog_export_nondet, problog_export_raw
 
 from problog.logic import Term, Constant
-from problog.errors import UserError
+from problog.errors import UserError, InvalidValue
 
 import sqlite3
 import csv
@@ -65,9 +65,11 @@ def csv_load(filename, predicate):
         raise UserError('Can\'t find csv file \'%s\'' % filename)
 
     csvfile = open(filename, 'r')
+    line = 0
     reader = csv.reader(csvfile)
     # Column names
     row = next(reader)
+    line += 1
     columns = ["c"+str(i) for i in range(len(row))]
 
     filepath, ext = os.path.splitext(os.path.basename(filename))
@@ -83,20 +85,21 @@ def csv_load(filename, predicate):
     cursor = conn.cursor()
 
     row = next(reader)
+    line += 1
     column_types_sql = []
     column_types_py = []
     for field in row:
         try:
-            value = float(field)
-            column_types_sql.append('REAL')
-            column_types_py.append(float)
+            value = int(field)
+            column_types_sql.append('INTEGER')
+            column_types_py.append(int)
             continue
         except ValueError:
             pass
         try:
-            value = int(field)
-            column_types_sql.append('INTEGER')
-            column_types_py.append(int)
+            value = float(field)
+            column_types_sql.append('REAL')
+            column_types_py.append(float)
             continue
         except ValueError:
             pass
@@ -109,14 +112,18 @@ def csv_load(filename, predicate):
     def insert_statement(row):
         values = []
         for value, sqltype, pytype in zip(row, column_types_sql, column_types_py):
-            if sqltype == 'TEXT':
-                values.append("'"+pytype(value.strip())+"'")
-            else:
-                values.append(str(pytype(value)))
+            try:
+                if sqltype == 'TEXT':
+                    values.append("'"+pytype(value.strip())+"'")
+                else:
+                    values.append(str(pytype(value)))
+            except ValueError:
+                raise InvalidValue('{}:{}. Expected type {}, found value {}'.format(filename, line, pytype.__name__, value))
         return "INSERT INTO "+predicate+"("+",".join(columns)+") VALUES ("+",".join(values)+");"
 
     cursor.execute(insert_statement(row))
     for row in reader:
+        line += 1
         if len(row) == 0:
             continue
         cursor.execute(insert_statement(row))
