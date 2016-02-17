@@ -84,6 +84,7 @@ deploy_dev: test2 test3 incr_version_dev
 incr_version_dev:
 	python -c 'import setup; setup.increment_version_dev()'
 	git commit -m "Deploy new development version." problog/version.py
+	git push
 
 incr_version_release:
 	python -c 'import setup; setup.increment_version_release()'
