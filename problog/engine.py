@@ -24,6 +24,7 @@ Grounding engine to transform a ProbLog program into a propositional formula.
 from __future__ import print_function
 
 import logging
+import os
 
 from collections import defaultdict, namedtuple
 
@@ -937,19 +938,19 @@ class ClauseDB(LogicProgram):
         for group in clause_groups.values():
             if len(group) > 1:
                 yield Term('mutual_exclusive', list2term(group))
-        #
-        #
-        #     heads = []
-        #     body = None
-        #     for index in group:
-        #         node = self.get_node(index)
-        #         heads.append(self._create_vars(Term(node.functor, *node.args, p=node.probability)))
-        #         if body is None:
-        #             body_node = self.get_node(node.child)
-        #             body_node = self.get_node(body_node.children[0])
-        #             body = self._create_vars(Term(body_node.functor, *body_node.args))
-        #     yield AnnotatedDisjunction(heads, body)
 
+    def resolve_filename(self, filename):
+        root = self.source_root
+        if hasattr(filename, 'location') and filename.location:
+            source_root = self.source_files[filename.location[0]]
+            if source_root:
+                root = os.path.dirname(source_root)
+
+        atomstr = str(filename)
+        if atomstr[0] == atomstr[-1] == "'":
+            atomstr = atomstr[1:-1]
+        filename = os.path.join(root, atomstr)
+        return filename
 
 
 class AccessError(GroundingError):
