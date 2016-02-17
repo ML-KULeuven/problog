@@ -528,6 +528,8 @@ class ClauseDB(LogicProgram):
 
         self.__builtins = builtins
 
+        self.data = {}
+
         self.__parent = parent
         if parent is None:
             self.__offset = 0
@@ -543,6 +545,26 @@ class ClauseDB(LogicProgram):
 
     def extend(self):
         return ClauseDB(parent=self)
+
+    def set_data(self, key, value):
+        self.data[key] = value
+
+    def update_data(self, key, value):
+        if self.has_data(key):
+            if type(value) == list:
+                self.data[key] += value
+            elif type(value) == dict:
+                self.data[key].update(value)
+            else:
+                raise TypeError('Can\'t update data of type \'%s\'' % type(value))
+        else:
+            self.data[key] = value
+
+    def has_data(self, key):
+        return key in self.data
+
+    def get_data(self, key, default=None):
+        return self.data.get(key, default)
 
     def get_builtin(self, signature):
         if self.__builtins is None:
