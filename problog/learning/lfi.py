@@ -391,7 +391,7 @@ class LFIProblem(SemiringProbability, LogicProgram) :
             for a, v in zip(at, map(str2bool, val)):
                 if a in evidence:
                     if evidence[a] != v:
-                        raise InconsistentEvidenceError(a, ' in example %s' % (i+1))
+                        raise InconsistentEvidenceError(a)
                 else:
                     evidence[a] = v
             evaluator = comp.get_evaluator(semiring=self, evidence=evidence)
