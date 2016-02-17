@@ -1488,6 +1488,8 @@ def _builtin_use_module(filename, database=None, location=None, **kwdargs):
     if filename.functor == 'library' and filename.arity == 1:
         filename = os.path.join(os.path.dirname(__file__), 'library',
                                 _atom_to_filename(filename.args[0]))
+        if not os.path.exists(filename + '.pl'):
+            filename += '.py'
     else:
         root = database.source_root
         if filename.location:
