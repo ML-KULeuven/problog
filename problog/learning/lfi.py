@@ -59,7 +59,7 @@ from problog.evaluator import SemiringProbability
 from problog.logic import Term, Constant, Clause, AnnotatedDisjunction, Or
 from problog.program import PrologString, PrologFile, LogicProgram
 from problog.core import ProbLogError
-from problog.errors import process_error
+from problog.errors import process_error, InconsistentEvidenceError
 from problog.sdd_formula import SDD
 
 from problog import get_evaluatable, get_evaluatables
@@ -387,7 +387,13 @@ class LFIProblem(SemiringProbability, LogicProgram) :
         i = 0
         logging.getLogger('problog_lfi').debug('Evaluating examples ...')
         for at, val, comp in self._compiled_examples:
-            evidence = dict(zip(at, map(str2bool, val)))
+            evidence = {}
+            for a, v in zip(at, map(str2bool, val)):
+                if a in evidence:
+                    if evidence[a] != v:
+                        raise InconsistentEvidenceError(a, ' in example %s' % (i+1))
+                else:
+                    evidence[a] = v
             evaluator = comp.get_evaluator(semiring=self, evidence=evidence)
             p_queries = {}
             # Probability of query given evidence
