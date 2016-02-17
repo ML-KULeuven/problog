@@ -514,7 +514,7 @@ class StackBasedEngine(ClauseDBEngine):
         while self.pointer > 0 and self.stack[self.pointer - 1] is None:
             self.pointer -= 1
 
-    def call(self, query, database, target, transform=None, parent=None, **kwdargs):
+    def call(self, query, database, target, transform=None, parent=None, context=None, **kwdargs):
         node_id = database.find(query)
         if node_id is None:
             node_id = database.get_builtin(query.signature)
