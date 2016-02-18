@@ -144,12 +144,15 @@ class SimpleNNFEvaluator(Evaluator):
         neg = self.semiring.zero()
 
         current_weight = self.weights.get(index)
+        neg_weight = self.weights.get(-index)
+
         if value:
             if current_weight is not None and self.semiring.is_zero(current_weight):
                 raise InconsistentEvidenceError(self._deref_node(index))
             self.set_weight(index, pos, neg)
         else:
-            if current_weight is not None and self.semiring.is_one(current_weight):
+            if current_weight is not None and self.semiring.is_one(current_weight) \
+                    and not self.semiring.is_one(neg_weight):
                 raise InconsistentEvidenceError(self._deref_node(index))
             self.set_weight(index, neg, pos)
 
