@@ -151,7 +151,7 @@ class LFIProblem(SemiringProbability, LogicProgram) :
             result[atoms].append(values)
         return result
     
-    def _compile_examples( self ) :
+    def _compile_examples(self):
         """Compile examples.
     
         :param examples: Output of ::func::`process_examples`.
@@ -170,6 +170,16 @@ class LFIProblem(SemiringProbability, LogicProgram) :
 
                 ground_program = ground(baseprogram, ground_program,
                                         evidence=list(zip(atoms, example)))
+                for i, node, t in ground_program:
+                    if t == 'atom' and \
+                            isinstance(node.probability, Term) and \
+                            node.probability.functor == 'lfi':
+                        factname = 'lfi_fact_%s' % node.probability.args[0]
+                        factargs = ()
+                        if type(node.identifier) == tuple:
+                             factargs = node.identifier[1]
+                        fact = Term(factname, *factargs)
+                        ground_program.add_query(fact, i)
                 compiled_program = self.knowledge.create_from(ground_program)
                 result.append((atoms, example, compiled_program, n))
         self._compiled_examples = result
@@ -192,10 +202,10 @@ class LFIProblem(SemiringProbability, LogicProgram) :
         for atom in atoms:
             if atom.probability and atom.probability.functor == 't':
                 start_value = atom.probability.args[0]
-                if isinstance(start_value, Constant):
-                    available_probability -= float(start_value)
-                else:
+                if start_value.is_var():
                     num_random_weights += 1
+                else:
+                    available_probability -= float(start_value)
             elif atom.probability and atom.is_constant():
                 available_probability -= float(atom.probability)
 
@@ -236,17 +246,17 @@ class LFIProblem(SemiringProbability, LogicProgram) :
                 extra_clauses += [Clause(atom.with_probability(), new_body)]
 
                 # 4) Set initial weight
-                if isinstance(start_value, Constant):
-                    self.weights.append(float(start_value))
-                else:
+                if start_value.is_var():
                     self.weights.append(random_weights.pop(-1))
-
-                # 5) Add query
-                self.queries.append(lfi_fact)
-                if body:
-                    extra_clauses.append(Clause(Term('query', lfi_fact), body))
                 else:
-                    extra_clauses.append(Term('query', lfi_fact))
+                    self.weights.append(float(start_value))
+
+                # # 5) Add query
+                # self.queries.append(lfi_fact)
+                # if body:
+                #     extra_clauses.append(Clause(Term('query', lfi_fact), body))
+                # else:
+                #     extra_clauses.append(Term('query', lfi_fact))
 
                 # 6) Add name
                 self.names.append(atom)
