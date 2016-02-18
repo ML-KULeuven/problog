@@ -276,11 +276,9 @@ Explanation mode (``explain``)
 The ``explain`` mode offers insight in how probabilities can be computed for a ProbLog program.
 Given a model, the output consists of three parts:
 
-  * a reformulation of the model in which annotated disjunctions and probabilistic clauses are \
-   rewritten
+  * a reformulation of the model in which annotated disjunctions and probabilistic clauses are rewritten
   * for each query, a list of mutually exclusive proofs with their probability
-  * for each query, the success probability determined by taking the sum of the probabilities of \
-   the individual proofs
+  * for each query, the success probability determined by taking the sum of the probabilities of the individual proofs
 
 This mode currently does not support evidence.
 
