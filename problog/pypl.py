@@ -17,7 +17,7 @@ limitations under the License.
 """
 from __future__ import print_function
 
-from .logic import *
+from .logic import Constant, Term
 
 
 def py2pl(d):

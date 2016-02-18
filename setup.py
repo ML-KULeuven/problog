@@ -2,8 +2,15 @@
 
 from __future__ import print_function
 import sys
+import os
 
-version = '2.1.0.13.dev2'
+
+version_file = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'problog/version.py')
+
+version = {}
+with open(version_file) as fp:
+    exec(fp.read(), version)
+version = version['version']
 
 if len(sys.argv) == 1:
     from problog import setup as problog_setup
@@ -80,3 +87,32 @@ else:
     )
 
 
+def increment_release(v):
+    v = v.split('.')
+    if len(v) == 4:
+        v = v[:3] + [str(int(v[3]) + 1)]
+    else:
+        v = v[:4]
+    return '.'.join(v)
+
+
+def increment_dev(v):
+    v = v.split('.')
+    if len(v) == 4:
+        v = v[:3] + [str(int(v[3]) + 1), 'dev1']
+    else:
+        v = v[:4] + ['dev' + str(int(v[4][3:]) + 1)]
+    return '.'.join(v)
+
+
+def increment_version_dev():
+    v = increment_dev(version)
+    os.path.dirname(__file__)
+    with open(version_file, 'w') as f:
+        f.write("version = '%s'\n" % v)
+
+
+def increment_version_release():
+    v = increment_dev(version)
+    with open(version_file, 'w') as f:
+        f.write("version = '%s'\n" % v)
