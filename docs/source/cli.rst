@@ -166,6 +166,71 @@ Most Probable Explanation (``mpe``)
 Learning from interpretations (``lfi``)
 ---------------------------------------
 
+Learning expects a program with a number of unknown probabilities expressed as ``t(_)``.
+If you want to start learning from a given initialisation, say 0.2, you can use ``t(0.2)``.
+
+Given a program ``some_heads.pl`` with unknown probabilities:
+
+.. code-block:: prolog
+
+    t(_)::heads1.
+    t(_)::heads2.
+    someHeads :- heads1.
+    someHeads :- heads2.
+
+And an evidence file ``some_heads_ev.pl`` (sampled using probabilities 0.5 and 0.6, \
+no evidence on ``heads2``):
+
+.. code-block:: prolog
+
+    evidence(someHeads,false).
+    evidence(heads1,false).
+    ----------------
+    evidence(someHeads,true).
+    evidence(heads1,true).
+    ----------------
+    evidence(someHeads,true).
+    evidence(heads1,true).
+    ----------------
+    evidence(someHeads,false).
+    evidence(heads1,false).
+    ----------------
+    evidence(someHeads,true).
+    evidence(heads1,true).
+    ----------------
+    evidence(someHeads,true).
+    evidence(heads1,false).
+    ----------------
+    evidence(someHeads,true).
+    evidence(heads1,false).
+    ----------------
+    evidence(someHeads,true).
+    evidence(heads1,true).
+    ----------------
+    evidence(someHeads,true).
+    evidence(heads1,false).
+    ----------------
+    evidence(someHeads,true).
+    evidence(heads1,false).
+
+We can now learn the missing probabilities using:
+
+.. code-block:: shell
+
+    $ problog lfi some_heads.pl some_heads_ev.pl -O some_heads_learned.pl
+    -6.88403875238 [0.4, 0.66666619] [t(_)::heads1, t(_)::heads2] 14
+
+The learned program is saved in ``some_heads_learned.pl``.
+
+.. code-block:: shell
+
+    $ cat some_heads_learned.pl
+    0.4::heads1.
+    0.666666192095::heads2.
+    someHeads :- heads1.
+    someHeads :- heads2.
+
+
 
 
 Decision Theoretic ProbLog (``dt``)
@@ -211,11 +276,9 @@ Explanation mode (``explain``)
 The ``explain`` mode offers insight in how probabilities can be computed for a ProbLog program.
 Given a model, the output consists of three parts:
 
-  * a reformulation of the model in which annotated disjunctions and probabilistic clauses are \
-   rewritten
+  * a reformulation of the model in which annotated disjunctions and probabilistic clauses are rewritten
   * for each query, a list of mutually exclusive proofs with their probability
-  * for each query, the success probability determined by taking the sum of the probabilities of \
-   the individual proofs
+  * for each query, the success probability determined by taking the sum of the probabilities of the individual proofs
 
 This mode currently does not support evidence.
 

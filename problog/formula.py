@@ -605,6 +605,8 @@ class LogicFormula(BaseFormula):
                 pass
             elif component == 0:
                 return self._update(key, self._create_disj((0,), name=node.name))
+            elif component in node.children and not self._keep_duplicates:
+                pass    # already there
             else:
                 if 0 < self._max_arity == len(node.children):
                     child = self.add_or(node.children)
@@ -650,8 +652,11 @@ class LogicFormula(BaseFormula):
             # Put into fixed order and eliminate duplicate nodes
             if self._keep_duplicates:
                 content = tuple(content)
-            else:
+            elif self._keep_order:
                 content = tuple(OrderedSet(content))
+            else:  # any_order
+                # can also merge (a, b) and (b, a)
+                content = tuple(set(content))
 
             # Empty OR node fails, AND node is true
             if not content:

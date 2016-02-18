@@ -2,8 +2,15 @@
 
 from __future__ import print_function
 import sys
+import os
 
-version = '2.1.0.11'
+
+version_file = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'problog/version.py')
+
+version = {}
+with open(version_file) as fp:
+    exec(fp.read(), version)
+version = version['version']
 
 if len(sys.argv) == 1:
     from problog import setup as problog_setup
@@ -17,11 +24,14 @@ else:
     class ProbLogInstall(install):
         def run(self):
             install.run(self)
+            before_dir = os.getcwd()
+            sys.path.insert(0, self.install_lib)
             from problog import setup as problog_setup
             try:
                 problog_setup.install()
             except Exception as err:
                 print ('Optional ProbLog installation failed: %s' % err, file=sys.stderr)
+            os.chdir(before_dir)
 
     package_data = {
         'problog': [
@@ -80,3 +90,32 @@ else:
     )
 
 
+def increment_release(v):
+    v = v.split('.')
+    if len(v) == 4:
+        v = v[:3] + [str(int(v[3]) + 1)]
+    else:
+        v = v[:4]
+    return '.'.join(v)
+
+
+def increment_dev(v):
+    v = v.split('.')
+    if len(v) == 4:
+        v = v[:3] + [str(int(v[3]) + 1), 'dev1']
+    else:
+        v = v[:4] + ['dev' + str(int(v[4][3:]) + 1)]
+    return '.'.join(v)
+
+
+def increment_version_dev():
+    v = increment_dev(version)
+    os.path.dirname(__file__)
+    with open(version_file, 'w') as f:
+        f.write("version = '%s'\n" % v)
+
+
+def increment_version_release():
+    v = increment_dev(version)
+    with open(version_file, 'w') as f:
+        f.write("version = '%s'\n" % v)

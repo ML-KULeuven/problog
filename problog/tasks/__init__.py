@@ -32,10 +32,12 @@ problog_tasks['explain'] = 'problog.tasks.explain'
 problog_tasks['web'] = 'problog.web.server'
 problog_tasks['dt'] = 'problog.tasks.dtproblog'
 problog_tasks['shell'] = 'problog.tasks.shell'
+problog_tasks['parse'] = 'problog.parser'
 
 problog_default_task = 'prob'
 
 from problog.util import load_module
+from problog import version
 
 
 def run_task(argv):
@@ -86,6 +88,9 @@ def main(argv=None):
             import unittest
             test_results = unittest.TextTestResult(sys.stderr, False, 1)
             unittest.TestLoader().discover(os.path.dirname(__file__)).run(test_results)
+            return
+        elif argv[0] == '--version':
+            print (version.version)
             return
         else:
             return run_task(argv)

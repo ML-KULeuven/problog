@@ -328,9 +328,9 @@ class Evaluatable(ProbLogObject):
             elif ev_index is None and ev_value < 0:
                 pass  # false evidence is deterministically false
             elif ev_index == 0 and ev_value < 0:
-                raise InconsistentEvidenceError()  # true evidence is false
+                raise InconsistentEvidenceError(source='evidence('+str(ev_name)+',false)')  # true evidence is false
             elif ev_index is None and ev_value > 0:
-                raise InconsistentEvidenceError()  # false evidence is true
+                raise InconsistentEvidenceError(source='evidence('+str(ev_name)+',true)')  # false evidence is true
             elif evidence is None and ev_value != 0:
                 evaluator.add_evidence(ev_value * ev_index)
             else:
@@ -558,7 +558,7 @@ class FormulaEvaluatorNSP(FormulaEvaluator):
                 nw, nu = self.get_weight(-index)
                 return self.semiring.negate(nw), nu
             else:
-                return weight[1], {index}
+                return weight[1], {abs(index)}
         else:
             weight = self._fact_weights.get(index)
             if weight is None:
@@ -568,7 +568,7 @@ class FormulaEvaluatorNSP(FormulaEvaluator):
                     self._computed_weights[index] = weight
                 return weight
             else:
-                return weight[0], {index}
+                return weight[0], {abs(index)}
 
     def evaluate(self, index):
         cp, cu = self.get_weight(index)

@@ -24,6 +24,7 @@ Grounding engine to transform a ProbLog program into a propositional formula.
 from __future__ import print_function
 
 import logging
+import os
 
 from collections import defaultdict, namedtuple
 
@@ -313,11 +314,11 @@ class ClauseDBEngine(GenericEngine):
                     target = self.ground(db, query[0], target, label=target.LABEL_EVIDENCE_POS, is_root=True)
                     logger.debug("Ground program size: %s", len(target))
             else:  # evidence/2
-                if str(query[1]) == 'true':
+                if str(query[1]) == 'true' or query[1] == True:
                     logger.debug("Grounding evidence '%s'", query[0])
                     target = self.ground(db, query[0], target, label=target.LABEL_EVIDENCE_POS, is_root=True)
                     logger.debug("Ground program size: %s", len(target))
-                elif str(query[1]) == 'false':
+                elif str(query[1]) == 'false' or query[1] == False:
                     logger.debug("Grounding evidence '%s'", query[0])
                     target = self.ground(db, query[0], target, label=target.LABEL_EVIDENCE_NEG, is_root=True)
                     logger.debug("Ground program size: %s", len(target))
@@ -427,46 +428,36 @@ class ClauseIndex(list):
     def __init__(self, parent, arity):
         list.__init__(self)
         self.__parent = parent
-        self.__index = [defaultdict(set) for _ in range(0, arity)]
+        self.__basetype = OrderedSet
+        self.__index = [defaultdict(self.__basetype) for _ in range(0, arity)]
         self.__optimized = False
 
-    def optimize(self):
-        if not self.__optimized:
-            self.__optimized = True
-            for i in range(0, len(self.__index)):
-                arg_index = self.__index[i]
-                arg_none = arg_index[None]
-                self.__index[i] = {k: tuple(sorted(v | arg_none)) for k, v in arg_index.items() if
-                                   k is not None}
-                self.__index[i][None] = tuple(sorted(arg_none))
-
     def find(self, arguments):
-        self.optimize()
         results = None
-        # for i, xx in enumerate(self.__index):
-        #     print ('\t', i, xx)
         for i, arg in enumerate(arguments):
             if not is_ground(arg):
                 pass  # Variable => no restrictions
             else:
                 curr = self.__index[i].get(arg)
-                if curr is None:   # No facts matching this argument exactly.
-                    results = self.__index[i].get(None)
-                elif results is None:  # First argument with restriction
+                none = self.__index[i].get(None, self.__basetype())
+                if curr is None:
+                    curr = none
+                else:
+                    curr |= none
+
+                if results is None:  # First argument with restriction
                     results = curr
-                else:  # Already have a selection
-                    results = intersection(results, curr)
-            if results == []:
-                # print ('FIND', arguments, results)
+                else:
+                    results = results & curr       # for some reason &= doesn't work here
+            if results is not None and not results:
                 return []
         if results is None:
-            # print ('FIND', arguments, 'all')
             return self
         else:
-            # print ('FIND', arguments, results)
             return results
 
     def _add(self, key, item):
+        assert not self.__optimized
         for i, k in enumerate(key):
             self.__index[i][k].add(item)
 
@@ -538,6 +529,8 @@ class ClauseDB(LogicProgram):
 
         self.__builtins = builtins
 
+        self.data = {}
+
         self.__parent = parent
         if parent is None:
             self.__offset = 0
@@ -553,6 +546,26 @@ class ClauseDB(LogicProgram):
 
     def extend(self):
         return ClauseDB(parent=self)
+
+    def set_data(self, key, value):
+        self.data[key] = value
+
+    def update_data(self, key, value):
+        if self.has_data(key):
+            if type(value) == list:
+                self.data[key] += value
+            elif type(value) == dict:
+                self.data[key].update(value)
+            else:
+                raise TypeError('Can\'t update data of type \'%s\'' % type(value))
+        else:
+            self.data[key] = value
+
+    def has_data(self, key):
+        return key in self.data
+
+    def get_data(self, key, default=None):
+        return self.data.get(key, default)
 
     def get_builtin(self, signature):
         if self.__builtins is None:
@@ -760,6 +773,9 @@ class ClauseDB(LogicProgram):
         elif isinstance(struct, Not):
             child = self._compile(struct.child, variables)
             return self._add_not_node(child, location=struct.location)
+        elif isinstance(struct, Term) and struct.signature == 'not/1':
+            child = self._compile(struct.args[0], variables)
+            return self._add_not_node(child, location=struct.location)
         elif isinstance(struct, AnnotatedDisjunction):
             # Determine number of variables in the head
             new_heads = [head.apply(variables) for head in struct.heads]
@@ -812,12 +828,20 @@ class ClauseDB(LogicProgram):
                 #  two arguments of findall are 'local' variables.
                 args = []
                 for i, a in enumerate(struct.args):
+                    if not isinstance(a, Term):
+                        # For nested findalls: 'a' can be a raw variable pointer
+                        # Temporarily wrap it in a Term, so we can call 'apply' on it.
+                        a = Term('_', a)
                     if i in local_scope:
                         variables.enter_local()
-                        args.append(a.apply(variables))
+                        new_arg = a.apply(variables)
                         variables.exit_local()
                     else:
-                        args.append(a.apply(variables))
+                        new_arg = a.apply(variables)
+                    if a.functor == '_':
+                        # If the argument was temporarily wrapped: unwrap it.
+                        new_arg = new_arg.args[0]
+                    args.append(new_arg)
                 return self._add_call_node(struct(*args))
             else:
                 return self._add_call_node(struct.apply(variables))
@@ -914,19 +938,19 @@ class ClauseDB(LogicProgram):
         for group in clause_groups.values():
             if len(group) > 1:
                 yield Term('mutual_exclusive', list2term(group))
-        #
-        #
-        #     heads = []
-        #     body = None
-        #     for index in group:
-        #         node = self.get_node(index)
-        #         heads.append(self._create_vars(Term(node.functor, *node.args, p=node.probability)))
-        #         if body is None:
-        #             body_node = self.get_node(node.child)
-        #             body_node = self.get_node(body_node.children[0])
-        #             body = self._create_vars(Term(body_node.functor, *body_node.args))
-        #     yield AnnotatedDisjunction(heads, body)
 
+    def resolve_filename(self, filename):
+        root = self.source_root
+        if hasattr(filename, 'location') and filename.location:
+            source_root = self.source_files[filename.location[0]]
+            if source_root:
+                root = os.path.dirname(source_root)
+
+        atomstr = str(filename)
+        if atomstr[0] == atomstr[-1] == "'":
+            atomstr = atomstr[1:-1]
+        filename = os.path.join(root, atomstr)
+        return filename
 
 
 class AccessError(GroundingError):

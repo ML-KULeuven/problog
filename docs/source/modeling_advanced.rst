@@ -18,7 +18,7 @@ The functionality is provided by the ``problog.extern`` module.
 This module introduces two decorators.
 
   * ``problog_export``: for deterministic functions (i.e. that return exactly one result)
-  * ``problog_export_nondet``: for non-deterministic function (i.e. that return any number of results)
+  * ``problog_export_nondet``: for non-deterministic functions (i.e. that return any number of results)
 
 These decorators take as arguments the types of the arguments.
 The possible argument types are
@@ -42,17 +42,30 @@ For example, consider the following Python module ``numbers.py`` which defines t
 
 .. code-block:: python
 
-    from problog.extern import problog_export
+    from problog.extern import problog_export, problog_export_nondet
 
     @problog_export('+int', '+int', '-int')
     def sum(a, b):
         """Computes the sum of two numbers."""
         return a + b
 
+    @problog_export('+int', '+int', '-int', '-int')
+    def sum_and_product(a, b):
+        """Computes the sum and product of two numbers."""
+        return a + b, a * b
+
     @problog_export_nondet('+int', '+int', '-int')
     def in_range(a, b):
         """Returns all numbers between a and b (not including b)."""
-        return list(range(a, b))
+        return list(range(a, b))    # list can be empty
+
+    @problog_export_nondet('+int')
+    def is_positive(a):
+        """Checks whether the number is positive."""
+        if a > 0:
+            return [()] # one result (empty tuple)
+        else:
+            return []   # no results
 
 
 This module can be used in ProbLog by loading it using the ``use_module`` directive.
@@ -62,7 +75,10 @@ This module can be used in ProbLog by loading it using the ``use_module`` direct
     :- use_module('numbers.py').
 
     query(sum(2,4,X)).
+    query(sum_and_product(2,3,X,Y)).
     query(in_range(1,4,X)).
+    query(is_positive(3)).
+    query(is_positive(-3)).
 
 The result of this model is
 
@@ -72,9 +88,112 @@ The result of this model is
     in_range(1,4,2):        1
     in_range(1,4,3):        1
          sum(2,4,6):        1
+       sum(2,3,5,6):        1
+    is_positive(-3):        0
+     is_positive(3):        1
 
 It is possible to store persistent information in the internal database.
 This database can be accessed as ``problog_export.database``.
+
+Using data from an SQLite database
+++++++++++++++++++++++++++++++++++
+
+ProbLog provides a library that offers a very simple interface to an SQLite database.
+
+Assume we have an SQLite database ``friends.db`` with two tables:
+
+    *person(name)*
+        A list of persons.
+
+    *friend_of(name1, name2, probability)*
+        A list of friendship relations.
+
+We can load this database into ProbLog using the library ``db`` and the predicate \
+``sqlite_load(+Filename)``.
+
+.. code-block:: prolog
+
+    :- use_module(library(db)).
+    :- sqlite_load('friends.db').
+
+This will create a predicate for each table in the database with as arity the number of columns \
+of that table.
+We can thus write the following variation of the smokers examples:
+
+.. code-block:: prolog
+
+    :- use_module(library(sqlite)).
+    :- sqlite_load('friends.db').
+
+    P :: influences(X, Y) :- friend_of(X, Y, P).
+
+    0.3::smokes(X) :- person(X).       % stress
+    smokes(X) :- influences(Y, X), smokes(Y).
+
+The library will automatically translate a call to a database predicate into a query on the \
+database, for example, the call ``friend_of(ann, B, P)`` will be translated to the query
+
+.. code-block:: sql
+
+    SELECT name1, name2, probability FROM friend_of WHERE name1 = 'ann'
+
+
+Using data from a CSV file
+++++++++++++++++++++++++++
+
+ProbLog provides a library that offers a simple interface to an CSV file.
+
+Assume we have two CSV files ``person.csv`` and ``friend_of.csv`` \
+containing data for two predicates:
+
+    *person(name)*
+        A list of persons.
+
+    *friend_of(name1, name2, probability)*
+        A list of friendship relations.
+
+These file contain as columns the terms of the predicate and the first line \
+are the column names.
+
+.. code-block:: sh
+
+    $ cat person.csv
+    "name"
+    "ann"
+    "bob"
+    $ cat friend_of.csv
+    "p1","p2","prob"
+    "ann","bob",0.2
+
+We can load these files into ProbLog using the library ``db`` and the predicate \
+``csv_load(+Filename, +Predicatename)``. 
+
+.. code-block:: prolog
+
+    :- use_module(library(db)).
+    :- csv_load('person.csv', 'person').
+    :- csv_load('friend_of.csv', 'friend_of').
+
+This will create a two predicates, one for each file with as arity the number of columns.
+We can thus write the following variation of the smokers examples:
+
+.. code-block:: prolog
+
+    :- use_module(library(db)).
+    :- csv_load('person.csv', 'person').
+    :- csv_load('friend_of.csv', 'friend_of').
+
+    P :: influences(X, Y) :- friend_of(X, Y, P).
+
+    0.3::smokes(X) :- person(X).       % stress
+    smokes(X) :- influences(Y, X), smokes(Y).
+
+The library will automatically translate a call to predicates ``person`` and ``friends_of`` into a query on the \
+respective csv-file. For example, the call ``friend_of(ann, B, P)`` will be matched to all lines that match
+
+.. code-block:: sh
+
+    "ann",*,*
 
 
 Using continuous distributions (sampling only)

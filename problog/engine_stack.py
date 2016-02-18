@@ -514,7 +514,7 @@ class StackBasedEngine(ClauseDBEngine):
         while self.pointer > 0 and self.stack[self.pointer - 1] is None:
             self.pointer -= 1
 
-    def call(self, query, database, target, transform=None, parent=None, **kwdargs):
+    def call(self, query, database, target, transform=None, parent=None, context=None, **kwdargs):
         node_id = database.find(query)
         if node_id is None:
             node_id = database.get_builtin(query.signature)
@@ -1361,10 +1361,9 @@ class EvalDefine(EvalNode):
                             if not self.is_root:
                                 node = self.engine.propagate_evidence(self.database, self.target, self.node.functor, res, node)
                         result_node = self.target.add_or((node,), readonly=False, name=name)
-                    # if self.engine.label_all :
-                    #     name = str(Term(self.node.functor, *res))
-                    #     self.target.addName(name, result_node, self.target.LABEL_NAMED)
                     self.results[res] = result_node
+                    if is_ground(*res):
+                        self.target._cache[cache_key] = {res: result_node}
                     actions = []
                     # Send results to cycle
                     if not self.is_buffered() and result_node is not NODE_FALSE:
@@ -1448,6 +1447,9 @@ class EvalDefine(EvalNode):
                         new_nodes.append(node)
                     nodes = new_nodes
                 node = self.target.add_or(nodes, readonly=(not cycle), name=name)
+                if is_ground(*res):
+                    self.target._cache[cache_key] = {res: node}
+
             # node = self.target.add_or( nodes, readonly=(not cycle) )
             # if self.engine.label_all:
             #     name = str(Term(self.node.functor, *res))
