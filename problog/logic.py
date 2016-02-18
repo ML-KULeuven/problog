@@ -83,6 +83,7 @@ from __future__ import division  # consistent behaviour of / and // in python 2 
 import math
 import sys
 
+
 from .util import OrderedSet
 from .errors import GroundingError
 
@@ -116,9 +117,10 @@ def list2term(lst):
     :return: Term representing a Prolog list
     :rtype: Term
     """
+    from .pypl import py2pl
     tail = Term('[]')
     for e in reversed(lst):
-        tail = Term('.', e, tail)
+        tail = Term('.', py2pl(e), tail)
     return tail
 
 
