@@ -330,6 +330,8 @@ class SampledFormula(LogicFormula):
                     result[k] = True
                 else:
                     result[k] = val
+            else:
+                result[k] = False
         return result
 
 
