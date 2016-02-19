@@ -239,14 +239,14 @@ class LFIProblem(SemiringProbability, LogicProgram) :
                     def __getitem__(self, key):
                         if key == '_':
                             self.cnt += 1
-                            return Var('_anon_%s' % self.cnt)
+                            return Var('anon_%s' % self.cnt)
                         else:
                             return Var(key)
 
-                atom = atom.apply(ReplaceAnon())
+                atom1 = atom.apply(ReplaceAnon())
 
                 # 1) Introduce a new fact
-                lfi_fact = Term('lfi_fact_%d' % self.count, *atom.args)
+                lfi_fact = Term('lfi_fact_%d' % self.count, *atom1.args)
                 lfi_prob = Term('lfi', Constant(self.count))
 
                 # 2) Replacement atom
@@ -257,7 +257,7 @@ class LFIProblem(SemiringProbability, LogicProgram) :
                     new_body = body & lfi_fact
 
                 # 3) Create redirection clause
-                extra_clauses += [Clause(atom.with_probability(), new_body)]
+                extra_clauses += [Clause(atom1.with_probability(), new_body)]
 
                 # 4) Set initial weight
                 if start_value.is_var():
