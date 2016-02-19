@@ -1,14 +1,17 @@
 Writing models in ProbLog: advanced concepts
 ============================================
 
-Debugging your ProbLog program
-++++++++++++++++++++++++++++++
+Output and errors your ProbLog program
+++++++++++++++++++++++++++++++++++++++
 
 ProbLog does not support I/O as Prolog does.
-It is however possible to write debugging information to the console using the ``debugprint`` builtin.
-This builtin takes up to 10 arguments that will be printed to the console when the call is encountered during grounding.
-The arguments are separated by spaces.
+It is however possible to write out some information using the following predicates:
 
+   * ``debugprint/N``: takes up to 10 arguments which are printed followed by a new line
+   * ``write/N``: takes up to 10 arguments which are printed out; removes quotes; no new line
+   * ``nl/0``: writes a new line character
+   * ``writenl/N``: same as ``write\N`` followed by ``nl``.
+   * ``error/N``: raise a UserError based with a message composed of up to 10 arguments
 
 Calling Python from ProbLog
 +++++++++++++++++++++++++++
@@ -19,6 +22,7 @@ This module introduces two decorators.
 
   * ``problog_export``: for deterministic functions (i.e. that return exactly one result)
   * ``problog_export_nondet``: for non-deterministic functions (i.e. that return any number of results)
+  * ``problog_export_raw``: for functions without clear distinction between input and output
 
 These decorators take as arguments the types of the arguments.
 The possible argument types are
@@ -37,6 +41,9 @@ of length the number of output arguments.
 If there is only one output argument, it should not be wrapped in a tuple.
 
 Functions decorated with ``problog_export_nondet`` should return a list of result tuples.
+
+Functions decorated with ``problog_export_raw`` should return a list of tuples where each tuple
+contains a value for each argument listed in the specification.
 
 For example, consider the following Python module ``numbers.py`` which defines two functions.
 
@@ -199,3 +206,32 @@ respective csv-file. For example, the call ``friend_of(ann, B, P)`` will be matc
 Using continuous distributions (sampling only)
 ++++++++++++++++++++++++++++++++++++++++++++++
 
+When using the sampling mode from Python, you can add arbitrary distributions with specialized sampling algorithms.
+This can be achieved by passing them to the sample function.
+
+.. code-block:: python
+
+    from problog.tasks import sample
+    from problog.program import PrologString
+
+    modeltext = """
+        my_uniform(0,10)::a.
+        0.5::b.
+        c :- value(a, A), A >= 3; b.
+        query(a).
+        query(b).
+        query(c).
+    """
+
+    import random
+    import math
+
+    # Define a function that generates a sample.
+    def integer_uniform(a, b):
+        return math.floor(random.uniform(a, b))
+
+    model = PrologString(modeltext)
+    # Pass the mapping between name and function using the distributions parameter.
+    result = sample.sample(model, n=3, format='dict', distributions={'my_uniform': integer_uniform})
+
+Example output: ``[{a: 0.0, b: True, c: True}, {a: 7.0, b: False, c: True}, {a: 0.0, b: False, c: False}]``
