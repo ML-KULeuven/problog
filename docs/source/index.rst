@@ -6,6 +6,8 @@
 ProbLog
 =======
 
+Welcome to the ProbLog 2.1 documentation.
+
 Contents:
 
 .. toctree::

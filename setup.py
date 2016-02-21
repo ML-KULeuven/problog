@@ -24,11 +24,14 @@ else:
     class ProbLogInstall(install):
         def run(self):
             install.run(self)
+            before_dir = os.getcwd()
+            sys.path.insert(0, self.install_lib)
             from problog import setup as problog_setup
             try:
                 problog_setup.install()
             except Exception as err:
                 print ('Optional ProbLog installation failed: %s' % err, file=sys.stderr)
+            os.chdir(before_dir)
 
     package_data = {
         'problog': [

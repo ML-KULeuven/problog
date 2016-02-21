@@ -56,7 +56,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../')))
 
 from problog.engine import DefaultEngine, ground
 from problog.evaluator import SemiringProbability
-from problog.logic import Term, Constant, Clause, AnnotatedDisjunction, Or
+from problog.logic import Term, Constant, Clause, AnnotatedDisjunction, Or, Var
 from problog.program import PrologString, PrologFile, LogicProgram
 from problog.core import ProbLogError
 from problog.errors import process_error, InconsistentEvidenceError
@@ -151,7 +151,7 @@ class LFIProblem(SemiringProbability, LogicProgram) :
             result[atoms].append(values)
         return result
     
-    def _compile_examples( self ) :
+    def _compile_examples(self):
         """Compile examples.
     
         :param examples: Output of ::func::`process_examples`.
@@ -160,7 +160,6 @@ class LFIProblem(SemiringProbability, LogicProgram) :
 
         baseprogram = DefaultEngine().prepare(self)
         examples = self._process_examples()
-
         result = []
         for atoms, example_group in examples.items():
             ground_program = None   # Let the grounder decide
@@ -170,6 +169,16 @@ class LFIProblem(SemiringProbability, LogicProgram) :
 
                 ground_program = ground(baseprogram, ground_program,
                                         evidence=list(zip(atoms, example)))
+                for i, node, t in ground_program:
+                    if t == 'atom' and \
+                            isinstance(node.probability, Term) and \
+                            node.probability.functor == 'lfi':
+                        factname = 'lfi_fact_%s' % node.probability.args[0]
+                        factargs = ()
+                        if type(node.identifier) == tuple:
+                             factargs = node.identifier[1]
+                        fact = Term(factname, *factargs)
+                        ground_program.add_query(fact, i)
                 compiled_program = self.knowledge.create_from(ground_program)
                 result.append((atoms, example, compiled_program, n))
         self._compiled_examples = result
@@ -192,10 +201,10 @@ class LFIProblem(SemiringProbability, LogicProgram) :
         for atom in atoms:
             if atom.probability and atom.probability.functor == 't':
                 start_value = atom.probability.args[0]
-                if isinstance(start_value, Constant):
-                    available_probability -= float(start_value)
-                else:
+                if start_value.is_var():
                     num_random_weights += 1
+                else:
+                    available_probability -= float(start_value)
             elif atom.probability and atom.is_constant():
                 available_probability -= float(atom.probability)
 
@@ -221,8 +230,23 @@ class LFIProblem(SemiringProbability, LogicProgram) :
                 assert(len(atom.probability.args) == 1)
                 start_value = atom.probability.args[0]
 
+                # Replace anonymous variables with non-anonymous variables.
+                class ReplaceAnon(object):
+
+                    def __init__(self):
+                        self.cnt = 0
+
+                    def __getitem__(self, key):
+                        if key == '_':
+                            self.cnt += 1
+                            return Var('anon_%s' % self.cnt)
+                        else:
+                            return Var(key)
+
+                atom1 = atom.apply(ReplaceAnon())
+
                 # 1) Introduce a new fact
-                lfi_fact = Term('lfi_fact_%d' % self.count, *atom.args)
+                lfi_fact = Term('lfi_fact_%d' % self.count, *atom1.args)
                 lfi_prob = Term('lfi', Constant(self.count))
 
                 # 2) Replacement atom
@@ -233,20 +257,20 @@ class LFIProblem(SemiringProbability, LogicProgram) :
                     new_body = body & lfi_fact
 
                 # 3) Create redirection clause
-                extra_clauses += [Clause(atom.with_probability(), new_body)]
+                extra_clauses += [Clause(atom1.with_probability(), new_body)]
 
                 # 4) Set initial weight
-                if isinstance(start_value, Constant):
-                    self.weights.append(float(start_value))
-                else:
+                if start_value.is_var():
                     self.weights.append(random_weights.pop(-1))
-
-                # 5) Add query
-                self.queries.append(lfi_fact)
-                if body:
-                    extra_clauses.append(Clause(Term('query', lfi_fact), body))
                 else:
-                    extra_clauses.append(Term('query', lfi_fact))
+                    self.weights.append(float(start_value))
+
+                # # 5) Add query
+                # self.queries.append(lfi_fact)
+                # if body:
+                #     extra_clauses.append(Clause(Term('query', lfi_fact), body))
+                # else:
+                #     extra_clauses.append(Term('query', lfi_fact))
 
                 # 6) Add name
                 self.names.append(atom)
