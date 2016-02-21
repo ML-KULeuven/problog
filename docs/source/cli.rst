@@ -2,7 +2,7 @@ Using ProbLog as a standalone tool
 ==================================
 
 The command line interface (CLI) gives access to the basic functionality of ProbLog 2.1.
-It is accessible through the script ``problog-cli.py`` or ``problog`` if installed through pip.
+It is accessible through the script ``problog`` (or ``problog-cli.py`` in the repository version).
 
 The CLI has different modes of operation. These can be accessed by adding a keyword as the first \
 argument.
@@ -43,7 +43,7 @@ We can do
 
 .. code-block:: prolog
 
-    $ ./problog-cli.py some_heads.pl
+    $ problog some_heads.pl
     someHeads : 0.8
 
 ProbLog supports supports several alternative knowledge compilation tools.
@@ -85,7 +85,7 @@ For example,
 
 .. code-block:: prolog
 
-    $ ./problog-cli.py sample some_heads.pl -N 3
+    $ problog sample some_heads.pl -N 3
     ====================
     % Probability: 0.2
     ====================
@@ -106,7 +106,7 @@ separate line. The previous output would then be formatted as:
 
 .. code-block:: prolog
 
-    $ ./problog-cli.py sample some_heads.pl -N 3 --oneline
+    $ problog sample some_heads.pl -N 3 --oneline
     % Probability: 0.2
     someHeads. % Probability: 0.2
     someHeads. % Probability: 0.3
@@ -117,7 +117,7 @@ The result above would then become
 
 .. code-block:: prolog
 
-    $ ./problog-cli.py sample some_heads.pl -N 3 --oneline --with-facts
+    $ problog sample some_heads.pl -N 3 --oneline --with-facts
     % Probability: 0.2
     heads1. someHeads. % Probability: 0.2
     heads2. someHeads. % Probability: 0.3
@@ -146,7 +146,7 @@ The number of samples used for estimation can be determined in three ways:
 
 .. code-block:: prolog
 
-    $ ./problog-cli.py sample some_heads.pl  --estimate -t 5
+    $ problog sample some_heads.pl  --estimate -t 5
     % Probability estimate after 7865 samples:
     someHeads : 0.79249841
 
@@ -161,6 +161,73 @@ References:
 Most Probable Explanation (``mpe``)
 -----------------------------------
 
+In MPE mode, ProbLog computes the possible world with the highest probability in which all queries
+and evidence is true.
+
+For example, consider the following program.
+
+.. code-block:: prolog
+
+    0.6::edge(1,2).
+    0.1::edge(1,3).
+    0.4::edge(2,5).
+    0.3::edge(2,6).
+    0.3::edge(3,4).
+    0.8::edge(4,5).
+    0.2::edge(5,6).
+
+    path(X,Y) :- edge(X,Y).
+    path(X,Y) :- edge(X,Z),
+                 Y \== Z,
+                 path(Z,Y).
+
+    query(path(1,5)).
+    query(path(1,6)).
+
+This program queries for paths in the following probabilistic graph.
+
+.. digraph:: probabilistic_graph
+
+    rankdir=LR;
+    1 -> 3 [label="0.1"];
+    1 -> 2 [label="0.6"];
+    2 -> 5 [label="0.4"];
+    2 -> 6 [label="0.3"];
+    3 -> 4 [label="0.3"];
+    4 -> 5 [label="0.8"];
+    5 -> 6 [label="0.2"];
+
+The command ``problog mpe pgraph.pl`` produces the most probable graph in which there are paths
+from node 1 to node 5 and from node 1 to node 6.
+
+The result is
+
+.. code-block:: prolog
+
+    edge(4,5)
+    edge(1,2)
+    edge(2,5)
+    edge(2,6)
+
+Note that the first edge is not necessary for the paths to exist, but it is included because it is
+more likely to exist.
+
+The result only included facts that are true.
+To also include the negative facts, you can specify the argument ``--full``.
+
+.. code-block:: prolog
+
+    \+edge(3,4)
+    edge(4,5)
+    \+edge(1,3)
+    edge(1,2)
+    edge(2,5)
+    \+edge(5,6)
+    edge(2,6)
+
+
+In order to compute the result, ProbLog uses a Max-Sat solver (``maxsatz``) which is included in
+the distribution.
 
 
 Learning from interpretations (``lfi``)
@@ -352,8 +419,7 @@ Type ``help.`` for more information.
 Installation (``install``)
 --------------------------
 
-Run the installer.
-This installs the SDD library.
+Run the installer.  This installs the SDD library.
 This currently only has effect on Mac OSX and Linux.
 
 
