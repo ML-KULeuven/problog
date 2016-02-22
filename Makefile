@@ -59,8 +59,8 @@ update_server:
 
 prepare_deploy: test2 test3
 	git checkout master
-	python -c 'import setup; setup.increment_version_release()'
 	git merge develop --squash
+	python -c 'import setup; setup.increment_version_release()'
 	git add problog/version.py
 	@echo "Next steps: git commit && make deploy"
 
