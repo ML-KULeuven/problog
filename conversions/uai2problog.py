@@ -3,6 +3,8 @@
 """
 uai2problog.py
 
+http://graphmod.ics.uci.edu/uai08/FileFormat
+
 Created by Wannes Meert on 31-01-2016.
 Copyright (c) 2016 KU Leuven. All rights reserved.
 """
@@ -45,11 +47,13 @@ def error(string, halt=False):
 def construct_cpt(var):
     global domains
     rv = 'v{}'.format(var)
-    if force_bool and dom_sizes[var] == 2:
-        values = ['f', 't']
-    else:
-        values = [str(d) for d in range(dom_sizes[var])]
-    domains.append(values)
+    if var >= len(domains):
+        error('Less domains defined than this variable: {}'.format(var), halt=True)
+    if domains[var] is None:
+        error('Variable domain is not defined: {}'.format(var), halt=True)
+    values = domains[var]
+    if var_parents[var] is None:
+        error('Parents for node {} not defined.'.format(var), halt=True)
     parents = ['v{}'.format(p) for p in var_parents[var]]
     if len(parents) == 0:
         table = func_values[var]
@@ -79,20 +83,35 @@ def construct_pgm():
 
 def parse_header(ifile):
     debug('Parsing header')
+    global var_parents
+
     # Type
     line = ifile.readline().strip()
     if line != 'BAYES':
         error('Expected a BAYES network, found: {}'.format(line), halt=True)
+
     # Number of variables
     global num_vars
     line = ifile.readline().strip()
     num_vars = int(line)
+    var_parents = [None]*num_vars
+
     # Domain sizes
     global dom_sizes
+    global domains
     line = ifile.readline().strip()
-    dom_sizes = [int(size) for size in line.split()]
+    dom_size = []
+    for size in line.split():
+        size = int(size)
+        dom_sizes.append(size)
+        if force_bool and size == 2:
+            values = ['f', 't']
+        else:
+            values = [str(d) for d in range(size)]
+        domains.append(values)
     if len(dom_sizes) != num_vars:
         error('Expected {} domain sizes, found {}'.format(num_vars, len(dom_sizes)), halt=True)
+
     # Number of functions
     line = ifile.readline().strip()
     global num_funcs
@@ -116,10 +135,10 @@ def parse_graph(ifile):
             error('Expected {} parents, found {}\n{}'.format(func_size-1, len(parents), line), halt=True)
         if num_var != rv:
             error('Expected current variable ({}) as last variable, found {}'.format(num_var, rv), halt=True)
-        for parent in parents:
-            if parent >= num_var:
-                error('Found parent ({}) that is not yet defined\n{}'.format(parent, line), halt=True)
-        var_parents.append(parents)
+        # for parent in parents:
+            # if parent >= num_var:
+                # error('Found parent ({}) that is not yet defined\n{}'.format(parent, line), halt=True)
+        var_parents[num_var] = parents
 
 def parse_functions(ifile):
     global func_values
