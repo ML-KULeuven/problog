@@ -67,9 +67,12 @@ def get_evaluatables():
     return _evaluatables.keys()
 
 
-def get_evaluatable(name=None):
+def get_evaluatable(name=None, semiring=None):
     if name is None:
-        return evaluator.Evaluatable
+        if semiring is None or semiring.is_dsp():
+            return evaluator.EvaluatableDSP
+        else:
+            return formula.LogicDAG
     else:
         return _evaluatables[name]
 

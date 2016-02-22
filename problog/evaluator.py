@@ -285,10 +285,7 @@ class SemiringSymbolic(Semiring):
         return True
 
 
-
-@transform_allow_subclass
 class Evaluatable(ProbLogObject):
-    """Interface for evaluatable formulae."""
 
     def evidence_all(self):
         raise NotImplementedError()
@@ -367,6 +364,14 @@ class Evaluatable(ProbLogObject):
             return evaluator.evaluate(index)
 
 
+@transform_allow_subclass
+class EvaluatableDSP(Evaluatable):
+    """Interface for evaluatable formulae."""
+
+    def __init__(self):
+        Evaluatable.__init__(self)
+
+
 class Evaluator(object):
     """Generic evaluator."""
 
@@ -441,11 +446,13 @@ class Evaluator(object):
 class FormulaEvaluator(object):
     """Standard evaluator for boolean formula."""
 
-    def __init__(self, formula, semiring):
+    def __init__(self, formula, semiring, weights=None):
         self._computed_weights = {}
         self._semiring = semiring
         self._formula = formula
         self._fact_weights = {}
+        if weights is not None:
+            self.set_weights(weights)
 
     @property
     def semiring(self):
@@ -533,8 +540,8 @@ class FormulaEvaluator(object):
 class FormulaEvaluatorNSP(FormulaEvaluator):
     """Evaluator for boolean formula that addresses the Neutral Sum Problem."""
 
-    def __init__(self, formula, semiring):
-        FormulaEvaluator.__init__(self, formula, semiring)
+    def __init__(self, formula, semiring, weights=None):
+        FormulaEvaluator.__init__(self, formula, semiring, weights)
 
     def get_weight(self, index):
         """Get the weight of the node with the given index.

@@ -31,6 +31,8 @@ from .errors import InconsistentEvidenceError
 from .util import OrderedSet
 from .logic import Term, Or, Clause, And, is_ground
 
+from .evaluator import Evaluatable, FormulaEvaluator, FormulaEvaluatorNSP
+
 from .constraint import ConstraintAD
 
 
@@ -1374,11 +1376,17 @@ label_all=True)
         return destination
 
 
-class LogicDAG(LogicFormula):
+class LogicDAG(LogicFormula, Evaluatable):
     """A propositional logic formula without cycles."""
 
     def __init__(self, auto_compact=True, **kwdargs):
         LogicFormula.__init__(self, auto_compact, **kwdargs)
+
+    def _create_evaluator(self, semiring, weights, **kwargs):
+        if semiring.is_nsp():
+            return FormulaEvaluatorNSP(self, semiring, weights)
+        else:
+            return FormulaEvaluator(self, semiring, weights)
 
 
 class DeterministicLogicFormula(LogicFormula):

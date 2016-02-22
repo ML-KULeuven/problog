@@ -29,7 +29,7 @@ import subprocess
 from collections import defaultdict
 
 from . import system_info
-from .evaluator import Evaluator, Evaluatable
+from .evaluator import Evaluator, EvaluatableDSP
 from .errors import InconsistentEvidenceError
 from .formula import LogicDAG
 from .cnf_formula import CNF
@@ -48,7 +48,7 @@ class DSharpError(CompilationError):
         CompilationError.__init__(self, msg)
 
 
-class NNF(LogicDAG, Evaluatable):
+class NNF(LogicDAG, EvaluatableDSP):
     """A d-DNNF formula."""
 
     transform_preference = 20

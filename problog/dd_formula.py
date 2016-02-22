@@ -27,11 +27,11 @@ from __future__ import print_function
 
 from .util import Timer
 from .formula import LogicFormula
-from .evaluator import Evaluatable, Evaluator
+from .evaluator import EvaluatableDSP, Evaluator
 from .errors import InconsistentEvidenceError
 
 
-class DD(LogicFormula, Evaluatable):
+class DD(LogicFormula, EvaluatableDSP):
     """Root class for bottom-up compiled decision diagrams."""
 
     def __init__(self, **kwdargs):
