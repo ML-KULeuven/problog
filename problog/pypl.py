@@ -37,7 +37,7 @@ def py2pl(d):
         return tail
 
     if type(d) == str:
-        return Constant("'{}'".format(d))
+        return Constant('"{}"'.format(d))
 
     if type(d) == int or type(d) == float:
         return Constant(d)
