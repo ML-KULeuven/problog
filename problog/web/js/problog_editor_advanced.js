@@ -311,7 +311,16 @@ problog.init = function(hostname) {
         problog.hostname = hostname;
     }
 
-    $('head').append('<style type="text/css">.problog-edit-editor {height: 400px; width: 100%;} .problog-editor {width:100%;} .problog-editor-hash {float:right; margin-right:5px;} .problog-edit-editor-small {height: 200px; width: 100%;} .glyphicon-refresh-animate {-animation: spin .7s infinite linear; -webkit-animation: spin2 .7s infinite linear;} @-webkit-keyframes spin2 { from { -webkit-transform: rotate(0deg);} to { -webkit-transform: rotate(360deg); } @keyframes spin { from { transform: scale(1) rotate(0deg);} to { transform: scale(1) rotate(360deg);}  </style>')
+    $('head').append('<style type="text/css"> \
+       .problog-edit-editor {height: 400px; width: 100%;} \
+       .problog-editor {width:100%;} \
+       .problog-editor-hash {float:right; margin-right:5px;} \
+       .problog-edit-editor-small {height: 200px; width: 100%;} \
+       .problog-result-sortable {cursor: pointer;} \
+       .problog-result-sorted-asc::after {content: "\\025bc";} \
+       .problog-result-sorted-desc::after {content: "\\025b2";} \
+       .glyphicon-refresh-animate {-animation: spin .7s infinite linear; -webkit-animation: spin2 .7s infinite linear;} @-webkit-keyframes spin2 { from { -webkit-transform: rotate(0deg);} to { -webkit-transform: rotate(360deg); } @keyframes spin { from { transform: scale(1) rotate(0deg);} to { transform: scale(1) rotate(360deg);} \
+       </style>');
     $.each($(problog.selector), problog.init_editor);
 }
 
@@ -700,7 +709,7 @@ problog.createTable = function(body, columns) {
 
     head = $('<tr>');
     $(columns).each(function(index, elem) {
-        head.append($('<th>').css('width', elem[1]).text(elem[0]));
+        head.append($('<th class="problog-result-sortable">').css('width', elem[1]).text(elem[0]));
     });
 
     result = $('<table>').addClass('table table-condensed')
