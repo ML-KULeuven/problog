@@ -658,7 +658,12 @@ def main(args, result_handler=None):
     parser.add_argument('--with-probability', action='store_true', help="Show probability.")
     parser.add_argument('--as-evidence', action='store_true', help="Output as evidence.")
     parser.add_argument('--propagate-evidence', dest='propagate_evidence',
+                        default=True,
                         action='store_true', help="Enable evidence propagation")
+    parser.add_argument('--dont-propagate-evidence', action='store_false',
+                        dest='propagate_evidence',
+                        default=True,
+                        help="Disable evidence propagation")
     parser.add_argument('--oneline', action='store_true', help="Format samples on one line.")
     parser.add_argument('--estimate', action='store_true',
                         help='Estimate probability of queries from samples.')

@@ -77,7 +77,8 @@ def str2bool(s):
 
 class LFIProblem(SemiringProbability, LogicProgram) :
     
-    def __init__(self, source, examples, max_iter=10000, min_improv=1e-10, verbose=0, knowledge=SDD, leakprob=None, propagate_evidence=False, **extra):
+    def __init__(self, source, examples, max_iter=10000, min_improv=1e-10, verbose=0, knowledge=SDD,
+                 leakprob=None, propagate_evidence=True, **extra):
         """
         :param source:
         :param examples:
@@ -123,7 +124,7 @@ class LFIProblem(SemiringProbability, LogicProgram) :
             assert(len(a.args) == 1)
             index = int(a.args[0])
             return self.weights[index]
-        else :
+        else:
             return float(a)
          
     @property 
@@ -220,7 +221,7 @@ class LFIProblem(SemiringProbability, LogicProgram) :
 
         random_weights = [random.random() for i in range(0, num_random_weights+1)]
         norm_factor = available_probability / sum(random_weights)
-        random_weights = [r*norm_factor for r in random_weights]
+        random_weights = [r * norm_factor for r in random_weights]
 
         for atom in atoms:
             if atom.probability and atom.probability.functor == 't':
@@ -333,7 +334,7 @@ class LFIProblem(SemiringProbability, LogicProgram) :
             return [AnnotatedDisjunction(atoms_out, body)]
         
     # Overwrite from LogicProgram    
-    def __iter__(self) :
+    def __iter__(self):
         """
         Iterate over the clauses of the source model.
         This object can be used as a LogicProgram to be passed to the grounding Engine.
@@ -412,7 +413,7 @@ class LFIProblem(SemiringProbability, LogicProgram) :
                     self.leakprobatoms.add(example)
         return self.leakprobatoms
 
-    def _evaluate_examples( self ) :
+    def _evaluate_examples(self):
         """Evaluate the model with its current estimates for all examples."""
         
         results = []
@@ -448,7 +449,7 @@ class LFIProblem(SemiringProbability, LogicProgram) :
             results.append((p_evidence, p_queries))
         return results
     
-    def _update(self, results) :
+    def _update(self, results):
         """Update the current estimates based on the latest evaluation results."""
         
         fact_marg = [0.0] * self.count
@@ -456,8 +457,7 @@ class LFIProblem(SemiringProbability, LogicProgram) :
         score = 0.0
         for pEvidence, result in results:
             for fact, value in result.items():
-                fact = str(fact)
-                index = int(fact.split('(')[0].rsplit('_',1)[1])
+                index = int(fact.functor.rsplit('_', 1)[1])
                 fact_marg[index] += value
                 fact_count[index] += 1
             try:
@@ -465,13 +465,12 @@ class LFIProblem(SemiringProbability, LogicProgram) :
             except ValueError:
                 raise ProbLogError('Inconsistent evidence.')
 
-        output = {}
-        for index in range(0, self.count) :
-            if fact_count[index] > 0 :
+        for index in range(0, self.count):
+            if fact_count[index] > 0:
                 self.weights[index] = fact_marg[index] / fact_count[index]
         return score
         
-    def step(self) :
+    def step(self):
         self.iteration += 1
         results = self._evaluate_examples()
         return self._update(results)
@@ -509,6 +508,7 @@ def extract_evidence(pl):
         else:
             atoms.append((atom, Term('true')))
     return atoms
+
 
 def read_examples(*filenames):
     
@@ -559,7 +559,13 @@ def argparser():
     parser.add_argument('-l', '--leak-probabilities', dest='leakprob', type=float,
                         help='Add leak probabilities for evidence atoms.')
     parser.add_argument('--propagate-evidence', action='store_true',
-                        help='Propagate evidence.')
+                        dest='propagate_evidence',
+                        default=True,
+                        help="Enable evidence propagation")
+    parser.add_argument('--dont_propagate-evidence', action='store_false',
+                        dest='propagate_evidence',
+                        default=True,
+                        help="Disable evidence propagation")
     parser.add_argument('-v', '--verbose', action='count', default=0)
     parser.add_argument('--web', action='store_true', help=argparse.SUPPRESS)
     return parser
