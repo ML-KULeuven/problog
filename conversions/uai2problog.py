@@ -23,7 +23,7 @@ num_vars = 0
 num_funcs = 0
 dom_sizes = []
 domains = []
-var_parents = []
+func_vars = []
 func_values = []
 
 
@@ -44,26 +44,27 @@ def error(string, halt=False):
     if halt:
         sys.exit(1)
 
-def construct_cpt(var):
+def construct_cpt(func_num):
     global domains
+    if func_num >= len(func_vars) or func_vars[func_num] is None:
+        error('Variables not defined for function {}'.format(func_num), halt=True)
+    variables = func_vars[func_num]
+    var = variables[-1]
+    parents = variables[0:-1]
     rv = 'v{}'.format(var)
-    if var >= len(domains):
-        error('Less domains defined than this variable: {}'.format(var), halt=True)
-    if domains[var] is None:
+    if var >= len(domains) or domains[var] is None:
         error('Variable domain is not defined: {}'.format(var), halt=True)
     values = domains[var]
-    if var_parents[var] is None:
-        error('Parents for node {} not defined.'.format(var), halt=True)
-    parents = ['v{}'.format(p) for p in var_parents[var]]
+    parents_str = ['v{}'.format(p) for p in parents]
     if len(parents) == 0:
         table = func_values[var]
-        return CPT(rv, values, parents, table)
+        return CPT(rv, values, parents_str, table)
     parent_domains = []
-    for parent in var_parents[var]:
+    for parent in parents:
         parent_domains.append(domains[parent])
     idx = 0
     try:
-        cur_func_values = func_values[var]
+        cur_func_values = func_values[func_num]
     except:
         error('Could not find function definition for {}'.format(var), halt=True)
     dom_size = dom_sizes[var]
@@ -71,12 +72,12 @@ def construct_cpt(var):
     for val_assignment in itertools.product(*parent_domains):
         table[val_assignment] = cur_func_values[idx:idx+dom_size]
         idx += dom_size
-    return CPT(rv, values, parents, table)
+    return CPT(rv, values, parents_str, table)
 
 def construct_pgm():
     pgm = PGM()
-    for var_num in range(num_vars):
-        cpt = construct_cpt(var_num)
+    for func_num in range(num_funcs):
+        cpt = construct_cpt(func_num)
         debug(str(cpt))
         pgm.add(cpt)
     return pgm
@@ -120,25 +121,23 @@ def parse_header(ifile):
         error('For BAYES we expect one function for every variables but found: {}'.format(num_funcs), halt=True)
 
 def parse_graph(ifile):
-    global var_parents
+    global func_vars
     debug('Parsing function structures')
-    for num_var in range(num_funcs):
-        debug('Parsing function structure {}'.format(num_var))
+    for num_func in range(num_funcs):
+        debug('Parsing function structure {}'.format(num_func))
         line = ifile.readline().strip()
         if line == '':
-            error('Did not expect empty line for function definition {}'.format(num_var), halt=True)
+            error('Did not expect empty line for function definition {}'.format(num_func), halt=True)
         line = [int(v) for v in line.split()]
         func_size = line[0]
-        parents = line[1:-1]
-        rv = line[-1]
-        if len(parents) != func_size-1:
-            error('Expected {} parents, found {}\n{}'.format(func_size-1, len(parents), line), halt=True)
-        if num_var != rv:
-            error('Expected current variable ({}) as last variable, found {}'.format(num_var, rv), halt=True)
+        if len(line) != func_size+1:
+            error('Expected {} variables, found {}\n{}'.format(func_size-1, len(parents), line), halt=True)
+        # if num_func != rv:
+            # error('Expected current variable ({}) as last variable, found {}'.format(num_func, rv), halt=True)
         # for parent in parents:
-            # if parent >= num_var:
+            # if parent >= num_func:
                 # error('Found parent ({}) that is not yet defined\n{}'.format(parent, line), halt=True)
-        var_parents[num_var] = parents
+        func_vars.append(line[1:])
 
 def parse_functions(ifile):
     global func_values
@@ -174,7 +173,7 @@ def parse(ifile):
 
 def print_datastructures():
     print('Domain sizes: {}'.format(' '.join([str(s) for s in dom_sizes])))
-    print('Function structures:\n  {}'.format('\n  '.join([' '.join([str(pp) for pp in p]) for p in var_parents])))
+    print('Function structures:\n  {}'.format('\n  '.join([' '.join([str(pp) for pp in p]) for p in func_vars])))
 
 
 def main(argv=None):
