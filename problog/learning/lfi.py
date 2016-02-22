@@ -56,10 +56,10 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../')))
 
 from problog.engine import DefaultEngine, ground
 from problog.evaluator import SemiringProbability
-from problog.logic import Term, Constant, Clause, AnnotatedDisjunction, Or
+from problog.logic import Term, Constant, Clause, AnnotatedDisjunction, Or, Var
 from problog.program import PrologString, PrologFile, LogicProgram
 from problog.core import ProbLogError
-from problog.errors import process_error
+from problog.errors import process_error, InconsistentEvidenceError
 from problog.sdd_formula import SDD
 
 from problog import get_evaluatable, get_evaluatables
@@ -77,7 +77,23 @@ def str2bool(s):
 
 class LFIProblem(SemiringProbability, LogicProgram) :
     
-    def __init__(self, source, examples, max_iter=10000, min_improv=1e-10, verbose=0, knowledge=SDD, **extra):
+    def __init__(self, source, examples, max_iter=10000, min_improv=1e-10, verbose=0, knowledge=SDD,
+                 leakprob=None, propagate_evidence=True, **extra):
+        """
+        :param source:
+        :param examples:
+        :param max_iter:
+        :param min_improv:
+        :param verbose:
+        :param knowledge:
+        :param leakprob: Add all true evidence atoms with the given probability
+                         to avoid 'inconsistent evidence' errors. This also
+                         allows to learn a program without constants and
+                         retrieve the constants from the evidence file.
+                         (default: None)
+        :param extra:
+        :return:
+        """
         SemiringProbability.__init__(self)
         LogicProgram.__init__(self)
         self.source = source
@@ -85,6 +101,9 @@ class LFIProblem(SemiringProbability, LogicProgram) :
         self.queries = []
         self.weights = []
         self.examples = examples
+        self.leakprob = leakprob
+        self.leakprobatoms = None
+        self.propagate_evidence = propagate_evidence
         self._compiled_examples = None
         
         self.max_iter = max_iter
@@ -105,7 +124,7 @@ class LFIProblem(SemiringProbability, LogicProgram) :
             assert(len(a.args) == 1)
             index = int(a.args[0])
             return self.weights[index]
-        else :
+        else:
             return float(a)
          
     @property 
@@ -128,13 +147,21 @@ class LFIProblem(SemiringProbability, LogicProgram) :
         # ( atom ), ( ( value, ... ), ... ) 
 
         # Simple implementation: don't add neutral evidence.
-        result = defaultdict(list)
-        for example in self.examples:
-            atoms, values = zip(*example)
-            result[atoms].append(values)
-        return result
+
+        if self.propagate_evidence:
+            result = []
+            for example in self.examples:
+                atoms, values = zip(*example)
+                result.append((atoms, [values]))
+            return result
+        else:
+            result = defaultdict(list)
+            for example in self.examples:
+                atoms, values = zip(*example)
+                result[atoms].append(values)
+            return result.items()
     
-    def _compile_examples( self ) :
+    def _compile_examples(self):
         """Compile examples.
     
         :param examples: Output of ::func::`process_examples`.
@@ -143,20 +170,28 @@ class LFIProblem(SemiringProbability, LogicProgram) :
 
         baseprogram = DefaultEngine().prepare(self)
         examples = self._process_examples()
-
         result = []
-        n = 0
-        for atoms, example_group in examples.items():
+        for atoms, example_group in examples:
             ground_program = None   # Let the grounder decide
-            for example in example_group :
+            for n, example in enumerate(example_group):
                 if self.verbose:
-                    n += 1
                     logger.debug('Compiling example %s ...' % n)
 
                 ground_program = ground(baseprogram, ground_program,
-                                        evidence=list(zip(atoms, example)))
+                                        evidence=list(zip(atoms, example)),
+                                        propagate_evidence=self.propagate_evidence)
+                for i, node, t in ground_program:
+                    if t == 'atom' and \
+                            isinstance(node.probability, Term) and \
+                            node.probability.functor == 'lfi':
+                        factname = 'lfi_fact_%s' % node.probability.args[0]
+                        factargs = ()
+                        if type(node.identifier) == tuple:
+                             factargs = node.identifier[1]
+                        fact = Term(factname, *factargs)
+                        ground_program.add_query(fact, i)
                 compiled_program = self.knowledge.create_from(ground_program)
-                result.append((atoms, example, compiled_program))
+                result.append((atoms, example, compiled_program, n))
         self._compiled_examples = result
 
     def _process_atom(self, atom, body):
@@ -177,16 +212,16 @@ class LFIProblem(SemiringProbability, LogicProgram) :
         for atom in atoms:
             if atom.probability and atom.probability.functor == 't':
                 start_value = atom.probability.args[0]
-                if isinstance(start_value, Constant):
-                    available_probability -= float(start_value)
-                else:
+                if start_value.is_var():
                     num_random_weights += 1
-            elif atom.probability and atom.is_constant():
+                else:
+                    available_probability -= float(start_value)
+            elif atom.probability:
                 available_probability -= float(atom.probability)
 
-        random_weights = [random.random() for i in range(0, num_random_weights+1)]
+        random_weights = [random.random() for i in range(0, num_random_weights + 1)]
         norm_factor = available_probability / sum(random_weights)
-        random_weights = [r*norm_factor for r in random_weights]
+        random_weights = [r * norm_factor for r in random_weights]
 
         for atom in atoms:
             if atom.probability and atom.probability.functor == 't':
@@ -206,8 +241,23 @@ class LFIProblem(SemiringProbability, LogicProgram) :
                 assert(len(atom.probability.args) == 1)
                 start_value = atom.probability.args[0]
 
+                # Replace anonymous variables with non-anonymous variables.
+                class ReplaceAnon(object):
+
+                    def __init__(self):
+                        self.cnt = 0
+
+                    def __getitem__(self, key):
+                        if key == '_':
+                            self.cnt += 1
+                            return Var('anon_%s' % self.cnt)
+                        else:
+                            return Var(key)
+
+                atom1 = atom.apply(ReplaceAnon())
+
                 # 1) Introduce a new fact
-                lfi_fact = Term('lfi_fact_%d' % self.count, *atom.args)
+                lfi_fact = Term('lfi_fact_%d' % self.count, *atom1.args)
                 lfi_prob = Term('lfi', Constant(self.count))
 
                 # 2) Replacement atom
@@ -218,20 +268,20 @@ class LFIProblem(SemiringProbability, LogicProgram) :
                     new_body = body & lfi_fact
 
                 # 3) Create redirection clause
-                extra_clauses += [Clause(atom.with_probability(), new_body)]
+                extra_clauses += [Clause(atom1.with_probability(), new_body)]
 
                 # 4) Set initial weight
-                if isinstance(start_value, Constant):
-                    self.weights.append(float(start_value))
-                else:
+                if start_value.is_var():
                     self.weights.append(random_weights.pop(-1))
-
-                # 5) Add query
-                self.queries.append(lfi_fact)
-                if body:
-                    extra_clauses.append(Clause(Term('query', lfi_fact), body))
                 else:
-                    extra_clauses.append(Term('query', lfi_fact))
+                    self.weights.append(float(start_value))
+
+                # # 5) Add query
+                # self.queries.append(lfi_fact)
+                # if body:
+                #     extra_clauses.append(Clause(Term('query', lfi_fact), body))
+                # else:
+                #     extra_clauses.append(Term('query', lfi_fact))
 
                 # 6) Add name
                 self.names.append(atom)
@@ -284,7 +334,7 @@ class LFIProblem(SemiringProbability, LogicProgram) :
             return [AnnotatedDisjunction(atoms_out, body)]
         
     # Overwrite from LogicProgram    
-    def __iter__(self) :
+    def __iter__(self):
         """
         Iterate over the clauses of the source model.
         This object can be used as a LogicProgram to be passed to the grounding Engine.
@@ -317,7 +367,10 @@ class LFIProblem(SemiringProbability, LogicProgram) :
             p(X) :- lfi_fact_1(X).
             query(lfi_fact_0(X)).
             query(lfi_fact_1(X)).
-        
+
+        If ``self.leakprobs`` is a value, then during learning all true
+        examples are added to the program with the given leak probability.
+
         """
 
         if self.output_mode:
@@ -329,7 +382,7 @@ class LFIProblem(SemiringProbability, LogicProgram) :
         for clause in self.source:
             if isinstance(clause, Clause):
                 if clause.head.functor == 'query' and clause.head.arity == 1:
-                    continue                
+                    continue
                 extra_clauses = process_atom(clause.head, clause.body)
                 for extra in extra_clauses:
                     yield extra
@@ -345,15 +398,44 @@ class LFIProblem(SemiringProbability, LogicProgram) :
                 for extra in extra_clauses:
                     yield extra
 
-    def _evaluate_examples( self ) :
+        if self.leakprob is not None:
+            leakprob_atoms = self._get_leakprobatoms()
+            for example_atom in leakprob_atoms:
+                yield example_atom.with_probability(Constant(self.leakprob))
+
+    def _get_leakprobatoms(self):
+        if self.leakprobatoms is not None:
+            return self.leakprobatoms
+        self.leakprobatoms = set()
+        for examples in self.examples:
+            for example, obs in examples:
+                if obs:
+                    self.leakprobatoms.add(example)
+        return self.leakprobatoms
+
+    def _evaluate_examples(self):
         """Evaluate the model with its current estimates for all examples."""
         
         results = []
         i = 0
         logging.getLogger('problog_lfi').debug('Evaluating examples ...')
-        for at, val, comp in self._compiled_examples:
-            evidence = dict(zip(at, map(str2bool, val)))
-            evaluator = comp.get_evaluator(semiring=self, evidence=evidence)
+        for at, val, comp, n in self._compiled_examples:
+            evidence = {}
+            for a, v in zip(at, map(str2bool, val)):
+                if a in evidence:
+                    if evidence[a] != v:
+                        context = ' (found evidence({},{}) and evidence({},{}) in example {})'.format(a, evidence[a], a, v, n+1)
+                        raise InconsistentEvidenceError(source=a, context=context)
+                else:
+                    evidence[a] = v
+            try:
+                evaluator = comp.get_evaluator(semiring=self, evidence=evidence)
+            except InconsistentEvidenceError as err:
+                if err.context == '':
+                    context = ' (example {})'.format(n+1)
+                else:
+                    context = err.context + ' (example {})'.format(n+1)
+                raise InconsistentEvidenceError(err.source, context)
             p_queries = {}
             # Probability of query given evidence
             for name, node in evaluator.formula.queries():
@@ -367,7 +449,7 @@ class LFIProblem(SemiringProbability, LogicProgram) :
             results.append((p_evidence, p_queries))
         return results
     
-    def _update(self, results) :
+    def _update(self, results):
         """Update the current estimates based on the latest evaluation results."""
         
         fact_marg = [0.0] * self.count
@@ -375,8 +457,7 @@ class LFIProblem(SemiringProbability, LogicProgram) :
         score = 0.0
         for pEvidence, result in results:
             for fact, value in result.items():
-                fact = str(fact)
-                index = int(fact.split('(')[0].rsplit('_',1)[1])
+                index = int(fact.functor.rsplit('_', 1)[1])
                 fact_marg[index] += value
                 fact_count[index] += 1
             try:
@@ -384,13 +465,12 @@ class LFIProblem(SemiringProbability, LogicProgram) :
             except ValueError:
                 raise ProbLogError('Inconsistent evidence.')
 
-        output = {}
-        for index in range(0, self.count) :
-            if fact_count[index] > 0 :
+        for index in range(0, self.count):
+            if fact_count[index] > 0:
                 self.weights[index] = fact_marg[index] / fact_count[index]
         return score
         
-    def step(self) :
+    def step(self):
         self.iteration += 1
         results = self._evaluate_examples()
         return self._update(results)
@@ -428,6 +508,7 @@ def extract_evidence(pl):
         else:
             atoms.append((atom, Term('true')))
     return atoms
+
 
 def read_examples(*filenames):
     
@@ -475,6 +556,16 @@ def argparser():
                         help='write output to file')
     parser.add_argument('-k', '--knowledge', dest='koption', choices=get_evaluatables(),
                         default=None, help='knowledge compilation tool')
+    parser.add_argument('-l', '--leak-probabilities', dest='leakprob', type=float,
+                        help='Add leak probabilities for evidence atoms.')
+    parser.add_argument('--propagate-evidence', action='store_true',
+                        dest='propagate_evidence',
+                        default=True,
+                        help="Enable evidence propagation")
+    parser.add_argument('--dont-propagate-evidence', action='store_false',
+                        dest='propagate_evidence',
+                        default=True,
+                        help="Disable evidence propagation")
     parser.add_argument('-v', '--verbose', action='count', default=0)
     parser.add_argument('--web', action='store_true', help=argparse.SUPPRESS)
     return parser

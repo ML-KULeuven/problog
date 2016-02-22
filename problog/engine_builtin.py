@@ -1028,7 +1028,9 @@ def _builtin_consult(filename, database=None, engine=None, **kwdargs):
 
     root = database.source_root
     if filename.location:
-        root = os.path.dirname(database.source_files[filename.location[0]])
+        source_root = database.source_files[filename.location[0]]
+        if source_root:
+            root = os.path.dirname(source_root)
     check_mode((filename,), ['a'], functor='consult', **kwdargs)
     filename = os.path.join(root, _atom_to_filename(filename))
     if not os.path.exists(filename):
@@ -1108,8 +1110,8 @@ def _select_sublist(lst, target):
         if lst[i][1] != target.TRUE:
             choice_bits[i] = x
             x += 1
-    # We have 2^x distinct lists. Each can be represented as a number between 0 and n.
-    n = (1 << x)
+    # We have 2^x distinct lists. Each can be represented as a number between 0 and 2^x-1=n.
+    n = (1 << x) - 1
 
     while n >= 0:
         # Generate the list of positive values and node identifiers
@@ -1341,8 +1343,8 @@ class problog_export(object):
         elif t == 'list':
             return list2term(a)
         elif t == 'term':
-            if not isinstance(t, Term):
-                raise ValueError("Expected term output, got '%s' instead." % t)
+            if not isinstance(a, Term):
+                raise ValueError("Expected term output, got '%s' instead." % type(a))
             return a
         else:
             raise ValueError("Unknown type specifier '%s'!" % t)
@@ -1353,9 +1355,12 @@ class problog_export(object):
     def _convert_outputs(self, args):
         return [self._convert_output(a, t) for a, t in zip(args, self.output_arguments)]
 
-    def __call__(self, function):
+    def __call__(self, function, funcname=None):
+        if funcname is None:
+            funcname = function.__name__
+
         def _wrapped_function(*args, **kwdargs):
-            bound = check_mode(args, list(self._extract_callmode()), function.__name__, **kwdargs)
+            bound = check_mode(args, list(self._extract_callmode()), funcname, **kwdargs)
             converted_args = self._convert_inputs(args)
             result = function(*converted_args)
             if len(self.output_arguments) == 1:
@@ -1373,16 +1378,88 @@ class problog_export(object):
             except UnifyError:
                 return []
 
-        problog_export.add_function(function.__name__, len(self.input_arguments),
+        problog_export.add_function(funcname, len(self.input_arguments),
                                     len(self.output_arguments), _wrapped_function)
         return function
 
 
 # noinspection PyPep8Naming
-class problog_export_nondet(problog_export):
-    def __call__(self, function):
+class problog_export_raw(problog_export):
+
+    # noinspection PyUnusedLocal
+    def __init__(self, *args, **kwdargs):
+        problog_export.__init__(self, *args, **kwdargs)
+        self.input_arguments = [a[1:] for a in args]
+
+    def _convert_input(self, a, t):
+        if is_variable(a):
+            return None
+        else:
+            return problog_export._convert_input(self, a, t)
+
+    def _extract_callmode(self):
+        callmode_in = ''
+
+        # multiple call modes: index = binary encoding on whether the output is bound
+        # 0 -> all unbound
+        # 1 -> first output arg is bound
+        # 2 -> second output arg is bound
+        # 3 -> first and second are bound
+
+        n = len(self.input_arguments)
+        for i in range(0, 1 << n):
+            callmode = callmode_in
+            for j, t in enumerate(self.input_arguments):
+                if i & (1 << (n - j - 1)):
+                    callmode += self._type_to_callmode(t)
+                else:
+                    callmode += 'v'
+            yield callmode
+
+    def __call__(self, function, funcname=None):
+        if funcname is None:
+            funcname = function.__name__
+
+
         def _wrapped_function(*args, **kwdargs):
-            bound = check_mode(args, list(self._extract_callmode()), function.__name__, **kwdargs)
+            bound = check_mode(args, list(self._extract_callmode()), funcname, **kwdargs)
+            converted_args = self._convert_inputs(args)
+            results = []
+            for result in function(*converted_args):
+                if len(result) == 2 and type(result[0]) == tuple:
+                    # Probabilistic
+                    result, p = result
+                    raise Exception('We don\'t support probabilistic yet!')
+                else:
+                    p = None
+
+                # result is always a list of tuples
+                try:
+                    transformed = []
+                    for i, r in enumerate(result):
+                        r = self._convert_output(r, self.input_arguments[i])
+                        if bound & (1 << i):
+                            r = unify_value(r, args[i], {})
+                        transformed.append(r)
+                    result = tuple(transformed)
+                    results.append(result)
+                except UnifyError:
+                    pass
+            return results
+
+        problog_export.add_function(funcname, len(self.input_arguments),
+                                    0, _wrapped_function)
+        return function
+
+
+# noinspection PyPep8Naming
+class problog_export_nondet(problog_export):
+    def __call__(self, function, funcname=None):
+        if funcname is None:
+            funcname = function.__name__
+
+        def _wrapped_function(*args, **kwdargs):
+            bound = check_mode(args, list(self._extract_callmode()), funcname, **kwdargs)
             converted_args = self._convert_inputs(args)
             results = []
             for result in function(*converted_args):
@@ -1402,7 +1479,7 @@ class problog_export_nondet(problog_export):
                     pass
             return results
 
-        problog_export.add_function(function.__name__, len(self.input_arguments),
+        problog_export.add_function(funcname, len(self.input_arguments),
                                     len(self.output_arguments), _wrapped_function)
         return function
 
@@ -1411,10 +1488,14 @@ def _builtin_use_module(filename, database=None, location=None, **kwdargs):
     if filename.functor == 'library' and filename.arity == 1:
         filename = os.path.join(os.path.dirname(__file__), 'library',
                                 _atom_to_filename(filename.args[0]))
+        if not os.path.exists(filename + '.pl'):
+            filename += '.py'
     else:
         root = database.source_root
         if filename.location:
-            root = os.path.dirname(database.source_files[filename.location[0]])
+            source_root = database.source_files[filename.location[0]]
+            if source_root:
+                root = os.path.dirname(source_root)
 
         filename = os.path.join(root, _atom_to_filename(filename))
 
@@ -1491,5 +1572,5 @@ class IndirectCallCycleError(GroundingError):
 
     def __init__(self, location=None):
         GroundingError.__init__(self,
-                                'Indirect cycle detected (passing through call/1 or findall/3)',
+                                'Indirect cycle detected (passing through findall/3)',
                                 location)

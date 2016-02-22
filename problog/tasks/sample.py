@@ -100,46 +100,7 @@ except ImportError:
             return k - 1
 
 
-def sample_value(term):
-    """
-    Sample a value from the distribution described by the term.
-   :param term: term describing a distribution
-   :type term: Term
-   :return: value of the term, probability of the choice
-   :rtype: Constant
-    """
-    # TODO add discrete distribution
-    if term.functor == 'normal' or term.functor == 'gaussian':
-        a, b = map(float, term.args)
-        return Constant(random.normalvariate(a, b)), 0.0
-    elif term.functor == 'poisson':
-        a = map(float, term.args)
-        return Constant(sample_poisson(a)), 0.0
-    elif term.functor == 'exponential':
-        a = map(float, term.args), 0.0
-        return Constant(random.expovariate(a)), 0.0
-    elif term.functor == 'beta':
-        a, b = map(float, term.args)
-        return Constant(random.betavariate(a, b)), 0.0
-    elif term.functor == 'gamma':
-        a, b = map(float, term.args)
-        return Constant(random.gammavariate(a, b)), 0.0
-    elif term.functor == 'uniform':
-        a, b = map(float, term.args)
-        return Constant(random.uniform(a, b)), 0.0
-    elif term.functor == 'triangular':
-        a, b, c = map(float, term.args)
-        return Constant(random.triangular(a, b, c)), 0.0
-    elif term.functor == 'vonmises':
-        a, b = map(float, term.args)
-        return Constant(random.vonmisesvariate(a, b)), 0.0
-    elif term.functor == 'weibull':
-        a, b = map(float, term.args)
-        return Constant(random.weibullvariate(a, b)), 0.0
-    elif term.functor == 'fixed':
-        return term.args[0], 1.0
-    else:
-        raise ValueError("Unknown distribution: '%s'" % term.functor)
+
 
 
 class FunctionStore(object):
@@ -181,6 +142,36 @@ class SampledFormula(LogicFormula):
         self.probability = 1.0  # Try to compute
         self.values = []
 
+        self.distributions = {
+            'normal': random.normalvariate,
+            'gaussian': random.normalvariate,
+            'poisson': sample_poisson,
+            'exponential': random.expovariate,
+            'beta': random.betavariate,
+            'gamma': random.gammavariate,
+            'uniform': random.uniform,
+            'triangular': random.triangular,
+            'vonmises': random.vonmisesvariate,
+            'weibull': random.weibullvariate,
+        }
+
+    def sample_value(self, term):
+        """
+        Sample a value from the distribution described by the term.
+       :param term: term describing a distribution
+       :type term: Term
+       :return: value of the term, probability of the choice
+       :rtype: Constant
+        """
+        if term.functor == 'fixed':
+            return term.args[0], 1.0
+        elif term.functor in self.distributions:
+            args = map(float, term.args)
+            value = self.distributions[term.functor](*args)
+            return Constant(value), 0.0
+        else:
+            raise ValueError("Unknown distribution: '%s'" % term.functor)
+
     def _is_simple_probability(self, term):
         try:
             float(term)
@@ -214,7 +205,7 @@ class SampledFormula(LogicFormula):
                         result_node = self.FALSE
                         self.probability *= (1 - prob)
                 else:
-                    value, prob = sample_value(probability)
+                    value, prob = self.sample_value(probability)
                     self.probability *= prob
                     result_node = self.add_value(value)
                 self.facts[identifier] = result_node
@@ -247,7 +238,7 @@ class SampledFormula(LogicFormula):
                     else:
                         result_node = self.FALSE
                 else:
-                    value, prob = sample_value(probability)
+                    value, prob = self.sample_value(probability)
                     self.probability *= prob
                     result_node = self.add_value(value)
                 self.facts[identifier] = result_node
@@ -339,6 +330,8 @@ class SampledFormula(LogicFormula):
                     result[k] = True
                 else:
                     result[k] = val
+            else:
+                result[k] = False
         return result
 
 
@@ -458,7 +451,7 @@ def init_db(engine, model, propagate_evidence=False):
     return db, evidence_facts, ev_target
 
 
-def sample(model, n=1, format='str', propagate_evidence=False, **kwdargs):
+def sample(model, n=1, format='str', propagate_evidence=False, distributions=None, **kwdargs):
     engine = init_engine(**kwdargs)
     db, evidence, ev_target = init_db(engine, model, propagate_evidence)
     i = 0
@@ -466,6 +459,9 @@ def sample(model, n=1, format='str', propagate_evidence=False, **kwdargs):
 
     while i < n:
         target = SampledFormula()
+        if distributions is not None:
+            target.distributions.update(distributions)
+
         for ev_fact in evidence:
             target.add_atom(*ev_fact)
 
@@ -662,7 +658,12 @@ def main(args, result_handler=None):
     parser.add_argument('--with-probability', action='store_true', help="Show probability.")
     parser.add_argument('--as-evidence', action='store_true', help="Output as evidence.")
     parser.add_argument('--propagate-evidence', dest='propagate_evidence',
+                        default=True,
                         action='store_true', help="Enable evidence propagation")
+    parser.add_argument('--dont-propagate-evidence', action='store_false',
+                        dest='propagate_evidence',
+                        default=True,
+                        help="Disable evidence propagation")
     parser.add_argument('--oneline', action='store_true', help="Format samples on one line.")
     parser.add_argument('--estimate', action='store_true',
                         help='Estimate probability of queries from samples.')
