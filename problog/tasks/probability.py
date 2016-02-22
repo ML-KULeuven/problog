@@ -168,7 +168,7 @@ def argparser():
                         dest='propagate_evidence',
                         default=True,
                         help="Enable evidence propagation")
-    parser.add_argument('--dont_propagate-evidence', action='store_false',
+    parser.add_argument('--dont-propagate-evidence', action='store_false',
                         dest='propagate_evidence',
                         default=False,
                         help="Disable evidence propagation")

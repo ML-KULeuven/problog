@@ -216,10 +216,10 @@ class LFIProblem(SemiringProbability, LogicProgram) :
                     num_random_weights += 1
                 else:
                     available_probability -= float(start_value)
-            elif atom.probability and atom.is_constant():
+            elif atom.probability:
                 available_probability -= float(atom.probability)
 
-        random_weights = [random.random() for i in range(0, num_random_weights+1)]
+        random_weights = [random.random() for i in range(0, num_random_weights + 1)]
         norm_factor = available_probability / sum(random_weights)
         random_weights = [r * norm_factor for r in random_weights]
 
@@ -562,7 +562,7 @@ def argparser():
                         dest='propagate_evidence',
                         default=True,
                         help="Enable evidence propagation")
-    parser.add_argument('--dont_propagate-evidence', action='store_false',
+    parser.add_argument('--dont-propagate-evidence', action='store_false',
                         dest='propagate_evidence',
                         default=True,
                         help="Disable evidence propagation")
