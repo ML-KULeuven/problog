@@ -37,7 +37,7 @@ def py2pl(d):
         return tail
 
     if type(d) == str:
-        return Constant('"{}"'.format(d))
+        return Constant("'{}'".format(d))
 
     if type(d) == int or type(d) == float:
         return Constant(d)
@@ -53,7 +53,7 @@ def pl2py(d):
 
     if isinstance(d, Constant):
         if type(d.value) == str:
-            return d.value.replace('"', '')
+            return d.value.replace('"', '').replace("'", '')
         return d.value
 
     if isinstance(d, Term):
