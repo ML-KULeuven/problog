@@ -77,7 +77,7 @@ def str2bool(s):
 
 class LFIProblem(SemiringProbability, LogicProgram) :
     
-    def __init__(self, source, examples, max_iter=10000, min_improv=1e-10, verbose=0, knowledge=SDD, leakprob=None, **extra):
+    def __init__(self, source, examples, max_iter=10000, min_improv=1e-10, verbose=0, knowledge=SDD, leakprob=None, propagate_evidence=False, **extra):
         """
         :param source:
         :param examples:
@@ -102,6 +102,7 @@ class LFIProblem(SemiringProbability, LogicProgram) :
         self.examples = examples
         self.leakprob = leakprob
         self.leakprobatoms = None
+        self.propagate_evidence = propagate_evidence
         self._compiled_examples = None
         
         self.max_iter = max_iter
@@ -145,11 +146,19 @@ class LFIProblem(SemiringProbability, LogicProgram) :
         # ( atom ), ( ( value, ... ), ... ) 
 
         # Simple implementation: don't add neutral evidence.
-        result = defaultdict(list)
-        for example in self.examples:
-            atoms, values = zip(*example)
-            result[atoms].append(values)
-        return result
+
+        if self.propagate_evidence:
+            result = []
+            for example in self.examples:
+                atoms, values = zip(*example)
+                result.append((atoms, [values]))
+            return result
+        else:
+            result = defaultdict(list)
+            for example in self.examples:
+                atoms, values = zip(*example)
+                result[atoms].append(values)
+            return result.items()
     
     def _compile_examples(self):
         """Compile examples.
@@ -161,14 +170,15 @@ class LFIProblem(SemiringProbability, LogicProgram) :
         baseprogram = DefaultEngine().prepare(self)
         examples = self._process_examples()
         result = []
-        for atoms, example_group in examples.items():
+        for atoms, example_group in examples:
             ground_program = None   # Let the grounder decide
             for n, example in enumerate(example_group):
                 if self.verbose:
                     logger.debug('Compiling example %s ...' % n)
 
                 ground_program = ground(baseprogram, ground_program,
-                                        evidence=list(zip(atoms, example)))
+                                        evidence=list(zip(atoms, example)),
+                                        propagate_evidence=self.propagate_evidence)
                 for i, node, t in ground_program:
                     if t == 'atom' and \
                             isinstance(node.probability, Term) and \
@@ -548,6 +558,8 @@ def argparser():
                         default=None, help='knowledge compilation tool')
     parser.add_argument('-l', '--leak-probabilities', dest='leakprob', type=float,
                         help='Add leak probabilities for evidence atoms.')
+    parser.add_argument('--propagate-evidence', action='store_true',
+                        help='Propagate evidence.')
     parser.add_argument('-v', '--verbose', action='count', default=0)
     parser.add_argument('--web', action='store_true', help=argparse.SUPPRESS)
     return parser
