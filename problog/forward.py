@@ -27,7 +27,7 @@ from .dd_formula import DD
 from .sdd_formula import SDD
 from .bdd_formula import BDD
 from .core import transform
-from .evaluator import Evaluator, Evaluatable
+from .evaluator import Evaluator, EvaluatableDSP
 
 from .dd_formula import build_dd
 
@@ -461,13 +461,13 @@ def build_sdd(source, destination, **kwdargs):
     return result
 
 
-class ForwardSDD(LogicFormula, Evaluatable):
+class ForwardSDD(LogicFormula, EvaluatableDSP):
 
     transform_preference = 30
 
     def __init__(self, **kwargs):
         LogicFormula.__init__(self, **kwargs)
-        Evaluatable.__init__(self)
+        EvaluatableDSP.__init__(self)
         self.kwargs = kwargs
 
     @classmethod
@@ -478,13 +478,13 @@ class ForwardSDD(LogicFormula, Evaluatable):
         return ForwardEvaluator(self, semiring, _ForwardSDD(**self.kwargs), weights, **kwargs)
 
 
-class ForwardBDD(LogicFormula, Evaluatable):
+class ForwardBDD(LogicFormula, EvaluatableDSP):
 
     transform_preference = 40
 
     def __init__(self, **kwargs):
         LogicFormula.__init__(self, **kwargs)
-        Evaluatable.__init__(self)
+        EvaluatableDSP.__init__(self)
         self.kwargs = kwargs
 
     @classmethod
