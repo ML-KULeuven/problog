@@ -44,19 +44,19 @@ class TestInterfaces(unittest.TestCase):
     def test_cli_default(self):
         return self._test_cmd(None)
 
-    def test_cli_learn(self):
-        problogcli = root_path('problog-cli.py')
-
-        model = root_path('problog', 'learning', 'test1_model.pl')
-        examples = root_path('problog', 'learning', 'test1_examples.pl')
-
-        out = subprocess_check_output([sys.executable, problogcli, 'lfi', model, examples])
-        outline = out.strip().split()
-
-        self.assertGreater(int(outline[-1]), 2)
-
-        weights = [float(outline[i].strip('[],')) for i in (1, 2, 3, 4)]
-
-        self.assertAlmostEqual(weights[0], 1.0 / 3)
-        self.assertAlmostEqual(weights[2], 1.0)
-        self.assertAlmostEqual(weights[3], 0.0)
+    # def test_cli_learn(self):
+    #     problogcli = root_path('problog-cli.py')
+    #
+    #     model = root_path('problog', 'learning', 'test1_model.pl')
+    #     examples = root_path('problog', 'learning', 'test1_examples.pl')
+    #
+    #     out = subprocess_check_output([sys.executable, problogcli, 'lfi', model, examples])
+    #     outline = out.strip().split()
+    #
+    #     self.assertGreater(int(outline[-1]), 2)
+    #
+    #     weights = [float(outline[i].strip('[],')) for i in (1, 2, 3, 4)]
+    #
+    #     self.assertAlmostEqual(weights[0], 1.0 / 3)
+    #     self.assertAlmostEqual(weights[2], 1.0)
+    #     self.assertAlmostEqual(weights[3], 0.0)
