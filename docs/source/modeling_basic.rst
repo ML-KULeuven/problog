@@ -1,10 +1,199 @@
 Writing models in ProbLog: basic concepts
 =========================================
 
+Prolog
+------
+
+The ProbLog modeling language is based on Prolog.
+
+For a very quick introduction to Prolog you can check the `Wikipedia page <https://en.wikipedia.org/wiki/Prolog>`_.
+
+For a more in-depth introduction you can check the
+`Learn Prolog Now! <http://lpn.swi-prolog.org/lpnpage.php?pagetype=html&pageid=lpn-htmlch1>`_
+tutorial or the book `Simply Logical by Peter Flach <https://www.cs.bris.ac.uk/~flach/SimplyLogical.html>`_.
+
+ProbLog
+-------
+
+Probabilistic logic programs
+++++++++++++++++++++++++++++
+
+The main difference between Prolog and ProbLog is of course that ProbLog support probabilistic
+predicates.
+In the language, this extension is realized by the addition of a single operator ``::``.
+
+In an example program involving coin tosses, we could have the following statement.
+
+.. code-block:: prolog
+
+    0.5::heads.
+
+This indicates that the fact `heads` is true with probability 0.5.
+
+This statement introduces *one* probabilistic choice.
+If we want to model two coins, we need two separate facts:
+
+.. code-block:: prolog
+
+    0.5::heads1.
+    0.5::heads2.
+
+We can generalize this to an unbound number of coins by using a variable argument:
+
+.. code-block:: prolog
+
+    0.5::heads(C).
+
+ProbLog also supports non-binary choices.
+For example, we can model the throw of die as follows.
+
+.. code-block:: prolog
+
+    1/6::die(D, 1); 1/6::die(D, 2); 1/6::die(D, 3);
+    1/6::die(D, 4); 1/6::die(D, 5); 1/6::die(D, 6).
+
+This type of statement is called an *annotated disjunction*.
+It expresses that at most one of these choices is true.
+There is always an implicit *null* choice which states that none of the options is taken.
+In this example, however, that extra state has zero probability because the probabilities of the
+other states sum to one.
+
+ProbLog also supports probabilities in the head of clauses.
+
+.. code-block:: prolog
+
+    0.1::burglary.
+    0.9::alarm :- burglary.
+
+This means that if burglary is true, alarm will be true as well with 90% probability.
+Such a program can always be transformed into a program with just probabilistic facts.
+
+.. code-block:: prolog
+
+    0.1::burglary.
+    0.9::alarm_on_burglary.
+
+    alarm :- burglary, alarm_on_burglary.
+
+
+Queries and evidence
+++++++++++++++++++++
+
+ProbLog models usually include information about queries and evidence.
+A query indicates for which entity we want to compute the probability.
+Evidence specifies any observations on which we want to condition this probability.
+
+Queries are specified by adding a fact ``query(Query)``:
+
+.. code-block:: prolog
+
+    0.5::heads(C).
+    two_heads :- heads(c1), heads(c2).
+    query(two_heads).
+
+Queries can also be added in batch.
+
+.. code-block:: prolog
+
+    0.5::heads(C).
+    query(heads(C)) :- between(1, 4, C).
+
+This will add the queries ``heads(1)``, ``heads(2)``, ``heads(3)`` and ``heads(4)``.
+
+It is also possible to give a non-ground query, on the condition that the program itself contains
+sufficient information to ground the probabilistic parts.
+
+.. code-block:: prolog
+
+    0.5::heads(C) :- between(1, 4, C).
+    query(heads(C)).
+
+This has the same effect as the previous program.
+
+Evidence conditions a part of the program to be true or false.
+
+It can be specified using a fact ``evidence(Literal)``.
+
+.. code-block:: prolog
+
+    0.5::heads(C).
+    two_heads :- heads(c1), heads(c2).
+    evidence(\+ two_heads).
+    query(heads(c1)).
+
+This program computes the probability that the first coin toss produces heads when we know
+that the coin tosses did not both produce heads.
+You can try it out in the `online editor <https://dtai.cs.kuleuven.be/problog/editor.html#task=prob&hash=aeb6af5c90ea198a9f933516e5710fbe>`_.
+
+
+Tabling
++++++++
+
+In ProbLog everything is tabled (or memoized).
+Tabling is an advanced form of caching that is used to speed-up the execution of logic programs and
+that allows certain types of cyclic programs.
+
+Consider for example the following program that computes Fibonacci numbers.
+
+.. code-block:: prolog
+
+    fib(1, 1).
+    fib(2, 1).
+    fib(N, F) :-
+        N > 2,
+        N1 is N - 1,
+        N2 is N - 2,
+        fib(N1, F1),
+        fib(N2, F2),
+        F is F1 + F2.
+
+In standard Prolog the execution time of this program is exponential in the size of N because
+computations are not reused between recursive calls.
+In tabled Prolog, the results of each computation is stored and reused when possible.
+In this way, the above program becomes linear.
+
+The previous example shows the power of caching, but tabling goes further than that.
+Consider the following program that defines the ancestor relation in a family tree.
+
+.. code-block:: prolog
+
+    parent(ann, bob).
+    parent(ann, chris).
+    parent(bob, derek).
+
+    ancestor(X, Y) :- ancestor(X, Z), parent(Z, Y).
+    ancestor(X, Y) :- parent(X, Y).
+
+We want to find out the descendents of Ann (i.e. the query `ancestor(ann, X)`).
+In standard ProbLog this program goes into an infinite recursion because the call to
+`ancestor(ann, X)` leads immediately back to the equivalent call `ancestor(ann, Z)`.
+
+In tabled Prolog, the identical call is detected and postponed,
+and the correct results are produced.
+
+Another example is that of finding a path in a (possibly cyclic) graph.
+In ProbLog (or any other tabled Prolog) you can simply write.
+
+.. code-block:: prolog
+
+    path(X, Y) :- edge(X, Y).
+    path(X, Y) :- edge(X, Z), path(Z, Y).
+
+Control predicates
+++++++++++++++++++
+
+ProbLog uses Prolog to generate a ground version of a probabilistic logic program.
+As a result, it does not support certain features that have no meaning in a probabilistic setting.
+This includes cuts (``!``) and any other mechanism that breaks the pure logic interpretation of the
+program.
+
+For a full list of features that ProbLog does (not) support, please check :doc:`this section <prolog>`.
+
+
 Tutorial
 --------
 
-See the `interactive tutorial <https://dtai.cs.kuleuven.be/problog/tutorial.html>`_.
+More examples are available in the `interactive tutorial <https://dtai.cs.kuleuven.be/problog/tutorial.html>`_.
 
 Libraries
 ---------
