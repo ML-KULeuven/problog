@@ -311,7 +311,16 @@ problog.init = function(hostname) {
         problog.hostname = hostname;
     }
 
-    $('head').append('<style type="text/css">.problog-edit-editor {height: 400px; width: 100%;} .problog-editor {width:100%;} .problog-editor-hash {float:right; margin-right:5px;} .problog-edit-editor-small {height: 200px; width: 100%;} .glyphicon-refresh-animate {-animation: spin .7s infinite linear; -webkit-animation: spin2 .7s infinite linear;} @-webkit-keyframes spin2 { from { -webkit-transform: rotate(0deg);} to { -webkit-transform: rotate(360deg); } @keyframes spin { from { transform: scale(1) rotate(0deg);} to { transform: scale(1) rotate(360deg);}  </style>')
+    $('head').append('<style type="text/css"> \
+       .problog-edit-editor {height: 400px; width: 100%;} \
+       .problog-editor {width:100%;} \
+       .problog-editor-hash {float:right; margin-right:5px;} \
+       .problog-edit-editor-small {height: 200px; width: 100%;} \
+       .problog-result-sortable {cursor: pointer;} \
+       .problog-result-sorted-asc::after {content: "\\025bc";} \
+       .problog-result-sorted-desc::after {content: "\\025b2";} \
+       .glyphicon-refresh-animate {-animation: spin .7s infinite linear; -webkit-animation: spin2 .7s infinite linear;} @-webkit-keyframes spin2 { from { -webkit-transform: rotate(0deg);} to { -webkit-transform: rotate(360deg); } @keyframes spin { from { transform: scale(1) rotate(0deg);} to { transform: scale(1) rotate(360deg);} \
+       </style>');
     $.each($(problog.selector), problog.init_editor);
 }
 
@@ -626,8 +635,8 @@ problog.sortTable = function(table, dir, col){
   rows.sort(function(a, b) {
 
     // get the text of col-th <td> of <tr>
-    var a = $(a).children('td').eq(col).text().toUpperCase();
-    var b = $(b).children('td').eq(col).text().toUpperCase();
+    var a = $(a).children('td').eq(col).text().toLowerCase();
+    var b = $(b).children('td').eq(col).text().toLowerCase();
     //if(a < b) {
      //return -1*dir;
     //}
@@ -644,46 +653,54 @@ problog.sortTable = function(table, dir, col){
 }
 
 /*
- * Natural Sort algorithm for Javascript - Version 0.7 - Released under MIT license
+ * Natural Sort algorithm for Javascript - Version 0.8.1 - Released under MIT license
  * Author: Jim Palmer (based on chunking idea from Dave Koelle)
  */
 problog.naturalSort = function(a, b) {
-   var re = /(^-?[0-9]+(\.?[0-9]*)[df]?e?[0-9]?$|^0x[0-9a-f]+$|[0-9]+)/gi,
-     sre = /(^[ ]*|[ ]*$)/g,
-     dre = /(^([\w ]+,?[\w ]+)?[\w ]+,?[\w ]+\d+:\d+(:\d+)?[\w ]?|^\d{1,4}[\/\-]\d{1,4}[\/\-]\d{1,4}|^\w+, \w+ \d+, \d{4})/,
-     hre = /^0x[0-9a-f]+$/i,
-     ore = /^0/,
-     i = function(s) { return problog.naturalSort.insensitive && (''+s).toLowerCase() || ''+s },
-     // convert all to strings strip whitespace
-     x = i(a).replace(sre, '') || '',
-     y = i(b).replace(sre, '') || '',
-     // chunk/tokenize
-     xN = x.replace(re, '\0$1\0').replace(/\0$/,'').replace(/^\0/,'').split('\0'),
-     yN = y.replace(re, '\0$1\0').replace(/\0$/,'').replace(/^\0/,'').split('\0'),
-     // numeric, hex or date detection
-     xD = parseInt(x.match(hre)) || (xN.length != 1 && x.match(dre) && Date.parse(x)),
-     yD = parseInt(y.match(hre)) || xD && y.match(dre) && Date.parse(y) || null,
-     oFxNcL, oFyNcL;
-   // first try and sort Hex codes or Dates
-   if (yD)
-     if ( xD < yD ) return -1;
-     else if ( xD > yD ) return 1;
-   // natural sorting through split numeric strings and default strings
-   for(var cLoc=0, numS=Math.max(xN.length, yN.length); cLoc < numS; cLoc++) {
-     // find floats not starting with '0', string or 0 if not defined (Clint Priest)
-     oFxNcL = !(xN[cLoc] || '').match(ore) && parseFloat(xN[cLoc]) || xN[cLoc] || 0;
-     oFyNcL = !(yN[cLoc] || '').match(ore) && parseFloat(yN[cLoc]) || yN[cLoc] || 0;
-     // handle numeric vs string comparison - number < string - (Kyle Adams)
-     if (isNaN(oFxNcL) !== isNaN(oFyNcL)) { return (isNaN(oFxNcL)) ? 1 : -1; }
-     // rely on string comparison if different types - i.e. '02' < 2 != '02' < '2'
-     else if (typeof oFxNcL !== typeof oFyNcL) {
-       oFxNcL += '';
-       oFyNcL += '';
-     }
-     if (oFxNcL < oFyNcL) return -1;
-     if (oFxNcL > oFyNcL) return 1;
-   }
-   return 0;
+  var re = /(^([+\-]?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?(?=\D|\s|$))|^0x[\da-fA-F]+$|\d+)/g,
+    sre = /^\s+|\s+$/g,   // trim pre-post whitespace
+    snre = /\s+/g,        // normalize all whitespace to single ' ' character
+    dre = /(^([\w ]+,?[\w ]+)?[\w ]+,?[\w ]+\d+:\d+(:\d+)?[\w ]?|^\d{1,4}[\/\-]\d{1,4}[\/\-]\d{1,4}|^\w+, \w+ \d+, \d{4})/,
+    hre = /^0x[0-9a-f]+$/i,
+    ore = /^0/,
+    i = function(s) {
+      return (problog.naturalSort.insensitive && ('' + s).toLowerCase() || '' + s).replace(sre, '');
+    },
+    // convert all to strings strip whitespace
+    x = i(a),
+    y = i(b),
+    // chunk/tokenize
+    xN = x.replace(re, '\0$1\0').replace(/\0$/,'').replace(/^\0/,'').split('\0'),
+    yN = y.replace(re, '\0$1\0').replace(/\0$/,'').replace(/^\0/,'').split('\0'),
+    // numeric, hex or date detection
+    xD = parseInt(x.match(hre), 16) || (xN.length !== 1 && Date.parse(x)),
+    yD = parseInt(y.match(hre), 16) || xD && y.match(dre) && Date.parse(y) || null,
+    normChunk = function(s, l) {
+      // normalize spaces; find floats not starting with '0', string or 0 if not defined (Clint Priest)
+      return (!s.match(ore) || l == 1) && parseFloat(s) || s.replace(snre, ' ').replace(sre, '') || 0;
+    },
+    oFxNcL, oFyNcL;
+  // first try and sort Hex codes or Dates
+  if (yD) {
+    if (xD < yD) { return -1; }
+    else if (xD > yD) { return 1; }
+  }
+  // natural sorting through split numeric strings and default strings
+  for(var cLoc = 0, xNl = xN.length, yNl = yN.length, numS = Math.max(xNl, yNl); cLoc < numS; cLoc++) {
+    oFxNcL = normChunk(xN[cLoc] || '', xNl);
+    oFyNcL = normChunk(yN[cLoc] || '', yNl);
+    // handle numeric vs string comparison - number < string - (Kyle Adams)
+    if (isNaN(oFxNcL) !== isNaN(oFyNcL)) {
+      return isNaN(oFxNcL) ? 1 : -1;
+    }
+    // if unicode use locale comparison
+    if (/[^\x00-\x80]/.test(oFxNcL + oFyNcL) && oFxNcL.localeCompare) {
+      var comp = oFxNcL.localeCompare(oFyNcL);
+      return comp / Math.abs(comp);
+    }
+    if (oFxNcL < oFyNcL) { return -1; }
+    else if (oFxNcL > oFyNcL) { return 1; }
+  }
 }
 
 problog.createTable = function(body, columns) {
@@ -692,7 +709,7 @@ problog.createTable = function(body, columns) {
 
     head = $('<tr>');
     $(columns).each(function(index, elem) {
-        head.append($('<th>').css('width', elem[1]).text(elem[0]));
+        head.append($('<th class="problog-result-sortable">').css('width', elem[1]).text(elem[0]));
     });
 
     result = $('<table>').addClass('table table-condensed')
@@ -706,23 +723,22 @@ problog.createTable = function(body, columns) {
     var col_th = $(table).children('thead').children('tr').children('th')
     col_th.eq(0).addClass('problog-result-sorted-asc');
     for (var i=0; i<col_th.length; i++) {
-          var col_idx = i;
-          col_th.eq(i).click(function() {
-            if ($(this).hasClass('problog-result-sorted-asc')) {
-              $(this).removeClass('problog-result-sorted-asc');
-              $(this).addClass('problog-result-sorted-desc');
-              problog.sortTable(table, -1, col_idx);
-            } else if ($(this).hasClass('problog-result-sorted-desc')) {
-              $(this).removeClass('problog-result-sorted-desc');
-              $(this).addClass('problog-result-sorted-asc');
-              problog.sortTable(table, 1, col_idx);
-            } else {
-              col_th.removeClass('problog-result-sorted-asc');
-              col_th.removeClass('problog-result-sorted-desc');
-              $(this).addClass('problog-result-sorted-asc');
-              problog.sortTable(table, 1, col_idx);
-            }
-          });
+      col_th.eq(i).click((function(col_idx) { return function() {
+        if ($(this).hasClass('problog-result-sorted-asc')) {
+          $(this).removeClass('problog-result-sorted-asc');
+          $(this).addClass('problog-result-sorted-desc');
+          problog.sortTable(table, -1, col_idx);
+        } else if ($(this).hasClass('problog-result-sorted-desc')) {
+          $(this).removeClass('problog-result-sorted-desc');
+          $(this).addClass('problog-result-sorted-asc');
+          problog.sortTable(table, 1, col_idx);
+        } else {
+          col_th.removeClass('problog-result-sorted-asc');
+          col_th.removeClass('problog-result-sorted-desc');
+          $(this).addClass('problog-result-sorted-asc');
+          problog.sortTable(table, 1, col_idx);
+        }
+      };})(i));
     }
 
     return table;

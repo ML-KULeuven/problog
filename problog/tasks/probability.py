@@ -166,8 +166,12 @@ def argparser():
     parser.add_argument('--engine-debug', action='store_true', help=argparse.SUPPRESS)
     parser.add_argument('--propagate-evidence', action='store_true',
                         dest='propagate_evidence',
-                        default=argparse.SUPPRESS,
+                        default=True,
                         help="Enable evidence propagation")
+    parser.add_argument('--dont-propagate-evidence', action='store_false',
+                        dest='propagate_evidence',
+                        default=False,
+                        help="Disable evidence propagation")
     parser.add_argument('--propagate-weights', action='store_true', default=None,
                         help="Enable weight propagation")
     parser.add_argument('--convergence', '-c', type=float, default=argparse.SUPPRESS,
