@@ -99,7 +99,7 @@ class LFIProblem(SemiringProbability, LogicProgram) :
         self.source = source
         self.names = []
         self.queries = []
-        self.weights = []
+        self.weights = {}
         self.examples = examples
         self.leakprob = leakprob
         self.leakprobatoms = None
@@ -119,11 +119,12 @@ class LFIProblem(SemiringProbability, LogicProgram) :
         """Overrides from SemiringProbability.
         Replaces weights of the form ``lfi(i)`` by their current estimated value.
         """
-        
         if isinstance(a, Term) and a.functor == 'lfi':
-            assert(len(a.args) == 1)
-            index = int(a.args[0])
-            return self.weights[index]
+            # index = int(a.args[0])
+            try:
+                return self.weights[a.args[0:2]]
+            except KeyError:
+                return self.weights[a.args[0]]
         else:
             return float(a)
          
@@ -184,11 +185,10 @@ class LFIProblem(SemiringProbability, LogicProgram) :
                     if t == 'atom' and \
                             isinstance(node.probability, Term) and \
                             node.probability.functor == 'lfi':
-                        factname = 'lfi_fact_%s' % node.probability.args[0]
                         factargs = ()
                         if type(node.identifier) == tuple:
                              factargs = node.identifier[1]
-                        fact = Term(factname, *factargs)
+                        fact = Term('lfi_fact', node.probability.args[0], node.probability.args[1], *factargs)
                         ground_program.add_query(fact, i)
                 compiled_program = self.knowledge.create_from(ground_program)
                 result.append((atoms, example, compiled_program, n))
@@ -238,7 +238,6 @@ class LFIProblem(SemiringProbability, LogicProgram) :
                 has_lfi_fact = True
 
                 # Learnable probability
-                assert(len(atom.probability.args) == 1)
                 start_value = atom.probability.args[0]
 
                 # Replace anonymous variables with non-anonymous variables.
@@ -255,10 +254,11 @@ class LFIProblem(SemiringProbability, LogicProgram) :
                             return Var(key)
 
                 atom1 = atom.apply(ReplaceAnon())
+                prob_args = atom.probability.args[1:]
 
                 # 1) Introduce a new fact
-                lfi_fact = Term('lfi_fact_%d' % self.count, *atom1.args)
-                lfi_prob = Term('lfi', Constant(self.count))
+                lfi_fact = Term('lfi_fact', Constant(self.count), Term('t', *prob_args), *atom1.args)
+                lfi_prob = Term('lfi', Constant(self.count), Term('t', *prob_args))
 
                 # 2) Replacement atom
                 replacement = lfi_fact.with_probability(lfi_prob)
@@ -272,9 +272,9 @@ class LFIProblem(SemiringProbability, LogicProgram) :
 
                 # 4) Set initial weight
                 if start_value.is_var():
-                    self.weights.append(random_weights.pop(-1))
+                    self.weights[lfi_fact.args[0]] = random_weights.pop(-1)
                 else:
-                    self.weights.append(float(start_value))
+                    self.weights[lfi_fact.args[0]] = float(start_value)
 
                 # # 5) Add query
                 # self.queries.append(lfi_fact)
@@ -285,7 +285,6 @@ class LFIProblem(SemiringProbability, LogicProgram) :
 
                 # 6) Add name
                 self.names.append(atom)
-
                 atoms_out.append(replacement)
             else:
                 atoms_out.append(atom)
@@ -314,25 +313,51 @@ class LFIProblem(SemiringProbability, LogicProgram) :
         else:
             atoms = [atom]
 
-        atoms_out = []
+        transforms = defaultdict(list)
+
+        clauses = []
+        atoms_fixed = []
+        t_args = None
+        fixed_only = True
         for atom in atoms:
             if atom.probability and atom.probability.functor == 't':
                 assert (atom in self.names)
+                assert (t_args is None or atom.probability.args == t_args)
+                t_args = atom.probability.args
+
                 index = self.output_names.index(atom)
+                for a, b in self.weights.items():
+                    if type(a) == tuple and index == a[0]:
+                        translate = tuple(zip(atom.probability.args[1:], a[1].args))
+                        transforms[translate].append(atom.with_probability(Constant(b)))
                 self.output_names[index] = None
-                weight = self.weights[index]
-                result = atom.with_probability(weight)
-                atoms_out.append(result)
+                fixed_only = False
             else:
-                atoms_out.append(atom)
-        if len(atoms_out) == 1:
-            if body is None:
-                return [atoms_out[0]]
-            else:
-                return [Clause(atoms_out[0], body)]
+                atoms_fixed.append(atom)
+
+        if not fixed_only:
+            clauses = []
+            for tr, atoms in transforms.items():
+                tr = DefaultDict({k: v for k, v in tr})
+                atoms_out = [at.apply(tr) for at in atoms] + atoms_fixed
+                if len(atoms_out) == 1:
+                    if body is None:
+                        clauses.append(atoms_out[0])
+                    else:
+                        clauses.append(Clause(atoms_out[0], body.apply(tr)))
+                else:
+                    clauses.append(AnnotatedDisjunction(atoms_out, body.apply(tr)))
+            return clauses
         else:
-            return [AnnotatedDisjunction(atoms_out, body)]
-        
+            atoms_out = atoms_fixed
+            if len(atoms_out) == 1:
+                if body is None:
+                    return [atoms_out[0]]
+                else:
+                    return [Clause(atoms_out[0], body)]
+            else:
+                return [AnnotatedDisjunction(atoms_out, body)]
+
     # Overwrite from LogicProgram    
     def __iter__(self):
         """
@@ -452,12 +477,12 @@ class LFIProblem(SemiringProbability, LogicProgram) :
     def _update(self, results):
         """Update the current estimates based on the latest evaluation results."""
         
-        fact_marg = [0.0] * self.count
-        fact_count = [0] * self.count
+        fact_marg = defaultdict(float)
+        fact_count = defaultdict(int)
         score = 0.0
         for pEvidence, result in results:
             for fact, value in result.items():
-                index = int(fact.functor.rsplit('_', 1)[1])
+                index = fact.args[0:2]
                 fact_marg[index] += value
                 fact_count[index] += 1
             try:
@@ -465,7 +490,7 @@ class LFIProblem(SemiringProbability, LogicProgram) :
             except ValueError:
                 raise ProbLogError('Inconsistent evidence.')
 
-        for index in range(0, self.count):
+        for index in fact_marg:
             if fact_count[index] > 0:
                 self.weights[index] = fact_marg[index] / fact_count[index]
         return score
@@ -484,7 +509,7 @@ class LFIProblem(SemiringProbability, LogicProgram) :
         self.output_mode = False
         return '\n'.join(lines)
         
-    def run(self) :
+    def run(self):
         self.prepare()
         logging.getLogger('problog_lfi').info('Weights to learn: %s' % self.names)
         logging.getLogger('problog_lfi').info('Initial weights: %s' % self.weights)
@@ -496,6 +521,7 @@ class LFIProblem(SemiringProbability, LogicProgram) :
             delta = score - prev_score
             prev_score = score
         return prev_score
+
 
 def extract_evidence(pl):
     engine = DefaultEngine()
@@ -531,16 +557,35 @@ def read_examples(*filenames):
                 atoms = extract_evidence(pl)
                 if len(atoms) > 0:
                     yield atoms
+
+
+class DefaultDict(object):
+
+    def __init__(self, base):
+        self.base = base
+
+    def __getitem__(self, key):
+        return self.base.get(key, Var(key))
+
     
-    
-def run_lfi( program, examples, output_model=None, **kwdargs):
+def run_lfi(program, examples, output_model=None, **kwdargs):
     lfi = LFIProblem(program, examples, **kwdargs)
     score = lfi.run()
 
     if output_model is not None:
         with open(output_model, 'w') as f:
             f.write(lfi.get_model())
-    return score, lfi.weights, lfi.names, lfi.iteration
+
+    names = []
+    weights = []
+    for i, name in enumerate(lfi.names):
+        for a, b in lfi.weights.items():
+            if type(a) == tuple and i == a[0]:
+                translate = {k: v for k, v in zip(name.probability.args[1:], a[1].args)}
+                names.append(name.apply(DefaultDict(translate)))
+                weights.append(b)
+
+    return score, weights, names, lfi.iteration
 
 
 def argparser():
