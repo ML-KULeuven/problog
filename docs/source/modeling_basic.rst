@@ -15,10 +15,12 @@ tutorial or the book `Simply Logical by Peter Flach <https://www.cs.bris.ac.uk/~
 ProbLog
 -------
 
+ProbLog introduces an additional operator ``::`` and two predicates ``query`` and ``evidence``.
+
 Probabilistic logic programs
 ++++++++++++++++++++++++++++
 
-The main difference between Prolog and ProbLog is of course that ProbLog support probabilistic
+The main difference between Prolog and ProbLog is that ProbLog support probabilistic
 predicates.
 In the language, this extension is realized by the addition of a single operator ``::``.
 
@@ -125,6 +127,8 @@ This program computes the probability that the first coin toss produces heads wh
 that the coin tosses did not both produce heads.
 You can try it out in the `online editor <https://dtai.cs.kuleuven.be/problog/editor.html#task=prob&hash=aeb6af5c90ea198a9f933516e5710fbe>`_.
 
+Evidence can also be specified using the binary predicate ``evidence(Positive, true)`` and
+``evidence(Positive, false)``.
 
 Tabling
 +++++++
@@ -183,11 +187,21 @@ Control predicates
 ++++++++++++++++++
 
 ProbLog uses Prolog to generate a ground version of a probabilistic logic program.
-As a result, it does not support certain features that have no meaning in a probabilistic setting.
+However, it does not support certain features that have no meaning in a probabilistic setting.
 This includes cuts (``!``) and any other mechanism that breaks the pure logic interpretation of the
 program.
 
 For a full list of features that ProbLog does (not) support, please check :doc:`this section <prolog>`.
+
+Findall
++++++++
+
+ProbLog supports the meta-predicate ``findall/3`` for collecting all results to a query.
+It is similar to ``findall/3`` in Prolog, but it eliminates duplicate solutions
+(so it corresponds to ``all/3`` in YAP Prolog).
+
+Note that the use of findall can lead to a combinatorial explosion when used in a probabilistic
+context.
 
 
 Tutorial
