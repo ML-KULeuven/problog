@@ -444,6 +444,7 @@ class CPT(CPD):
         table = self.table.items()
         # value_assignments = itertools.product(*[pgm.cpds[parent].value for parent in self.parents)
 
+        line_cnt = 0
         for k, v in table:
             if self.booleantrue is not None and drop_zero and v[self.booleantrue] == 0.0 and not use_neglit:
                 continue
@@ -451,34 +452,46 @@ class CPT(CPD):
             if self.booleantrue is None:
                 for idx,vv in enumerate(v):
                     if not (drop_zero and vv == 0.0):
-                        head_problits.append('{}::{}'.format(vv, self.to_ProbLogValue(self.values[idx], value_as_term)))
+                        head_problits.append((vv, self.to_ProbLogValue(self.values[idx], value_as_term)))
             else:
                 if drop_zero and v[self.booleantrue] == 0.0 and use_neglit:
-                    head_problits.append(self.to_ProbLogValue(self.values[1-self.booleantrue], value_as_term))
+                    head_problits.append((None,self.to_ProbLogValue(self.values[1-self.booleantrue], value_as_term)))
                 elif v[self.booleantrue] == 1.0:
-                    head_problits.append(self.to_ProbLogValue(self.values[self.booleantrue], value_as_term))
+                    head_problits.append((None,self.to_ProbLogValue(self.values[self.booleantrue], value_as_term)))
                 else:
-                    head_problits.append('{}::{}'.format(v[self.booleantrue], self.to_ProbLogValue(self.values[self.booleantrue],value_as_term)))
+                    head_problits.append((v[self.booleantrue], self.to_ProbLogValue(self.values[self.booleantrue],value_as_term)))
             body_lits = []
             for parent,parent_value in zip(self.parents, k):
                 if parent_value is not None:
                     parent_cpd = pgm.cpds[parent]
                     body_lits.append(parent_cpd.to_ProbLogValue(parent_value, value_as_term))
-            if len(body_lits) > 0:
-                body_str = ' :- ' + ', '.join(body_lits)
-            else:
-                body_str = ''
-            if ad_is_function:
-                for head_lit in head_problits:
-                    lines.append('{}{}.'.format(head_lit, body_str))
-            else:
-                head_str = '; '.join(head_problits)
-                lines.append('{}{}.'.format(head_str, body_str))
 
-        head_lits = [self.to_ProbLogValue(value,value_as_term) for value in self.values]
-        lines.append('false_constraints :- '+', '.join(['\+'+l for l in head_lits])+'.')
-        for lit1, lit2 in itertools.combinations(head_lits, 2):
-            lines.append('false_constraints :- {}, {}.'.format(lit1, lit2))
+            if ad_is_function:
+                for head_cnt, (head_prob, head_lit) in enumerate(head_problits):
+                    new_probfact = '{}_{}_{}'.format(self.rv_clean(), line_cnt, head_cnt)
+                    new_body_lits = body_lits + [new_probfact]
+                    lines.append('{}::{}.'.format(head_prob, new_probfact))
+                    lines.append('{} :- {}.'.format(head_lit, ', '.join(new_body_lits)))
+            else:
+                if len(body_lits) > 0:
+                    body_str = ' :- ' + ', '.join(body_lits)
+                else:
+                    body_str = ''
+                head_strs = []
+                for prob, lit in head_problits:
+                    if prob is None:
+                        head_strs.append(str(lit))
+                    else:
+                        head_strs.append('{}::{}'.format(prob,lit))
+                head_str = '; '.join(head_strs)
+                lines.append('{}{}.'.format(head_str, body_str))
+            line_cnt += 1
+
+        if ad_is_function:
+            head_lits = [self.to_ProbLogValue(value,value_as_term) for value in self.values]
+            lines.append('false_constraints :- '+', '.join(['\+'+l for l in head_lits])+'.')
+            for lit1, lit2 in itertools.combinations(head_lits, 2):
+                lines.append('false_constraints :- {}, {}.'.format(lit1, lit2))
 
         return '\n'.join(lines)
 
