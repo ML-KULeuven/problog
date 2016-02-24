@@ -30,7 +30,7 @@ In an example program involving coin tosses, we could have the following stateme
 
     0.5::heads.
 
-This indicates that the fact `heads` is true with probability 0.5.
+This indicates that the fact `heads` is true with probability 0.5 and false with probability 1-0.5.
 
 This statement introduces *one* probabilistic choice.
 If we want to model two coins, we need two separate facts:
@@ -76,6 +76,29 @@ Such a program can always be transformed into a program with just probabilistic 
     0.9::alarm_on_burglary.
 
     alarm :- burglary, alarm_on_burglary.
+
+Similarly, annotated disjunctions can also be used as head of a clause.
+
+.. code-block:: prolog
+
+    0.5::weather(0,sun); 0.5::weather(0,rain).
+    0.8::weather(T,sun); 0.2::weather(T,rain) :- T > 0, T1 is T - 1, weather(T1, sun).
+    0.4::weather(T,sun); 0.6::weather(T,rain) :- T > 0, T1 is T - 1, weather(T1, rain).
+
+This program can also be transformed into an equivalent program with only annotated
+disjunctive facts.
+
+.. code-block:: prolog
+
+    0.5::weather(0,sun); 0.5::weather(0,rain).
+
+    0.8::weather_after_sun(T,sun); 0.2::weather_after_sun(T,rain).
+    weather(T, sun) :- T > 0, T1 is T - 1, weather(T1, sun), weather_after_sun(T, sun).
+    weather(T, rain) :- T > 0, T1 is T - 1, weather(T1, sun), weather_after_sun(T, rain).
+
+    0.4::weather_after_rain(T,sun); 0.6::weather_after_rain(T,rain).
+    weather(T, sun) :- T > 0, T1 is T - 1, weather(T1, sun), weather_after_rain(T, sun).
+    weather(T, rain) :- T > 0, T1 is T - 1, weather(T1, sun), weather_after_rain(T, rain).
 
 
 Queries and evidence
@@ -169,7 +192,7 @@ Consider the following program that defines the ancestor relation in a family tr
     ancestor(X, Y) :- parent(X, Y).
 
 We want to find out the descendents of Ann (i.e. the query `ancestor(ann, X)`).
-In standard ProbLog this program goes into an infinite recursion because the call to
+In standard Prolog this program goes into an infinite recursion because the call to
 `ancestor(ann, X)` leads immediately back to the equivalent call `ancestor(ann, Z)`.
 
 In tabled Prolog, the identical call is detected and postponed,
