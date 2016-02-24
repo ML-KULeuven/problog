@@ -204,10 +204,10 @@ class WorkingDir(object):
 
     def __init__(self, workdir):
         self.workdir = workdir
-        self.currentdir = os.curdir
+        self.currentdir = os.path.abspath(os.curdir)
 
     def __enter__(self):
-        self.currentdir = os.curdir
+        self.currentdir = os.path.abspath(os.curdir)
         os.chdir(self.workdir)
 
     def __exit__(self, *args):

@@ -12,10 +12,10 @@ with open(version_file) as fp:
     exec(fp.read(), version)
 version = version['version']
 
-if len(sys.argv) == 1:
+if __name__ == '__main__' and len(sys.argv) == 1:
     from problog import setup as problog_setup
     problog_setup.install()
-else:    
+elif __name__ == '__main__':
 
     from setuptools import setup, find_packages
     from setuptools.command.install import install
