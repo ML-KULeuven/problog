@@ -13,8 +13,8 @@ import sys
 import argparse
 from problog.bn.cpd import CPT, PGM
 import itertools
+import logging
 
-verbose = 0
 force_bool = False
 drop_zero = False
 use_neglit = False
@@ -27,20 +27,22 @@ func_vars = []
 func_values = []
 
 
-def info(string):
-    if verbose >= 1:
-        print('INFO: '+string)
+logger = logging.getLogger('problog.uai2problog')
 
-def debug(string):
-    if verbose >= 2:
-        print('DEBUG: '+string)
+def info(*args, **kwargs):
+    logger.info(*args, **kwargs)
 
-def warning(string):
-    if verbose >= 0:
-        print('WARNING: '+string)
+def debug(*args, **kwargs):
+    logger.debug(*args, **kwargs)
 
-def error(string, halt=False):
-    print('ERROR: '+string)
+def warning(*args, **kwargs):
+    logger.warning(*args, **kwargs)
+
+def error(*args, **kwargs):
+    if 'halt' in kwargs:
+        halt = kwargs['halt']
+        del kwargs['halt']
+    logger.error(*args, **kwargs)
     if halt:
         sys.exit(1)
 
@@ -131,7 +133,7 @@ def parse_graph(ifile):
         line = [int(v) for v in line.split()]
         func_size = line[0]
         if len(line) != func_size+1:
-            error('Expected {} variables, found {}\n{}'.format(func_size-1, len(parents), line), halt=True)
+            error('Expected {} variables, found {}\n{}'.format(func_size+1, len(line), line), halt=True)
         # if num_func != rv:
             # error('Expected current variable ({}) as last variable, found {}'.format(num_func, rv), halt=True)
         # for parent in parents:
@@ -187,6 +189,13 @@ def main(argv=None):
     parser.add_argument('input', help='Input UAI08 file')
     args = parser.parse_args(argv)
 
+    if args.verbose is None:
+        logger.setLevel(logging.WARNING)
+    elif args.verbose == 1:
+        logger.setLevel(logging.INFO)
+    elif args.verbose >= 2:
+        logger.setLevel(logging.DEBUG)
+
     global verbose
     if args.verbose is not None:
         verbose = args.verbose
@@ -207,9 +216,9 @@ def main(argv=None):
         pgm = pgm.compress_tables()
     if pgm is None:
         error('Could not build PGM structure', halt=True)
-    if args.output is None:
-        ofile = sys.stdout
-    else:
+
+    ofile = sys.stdout
+    if args.output is not None:
         ofile = open(args.output, 'w')
     print(pgm.to_problog(drop_zero=drop_zero, use_neglit=use_neglit), file=ofile)
 

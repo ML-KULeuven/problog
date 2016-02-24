@@ -1,214 +1,149 @@
 #!/usr/bin/env python3
 # encoding: utf-8
 """
-SMILE (.xdsl) Bayesian network format convertor for ProbLog.
+hugin2problog.py
 
-Version: 0.4
-Author: Tom Sydney Kerckhove
-
-Notes:
-    - You can change the delimiter patterns at the top of this file.
-    - Nodes with two states are considered boolean, but they are considered
-      multi-valued (for the purpose of naming) if its states dont have
-      recognizable implicit names (true/false etc).
-    - You can change the list of all recognized implicit boolean values at
-      the top of this file.
+Created by Wannes Meert on 23-02-2016.
+Copyright (c) 2016 KU Leuven. All rights reserved.
 """
-from __future__ import print_function
 
-import re
 import sys
 import argparse
+from problog.bn.cpd import CPT, PGM
+import itertools
+import logging
+import re
 import xml.etree.ElementTree as ET
 
-desc = "SMILE (.xdls) Bayesian network format convertor for ProbLog (.pl)."
+force_bool = False
+drop_zero = False
+use_neglit = False
+no_bool_detection = False
 
-parser = argparse.ArgumentParser(description=desc)
-parser.add_argument("input_file", type=str, help="Input .xdsl file")
-parser.add_argument("-o", "--output_file", type=str, help="ProbLog file")
-parser.add_argument("-0", "--remove_all_zero_probabilities", action="store_true", help="Removes any mention of a probability if it zero.")
-args = parser.parse_args()
+domains = {}
+potentials = []
+cpds = []
 
-### Delimiters
-BETWEEN_FACTS_AND_PROBS = "::"
-END_OF_LINE = "."
-DECLARATION = " :- "
-CONJUNCTION = ", " 
-DISJUNCTION = "; "
-NEGATION = "\+"
+logger = logging.getLogger('problog.smile2problog')
 
-# Definition: a cool boolean node is a boolean node that has states in the COOL_BOOLEANS list.
-COOL_BOOLEANS = [
-                    ['t','f'],
-                    ['true','false'],
-                    ['True','False'],
-                    ['yes','no'],
-                    ['Yes','No'],
-                    ['y','n'],
-                    ['pos','neg'],
-                    ['aye','nay']
-                ]
+def info(*args, **kwargs):
+    logger.info(*args, **kwargs)
 
-# The cartesian product of a list of lists.
-# This gives you a list of tuples
-def cartesian (lists):
-    if lists == []: return [()]
-    return [x + (y,) for x in cartesian(lists[:-1]) for y in lists[-1]] 
+def debug(*args, **kwargs):
+    logger.debug(*args, **kwargs)
 
+def warning(*args, **kwargs):
+    logger.warning(*args, **kwargs)
 
-# A representation of a bayesian node in a network
-class Node(object):
-    def __init__(self, xmlNode):
-        
-        # Id of node
-        self.id = xmlNode.get('id')
-        self.id = self.id.lower()
+def error(*args, **kwargs):
+    if 'halt' in kwargs:
+        halt = kwargs['halt']
+        del kwargs['halt']
+    logger.error(*args, **kwargs)
+    if halt:
+        sys.exit(1)
 
-        # Possible states of node
-        self.states = []
-        for state in xmlNode.findall('state'):
-            self.states.append(state.get('id'))
+## PARSER
 
-        # All the _names_ of parent nodes.
-        parentsNode = xmlNode.find('parents')
-        if parentsNode is not None:
-            self.parents = re.split(' ', parentsNode.text)
-        else:
-            self.parents = []
-        
-        probabilitiesNode = xmlNode.find('probabilities')
-        if probabilitiesNode is not None:
-            self.probabilities = list(map(float,re.split(' ', probabilitiesNode.text)))
-        else:
-            self.probabilities = []
-
-        # If this is a cool boolean node, find the better statelist to use
-        if len(self.states) == 2:
-            good_boolean = []
-            for stateList in COOL_BOOLEANS:
-                if sorted(stateList) == sorted(self.states): # This is the one
-                    good_boolean = stateList
-            self.cool_boolean_state_list = good_boolean
-        
-    def has_parents(self):
-        return len(self.parents) > 0
-    
-    def is_cool_boolean(self):
-        return len(self.states) == 2 and self.cool_boolean_state_list
-
-    def state_name(self, state):
-        if self.is_cool_boolean():
-            if state == self.cool_boolean_state_list[0]:
-                return self.id
-            else:
-                return NEGATION + self.id
-        else:
-            return self.id + "_" + state
-
-    def toProblog(self, allNodes):
-        
-        # wrapper to find in dictionary
-        def find(name):
-            return allNodes[name.lower()]
-
-        # Find all parent nodes and all states that need to be considered per node.
-        allStates = []
-        parentNodes = []
-        for name in self.parents:
-            parent = find(name)
-            parentNodes.append(parent)
-            allStates.append(parent.states)
-        allStates.append(self.states)
-
-        # Take the cartesian product of all states. The result is every possible combination of states that need to be considered.
-        cartesian_product = cartesian(allStates)
-
-        # List of tuples (disjunctions, conjunctions)
-        lines = []
-
-        # Current line
-        currentDisjunctions = []
-        currentConjunctions = []
-
-        # Amount of own states.
-        n = len(self.states)
-
-        # We're going through the table of probabilities in *column-major* order
-        # and build up a list of (dis,con) tuples to represent a line later
-        for i in range(len(self.probabilities)):
-            row = i % len(self.states)
-            probability = self.probabilities[i]
-            state_name = self.state_name(self.states[row])
-            if self.is_cool_boolean() and state_name.startswith(NEGATION):
-                continue
-            else:
-                currentDisjunctions.append((probability,state_name))
-            
-            # if we're done with disjunctions
-            if row == len(self.states)-1 or self.is_cool_boolean():
-                # If we need conjunctions
-                if self.has_parents():
-                    stateTuple = cartesian_product[i]
-                    tupleLen = len(self.parents)
-                    for j in range(tupleLen):
-                        parent = parentNodes[j]
-                        name = parent.state_name(stateTuple[j])#result += parent.state_name(stateTuple[j])
-                        currentConjunctions.append(name)
-                        if j == tupleLen - 1: # At end of conjunctions
-                            lines.append((currentDisjunctions, currentConjunctions))
-                            currentDisjunctions = []
-                            currentConjunctions = []
-                else: # No need for conjunctions, end here
-                    lines.append((currentDisjunctions, []))
-                    currentDisjunctions = []
-                    currentConjunctions = []
-
-        # Now we transform the tuple (dis,con) per line into a line of problog code.
-        result = ""
-        for (dis,con) in lines:
-            disStrs = []
-            for (prob,name) in dis:
-                if prob == 0.0 and args.remove_all_zero_probabilities: # A probability of 0.0 can be ommited.
-                    continue
-                disStrs.append(str(prob) + BETWEEN_FACTS_AND_PROBS + name)
-            if not disStrs: # If no disjunctions (because 0.0 gets filtered), don't output this line.
-                continue
-            result += DISJUNCTION.join(disStrs)
-            if con: # any conjunctions
-                result += DECLARATION
-                result += CONJUNCTION.join(con)
-            result += END_OF_LINE
-            result += "\n"
-
-        return result
-
-def xdsl_to_pl(input_file):
-    tree = ET.parse(input_file)
+def parse(ifile):
+    tree = ET.parse(ifile)
     root = tree.getroot()
 
-    nodeNodes = root.find("nodes")
+    parseDomains(root)
+    for cpt in root.find("nodes").findall('cpt'):
+        parseCPT(cpt)
 
-    nodes = {}
-    allCptXMLNodes = nodeNodes.findall('cpt')
-    for child in allCptXMLNodes:
-        n = Node(child)
-        nodes[n.id] = n
-    
-    lines = []
-    for id in nodes:
-        lines.append(nodes[id].toProblog(nodes))
+def parseDomains(root):
+    for cpt in root.find("nodes").findall('cpt'):
+        rv = cpt.get('id')
+        states = cpt.findall('state')
+        values = [state.get('id') for state in states]
+        domains[rv] = values
 
-    return sorted(lines)
+def parseCPT(cpt):
+    global cpds
+    detect_boolean = not no_bool_detection
+    rv = cpt.get('id')
+    if rv not in domains:
+        error('Domain for {} not defined.'.format(rv), halt=True)
+    values = domains[rv]
+    parents = cpt.find('parents')
+    if parents is None:
+        parents = []
+    else:
+        parents = parents.text.split()
+    parameters = [float(p) for p in cpt.find('probabilities').text.split()]
+    if len(parents) == 0:
+        table = parameters
+        cpds.append(CPT(rv, values, parents, table, detect_boolean=detect_boolean))
+        return
+    parent_domains = []
+    for parent in parents:
+        parent_domains.append(domains[parent])
+    dom_size = len(values)
+    table = {}
+    idx = 0
+    for val_assignment in itertools.product(*parent_domains):
+        table[val_assignment] = parameters[idx:idx+dom_size]
+        idx += dom_size
+    cpds.append(CPT(rv, values, parents, table, detect_boolean=detect_boolean))
+
+
+def construct_pgm():
+    return PGM(cpds=cpds)
+
+
+def main(argv=None):
+    parser = argparse.ArgumentParser(description='Translate Bayesian net in Hugin format format to ProbLog')
+    parser.add_argument('--verbose', '-v', action='count', help='Verbose output')
+    parser.add_argument('--nobooldetection', action='store_true',
+                        help='Do not try to infer if a node is Boolean (true/false, yes/no, ...)')
+    parser.add_argument('--forcebool', action='store_true',
+                        help='Force all binary nodes to be represented as boolean predicates (0=f, 1=t)')
+    parser.add_argument('--dropzero', action='store_true', help='Drop zero probabilities (if possible)')
+    parser.add_argument('--useneglit', action='store_true', help='Use negative head literals')
+    parser.add_argument('--valueinatomname', action='store_false',
+                        help='Add value to atom name instead as a term (this removes invalid characters, be careful \
+                              that clean values do not overlap)')
+    parser.add_argument('--compress', action='store_true', help='Compress tables')
+    parser.add_argument('--output', '-o', help='Output file')
+    parser.add_argument('input', help='Input Hugin file')
+    args = parser.parse_args(argv)
+
+    if args.verbose is None:
+        logger.setLevel(logging.WARNING)
+    elif args.verbose == 1:
+        logger.setLevel(logging.INFO)
+    elif args.verbose >= 2:
+        logger.setLevel(logging.DEBUG)
+
+    global no_bool_detection
+    if args.nobooldetection:
+        no_bool_detection = args.nobooldetection
+    global force_bool
+    if args.forcebool:
+        force_bool = args.forcebool
+    global drop_zero
+    if args.dropzero:
+        drop_zero = args.dropzero
+    global use_neglit
+    if args.useneglit:
+        use_neglit = args.useneglit
+
+    with open(args.input, 'r') as ifile:
+        parse(ifile)
+    pgm = construct_pgm()
+    if args.compress:
+        pgm = pgm.compress_tables()
+    if pgm is None:
+        error('Could not build PGM structure', halt=True)
+
+    ofile = sys.stdout
+    if args.output is not None:
+        ofile = open(args.output, 'w')
+    print(pgm.to_problog(drop_zero=drop_zero, use_neglit=use_neglit, value_as_term=args.valueinatomname), file=ofile)
 
 
 if __name__ == "__main__":
-    lines = xdsl_to_pl(args.input_file)
+    sys.exit(main())
 
-    output_file = sys.stdout
-    if args.output_file:
-        output_file = open(args.output_file,'w')
-
-    for line in lines:
-        print(line, file=output_file)
-
-    output_file.close()

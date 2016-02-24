@@ -191,7 +191,6 @@ def main(argv=None):
     if args.useneglit:
         use_neglit = args.useneglit
 
-    tests()
     text = None
     with open(args.input, 'r') as ifile:
         text = ifile.read()
@@ -201,9 +200,9 @@ def main(argv=None):
         pgm = pgm.compress_tables()
     if pgm is None:
         error('Could not build PGM structure', halt=True)
-    if args.output is None:
-        ofile = sys.stdout
-    else:
+
+    ofile = sys.stdout
+    if args.output is not None:
         ofile = open(args.output, 'w')
     print(pgm.to_problog(drop_zero=drop_zero, use_neglit=use_neglit, value_as_term=args.valueinatomname), file=ofile)
 
