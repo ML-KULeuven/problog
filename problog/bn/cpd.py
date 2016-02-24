@@ -468,10 +468,13 @@ class CPT(CPD):
 
             if ad_is_function:
                 for head_cnt, (head_prob, head_lit) in enumerate(head_problits):
-                    new_probfact = '{}_{}_{}'.format(self.rv_clean(), line_cnt, head_cnt)
-                    new_body_lits = body_lits + [new_probfact]
-                    lines.append('{}::{}.'.format(head_prob, new_probfact))
-                    lines.append('{} :- {}.'.format(head_lit, ', '.join(new_body_lits)))
+                    if len(body_lits) == 0:
+                        lines.append('{}::{}.'.format(head_prob,head_lit))
+                    else:
+                        new_probfact = 'pf_{}_{}_{}'.format(self.rv_clean(), line_cnt, head_cnt)
+                        new_body_lits = body_lits + [new_probfact]
+                        lines.append('{}::{}.'.format(head_prob, new_probfact))
+                        lines.append('{} :- {}.'.format(head_lit, ', '.join(new_body_lits)))
             else:
                 if len(body_lits) > 0:
                     body_str = ' :- ' + ', '.join(body_lits)
