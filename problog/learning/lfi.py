@@ -623,7 +623,7 @@ def run_lfi(program, examples, output_model=None, **kwdargs):
             names.append(name.apply(DefaultDict(translate)))
             weights.append(w_val)
 
-    return score, weights, names, lfi.iteration
+    return score, weights, names, lfi.iteration, lfi
 
 
 def argparser():
@@ -715,7 +715,7 @@ def main(argv, result_handler=None):
 def print_result(d, output, precision=8):
     success, d = d
     if success:
-        score, weights, names, iterations = d
+        score, weights, names, iterations, lfi = d
         weights = list(map(lambda x: round(x, precision), weights))
         print (score, weights, names, iterations, file=output)
         return 0
@@ -728,12 +728,13 @@ def print_result_json(d, output, precision=8):
     import json
     success, d = d
     if success:
-        score, weights, names, iterations = d
+        score, weights, names, iterations, lfi = d
         results = {'SUCCESS': True,
                    'score': score,
                    'iterations': iterations,
                    'weights': [[str(n), round(w, precision), n.loc[1], n.loc[2]]
                                for n, w in zip(names, weights)],
+                   'model': lfi.get_model()
                    }
         print (json.dumps(results), file=output)
     else:

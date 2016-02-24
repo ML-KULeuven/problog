@@ -107,15 +107,18 @@ var problog = {
                         var result = problog.createTable(result, [['Fact','50%'],['Location','10%'],['Probability','40%']]);
                         pbl.dom.results.html(result);
 
+                        var model_str = "<strong>Model</strong>:<pre><code>" + data['model'] + "</code></pre>";
+
                         var meta_str = "<p><strong>Stats</strong>:";
                         var sep = " ";
                         for (var k in data) {
-                            if (k !== 'weights' && k !== 'probs' && k != 'url' && k !== 'SUCCESS') {
+                            if (k !== 'weights' && k !== 'probs' && k != 'url' && k != 'model' && k !== 'SUCCESS') {
                                 meta_str += sep+k+"="+data[k];
                                 sep = ", ";
                             }
                         }
                         meta_str += "</p>";
+                        $(model_str).appendTo(pbl.dom.results);
                         $(meta_str).appendTo(pbl.dom.results);
                     }
                 },
