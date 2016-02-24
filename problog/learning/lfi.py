@@ -732,7 +732,7 @@ def print_result_json(d, output, precision=8):
         results = {'SUCCESS': True,
                    'score': score,
                    'iterations': iterations,
-                   'weights': [[str(n.with_probability()), round(w, precision), n.loc[1], n.loc[2]]
+                   'weights': [[str(n), round(w, precision), n.loc[1], n.loc[2]]
                                for n, w in zip(names, weights)],
                    }
         print (json.dumps(results), file=output)
