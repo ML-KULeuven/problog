@@ -115,7 +115,9 @@ class PGM(object):
     def compress_tables(self):
         """Analyze CPTs and join rows that have the same probability
         distribution."""
-        cpds = [cpd.compress(self) for cpd in self.cpds.values()]
+        cpds = []
+        for idx,cpd in enumerate(self.cpds.values()):
+            cpds.append(cpd.compress(self))
         return PGM(cpds)
 
     def to_hugin_net(self):
@@ -305,7 +307,9 @@ class CPT(CPD):
             table.append((k, tuple(v)))
         nodes = [(tuple([None]*len(self.parents)), table)]
         new_table = {}
+        cnt = 0
         while len(nodes) > 0:
+            cnt += 1
             curpath, node = nodes.pop()
             # All the same or all different? Then stop.
             k,v = zip(*node)
@@ -319,8 +323,8 @@ class CPT(CPD):
                 continue
             # Find max information gain
             # ig_idx = self.maxinformationgainparent(node)
-            ig_idx = 0
-            ig_max = -1
+            ig_idx = None
+            ig_max = -9999999
             for parent_idx, parent in enumerate(self.parents):
                 if curpath[parent_idx] is not None:
                     continue
@@ -338,6 +342,11 @@ class CPT(CPD):
                     ig_max = ig
                     ig_idx = parent_idx
             # Create next nodes
+            if ig_idx is None:
+                # No useful split found
+                for new_path, new_probs in node:
+                    new_table[new_path] = new_probs
+                continue
             for value in pgm.cpds[self.parents[ig_idx]].values:
                 newpath = [v for v in curpath]
                 newpath[ig_idx] = value
