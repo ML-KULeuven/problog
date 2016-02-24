@@ -24,6 +24,8 @@ import os
 import traceback
 
 from ..program import PrologFile
+from ..formula import LogicFormula
+from ..engine import DefaultEngine
 from ..evaluator import SemiringLogProbability, SemiringProbability, SemiringSymbolic
 from .. import get_evaluatable, get_evaluatables
 
@@ -83,12 +85,17 @@ def execute(filename, knowledge=None, semiring=None, debug=False, **kwdargs):
     :return: tuple where first value indicates success, and second value contains result details
     """
 
-    if knowledge is None or type(knowledge) == str:
-        knowledge = get_evaluatable(knowledge)
     try:
         with Timer('Total time'):
             model = PrologFile(filename)
-            formula = knowledge.create_from(model, **kwdargs)
+            engine = DefaultEngine(**kwdargs)
+            db = engine.prepare(model)
+            db_semiring = db.get_data('semiring')
+            if db_semiring is not None:
+                semiring = db_semiring
+            if knowledge is None or type(knowledge) == str:
+                knowledge = get_evaluatable(knowledge, semiring=semiring)
+            formula = knowledge.create_from(db, **kwdargs)
             result = formula.evaluate(semiring=semiring, **kwdargs)
 
             # Update loceation information on result terms

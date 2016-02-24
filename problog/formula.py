@@ -136,10 +136,14 @@ class BaseFormula(ProbLogObject):
 
         result = {}
         for n, w in weights.items():
+            if hasattr(self, 'get_name'):
+                name = self.get_name(n)
+            else:
+                name = n
             if w == self.WEIGHT_NEUTRAL and type(self.WEIGHT_NEUTRAL) == type(w):
                 result[n] = semiring.one(), semiring.one()
             else:
-                result[n] = semiring.pos_value(w, n), semiring.neg_value(w, n)
+                result[n] = semiring.pos_value(w, name), semiring.neg_value(w, name)
 
         for c in self.constraints():
             c.update_weights(result, semiring)
@@ -174,6 +178,10 @@ class BaseFormula(ProbLogObject):
             if res != '#NOTFOUND#':
                 return res
         raise KeyError(name)
+
+    # def get_name(self, key):
+    #     names = self.get_names()
+    #     print (names)
 
     def add_query(self, name, key):
         """Add a query name.

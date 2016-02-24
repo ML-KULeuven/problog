@@ -159,6 +159,7 @@ class ClauseDBEngine(GenericEngine):
         :rtype: ClauseDB
         """
         result = ClauseDB.createFrom(db, builtins=self.get_builtins())
+        result.engine = self
         self._process_directives(result)
         return result
 
@@ -955,6 +956,31 @@ class ClauseDB(LogicProgram):
             atomstr = atomstr[1:-1]
         filename = os.path.join(root, atomstr)
         return filename
+
+    def create_function(self, functor, arity):
+        """Create a Python function that can be used to query a specific predicate on this database.
+
+        :param functor: functor of the predicate
+        :param arity: arity of the predicate (the function will take arity - 1 arguments
+        :return: a Python callable
+        """
+        return PrologFunction(self, functor, arity)
+
+
+class PrologFunction(object):
+
+    def __init__(self, database, functor, arity):
+        self.database = database
+        self.functor = functor
+        self.arity = arity
+
+    def __call__(self, *args):
+        args = args[:self.arity - 1]
+        query_term = Term(self.functor, *(args + (None,)))
+        result = self.database.engine.query(self.database, query_term)
+        assert len(result) == 1
+        return result[0][-1]
+
 
 
 class AccessError(GroundingError):

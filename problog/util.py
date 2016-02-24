@@ -355,6 +355,8 @@ def format_value(data, precision=8):
     """
     if isinstance(data, float):
         data = ('%.' + str(precision) + 'g') % data
+    else:
+        data = str(data)
     return ('{:<' + str(precision + 2) + '}').format(data)
 
 
