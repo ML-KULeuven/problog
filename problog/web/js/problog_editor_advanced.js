@@ -50,10 +50,14 @@ var problog = {
                             var p = facts[k][1];
                             var l = facts[k][2];
                             var c = facts[k][3];
+                            if (!isNaN(parseFloat(p))) {
+                                p = problog.makeProgressBar(p);
+                            }
+
                             result.append($('<tr>')
                                   .append($('<td>').text(n))
                                   .append($('<td>').text(l+':'+c))
-                                  .append($('<td>').append(problog.makeProgressBar(p))));
+                                  .append($('<td>').append(p)));
                         }
                         var result = problog.createTable(result, [['Query','50%'],['Location','10%'],['Probability','40%']]);
                         pbl.dom.results.html(result);

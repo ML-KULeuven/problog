@@ -29,7 +29,7 @@ from ..engine import DefaultEngine
 from ..evaluator import SemiringLogProbability, SemiringProbability, SemiringSymbolic
 from .. import get_evaluatable, get_evaluatables
 
-from ..util import Timer, start_timer, stop_timer, init_logger, format_dictionary
+from ..util import Timer, start_timer, stop_timer, init_logger, format_dictionary, format_value
 from ..errors import process_error
 
 
@@ -63,7 +63,7 @@ def print_result_json(d, output, precision=8):
     success, d = d
     if success:
         result['SUCCESS'] = True
-        result['probs'] = [[str(n), round(p, precision), n.loc[1], n.loc[2]] for n, p in d.items()]
+        result['probs'] = [[str(n), format_value(p, precision), n.loc[1], n.loc[2]] for n, p in d.items()]
     else:
         result['SUCCESS'] = False
         result['err'] = vars(d)
