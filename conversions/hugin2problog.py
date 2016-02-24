@@ -1,178 +1,213 @@
 #!/usr/bin/env python3
 # encoding: utf-8
 """
-HUGIN (.net) Bayesian network format convertor for ProbLog.
+hugin2problog.py
 
-Author: Michiel Derhaeg
+Created by Wannes Meert on 23-02-2016.
+Copyright (c) 2016 KU Leuven. All rights reserved.
 """
-from __future__ import print_function
 
 import sys
-import re
 import argparse
+from problog.bn.cpd import CPT, PGM
+import itertools
+import logging
+import re
+from pyparsing import Word, Literal, nums, ParseException, alphanums, \
+                      OneOrMore, Or, Optional, dblQuotedString, Regex, \
+                      Forward, ZeroOrMore, printables, LineEnd, Suppress, \
+                      nestedExpr, removeQuotes, Group
 
-desc = "HUGIN (.net) Bayesian network format convertor for ProbLog (.pl)."
+force_bool = False
+drop_zero = False
+use_neglit = False
+no_bool_detection = False
 
-parser = argparse.ArgumentParser(description=desc)
-parser.add_argument("input_file", type=str, help="Input .net file")
-parser.add_argument("-o", "--output_file", type=str, help="ProbLog file")
-args = parser.parse_args()
+domains = {}
+potentials = []
+cpds = []
 
-netregex = re.compile("net[\s\n]*{(\n|.)*}")
-noderegex = re.compile("node\s+([_\w-]+)[\n\s]*{([^}]*)}")
-potentialregex = re.compile("potential\s*\(\s*([_\w-]+)\s*(\|\s*([_\w-]+\s*)+)?\)[\n\s]*{([^}]*)}")
-statementRegex = re.compile("([_\w-]+)[]\s\n]*=[\n\s]*([^;]+);")
-wordRegex = re.compile("(\w+)")
-GoodBoolStates = [["true","false"],["yes","no"],["y","n"], ["t","f"]]
+logger = logging.getLogger('problog.hugin2problog')
 
-def netlog(inputfilepath):
-    inputfile = open(inputfilepath, "r")
-    netcode = re.sub("%.*","",inputfile.read()).lower()
-    NodeList = []
-    PotentialList =  []
-    for nodematch in noderegex.finditer(netcode):
-        NodeList.append(parseNode(nodematch.group(1),nodematch.group(2)))
-    for potentialmatch in potentialregex.finditer(netcode):
-        PotentialList.append(parsePotential(potentialmatch.groups()))
-    return makeProblog(NodeList,PotentialList)
+def info(*args, **kwargs):
+    logger.info(*args, **kwargs)
 
-def parseNode(name,body):
-    newnode = Node(name)
-    for statementMatch in statementRegex.finditer(body):
-        parseStatement(newnode, statementMatch.group(1), statementMatch.group(2))
-    return newnode
+def debug(*args, **kwargs):
+    logger.debug(*args, **kwargs)
 
-def parseStatement(node, element, value):
-    if element == "states":
-        for match in wordRegex.finditer(value):
-            node.states.append(match.group(1))
+def warning(*args, **kwargs):
+    logger.warning(*args, **kwargs)
 
-def parsePotential(groups):
-    node = groups[0]
-    othernodes = groups[1]
-    body = groups[3]
-    newpotential = Potential(node)
-    if othernodes:
-        for nodematch in re.finditer("([_\w-]+)",othernodes):
-            newpotential.othernodes.append(nodematch.group(0))
-    for statementMatch in statementRegex.finditer(body):
-        parseDataStatement(newpotential,statementMatch.group(1),statementMatch.group(2))
-    return newpotential
+def error(*args, **kwargs):
+    if 'halt' in kwargs:
+        halt = kwargs['halt']
+        del kwargs['halt']
+    logger.error(*args, **kwargs)
+    if halt:
+        sys.exit(1)
 
-def parseDataStatement(potential,element,value):
-    if element == "data":
-        value = re.sub("\)\s+\(",")(",re.sub("[\n\r]","",value ))
-        data = []
-        value = re.sub("[)(]"," ",value)
-        output = ""
-        for char in value:
-            if char == " ":
-                if len(output):
-                    data.append(output)
-                output = ""
+## PARSER
+
+re_comments = re.compile(r"""%.*?[\n\r]""")
+def rmComments(string):
+    return re_comments.sub("\n", string)
+
+S = Suppress
+
+p_optval = Or([dblQuotedString, S("(") + OneOrMore(Word(nums))  + S(")")])
+p_option = S(Group(Word(alphanums+"_") + S("=") + Group(p_optval) + S(";")))
+p_net = S(Word("net") + "{" + ZeroOrMore(p_option) + "}")
+p_var = Word(alphanums+"_")
+p_val = dblQuotedString.setParseAction(removeQuotes)
+p_states = Group(Word("states") + S("=") + S("(") + Group(OneOrMore(p_val))  + S(")") + S(";"))
+p_node = S(Word("node")) + p_var + S("{") + Group(ZeroOrMore(Or([p_states, p_option]))) + S("}")
+p_par = Regex(r'\d+(\.\d*)?([eE]\d+)?')
+p_parlist = Forward()
+p_parlist << S("(") + Or([OneOrMore(p_par), OneOrMore(p_parlist)]) + S(")")
+p_data = S(Word("data")) + S("=") + Group(p_parlist) + S(";")
+p_potential = S(Word("potential")) + S("(") + p_var + Group(Optional(S("|") + OneOrMore(p_var))) + S(")") + S("{") + p_data + S("}")
+
+parser = OneOrMore(Or([p_net, p_node, p_potential]))
+
+def parseOption(s,l,t):
+    return None
+
+def parseNode(s,l,t):
+    global domains
+    # print(t)
+    rv = t[0]
+    for key, val in t[1]:
+        if key == 'states':
+            if force_bool and len(val) == 2:
+                domains[rv] = ['f', 't']
             else:
-                output += char
-        potential.data = data
+                domains[rv] = val
 
-def normalizeData(data,nrOfStates):
-    if (len(data)):
-        for j in range(0,len(data), nrOfStates):
-            sumofdata = 0
-            for i in range(j, nrOfStates+j):
-                sumofdata += float(data[i])
-            for i in range(j, nrOfStates+j):
-                data[i] = float(data[i]) / sumofdata
-        data = list(map(str,data))
-    return data
 
-class Node():
-    def __init__(self,_name):
-        self.name = _name
-        self.states = []
-    def nameWithState(self):
-        reverse = list(self.states)
-        reverse.reverse()
-        if self.states in GoodBoolStates:
-            return [self.name, "\+" + self.name]
-        else:
-            reverse = list(self.states)
-            reverse.reverse()
-            if reverse in GoodBoolStates:
-                return ["\+" + self.name, self.name]
-            else:
-                names = list(self.states)
-                for i in range(0,len(names)):
-                    names[i] = self.name + "_" + names[i]
-                return names
+def parsePotential(s,l,t):
+    global cpds
+    detect_boolean = not no_bool_detection
+    # print(t)
+    rv = t[0]
+    if rv not in domains:
+        error('Domain for {} not defined.'.format(rv), halt=True)
+    values = domains[rv]
+    parents = t[1]
+    parameters = t[2]
+    if len(parents) == 0:
+        table = list(parameters)
+        cpds.append(CPT(rv, values, parents, table, detect_boolean=detect_boolean))
+        return
+    parent_domains = []
+    for parent in parents:
+        parent_domains.append(domains[parent])
+    dom_size = len(values)
+    table = {}
+    idx = 0
+    for val_assignment in itertools.product(*parent_domains):
+        table[val_assignment] = parameters[idx:idx+dom_size]
+        idx += dom_size
+    cpds.append(CPT(rv, values, parents, table, detect_boolean=detect_boolean))
 
-class Potential():
-    def __init__(self,node):
-        self.node = node
-        self.othernodes = []
-        self.data = []
-    def dimension(self):
-        return 1 + len(self.othernodes)
+p_option.setParseAction(parseOption)
+p_node.setParseAction(parseNode)
+p_potential.setParseAction((parsePotential))
 
-def makeProblog(nodes,potentials):
-    output = ""
-    for p in potentials:
-        mainNode = findnode(p.node,nodes)
-        p.data = normalizeData(p.data, len(mainNode.states))
-        if not(len(p.data)): #TODO fix
-            continue
-        if p.dimension() == 1:
-            # Potential without parents
-            if len(mainNode.states) == 2 and \
-               (mainNode.states in GoodBoolStates or \
-                reversed(mainNode.states) in GoodBoolStates):
-                output += p.data[0] + "::" + mainNode.nameWithState()[0] + ".\n"
-            else:
-                ad = []
-                for i in range(0,len(p.data)):
-                    ad.append(p.data[i] + "::" + mainNode.nameWithState()[i])
-                output += "; ".join(ad)+".\n"
-        else:
-            # Potential with parents
-            cartlist = []
-            for n in p.othernodes:
-                node = findnode(n,nodes)
-                cartlist.append(node.nameWithState())
-            cart = cartesian(cartlist)
-            for i in range(0,len(p.data), len(mainNode.states)):
-                chances = {}
-                if (len(mainNode.states) == 2 and \
-                    (mainNode.states in GoodBoolStates or \
-                     reversed(mainNode.states) in GoodBoolStates)):
-                    chances[0] = p.data[i] + "::" + mainNode.nameWithState()[0]
-                else:
-                    for j in range(0,len(mainNode.states)):
-                        chances[j] = p.data[i+j] + "::" + mainNode.nameWithState()[j]
-                output += ";".join(chances.values()) + " :- "
-                aboutFacts = {}
-                for l in range(0,len(cart[int(i/len(mainNode.states))])):
-                    aboutFacts[l] = cart[int(i/len(mainNode.states))][l]
-                output += ",".join(aboutFacts.values())
-                output += ".\n"
+## Test
+def tests():
+    # test('net {}')
+    # test('node a { states = ( x y );}')
+    # test('node a { states = ( "x" "y" );}')
+    # test('potential (a) { data = (0.5 0.5); }')
+    # test('potential (a | b c) { data = (0.5 0.5); }')
+    # test('potential (a) { data = ((0.5 0.5)); }')
+    # test('potential (a) { data = ((0.5 0.5)(0.5 0.5)); }')
+    # test('potential (a) { data = ((1 0)(0 1)); }')
+    # test('potential (a) { data = ((1 0)(0 1)); %test\n}')
+    # test('net { val = "x"; }')
+    # test('net { val = (0 1); }')
+    # test('net { val_x = "x"; }')
+    # test('node a { label = ""; }')
+    # test('node a { label = ""; states = ("1" "2"); }')
+    pass
 
-    return output
+def test(string):
+    try:
+        result = parse(string)
+        # print('{} -> {}\n'.format(string,result))
+    except ParseException as err:
+        # print(string)
+        print(err)
+        print('\n')
 
-def findnode(name,nodes):
-    output = None
-    for n in nodes:
-        if n.name == name:
-            output = n
-            break
-    return output
+## Processing
 
-def cartesian (lists):
-    if lists == []: return [()]
-    return [x + (y,) for x in cartesian(lists[:-1]) for y in lists[-1]]
+def parse(text):
+    text = rmComments(text)
+    result = None
+    try:
+        result = parser.parseString(text, parseAll=True)
+    except ParseException as err:
+        print(err)
+    return result
+
+def construct_pgm():
+    return PGM(cpds=cpds)
+
+def main(argv=None):
+    parser = argparse.ArgumentParser(description='Translate Bayesian net in Hugin format format to ProbLog')
+    parser.add_argument('--verbose', '-v', action='count', help='Verbose output')
+    parser.add_argument('--nobooldetection', action='store_true',
+                        help='Do not try to infer if a node is Boolean (true/false, yes/no, ...)')
+    parser.add_argument('--forcebool', action='store_true',
+                        help='Force all binary nodes to be represented as boolean predicates (0=f, 1=t)')
+    parser.add_argument('--dropzero', action='store_true', help='Drop zero probabilities (if possible)')
+    parser.add_argument('--useneglit', action='store_true', help='Use negative head literals')
+    parser.add_argument('--valueinatomname', action='store_false',
+                        help='Add value to atom name instead as a term (this removes invalid characters, be careful \
+                              that clean values do not overlap)')
+    parser.add_argument('--compress', action='store_true', help='Compress tables')
+    parser.add_argument('--output', '-o', help='Output file')
+    parser.add_argument('input', help='Input Hugin file')
+    args = parser.parse_args(argv)
+
+    if args.verbose is None:
+        logger.setLevel(logging.WARNING)
+    elif args.verbose == 1:
+        logger.setLevel(logging.INFO)
+    elif args.verbose >= 2:
+        logger.setLevel(logging.DEBUG)
+
+    global no_bool_detection
+    if args.nobooldetection:
+        no_bool_detection = args.nobooldetection
+    global force_bool
+    if args.forcebool:
+        force_bool = args.forcebool
+    global drop_zero
+    if args.dropzero:
+        drop_zero = args.dropzero
+    global use_neglit
+    if args.useneglit:
+        use_neglit = args.useneglit
+
+    tests()
+    text = None
+    with open(args.input, 'r') as ifile:
+        text = ifile.read()
+    ast = parse(text)
+    pgm = construct_pgm()
+    if args.compress:
+        pgm = pgm.compress_tables()
+    if pgm is None:
+        error('Could not build PGM structure', halt=True)
+    if args.output is None:
+        ofile = sys.stdout
+    else:
+        ofile = open(args.output, 'w')
+    print(pgm.to_problog(drop_zero=drop_zero, use_neglit=use_neglit, value_as_term=args.valueinatomname), file=ofile)
+
 
 if __name__ == "__main__":
-    output_file = sys.stdout
-    if args.output_file:
-        output_file = open(args.output_file,'w')
-
-    output_file.write(netlog(args.input_file))
-    output_file.close()
+    sys.exit(main())
 

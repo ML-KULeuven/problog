@@ -170,13 +170,14 @@ class PGM(object):
         lines += [cpd.to_Uai08Function() for cpd in cpds]
         return '\n'.join(lines)
 
-    def to_problog(self, drop_zero=False, use_neglit=False):
+    def to_problog(self, drop_zero=False, use_neglit=False, value_as_term=True):
         """Export PGM to ProbLog.
         """
         cpds = [cpd.to_CPT(self) for cpd in self.cpds_topological()]
         lines = ["%% ProbLog program",
                  "%% Created on {}\n".format(datetime.now())]
-        lines += [cpd.to_ProbLog(self, drop_zero=drop_zero, use_neglit=use_neglit) for cpd in cpds]
+        lines += [cpd.to_ProbLog(self, drop_zero=drop_zero, use_neglit=use_neglit,
+                                 value_as_term=value_as_term) for cpd in cpds]
         return '\n'.join(lines)
 
     def to_graphviz(self):
@@ -196,20 +197,20 @@ class PGM(object):
         return '\n'.join([str(cpd) for cpd in cpds])
 
 
-re_clean = re.compile(r"[\(\),\]\[ ]")
+re_toundercore = re.compile(r"[\(\),\]\[ ]")
+re_toremove = re.compile(r"""[^a-zA-Z0-9_]""")
+
 boolean_values = [
   ['t','f'],
   ['true','false'],
-  ['True','False'],
   ['yes','no'],
-  ['Yes','No'],
   ['y','n'],
   ['pos','neg'],
   ['aye','nay']
 ]
 
 class CPD(object):
-    def __init__(self, rv, values, parents):
+    def __init__(self, rv, values, parents, detect_boolean=True):
         """Conditional Probability Distribution."""
         self.rv = rv
         self.values = values
@@ -219,19 +220,25 @@ class CPD(object):
         else:
             self.parents = parents
         self.booleantrue = None # Value that represents true
-        if len(self.values) == 2:
+        if detect_boolean and len(self.values) == 2:
             for values in boolean_values:
-                if values == self.values:
+                if values[0] == self.values[0].lower() and values[1] == self.values[1].lower():
                     self.booleantrue = 0
                     break
-                elif values[::-1] == self.values:
+                elif values[1] == self.values[0].lower() and values[0] == self.values[1].lower():
                     self.booleantrue = 1
                     break
 
     def rv_clean(self, rv=None):
         if rv is None:
             rv = self.rv
-        return re_clean.sub('_', rv)
+        rv = re_toundercore.sub('_', rv)
+        rv = re_toremove.sub('', rv)
+        if not rv[0].islower():
+            rv = rv[0].lower() + rv[1:]
+            if not rv[0].islower():
+                rv = "v"+rv
+        return rv
 
     def has(self, rv):
         return rv == self.rv or rv in self.parents
@@ -244,7 +251,7 @@ class CPD(object):
 
 
 class CPT(CPD):
-    def __init__(self, rv, values, parents, table):
+    def __init__(self, rv, values, parents, table, *args, **kwargs):
         """Conditional Probability Table with discrete probabilities.
 
         :param rv: random variable
@@ -257,11 +264,13 @@ class CPT(CPD):
                 {('f',): [0.2,0.8],
                  ('t',): [0.7,0.3]})
         """
-        super(CPT, self).__init__(rv, values, parents)
+        super(CPT, self).__init__(rv, values, parents, *args, **kwargs)
         if isinstance(table, list) or isinstance(table, tuple):
             self.table = {(): table}
-        else:
+        elif isinstance(table, dict):
             self.table = table
+        else:
+            raise ValueError('Unknown type (expected list, tuple or dict): {}'.format(type(table)))
 
     @staticmethod
     def marginalize(cpds, margvars):
@@ -401,9 +410,12 @@ class CPT(CPD):
         lines.append('')
         return '\n'.join(lines)
 
-    def to_ProbLogValue(self, value):
+    def to_ProbLogValue(self, value, value_as_term=True):
         if self.booleantrue is None:
-            return self.rv_clean()+'_'+str(value)
+            if value_as_term:
+                return self.rv_clean()+'("'+str(value)+'")'
+            else:
+                return self.rv_clean()+'_'+self.rv_clean(str(value))
         else:
             if self.values[self.booleantrue] == value:
                 return self.rv_clean()
@@ -412,7 +424,7 @@ class CPT(CPD):
             else:
                 raise Exception('Unknown value: {} = {}'.format(self.rv, value))
 
-    def to_ProbLog(self, pgm, drop_zero=False, use_neglit=False):
+    def to_ProbLog(self, pgm, drop_zero=False, use_neglit=False, value_as_term=True):
         lines = []
         name = self.rv_clean()
         # if len(self.parents) > 0:
@@ -428,19 +440,19 @@ class CPT(CPD):
             if self.booleantrue is None:
                 for idx,vv in enumerate(v):
                     if not (drop_zero and vv == 0.0):
-                        head_lits.append('{}::{}'.format(vv, self.to_ProbLogValue(self.values[idx])))
+                        head_lits.append('{}::{}'.format(vv, self.to_ProbLogValue(self.values[idx], value_as_term)))
             else:
                 if drop_zero and v[self.booleantrue] == 0.0 and use_neglit:
-                    head_lits.append(self.to_ProbLogValue(self.values[1-self.booleantrue]))
+                    head_lits.append(self.to_ProbLogValue(self.values[1-self.booleantrue], value_as_term))
                 elif v[self.booleantrue] == 1.0:
-                    head_lits.append(self.to_ProbLogValue(self.values[self.booleantrue]))
+                    head_lits.append(self.to_ProbLogValue(self.values[self.booleantrue], value_as_term))
                 else:
-                    head_lits.append('{}::{}'.format(v[self.booleantrue], self.to_ProbLogValue(self.values[self.booleantrue])))
+                    head_lits.append('{}::{}'.format(v[self.booleantrue], self.to_ProbLogValue(self.values[self.booleantrue],value_as_term)))
             body_lits = []
             for parent,parent_value in zip(self.parents, k):
                 if parent_value is not None:
                     parent_cpd = pgm.cpds[parent]
-                    body_lits.append(parent_cpd.to_ProbLogValue(parent_value))
+                    body_lits.append(parent_cpd.to_ProbLogValue(parent_value, value_as_term))
             if len(body_lits) > 0:
                 lines.append('{} :- {}.'.format('; '.join(head_lits), ', '.join(body_lits)))
             else:
