@@ -27,6 +27,7 @@ import sys
 import math
 from collections import Counter
 
+
 class PGM(object):
     def __init__(self, cpds=None):
         """Probabilistic Graphical Model."""
@@ -36,7 +37,9 @@ class PGM(object):
                 self.add(cpd)
 
     def add(self, cpd):
-        """Add a CPD."""
+        """Add a CPD.
+        :param cpd: Object of type CPD
+        """
         if cpd.rv in self.cpds:
             self.cpds[cpd.rv] += cpd
         else:
@@ -51,11 +54,11 @@ class PGM(object):
                 if parent in links:
                     links[parent].add(cpd.rv)
                 else:
-                    links[parent] = set([cpd.rv])
+                    links[parent] = {cpd.rv}
         # print(links)
-        all = set(links.keys())
+        all_links = set(links.keys())
         nonroot = reduce(set.union, links.values())
-        root = all - nonroot
+        root = all_links - nonroot
         # print(root)
         queue = root
         visited = set()
@@ -106,17 +109,18 @@ class PGM(object):
         for (child_rv, parent_rvs) in marg_sets:
             cpds = [self.cpds[child_rv]] + [self.cpds[rv] for rv in parent_rvs]
             cpd = CPT.marginalize(cpds, parent_rvs)
-            if not cpd is None:
+            if cpd is not None:
                 print(cpd)
                 self.cpds[child_rv] = cpd
                 for rv in parent_rvs:
                     del self.cpds[rv]
+        return None
 
     def compress_tables(self):
         """Analyze CPTs and join rows that have the same probability
         distribution."""
         cpds = []
-        for idx,cpd in enumerate(self.cpds.values()):
+        for idx, cpd in enumerate(self.cpds.values()):
             cpds.append(cpd.compress(self))
         return PGM(cpds)
 
@@ -174,6 +178,10 @@ class PGM(object):
 
     def to_problog(self, drop_zero=False, use_neglit=False, value_as_term=True, ad_is_function=False):
         """Export PGM to ProbLog.
+        :param ad_is_function: Experimental
+        :param value_as_term: Include the variable's value as the last term instead of as part of the predicate name
+        :param use_neglit: Use negative literals if it simplifies the program
+        :param drop_zero: Do not include head literals with probability zero
         """
         cpds = [cpd.to_CPT(self) for cpd in self.cpds_topological()]
         lines = ["%% ProbLog program",
@@ -205,13 +213,14 @@ re_toundercore = re.compile(r"[\(\),\]\[ ]")
 re_toremove = re.compile(r"""[^a-zA-Z0-9_]""")
 
 boolean_values = [
-  ['t','f'],
-  ['true','false'],
-  ['yes','no'],
-  ['y','n'],
-  ['pos','neg'],
-  ['aye','nay']
+  ['t', 'f'],
+  ['true', 'false'],
+  ['yes', 'no'],
+  ['y', 'n'],
+  ['pos', 'neg'],
+  ['aye', 'nay']
 ]
+
 
 class CPD(object):
     def __init__(self, rv, values, parents, detect_boolean=True):
@@ -223,7 +232,7 @@ class CPD(object):
             self.parents = []
         else:
             self.parents = parents
-        self.booleantrue = None # Value that represents true
+        self.booleantrue = None  # Value that represents true
         if detect_boolean and len(self.values) == 2:
             for values in boolean_values:
                 if values[0] == self.values[0].lower() and values[1] == self.values[1].lower():
@@ -251,7 +260,7 @@ class CPD(object):
         return self
 
     def __str__(self):
-        return '{} [{}]'.format(rv, ','.join(values))
+        return '{} [{}]'.format(self.rv, ','.join(self.values))
 
 
 class CPT(CPD):
@@ -304,7 +313,7 @@ class CPT(CPD):
         # Traverse through the tree
         # First tuple is path with no value assignment and all rows in the table
         table = []
-        for k,v in self.table.items():
+        for k, v in self.table.items():
             # Tuples allow hashing for IG
             table.append((k, tuple(v)))
         nodes = [(tuple([None]*len(self.parents)), table)]
@@ -314,7 +323,7 @@ class CPT(CPD):
             cnt += 1
             curpath, node = nodes.pop()
             # All the same or all different? Then stop.
-            k,v = zip(*node)
+            k, v = zip(*node)
             c = Counter(v)
             if len(c.keys()) == 1:
                 new_table[curpath] = node[0][1]
@@ -333,12 +342,12 @@ class CPT(CPD):
                 bins = {}
                 for value in pgm.cpds[parent].values:
                     bins[value] = []
-                for k,v in node:
+                for k, v in node:
                     bins[k[parent_idx]].append(v)
                 ig = 0
                 for bin_value, bin_labels in bins.items():
                     label_cnt = Counter(bin_labels)
-                    h = -sum([cnt/len(bin_labels)*math.log(cnt/len(bin_labels),2) for cnt in label_cnt.values()])
+                    h = -sum([cnt/len(bin_labels)*math.log(cnt/len(bin_labels), 2) for cnt in label_cnt.values()])
                     ig += -len(bin_labels)/len(node)*h
                 if ig > ig_max:
                     ig_max = ig
@@ -388,7 +397,7 @@ class CPT(CPD):
         if len(self.parents) > 0:
             lines.append('      <parents>{}</parents>'.format(' '.join([self.rv_clean(p) for p in self.parents])))
         table = sorted(self.table.items())
-        probs = ' '.join([str(value) for k,values in table for value in values])
+        probs = ' '.join([str(value) for k, values in table for value in values])
         lines.append('      <probabilities>{}</probabilities>'.format(probs))
         lines.append('    </cpt>')
         return '\n'.join(lines)
@@ -439,7 +448,7 @@ class CPT(CPD):
         lines = []
         name = self.rv_clean()
         # if len(self.parents) > 0:
-            # name += ' | '+' '.join([self.rv_clean(p) for p in self.parents])
+        #   name += ' | '+' '.join([self.rv_clean(p) for p in self.parents])
         # table = sorted(self.table.items())
         table = self.table.items()
         # value_assignments = itertools.product(*[pgm.cpds[parent].value for parent in self.parents)
@@ -450,18 +459,19 @@ class CPT(CPD):
                 continue
             head_problits = []
             if self.booleantrue is None:
-                for idx,vv in enumerate(v):
+                for idx, vv in enumerate(v):
                     if not (drop_zero and vv == 0.0):
                         head_problits.append((vv, self.to_ProbLogValue(self.values[idx], value_as_term)))
             else:
                 if drop_zero and v[self.booleantrue] == 0.0 and use_neglit:
-                    head_problits.append((None,self.to_ProbLogValue(self.values[1-self.booleantrue], value_as_term)))
+                    head_problits.append((None, self.to_ProbLogValue(self.values[1-self.booleantrue], value_as_term)))
                 elif v[self.booleantrue] == 1.0:
                     head_problits.append((None,self.to_ProbLogValue(self.values[self.booleantrue], value_as_term)))
                 else:
-                    head_problits.append((v[self.booleantrue], self.to_ProbLogValue(self.values[self.booleantrue],value_as_term)))
+                    head_problits.append((v[self.booleantrue],
+                                          self.to_ProbLogValue(self.values[self.booleantrue], value_as_term)))
             body_lits = []
-            for parent,parent_value in zip(self.parents, k):
+            for parent, parent_value in zip(self.parents, k):
                 if parent_value is not None:
                     parent_cpd = pgm.cpds[parent]
                     body_lits.append(parent_cpd.to_ProbLogValue(parent_value, value_as_term))
@@ -469,7 +479,7 @@ class CPT(CPD):
             if ad_is_function:
                 for head_cnt, (head_prob, head_lit) in enumerate(head_problits):
                     if len(body_lits) == 0:
-                        lines.append('{}::{}.'.format(head_prob,head_lit))
+                        lines.append('{}::{}.'.format(head_prob, head_lit))
                     else:
                         new_probfact = 'pf_{}_{}_{}'.format(self.rv_clean(), line_cnt, head_cnt)
                         new_body_lits = body_lits + [new_probfact]
@@ -485,13 +495,13 @@ class CPT(CPD):
                     if prob is None:
                         head_strs.append(str(lit))
                     else:
-                        head_strs.append('{}::{}'.format(prob,lit))
+                        head_strs.append('{}::{}'.format(prob, lit))
                 head_str = '; '.join(head_strs)
                 lines.append('{}{}.'.format(head_str, body_str))
             line_cnt += 1
 
         if ad_is_function:
-            head_lits = [self.to_ProbLogValue(value,value_as_term) for value in self.values]
+            head_lits = [self.to_ProbLogValue(value, value_as_term) for value in self.values]
             lines.append('false_constraints :- '+', '.join(['\+'+l for l in head_lits])+'.')
             for lit1, lit2 in itertools.combinations(head_lits, 2):
                 lines.append('false_constraints :- {}, {}.'.format(lit1, lit2))
@@ -520,7 +530,9 @@ class OrCPT(CPD):
         self.parents.update([pv[0] for pv in self.parentvalues])
 
     def add(self, parentvalues):
-        """Add list of tupes [('a', 1)]."""
+        """Add list of tuples [('a', 1)].
+        :param parentvalues: List of tuples (parent, index)
+        """
         self.parentvalues += parentvalues
         self.parents.update([pv[0] for pv in parentvalues])
 
