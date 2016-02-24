@@ -172,14 +172,16 @@ class PGM(object):
         lines += [cpd.to_Uai08Function() for cpd in cpds]
         return '\n'.join(lines)
 
-    def to_problog(self, drop_zero=False, use_neglit=False, value_as_term=True):
+    def to_problog(self, drop_zero=False, use_neglit=False, value_as_term=True, ad_is_function=False):
         """Export PGM to ProbLog.
         """
         cpds = [cpd.to_CPT(self) for cpd in self.cpds_topological()]
         lines = ["%% ProbLog program",
                  "%% Created on {}\n".format(datetime.now())]
         lines += [cpd.to_ProbLog(self, drop_zero=drop_zero, use_neglit=use_neglit,
-                                 value_as_term=value_as_term) for cpd in cpds]
+                                 value_as_term=value_as_term, ad_is_function=ad_is_function) for cpd in cpds]
+        if ad_is_function:
+            lines += ["evidence(false_constraints,false)."]
         return '\n'.join(lines)
 
     def to_graphviz(self):
@@ -433,7 +435,7 @@ class CPT(CPD):
             else:
                 raise Exception('Unknown value: {} = {}'.format(self.rv, value))
 
-    def to_ProbLog(self, pgm, drop_zero=False, use_neglit=False, value_as_term=True):
+    def to_ProbLog(self, pgm, drop_zero=False, use_neglit=False, value_as_term=True, ad_is_function=False):
         lines = []
         name = self.rv_clean()
         # if len(self.parents) > 0:
@@ -445,27 +447,39 @@ class CPT(CPD):
         for k, v in table:
             if self.booleantrue is not None and drop_zero and v[self.booleantrue] == 0.0 and not use_neglit:
                 continue
-            head_lits = []
+            head_problits = []
             if self.booleantrue is None:
                 for idx,vv in enumerate(v):
                     if not (drop_zero and vv == 0.0):
-                        head_lits.append('{}::{}'.format(vv, self.to_ProbLogValue(self.values[idx], value_as_term)))
+                        head_problits.append('{}::{}'.format(vv, self.to_ProbLogValue(self.values[idx], value_as_term)))
             else:
                 if drop_zero and v[self.booleantrue] == 0.0 and use_neglit:
-                    head_lits.append(self.to_ProbLogValue(self.values[1-self.booleantrue], value_as_term))
+                    head_problits.append(self.to_ProbLogValue(self.values[1-self.booleantrue], value_as_term))
                 elif v[self.booleantrue] == 1.0:
-                    head_lits.append(self.to_ProbLogValue(self.values[self.booleantrue], value_as_term))
+                    head_problits.append(self.to_ProbLogValue(self.values[self.booleantrue], value_as_term))
                 else:
-                    head_lits.append('{}::{}'.format(v[self.booleantrue], self.to_ProbLogValue(self.values[self.booleantrue],value_as_term)))
+                    head_problits.append('{}::{}'.format(v[self.booleantrue], self.to_ProbLogValue(self.values[self.booleantrue],value_as_term)))
             body_lits = []
             for parent,parent_value in zip(self.parents, k):
                 if parent_value is not None:
                     parent_cpd = pgm.cpds[parent]
                     body_lits.append(parent_cpd.to_ProbLogValue(parent_value, value_as_term))
             if len(body_lits) > 0:
-                lines.append('{} :- {}.'.format('; '.join(head_lits), ', '.join(body_lits)))
+                body_str = ' :- ' + ', '.join(body_lits)
             else:
-                lines.append('{}.'.format('; '.join(head_lits)))
+                body_str = ''
+            if ad_is_function:
+                for head_lit in head_problits:
+                    lines.append('{}{}.'.format(head_lit, body_str))
+            else:
+                head_str = '; '.join(head_problits)
+                lines.append('{}{}.'.format(head_str, body_str))
+
+        head_lits = [self.to_ProbLogValue(value,value_as_term) for value in self.values]
+        lines.append('false_constraints :- '+', '.join(['\+'+l for l in head_lits])+'.')
+        for lit1, lit2 in itertools.combinations(head_lits, 2):
+            lines.append('false_constraints :- {}, {}.'.format(lit1, lit2))
+
         return '\n'.join(lines)
 
     def __str__(self):

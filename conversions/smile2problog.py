@@ -106,6 +106,9 @@ def main(argv=None):
                         help='Add value to atom name instead as a term (this removes invalid characters, be careful \
                               that clean values do not overlap)')
     parser.add_argument('--compress', action='store_true', help='Compress tables')
+    parser.add_argument('--adisfunction', action='store_true',
+                        help='Consider all ADs to represent functions of mutual exclusive conditions (like in a \
+                              Bayesian net)')
     parser.add_argument('--output', '-o', help='Output file')
     parser.add_argument('input', help='Input Hugin file')
     args = parser.parse_args(argv)
@@ -141,7 +144,8 @@ def main(argv=None):
     ofile = sys.stdout
     if args.output is not None:
         ofile = open(args.output, 'w')
-    print(pgm.to_problog(drop_zero=drop_zero, use_neglit=use_neglit, value_as_term=args.valueinatomname), file=ofile)
+    print(pgm.to_problog(drop_zero=drop_zero, use_neglit=use_neglit, value_as_term=args.valueinatomname,
+                         ad_is_function=args.adisfunction), file=ofile)
 
 
 if __name__ == "__main__":
