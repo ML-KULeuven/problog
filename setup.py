@@ -39,6 +39,7 @@ else:
             'bin/darwin/maxsatz', 
             'bin/linux/dsharp', 
             'bin/linux/maxsatz',
+            'bin/source/maxsatz/maxsatz2009.c',
             'bin/windows/dsharp.exe',
             'bin/windows/maxsatz.exe',
             'bin/windows/libgcc_s_dw2-1.dll',
@@ -49,7 +50,7 @@ else:
             'lib/sdd/darwin/libsdd.a',
             'lib/sdd/*.py',
             'web/*.py',
-            'web/editor_local.html',
+            'web/editor_local.html'
             'web/editor_adv.html',
             'web/js/problog_editor.js',
             'library/lists.pl',
