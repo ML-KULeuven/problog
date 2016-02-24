@@ -44,19 +44,16 @@ It uses the following extensions of ProbLog's classes:
 from __future__ import print_function
 
 import sys
-import os
 import random
 import math
 import logging
 
 from collections import defaultdict
 
-# Make sure the ProbLog module is on the path.
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../')))
-
 from problog.engine import DefaultEngine, ground
 from problog.evaluator import SemiringProbability
-from problog.logic import Term, Constant, Clause, AnnotatedDisjunction, Or, Var
+from problog.logic import Term, Constant, Clause, AnnotatedDisjunction, Or, Var,\
+    InstantiationError, ArithmeticError
 from problog.program import PrologString, PrologFile, LogicProgram
 from problog.core import ProbLogError
 from problog.errors import process_error, InconsistentEvidenceError
@@ -75,9 +72,10 @@ def str2bool(s):
         return None
 
 
-class LFIProblem(SemiringProbability, LogicProgram) :
-    
-    def __init__(self, source, examples, max_iter=10000, min_improv=1e-10, verbose=0, knowledge=SDD, leakprob=None, **extra):
+class LFIProblem(SemiringProbability, LogicProgram):
+
+    def __init__(self, source, examples, max_iter=10000, min_improv=1e-10, verbose=0, knowledge=SDD,
+                 leakprob=None, propagate_evidence=True, **extra):
         """
         :param source:
         :param examples:
@@ -96,12 +94,20 @@ class LFIProblem(SemiringProbability, LogicProgram) :
         SemiringProbability.__init__(self)
         LogicProgram.__init__(self)
         self.source = source
+
+        # The names of the atom for which we want to learn weights.
         self.names = []
-        self.queries = []
-        self.weights = []
+
+        # The weights to learn.
+        # The initial weights are of type 'float'.
+        # When necessary they are replaced by a dictionary [t(arg1, arg2, ...) -> float]
+        #  for weights of form t(SV, arg1, arg2, ...).
+        self._weights = []
+
         self.examples = examples
         self.leakprob = leakprob
         self.leakprobatoms = None
+        self.propagate_evidence = propagate_evidence
         self._compiled_examples = None
         
         self.max_iter = max_iter
@@ -115,25 +121,57 @@ class LFIProblem(SemiringProbability, LogicProgram) :
     
     def value(self, a):
         """Overrides from SemiringProbability.
-        Replaces weights of the form ``lfi(i)`` by their current estimated value.
+        Replaces a weight of the form ``lfi(i, t(...))`` by its current estimated value.
+        Other weights are passed through unchanged.
+
+        :param a: term representing the weight
+        :type a: Term
+        :return: current weight
+        :rtype: float
         """
-        
         if isinstance(a, Term) and a.functor == 'lfi':
-            assert(len(a.args) == 1)
-            index = int(a.args[0])
-            return self.weights[index]
-        else :
+            # index = int(a.args[0])
+            return self._get_weight(*a.args)
+        else:
             return float(a)
          
     @property 
     def count(self):
         """Number of parameters to learn."""
-        return len(self.weights)
+        return len(self.names)
     
     def prepare(self):
         """Prepare for learning."""
         self._compile_examples()
-        
+
+    def _get_weight(self, index, args):
+        index = int(index)
+        weight = self._weights[index]
+        if isinstance(weight, dict):
+            return weight[args]
+        else:
+            return weight
+
+    def get_weights(self, index):
+        weight = self._weights[index]
+        if isinstance(weight, dict):
+            return list(weight.items())
+        else:
+            return [(Term('t'), weight)]
+
+    def _set_weight(self, index, args, weight):
+        index = int(index)
+        if not args:
+            assert not isinstance(self._weights[index], dict)
+            self._weights[index] = weight
+        elif isinstance(self._weights[index], dict):
+            self._weights[index][args] = weight
+        else:
+            self._weights[index] = {args: weight}
+
+    def _add_weight(self, weight):
+        self._weights.append(weight)
+
     def _process_examples(self):
         """Process examples by grouping together examples with similar structure.
     
@@ -145,11 +183,19 @@ class LFIProblem(SemiringProbability, LogicProgram) :
         # ( atom ), ( ( value, ... ), ... ) 
 
         # Simple implementation: don't add neutral evidence.
-        result = defaultdict(list)
-        for example in self.examples:
-            atoms, values = zip(*example)
-            result[atoms].append(values)
-        return result
+
+        if self.propagate_evidence:
+            result = []
+            for example in self.examples:
+                atoms, values = zip(*example)
+                result.append((atoms, [values]))
+            return result
+        else:
+            result = defaultdict(list)
+            for example in self.examples:
+                atoms, values = zip(*example)
+                result[atoms].append(values)
+            return result.items()
     
     def _compile_examples(self):
         """Compile examples.
@@ -161,23 +207,23 @@ class LFIProblem(SemiringProbability, LogicProgram) :
         baseprogram = DefaultEngine().prepare(self)
         examples = self._process_examples()
         result = []
-        for atoms, example_group in examples.items():
+        for atoms, example_group in examples:
             ground_program = None   # Let the grounder decide
             for n, example in enumerate(example_group):
                 if self.verbose:
                     logger.debug('Compiling example %s ...' % n)
 
                 ground_program = ground(baseprogram, ground_program,
-                                        evidence=list(zip(atoms, example)))
+                                        evidence=list(zip(atoms, example)),
+                                        propagate_evidence=self.propagate_evidence)
                 for i, node, t in ground_program:
                     if t == 'atom' and \
                             isinstance(node.probability, Term) and \
                             node.probability.functor == 'lfi':
-                        factname = 'lfi_fact_%s' % node.probability.args[0]
                         factargs = ()
                         if type(node.identifier) == tuple:
-                             factargs = node.identifier[1]
-                        fact = Term(factname, *factargs)
+                            factargs = node.identifier[1]
+                        fact = Term('lfi_fact', node.probability.args[0], node.probability.args[1], *factargs)
                         ground_program.add_query(fact, i)
                 compiled_program = self.knowledge.create_from(ground_program)
                 result.append((atoms, example, compiled_program, n))
@@ -200,17 +246,21 @@ class LFIProblem(SemiringProbability, LogicProgram) :
         num_random_weights = 0
         for atom in atoms:
             if atom.probability and atom.probability.functor == 't':
-                start_value = atom.probability.args[0]
-                if start_value.is_var():
-                    num_random_weights += 1
-                else:
+                try:
+                    start_value = float(atom.probability.args[0])
                     available_probability -= float(start_value)
-            elif atom.probability and atom.is_constant():
+                except InstantiationError:
+                    # Can't be converted to float => take random
+                    num_random_weights += 1
+                except ArithmeticError:
+                    num_random_weights += 1
+
+            elif atom.probability:
                 available_probability -= float(atom.probability)
 
-        random_weights = [random.random() for i in range(0, num_random_weights+1)]
+        random_weights = [random.random() for i in range(0, num_random_weights + 1)]
         norm_factor = available_probability / sum(random_weights)
-        random_weights = [r*norm_factor for r in random_weights]
+        random_weights = [r * norm_factor for r in random_weights]
 
         for atom in atoms:
             if atom.probability and atom.probability.functor == 't':
@@ -227,8 +277,12 @@ class LFIProblem(SemiringProbability, LogicProgram) :
                 has_lfi_fact = True
 
                 # Learnable probability
-                assert(len(atom.probability.args) == 1)
-                start_value = atom.probability.args[0]
+                try:
+                    start_value = float(atom.probability.args[0])
+                except InstantiationError:
+                    start_value = None
+                except ArithmeticError:
+                    start_value = None
 
                 # Replace anonymous variables with non-anonymous variables.
                 class ReplaceAnon(object):
@@ -244,10 +298,11 @@ class LFIProblem(SemiringProbability, LogicProgram) :
                             return Var(key)
 
                 atom1 = atom.apply(ReplaceAnon())
+                prob_args = atom.probability.args[1:]
 
                 # 1) Introduce a new fact
-                lfi_fact = Term('lfi_fact_%d' % self.count, *atom1.args)
-                lfi_prob = Term('lfi', Constant(self.count))
+                lfi_fact = Term('lfi_fact', Constant(self.count), Term('t', *prob_args), *atom1.args)
+                lfi_prob = Term('lfi', Constant(self.count), Term('t', *prob_args))
 
                 # 2) Replacement atom
                 replacement = lfi_fact.with_probability(lfi_prob)
@@ -260,21 +315,13 @@ class LFIProblem(SemiringProbability, LogicProgram) :
                 extra_clauses += [Clause(atom1.with_probability(), new_body)]
 
                 # 4) Set initial weight
-                if start_value.is_var():
-                    self.weights.append(random_weights.pop(-1))
+                if start_value is None:
+                    self._add_weight(random_weights.pop(-1))
                 else:
-                    self.weights.append(float(start_value))
+                    self._add_weight(start_value)
 
-                # # 5) Add query
-                # self.queries.append(lfi_fact)
-                # if body:
-                #     extra_clauses.append(Clause(Term('query', lfi_fact), body))
-                # else:
-                #     extra_clauses.append(Term('query', lfi_fact))
-
-                # 6) Add name
+                # 5) Add name
                 self.names.append(atom)
-
                 atoms_out.append(replacement)
             else:
                 atoms_out.append(atom)
@@ -303,27 +350,54 @@ class LFIProblem(SemiringProbability, LogicProgram) :
         else:
             atoms = [atom]
 
-        atoms_out = []
+        transforms = defaultdict(list)
+
+        clauses = []
+        atoms_fixed = []
+        t_args = None
+        fixed_only = True
         for atom in atoms:
             if atom.probability and atom.probability.functor == 't':
                 assert (atom in self.names)
+                assert (t_args is None or atom.probability.args == t_args)
+                t_args = atom.probability.args
+
                 index = self.output_names.index(atom)
+                weights = self.get_weights(index)
+
+                for w_args, w_val in weights:
+                    translate = tuple(zip(atom.probability.args[1:], w_args.args))
+                    transforms[translate].append(atom.with_probability(Constant(w_val)))
                 self.output_names[index] = None
-                weight = self.weights[index]
-                result = atom.with_probability(weight)
-                atoms_out.append(result)
+                fixed_only = False
             else:
-                atoms_out.append(atom)
-        if len(atoms_out) == 1:
-            if body is None:
-                return [atoms_out[0]]
-            else:
-                return [Clause(atoms_out[0], body)]
+                atoms_fixed.append(atom)
+
+        if not fixed_only:
+            clauses = []
+            for tr, atoms in transforms.items():
+                tr = DefaultDict({k: v for k, v in tr})
+                atoms_out = [at.apply(tr) for at in atoms] + atoms_fixed
+                if len(atoms_out) == 1:
+                    if body is None:
+                        clauses.append(atoms_out[0])
+                    else:
+                        clauses.append(Clause(atoms_out[0], body.apply(tr)))
+                else:
+                    clauses.append(AnnotatedDisjunction(atoms_out, body.apply(tr)))
+            return clauses
         else:
-            return [AnnotatedDisjunction(atoms_out, body)]
-        
+            atoms_out = atoms_fixed
+            if len(atoms_out) == 1:
+                if body is None:
+                    return [atoms_out[0]]
+                else:
+                    return [Clause(atoms_out[0], body)]
+            else:
+                return [AnnotatedDisjunction(atoms_out, body)]
+
     # Overwrite from LogicProgram    
-    def __iter__(self) :
+    def __iter__(self):
         """
         Iterate over the clauses of the source model.
         This object can be used as a LogicProgram to be passed to the grounding Engine.
@@ -402,7 +476,7 @@ class LFIProblem(SemiringProbability, LogicProgram) :
                     self.leakprobatoms.add(example)
         return self.leakprobatoms
 
-    def _evaluate_examples( self ) :
+    def _evaluate_examples(self):
         """Evaluate the model with its current estimates for all examples."""
         
         results = []
@@ -438,16 +512,15 @@ class LFIProblem(SemiringProbability, LogicProgram) :
             results.append((p_evidence, p_queries))
         return results
     
-    def _update(self, results) :
+    def _update(self, results):
         """Update the current estimates based on the latest evaluation results."""
         
-        fact_marg = [0.0] * self.count
-        fact_count = [0] * self.count
+        fact_marg = defaultdict(float)
+        fact_count = defaultdict(int)
         score = 0.0
         for pEvidence, result in results:
             for fact, value in result.items():
-                fact = str(fact)
-                index = int(fact.split('(')[0].rsplit('_',1)[1])
+                index = fact.args[0:2]
                 fact_marg[index] += value
                 fact_count[index] += 1
             try:
@@ -455,13 +528,12 @@ class LFIProblem(SemiringProbability, LogicProgram) :
             except ValueError:
                 raise ProbLogError('Inconsistent evidence.')
 
-        output = {}
-        for index in range(0, self.count) :
-            if fact_count[index] > 0 :
-                self.weights[index] = fact_marg[index] / fact_count[index]
+        for index in fact_marg:
+            if fact_count[index] > 0:
+                self._set_weight(index[0], index[1], fact_marg[index] / fact_count[index])
         return score
         
-    def step(self) :
+    def step(self):
         self.iteration += 1
         results = self._evaluate_examples()
         return self._update(results)
@@ -475,18 +547,19 @@ class LFIProblem(SemiringProbability, LogicProgram) :
         self.output_mode = False
         return '\n'.join(lines)
         
-    def run(self) :
+    def run(self):
         self.prepare()
         logging.getLogger('problog_lfi').info('Weights to learn: %s' % self.names)
-        logging.getLogger('problog_lfi').info('Initial weights: %s' % self.weights)
+        logging.getLogger('problog_lfi').info('Initial weights: %s' % self._weights)
         delta = 1000
         prev_score = -1e10
         while self.iteration < self.max_iter and (delta < 0 or delta > self.min_improv):
             score = self.step()
-            logging.getLogger('problog_lfi').info('Weights after iteration %s: %s' % (self.iteration, self.weights))
+            logging.getLogger('problog_lfi').info('Weights after iteration %s: %s' % (self.iteration, self._weights))
             delta = score - prev_score
             prev_score = score
         return prev_score
+
 
 def extract_evidence(pl):
     engine = DefaultEngine()
@@ -499,6 +572,7 @@ def extract_evidence(pl):
         else:
             atoms.append((atom, Term('true')))
     return atoms
+
 
 def read_examples(*filenames):
     
@@ -521,16 +595,35 @@ def read_examples(*filenames):
                 atoms = extract_evidence(pl)
                 if len(atoms) > 0:
                     yield atoms
+
+
+class DefaultDict(object):
+
+    def __init__(self, base):
+        self.base = base
+
+    def __getitem__(self, key):
+        return self.base.get(key, Var(key))
+
     
-    
-def run_lfi( program, examples, output_model=None, **kwdargs):
+def run_lfi(program, examples, output_model=None, **kwdargs):
     lfi = LFIProblem(program, examples, **kwdargs)
     score = lfi.run()
 
     if output_model is not None:
         with open(output_model, 'w') as f:
             f.write(lfi.get_model())
-    return score, lfi.weights, lfi.names, lfi.iteration
+
+    names = []
+    weights = []
+    for i, name in enumerate(lfi.names):
+        weights_i = lfi.get_weights(i)
+        for w_args, w_val in weights_i:
+            translate = {k: v for k, v in zip(name.probability.args[1:], w_args.args)}
+            names.append(name.apply(DefaultDict(translate)))
+            weights.append(w_val)
+
+    return score, weights, names, lfi.iteration, lfi
 
 
 def argparser():
@@ -548,6 +641,14 @@ def argparser():
                         default=None, help='knowledge compilation tool')
     parser.add_argument('-l', '--leak-probabilities', dest='leakprob', type=float,
                         help='Add leak probabilities for evidence atoms.')
+    parser.add_argument('--propagate-evidence', action='store_true',
+                        dest='propagate_evidence',
+                        default=True,
+                        help="Enable evidence propagation")
+    parser.add_argument('--dont-propagate-evidence', action='store_false',
+                        dest='propagate_evidence',
+                        default=True,
+                        help="Disable evidence propagation")
     parser.add_argument('-v', '--verbose', action='count', default=0)
     parser.add_argument('--web', action='store_true', help=argparse.SUPPRESS)
     return parser
@@ -614,7 +715,7 @@ def main(argv, result_handler=None):
 def print_result(d, output, precision=8):
     success, d = d
     if success:
-        score, weights, names, iterations = d
+        score, weights, names, iterations, lfi = d
         weights = list(map(lambda x: round(x, precision), weights))
         print (score, weights, names, iterations, file=output)
         return 0
@@ -627,12 +728,13 @@ def print_result_json(d, output, precision=8):
     import json
     success, d = d
     if success:
-        score, weights, names, iterations = d
+        score, weights, names, iterations, lfi = d
         results = {'SUCCESS': True,
                    'score': score,
                    'iterations': iterations,
-                   'weights': [[str(n.with_probability()), round(w, precision), n.loc[1], n.loc[2]]
+                   'weights': [[str(n), round(w, precision), n.loc[1], n.loc[2]]
                                for n, w in zip(names, weights)],
+                   'model': lfi.get_model()
                    }
         print (json.dumps(results), file=output)
     else:

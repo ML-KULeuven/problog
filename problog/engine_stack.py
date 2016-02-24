@@ -1474,6 +1474,9 @@ class EvalDefine(EvalNode):
             cycle_parent.siblings.append(self.pointer)
             self.is_cycle_child = True
             for result, node in cycle_parent.results:
+                if type(node) == list:
+                    raise IndirectCallCycleError()
+                queue += self.notifyResultMe(result, node)
                 queue += self.notifyResultMe(result, node)
         else:
             # goal = (self.node.functor, self.context)
@@ -1756,7 +1759,6 @@ class BooleanBuiltIn(object):
                 call = kwdargs['call_origin'][0].split('/')[0]
                 name = Term(call, *args)
                 node = kwdargs['target'].add_atom(name, None, None, name=name, source='builtin')
-
                 return True, callback.notifyResult(args, node, True)
             else:
                 return True, callback.notifyResult(args, NODE_TRUE, True)

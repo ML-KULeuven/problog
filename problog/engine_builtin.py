@@ -1572,5 +1572,5 @@ class IndirectCallCycleError(GroundingError):
 
     def __init__(self, location=None):
         GroundingError.__init__(self,
-                                'Indirect cycle detected (passing through call/1 or findall/3)',
+                                'Indirect cycle detected (passing through findall/3)',
                                 location)
