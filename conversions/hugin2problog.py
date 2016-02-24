@@ -95,7 +95,7 @@ def parsePotential(s,l,t):
     parents = t[1]
     parameters = t[2]
     if len(parents) == 0:
-        table = list(parameters)
+        table = list([float(p) for p in parameters])
         cpds.append(CPT(rv, values, parents, table, detect_boolean=detect_boolean))
         return
     parent_domains = []
@@ -105,7 +105,7 @@ def parsePotential(s,l,t):
     table = {}
     idx = 0
     for val_assignment in itertools.product(*parent_domains):
-        table[val_assignment] = parameters[idx:idx+dom_size]
+        table[val_assignment] = [float(p) for p in parameters[idx:idx+dom_size]]
         idx += dom_size
     cpds.append(CPT(rv, values, parents, table, detect_boolean=detect_boolean))
 
