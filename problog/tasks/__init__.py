@@ -18,12 +18,11 @@ limitations under the License.
 
 import os
 import sys
-from problog.util import load_module
-from problog import version
-
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
 
+from problog.util import load_module
+from problog import version
 
 problog_tasks = {}
 problog_tasks['prob'] = 'problog.tasks.probability'
