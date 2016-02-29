@@ -209,6 +209,12 @@ class BaseFormula(ProbLogObject):
         else:
             self.add_name(name, key, self.LABEL_EVIDENCE_NEG)
 
+    def clear_evidence(self):
+        """Remove all evidence."""
+        self._names[self.LABEL_EVIDENCE_MAYBE] = {}
+        self._names[self.LABEL_EVIDENCE_POS] = {}
+        self._names[self.LABEL_EVIDENCE_NEG] = {}
+
     def get_names(self, label=None):
         """Get a list of all node names in the formula.
 

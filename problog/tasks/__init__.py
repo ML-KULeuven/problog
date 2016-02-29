@@ -18,6 +18,9 @@ limitations under the License.
 
 import os
 import sys
+from problog.util import load_module
+from problog import version
+
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
 
@@ -33,11 +36,9 @@ problog_tasks['web'] = 'problog.web.server'
 problog_tasks['dt'] = 'problog.tasks.dtproblog'
 problog_tasks['shell'] = 'problog.tasks.shell'
 problog_tasks['parse'] = 'problog.parser'
+problog_tasks['map'] = 'problog.tasks.map'
 
 problog_default_task = 'prob'
-
-from problog.util import load_module
-from problog import version
 
 
 def run_task(argv):
