@@ -51,10 +51,7 @@ def main(argv):
 
     # Add constraints that enforce the evidence
     for qn, qi in ground_program.evidence():
-        if qi >= 0:
-            ground_program.add_constraint(TrueConstraint(qi))
-        else:
-            ground_program.add_constraint(TrueConstraint(-qi))
+        ground_program.add_constraint(TrueConstraint(qi))
     ground_program.clear_evidence()
 
     # Process constraints (only on decisions, the others are encoded in the model)
