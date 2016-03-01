@@ -223,7 +223,7 @@ boolean_values = [
 
 
 class CPD(object):
-    def __init__(self, rv, values, parents, detect_boolean=True):
+    def __init__(self, rv, values, parents, detect_boolean=True, force_boolean=False):
         """Conditional Probability Distribution."""
         self.rv = rv
         self.values = values
@@ -233,7 +233,7 @@ class CPD(object):
         else:
             self.parents = parents
         self.booleantrue = None  # Value that represents true
-        if detect_boolean and len(self.values) == 2:
+        if (force_boolean or detect_boolean) and len(self.values) == 2:
             for values in boolean_values:
                 if values[0] == self.values[0].lower() and values[1] == self.values[1].lower():
                     self.booleantrue = 0
@@ -241,6 +241,8 @@ class CPD(object):
                 elif values[1] == self.values[0].lower() and values[0] == self.values[1].lower():
                     self.booleantrue = 1
                     break
+            if force_boolean and self.booleantrue is None:
+                self.booleantrue = 1
 
     def rv_clean(self, rv=None):
         if rv is None:

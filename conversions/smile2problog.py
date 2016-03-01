@@ -75,7 +75,7 @@ def parseCPT(cpt):
     parameters = [float(p) for p in cpt.find('probabilities').text.split()]
     if len(parents) == 0:
         table = parameters
-        cpds.append(CPT(rv, values, parents, table, detect_boolean=detect_boolean))
+        cpds.append(CPT(rv, values, parents, table, detect_boolean=detect_boolean, force_boolean=force_bool))
         return
     parent_domains = []
     for parent in parents:
@@ -86,7 +86,7 @@ def parseCPT(cpt):
     for val_assignment in itertools.product(*parent_domains):
         table[val_assignment] = parameters[idx:idx+dom_size]
         idx += dom_size
-    cpds.append(CPT(rv, values, parents, table, detect_boolean=detect_boolean))
+    cpds.append(CPT(rv, values, parents, table, detect_boolean=detect_boolean, force_boolean=force_bool))
 
 
 def construct_pgm():

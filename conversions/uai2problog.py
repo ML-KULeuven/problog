@@ -60,7 +60,7 @@ def construct_cpt(func_num):
     parents_str = ['v{}'.format(p) for p in parents]
     if len(parents) == 0:
         table = func_values[var]
-        return CPT(rv, values, parents_str, table)
+        return CPT(rv, values, parents_str, table, force_boolean=force_bool)
     parent_domains = []
     for parent in parents:
         parent_domains.append(domains[parent])
@@ -74,7 +74,7 @@ def construct_cpt(func_num):
     for val_assignment in itertools.product(*parent_domains):
         table[val_assignment] = cur_func_values[idx:idx+dom_size]
         idx += dom_size
-    return CPT(rv, values, parents_str, table)
+    return CPT(rv, values, parents_str, table, force_boolean=force_bool)
 
 def construct_pgm():
     pgm = PGM()
@@ -107,10 +107,7 @@ def parse_header(ifile):
     for size in line.split():
         size = int(size)
         dom_sizes.append(size)
-        if force_bool and size == 2:
-            values = ['f', 't']
-        else:
-            values = [str(d) for d in range(size)]
+        values = [str(d) for d in range(size)]
         domains.append(values)
     if len(dom_sizes) != num_vars:
         error('Expected {} domain sizes, found {}'.format(num_vars, len(dom_sizes)), halt=True)

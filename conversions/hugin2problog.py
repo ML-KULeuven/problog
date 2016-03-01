@@ -78,10 +78,7 @@ def parseNode(s,l,t):
     rv = t[0]
     for key, val in t[1]:
         if key == 'states':
-            if force_bool and len(val) == 2:
-                domains[rv] = ['f', 't']
-            else:
-                domains[rv] = val
+            domains[rv] = val
 
 
 def parsePotential(s,l,t):
@@ -96,7 +93,7 @@ def parsePotential(s,l,t):
     parameters = t[2]
     if len(parents) == 0:
         table = list([float(p) for p in parameters])
-        cpds.append(CPT(rv, values, parents, table, detect_boolean=detect_boolean))
+        cpds.append(CPT(rv, values, parents, table, detect_boolean=detect_boolean, force_boolean=force_bool))
         return
     parent_domains = []
     for parent in parents:
@@ -107,7 +104,7 @@ def parsePotential(s,l,t):
     for val_assignment in itertools.product(*parent_domains):
         table[val_assignment] = [float(p) for p in parameters[idx:idx+dom_size]]
         idx += dom_size
-    cpds.append(CPT(rv, values, parents, table, detect_boolean=detect_boolean))
+    cpds.append(CPT(rv, values, parents, table, detect_boolean=detect_boolean, force_boolean=force_bool))
 
 p_option.setParseAction(parseOption)
 p_node.setParseAction(parseNode)
