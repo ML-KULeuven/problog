@@ -168,6 +168,8 @@ def argparser():
     parser.add_argument('--debug', '-d', action='store_true',
                         help="Enable debug mode (print full errors).")
     parser.add_argument('--web', action='store_true', help=argparse.SUPPRESS)
+    parser.add_argument('-a', '--arg', dest='args', action='append',
+                        help='Pass additional arguments to the cmd_args builtin.')
 
     # Additional arguments (passed through)
     parser.add_argument('--engine-debug', action='store_true', help=argparse.SUPPRESS)

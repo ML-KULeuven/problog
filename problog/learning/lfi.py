@@ -118,6 +118,7 @@ class LFIProblem(SemiringProbability, LogicProgram):
         self.knowledge = knowledge
 
         self.output_mode = False
+        self.extra = extra
     
     def value(self, a):
         """Overrides from SemiringProbability.
@@ -204,7 +205,7 @@ class LFIProblem(SemiringProbability, LogicProgram):
         """
         logger = logging.getLogger('problog_lfi')
 
-        baseprogram = DefaultEngine().prepare(self)
+        baseprogram = DefaultEngine(**self.extra).prepare(self)
         examples = self._process_examples()
         result = []
         for atoms, example_group in examples:
@@ -651,6 +652,9 @@ def argparser():
                         help="Disable evidence propagation")
     parser.add_argument('-v', '--verbose', action='count', default=0)
     parser.add_argument('--web', action='store_true', help=argparse.SUPPRESS)
+    parser.add_argument('-a', '--arg', dest='args', action='append',
+                        help='Pass additional arguments to the cmd_args builtin.')
+
     return parser
 
 

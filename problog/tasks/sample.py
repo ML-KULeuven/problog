@@ -674,6 +674,9 @@ def main(args, result_handler=None):
     parser.add_argument('--verbose', '-v', action='count', help='Verbose output')
     parser.add_argument('--seed', '-s', type=float, help='Random seed', default=None)
     parser.add_argument('--full-trace', action='store_true')
+    parser.add_argument('-a', '--arg', dest='args', action='append',
+                        help='Pass additional arguments to the cmd_args builtin.')
+
 
     args = parser.parse_args(args)
 

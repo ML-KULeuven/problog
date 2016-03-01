@@ -119,6 +119,7 @@ class ClauseDBEngine(GenericEngine):
             self.load_builtins()
 
         self.functions = {}
+        self.args = kwdargs.get('args')
 
     def load_builtins(self):
         """Load default builtins."""
