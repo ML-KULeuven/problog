@@ -138,6 +138,8 @@ class SampledFormula(LogicFormula):
     def __init__(self):
         LogicFormula.__init__(self)
         self.facts = {}
+        self.fact_names = {}
+        self.fact_probs = {}
         self.groups = {}
         self.probability = 1.0  # Try to compute
         self.values = []
@@ -208,6 +210,8 @@ class SampledFormula(LogicFormula):
                     value, prob = self.sample_value(probability)
                     self.probability *= prob
                     result_node = self.add_value(value)
+                self.fact_names[identifier] = name
+                self.fact_probs[identifier] = probability
                 self.facts[identifier] = result_node
                 return result_node
             else:
@@ -241,6 +245,8 @@ class SampledFormula(LogicFormula):
                     value, prob = self.sample_value(probability)
                     self.probability *= prob
                     result_node = self.add_value(value)
+                self.fact_names[identifier] = name
+                self.fact_probs[identifier] = probability
                 self.facts[identifier] = result_node
                 return result_node
             else:
@@ -308,9 +314,9 @@ class SampledFormula(LogicFormula):
         if with_facts:
             for k, v in self.facts.items():
                 if v == 0:
-                    lines.append(base % str(translate(db, k)))
+                    lines.append(base % str(self.fact_names.get(k)))
                 elif v is None:
-                    lines.append(base % ('\+' + str(translate(db, k))))
+                    lines.append(base % ('\+' + str(self.fact_names.get(k))))
 
         if oneline:
             sep = ' '
