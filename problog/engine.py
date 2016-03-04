@@ -302,27 +302,32 @@ class ClauseDBEngine(GenericEngine):
 
         return gp, results
 
-    def ground_evidence(self, db, target, evidence, propagate_evidence=False):
+    def ground_evidence(self, db, target, evidence, propagate_evidence=False, force_value=None, **kwdargs):
         logger = logging.getLogger('problog')
+        force_sub = None
         # Ground evidence
         for query in evidence:
             if len(query) == 1:  # evidence/1
                 if query[0].is_negated():
                     logger.debug("Grounding evidence '%s'", query[0])
-                    target = self.ground(db, -query[0], target, label=target.LABEL_EVIDENCE_NEG, is_root=True)
+                    if force_value: force_sub = False
+                    target = self.ground(db, -query[0], target, label=target.LABEL_EVIDENCE_NEG, is_root=True, force_value=force_sub)
                     logger.debug("Ground program size: %s", len(target))
                 else:
                     logger.debug("Grounding evidence '%s'", query[0])
-                    target = self.ground(db, query[0], target, label=target.LABEL_EVIDENCE_POS, is_root=True)
+                    if force_value: force_sub = True
+                    target = self.ground(db, query[0], target, label=target.LABEL_EVIDENCE_POS, is_root=True, force_value=force_sub)
                     logger.debug("Ground program size: %s", len(target))
             else:  # evidence/2
                 if str(query[1]) == 'true' or query[1] == True:
                     logger.debug("Grounding evidence '%s'", query[0])
-                    target = self.ground(db, query[0], target, label=target.LABEL_EVIDENCE_POS, is_root=True)
+                    if force_value: force_sub = True
+                    target = self.ground(db, query[0], target, label=target.LABEL_EVIDENCE_POS, is_root=True, force_value=force_sub)
                     logger.debug("Ground program size: %s", len(target))
                 elif str(query[1]) == 'false' or query[1] == False:
                     logger.debug("Grounding evidence '%s'", query[0])
-                    target = self.ground(db, query[0], target, label=target.LABEL_EVIDENCE_NEG, is_root=True)
+                    if force_value: force_sub = False
+                    target = self.ground(db, query[0], target, label=target.LABEL_EVIDENCE_NEG, is_root=True, force_value=force_sub)
                     logger.debug("Ground program size: %s", len(target))
                 else:
                     logger.debug("Grounding evidence '%s'", query[0])
@@ -333,14 +338,14 @@ class ClauseDBEngine(GenericEngine):
                 ev_nodes = [node for name, node in target.evidence() if node != 0 and node is not None]
                 target.propagate(ev_nodes, target.lookup_evidence)
 
-    def ground_queries(self, db, target, queries):
+    def ground_queries(self, db, target, queries, **kwdargs):
         logger = logging.getLogger('problog')
         for query in queries:
             logger.debug("Grounding query '%s'", query)
-            target = self.ground(db, query, target, label=target.LABEL_QUERY)
+            target = self.ground(db, query, target, label=target.LABEL_QUERY, **kwdargs)
             logger.debug("Ground program size: %s", len(target))
 
-    def ground_all(self, db, target=None, queries=None, evidence=None, propagate_evidence=False):
+    def ground_all(self, db, target=None, queries=None, evidence=None, propagate_evidence=False, **kwdargs):
         db = self.prepare(db)
         logger = logging.getLogger('problog')
         with Timer('Grounding'):
@@ -365,17 +370,17 @@ class ClauseDBEngine(GenericEngine):
             # Ground queries
             if propagate_evidence:
                 with Timer('Propagating evidence'):
-                    self.ground_evidence(db, target, evidence, propagate_evidence=propagate_evidence)
+                    self.ground_evidence(db, target, evidence, propagate_evidence=propagate_evidence, **kwdargs)
                     # delattr(target, '_cache')
                     target.lookup_evidence = {}
                     ev_nodes = [node for name, node in target.evidence()
                                 if node != 0 and node is not None]
                     target.propagate(ev_nodes, target.lookup_evidence)
-                    self.ground_queries(db, target, queries)
+                    self.ground_queries(db, target, queries, **kwdargs)
                 logger.debug('Propagated evidence: %s' % list(target.lookup_evidence))
             else:
-                self.ground_queries(db, target, queries)
-                self.ground_evidence(db, target, evidence)
+                self.ground_queries(db, target, queries, **kwdargs)
+                self.ground_evidence(db, target, evidence, **kwdargs)
         return target
 
     def add_external_calls(self, externals):

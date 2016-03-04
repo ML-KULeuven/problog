@@ -550,7 +550,7 @@ class StackBasedEngine(ClauseDBEngine):
                 else:
                     print('    %s: %s' % (i, x))
 
-    def eval_fact(self, parent, node_id, node, context, target, identifier, **kwdargs):
+    def eval_fact(self, parent, node_id, node, context, target, identifier, force_value=None, **kwdargs):
         try:
             # Verify that fact arguments unify with call arguments.
             unify_call_head(context, node.args, context)
@@ -560,7 +560,7 @@ class StackBasedEngine(ClauseDBEngine):
             else:
                 name = None
             # Successful unification: notify parent callback.
-            target_node = target.add_atom(node_id, node.probability, name=name)
+            target_node = target.add_atom(node_id, node.probability, name=name, force_value=force_value)
             if target_node is not None:
                 return [new_result(parent, self.create_context(node.args), target_node, identifier,
                                   True)]
@@ -578,7 +578,7 @@ class StackBasedEngine(ClauseDBEngine):
             return resultnode
 
     def eval_define(self, node, context, target, parent, identifier=None, transform=None,
-                    is_root=False, **kwdargs):
+                    is_root=False, force_value=None, **kwdargs):
 
         # This function evaluates the 'define' nodes in the database.
         # This is basically the same as evaluating a goal in Prolog.
@@ -636,13 +636,25 @@ class StackBasedEngine(ClauseDBEngine):
                                           **kwdargs)
                     self.add_record(evalnode)
                     target._cache.activate(goal, evalnode)
-                    actions = [evalnode.createCall(child) for child in children]
-                    return actions
+
+                    force_sub = None
+                    force_sub_last = None
+                    if force_value is False:
+                        force_sub = False
+                        force_sub_last = False
+                    elif force_value is True and is_ground(*context):
+                        force_sub = None
+                        force_sub_last = True
+                    children = list(children)
+                    return [evalnode.createCall(child, force_value=force_sub) for child in children[:-1]] + \
+                           [evalnode.createCall(children[-1], force_value=force_sub_last)]
+                    # # actions = [evalnode.createCall(child) for child in children]
+                    # return actions
 
     def eval_conj(self, **kwdargs):
         return self.eval_default(EvalAnd, **kwdargs)
 
-    def eval_disj(self, parent, node, **kwdargs):
+    def eval_disj(self, parent, node, force_value=None, **kwdargs):
         if len(node.children) == 0:
             # No children, so complete immediately.
             return [complete(parent, None)]
@@ -650,7 +662,18 @@ class StackBasedEngine(ClauseDBEngine):
             evalnode = EvalOr(pointer=self.pointer, engine=self, parent=parent, node=node,
                               **kwdargs)
             self.add_record(evalnode)
-            return [evalnode.createCall(child) for child in node.children]
+            force_sub = None
+            force_sub_last = None
+            if force_value == False:
+                force_sub = False
+                force_sub_last = False
+            elif force_value == True:
+                force_sub = None
+                force_sub_last = True
+
+            children = list(node.children)
+            return [evalnode.createCall(child, force_value=force_sub) for child in children[:-1]] + \
+                   [evalnode.createCall(children[-1], force_value=force_sub_last)]
 
     def eval_neg(self, **kwdargs):
         return self.eval_default(EvalNot, **kwdargs)
@@ -738,7 +761,7 @@ class StackBasedEngine(ClauseDBEngine):
     def handle_nonground(self, location=None, database=None, node=None, **kwdargs):
         raise NonGroundProbabilisticClause(location=database.lineno(node.location))
 
-    def eval_choice(self, parent, node_id, node, context, target, database, identifier, **kwdargs):
+    def eval_choice(self, parent, node_id, node, context, target, database, identifier, force_value=None, **kwdargs):
         result = self._fix_context(context)
 
         for i, r in enumerate(result):
@@ -760,7 +783,7 @@ class StackBasedEngine(ClauseDBEngine):
             name = None
 
         origin = (node.group, result)
-        ground_node = target.add_atom(origin + (node.choice,), probability, group=origin, name=name)
+        ground_node = target.add_atom(origin + (node.choice,), probability, group=origin, name=name, force_value=force_value)
         # Notify parent.
 
         if ground_node is not None:
@@ -931,7 +954,7 @@ class MessageOrderD(MessageAnyOrder):
 
 class EvalNode(object):
     def __init__(self, engine, database, target, node_id, node, context, parent, pointer,
-                 identifier=None, transform=None, call=None, **extra):
+                 identifier=None, transform=None, call=None, force_value=None, **extra):
         self.engine = engine
         self.database = database
         self.target = target
@@ -944,6 +967,8 @@ class EvalNode(object):
         self.transform = transform
         self.call = call
         self.on_cycle = False
+
+        self.force_value = force_value
 
     def notifyResult(self, arguments, node=0, is_last=False, parent=None):
         if parent is None:
@@ -1666,9 +1691,21 @@ class EvalAnd(EvalNode):
         self.engine.stats[3] += 1
 
     def __call__(self):
-        return False, [self.createCall(self.node.children[0], identifier=None)]
+        if self.force_value == True:
+            force_sub = True
+        else:
+            force_sub = None
+            # TODO add case for False
+        return False, [self.createCall(self.node.children[0], identifier=None, force_value=force_sub)]
 
     def new_result(self, result, node=0, source=None, is_last=False):
+
+        if self.force_value == True:
+            force_sub = True
+        else:
+            force_sub = None
+            # TODO add case for False
+
         if source is None:  # Result from the first conjunct.
             # We will create a second conjunct, which needs to send a 'complete' signal.
             self.to_complete += 1
@@ -1686,11 +1723,11 @@ class EvalAnd(EvalNode):
                 # [ self.createCall( self.node.children[1], context=result, parent=self.parent ) ]
                 # else :
                 return False, [
-                    self.createCall(self.node.children[1], context=result, identifier=node)]
+                    self.createCall(self.node.children[1], context=result, identifier=node, force_value=force_sub)]
             else:
                 # Not the last result: default behaviour
                 return False, [
-                    self.createCall(self.node.children[1], context=result, identifier=node)]
+                    self.createCall(self.node.children[1], context=result, identifier=node, force_value=force_sub)]
         else:  # Result from the second node
             # Make a ground node
             target_node = self.target.add_and((source, node), name=None)

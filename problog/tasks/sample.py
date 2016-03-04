@@ -143,6 +143,7 @@ class SampledFormula(LogicFormula):
         self.groups = {}
         self.probability = 1.0  # Try to compute
         self.values = []
+        self.forced_values = []
 
         self.distributions = {
             'normal': random.normalvariate,
@@ -190,7 +191,15 @@ class SampledFormula(LogicFormula):
             return None
         return self.values[key - 1]
 
-    def add_atom(self, identifier, probability, group=None, name=None, source=None):
+    def add_atom(self, identifier, probability, group=None, name=None, source=None, force_value=None, **kwargs):
+
+        if force_value == True:
+            self.forced_values.append((identifier,probability,force_value))
+            return 0
+        elif force_value == False:
+            self.forced_values.append((identifier,probability,force_value))
+            return None
+
         if probability is None:
             return 0
 
@@ -400,7 +409,7 @@ def builtin_previous(term, default, engine=None, target=None, callback=None, **k
     return True, actions
 
 
-def ground(engine, db, target):
+def ground(engine, db, target, **kwdargs):
     db = engine.prepare(db)
     # Load queries: use argument if available, otherwise load from database.
     queries = [q[0] for q in engine.query(db, Term('query', None))]
@@ -416,7 +425,7 @@ def ground(engine, db, target):
             raise GroundingError('Invalid evidence')   # TODO can we add a location?
 
     # Ground queries
-    engine.ground_queries(db, target, queries)
+    engine.ground_queries(db, target, queries, **kwdargs)
     return target
 
 
@@ -429,7 +438,7 @@ def init_engine(**kwdargs):
     return engine
 
 
-def init_db(engine, model, propagate_evidence=False):
+def init_db(engine, model, propagate_evidence=False, force_value=None):
     db = engine.prepare(model)
 
     if propagate_evidence:
@@ -437,7 +446,7 @@ def init_db(engine, model, propagate_evidence=False):
         evidence += engine.query(db, Term('evidence', None))
 
         ev_target = LogicFormula()
-        engine.ground_evidence(db, ev_target, evidence)
+        engine.ground_evidence(db, ev_target, evidence, force_value=force_value)
         ev_target.lookup_evidence = {}
         ev_nodes = [node for name, node in ev_target.evidence()
                     if node != 0 and node is not None]
@@ -572,40 +581,87 @@ def verify_evidence(engine, db, ev_target, q_target):
         return True
 
 
+def ground_e_q(engine, db, target, **kwdargs):
+    db = engine.prepare(db)
+    # Load queries: use argument if available, otherwise load from database.
+    queries = [q[0] for q in engine.query(db, Term('query', None))]
+    evidence = engine.query(db, Term('evidence', None, None))
+    evidence += engine.query(db, Term('evidence', None))
+
+    for query in queries:
+        if not isinstance(query, Term):
+            raise GroundingError('Invalid query')   # TODO can we add a location?
+
+    for ev in evidence:
+        if not isinstance(ev[0], Term):
+            raise GroundingError('Invalid evidence')   # TODO can we add a location?
+
+    # Ground queries
+    engine.ground_evidence(db, target, evidence, **kwdargs)
+    engine.ground_queries(db, target, queries, **kwdargs)
+    return target
+
+
 # noinspection PyUnusedLocal
 def estimate(model, n=0, propagate_evidence=False, **kwdargs):
     from collections import defaultdict
 
     engine = init_engine(**kwdargs)
-    db, evidence, ev_target = init_db(engine, model, propagate_evidence)
+    db = engine.prepare(model)
+    queries = [q[0] for q in engine.query(db, Term('query', None))]
+    evidence = engine.query(db, Term('evidence', None, None))
+    evidence += engine.query(db, Term('evidence', None))
+
+    # db, evidence, ev_target = init_db(engine, model, propagate_evidence, force_value=True)
 
     start_time = time.time()
     estimates = defaultdict(float)
     counts = 0.0
+    nsamples = 0
     r = 0
     try:
-        while n == 0 or counts < n:
+        while n == 0 or nsamples < n:
             target = SampledFormula()
-            for ev_fact in evidence:
-                target.add_atom(*ev_fact)
 
-            result = ground(engine, db, target=target)
-            if verify_evidence(engine, db, ev_target, target):
-                for k, v in result.queries():
+            engine.ground_evidence(db, target, evidence, force_value=True)
+            lh_weight_ev = 1.0
+            for a, prob, v in target.forced_values:
+                if v:
+                    lh_weight_ev *= float(prob)
+                else:
+                    lh_weight_ev *= 1.0 - float(prob)
+
+            engine.ground_queries(db, target, queries, force_value=True)
+            lh_weight = 1.0
+            for a, prob, v in target.forced_values:
+                if v:
+                    lh_weight *= float(prob)
+                else:
+                    lh_weight *= 1.0 - float(prob)
+
+            ev_w = True
+            for k, v in target.evidence():
+                if v != 0:
+                    ev_w = False
+
+            if ev_w:
+                for k, v in target.queries():
                     if v == 0:
-                        estimates[k] += 1.0
-                counts += 1.0
+                        estimates[k] += lh_weight / lh_weight_ev
+                counts += lh_weight_ev
+                nsamples += 1
             else:
                 r += 1
-            engine.previous_result = result
+
+            engine.previous_result = target
     except KeyboardInterrupt:
         pass
     except SystemExit:
         pass
 
     total_time = time.time() - start_time
-    rate = counts / total_time
-    print ('%% Probability estimate after %d samples (%.4f samples/second):' % (counts, rate))
+    rate = nsamples / total_time
+    print ('%% Probability estimate after %d samples (%.4f samples/second):' % (nsamples, rate))
 
     if r:
         logging.getLogger('problog_sample').info('Rejected samples: %s' % r)

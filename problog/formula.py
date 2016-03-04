@@ -508,7 +508,7 @@ class LogicFormula(BaseFormula):
         node = constraint.add(node, self)
         return node
 
-    def add_atom(self, identifier, probability, group=None, name=None, source=None):
+    def add_atom(self, identifier, probability, group=None, name=None, source=None, **kwargs):
         """Add an atom to the formula.
 
         :param identifier: a unique identifier for the atom
@@ -1409,7 +1409,7 @@ class DeterministicLogicFormula(LogicFormula):
     def __init__(self, **kwdargs):
         LogicFormula.__init__(self, **kwdargs)
 
-    def add_atom(self, identifier, probability, group=None, name=None, source=None):
+    def add_atom(self, identifier, probability, group=None, name=None, source=None, **kwargs):
         return self.TRUE
 
 
