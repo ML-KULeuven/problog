@@ -29,10 +29,14 @@ select_weighted(ID, WeightsValues, Value, Rest) :-
     select_weighted(ID, Weights, Values, Value, Rest).
 
 P::sw_p(ID,P,_,_,_).
+% Last is always selected to avoid numerical instabilities.
+sw(ID,PW,[W|WT],[X|[]],X,XT).
 sw(ID,PW,[W|WT],[X|XT],X,XT) :-
+    XT \= [],
     W1 is W/PW,
     sw_p(ID,W1,WT,X,XT).
 sw(ID,PW,[W|WT],[X|XT],Y,[X|RT]) :-
+    XT \= [],
     W1 is W/PW,
     not sw_p(ID,W1,WT,X,XT),
     PW1 is PW-W,
