@@ -56,10 +56,13 @@ Control predicates
  
 Handling Undefined Procedures
 +++++++++++++++++++++++++++++
- 
+
+**Alternative:**
+
+ * ``unknown(fail)`` can be used
+
 **Not supported:** all
 
-**To be added:** ``unknown/2``
 
 Message Handling
 ++++++++++++++++
@@ -88,10 +91,9 @@ Predicates on Terms
  * ``arg/3``
  * ``functor/3`` 
  * ``T =.. L``
- * ``X = Y`` (not supported for two variables)
- * ``X \= Y`` (not supported for two variables)
+ * ``X = Y``
+ * ``X \= Y``
  * ``is_list/1``
- *
  
 **Not supported:**
 

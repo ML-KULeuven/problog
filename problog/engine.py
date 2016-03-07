@@ -119,6 +119,7 @@ class ClauseDBEngine(GenericEngine):
             self.load_builtins()
 
         self.functions = {}
+        self.args = kwdargs.get('args')
 
     def load_builtins(self):
         """Load default builtins."""
@@ -159,6 +160,7 @@ class ClauseDBEngine(GenericEngine):
         :rtype: ClauseDB
         """
         result = ClauseDB.createFrom(db, builtins=self.get_builtins())
+        result.engine = self
         self._process_directives(result)
         return result
 
@@ -300,7 +302,7 @@ class ClauseDBEngine(GenericEngine):
 
         return gp, results
 
-    def ground_evidence(self, db, target, evidence):
+    def ground_evidence(self, db, target, evidence, propagate_evidence=False):
         logger = logging.getLogger('problog')
         # Ground evidence
         for query in evidence:
@@ -326,6 +328,10 @@ class ClauseDBEngine(GenericEngine):
                     logger.debug("Grounding evidence '%s'", query[0])
                     target = self.ground(db, query[0], target, label=target.LABEL_EVIDENCE_MAYBE, is_root=True)
                     logger.debug("Ground program size: %s", len(target))
+            if propagate_evidence:
+                target.lookup_evidence = {}
+                ev_nodes = [node for name, node in target.evidence() if node != 0 and node is not None]
+                target.propagate(ev_nodes, target.lookup_evidence)
 
     def ground_queries(self, db, target, queries):
         logger = logging.getLogger('problog')
@@ -359,7 +365,7 @@ class ClauseDBEngine(GenericEngine):
             # Ground queries
             if propagate_evidence:
                 with Timer('Propagating evidence'):
-                    self.ground_evidence(db, target, evidence)
+                    self.ground_evidence(db, target, evidence, propagate_evidence=propagate_evidence)
                     # delattr(target, '_cache')
                     target.lookup_evidence = {}
                     ev_nodes = [node for name, node in target.evidence()
@@ -951,6 +957,31 @@ class ClauseDB(LogicProgram):
             atomstr = atomstr[1:-1]
         filename = os.path.join(root, atomstr)
         return filename
+
+    def create_function(self, functor, arity):
+        """Create a Python function that can be used to query a specific predicate on this database.
+
+        :param functor: functor of the predicate
+        :param arity: arity of the predicate (the function will take arity - 1 arguments
+        :return: a Python callable
+        """
+        return PrologFunction(self, functor, arity)
+
+
+class PrologFunction(object):
+
+    def __init__(self, database, functor, arity):
+        self.database = database
+        self.functor = functor
+        self.arity = arity
+
+    def __call__(self, *args):
+        args = args[:self.arity - 1]
+        query_term = Term(self.functor, *(args + (None,)))
+        result = self.database.engine.query(self.database, query_term)
+        assert len(result) == 1
+        return result[0][-1]
+
 
 
 class AccessError(GroundingError):

@@ -29,7 +29,7 @@ import subprocess
 from collections import defaultdict
 
 from . import system_info
-from .evaluator import Evaluator, Evaluatable
+from .evaluator import Evaluator, EvaluatableDSP
 from .errors import InconsistentEvidenceError
 from .formula import LogicDAG
 from .cnf_formula import CNF
@@ -48,7 +48,7 @@ class DSharpError(CompilationError):
         CompilationError.__init__(self, msg)
 
 
-class NNF(LogicDAG, Evaluatable):
+class NNF(LogicDAG, EvaluatableDSP):
     """A d-DNNF formula."""
 
     transform_preference = 20
@@ -366,7 +366,10 @@ def _load_nnf(filename, cnf):
                 print('Unknown line type')
         for name in names_inv:
             for actual_name, label in names_inv[name]:
-                nnf.add_name(actual_name, None, label)
+                if name == 0:
+                    nnf.add_name(actual_name, 0, label)
+                else:
+                    nnf.add_name(actual_name, None, label)
     for c in cnf.constraints():
         nnf.add_constraint(c.copy(rename))
 

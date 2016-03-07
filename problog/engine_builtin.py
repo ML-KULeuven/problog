@@ -130,7 +130,40 @@ def add_standard_builtins(engine, b=None, s=None, sp=None):
         engine.add_builtin('error', i, b(_builtin_error))
 
     engine.add_builtin('nl', 0, b(_builtin_nl))
+    engine.add_builtin('cmd_args', 1, s(_builtin_cmdargs))
+    engine.add_builtin('atom_number', 2, s(_builtin_atom_number))
 
+
+def _builtin_cmdargs(lst, engine=None, **kwd):
+    check_mode((lst,), ['v'], **kwd)
+    args = engine.args
+    if args is None:
+        args = []
+    args = list2term(list(map(Term, args)))
+    return [(args,)]
+
+
+def _builtin_atom_number(atom, number, **kwd):
+    mode = check_mode((atom, number), ['vf', 'vi', 'av', 'af', 'ai'], **kwd)
+    if mode in (0, 1):
+        return [(Term(str(number)), number)]
+    elif mode == 2:
+        try:
+            v = float(atom.functor)
+        except ValueError:
+            return []   # fail silently
+            # raise GroundingError('Atom does not represent a number: \'%s\'' % atom)
+
+        if round(v) == v:
+            v = Constant(int(v))
+        else:
+            v = Constant(v)
+        return [(atom, v)]
+    else:
+        if atom == str(number):
+            return [(atom, number)]
+        else:
+            return []
 
 
 # noinspection PyUnusedLocal
@@ -1486,7 +1519,7 @@ class problog_export_nondet(problog_export):
 
 def _builtin_use_module(filename, database=None, location=None, **kwdargs):
     if filename.functor == 'library' and filename.arity == 1:
-        filename = os.path.join(os.path.dirname(__file__), 'library',
+        filename = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'library',
                                 _atom_to_filename(filename.args[0]))
         if not os.path.exists(filename + '.pl'):
             filename += '.py'
@@ -1572,5 +1605,5 @@ class IndirectCallCycleError(GroundingError):
 
     def __init__(self, location=None):
         GroundingError.__init__(self,
-                                'Indirect cycle detected (passing through call/1 or findall/3)',
+                                'Indirect cycle detected (passing through findall/3)',
                                 location)

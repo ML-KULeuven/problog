@@ -31,6 +31,8 @@ from .errors import InconsistentEvidenceError
 from .util import OrderedSet
 from .logic import Term, Or, Clause, And, is_ground
 
+from .evaluator import Evaluatable, FormulaEvaluator, FormulaEvaluatorNSP
+
 from .constraint import ConstraintAD
 
 
@@ -134,10 +136,14 @@ class BaseFormula(ProbLogObject):
 
         result = {}
         for n, w in weights.items():
+            if hasattr(self, 'get_name'):
+                name = self.get_name(n)
+            else:
+                name = n
             if w == self.WEIGHT_NEUTRAL and type(self.WEIGHT_NEUTRAL) == type(w):
                 result[n] = semiring.one(), semiring.one()
             else:
-                result[n] = semiring.pos_value(w, n), semiring.neg_value(w, n)
+                result[n] = semiring.pos_value(w, name), semiring.neg_value(w, name)
 
         for c in self.constraints():
             c.update_weights(result, semiring)
@@ -186,6 +192,10 @@ class BaseFormula(ProbLogObject):
                 return res
         raise KeyError(name)
 
+    # def get_name(self, key):
+    #     names = self.get_names()
+    #     print (names)
+
     def add_query(self, name, key):
         """Add a query name.
 
@@ -211,6 +221,12 @@ class BaseFormula(ProbLogObject):
             self.add_name(name, key, self.LABEL_EVIDENCE_POS)
         else:
             self.add_name(name, key, self.LABEL_EVIDENCE_NEG)
+
+    def clear_evidence(self):
+        """Remove all evidence."""
+        self._names[self.LABEL_EVIDENCE_MAYBE] = {}
+        self._names[self.LABEL_EVIDENCE_POS] = {}
+        self._names[self.LABEL_EVIDENCE_NEG] = {}
 
     def get_names(self, label=None):
         """Get a list of all node names in the formula.
@@ -1387,11 +1403,17 @@ label_all=True)
         return destination
 
 
-class LogicDAG(LogicFormula):
+class LogicDAG(LogicFormula, Evaluatable):
     """A propositional logic formula without cycles."""
 
     def __init__(self, auto_compact=True, **kwdargs):
         LogicFormula.__init__(self, auto_compact, **kwdargs)
+
+    def _create_evaluator(self, semiring, weights, **kwargs):
+        if semiring.is_nsp():
+            return FormulaEvaluatorNSP(self, semiring, weights)
+        else:
+            return FormulaEvaluator(self, semiring, weights)
 
 
 class DeterministicLogicFormula(LogicFormula):

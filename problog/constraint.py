@@ -33,7 +33,7 @@ class Constraint(object):
 
     def get_nodes(self):
         """Get all nodes involved in this constraint."""
-        return NotImplemented('abstract method')
+        return NotImplementedError('abstract method')
 
     def update_weights(self, weights, semiring):
         """Update the weights in the given dictionary according to the constraints.
@@ -62,7 +62,7 @@ class Constraint(object):
         :return: list of clauses where each clause is represent as a list of node keys
         :rtype: list[list[int]]
         """
-        return NotImplemented('abstract method')
+        return NotImplementedError('abstract method')
 
     def copy(self, rename=None):
         """Copy this constraint while applying the given node renaming.
@@ -70,7 +70,7 @@ class Constraint(object):
         :param rename: node rename map (or None if no rename is required)
         :return: copy of the current constraint
         """
-        return NotImplemented('abstract method')
+        return NotImplementedError('abstract method')
 
 
 class ConstraintAD(Constraint):
@@ -224,6 +224,9 @@ class TrueConstraint(Constraint):
 
     def __init__(self, node):
         self.node = node
+
+    def get_nodes(self):
+        return [self.node]
 
     def as_clauses(self):
         return [[self.node]]

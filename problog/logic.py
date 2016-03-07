@@ -133,9 +133,10 @@ def term2list(term):
     :return: Python list containing the elements from the Prolog list
     :rtype: list of Term
     """
+    from .pypl import pl2py
     result = []
     while term.functor == '.' and term.arity == 2:
-        result.append(term.args[0])
+        result.append(pl2py(term.args[0]))
         term = term.args[1]
     if not term == Term('[]'):
         raise ValueError('Expected fixed list.')

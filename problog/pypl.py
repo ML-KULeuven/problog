@@ -53,7 +53,7 @@ def pl2py(d):
 
     if isinstance(d, Constant):
         if type(d.value) == str:
-            return d.value.replace('"', '')
+            return d.value.replace('"', '').replace("'", '')
         return d.value
 
     if isinstance(d, Term):
@@ -77,8 +77,8 @@ def pl2py(d):
             if str(tail) != '[]':
                 elements.append(pl2py(tail))
             return elements
-        elif d.arity == 0:
-            return d.functor
+        else:
+            return d
 
     raise ValueError("Cannot convert from Prolog to Python: {} ({}).".format(d, type(d)))
 
