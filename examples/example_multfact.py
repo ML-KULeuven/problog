@@ -278,7 +278,8 @@ if __name__ == '__main__' :
     parser.add_argument('--verbose', '-v', action='count', help='Verbose output')
     parser.add_argument('--nomf', action='store_true', help='Disable multiplicative factorization')
     parser.add_argument('--profile', action='store_true', help='Profile Python script')
-    parser.add_argument('--knowledge', '-k', help='Knowledge compilation (sdd, nnf, fbdd)')
+    parser.add_argument('--knowledge', '-k', default='nnf',
+                        help='Knowledge compilation (sdd, nnf, fbdd)')
     parser.add_argument('--noconstraints', dest='constraints', action='store_false', help='Do not use constraints')
     args = parser.parse_args()
 
