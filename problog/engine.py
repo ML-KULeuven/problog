@@ -367,7 +367,8 @@ class ClauseDBEngine(GenericEngine):
                 with Timer('Propagating evidence'):
                     self.ground_evidence(db, target, evidence, propagate_evidence=propagate_evidence)
                     self.ground_queries(db, target, queries)
-                logger.debug('Propagated evidence: %s' % list(target.lookup_evidence))
+                    if hasattr(target, 'lookup_evidence'):
+                        logger.debug('Propagated evidence: %s' % list(target.lookup_evidence))
             else:
                 self.ground_queries(db, target, queries)
                 self.ground_evidence(db, target, evidence)
