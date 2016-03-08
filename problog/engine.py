@@ -328,10 +328,10 @@ class ClauseDBEngine(GenericEngine):
                     logger.debug("Grounding evidence '%s'", query[0])
                     target = self.ground(db, query[0], target, label=target.LABEL_EVIDENCE_MAYBE, is_root=True)
                     logger.debug("Ground program size: %s", len(target))
-            if propagate_evidence:
-                target.lookup_evidence = {}
-                ev_nodes = [node for name, node in target.evidence() if node != 0 and node is not None]
-                target.propagate(ev_nodes[-1:], target.lookup_evidence)
+        if propagate_evidence:
+            target.lookup_evidence = {}
+            ev_nodes = [node for name, node in target.evidence() if node != 0 and node is not None]
+            target.propagate(ev_nodes, target.lookup_evidence)
 
     def ground_queries(self, db, target, queries):
         logger = logging.getLogger('problog')
