@@ -331,7 +331,7 @@ class ClauseDBEngine(GenericEngine):
             if propagate_evidence:
                 target.lookup_evidence = {}
                 ev_nodes = [node for name, node in target.evidence() if node != 0 and node is not None]
-                target.propagate(ev_nodes, target.lookup_evidence)
+                target.propagate(ev_nodes[-1:], target.lookup_evidence)
 
     def ground_queries(self, db, target, queries):
         logger = logging.getLogger('problog')
@@ -366,11 +366,6 @@ class ClauseDBEngine(GenericEngine):
             if propagate_evidence:
                 with Timer('Propagating evidence'):
                     self.ground_evidence(db, target, evidence, propagate_evidence=propagate_evidence)
-                    # delattr(target, '_cache')
-                    target.lookup_evidence = {}
-                    ev_nodes = [node for name, node in target.evidence()
-                                if node != 0 and node is not None]
-                    target.propagate(ev_nodes, target.lookup_evidence)
                     self.ground_queries(db, target, queries)
                 logger.debug('Propagated evidence: %s' % list(target.lookup_evidence))
             else:
