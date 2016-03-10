@@ -45,19 +45,13 @@ from problog.engine import DefaultEngine
 from problog.formula import LogicFormula
 from problog.sdd_formula import SDD
 from problog.nnf_formula import NNF
+from problog.cnf_formula import CNF
 from problog.forward import ForwardInference, ForwardBDD
 from problog.util import Timer, start_timer, stop_timer, init_logger, format_dictionary
 from problog.constraint import ClauseConstraint, ConstraintAD
 from problog.evaluator import SemiringProbability, FormulaEvaluator, OperationNotSupported
 
-def get_max_identifier(identifier, old_max):
-    if type(identifier) is tuple:
-        return get_max_identifier(identifier[0], old_max)
-    if old_max < identifier:
-        return identifier + 1
-    return old_max
-
-def multiplicative_factorization(source):
+def multiplicative_factorization(source, or_threshold=8):
     """
     Copy the source LogicFormula and replace large disjunctions with Skolemization variables
     to obtain a formula that is similar to the result of multiplicative factorization.
@@ -66,31 +60,27 @@ def multiplicative_factorization(source):
     """
     assert(type(source) == LogicFormula)
     logger = logging.getLogger('problog')
+    logger.info('Disjunction threshold: {}'.format(or_threshold))
     target = LogicFormula()
     tseitin_vars = []
     skolem_vars = []
     extra_clauses = []
     extra_queries = []
-    max_identifier = -1
-
-    for _,node,t in source:
-        if t == 'atom':
-            max_identifier = get_max_identifier(node.identifier, max_identifier)
-    logger.debug('Max identifier: {}'.format(max_identifier))
+    identifier_prefix = 'MF_'
 
     # Copy formulas and replace large disjunctions with a Tseitin variable z_i
     for key,node,t in source:
         logger.debug('Rule: {:<3}: {} -- {}'.format(key,node,t))
         nodetype = type(node).__name__
         if nodetype == 'disj':
-            if len(node.children) > 4:
+            if len(node.children) > or_threshold:
                 # Replace disjunction node with atom node.
                 tseitin_vars.append(Term('z_{}'.format(len(tseitin_vars))))
                 logger.debug('-> {}: replace disj with tseitin {}'.format(key, tseitin_vars[-1]))
                 skolem_vars.append(Term('s_{}'.format(len(skolem_vars))))
-                tseitin = target.add_atom(identifier=max_identifier, probability=(1.0,1.0), name=tseitin_vars[-1])
-                max_identifier += 1
+                tseitin = target.add_atom(identifier=identifier_prefix+str(tseitin_vars[-1]), probability=(1.0,1.0), name=tseitin_vars[-1])
                 # TODO: the name is overridden
+                logger.info('Tseitin variable {} for {} children'.format(tseitin_vars[-1], len(node.children)))
                 extra_clauses.append((tseitin, tseitin_vars[-1], skolem_vars[-1], node.children))
             else:
                 target.add_or(components=node.children, key=key, name=node.name)
@@ -110,8 +100,7 @@ def multiplicative_factorization(source):
     all_top = [len(target)]
     for tseitin, tseitin_var, skolem_var, children in extra_clauses:
         logger.debug('-> Add tseitin {}'.format(tseitin_var))
-        skolem = target.add_atom(identifier=max_identifier, probability=(1.0,-1.0), name=skolem_var)
-        max_identifier += 1
+        skolem = target.add_atom(identifier=identifier_prefix+str(skolem_var), probability=(1.0,-1.0), name=skolem_var)
         logger.debug('-> Add skolem {}'.format(skolem_var))
         target.add_name(skolem_var, skolem, target.LABEL_QUERY)
         extra_queries.append(skolem_var)
@@ -213,7 +202,8 @@ class NegativeProbability(SemiringProbability):
         v = float(a)
         return v
 
-def probability(filename, with_fact=True, knowledge='nnf'):
+def probability(filename, with_fact=True, knowledge='nnf', or_threshold=8):
+    logger = logging.getLogger('problog')
     pl = PrologFile(filename)
     engine = DefaultEngine(label_all=True)#, keep_all=True, keep_duplicates=True)
     db = engine.prepare(pl)
@@ -222,25 +212,35 @@ def probability(filename, with_fact=True, knowledge='nnf'):
 
     if with_fact:
         with Timer('ProbLog with multiplicative factorization'):
-            gp2, extra_queries = multiplicative_factorization(gp)
-            with open('test_f.dot', 'w') as dotfile:
-                print_result((True, gp2.to_dot()), output=dotfile)
+            if logger.isEnabledFor(logging.DEBUG):
+                with open('test_f.dot', 'w') as dotfile:
+                    print_result((True, gp.to_dot()), output=dotfile)
+                cnf = CNF.createFrom(gp)
+                logger.debug(cnf.to_dimacs())
+            gp2, extra_queries = multiplicative_factorization(gp, or_threshold)
+            if logger.isEnabledFor(logging.DEBUG):
+                with open('test_f_mf.dot', 'w') as dotfile:
+                    print_result((True, gp2.to_dot()), output=dotfile)
             with Timer('Compilation with {}'.format(knowledge)):
                 if knowledge == 'sdd':
                     nnf = SDD.create_from(gp2)
                     ev = nnf.to_formula()
-                    print(ev)
                     fe = FormulaEvaluator(ev, semiring)
                     weights = ev.extract_weights(semiring=semiring)
                     fe.set_weights(weights)
                     # TODO: SDD lib doesn't support negative weights? Runtime error
                     # TODO: How can I use the Python evaluator with SDDs?
                 elif knowledge == 'fbdd':
+                    # TODO: Stupid approach because it introduces new root levels
                     nnf = ForwardBDD.createFrom(gp2)
                 else:
                     nnf = NNF.createFrom(gp2)
-            with open ('test_f_nnf.dot', 'w') as dotfile:
-                print(nnf.to_dot(), file=dotfile)
+            if logger.isEnabledFor(logging.DEBUG):
+                with open ('test_f_mf_nnf.dot', 'w') as dotfile:
+                    print(nnf.to_dot(), file=dotfile)
+                cnf = CNF.createFrom(gp2)
+                logger.debug(cnf.to_dimacs())
+            logger.debug('Deleting queries: {}'.format(extra_queries))
             for query in extra_queries:
                 nnf.del_name(query, nnf.LABEL_QUERY)
             with Timer('Evalation'):
@@ -282,6 +282,8 @@ if __name__ == '__main__' :
     parser.add_argument('--verbose', '-v', action='count', help='Verbose output')
     parser.add_argument('--nomf', action='store_true', help='Disable multiplicative factorization')
     parser.add_argument('--profile', action='store_true', help='Profile Python script')
+    parser.add_argument('--threshold', '-t', default=8, type=int,
+                        help='Threshold to break disjunctions')
     parser.add_argument('--knowledge', '-k', default='nnf',
                         help='Knowledge compilation (sdd, nnf, fbdd)')
     args = parser.parse_args()
@@ -290,12 +292,12 @@ if __name__ == '__main__' :
 
     if args.profile:
         import cProfile, pstats
-        cProfile.run('probability( args.filename, not args.nomf, args.knowledge)', 'prstats')
+        cProfile.run('probability( args.filename, not args.nomf, args.knowledge, args.threshold)', 'prstats')
         p = pstats.Stats('prstats')
         p.strip_dirs()
         # p.sort_stats('cumulative')
         p.sort_stats('time')
         p.print_stats()
     else:
-        result = probability( args.filename, not args.nomf, args.knowledge)
+        result = probability( args.filename, not args.nomf, args.knowledge, args.threshold)
         print_result((True,result), sys.stdout)
