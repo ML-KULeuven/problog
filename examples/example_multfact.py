@@ -58,12 +58,15 @@ def multiplicative_factorization(source, as_constraints=True):
     :param source: Input formula
     :return: new formula, additional query atoms
     """
+    assert(type(source) == LogicFormula)
     logger = logging.getLogger('problog')
     target = LogicFormula()
     tseitin_vars = []
     skolem_vars = []
-    extra_clauses = []
+    tseitin_clauses = []
+    skolem_clauses = []
     extra_queries = []
+    max_identifier = -1
 
     logger.debug('Use constraints: {}'.format(as_constraints))
 
@@ -77,40 +80,40 @@ def multiplicative_factorization(source, as_constraints=True):
                 tseitin_vars.append(Term('z_{}'.format(len(tseitin_vars))))
                 logger.debug('-> {}: replace disj with tseitin {}'.format(key, tseitin_vars[-1]))
                 skolem_vars.append(Term('s_{}'.format(len(skolem_vars))))
-                tseitin = target.add_atom(identifier=key, probability=(1.0,1.0), name=tseitin_vars[-1])
-                if not as_constraints:
-                    target.add_name(tseitin_vars[-1], tseitin, target.LABEL_QUERY)
-                    extra_queries.append(tseitin_vars[-1])
-                extra_clauses += [(tseitin, skolem_vars[-1], node.children)]
+                skolem_clauses.append(tseitin_vars[-1])
             else:
                 target.add_or(components=node.children, key=key, name=node.name)
         elif nodetype == 'conj':
             target.add_and(components=node.children, key=key, name=node.name)
         elif nodetype == 'atom':
-            target.add_atom(identifier=key, probability=node.probability, name=node.name,
+            # TODO: key and identifier are not the same!
+            if max_identifier < node.identifier:
+                max_identifier = node.identifier + 1
+            target.add_atom(identifier=node.identifier, probability=node.probability, name=node.name,
                             group=node.group, source=node.source)
         else:
             raise Exception('Unknown type when performing multiplicative factorization:\n'
                             '{:<2}: {} ({})'.format(key, node, t))
 
-    # Copy labels
-    for name, key, label in source.get_names_with_label():
-        logger.debug('Name: {:<3} {} -> {}'.format(key, name, label))
-        target.add_name(name, key, label)
 
-    # Copy constraints
-    for c in source.constraints():
-        if not isinstance(c, ConstraintAD): # TODO correct?
-            target.add_constraint(c)
-            logger.debug('Constraint: {}'.format(c))
-        else:
-            logger.debug('Constraint(ignored): {}'.format(c))
+    # Add Skolem clauses
+    for tseitin_var in skolem_clauses:
+        tseitin = target.add_atom(identifier=max_identifier, probability=(1.0,1.0), name=tseitin_var)
+        # TODO: the name is overridden
+        max_identifier += 1
+        logger.debug('-> Add tseitin {}'.format(tseitin_var))
+        if not as_constraints:
+            target.add_name(tseitin_vars[-1], tseitin, target.LABEL_QUERY)
+            tseitin_clauses.append(tseitin_vars[-1])
+        tseitin_clauses += [(tseitin, skolem_vars[-1], node.children)]
+
 
     # Add compensating clauses for Tseitin variables
     cur_body = 0
     all_top = [len(target)]
-    for tseitin, skolem_var, children in extra_clauses:
-        skolem = target.add_atom(identifier=len(target)+1, probability=(1.0,-1.0), name=skolem_var)
+    for tseitin, skolem_var, children in tseitin_clauses:
+        skolem = target.add_atom(identifier=max_identifier, probability=(1.0,-1.0), name=skolem_var)
+        max_identifier += 1
         logger.debug('-> Add skolem {}'.format(skolem_var))
         if as_constraints:
             target.add_name(skolem_var, skolem, target.LABEL_QUERY)
@@ -135,15 +138,30 @@ def multiplicative_factorization(source, as_constraints=True):
         target.add_name(term, top_key, target.LABEL_QUERY)
         # extra_queries.append(term)
 
-    logger.debug('----- after multfact -----')
+    # Copy labels
+    for name, key, label in source.get_names_with_label():
+        logger.debug('Name: {:<3} {} -> {}'.format(key, name, label))
+        target.add_name(name, key, label)
+
+    # Copy constraints
+    for c in source.constraints():
+        if not isinstance(c, ConstraintAD): # TODO correct?
+            target.add_constraint(c)
+            logger.debug('Constraint: {}'.format(c))
+        else:
+            logger.debug('Constraint(ignored): {}'.format(c))
+
+    logger.debug('----- After multiplicative factorization -----')
     for key,node,t in target:
-        logger.debug('{:<2}: {} -- {}'.format(key,node,t))
+        logger.debug('Rule: {:<3}: {} -- {}'.format(key,node,t))
     for c in target.constraints():
         logger.debug('constraint: {}'.format(c))
-    for q, n in source.queries():
+    for q, n in target.queries():
         logger.debug('query: {} {}'.format(q,n))
-    for q, n, v in source.evidence_all():
+    for q, n, v in target.evidence_all():
         logger.debug('evidence: {} {} {}'.format(q,n,v))
+    for name, key, label in target.get_names_with_label():
+        logger.debug('Name: {:<3} {} -> {}'.format(key, name, label))
     logger.debug('-----\n')
 
     return target, extra_queries
