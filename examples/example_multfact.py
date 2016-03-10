@@ -50,8 +50,14 @@ from problog.util import Timer, start_timer, stop_timer, init_logger, format_dic
 from problog.constraint import ClauseConstraint, ConstraintAD
 from problog.evaluator import SemiringProbability, FormulaEvaluator, OperationNotSupported
 
+def get_max_identifier(identifier, old_max):
+    if type(identifier) is tuple:
+        return get_max_identifier(identifier[0], old_max)
+    if old_max < identifier:
+        return identifier + 1
+    return old_max
 
-def multiplicative_factorization(source, as_constraints=True):
+def multiplicative_factorization(source):
     """
     Copy the source LogicFormula and replace large disjunctions with Skolemization variables
     to obtain a formula that is similar to the result of multiplicative factorization.
@@ -63,12 +69,14 @@ def multiplicative_factorization(source, as_constraints=True):
     target = LogicFormula()
     tseitin_vars = []
     skolem_vars = []
-    tseitin_clauses = []
-    skolem_clauses = []
+    extra_clauses = []
     extra_queries = []
     max_identifier = -1
 
-    logger.debug('Use constraints: {}'.format(as_constraints))
+    for _,node,t in source:
+        if t == 'atom':
+            max_identifier = get_max_identifier(node.identifier, max_identifier)
+    logger.debug('Max identifier: {}'.format(max_identifier))
 
     # Copy formulas and replace large disjunctions with a Tseitin variable z_i
     for key,node,t in source:
@@ -80,15 +88,16 @@ def multiplicative_factorization(source, as_constraints=True):
                 tseitin_vars.append(Term('z_{}'.format(len(tseitin_vars))))
                 logger.debug('-> {}: replace disj with tseitin {}'.format(key, tseitin_vars[-1]))
                 skolem_vars.append(Term('s_{}'.format(len(skolem_vars))))
-                skolem_clauses.append(tseitin_vars[-1])
+                tseitin = target.add_atom(identifier=max_identifier, probability=(1.0,1.0), name=tseitin_vars[-1])
+                max_identifier += 1
+                # TODO: the name is overridden
+                extra_clauses.append((tseitin, tseitin_vars[-1], skolem_vars[-1], node.children))
             else:
                 target.add_or(components=node.children, key=key, name=node.name)
         elif nodetype == 'conj':
             target.add_and(components=node.children, key=key, name=node.name)
         elif nodetype == 'atom':
-            # TODO: key and identifier are not the same!
-            if max_identifier < node.identifier:
-                max_identifier = node.identifier + 1
+            # TODO: key and identifier are not the same! + what is the structure?
             target.add_atom(identifier=node.identifier, probability=node.probability, name=node.name,
                             group=node.group, source=node.source)
         else:
@@ -96,47 +105,24 @@ def multiplicative_factorization(source, as_constraints=True):
                             '{:<2}: {} ({})'.format(key, node, t))
 
 
-    # Add Skolem clauses
-    for tseitin_var in skolem_clauses:
-        tseitin = target.add_atom(identifier=max_identifier, probability=(1.0,1.0), name=tseitin_var)
-        # TODO: the name is overridden
-        max_identifier += 1
-        logger.debug('-> Add tseitin {}'.format(tseitin_var))
-        if not as_constraints:
-            target.add_name(tseitin_vars[-1], tseitin, target.LABEL_QUERY)
-            tseitin_clauses.append(tseitin_vars[-1])
-        tseitin_clauses += [(tseitin, skolem_vars[-1], node.children)]
-
-
-    # Add compensating clauses for Tseitin variables
+    # Add Skolem and Tseitin clauses
     cur_body = 0
     all_top = [len(target)]
-    for tseitin, skolem_var, children in tseitin_clauses:
+    for tseitin, tseitin_var, skolem_var, children in extra_clauses:
+        logger.debug('-> Add tseitin {}'.format(tseitin_var))
         skolem = target.add_atom(identifier=max_identifier, probability=(1.0,-1.0), name=skolem_var)
         max_identifier += 1
         logger.debug('-> Add skolem {}'.format(skolem_var))
-        if as_constraints:
-            target.add_name(skolem_var, skolem, target.LABEL_QUERY)
-            extra_queries.append(skolem_var)
-            target.add_constraint(ClauseConstraint([tseitin, skolem]))
-        else:
-            all_top.append(target.add_or([tseitin, skolem]))
+        target.add_name(skolem_var, skolem, target.LABEL_QUERY)
+        extra_queries.append(skolem_var)
+        target.add_constraint(ClauseConstraint([tseitin, skolem]))
         for c in children:
-            if as_constraints:
-                term = Term('b_{}'.format(cur_body))
-                target.add_name(term, c, target.LABEL_QUERY)
-                extra_queries.append(term)
-                cur_body += 1
-                target.add_constraint(ClauseConstraint([tseitin, -c]))
-                target.add_constraint(ClauseConstraint([skolem,  -c]))
-            else:
-                all_top.append(target.add_or([tseitin, -c]))
-                all_top.append(target.add_or([skolem,  -c]))
-    if not as_constraints:
-        top_key = target.add_and(all_top)
-        term = Term('top_')
-        target.add_name(term, top_key, target.LABEL_QUERY)
-        # extra_queries.append(term)
+            term = Term('b_{}'.format(cur_body))
+            target.add_name(term, c, target.LABEL_QUERY)
+            extra_queries.append(term)
+            cur_body += 1
+            target.add_constraint(ClauseConstraint([tseitin, -c]))
+            target.add_constraint(ClauseConstraint([skolem,  -c]))
 
     # Copy labels
     for name, key, label in source.get_names_with_label():
@@ -227,7 +213,7 @@ class NegativeProbability(SemiringProbability):
         v = float(a)
         return v
 
-def probability(filename, with_fact=True, knowledge='nnf', constraints=True):
+def probability(filename, with_fact=True, knowledge='nnf'):
     pl = PrologFile(filename)
     engine = DefaultEngine(label_all=True)#, keep_all=True, keep_duplicates=True)
     db = engine.prepare(pl)
@@ -236,7 +222,7 @@ def probability(filename, with_fact=True, knowledge='nnf', constraints=True):
 
     if with_fact:
         with Timer('ProbLog with multiplicative factorization'):
-            gp2, extra_queries = multiplicative_factorization(gp, constraints)
+            gp2, extra_queries = multiplicative_factorization(gp)
             with open('test_f.dot', 'w') as dotfile:
                 print_result((True, gp2.to_dot()), output=dotfile)
             with Timer('Compilation with {}'.format(knowledge)):
@@ -298,7 +284,6 @@ if __name__ == '__main__' :
     parser.add_argument('--profile', action='store_true', help='Profile Python script')
     parser.add_argument('--knowledge', '-k', default='nnf',
                         help='Knowledge compilation (sdd, nnf, fbdd)')
-    parser.add_argument('--noconstraints', dest='constraints', action='store_false', help='Do not use constraints')
     args = parser.parse_args()
 
     init_logger(args.verbose)
@@ -312,5 +297,5 @@ if __name__ == '__main__' :
         p.sort_stats('time')
         p.print_stats()
     else:
-        result = probability( args.filename, not args.nomf, args.knowledge, args.constraints)
+        result = probability( args.filename, not args.nomf, args.knowledge)
         print_result((True,result), sys.stdout)
