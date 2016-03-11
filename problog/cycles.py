@@ -76,8 +76,9 @@ def break_cycles(source, target, **kwdargs):
 
         rename = dict()
         for k,v in translation.items():
-            rename[k] = v[0][0] # TODO how to correctly interpret translation?
-            rename[-k] = -v[0][0]
+            if v[0][0] is not None: # What does none mean?
+                rename[k] = v[0][0] # TODO how to correctly interpret translation?
+                rename[-k] = -v[0][0]
 
         # Copy constraints
         for c in source.constraints():
@@ -86,7 +87,10 @@ def break_cycles(source, target, **kwdargs):
 
         # Copy node names.
         for n, i in source.get_names(source.LABEL_NAMED):
-            target.add_name(n, rename[i], source.LABEL_NAMED)
+            if i in rename:
+                target.add_name(n, rename[i], source.LABEL_NAMED)
+            else:
+                logger.debug('Dropping name because it is not present after cycle breaking: {} {}'.format(n,i))
 
         logger.debug("Ground program size: %s", len(target))
         return target
