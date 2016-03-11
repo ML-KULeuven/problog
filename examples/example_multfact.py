@@ -250,7 +250,7 @@ def probability(filename, with_fact=True, knowledge='nnf', or_threshold=8):
             logger.debug('Deleting queries: {}'.format(extra_queries))
             for query in extra_queries:
                 nnf.del_name(query, nnf.LABEL_QUERY)
-            logger.info('NNF stats:\n'+'\n'.join(['{:<10}: {}'.format(k,v) for k,v in sorted(nnf.stats().items())]))
+            logger.info('NNF stats:\n'+'\n'.join(['{:<6}: {:>10,}'.format(k,v) for k,v in sorted(nnf.stats().items())]))
             with Timer('Evalation'):
                 result = nnf.evaluate(semiring=semiring)
     else:
@@ -267,7 +267,7 @@ def probability(filename, with_fact=True, knowledge='nnf', or_threshold=8):
                     nnf = NNF.createFrom(gp)
             # with open ('test_nf_nnf.dot', 'w') as dotfile:
             #     print(nnf.to_dot(), file=dotfile)
-            logger.info('NNF stats:\n'+'\n'.join(['{:<10}: {}'.format(k,v) for k,v in sorted(nnf.stats().items())]))
+            logger.info('NNF stats:\n'+'\n'.join(['{:<6}: {:>10,}'.format(k,v) for k,v in sorted(nnf.stats().items())]))
             with Timer('Evaluation'):
                 result = nnf.evaluate(semiring=semiring)
     return result
