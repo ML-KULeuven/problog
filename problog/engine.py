@@ -328,10 +328,10 @@ class ClauseDBEngine(GenericEngine):
                     logger.debug("Grounding evidence '%s'", query[0])
                     target = self.ground(db, query[0], target, label=target.LABEL_EVIDENCE_MAYBE, is_root=True)
                     logger.debug("Ground program size: %s", len(target))
-            if propagate_evidence:
-                target.lookup_evidence = {}
-                ev_nodes = [node for name, node in target.evidence() if node != 0 and node is not None]
-                target.propagate(ev_nodes, target.lookup_evidence)
+        if propagate_evidence:
+            target.lookup_evidence = {}
+            ev_nodes = [node for name, node in target.evidence() if node != 0 and node is not None]
+            target.propagate(ev_nodes, target.lookup_evidence)
 
     def ground_queries(self, db, target, queries):
         logger = logging.getLogger('problog')
@@ -366,13 +366,9 @@ class ClauseDBEngine(GenericEngine):
             if propagate_evidence:
                 with Timer('Propagating evidence'):
                     self.ground_evidence(db, target, evidence, propagate_evidence=propagate_evidence)
-                    # delattr(target, '_cache')
-                    target.lookup_evidence = {}
-                    ev_nodes = [node for name, node in target.evidence()
-                                if node != 0 and node is not None]
-                    target.propagate(ev_nodes, target.lookup_evidence)
                     self.ground_queries(db, target, queries)
-                logger.debug('Propagated evidence: %s' % list(target.lookup_evidence))
+                    if hasattr(target, 'lookup_evidence'):
+                        logger.debug('Propagated evidence: %s' % list(target.lookup_evidence))
             else:
                 self.ground_queries(db, target, queries)
                 self.ground_evidence(db, target, evidence)
