@@ -1402,6 +1402,26 @@ label_all=True)
 
         return destination
 
+    def stats(self):
+        nb_nodes = len(self._nodes)
+        nb_edges = 0
+        nb_leafs = 0
+        for i, n, t in self:
+            if t == 'atom':
+                nb_leafs += 1
+            elif t == 'conj':
+                nb_edges += len(n.children)
+            elif t == 'disj':
+                nb_edges += len(n.children)
+            else:
+                raise TypeError('Unknown node type')
+
+        return {
+            'nodes': nb_nodes,
+            'leafs': nb_leafs,
+            'edges': nb_edges
+        }
+
 
 class LogicDAG(LogicFormula, Evaluatable):
     """A propositional logic formula without cycles."""

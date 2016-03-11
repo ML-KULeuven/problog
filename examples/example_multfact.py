@@ -223,6 +223,7 @@ def probability(filename, with_fact=True, knowledge='nnf', or_threshold=8):
                     print_result((True, gp2.to_dot()), output=dotfile)
             with Timer('Compilation with {}'.format(knowledge)):
                 if knowledge == 'sdd':
+                    logger.warning("SDDs not yet fully supported")
                     nnf = SDD.create_from(gp2)
                     ev = nnf.to_formula()
                     fe = FormulaEvaluator(ev, semiring)
@@ -231,6 +232,7 @@ def probability(filename, with_fact=True, knowledge='nnf', or_threshold=8):
                     # TODO: SDD lib doesn't support negative weights? Runtime error
                     # TODO: How can I use the Python evaluator with SDDs?
                 elif knowledge == 'fbdd':
+                    logger.warning("fbdd not yet fully supported")
                     # TODO: Stupid approach because it introduces new root levels
                     nnf = ForwardBDD.createFrom(gp2)
                 else:
@@ -243,6 +245,7 @@ def probability(filename, with_fact=True, knowledge='nnf', or_threshold=8):
             logger.debug('Deleting queries: {}'.format(extra_queries))
             for query in extra_queries:
                 nnf.del_name(query, nnf.LABEL_QUERY)
+            logger.info('NNF stats:\n'+'\n'.join(['{:<10}: {}'.format(k,v) for k,v in nnf.stats().items().sorted()]))
             with Timer('Evalation'):
                 result = nnf.evaluate(semiring=semiring)
     else:
@@ -258,6 +261,7 @@ def probability(filename, with_fact=True, knowledge='nnf', or_threshold=8):
                     nnf = NNF.createFrom(gp)
             # with open ('test_nf_nnf.dot', 'w') as dotfile:
             #     print(nnf.to_dot(), file=dotfile)
+            logger.info('NNF stats:\n'+'\n'.join(['{:<10}: {}'.format(k,v) for k,v in nnf.stats().items().sorted()]))
             with Timer('Evaluation'):
                 result = nnf.evaluate(semiring=semiring)
     return result
