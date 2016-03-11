@@ -58,15 +58,7 @@ def break_cycles(source, target, **kwdargs):
                 newnode = n
             target.add_name(q, newnode, target.LABEL_QUERY)
 
-        rename = dict()
-        for k,v in translation.items():
-            rename[k] = v[0][0] # TODO how to correctly interpret translation?
-            rename[-k] = -v[0][0]
-        for c in source.constraints():
-            if isinstance(c, ClauseConstraint):
-                target.add_constraint(c.copy(rename=rename))
-
-        translation = defaultdict(list)
+        # translation = defaultdict(list) #TODO why is this reinitialized?
         for q, n, v in source.evidence_all():
             if source.is_probabilistic(n):
                 newnode = _break_cycles(source, target, abs(n), [], cycles_broken,
@@ -81,6 +73,20 @@ def break_cycles(source, target, **kwdargs):
                 target.add_name(q, newnode, target.LABEL_EVIDENCE_NEG)
             else:
                 target.add_name(q, newnode, target.LABEL_EVIDENCE_MAYBE)
+
+        rename = dict()
+        for k,v in translation.items():
+            rename[k] = v[0][0] # TODO how to correctly interpret translation?
+            rename[-k] = -v[0][0]
+
+        # Copy constraints
+        for c in source.constraints():
+            if isinstance(c, ClauseConstraint):
+                target.add_constraint(c.copy(rename=rename))
+
+        # Copy node names.
+        for n, i in source.get_names(source.LABEL_NAMED):
+            target.add_name(n, rename[i], source.LABEL_NAMED)
 
         logger.debug("Ground program size: %s", len(target))
         return target

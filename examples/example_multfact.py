@@ -42,7 +42,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 from problog.program import PrologFile
 from problog.logic import Term
 from problog.engine import DefaultEngine
-from problog.formula import LogicFormula
+from problog.formula import LogicFormula, LogicDAG
 from problog.sdd_formula import SDD
 from problog.nnf_formula import NNF
 from problog.cnf_formula import CNF
@@ -58,7 +58,7 @@ def multiplicative_factorization(source, or_threshold=8):
     :param source: Input formula
     :return: new formula, additional query atoms
     """
-    assert(type(source) == LogicFormula)
+    assert(type(source) == LogicFormula) # Can be relaxed to isinstance
     logger = logging.getLogger('problog')
     logger.info('Disjunction threshold: {}'.format(or_threshold))
     target = LogicFormula()
@@ -75,10 +75,10 @@ def multiplicative_factorization(source, or_threshold=8):
         if nodetype == 'disj':
             if len(node.children) > or_threshold:
                 # Replace disjunction node with atom node.
-                tseitin_vars.append(Term('z_{}'.format(len(tseitin_vars))))
+                tseitin_vars.append(Term(identifier_prefix+'z_{}'.format(len(tseitin_vars))))
                 logger.debug('-> {}: replace disj with tseitin {}'.format(key, tseitin_vars[-1]))
-                skolem_vars.append(Term('s_{}'.format(len(skolem_vars))))
-                tseitin = target.add_atom(identifier=identifier_prefix+str(tseitin_vars[-1]), probability=(1.0,1.0), name=tseitin_vars[-1])
+                skolem_vars.append(Term(identifier_prefix+'s_{}'.format(len(skolem_vars))))
+                tseitin = target.add_atom(identifier=str(tseitin_vars[-1]), probability=(1.0,1.0), name=tseitin_vars[-1])
                 # TODO: the name is overridden
                 logger.info('Tseitin variable {} for {} children'.format(tseitin_vars[-1], len(node.children)))
                 extra_clauses.append((tseitin, tseitin_vars[-1], skolem_vars[-1], node.children))
@@ -100,13 +100,13 @@ def multiplicative_factorization(source, or_threshold=8):
     all_top = [len(target)]
     for tseitin, tseitin_var, skolem_var, children in extra_clauses:
         logger.debug('-> Add tseitin {}'.format(tseitin_var))
-        skolem = target.add_atom(identifier=identifier_prefix+str(skolem_var), probability=(1.0,-1.0), name=skolem_var)
+        skolem = target.add_atom(identifier=str(skolem_var), probability=(1.0,-1.0), name=skolem_var)
         logger.debug('-> Add skolem {}'.format(skolem_var))
         target.add_name(skolem_var, skolem, target.LABEL_QUERY)
         extra_queries.append(skolem_var)
         target.add_constraint(ClauseConstraint([tseitin, skolem]))
         for c in children:
-            term = Term('b_{}'.format(cur_body))
+            term = Term(identifier_prefix+'b_{}'.format(cur_body))
             target.add_name(term, c, target.LABEL_QUERY)
             extra_queries.append(term)
             cur_body += 1
@@ -208,6 +208,8 @@ def probability(filename, with_fact=True, knowledge='nnf', or_threshold=8):
     engine = DefaultEngine(label_all=True)#, keep_all=True, keep_duplicates=True)
     db = engine.prepare(pl)
     gp = engine.ground_all(db)
+    # if logger.isEnabledFor(logging.DEBUG):
+        # logger.debug(gp.to_prolog())
     semiring = NegativeProbability()
 
     if with_fact:
@@ -221,6 +223,9 @@ def probability(filename, with_fact=True, knowledge='nnf', or_threshold=8):
             if logger.isEnabledFor(logging.DEBUG):
                 with open('test_f_mf.dot', 'w') as dotfile:
                     print_result((True, gp2.to_dot()), output=dotfile)
+                gp_acyclic = LogicDAG.createFrom(gp2)
+                with open('test_f_mf_acyclic.dot', 'w') as dotfile:
+                    print_result((True, gp_acyclic.to_dot()), output=dotfile)
             with Timer('Compilation with {}'.format(knowledge)):
                 if knowledge == 'sdd':
                     logger.warning("SDDs not yet fully supported")
@@ -245,13 +250,14 @@ def probability(filename, with_fact=True, knowledge='nnf', or_threshold=8):
             logger.debug('Deleting queries: {}'.format(extra_queries))
             for query in extra_queries:
                 nnf.del_name(query, nnf.LABEL_QUERY)
-            logger.info('NNF stats:\n'+'\n'.join(['{:<10}: {}'.format(k,v) for k,v in nnf.stats().items().sorted()]))
+            logger.info('NNF stats:\n'+'\n'.join(['{:<10}: {}'.format(k,v) for k,v in sorted(nnf.stats().items())]))
             with Timer('Evalation'):
                 result = nnf.evaluate(semiring=semiring)
     else:
         with Timer('ProbLog without multiplicative factorization'):
-            # with open('test_nf.dot', 'w') as dotfile:
-            #     print_result((True, gp.to_dot()), output=dotfile)
+            if logger.isEnabledFor(logging.DEBUG):
+                with open('test_nf.dot', 'w') as dotfile:
+                    print_result((True, gp.to_dot()), output=dotfile)
             with Timer('Compilation with {}'.format(knowledge)):
                 if knowledge == 'sdd':
                     nnf = SDD.createFrom(gp)
@@ -261,7 +267,7 @@ def probability(filename, with_fact=True, knowledge='nnf', or_threshold=8):
                     nnf = NNF.createFrom(gp)
             # with open ('test_nf_nnf.dot', 'w') as dotfile:
             #     print(nnf.to_dot(), file=dotfile)
-            logger.info('NNF stats:\n'+'\n'.join(['{:<10}: {}'.format(k,v) for k,v in nnf.stats().items().sorted()]))
+            logger.info('NNF stats:\n'+'\n'.join(['{:<10}: {}'.format(k,v) for k,v in sorted(nnf.stats().items())]))
             with Timer('Evaluation'):
                 result = nnf.evaluate(semiring=semiring)
     return result
