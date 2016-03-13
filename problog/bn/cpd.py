@@ -223,7 +223,7 @@ boolean_values = [
 
 
 class CPD(object):
-    def __init__(self, rv, values, parents, detect_boolean=True, force_boolean=False):
+    def __init__(self, rv, values, parents, detect_boolean=True, force_boolean=False, boolean_true=None):
         """Conditional Probability Distribution."""
         self.rv = rv
         self.values = values
@@ -232,7 +232,7 @@ class CPD(object):
             self.parents = []
         else:
             self.parents = parents
-        self.booleantrue = None  # Value that represents true
+        self.booleantrue = boolean_true  # Value that represents true
         if (force_boolean or detect_boolean) and len(self.values) == 2:
             for values in boolean_values:
                 if values[0] == self.values[0].lower() and values[1] == self.values[1].lower():
@@ -368,7 +368,7 @@ class CPT(CPD):
                     if parent_values[ig_idx] == value:
                         newnode[1].append((parent_values, prob))
                 nodes.append(newnode)
-        return CPT(self.rv, self.values, self.parents, new_table)
+        return CPT(self.rv, self.values, self.parents, new_table, boolean_true=self.booleantrue)
 
     def to_HuginNetNode(self):
         lines = ["node {} {{".format(self.rv_clean()),
