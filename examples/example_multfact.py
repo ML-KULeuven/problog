@@ -5,8 +5,9 @@
 Example on how to use multiplicative factorization in ProbLog.
 
 Observations:
-- Only for large (>30) disjunctions, it results in a speedup.
-- For really large (>80) disjunctions, the speedup is an order of magnitude
+- In general, only for large (>30) disjunctions, it results in a speedup.
+  For really large (>80) disjunctions, the speedup is an order of magnitude
+- For clean noisy-or constructs (independent parents), the circuit is always smaller
 """
 
 from __future__ import print_function
