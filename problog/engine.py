@@ -350,7 +350,7 @@ class ClauseDBEngine(GenericEngine):
             if len(query) == 1:  # constraint/1
                 pos, constraint = True, query[0]
             else:  # evidence/2
-                pos, constraint = query[1] == 'true', query[0]
+                pos, constraint = (str(query[1]) == 'true'), query[0]
             logger.debug("Grounding {} constraint '{}'".format(pos, constraint))
             terms = term2list(constraint)
             for term in terms:
@@ -367,13 +367,20 @@ class ClauseDBEngine(GenericEngine):
                 if not name in term2key:
                     term2key[name] = key
             terms_idx = []
-            for term in terms:
-                if term.is_negated():
-                    terms_idx.append(-term2key[-term])
-                else:
-                    terms_idx.append(term2key[term])
-            print('Add constraint {}'.format(terms_idx))
-            target.add_constraint(ClauseConstraint(terms_idx))
+            if pos:
+                for term in terms:
+                    if term.is_negated():
+                        target.add_constraint(ClauseConstraint([-term2key[-term]]))
+                    else:
+                        target.add_constraint(ClauseConstraint([term2key[term]]))
+            else:
+                for term in terms:
+                    if term.is_negated():
+                        terms_idx.append(term2key[-term])
+                    else:
+                        terms_idx.append(-term2key[term])
+                # TODO: If term is not part of the answer to a query this crashes problog
+                target.add_constraint(ClauseConstraint(terms_idx))
 
     def ground_all(self, db, target=None, queries=None, evidence=None, constraints=None, propagate_evidence=False):
         db = self.prepare(db)
