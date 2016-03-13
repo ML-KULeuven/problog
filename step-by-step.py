@@ -68,6 +68,12 @@ def main(filename, with_dot, knowledge) :
     evidence = engine.query(db, Term( 'evidence', None, None ))
     print ('Evidence:', ', '.join([ '%s=%s' % ev for ev in evidence ]))
 
+    print ('\n=== Constraints ===')
+    constraints = engine.query(db, Term('constraint', None))
+    constraints += engine.query(db, Term('constraint', None, None))
+    print(constraints)
+    print ('Constraints:', ', '.join([ str(c) for c in constraints]))
+
     print ('\n=== Ground Program ===')
     with Timer('ground') :
         gp = engine.ground_all(db)

@@ -340,7 +340,42 @@ class ClauseDBEngine(GenericEngine):
             target = self.ground(db, query, target, label=target.LABEL_QUERY)
             logger.debug("Ground program size: %s", len(target))
 
-    def ground_all(self, db, target=None, queries=None, evidence=None, propagate_evidence=False):
+    def ground_constraints(self, db, target, constraints):
+        from .logic import term2list
+        from .constraint import ClauseConstraint
+        logger = logging.getLogger('problog')
+        term2key = {}
+        # Ground constraints
+        for query in constraints:
+            if len(query) == 1:  # constraint/1
+                pos, constraint = True, query[0]
+            else:  # evidence/2
+                pos, constraint = query[1] == 'true', query[0]
+            logger.debug("Grounding {} constraint '{}'".format(pos, constraint))
+            terms = term2list(constraint)
+            for term in terms:
+                if term.is_negated():
+                    logger.debug("Grounding constraint term '{}'".format(-term))
+                    target = self.ground(db, -term, target, label=target.LABEL_CONSTRAINT, is_root=True)
+                else:
+                    logger.debug("Grounding constraint term '{}'".format(term))
+                    target = self.ground(db, term, target, label=target.LABEL_CONSTRAINT, is_root=True)
+                logger.debug("Ground program size: {}".format(len(target)))
+
+            # TODO: This is not efficient
+            for name, key in target.get_names(target.LABEL_CONSTRAINT):
+                if not name in term2key:
+                    term2key[name] = key
+            terms_idx = []
+            for term in terms:
+                if term.is_negated():
+                    terms_idx.append(-term2key[-term])
+                else:
+                    terms_idx.append(term2key[term])
+            print('Add constraint {}'.format(terms_idx))
+            target.add_constraint(ClauseConstraint(terms_idx))
+
+    def ground_all(self, db, target=None, queries=None, evidence=None, constraints=None, propagate_evidence=False):
         db = self.prepare(db)
         logger = logging.getLogger('problog')
         with Timer('Grounding'):
@@ -359,6 +394,16 @@ class ClauseDBEngine(GenericEngine):
                 if not isinstance(ev[0], Term):
                     raise GroundingError('Invalid evidence')   # TODO can we add a location?
 
+            if constraints is None:
+                constraints = self.query(db, Term('constraint', None))
+                constraints += self.query(db, Term('constraint', None, None))
+
+            for c in constraints:
+                if not isinstance(c[0], Term):
+                    raise GroundingError('Invalid constraint')
+                    # TODO check for ground in c[0]
+                    # TODO check for boolean in c[1]
+
             # Initialize target if not given.
             if target is None:
                 target = LogicFormula()
@@ -367,11 +412,13 @@ class ClauseDBEngine(GenericEngine):
                 with Timer('Propagating evidence'):
                     self.ground_evidence(db, target, evidence, propagate_evidence=propagate_evidence)
                     self.ground_queries(db, target, queries)
+                    self.ground_constraints(db, target, constraints)
                     if hasattr(target, 'lookup_evidence'):
                         logger.debug('Propagated evidence: %s' % list(target.lookup_evidence))
             else:
                 self.ground_queries(db, target, queries)
                 self.ground_evidence(db, target, evidence)
+                self.ground_constraints(db, target, constraints)
         return target
 
     def add_external_calls(self, externals):

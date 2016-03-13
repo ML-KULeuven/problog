@@ -231,9 +231,9 @@ class NegativeProbability(SemiringProbability):
 def probability(filename, with_fact=True, knowledge='nnf', disjunct_threshold=8, disjunct_max=None):
     logger = logging.getLogger('problog')
     pl = PrologFile(filename)
-    engine = DefaultEngine(label_all=True, keep_all=True, keep_duplicates=True)
+    engine = DefaultEngine(label_all=True)#, keep_all=True, keep_duplicates=True)
     db = engine.prepare(pl)
-    gp = engine.ground_all(db)
+    gp = engine.ground_all(db, propagate_evidence=True)
     # if logger.isEnabledFor(logging.DEBUG):
         # logger.debug(gp.to_prolog())
     semiring = NegativeProbability()

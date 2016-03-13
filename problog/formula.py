@@ -60,6 +60,7 @@ class BaseFormula(ProbLogObject):
     LABEL_EVIDENCE_NEG = "evidence-"
     LABEL_EVIDENCE_MAYBE = "evidence?"
     LABEL_NAMED = "named"
+    LABEL_CONSTRAINT = "constraint"
 
     def __init__(self):
         self._weights = {}               # Node weights: dict(key: Term)
