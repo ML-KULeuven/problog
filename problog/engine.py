@@ -357,9 +357,13 @@ class ClauseDBEngine(GenericEngine):
                 if term.is_negated():
                     logger.debug("Grounding constraint term '{}'".format(-term))
                     target = self.ground(db, -term, target, label=target.LABEL_CONSTRAINT, is_root=True)
+                     # TODO: crashes otherwise because there are missing atoms (or should this by EVIDENCE_MAYBE?)
+                    target = self.ground(db, -term, target, label=target.LABEL_QUERY)
                 else:
                     logger.debug("Grounding constraint term '{}'".format(term))
                     target = self.ground(db, term, target, label=target.LABEL_CONSTRAINT, is_root=True)
+                     # TODO: crashes otherwise because there are missing atoms (or should this by EVIDENCE_MAYBE?)
+                    target = self.ground(db, term, target, label=target.LABEL_QUERY)
                 logger.debug("Ground program size: {}".format(len(target)))
 
             # TODO: This is not efficient
