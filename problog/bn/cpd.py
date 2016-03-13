@@ -188,8 +188,8 @@ class PGM(object):
                  "%% Created on {}\n".format(datetime.now())]
         lines += [cpd.to_ProbLog(self, drop_zero=drop_zero, use_neglit=use_neglit,
                                  value_as_term=value_as_term, ad_is_function=ad_is_function) for cpd in cpds]
-        if ad_is_function:
-            lines += ["evidence(false_constraints,false)."]
+        # if ad_is_function:
+            # lines += ["evidence(false_constraints,false)."]
         return '\n'.join(lines)
 
     def to_graphviz(self):
@@ -502,11 +502,13 @@ class CPT(CPD):
                 lines.append('{}{}.'.format(head_str, body_str))
             line_cnt += 1
 
-        if ad_is_function:
+        if ad_is_function and self.booleantrue is None:
             head_lits = [self.to_ProbLogValue(value, value_as_term) for value in self.values]
-            lines.append('false_constraints :- '+', '.join(['\+'+l for l in head_lits])+'.')
+            # lines.append('false_constraints :- '+', '.join(['\+'+l for l in head_lits])+'.')
+            lines.append('constraint(['+', '.join(['\+'+l for l in head_lits])+'], false).')
             for lit1, lit2 in itertools.combinations(head_lits, 2):
-                lines.append('false_constraints :- {}, {}.'.format(lit1, lit2))
+                # lines.append('false_constraints :- {}, {}.'.format(lit1, lit2))
+                lines.append('constraint([{}, {}], false).'.format(lit1, lit2))
 
         return '\n'.join(lines)
 
