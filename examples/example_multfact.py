@@ -233,7 +233,7 @@ def probability(filename, with_fact=True, knowledge='nnf', disjunct_threshold=8,
     pl = PrologFile(filename)
     engine = DefaultEngine(label_all=True)#, keep_all=True, keep_duplicates=True)
     db = engine.prepare(pl)
-    gp = engine.ground_all(db, propagate_evidence=True)
+    gp = engine.ground_all(db, propagate_evidence=False)
     # if logger.isEnabledFor(logging.DEBUG):
         # logger.debug(gp.to_prolog())
     semiring = NegativeProbability()

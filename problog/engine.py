@@ -357,12 +357,12 @@ class ClauseDBEngine(GenericEngine):
                 if term.is_negated():
                     logger.debug("Grounding constraint term '{}'".format(-term))
                     target = self.ground(db, -term, target, label=target.LABEL_CONSTRAINT, is_root=True)
-                     # TODO: crashes otherwise because there are missing atoms (or should this by EVIDENCE_MAYBE?)
+                    # TODO: crashes otherwise because there are missing atoms (or should this by EVIDENCE_MAYBE?)
                     target = self.ground(db, -term, target, label=target.LABEL_QUERY)
                 else:
                     logger.debug("Grounding constraint term '{}'".format(term))
                     target = self.ground(db, term, target, label=target.LABEL_CONSTRAINT, is_root=True)
-                     # TODO: crashes otherwise because there are missing atoms (or should this by EVIDENCE_MAYBE?)
+                    # TODO: crashes otherwise because there are missing atoms (or should this by EVIDENCE_MAYBE?)
                     target = self.ground(db, term, target, label=target.LABEL_QUERY)
                 logger.debug("Ground program size: {}".format(len(target)))
 
@@ -421,15 +421,15 @@ class ClauseDBEngine(GenericEngine):
             # Ground queries
             if propagate_evidence:
                 with Timer('Propagating evidence'):
+                    self.ground_constraints(db, target, constraints)
                     self.ground_evidence(db, target, evidence, propagate_evidence=propagate_evidence)
                     self.ground_queries(db, target, queries)
-                    self.ground_constraints(db, target, constraints)
                     if hasattr(target, 'lookup_evidence'):
                         logger.debug('Propagated evidence: %s' % list(target.lookup_evidence))
             else:
+                self.ground_constraints(db, target, constraints)
                 self.ground_queries(db, target, queries)
                 self.ground_evidence(db, target, evidence)
-                self.ground_constraints(db, target, constraints)
         return target
 
     def add_external_calls(self, externals):
