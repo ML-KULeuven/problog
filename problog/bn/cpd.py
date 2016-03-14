@@ -264,6 +264,14 @@ class CPD(object):
     def __str__(self):
         return '{} [{}]'.format(self.rv, ','.join(self.values))
 
+    def copy(self, **kwargs):
+        return CPD(
+            rv=kwargs.get('rv', self.rv),
+            values=kwargs.get('values', self.values),
+            parents=kwargs.get('parents', self.parents),
+            boolean_true=kwargs.get('boolean_true', self.booleantrue)
+        )
+
 
 class CPT(CPD):
     def __init__(self, rv, values, parents, table, *args, **kwargs):
@@ -286,6 +294,15 @@ class CPT(CPD):
             self.table = table
         else:
             raise ValueError('Unknown type (expected list, tuple or dict): {}'.format(type(table)))
+
+    def copy(self, **kwargs):
+        return CPT(
+            rv=kwargs.get('rv', self.rv),
+            values=kwargs.get('values', self.values),
+            parents=kwargs.get('parents', self.parents),
+            table=kwargs.get('table', self.table),
+            boolean_true=kwargs.get('boolean_true', self.booleantrue)
+        )
 
     @staticmethod
     def marginalize(cpds, margvars):
@@ -368,7 +385,7 @@ class CPT(CPD):
                     if parent_values[ig_idx] == value:
                         newnode[1].append((parent_values, prob))
                 nodes.append(newnode)
-        return CPT(self.rv, self.values, self.parents, new_table, boolean_true=self.booleantrue)
+        return self.copy(table=new_table)
 
     def to_HuginNetNode(self):
         lines = ["node {} {{".format(self.rv_clean()),
@@ -481,11 +498,11 @@ class CPT(CPD):
             if ad_is_function:
                 for head_cnt, (head_prob, head_lit) in enumerate(head_problits):
                     if len(body_lits) == 0:
-                        lines.append('{}::{}.'.format(head_prob, head_lit))
+                        lines.append('({};1.0)::{}.'.format(head_prob, head_lit))
                     else:
                         new_probfact = 'pf_{}_{}_{}'.format(self.rv_clean(), line_cnt, head_cnt)
                         new_body_lits = body_lits + [new_probfact]
-                        lines.append('{}::{}.'.format(head_prob, new_probfact))
+                        lines.append('({};1.0)::{}.'.format(head_prob, new_probfact))
                         lines.append('{} :- {}.'.format(head_lit, ', '.join(new_body_lits)))
             else:
                 if len(body_lits) > 0:
