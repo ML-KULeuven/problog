@@ -304,7 +304,7 @@ class Evaluatable(ProbLogObject):
         """
         raise NotImplementedError('Evaluatable._create_evaluator is an abstract method')
 
-    def get_evaluator(self, semiring=None, evidence=None, weights=None, **kwargs):
+    def get_evaluator(self, semiring=None, evidence=None, weights=None, constraints=False, **kwargs):
         """Get an evaluator for computing queries on this formula.
         It creates an new evaluator and initializes it with the given or predefined evidence.
 
@@ -319,6 +319,7 @@ class Evaluatable(ProbLogObject):
 
         evaluator = self._create_evaluator(semiring, weights, **kwargs)
 
+        evaluator.has_constraints(constraints)
         for ev_name, ev_index, ev_value in self.evidence_all():
             if ev_index == 0 and ev_value > 0:
                 pass  # true evidence is deterministically true
@@ -343,7 +344,7 @@ class Evaluatable(ProbLogObject):
         evaluator.propagate()
         return evaluator
 
-    def evaluate(self, index=None, semiring=None, evidence=None, weights=None, **kwargs):
+    def evaluate(self, index=None, semiring=None, evidence=None, weights=None, constraints=False, **kwargs):
         """Evaluate a set of nodes.
 
         :param index: node to evaluate (default: all queries)
@@ -353,7 +354,7 @@ class Evaluatable(ProbLogObject):
         :return: The result of the evaluation expressed as an external value of the semiring. \
          If index is ``None`` (all queries) then the result is a dictionary of name to value.
         """
-        evaluator = self.get_evaluator(semiring, evidence, weights, **kwargs)
+        evaluator = self.get_evaluator(semiring, evidence, weights, constraints, **kwargs)
 
         if index is None:
             result = {}
@@ -388,6 +389,7 @@ class Evaluator(object):
         self.__semiring = semiring
 
         self.__evidence = []
+        self.__hasconstraints = False
 
     @property
     def semiring(self):
@@ -420,6 +422,11 @@ class Evaluator(object):
     def has_evidence(self):
         """Checks whether there is active evidence."""
         return self.__evidence != []
+
+    def has_constraints(self, set_true=None):
+        if set_true is not None:
+            self.__hasconstraints = set_true
+        return self.__hasconstraints
 
     def set_evidence(self, index, value):
         """Set value for evidence node.

@@ -23,7 +23,7 @@ except:
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
 from problog.program import PrologFile
-from problog.logic import Term
+from problog.logic import Term, Or
 from problog.engine import DefaultEngine
 from problog.formula import LogicFormula, LogicDAG
 from problog.sdd_formula import SDD
@@ -214,12 +214,22 @@ class NegativeProbability(SemiringProbability):
         return a / z
 
     def pos_value(self, a, key=None):
-        if isinstance(a, tuple):
+        if isinstance(a, Or):
+            # Support for two weights in the syntax
+            # (0.3;1.0)::a.
+            return self.value(a.op1)
+        elif isinstance(a, tuple):
+            # Support for two weights in an Atom.probability = (0.3,1.0)
             return self.value(a[0])
         return self.value(a)
 
     def neg_value(self, a, key=None):
-        if isinstance(a, tuple):
+        if isinstance(a, Or):
+            # Support for two weights in the syntax
+            # (0.3;1.0)::a.
+            return self.value(a.op2)
+        elif isinstance(a, tuple):
+            # Support for two weights in an Atom.probability = (0.3,1.0)
             return self.value(a[1])
         else:
             return self.negate(self.value(a))
@@ -278,7 +288,7 @@ def probability(filename, with_fact=True, knowledge='nnf', disjunct_threshold=8,
                 nnf.del_name(query, nnf.LABEL_QUERY)
             logger.info('NNF stats:\n'+'\n'.join(['{:<6}: {:>10,}'.format(k,v) for k,v in sorted(nnf.stats().items())]))
             with Timer('Evalation'):
-                result = nnf.evaluate(semiring=semiring)
+                result = nnf.evaluate(semiring=semiring, constraints=True)
     else:
         with Timer('ProbLog without multiplicative factorization'):
             if logger.isEnabledFor(logging.DEBUG):

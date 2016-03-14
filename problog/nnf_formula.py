@@ -115,7 +115,7 @@ class SimpleNNFEvaluator(Evaluator):
             self._set_value(abs(node), (node > 0))
             result = self._get_weight(len(self.formula))
             self._reset_value(abs(node), p, n)
-            if self.has_evidence():
+            if self.has_evidence() or self.has_constraints():
                 result = self.semiring.normalize(result, self._get_z())
         return self.semiring.result(result, self.formula)
 
