@@ -500,10 +500,11 @@ class CPT(CPD):
                     if len(body_lits) == 0:
                         lines.append('({};1.0)::{}.'.format(head_prob, head_lit))
                     else:
-                        new_probfact = 'pf_{}_{}_{}'.format(self.rv_clean(), line_cnt, head_cnt)
-                        new_body_lits = body_lits + [new_probfact]
-                        lines.append('({};1.0)::{}.'.format(head_prob, new_probfact))
-                        lines.append('{} :- {}.'.format(head_lit, ', '.join(new_body_lits)))
+                        # new_probfact = 'pf_{}_{}_{}'.format(self.rv_clean(), line_cnt, head_cnt)
+                        # new_body_lits = body_lits + [new_probfact]
+                        # lines.append('({};1.0)::{}.'.format(head_prob, new_probfact))
+                        # lines.append('{} :- {}.'.format(head_lit, ', '.join(new_body_lits)))
+                        lines.append('({};1.0)::{} :- {}.'.format(head_prob, head_lit, ', '.join(body_lits)))
             else:
                 if len(body_lits) > 0:
                     body_str = ' :- ' + ', '.join(body_lits)
