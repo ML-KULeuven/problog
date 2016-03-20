@@ -8,10 +8,11 @@ http://graphmod.ics.uci.edu/uai08/FileFormat
 Created by Wannes Meert on 31-01-2016.
 Copyright (c) 2016 KU Leuven. All rights reserved.
 """
+from __future__ import print_function
 
 import sys
 import argparse
-from problog.bn.cpd import CPT, PGM
+from problog.bn.cpd import Variable, Factor, PGM
 import itertools
 import logging
 
@@ -19,12 +20,14 @@ force_bool = False
 drop_zero = False
 use_neglit = False
 
+directed = True
 num_vars = 0
 num_funcs = 0
 dom_sizes = []
 domains = []
 func_vars = []
 func_values = []
+factor_cnt = 0
 
 
 logger = logging.getLogger('problog.uai2problog')
@@ -46,21 +49,62 @@ def error(*args, **kwargs):
     if halt:
         sys.exit(1)
 
-def construct_cpt(func_num):
+
+class UAIReader:
+    def __init__(self, fn):
+        debug('Opening {}'.format(fn))
+        self.file = open(fn, 'r')
+        self.buffer = []
+
+    def get_tokens(self, amount):
+        if amount < len(self.buffer):
+            tokens = self.buffer[:amount]
+            self.buffer = self.buffer[amount:]
+            return tokens
+        tokens = self.buffer
+        while len(tokens) < amount:
+            line = self.file.readline()
+            if line == '':
+                return None
+            tokens += line.strip().split()
+        self.buffer = tokens[amount:]
+        tokens = tokens[:amount]
+        return tokens
+
+    def get_token(self):
+        tokens = self.get_tokens(1)
+        if tokens is None:
+            return None
+        return tokens[0]
+
+    def __del__(self):
+        debug('Closing {}'.format(self.file.name))
+        if self.file is not None:
+            self.file.close()
+
+def construct_var(pgm, var_num):
+    rv = 'v{}'.format(var_num)
+    values = domains[var_num]
+    pgm.add_var(Variable(rv, values, force_boolean=force_bool))
+
+def construct_cpt(pgm, func_num):
+    global factor_cnt
     global domains
     if func_num >= len(func_vars) or func_vars[func_num] is None:
         error('Variables not defined for function {}'.format(func_num), halt=True)
     variables = func_vars[func_num]
     var = variables[-1]
-    parents = variables[0:-1]
     rv = 'v{}'.format(var)
+    parents = variables[0:-1]
     if var >= len(domains) or domains[var] is None:
         error('Variable domain is not defined: {}'.format(var), halt=True)
-    values = domains[var]
+    dom_size = dom_sizes[var]
+
     parents_str = ['v{}'.format(p) for p in parents]
     if len(parents) == 0:
         table = func_values[var]
-        return CPT(rv, values, parents_str, table, force_boolean=force_bool)
+        pgm.add_factor(Factor(pgm, rv, parents_str, table))
+        return
     parent_domains = []
     for parent in parents:
         parent_domains.append(domains[parent])
@@ -68,107 +112,140 @@ def construct_cpt(func_num):
     try:
         cur_func_values = func_values[func_num]
     except:
-        error('Could not find function definition for {}'.format(var), halt=True)
-    dom_size = dom_sizes[var]
+        error('Could not find function definition for {}'.format(func_num), halt=True)
     table = {}
     for val_assignment in itertools.product(*parent_domains):
         table[val_assignment] = cur_func_values[idx:idx+dom_size]
         idx += dom_size
-    return CPT(rv, values, parents_str, table, force_boolean=force_bool)
+
+    pgm.add_factor(Factor(pgm, rv, parents_str, table))
+
+def construct_factor(pgm, func_num):
+    global factor_cnt
+    global domains
+    if func_num >= len(func_vars) or func_vars[func_num] is None:
+        error('Variables not defined for function {}'.format(func_num), halt=True)
+    variables = func_vars[func_num]
+    name = 'pf_{}'.format(factor_cnt)
+    factor_cnt += 1
+    parents = variables
+    dom_size = 1
+
+    parents_str = ['v{}'.format(p) for p in parents]
+    assert(len(parents) != 0)
+    parent_domains = []
+    for parent in parents:
+        parent_domains.append(domains[parent])
+    idx = 0
+    try:
+        cur_func_values = func_values[func_num]
+    except:
+        error('Could not find function definition for {}'.format(func_num), halt=True)
+    table = {}
+    for val_assignment in itertools.product(*parent_domains):
+        table[val_assignment] = cur_func_values[idx:idx+dom_size]
+        idx += dom_size
+
+    pgm.add_factor(Factor(pgm, None, parents_str, table, name=name))
 
 def construct_pgm():
-    pgm = PGM()
+    pgm = PGM(directed=directed)
+    for var_num in range(num_vars):
+        construct_var(pgm, var_num)
     for func_num in range(num_funcs):
-        cpt = construct_cpt(func_num)
-        debug(str(cpt))
-        pgm.add(cpt)
+        if directed:
+            construct_cpt(pgm, func_num)
+        else:
+            construct_factor(pgm, func_num)
     return pgm
 
-def parse_header(ifile):
+
+def parse_header(reader):
     debug('Parsing header')
     global var_parents
 
     # Type
-    line = ifile.readline().strip()
-    if line != 'BAYES':
-        error('Expected a BAYES network, found: {}'.format(line), halt=True)
+    token = reader.get_token()
+    global directed
+    if token == 'BAYES':
+        directed = True
+    elif token == 'MARKOV':
+        directed = False
+    else:
+        directed = None
+        error('Expected a BAYES or MARKOV network, found: {}'.format(token), halt=True)
+    debug('Type: {}'.format(token))
 
     # Number of variables
     global num_vars
-    line = ifile.readline().strip()
-    num_vars = int(line)
+    token = reader.get_token()
+    num_vars = int(token)
     var_parents = [None]*num_vars
+    debug("Number of variables: {}".format(num_vars))
 
     # Domain sizes
     global dom_sizes
     global domains
-    line = ifile.readline().strip()
+    tokens = reader.get_tokens(num_vars)
     dom_size = []
-    for size in line.split():
+    for size in tokens:
         size = int(size)
         dom_sizes.append(size)
         values = [str(d) for d in range(size)]
         domains.append(values)
     if len(dom_sizes) != num_vars:
         error('Expected {} domain sizes, found {}'.format(num_vars, len(dom_sizes)), halt=True)
+    debug("Domain sizes: {}".format(" ".join(map(str,dom_sizes))))
 
     # Number of functions
-    line = ifile.readline().strip()
+    token = reader.get_token()
     global num_funcs
-    num_funcs = int(line)
-    if num_funcs != num_vars:
+    num_funcs = int(token)
+    if directed and num_funcs != num_vars:
         error('For BAYES we expect one function for every variables but found: {}'.format(num_funcs), halt=True)
+    debug("Number of functions: {}".format(num_funcs))
 
-def parse_graph(ifile):
+def parse_graph(reader):
     global func_vars
     debug('Parsing function structures')
     for num_func in range(num_funcs):
         debug('Parsing function structure {}'.format(num_func))
-        line = ifile.readline().strip()
-        if line == '':
-            error('Did not expect empty line for function definition {}'.format(num_func), halt=True)
-        line = [int(v) for v in line.split()]
-        func_size = line[0]
-        if len(line) != func_size+1:
-            error('Expected {} variables, found {}\n{}'.format(func_size+1, len(line), line), halt=True)
+        func_size = int(reader.get_token())
+        tokens = reader.get_tokens(func_size)
+        tokens = [int(v) for v in tokens]
+
+        if len(tokens) != func_size:
+            error('Expected {} variables, found {}\n{}'.format(func_size, len(tokens), tokens), halt=True)
         # if num_func != rv:
             # error('Expected current variable ({}) as last variable, found {}'.format(num_func, rv), halt=True)
         # for parent in parents:
             # if parent >= num_func:
                 # error('Found parent ({}) that is not yet defined\n{}'.format(parent, line), halt=True)
-        func_vars.append(line[1:])
+        func_vars.append(tokens)
+        debug('Parsed structure: {}'.format(" ".join(map(str,tokens))))
 
-def parse_functions(ifile):
+def parse_functions(reader):
     global func_values
     debug('Parsing function values')
-    line = ifile.readline().strip()
-    if line != '':
-        error('Expected empty line, found: {}'.format(line), halt=True)
     for num_func in range(num_funcs):
         debug('Parsing function values {}'.format(num_func))
-        line = ifile.readline().strip()
-        while line == '':
-            line = ifile.readline().strip()
-        num_values = int(line)
-        values = []
-        while len(values) < num_values:
-            line = [float(v) for v in ifile.readline().strip().split()]
-            values += line
-        if len(values) != num_values:
-            error('Expected {} values for function {}, found {}'.format(num_values, num_func, len(values)), halt=True)
+        num_values = int(reader.get_token())
+        tokens = reader.get_tokens(num_values)
+        values = [float(v) for v in tokens]
         func_values.append(values)
 
-def parse_rest(ifile):
-    for line in ifile:
-        line = line.strip()
-        if line != '':
-            warning('Did not expect more lines, ignoring: {}'.format(line))
+def parse_rest(reader):
+    token = reader.get_token()
+    # for line in reader:
+    #     line = line.strip()
+    #     if line != '':
+    #         warning('Did not expect more lines, ignoring: {}'.format(line))
 
-def parse(ifile):
-    parse_header(ifile)
-    parse_graph(ifile)
-    parse_functions(ifile)
-    parse_rest(ifile)
+def parse(reader):
+    parse_header(reader)
+    parse_graph(reader)
+    parse_functions(reader)
+    parse_rest(reader)
 
 def print_datastructures():
     print('Domain sizes: {}'.format(' '.join([str(s) for s in dom_sizes])))
@@ -186,12 +263,17 @@ def main(argv=None):
     parser.add_argument('input', help='Input UAI08 file')
     args = parser.parse_args(argv)
 
+    ch = logging.StreamHandler()
     if args.verbose is None:
         logger.setLevel(logging.WARNING)
+        ch.setLevel(logging.WARNING)
     elif args.verbose == 1:
         logger.setLevel(logging.INFO)
+        ch.setLevel(logging.INFO)
     elif args.verbose >= 2:
         logger.setLevel(logging.DEBUG)
+        ch.setLevel(logging.DEBUG)
+    logger.addHandler(ch)
 
     global verbose
     if args.verbose is not None:
@@ -206,8 +288,8 @@ def main(argv=None):
     if args.useneglit:
         use_neglit = args.useneglit
 
-    with open(args.input, 'r') as ifile:
-        parse(ifile)
+    reader = UAIReader(args.input)
+    parse(reader)
     pgm = construct_pgm()
     if args.compress:
         pgm = pgm.compress_tables()

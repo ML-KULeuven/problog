@@ -29,58 +29,71 @@ from collections import Counter
 
 
 class PGM(object):
-    def __init__(self, cpds=None):
+    def __init__(self, directed=True, vars=None, factors=None):
         """Probabilistic Graphical Model."""
-        self.cpds = {}
-        if cpds:
-            for cpd in cpds:
-                self.add(cpd)
+        self.directed = directed
+        self.factors = {}
+        self.vars = {}
+        if vars:
+            for var in vars:
+                self.add_var(var)
+        if factors:
+            for factor in factors:
+                self.add_factor(factor)
 
-    def add(self, cpd):
+    def add_var(self, var):
+        self.vars[var.name] = var
+
+    def add_factor(self, factor):
         """Add a CPD.
         :param cpd: Object of type CPD
         """
-        if cpd.rv in self.cpds:
-            self.cpds[cpd.rv] += cpd
+        if self.directed:
+            name = factor.rv
         else:
-            self.cpds[cpd.rv] = cpd
+            name = factor.name
+        assert(name is not None)
+        factor.pgm = self
+        if name in self.factors:
+            self.factors[name] += factor
+        else:
+            self.factors[name] = factor
 
-    def cpds_topological(self):
-        """Return the CPDs in a topological order."""
+    def factors_topological(self):
+        """Return the factors in a topological order."""
         # Links from parent-node to child-node
+        if not self.directed:
+            return self.factors.values()
         links = dict()
-        for cpd in self.cpds.values():
-            for parent in cpd.parents:
+        for factor in self.factors.values():
+            for parent in factor.parents:
                 if parent in links:
-                    links[parent].add(cpd.rv)
+                    links[parent].add(factor.rv)
                 else:
-                    links[parent] = {cpd.rv}
-        # print(links)
+                    links[parent] = {factor.rv}
         all_links = set(links.keys())
         nonroot = reduce(set.union, links.values())
         root = all_links - nonroot
-        # print(root)
         queue = root
         visited = set()
-        cpds = []
+        factors = []
         while len(queue) > 0:
             for rv in queue:
                 if rv in visited:
                     continue
                 all_parents_visited = True
                 try:
-                    cpd = self.cpds[rv]
+                    factor = self.factors[rv]
                 except KeyError as exc:
                     print('Error: random variable has no CPD associated:')
                     print(exc)
-                    # print('\n'.join(self.cpds.keys()))
                     sys.exit(1)
-                for parent_rv in cpd.parents:
+                for parent_rv in factor.parents:
                     if parent_rv not in visited:
                         all_parents_visited = False
                         break
                 if all_parents_visited:
-                    cpds.append(cpd)
+                    factors.append(factor)
                     visited.add(rv)
             queue2 = set()
             for rv in queue:
@@ -88,47 +101,22 @@ class PGM(object):
                     for next_rv in links[rv]:
                         queue2.add(next_rv)
             queue = queue2
-        return cpds
-
-    def marginalizeLatentVariables(self):
-        marg_sets = []
-        # Find nodes with only latent variables that are only parent for that node
-        for cpd in self.cpds.values():
-            # print('cpd: {} | {}'.format(cpd.rv, cpd.parents))
-            if len(cpd.parents) == 0:
-                continue
-            all_latent = True
-            for parent in cpd.parents:
-                if not self.cpds[parent].latent:
-                    all_latent = False
-            if not all_latent:
-                continue
-            marg_sets.append((cpd.rv, cpd.parents))
-        print(marg_sets)
-        # Eliminate
-        for (child_rv, parent_rvs) in marg_sets:
-            cpds = [self.cpds[child_rv]] + [self.cpds[rv] for rv in parent_rvs]
-            cpd = CPT.marginalize(cpds, parent_rvs)
-            if cpd is not None:
-                print(cpd)
-                self.cpds[child_rv] = cpd
-                for rv in parent_rvs:
-                    del self.cpds[rv]
-        return None
+        return factors
 
     def compress_tables(self):
         """Analyze CPTs and join rows that have the same probability
         distribution."""
-        cpds = []
-        for idx, cpd in enumerate(self.cpds.values()):
-            cpds.append(cpd.compress(self))
-        return PGM(cpds)
+        factors = []
+        for idx, factor in enumerate(self.factors.values()):
+            factors.append(factor.compress(self))
+        return PGM(factors)
 
     def to_hugin_net(self):
         """Export PGM to the Hugin net format.
         http://www.hugin.com/technology/documentation/api-manuals
         """
-        cpds = [cpd.to_CPT(self) for cpd in self.cpds_topological()]
+        assert(self.directed)
+        cpds = [cpd.to_factor(self) for cpd in self.factors_topological()]
         lines = ["%% Hugin Net format",
                  "%% Created on {}\n".format(datetime.now()),
                  "%% Network\n",
@@ -145,7 +133,8 @@ class PGM(object):
         """Export PGM to the XDSL format defined by SMILE.
         https://dslpitt.org/genie/wiki/Appendices:_XDSL_File_Format_-_XML_Schema_Definitions
         """
-        cpds = [cpd.to_CPT(self) for cpd in self.cpds_topological()]
+        assert(self.directed)
+        cpds = [cpd.to_factor(self) for cpd in self.factors_topological()]
         lines = ['<?xml version="1.0" encoding="ISO-8859-1" ?>',
                  '<smile version="1.0" id="Aa" numsamples="1000">',
                  '  <nodes>']
@@ -163,7 +152,8 @@ class PGM(object):
         """Export PGM to the format used in the UAI 2008 competition.
         http://graphmod.ics.uci.edu/uai08/FileFormat
         """
-        cpds = [cpd.to_CPT(self) for cpd in self.cpds_topological()]
+        assert(self.directed)
+        cpds = [cpd.to_factor(self) for cpd in self.factors_topological()]
         number_variables = str(len(cpds))
         domain_sizes = [str(len(cpd.values)) for cpd in cpds]
         number_functions = str(len(cpds))
@@ -183,11 +173,15 @@ class PGM(object):
         :param use_neglit: Use negative literals if it simplifies the program
         :param drop_zero: Do not include head literals with probability zero
         """
-        cpds = [cpd.to_CPT(self) for cpd in self.cpds_topological()]
+        factors = [factor.to_factor() for factor in self.factors_topological()]
         lines = ["%% ProbLog program",
                  "%% Created on {}\n".format(datetime.now())]
-        lines += [cpd.to_ProbLog(self, drop_zero=drop_zero, use_neglit=use_neglit,
-                                 value_as_term=value_as_term, ad_is_function=ad_is_function) for cpd in cpds]
+        if self.directed:
+            lines += [factor.to_ProbLog(self, drop_zero=drop_zero, use_neglit=use_neglit,
+                                        value_as_term=value_as_term, ad_is_function=ad_is_function) for factor in factors]
+        else:
+            lines += [factor.to_ProbLog_undirected(self, drop_zero=drop_zero, use_neglit=use_neglit,
+                                                   value_as_term=value_as_term, ad_is_function=ad_is_function) for factor in factors]
         # if ad_is_function:
             # lines += ["evidence(false_constraints,false)."]
         return '\n'.join(lines)
@@ -196,8 +190,9 @@ class PGM(object):
         """Export PGM to Graphviz dot format.
         http://www.graphviz.org
         """
+        assert(self.directed)
         lines = ['digraph bayesnet {']
-        for cpd in self.cpds.values():
+        for cpd in self.factors.values():
             lines.append('  {} [label="{}"];'.format(cpd.rv_clean(), cpd.rv))
             for p in cpd.parents:
                 lines.append('  {} -> {}'.format(cpd.rv_clean(p), cpd.rv_clean()))
@@ -205,8 +200,8 @@ class PGM(object):
         return '\n'.join(lines)
 
     def __str__(self):
-        cpds = [cpd.to_CPT(self) for cpd in self.cpds_topological()]
-        return '\n'.join([str(cpd) for cpd in cpds])
+        factors = [factor.to_factor(self) for factor in self.factors_topological()]
+        return '\n'.join([str(factor) for factor in factors])
 
 
 re_toundercore = re.compile(r"[\(\),\]\[ ]")
@@ -221,17 +216,12 @@ boolean_values = [
   ['aye', 'nay']
 ]
 
-
-class CPD(object):
-    def __init__(self, rv, values, parents, detect_boolean=True, force_boolean=False, boolean_true=None):
+class Variable(object):
+    def __init__(self, name, values, detect_boolean=True, force_boolean=False, boolean_true=None):
         """Conditional Probability Distribution."""
-        self.rv = rv
+        self.name = name
         self.values = values
         self.latent = False
-        if parents is None:
-            self.parents = []
-        else:
-            self.parents = parents
         self.booleantrue = boolean_true  # Value that represents true
         if (force_boolean or detect_boolean) and len(self.values) == 2:
             for values in boolean_values:
@@ -244,9 +234,11 @@ class CPD(object):
             if force_boolean and self.booleantrue is None:
                 self.booleantrue = 1
 
-    def rv_clean(self, rv=None):
-        if rv is None:
-            rv = self.rv
+    def clean(self, value=None):
+        if value is None:
+            rv = self.name
+        else:
+            rv = value
         rv = re_toundercore.sub('_', rv)
         rv = re_toremove.sub('', rv)
         if not rv[0].islower():
@@ -255,26 +247,33 @@ class CPD(object):
                 rv = "v"+rv
         return rv
 
-    def has(self, rv):
-        return rv == self.rv or rv in self.parents
-
-    def to_CPT(self, pgm):
-        return self
+    def to_ProbLogValue(self, value, value_as_term=True):
+        if self.booleantrue is None:
+            if value_as_term:
+                return self.clean()+'("'+str(value)+'")'
+            else:
+                return self.clean()+'_'+self.clean(str(value))
+        else:
+            if self.values[self.booleantrue] == value:
+                return self.clean()
+            elif self.values[1-self.booleantrue] == value:
+                return '\+'+self.clean()
+            else:
+                raise Exception('Unknown value: {} = {}'.format(self.name, value))
 
     def __str__(self):
-        return '{} [{}]'.format(self.rv, ','.join(self.values))
+        return '{}'.format(self.name)
 
     def copy(self, **kwargs):
-        return CPD(
-            rv=kwargs.get('rv', self.rv),
+        return Variable(
+            name=kwargs.get('name', self.name),
             values=kwargs.get('values', self.values),
-            parents=kwargs.get('parents', self.parents),
             boolean_true=kwargs.get('boolean_true', self.booleantrue)
         )
 
 
-class CPT(CPD):
-    def __init__(self, rv, values, parents, table, *args, **kwargs):
+class Factor(object):
+    def __init__(self, pgm, rv, parents, table, name=None, *args, **kwargs):
         """Conditional Probability Table with discrete probabilities.
 
         :param rv: random variable
@@ -282,12 +281,15 @@ class CPT(CPD):
         :param parents: parent random variables
         :param table:
 
-        a = CPT('a', ['f','t'], [], [0.4,0.6])
-        b = CPT('b', ['f','t'], [a],
-                {('f',): [0.2,0.8],
-                 ('t',): [0.7,0.3]})
+        a = Factor(pgm, 'a', [], [0.4,0.6])
+        b = Factor(pgm, 'b', [a],
+                   {('f',): [0.2,0.8],
+                    ('t',): [0.7,0.3]})
         """
-        super(CPT, self).__init__(rv, values, parents, *args, **kwargs)
+        self.rv = rv
+        self.pgm = pgm
+        self.name = name
+        self.parents = parents
         if isinstance(table, list) or isinstance(table, tuple):
             self.table = {(): table}
         elif isinstance(table, dict):
@@ -295,28 +297,19 @@ class CPT(CPD):
         else:
             raise ValueError('Unknown type (expected list, tuple or dict): {}'.format(type(table)))
 
+    def to_factor(self):
+        return self
+
     def copy(self, **kwargs):
-        return CPT(
+        return Factor(
             rv=kwargs.get('rv', self.rv),
-            values=kwargs.get('values', self.values),
+            pgm=kwargs.get('pgm', self.pgm),
+            name=kwargs.get('name', self.name),
             parents=kwargs.get('parents', self.parents),
-            table=kwargs.get('table', self.table),
-            boolean_true=kwargs.get('boolean_true', self.booleantrue)
+            table=kwargs.get('table', self.table)
         )
 
-    @staticmethod
-    def marginalize(cpds, margvars):
-        children = set([cpd.rv for cpd in cpds])
-        print('children: {}'.format(children))
-        child = children - margvars
-        print('child: {}'.format(child))
-        parents = reduce(set.union, [cpd.parents for cpd in cpds])
-        parents -= margvars
-        print('parents: {}'.format(parents))
-
-        return None
-
-    def compress(self, pgm):
+    def compress(self):
         """Table to tree using the ID3 decision tree algorithm.
 
         From:
@@ -359,7 +352,7 @@ class CPT(CPD):
                 if curpath[parent_idx] is not None:
                     continue
                 bins = {}
-                for value in pgm.cpds[parent].values:
+                for value in self.pgm.vars[parent].values:
                     bins[value] = []
                 for k, v in node:
                     bins[k[parent_idx]].append(v)
@@ -377,7 +370,7 @@ class CPT(CPD):
                 for new_path, new_probs in node:
                     new_table[new_path] = new_probs
                 continue
-            for value in pgm.cpds[self.parents[ig_idx]].values:
+            for value in self.pgm.factors[self.parents[ig_idx]].values:
                 newpath = [v for v in curpath]
                 newpath[ig_idx] = value
                 newnode = [tuple(newpath), []]
@@ -388,19 +381,21 @@ class CPT(CPD):
         return self.copy(table=new_table)
 
     def to_HuginNetNode(self):
-        lines = ["node {} {{".format(self.rv_clean()),
+        rv = self.pgm.vars[self.rv]
+        lines = ["node {} {{".format(rv.clean()),
                  "  label = \"{}\";".format(self.rv),
                  "  position = (100,100);",
-                 "  states = ({});".format(' '.join(['"{}"'.format(v) for v in self.values])),
+                 "  states = ({});".format(' '.join(['"{}"'.format(v) for v in rv.values])),
                  "}\n"]
         return '\n'.join(lines)
 
     def to_HuginNetPotential(self):
-        name = self.rv_clean()
+        rv = self.pgm.vars[self.rv]
+        name = rv.clean()
         if len(self.parents) > 0:
-            name += ' | '+' '.join([self.rv_clean(p) for p in self.parents])
+            name += ' | '+' '.join([rv.clean(p) for p in self.parents])
         lines = ['potential ({}) {{'.format(name),
-                 '  % '+' '.join([str(v) for v in self.values]),
+                 '  % '+' '.join([str(v) for v in rv.values]),
                  '  data = (']
         table = sorted(self.table.items())
         for k, v in table:
@@ -410,11 +405,12 @@ class CPT(CPD):
         return '\n'.join(lines)
 
     def to_XdslCpt(self):
-        lines = ['    <cpt id="{}">'.format(self.rv_clean())]
-        for v in self.values:
+        rv = self.pgm.vars[self.rv]
+        lines = ['    <cpt id="{}">'.format(rv.clean())]
+        for v in rv.values:
             lines.append('      <state id="{}" />'.format(v))
         if len(self.parents) > 0:
-            lines.append('      <parents>{}</parents>'.format(' '.join([self.rv_clean(p) for p in self.parents])))
+            lines.append('      <parents>{}</parents>'.format(' '.join([rv.clean(p) for p in self.parents])))
         table = sorted(self.table.items())
         probs = ' '.join([str(value) for k, values in table for value in values])
         lines.append('      <probabilities>{}</probabilities>'.format(probs))
@@ -422,8 +418,9 @@ class CPT(CPD):
         return '\n'.join(lines)
 
     def to_XdslNode(self):
+        rv = self.pgm.vars[self.rv]
         lines = [
-            '      <node id="{}">'.format(self.rv_clean()),
+            '      <node id="{}">'.format(rv.clean()),
             '        <name>{}</name>'.format(self.rv),
             '        <interior color="e5f6f7" />',
             '        <outline color="000080" />',
@@ -441,7 +438,8 @@ class CPT(CPD):
         return '{} {}'.format(function_size, ' '.join(variables))
 
     def to_Uai08Function(self):
-        number_entries = str(len(self.table)*len(self.values))
+        rv = self.pgm.vars[self.rv]
+        number_entries = str(len(self.table)*len(rv.values))
         lines = [number_entries]
         table = sorted(self.table.items())
         for k, v in table:
@@ -449,23 +447,10 @@ class CPT(CPD):
         lines.append('')
         return '\n'.join(lines)
 
-    def to_ProbLogValue(self, value, value_as_term=True):
-        if self.booleantrue is None:
-            if value_as_term:
-                return self.rv_clean()+'("'+str(value)+'")'
-            else:
-                return self.rv_clean()+'_'+self.rv_clean(str(value))
-        else:
-            if self.values[self.booleantrue] == value:
-                return self.rv_clean()
-            elif self.values[1-self.booleantrue] == value:
-                return '\+'+self.rv_clean()
-            else:
-                raise Exception('Unknown value: {} = {}'.format(self.rv, value))
-
     def to_ProbLog(self, pgm, drop_zero=False, use_neglit=False, value_as_term=True, ad_is_function=False):
         lines = []
-        name = self.rv_clean()
+        var = pgm.vars[self.rv]
+        name = var.clean()
         # if len(self.parents) > 0:
         #   name += ' | '+' '.join([self.rv_clean(p) for p in self.parents])
         # table = sorted(self.table.items())
@@ -474,26 +459,26 @@ class CPT(CPD):
 
         line_cnt = 0
         for k, v in table:
-            if self.booleantrue is not None and drop_zero and v[self.booleantrue] == 0.0 and not use_neglit:
+            if var.booleantrue is not None and drop_zero and v[var.booleantrue] == 0.0 and not use_neglit:
                 continue
             head_problits = []
-            if self.booleantrue is None:
+            if var.booleantrue is None:
                 for idx, vv in enumerate(v):
                     if not (drop_zero and vv == 0.0):
-                        head_problits.append((vv, self.to_ProbLogValue(self.values[idx], value_as_term)))
+                        head_problits.append((vv, var.to_ProbLogValue(var.values[idx], value_as_term)))
             else:
-                if drop_zero and v[self.booleantrue] == 0.0 and use_neglit:
-                    head_problits.append((None, self.to_ProbLogValue(self.values[1-self.booleantrue], value_as_term)))
-                elif v[self.booleantrue] == 1.0:
-                    head_problits.append((None,self.to_ProbLogValue(self.values[self.booleantrue], value_as_term)))
+                if drop_zero and v[var.booleantrue] == 0.0 and use_neglit:
+                    head_problits.append((None, var.to_ProbLogValue(var.values[1-var.booleantrue], value_as_term)))
+                elif v[var.booleantrue] == 1.0:
+                    head_problits.append((None,var.to_ProbLogValue(var.values[var.booleantrue], value_as_term)))
                 else:
-                    head_problits.append((v[self.booleantrue],
-                                          self.to_ProbLogValue(self.values[self.booleantrue], value_as_term)))
+                    head_problits.append((v[var.booleantrue],
+                                          var.to_ProbLogValue(var.values[var.booleantrue], value_as_term)))
             body_lits = []
             for parent, parent_value in zip(self.parents, k):
                 if parent_value is not None:
-                    parent_cpd = pgm.cpds[parent]
-                    body_lits.append(parent_cpd.to_ProbLogValue(parent_value, value_as_term))
+                    parent_var = pgm.vars[parent]
+                    body_lits.append(parent_var.to_ProbLogValue(parent_value, value_as_term))
 
             if ad_is_function:
                 for head_cnt, (head_prob, head_lit) in enumerate(head_problits):
@@ -520,8 +505,8 @@ class CPT(CPD):
                 lines.append('{}{}.'.format(head_str, body_str))
             line_cnt += 1
 
-        if ad_is_function and self.booleantrue is None:
-            head_lits = [self.to_ProbLogValue(value, value_as_term) for value in self.values]
+        if ad_is_function and var.booleantrue is None:
+            head_lits = [var.to_ProbLogValue(value, value_as_term) for value in var.values]
             # lines.append('false_constraints :- '+', '.join(['\+'+l for l in head_lits])+'.')
             lines.append('constraint(['+', '.join(['\+'+l for l in head_lits])+'], false).')
             for lit1, lit2 in itertools.combinations(head_lits, 2):
@@ -529,6 +514,27 @@ class CPT(CPD):
                 lines.append('constraint([{}, {}], false).'.format(lit1, lit2))
 
         return '\n'.join(lines)
+
+    def to_ProbLog_undirected(self, pgm, drop_zero=False, use_neglit=False, value_as_term=True, ad_is_function=False):
+        lines = []
+        name = self.name
+        table = self.table.items()
+        line_cnt = 0
+        for k, v in table:
+            assert(len(v) == 1)
+            body_lits = []
+            for parent, parent_value in zip(self.parents, k):
+                if parent_value is not None:
+                    parent_var = pgm.vars[parent]
+                    body_lits.append(parent_var.to_ProbLogValue(parent_value, value_as_term))
+
+            body_str = ' :- ' + ', '.join(body_lits)
+            head_str = '{}::{}({})'.format(v[0], name, line_cnt)
+            lines.append('{}{}.'.format(head_str, body_str))
+            line_cnt += 1
+
+        return '\n'.join(lines)
+
 
     def __str__(self):
         lines = []
@@ -538,13 +544,20 @@ class CPT(CPD):
         table = '\n'.join(lines)
         parents = ''
         if len(self.parents) > 0:
-            parents = ' | {}'.format(','.join(self.parents))
-        return 'CPT ({}{}) = {}\n{}'.format(self.rv, parents, ','.join([str(v) for v in self.values]), table)
+            parents = ', '.join(self.parents)
+
+        if self.rv is not None:
+            var = self.pgm.vars[self.rv]
+            rv = var.name
+            if len(self.parents) > 0:
+                rv += ' | '
+            return 'Factor ({}{}) = {}\n{}'.format(rv, parents, ', '.join([str(v) for v in var.values]), table)
+        return 'Factor ({})\n{}'.format(parents, table)
 
 
-class OrCPT(CPD):
-    def __init__(self, rv, parentvalues=None):
-        super(OrCPT, self).__init__(rv, [False, True], set())
+class OrCPT(Factor):
+    def __init__(self, pgm, rv, parentvalues=None):
+        super(OrCPT, self).__init__(pgm, rv, set())
         if parentvalues is None:
             self.parentvalues = []
         else:
@@ -558,7 +571,8 @@ class OrCPT(CPD):
         self.parentvalues += parentvalues
         self.parents.update([pv[0] for pv in parentvalues])
 
-    def to_CPT(self, pgm):
+    def to_factor(self, pgm):
+        rv = self.pgm.vars[self.rv]
         parents = sorted(list(set([pv[0] for pv in self.parentvalues])))
         table = dict()
         parent_values = [pgm.cpds[parent].values for parent in parents]
@@ -571,14 +585,15 @@ class OrCPT(CPD):
                 table[keys] = [0.0, 1.0]
             else:
                 table[keys] = [1.0, 0.0]
-        return CPT(self.rv, self.values, parents, table)
+        return Factor(self.pgm, self.rv, rv.values, parents, table)
 
     def __add__(self, other):
-        return OrCPT(self.rv, self.parentvalues + other.parentvalues)
+        return OrCPT(self.pgm, self.rv, self.parentvalues + other.parentvalues)
 
     def __str__(self):
+        rv = self.pgm.vars[self.rv]
         table = '\n'.join(['{}'.format(pv) for pv in self.parentvalues])
         parents = ''
         if len(self.parents) > 0:
             parents = ' -- {}'.format(','.join(self.parents))
-        return 'OrCPT {} [{}]{}\n{}'.format(self.rv, ','.join(self.values), parents, table)
+        return 'OrCPT {} [{}]{}\n{}'.format(self.rv, ','.join(rv.values), parents, table)
