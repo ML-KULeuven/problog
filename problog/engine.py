@@ -746,7 +746,7 @@ class ClauseDB(LogicProgram):
                                   % head.signature)
 
     def get_local_scope(self, signature):
-        if signature == 'findall/3':
+        if signature in ('findall/3', 'all/3'):
             return 0, 1
         else:
             return []

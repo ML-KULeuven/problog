@@ -53,7 +53,7 @@ def add_standard_builtins(engine, b=None, s=None, sp=None):
     engine.add_builtin('\=', 2, b(_builtin_neq))  # -5
 
     engine.add_builtin('findall', 3, sp(_builtin_findall))  # -6
-    engine.add_builtin('findall_top', 3, sp(_builtin_findall_top))  # -7
+    engine.add_builtin('all', 3, sp(_builtin_all))  # -7
 
     engine.add_builtin('==', 2, b(_builtin_same))
     engine.add_builtin('\==', 2, b(_builtin_notsame))
@@ -1163,10 +1163,10 @@ def _select_sublist(lst, target):
         n -= 1
 
 
-def _builtin_findall_base(pattern, goal, result, top_only=False, database=None, target=None,
-                          engine=None, context=None, **kwdargs):
+def _builtin_all(pattern, goal, result, database=None, target=None,
+                      engine=None, context=None, **kwdargs):
     """
-    Implementation of findall/3 builtin.
+    Implementation of all/3 builtin.
    :param pattern: pattern to extract
    :type pattern: Term
    :param goal: goal to evaluate
@@ -1201,38 +1201,95 @@ def _builtin_findall_base(pattern, goal, result, top_only=False, database=None, 
     results = engine.call(findall_head, subcall=True, database=findall_db, target=target, **kwdargs)
     results = [(res[0], n) for res, n in results]
     output = []
-    if top_only:
-        if results:
-            # Only return the maximal list.
-            l, n = zip(*results)
-            node = target.add_and(n)
-            if node is not None:
-                res = build_list(l, Term('[]'))
-                if mode == 0:  # var
+
+    for l, n in _select_sublist(results, target):
+        if not l:
+            continue
+        node = target.add_and(n)
+        if node is not None:
+            res = build_list(l, Term('[]'))
+            if mode == 0:  # var
+                args = (pattern, goal, res)
+                output.append((args, node))
+            else:
+                try:
+                    res = unify_value(res, result, {})
                     args = (pattern, goal, res)
                     output.append((args, node))
-                else:
-                    try:
-                        res = unify_value(res, result, {})
-                        args = (pattern, goal, res)
-                        output.append((args, node))
-                    except UnifyError:
-                        pass
-    else:
-        for l, n in _select_sublist(results, target):
-            node = target.add_and(n)
-            if node is not None:
-                res = build_list(l, Term('[]'))
-                if mode == 0:  # var
+                except UnifyError:
+                    pass
+
+    return output
+
+
+def _builtin_findall_base(pattern, goal, result, database=None, target=None,
+                          engine=None, context=None, **kwdargs):
+    """
+    Implementation of findall/3 builtin.
+   :param pattern: pattern to extract
+   :type pattern: Term
+   :param goal: goal to evaluate
+   :type goal: Term
+   :param result: list to store results
+   :type result: Term
+   :param database: database holding logic program
+   :type database: ClauseDB
+   :param target: logic formula in which to store the result
+   :type target: LogicFormula
+   :param engine: engine that is used for evaluation
+   :type engine: ClauseDBEngine
+   :param kwdargs: additional arguments from engine
+   :return: list results (tuple of lists and node identifiers)
+    """
+    # Check the modes.
+    mode = check_mode((pattern, goal, result,), ['*cv', '*cl'], database=database, **kwdargs)
+
+    findall_head = Term(engine.get_non_cache_functor(), pattern, *goal.variables())
+    findall_clause = Clause(findall_head, goal)
+    findall_db = database.extend()
+    findall_db += findall_clause
+
+    class _TranslateToNone(object):
+
+        # noinspection PyUnusedLocal
+        def __getitem__(self, item):
+            return None
+
+    findall_head = substitute_simple(findall_head, _TranslateToNone())
+
+    findall_target = target.__class__(keep_order=True, keep_all=True, keep_duplicates=True)
+    results = engine.call(findall_head, subcall=True, database=findall_db, target=findall_target, **kwdargs)
+    new_results = []
+    keep_all_restore = target._keep_all
+    target._keep_all = False
+    for res, n in results:
+        for mx, b in findall_target.enumerate_branches(n):
+            b = list(b)
+            b_renamed = [findall_target.copy_node(target, c) for c in b]
+            proof_node = target.add_and(b_renamed)
+            # TODO order detection mechanism is too fragile?
+            if b:
+                new_results.append((mx, res[0], proof_node))
+            else:
+                new_results.append((mx, res[0], proof_node))
+    target._keep_all = keep_all_restore
+    new_results = [(b, c) for a, b, c in sorted(new_results, key=lambda s: s[0])]
+
+    output = []
+    for l, n in _select_sublist(new_results, target):
+        node = target.add_and(n)
+        if node is not None:
+            res = build_list(l, Term('[]'))
+            if mode == 0:  # var
+                args = (pattern, goal, res)
+                output.append((args, node))
+            else:
+                try:
+                    res = unify_value(res, result, {})
                     args = (pattern, goal, res)
                     output.append((args, node))
-                else:
-                    try:
-                        res = unify_value(res, result, {})
-                        args = (pattern, goal, res)
-                        output.append((args, node))
-                    except UnifyError:
-                        pass
+                except UnifyError:
+                    pass
     return output
 
 
@@ -1295,11 +1352,7 @@ def _builtin_sample_uniform(key, lst, result, database=None, target=None, **kwda
 
 
 def _builtin_findall(pattern, goal, result, **kwdargs):
-    return _builtin_findall_base(pattern, goal, result, top_only=False, **kwdargs)
-
-
-def _builtin_findall_top(pattern, goal, result, **kwdargs):
-    return _builtin_findall_base(pattern, goal, result, top_only=True, **kwdargs)
+    return _builtin_findall_base(pattern, goal, result, **kwdargs)
 
 
 # noinspection PyPep8Naming

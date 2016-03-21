@@ -1239,6 +1239,68 @@ label_all=True)
                             roots.add(abs(c))
         return relevant
 
+    def get_node_multiplicity(self, index):
+        if self.is_true(index):
+            return 1
+        elif self.is_false(index):
+            return 0
+        else:
+            node = self.get_node(abs(index))
+            ntype = type(node).__name__
+            if ntype == 'atom':
+                return 1
+            elif index < 0:
+                # TODO verify this is correct: negative node has multiplicity 1
+                return 1
+            else:
+                child_multiplicities = [self.get_node_multiplicity(c) for c in node.children]
+                if ntype == 'disj':
+                    return sum(child_multiplicities)
+                else:
+                    r = 1
+                    for cm in child_multiplicities:
+                        r *= cm
+                    return r
+
+    def enumerate_branches(self, index):
+        if self.is_true(index):
+            yield 0, [self.TRUE]
+        elif self.is_false(index):
+            yield 0, []
+        elif index < 0:
+            yield index, [index]
+        else:
+            node = self.get_node(index)
+            ntype = type(node).__name__
+            if ntype == 'atom':
+                yield index, [index]
+            elif ntype == 'conj':
+                from itertools import product, chain
+                for b in product(*(self.enumerate_branches(c) for c in node.children)):
+                    c_max, c_br = zip(*b)
+                    mx = max(c_max)
+                    yield max(index, mx), chain(*c_br)
+            else:
+                for c in node.children:
+                    for mx, b in self.enumerate_branches(c):
+                        yield mx, b
+
+    def copy_node(self, target, index):
+        if self.is_true(index):
+            return target.TRUE
+        elif self.is_false(index):
+            return target.FALSE
+        else:
+            node = self.get_node(abs(index))
+            ntype = type(node).__name__
+            sign = 1 if index > 0 else -1
+            if ntype == 'atom':
+                return sign * target.add_atom(*node)
+            elif ntype == 'conj':
+                return sign * target.add_and(*(self.copy_node(c) for c in node.children))
+            elif ntype == 'disj':
+                return sign * target.add_or(*(self.copy_node(c) for c in node.children))
+
     def _unroll_conj(self, node):
         assert type(node).__name__ == 'conj'
 
