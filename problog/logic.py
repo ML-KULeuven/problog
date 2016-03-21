@@ -733,7 +733,10 @@ class AnnotatedDisjunction(Term):
         self.body = body
 
     def __repr__(self):
-        return "%s :- %s" % ('; '.join(map(str, self.heads)), self.body)
+        if self.body is None:
+            return "%s" % ('; '.join(map(str, self.heads)))
+        else:
+            return "%s :- %s" % ('; '.join(map(str, self.heads)), self.body)
 
 
 class Or(Term):
