@@ -1258,7 +1258,10 @@ def _builtin_findall_base(pattern, goal, result, database=None, target=None,
     findall_head = substitute_simple(findall_head, _TranslateToNone())
 
     findall_target = target.__class__(keep_order=True, keep_all=True, keep_duplicates=True)
-    results = engine.call(findall_head, subcall=True, database=findall_db, target=findall_target, **kwdargs)
+    try:
+        results = engine.call(findall_head, subcall=True, database=findall_db, target=findall_target, **kwdargs)
+    except RuntimeError:
+        raise IndirectCallCycleError(database.lineno(kwdargs.get('call_origin', (None, None))[1]))
     new_results = []
     keep_all_restore = target._keep_all
     target._keep_all = False
