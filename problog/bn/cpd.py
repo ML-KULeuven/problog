@@ -207,20 +207,22 @@ class PGM(object):
         return '\n'.join(lines)
 
     def __str__(self):
-        factors = [factor.to_factor(self) for factor in self.factors_topological()]
-        return '\n'.join([str(factor) for factor in factors])
+        return '\n'.join([str(factor) for factor in self.factors.values()])
 
 
 re_toundercore = re.compile(r"[\(\),\]\[ ]")
 re_toremove = re.compile(r"""[^a-zA-Z0-9_]""")
 
 boolean_values = [
-  ['t', 'f'],
-  ['true', 'false'],
-  ['yes', 'no'],
-  ['y', 'n'],
-  ['pos', 'neg'],
-  ['aye', 'nay']
+  ['0', '1'],
+  [0, 1],
+  ['f', 't'],
+  ['false', 'true'],
+  ['no', 'yes'],
+  ['n', 'y'],
+  ['neg', 'pos'],
+  ['nay', 'aye'],
+  [False, True]
 ]
 
 class Variable(object):
@@ -232,10 +234,14 @@ class Variable(object):
         self.booleantrue = boolean_true  # Value that represents true
         if (force_boolean or detect_boolean) and len(self.values) == 2:
             for values in boolean_values:
-                if values[0] == self.values[0].lower() and values[1] == self.values[1].lower():
+                if (values[0] == self.values[0] and values[1] == self.values[1]) or \
+                   (type(self.values[0]) == str and type(self.values[1]) == str and
+                    values[0] == self.values[0].lower() and values[1] == self.values[1].lower()):
                     self.booleantrue = 0
                     break
-                elif values[1] == self.values[0].lower() and values[0] == self.values[1].lower():
+                elif (values[1] == self.values[0] and values[0] == self.values[1]) or \
+                     (type(self.values[0]) == str and type(self.values[1]) == str and
+                      values[1] == self.values[0].lower() and values[0] == self.values[1].lower()):
                     self.booleantrue = 1
                     break
             if force_boolean and self.booleantrue is None:
@@ -551,20 +557,20 @@ class Factor(object):
         table = '\n'.join(lines)
         parents = ''
         if len(self.parents) > 0:
-            parents = ', '.join(self.parents)
+            parents = ', '.join(map(str,self.parents))
 
         if self.rv is not None:
             var = self.pgm.vars[self.rv]
             rv = var.name
             if len(self.parents) > 0:
                 rv += ' | '
-            return 'Factor ({}{}) = {}\n{}'.format(rv, parents, ', '.join([str(v) for v in var.values]), table)
-        return 'Factor ({})\n{}'.format(parents, table)
+            return 'Factor ({}{}) = {}\n{}\n'.format(rv, parents, ', '.join([str(v) for v in var.values]), table)
+        return 'Factor ({})\n{}\n'.format(parents, table)
 
 
 class OrCPT(Factor):
     def __init__(self, pgm, rv, parentvalues=None):
-        super(OrCPT, self).__init__(pgm, rv, set())
+        super(OrCPT, self).__init__(pgm, rv, set(), [])
         if parentvalues is None:
             self.parentvalues = []
         else:
@@ -578,11 +584,11 @@ class OrCPT(Factor):
         self.parentvalues += parentvalues
         self.parents.update([pv[0] for pv in parentvalues])
 
-    def to_factor(self, pgm):
+    def to_factor(self):
         rv = self.pgm.vars[self.rv]
         parents = sorted(list(set([pv[0] for pv in self.parentvalues])))
         table = dict()
-        parent_values = [pgm.cpds[parent].values for parent in parents]
+        parent_values = [self.pgm.vars[parent].values for parent in parents]
         for keys in itertools.product(*parent_values):
             is_true = False
             for parent, value in zip(parents, keys):
@@ -603,4 +609,4 @@ class OrCPT(Factor):
         parents = ''
         if len(self.parents) > 0:
             parents = ' -- {}'.format(','.join(self.parents))
-        return 'OrCPT {} [{}]{}\n{}'.format(self.rv, ','.join(rv.values), parents, table)
+        return 'OrCPT {} [{}]{}\n{}\n'.format(self.rv, ','.join(map(str,rv.values)), parents, table)

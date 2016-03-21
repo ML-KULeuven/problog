@@ -32,7 +32,9 @@ from problog.formula import LogicDAG, LogicFormula
 from problog.parser import DefaultPrologParser
 from problog.program import ExtendedPrologFactory, PrologFile
 from problog.logic import Term, Or, Clause, And, is_ground, Not
-from problog.bn.cpd import CPT, OrCPT, PGM
+from problog.bn.cpd import Variable, Factor, OrCPT, PGM
+from problog.engine import DefaultEngine
+from problog.cycles import break_cycles
 
 from ..util import Timer, start_timer, stop_timer, init_logger, format_dictionary
 from ..errors import process_error
@@ -140,7 +142,7 @@ def termToBool(term, truth_values):
             None
 
 
-def clauseToCPT(clause, number):
+def clauseToCPT(clause, number, pgm):
     logger = logging.getLogger('problog')
     # print('Clause: {} -- {}'.format(clause, type(clause)))
     if isinstance(clause, Clause):
@@ -175,14 +177,16 @@ def clauseToCPT(clause, number):
                 table_cn[keys] = probs
             else:
                 table_cn[keys] = [1.0] + [0.0]*len(heads)
-        cpd_cn = CPT(rv_cn, list(range(len(heads)+1)), parents_str, table_cn)
+        pgm.add_var(Variable(rv_cn, list(range(len(heads)+1))))
+        cpd_cn = Factor(pgm, rv_cn, parents_str, table_cn)
         cpd_cn.latent = True
+        pgm.add_factor(cpd_cn)
         # CPT for the head random variable
-        cpds = []
         for idx, head in enumerate(heads):
             rv = str(head.with_probability())
-            cpds.append(OrCPT(rv, [(rv_cn, idx+1)]))
-        return cpds + [cpd_cn]
+            pgm.add_var(Variable(rv, [0, 1]))
+            pgm.add_factor(OrCPT(pgm, rv, [(rv_cn, idx+1)]))
+        return
 
     elif isinstance(clause, Or):
         heads = clause.to_list()
@@ -191,29 +195,35 @@ def clauseToCPT(clause, number):
         parents = []
         probs_heads = [head.probability.compute_value() for head in heads]
         table_cn = [1.0-sum(probs_heads)]+probs_heads
-        cpd_cn = CPT(rv_cn, list(range(len(heads)+1)), parents, table_cn)
+        pgm.add_var(Variable(rv_cn, list(range(len(heads)+1))))
+        cpd_cn = Factor(pgm, rv_cn, parents, table_cn)
         cpd_cn.latent = True
+        pgm.add_factor(cpd_cn)
         # CPT for the head random variable
         cpds = []
         for idx, head in enumerate(heads):
             rv = str(head.with_probability())
-            cpds.append(OrCPT(rv, [(rv_cn, idx+1)]))
-        return cpds + [cpd_cn]
+            pgm.add_var(Variable(rv, [0, 1]))
+            pgm.add_factor(OrCPT(pgm, rv, [(rv_cn, idx+1)]))
+        return
 
-    if isinstance(clause, Term):
+    elif isinstance(clause, Term):
         # CPT for the choice node
         rv_cn = 'c{}'.format(number)
         parents = []
         prob = clause.probability.compute_value()
         table_cn = [1.0-prob, prob]
-        cpd_cn = CPT(rv_cn, [0, 1], parents, table_cn)
+        pgm.add_var(Variable(rv_cn, [0, 1]))
+        cpd_cn = Factor(pgm, rv_cn, parents, table_cn)
         cpd_cn.latent = True
+        pgm.add_factor(cpd_cn)
         # CPT  for the head random variable
         rv = str(clause.with_probability())
-        cpd = OrCPT(rv, [(rv_cn, 1)])
-        return [cpd, cpd_cn]
+        pgm.add_var(Variable(rv, [0, 1]))
+        pgm.add_factor(OrCPT(pgm, rv, [(rv_cn, 1)]))
+        return
 
-    return None
+    return
 
 
 def formulaToBN(formula):
@@ -228,8 +238,7 @@ def formulaToBN(formula):
     for idx, clause in enumerate(formula.enum_clauses()):
         logger.debug('clause: {}'.format(clause))
         clauses.append(clause)
-        for cpd in clauseToCPT(clause, idx):
-            bn.add(cpd)
+        clauseToCPT(clause, idx, bn)
 
     # lines = ['{}'.format(c) for c in clauses]
     # for qn, qi in formula.queries():
@@ -286,10 +295,16 @@ def main(argv, result_handler=None):
     try:
         gp = target.createFrom(
             PrologFile(args.filename, parser=DefaultPrologParser(ExtendedPrologFactory())),
-            label_all=True, avoid_name_clash=True, keep_order=True, # Necessary for to prolog
+            label_all=True, avoid_name_clash=False, keep_order=True, # Necessary for to prolog
             keep_all=args.keep_all, keep_duplicates=False,#args.keep_duplicates,
             hide_builtins=args.hide_builtins)
         # rc = print_result((True, gp), output=outfile)
+        # p = PrologFile(args.filename)
+        # engine = DefaultEngine(label_all=True, avoid_name_clash=True, keep_order=True,
+        #                        keep_duplicates=False, keep_all=True)
+        # db = engine.prepare(p)
+        # gp = engine.ground_all(db)
+
         bn = formulaToBN(gp)
         if args.format == 'hugin':
             bn_str = bn.to_hugin_net()
