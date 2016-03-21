@@ -385,7 +385,10 @@ class LFIProblem(SemiringProbability, LogicProgram):
                     else:
                         clauses.append(Clause(atoms_out[0], body.apply(tr)))
                 else:
-                    clauses.append(AnnotatedDisjunction(atoms_out, body.apply(tr)))
+                    if body is None:
+                        clauses.append(AnnotatedDisjunction(atoms_out, None))
+                    else:
+                        clauses.append(AnnotatedDisjunction(atoms_out, body.apply(tr)))
             return clauses
         else:
             atoms_out = atoms_fixed
