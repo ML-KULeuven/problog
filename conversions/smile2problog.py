@@ -6,10 +6,11 @@ hugin2problog.py
 Created by Wannes Meert on 23-02-2016.
 Copyright (c) 2016 KU Leuven. All rights reserved.
 """
+from __future__ import print_function
 
 import sys
 import argparse
-from problog.bn.cpd import CPT, PGM
+from problog.bn.cpd import Variable, Factor, PGM
 import itertools
 import logging
 import re
@@ -22,7 +23,7 @@ no_bool_detection = False
 
 domains = {}
 potentials = []
-cpds = []
+pgm = PGM()
 
 logger = logging.getLogger('problog.smile2problog')
 
@@ -54,15 +55,18 @@ def parse(ifile):
         parseCPT(cpt)
 
 def parseDomains(root):
+    global pgm
+    detect_boolean = not no_bool_detection
     for cpt in root.find("nodes").findall('cpt'):
         rv = cpt.get('id')
         states = cpt.findall('state')
         values = [state.get('id') for state in states]
         domains[rv] = values
+        pgm.add_var(Variable(rv, values, detect_boolean=detect_boolean, force_boolean=force_bool))
 
 def parseCPT(cpt):
     global cpds
-    detect_boolean = not no_bool_detection
+    global pgm
     rv = cpt.get('id')
     if rv not in domains:
         error('Domain for {} not defined.'.format(rv), halt=True)
@@ -75,7 +79,7 @@ def parseCPT(cpt):
     parameters = [float(p) for p in cpt.find('probabilities').text.split()]
     if len(parents) == 0:
         table = parameters
-        cpds.append(CPT(rv, values, parents, table, detect_boolean=detect_boolean, force_boolean=force_bool))
+        pgm.add_factor(Factor(pgm, rv, parents, table))
         return
     parent_domains = []
     for parent in parents:
@@ -86,11 +90,7 @@ def parseCPT(cpt):
     for val_assignment in itertools.product(*parent_domains):
         table[val_assignment] = parameters[idx:idx+dom_size]
         idx += dom_size
-    cpds.append(CPT(rv, values, parents, table, detect_boolean=detect_boolean, force_boolean=force_bool))
-
-
-def construct_pgm():
-    return PGM(cpds=cpds)
+    pgm.add_factor(Factor(pgm, rv, parents, table))
 
 
 def main(argv=None):
@@ -133,13 +133,11 @@ def main(argv=None):
     if args.useneglit:
         use_neglit = args.useneglit
 
+    global pgm
     with open(args.input, 'r') as ifile:
         parse(ifile)
-    pgm = construct_pgm()
     if args.compress:
         pgm = pgm.compress_tables()
-    if pgm is None:
-        error('Could not build PGM structure', halt=True)
 
     ofile = sys.stdout
     if args.output is not None:

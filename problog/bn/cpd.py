@@ -41,6 +41,13 @@ class PGM(object):
             for factor in factors:
                 self.add_factor(factor)
 
+    def copy(self, **kwargs):
+        return PGM(
+            directed=kwargs.get('directed', self.directed),
+            factors=kwargs.get('factors', self.factors.values()),
+            vars=kwargs.get('vars', self.vars.values())
+        )
+
     def add_var(self, var):
         self.vars[var.name] = var
 
@@ -108,8 +115,8 @@ class PGM(object):
         distribution."""
         factors = []
         for idx, factor in enumerate(self.factors.values()):
-            factors.append(factor.compress(self))
-        return PGM(factors)
+            factors.append(factor.compress())
+        return self.copy(factors=factors)
 
     def to_hugin_net(self):
         """Export PGM to the Hugin net format.
@@ -370,7 +377,7 @@ class Factor(object):
                 for new_path, new_probs in node:
                     new_table[new_path] = new_probs
                 continue
-            for value in self.pgm.factors[self.parents[ig_idx]].values:
+            for value in self.pgm.vars[self.parents[ig_idx]].values:
                 newpath = [v for v in curpath]
                 newpath[ig_idx] = value
                 newnode = [tuple(newpath), []]

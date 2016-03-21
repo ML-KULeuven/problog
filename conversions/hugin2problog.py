@@ -9,7 +9,7 @@ Copyright (c) 2016 KU Leuven. All rights reserved.
 
 import sys
 import argparse
-from problog.bn.cpd import CPT, PGM
+from problog.bn.cpd import Variable, Factor, PGM
 import itertools
 import logging
 import re
@@ -25,7 +25,7 @@ no_bool_detection = False
 
 domains = {}
 potentials = []
-cpds = []
+pgm = PGM()
 
 logger = logging.getLogger('problog.hugin2problog')
 
@@ -73,17 +73,18 @@ def parseOption(s,l,t):
     return None
 
 def parseNode(s,l,t):
+    detect_boolean = not no_bool_detection
     global domains
     # print(t)
     rv = t[0]
     for key, val in t[1]:
         if key == 'states':
             domains[rv] = val
+            pgm.add_var(Variable(rv, val, detect_boolean=detect_boolean, force_boolean=force_bool))
 
 
 def parsePotential(s,l,t):
     global cpds
-    detect_boolean = not no_bool_detection
     # print(t)
     rv = t[0]
     if rv not in domains:
@@ -93,7 +94,7 @@ def parsePotential(s,l,t):
     parameters = t[2]
     if len(parents) == 0:
         table = list([float(p) for p in parameters])
-        cpds.append(CPT(rv, values, parents, table, detect_boolean=detect_boolean, force_boolean=force_bool))
+        pgm.add_factor(Factor(pgm, rv, parents, table))
         return
     parent_domains = []
     for parent in parents:
@@ -104,7 +105,7 @@ def parsePotential(s,l,t):
     for val_assignment in itertools.product(*parent_domains):
         table[val_assignment] = [float(p) for p in parameters[idx:idx+dom_size]]
         idx += dom_size
-    cpds.append(CPT(rv, values, parents, table, detect_boolean=detect_boolean, force_boolean=force_bool))
+    pgm.add_factor(Factor(pgm, rv, parents, table))
 
 p_option.setParseAction(parseOption)
 p_node.setParseAction(parseNode)
@@ -189,10 +190,10 @@ def main(argv=None):
         use_neglit = args.useneglit
 
     text = None
+    global pgm
     with open(args.input, 'r') as ifile:
         text = ifile.read()
     ast = parse(text)
-    pgm = construct_pgm()
     if args.compress:
         pgm = pgm.compress_tables()
     if pgm is None:
