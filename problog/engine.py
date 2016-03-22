@@ -681,6 +681,16 @@ class ClauseDB(LogicProgram):
             else:
                 node = self._append_node()
             self._set_head(head, node)
+        elif create and node < self.__offset:
+            existing = self.get_node(node)
+            # node exists in parent
+            clauses = self._create_index(head.arity)
+            for c in existing.children:
+                clauses.append(c)
+            node = self._append_node(self._define(head.functor, head.arity, clauses,
+                                                  head.location))
+            self._set_head(head, node)
+
         return node
 
     def find(self, head):
