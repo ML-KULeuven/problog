@@ -241,26 +241,27 @@ class NegativeProbability(SemiringProbability):
 def probability(filename, with_fact=True, knowledge='nnf', disjunct_threshold=8, disjunct_max=None):
     logger = logging.getLogger('problog')
     pl = PrologFile(filename)
-    engine = DefaultEngine(label_all=True)#, keep_all=True, keep_duplicates=True)
+    engine = DefaultEngine(label_all=True, keep_all=True, keep_duplicates=True)
     db = engine.prepare(pl)
     gp = engine.ground_all(db, propagate_evidence=False)
     # if logger.isEnabledFor(logging.DEBUG):
         # logger.debug(gp.to_prolog())
     semiring = NegativeProbability()
+    fn_base, _ = os.path.splitext(filename)
 
     if with_fact:
         with Timer('ProbLog with multiplicative factorization'):
             if logger.isEnabledFor(logging.DEBUG):
-                with open('test_f.dot', 'w') as dotfile:
+                with open(fn_base+'_f.dot', 'w') as dotfile:
                     print_result((True, gp.to_dot()), output=dotfile)
                 cnf = CNF.createFrom(gp)
                 # logger.debug(cnf.to_dimacs())
             gp2, extra_queries = multiplicative_factorization(gp, disjunct_threshold, disjunct_max)
             if logger.isEnabledFor(logging.DEBUG):
-                with open('test_f_mf.dot', 'w') as dotfile:
+                with open(fn_base+'_f_mf.dot', 'w') as dotfile:
                     print_result((True, gp2.to_dot()), output=dotfile)
                 gp_acyclic = LogicDAG.createFrom(gp2)
-                with open('test_f_mf_acyclic.dot', 'w') as dotfile:
+                with open(fn_base+'_f_mf_acyclic.dot', 'w') as dotfile:
                     print_result((True, gp_acyclic.to_dot()), output=dotfile)
             with Timer('Compilation with {}'.format(knowledge)):
                 if knowledge == 'sdd':
@@ -279,8 +280,8 @@ def probability(filename, with_fact=True, knowledge='nnf', disjunct_threshold=8,
                 else:
                     nnf = NNF.createFrom(gp2)
             if logger.isEnabledFor(logging.DEBUG):
-                with open ('test_f_mf_nnf.dot', 'w') as dotfile:
-                    print(nnf.to_dot(), file=dotfile)
+                with open (fn_base+'_f_mf_nnf.dot', 'w') as dotfile:
+                    print(nnf.to_dot(not_as_node=False), file=dotfile)
                 cnf = CNF.createFrom(gp2)
                 # logger.debug(cnf.to_dimacs())
             logger.debug('Deleting queries: {}'.format(extra_queries))
@@ -292,7 +293,7 @@ def probability(filename, with_fact=True, knowledge='nnf', disjunct_threshold=8,
     else:
         with Timer('ProbLog without multiplicative factorization'):
             if logger.isEnabledFor(logging.DEBUG):
-                with open('test_nf.dot', 'w') as dotfile:
+                with open(fn_base+'_nf.dot', 'w') as dotfile:
                     print_result((True, gp.to_dot()), output=dotfile)
             with Timer('Compilation with {}'.format(knowledge)):
                 if knowledge == 'sdd':
@@ -301,8 +302,9 @@ def probability(filename, with_fact=True, knowledge='nnf', disjunct_threshold=8,
                     nnf = ForwardBDD.createFrom(gp)
                 else:
                     nnf = NNF.createFrom(gp)
-            # with open ('test_nf_nnf.dot', 'w') as dotfile:
-            #     print(nnf.to_dot(), file=dotfile)
+            if logger.isEnabledFor(logging.DEBUG):
+                with open (fn_base+'_nf_nnf.dot', 'w') as dotfile:
+                    print(nnf.to_dot(not_as_node=False), file=dotfile)
             logger.info('NNF stats:\n'+'\n'.join(['{:<6}: {:>10,}'.format(k,v) for k,v in sorted(nnf.stats().items())]))
             with Timer('Evaluation'):
                 result = nnf.evaluate(semiring=semiring)
