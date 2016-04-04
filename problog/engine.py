@@ -291,6 +291,8 @@ class ClauseDBEngine(GenericEngine):
                 raise UnknownClause(term.signature, location=db.lineno(term.location))
 
         try:
+            term = term.apply(_ReplaceVar())  # replace Var(_) by integers
+
             context = self.create_context(term.args)
             context, xxx = substitute_call_args(context, context)
             results = self.execute(clause_node, database=db, target=gp, context=context, **kwdargs)
@@ -381,6 +383,23 @@ class ClauseDBEngine(GenericEngine):
         if self.__externals is None or func_name not in self.__externals:
             return None
         return self.__externals[func_name]
+
+
+class _ReplaceVar(object):
+
+    def __init__(self):
+        self.translate = {}
+
+    def __getitem__(self, name):
+        if type(name) == str:
+            if name in self.translate:
+                return self.translate[name]
+            else:
+                v = -len(self.translate) - 1
+                self.translate[name] = v
+                return v
+        else:
+            return name
 
 
 class UnknownClauseInternal(Exception):
@@ -532,6 +551,7 @@ class ClauseDB(LogicProgram):
         self.__builtins = builtins
 
         self.data = {}
+        self.engine = None
 
         self.__parent = parent
         if parent is None:
@@ -1013,7 +1033,8 @@ class _AutoDict(dict):
         if key == '_' and self.__localmode:
             key = '_#%s' % self.__anon
 
-        if key == '_':
+        if key == '_' or key is None:
+
             value = len(self)
             self.__anon += 1
             return value
