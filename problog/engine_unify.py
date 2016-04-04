@@ -274,7 +274,8 @@ def _unify_call_head_single(source_value, target_value, target_context, source_v
 class _VarTranslateWrapper(object):
     def __init__(self, var_translate, min_var):
         self.base = var_translate
-        self.min_var = min([min_var] + self.values())
+        self.min_var = min_var
+#         self.min_var = min([min_var] + self.values())
 
     def __getitem__(self, item):
         if item in self.base:
