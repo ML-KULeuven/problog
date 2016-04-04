@@ -387,6 +387,11 @@ problog.init_editor = function(index, object) {
                         if (data.SUCCESS == true) {
                             task.formatResult(pbl, data);
                             pbl.editor.getSession().clearAnnotations();
+                            if (pbl.advanced) {
+                                pbl.setSolveChoices(task.choices);
+                            } else {
+                                pbl.setSolveChoices();
+                            }
                         } else {
                             p = data.err;
                             var msg = p.message;
