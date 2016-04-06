@@ -36,6 +36,21 @@ import imp
 import collections
 
 
+class ProbLogLogFormatter(logging.Formatter):
+
+    def __init__(self):
+        logging.Formatter.__init__(self)
+        pass
+
+    def format(self, message):
+        lines = str(message.msg).split('\n')
+        if message.levelno < 10:
+            linestart = '[LVL%s] ' % message.levelno
+        else:
+            linestart = '[%s] ' % message.levelname
+        return linestart + ('\n' + linestart).join(lines)
+
+
 def init_logger(verbose=None, name='problog'):
     """Initialize default logger.
 
@@ -48,7 +63,8 @@ def init_logger(verbose=None, name='problog'):
     """
     logger = logging.getLogger(name)
     ch = logging.StreamHandler(sys.stdout)
-    formatter = logging.Formatter('[%(levelname)s] %(message)s')
+    # formatter = logging.Formatter('[%(levelname)s] %(message)s')
+    formatter = ProbLogLogFormatter()
     ch.setFormatter(formatter)
     logger.addHandler(ch)
     if not verbose:
@@ -56,9 +72,13 @@ def init_logger(verbose=None, name='problog'):
     elif verbose == 1:
         logger.setLevel(logging.INFO)
         logger.info('Output level: INFO')
-    else:
+    elif verbose == 2:
         logger.setLevel(logging.DEBUG)
         logger.debug('Output level: DEBUG')
+    else:
+        level = max(1, 12 - verbose)   # between 9 and 1
+        logger.setLevel(level)
+        logger.log(level, 'Output level: %s' % level)
     return logger
 
 
