@@ -40,10 +40,10 @@ class ProbLogLogFormatter(logging.Formatter):
 
     def __init__(self):
         logging.Formatter.__init__(self)
-        pass
 
     def format(self, message):
-        lines = str(message.msg).split('\n')
+        msg = str(message.msg) % message.args
+        lines = msg.split('\n')
         if message.levelno < 10:
             linestart = '[LVL%s] ' % message.levelno
         else:
