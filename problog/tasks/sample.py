@@ -135,8 +135,8 @@ class FunctionStore(object):
 
 class SampledFormula(LogicFormula):
 
-    def __init__(self):
-        LogicFormula.__init__(self)
+    def __init__(self, **kwargs):
+        LogicFormula.__init__(self, **kwargs)
         self.facts = {}
         self.groups = {}
         self.probability = 1.0  # Try to compute
