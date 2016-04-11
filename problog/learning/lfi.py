@@ -148,11 +148,14 @@ class LFIProblem(SemiringProbability, LogicProgram):
         """Prepare for learning."""
         self._compile_examples()
 
-    def _get_weight(self, index, args):
+    def _get_weight(self, index, args, strict=True):
         index = int(index)
         weight = self._weights[index]
         if isinstance(weight, dict):
-            return weight[args]
+            if strict:
+                return weight[args]
+            else:
+                return weight.get(args, 0.0)
         else:
             return weight
 
@@ -556,11 +559,16 @@ class LFIProblem(SemiringProbability, LogicProgram):
             for i in idx:
                 for key, val in self.get_weights(i):
                     keys.add(key)
+            if len(keys) > 1:
+                try:
+                    keys.remove(Term('t'))
+                except KeyError:
+                    pass
             for key in keys:
-                w = sum(self._get_weight(i, key) for i in idx)
+                w = sum(self._get_weight(i, key, strict=False) for i in idx)
                 n = p / w
                 for i in idx:
-                    self._set_weight(i, key, self._get_weight(i, key) * n)
+                    self._set_weight(i, key, self._get_weight(i, key, strict=False) * n)
         
     def step(self):
         self.iteration += 1
