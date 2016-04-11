@@ -75,7 +75,7 @@ def str2bool(s):
 class LFIProblem(SemiringProbability, LogicProgram):
 
     def __init__(self, source, examples, max_iter=10000, min_improv=1e-10, verbose=0, knowledge=SDD,
-                 leakprob=None, propagate_evidence=True, **extra):
+                 leakprob=None, propagate_evidence=True, normalize=False, **extra):
         """
         :param source:
         :param examples:
@@ -119,6 +119,9 @@ class LFIProblem(SemiringProbability, LogicProgram):
 
         self.output_mode = False
         self.extra = extra
+
+        self._enable_normalize = normalize
+        self._adatoms = []
     
     def value(self, a):
         """Overrides from SemiringProbability.
@@ -263,6 +266,8 @@ class LFIProblem(SemiringProbability, LogicProgram):
         norm_factor = available_probability / sum(random_weights)
         random_weights = [r * norm_factor for r in random_weights]
 
+        self._adatoms.append((available_probability, []))
+
         for atom in atoms:
             if atom.probability and atom.probability.functor == 't':
                 # t(_)::p(X) :- body.
@@ -315,6 +320,7 @@ class LFIProblem(SemiringProbability, LogicProgram):
                 # 3) Create redirection clause
                 extra_clauses += [Clause(atom1.with_probability(), new_body)]
 
+                self._adatoms[-1][1].append(len(self._weights))
                 # 4) Set initial weight
                 if start_value is None:
                     self._add_weight(random_weights.pop(-1))
@@ -326,6 +332,9 @@ class LFIProblem(SemiringProbability, LogicProgram):
                 atoms_out.append(replacement)
             else:
                 atoms_out.append(atom)
+
+        if len(self._adatoms[-1][1]) < 2:
+            self._adatoms.pop(-1)
 
         if has_lfi_fact:
             if len(atoms) == 1:     # Simple clause
@@ -535,7 +544,23 @@ class LFIProblem(SemiringProbability, LogicProgram):
         for index in fact_marg:
             if fact_count[index] > 0:
                 self._set_weight(index[0], index[1], fact_marg[index] / fact_count[index])
+
+        if self._enable_normalize:
+            self._normalize_weights()
         return score
+
+    def _normalize_weights(self):
+
+        for p, idx in self._adatoms:
+            keys = set()
+            for i in idx:
+                for key, val in self.get_weights(i):
+                    keys.add(key)
+            for key in keys:
+                w = sum(self._get_weight(i, key) for i in idx)
+                n = p / w
+                for i in idx:
+                    self._set_weight(i, key, self._get_weight(i, key) * n)
         
     def step(self):
         self.iteration += 1
@@ -560,6 +585,7 @@ class LFIProblem(SemiringProbability, LogicProgram):
         while self.iteration < self.max_iter and (delta < 0 or delta > self.min_improv):
             score = self.step()
             logging.getLogger('problog_lfi').info('Weights after iteration %s: %s' % (self.iteration, self._weights))
+            logging.getLogger('problog_lfi').info('Score after iteration %s: %s' % (self.iteration, score))
             delta = score - prev_score
             prev_score = score
         return prev_score
@@ -653,6 +679,7 @@ def argparser():
                         dest='propagate_evidence',
                         default=True,
                         help="Disable evidence propagation")
+    parser.add_argument('--normalize', action='store_true', help="Normalize AD-weights.")
     parser.add_argument('-v', '--verbose', action='count', default=0)
     parser.add_argument('--web', action='store_true', help=argparse.SUPPRESS)
     parser.add_argument('-a', '--arg', dest='args', action='append',
