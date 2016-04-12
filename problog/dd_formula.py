@@ -27,7 +27,7 @@ from __future__ import print_function
 
 from .util import Timer
 from .formula import LogicFormula
-from .evaluator import EvaluatableDSP, Evaluator
+from .evaluator import EvaluatableDSP, Evaluator, FormulaEvaluatorNSP, FormulaEvaluator, SemiringLogProbability, SemiringProbability
 from .errors import InconsistentEvidenceError
 
 
@@ -113,7 +113,12 @@ class DD(LogicFormula, EvaluatableDSP):
             return self._constraint_dd
 
     def _create_evaluator(self, semiring, weights, **kwargs):
-        return DDEvaluator(self, semiring, weights, **kwargs)
+        if isinstance(semiring, SemiringLogProbability) or isinstance(semiring, SemiringProbability):
+            return DDEvaluator(self, semiring, weights, **kwargs)
+        elif semiring.is_nsp():
+            return FormulaEvaluatorNSP(self.to_formula(), semiring, weights)
+        else:
+            return FormulaEvaluator(self.to_formula(), semiring, weights)
 
     def build_dd(self):
         """Build the internal representation of the formula."""

@@ -82,10 +82,11 @@ class SDD(DD):
         elif sdd.sdd_node_is_literal(current_node):  # it's a literal
             lit = sdd.sdd_node_literal(current_node)
             at = self.var2atom[abs(lit)]
+            node = self.get_node(at)
             if lit < 0:
-                return -formula.add_atom(-lit, probability=self.get_node(at).probability)
+                return -formula.add_atom(-lit, probability=node.probability, name=node.name)
             else:
-                return formula.add_atom(lit, probability=self.get_node(at).probability)
+                return formula.add_atom(lit, probability=node.probability, name=node.name)
         else:  # is decision
             size = sdd.sdd_node_size(current_node)
             elements = sdd.sdd_node_elements(current_node)

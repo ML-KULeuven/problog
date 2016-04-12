@@ -30,17 +30,17 @@ from problog.cnf_formula import CNF
 from problog.maxsat import get_solver, get_available_solvers
 from problog.errors import process_error
 from problog import get_evaluatable
-from problog.evaluator import Semiring
+from problog.evaluator import Semiring, OperationNotSupported
 from problog.logic import Term
 
 
 def main(argv):
     args = argparser().parse_args(argv)
 
-    #if args.use_maxsat:
-    return mpe_maxsat(args)
-    #else:
-    #    return mpe_semiring(args)
+    if args.use_maxsat:
+        return mpe_maxsat(args)
+    else:
+        return mpe_semiring(args)
 
 
 def mpe_semiring(args):
@@ -60,23 +60,28 @@ def mpe_semiring(args):
         pl = PrologFile(inputfile)
 
         semiring = SemiringMPEState()
-        kc_class = get_evaluatable(semiring=semiring)
+        kc_class = get_evaluatable()        # TODO should pass semiring
+                                            # -> no compilation required for MPE
+                                            # BUT semiring does not support negation
+                                            # so formula should be NNF (only negation of facts)
         lf = LogicFormula.create_from(pl, label_all=True)
 
-        qn = lf.add_and([y for x, y in lf.evidence()])
-        lf.clear_evidence()
+        if lf.evidence():
+            qn = lf.add_and([y for x, y in lf.evidence()])
+            lf.clear_evidence()
 
-        if lf.queries():
-            print ('%% WARNING: ignoring queries in file', file=sys.stderr)
-        lf.clear_queries()
+            if lf.queries():
+                print ('%% WARNING: ignoring queries in file', file=sys.stderr)
+            lf.clear_queries()
 
-        query_name = Term('query')
-        lf.add_query(query_name, qn)
+            query_name = Term('query')
+            lf.add_query(query_name, qn)
 
-        kc = kc_class.create_from(lf)
-        results = kc.evaluate(semiring=semiring)
-
-        prob, facts = results[query_name]
+            kc = kc_class.create_from(lf)
+            results = kc.evaluate(semiring=semiring)
+            prob, facts = results[query_name]
+        else:
+            prob, facts = 1.0, []
 
         result_handler((True, (prob, facts)), outf)
 
