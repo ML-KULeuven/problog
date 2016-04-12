@@ -215,6 +215,10 @@ class BaseFormula(ProbLogObject):
         self._names[self.LABEL_EVIDENCE_POS] = {}
         self._names[self.LABEL_EVIDENCE_NEG] = {}
 
+    def clear_queries(self):
+        """Remove all evidence."""
+        self._names[self.LABEL_QUERY] = {}
+
     def get_names(self, label=None):
         """Get a list of all node names in the formula.
 
