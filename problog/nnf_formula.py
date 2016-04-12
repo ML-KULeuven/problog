@@ -262,8 +262,10 @@ if system_info.get('c2d', False):
 def _compile_with_dsharp(cnf, nnf=None, **kwdargs):
     result = None
     with Timer('DSharp compilation'):
-        cnf_file = tempfile.mkstemp('.cnf')[1]
-        nnf_file = tempfile.mkstemp('.nnf')[1]
+        fd1, cnf_file = tempfile.mkstemp('.cnf')
+        fd2, nnf_file = tempfile.mkstemp('.nnf')
+        os.close(fd1)
+        os.close(fd2)
         cmd = ['dsharp', '-Fnnf', nnf_file, '-smoothNNF', '-disableAllLits', cnf_file]  #
 
         try:
