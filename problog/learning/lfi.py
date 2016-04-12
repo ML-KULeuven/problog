@@ -77,19 +77,25 @@ class LFIProblem(SemiringProbability, LogicProgram):
     def __init__(self, source, examples, max_iter=10000, min_improv=1e-10, verbose=0, knowledge=SDD,
                  leakprob=None, propagate_evidence=True, normalize=False, **extra):
         """
-        :param source:
-        :param examples:
-        :param max_iter:
-        :param min_improv:
-        :param verbose:
-        :param knowledge:
+        :param source: filename of file containing input model
+        :type source: str
+        :param examples: list of observed terms / value
+        :type examples: list[tuple(Term, bool)]
+        :param max_iter: maximum number of iterations to run
+        :type max_iter: int
+        :param min_improv: minimum improvement in log-likelihood for convergence detection
+        :type min_improv: float
+        :param verbose: verbosity level
+        :type verbose: int
+        :param knowledge: class to use for knowledge compilation
+        :type knowledge: class
         :param leakprob: Add all true evidence atoms with the given probability
                          to avoid 'inconsistent evidence' errors. This also
                          allows to learn a program without constants and
                          retrieve the constants from the evidence file.
                          (default: None)
-        :param extra:
-        :return:
+        :type leakprob: float or None
+        :param extra: catch all for additional parameters (not used)
         """
         SemiringProbability.__init__(self)
         LogicProgram.__init__(self)
@@ -160,6 +166,13 @@ class LFIProblem(SemiringProbability, LogicProgram):
             return weight
 
     def get_weights(self, index):
+        """Get a list of key, weight pairs for the given input fact.
+
+        :param index: identifier of the fact
+        :return: list of key, weight pairs where key refers to the additional variables
+        on which the weight is based
+        :rtype: list[tuple[Term, float]]
+        """
         weight = self._weights[index]
         if isinstance(weight, dict):
             return list(weight.items())
@@ -500,7 +513,7 @@ class LFIProblem(SemiringProbability, LogicProgram):
         logging.getLogger('problog_lfi').debug('Evaluating examples ...')
         for at, val, comp, n in self._compiled_examples:
             evidence = {}
-            for a, v in zip(at, map(str2bool, val)):
+            for a, v in zip(at, val):
                 if a in evidence:
                     if evidence[a] != v:
                         context = ' (found evidence({},{}) and evidence({},{}) in example {})'.format(a, evidence[a], a, v, n+1)
@@ -603,13 +616,14 @@ def extract_evidence(pl):
     engine = DefaultEngine()
     atoms = engine.query(pl, Term('evidence', None, None))
     atoms1 = engine.query(pl, Term('evidence', None))
-    for atom in atoms1:
+    atoms2 = engine.query(pl, Term('observe', None))
+    for atom in atoms1 + atoms2:
         atom = atom[0]
         if atom.is_negated():
             atoms.append((-atom, Term('false')))
         else:
             atoms.append((atom, Term('true')))
-    return atoms
+    return [(at, str2bool(vl)) for at, vl in atoms]
 
 
 def read_examples(*filenames):
@@ -620,7 +634,7 @@ def read_examples(*filenames):
         with open(filename) as f:
             example = ''
             for line in f:
-                if line.strip().startswith('---') :
+                if line.strip().startswith('---'):
                     pl = PrologString(example)
                     atoms = extract_evidence(pl)
                     if len(atoms) > 0:
