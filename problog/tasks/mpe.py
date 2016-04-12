@@ -37,10 +37,10 @@ from problog.logic import Term
 def main(argv):
     args = argparser().parse_args(argv)
 
-    if args.use_maxsat:
-        return mpe_maxsat(args)
-    else:
-        return mpe_semiring(args)
+    #if args.use_maxsat:
+    return mpe_maxsat(args)
+    #else:
+    #    return mpe_semiring(args)
 
 
 def mpe_semiring(args):
