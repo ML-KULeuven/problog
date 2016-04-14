@@ -51,7 +51,7 @@ class ProbLogLogFormatter(logging.Formatter):
         return linestart + ('\n' + linestart).join(lines)
 
 
-def init_logger(verbose=None, name='problog'):
+def init_logger(verbose=None, name='problog', out=None):
     """Initialize default logger.
 
     :param verbose: verbosity level (0: WARNING, 1: INFO, 2: DEBUG)
@@ -61,8 +61,11 @@ def init_logger(verbose=None, name='problog'):
     :return: result of ``logging.getLogger(name)``
     :rtype: logging.Logger
     """
+    if out is None:
+        out = sys.stdout
+
     logger = logging.getLogger(name)
-    ch = logging.StreamHandler(sys.stdout)
+    ch = logging.StreamHandler(out)
     # formatter = logging.Formatter('[%(levelname)s] %(message)s')
     formatter = ProbLogLogFormatter()
     ch.setFormatter(formatter)
