@@ -135,12 +135,19 @@ def add_standard_builtins(engine, b=None, s=None, sp=None):
 
 
 def _builtin_cmdargs(lst, engine=None, **kwd):
-    check_mode((lst,), ['v'], **kwd)
+    m = check_mode((lst,), ['v', 'L'], **kwd)
     args = engine.args
     if args is None:
         args = []
     args = list2term(list(map(Term, args)))
-    return [(args,)]
+    if m == 0:
+        return [(args,)]
+    else:
+        try:
+            value = unify_value(args, lst, {})
+            return [(value,)]
+        except UnifyError:
+            return []
 
 
 def _builtin_atom_number(atom, number, **kwd):
