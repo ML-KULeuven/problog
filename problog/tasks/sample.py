@@ -284,7 +284,7 @@ class SampledFormula(LogicFormula):
 
     # noinspection PyUnusedLocal
     def to_string(self, db, with_facts=False, with_probability=False, oneline=False,
-                  as_evidence=False, **extra):
+                  as_evidence=False, strip_tag=False, **extra):
         self.compute_probability()
 
         if as_evidence:
@@ -296,6 +296,8 @@ class SampledFormula(LogicFormula):
         for k, v in self.queries():
             if k.functor.startswith('hidden_'):
                 continue
+            if strip_tag:
+                k = k.args[0]
             if v is not None:
                 val = self.get_value(v)
                 if val is None:
@@ -674,6 +676,7 @@ def main(args, result_handler=None):
     parser.add_argument('--verbose', '-v', action='count', help='Verbose output')
     parser.add_argument('--seed', '-s', type=float, help='Random seed', default=None)
     parser.add_argument('--full-trace', action='store_true')
+    parser.add_argument('--strip-tag', action='store_true', help='Strip outermost tag from output.')
     parser.add_argument('-a', '--arg', dest='args', action='append',
                         help='Pass additional arguments to the cmd_args builtin.')
 
