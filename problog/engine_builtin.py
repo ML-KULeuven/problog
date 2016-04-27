@@ -54,6 +54,7 @@ def add_standard_builtins(engine, b=None, s=None, sp=None):
 
     engine.add_builtin('findall', 3, sp(_builtin_findall))  # -6
     engine.add_builtin('all', 3, sp(_builtin_all))  # -7
+    engine.add_builtin('all_or_none', 3, sp(_builtin_all_or_none))  # -8
 
     engine.add_builtin('==', 2, b(_builtin_same))
     engine.add_builtin('\==', 2, b(_builtin_notsame))
@@ -132,6 +133,13 @@ def add_standard_builtins(engine, b=None, s=None, sp=None):
     engine.add_builtin('nl', 0, b(_builtin_nl))
     engine.add_builtin('cmd_args', 1, s(_builtin_cmdargs))
     engine.add_builtin('atom_number', 2, s(_builtin_atom_number))
+    engine.add_builtin('nocache', 2, b(_builtin_nocache))
+
+
+def _builtin_nocache(functor, arity, database=None, **kwd):
+    check_mode((functor, arity), ['ai'], **kwd)
+    database.dont_cache.add((str(functor), int(arity)))
+    return True
 
 
 def _builtin_cmdargs(lst, engine=None, **kwd):
@@ -1147,20 +1155,23 @@ def _select_sublist(lst, target):
     choice_bits = [None] * l
     x = 0
     for i in range(0, l):
-        if lst[i][1] != target.TRUE:
+        if lst[i][1] not in (target.TRUE, target.FALSE):
             choice_bits[i] = x
             x += 1
+
     # We have 2^x distinct lists. Each can be represented as a number between 0 and 2^x-1=n.
     n = (1 << x) - 1
 
     while n >= 0:
         # Generate the list of positive values and node identifiers
         # noinspection PyTypeChecker
-        sublist = [lst[i] for i in range(0, l) if choice_bits[i] is None or n & 1 << choice_bits[i]]
+        sublist = [lst[i] for i in range(0, l)
+                   if (choice_bits[i] is None and lst[i][1] == target.TRUE) or (choice_bits[i] is not None and n & 1 << choice_bits[i])]
         # Generate the list of negative node identifiers
         # noinspection PyTypeChecker
-        sublist_no = tuple([-lst[i][1] for i in range(0, l) if
-                            not (choice_bits[i] is None or n & 1 << choice_bits[i])])
+        sublist_no = tuple([target.negate(lst[i][1]) for i in range(0, l)
+                            if (choice_bits[i] is None and lst[i][1] == target.FALSE) or (
+                            choice_bits[i] is not None and not n & 1 << choice_bits[i])])
         if sublist:
             terms, nodes = zip(*sublist)
         else:
@@ -1170,7 +1181,11 @@ def _select_sublist(lst, target):
         n -= 1
 
 
-def _builtin_all(pattern, goal, result, database=None, target=None,
+def _builtin_all_or_none(pattern, goal, result, **kwargs):
+    return _builtin_all(pattern, goal, result, allow_none=True, **kwargs)
+
+
+def _builtin_all(pattern, goal, result, allow_none=False, database=None, target=None,
                       engine=None, context=None, **kwdargs):
     """
     Implementation of all/3 builtin.
@@ -1210,7 +1225,7 @@ def _builtin_all(pattern, goal, result, database=None, target=None,
     output = []
 
     for l, n in _select_sublist(results, target):
-        if not l:
+        if not l and not allow_none:
             continue
         node = target.add_and(n)
         if node is not None:

@@ -563,6 +563,8 @@ class ClauseDB(LogicProgram):
                 self.source_files = parent.source_files[:]
             self.__offset = len(parent)
 
+        self.dont_cache = set()
+
     def __len__(self):
         return len(self.__nodes) + self.__offset
 
@@ -776,7 +778,7 @@ class ClauseDB(LogicProgram):
                                   % head.signature)
 
     def get_local_scope(self, signature):
-        if signature in ('findall/3', 'all/3'):
+        if signature in ('findall/3', 'all/3', 'all_or_none/3'):
             return 0, 1
         else:
             return []

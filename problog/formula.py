@@ -1301,9 +1301,11 @@ label_all=True)
             if ntype == 'atom':
                 return sign * target.add_atom(*node)
             elif ntype == 'conj':
-                return sign * target.add_and(*(self.copy_node(c) for c in node.children))
+                children = [self.copy_node(target, c) for c in node.children]
+                return sign * target.add_and(children)
             elif ntype == 'disj':
-                return sign * target.add_or(*(self.copy_node(c) for c in node.children))
+                children = [self.copy_node(target, c) for c in node.children]
+                return sign * target.add_or(children)
 
     def _unroll_conj(self, node):
         assert type(node).__name__ == 'conj'

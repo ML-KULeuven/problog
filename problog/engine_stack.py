@@ -343,7 +343,7 @@ class StackBasedEngine(ClauseDBEngine):
         # This is stored in the target ground program because
         # node ids are only valid in that context.
         if not hasattr(target, '_cache'):
-            target._cache = DefineCache()
+            target._cache = DefineCache(database.dont_cache)
 
         # Retrieve the list of actions needed to evaluate the top-level node.
         # parent = kwdargs.get('parent')
@@ -1155,13 +1155,14 @@ class NestedDict(object):
 
 
 class DefineCache(object):
-    def __init__(self):
+    def __init__(self, dont_cache):
         self.__non_ground = NestedDict()
         self.__ground = NestedDict()
         self.__active = NestedDict()
+        self.__dont_cache = dont_cache
 
     def is_dont_cache(self, goal):
-        return goal[0][:9] == '_nocache_'
+        return goal[0][:9] == '_nocache_' or (goal[0], len(goal[1])) in self.__dont_cache
 
     def activate(self, goal, node):
         self.__active[goal] = node

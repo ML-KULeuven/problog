@@ -118,6 +118,6 @@ def increment_version_dev():
 
 
 def increment_version_release():
-    v = increment_dev(version)
+    v = increment_release(version)
     with open(version_file, 'w') as f:
         f.write("version = '%s'\n" % v)
