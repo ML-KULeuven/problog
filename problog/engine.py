@@ -554,6 +554,8 @@ class ClauseDB(LogicProgram):
         self.engine = None
 
         self.__parent = parent
+        self.__node_redirect = {}
+
         if parent is None:
             self.__offset = 0
         else:
@@ -660,6 +662,8 @@ class ClauseDB(LogicProgram):
         :rtype: :class:`tuple`
         :raises IndexError: the given index does not point to a node
         """
+        index = self.__node_redirect.get(index, index)
+
         if index < self.__offset:
             return self.__parent.get_node(index)
         else:
@@ -707,10 +711,13 @@ class ClauseDB(LogicProgram):
             existing = self.get_node(node)
             # node exists in parent
             clauses = self._create_index(head.arity)
-            for c in existing.children:
-                clauses.append(c)
+            if existing:
+                for c in existing.children:
+                    clauses.append(c)
+            old_node = node
             node = self._append_node(self._define(head.functor, head.arity, clauses,
                                                   head.location))
+            self.__node_redirect[old_node] = node
             self._set_head(head, node)
 
         return node
