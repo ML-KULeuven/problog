@@ -385,8 +385,8 @@ class LFIProblem(SemiringProbability, LogicProgram):
         for atom in atoms:
             if atom.probability and atom.probability.functor == 't':
                 assert (atom in self.names)
-                assert (t_args is None or atom.probability.args == t_args)
-                t_args = atom.probability.args
+                # assert (t_args is None or atom.probability.args == t_args)
+                # t_args = atom.probability.args
 
                 index = self.output_names.index(atom)
                 weights = self.get_weights(index)
