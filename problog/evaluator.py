@@ -300,7 +300,7 @@ class Evaluatable(ProbLogObject):
         """
         raise NotImplementedError('Evaluatable._create_evaluator is an abstract method')
 
-    def get_evaluator(self, semiring=None, evidence=None, weights=None, **kwargs):
+    def get_evaluator(self, semiring=None, evidence=None, weights=None, keep_evidence=False, **kwargs):
         """Get an evaluator for computing queries on this formula.
         It creates an new evaluator and initializes it with the given or predefined evidence.
 
@@ -326,7 +326,7 @@ class Evaluatable(ProbLogObject):
                 raise InconsistentEvidenceError(source='evidence('+str(ev_name)+',true)')  # false evidence is true
             elif evidence is None and ev_value != 0:
                 evaluator.add_evidence(ev_value * ev_index)
-            else:
+            elif evidence is not None:
                 try:
                     value = evidence[ev_name]
                     if value:
@@ -334,7 +334,8 @@ class Evaluatable(ProbLogObject):
                     else:
                         evaluator.add_evidence(-ev_index)
                 except KeyError:
-                    pass
+                    if keep_evidence:
+                        evaluator.add_evidence(ev_value * ev_index)
 
         evaluator.propagate()
         return evaluator
