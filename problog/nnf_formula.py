@@ -236,7 +236,7 @@ class Compiler(object):
 if system_info.get('c2d', False):
     # noinspection PyUnusedLocal
     @transform(CNF, NNF)
-    def _compile_with_c2d(cnf, nnf=None, smooth=False, **kwdargs):
+    def _compile_with_c2d(cnf, nnf=None, smooth=True, **kwdargs):
         fd, cnf_file = tempfile.mkstemp('.cnf')
         os.close(fd)
         nnf_file = cnf_file + '.nnf'
@@ -264,7 +264,7 @@ if system_info.get('c2d', False):
 
 # noinspection PyUnusedLocal
 @transform(CNF, NNF)
-def _compile_with_dsharp(cnf, nnf=None, smooth=False, **kwdargs):
+def _compile_with_dsharp(cnf, nnf=None, smooth=True, **kwdargs):
     result = None
     with Timer('DSharp compilation'):
         fd1, cnf_file = tempfile.mkstemp('.cnf')
