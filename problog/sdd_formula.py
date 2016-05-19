@@ -70,7 +70,9 @@ class SDD(DD):
 
         for n, q in self.queries():
             node = self.get_inode(q)
-            i = self._to_formula(formula, node)
+            constraints = self.get_constraint_inode()
+            nodec = self.get_manager().conjoin(node, constraints)
+            i = self._to_formula(formula, nodec)
             formula.add_name(n, i, formula.LABEL_QUERY)
         return formula
 
