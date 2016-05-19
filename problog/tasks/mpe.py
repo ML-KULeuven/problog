@@ -30,17 +30,17 @@ from problog.cnf_formula import CNF
 from problog.maxsat import get_solver, get_available_solvers
 from problog.errors import process_error
 from problog import get_evaluatable
-from problog.evaluator import Semiring, OperationNotSupported
+from problog.evaluator import Semiring, OperationNotSupported, SemiringProbability
 from problog.logic import Term
 
 
 def main(argv):
     args = argparser().parse_args(argv)
 
-    if args.use_maxsat:
-        return mpe_maxsat(args)
-    else:
+    if args.use_semiring:
         return mpe_semiring(args)
+    else:
+        return mpe_maxsat(args)
 
 
 def mpe_semiring(args):
@@ -76,7 +76,7 @@ def mpe_semiring(args):
 
             query_name = Term('query')
             lf.add_query(query_name, qn)
-
+            # print (lf)
             kc = kc_class.create_from(lf)
             results = kc.evaluate(semiring=semiring)
             prob, facts = results[query_name]
@@ -124,18 +124,21 @@ def mpe_maxsat(args):
         solver = get_solver(args.solver)
 
         result = frozenset(solver.evaluate(cnf))
-
+        weights = cnf.extract_weights(SemiringProbability())
         output_facts = None
+        prob = 1.0
         if result is not None:
             output_facts = []
             for i, n, t in dag:
                 if t == 'atom':
                     if i in result:
                         output_facts.append(n.name)
-                    elif args.output_all and -i in result:
+                        prob *= weights[i][0]
+                    elif -i in result:
                         output_facts.append(-n.name)
+                        prob *= weights[i][1]
 
-        result_handler((True, (None, output_facts)), outf)
+        result_handler((True, (prob, output_facts)), outf)
     except Exception as err:
         trace = traceback.format_exc()
         err.trace = trace
@@ -280,6 +283,7 @@ def argparser():
                         help='Write output to given file (default: write to stdout)')
     parser.add_argument('--web', action='store_true', help=argparse.SUPPRESS)
     parser.add_argument('--use-maxsat', action='store_true', help=argparse.SUPPRESS)
+    parser.add_argument('--use-semiring', action='store_true', help=argparse.SUPPRESS)
     return parser
 
 
