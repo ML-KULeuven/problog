@@ -262,6 +262,10 @@ class SemiringMPEState(Semiring):
     def result(self, a, formula=None):
         return a
 
+    def ad_complement(self, ws, key=None):
+        s = sum([x[0] for x in ws])
+        return 1.0 - s, {key}
+
 
 def argparser():
     import argparse

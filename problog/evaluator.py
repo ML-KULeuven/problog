@@ -133,6 +133,12 @@ class Semiring(object):
         """Checks whether the given (internal) value is valid."""
         return True
 
+    def ad_complement(self, ws, key=None):
+        s = self.zero()
+        for w in ws:
+            s = self.plus(s, w)
+        return self.negate(s)
+
 
 class SemiringProbability(Semiring):
     """Implementation of the semiring interface for probabilities."""

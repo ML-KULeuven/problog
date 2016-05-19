@@ -84,9 +84,9 @@ class SDD(DD):
             at = self.var2atom[abs(lit)]
             node = self.get_node(at)
             if lit < 0:
-                return -formula.add_atom(-lit, probability=node.probability, name=node.name)
+                return -formula.add_atom(-lit, probability=node.probability, name=node.name, group=node.group)
             else:
-                return formula.add_atom(lit, probability=node.probability, name=node.name)
+                return formula.add_atom(lit, probability=node.probability, name=node.name, group=node.group)
         else:  # is decision
             size = sdd.sdd_node_size(current_node)
             elements = sdd.sdd_node_elements(current_node)
