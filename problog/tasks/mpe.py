@@ -116,7 +116,8 @@ def mpe_maxsat(args):
         cnf = CNF.createFrom(dag)
 
         for qn, qi in cnf.evidence():
-            cnf.add_constraint(TrueConstraint(qi))
+            if not cnf.is_true(qi):
+                cnf.add_constraint(TrueConstraint(qi))
 
         # for qn, qi in cnf.queries():
         #     cnf.add_constraint(TrueConstraint(qi))
