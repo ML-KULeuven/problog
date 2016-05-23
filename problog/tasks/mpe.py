@@ -107,7 +107,7 @@ def mpe_maxsat(args):
     try:
         pl = PrologFile(inputfile)
 
-        dag = LogicDAG.createFrom(pl)
+        dag = LogicDAG.createFrom(pl, avoid_name_clash=True, label_all=True)
 
         if dag.queries():
             print('%% WARNING: ignoring queries in file', file=sys.stderr)
