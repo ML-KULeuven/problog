@@ -122,22 +122,26 @@ def mpe_maxsat(args):
         # for qn, qi in cnf.queries():
         #     cnf.add_constraint(TrueConstraint(qi))
 
-        solver = get_solver(args.solver)
+        if not cnf.is_trivial():
+            solver = get_solver(args.solver)
 
-        result = frozenset(solver.evaluate(cnf))
-        weights = cnf.extract_weights(SemiringProbability())
-        output_facts = None
-        prob = 1.0
-        if result is not None:
+            result = frozenset(solver.evaluate(cnf))
+            weights = cnf.extract_weights(SemiringProbability())
+            output_facts = None
+            prob = 1.0
+            if result is not None:
+                output_facts = []
+                for i, n, t in dag:
+                    if t == 'atom':
+                        if i in result:
+                            output_facts.append(n.name)
+                            prob *= weights[i][0]
+                        elif -i in result:
+                            output_facts.append(-n.name)
+                            prob *= weights[i][1]
+        else:
+            prob = 1.0
             output_facts = []
-            for i, n, t in dag:
-                if t == 'atom':
-                    if i in result:
-                        output_facts.append(n.name)
-                        prob *= weights[i][0]
-                    elif -i in result:
-                        output_facts.append(-n.name)
-                        prob *= weights[i][1]
 
         result_handler((True, (prob, output_facts)), outf)
     except Exception as err:
