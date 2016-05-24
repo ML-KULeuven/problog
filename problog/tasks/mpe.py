@@ -109,9 +109,9 @@ def mpe_maxsat(args):
 
         dag = LogicDAG.createFrom(pl, avoid_name_clash=True, label_all=True)
 
-        if dag.queries():
-            print('%% WARNING: ignoring queries in file', file=sys.stderr)
-            dag.clear_queries()
+        # if dag.queries():
+        #     print('%% WARNING: ignoring queries in file', file=sys.stderr)
+        #     dag.clear_queries()
 
         cnf = CNF.createFrom(dag)
 
@@ -119,8 +119,7 @@ def mpe_maxsat(args):
             if not cnf.is_true(qi):
                 cnf.add_constraint(TrueConstraint(qi))
 
-        # for qn, qi in cnf.queries():
-        #     cnf.add_constraint(TrueConstraint(qi))
+        queries = list(cnf.queries())
 
         if not cnf.is_trivial():
             solver = get_solver(args.solver)
@@ -131,13 +130,22 @@ def mpe_maxsat(args):
             prob = 1.0
             if result is not None:
                 output_facts = []
+
+                if queries:
+                    for qn, qi in queries:
+                        if qi in result:
+                            output_facts.append(qn)
+                        elif -qi in result:
+                            output_facts.append(-qn)
                 for i, n, t in dag:
                     if t == 'atom':
                         if i in result:
-                            output_facts.append(n.name)
+                            if not queries:
+                                output_facts.append(n.name)
                             prob *= weights[i][0]
                         elif -i in result:
-                            output_facts.append(-n.name)
+                            if not queries:
+                                output_facts.append(-n.name)
                             prob *= weights[i][1]
         else:
             prob = 1.0
@@ -155,8 +163,8 @@ def mpe_maxsat(args):
 
 def print_result(result, output=sys.stdout):
     success, result = result
-    prob, facts = result
     if success:
+        prob, facts = result
         if facts is None:
             print ('%% The model is not satisfiable.', file=output)
         else:
