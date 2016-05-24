@@ -412,6 +412,7 @@ def ground(engine, db, target):
             raise GroundingError('Invalid evidence')   # TODO can we add a location?
 
     # Ground queries
+    queries = [(target.LABEL_QUERY, q) for q in queries]
     engine.ground_queries(db, target, queries)
     return target
 

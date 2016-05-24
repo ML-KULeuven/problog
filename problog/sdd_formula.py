@@ -68,7 +68,7 @@ class SDD(DD):
         """Extracts a LogicFormula from the SDD."""
         formula = LogicFormula()
 
-        for n, q in self.queries():
+        for n, q, l in self.labeled():
             node = self.get_inode(q)
             constraints = self.get_constraint_inode()
             nodec = self.get_manager().conjoin(node, constraints)

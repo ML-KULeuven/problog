@@ -122,8 +122,8 @@ class DD(LogicFormula, EvaluatableDSP):
 
     def build_dd(self):
         """Build the internal representation of the formula."""
-        required_nodes = set([abs(n) for q, n in self.queries() if self.is_probabilistic(n)])
-        required_nodes |= set([abs(n) for q, n in self.queries() if self.is_probabilistic(n)])
+        required_nodes = set([abs(n) for q, n, l in self.labeled() if self.is_probabilistic(n)])
+        required_nodes |= set([abs(n) for q, n, l in self.labeled() if self.is_probabilistic(n)])
 
         for n in required_nodes:
             self.get_inode(n)

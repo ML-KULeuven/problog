@@ -363,7 +363,7 @@ class Evaluatable(ProbLogObject):
             # Probability of query given evidence
 
             # interrupted = False
-            for name, node in evaluator.formula.queries():
+            for name, node, label in evaluator.formula.labeled():
                 w = evaluator.evaluate(node)
                 result[name] = w
             return result

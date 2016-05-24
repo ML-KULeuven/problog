@@ -107,11 +107,11 @@ def mpe_maxsat(args):
     try:
         pl = PrologFile(inputfile)
 
-        dag = LogicDAG.createFrom(pl, avoid_name_clash=True, label_all=True)
+        dag = LogicDAG.createFrom(pl, avoid_name_clash=True, label_all=True, labels=[('output', 1)])
 
-        # if dag.queries():
-        #     print('%% WARNING: ignoring queries in file', file=sys.stderr)
-        #     dag.clear_queries()
+        if dag.queries():
+            print('%% WARNING: ignoring queries in file', file=sys.stderr)
+            dag.clear_queries()
 
         cnf = CNF.createFrom(dag)
 
@@ -119,7 +119,7 @@ def mpe_maxsat(args):
             if not cnf.is_true(qi):
                 cnf.add_constraint(TrueConstraint(qi))
 
-        queries = list(cnf.queries())
+        queries = list(cnf.labeled())
 
         if not cnf.is_trivial():
             solver = get_solver(args.solver)
@@ -132,7 +132,7 @@ def mpe_maxsat(args):
                 output_facts = []
 
                 if queries:
-                    for qn, qi in queries:
+                    for qn, qi, ql in queries:
                         if qi in result:
                             output_facts.append(qn)
                         elif -qi in result:

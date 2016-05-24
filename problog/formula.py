@@ -219,6 +219,10 @@ class BaseFormula(ProbLogObject):
         """Remove all evidence."""
         self._names[self.LABEL_QUERY] = {}
 
+    def clear_labeled(self, label):
+        """Remove all evidence."""
+        self._names[label] = {}
+
     def get_names(self, label=None):
         """Get a list of all node names in the formula.
 
@@ -251,6 +255,17 @@ class BaseFormula(ProbLogObject):
         :return: ``get_names(LABEL_QUERY)``
         """
         return self.get_names(self.LABEL_QUERY)
+
+    def labeled(self):
+        """Get a list of all query-like labels.
+
+        :return:
+        """
+        result = []
+        for name, node, label in self.get_names_with_label():
+            if label not in (self.LABEL_NAMED, self.LABEL_EVIDENCE_POS, self.LABEL_EVIDENCE_NEG, self.LABEL_EVIDENCE_MAYBE):
+                result.append((name, node, label))
+        return result
 
     def evidence(self):
         """Get a list of all determined evidence.
@@ -946,11 +961,11 @@ class LogicFormula(BaseFormula):
     def __str__(self):
         s = '\n'.join('%s: %s' % (i, n) for i, n, t in self)
         f = True
-        for q in self.queries():
+        for q in self.labeled():
             if f:
                 f = False
                 s += '\nQueries : '
-            s += '\n* %s : %s' % q
+            s += '\n* %s : %s [%s]' % q
 
         f = True
         for q in self.evidence():

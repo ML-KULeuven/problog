@@ -530,7 +530,7 @@ class LFIProblem(SemiringProbability, LogicProgram):
                 raise InconsistentEvidenceError(err.source, context)
             p_queries = {}
             # Probability of query given evidence
-            for name, node in evaluator.formula.queries():
+            for name, node, label in evaluator.formula.labeled():
                 w = evaluator.evaluate_fact(node)
                 if w < 1e-6:
                     p_queries[name] = 0.0

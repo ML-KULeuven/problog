@@ -39,7 +39,8 @@ from .util import Timer
 
 
 @transform(LogicProgram, LogicFormula)
-def ground(model, target=None, queries=None, evidence=None, propagate_evidence=False, **kwdargs):
+def ground(model, target=None, queries=None, evidence=None, propagate_evidence=False,
+           labels=None, **kwdargs):
     """Ground a given model.
 
     :param model: logic program to ground
@@ -52,7 +53,7 @@ def ground(model, target=None, queries=None, evidence=None, propagate_evidence=F
     :rtype: LogicFormula
     """
     return DefaultEngine(**kwdargs).ground_all(model, target, queries=queries, evidence=evidence,
-                                               propagate_evidence=propagate_evidence)
+                                               propagate_evidence=propagate_evidence, labels=labels)
 
 
 class GenericEngine(object):  # pragma: no cover
@@ -337,12 +338,18 @@ class ClauseDBEngine(GenericEngine):
 
     def ground_queries(self, db, target, queries):
         logger = logging.getLogger('problog')
-        for query in queries:
+        for label, query in queries:
             logger.debug("Grounding query '%s'", query)
-            target = self.ground(db, query, target, label=target.LABEL_QUERY)
+            target = self.ground(db, query, target, label=label)
             logger.debug("Ground program size: %s", len(target))
 
-    def ground_all(self, db, target=None, queries=None, evidence=None, propagate_evidence=False):
+    def ground_all(self, db, target=None, queries=None, evidence=None, propagate_evidence=False, labels=None):
+        if labels is None:
+            labels = []
+        # Initialize target if not given.
+        if target is None:
+            target = LogicFormula()
+
         db = self.prepare(db)
         logger = logging.getLogger('problog')
         with Timer('Grounding'):
@@ -357,13 +364,14 @@ class ClauseDBEngine(GenericEngine):
                 evidence = self.query(db, Term('evidence', None, None))
                 evidence += self.query(db, Term('evidence', None))
 
+            queries = [(target.LABEL_QUERY, q) for q in queries]
+            for label, arity in labels:
+                queries += [(label, q[0]) for q in self.query(db, Term(label, *([None] * arity)))]
+
             for ev in evidence:
                 if not isinstance(ev[0], Term):
                     raise GroundingError('Invalid evidence')   # TODO can we add a location?
 
-            # Initialize target if not given.
-            if target is None:
-                target = LogicFormula()
             # Ground queries
             if propagate_evidence:
                 with Timer('Propagating evidence'):
