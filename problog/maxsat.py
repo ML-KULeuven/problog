@@ -23,7 +23,7 @@ Interface to MaxSAT solvers.
 """
 from __future__ import print_function
 
-from .util import mktempfile, subprocess_check_output
+from .util import mktempfile, subprocess_check_output, Timer
 from . import root_path
 from .errors import ProbLogError
 
@@ -60,9 +60,12 @@ class MaxSATSolver(object):
         return subprocess_check_output(self.command + [filename])
 
     def evaluate(self, formula, **kwargs):
-        inputf = self.prepare_input(formula, **kwargs)
-        output = self.call_process(inputf)
-        result = self.process_output(output)
+        with Timer('Transform input'):
+            inputf = self.prepare_input(formula, **kwargs)
+        with Timer('Solver call'):
+            output = self.call_process(inputf)
+        with Timer('Transform output'):
+            result = self.process_output(output)
         return result
 
 
