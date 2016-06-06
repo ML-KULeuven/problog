@@ -101,6 +101,40 @@ class SDD(DD):
                 children.append(c_n)
             return formula.add_or(children)
 
+    def to_dot(self, not_as_node=True):
+        """Write out in GraphViz (dot) format.
+
+        :param not_as_node: represent negation as a node (irrelevant)
+        :return: string containing dot representation
+        """
+        import tempfile, os
+        dot_string = ""
+        with tempfile.TemporaryDirectory(prefix="problog") as tempdir:
+            query_nodes = set([abs(n) for q, n in self.queries()])
+            for i,n in enumerate(query_nodes):
+                inode = self.get_inode(n)
+                fn = os.path.join(tempdir,'sdd_graph_{}.dot'.format(i))
+                self.get_manager().write_to_dot(inode, fn)
+                with open(fn, 'r') as ifile:
+                    dot_string += ifile.read()
+        return dot_string
+
+    def stats(self):
+        nb_nodes = 0
+        nb_edges = 3*self.get_manager().size()
+        # nb_edges = 0
+        nb_leafs = 0
+
+        query_nodes = set([abs(n) for q, n in self.queries()])
+        # nb_edges += 3*self.get_manager().nodes_size([self.get_inode(n) for n in query_nodes])
+        # nb_edges += 3*sum([self.get_manager().node_size(self.get_inode(n)) for n in query_nodes])
+
+        return {
+            'nodes': nb_nodes,
+            'leafs': nb_leafs,
+            'edges': nb_edges
+        }
+
 
 class SDDManager(DDManager):
     """
@@ -178,6 +212,15 @@ class SDDManager(DDManager):
 
     def write_to_dot(self, node, filename):
         sdd.sdd_save_as_dot(filename, node)
+
+    def size(self):
+        return sdd.sdd_manager_live_size(self.get_manager())
+
+    def node_size(self, node):
+        return sdd.sdd_size(node)
+
+    def nodes_size(self, nodes):
+        return sdd.sdd_shared_size(nodes, 0)
 
     def wmc(self, node, weights, semiring):
         logspace = 0

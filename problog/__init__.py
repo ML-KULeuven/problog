@@ -57,7 +57,10 @@ from . import tasks
 _evaluatables = {'sdd': sdd_formula.SDD,
                  'bdd': bdd_formula.BDD,
                  'nnf': nnf_formula.NNF,
-                 'ddnnf': nnf_formula.NNF,
+                 'ddnnf': nnf_formula.NNF,  # non-smooth d-DNNF
+                 'sddnnf': nnf_formula.SNNF,  # Smooth d-DNNF
+                 'decdnnf': nnf_formula.DecNNF,  # Decision-DNNF (minic2d)
+                 'cnfsddnnf': nnf_formula.CNFSDDNNF, # using ssd CLI
                  'kbest': kbest.KBestFormula,
                  'fsdd': forward.ForwardSDD,
                  'fbdd': forward.ForwardBDD}

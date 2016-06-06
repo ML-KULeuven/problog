@@ -434,6 +434,8 @@ class ExtendedPrologFactory(PrologFactory):
             new_clause = Clause(Term(v['f'], *cur_vars),
                                 And(Term(v['p'], *cur_vars), Not('\+', Term(v['n'], *cur_vars))))
             clauses.append(new_clause)
+        for clause in clauses:
+            print(clause)
         return clauses
 
     def neg_head_literal_to_pos_literal(self, literal):

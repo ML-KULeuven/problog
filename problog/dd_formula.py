@@ -129,6 +129,7 @@ class DD(LogicFormula, EvaluatableDSP):
         """Build the internal representation of the constraint of this formula."""
         self._constraint_dd = self.get_manager().true()
         for c in self.constraints():
+            print('build constraint dd: {}'.format(c))
             for rule in c.as_clauses():
                 rule_sdd = self.get_manager().disjoin(*[self.get_inode(r) for r in rule])
                 new_constraint_dd = self.get_manager().conjoin(self._constraint_dd, rule_sdd)

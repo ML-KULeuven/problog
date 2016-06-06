@@ -105,6 +105,13 @@ def gather_info():
 
     # c2d
     system_info['c2d'] = distutils.spawn.find_executable('cnf2dDNNF') is not None
+
+    # minic2d
+    system_info['minic2d'] = distutils.spawn.find_executable('miniC2D') is not None
+
+    # sdd-cli
+    system_info['sdd-cli'] = distutils.spawn.find_executable('sdd-cli') is not None
+
     return system_info
 
 

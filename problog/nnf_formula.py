@@ -61,6 +61,20 @@ class NNF(LogicDAG, EvaluatableDSP):
         return SimpleNNFEvaluator(self, semiring, weights)
 
 
+class SNNF(NNF):
+    """A smooth-DNNF formula."""
+    pass
+
+
+class DecNNF(NNF):
+    """A decision-DNNF formula."""
+    pass
+
+class CNFSDDNNF(NNF):
+    """A DNNF formula obtained from cnf to sdd."""
+    pass
+
+
 class SimpleNNFEvaluator(Evaluator):
     """Evaluator for d-DNNFs."""
 
@@ -240,7 +254,9 @@ if system_info.get('c2d', False):
         fd, cnf_file = tempfile.mkstemp('.cnf')
         os.close(fd)
         nnf_file = cnf_file + '.nnf'
-        cmd = ['cnf2dDNNF', '-dt_method', '0', '-smooth_all', '-reduce', '-in', cnf_file]
+        # cmd = ['cnf2dDNNF', '-dt_method', '0', '-smooth_all', '-reduce', '-in', cnf_file]
+        cmd = ['cnf2dDNNF', '-dt_method', '0', '-reduce', '-in', cnf_file]
+        print(' '.join(cmd))
 
         try:
             os.remove(cnf_file)
@@ -255,6 +271,81 @@ if system_info.get('c2d', False):
 
 
     Compiler.add('c2d', _compile_with_c2d)
+
+
+    # noinspection PyUnusedLocal
+    @transform(CNF, SNNF)
+    def _compile_with_sc2d(cnf, nnf=None, **kwdargs):
+        fd, cnf_file = tempfile.mkstemp('.cnf')
+        os.close(fd)
+        nnf_file = cnf_file + '.nnf'
+        cmd = ['cnf2dDNNF', '-dt_method', '0', '-smooth_all', '-reduce', '-in', cnf_file]
+        print(' '.join(cmd))
+
+        try:
+            os.remove(cnf_file)
+        except OSError:
+            pass
+        try:
+            os.remove(nnf_file)
+        except OSError:
+            pass
+
+        return _compile(cnf, cmd, cnf_file, nnf_file, is_smooth=True)
+
+
+    Compiler.add('sc2d', _compile_with_sc2d)
+
+
+if system_info.get('minic2d', False):
+    # noinspection PyUnusedLocal
+    @transform(CNF, DecNNF)
+    def _compile_with_minic2d(cnf, nnf=None, **kwdargs):
+        fd, cnf_file = tempfile.mkstemp('.cnf')
+        os.close(fd)
+        nnf_file = cnf_file + '.nnf'
+        # cmd = ['miniC2D', '--cnf', cnf_file, '--vtree_method', '4'] # minfil
+        cmd = ['miniC2D', '--cnf', cnf_file, '--vtree_method', '0'] # default
+        print(' '.join(cmd))
+
+        try:
+            os.remove(cnf_file)
+        except OSError:
+            pass
+        try:
+            os.remove(nnf_file)
+        except OSError:
+            pass
+
+        return _compile(cnf, cmd, cnf_file, nnf_file, is_dec_nnf=True)
+
+
+    Compiler.add('minic2d', _compile_with_minic2d)
+
+
+if system_info.get('sdd-cli', False):
+    # noinspection PyUnusedLocal
+    @transform(CNF, CNFSDDNNF)
+    def _compile_with_minic2d(cnf, nnf=None, **kwdargs):
+        fd, cnf_file = tempfile.mkstemp('.cnf')
+        os.close(fd)
+        nnf_file = cnf_file + '.nnf'
+        cmd = ['sdd-cli', '-c', cnf_file]
+        print(' '.join(cmd))
+
+        try:
+            os.remove(cnf_file)
+        except OSError:
+            pass
+        try:
+            os.remove(nnf_file)
+        except OSError:
+            pass
+
+        return _compile(cnf, cmd, cnf_file, nnf_file, is_dec_nnf=True)
+
+
+    Compiler.add('sdd-cli', _compile_with_minic2d)
 
 
 # noinspection PyUnusedLocal
@@ -286,7 +377,7 @@ def _compile_with_dsharp(cnf, nnf=None, **kwdargs):
 Compiler.add('dsharp', _compile_with_dsharp)
 
 
-def _compile(cnf, cmd, cnf_file, nnf_file):
+def _compile(cnf, cmd, cnf_file, nnf_file, is_dec_nnf=False, is_smooth=False, is_sdd_nnf=False):
     names = cnf.get_names_with_label()
 
     if cnf.is_trivial():
@@ -321,11 +412,19 @@ def _compile(cnf, cmd, cnf_file, nnf_file):
                 attempts_left -= 1
                 if attempts_left == 0:
                     raise err
-        return _load_nnf(nnf_file, cnf)
+        return _load_nnf(nnf_file, cnf, is_dec_nnf=is_dec_nnf, is_smooth=is_smooth, is_sdd_nnf=is_sdd_nnf)
 
 
-def _load_nnf(filename, cnf):
-    nnf = NNF()
+def _load_nnf(filename, cnf, is_dec_nnf=False, is_smooth=False, is_sdd_nnf=False):
+    if is_dec_nnf:
+        nnf = DecNNF()
+    elif is_sdd_nnf:
+        nnf = SDDNNF()
+    else:
+        if is_smooth:
+            nnf = SNNF()
+        else:
+            nnf = NNF()
 
     weights = cnf.get_weights()
 

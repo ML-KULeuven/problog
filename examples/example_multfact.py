@@ -27,7 +27,7 @@ from problog.logic import Term, Or
 from problog.engine import DefaultEngine
 from problog.formula import LogicFormula, LogicDAG
 from problog.sdd_formula import SDD
-from problog.nnf_formula import NNF
+from problog.nnf_formula import NNF, DecNNF, SNNF, CNFSDDNNF
 from problog.cnf_formula import CNF
 from problog.forward import ForwardInference, ForwardBDD
 from problog.util import Timer, start_timer, stop_timer, init_logger, format_dictionary
@@ -118,6 +118,7 @@ def multiplicative_factorization(source, disjunct_threshold=8, disjunct_max=None
     for tseitin, tseitin_var, skolem_var, children in extra_clauses:
         logger.debug('-> Add tseitin {}'.format(tseitin_var))
         skolem = target.add_atom(identifier=str(skolem_var), probability=(1.0,-1.0), name=skolem_var)
+        # skolem = target.add_atom(identifier=str(skolem_var), probability=(1.0, 1.0), name=skolem_var)
         logger.debug('-> Add skolem {}'.format(skolem_var))
         target.add_name(skolem_var, skolem, target.LABEL_QUERY)
         extra_queries.append(skolem_var)
@@ -191,11 +192,13 @@ class NegativeProbability(SemiringProbability):
         return -1e-12 < value < 1e-12
 
     def plus(self, a, b):
+        # print('plus {} {}'.format(a,b))
         if isinstance(a, tuple) or isinstance(b, tuple):
             raise OperationNotSupported()
         return a + b
 
     def times(self, a, b):
+        # print('times {} {}'.format(a,b))
         if isinstance(a, tuple) or isinstance(b, tuple):
             raise OperationNotSupported()
         return a * b
@@ -240,6 +243,7 @@ class NegativeProbability(SemiringProbability):
 
 def probability(filename, with_fact=True, knowledge='nnf', disjunct_threshold=8, disjunct_max=None):
     logger = logging.getLogger('problog')
+    logger.info('Using knowledge {}'.format(knowledge))
     pl = PrologFile(filename)
     engine = DefaultEngine(label_all=True, keep_all=True, keep_duplicates=True)
     db = engine.prepare(pl)
@@ -267,16 +271,22 @@ def probability(filename, with_fact=True, knowledge='nnf', disjunct_threshold=8,
                 if knowledge == 'sdd':
                     logger.warning("SDDs not yet fully supported")
                     nnf = SDD.create_from(gp2)
-                    ev = nnf.to_formula()
-                    fe = FormulaEvaluator(ev, semiring)
-                    weights = ev.extract_weights(semiring=semiring)
-                    fe.set_weights(weights)
+                    # ev = nnf.to_formula()
+                    # fe = FormulaEvaluator(ev, semiring)
+                    # weights = ev.extract_weights(semiring=semiring)
+                    # fe.set_weights(weights)
                     # TODO: SDD lib doesn't support negative weights? Runtime error
                     # TODO: How can I use the Python evaluator with SDDs?
                 elif knowledge == 'fbdd':
                     logger.warning("fbdd not yet fully supported")
                     # TODO: Stupid approach because it introduces new root levels
                     nnf = ForwardBDD.createFrom(gp2)
+                elif knowledge == 'decdnnf':
+                    nnf = DecNNF.createFrom(gp2)
+                elif knowledge == 'sdnnf':
+                    nnf = SNNF.createFrom(gp2)
+                elif knowledge == 'cnfsddnnf':
+                    nnf = CNFSDDNNF.createFrom(gp2)
                 else:
                     nnf = NNF.createFrom(gp2)
             if logger.isEnabledFor(logging.DEBUG):
@@ -300,14 +310,21 @@ def probability(filename, with_fact=True, knowledge='nnf', disjunct_threshold=8,
                     nnf = SDD.createFrom(gp)
                 elif knowledge == 'fbdd':
                     nnf = ForwardBDD.createFrom(gp)
+                elif knowledge == 'decdnnf':
+                    nnf = DecNNF.createFrom(gp)
+                elif knowledge == 'sdnnf':
+                    nnf = SNNF.createFrom(gp)
+                elif knowledge == 'cnfsddnnf':
+                    nnf = CNFSDDNNF.createFrom(gp)
                 else:
                     nnf = NNF.createFrom(gp)
             if logger.isEnabledFor(logging.DEBUG):
                 with open (fn_base+'_nf_nnf.dot', 'w') as dotfile:
                     print(nnf.to_dot(not_as_node=False), file=dotfile)
             logger.info('NNF stats:\n'+'\n'.join(['{:<6}: {:>10,}'.format(k,v) for k,v in sorted(nnf.stats().items())]))
-            with Timer('Evaluation'):
-                result = nnf.evaluate(semiring=semiring)
+            # with Timer('Evaluation'):
+            #     result = nnf.evaluate(semiring=semiring)
+            result = 0
     return result
 
 
@@ -335,7 +352,7 @@ if __name__ == '__main__' :
     parser.add_argument('--disjunctblocksize', '-b', default=1, type=int,
                         help='Block size of splits of disjunct')
     parser.add_argument('--knowledge', '-k', default='nnf',
-                        help='Knowledge compilation (sdd, nnf, fbdd)')
+                        help='Knowledge compilation (sdd, nnf, fbdd, decdnnf, sdnnf, cnfsddnnf)')
     args = parser.parse_args()
 
     init_logger(args.verbose)
