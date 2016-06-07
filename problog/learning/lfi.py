@@ -75,21 +75,27 @@ def str2bool(s):
 class LFIProblem(SemiringProbability, LogicProgram):
 
     def __init__(self, source, examples, max_iter=10000, min_improv=1e-10, verbose=0, knowledge=SDD,
-                 leakprob=None, propagate_evidence=True, **extra):
+                 leakprob=None, propagate_evidence=True, normalize=False, **extra):
         """
-        :param source:
-        :param examples:
-        :param max_iter:
-        :param min_improv:
-        :param verbose:
-        :param knowledge:
+        :param source: filename of file containing input model
+        :type source: str
+        :param examples: list of observed terms / value
+        :type examples: list[tuple(Term, bool)]
+        :param max_iter: maximum number of iterations to run
+        :type max_iter: int
+        :param min_improv: minimum improvement in log-likelihood for convergence detection
+        :type min_improv: float
+        :param verbose: verbosity level
+        :type verbose: int
+        :param knowledge: class to use for knowledge compilation
+        :type knowledge: class
         :param leakprob: Add all true evidence atoms with the given probability
                          to avoid 'inconsistent evidence' errors. This also
                          allows to learn a program without constants and
                          retrieve the constants from the evidence file.
                          (default: None)
-        :param extra:
-        :return:
+        :type leakprob: float or None
+        :param extra: catch all for additional parameters (not used)
         """
         SemiringProbability.__init__(self)
         LogicProgram.__init__(self)
@@ -119,6 +125,9 @@ class LFIProblem(SemiringProbability, LogicProgram):
 
         self.output_mode = False
         self.extra = extra
+
+        self._enable_normalize = normalize
+        self._adatoms = []
     
     def value(self, a):
         """Overrides from SemiringProbability.
@@ -145,15 +154,25 @@ class LFIProblem(SemiringProbability, LogicProgram):
         """Prepare for learning."""
         self._compile_examples()
 
-    def _get_weight(self, index, args):
+    def _get_weight(self, index, args, strict=True):
         index = int(index)
         weight = self._weights[index]
         if isinstance(weight, dict):
-            return weight[args]
+            if strict:
+                return weight[args]
+            else:
+                return weight.get(args, 0.0)
         else:
             return weight
 
     def get_weights(self, index):
+        """Get a list of key, weight pairs for the given input fact.
+
+        :param index: identifier of the fact
+        :return: list of key, weight pairs where key refers to the additional variables
+        on which the weight is based
+        :rtype: list[tuple[Term, float]]
+        """
         weight = self._weights[index]
         if isinstance(weight, dict):
             return list(weight.items())
@@ -263,6 +282,8 @@ class LFIProblem(SemiringProbability, LogicProgram):
         norm_factor = available_probability / sum(random_weights)
         random_weights = [r * norm_factor for r in random_weights]
 
+        self._adatoms.append((available_probability, []))
+
         for atom in atoms:
             if atom.probability and atom.probability.functor == 't':
                 # t(_)::p(X) :- body.
@@ -315,6 +336,7 @@ class LFIProblem(SemiringProbability, LogicProgram):
                 # 3) Create redirection clause
                 extra_clauses += [Clause(atom1.with_probability(), new_body)]
 
+                self._adatoms[-1][1].append(len(self._weights))
                 # 4) Set initial weight
                 if start_value is None:
                     self._add_weight(random_weights.pop(-1))
@@ -326,6 +348,9 @@ class LFIProblem(SemiringProbability, LogicProgram):
                 atoms_out.append(replacement)
             else:
                 atoms_out.append(atom)
+
+        if len(self._adatoms[-1][1]) < 2:
+            self._adatoms.pop(-1)
 
         if has_lfi_fact:
             if len(atoms) == 1:     # Simple clause
@@ -360,8 +385,8 @@ class LFIProblem(SemiringProbability, LogicProgram):
         for atom in atoms:
             if atom.probability and atom.probability.functor == 't':
                 assert (atom in self.names)
-                assert (t_args is None or atom.probability.args == t_args)
-                t_args = atom.probability.args
+                # assert (t_args is None or atom.probability.args == t_args)
+                # t_args = atom.probability.args
 
                 index = self.output_names.index(atom)
                 weights = self.get_weights(index)
@@ -385,7 +410,10 @@ class LFIProblem(SemiringProbability, LogicProgram):
                     else:
                         clauses.append(Clause(atoms_out[0], body.apply(tr)))
                 else:
-                    clauses.append(AnnotatedDisjunction(atoms_out, body.apply(tr)))
+                    if body is None:
+                        clauses.append(AnnotatedDisjunction(atoms_out, None))
+                    else:
+                        clauses.append(AnnotatedDisjunction(atoms_out, body.apply(tr)))
             return clauses
         else:
             atoms_out = atoms_fixed
@@ -485,7 +513,7 @@ class LFIProblem(SemiringProbability, LogicProgram):
         logging.getLogger('problog_lfi').debug('Evaluating examples ...')
         for at, val, comp, n in self._compiled_examples:
             evidence = {}
-            for a, v in zip(at, map(str2bool, val)):
+            for a, v in zip(at, val):
                 if a in evidence:
                     if evidence[a] != v:
                         context = ' (found evidence({},{}) and evidence({},{}) in example {})'.format(a, evidence[a], a, v, n+1)
@@ -502,7 +530,7 @@ class LFIProblem(SemiringProbability, LogicProgram):
                 raise InconsistentEvidenceError(err.source, context)
             p_queries = {}
             # Probability of query given evidence
-            for name, node in evaluator.formula.queries():
+            for name, node, label in evaluator.formula.labeled():
                 w = evaluator.evaluate_fact(node)
                 if w < 1e-6:
                     p_queries[name] = 0.0
@@ -532,7 +560,28 @@ class LFIProblem(SemiringProbability, LogicProgram):
         for index in fact_marg:
             if fact_count[index] > 0:
                 self._set_weight(index[0], index[1], fact_marg[index] / fact_count[index])
+
+        if self._enable_normalize:
+            self._normalize_weights()
         return score
+
+    def _normalize_weights(self):
+
+        for p, idx in self._adatoms:
+            keys = set()
+            for i in idx:
+                for key, val in self.get_weights(i):
+                    keys.add(key)
+            if len(keys) > 1:
+                try:
+                    keys.remove(Term('t'))
+                except KeyError:
+                    pass
+            for key in keys:
+                w = sum(self._get_weight(i, key, strict=False) for i in idx)
+                n = p / w
+                for i in idx:
+                    self._set_weight(i, key, self._get_weight(i, key, strict=False) * n)
         
     def step(self):
         self.iteration += 1
@@ -557,6 +606,7 @@ class LFIProblem(SemiringProbability, LogicProgram):
         while self.iteration < self.max_iter and (delta < 0 or delta > self.min_improv):
             score = self.step()
             logging.getLogger('problog_lfi').info('Weights after iteration %s: %s' % (self.iteration, self._weights))
+            logging.getLogger('problog_lfi').info('Score after iteration %s: %s' % (self.iteration, score))
             delta = score - prev_score
             prev_score = score
         return prev_score
@@ -566,13 +616,14 @@ def extract_evidence(pl):
     engine = DefaultEngine()
     atoms = engine.query(pl, Term('evidence', None, None))
     atoms1 = engine.query(pl, Term('evidence', None))
-    for atom in atoms1:
+    atoms2 = engine.query(pl, Term('observe', None))
+    for atom in atoms1 + atoms2:
         atom = atom[0]
         if atom.is_negated():
             atoms.append((-atom, Term('false')))
         else:
             atoms.append((atom, Term('true')))
-    return atoms
+    return [(at, str2bool(vl)) for at, vl in atoms]
 
 
 def read_examples(*filenames):
@@ -583,7 +634,7 @@ def read_examples(*filenames):
         with open(filename) as f:
             example = ''
             for line in f:
-                if line.strip().startswith('---') :
+                if line.strip().startswith('---'):
                     pl = PrologString(example)
                     atoms = extract_evidence(pl)
                     if len(atoms) > 0:
@@ -650,6 +701,7 @@ def argparser():
                         dest='propagate_evidence',
                         default=True,
                         help="Disable evidence propagation")
+    parser.add_argument('--normalize', action='store_true', help="Normalize AD-weights.")
     parser.add_argument('-v', '--verbose', action='count', default=0)
     parser.add_argument('--web', action='store_true', help=argparse.SUPPRESS)
     parser.add_argument('-a', '--arg', dest='args', action='append',

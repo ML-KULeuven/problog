@@ -250,13 +250,16 @@ class Compiler(object):
 if system_info.get('c2d', False):
     # noinspection PyUnusedLocal
     @transform(CNF, NNF)
-    def _compile_with_c2d(cnf, nnf=None, **kwdargs):
+    def _compile_with_c2d(cnf, nnf=None, smooth=True, **kwdargs):
         fd, cnf_file = tempfile.mkstemp('.cnf')
         os.close(fd)
         nnf_file = cnf_file + '.nnf'
-        # cmd = ['cnf2dDNNF', '-dt_method', '0', '-smooth_all', '-reduce', '-in', cnf_file]
-        cmd = ['cnf2dDNNF', '-dt_method', '0', '-reduce', '-in', cnf_file]
-        print(' '.join(cmd))
+        if smooth:
+            smoothl = ['-smooth_all']
+        else:
+            smoothl = []
+
+        cmd = ['cnf2dDNNF', '-dt_method', '0'] + smoothl + ['-reduce', '-in', cnf_file]
 
         try:
             os.remove(cnf_file)
@@ -350,12 +353,18 @@ if system_info.get('sdd-cli', False):
 
 # noinspection PyUnusedLocal
 @transform(CNF, NNF)
-def _compile_with_dsharp(cnf, nnf=None, **kwdargs):
+def _compile_with_dsharp(cnf, nnf=None, smooth=True, **kwdargs):
     result = None
     with Timer('DSharp compilation'):
-        cnf_file = tempfile.mkstemp('.cnf')[1]
-        nnf_file = tempfile.mkstemp('.nnf')[1]
-        cmd = ['dsharp', '-Fnnf', nnf_file, '-smoothNNF', '-disableAllLits', cnf_file]  #
+        fd1, cnf_file = tempfile.mkstemp('.cnf')
+        fd2, nnf_file = tempfile.mkstemp('.nnf')
+        os.close(fd1)
+        os.close(fd2)
+        if smooth:
+            smoothl = ['-smoothNNF']
+        else:
+            smoothl = []
+        cmd = ['dsharp', '-Fnnf', nnf_file] + smoothl + ['-disableAllLits', cnf_file]  #
 
         try:
             result = _compile(cnf, cmd, cnf_file, nnf_file)

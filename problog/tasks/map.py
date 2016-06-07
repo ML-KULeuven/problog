@@ -38,7 +38,7 @@ def main(argv):
     decisions = []
     utilities = []
     decision_nodes = set()
-    for qn, qi in ground_program.queries():
+    for qn, qi, ql in ground_program.labeled():
         node = ground_program.get_node(qi)
         prob = query_probs[qn]
         if type(node).__name__ != 'atom':

@@ -39,7 +39,8 @@ from .util import Timer
 
 
 @transform(LogicProgram, LogicFormula)
-def ground(model, target=None, queries=None, evidence=None, propagate_evidence=False, **kwdargs):
+def ground(model, target=None, queries=None, evidence=None, propagate_evidence=False,
+           labels=None, **kwdargs):
     """Ground a given model.
 
     :param model: logic program to ground
@@ -52,7 +53,7 @@ def ground(model, target=None, queries=None, evidence=None, propagate_evidence=F
     :rtype: LogicFormula
     """
     return DefaultEngine(**kwdargs).ground_all(model, target, queries=queries, evidence=evidence,
-                                               propagate_evidence=propagate_evidence)
+                                               propagate_evidence=propagate_evidence, labels=labels)
 
 
 class GenericEngine(object):  # pragma: no cover
@@ -291,6 +292,8 @@ class ClauseDBEngine(GenericEngine):
                 raise UnknownClause(term.signature, location=db.lineno(term.location))
 
         try:
+            term = term.apply(_ReplaceVar())  # replace Var(_) by integers
+
             context = self.create_context(term.args)
             context, xxx = substitute_call_args(context, context)
             results = self.execute(clause_node, database=db, target=gp, context=context, **kwdargs)
@@ -335,11 +338,12 @@ class ClauseDBEngine(GenericEngine):
 
     def ground_queries(self, db, target, queries):
         logger = logging.getLogger('problog')
-        for query in queries:
+        for label, query in queries:
             logger.debug("Grounding query '%s'", query)
-            target = self.ground(db, query, target, label=target.LABEL_QUERY)
+            target = self.ground(db, query, target, label=label)
             logger.debug("Ground program size: %s", len(target))
 
+<<<<<<< HEAD
     def ground_constraints(self, db, target, constraints):
         from .logic import term2list
         from .constraint import ClauseConstraint
@@ -386,7 +390,13 @@ class ClauseDBEngine(GenericEngine):
                 # TODO: If term is not part of the answer to a query this crashes problog
                 target.add_constraint(ClauseConstraint(terms_idx))
 
-    def ground_all(self, db, target=None, queries=None, evidence=None, constraints=None, propagate_evidence=False):
+    def ground_all(self, db, target=None, queries=None, evidence=None, propagate_evidence=False, constraints=None, propagate_evidence=False):
+        if labels is None:
+            labels = []
+        # Initialize target if not given.
+        if target is None:
+            target = LogicFormula()
+
         db = self.prepare(db)
         logger = logging.getLogger('problog')
         with Timer('Grounding'):
@@ -400,6 +410,10 @@ class ClauseDBEngine(GenericEngine):
             if evidence is None:
                 evidence = self.query(db, Term('evidence', None, None))
                 evidence += self.query(db, Term('evidence', None))
+
+            queries = [(target.LABEL_QUERY, q) for q in queries]
+            for label, arity in labels:
+                queries += [(label, q[0]) for q in self.query(db, Term(label, *([None] * arity)))]
 
             for ev in evidence:
                 if not isinstance(ev[0], Term):
@@ -418,6 +432,7 @@ class ClauseDBEngine(GenericEngine):
             # Initialize target if not given.
             if target is None:
                 target = LogicFormula()
+
             # Ground queries
             if propagate_evidence:
                 with Timer('Propagating evidence'):
@@ -439,6 +454,23 @@ class ClauseDBEngine(GenericEngine):
         if self.__externals is None or func_name not in self.__externals:
             return None
         return self.__externals[func_name]
+
+
+class _ReplaceVar(object):
+
+    def __init__(self):
+        self.translate = {}
+
+    def __getitem__(self, name):
+        if type(name) == str:
+            if name in self.translate:
+                return self.translate[name]
+            else:
+                v = -len(self.translate) - 1
+                self.translate[name] = v
+                return v
+        else:
+            return name
 
 
 class UnknownClauseInternal(Exception):
@@ -590,8 +622,11 @@ class ClauseDB(LogicProgram):
         self.__builtins = builtins
 
         self.data = {}
+        self.engine = None
 
         self.__parent = parent
+        self.__node_redirect = {}
+
         if parent is None:
             self.__offset = 0
         else:
@@ -600,6 +635,8 @@ class ClauseDB(LogicProgram):
             if hasattr(parent, 'source_files'):
                 self.source_files = parent.source_files[:]
             self.__offset = len(parent)
+
+        self.dont_cache = set()
 
     def __len__(self):
         return len(self.__nodes) + self.__offset
@@ -696,6 +733,8 @@ class ClauseDB(LogicProgram):
         :rtype: :class:`tuple`
         :raises IndexError: the given index does not point to a node
         """
+        index = self.__node_redirect.get(index, index)
+
         if index < self.__offset:
             return self.__parent.get_node(index)
         else:
@@ -739,6 +778,19 @@ class ClauseDB(LogicProgram):
             else:
                 node = self._append_node()
             self._set_head(head, node)
+        elif create and node < self.__offset:
+            existing = self.get_node(node)
+            # node exists in parent
+            clauses = self._create_index(head.arity)
+            if existing:
+                for c in existing.children:
+                    clauses.append(c)
+            old_node = node
+            node = self._append_node(self._define(head.functor, head.arity, clauses,
+                                                  head.location))
+            self.__node_redirect[old_node] = node
+            self._set_head(head, node)
+
         return node
 
     def find(self, head):
@@ -804,7 +856,7 @@ class ClauseDB(LogicProgram):
                                   % head.signature)
 
     def get_local_scope(self, signature):
-        if signature == 'findall/3':
+        if signature in ('findall/3', 'all/3', 'all_or_none/3'):
             return 0, 1
         else:
             return []
@@ -1061,7 +1113,8 @@ class _AutoDict(dict):
         if key == '_' and self.__localmode:
             key = '_#%s' % self.__anon
 
-        if key == '_':
+        if key == '_' or key is None:
+
             value = len(self)
             self.__anon += 1
             return value

@@ -103,10 +103,13 @@ class ConstraintAD(Constraint):
         :param formula: formula from which the node is taken
         :return: value of the node after constraint propagation
         """
+
         if node in self.nodes:
             return node
 
-        if formula.has_evidence_values():
+        is_extra = formula.get_node(node).probability == formula.WEIGHT_NEUTRAL
+
+        if formula.has_evidence_values() and not is_extra:
             # Propagate constraint: if one of the other nodes is True: this one is false
             for n in self.nodes:
                 if formula.get_evidence_value(n) == formula.TRUE:
@@ -136,7 +139,11 @@ class ConstraintAD(Constraint):
                     if unknown is not None:
                         formula.set_evidence_value(unknown, formula.TRUE)
 
-        self.nodes.add(node)
+        if is_extra:
+            self.extra_node = node
+        else:
+            self.nodes.add(node)
+
         if len(self.nodes) > 1 and self.extra_node is None:
             # If there are two or more choices -> add extra choice node
             self._update_logic(formula)
@@ -161,21 +168,23 @@ class ConstraintAD(Constraint):
         """
         if self.is_nontrivial():
             name = Term('choice', Constant(self.group[0]), Term('e'), Term('null'), *self.group[1])
-            self.extra_node = formula.add_atom(('%s_extra' % (self.group,)), True, name=name)
+            self.extra_node = formula.add_atom(('%s_extra' % (self.group,)), True, name=name, group=self.group)
             # formula.addConstraintOnNode(self, self.extra_node)
 
     def update_weights(self, weights, semiring):
         if self.is_nontrivial():
             s = semiring.zero()
+            ws = []
             for n in self.nodes:
                 pos, neg = weights.get(n, (semiring.one(), semiring.one()))
                 weights[n] = (pos, semiring.one())
-                s = semiring.plus(s, pos)
+                ws.append(pos)
             if not semiring.in_domain(s):
                 raise InvalidValue('Sum of annotated disjunction weigths exceed acceptable value')
                 # TODO add location
 
-            complement = semiring.negate(s)
+            name = Term('choice', Constant(self.group[0]), Term('e'), Term('null'), *self.group[1])
+            complement = semiring.ad_complement(ws, key=name)
             weights[self.extra_node] = (complement, semiring.one())
 
     def copy(self, rename=None):

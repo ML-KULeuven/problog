@@ -229,6 +229,14 @@ class BaseFormula(ProbLogObject):
         self._names[self.LABEL_EVIDENCE_POS] = {}
         self._names[self.LABEL_EVIDENCE_NEG] = {}
 
+    def clear_queries(self):
+        """Remove all evidence."""
+        self._names[self.LABEL_QUERY] = {}
+
+    def clear_labeled(self, label):
+        """Remove all evidence."""
+        self._names[label] = {}
+
     def get_names(self, label=None):
         """Get a list of all node names in the formula.
 
@@ -261,6 +269,17 @@ class BaseFormula(ProbLogObject):
         :return: ``get_names(LABEL_QUERY)``
         """
         return self.get_names(self.LABEL_QUERY)
+
+    def labeled(self):
+        """Get a list of all query-like labels.
+
+        :return:
+        """
+        result = []
+        for name, node, label in self.get_names_with_label():
+            if label not in (self.LABEL_NAMED, self.LABEL_EVIDENCE_POS, self.LABEL_EVIDENCE_NEG, self.LABEL_EVIDENCE_MAYBE):
+                result.append((name, node, label))
+        return result
 
     def evidence(self):
         """Get a list of all determined evidence.
@@ -956,11 +975,11 @@ class LogicFormula(BaseFormula):
     def __str__(self):
         s = '\n'.join('%s: %s' % (i, n) for i, n, t in self)
         f = True
-        for q in self.queries():
+        for q in self.labeled():
             if f:
                 f = False
                 s += '\nQueries : '
-            s += '\n* %s : %s' % q
+            s += '\n* %s : %s [%s]' % q
 
         f = True
         for q in self.evidence():
@@ -1252,6 +1271,70 @@ label_all=True)
                         if not relevant[abs(c)]:
                             roots.add(abs(c))
         return relevant
+
+    def get_node_multiplicity(self, index):
+        if self.is_true(index):
+            return 1
+        elif self.is_false(index):
+            return 0
+        else:
+            node = self.get_node(abs(index))
+            ntype = type(node).__name__
+            if ntype == 'atom':
+                return 1
+            elif index < 0:
+                # TODO verify this is correct: negative node has multiplicity 1
+                return 1
+            else:
+                child_multiplicities = [self.get_node_multiplicity(c) for c in node.children]
+                if ntype == 'disj':
+                    return sum(child_multiplicities)
+                else:
+                    r = 1
+                    for cm in child_multiplicities:
+                        r *= cm
+                    return r
+
+    def enumerate_branches(self, index):
+        if self.is_true(index):
+            yield 0, [self.TRUE]
+        elif self.is_false(index):
+            yield 0, []
+        elif index < 0:
+            yield index, [index]
+        else:
+            node = self.get_node(index)
+            ntype = type(node).__name__
+            if ntype == 'atom':
+                yield index, [index]
+            elif ntype == 'conj':
+                from itertools import product, chain
+                for b in product(*(self.enumerate_branches(c) for c in node.children)):
+                    c_max, c_br = zip(*b)
+                    mx = max(c_max)
+                    yield max(index, mx), chain(*c_br)
+            else:
+                for c in node.children:
+                    for mx, b in self.enumerate_branches(c):
+                        yield mx, b
+
+    def copy_node(self, target, index):
+        if self.is_true(index):
+            return target.TRUE
+        elif self.is_false(index):
+            return target.FALSE
+        else:
+            node = self.get_node(abs(index))
+            ntype = type(node).__name__
+            sign = 1 if index > 0 else -1
+            if ntype == 'atom':
+                return sign * target.add_atom(*node)
+            elif ntype == 'conj':
+                children = [self.copy_node(target, c) for c in node.children]
+                return sign * target.add_and(children)
+            elif ntype == 'disj':
+                children = [self.copy_node(target, c) for c in node.children]
+                return sign * target.add_or(children)
 
     def _unroll_conj(self, node):
         assert type(node).__name__ == 'conj'
