@@ -343,7 +343,6 @@ class ClauseDBEngine(GenericEngine):
             target = self.ground(db, query, target, label=label)
             logger.debug("Ground program size: %s", len(target))
 
-<<<<<<< HEAD
     def ground_constraints(self, db, target, constraints):
         from .logic import term2list
         from .constraint import ClauseConstraint
