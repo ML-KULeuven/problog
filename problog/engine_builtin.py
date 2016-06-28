@@ -1073,7 +1073,6 @@ def _builtin_consult(filename, database=None, engine=None, **kwdargs):
    :param kwdargs: additional arguments
    :return: True
     """
-
     root = database.source_root
     if filename.location:
         source_root = database.source_files[filename.location[0]]
@@ -1092,7 +1091,7 @@ def _builtin_consult(filename, database=None, engine=None, **kwdargs):
         identifier = len(database.source_files)
         database.source_files.append(filename)
         database.source_parent.append(kwdargs.get('location'))
-        pl = PrologFile(filename, identifier=identifier)
+        pl = PrologFile(filename, identifier=identifier, factory=database.extra_info.get('factory'), parser=database.extra_info.get('parser'))
         database.line_info.append(pl.line_info[0])
         for clause in pl:
             database += clause

@@ -36,7 +36,7 @@ import sys
 class LogicProgram(object):
     """LogicProgram"""
 
-    def __init__(self, source_root='.', source_files=None, line_info=None):
+    def __init__(self, source_root='.', source_files=None, line_info=None, **extra_info):
         if source_files is None:
             source_files = [None]
         if line_info is None:
@@ -44,6 +44,7 @@ class LogicProgram(object):
         self.source_root = source_root
         self.source_files = source_files
         self.source_parent = [None]
+        self.extra_info = extra_info
         # line_info should be array, corresponding to 'source_files'.
         self.line_info = line_info
 
@@ -127,6 +128,7 @@ class LogicProgram(object):
             return src
         else:
             obj = cls(**extra)
+            obj.extra_info.update(src.extra_info)
             if hasattr(src, 'source_root') and hasattr(src, 'source_files'):
                 obj.source_root = src.source_root
                 obj.source_files = src.source_files[:]
@@ -203,14 +205,15 @@ class PrologString(LogicProgram):
         self.__program = None
         self.__identifier = identifier
         lines = [self._find_lines(string)]
-        LogicProgram.__init__(self, source_root=source_root, source_files=source_files,
-                              line_info=lines)
         if parser is None:
             if factory is None:
                 factory = DefaultPrologFactory(identifier=identifier)
             self.parser = DefaultPrologParser(factory)
         else:
             self.parser = parser
+
+        LogicProgram.__init__(self, source_root=source_root, source_files=source_files,
+                              line_info=lines, factory=factory, parser=parser)
 
     def _program(self):
         """Parsed program"""
