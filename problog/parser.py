@@ -419,7 +419,7 @@ class PrologParser(object):
                      special=SPECIAL_PIPE), pos + 1
 
     def _token_tilde(self, s, pos):
-        return Token('~', pos, unop=(900, 'fx', self.factory.build_unop)), pos + 1
+        return Token('~', pos, unop=(900, 'fx', self.factory.build_unop), binop=(1000, 'xfx', self.factory.build_probabilistic)), pos + 1
 
     def _token_lower(self, s, pos):
         end = pos + 1
