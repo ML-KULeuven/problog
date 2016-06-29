@@ -399,6 +399,7 @@ class ExtendedPrologFactory(PrologFactory):
     def _update_functors(self, t):
         """Adapt functors that appear as a negative literal to be f_p and f_n
         where f appears in the head.
+        TODO: Should be implemented using a more general visitor pattern
         """
         if type(t) is Clause:
             self._update_functors(t.head)
@@ -433,7 +434,7 @@ class ExtendedPrologFactory(PrologFactory):
         # literal such that:
         # f :- f_p, \+f_n.
         for k, v in self.neg_head_lits.items():
-            cur_vars = [Var("v{}".format(i)) for i in range(v['c'])]
+            cur_vars = [Var("V{}".format(i)) for i in range(v['c'])]
             new_clause = Clause(Term(v['f'], *cur_vars),
                                 And(Term(v['p'], *cur_vars), Not('\+', Term(v['n'], *cur_vars))))
             clauses.append(new_clause)
