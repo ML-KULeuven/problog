@@ -549,6 +549,8 @@ class LogicFormula(BaseFormula):
         """
         if probability is None and not self._keep_all:
             return self.TRUE
+        elif probability is False and not self._keep_all:
+            return self.TRUE
         elif probability != self.WEIGHT_NEUTRAL and self.semiring and \
                 self.semiring.is_zero(self.semiring.value(probability)):
             return self.FALSE
@@ -1314,13 +1316,17 @@ label_all=True)
             ntype = type(node).__name__
             sign = 1 if index > 0 else -1
             if ntype == 'atom':
-                return sign * target.add_atom(*node)
+                at = target.add_atom(*node)
             elif ntype == 'conj':
                 children = [self.copy_node(target, c) for c in node.children]
-                return sign * target.add_and(children)
+                at = target.add_and(children)
             elif ntype == 'disj':
                 children = [self.copy_node(target, c) for c in node.children]
-                return sign * target.add_or(children)
+                at = target.add_or(children)
+            if sign < -1:
+                return target.negate(at)
+            else:
+                return at
 
     def _unroll_conj(self, node):
         assert type(node).__name__ == 'conj'

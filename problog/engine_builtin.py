@@ -1286,6 +1286,7 @@ def _builtin_findall_base(pattern, goal, result, database=None, target=None,
     new_results = []
     keep_all_restore = target._keep_all
     target._keep_all = False
+
     for res, n in results:
         for mx, b in findall_target.enumerate_branches(n):
             b = list(b)
