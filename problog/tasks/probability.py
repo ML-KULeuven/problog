@@ -33,7 +33,7 @@ from ..util import Timer, start_timer, stop_timer, init_logger, format_dictionar
 from ..errors import process_error
 
 
-def print_result(d, output, precision=8):
+def print_result(d, output, debug=False, precision=8):
     """Pretty print result.
 
     :param d: result from run_problog
@@ -46,7 +46,7 @@ def print_result(d, output, precision=8):
         print(format_dictionary(d, precision), file=output)
         return 0
     else:
-        print (process_error(d), file=output)
+        print (process_error(d, debug=debug), file=output)
         return 1
 
 
@@ -212,7 +212,7 @@ def main(argv, result_handler=None):
         if args.web:
             result_handler = print_result_json
         else:
-            result_handler = print_result
+            result_handler = lambda *a: print_result(*a, debug=args.debug)
 
     init_logger(args.verbose)
 

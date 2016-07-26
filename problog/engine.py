@@ -1010,6 +1010,11 @@ class ClauseDB(LogicProgram):
         """
         return PrologFunction(self, functor, arity)
 
+    def iter_nodes(self):
+        # TODO make this work for extended database
+        return iter(self.__nodes)
+
+
 
 class PrologFunction(object):
 

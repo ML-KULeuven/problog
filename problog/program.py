@@ -128,7 +128,8 @@ class LogicProgram(object):
             return src
         else:
             obj = cls(**extra)
-            obj.extra_info.update(src.extra_info)
+            if hasattr(src, 'extra_info'):
+                obj.extra_info.update(src.extra_info)
             if hasattr(src, 'source_root') and hasattr(src, 'source_files'):
                 obj.source_root = src.source_root
                 obj.source_files = src.source_files[:]

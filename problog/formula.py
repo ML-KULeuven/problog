@@ -854,10 +854,10 @@ class LogicFormula(BaseFormula):
                 # Handle trivial cases:
                 # Node should be true, but is a conjunction with a false child
                 if t == 'conj' and self.FALSE in children and nid > 0:
-                    raise InconsistentEvidenceError()
+                    raise InconsistentEvidenceError(context=" during evidence propagation")
                 # Node should be false, but is a disjunction with a true child
                 elif t == 'disj' and self.TRUE in children and nid < 0:
-                    raise InconsistentEvidenceError()
+                    raise InconsistentEvidenceError(context=" during evidence propagation")
                 # Node should be false, and is a conjunction with a false child
                 elif t == 'conj' and self.FALSE in children and nid < 0:
                     # Already satisfied, nothing else to do

@@ -406,7 +406,7 @@ class DDEvaluator(Evaluator):
             self.evidence_inode = self._get_manager().conjoin(constraint_inode, *evidence_nodes)
             result = self._get_manager().wmc(self.evidence_inode, self.weights, self.semiring)
             if result == self.semiring.zero():
-                raise InconsistentEvidenceError()
+                raise InconsistentEvidenceError(context=' during compilation')
             self._evidence_weight = self.semiring.normalize(result, self.normalization)
         return self._evidence_weight
 

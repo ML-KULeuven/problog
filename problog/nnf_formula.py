@@ -80,7 +80,7 @@ class SimpleNNFEvaluator(Evaluator):
                 self.set_evidence(abs(ev), ev > 0)
 
         if self.semiring.result(self._get_z(), self.formula) == 0.0:
-            raise InconsistentEvidenceError()
+            raise InconsistentEvidenceError(context=" during evidence evaluation")
 
     def propagate(self):
         self._initialize()
