@@ -550,7 +550,7 @@ class LogicFormula(BaseFormula):
         if probability is None and not self._keep_all:
             return self.TRUE
         elif probability is False and not self._keep_all:
-            return self.TRUE
+            return self.FALSE
         elif probability != self.WEIGHT_NEUTRAL and self.semiring and \
                 self.semiring.is_zero(self.semiring.value(probability)):
             return self.FALSE
@@ -1323,7 +1323,7 @@ label_all=True)
             elif ntype == 'disj':
                 children = [self.copy_node(target, c) for c in node.children]
                 at = target.add_or(children)
-            if sign < -1:
+            if sign < 0:
                 return target.negate(at)
             else:
                 return at
