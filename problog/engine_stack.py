@@ -1190,9 +1190,18 @@ class DefineCache(object):
         else:
             res_keys = list(results.keys())
             self.__non_ground[goal] = results
-            # for res_key in res_keys:
-            #     key = (functor, res_key)
-            #     self.__ground[key] = results[res_key]
+            all_ground = True
+            for res_key in res_keys:
+                key = (functor, res_key)
+                all_ground &= is_ground(*res_key)
+                if not all_ground:
+                    break
+
+            # TODO caching might be incorrect if program contains var(X) or nonvar(X) or ground(X).
+            if all_ground:
+                for res_key in res_keys:
+                    key = (functor, res_key)
+                    self.__ground[key] = results[res_key]
 
     def get(self, key, default=None):
         try:
@@ -1449,13 +1458,8 @@ class EvalDefine(EvalNode):
                     nodes = new_nodes
                 node = self.target.add_or(nodes, readonly=(not cycle), name=name)
                 if is_ground(*res) and is_ground(*self.call[1]):
-                    # print ('CACHING X', self.call, cache_key, res, node)
                     self.target._cache[cache_key] = {res: node}
 
-            # node = self.target.add_or( nodes, readonly=(not cycle) )
-            # if self.engine.label_all:
-            #     name = str(Term(self.node.functor, *res))
-            #     self.target.addName(name, node, self.target.LABEL_NAMED)
             return node
         self.results.collapse(func)
 
