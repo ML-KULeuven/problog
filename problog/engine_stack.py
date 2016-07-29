@@ -668,7 +668,7 @@ class StackBasedEngine(ClauseDBEngine):
             output = self._clone_context(context)
             try:
                 assert (len(result) == len(node.args))
-                output = unify_call_return(result, node.args, output, var_translate, min_var,
+                output = unify_call_return(result, call_args, output, var_translate, min_var,
                                            mask=ground_mask)
                 if self.debugger:
                     self.debugger.call_result(node_id, node.functor, call_args, result)
