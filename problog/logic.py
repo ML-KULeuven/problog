@@ -931,9 +931,11 @@ _from_math_1 = ['exp', 'log', 'log10', 'sqrt', 'sin', 'cos', 'tan', 'asin', 'aco
 for _f in _from_math_1:
     _arithmetic_functions[(_f, 1)] = getattr(math, _f)
 
-_from_math_0 = ['pi', 'e']
-for _f in _from_math_0:
-    _arithmetic_functions[(_f, 0)] = lambda: getattr(math, _f)
+# _from_math_0 = ['pi', 'e']
+# for _f in _from_math_0:
+#     _x = getattr(math, _f)
+_arithmetic_functions[('pi', 0)] = lambda: math.pi
+_arithmetic_functions[('e', 0)] = lambda: math.e
 
 
 def unquote(s):
