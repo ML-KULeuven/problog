@@ -419,7 +419,27 @@ class PrologParser(object):
                      special=SPECIAL_PIPE), pos + 1
 
     def _token_tilde(self, s, pos):
-        return Token('~', pos, unop=(900, 'fx', self.factory.build_unop)), pos + 1
+        if s[pos:pos + 3] == '~==':
+            return Token('~==', pos, binop=(700, 'xfx', self.factory.build_binop),
+                         functor=self._next_paren_open(s, pos)), pos + 3
+        elif s[pos:pos + 4] == '~=/=':
+            return Token('~=/=', pos, binop=(700, 'xfx', self.factory.build_binop),
+                         functor=self._next_paren_open(s, pos)), pos + 4
+        elif s[pos:pos + 2] == '~<':
+            return Token('~<', pos, binop=(700, 'xfx', self.factory.build_binop),
+                         functor=self._next_paren_open(s, pos)), pos + 2
+        elif s[pos:pos + 3] == '~=<':
+            return Token('~=<', pos, binop=(700, 'xfx', self.factory.build_binop),
+                         functor=self._next_paren_open(s, pos)), pos + 3
+        elif s[pos:pos + 3] == '~>=':
+            return Token('~>=', pos, binop=(700, 'xfx', self.factory.build_binop),
+                         functor=self._next_paren_open(s, pos)), pos + 3
+        elif s[pos:pos + 2] == '~>':
+            return Token('~>', pos, binop=(700, 'xfx', self.factory.build_binop),
+                         functor=self._next_paren_open(s, pos)), pos + 2
+        else:
+            return Token('~', pos, unop=(900, 'fx', self.factory.build_unop),
+                         binop=(1000, 'xfx', self.factory.build_probabilistic)), pos + 1
 
     def _token_lower(self, s, pos):
         end = pos + 1

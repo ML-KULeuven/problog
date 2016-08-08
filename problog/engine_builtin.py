@@ -53,7 +53,8 @@ def add_standard_builtins(engine, b=None, s=None, sp=None):
     engine.add_builtin('\=', 2, b(_builtin_neq))  # -5
 
     engine.add_builtin('findall', 3, sp(_builtin_findall))  # -6
-    engine.add_builtin('findall_top', 3, sp(_builtin_findall_top))  # -7
+    engine.add_builtin('all', 3, sp(_builtin_all))  # -7
+    engine.add_builtin('all_or_none', 3, sp(_builtin_all_or_none))  # -8
 
     engine.add_builtin('==', 2, b(_builtin_same))
     engine.add_builtin('\==', 2, b(_builtin_notsame))
@@ -130,7 +131,54 @@ def add_standard_builtins(engine, b=None, s=None, sp=None):
         engine.add_builtin('error', i, b(_builtin_error))
 
     engine.add_builtin('nl', 0, b(_builtin_nl))
+    engine.add_builtin('cmd_args', 1, s(_builtin_cmdargs))
+    engine.add_builtin('atom_number', 2, s(_builtin_atom_number))
+    engine.add_builtin('nocache', 2, b(_builtin_nocache))
 
+
+def _builtin_nocache(functor, arity, database=None, **kwd):
+    check_mode((functor, arity), ['ai'], **kwd)
+    database.dont_cache.add((str(functor), int(arity)))
+    return True
+
+
+def _builtin_cmdargs(lst, engine=None, **kwd):
+    m = check_mode((lst,), ['v', 'L'], **kwd)
+    args = engine.args
+    if args is None:
+        args = []
+    args = list2term(list(map(Term, args)))
+    if m == 0:
+        return [(args,)]
+    else:
+        try:
+            value = unify_value(args, lst, {})
+            return [(value,)]
+        except UnifyError:
+            return []
+
+
+def _builtin_atom_number(atom, number, **kwd):
+    mode = check_mode((atom, number), ['vf', 'vi', 'av', 'af', 'ai'], **kwd)
+    if mode in (0, 1):
+        return [(Term(str(number)), number)]
+    elif mode == 2:
+        try:
+            v = float(atom.functor)
+        except ValueError:
+            return []   # fail silently
+            # raise GroundingError('Atom does not represent a number: \'%s\'' % atom)
+
+        if round(v) == v:
+            v = Constant(int(v))
+        else:
+            v = Constant(v)
+        return [(atom, v)]
+    else:
+        if atom == str(number):
+            return [(atom, number)]
+        else:
+            return []
 
 
 # noinspection PyUnusedLocal
@@ -1025,7 +1073,6 @@ def _builtin_consult(filename, database=None, engine=None, **kwdargs):
    :param kwdargs: additional arguments
    :return: True
     """
-
     root = database.source_root
     if filename.location:
         source_root = database.source_files[filename.location[0]]
@@ -1044,7 +1091,7 @@ def _builtin_consult(filename, database=None, engine=None, **kwdargs):
         identifier = len(database.source_files)
         database.source_files.append(filename)
         database.source_parent.append(kwdargs.get('location'))
-        pl = PrologFile(filename, identifier=identifier)
+        pl = PrologFile(filename, identifier=identifier, factory=database.extra_info.get('factory'), parser=database.extra_info.get('parser'))
         database.line_info.append(pl.line_info[0])
         for clause in pl:
             database += clause
@@ -1107,20 +1154,23 @@ def _select_sublist(lst, target):
     choice_bits = [None] * l
     x = 0
     for i in range(0, l):
-        if lst[i][1] != target.TRUE:
+        if lst[i][1] not in (target.TRUE, target.FALSE):
             choice_bits[i] = x
             x += 1
+
     # We have 2^x distinct lists. Each can be represented as a number between 0 and 2^x-1=n.
     n = (1 << x) - 1
 
     while n >= 0:
         # Generate the list of positive values and node identifiers
         # noinspection PyTypeChecker
-        sublist = [lst[i] for i in range(0, l) if choice_bits[i] is None or n & 1 << choice_bits[i]]
+        sublist = [lst[i] for i in range(0, l)
+                   if (choice_bits[i] is None and lst[i][1] == target.TRUE) or (choice_bits[i] is not None and n & 1 << choice_bits[i])]
         # Generate the list of negative node identifiers
         # noinspection PyTypeChecker
-        sublist_no = tuple([-lst[i][1] for i in range(0, l) if
-                            not (choice_bits[i] is None or n & 1 << choice_bits[i])])
+        sublist_no = tuple([target.negate(lst[i][1]) for i in range(0, l)
+                            if (choice_bits[i] is None and lst[i][1] == target.FALSE) or (
+                            choice_bits[i] is not None and not n & 1 << choice_bits[i])])
         if sublist:
             terms, nodes = zip(*sublist)
         else:
@@ -1130,10 +1180,14 @@ def _select_sublist(lst, target):
         n -= 1
 
 
-def _builtin_findall_base(pattern, goal, result, top_only=False, database=None, target=None,
-                          engine=None, context=None, **kwdargs):
+def _builtin_all_or_none(pattern, goal, result, **kwargs):
+    return _builtin_all(pattern, goal, result, allow_none=True, **kwargs)
+
+
+def _builtin_all(pattern, goal, result, allow_none=False, database=None, target=None,
+                      engine=None, context=None, **kwdargs):
     """
-    Implementation of findall/3 builtin.
+    Implementation of all/3 builtin.
    :param pattern: pattern to extract
    :type pattern: Term
    :param goal: goal to evaluate
@@ -1168,38 +1222,100 @@ def _builtin_findall_base(pattern, goal, result, top_only=False, database=None, 
     results = engine.call(findall_head, subcall=True, database=findall_db, target=target, **kwdargs)
     results = [(res[0], n) for res, n in results]
     output = []
-    if top_only:
-        if results:
-            # Only return the maximal list.
-            l, n = zip(*results)
-            node = target.add_and(n)
-            if node is not None:
-                res = build_list(l, Term('[]'))
-                if mode == 0:  # var
+
+    for l, n in _select_sublist(results, target):
+        if not l and not allow_none:
+            continue
+        node = target.add_and(n)
+        if node is not None:
+            res = build_list(l, Term('[]'))
+            if mode == 0:  # var
+                args = (pattern, goal, res)
+                output.append((args, node))
+            else:
+                try:
+                    res = unify_value(res, result, {})
                     args = (pattern, goal, res)
                     output.append((args, node))
-                else:
-                    try:
-                        res = unify_value(res, result, {})
-                        args = (pattern, goal, res)
-                        output.append((args, node))
-                    except UnifyError:
-                        pass
-    else:
-        for l, n in _select_sublist(results, target):
-            node = target.add_and(n)
-            if node is not None:
-                res = build_list(l, Term('[]'))
-                if mode == 0:  # var
+                except UnifyError:
+                    pass
+
+    return output
+
+
+def _builtin_findall_base(pattern, goal, result, database=None, target=None,
+                          engine=None, context=None, **kwdargs):
+    """
+    Implementation of findall/3 builtin.
+   :param pattern: pattern to extract
+   :type pattern: Term
+   :param goal: goal to evaluate
+   :type goal: Term
+   :param result: list to store results
+   :type result: Term
+   :param database: database holding logic program
+   :type database: ClauseDB
+   :param target: logic formula in which to store the result
+   :type target: LogicFormula
+   :param engine: engine that is used for evaluation
+   :type engine: ClauseDBEngine
+   :param kwdargs: additional arguments from engine
+   :return: list results (tuple of lists and node identifiers)
+    """
+    # Check the modes.
+    mode = check_mode((pattern, goal, result,), ['*cv', '*cl'], database=database, **kwdargs)
+
+    findall_head = Term(engine.get_non_cache_functor(), pattern, *goal.variables())
+    findall_clause = Clause(findall_head, goal)
+    findall_db = database.extend()
+    findall_db += findall_clause
+
+    class _TranslateToNone(object):
+
+        # noinspection PyUnusedLocal
+        def __getitem__(self, item):
+            return None
+
+    findall_head = substitute_simple(findall_head, _TranslateToNone())
+
+    findall_target = target.__class__(keep_order=True, keep_all=True, keep_duplicates=True)
+    try:
+        results = engine.call(findall_head, subcall=True, database=findall_db, target=findall_target, **kwdargs)
+    except RuntimeError:
+        raise IndirectCallCycleError(database.lineno(kwdargs.get('call_origin', (None, None))[1]))
+
+    new_results = []
+    keep_all_restore = target._keep_all
+    target._keep_all = False
+
+    for res, n in results:
+        for mx, b in findall_target.enumerate_branches(n):
+            b = list(b)
+            b_renamed = [findall_target.copy_node(target, c) for c in b]
+            proof_node = target.add_and(b_renamed)
+            # TODO order detection mechanism is too fragile?
+            if b:
+                new_results.append((mx, res[0], proof_node))
+            else:
+                new_results.append((mx, res[0], proof_node))
+    target._keep_all = keep_all_restore
+    new_results = [(b, c) for a, b, c in sorted(new_results, key=lambda s: s[0])]
+
+    output = []
+    for l, n in _select_sublist(new_results, target):
+        node = target.add_and(n)
+        if node is not None:
+            res = build_list(l, Term('[]'))
+            if mode == 0:  # var
+                args = (pattern, goal, res)
+                output.append((args, node))
+            else:
+                try:
+                    res = unify_value(res, result, {})
                     args = (pattern, goal, res)
                     output.append((args, node))
-                else:
-                    try:
-                        res = unify_value(res, result, {})
-                        args = (pattern, goal, res)
-                        output.append((args, node))
-                    except UnifyError:
-                        pass
+                except UnifyError:
+                    pass
     return output
 
 
@@ -1262,11 +1378,7 @@ def _builtin_sample_uniform(key, lst, result, database=None, target=None, **kwda
 
 
 def _builtin_findall(pattern, goal, result, **kwdargs):
-    return _builtin_findall_base(pattern, goal, result, top_only=False, **kwdargs)
-
-
-def _builtin_findall_top(pattern, goal, result, **kwdargs):
-    return _builtin_findall_base(pattern, goal, result, top_only=True, **kwdargs)
+    return _builtin_findall_base(pattern, goal, result, **kwdargs)
 
 
 # noinspection PyPep8Naming
@@ -1486,7 +1598,7 @@ class problog_export_nondet(problog_export):
 
 def _builtin_use_module(filename, database=None, location=None, **kwdargs):
     if filename.functor == 'library' and filename.arity == 1:
-        filename = os.path.join(os.path.dirname(__file__), 'library',
+        filename = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'library',
                                 _atom_to_filename(filename.args[0]))
         if not os.path.exists(filename + '.pl'):
             filename += '.py'

@@ -97,7 +97,7 @@ class KBestEvaluator(Evaluator):
     def evaluate(self, index):
         """Compute the value of the given node."""
 
-        name = [n for n, i in self.formula.queries() if i == index]
+        name = [n for n, i, l in self.formula.labeled() if i == index]
         if name:
             name = name[0]
         else:

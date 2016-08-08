@@ -30,7 +30,16 @@ problog.initialize = function(settings) {
 
   $.extend(problog, settings);
 
-  $('head').append('<style type="text/css" media="screen">.problog-editor-container, .problog-editor-container-intr {border: 1px solid #ddd;} .problog-editor-buttons {margin: 5px 0;} .problog-editor-hash {float:right; margin-right:5px;} .problog-editor-results table {margin-bottom:3px;} .problog-editor-results th {cursor:pointer;} .problog-result-sorted-desc:after {content:"▲";} .problog-result-sorted-asc:after {content:"▼";} table .progress {margin-bottom: 0;}</style>');
+  $('head').append('<style type="text/css"> \
+     .problog-edit-editor {height: 400px; width: 100%;} \
+     .problog-editor {width:100%;} \
+     .problog-editor-hash {float:right; margin-right:5px;} \
+     .problog-edit-editor-small {height: 200px; width: 100%;} \
+     .problog-result-sortable {cursor: pointer;} \
+     .problog-result-sorted-asc::after {content: "\\025bc";} \
+     .problog-result-sorted-desc::after {content: "\\025b2";} \
+     .glyphicon-refresh-animate {-animation: spin .7s infinite linear; -webkit-animation: spin2 .7s infinite linear;} @-webkit-keyframes spin2 { from { -webkit-transform: rotate(0deg);} to { -webkit-transform: rotate(360deg); } @keyframes spin { from { transform: scale(1) rotate(0deg);} to { transform: scale(1) rotate(360deg);} \
+     </style>');
 
   $(problog.selector).each(function(i,el) {
     problog.initDiv($(el), problog.resize)
@@ -177,9 +186,9 @@ problog.initDiv = function(el, resize) {
           result = $('<table>', {'class': 'table table-condensed'})
             .append($('<thead>')
              .append($('<tr>')
-              .append($('<th style="width:50%;">').text(learn?'Fact':'Query'))
-              .append($('<th style="width:10%;">').text('Location'))
-              .append($('<th style="width:40%;">').text('Probability'))
+              .append($('<th class="problog-result-sortable" style="width:50%;">').text(learn?'Fact':'Query'))
+              .append($('<th class="problog-result-sortable" style="width:10%;">').text('Location'))
+              .append($('<th class="problog-result-sortable" style="width:40%;">').text('Probability'))
              )
             ).append(result);
 

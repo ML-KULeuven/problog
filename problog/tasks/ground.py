@@ -48,6 +48,9 @@ def main(argv, result_handler=None):
     parser.add_argument('--noninterpretable', action='store_true')
     parser.add_argument('--web', action='store_true', help=argparse.SUPPRESS)
     parser.add_argument('-o', '--output', type=str, help='output file', default=None)
+    parser.add_argument('-a', '--arg', dest='args', action='append',
+                        help='Pass additional arguments to the cmd_args builtin.')
+
     args = parser.parse_args(argv)
 
     outformat = args.format

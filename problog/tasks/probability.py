@@ -24,14 +24,16 @@ import os
 import traceback
 
 from ..program import PrologFile
+from ..formula import LogicFormula
+from ..engine import DefaultEngine
 from ..evaluator import SemiringLogProbability, SemiringProbability, SemiringSymbolic
 from .. import get_evaluatable, get_evaluatables
 
-from ..util import Timer, start_timer, stop_timer, init_logger, format_dictionary
+from ..util import Timer, start_timer, stop_timer, init_logger, format_dictionary, format_value
 from ..errors import process_error
 
 
-def print_result(d, output, precision=8):
+def print_result(d, output, debug=False, precision=8):
     """Pretty print result.
 
     :param d: result from run_problog
@@ -44,7 +46,7 @@ def print_result(d, output, precision=8):
         print(format_dictionary(d, precision), file=output)
         return 0
     else:
-        print (process_error(d), file=output)
+        print (process_error(d, debug=debug), file=output)
         return 1
 
 
@@ -61,7 +63,7 @@ def print_result_json(d, output, precision=8):
     success, d = d
     if success:
         result['SUCCESS'] = True
-        result['probs'] = [[str(n), round(p, precision), n.loc[1], n.loc[2]] for n, p in d.items()]
+        result['probs'] = [[str(n), format_value(p, precision), n.loc[1], n.loc[2]] for n, p in d.items()]
     else:
         result['SUCCESS'] = False
         result['err'] = vars(d)
@@ -83,12 +85,17 @@ def execute(filename, knowledge=None, semiring=None, debug=False, **kwdargs):
     :return: tuple where first value indicates success, and second value contains result details
     """
 
-    if knowledge is None or type(knowledge) == str:
-        knowledge = get_evaluatable(knowledge)
     try:
         with Timer('Total time'):
             model = PrologFile(filename)
-            formula = knowledge.create_from(model, **kwdargs)
+            engine = DefaultEngine(**kwdargs)
+            db = engine.prepare(model)
+            db_semiring = db.get_data('semiring')
+            if db_semiring is not None:
+                semiring = db_semiring
+            if knowledge is None or type(knowledge) == str:
+                knowledge = get_evaluatable(knowledge, semiring=semiring)
+            formula = knowledge.create_from(db, **kwdargs)
             result = formula.evaluate(semiring=semiring, **kwdargs)
 
             # Update loceation information on result terms
@@ -161,6 +168,8 @@ def argparser():
     parser.add_argument('--debug', '-d', action='store_true',
                         help="Enable debug mode (print full errors).")
     parser.add_argument('--web', action='store_true', help=argparse.SUPPRESS)
+    parser.add_argument('-a', '--arg', dest='args', action='append',
+                        help='Pass additional arguments to the cmd_args builtin.')
 
     # Additional arguments (passed through)
     parser.add_argument('--engine-debug', action='store_true', help=argparse.SUPPRESS)
@@ -203,7 +212,7 @@ def main(argv, result_handler=None):
         if args.web:
             result_handler = print_result_json
         else:
-            result_handler = print_result
+            result_handler = lambda *a: print_result(*a, debug=args.debug)
 
     init_logger(args.verbose)
 

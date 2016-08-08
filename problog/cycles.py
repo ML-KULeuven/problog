@@ -50,12 +50,12 @@ def break_cycles(source, target, **kwdargs):
         content = set()
         translation = defaultdict(list)
 
-        for q, n in source.queries():
+        for q, n, l in source.labeled():
             if source.is_probabilistic(n):
                 newnode = _break_cycles(source, target, n, [], cycles_broken, content, translation)
             else:
                 newnode = n
-            target.add_name(q, newnode, target.LABEL_QUERY)
+            target.add_name(q, newnode, l)
 
         translation = defaultdict(list)
         for q, n, v in source.evidence_all():

@@ -31,6 +31,8 @@ from .errors import InconsistentEvidenceError
 from .util import OrderedSet
 from .logic import Term, Or, Clause, And, is_ground
 
+from .evaluator import Evaluatable, FormulaEvaluator, FormulaEvaluatorNSP
+
 from .constraint import ConstraintAD
 
 
@@ -134,10 +136,14 @@ class BaseFormula(ProbLogObject):
 
         result = {}
         for n, w in weights.items():
+            if hasattr(self, 'get_name'):
+                name = self.get_name(n)
+            else:
+                name = n
             if w == self.WEIGHT_NEUTRAL and type(self.WEIGHT_NEUTRAL) == type(w):
                 result[n] = semiring.one(), semiring.one()
             else:
-                result[n] = semiring.pos_value(w, n), semiring.neg_value(w, n)
+                result[n] = semiring.pos_value(w, name), semiring.neg_value(w, name)
 
         for c in self.constraints():
             c.update_weights(result, semiring)
@@ -173,6 +179,10 @@ class BaseFormula(ProbLogObject):
                 return res
         raise KeyError(name)
 
+    # def get_name(self, key):
+    #     names = self.get_names()
+    #     print (names)
+
     def add_query(self, name, key):
         """Add a query name.
 
@@ -198,6 +208,20 @@ class BaseFormula(ProbLogObject):
             self.add_name(name, key, self.LABEL_EVIDENCE_POS)
         else:
             self.add_name(name, key, self.LABEL_EVIDENCE_NEG)
+
+    def clear_evidence(self):
+        """Remove all evidence."""
+        self._names[self.LABEL_EVIDENCE_MAYBE] = {}
+        self._names[self.LABEL_EVIDENCE_POS] = {}
+        self._names[self.LABEL_EVIDENCE_NEG] = {}
+
+    def clear_queries(self):
+        """Remove all evidence."""
+        self._names[self.LABEL_QUERY] = {}
+
+    def clear_labeled(self, label):
+        """Remove all evidence."""
+        self._names[label] = {}
 
     def get_names(self, label=None):
         """Get a list of all node names in the formula.
@@ -231,6 +255,17 @@ class BaseFormula(ProbLogObject):
         :return: ``get_names(LABEL_QUERY)``
         """
         return self.get_names(self.LABEL_QUERY)
+
+    def labeled(self):
+        """Get a list of all query-like labels.
+
+        :return:
+        """
+        result = []
+        for name, node, label in self.get_names_with_label():
+            if label not in (self.LABEL_NAMED, self.LABEL_EVIDENCE_POS, self.LABEL_EVIDENCE_NEG, self.LABEL_EVIDENCE_MAYBE):
+                result.append((name, node, label))
+        return result
 
     def evidence(self):
         """Get a list of all determined evidence.
@@ -514,6 +549,8 @@ class LogicFormula(BaseFormula):
         """
         if probability is None and not self._keep_all:
             return self.TRUE
+        elif probability is False and not self._keep_all:
+            return self.FALSE
         elif probability != self.WEIGHT_NEUTRAL and self.semiring and \
                 self.semiring.is_zero(self.semiring.value(probability)):
             return self.FALSE
@@ -817,10 +854,10 @@ class LogicFormula(BaseFormula):
                 # Handle trivial cases:
                 # Node should be true, but is a conjunction with a false child
                 if t == 'conj' and self.FALSE in children and nid > 0:
-                    raise InconsistentEvidenceError()
+                    raise InconsistentEvidenceError(context=" during evidence propagation")
                 # Node should be false, but is a disjunction with a true child
                 elif t == 'disj' and self.TRUE in children and nid < 0:
-                    raise InconsistentEvidenceError()
+                    raise InconsistentEvidenceError(context=" during evidence propagation")
                 # Node should be false, and is a conjunction with a false child
                 elif t == 'conj' and self.FALSE in children and nid < 0:
                     # Already satisfied, nothing else to do
@@ -926,11 +963,11 @@ class LogicFormula(BaseFormula):
     def __str__(self):
         s = '\n'.join('%s: %s' % (i, n) for i, n, t in self)
         f = True
-        for q in self.queries():
+        for q in self.labeled():
             if f:
                 f = False
                 s += '\nQueries : '
-            s += '\n* %s : %s' % q
+            s += '\n* %s : %s [%s]' % q
 
         f = True
         for q in self.evidence():
@@ -1223,6 +1260,74 @@ label_all=True)
                             roots.add(abs(c))
         return relevant
 
+    def get_node_multiplicity(self, index):
+        if self.is_true(index):
+            return 1
+        elif self.is_false(index):
+            return 0
+        else:
+            node = self.get_node(abs(index))
+            ntype = type(node).__name__
+            if ntype == 'atom':
+                return 1
+            elif index < 0:
+                # TODO verify this is correct: negative node has multiplicity 1
+                return 1
+            else:
+                child_multiplicities = [self.get_node_multiplicity(c) for c in node.children]
+                if ntype == 'disj':
+                    return sum(child_multiplicities)
+                else:
+                    r = 1
+                    for cm in child_multiplicities:
+                        r *= cm
+                    return r
+
+    def enumerate_branches(self, index):
+        if self.is_true(index):
+            yield 0, [self.TRUE]
+        elif self.is_false(index):
+            yield 0, []
+        elif index < 0:
+            yield index, [index]
+        else:
+            node = self.get_node(index)
+            ntype = type(node).__name__
+            if ntype == 'atom':
+                yield index, [index]
+            elif ntype == 'conj':
+                from itertools import product, chain
+                for b in product(*(self.enumerate_branches(c) for c in node.children)):
+                    c_max, c_br = zip(*b)
+                    mx = max(c_max)
+                    yield max(index, mx), chain(*c_br)
+            else:
+                for c in node.children:
+                    for mx, b in self.enumerate_branches(c):
+                        yield mx, b
+
+    def copy_node(self, target, index):
+        if self.is_true(index):
+            return target.TRUE
+        elif self.is_false(index):
+            return target.FALSE
+        else:
+            node = self.get_node(abs(index))
+            ntype = type(node).__name__
+            sign = 1 if index > 0 else -1
+            if ntype == 'atom':
+                at = target.add_atom(*node)
+            elif ntype == 'conj':
+                children = [self.copy_node(target, c) for c in node.children]
+                at = target.add_and(children)
+            elif ntype == 'disj':
+                children = [self.copy_node(target, c) for c in node.children]
+                at = target.add_or(children)
+            if sign < 0:
+                return target.negate(at)
+            else:
+                return at
+
     def _unroll_conj(self, node):
         assert type(node).__name__ == 'conj'
 
@@ -1374,11 +1479,17 @@ label_all=True)
         return destination
 
 
-class LogicDAG(LogicFormula):
+class LogicDAG(LogicFormula, Evaluatable):
     """A propositional logic formula without cycles."""
 
     def __init__(self, auto_compact=True, **kwdargs):
         LogicFormula.__init__(self, auto_compact, **kwdargs)
+
+    def _create_evaluator(self, semiring, weights, **kwargs):
+        if semiring.is_nsp():
+            return FormulaEvaluatorNSP(self, semiring, weights)
+        else:
+            return FormulaEvaluator(self, semiring, weights)
 
 
 class DeterministicLogicFormula(LogicFormula):

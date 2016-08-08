@@ -50,10 +50,14 @@ var problog = {
                             var p = facts[k][1];
                             var l = facts[k][2];
                             var c = facts[k][3];
+                            if (!isNaN(parseFloat(p))) {
+                                p = problog.makeProgressBar(p);
+                            }
+
                             result.append($('<tr>')
                                   .append($('<td>').text(n))
                                   .append($('<td>').text(l+':'+c))
-                                  .append($('<td>').append(problog.makeProgressBar(p))));
+                                  .append($('<td>').append(p)));
                         }
                         var result = problog.createTable(result, [['Query','50%'],['Location','10%'],['Probability','40%']]);
                         pbl.dom.results.html(result);
@@ -107,15 +111,18 @@ var problog = {
                         var result = problog.createTable(result, [['Fact','50%'],['Location','10%'],['Probability','40%']]);
                         pbl.dom.results.html(result);
 
+                        var model_str = "<strong>Model</strong>:<pre><code>" + data['model'] + "</code></pre>";
+
                         var meta_str = "<p><strong>Stats</strong>:";
                         var sep = " ";
                         for (var k in data) {
-                            if (k !== 'weights' && k !== 'probs' && k != 'url' && k !== 'SUCCESS') {
+                            if (k !== 'weights' && k !== 'probs' && k != 'url' && k != 'model' && k !== 'SUCCESS') {
                                 meta_str += sep+k+"="+data[k];
                                 sep = ", ";
                             }
                         }
                         meta_str += "</p>";
+                        $(model_str).appendTo(pbl.dom.results);
                         $(meta_str).appendTo(pbl.dom.results);
                     }
                 },
@@ -311,7 +318,16 @@ problog.init = function(hostname) {
         problog.hostname = hostname;
     }
 
-    $('head').append('<style type="text/css">.problog-edit-editor {height: 400px; width: 100%;} .problog-editor {width:100%;} .problog-editor-hash {float:right; margin-right:5px;} .problog-edit-editor-small {height: 200px; width: 100%;} .glyphicon-refresh-animate {-animation: spin .7s infinite linear; -webkit-animation: spin2 .7s infinite linear;} @-webkit-keyframes spin2 { from { -webkit-transform: rotate(0deg);} to { -webkit-transform: rotate(360deg); } @keyframes spin { from { transform: scale(1) rotate(0deg);} to { transform: scale(1) rotate(360deg);}  </style>')
+    $('head').append('<style type="text/css"> \
+       .problog-edit-editor {height: 400px; width: 100%;} \
+       .problog-editor {width:100%;} \
+       .problog-editor-hash {float:right; margin-right:5px;} \
+       .problog-edit-editor-small {height: 200px; width: 100%;} \
+       .problog-result-sortable {cursor: pointer;} \
+       .problog-result-sorted-asc::after {content: "\\025bc";} \
+       .problog-result-sorted-desc::after {content: "\\025b2";} \
+       .glyphicon-refresh-animate {-animation: spin .7s infinite linear; -webkit-animation: spin2 .7s infinite linear;} @-webkit-keyframes spin2 { from { -webkit-transform: rotate(0deg);} to { -webkit-transform: rotate(360deg); } @keyframes spin { from { transform: scale(1) rotate(0deg);} to { transform: scale(1) rotate(360deg);} \
+       </style>');
     $.each($(problog.selector), problog.init_editor);
 }
 
@@ -371,6 +387,11 @@ problog.init_editor = function(index, object) {
                         if (data.SUCCESS == true) {
                             task.formatResult(pbl, data);
                             pbl.editor.getSession().clearAnnotations();
+                            if (pbl.advanced) {
+                                pbl.setSolveChoices(task.choices);
+                            } else {
+                                pbl.setSolveChoices();
+                            }
                         } else {
                             p = data.err;
                             var msg = p.message;
@@ -700,7 +721,7 @@ problog.createTable = function(body, columns) {
 
     head = $('<tr>');
     $(columns).each(function(index, elem) {
-        head.append($('<th>').css('width', elem[1]).text(elem[0]));
+        head.append($('<th class="problog-result-sortable">').css('width', elem[1]).text(elem[0]));
     });
 
     result = $('<table>').addClass('table table-condensed')

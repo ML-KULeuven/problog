@@ -29,68 +29,165 @@ from problog.formula import LogicFormula, LogicDAG
 from problog.cnf_formula import CNF
 from problog.maxsat import get_solver, get_available_solvers
 from problog.errors import process_error
+from problog import get_evaluatable
+from problog.evaluator import Semiring, OperationNotSupported, SemiringProbability
+from problog.logic import Term
+from problog.util import init_logger, Timer
 
 
-def main(argv, result_handler=None):
+def main(argv):
     args = argparser().parse_args(argv)
+
+    if args.use_semiring:
+        return mpe_semiring(args)
+    else:
+        return mpe_maxsat(args)
+
+
+def mpe_semiring(args):
     inputfile = args.inputfile
 
-    if result_handler is None:
-        if args.web:
-            result_handler = print_result_json
-        else:
-            result_handler = print_result
+    init_logger(args.verbose)
+
+    if args.web:
+        result_handler = print_result_json
+    else:
+        result_handler = print_result
 
     if args.output is not None:
         outf = open(args.output, 'w')
     else:
         outf = sys.stdout
 
-    try:
-        pl = PrologFile(inputfile)
+    with Timer("Total"):
+        try:
+            pl = PrologFile(inputfile)
 
-        dag = LogicDAG.createFrom(pl)
+            semiring = SemiringMPEState()
+            kc_class = get_evaluatable(name='sdd')        # TODO should pass semiring
+                                                # -> no compilation required for MPE
+                                                # BUT semiring does not support negation
+                                                # so formula should be NNF (only negation of facts)
+            lf = LogicFormula.create_from(pl, label_all=True)
 
-        cnf = CNF.createFrom(dag)
+            if lf.evidence():
+                # Query = evidence + constraints
+                qn = lf.add_and([y for x, y in lf.evidence()])
+                lf.clear_evidence()
 
-        for qn, qi in cnf.evidence():
-            cnf.add_constraint(TrueConstraint(qi))
+                if lf.queries():
+                    print ('%% WARNING: ignoring queries in file', file=sys.stderr)
+                lf.clear_queries()
 
-        for qn, qi in cnf.queries():
-            cnf.add_constraint(TrueConstraint(qi))
+                query_name = Term('query')
+                lf.add_query(query_name, qn)
+                kc = kc_class.create_from(lf)
 
-        solver = get_solver(args.solver)
+                with open('/tmp/x.dot', 'w') as f:
+                    print (kc.to_formula().to_dot(), file=f)
 
-        result = frozenset(solver.evaluate(cnf))
+                results = kc.evaluate(semiring=semiring)
+                prob, facts = results[query_name]
+            else:
+                prob, facts = 1.0, []
 
-        output_facts = None
-        if result is not None:
-            output_facts = []
-            for i, n, t in dag:
-                if t == 'atom':
-                    if i in result:
-                        output_facts.append(n.name)
-                    elif args.output_all and -i in result:
-                        output_facts.append(-n.name)
+            result_handler((True, (prob, facts)), outf)
 
-        result_handler((True, output_facts), outf)
-    except Exception as err:
-        trace = traceback.format_exc()
-        err.trace = trace
-        result_handler((False, err), outf)
+        except Exception as err:
+            trace = traceback.format_exc()
+            err.trace = trace
+            result_handler((False, err), outf)
+
+
+def mpe_maxsat(args):
+    inputfile = args.inputfile
+
+    if args.web:
+        result_handler = print_result_json
+    else:
+        result_handler = print_result
 
     if args.output is not None:
-        outf.close()
+        outf = open(args.output, 'w')
+    else:
+        outf = sys.stdout
+
+    logger = init_logger(args.verbose)
+
+    with Timer("Total"):
+        try:
+            pl = PrologFile(inputfile)
+
+            dag = LogicDAG.createFrom(pl, avoid_name_clash=True, label_all=True, labels=[('output', 1)])
+
+            if dag.queries():
+                print('%% WARNING: ignoring queries in file', file=sys.stderr)
+                dag.clear_queries()
+
+            logger.info('Ground program size: %s' % len(dag))
+
+            cnf = CNF.createFrom(dag)
+
+            for qn, qi in cnf.evidence():
+                if not cnf.is_true(qi):
+                    cnf.add_constraint(TrueConstraint(qi))
+
+            queries = list(cnf.labeled())
+
+            logger.info('CNF size: %s' % cnf.clausecount)
+
+            if not cnf.is_trivial():
+                solver = get_solver(args.solver)
+
+                with Timer('Solving'):
+                    result = frozenset(solver.evaluate(cnf))
+                weights = cnf.extract_weights(SemiringProbability())
+                output_facts = None
+                prob = 1.0
+                if result is not None:
+                    output_facts = []
+
+                    if queries:
+                        for qn, qi, ql in queries:
+                            if qi in result:
+                                output_facts.append(qn)
+                            elif -qi in result:
+                                output_facts.append(-qn)
+                    for i, n, t in dag:
+                        if t == 'atom':
+                            if i in result:
+                                if not queries:
+                                    output_facts.append(n.name)
+                                prob *= weights[i][0]
+                            elif -i in result:
+                                if not queries:
+                                    output_facts.append(-n.name)
+                                prob *= weights[i][1]
+            else:
+                prob = 1.0
+                output_facts = []
+
+            result_handler((True, (prob, output_facts)), outf)
+        except Exception as err:
+            trace = traceback.format_exc()
+            err.trace = trace
+            result_handler((False, err), outf)
+
+        if args.output is not None:
+            outf.close()
 
 
 def print_result(result, output=sys.stdout):
     success, result = result
     if success:
-        if result is None:
+        prob, facts = result
+        if facts is None:
             print ('%% The model is not satisfiable.', file=output)
         else:
-            for atom in result:
+            for atom in facts:
                 print(atom, file=output)
+            if prob is not None:
+                print ('%% Probability: %.10g' % prob)
         return 0
     else:
         print(process_error(result), file=output)
@@ -109,9 +206,12 @@ def print_result_json(d, output):
     result = {}
     success, d = d
     if success:
+        prob, facts = d
         result['SUCCESS'] = True
-        if d is not None:
-            result['atoms'] = list(map(lambda n: (str(-n), False) if n.is_negated() else (str(n), True), d))
+        if facts is not None:
+            result['atoms'] = list(map(lambda n: (str(-n), False) if n.is_negated() else (str(n), True), facts))
+        if prob is not None:
+            result['prob'] = round(prob, 10)
     else:
         result['SUCCESS'] = False
         result['err'] = process_error(d)
@@ -160,6 +260,45 @@ def reduce_formula(formula, facts):
     return values
 
 
+class SemiringMPEState(Semiring):
+
+    def __init__(self):
+        Semiring.__init__(self)
+
+    def zero(self):
+        return 0.0, set()
+
+    def one(self):
+        return 1.0, set()
+
+    def plus(self, a, b):
+        if a[0] > b[0]:
+            return a
+        elif a[0] < b[0]:
+            return b
+        else:
+            return a[0], a[1]  # | b[1]   # doesn't matter?
+
+    def times(self, a, b):
+        return a[0] * b[0], a[1] | b[1]
+
+    def pos_value(self, a, key=None):
+        return float(a), {key}
+
+    def neg_value(self, a, key=None):
+        return 1.0 - float(a), {-key}
+
+    def is_nsp(self):
+        return True
+
+    def result(self, a, formula=None):
+        return a
+
+    def ad_complement(self, ws, key=None):
+        s = sum([x[0] for x in ws])
+        return 1.0 - s, {key}
+
+
 def argparser():
     import argparse
 
@@ -172,6 +311,9 @@ def argparser():
     parser.add_argument('-o', '--output', type=str, default=None,
                         help='Write output to given file (default: write to stdout)')
     parser.add_argument('--web', action='store_true', help=argparse.SUPPRESS)
+    parser.add_argument('--use-maxsat', action='store_true', help=argparse.SUPPRESS)
+    parser.add_argument('--use-semiring', action='store_true', help=argparse.SUPPRESS)
+    parser.add_argument('-v', '--verbose', action='count', help='Increase verbosity')
     return parser
 
 
