@@ -167,6 +167,8 @@ def argparser():
                         help="Set timeout for compilation (in seconds, default=off).")
     parser.add_argument('--debug', '-d', action='store_true',
                         help="Enable debug mode (print full errors).")
+    parser.add_argument('--full-trace', '-T', action='store_true',
+                        help="Full tracing.")
     parser.add_argument('--web', action='store_true', help=argparse.SUPPRESS)
     parser.add_argument('-a', '--arg', dest='args', action='append',
                         help='Pass additional arguments to the cmd_args builtin.')

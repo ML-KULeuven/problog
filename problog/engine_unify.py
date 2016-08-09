@@ -100,8 +100,10 @@ def unify_value(value1, value2, source_values):
             value = unify_value(source_values.get(value1), source_values.get(value2), source_values)
             if value is None:
                 value = max(value1, value2)
-            source_values[value1] = value
-            source_values[value2] = value
+            if value1 != value:
+                source_values[value1] = value
+            if value2 != value:
+                source_values[value2] = value
             # Return the one of lowest rank: negative numbers, so max
             return value
     elif is_variable(value1):
@@ -132,58 +134,66 @@ def unify_value(value1, value2, source_values):
 def unify_value_dc(value1, value2, source_values, target_values):
     """
     Unify two values that exist in different contexts.
+    Updates the mapping of variables from value1 to values from value2.
 
     :param value1:
     :param value2:
-    :param source_values:
-    :param target_values:
-    :return:
+    :param source_values: mapping of source variable to target value
+    :param target_values: mapping of target variable to TARGET value
     """
     # Variables are negative numbers or None
-
     if is_variable(value1) and is_variable(value2):
         if value1 is None:
-            return value2
-        if value2 is None:  # second one is anonymous
-            return value1
+            pass
+        elif value2 is None:  # second one is anonymous
+            pass
         else:
-            # Two named variables: unify their source_values
-            sv1 = source_values.get(value1)
-            sv2 = target_values.get(value2)
-            if sv1 == value1 and sv2 == value2:
-                value = value1
+            # Two named variables
+
+            # Check whether value2 is already linked to another value in the target context
+            sv2 = target_values.get(value2, value2)
+            if sv2 == value2:  # no
+                # Check whether value1 is already linked to a value
+                sv1 = source_values.get(value1)
+                if sv1 is None:  # no
+                    # We can link variable 1 with variable 2
+                    source_values[value1] = value2
+                else:
+                    # yes: we need to unify sv1 and value2 (they both are in target scope)
+                    unify_value(sv1, value2, target_values)
             else:
-                value = unify_value_dc(sv1, sv2, source_values, target_values)
-            if value is None:
-                value = max(value1, value2)
-            source_values[value1] = value
-            target_values[value2] = value
-            # Return the one of lowest rank: negative numbers, so max
-            return value
+                # value2 is already linked to another value
+                # we need to unify value1 with that value
+                unify_value_dc(value1, sv2, source_values, target_values)
     elif is_variable(value1):
         if value1 is None:
-            return value2
+            pass
         else:
-            # if value1 in value2.variables():
-            #     raise OccursCheck()
-            value = unify_value_dc(source_values.get(value1), value2, source_values, target_values)
-            source_values[value1] = value
-            return value
+            sv1 = source_values.get(value1)
+            if sv1 is None:
+                source_values[value1] = value2
+            elif is_variable(sv1):
+                if sv1 in value2.variables():
+                    raise OccursCheck()
+                if sv1 != value2:
+                    target_values[sv1] = value2
+                source_values[value1] = value2
+            else:
+                # unify in same context target_values
+                source_values[value1] = unify_value(source_values[value1], value2, target_values)
     elif is_variable(value2):
-        if value2 is None:
-            return value1
+        sv2 = target_values.get(value2)
+        if sv2 is None:
+            target_values[value2] = value1.apply(source_values)
+        elif is_variable(sv2):
+            pass
         else:
-            # if value2 in value1.variables():
-            #     raise OccursCheck()
-            value = unify_value_dc(value1, target_values.get(value2), source_values, target_values)
-            target_values[value2] = value
-            return value
+            unify_value_dc(value1, sv2, source_values, target_values)
     elif value1.signature == value2.signature:  # Assume Term
-        return value1.with_args(*[unify_value_dc(a1, a2, source_values, target_values)
-                                  for a1, a2 in zip(value1.args, value2.args)])
+        for a1, a2 in zip(value1.args, value2.args):
+            unify_value_dc(a1, a2, source_values, target_values)
     else:
         raise UnifyError()
-
 
 
 class _ContextWrapper(object):
@@ -342,8 +352,23 @@ class _VarTranslateWrapper(object):
             self.base[item] = self.min_var
             return self.min_var
 
+    def __setitem__(self, key, item):
+        self.base[key] = item
+
+    def items(self):
+        return self.base.items()
+
+    def get(self, item, default=None):
+        if item in self.base:
+            return self.base[item]
+        else:
+            return default
+
     def values(self):
         return [x for x in self.base.values() if x is not None]
+
+    def __repr__(self):
+        return repr(self.base)
 
 
 def unify_call_return(result, call_args, context, var_translate, min_var, mask=None):
@@ -369,13 +394,16 @@ def unify_call_return(result, call_args, context, var_translate, min_var, mask=N
     if mask is None:
         mask = [True] * len(call_args)
 
-    sv = {}  # dict: variable in call -> value from result  (lvars callee -> expr with lvars caller)
-    tv = {}  # not used (reverse of sv)
+    sv = _VarTranslateWrapper({}, min_var)
+    # dict: variable in call -> value from result  (lvars callee -> expr with lvars caller)
+    tv = {}  # dict: internal mapping in caller
     for r, c, m in zip(result, call_args, mask):
         if m:
             # Unify values (from different contexts)
             #  This updates the sv and tv maps.
             unify_value_dc(c, r, sv, tv)
+    sv = {k: tv.get(v, v) for k, v in sv.items()}
+    sv = {k: substitute_all([v], tv)[0] for k, v in sv.items()}
 
     # Context contains lvars from caller.
     # Use var_translate to make sv a map lvars caller -> expr lvars caller.
