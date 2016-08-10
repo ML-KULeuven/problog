@@ -402,6 +402,7 @@ def unify_call_return(result, call_args, context, var_translate, min_var, mask=N
             # Unify values (from different contexts)
             #  This updates the sv and tv maps.
             unify_value_dc(c, r, sv, tv)
+    min_var = sv.min_var
     sv = {k: tv.get(v, v) for k, v in sv.items()}
     sv = {k: substitute_all([v], tv)[0] for k, v in sv.items()}
 
