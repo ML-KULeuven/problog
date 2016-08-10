@@ -385,6 +385,9 @@ def unify_call_return(result, call_args, context, var_translate, min_var, mask=N
 
     """
 
+    # TODO is this the correct min_var?
+    # TODO is one-hop lookup in 'tv' sufficient?
+
     # Each context contains local variables (indicated by negative numbers).
     # We indicate them as lvars callee and lvars caller.
 
