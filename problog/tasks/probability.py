@@ -104,6 +104,14 @@ def execute(filename, knowledge=None, semiring=None, debug=False, **kwdargs):
                     # Only get location for primary file (other file information is not available).
                     n.loc = model.lineno(n.location)
         return True, result
+    except KeyboardInterrupt as err:
+        trace = traceback.format_exc()
+        err.trace = trace
+        return False, err
+    except SystemError as err:
+        trace = traceback.format_exc()
+        err.trace = trace
+        return False, err
     except Exception as err:
         trace = traceback.format_exc()
         err.trace = trace
