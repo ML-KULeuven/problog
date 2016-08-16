@@ -1300,7 +1300,7 @@ label_all=True)
                 for b in product(*(self.enumerate_branches(c) for c in node.children)):
                     c_max, c_br = zip(*b)
                     mx = max(c_max)
-                    yield max(index, mx), chain(*c_br)
+                    yield max(index, mx), list(chain(*c_br))
             else:
                 for c in node.children:
                     for mx, b in self.enumerate_branches(c):
