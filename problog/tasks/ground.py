@@ -86,7 +86,7 @@ def main(argv, result_handler=None):
             keep_order=not args.any_order,
             keep_all=args.keep_all, keep_duplicates=args.keep_duplicates,
             hide_builtins=args.hide_builtins,
-            propagate_evidence=args.propagate_evidence, propagate_weights=semiring)
+            propagate_evidence=args.propagate_evidence, propagate_weights=semiring, args=args.args)
 
         if outformat == 'pl':
             rc = print_result((True, gp.to_prolog()), output=outfile)
