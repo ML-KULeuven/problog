@@ -1007,17 +1007,24 @@ label_all=True)
 
         for qn, qi in self.queries():
             if is_ground(qn):
-                if qi == self.TRUE:
+                if self.is_true(qi):
                     lines.append('%s.' % qn)
-                elif qi == self.FALSE:
+                elif self.is_false(qi):
                     lines.append('%s :- fail.' % qn)
                 lines.append('query(%s).' % qn)
 
         for qn, qi in self.evidence():
-            if qi < 0:
+            if self.is_false(qi):
+                lines.append('evidence(%s).' % -qn)
+                lines.append('%s :- fail.' % qn)
+            elif self.is_true(qi):
+                lines.append('evidence(%s).' % qn)
+                lines.append('%s.' % qn)
+            elif qi < 0:
                 lines.append('evidence(%s).' % -qn)
             else:
                 lines.append('evidence(%s).' % qn)
+
 
         return '\n'.join(lines)
 
