@@ -257,11 +257,15 @@ class ClauseDBEngine(GenericEngine):
         for args, node_id in results:
             term_store = term.with_args(*args)
             if negated:
-                target.add_name(-term_store, -node_id, label)
+                target.add_name(-term_store, target.negate(node_id), label)
             else:
                 target.add_name(term_store, node_id, label)
         if not results:
-            target.add_name(term, None, label)
+            if negated:
+                target.add_name(-term, target.TRUE, label)
+            else:
+                target.add_name(term, target.FALSE, label)
+
         return target
 
     def _ground(self, db, term, gp=None, silent_fail=True, assume_prepared=False, **kwdargs):
@@ -305,7 +309,6 @@ class ClauseDBEngine(GenericEngine):
                 return gp, []
             else:
                 raise UnknownClause(term.signature, location=db.lineno(term.location))
-
         return gp, results
 
     def ground_evidence(self, db, target, evidence, propagate_evidence=False):
@@ -375,7 +378,6 @@ class ClauseDBEngine(GenericEngine):
             for ev in evidence:
                 if not isinstance(ev[0], Term):
                     raise GroundingError('Invalid evidence')   # TODO can we add a location?
-
             # Ground queries
             if propagate_evidence:
                 self.ground_evidence(db, target, evidence, propagate_evidence=propagate_evidence)

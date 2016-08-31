@@ -1008,20 +1008,32 @@ label_all=True)
         for qn, qi in self.queries():
             if is_ground(qn):
                 if self.is_true(qi):
-                    lines.append('%s.' % qn)
+                    if qn.is_negated():
+                        lines.append('%s :- fail.' % -qn)
+                    else:
+                        lines.append('%s.' % qn)
                 elif self.is_false(qi):
-                    lines.append('%s :- fail.' % qn)
+                    if qn.is_negated():
+                        lines.append('%s.' % -qn)
+                    else:
+                        lines.append('%s :- fail.' % qn)
                 lines.append('query(%s).' % qn)
 
         for qn, qi in self.evidence():
-            if self.is_false(qi):
-                lines.append('evidence(%s).' % -qn)
-                lines.append('%s :- fail.' % qn)
-            elif self.is_true(qi):
+            if self.is_true(qi):
+                if qn.is_negated():
+                    lines.append('%s :- fail.' % -qn)
+                else:
+                    lines.append('%s.' % qn)
                 lines.append('evidence(%s).' % qn)
-                lines.append('%s.' % qn)
+            elif self.is_false(qi):
+                if qn.is_negated():
+                    lines.append('%s.' % -qn)
+                else:
+                    lines.append('%s :- fail.' % qn)
+                lines.append('evidence(%s).' % qn)
             elif qi < 0:
-                lines.append('evidence(%s).' % -qn)
+                lines.append('evidence(%s).' % qn)
             else:
                 lines.append('evidence(%s).' % qn)
 
