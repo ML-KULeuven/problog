@@ -522,9 +522,18 @@ class StackBasedEngine(ClauseDBEngine):
                 raise UnknownClause(query.signature, database.lineno(query.location))
 
         return self.execute(node_id, database=database, target=target,
-                            context=self.create_context(query.args), **kwdargs)
+                        context=self.create_context(query.args), **kwdargs)
 
     def call_intern(self, query, **kwdargs):
+        if query.is_negated():
+            negated = True
+            query = -query
+        elif query.functor in ('not', '\+') and query.arity == 1:
+            negated = True
+            query = query.args[0]
+        else:
+            negated = False
+
         database = kwdargs.get('database')
         node_id = database.find(query)
         if node_id is None:
@@ -535,9 +544,14 @@ class StackBasedEngine(ClauseDBEngine):
         call_args = range(0, len(query.args))
         call_term = query.with_args(*call_args)
         call_term.defnode = node_id
+        call_term.child = node_id
 
-        return self.eval_call(None, call_term,
-                              context=self.create_context(query.args), **kwdargs)
+        if negated:
+            return self.eval_neg(node_id=None, node=call_term,
+                                 context=self.create_context(query.args), **kwdargs)
+        else:
+            return self.eval_call(None, call_term,
+                                  context=self.create_context(query.args), **kwdargs)
 
     def printStack(self, pointer=None):  # pragma: no cover
         print('===========================')
