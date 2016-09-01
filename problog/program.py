@@ -209,6 +209,8 @@ class PrologString(LogicProgram):
         if parser is None:
             if factory is None:
                 factory = DefaultPrologFactory(identifier=identifier)
+            else:
+                factory = factory.__class__(identifier=identifier)
             self.parser = DefaultPrologParser(factory)
         else:
             self.parser = parser
