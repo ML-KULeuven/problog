@@ -237,8 +237,8 @@ class SDDManager(DDManager):
         return result
 
     def __del__(self):
-        if sdd is not None and sdd.sdd_manager_free is not None:
-            sdd.sdd_manager_free(self.__manager)
+        # if sdd is not None and sdd.sdd_manager_free is not None:
+        #     sdd.sdd_manager_free(self.__manager)
         self.__manager = None
 
 
