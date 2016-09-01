@@ -530,10 +530,10 @@ class StackBasedEngine(ClauseDBEngine):
             query = -query
         elif query.functor in ('not', '\+') and query.arity == 1:
             negated = True
+            neg_func = query.functor
             query = query.args[0]
         else:
             negated = False
-
         database = kwdargs.get('database')
         node_id = database.find(query)
         if node_id is None:
@@ -547,6 +547,11 @@ class StackBasedEngine(ClauseDBEngine):
         call_term.child = node_id
 
         if negated:
+            def func(result):
+                return Term(neg_func, Term(call_term.functor, *result)),
+
+            kwdargs['transform'].addFunction(func)
+
             return self.eval_neg(node_id=None, node=call_term,
                                  context=self.create_context(query.args), **kwdargs)
         else:
