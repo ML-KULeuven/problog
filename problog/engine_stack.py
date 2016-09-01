@@ -1549,6 +1549,8 @@ class EvalDefine(EvalNode):
                 queue += self.engine.notify_cycle(cycle)
                 if cycle_parent.pointer != self.engine.cycle_root.pointer:
                     to_cycle_root = self.engine.find_cycle(cycle_parent.pointer, self.engine.cycle_root.pointer)
+                    if to_cycle_root is None:
+                        raise IndirectCallCycleError(self.database.lineno(self.node.location))
                     queue += cycle_parent.createCycle()
                     queue += self.engine.notify_cycle(to_cycle_root)
         return queue
