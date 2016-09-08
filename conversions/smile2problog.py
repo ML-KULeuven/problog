@@ -10,7 +10,7 @@ from __future__ import print_function
 
 import sys
 import argparse
-from problog.bn.cpd import Variable, Factor, PGM
+from problog.pgm.cpd import Variable, Factor, PGM
 import itertools
 import logging
 import re
@@ -27,16 +27,21 @@ pgm = PGM()
 
 logger = logging.getLogger('problog.smile2problog')
 
+
 def info(*args, **kwargs):
     logger.info(*args, **kwargs)
+
 
 def debug(*args, **kwargs):
     logger.debug(*args, **kwargs)
 
+
 def warning(*args, **kwargs):
     logger.warning(*args, **kwargs)
 
+
 def error(*args, **kwargs):
+    halt = False
     if 'halt' in kwargs:
         halt = kwargs['halt']
         del kwargs['halt']
@@ -54,6 +59,7 @@ def parse(ifile):
     for cpt in root.find("nodes").findall('cpt'):
         parseCPT(cpt)
 
+
 def parseDomains(root):
     global pgm
     detect_boolean = not no_bool_detection
@@ -64,8 +70,8 @@ def parseDomains(root):
         domains[rv] = values
         pgm.add_var(Variable(rv, values, detect_boolean=detect_boolean, force_boolean=force_bool))
 
+
 def parseCPT(cpt):
-    global cpds
     global pgm
     rv = cpt.get('id')
     if rv not in domains:

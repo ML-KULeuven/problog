@@ -9,7 +9,7 @@ Copyright (c) 2016 KU Leuven. All rights reserved.
 
 import sys
 import argparse
-from problog.bn.cpd import Variable, Factor, PGM
+from problog.pgm.cpd import Variable, Factor, PGM
 import itertools
 import logging
 import re
@@ -39,6 +39,7 @@ def warning(*args, **kwargs):
     logger.warning(*args, **kwargs)
 
 def error(*args, **kwargs):
+    halt = False
     if 'halt' in kwargs:
         halt = kwargs['halt']
         del kwargs['halt']
@@ -84,7 +85,6 @@ def parseNode(s,l,t):
 
 
 def parsePotential(s,l,t):
-    global cpds
     # print(t)
     rv = t[0]
     if rv not in domains:
@@ -149,8 +149,6 @@ def parse(text):
         print(err)
     return result
 
-def construct_pgm():
-    return PGM(cpds=cpds)
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description='Translate Bayesian net in Hugin format format to ProbLog')

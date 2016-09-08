@@ -12,7 +12,7 @@ from __future__ import print_function
 
 import sys
 import argparse
-from problog.bn.cpd import Variable, Factor, PGM
+from problog.pgm.cpd import Variable, Factor, PGM
 import itertools
 import logging
 
@@ -32,16 +32,21 @@ factor_cnt = 0
 
 logger = logging.getLogger('problog.uai2problog')
 
+
 def info(*args, **kwargs):
     logger.info(*args, **kwargs)
+
 
 def debug(*args, **kwargs):
     logger.debug(*args, **kwargs)
 
+
 def warning(*args, **kwargs):
     logger.warning(*args, **kwargs)
 
+
 def error(*args, **kwargs):
+    halt = False
     if 'halt' in kwargs:
         halt = kwargs['halt']
         del kwargs['halt']
@@ -120,6 +125,7 @@ def construct_cpt(pgm, func_num):
 
     pgm.add_factor(Factor(pgm, rv, parents_str, table))
 
+
 def construct_factor(pgm, func_num):
     global factor_cnt
     global domains
@@ -147,6 +153,7 @@ def construct_factor(pgm, func_num):
         idx += dom_size
 
     pgm.add_factor(Factor(pgm, None, parents_str, table, name=name))
+
 
 def construct_pgm():
     pgm = PGM(directed=directed)
