@@ -50,10 +50,14 @@ var problog = {
                             var p = facts[k][1];
                             var l = facts[k][2];
                             var c = facts[k][3];
+                            if (!isNaN(parseFloat(p))) {
+                                p = problog.makeProgressBar(p);
+                            }
+
                             result.append($('<tr>')
                                   .append($('<td>').text(n))
                                   .append($('<td>').text(l+':'+c))
-                                  .append($('<td>').append(problog.makeProgressBar(p))));
+                                  .append($('<td>').append(p)));
                         }
                         var result = problog.createTable(result, [['Query','50%'],['Location','10%'],['Probability','40%']]);
                         pbl.dom.results.html(result);
@@ -107,15 +111,18 @@ var problog = {
                         var result = problog.createTable(result, [['Fact','50%'],['Location','10%'],['Probability','40%']]);
                         pbl.dom.results.html(result);
 
+                        var model_str = "<strong>Model</strong>:<pre><code>" + data['model'] + "</code></pre>";
+
                         var meta_str = "<p><strong>Stats</strong>:";
                         var sep = " ";
                         for (var k in data) {
-                            if (k !== 'weights' && k !== 'probs' && k != 'url' && k !== 'SUCCESS') {
+                            if (k !== 'weights' && k !== 'probs' && k != 'url' && k != 'model' && k !== 'SUCCESS') {
                                 meta_str += sep+k+"="+data[k];
                                 sep = ", ";
                             }
                         }
                         meta_str += "</p>";
+                        $(model_str).appendTo(pbl.dom.results);
                         $(meta_str).appendTo(pbl.dom.results);
                     }
                 },
@@ -380,6 +387,11 @@ problog.init_editor = function(index, object) {
                         if (data.SUCCESS == true) {
                             task.formatResult(pbl, data);
                             pbl.editor.getSession().clearAnnotations();
+                            if (pbl.advanced) {
+                                pbl.setSolveChoices(task.choices);
+                            } else {
+                                pbl.setSolveChoices();
+                            }
                         } else {
                             p = data.err;
                             var msg = p.message;

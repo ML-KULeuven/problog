@@ -27,7 +27,7 @@ from .dd_formula import DD
 from .sdd_formula import SDD
 from .bdd_formula import BDD
 from .core import transform
-from .evaluator import Evaluator, Evaluatable
+from .evaluator import Evaluator, EvaluatableDSP
 
 from .dd_formula import build_dd
 
@@ -135,7 +135,7 @@ class ForwardInference(DD):
         self._node_depths = [None] * len(self)
         self._node_levels = []
         # Start with current nodes
-        current_nodes = set(abs(n) for q, n in self.queries() if self.is_probabilistic(n))
+        current_nodes = set(abs(n) for q, n, l in self.labeled() if self.is_probabilistic(n))
         if self.is_probabilistic(self.evidence_node):
             current_nodes.add(self.evidence_node)
         current_level = 0
@@ -283,7 +283,7 @@ class ForwardInference(DD):
         return updated_nodes
 
     def build_dd(self):
-        required_nodes = set([abs(n) for q, n in self.queries() if self.is_probabilistic(n)])
+        required_nodes = set([abs(n) for q, n, l in self.labeled() if self.is_probabilistic(n)])
         required_nodes |= set([abs(n) for q, n, v in self.evidence_all() if self.is_probabilistic(n)])
 
         if self.timeout:
@@ -461,13 +461,13 @@ def build_sdd(source, destination, **kwdargs):
     return result
 
 
-class ForwardSDD(LogicFormula, Evaluatable):
+class ForwardSDD(LogicFormula, EvaluatableDSP):
 
     transform_preference = 30
 
     def __init__(self, **kwargs):
         LogicFormula.__init__(self, **kwargs)
-        Evaluatable.__init__(self)
+        EvaluatableDSP.__init__(self)
         self.kwargs = kwargs
 
     @classmethod
@@ -478,13 +478,13 @@ class ForwardSDD(LogicFormula, Evaluatable):
         return ForwardEvaluator(self, semiring, _ForwardSDD(**self.kwargs), weights, **kwargs)
 
 
-class ForwardBDD(LogicFormula, Evaluatable):
+class ForwardBDD(LogicFormula, EvaluatableDSP):
 
     transform_preference = 40
 
     def __init__(self, **kwargs):
         LogicFormula.__init__(self, **kwargs)
-        Evaluatable.__init__(self)
+        EvaluatableDSP.__init__(self)
         self.kwargs = kwargs
 
     @classmethod
@@ -517,7 +517,7 @@ class ForwardEvaluator(Evaluator):
 
     def node_updated(self, source, node, complete):
 
-        name = [n for n, i in self.formula.queries()
+        name = [n for n, i, l in self.formula.labeled()
                 if source.is_probabilistic(i) and abs(i) == node]
         if node == abs(source.evidence_node):
             name = ('evidence',)
@@ -547,7 +547,7 @@ class ForwardEvaluator(Evaluator):
                 self._complete.add(node)
 
     def node_completed(self, source, node):
-        qs = set(abs(qi) for qn, qi in source.queries() if source.is_probabilistic(qi))
+        qs = set(abs(qi) for qn, qi, ql in source.labeled() if source.is_probabilistic(qi))
         if node in qs:
             self._complete.add(node)
 
@@ -564,7 +564,7 @@ class ForwardEvaluator(Evaluator):
                                                 self.fsdd.get_constraint_inode())
 
         # Make sure all atoms exist in atom2var.
-        for name, node in self.fsdd.queries():
+        for name, node, label in self.fsdd.labeled():
             if self.fsdd.is_probabilistic(node):
                 self.fsdd.get_inode(node)
 
@@ -574,7 +574,7 @@ class ForwardEvaluator(Evaluator):
             if av is not None:
                 weights[av] = weight
 
-        for name, node in self.fsdd.queries():
+        for name, node, label in self.fsdd.labeled():
             if self.fsdd.is_probabilistic(node):
                 inode = self.fsdd.get_inode(node)
                 qnode = self.fsdd.get_manager().conjoin(inode, enode)

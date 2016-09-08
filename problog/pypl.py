@@ -77,8 +77,8 @@ def pl2py(d):
             if str(tail) != '[]':
                 elements.append(pl2py(tail))
             return elements
-        elif d.arity == 0:
-            return d.functor
+        else:
+            return d
 
     raise ValueError("Cannot convert from Prolog to Python: {} ({}).".format(d, type(d)))
 

@@ -100,6 +100,10 @@ def process_error(err, debug=False):
 
     if isinstance(err, ProbLogError):
         return '%s: %s' % (err.__class__.__name__, err)
+    elif 'Timeout' in str(err) or 'timeout' in str(err):
+        return 'Timeout exceeded'
+    elif isinstance(err, KeyboardInterrupt):
+        return 'Interrupted by user'
     else:
         if not debug and hasattr(err, 'trace'):
             print(err.trace, file=sys.stderr)

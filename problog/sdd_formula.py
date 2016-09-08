@@ -68,9 +68,11 @@ class SDD(DD):
         """Extracts a LogicFormula from the SDD."""
         formula = LogicFormula()
 
-        for n, q in self.queries():
+        for n, q, l in self.labeled():
             node = self.get_inode(q)
-            i = self._to_formula(formula, node)
+            constraints = self.get_constraint_inode()
+            nodec = self.get_manager().conjoin(node, constraints)
+            i = self._to_formula(formula, nodec)
             formula.add_name(n, i, formula.LABEL_QUERY)
         return formula
 
@@ -82,10 +84,11 @@ class SDD(DD):
         elif sdd.sdd_node_is_literal(current_node):  # it's a literal
             lit = sdd.sdd_node_literal(current_node)
             at = self.var2atom[abs(lit)]
+            node = self.get_node(at)
             if lit < 0:
-                return -formula.add_atom(-lit, probability=self.get_node(at).probability)
+                return -formula.add_atom(-lit, probability=node.probability, name=node.name, group=node.group)
             else:
-                return formula.add_atom(lit, probability=self.get_node(at).probability)
+                return formula.add_atom(lit, probability=node.probability, name=node.name, group=node.group)
         else:  # is decision
             size = sdd.sdd_node_size(current_node)
             elements = sdd.sdd_node_elements(current_node)
@@ -234,8 +237,8 @@ class SDDManager(DDManager):
         return result
 
     def __del__(self):
-        if sdd is not None and sdd.sdd_manager_free is not None:
-            sdd.sdd_manager_free(self.__manager)
+        # if sdd is not None and sdd.sdd_manager_free is not None:
+        #     sdd.sdd_manager_free(self.__manager)
         self.__manager = None
 
 

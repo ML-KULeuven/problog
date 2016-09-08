@@ -133,6 +133,12 @@ class Semiring(object):
         """Checks whether the given (internal) value is valid."""
         return True
 
+    def ad_complement(self, ws, key=None):
+        s = self.zero()
+        for w in ws:
+            s = self.plus(s, w)
+        return self.negate(s)
+
 
 class SemiringProbability(Semiring):
     """Implementation of the semiring interface for probabilities."""
@@ -285,10 +291,7 @@ class SemiringSymbolic(Semiring):
         return True
 
 
-
-@transform_allow_subclass
 class Evaluatable(ProbLogObject):
-    """Interface for evaluatable formulae."""
 
     def evidence_all(self):
         raise NotImplementedError()
@@ -303,7 +306,7 @@ class Evaluatable(ProbLogObject):
         """
         raise NotImplementedError('Evaluatable._create_evaluator is an abstract method')
 
-    def get_evaluator(self, semiring=None, evidence=None, weights=None, **kwargs):
+    def get_evaluator(self, semiring=None, evidence=None, weights=None, keep_evidence=False, **kwargs):
         """Get an evaluator for computing queries on this formula.
         It creates an new evaluator and initializes it with the given or predefined evidence.
 
@@ -329,7 +332,7 @@ class Evaluatable(ProbLogObject):
                 raise InconsistentEvidenceError(source='evidence('+str(ev_name)+',true)')  # false evidence is true
             elif evidence is None and ev_value != 0:
                 evaluator.add_evidence(ev_value * ev_index)
-            else:
+            elif evidence is not None:
                 try:
                     value = evidence[ev_name]
                     if value:
@@ -337,7 +340,8 @@ class Evaluatable(ProbLogObject):
                     else:
                         evaluator.add_evidence(-ev_index)
                 except KeyError:
-                    pass
+                    if keep_evidence:
+                        evaluator.add_evidence(ev_value * ev_index)
 
         evaluator.propagate()
         return evaluator
@@ -359,12 +363,20 @@ class Evaluatable(ProbLogObject):
             # Probability of query given evidence
 
             # interrupted = False
-            for name, node in evaluator.formula.queries():
+            for name, node, label in evaluator.formula.labeled():
                 w = evaluator.evaluate(node)
                 result[name] = w
             return result
         else:
             return evaluator.evaluate(index)
+
+
+@transform_allow_subclass
+class EvaluatableDSP(Evaluatable):
+    """Interface for evaluatable formulae."""
+
+    def __init__(self):
+        Evaluatable.__init__(self)
 
 
 class Evaluator(object):
@@ -441,11 +453,13 @@ class Evaluator(object):
 class FormulaEvaluator(object):
     """Standard evaluator for boolean formula."""
 
-    def __init__(self, formula, semiring):
+    def __init__(self, formula, semiring, weights=None):
         self._computed_weights = {}
         self._semiring = semiring
         self._formula = formula
         self._fact_weights = {}
+        if weights is not None:
+            self.set_weights(weights)
 
     @property
     def semiring(self):
@@ -494,6 +508,9 @@ class FormulaEvaluator(object):
             else:
                 return weight[0]
 
+    def propagate(self):
+        self._fact_weights = self.formula.extract_weights(self.semiring)
+
     def evaluate(self, index):
         return self.semiring.result(self.get_weight(index), self.formula)
 
@@ -533,8 +550,8 @@ class FormulaEvaluator(object):
 class FormulaEvaluatorNSP(FormulaEvaluator):
     """Evaluator for boolean formula that addresses the Neutral Sum Problem."""
 
-    def __init__(self, formula, semiring):
-        FormulaEvaluator.__init__(self, formula, semiring)
+    def __init__(self, formula, semiring, weights=None):
+        FormulaEvaluator.__init__(self, formula, semiring, weights)
 
     def get_weight(self, index):
         """Get the weight of the node with the given index.

@@ -133,9 +133,10 @@ def term2list(term):
     :return: Python list containing the elements from the Prolog list
     :rtype: list of Term
     """
+    from .pypl import pl2py
     result = []
     while term.functor == '.' and term.arity == 2:
-        result.append(term.args[0])
+        result.append(pl2py(term.args[0]))
         term = term.args[1]
     if not term == Term('[]'):
         raise ValueError('Expected fixed list.')
@@ -456,7 +457,10 @@ class Term(object):
         if p is not None:
             return self.__class__(self.functor, *args, p=p, location=self.location, priority=self.op_priority, opspec=self.op_spec)
         else:
-            return self.__class__(self.functor, *args, location=self.location, priority=self.op_priority, opspec=self.op_spec)
+            if self.__class__ in (Clause, AnnotatedDisjunction, And, Or):
+                return self.__class__(*args, location=self.location, priority=self.op_priority, opspec=self.op_spec)
+            else:
+                return self.__class__(self.functor, *args, location=self.location, priority=self.op_priority, opspec=self.op_spec)
 
     def with_probability(self, p=None):
         """Creates a new Term with the same functor and arguments but with a different probability.
@@ -636,8 +640,8 @@ class Var(Term):
 
     """
 
-    def __init__(self, name, location=None):
-        Term.__init__(self, name, location=location)
+    def __init__(self, name, location=None, **kwdargs):
+        Term.__init__(self, name, location=location, **kwdargs)
 
     @property
     def name(self):
@@ -668,8 +672,12 @@ class Constant(Term):
 
     """
 
-    def __init__(self, value, location=None):
-        Term.__init__(self, value, location=location)
+    FLOAT_PRECISION = 15
+
+    def __init__(self, value, location=None, **kwdargs):
+        if self.FLOAT_PRECISION is not None and type(value) == float:
+            value = round(value, self.FLOAT_PRECISION)
+        Term.__init__(self, value, location=location, **kwdargs)
 
     def compute_value(self, functions=None):
         return self.functor
@@ -714,8 +722,8 @@ class Constant(Term):
 class Clause(Term):
     """A clause."""
 
-    def __init__(self, head, body, location=None):
-        Term.__init__(self, ':-', head, body, location=location)
+    def __init__(self, head, body, **kwdargs):
+        Term.__init__(self, ':-', head, body, **kwdargs)
         self.head = head
         self.body = body
 
@@ -726,20 +734,23 @@ class Clause(Term):
 class AnnotatedDisjunction(Term):
     """An annotated disjunction."""
 
-    def __init__(self, heads, body, location=None):
-        Term.__init__(self, ':-', heads, body, location=location)
+    def __init__(self, heads, body, **kwdargs):
+        Term.__init__(self, ':-', heads, body, **kwdargs)
         self.heads = heads
         self.body = body
 
     def __repr__(self):
-        return "%s :- %s" % ('; '.join(map(str, self.heads)), self.body)
+        if self.body is None:
+            return "%s" % ('; '.join(map(str, self.heads)))
+        else:
+            return "%s :- %s" % ('; '.join(map(str, self.heads)), self.body)
 
 
 class Or(Term):
     """Or"""
 
-    def __init__(self, op1, op2, location=None):
-        Term.__init__(self, ';', op1, op2, location=location)
+    def __init__(self, op1, op2, **kwdargs):
+        Term.__init__(self, ';', op1, op2, **kwdargs)
         self.op1 = op1
         self.op2 = op2
 
@@ -791,8 +802,8 @@ class Or(Term):
 class And(Term):
     """And"""
 
-    def __init__(self, op1, op2, location=None):
-        Term.__init__(self, ',', op1, op2, location=location)
+    def __init__(self, op1, op2, location=None, **kwdargs):
+        Term.__init__(self, ',', op1, op2, location=location, **kwdargs)
         self.op1 = op1
         self.op2 = op2
 
@@ -924,9 +935,11 @@ _from_math_1 = ['exp', 'log', 'log10', 'sqrt', 'sin', 'cos', 'tan', 'asin', 'aco
 for _f in _from_math_1:
     _arithmetic_functions[(_f, 1)] = getattr(math, _f)
 
-_from_math_0 = ['pi', 'e']
-for _f in _from_math_0:
-    _arithmetic_functions[(_f, 0)] = lambda: getattr(math, _f)
+# _from_math_0 = ['pi', 'e']
+# for _f in _from_math_0:
+#     _x = getattr(math, _f)
+_arithmetic_functions[('pi', 0)] = lambda: math.pi
+_arithmetic_functions[('e', 0)] = lambda: math.e
 
 
 def unquote(s):

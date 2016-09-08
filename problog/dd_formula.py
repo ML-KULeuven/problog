@@ -27,11 +27,11 @@ from __future__ import print_function
 
 from .util import Timer
 from .formula import LogicFormula
-from .evaluator import Evaluatable, Evaluator
+from .evaluator import EvaluatableDSP, Evaluator, FormulaEvaluatorNSP, FormulaEvaluator, SemiringLogProbability, SemiringProbability
 from .errors import InconsistentEvidenceError
 
 
-class DD(LogicFormula, Evaluatable):
+class DD(LogicFormula, EvaluatableDSP):
     """Root class for bottom-up compiled decision diagrams."""
 
     def __init__(self, **kwdargs):
@@ -113,12 +113,17 @@ class DD(LogicFormula, Evaluatable):
             return self._constraint_dd
 
     def _create_evaluator(self, semiring, weights, **kwargs):
-        return DDEvaluator(self, semiring, weights, **kwargs)
+        if isinstance(semiring, SemiringLogProbability) or isinstance(semiring, SemiringProbability):
+            return DDEvaluator(self, semiring, weights, **kwargs)
+        elif semiring.is_nsp():
+            return FormulaEvaluatorNSP(self.to_formula(), semiring, weights)
+        else:
+            return FormulaEvaluator(self.to_formula(), semiring, weights)
 
     def build_dd(self):
         """Build the internal representation of the formula."""
-        required_nodes = set([abs(n) for q, n in self.queries() if self.is_probabilistic(n)])
-        required_nodes |= set([abs(n) for q, n in self.queries() if self.is_probabilistic(n)])
+        required_nodes = set([abs(n) for q, n, l in self.labeled() if self.is_probabilistic(n)])
+        required_nodes |= set([abs(n) for q, n, l in self.labeled() if self.is_probabilistic(n)])
 
         for n in required_nodes:
             self.get_inode(n)
@@ -401,7 +406,7 @@ class DDEvaluator(Evaluator):
             self.evidence_inode = self._get_manager().conjoin(constraint_inode, *evidence_nodes)
             result = self._get_manager().wmc(self.evidence_inode, self.weights, self.semiring)
             if result == self.semiring.zero():
-                raise InconsistentEvidenceError()
+                raise InconsistentEvidenceError(context=' during compilation')
             self._evidence_weight = self.semiring.normalize(result, self.normalization)
         return self._evidence_weight
 

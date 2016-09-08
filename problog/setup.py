@@ -118,24 +118,21 @@ def build_sdd():
 
     lib_dir = os.path.abspath(os.path.join(build_dir, 'sdd', os.uname()[0].lower()))
 
-    curr = os.curdir
-    os.chdir(build_dir)
+    with WorkingDir(build_dir):
 
-    from distutils.core import setup, Extension
-    sdd_module = Extension('_sdd', sources=['sdd/sdd_wrap.c', 'sdd/except.c'], libraries=['sdd'],
-                           library_dirs=[lib_dir])
+        from distutils.core import setup, Extension
+        sdd_module = Extension('_sdd', sources=['sdd/sdd_wrap.c', 'sdd/except.c'], libraries=['sdd'],
+                               library_dirs=[lib_dir])
 
-    setup(name='sdd',
-          version='1.0',
-          author="",
-          description="""SDD Library""",
-          ext_modules=[sdd_module],
-          py_modules=["sdd"],
-          script_name='',
-          script_args=['build_ext', '--build-lib', build_lib, '--rpath', lib_dir]
-          )
-
-    os.chdir(curr)
+        setup(name='sdd',
+              version='1.0',
+              author="",
+              description="""SDD Library""",
+              ext_modules=[sdd_module],
+              py_modules=["sdd"],
+              script_name='',
+              script_args=['build_ext', '--build-lib', build_lib, '--rpath', lib_dir]
+              )
 
 
 def build_maxsatz():
@@ -147,10 +144,11 @@ def build_maxsatz():
     dest_dir, source_dir = get_binary_paths()
     source_dir = os.path.join(source_dir, 'source', 'maxsatz')
     source_file = 'maxsatz2009.c'
-    curdir = os.curdir
-    os.chdir(source_dir)
-    objfile = compiler.compile([source_file], output_dir=dest_dir)
-    compiler.link_executable(objfile, os.path.join(dest_dir, 'maxsatz'))
+
+    with WorkingDir(source_dir):
+        objfile = compiler.compile([source_file], output_dir=dest_dir)
+        compiler.link_executable(objfile, os.path.join(dest_dir, 'maxsatz'))
+        os.remove(objfile[0])
 
 
 def install(force=True):
@@ -161,7 +159,7 @@ def install(force=True):
         build_sdd()
         update = True
 
-    # build_maxsatz()
+    build_maxsatz()
 
     if update:
         info = gather_info()
@@ -200,6 +198,20 @@ def system_info():
     #     s += '  ACTION: run ProbLog installer\n'
     #
     return s
+
+
+class WorkingDir(object):
+
+    def __init__(self, workdir):
+        self.workdir = workdir
+        self.currentdir = os.path.abspath(os.curdir)
+
+    def __enter__(self):
+        self.currentdir = os.path.abspath(os.curdir)
+        os.chdir(self.workdir)
+
+    def __exit__(self, *args):
+        os.chdir(self.currentdir)
 
 
 if __name__ == '__main__':

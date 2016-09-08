@@ -229,7 +229,7 @@ def run_problog_task(task, model, callback=None, data=None, options=None):
     except subprocess.CalledProcessError as err:
         logger.error('ProbLog didn\'t finish correctly: %s' % err)
         result = {'SUCCESS': False, 'url': url,
-                  'err': 'ProbLog learning exceeded time or memory limit'}
+                  'err': 'ProbLog exceeded time or memory limit'}
         return 200, 'application/json', wrap_callback(callback, json.dumps(result))
 
 
