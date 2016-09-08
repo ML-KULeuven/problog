@@ -18,23 +18,15 @@ limitations under the License.
 
 from __future__ import print_function
 
-import stat
 import sys
-import os
-import traceback
 import itertools
 import logging
 
-from ..program import PrologFile
-from ..evaluator import SemiringLogProbability, SemiringProbability, SemiringSymbolic
-from .. import get_evaluatable, get_evaluatables
 from problog.formula import LogicDAG, LogicFormula
 from problog.parser import DefaultPrologParser
 from problog.program import ExtendedPrologFactory, PrologFile
 from problog.logic import Term, Or, Clause, And, is_ground, Not
-from problog.bn.cpd import Variable, Factor, OrCPT, PGM
-from problog.engine import DefaultEngine
-from problog.cycles import break_cycles
+from problog.pgm.cpd import Variable, Factor, OrCPT, PGM
 
 from ..util import Timer, start_timer, stop_timer, init_logger, format_dictionary
 from ..errors import process_error
@@ -95,13 +87,13 @@ def termToBool(term, truth_values):
     logger = logging.getLogger('problog')
     if isinstance(term, And):
         op1 = termToBool(term.op1, truth_values)
-        if op1 == False:
+        if op1 is False:
             return False
-        elif op1 == True:
+        elif op1 is True:
             op2 = termToBool(term.op2, truth_values)
-            if op2 == False:
+            if op2 is False:
                 return False
-            elif op2 == True:
+            elif op2 is True:
                 return True
             else:
                 logger.error('and.op2 is not a boolean'.format(op2))
@@ -111,13 +103,13 @@ def termToBool(term, truth_values):
             return None
     elif isinstance(term, Or):
         op1 = termToBool(term.op1, truth_values)
-        if op1 == True:
+        if op1 is True:
             return True
-        elif op1 == False:
+        elif op1 is False:
             op2 = termToBool(term.op2, truth_values)
-            if op2 == True:
+            if op2 is True:
                 return True
-            elif op2 == False:
+            elif op2 is False:
                 return False
             else:
                 logger.error('or.op2 is not a boolean'.format(op2))
@@ -127,9 +119,9 @@ def termToBool(term, truth_values):
             return None
     elif isinstance(term, Not):
         child = termToBool(term.child, truth_values)
-        if child == True:
+        if child is True:
             return False
-        elif child == False:
+        elif child is False:
             return True
         else:
             logger.error('not.child is not a boolean: {}'.format(child))
@@ -200,7 +192,6 @@ def clauseToCPT(clause, number, pgm):
         cpd_cn.latent = True
         pgm.add_factor(cpd_cn)
         # CPT for the head random variable
-        cpds = []
         for idx, head in enumerate(heads):
             rv = str(head.with_probability())
             pgm.add_var(Variable(rv, [0, 1]))
@@ -227,7 +218,7 @@ def clauseToCPT(clause, number, pgm):
 
 
 def formulaToBN(formula):
-    factors = []
+    # factors = []
     # for i, n, t in formula:
     #     factors.append('{}: {}'.format(i, n))
     #     factors.append('{}: {}'.format(i, t))
@@ -289,14 +280,14 @@ def main(argv, result_handler=None):
     outfile = sys.stdout
     if args.output:
         outfile = open(args.output, 'w')
-    target = LogicDAG # Break cycles
+    target = LogicDAG  # Break cycles
     print_result = print_result_standard
 
     try:
         gp = target.createFrom(
             PrologFile(args.filename, parser=DefaultPrologParser(ExtendedPrologFactory())),
-            label_all=True, avoid_name_clash=False, keep_order=True, # Necessary for to prolog
-            keep_all=args.keep_all, keep_duplicates=False,#args.keep_duplicates,
+            label_all=True, avoid_name_clash=False, keep_order=True,  # Necessary for to prolog
+            keep_all=args.keep_all, keep_duplicates=False,  # args.keep_duplicates,
             hide_builtins=args.hide_builtins)
         # rc = print_result((True, gp), output=outfile)
         # p = PrologFile(args.filename)

@@ -53,7 +53,7 @@ class PGM(object):
 
     def add_factor(self, factor):
         """Add a CPD.
-        :param cpd: Object of type CPD
+        :param factor: New factor to add to PGM
         """
         if self.directed:
             name = factor.rv
@@ -122,7 +122,7 @@ class PGM(object):
         """Export PGM to the Hugin net format.
         http://www.hugin.com/technology/documentation/api-manuals
         """
-        assert(self.directed)
+        assert self.directed
         cpds = [cpd.to_factor(self) for cpd in self.factors_topological()]
         lines = ["%% Hugin Net format",
                  "%% Created on {}\n".format(datetime.now()),
@@ -140,7 +140,7 @@ class PGM(object):
         """Export PGM to the XDSL format defined by SMILE.
         https://dslpitt.org/genie/wiki/Appendices:_XDSL_File_Format_-_XML_Schema_Definitions
         """
-        assert(self.directed)
+        assert self.directed
         cpds = [cpd.to_factor(self) for cpd in self.factors_topological()]
         lines = ['<?xml version="1.0" encoding="ISO-8859-1" ?>',
                  '<smile version="1.0" id="Aa" numsamples="1000">',
@@ -159,7 +159,7 @@ class PGM(object):
         """Export PGM to the format used in the UAI 2008 competition.
         http://graphmod.ics.uci.edu/uai08/FileFormat
         """
-        assert(self.directed)
+        assert self.directed
         cpds = [cpd.to_factor(self) for cpd in self.factors_topological()]
         number_variables = str(len(cpds))
         domain_sizes = [str(len(cpd.values)) for cpd in cpds]
@@ -197,7 +197,7 @@ class PGM(object):
         """Export PGM to Graphviz dot format.
         http://www.graphviz.org
         """
-        assert(self.directed)
+        assert self.directed
         lines = ['digraph bayesnet {']
         for cpd in self.factors.values():
             lines.append('  {} [label="{}"];'.format(cpd.rv_clean(), cpd.rv))
@@ -548,7 +548,6 @@ class Factor(object):
 
         return '\n'.join(lines)
 
-
     def __str__(self):
         lines = []
         table = sorted(self.table.items())
@@ -557,7 +556,7 @@ class Factor(object):
         table = '\n'.join(lines)
         parents = ''
         if len(self.parents) > 0:
-            parents = ', '.join(map(str,self.parents))
+            parents = ', '.join(map(str, self.parents))
 
         if self.rv is not None:
             var = self.pgm.vars[self.rv]
