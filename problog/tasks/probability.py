@@ -139,9 +139,14 @@ def argparser():
     ProbLog also supports the following alternative modes:
 
       - (default): inference
+      - bn: export program to Bayesian network (see bn --help)
       - install: run the installer
+      - dt: decision theoretic ProbLog (see dt --help)
       - explain: compute the probability of a query and explain how to get there
       - ground: generate ground program (see ground --help)
+      - lfi: learn parameters from data (see lfi --help)
+      - mpe: most probable explanation (see mpe --help)
+      - map: maximum a posteriori (see map --help)
       - sample: generate samples from the model (see sample --help)
       - unittest: run the testsuite
 
