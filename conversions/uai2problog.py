@@ -87,10 +87,12 @@ class UAIReader:
         if self.file is not None:
             self.file.close()
 
+
 def construct_var(pgm, var_num):
     rv = 'v{}'.format(var_num)
     values = domains[var_num]
     pgm.add_var(Variable(rv, values, force_boolean=force_bool))
+
 
 def construct_cpt(pgm, func_num):
     global factor_cnt
@@ -143,14 +145,14 @@ def construct_factor(pgm, func_num):
     for parent in parents:
         parent_domains.append(domains[parent])
     idx = 0
+    table = {}
     try:
         cur_func_values = func_values[func_num]
+        for val_assignment in itertools.product(*parent_domains):
+            table[val_assignment] = cur_func_values[idx:idx + dom_size]
+            idx += dom_size
     except:
         error('Could not find function definition for {}'.format(func_num), halt=True)
-    table = {}
-    for val_assignment in itertools.product(*parent_domains):
-        table[val_assignment] = cur_func_values[idx:idx+dom_size]
-        idx += dom_size
 
     pgm.add_factor(Factor(pgm, None, parents_str, table, name=name))
 
@@ -212,6 +214,7 @@ def parse_header(reader):
         error('For BAYES we expect one function for every variables but found: {}'.format(num_funcs), halt=True)
     debug("Number of functions: {}".format(num_funcs))
 
+
 def parse_graph(reader):
     global func_vars
     debug('Parsing function structures')
@@ -231,6 +234,7 @@ def parse_graph(reader):
         func_vars.append(tokens)
         debug('Parsed structure: {}'.format(" ".join(map(str,tokens))))
 
+
 def parse_functions(reader):
     global func_values
     debug('Parsing function values')
@@ -241,6 +245,7 @@ def parse_functions(reader):
         values = [float(v) for v in tokens]
         func_values.append(values)
 
+
 def parse_rest(reader):
     token = reader.get_token()
     # for line in reader:
@@ -248,11 +253,13 @@ def parse_rest(reader):
     #     if line != '':
     #         warning('Did not expect more lines, ignoring: {}'.format(line))
 
+
 def parse(reader):
     parse_header(reader)
     parse_graph(reader)
     parse_functions(reader)
     parse_rest(reader)
+
 
 def print_datastructures():
     print('Domain sizes: {}'.format(' '.join([str(s) for s in dom_sizes])))

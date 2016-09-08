@@ -29,14 +29,18 @@ pgm = PGM()
 
 logger = logging.getLogger('problog.hugin2problog')
 
+
 def info(*args, **kwargs):
     logger.info(*args, **kwargs)
+
 
 def debug(*args, **kwargs):
     logger.debug(*args, **kwargs)
 
+
 def warning(*args, **kwargs):
     logger.warning(*args, **kwargs)
+
 
 def error(*args, **kwargs):
     halt = False
@@ -70,8 +74,10 @@ p_potential = S(Word("potential")) + S("(") + p_var + Group(Optional(S("|") + On
 
 parser = OneOrMore(Or([p_net, p_node, p_potential]))
 
+
 def parseOption(s,l,t):
     return None
+
 
 def parseNode(s,l,t):
     detect_boolean = not no_bool_detection
@@ -129,6 +135,7 @@ def tests():
     # test('node a { label = ""; states = ("1" "2"); }')
     pass
 
+
 def test(string):
     try:
         result = parse(string)
@@ -137,6 +144,7 @@ def test(string):
         # print(string)
         print(err)
         print('\n')
+
 
 ## Processing
 
@@ -151,7 +159,7 @@ def parse(text):
 
 
 def main(argv=None):
-    parser = argparse.ArgumentParser(description='Translate Bayesian net in Hugin format format to ProbLog')
+    parser = argparse.ArgumentParser(description='Translate Bayesian net in Hugin .net/.hugin format format to ProbLog')
     parser.add_argument('--verbose', '-v', action='count', help='Verbose output')
     parser.add_argument('--nobooldetection', action='store_true',
                         help='Do not try to infer if a node is Boolean (true/false, yes/no, ...)')

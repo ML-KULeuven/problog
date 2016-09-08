@@ -13,7 +13,6 @@ import argparse
 from problog.pgm.cpd import Variable, Factor, PGM
 import itertools
 import logging
-import re
 import xml.etree.ElementTree as ET
 
 force_bool = False
@@ -100,7 +99,7 @@ def parseCPT(cpt):
 
 
 def main(argv=None):
-    parser = argparse.ArgumentParser(description='Translate Bayesian net in Hugin format format to ProbLog')
+    parser = argparse.ArgumentParser(description='Translate Bayesian net in Smile/Genie .xdsl format format to ProbLog')
     parser.add_argument('--verbose', '-v', action='count', help='Verbose output')
     parser.add_argument('--nobooldetection', action='store_true',
                         help='Do not try to infer if a node is Boolean (true/false, yes/no, ...)')
