@@ -99,7 +99,8 @@ select(X,[_|XList],Y,[_|YList]) :-
     
 nth0(0,[X|L],X).
 nth0(I,[_|L],X) :-
-    I > 0,
+    length(L, Len),
+    between(1, Len, I),
     J is I - 1,
     nth0(J,L,X).
     
