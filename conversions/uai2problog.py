@@ -33,18 +33,6 @@ factor_cnt = 0
 logger = logging.getLogger('problog.uai2problog')
 
 
-def info(*args, **kwargs):
-    logger.info(*args, **kwargs)
-
-
-def debug(*args, **kwargs):
-    logger.debug(*args, **kwargs)
-
-
-def warning(*args, **kwargs):
-    logger.warning(*args, **kwargs)
-
-
 def error(*args, **kwargs):
     halt = False
     if 'halt' in kwargs:
@@ -57,8 +45,9 @@ def error(*args, **kwargs):
 
 class UAIReader:
     def __init__(self, fn):
-        debug('Opening {}'.format(fn))
+        logger.debug('Opening {}'.format(fn))
         self.file = open(fn, 'r')
+        self.linenb = 0
         self.buffer = []
 
     def get_tokens(self, amount):
@@ -69,8 +58,11 @@ class UAIReader:
         tokens = self.buffer
         while len(tokens) < amount:
             line = self.file.readline()
+            self.linenb += 1
             if line == '':
                 return None
+            if '#' in line:
+                line = line[:line.index('#')]
             tokens += line.strip().split()
         self.buffer = tokens[amount:]
         tokens = tokens[:amount]
@@ -83,7 +75,7 @@ class UAIReader:
         return tokens[0]
 
     def __del__(self):
-        debug('Closing {}'.format(self.file.name))
+        logger.debug('Closing {}'.format(self.file.name))
         if self.file is not None:
             self.file.close()
 
@@ -170,7 +162,7 @@ def construct_pgm():
 
 
 def parse_header(reader):
-    debug('Parsing header')
+    logger.debug('Parsing header')
     global var_parents
 
     # Type
@@ -183,14 +175,14 @@ def parse_header(reader):
     else:
         directed = None
         error('Expected a BAYES or MARKOV network, found: {}'.format(token), halt=True)
-    debug('Type: {}'.format(token))
+    logger.debug('Type: {}'.format(token))
 
     # Number of variables
     global num_vars
     token = reader.get_token()
     num_vars = int(token)
     var_parents = [None]*num_vars
-    debug("Number of variables: {}".format(num_vars))
+    logger.debug("Number of variables: {}".format(num_vars))
 
     # Domain sizes
     global dom_sizes
@@ -204,7 +196,7 @@ def parse_header(reader):
         domains.append(values)
     if len(dom_sizes) != num_vars:
         error('Expected {} domain sizes, found {}'.format(num_vars, len(dom_sizes)), halt=True)
-    debug("Domain sizes: {}".format(" ".join(map(str,dom_sizes))))
+    logger.debug("Domain sizes: {}".format(" ".join(map(str,dom_sizes))))
 
     # Number of functions
     token = reader.get_token()
@@ -212,14 +204,14 @@ def parse_header(reader):
     num_funcs = int(token)
     if directed and num_funcs != num_vars:
         error('For BAYES we expect one function for every variables but found: {}'.format(num_funcs), halt=True)
-    debug("Number of functions: {}".format(num_funcs))
+    logger.debug("Number of functions: {}".format(num_funcs))
 
 
 def parse_graph(reader):
     global func_vars
-    debug('Parsing function structures')
+    logger.debug('Parsing function structures')
     for num_func in range(num_funcs):
-        debug('Parsing function structure {}'.format(num_func))
+        logger.debug('Parsing function structure {}'.format(num_func))
         func_size = int(reader.get_token())
         tokens = reader.get_tokens(func_size)
         tokens = [int(v) for v in tokens]
@@ -232,15 +224,20 @@ def parse_graph(reader):
             # if parent >= num_func:
                 # error('Found parent ({}) that is not yet defined\n{}'.format(parent, line), halt=True)
         func_vars.append(tokens)
-        debug('Parsed structure: {}'.format(" ".join(map(str,tokens))))
+        logger.debug('Parsed structure: {}'.format(" ".join(map(str,tokens))))
 
 
 def parse_functions(reader):
     global func_values
-    debug('Parsing function values')
+    logger.debug('Parsing function values')
     for num_func in range(num_funcs):
-        debug('Parsing function values {}'.format(num_func))
+        logger.debug('Parsing function values {}'.format(num_func))
         num_values = int(reader.get_token())
+        exp_num_values = 1
+        for var in func_vars[num_func]:
+            exp_num_values *= dom_sizes[var]
+        if exp_num_values != num_values:
+            logger.warning('WARNING: Function {} says {} values but {} is expected.'.format(num_func, num_values, exp_num_values))
         tokens = reader.get_tokens(num_values)
         values = [float(v) for v in tokens]
         func_values.append(values)

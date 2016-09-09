@@ -359,8 +359,10 @@ class Factor(object):
                 continue
             # Find max information gain
             # ig_idx = self.maxinformationgainparent(node)
-            ig_idx = None
-            ig_max = -9999999
+            ps = [cnt / len(v) for cnt in c.values()]  # Pr(x_i)
+            h_cur = -sum([p * math.log(p, 2) for p in ps])  # Entropy
+            igr_idx = None
+            igr_max = -9999999
             for parent_idx, parent in enumerate(self.parents):
                 if curpath[parent_idx] is not None:
                     continue
@@ -369,26 +371,32 @@ class Factor(object):
                     bins[value] = []
                 for k, v in node:
                     bins[k[parent_idx]].append(v)
-                ig = 0
+                ig = h_cur  # Information Gain
+                iv = 0  # Intrinsic Value
                 for bin_value, bin_labels in bins.items():
                     label_cnt = Counter(bin_labels)
-                    h = -sum([cnt/len(bin_labels)*math.log(cnt/len(bin_labels), 2) for cnt in label_cnt.values()])
-                    ig += -len(bin_labels)/len(node)*h
-                if ig > ig_max:
-                    ig_max = ig
-                    ig_idx = parent_idx
+                    ps = [cnt/len(bin_labels) for cnt in label_cnt.values()]  # Pr(x_i)
+                    h = -sum([p*math.log(p, 2) for p in ps])  # Entropy
+                    r = len(bin_labels)/len(node)
+                    ig -= r*h
+                    iv -= r*math.log(r,2)
+                igr = ig/iv  # Information Gain Ratio
+                # print('ig={}, iv={}, igr={}, idx={}, parent={}'.format(ig, iv, igr, parent_idx, self.parents[parent_idx]))
+                if igr > igr_max:
+                    igr_max = igr
+                    igr_idx = parent_idx
             # Create next nodes
-            if ig_idx is None:
+            if igr_idx is None:
                 # No useful split found
                 for new_path, new_probs in node:
                     new_table[new_path] = new_probs
                 continue
-            for value in self.pgm.vars[self.parents[ig_idx]].values:
+            for value in self.pgm.vars[self.parents[igr_idx]].values:
                 newpath = [v for v in curpath]
-                newpath[ig_idx] = value
+                newpath[igr_idx] = value
                 newnode = [tuple(newpath), []]
                 for parent_values, prob in node:
-                    if parent_values[ig_idx] == value:
+                    if parent_values[igr_idx] == value:
                         newnode[1].append((parent_values, prob))
                 nodes.append(newnode)
         return self.copy(table=new_table)
