@@ -1058,7 +1058,7 @@ class _AutoDict(dict):
 
     def __getitem__(self, key):
         if key == '_' and self.__localmode:
-            key = '_#%s' % self.__anon
+            key = '_#%s' % len(self.local_variables)
 
         if key == '_' or key is None:
 
