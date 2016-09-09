@@ -130,8 +130,9 @@ class LogicProgram(object):
             obj = cls(**extra)
             if hasattr(src, 'extra_info'):
                 obj.extra_info.update(src.extra_info)
-            if hasattr(src, 'source_root') and hasattr(src, 'source_files'):
+            if hasattr(src, 'source_root'):
                 obj.source_root = src.source_root
+            if hasattr(src, 'source_files'):
                 obj.source_files = src.source_files[:]
                 obj.source_parent = src.source_parent[:]
             if hasattr(src, 'line_info'):

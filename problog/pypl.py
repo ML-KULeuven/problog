@@ -42,7 +42,7 @@ def py2pl(d):
     if type(d) == int or type(d) == float:
         return Constant(d)
 
-    if type(d) == Term:
+    if isinstance(d, Term):
         return d
 
     raise ValueError("Cannot convert from Python to Prolog: {} ({}).".format(d, type(d)))
