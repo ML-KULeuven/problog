@@ -1302,8 +1302,10 @@ label_all=True)
                         r *= cm
                     return r
 
-    def enumerate_branches(self, index):
-        if self.is_true(index):
+    def enumerate_branches(self, index, anc=()):
+        if index in anc:
+            yield 0, []
+        elif self.is_true(index):
             yield 0, [self.TRUE]
         elif self.is_false(index):
             yield 0, []
@@ -1316,13 +1318,13 @@ label_all=True)
                 yield index, [index]
             elif ntype == 'conj':
                 from itertools import product, chain
-                for b in product(*(self.enumerate_branches(c) for c in node.children)):
+                for b in product(*(self.enumerate_branches(c, anc=anc + (index,)) for c in node.children)):
                     c_max, c_br = zip(*b)
                     mx = max(c_max)
                     yield max(index, mx), list(chain(*c_br))
             else:
                 for c in node.children:
-                    for mx, b in self.enumerate_branches(c):
+                    for mx, b in self.enumerate_branches(c, anc=anc + (index,)):
                         yield mx, b
 
     def copy_node(self, target, index):

@@ -1292,7 +1292,10 @@ def _builtin_findall_base(pattern, goal, result, database=None, target=None,
         for mx, b in findall_target.enumerate_branches(n):
             b = list(b)
             b_renamed = [findall_target.copy_node(target, c) for c in b]
-            proof_node = target.add_and(b_renamed)
+            if b_renamed:
+                proof_node = target.add_and(b_renamed)
+            else:
+                proof_node = target.FALSE
             # TODO order detection mechanism is too fragile?
             if b:
                 new_results.append((mx, res[0], proof_node))
