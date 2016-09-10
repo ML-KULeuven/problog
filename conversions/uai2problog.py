@@ -17,6 +17,7 @@ import itertools
 import logging
 
 force_bool = False
+detect_bool = True
 drop_zero = False
 use_neglit = False
 
@@ -83,7 +84,7 @@ class UAIReader:
 def construct_var(pgm, var_num):
     rv = 'v{}'.format(var_num)
     values = domains[var_num]
-    pgm.add_var(Variable(rv, values, force_boolean=force_bool))
+    pgm.add_var(Variable(rv, values, detect_boolean=detect_bool, force_boolean=force_bool))
 
 
 def construct_cpt(pgm, func_num):
@@ -266,7 +267,8 @@ def print_datastructures():
 def main(argv=None):
     parser = argparse.ArgumentParser(description='Translate Bayesian net in UAI08 format to ProbLog')
     parser.add_argument('--verbose', '-v', action='count', help='Verbose output')
-    parser.add_argument('--forcebool', action='store_true', help='Force binary nodes to be represented as boolean predicates (0=f, 1=t)')
+    parser.add_argument('--forcebool', action='store_true', help='Force binary nodes to be represented as Boolean predicates (0=f, 1=t)')
+    parser.add_argument('--nodetectbool', action='store_true', help='Do not try to detect Boolean predicates')
     parser.add_argument('--dropzero', action='store_true', help='Drop zero probabilities (if possible)')
     parser.add_argument('--useneglit', action='store_true', help='Use negative head literals')
     parser.add_argument('--compress', action='store_true', help='Compress tables')
@@ -292,6 +294,9 @@ def main(argv=None):
     global force_bool
     if args.forcebool:
         force_bool = args.forcebool
+    global detect_bool
+    if args.nodetectbool:
+        detect_bool = False
     global drop_zero
     if args.dropzero:
         drop_zero = args.dropzero

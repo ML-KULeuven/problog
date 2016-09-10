@@ -237,12 +237,12 @@ class Variable(object):
                 if (values[0] == self.values[0] and values[1] == self.values[1]) or \
                    (type(self.values[0]) == str and type(self.values[1]) == str and
                     values[0] == self.values[0].lower() and values[1] == self.values[1].lower()):
-                    self.booleantrue = 0
+                    self.booleantrue = 1
                     break
                 elif (values[1] == self.values[0] and values[0] == self.values[1]) or \
                      (type(self.values[0]) == str and type(self.values[1]) == str and
                       values[1] == self.values[0].lower() and values[0] == self.values[1].lower()):
-                    self.booleantrue = 1
+                    self.booleantrue = 0
                     break
             if force_boolean and self.booleantrue is None:
                 self.booleantrue = 1
@@ -347,6 +347,8 @@ class Factor(object):
         while len(nodes) > 0:
             cnt += 1
             curpath, node = nodes.pop()
+            if len(node) == 0:
+                continue
             # All the same or all different? Then stop.
             k, v = zip(*node)
             c = Counter(v)
@@ -364,6 +366,7 @@ class Factor(object):
             igr_idx = None
             igr_max = -9999999
             for parent_idx, parent in enumerate(self.parents):
+                # print('parent_idx:{}, parent:{}'.format(parent_idx, parent))
                 if curpath[parent_idx] is not None:
                     continue
                 bins = {}
@@ -379,7 +382,10 @@ class Factor(object):
                     h = -sum([p*math.log(p, 2) for p in ps])  # Entropy
                     r = len(bin_labels)/len(node)
                     ig -= r*h
-                    iv -= r*math.log(r,2)
+                    if r == 0:
+                        iv -= 9999999
+                    else:
+                        iv -= r*math.log(r,2)
                 igr = ig/iv  # Information Gain Ratio
                 # print('ig={}, iv={}, igr={}, idx={}, parent={}'.format(ig, iv, igr, parent_idx, self.parents[parent_idx]))
                 if igr > igr_max:
@@ -558,7 +564,10 @@ class Factor(object):
 
     def __str__(self):
         lines = []
-        table = sorted(self.table.items())
+        try:
+            table = sorted(self.table.items())
+        except TypeError:
+            table = self.table.items()
         for k, v in table:
             lines.append('{}: {}'.format(k, v))
         table = '\n'.join(lines)
