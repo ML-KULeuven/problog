@@ -61,7 +61,7 @@ class UAIReader:
             line = self.file.readline()
             self.linenb += 1
             if line == '':
-                return None
+                break
             if '#' in line:
                 line = line[:line.index('#')]
             tokens += line.strip().split()
@@ -71,7 +71,7 @@ class UAIReader:
 
     def get_token(self):
         tokens = self.get_tokens(1)
-        if tokens is None:
+        if tokens is None or len(tokens) == 0:
             return None
         return tokens[0]
 
@@ -175,7 +175,7 @@ def parse_header(reader):
         directed = False
     else:
         directed = None
-        error('Expected a BAYES or MARKOV network, found: {}'.format(token), halt=True)
+        error('Expected a BAYES or MARKOV network, found: {} (line {})'.format(token, reader.linenb), halt=True)
     logger.debug('Type: {}'.format(token))
 
     # Number of variables
@@ -196,7 +196,7 @@ def parse_header(reader):
         values = [str(d) for d in range(size)]
         domains.append(values)
     if len(dom_sizes) != num_vars:
-        error('Expected {} domain sizes, found {}'.format(num_vars, len(dom_sizes)), halt=True)
+        error('Expected {} domain sizes, found {} (line {})'.format(num_vars, len(dom_sizes), reader.linenb), halt=True)
     logger.debug("Domain sizes: {}".format(" ".join(map(str,dom_sizes))))
 
     # Number of functions
@@ -204,7 +204,7 @@ def parse_header(reader):
     global num_funcs
     num_funcs = int(token)
     if directed and num_funcs != num_vars:
-        error('For BAYES we expect one function for every variables but found: {}'.format(num_funcs), halt=True)
+        error('For BAYES we expect one function for every variables but found: {} (line {})'.format(num_funcs, reader.linenb), halt=True)
     logger.debug("Number of functions: {}".format(num_funcs))
 
 
@@ -238,9 +238,11 @@ def parse_functions(reader):
         for var in func_vars[num_func]:
             exp_num_values *= dom_sizes[var]
         if exp_num_values != num_values:
-            logger.warning('WARNING: Function {} says {} values but {} is expected.'.format(num_func, num_values, exp_num_values))
+            logger.warning('% WARNING: Function {} says {} values but {} values are expected given the domain size for variable {}.'.format(num_func, num_values, exp_num_values, num_func))
         tokens = reader.get_tokens(num_values)
         values = [float(v) for v in tokens]
+        if len(values) != num_values:
+            error('Expected {} values in function {}, found {} (line {})'.format(num_values, num_func, len(values), reader.linenb), halt=True)
         func_values.append(values)
 
 

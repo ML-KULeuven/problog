@@ -262,7 +262,10 @@ class Variable(object):
 
     def to_ProbLogValue(self, value, value_as_term=True):
         if self.booleantrue is None:
+            if type(value) is frozenset and len(value) == 1:
+                value, = value
             if type(value) is frozenset:
+                # It is a disjunction of possible values
                 if len(value) == len(self.values)-1:
                     # This is the negation of one value
                     new_value, = frozenset(self.values) - value
@@ -272,15 +275,16 @@ class Variable(object):
                         return '\+'+self.clean() + '_' + self.clean(str(new_value))
                 else:
                     if value_as_term:
-                        return '('+';'.join([self.clean() + '("' + str(new_value) + '")' for new_value in value])+')'
+                        return '('+'; '.join([self.clean() + '("' + str(new_value) + '")' for new_value in value])+')'
                     else:
-                        return '(' + ';'.join([self.clean() + '_' + self.clean(str(new_value)) for new_value in value]) + ')'
+                        return '(' + '; '.join([self.clean() + '_' + self.clean(str(new_value)) for new_value in value]) + ')'
             else:
                 if value_as_term:
                     return self.clean()+'("'+str(value)+'")'
                 else:
                     return self.clean()+'_'+self.clean(str(value))
         else:
+            # It is a Boolean atom
             if self.values[self.booleantrue] == value:
                 return self.clean()
             elif self.values[1-self.booleantrue] == value:
