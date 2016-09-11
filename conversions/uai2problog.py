@@ -271,6 +271,7 @@ def main(argv=None):
     parser.add_argument('--nodetectbool', action='store_true', help='Do not try to detect Boolean predicates')
     parser.add_argument('--dropzero', action='store_true', help='Drop zero probabilities (if possible)')
     parser.add_argument('--useneglit', action='store_true', help='Use negative head literals')
+    parser.add_argument('--allowdisjunct', action='store_true', help='Allow disjunctions in the body')
     parser.add_argument('--compress', action='store_true', help='Compress tables')
     parser.add_argument('--output', '-o', help='Output file')
     parser.add_argument('input', help='Input UAI08 file')
@@ -308,7 +309,7 @@ def main(argv=None):
     parse(reader)
     pgm = construct_pgm()
     if args.compress:
-        pgm = pgm.compress_tables()
+        pgm = pgm.compress_tables(allow_disjunct=args.allowdisjunct)
     if pgm is None:
         error('Could not build PGM structure', halt=True)
 

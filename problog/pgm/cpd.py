@@ -25,7 +25,7 @@ import re
 from functools import reduce
 import sys
 import math
-from collections import Counter
+from collections import Counter, defaultdict
 
 
 class PGM(object):
@@ -110,12 +110,12 @@ class PGM(object):
             queue = queue2
         return factors
 
-    def compress_tables(self):
+    def compress_tables(self, allow_disjunct=False):
         """Analyze CPTs and join rows that have the same probability
         distribution."""
         factors = []
         for idx, factor in enumerate(self.factors.values()):
-            factors.append(factor.compress())
+            factors.append(factor.compress(allow_disjunct=allow_disjunct))
         return self.copy(factors=factors)
 
     def to_hugin_net(self):
@@ -262,10 +262,25 @@ class Variable(object):
 
     def to_ProbLogValue(self, value, value_as_term=True):
         if self.booleantrue is None:
-            if value_as_term:
-                return self.clean()+'("'+str(value)+'")'
+            if type(value) is frozenset:
+                if len(value) == len(self.values)-1:
+                    # This is the negation of one value
+                    new_value, = frozenset(self.values) - value
+                    if value_as_term:
+                        return '\+'+self.clean() + '("' + str(new_value) + '")'
+                    else:
+                        return '\+'+self.clean() + '_' + self.clean(str(new_value))
+                else:
+                    for new_value in value:
+                        if value_as_term:
+                            return self.clean() + '("' + str(new_value) + '")'
+                        else:
+                            return self.clean() + '_' + self.clean(str(new_value))
             else:
-                return self.clean()+'_'+self.clean(str(value))
+                if value_as_term:
+                    return self.clean()+'("'+str(value)+'")'
+                else:
+                    return self.clean()+'_'+self.clean(str(value))
         else:
             if self.values[self.booleantrue] == value:
                 return self.clean()
@@ -322,7 +337,7 @@ class Factor(object):
             table=kwargs.get('table', self.table)
         )
 
-    def compress(self):
+    def compress(self, allow_disjunct=False):
         """Table to tree using the ID3 decision tree algorithm.
 
         From:
@@ -352,12 +367,12 @@ class Factor(object):
             # All the same or all different? Then stop.
             k, v = zip(*node)
             c = Counter(v)
-            if len(c.keys()) == 1:
-                new_table[curpath] = node[0][1]
-                continue
             if len(c.keys()) == len(v):
                 for new_path, new_probs in node:
                     new_table[new_path] = new_probs
+                continue
+            if len(c.keys()) == 1:
+                new_table[curpath] = node[0][1]
                 continue
             # Find max information gain
             # ig_idx = self.maxinformationgainparent(node)
@@ -387,7 +402,7 @@ class Factor(object):
                     else:
                         iv -= r*math.log(r,2)
                 igr = ig/iv  # Information Gain Ratio
-                # print('ig={}, iv={}, igr={}, idx={}, parent={}'.format(ig, iv, igr, parent_idx, self.parents[parent_idx]))
+                # print('ig={:.4f}, iv={:.4f}, igr={:.4f}, hc={:.4f}, idx={}, parent={}'.format(ig, iv, igr, h_cur, parent_idx, self.parents[parent_idx]))
                 if igr > igr_max:
                     igr_max = igr
                     igr_idx = parent_idx
@@ -397,14 +412,40 @@ class Factor(object):
                 for new_path, new_probs in node:
                     new_table[new_path] = new_probs
                 continue
-            for value in self.pgm.vars[self.parents[igr_idx]].values:
-                newpath = [v for v in curpath]
-                newpath[igr_idx] = value
-                newnode = [tuple(newpath), []]
-                for parent_values, prob in node:
-                    if parent_values[igr_idx] == value:
-                        newnode[1].append((parent_values, prob))
-                nodes.append(newnode)
+            if allow_disjunct \
+                    and len(self.pgm.vars[self.parents[igr_idx]].values) > max(2, len(c)):
+                # If disjuncts are allowed, find values that lead to identical subtrees
+                # and merge them
+                branches = defaultdict(set)
+                for value in self.pgm.vars[self.parents[igr_idx]].values:
+                    probs = set()
+                    values = set()
+                    for parent_values, prob in node:
+                        if parent_values[igr_idx] == value:
+                            new_parent_values = [v for v in parent_values]
+                            new_parent_values[igr_idx] = None
+                            probs.add(tuple([tuple(new_parent_values), prob]))
+                            values.add(value)
+                    probs = frozenset(probs)
+                    branches[probs].update(values)
+                for probs, values in branches.items():
+                    newpath = [v for v in curpath]
+                    newpath[igr_idx] = frozenset(values)
+                    newnode = [tuple(newpath), []]
+                    for parent_values, prob in probs:
+                        parent_values = list(parent_values)
+                        parent_values[igr_idx] = frozenset(values)
+                        newnode[1].append((tuple(parent_values), prob))
+                    nodes.append(newnode)
+            else:
+                for value in self.pgm.vars[self.parents[igr_idx]].values:
+                    newpath = [v for v in curpath]
+                    newpath[igr_idx] = value
+                    newnode = [tuple(newpath), []]
+                    for parent_values, prob in node:
+                        if parent_values[igr_idx] == value:
+                            newnode[1].append((parent_values, prob))
+                    nodes.append(newnode)
         return self.copy(table=new_table)
 
     def to_HuginNetNode(self):
