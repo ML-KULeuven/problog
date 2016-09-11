@@ -271,11 +271,10 @@ class Variable(object):
                     else:
                         return '\+'+self.clean() + '_' + self.clean(str(new_value))
                 else:
-                    for new_value in value:
-                        if value_as_term:
-                            return self.clean() + '("' + str(new_value) + '")'
-                        else:
-                            return self.clean() + '_' + self.clean(str(new_value))
+                    if value_as_term:
+                        return '('+';'.join([self.clean() + '("' + str(new_value) + '")' for new_value in value])+')'
+                    else:
+                        return '(' + ';'.join([self.clean() + '_' + self.clean(str(new_value)) for new_value in value]) + ')'
             else:
                 if value_as_term:
                     return self.clean()+'("'+str(value)+'")'
