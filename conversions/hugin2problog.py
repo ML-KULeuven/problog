@@ -8,7 +8,9 @@ Copyright (c) 2016 KU Leuven. All rights reserved.
 """
 
 import sys
+import os
 import argparse
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 from problog.pgm.cpd import Variable, Factor, PGM
 import itertools
 import logging
