@@ -1766,9 +1766,11 @@ class EvalBuiltIn(EvalNode):
             if self.database and self.location:
                 functor = self.call_origin[0].split('/')[0]
                 callterm = Term(functor, *self.context)
-                err.base_message = 'Error while evaluating %s: %s' % (callterm, err.base_message)
-                err.location = self.database.lineno(self.location)
-            raise err
+                base_message = 'Error while evaluating %s: %s' % (callterm, err.base_message)
+                location = self.database.lineno(self.location)
+                raise ArithmeticError(base_message, location)
+            else:
+                raise err
 
 
 class BooleanBuiltIn(object):
