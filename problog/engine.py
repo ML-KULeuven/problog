@@ -268,6 +268,50 @@ class ClauseDBEngine(GenericEngine):
 
         return target
 
+    def ground_step(self, db, term, gp=None, silent_fail=True, assume_prepared=False, **kwdargs):
+        """
+
+        :param db:
+        :type db: LogicProgram
+        :param term:
+        :param gp:
+        :param silent_fail:
+        :param assume_prepared:
+        :param kwdargs:
+        :return:
+        """
+        # Convert logic program if needed.
+        if not assume_prepared:
+            db = self.prepare(db)
+        # Create a new target datastructure if none was given.
+        if gp is None:
+            gp = LogicFormula()
+        # Find the define node for the given query term.
+        clause_node = db.find(term)
+        # If term not defined: fail query (no error)    # TODO add error to make it consistent?
+        if clause_node is None:
+            # Could be builtin?
+            clause_node = db.get_builtin(term.signature)
+        if clause_node is None:
+            if silent_fail or self.unknown == self.UNKNOWN_FAIL:
+                return []
+            else:
+                raise UnknownClause(term.signature, location=db.lineno(term.location))
+
+        try:
+            term = term.apply(_ReplaceVar())  # replace Var(_) by integers
+
+            context = self.create_context(term.args)
+            context, xxx = substitute_call_args(context, context)
+            actions = self.execute_init(clause_node, database=db, target=gp, context=context,
+                                        **kwdargs)
+        except UnknownClauseInternal:
+            if silent_fail or self.unknown == self.UNKNOWN_FAIL:
+                return []
+            else:
+                raise UnknownClause(term.signature, location=db.lineno(term.location))
+        return actions
+
     def _ground(self, db, term, gp=None, silent_fail=True, assume_prepared=False, **kwdargs):
         """
 

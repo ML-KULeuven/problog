@@ -200,6 +200,8 @@ def argparser():
                         help="Enable weight propagation")
     parser.add_argument('--convergence', '-c', type=float, default=argparse.SUPPRESS,
                         help='stop anytime when bounds are within this range')
+    parser.add_argument('--unbuffered', '-u', action='store_true', default=argparse.SUPPRESS,
+                        help=argparse.SUPPRESS)
 
     # SDD garbage collection
     sdd_auto_gc_group = parser.add_mutually_exclusive_group()
