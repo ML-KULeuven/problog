@@ -23,8 +23,7 @@ import sys
 import os
 import traceback
 
-from ..program import PrologFile
-from ..formula import LogicFormula
+from ..program import PrologFile, SimpleProgram
 from ..engine import DefaultEngine
 from ..evaluator import SemiringLogProbability, SemiringProbability, SemiringSymbolic
 from .. import get_evaluatable, get_evaluatables
@@ -72,7 +71,7 @@ def print_result_json(d, output, precision=8):
     return 0
 
 
-def execute(filename, knowledge=None, semiring=None, debug=False, **kwdargs):
+def execute(filename, knowledge=None, semiring=None, debug=False, combine=False, **kwdargs):
     """Run ProbLog.
 
     :param filename: input file
@@ -87,7 +86,16 @@ def execute(filename, knowledge=None, semiring=None, debug=False, **kwdargs):
 
     try:
         with Timer('Total time'):
-            model = PrologFile(filename)
+            if combine:
+                model = SimpleProgram()
+                for i, fn in enumerate(filename):
+                    filemodel = PrologFile(fn)
+                    for line in filemodel:
+                        model += line
+                    if i == 0:
+                        model.source_root = filemodel.source_root
+            else:
+                model = PrologFile(filename)
             engine = DefaultEngine(**kwdargs)
             db = engine.prepare(model)
             db_semiring = db.get_data('semiring')
@@ -160,6 +168,7 @@ def argparser():
     parser.add_argument('--knowledge', '-k', dest='koption',
                         choices=get_evaluatables(),
                         default=None, help="Knowledge compilation tool.")
+    parser.add_argument('--combine', help="Combine input files into single model.", action='store_true')
 
     # Evaluation semiring
     ls_group = parser.add_mutually_exclusive_group()
@@ -265,13 +274,18 @@ def main(argv, result_handler=None):
     if args.propagate_weights:
         args.propagate_weights = semiring
 
-    for filename in args.filenames:
-        if len(args.filenames) > 1:
-            print ('Results for %s:' % filename)
-        result = execute(filename, args.koption, semiring, **vars(args))
+    if args.combine:
+        result = execute(args.filenames, args.koption, semiring, **vars(args))
         retcode = result_handler(result, output)
-        if len(args.filenames) == 1:
-            sys.exit(retcode)
+        sys.exit(retcode)
+    else:
+        for filename in args.filenames:
+            if len(args.filenames) > 1:
+                print ('Results for %s:' % filename)
+            result = execute(filename, args.koption, semiring, **vars(args))
+            retcode = result_handler(result, output)
+            if len(args.filenames) == 1:
+                sys.exit(retcode)
 
     if args.output is not None:
         output.close()
