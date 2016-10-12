@@ -1185,7 +1185,6 @@ label_all=True)
 
         for group, choices in choice_by_group.items():
             # Construct head
-
             head = Or.from_list([choice_name[c].with_probability(choice_prob[c]) for c in choices])
 
             # Construct body
@@ -1199,7 +1198,7 @@ label_all=True)
     def _is_valid_name(self, name):
         return name is not None and \
             not name.functor.startswith('_problog_') and \
-            not name.functor == 'choice' and not name.functor == 'body'
+            not name.functor == 'choice' and not name.functor.startswith('body')
 
     def get_body(self, index, processed=None, parent_name=None):
         if index == self.TRUE:
