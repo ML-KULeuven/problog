@@ -1198,7 +1198,7 @@ label_all=True)
     def _is_valid_name(self, name):
         return name is not None and \
             not name.functor.startswith('_problog_') and \
-            not name.functor == 'choice' and not name.functor.startswith('body')
+            not name.functor == 'choice' and not name.functor.startswith('body_')
 
     def get_body(self, index, processed=None, parent_name=None):
         if index == self.TRUE:
