@@ -672,7 +672,11 @@ class Constant(Term):
 
     """
 
+    FLOAT_PRECISION = 15
+
     def __init__(self, value, location=None, **kwdargs):
+        if self.FLOAT_PRECISION is not None and type(value) == float:
+            value = round(value, self.FLOAT_PRECISION)
         Term.__init__(self, value, location=location, **kwdargs)
 
     def compute_value(self, functions=None):

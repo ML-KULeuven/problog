@@ -206,8 +206,47 @@ class ConstraintAD(Constraint):
         elif self.is_false():
             return False
         else:
-            actual = [values.get(i) for i in self.nodes if values.get(i) is not None]
+            actual = [values.get(i) for i in self.get_nodes() if values.get(i) is not None]
             return sum(actual) == 1
+
+    def propagate(self, values, weights, node=None):
+        """Returns
+            - True: constraint satisfied
+            - False: constraint violated
+            - None: unknown
+        """
+
+        if node is not None and node not in self.get_nodes():
+            return
+
+        if self.is_true():
+            return True
+        elif self.is_false():
+            return False
+        else:
+            #print ([(i, values[i]) for i in self.get_nodes() if values.get(i) is not None], self.get_nodes())
+            # If there is a true value: set all the others to false
+            true_values = [i for i in self.get_nodes() if values.get(i) == 1.0]
+            if len(true_values) == 1:
+                v = true_values[0]
+                for i in self.get_nodes():
+                    if i != v:
+                        values[i] = 0.0
+           #     print ('a', values)
+                return True
+            elif len(true_values) > 1:
+         #       print('b', values)
+                return False
+            else:
+                false_values = set([i for i in self.get_nodes() if values.get(i) == 0.0])
+                remain = 1.0 - sum(weights[v] for v in false_values)
+                # if len(false_values) == len(self.get_nodes()) - 1:
+                for i in self.get_nodes():
+                    if not i in false_values:
+                        values[i] = weights[i] / remain
+          #      print ('c', values)
+                return True
+        #print ('d', values)
 
 
 class ClauseConstraint(Constraint):

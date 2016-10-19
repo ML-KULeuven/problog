@@ -23,8 +23,7 @@ import sys
 import os
 import traceback
 
-from ..program import PrologFile
-from ..formula import LogicFormula
+from ..program import PrologFile, SimpleProgram
 from ..engine import DefaultEngine
 from ..evaluator import SemiringLogProbability, SemiringProbability, SemiringSymbolic
 from .. import get_evaluatable, get_evaluatables
@@ -72,7 +71,7 @@ def print_result_json(d, output, precision=8):
     return 0
 
 
-def execute(filename, knowledge=None, semiring=None, debug=False, **kwdargs):
+def execute(filename, knowledge=None, semiring=None, debug=False, combine=False, **kwdargs):
     """Run ProbLog.
 
     :param filename: input file
@@ -87,7 +86,16 @@ def execute(filename, knowledge=None, semiring=None, debug=False, **kwdargs):
 
     try:
         with Timer('Total time'):
-            model = PrologFile(filename)
+            if combine:
+                model = SimpleProgram()
+                for i, fn in enumerate(filename):
+                    filemodel = PrologFile(fn)
+                    for line in filemodel:
+                        model += line
+                    if i == 0:
+                        model.source_root = filemodel.source_root
+            else:
+                model = PrologFile(filename)
             engine = DefaultEngine(**kwdargs)
             db = engine.prepare(model)
             db_semiring = db.get_data('semiring')
@@ -104,6 +112,14 @@ def execute(filename, knowledge=None, semiring=None, debug=False, **kwdargs):
                     # Only get location for primary file (other file information is not available).
                     n.loc = model.lineno(n.location)
         return True, result
+    except KeyboardInterrupt as err:
+        trace = traceback.format_exc()
+        err.trace = trace
+        return False, err
+    except SystemError as err:
+        trace = traceback.format_exc()
+        err.trace = trace
+        return False, err
     except Exception as err:
         trace = traceback.format_exc()
         err.trace = trace
@@ -131,9 +147,14 @@ def argparser():
     ProbLog also supports the following alternative modes:
 
       - (default): inference
+      - bn: export program to Bayesian network (see bn --help)
       - install: run the installer
+      - dt: decision theoretic ProbLog (see dt --help)
       - explain: compute the probability of a query and explain how to get there
       - ground: generate ground program (see ground --help)
+      - lfi: learn parameters from data (see lfi --help)
+      - mpe: most probable explanation (see mpe --help)
+      - map: maximum a posteriori (see map --help)
       - sample: generate samples from the model (see sample --help)
       - unittest: run the testsuite
 
@@ -147,6 +168,7 @@ def argparser():
     parser.add_argument('--knowledge', '-k', dest='koption',
                         choices=get_evaluatables(),
                         default=None, help="Knowledge compilation tool.")
+    parser.add_argument('--combine', help="Combine input files into single model.", action='store_true')
 
     # Evaluation semiring
     ls_group = parser.add_mutually_exclusive_group()
@@ -167,6 +189,8 @@ def argparser():
                         help="Set timeout for compilation (in seconds, default=off).")
     parser.add_argument('--debug', '-d', action='store_true',
                         help="Enable debug mode (print full errors).")
+    parser.add_argument('--full-trace', '-T', action='store_true',
+                        help="Full tracing.")
     parser.add_argument('--web', action='store_true', help=argparse.SUPPRESS)
     parser.add_argument('-a', '--arg', dest='args', action='append',
                         help='Pass additional arguments to the cmd_args builtin.')
@@ -185,6 +209,8 @@ def argparser():
                         help="Enable weight propagation")
     parser.add_argument('--convergence', '-c', type=float, default=argparse.SUPPRESS,
                         help='stop anytime when bounds are within this range')
+    parser.add_argument('--unbuffered', '-u', action='store_true', default=argparse.SUPPRESS,
+                        help=argparse.SUPPRESS)
 
     # SDD garbage collection
     sdd_auto_gc_group = parser.add_mutually_exclusive_group()
@@ -248,13 +274,18 @@ def main(argv, result_handler=None):
     if args.propagate_weights:
         args.propagate_weights = semiring
 
-    for filename in args.filenames:
-        if len(args.filenames) > 1:
-            print ('Results for %s:' % filename)
-        result = execute(filename, args.koption, semiring, **vars(args))
+    if args.combine:
+        result = execute(args.filenames, args.koption, semiring, **vars(args))
         retcode = result_handler(result, output)
-        if len(args.filenames) == 1:
-            sys.exit(retcode)
+        sys.exit(retcode)
+    else:
+        for filename in args.filenames:
+            if len(args.filenames) > 1:
+                print ('Results for %s:' % filename)
+            result = execute(filename, args.koption, semiring, **vars(args))
+            retcode = result_handler(result, output)
+            if len(args.filenames) == 1:
+                sys.exit(retcode)
 
     if args.output is not None:
         output.close()

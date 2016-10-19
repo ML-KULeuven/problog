@@ -147,7 +147,7 @@ class QueryFunc(object):
         self.tablename = tablename
         self.columns = columns
 
-    def __call__(self, *args):
+    def __call__(self, *args, **kwargs):
         where = []
         values = []
         for c, a in zip(self.columns, args):

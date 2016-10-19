@@ -35,7 +35,7 @@ from .engine_unify import *
 
 from .core import transform
 from .errors import GroundingError
-from .util import Timer
+from .util import Timer, OrderedSet
 
 
 @transform(LogicProgram, LogicFormula)
@@ -247,6 +247,9 @@ class ClauseDBEngine(GenericEngine):
         if term.is_negated():
             negated = True
             term = -term
+        elif term.functor in ('not', '\+') and term.arity == 1:
+            negated = True
+            term = term.args[0]
         else:
             negated = False
 
@@ -254,12 +257,60 @@ class ClauseDBEngine(GenericEngine):
         for args, node_id in results:
             term_store = term.with_args(*args)
             if negated:
-                target.add_name(-term_store, -node_id, label)
+                target.add_name(-term_store, target.negate(node_id), label)
             else:
                 target.add_name(term_store, node_id, label)
         if not results:
-            target.add_name(term, None, label)
+            if negated:
+                target.add_name(-term, target.TRUE, label)
+            else:
+                target.add_name(term, target.FALSE, label)
+
         return target
+
+    def ground_step(self, db, term, gp=None, silent_fail=True, assume_prepared=False, **kwdargs):
+        """
+
+        :param db:
+        :type db: LogicProgram
+        :param term:
+        :param gp:
+        :param silent_fail:
+        :param assume_prepared:
+        :param kwdargs:
+        :return:
+        """
+        # Convert logic program if needed.
+        if not assume_prepared:
+            db = self.prepare(db)
+        # Create a new target datastructure if none was given.
+        if gp is None:
+            gp = LogicFormula()
+        # Find the define node for the given query term.
+        clause_node = db.find(term)
+        # If term not defined: fail query (no error)    # TODO add error to make it consistent?
+        if clause_node is None:
+            # Could be builtin?
+            clause_node = db.get_builtin(term.signature)
+        if clause_node is None:
+            if silent_fail or self.unknown == self.UNKNOWN_FAIL:
+                return []
+            else:
+                raise UnknownClause(term.signature, location=db.lineno(term.location))
+
+        try:
+            term = term.apply(_ReplaceVar())  # replace Var(_) by integers
+
+            context = self.create_context(term.args)
+            context, xxx = substitute_call_args(context, context)
+            actions = self.execute_init(clause_node, database=db, target=gp, context=context,
+                                        **kwdargs)
+        except UnknownClauseInternal:
+            if silent_fail or self.unknown == self.UNKNOWN_FAIL:
+                return []
+            else:
+                raise UnknownClause(term.signature, location=db.lineno(term.location))
+        return actions
 
     def _ground(self, db, term, gp=None, silent_fail=True, assume_prepared=False, **kwdargs):
         """
@@ -302,7 +353,6 @@ class ClauseDBEngine(GenericEngine):
                 return gp, []
             else:
                 raise UnknownClause(term.signature, location=db.lineno(term.location))
-
         return gp, results
 
     def ground_evidence(self, db, target, evidence, propagate_evidence=False):
@@ -372,7 +422,6 @@ class ClauseDBEngine(GenericEngine):
             for ev in evidence:
                 if not isinstance(ev[0], Term):
                     raise GroundingError('Invalid evidence')   # TODO can we add a location?
-
             # Ground queries
             if propagate_evidence:
                 self.ground_evidence(db, target, evidence, propagate_evidence=propagate_evidence)
@@ -486,7 +535,6 @@ class ClauseIndex(list):
             return results
 
     def _add(self, key, item):
-        assert not self.__optimized
         for i, k in enumerate(key):
             self.__index[i][k].add(item)
 
@@ -1053,7 +1101,7 @@ class _AutoDict(dict):
 
     def __getitem__(self, key):
         if key == '_' and self.__localmode:
-            key = '_#%s' % self.__anon
+            key = '_#%s' % len(self.local_variables)
 
         if key == '_' or key is None:
 

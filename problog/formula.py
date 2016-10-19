@@ -1007,17 +1007,36 @@ label_all=True)
 
         for qn, qi in self.queries():
             if is_ground(qn):
-                if qi == self.TRUE:
-                    lines.append('%s.' % qn)
-                elif qi == self.FALSE:
-                    lines.append('%s :- fail.' % qn)
+                if self.is_true(qi):
+                    if qn.is_negated():
+                        lines.append('%s :- fail.' % -qn)
+                    else:
+                        lines.append('%s.' % qn)
+                elif self.is_false(qi):
+                    if qn.is_negated():
+                        lines.append('%s.' % -qn)
+                    else:
+                        lines.append('%s :- fail.' % qn)
                 lines.append('query(%s).' % qn)
 
         for qn, qi in self.evidence():
-            if qi < 0:
-                lines.append('evidence(%s).' % -qn)
+            if self.is_true(qi):
+                if qn.is_negated():
+                    lines.append('%s :- fail.' % -qn)
+                else:
+                    lines.append('%s.' % qn)
+                lines.append('evidence(%s).' % qn)
+            elif self.is_false(qi):
+                if qn.is_negated():
+                    lines.append('%s.' % -qn)
+                else:
+                    lines.append('%s :- fail.' % qn)
+                lines.append('evidence(%s).' % qn)
+            elif qi < 0:
+                lines.append('evidence(%s).' % qn)
             else:
                 lines.append('evidence(%s).' % qn)
+
 
         return '\n'.join(lines)
 
@@ -1166,7 +1185,6 @@ label_all=True)
 
         for group, choices in choice_by_group.items():
             # Construct head
-
             head = Or.from_list([choice_name[c].with_probability(choice_prob[c]) for c in choices])
 
             # Construct body
@@ -1180,7 +1198,7 @@ label_all=True)
     def _is_valid_name(self, name):
         return name is not None and \
             not name.functor.startswith('_problog_') and \
-            not name.functor == 'choice' and not name.functor == 'body'
+            not name.functor == 'choice' and not name.functor.startswith('body_')
 
     def get_body(self, index, processed=None, parent_name=None):
         if index == self.TRUE:
@@ -1283,8 +1301,10 @@ label_all=True)
                         r *= cm
                     return r
 
-    def enumerate_branches(self, index):
-        if self.is_true(index):
+    def enumerate_branches(self, index, anc=()):
+        if index in anc:
+            yield 0, []
+        elif self.is_true(index):
             yield 0, [self.TRUE]
         elif self.is_false(index):
             yield 0, []
@@ -1297,13 +1317,13 @@ label_all=True)
                 yield index, [index]
             elif ntype == 'conj':
                 from itertools import product, chain
-                for b in product(*(self.enumerate_branches(c) for c in node.children)):
+                for b in product(*(self.enumerate_branches(c, anc=anc + (index,)) for c in node.children)):
                     c_max, c_br = zip(*b)
                     mx = max(c_max)
-                    yield max(index, mx), chain(*c_br)
+                    yield max(index, mx), list(chain(*c_br))
             else:
                 for c in node.children:
-                    for mx, b in self.enumerate_branches(c):
+                    for mx, b in self.enumerate_branches(c, anc=anc + (index,)):
                         yield mx, b
 
     def copy_node(self, target, index):

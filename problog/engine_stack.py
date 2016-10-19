@@ -142,6 +142,7 @@ class StackBasedEngine(ClauseDBEngine):
         self.debugger = kwdargs.get('debugger')
 
         self.unbuffered = kwdargs.get('unbuffered')
+        self.rc_first = kwdargs.get('rc_first', False)
 
         self.full_trace = kwdargs.get('full_trace')
 
@@ -231,7 +232,10 @@ class StackBasedEngine(ClauseDBEngine):
 
     def init_message_stack(self):
         if self.unbuffered:
-            return MessageOrderD(self)
+            if self.rc_first:
+                return MessageOrderDrc(self)
+            else:
+                return MessageOrderD(self)
         else:
             return MessageFIFO(self)
 
@@ -308,20 +312,173 @@ class StackBasedEngine(ClauseDBEngine):
         else:
             return False
 
-        # if self.cycle_root and self.in_cycle(child):
-        #     return True
-        #
-        # child1 = child
-        # while child is not None and child != parent:
-        #     childnode = self.stack[child]
-        #     if hasattr(childnode, 'siblings'):
-        #         for s in childnode.siblings:
-        #             if self.is_real_cycle(s, parent):
-        #                 return True
-        #     child = childnode.parent
-        #     if childnode.parent == parent:
-        #         return True
-        # return False
+    def execute_init(self, node_id, target=None, database=None, is_root=None, **kwargs):
+
+        print (target)
+        # Initialize the cache/table.
+        # This is stored in the target ground program because
+        # node ids are only valid in that context.
+        if not hasattr(target, '_cache'):
+            target._cache = DefineCache(database.dont_cache)
+
+        # Retrieve the list of actions needed to evaluate the top-level node.
+        # parent = kwdargs.get('parent')
+        # kwdargs['parent'] = parent
+
+        initial_actions = self.eval(node_id, parent=None, database=database, target=target,
+                                    is_root=is_root, **kwargs)
+
+        return initial_actions
+
+    def execute_step(self, initial_actions, steps=None, target=None, database=None, subcall=False,
+                     is_root=False, name=None, **kwdargs):
+
+        self.trace = kwdargs.get('trace')
+        self.debug = kwdargs.get('debug') or self.trace
+        debugger = self.debugger
+
+        actions = self.init_message_stack()
+        actions += initial_actions
+        solutions = []
+
+        # Main loop: process actions until there are no more.
+        while actions:
+            if self.full_trace:
+                self.printStack()
+                print(actions)
+            # Pop the next action.
+            # An action consists of 4 parts:
+            #   - act: the type of action (r, c, e)
+            #   - obj: the pointer on which to call the action
+            #   - args: the arguments of the action
+            #   - context: the execution context
+
+            if self.cycle_root is not None and actions.cycle_exhausted():
+                if self.full_trace:
+                    print('CLOSING CYCLE')
+                    sys.stdin.readline()
+                # for message in actions:   # TODO cache
+                #     parent = actions._msg_parent(message)
+                #     print (parent, self.in_cycle(parent))
+                next_actions = self.cycle_root.closeCycle(True)
+                actions += reversed(next_actions)
+            else:
+                act, obj, args, context = actions.pop()
+
+                # Inform the debugger.
+                if debugger:
+                    debugger.process_message(act, obj, args, context)
+
+                if obj is None:
+                    # We have reached the top-level.
+                    if act == 'r':
+                        # A new result is available
+                        solutions.append((args[0], args[1]))
+                        if name is not None:
+                            negated, term, label = name
+                            term_store = term.with_args(*args[0])
+                            if negated:
+                                target.add_name(-term_store, -args[1], label)
+                            else:
+                                target.add_name(term_store, args[1], label)
+
+                        if args[3]:
+                            # Last result received
+                            if not subcall and self.pointer != 0:  # pragma: no cover
+                                # ERROR: the engine stack should be empty.
+                                self.printStack()
+                                raise InvalidEngineState('Stack not empty at end of execution!')
+                            if not subcall:
+                                # Clean up the stack to save memory.
+                                self.shrink_stack()
+                            # return True, solutions
+                            return actions
+                    elif act == 'c':
+                        # Indicates completion of the execution.
+                        return actions
+#                        return True, solutions
+                    else:
+                        # ERROR: unknown message
+                        raise InvalidEngineState('Unknown message!')
+                else:
+                    # We are not at the top-level.
+                    if act == 'e':
+                        if steps is None or steps > 0:
+                            if steps is not None:
+                                steps -= 1
+                            # Never clean up in this case because 'obj' doesn't contain a pointer.
+                            cleanup = False
+                            try:
+                                # Evaluate the next node.
+                                next_actions = self.eval(obj, **context)
+                                obj = self.pointer
+                            except UnknownClauseInternal:
+                                # An unknown clause was encountered.
+                                # TODO why is this handled here?
+                                call_origin = context.get('call_origin')
+                                if call_origin is None:
+                                    sig = 'unknown'
+                                    raise UnknownClause(sig, location=None)
+                                else:
+                                    loc = database.lineno(call_origin[1])
+                                    raise UnknownClause(call_origin[0], location=loc)
+                        else:
+                            return list(actions) + [(act, obj, args, context)]
+                    else:
+                        # The message is 'r' or 'c'. This means 'obj' should be a valid pointer.
+                        try:
+                            # Retrieve the execution node from the stack.
+                            exec_node = self.stack[obj]
+                        except IndexError:  # pragma: no cover
+                            self.printStack()
+                            raise InvalidEngineState('Non-existing pointer: %s' % obj)
+                        if exec_node is None:  # pragma: no cover
+                            print(act, obj, args)
+                            self.printStack()
+                            raise InvalidEngineState('Invalid node at given pointer: %s' % obj)
+
+                        if act == 'r':
+                            # A new result was received.
+                            cleanup, next_actions = exec_node.new_result(*args, **context)
+                        elif act == 'c':
+                            # A completion message was received.
+                            cleanup, next_actions = exec_node.complete(*args, **context)
+                        else:  # pragma: no cover
+                            raise InvalidEngineState('Unknown message')
+
+                    if not actions and not next_actions and self.cycle_root is not None:
+                        if self.full_trace:
+                            print('CLOSE CYCLE')
+                            sys.stdin.readline()
+                        # If there are no more actions and we have an active cycle, we should close the cycle.
+                        next_actions = self.cycle_root.closeCycle(True)
+                    # Update the list of actions.
+                    actions += list(reversed(next_actions))
+
+                    # Do debugging.
+                    if self.debug:  # pragma: no cover
+                        self.printStack(obj)
+                        if act in 'rco':
+                            print(obj, act, args)
+                        print([(a, o, x) for a, o, x, t in actions[-10:]])
+                        if self.trace:
+                            a = sys.stdin.readline()
+                            if a.strip() == 'gp':
+                                print(target)
+                            elif a.strip() == 'l':
+                                self.trace = False
+                                self.debug = False
+                    if cleanup:
+                        self.cleanup(obj)
+
+        if subcall:
+            raise IndirectCallCycleError(database.lineno(kwdargs['call_origin'][1]))
+        else:
+            # This should never happen.
+            self.printStack()  # pragma: no cover
+            print('Actions:', actions)
+            print('Collected results:', solutions)  # pragma: no cover
+            raise InvalidEngineState('Engine did not complete correctly!')  # pragma: no cover
 
     def execute(self, node_id, target=None, database=None, subcall=False,
                 is_root=False, name=None, **kwdargs):
@@ -380,7 +537,6 @@ class StackBasedEngine(ClauseDBEngine):
                 actions += reversed(next_actions)
             else:
                 act, obj, args, context = actions.pop()
-
 
                 # Inform the debugger.
                 if debugger:
@@ -522,9 +678,18 @@ class StackBasedEngine(ClauseDBEngine):
                 raise UnknownClause(query.signature, database.lineno(query.location))
 
         return self.execute(node_id, database=database, target=target,
-                            context=self.create_context(query.args), **kwdargs)
+                        context=self.create_context(query.args), **kwdargs)
 
     def call_intern(self, query, **kwdargs):
+        if query.is_negated():
+            negated = True
+            query = -query
+        elif query.functor in ('not', '\+') and query.arity == 1:
+            negated = True
+            neg_func = query.functor
+            query = query.args[0]
+        else:
+            negated = False
         database = kwdargs.get('database')
         node_id = database.find(query)
         if node_id is None:
@@ -535,9 +700,19 @@ class StackBasedEngine(ClauseDBEngine):
         call_args = range(0, len(query.args))
         call_term = query.with_args(*call_args)
         call_term.defnode = node_id
+        call_term.child = node_id
 
-        return self.eval_call(None, call_term,
-                              context=self.create_context(query.args), **kwdargs)
+        if negated:
+            def func(result):
+                return Term(neg_func, Term(call_term.functor, *result)),
+
+            kwdargs['transform'].addFunction(func)
+
+            return self.eval_neg(node_id=None, node=call_term,
+                                 context=self.create_context(query.args), **kwdargs)
+        else:
+            return self.eval_call(None, call_term,
+                                  context=self.create_context(query.args), **kwdargs)
 
     def printStack(self, pointer=None):  # pragma: no cover
         print('===========================')
@@ -927,6 +1102,39 @@ class MessageOrderD(MessageAnyOrder):
 
     def __iter__(self):
         return iter(self.messages)
+
+
+class MessageOrderDrc(MessageAnyOrder):
+    def __init__(self, engine):
+        MessageAnyOrder.__init__(self, engine)
+        self.messages_rc = []
+        self.messages_e = []
+
+    def append(self, message):
+        if message[0] == 'e':
+            self.messages_e.append(message)
+        else:
+            self.messages_rc.append(message)
+
+    def pop(self):
+        if self.messages_rc:
+            msg = self.messages_rc.pop(-1)
+            return msg
+        else:
+            res = self.messages_e.pop(-1)
+            return res
+
+    def __nonzero__(self):
+        return bool(self.messages_e) or bool(self.messages_rc)
+
+    def __bool__(self):
+        return bool(self.messages_e) or bool(self.messages_rc)
+
+    def __len__(self):
+        return len(self.messages_e) + len(self.messages_rc)
+
+    def __iter__(self):
+        return iter(self.messages_e + self.messages_rc)
 
 
 class EvalNode(object):
@@ -1530,6 +1738,8 @@ class EvalDefine(EvalNode):
                 queue += self.engine.notify_cycle(cycle)
                 if cycle_parent.pointer != self.engine.cycle_root.pointer:
                     to_cycle_root = self.engine.find_cycle(cycle_parent.pointer, self.engine.cycle_root.pointer)
+                    if to_cycle_root is None:
+                        raise IndirectCallCycleError(self.database.lineno(self.node.location))
                     queue += cycle_parent.createCycle()
                     queue += self.engine.notify_cycle(to_cycle_root)
         return queue
@@ -1745,9 +1955,11 @@ class EvalBuiltIn(EvalNode):
             if self.database and self.location:
                 functor = self.call_origin[0].split('/')[0]
                 callterm = Term(functor, *self.context)
-                err.base_message = 'Error while evaluating %s: %s' % (callterm, err.base_message)
-                err.location = self.database.lineno(self.location)
-            raise err
+                base_message = 'Error while evaluating %s: %s' % (callterm, err.base_message)
+                location = self.database.lineno(self.location)
+                raise ArithmeticError(base_message, location)
+            else:
+                raise err
 
 
 class BooleanBuiltIn(object):

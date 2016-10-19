@@ -31,8 +31,6 @@ from .engine_unify import unify_value, UnifyError, substitute_simple
 from .engine import UnknownClauseInternal, UnknownClause
 
 import os
-import imp  # For load_external
-import inspect  # For load_external
 
 
 def add_standard_builtins(engine, b=None, s=None, sp=None):
@@ -1100,31 +1098,6 @@ def _builtin_consult(filename, database=None, engine=None, **kwdargs):
     return True
 
 
-# # noinspection PyUnusedLocal
-# def _builtin_load_external(arg, engine=None, database=None, location=None, **kwdargs):
-#     check_mode((arg,), ['a'], functor='load_external')
-#     # Load external (python) files that are referenced in the model
-#     externals = {}
-#     root = database.source_root
-#     if arg.location:
-#         root = os.path.dirname(database.source_files[arg.location[0]])
-#     filename = os.path.join(root, _atom_to_filename(arg))
-#     if not os.path.exists(filename):
-#         raise ConsultError(message="Load external: file not found '%s'" % filename,
-#                            location=database.lineno(location))
-#     try:
-#         with open(filename, 'r') as extfile:
-#             ext = imp.load_module('externals', extfile, filename, ('.py', 'U', 1))
-#             for func_name, func in inspect.getmembers(ext, inspect.isfunction):
-#                 externals[func_name] = func
-#         engine.add_external_calls(externals)
-#     except ImportError:
-#         raise ConsultError(message="Error while loading external file '%s'" % filename,
-#                            location=database.lineno(location))
-#
-#     return True
-
-
 # noinspection PyUnusedLocal
 def _builtin_unknown(arg, engine=None, **kwdargs):
     check_mode((arg,), ['a'], functor='unknown')
@@ -1292,7 +1265,10 @@ def _builtin_findall_base(pattern, goal, result, database=None, target=None,
         for mx, b in findall_target.enumerate_branches(n):
             b = list(b)
             b_renamed = [findall_target.copy_node(target, c) for c in b]
-            proof_node = target.add_and(b_renamed)
+            if b_renamed:
+                proof_node = target.add_and(b_renamed)
+            else:
+                proof_node = target.FALSE
             # TODO order detection mechanism is too fragile?
             if b:
                 new_results.append((mx, res[0], proof_node))
@@ -1537,7 +1513,7 @@ class problog_export_raw(problog_export):
             bound = check_mode(args, list(self._extract_callmode()), funcname, **kwdargs)
             converted_args = self._convert_inputs(args)
             results = []
-            for result in function(*converted_args):
+            for result in function(*converted_args, **kwdargs):
                 if len(result) == 2 and type(result[0]) == tuple:
                     # Probabilistic
                     result, p = result

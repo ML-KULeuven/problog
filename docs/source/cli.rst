@@ -16,6 +16,7 @@ Currently, the following modes are supported
   * ``dt``: decision-theoretic problog
   * ``explain``: evaluate using mutually exclusive proofs
   * ``ground``: generate a ground program
+  * ``bn``: export a Bayesian network
   * ``shell``: interactive shell
   * ``install``: run the installer
   * ``unittest``: run the testsuite
@@ -416,6 +417,28 @@ Evidence can be specified using a pipe (``|``):
 Type ``help.`` for more information.
 
 
+Bayesian network (``bn``)
+-------------------------
+
+ProbLog can export a program to a Bayesian network for comparison and
+verification purposes. The grounded program that is exported is defined by the
+query statements present in the program. The resulting network is not guaranteed
+to be the most efficient representation and includes additional latent variables
+to be able to express concepts such as annotated disjunctions. Decision nodes
+are not supported.
+
+.. code-block:: prolog
+
+    $ ./problog-cli.py bn some_heads.pl --format=xdsl -o some_heads.xdsl
+
+The resulting file can be read by tools such as
+`GeNIe and SMILE <https://dslpitt.org>`_,
+`BayesiaLab <http://www.bayesialab.com>`_,
+`Hugin <http://www.hugin.com>`_ or
+`SamIam <http://reasoning.cs.ucla.edu/samiam/>`_
+(depending on the chosen output format).
+
+
 Installation (``install``)
 --------------------------
 
@@ -436,3 +459,4 @@ Testing (``unittest``)
 ----------------------
 
 Run the unittests.
+

@@ -30,7 +30,7 @@ from .formula import LogicDAG
 from .constraint import TrueConstraint, ClauseConstraint
 
 from .cnf_formula import CNF, clarks_completion
-from .maxsat import get_solver
+from .maxsat import get_solver, UnsatisfiableError
 from .evaluator import Evaluator, Evaluatable
 from .logic import Term
 
@@ -210,7 +210,10 @@ class Border(object):
     def update(self):
         solver = get_solver()
 
-        solution = solver.evaluate(self.wcnf, partial=True, smart_constraints=True)
+        try:
+            solution = solver.evaluate(self.wcnf, partial=True, smart_constraints=True)
+        except UnsatisfiableError:
+            solution = None
 
         if solution is None:
             self.improvement = None
