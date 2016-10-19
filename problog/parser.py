@@ -437,6 +437,9 @@ class PrologParser(object):
         elif s[pos:pos + 2] == '~>':
             return Token('~>', pos, binop=(700, 'xfx', self.factory.build_binop),
                          functor=self._next_paren_open(s, pos)), pos + 2
+        elif s[pos:pos + 2] == '~=':
+            return Token('~=', pos, unop=(200, 'fy', self.factory.build_unop),
+                         functor=self._next_paren_open(s, pos)), pos + 2
         else:
             return Token('~', pos, unop=(900, 'fx', self.factory.build_unop),
                          binop=(1000, 'xfx', self.factory.build_probabilistic)), pos + 1
