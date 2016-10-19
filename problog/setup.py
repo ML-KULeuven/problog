@@ -116,8 +116,9 @@ def build_sdd(force=False):
     build_lib = get_module_paths()[0]
     build_dir = get_module_paths()[-1]
 
-    if force:
-        os.remove(os.path.join(build_lib, '_sdd.so'))
+    filename = os.path.join(build_lib, '_sdd.so')
+    if force and os.path.exists(filename):
+        os.remove(filename)
 
     lib_dir = os.path.abspath(os.path.join(build_dir, 'sdd', os.uname()[0].lower()))
 
