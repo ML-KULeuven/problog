@@ -35,7 +35,7 @@ from .engine_unify import *
 
 from .core import transform
 from .errors import GroundingError
-from .util import Timer
+from .util import Timer, OrderedSet
 
 
 @transform(LogicProgram, LogicFormula)
@@ -535,7 +535,6 @@ class ClauseIndex(list):
             return results
 
     def _add(self, key, item):
-        assert not self.__optimized
         for i, k in enumerate(key):
             self.__index[i][k].add(item)
 
