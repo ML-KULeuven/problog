@@ -1370,7 +1370,7 @@ label_all=True)
             children = node.children
         return children
 
-    def to_dot(self, not_as_node=True):
+    def to_dot(self, not_as_node=True, nodeprops={}):
         """Write out in GraphViz (dot) format.
 
         :param not_as_node: represent negation as a node
@@ -1392,9 +1392,11 @@ label_all=True)
 
         s = 'digraph GP {\n'
         for index, node, nodetype in self:
-
+            prop = nodeprops.get(index, '')
+            if prop:
+                prop = ',' + prop
             if nodetype == 'conj':
-                s += '%s [label="AND", shape="box", style="filled", fillcolor="white"];\n' % index
+                s += '%s [label="AND", shape="box", style="filled", fillcolor="white"%s];\n' % (index, prop)
                 for c in node.children:
                     opt = ''
                     if c < 0 and c not in negative and not_as_node:
@@ -1408,8 +1410,8 @@ label_all=True)
                     if c != 0:
                         s += '%s -> %s%s;\n' % (index, c, opt)
             elif nodetype == 'disj':
-                s += '%s [label="OR", shape="diamond", style="filled", fillcolor="white"];\n' \
-                     % index
+                s += '%s [label="OR", shape="diamond", style="filled", fillcolor="white"%s];\n ' \
+                     % (index, prop)
                 for c in node.children:
                     opt = ''
                     if c < 0 and c not in negative and not_as_node:
@@ -1425,8 +1427,8 @@ label_all=True)
                 if node.probability == self.WEIGHT_NEUTRAL:
                     pass
                 elif node.group is None:
-                    s += '%s [label="%s", shape="ellipse", style="filled", fillcolor="white"];\n' \
-                         % (index, node.probability)
+                    s += '%s [label="%s", shape="ellipse", style="filled", fillcolor="white"%s];\n' \
+                         % (index, node.probability, prop)
                 else:
                     clusters[node.group].append('%s [ shape="ellipse", label="%s", '
                                                 'style="filled", fillcolor="white" ];\n'
