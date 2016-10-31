@@ -335,7 +335,9 @@ class Evaluatable(ProbLogObject):
             elif evidence is not None:
                 try:
                     value = evidence[ev_name]
-                    if value:
+                    if value is None:
+                        pass
+                    elif value:
                         evaluator.add_evidence(ev_index)
                     else:
                         evaluator.add_evidence(-ev_index)
