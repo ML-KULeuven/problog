@@ -1252,11 +1252,16 @@ label_all=True)
                     if n.name is not None and n.source not in ('builtin', 'negation'):
                         yield n.name.with_probability(n.probability)
                 elif t == 'disj':
-                    for c in n.children:
-                        if not processed[abs(c)] or self._is_valid_name(self.get_node(abs(c)).name):
-                            b = self.get_body(c, parent_name=n.name)
-                            if str(n.name) != str(b):   # TODO bit of a hack?
-                                yield Clause(n.name, b)
+                    if len(n.children) == 1 and not self._is_valid_name(n.name):
+                        # Match case in get_body that also skips these nodes,
+                        # which means that these clauses would never be used anyway.
+                        pass
+                    else:
+                        for c in n.children:
+                            if not processed[abs(c)] or self._is_valid_name(self.get_node(abs(c)).name):
+                                b = self.get_body(c, parent_name=n.name)
+                                if str(n.name) != str(b):   # TODO bit of a hack?
+                                    yield Clause(n.name, b)
                 elif t == 'conj' and n.name is None:
                     pass
                 else:
