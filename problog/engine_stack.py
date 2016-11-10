@@ -683,6 +683,7 @@ class StackBasedEngine(ClauseDBEngine):
     def call_intern(self, query, **kwdargs):
         if query.is_negated():
             negated = True
+            neg_func = query.functor
             query = -query
         elif query.functor in ('not', '\+') and query.arity == 1:
             negated = True
