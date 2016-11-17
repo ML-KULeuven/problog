@@ -631,6 +631,24 @@ class Term(object):
     def __abs__(self):
         return self
 
+    @classmethod
+    def from_string(cls, str, factory=None, parser=None):
+        if factory is None:
+            from .program import ExtendedPrologFactory
+            factory = ExtendedPrologFactory()
+        if parser is None:
+            from .parser import PrologParser
+            parser = PrologParser(factory)
+
+        if not str.strip().endswith("."):
+            str += "."
+
+        parsed = parser.parseString(str)
+        if len(parsed) != 1:
+            raise ValueError("Invalid term: '" + str + "'")
+        else:
+            return parsed[0]
+
 
 class Var(Term):
     """A Term representing a variable.
