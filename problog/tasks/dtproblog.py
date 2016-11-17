@@ -131,12 +131,19 @@ def dtproblog(model, search=None, koption=None, locations=False, web=False, **kw
     return result
 
 
-def evaluate(formula, decisions, utilities):
+def evaluate(formula, decisions, utilities, verbose=0):
     result = formula.evaluate(weights=decisions)
 
     score = 0.0
     for r in result:
         score += result[r] * float(utilities[r])
+
+    if verbose >= 3:
+        print ('---------------')
+        print ('Decisions:')
+        print (format_dictionary(decisions))
+        print ('Scores:')
+        print (format_dictionary(result))
     return score
 
 
@@ -160,7 +167,7 @@ def search_exhaustive(formula, decisions, utilities, constraints, verbose=0, **k
         if not constraints_ok:
             continue
 
-        score = evaluate(formula, evidence, utilities)
+        score = evaluate(formula, evidence, utilities, verbose)
         stats['eval'] += 1
         if best_score is None or score > best_score:
             best_score = score
