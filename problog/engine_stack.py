@@ -31,7 +31,7 @@ from .engine import UnifyError, instantiate, UnknownClause, UnknownClauseInterna
 from .engine import NonGroundProbabilisticClause
 from .errors import GroundingError
 from .engine import ClauseDBEngine, substitute_head_args, substitute_call_args, unify_call_head, \
-    unify_call_return, OccursCheck
+    unify_call_return, OccursCheck, substitute_simple
 from .engine_builtin import add_standard_builtins, IndirectCallCycleError
 
 
@@ -1368,6 +1368,26 @@ class NestedDict(object):
         return str(self.__base)
 
 
+class VarReindex(object):
+
+    def __init__(self):
+        self.v = 0
+        self.n = {}
+
+    def __getitem__(self, var):
+        if var is None:
+            return var
+        elif var < 0:
+            if var in self.n:
+                return self.n[var]
+            else:
+                self.v -= 1
+                self.n[var] = self.v
+                return self.v
+        else:
+            return var
+
+
 class DefineCache(object):
     def __init__(self, dont_cache):
         self.__non_ground = NestedDict()
@@ -1375,17 +1395,21 @@ class DefineCache(object):
         self.__active = NestedDict()
         self.__dont_cache = dont_cache
 
+    def _reindex_vars(self, goal):
+        ri = VarReindex()
+        return goal[0], [substitute_simple(g, ri) for g in goal[1]]
+
     def is_dont_cache(self, goal):
         return goal[0][:9] == '_nocache_' or (goal[0], len(goal[1])) in self.__dont_cache
 
     def activate(self, goal, node):
-        self.__active[goal] = node
+        self.__active[self._reindex_vars(goal)] = node
 
     def deactivate(self, goal):
-        del self.__active[goal]
+        del self.__active[self._reindex_vars(goal)]
 
     def getEvalNode(self, goal):
-        return self.__active.get(goal)
+        return self.__active.get(self._reindex_vars(goal))
 
     def __setitem__(self, goal, results):
         if self.is_dont_cache(goal):
@@ -1402,6 +1426,7 @@ class DefineCache(object):
                 key = (functor, args)
                 self.__ground[key] = NODE_FALSE  # Goal failed
         else:
+            goal = self._reindex_vars(goal)
             res_keys = list(results.keys())
             self.__non_ground[goal] = results
             all_ground = True
@@ -1428,6 +1453,7 @@ class DefineCache(object):
         if is_ground(*args):
             return [(args, self.__ground[goal])]
         else:
+            goal = self._reindex_vars(goal)
             # res_keys = self.__non_ground[goal]
             return self.__non_ground[goal].items()
 
@@ -1436,6 +1462,7 @@ class DefineCache(object):
         if is_ground(*args):
             return goal in self.__ground
         else:
+            goal = self._reindex_vars(goal)
             return goal in self.__non_ground
 
     def __str__(self):  # pragma: no cover
