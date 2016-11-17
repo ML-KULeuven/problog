@@ -31,7 +31,7 @@ from .engine import UnifyError, instantiate, UnknownClause, UnknownClauseInterna
 from .engine import NonGroundProbabilisticClause
 from .errors import GroundingError
 from .engine import ClauseDBEngine, substitute_head_args, substitute_call_args, unify_call_head, \
-    unify_call_return
+    unify_call_return, OccursCheck
 from .engine_builtin import add_standard_builtins, IndirectCallCycleError
 
 
@@ -832,8 +832,9 @@ class StackBasedEngine(ClauseDBEngine):
         return self.eval_default(EvalNot, **kwdargs)
 
     def eval_call(self, node_id, node, context, parent, transform=None, identifier=None, **kwdargs):
-        call_args, var_translate = substitute_call_args(node.args, context)
         min_var = self._context_min_var(context)
+        call_args, var_translate = substitute_call_args(node.args, context, min_var)
+
 
         if self.debugger:
             self.debugger.call_create(node_id, node.functor, call_args, parent)
@@ -885,7 +886,11 @@ class StackBasedEngine(ClauseDBEngine):
         new_context = self.create_context([None] * node.varcount)
 
         try:
-            unify_call_head(context, node.args, new_context)
+            try:
+                unify_call_head(context, node.args, new_context)
+            except OccursCheck as err:
+                raise OccursCheck(location=kwdargs['database'].lineno(node.location))
+
             # Note: new_context should not contain None values.
             # We should replace these with negative numbers.
             # 1. Find lowest negative number in new_context.
@@ -1832,7 +1837,8 @@ class EvalNot(EvalNode):
         else:
             if self.target.flag('keep_all'):
                 src_node = self.database.get_node(self.node.child)
-                args, _ = substitute_call_args(src_node.args, self.context)
+                min_var = self.engine._context_min_var(self.context)
+                args, _ = substitute_call_args(src_node.args, self.context, min_var=min_var)
                 name = Term(src_node.functor, *args)
                 node = -self.target.add_atom(name, False, None, name=name, source='negation')
             else:

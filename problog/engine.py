@@ -302,7 +302,7 @@ class ClauseDBEngine(GenericEngine):
             term = term.apply(_ReplaceVar())  # replace Var(_) by integers
 
             context = self.create_context(term.args)
-            context, xxx = substitute_call_args(context, context)
+            context, xxx = substitute_call_args(context, context, 0)
             actions = self.execute_init(clause_node, database=db, target=gp, context=context,
                                         **kwdargs)
         except UnknownClauseInternal:
@@ -346,7 +346,7 @@ class ClauseDBEngine(GenericEngine):
             term = term.apply(_ReplaceVar())  # replace Var(_) by integers
 
             context = self.create_context(term.args)
-            context, xxx = substitute_call_args(context, context)
+            context, xxx = substitute_call_args(context, context, 0)
             results = self.execute(clause_node, database=db, target=gp, context=context, **kwdargs)
         except UnknownClauseInternal:
             if silent_fail or self.unknown == self.UNKNOWN_FAIL:
