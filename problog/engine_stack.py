@@ -1377,15 +1377,15 @@ class VarReindex(object):
     def __getitem__(self, var):
         if var is None:
             return var
-        elif var < 0:
+        else:
             if var in self.n:
                 return self.n[var]
             else:
                 self.v -= 1
                 self.n[var] = self.v
                 return self.v
-        else:
-            return var
+        # else:
+        #     return var
 
 
 class DefineCache(object):
