@@ -86,22 +86,24 @@ class EngineTracer(object):
     def call_result(self, node_id, functor, context, result=None, location=None):
         term = Term(functor, *context, location=location)
         if self.trace is not None:
-            self.trace.append((self.level, "result", term, result, time.time()-self.time_start_global))
+            self.trace.append((self.level, "result", term, time.time()-self.time_start_global, result))
         self.call_results[(node_id, term)] += 1
 
     def call_return(self, node_id, functor, context, location=None):
         term = Term(functor, *context, location=location)
         self.level -= 1
+        ts, loc = self.time_start[term]
+
         if self.stack:
             self.stack.pop(-1)
         if self.trace is not None:
+            now = time.time()
             if self.call_results[(node_id, term)] > 0:
-                self.trace.append((self.level, "complete", term, time.time()-self.time_start_global))
+                self.trace.append((self.level, "complete", term, now-self.time_start_global, now-ts))
             else:
-                self.trace.append((self.level, "fail", term, time.time()-self.time_start_global))
+                self.trace.append((self.level, "fail", term, now-self.time_start_global, now-ts))
 
-        ts, loc = self.time_start[term]
-        self.timestats[(term, loc)] += time.time() - ts
+        self.timestats[(term, loc)] += now - ts
         self.resultstats[(term, loc)] = self.call_results[node_id, term]
         self.callstats[(term, loc)] += 1
         # self.call_results[(node_id, term)] = 0
@@ -122,12 +124,18 @@ class EngineTracer(object):
         s = ''
         if self.trace is not None:
             for record in self.trace:
-                if len(record) == 4:
-                    lvl, msg, term, tm = record
-                    s += "%s %s %s {%.5f} [%s]\n" % (' ' * lvl, msg, term, tm, location_string(term.location))
+                lvl = record[0]
+                msg = record[1]
+                term = record[2]
+                tm_cumul = record[3]
+                if msg == 'call':
+                    s += "%s %s %s {%.5f} [%s]\n" % (' ' * lvl, msg, term, tm_cumul, location_string(term.location))
+                elif msg == 'result':
+                    args = record[4]
+                    s += "%s %s %s %s {%.5f} [%s]\n" % (' ' * lvl, msg, term, args, tm_cumul, location_string(term.location))
                 else:
-                    lvl, msg, term, res, tm = record
-                    s += "%s %s %s: %s {%.5f} [%s]\n" % (' ' * lvl, msg, term, res, tm, location_string(term.location))
+                    tm_local = record[4]
+                    s += "%s %s %s {%.5f} {%.5f} [%s]\n" % (' ' * lvl, msg, term, tm_cumul, tm_local, location_string(term.location))
         return s
 
 def location_string(location):
