@@ -80,7 +80,7 @@ class EngineTracer(object):
     def call_result(self, node_id, functor, context, result, location=None):
         term = Term(functor, *context, location=location)
         if self.trace is not None:
-            self.trace.append((self.level, "result", term))
+            self.trace.append((self.level, "result", term, result))
         self.call_results[(node_id, term)] += 1
 
     def call_return(self, node_id, functor, context, location=None):
@@ -112,8 +112,13 @@ class EngineTracer(object):
     def show_trace(self):
         s = ''
         if self.trace is not None:
-            for lvl, msg, term in self.trace:
-                s += "%s %s %s\n" % (' ' * lvl, msg, term)
+            for record in self.trace:
+                if len(record) == 3:
+                    lvl, msg, term = record
+                    s += "%s %s %s\n" % (' ' * lvl, msg, term)
+                else:
+                    lvl, msg, term, res = record
+                    s += "%s %s %s: %s\n" % (' ' * lvl, msg, term, res)
         return s
 
 def location_string(location):
