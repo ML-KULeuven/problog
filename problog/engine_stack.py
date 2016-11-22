@@ -366,9 +366,9 @@ class StackBasedEngine(ClauseDBEngine):
             else:
                 act, obj, args, context = actions.pop()
 
-                # Inform the debugger.
-                if debugger:
-                    debugger.process_message(act, obj, args, context)
+                # # Inform the debugger.
+                # if debugger:
+                #     debugger.process_message(act, obj, args, context)
 
                 if obj is None:
                     # We have reached the top-level.
@@ -1035,6 +1035,9 @@ class MessageFIFO(MessageQueue):
 
     def append(self, message):
         self.messages.append(message)
+        # Inform the debugger.
+        if self.engine.debugger:
+            self.engine.debugger.process_message(*message)
 
     def pop(self):
         return self.messages.pop(-1)

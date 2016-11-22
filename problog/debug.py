@@ -44,7 +44,7 @@ def printtrace_self(func):
 
 class EngineTracer(object):
 
-    def __init__(self, keep_trace=False):
+    def __init__(self, keep_trace=True):
         self.call_redirect = {}
         self.call_results = defaultdict(int)
         self.level = 0    # level of calls (depth of stack)
@@ -56,10 +56,11 @@ class EngineTracer(object):
 
         self.time_start = {}
         self.timestats = {}
+        self.time_start_global = None
 
     def process_message(self, msgtype, msgtarget, msgargs, context):
         if msgtarget is None and msgtype == 'r' and msgtarget in self.call_redirect:
-            self.call_result(*(self.call_redirect[msgtarget] + msgargs[0]))
+            self.call_result(*(self.call_redirect[msgtarget] + tuple(msgargs[0])))
 
         if msgtype == 'r' and msgargs[3] and msgtarget in self.call_redirect:
             self.call_return(*self.call_redirect[msgtarget])
@@ -69,18 +70,21 @@ class EngineTracer(object):
             del self.call_redirect[msgtarget]
 
     def call_create(self, node_id, functor, context, parent, location=None):
+        if self.time_start_global is None:
+            self.time_start_global = time.time()
+
         term = Term(functor, *context, location=location)
         if self.trace is not None:
-            self.trace.append((self.level, "call", term))
+            self.trace.append((self.level, "call", term, time.time()-self.time_start_global))
         self.time_start[term] = time.time(), location
         self.stack.append(term)
         self.level += 1
         self.call_redirect[parent] = (node_id, functor, context)
 
-    def call_result(self, node_id, functor, context, result, location=None):
+    def call_result(self, node_id, functor, context, result=None, location=None):
         term = Term(functor, *context, location=location)
         if self.trace is not None:
-            self.trace.append((self.level, "result", term, result))
+            self.trace.append((self.level, "result", term, result, time.time()-self.time_start_global))
         self.call_results[(node_id, term)] += 1
 
     def call_return(self, node_id, functor, context, location=None):
@@ -90,9 +94,9 @@ class EngineTracer(object):
             self.stack.pop(-1)
         if self.trace is not None:
             if self.call_results[(node_id, term)] > 0:
-                self.trace.append((self.level, "complete", term))
+                self.trace.append((self.level, "complete", term, time.time()-self.time_start_global))
             else:
-                self.trace.append((self.level, "fail", term))
+                self.trace.append((self.level, "fail", term, time.time()-self.time_start_global))
 
         ts, loc = self.time_start[term]
         self.timestats[(term, loc)] = (time.time() - ts, self.call_results[node_id, term])
@@ -113,12 +117,12 @@ class EngineTracer(object):
         s = ''
         if self.trace is not None:
             for record in self.trace:
-                if len(record) == 3:
-                    lvl, msg, term = record
-                    s += "%s %s %s\n" % (' ' * lvl, msg, term)
+                if len(record) == 4:
+                    lvl, msg, term, tm = record
+                    s += "%s %s %s {%.5f} [%s]\n" % (' ' * lvl, msg, term, tm, location_string(term.location))
                 else:
-                    lvl, msg, term, res = record
-                    s += "%s %s %s: %s\n" % (' ' * lvl, msg, term, res)
+                    lvl, msg, term, res, tm = record
+                    s += "%s %s %s: %s {%.5f} [%s]\n" % (' ' * lvl, msg, term, res, tm, location_string(term.location))
         return s
 
 def location_string(location):
@@ -127,11 +131,11 @@ def location_string(location):
     if type(location) == tuple:
         fn, ln, cn = location
         if fn is None:
-            return ' at %s:%s' % (ln, cn)
+            return 'at %s:%s' % (ln, cn)
         else:
-            return ' at %s:%s in %s' % (ln, cn, fn)
+            return 'at %s:%s in %s' % (ln, cn, fn)
     else:
-        return ' at character %s' % location
+        return 'at character %s' % location
 
 # Assume the program
 #   a(1).
