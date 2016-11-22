@@ -33,6 +33,7 @@ from .errors import GroundingError
 from .engine import ClauseDBEngine, substitute_head_args, substitute_call_args, unify_call_head, \
     unify_call_return, OccursCheck, substitute_simple
 from .engine_builtin import add_standard_builtins, IndirectCallCycleError
+from collections import defaultdict
 
 
 class NegativeCycle(GroundingError):
@@ -538,7 +539,6 @@ class StackBasedEngine(ClauseDBEngine):
             else:
                 act, obj, args, context = actions.pop()
 
-                # Inform the debugger.
                 if debugger:
                     debugger.process_message(act, obj, args, context)
 
@@ -835,9 +835,9 @@ class StackBasedEngine(ClauseDBEngine):
         min_var = self._context_min_var(context)
         call_args, var_translate = substitute_call_args(node.args, context, min_var)
 
-
         if self.debugger:
-            self.debugger.call_create(node_id, node.functor, call_args, parent)
+            location = kwdargs['database'].lineno(node.location)
+            self.debugger.call_create(node_id, node.functor, call_args, parent, location)
 
         ground_mask = [not is_ground(c) for c in call_args]
 
@@ -848,7 +848,8 @@ class StackBasedEngine(ClauseDBEngine):
                 output = unify_call_return(result, call_args, output, var_translate, min_var,
                                            mask=ground_mask)
                 if self.debugger:
-                    self.debugger.call_result(node_id, node.functor, call_args, result)
+                    location = kwdargs['database'].lineno(node.location)
+                    self.debugger.call_result(node_id, node.functor, call_args, result, location)
                 return output
             except UnifyError:
                 pass

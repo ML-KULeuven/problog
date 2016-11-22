@@ -347,6 +347,9 @@ class ClauseDBEngine(GenericEngine):
 
             context = self.create_context(term.args)
             context, xxx = substitute_call_args(context, context, 0)
+            if self.debugger:
+                location = db.lineno(term.location)
+                self.debugger.call_create(clause_node, term.functor, context, None, location)
             results = self.execute(clause_node, database=db, target=gp, context=context, **kwdargs)
         except UnknownClauseInternal:
             if silent_fail or self.unknown == self.UNKNOWN_FAIL:
