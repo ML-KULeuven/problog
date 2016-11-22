@@ -835,7 +835,8 @@ class StackBasedEngine(ClauseDBEngine):
         min_var = self._context_min_var(context)
         call_args, var_translate = substitute_call_args(node.args, context, min_var)
 
-        if self.debugger:
+        if self.debugger and node.functor != 'call':
+            # 'call(X)' is virtual so result and return can not be detected => don't register it.
             location = kwdargs['database'].lineno(node.location)
             self.debugger.call_create(node_id, node.functor, call_args, parent, location)
 

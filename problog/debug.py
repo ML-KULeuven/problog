@@ -55,7 +55,9 @@ class EngineTracer(object):
             self.trace = None
 
         self.time_start = {}
-        self.timestats = {}
+        self.timestats = defaultdict(float)
+        self.resultstats = defaultdict(int)
+        self.callstats = defaultdict(int)
         self.time_start_global = None
 
     def process_message(self, msgtype, msgtarget, msgargs, context):
@@ -99,18 +101,21 @@ class EngineTracer(object):
                 self.trace.append((self.level, "fail", term, time.time()-self.time_start_global))
 
         ts, loc = self.time_start[term]
-        self.timestats[(term, loc)] = (time.time() - ts, self.call_results[node_id, term])
+        self.timestats[(term, loc)] += time.time() - ts
+        self.resultstats[(term, loc)] = self.call_results[node_id, term]
+        self.callstats[(term, loc)] += 1
         # self.call_results[(node_id, term)] = 0
 
     def show_profile(self):
         s = ''
-        s += '%37s\t %7s \t %4s \t %s \n' % ("call", "time", "#sol", "location")
-        s += '-' * 80 + '\n'
+        s += '%50s\t %7s \t %4s \t %4s \t %s \n' % ("call", "time", "#sol", "#call", "location")
+        s += '-' * 100 + '\n'
         for tm, key in sorted((t, k) for k, t in self.timestats.items()):
             term, location = key
-            tm, nb = tm
+            nb = self.resultstats[key]
+            cl = self.callstats[key]
             location = location_string(location)
-            s += '%37s\t %.5f \t %d \t [%s]\n' % (term, tm, nb, location)
+            s += '%50s\t %.5f \t %d \t %d \t [%s]\n' % (term, tm, nb, cl, location)
         return s
 
     def show_trace(self):
