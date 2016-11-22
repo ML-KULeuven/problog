@@ -1252,11 +1252,16 @@ label_all=True)
                     if n.name is not None and n.source not in ('builtin', 'negation'):
                         yield n.name.with_probability(n.probability)
                 elif t == 'disj':
-                    for c in n.children:
-                        if not processed[abs(c)] or self._is_valid_name(self.get_node(abs(c)).name):
-                            b = self.get_body(c, parent_name=n.name)
-                            if str(n.name) != str(b):   # TODO bit of a hack?
-                                yield Clause(n.name, b)
+                    if len(n.children) == 1 and not self._is_valid_name(n.name):
+                        # Match case in get_body that also skips these nodes,
+                        # which means that these clauses would never be used anyway.
+                        pass
+                    else:
+                        for c in n.children:
+                            if not processed[abs(c)] or self._is_valid_name(self.get_node(abs(c)).name):
+                                b = self.get_body(c, parent_name=n.name)
+                                if str(n.name) != str(b):   # TODO bit of a hack?
+                                    yield Clause(n.name, b)
                 elif t == 'conj' and n.name is None:
                     pass
                 else:
@@ -1370,7 +1375,7 @@ label_all=True)
             children = node.children
         return children
 
-    def to_dot(self, not_as_node=True):
+    def to_dot(self, not_as_node=True, nodeprops={}):
         """Write out in GraphViz (dot) format.
 
         :param not_as_node: represent negation as a node
@@ -1392,9 +1397,11 @@ label_all=True)
 
         s = 'digraph GP {\n'
         for index, node, nodetype in self:
-
+            prop = nodeprops.get(index, '')
+            if prop:
+                prop = ',' + prop
             if nodetype == 'conj':
-                s += '%s [label="AND", shape="box", style="filled", fillcolor="white"];\n' % index
+                s += '%s [label="AND", shape="box", style="filled", fillcolor="white"%s];\n' % (index, prop)
                 for c in node.children:
                     opt = ''
                     if c < 0 and c not in negative and not_as_node:
@@ -1408,8 +1415,8 @@ label_all=True)
                     if c != 0:
                         s += '%s -> %s%s;\n' % (index, c, opt)
             elif nodetype == 'disj':
-                s += '%s [label="OR", shape="diamond", style="filled", fillcolor="white"];\n' \
-                     % index
+                s += '%s [label="OR", shape="diamond", style="filled", fillcolor="white"%s];\n ' \
+                     % (index, prop)
                 for c in node.children:
                     opt = ''
                     if c < 0 and c not in negative and not_as_node:
@@ -1425,8 +1432,8 @@ label_all=True)
                 if node.probability == self.WEIGHT_NEUTRAL:
                     pass
                 elif node.group is None:
-                    s += '%s [label="%s", shape="ellipse", style="filled", fillcolor="white"];\n' \
-                         % (index, node.probability)
+                    s += '%s [label="%s", shape="ellipse", style="filled", fillcolor="white"%s];\n' \
+                         % (index, node.probability, prop)
                 else:
                     clusters[node.group].append('%s [ shape="ellipse", label="%s", '
                                                 'style="filled", fillcolor="white" ];\n'

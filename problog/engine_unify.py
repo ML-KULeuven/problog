@@ -73,8 +73,8 @@ def instantiate(term, context):
 
 
 class OccursCheck(GroundingError):
-    def __init__(self):
-        GroundingError.__init__(self, 'Infinite unification')
+    def __init__(self, location=None):
+        GroundingError.__init__(self, 'Infinite unification', location=location)
 
 
 def unify_value(value1, value2, source_values):
@@ -197,11 +197,11 @@ def unify_value_dc(value1, value2, source_values, target_values):
 
 
 class _ContextWrapper(object):
-    def __init__(self, context):
+    def __init__(self, context, min_var):
         self.context = context
         self.numbers = {}
         self.translate = {None: None}
-        self.num_count = 0
+        self.num_count = min_var
 
     def __getitem__(self, key):
         if key is None:
@@ -233,7 +233,7 @@ class _ContextWrapper(object):
         return value
 
 
-def substitute_call_args(terms, context):
+def substitute_call_args(terms, context, min_var):
     """
 
     :param terms:
@@ -241,7 +241,7 @@ def substitute_call_args(terms, context):
     :return:
     """
     result = []
-    cw = _ContextWrapper(context)
+    cw = _ContextWrapper(context, min_var)
     for term in terms:
         if term is None:
             cw.num_count -= 1
@@ -342,7 +342,6 @@ class _VarTranslateWrapper(object):
     def __init__(self, var_translate, min_var):
         self.base = var_translate
         self.min_var = min_var
-#         self.min_var = min([min_var] + self.values())
 
     def __getitem__(self, item):
         if item in self.base:

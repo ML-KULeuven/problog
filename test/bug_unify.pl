@@ -1,5 +1,5 @@
 %Expected outcome:
-% property_compress(content(last,[X2])) 1
+% property_compress(content(last,[X5])) 1
 
 question(prob,content(last,[_])).
 

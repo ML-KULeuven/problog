@@ -71,7 +71,7 @@ def print_result_json(d, output, precision=8):
     return 0
 
 
-def execute(filename, knowledge=None, semiring=None, debug=False, combine=False, **kwdargs):
+def execute(filename, knowledge=None, semiring=None, debug=False, combine=False, profile=False, trace=False, **kwdargs):
     """Run ProbLog.
 
     :param filename: input file
@@ -96,6 +96,13 @@ def execute(filename, knowledge=None, semiring=None, debug=False, combine=False,
                         model.source_root = filemodel.source_root
             else:
                 model = PrologFile(filename)
+            if profile or trace:
+                from problog.debug import EngineTracer
+                profiler = EngineTracer(keep_trace=True)
+                kwdargs['debugger'] = profiler
+            else:
+                profiler = None
+
             engine = DefaultEngine(**kwdargs)
             db = engine.prepare(model)
             db_semiring = db.get_data('semiring')
@@ -106,11 +113,16 @@ def execute(filename, knowledge=None, semiring=None, debug=False, combine=False,
             formula = knowledge.create_from(db, **kwdargs)
             result = formula.evaluate(semiring=semiring, **kwdargs)
 
-            # Update loceation information on result terms
+            # Update location information on result terms
             for n, p in result.items():
                 if not n.location or not n.location[0]:
                     # Only get location for primary file (other file information is not available).
                     n.loc = model.lineno(n.location)
+            if profiler is not None:
+                if trace:
+                    print (profiler.show_trace())
+                if profile:
+                    print (profiler.show_profile())
         return True, result
     except KeyboardInterrupt as err:
         trace = traceback.format_exc()
@@ -194,6 +206,8 @@ def argparser():
     parser.add_argument('--web', action='store_true', help=argparse.SUPPRESS)
     parser.add_argument('-a', '--arg', dest='args', action='append',
                         help='Pass additional arguments to the cmd_args builtin.')
+    parser.add_argument('--profile', action='store_true', help='output runtime profile')
+    parser.add_argument('--trace', action='store_true', help='output runtime trace')
 
     # Additional arguments (passed through)
     parser.add_argument('--engine-debug', action='store_true', help=argparse.SUPPRESS)

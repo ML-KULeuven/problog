@@ -55,7 +55,9 @@ elif __name__ == '__main__':
             'web/js/problog_editor.js',
             'library/lists.pl',
             'library/apply.pl',
-            'library/control.pl'
+            'library/control.pl',
+            'library/db.py',
+            'library/aproblog.py'
         ]
     }
 

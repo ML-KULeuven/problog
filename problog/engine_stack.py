@@ -31,8 +31,9 @@ from .engine import UnifyError, instantiate, UnknownClause, UnknownClauseInterna
 from .engine import NonGroundProbabilisticClause
 from .errors import GroundingError
 from .engine import ClauseDBEngine, substitute_head_args, substitute_call_args, unify_call_head, \
-    unify_call_return
+    unify_call_return, OccursCheck, substitute_simple
 from .engine_builtin import add_standard_builtins, IndirectCallCycleError
+from collections import defaultdict
 
 
 class NegativeCycle(GroundingError):
@@ -538,7 +539,6 @@ class StackBasedEngine(ClauseDBEngine):
             else:
                 act, obj, args, context = actions.pop()
 
-                # Inform the debugger.
                 if debugger:
                     debugger.process_message(act, obj, args, context)
 
@@ -683,6 +683,7 @@ class StackBasedEngine(ClauseDBEngine):
     def call_intern(self, query, **kwdargs):
         if query.is_negated():
             negated = True
+            neg_func = query.functor
             query = -query
         elif query.functor in ('not', '\+') and query.arity == 1:
             negated = True
@@ -831,11 +832,12 @@ class StackBasedEngine(ClauseDBEngine):
         return self.eval_default(EvalNot, **kwdargs)
 
     def eval_call(self, node_id, node, context, parent, transform=None, identifier=None, **kwdargs):
-        call_args, var_translate = substitute_call_args(node.args, context)
         min_var = self._context_min_var(context)
+        call_args, var_translate = substitute_call_args(node.args, context, min_var)
 
         if self.debugger:
-            self.debugger.call_create(node_id, node.functor, call_args, parent)
+            location = kwdargs['database'].lineno(node.location)
+            self.debugger.call_create(node_id, node.functor, call_args, parent, location)
 
         ground_mask = [not is_ground(c) for c in call_args]
 
@@ -846,7 +848,8 @@ class StackBasedEngine(ClauseDBEngine):
                 output = unify_call_return(result, call_args, output, var_translate, min_var,
                                            mask=ground_mask)
                 if self.debugger:
-                    self.debugger.call_result(node_id, node.functor, call_args, result)
+                    location = kwdargs['database'].lineno(node.location)
+                    self.debugger.call_result(node_id, node.functor, call_args, result, location)
                 return output
             except UnifyError:
                 pass
@@ -884,7 +887,11 @@ class StackBasedEngine(ClauseDBEngine):
         new_context = self.create_context([None] * node.varcount)
 
         try:
-            unify_call_head(context, node.args, new_context)
+            try:
+                unify_call_head(context, node.args, new_context)
+            except OccursCheck as err:
+                raise OccursCheck(location=kwdargs['database'].lineno(node.location))
+
             # Note: new_context should not contain None values.
             # We should replace these with negative numbers.
             # 1. Find lowest negative number in new_context.
@@ -1362,6 +1369,26 @@ class NestedDict(object):
         return str(self.__base)
 
 
+class VarReindex(object):
+
+    def __init__(self):
+        self.v = 0
+        self.n = {}
+
+    def __getitem__(self, var):
+        if var is None:
+            return var
+        else:
+            if var in self.n:
+                return self.n[var]
+            else:
+                self.v -= 1
+                self.n[var] = self.v
+                return self.v
+        # else:
+        #     return var
+
+
 class DefineCache(object):
     def __init__(self, dont_cache):
         self.__non_ground = NestedDict()
@@ -1369,17 +1396,21 @@ class DefineCache(object):
         self.__active = NestedDict()
         self.__dont_cache = dont_cache
 
+    def _reindex_vars(self, goal):
+        ri = VarReindex()
+        return goal[0], [substitute_simple(g, ri) for g in goal[1]]
+
     def is_dont_cache(self, goal):
         return goal[0][:9] == '_nocache_' or (goal[0], len(goal[1])) in self.__dont_cache
 
     def activate(self, goal, node):
-        self.__active[goal] = node
+        self.__active[self._reindex_vars(goal)] = node
 
     def deactivate(self, goal):
-        del self.__active[goal]
+        del self.__active[self._reindex_vars(goal)]
 
     def getEvalNode(self, goal):
-        return self.__active.get(goal)
+        return self.__active.get(self._reindex_vars(goal))
 
     def __setitem__(self, goal, results):
         if self.is_dont_cache(goal):
@@ -1396,6 +1427,7 @@ class DefineCache(object):
                 key = (functor, args)
                 self.__ground[key] = NODE_FALSE  # Goal failed
         else:
+            goal = self._reindex_vars(goal)
             res_keys = list(results.keys())
             self.__non_ground[goal] = results
             all_ground = True
@@ -1422,6 +1454,7 @@ class DefineCache(object):
         if is_ground(*args):
             return [(args, self.__ground[goal])]
         else:
+            goal = self._reindex_vars(goal)
             # res_keys = self.__non_ground[goal]
             return self.__non_ground[goal].items()
 
@@ -1430,6 +1463,7 @@ class DefineCache(object):
         if is_ground(*args):
             return goal in self.__ground
         else:
+            goal = self._reindex_vars(goal)
             return goal in self.__non_ground
 
     def __str__(self):  # pragma: no cover
@@ -1831,7 +1865,8 @@ class EvalNot(EvalNode):
         else:
             if self.target.flag('keep_all'):
                 src_node = self.database.get_node(self.node.child)
-                args, _ = substitute_call_args(src_node.args, self.context)
+                min_var = self.engine._context_min_var(self.context)
+                args, _ = substitute_call_args(src_node.args, self.context, min_var=min_var)
                 name = Term(src_node.functor, *args)
                 node = -self.target.add_atom(name, False, None, name=name, source='negation')
             else:
