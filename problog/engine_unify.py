@@ -171,13 +171,13 @@ def unify_value_dc(value1, value2, source_values, target_values):
         else:
             sv1 = source_values.get(value1)
             if sv1 is None:
-                source_values[value1] = value2
+                source_values[value1] = value2.apply(source_values)
             elif is_variable(sv1):
                 if sv1 in value2.variables():
                     raise OccursCheck()
                 if sv1 != value2:
                     target_values[sv1] = value2
-                source_values[value1] = value2
+                source_values[value1] = value2.apply(source_values)
             else:
                 # unify in same context target_values
                 source_values[value1] = unify_value(source_values[value1], value2, target_values)
@@ -201,7 +201,7 @@ class _ContextWrapper(object):
         self.context = context
         self.numbers = {}
         self.translate = {None: None}
-        self.num_count = min_var
+        self.num_count = 0  # min_var
 
     def __getitem__(self, key):
         if key is None:
@@ -383,7 +383,6 @@ def unify_call_return(result, call_args, context, var_translate, min_var, mask=N
     unification)
 
     """
-
     # TODO is this the correct min_var?
     # TODO is one-hop lookup in 'tv' sufficient?
 
@@ -410,7 +409,7 @@ def unify_call_return(result, call_args, context, var_translate, min_var, mask=N
 
     # Context contains lvars from caller.
     # Use var_translate to make sv a map lvars caller -> expr lvars caller.
-    sv = {var_translate[k]: v for k, v in sv.items()}
+    sv = {var_translate.get(k, k): v for k, v in sv.items()}
 
     # Wrap sv -> failed lookup creates a new local variable.
     sv = _VarTranslateWrapper(sv, min_var)
