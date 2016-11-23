@@ -137,6 +137,9 @@ def add_standard_builtins(engine, b=None, s=None, sp=None):
     engine.add_builtin('numbervars', 3, s(_builtin_numbervars))
     engine.add_builtin('varnumbers', 2, s(_builtin_varnumbers))
 
+    engine.add_builtin('subsumes_term', 2, b(_builtin_subsumes_term))
+    engine.add_builtin('subsumes_chk', 2, b(_builtin_subsumes_term))
+
 
 def _builtin_nocache(functor, arity, database=None, **kwd):
     check_mode((functor, arity), ['ai'], **kwd)
@@ -1711,6 +1714,13 @@ def _builtin_subquery(term, prob, evidence=None, engine=None, database=None, **k
 
 def _builtin_calln(term, *args, **kwdargs):
     return _builtin_call(term, args, **kwdargs)
+
+
+def _builtin_subsumes_term(generic, specific, **kwargs):
+    check_mode((generic, specific), ['**'], functor='subsumes_term')
+
+    from .engine_unify import subsumes
+    return subsumes(generic, specific)
 
 
 class IndirectCallCycleError(GroundingError):
