@@ -42,14 +42,15 @@ class _SubstitutionWrapper(object):
             return key
 
 
-def substitute_all(terms, subst):
+def substitute_all(terms, subst, wrapped=False):
     """
 
     :param terms:
     :param subst:
     :return:
     """
-    subst = _SubstitutionWrapper(subst)
+    if not wrapped:
+        subst = _SubstitutionWrapper(subst)
     result = []
     for term in terms:
         if is_variable(term):
@@ -171,13 +172,13 @@ def unify_value_dc(value1, value2, source_values, target_values):
         else:
             sv1 = source_values.get(value1)
             if sv1 is None:
-                source_values[value1] = value2.apply(source_values)
+                source_values[value1] = value2
             elif is_variable(sv1):
                 if sv1 in value2.variables():
                     raise OccursCheck()
                 if sv1 != value2:
                     target_values[sv1] = value2
-                source_values[value1] = value2.apply(source_values)
+                source_values[value1] = value2
             else:
                 # unify in same context target_values
                 source_values[value1] = unify_value(source_values[value1], value2, target_values)
@@ -405,14 +406,18 @@ def unify_call_return(result, call_args, context, var_translate, min_var, mask=N
             unify_value_dc(c, r, sv, tv)
     min_var = sv.min_var
     sv = {k: tv.get(v, v) for k, v in sv.items()}
-    sv = {k: substitute_all([v], tv)[0] for k, v in sv.items()}
+
+    # Using a _VarTranslateWrapper will cause any unknown variables in 'v' to be replaced by
+    #  new variables with a safe name (taking into account min_var).
+    tvw = _VarTranslateWrapper(tv, min_var)
+    sv = {k: substitute_all([v], tvw, True)[0] for k, v in sv.items()}
 
     # Context contains lvars from caller.
     # Use var_translate to make sv a map lvars caller -> expr lvars caller.
     sv = {var_translate.get(k, k): v for k, v in sv.items()}
 
     # Wrap sv -> failed lookup creates a new local variable.
-    sv = _VarTranslateWrapper(sv, min_var)
+    sv = _VarTranslateWrapper(sv, tvw.min_var)
 
     # Apply sv substitution to each slot in the context.
     # Replaces lvars caller with expr lvars caller.
