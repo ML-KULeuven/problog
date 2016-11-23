@@ -98,7 +98,7 @@ def execute(filename, knowledge=None, semiring=None, debug=False, combine=False,
                 model = PrologFile(filename)
             if profile or trace:
                 from problog.debug import EngineTracer
-                profiler = EngineTracer(keep_trace=True)
+                profiler = EngineTracer(keep_trace=trace)
                 kwdargs['debugger'] = profiler
             else:
                 profiler = None

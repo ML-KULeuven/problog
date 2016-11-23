@@ -44,7 +44,7 @@ def printtrace_self(func):
 
 class EngineTracer(object):
 
-    def __init__(self, keep_trace=False):
+    def __init__(self, keep_trace=True):
         self.call_redirect = {}
         self.call_results = defaultdict(int)
         self.level = 0    # level of calls (depth of stack)
@@ -55,11 +55,14 @@ class EngineTracer(object):
             self.trace = None
 
         self.time_start = {}
-        self.timestats = {}
+        self.timestats = defaultdict(float)
+        self.resultstats = defaultdict(int)
+        self.callstats = defaultdict(int)
+        self.time_start_global = None
 
     def process_message(self, msgtype, msgtarget, msgargs, context):
         if msgtarget is None and msgtype == 'r' and msgtarget in self.call_redirect:
-            self.call_result(*(self.call_redirect[msgtarget] + msgargs[0]))
+            self.call_result(*(self.call_redirect[msgtarget] + (msgargs[0],)))
 
         if msgtype == 'r' and msgargs[3] and msgtarget in self.call_redirect:
             self.call_return(*self.call_redirect[msgtarget])
@@ -69,51 +72,70 @@ class EngineTracer(object):
             del self.call_redirect[msgtarget]
 
     def call_create(self, node_id, functor, context, parent, location=None):
+        if self.time_start_global is None:
+            self.time_start_global = time.time()
+
         term = Term(functor, *context, location=location)
         if self.trace is not None:
-            self.trace.append((self.level, "call", term))
+            self.trace.append((self.level, "call", term, time.time()-self.time_start_global))
         self.time_start[term] = time.time(), location
         self.stack.append(term)
         self.level += 1
         self.call_redirect[parent] = (node_id, functor, context)
 
-    def call_result(self, node_id, functor, context, result, location=None):
+    def call_result(self, node_id, functor, context, result=None, location=None):
         term = Term(functor, *context, location=location)
         if self.trace is not None:
-            self.trace.append((self.level, "result", term))
+            self.trace.append((self.level, "result", term, time.time()-self.time_start_global, result))
         self.call_results[(node_id, term)] += 1
 
     def call_return(self, node_id, functor, context, location=None):
         term = Term(functor, *context, location=location)
         self.level -= 1
+        ts, loc = self.time_start[term]
+
         if self.stack:
             self.stack.pop(-1)
         if self.trace is not None:
+            now = time.time()
             if self.call_results[(node_id, term)] > 0:
-                self.trace.append((self.level, "complete", term))
+                self.trace.append((self.level, "complete", term, now-self.time_start_global, now-ts))
             else:
-                self.trace.append((self.level, "fail", term))
+                self.trace.append((self.level, "fail", term, now-self.time_start_global, now-ts))
 
-        ts, loc = self.time_start[term]
-        self.timestats[(term, loc)] = (time.time() - ts, self.call_results[node_id, term])
+        self.timestats[(term, loc)] += now - ts
+        self.resultstats[(term, loc)] = self.call_results[node_id, term]
+        self.callstats[(term, loc)] += 1
         # self.call_results[(node_id, term)] = 0
 
     def show_profile(self):
         s = ''
-        s += '%37s\t %7s \t %4s \t %s \n' % ("call", "time", "#sol", "location")
-        s += '-' * 80 + '\n'
+        s += '%50s\t %7s \t %4s \t %4s \t %s \n' % ("call", "time", "#sol", "#call", "location")
+        s += '-' * 100 + '\n'
         for tm, key in sorted((t, k) for k, t in self.timestats.items()):
             term, location = key
-            tm, nb = tm
+            nb = self.resultstats[key]
+            cl = self.callstats[key]
             location = location_string(location)
-            s += '%37s\t %.5f \t %d \t [%s]\n' % (term, tm, nb, location)
+            s += '%50s\t %.5f \t %d \t %d \t [%s]\n' % (term, tm, nb, cl, location)
         return s
 
     def show_trace(self):
         s = ''
         if self.trace is not None:
-            for lvl, msg, term in self.trace:
-                s += "%s %s %s\n" % (' ' * lvl, msg, term)
+            for record in self.trace:
+                lvl = record[0]
+                msg = record[1]
+                term = record[2]
+                tm_cumul = record[3]
+                if msg == 'call':
+                    s += "%s %s %s {%.5f} [%s]\n" % (' ' * lvl, msg, term, tm_cumul, location_string(term.location))
+                elif msg == 'result':
+                    args = record[4]
+                    s += "%s %s %s %s {%.5f} [%s]\n" % (' ' * lvl, msg, term, args, tm_cumul, location_string(term.location))
+                else:
+                    tm_local = record[4]
+                    s += "%s %s %s {%.5f} {%.5f} [%s]\n" % (' ' * lvl, msg, term, tm_cumul, tm_local, location_string(term.location))
         return s
 
 def location_string(location):
@@ -122,11 +144,11 @@ def location_string(location):
     if type(location) == tuple:
         fn, ln, cn = location
         if fn is None:
-            return ' at %s:%s' % (ln, cn)
+            return 'at %s:%s' % (ln, cn)
         else:
-            return ' at %s:%s in %s' % (ln, cn, fn)
+            return 'at %s:%s in %s' % (ln, cn, fn)
     else:
-        return ' at character %s' % location
+        return 'at character %s' % location
 
 # Assume the program
 #   a(1).
