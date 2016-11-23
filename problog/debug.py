@@ -62,7 +62,7 @@ class EngineTracer(object):
 
     def process_message(self, msgtype, msgtarget, msgargs, context):
         if msgtarget is None and msgtype == 'r' and msgtarget in self.call_redirect:
-            self.call_result(*(self.call_redirect[msgtarget] + tuple(msgargs[0])))
+            self.call_result(*(self.call_redirect[msgtarget] + (msgargs[0],)))
 
         if msgtype == 'r' and msgargs[3] and msgtarget in self.call_redirect:
             self.call_return(*self.call_redirect[msgtarget])
