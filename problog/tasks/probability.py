@@ -110,7 +110,7 @@ def execute(filename, knowledge=None, semiring=None, debug=False, combine=False,
                 semiring = db_semiring
             if knowledge is None or type(knowledge) == str:
                 knowledge = get_evaluatable(knowledge, semiring=semiring)
-            formula = knowledge.create_from(db, **kwdargs)
+            formula = knowledge.create_from(db, engine=engine, **kwdargs)
             result = formula.evaluate(semiring=semiring, **kwdargs)
 
             # Update location information on result terms
