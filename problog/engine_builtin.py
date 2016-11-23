@@ -133,6 +133,10 @@ def add_standard_builtins(engine, b=None, s=None, sp=None):
     engine.add_builtin('atom_number', 2, s(_builtin_atom_number))
     engine.add_builtin('nocache', 2, b(_builtin_nocache))
 
+    engine.add_builtin('numbervars', 2, s(_builtin_numbervars_0))
+    engine.add_builtin('numbervars', 3, s(_builtin_numbervars))
+    engine.add_builtin('varnumbers', 2, s(_builtin_varnumbers))
+
 
 def _builtin_nocache(functor, arity, database=None, **kwd):
     check_mode((functor, arity), ['ai'], **kwd)
@@ -883,6 +887,60 @@ def build_list(elements, tail):
         current = Term('.', el, current)
     return current
 
+
+def _builtin_numbervars_0(term, output, **k):
+    res = _builtin_numbervars(term, Constant(0), output)[0]
+    return [(res[0], res[2])]
+
+
+def _builtin_numbervars(term, start, output, **k):
+    mode = check_mode((term, start, output), ['*i*'], functor='numbervars', **k)
+
+    class NumberVars(object):
+
+        def __init__(self, start):
+            self._n = start
+            self._table = {}
+
+        def __getitem__(self, item):
+            if item in self._table:
+                return self._table[item]
+            else:
+                r = Term('$Var', Constant(self._n))
+                self._table[item] = r
+                self._n += 1
+                return r
+
+    out = unify_value(term.apply(NumberVars(int(start))), output, {})
+    return [(term, start, out)]
+
+
+def _builtin_varnumbers(term, output, engine=None, context=None, **k):
+    mode = check_mode((term, output), ['cv', 'cc'], functor='varnumbers', **k)
+    start = engine._context_min_var(context)
+
+    class VarNumbers(object):
+
+        def __init__(self, start):
+            self._n = start
+            self._table = {}
+
+        def __contains__(self, item):
+            return isinstance(item, Term) and item.functor == '$Var'
+
+        def __getitem__(self, item):
+            assert isinstance(item, Term) and item.functor == '$Var'
+            item = int(item.args[0])
+            if item in self._table:
+                return self._table[item]
+            else:
+                self._n -= 1
+                self._table[item] = self._n
+                return self._n
+    xx = term.apply_term(VarNumbers(start))
+    print (term, xx, start, output)
+    out = unify_value(output, xx, {})
+    return [(term, out)]
 
 # class UnknownExternal(GroundingError):
 #     """Undefined clause in call."""

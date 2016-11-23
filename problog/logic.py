@@ -296,6 +296,50 @@ class Term(object):
                 else:
                     return new_term
 
+    def apply_term(self, subst):
+        """Apply the given substitution to all (sub)terms in the term.
+
+        :param subst: A mapping from variable names to something else
+        :type subst: an object with a __getitem__ method
+        :raises: whatever subst.__getitem__ raises
+        :returns: a new Term with all variables replaced by their values from the given substitution
+        :rtype: :class:`Term`
+
+        """
+
+        old_stack = [deque([self])]
+        new_stack = []
+        term_stack = []
+        while old_stack:
+            current = old_stack[-1].popleft()
+            if current in subst:
+                if new_stack:
+                    new_stack[-1].append(subst[current])
+                else:
+                    return subst[current]
+            elif current is None or type(current) == int:
+                new_stack[-1].append(current)
+            else:
+                # Add arguments to stack
+                term_stack.append(current)
+                q = deque(current.args)
+                if current.probability is not None:
+                    q.append(current.probability)
+                old_stack.append(q)
+                new_stack.append([])
+            while old_stack and not old_stack[-1]:
+                old_stack.pop(-1)
+                new_args = new_stack.pop(-1)
+                term = term_stack.pop(-1)
+                if term.probability is not None:
+                    new_term = term.with_args(*new_args[:-1], p=new_args[-1])
+                else:
+                    new_term = term.with_args(*new_args)
+                if new_stack:
+                    new_stack[-1].append(new_term)
+                else:
+                    return new_term
+
     def __repr__(self):
         # Non-recursive version of __repr__
         stack = [deque([self])]
