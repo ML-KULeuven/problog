@@ -94,10 +94,10 @@ class EngineTracer(object):
         self.level -= 1
         ts, loc = self.time_start[term]
 
+        now = time.time()
         if self.stack:
             self.stack.pop(-1)
         if self.trace is not None:
-            now = time.time()
             if self.call_results[(node_id, term)] > 0:
                 self.trace.append((self.level, "complete", term, now-self.time_start_global, now-ts))
             else:
