@@ -122,7 +122,7 @@ def execute(filename, knowledge=None, semiring=None, debug=False, combine=False,
                 if trace:
                     print (profiler.show_trace())
                 if profile:
-                    print (profiler.show_profile())
+                    print (profiler.show_profile(kwdargs.get('profile_level', 0)))
         return True, result
     except KeyboardInterrupt as err:
         trace = traceback.format_exc()
@@ -208,6 +208,7 @@ def argparser():
                         help='Pass additional arguments to the cmd_args builtin.')
     parser.add_argument('--profile', action='store_true', help='output runtime profile')
     parser.add_argument('--trace', action='store_true', help='output runtime trace')
+    parser.add_argument('--profile-level', type=int, default=0)
 
     # Additional arguments (passed through)
     parser.add_argument('--engine-debug', action='store_true', help=argparse.SUPPRESS)

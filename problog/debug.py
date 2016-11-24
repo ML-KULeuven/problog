@@ -108,16 +108,43 @@ class EngineTracer(object):
         self.callstats[(term, loc)] += 1
         # self.call_results[(node_id, term)] = 0
 
-    def show_profile(self):
+    def show_profile(self, aggregate=0):
+        """Creates a table with profile information.
+
+        :param aggregate: aggregation level (0: no aggregation, 1: same call, 2: predicate)
+        :return: string
+        """
         s = ''
-        s += '%50s\t %7s \t %4s \t %4s \t %s \n' % ("call", "time", "#sol", "#call", "location")
-        s += '-' * 100 + '\n'
-        for tm, key in sorted((t, k) for k, t in self.timestats.items()):
-            term, location = key
-            nb = self.resultstats[key]
-            cl = self.callstats[key]
-            location = location_string(location)
-            s += '%50s\t %.5f \t %d \t %d \t [%s]\n' % (term, tm, nb, cl, location)
+        if aggregate == 0:
+            s += '%50s\t %7s \t %4s \t %4s \t %s \n' % ("call", "time", "#sol", "#call", "location")
+            s += '-' * 100 + '\n'
+            for tm, key in sorted((t, k) for k, t in self.timestats.items()):
+                term, location = key
+                nb = self.resultstats[key]
+                cl = self.callstats[key]
+                location = location_string(location)
+                s += '%50s\t %.5f \t %d \t %d \t [%s]\n' % (term, tm, nb, cl, location)
+        else:
+            timestats_agg = defaultdict(float)
+            resultstats_agg = defaultdict(int)
+            callstats_agg = defaultdict(int)
+
+            for k, t in self.timestats.items():
+                if aggregate == 1:
+                    key = k[0]
+                else:
+                    key = k[0].signature
+                timestats_agg[key] += t
+                resultstats_agg[key] += self.resultstats[k]
+                callstats_agg[key] += self.callstats[k]
+
+            s += '%50s\t %7s \t %4s \t %4s\n' % ("call", "time", "#sol", "#call")
+            s += '-' * 100 + '\n'
+            for tm, key in sorted((t, k) for k, t in timestats_agg.items()):
+                nb = resultstats_agg[key]
+                cl = callstats_agg[key]
+                s += '%50s\t %.5f \t %d \t %d\n' % (key, tm, nb, cl)
+
         return s
 
     def show_trace(self):
