@@ -49,6 +49,17 @@ def print_result(d, output, debug=False, precision=8):
         return 1
 
 
+def print_result_prolog(d, output, debug=False, precision=8):
+    success, d = d
+    if success:
+        for k, v in d.items():
+            print('problog_result(%s, %s).' % (k, v), file=output)
+        return 0
+    else:
+        print(process_error(d, debug=debug), file=output)
+        return 1
+
+
 def print_result_json(d, output, precision=8):
     """Pretty print result.
 
@@ -209,6 +220,7 @@ def argparser():
     parser.add_argument('--profile', action='store_true', help='output runtime profile')
     parser.add_argument('--trace', action='store_true', help='output runtime trace')
     parser.add_argument('--profile-level', type=int, default=0)
+    parser.add_argument('--format', choices=['text', 'prolog'])
 
     # Additional arguments (passed through)
     parser.add_argument('--engine-debug', action='store_true', help=argparse.SUPPRESS)
@@ -252,6 +264,8 @@ def main(argv, result_handler=None):
     if result_handler is None:
         if args.web:
             result_handler = print_result_json
+        elif args.format == 'prolog':
+            result_handler = lambda *a: print_result_prolog(*a, debug=args.debug)
         else:
             result_handler = lambda *a: print_result(*a, debug=args.debug)
 
