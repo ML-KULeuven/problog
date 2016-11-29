@@ -24,7 +24,7 @@ Implementation of Prolog / ProbLog builtins.
 
 from __future__ import print_function
 
-from .logic import term2str, Term, Clause, Constant, term2list, list2term, is_ground, is_variable
+from .logic import term2str, Term, Clause, Constant, term2list, list2term, is_ground, is_variable, Var
 from .program import PrologFile
 from .errors import GroundingError, UserError
 from .engine_unify import unify_value, UnifyError, substitute_simple
@@ -281,7 +281,7 @@ class StructSort(object):
 
 
 def _is_var(term):
-    return is_variable(term) or term.is_var()
+    return is_variable(term) or term.is_var() or isinstance(term, Var)
 
 
 def _is_nonvar(term):
@@ -794,7 +794,11 @@ def struct_cmp(a, b):
     # 1) Variables are smallest
     if _is_var(a):
         if _is_var(b):
-            # 2) Variable by address
+            # 2) Variable by address or name
+            if isinstance(a, Term):
+                a = a.functor
+            if isinstance(b, Term):
+                b = b.functor
             return compare(a, b)
         else:
             return -1
