@@ -57,7 +57,7 @@ from problog.logic import Term, Constant, Clause, AnnotatedDisjunction, Or, Var,
 from problog.program import PrologString, PrologFile, LogicProgram
 from problog.core import ProbLogError
 from problog.errors import process_error, InconsistentEvidenceError
-from problog.sdd_formula import SDD
+
 
 from problog import get_evaluatable, get_evaluatables
 import traceback
@@ -74,7 +74,7 @@ def str2bool(s):
 
 class LFIProblem(SemiringProbability, LogicProgram):
 
-    def __init__(self, source, examples, max_iter=10000, min_improv=1e-10, verbose=0, knowledge=SDD,
+    def __init__(self, source, examples, max_iter=10000, min_improv=1e-10, verbose=0, knowledge=None,
                  leakprob=None, propagate_evidence=True, normalize=False, **extra):
         """
         :param source: filename of file containing input model
@@ -121,6 +121,8 @@ class LFIProblem(SemiringProbability, LogicProgram):
         self.verbose = verbose
         self.iteration = 0
 
+        if knowledge is None:
+            knowledge = get_evaluatable()
         self.knowledge = knowledge
 
         self.output_mode = False
