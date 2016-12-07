@@ -40,11 +40,11 @@ class Rules:
         self.clf = decision_tree
         # print(self.decision_tree)
         if feature_names is None:
-            self.f_names = ["f_{}".format(i) for i in range(clf.n_features_)]
+            self.f_names = ["{}".format(i) for i in range(self.clf.n_features_)]
         else:
             self.f_names = feature_names
         if class_names is None:
-            self.c_names = ["c_{}".format(i) for i in range(clf.n_classes_)]
+            self.c_names = ["c_{}".format(i) for i in range(self.clf.n_classes_)]
         else:
             self.c_names = class_names
         self.bins = self._compute_bins()
@@ -277,11 +277,17 @@ def main(argv=None):
     logger.setLevel(logging.ERROR-10*(0 if args.verbose is None else args.verbose))
     logger.addHandler(logging.StreamHandler(sys.stdout))
 
-    clf = pickle.load(args.pickled)
+    clf = None
+    with open(args.pickled, "rb") as ifile:
+        clf = pickle.load(ifile)
     if args.features is not None:
         features = args.features.split(",")
+    else:
+        features = None
     if args.classes is not None:
         classes = args.classes.split(",")
+    else:
+        classes = None
     rules = Rules(clf, features, classes)
 
     if args.problog is not None:

@@ -1,8 +1,9 @@
 from sklearn.datasets import load_iris
 from sklearn import tree
 import sys
-sys.path.append(".")
-import dt2pf
+import os
+sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), os.pardir))
+import dt2problog
 import subprocess as sp
 import pickle
 
@@ -11,7 +12,8 @@ def test_iris():
     iris = load_iris()
     clf = tree.DecisionTreeClassifier(max_depth=4)
     clf = clf.fit(iris.data, iris.target)
-    pickle.dump(clf, "iris_clf.pkl")
+    with open("iris_clf.pkl", "wb") as ofile:
+        pickle.dump(clf, ofile)
 
 
     with open("iris.dot", 'w') as f:
@@ -21,7 +23,7 @@ def test_iris():
                              filled=True, rounded=True,
                              special_characters=True)
 
-    rules = dt2pf.Rules(clf, iris.feature_names, iris.target_names)
+    rules = dt2problog.Rules(clf, iris.feature_names, iris.target_names)
     print(rules.to_problog(use_comparison=True, min_prob=0.0))
     print("---")
     settings, data = rules.to_probfoil(min_prob=0.0)
