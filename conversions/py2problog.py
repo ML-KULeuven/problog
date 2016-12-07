@@ -122,9 +122,19 @@ class ProbFactObject:
         return "{}::{}".format(self.prob, self.name)
 
 
-def ProbFact(prob, name=None):
+def ProbFact(prob=None, name=None):
+    """Create a Probabilistic Fact.
+    If an Probabilistic Fact with that name has already been defined before
+    (or in a previous iteration) the same object is returned.
+
+    :param prob: Probability 0<=prob<=1.0
+    :param name: Name of probabilistic fact
+    :returns: A ProbFactObject instance
+    """
     global pf_cache
     global is_running
+    if prob is None:
+        prob = 0.5
     if exhaustive_search and is_running:
         print("ERROR: Exhaustive search only works if all probabilistic facts are defined before running the query")
         sys.exit(1)
@@ -179,7 +189,8 @@ class ADObject:
             return memoization_cache[self]
         r = random.random()
         s = 0
-        for pr,rvalue in self.probs:
+        rvalue = None
+        for pr,rv in self.probs:
             if settings.uniform_prob:
                 prob = pr + (1/len(self.probs)-pr)*iteration/settings.nb_samples
                 # print("{}::{}={}".format(prob,self.name,rvalue))
@@ -187,6 +198,7 @@ class ADObject:
                 prob = pr
             s += prob
             if r <= s:
+                rvalue = rv
                 break
         memoization_cache[self] = rvalue
         self.nb_calls += 1
@@ -197,6 +209,17 @@ class ADObject:
 
 
 def AD(probs, name=None):
+    """Create an Annotated Disjunction.
+    If an Annotated Disjunction with that name has already been defined before
+    (or in a previous iteration) the same object is returned.
+
+    :param probs: List of tuples (probability, return value)
+        The probability is a number between 0.0 and 1.0 and the sum should not
+        exceed 1.0. The return value can be any Python primitive (int, str,
+        float, bool)
+    :param name: Name of the annotated disjunction
+    :returns: A ADObject instance
+    """
     global pf_cache
     global is_running
     if exhaustive_search and is_running:
@@ -528,6 +551,11 @@ def dot():
 
 
 def problog():
+    """Generate a ProbLog program representing the probabilistic model that
+    results from the preceding calls of query.
+
+    :returns: String represting a ProbLog program
+    """
     for node in node_cache.values():
         node.printed = False
     s = "%% ProbLog program from Python\n"
@@ -564,6 +592,7 @@ def reset_memoization():
 
 
 def reset():
+    """Reset the caches required to remember results from multiple runs."""
     global node_cache
     global trace_stack
     global cnt_created_nodes
@@ -597,14 +626,22 @@ def teardown():
 
 
 def query(fun, args=None):
+    """Run a query.
+    Can be called multiple times.
+
+    :param fun: Function
+    :args: Tuple of arguments for the given function
+    """
     return query_sampling([(fun, args)])
 
 
 def query_sampling(funcs):
-    """Run query with sampling.
-    Not guaranteed to contain all paths.
+    """Run set of queries with sampling.
+    Not guaranteed to contain all paths. You can call this function multiple
+    times.
 
-    funcs is a list of tuples with (func, (arg1, arg2, ...)) or (func, None)
+    :param funcs: Funcs is a list of tuples with (func, (arg1, arg2, ...)) or
+        (func, None)
     """
     global current_node
     global memoization_cache
@@ -684,6 +721,12 @@ def query_es(fun, args=None):
 
 
 def count_samples(func, repeat=None):
+    """Generate samples by running the given function multiple times.
+
+    :param func: Function for which we will sample the output
+    :param repeat: Number of samples to generate (default is
+        settings.nb_samples)
+    """
     if repeat is None:
         repeat = settings.nb_samples
     uniform_prob = settings.uniform_prob
@@ -707,8 +750,8 @@ def hist_samples(func, repeat=None, title=None):
     # %matplotlib inline 
     labels, values = zip(*count_samples(func, repeat=repeat).items())
     total = sum(values)
-    print('total: {}'.format(total))
-    print('values: {}'.format(values))
+    # print('total: {}'.format(total))
+    # print('values: {}'.format(values))
     values = [value/total*100 for value in values]
     indexes = range(len(labels))
     width = 1

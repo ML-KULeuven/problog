@@ -23,6 +23,7 @@ def geometric(p, d=0):
 
 ## Run inference
 
+p2p.settings.nb_samples = 100
 p2p.query(geometric, args=(0.6,))
 
 with open('geometric.dot', 'w') as ofile:
