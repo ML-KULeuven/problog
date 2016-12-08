@@ -23,7 +23,7 @@ from pyparsing import Word, Literal, nums, ParseException, alphanums, \
 force_bool = False
 drop_zero = False
 use_neglit = False
-no_bool_detection = False
+detect_bool = True
 
 domains = {}
 potentials = []
@@ -82,14 +82,13 @@ def parseOption(s,l,t):
 
 
 def parseNode(s,l,t):
-    detect_boolean = not no_bool_detection
     global domains
     # print(t)
     rv = t[0]
     for key, val in t[1]:
         if key == 'states':
             domains[rv] = val
-            pgm.add_var(Variable(rv, val, detect_boolean=detect_boolean, force_boolean=force_bool))
+            pgm.add_var(Variable(rv, val, detect_boolean=detect_bool, force_boolean=force_bool))
 
 
 def parsePotential(s,l,t):
@@ -184,9 +183,9 @@ def main(argv=None):
     elif args.verbose >= 2:
         logger.setLevel(logging.DEBUG)
 
-    global no_bool_detection
+    global detect_bool
     if args.nobooldetection:
-        no_bool_detection = args.nobooldetection
+        detect_bool = False
     global force_bool
     if args.forcebool:
         force_bool = args.forcebool
