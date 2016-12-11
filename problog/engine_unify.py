@@ -423,3 +423,15 @@ def unify_call_return(result, call_args, context, var_translate, min_var, mask=N
     # Replaces lvars caller with expr lvars caller.
     return [substitute_simple(c, sv) for c in context]
 
+
+def subsumes(generic, specific):
+
+    sv = _VarTranslateWrapper({}, 0)
+    tv = {}  # dict: internal mapping in caller
+
+    # Unify both terms.
+    unify_value_dc(generic, specific, sv, tv)
+
+    # tv contains all bindings to variables in specific (to constants, or to values within tv).
+    # There should be none.
+    return not tv

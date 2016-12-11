@@ -163,7 +163,7 @@ def is_variable(term):
     :param term: term to check
     :return: True if the expression is a variable
     """
-    return term is None or type(term) == int
+    return term is None or type(term) == int or term.is_var()
 
 
 def is_list(term):

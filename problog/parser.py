@@ -310,6 +310,9 @@ class PrologParser(object):
         return Token(';', pos, binop=(1100, 'xfy', self.factory.build_disjunction),
                      functor=self._next_paren_open(s, pos)), pos + 1
 
+    def _token_exclamation(self, s, pos):
+        return Token('!', pos, atom=True), pos + 1
+
     def _token_less(self, s, pos):
         if s[pos:pos + 2] == '<-':
             return Token('<-', pos, binop=(1200, 'xfx', self._build_clause),
@@ -522,7 +525,7 @@ class PrologParser(object):
 
     def prepare(self):
         self._token_act1 = [
-            self._token_notsupported,  # 33 !
+            self._token_exclamation,  # 33 !
             self._token_dquot,  # 34 "
             self._token_pound,  # 35 #
             self._token_notsupported,  # 36 $

@@ -24,7 +24,7 @@ Implementation of Prolog / ProbLog builtins.
 
 from __future__ import print_function
 
-from .logic import term2str, Term, Clause, Constant, term2list, list2term, is_ground, is_variable
+from .logic import term2str, Term, Clause, Constant, term2list, list2term, is_ground, is_variable, Var
 from .program import PrologFile
 from .errors import GroundingError, UserError
 from .engine_unify import unify_value, UnifyError, substitute_simple
@@ -136,6 +136,9 @@ def add_standard_builtins(engine, b=None, s=None, sp=None):
     engine.add_builtin('numbervars', 2, s(_builtin_numbervars_0))
     engine.add_builtin('numbervars', 3, s(_builtin_numbervars))
     engine.add_builtin('varnumbers', 2, s(_builtin_varnumbers))
+
+    engine.add_builtin('subsumes_term', 2, b(_builtin_subsumes_term))
+    engine.add_builtin('subsumes_chk', 2, b(_builtin_subsumes_term))
 
 
 def _builtin_nocache(functor, arity, database=None, **kwd):
@@ -278,7 +281,7 @@ class StructSort(object):
 
 
 def _is_var(term):
-    return is_variable(term) or term.is_var()
+    return is_variable(term) or term.is_var() or isinstance(term, Var)
 
 
 def _is_nonvar(term):
@@ -791,7 +794,11 @@ def struct_cmp(a, b):
     # 1) Variables are smallest
     if _is_var(a):
         if _is_var(b):
-            # 2) Variable by address
+            # 2) Variable by address or name
+            if isinstance(a, Term):
+                a = a.functor
+            if isinstance(b, Term):
+                b = b.functor
             return compare(a, b)
         else:
             return -1
@@ -1711,6 +1718,13 @@ def _builtin_subquery(term, prob, evidence=None, engine=None, database=None, **k
 
 def _builtin_calln(term, *args, **kwdargs):
     return _builtin_call(term, args, **kwdargs)
+
+
+def _builtin_subsumes_term(generic, specific, **kwargs):
+    check_mode((generic, specific), ['**'], functor='subsumes_term')
+
+    from .engine_unify import subsumes
+    return subsumes(generic, specific)
 
 
 class IndirectCallCycleError(GroundingError):
