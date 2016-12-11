@@ -143,9 +143,9 @@ class BaseFormula(ProbLogObject):
             if w == self.WEIGHT_NEUTRAL and type(self.WEIGHT_NEUTRAL) == type(w):
                 result[n] = semiring.one(), semiring.one()
             elif w == False:
-                result[n] = semiring.zero(), semiring.one()
+                result[n] = semiring.false(name)
             elif w is None:
-                result[n] = semiring.one(), semiring.zero()
+                result[n] = semiring.true(name)
             else:
                 result[n] = semiring.pos_value(w, name), semiring.neg_value(w, name)
 
