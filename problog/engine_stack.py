@@ -749,7 +749,14 @@ class StackBasedEngine(ClauseDBEngine):
 
     def propagate_evidence(self, db, target, functor, args, resultnode):
         if hasattr(target, 'lookup_evidence'):
-            return target.lookup_evidence.get(resultnode, resultnode)
+            if resultnode in target.lookup_evidence:
+                return target.lookup_evidence[resultnode]
+            else:
+                neg = target.negate(resultnode)
+                if neg in target.lookup_evidence:
+                    return target.negate(target.lookup_evidence[neg])
+                else:
+                    return resultnode
         else:
             return resultnode
 
