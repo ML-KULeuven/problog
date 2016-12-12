@@ -140,6 +140,8 @@ def add_standard_builtins(engine, b=None, s=None, sp=None):
     engine.add_builtin('subsumes_term', 2, b(_builtin_subsumes_term))
     engine.add_builtin('subsumes_chk', 2, b(_builtin_subsumes_term))
 
+    engine.add_builtin('possible', 1, s(_builtin_possible))
+
 
 def _builtin_nocache(functor, arity, database=None, **kwd):
     check_mode((functor, arity), ['ai'], **kwd)
@@ -1358,6 +1360,30 @@ def _builtin_findall_base(pattern, goal, result, database=None, target=None,
                 except UnifyError:
                     pass
     return output
+
+
+def _builtin_possible(goal, engine=None, **kwdargs):
+    """Returns all grounding of goal that are possibly true.
+    This inference ignores weight values (so 0.0::a is still possibly true).
+
+    :param goal: goal for which to compute groundings
+    :type goal: Term
+    :param engine:
+    :param kwdargs:
+    :return:
+    """
+    try:
+        results = engine.call(goal, subcall=True, **kwdargs)
+
+        output = []
+        for g, _ in results:
+            output.append((unify_value(goal, goal(*g), {}),))
+        return output
+    except UnifyError:
+        return []
+    except RuntimeError:
+        raise IndirectCallCycleError(database.lineno(kwdargs.get('call_origin', (None, None))[1]))
+
 
 
 # noinspection PyUnusedLocal
