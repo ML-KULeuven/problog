@@ -182,10 +182,10 @@ For example, consider the following program.
                  Y \== Z,
                  path(Z,Y).
 
-    query(path(1,5)).
-    query(path(1,6)).
+    evidence(path(1,5)).
+    evidence(path(1,6)).
 
-This program queries for paths in the following probabilistic graph.
+This program describes a probabilistic graph.
 
 .. digraph:: probabilistic_graph
 
@@ -209,12 +209,13 @@ The result is
     edge(1,2)
     edge(2,5)
     edge(2,6)
+    \+edge(1,3)
+    \+edge(3,4)
+    \+edge(5,6)
+    % Probability: 0.0290304
 
 Note that the first edge is not necessary for the paths to exist, but it is included because it is
 more likely to exist.
-
-The result only included facts that are true.
-To also include the negative facts, you can specify the argument ``--full``.
 
 .. code-block:: prolog
 

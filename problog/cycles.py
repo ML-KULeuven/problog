@@ -83,7 +83,11 @@ def _break_cycles(source, target, nodeid, ancestors, cycles_broken, content, tra
     nodeid = abs(nodeid)
 
     if not is_evidence and not source.is_probabilistic(source.get_evidence_value(nodeid)):
-        return source.get_evidence_value(nodeid)
+        ev = source.get_evidence_value(nodeid)
+        if negative_node:
+            return target.negate(ev)
+        else:
+            return ev
     elif nodeid in ancestors:
         cycles_broken.add(nodeid)
         return None     # cyclic node: node is False

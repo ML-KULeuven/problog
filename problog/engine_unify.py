@@ -42,14 +42,15 @@ class _SubstitutionWrapper(object):
             return key
 
 
-def substitute_all(terms, subst):
+def substitute_all(terms, subst, wrapped=False):
     """
 
     :param terms:
     :param subst:
     :return:
     """
-    subst = _SubstitutionWrapper(subst)
+    if not wrapped:
+        subst = _SubstitutionWrapper(subst)
     result = []
     for term in terms:
         if is_variable(term):
@@ -201,7 +202,7 @@ class _ContextWrapper(object):
         self.context = context
         self.numbers = {}
         self.translate = {None: None}
-        self.num_count = min_var
+        self.num_count = 0  # min_var
 
     def __getitem__(self, key):
         if key is None:
@@ -383,7 +384,6 @@ def unify_call_return(result, call_args, context, var_translate, min_var, mask=N
     unification)
 
     """
-
     # TODO is this the correct min_var?
     # TODO is one-hop lookup in 'tv' sufficient?
 
@@ -406,16 +406,32 @@ def unify_call_return(result, call_args, context, var_translate, min_var, mask=N
             unify_value_dc(c, r, sv, tv)
     min_var = sv.min_var
     sv = {k: tv.get(v, v) for k, v in sv.items()}
-    sv = {k: substitute_all([v], tv)[0] for k, v in sv.items()}
+
+    # Using a _VarTranslateWrapper will cause any unknown variables in 'v' to be replaced by
+    #  new variables with a safe name (taking into account min_var).
+    tvw = _VarTranslateWrapper(tv, min_var)
+    sv = {k: substitute_all([v], tvw, True)[0] for k, v in sv.items()}
 
     # Context contains lvars from caller.
     # Use var_translate to make sv a map lvars caller -> expr lvars caller.
-    sv = {var_translate[k]: v for k, v in sv.items()}
+    sv = {var_translate.get(k, k): v for k, v in sv.items()}
 
     # Wrap sv -> failed lookup creates a new local variable.
-    sv = _VarTranslateWrapper(sv, min_var)
+    sv = _VarTranslateWrapper(sv, tvw.min_var)
 
     # Apply sv substitution to each slot in the context.
     # Replaces lvars caller with expr lvars caller.
     return [substitute_simple(c, sv) for c in context]
 
+
+def subsumes(generic, specific):
+
+    sv = _VarTranslateWrapper({}, 0)
+    tv = {}  # dict: internal mapping in caller
+
+    # Unify both terms.
+    unify_value_dc(generic, specific, sv, tv)
+
+    # tv contains all bindings to variables in specific (to constants, or to values within tv).
+    # There should be none.
+    return not tv

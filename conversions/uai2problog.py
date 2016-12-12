@@ -272,7 +272,7 @@ def main(argv=None):
     parser = argparse.ArgumentParser(description='Translate Bayesian net in UAI08 format to ProbLog')
     parser.add_argument('--verbose', '-v', action='count', help='Verbose output')
     parser.add_argument('--forcebool', action='store_true', help='Force binary nodes to be represented as Boolean predicates (0=f, 1=t)')
-    parser.add_argument('--nodetectbool', action='store_true', help='Do not try to detect Boolean predicates')
+    parser.add_argument('--nobooldetection', action='store_true', help='Do not try to detect Boolean predicates')
     parser.add_argument('--dropzero', action='store_true', help='Drop zero probabilities (if possible)')
     parser.add_argument('--useneglit', action='store_true', help='Use negative head literals')
     parser.add_argument('--allowdisjunct', action='store_true', help='Allow disjunctions in the body')
@@ -300,7 +300,7 @@ def main(argv=None):
     if args.forcebool:
         force_bool = args.forcebool
     global detect_bool
-    if args.nodetectbool:
+    if args.nobooldetection:
         detect_bool = False
     global drop_zero
     if args.dropzero:

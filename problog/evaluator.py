@@ -139,6 +139,14 @@ class Semiring(object):
             s = self.plus(s, w)
         return self.negate(s)
 
+    def true(self, key=None):
+        """Handle weight for deterministically true."""
+        return self.one(), self.zero()
+
+    def false(self, key=None):
+        """Handle weight for deterministically false."""
+        return self.zero(), self.one()
+
 
 class SemiringProbability(Semiring):
     """Implementation of the semiring interface for probabilities."""

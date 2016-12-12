@@ -49,6 +49,17 @@ def print_result(d, output, debug=False, precision=8):
         return 1
 
 
+def print_result_prolog(d, output, debug=False, precision=8):
+    success, d = d
+    if success:
+        for k, v in d.items():
+            print('problog_result(%s, %s).' % (k, v), file=output)
+        return 0
+    else:
+        print(process_error(d, debug=debug), file=output)
+        return 1
+
+
 def print_result_json(d, output, precision=8):
     """Pretty print result.
 
@@ -71,7 +82,7 @@ def print_result_json(d, output, precision=8):
     return 0
 
 
-def execute(filename, knowledge=None, semiring=None, debug=False, combine=False, **kwdargs):
+def execute(filename, knowledge=None, semiring=None, debug=False, combine=False, profile=False, trace=False, **kwdargs):
     """Run ProbLog.
 
     :param filename: input file
@@ -96,6 +107,13 @@ def execute(filename, knowledge=None, semiring=None, debug=False, combine=False,
                         model.source_root = filemodel.source_root
             else:
                 model = PrologFile(filename)
+            if profile or trace:
+                from problog.debug import EngineTracer
+                profiler = EngineTracer(keep_trace=trace)
+                kwdargs['debugger'] = profiler
+            else:
+                profiler = None
+
             engine = DefaultEngine(**kwdargs)
             db = engine.prepare(model)
             db_semiring = db.get_data('semiring')
@@ -103,14 +121,19 @@ def execute(filename, knowledge=None, semiring=None, debug=False, combine=False,
                 semiring = db_semiring
             if knowledge is None or type(knowledge) == str:
                 knowledge = get_evaluatable(knowledge, semiring=semiring)
-            formula = knowledge.create_from(db, **kwdargs)
+            formula = knowledge.create_from(db, engine=engine, **kwdargs)
             result = formula.evaluate(semiring=semiring, **kwdargs)
 
-            # Update loceation information on result terms
+            # Update location information on result terms
             for n, p in result.items():
                 if not n.location or not n.location[0]:
                     # Only get location for primary file (other file information is not available).
                     n.loc = model.lineno(n.location)
+            if profiler is not None:
+                if trace:
+                    print (profiler.show_trace())
+                if profile:
+                    print (profiler.show_profile(kwdargs.get('profile_level', 0)))
         return True, result
     except KeyboardInterrupt as err:
         trace = traceback.format_exc()
@@ -194,6 +217,10 @@ def argparser():
     parser.add_argument('--web', action='store_true', help=argparse.SUPPRESS)
     parser.add_argument('-a', '--arg', dest='args', action='append',
                         help='Pass additional arguments to the cmd_args builtin.')
+    parser.add_argument('--profile', action='store_true', help='output runtime profile')
+    parser.add_argument('--trace', action='store_true', help='output runtime trace')
+    parser.add_argument('--profile-level', type=int, default=0)
+    parser.add_argument('--format', choices=['text', 'prolog'])
 
     # Additional arguments (passed through)
     parser.add_argument('--engine-debug', action='store_true', help=argparse.SUPPRESS)
@@ -237,6 +264,8 @@ def main(argv, result_handler=None):
     if result_handler is None:
         if args.web:
             result_handler = print_result_json
+        elif args.format == 'prolog':
+            result_handler = lambda *a: print_result_prolog(*a, debug=args.debug)
         else:
             result_handler = lambda *a: print_result(*a, debug=args.debug)
 

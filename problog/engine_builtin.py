@@ -24,7 +24,7 @@ Implementation of Prolog / ProbLog builtins.
 
 from __future__ import print_function
 
-from .logic import term2str, Term, Clause, Constant, term2list, list2term, is_ground, is_variable
+from .logic import term2str, Term, Clause, Constant, term2list, list2term, is_ground, is_variable, Var
 from .program import PrologFile
 from .errors import GroundingError, UserError
 from .engine_unify import unify_value, UnifyError, substitute_simple
@@ -132,6 +132,15 @@ def add_standard_builtins(engine, b=None, s=None, sp=None):
     engine.add_builtin('cmd_args', 1, s(_builtin_cmdargs))
     engine.add_builtin('atom_number', 2, s(_builtin_atom_number))
     engine.add_builtin('nocache', 2, b(_builtin_nocache))
+
+    engine.add_builtin('numbervars', 2, s(_builtin_numbervars_0))
+    engine.add_builtin('numbervars', 3, s(_builtin_numbervars))
+    engine.add_builtin('varnumbers', 2, s(_builtin_varnumbers))
+
+    engine.add_builtin('subsumes_term', 2, b(_builtin_subsumes_term))
+    engine.add_builtin('subsumes_chk', 2, b(_builtin_subsumes_term))
+
+    engine.add_builtin('possible', 1, s(_builtin_possible))
 
 
 def _builtin_nocache(functor, arity, database=None, **kwd):
@@ -274,7 +283,7 @@ class StructSort(object):
 
 
 def _is_var(term):
-    return is_variable(term) or term.is_var()
+    return is_variable(term) or term.is_var() or isinstance(term, Var)
 
 
 def _is_nonvar(term):
@@ -787,7 +796,11 @@ def struct_cmp(a, b):
     # 1) Variables are smallest
     if _is_var(a):
         if _is_var(b):
-            # 2) Variable by address
+            # 2) Variable by address or name
+            if isinstance(a, Term):
+                a = a.functor
+            if isinstance(b, Term):
+                b = b.functor
             return compare(a, b)
         else:
             return -1
@@ -883,6 +896,60 @@ def build_list(elements, tail):
         current = Term('.', el, current)
     return current
 
+
+def _builtin_numbervars_0(term, output, **k):
+    res = _builtin_numbervars(term, Constant(0), output)[0]
+    return [(res[0], res[2])]
+
+
+def _builtin_numbervars(term, start, output, **k):
+    mode = check_mode((term, start, output), ['*i*'], functor='numbervars', **k)
+
+    class NumberVars(object):
+
+        def __init__(self, start):
+            self._n = start
+            self._table = {}
+
+        def __getitem__(self, item):
+            if item in self._table:
+                return self._table[item]
+            else:
+                r = Term('$Var', Constant(self._n))
+                self._table[item] = r
+                self._n += 1
+                return r
+
+    out = unify_value(term.apply(NumberVars(int(start))), output, {})
+    return [(term, start, out)]
+
+
+def _builtin_varnumbers(term, output, engine=None, context=None, **k):
+    mode = check_mode((term, output), ['cv', 'cc'], functor='varnumbers', **k)
+    start = engine._context_min_var(context)
+
+    class VarNumbers(object):
+
+        def __init__(self, start):
+            self._n = start
+            self._table = {}
+
+        def __contains__(self, item):
+            return isinstance(item, Term) and item.functor == '$Var'
+
+        def __getitem__(self, item):
+            assert isinstance(item, Term) and item.functor == '$Var'
+            item = int(item.args[0])
+            if item in self._table:
+                return self._table[item]
+            else:
+                self._n -= 1
+                self._table[item] = self._n
+                return self._n
+    xx = term.apply_term(VarNumbers(start))
+    print (term, xx, start, output)
+    out = unify_value(output, xx, {})
+    return [(term, out)]
 
 # class UnknownExternal(GroundingError):
 #     """Undefined clause in call."""
@@ -1295,6 +1362,30 @@ def _builtin_findall_base(pattern, goal, result, database=None, target=None,
     return output
 
 
+def _builtin_possible(goal, engine=None, **kwdargs):
+    """Returns all grounding of goal that are possibly true.
+    This inference ignores weight values (so 0.0::a is still possibly true).
+
+    :param goal: goal for which to compute groundings
+    :type goal: Term
+    :param engine:
+    :param kwdargs:
+    :return:
+    """
+    try:
+        results = engine.call(goal, subcall=True, **kwdargs)
+
+        output = []
+        for g, _ in results:
+            output.append((unify_value(goal, goal(*g), {}),))
+        return output
+    except UnifyError:
+        return []
+    except RuntimeError:
+        raise IndirectCallCycleError(database.lineno(kwdargs.get('call_origin', (None, None))[1]))
+
+
+
 # noinspection PyUnusedLocal
 def _builtin_sample_all(pattern, goal, result, database=None, target=None, **kwdargs):
     # Like findall.
@@ -1653,6 +1744,13 @@ def _builtin_subquery(term, prob, evidence=None, engine=None, database=None, **k
 
 def _builtin_calln(term, *args, **kwdargs):
     return _builtin_call(term, args, **kwdargs)
+
+
+def _builtin_subsumes_term(generic, specific, **kwargs):
+    check_mode((generic, specific), ['**'], functor='subsumes_term')
+
+    from .engine_unify import subsumes
+    return subsumes(generic, specific)
 
 
 class IndirectCallCycleError(GroundingError):

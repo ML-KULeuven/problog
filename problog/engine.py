@@ -40,7 +40,7 @@ from .util import Timer, OrderedSet
 
 @transform(LogicProgram, LogicFormula)
 def ground(model, target=None, queries=None, evidence=None, propagate_evidence=False,
-           labels=None, **kwdargs):
+           labels=None, engine=None, **kwdargs):
     """Ground a given model.
 
     :param model: logic program to ground
@@ -52,7 +52,9 @@ def ground(model, target=None, queries=None, evidence=None, propagate_evidence=F
     :return: the ground program
     :rtype: LogicFormula
     """
-    return DefaultEngine(**kwdargs).ground_all(model, target, queries=queries, evidence=evidence,
+    if engine is None:
+        engine = DefaultEngine(**kwdargs)
+    return engine.ground_all(model, target, queries=queries, evidence=evidence,
                                                propagate_evidence=propagate_evidence, labels=labels)
 
 
@@ -347,6 +349,9 @@ class ClauseDBEngine(GenericEngine):
 
             context = self.create_context(term.args)
             context, xxx = substitute_call_args(context, context, 0)
+            if self.debugger:
+                location = db.lineno(term.location)
+                self.debugger.call_create(clause_node, term.functor, context, None, location)
             results = self.execute(clause_node, database=db, target=gp, context=context, **kwdargs)
         except UnknownClauseInternal:
             if silent_fail or self.unknown == self.UNKNOWN_FAIL:

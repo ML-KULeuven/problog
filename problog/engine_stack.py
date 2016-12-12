@@ -33,6 +33,7 @@ from .errors import GroundingError
 from .engine import ClauseDBEngine, substitute_head_args, substitute_call_args, unify_call_head, \
     unify_call_return, OccursCheck, substitute_simple
 from .engine_builtin import add_standard_builtins, IndirectCallCycleError
+from collections import defaultdict
 
 
 class NegativeCycle(GroundingError):
@@ -365,9 +366,9 @@ class StackBasedEngine(ClauseDBEngine):
             else:
                 act, obj, args, context = actions.pop()
 
-                # Inform the debugger.
-                if debugger:
-                    debugger.process_message(act, obj, args, context)
+                # # Inform the debugger.
+                # if debugger:
+                #     debugger.process_message(act, obj, args, context)
 
                 if obj is None:
                     # We have reached the top-level.
@@ -538,7 +539,6 @@ class StackBasedEngine(ClauseDBEngine):
             else:
                 act, obj, args, context = actions.pop()
 
-                # Inform the debugger.
                 if debugger:
                     debugger.process_message(act, obj, args, context)
 
@@ -749,7 +749,14 @@ class StackBasedEngine(ClauseDBEngine):
 
     def propagate_evidence(self, db, target, functor, args, resultnode):
         if hasattr(target, 'lookup_evidence'):
-            return target.lookup_evidence.get(resultnode, resultnode)
+            if resultnode in target.lookup_evidence:
+                return target.lookup_evidence[resultnode]
+            else:
+                neg = target.negate(resultnode)
+                if neg in target.lookup_evidence:
+                    return target.negate(target.lookup_evidence[neg])
+                else:
+                    return resultnode
         else:
             return resultnode
 
@@ -835,9 +842,10 @@ class StackBasedEngine(ClauseDBEngine):
         min_var = self._context_min_var(context)
         call_args, var_translate = substitute_call_args(node.args, context, min_var)
 
-
-        if self.debugger:
-            self.debugger.call_create(node_id, node.functor, call_args, parent)
+        if self.debugger and node.functor != 'call':
+            # 'call(X)' is virtual so result and return can not be detected => don't register it.
+            location = kwdargs['database'].lineno(node.location)
+            self.debugger.call_create(node_id, node.functor, call_args, parent, location)
 
         ground_mask = [not is_ground(c) for c in call_args]
 
@@ -848,7 +856,8 @@ class StackBasedEngine(ClauseDBEngine):
                 output = unify_call_return(result, call_args, output, var_translate, min_var,
                                            mask=ground_mask)
                 if self.debugger:
-                    self.debugger.call_result(node_id, node.functor, call_args, result)
+                    location = kwdargs['database'].lineno(node.location)
+                    self.debugger.call_result(node_id, node.functor, call_args, result, location)
                 return output
             except UnifyError:
                 pass
@@ -1034,6 +1043,9 @@ class MessageFIFO(MessageQueue):
 
     def append(self, message):
         self.messages.append(message)
+        # Inform the debugger.
+        if self.engine.debugger:
+            self.engine.debugger.process_message(*message)
 
     def pop(self):
         return self.messages.pop(-1)
@@ -1377,15 +1389,15 @@ class VarReindex(object):
     def __getitem__(self, var):
         if var is None:
             return var
-        elif var < 0:
+        else:
             if var in self.n:
                 return self.n[var]
             else:
                 self.v -= 1
                 self.n[var] = self.v
                 return self.v
-        else:
-            return var
+        # else:
+        #     return var
 
 
 class DefineCache(object):
