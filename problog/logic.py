@@ -135,7 +135,7 @@ def term2list(term):
     """
     from .pypl import pl2py
     result = []
-    while term.functor == '.' and term.arity == 2:
+    while not is_variable(term) and term.functor == '.' and term.arity == 2:
         result.append(pl2py(term.args[0]))
         term = term.args[1]
     if not term == Term('[]'):
