@@ -141,12 +141,45 @@ def add_standard_builtins(engine, b=None, s=None, sp=None):
     engine.add_builtin('subsumes_chk', 2, b(_builtin_subsumes_term))
 
     engine.add_builtin('possible', 1, s(_builtin_possible))
+    engine.add_builtin('clause', 2, s(_builtin_clause))
 
 
 def _builtin_nocache(functor, arity, database=None, **kwd):
     check_mode((functor, arity), ['ai'], **kwd)
     database.dont_cache.add((str(functor), int(arity)))
     return True
+
+
+def _builtin_clause(head, body, database=None, **kwd):
+    mode = check_mode((head, body), ['c*', 'v*'], **kwd)
+
+    if mode == 0:
+        clause_def = database.find(head)
+        if clause_def is None:
+            clauses = []
+        else:
+            clause_ids = database.get_node(clause_def).children
+            clauses = [database.to_clause(c) for c in clause_ids]
+    elif mode == 1:
+        clauses = list(database)
+
+    result = []
+    for clause in clauses:
+        if isinstance(clause, Clause):
+            h = clause.head
+            b = clause.body
+        else:
+            h = clause
+            b = Term('true')
+
+        try:
+            unify_value(head, h, {})
+            unify_value(body, b, {})
+            result.append((h, b))
+        except UnifyError:
+            pass
+
+    return result
 
 
 def _builtin_cmdargs(lst, engine=None, **kwd):
