@@ -514,6 +514,7 @@ class ClauseIndex(list):
         self.__basetype = OrderedSet
         self.__index = [defaultdict(self.__basetype) for _ in range(0, arity)]
         self.__optimized = False
+        self.__erased = set()
 
     def find(self, arguments):
         results = None
@@ -535,9 +536,15 @@ class ClauseIndex(list):
             if results is not None and not results:
                 return []
         if results is None:
-            return self
+            if self.__erased:
+                return OrderedSet(self) - self.__erased
+            else:
+                return self
         else:
-            return results
+            if self.__erased:
+                return results - self.__erased
+            else:
+                return results
 
     def _add(self, key, item):
         for i, k in enumerate(key):
@@ -553,6 +560,9 @@ class ClauseIndex(list):
             else:
                 key.append(None)
         self._add(key, item)
+
+    def erase(self, items):
+        self.__erased |= set(items)
 
 
 class ClauseDB(LogicProgram):

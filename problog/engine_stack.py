@@ -1407,6 +1407,10 @@ class DefineCache(object):
         self.__active = NestedDict()
         self.__dont_cache = dont_cache
 
+    def reset(self):
+        self.__non_ground = NestedDict()
+        self.__ground = NestedDict()
+
     def _reindex_vars(self, goal):
         ri = VarReindex()
         return goal[0], [substitute_simple(g, ri) for g in goal[1]]
@@ -1468,6 +1472,14 @@ class DefineCache(object):
             goal = self._reindex_vars(goal)
             # res_keys = self.__non_ground[goal]
             return self.__non_ground[goal].items()
+
+    def __delitem__(self, goal):
+        functor, args = goal
+        if is_ground(*args):
+            del self.__ground[goal]
+        else:
+            goal = self._reindex_vars(goal)
+            del self.__non_ground[goal]
 
     def __contains__(self, goal):
         functor, args = goal
