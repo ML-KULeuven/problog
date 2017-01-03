@@ -1495,6 +1495,7 @@ class problog_export(object):
         # TODO check if arguments are in order: input first, output last
         self.input_arguments = [a[1:] for a in args if a[0] == '+']
         self.output_arguments = [a[1:] for a in args if a[0] == '-']
+        self.functor = kwdargs.get('functor')
 
     def _convert_input(self, a, t):
         if t == 'str':
@@ -1569,7 +1570,10 @@ class problog_export(object):
 
     def __call__(self, function, funcname=None):
         if funcname is None:
-            funcname = function.__name__
+            if self.functor is None:
+                funcname = function.__name__
+            else:
+                funcname = self.functor
 
         def _wrapped_function(*args, **kwdargs):
             bound = check_mode(args, list(self._extract_callmode()), funcname, **kwdargs)
@@ -1630,8 +1634,10 @@ class problog_export_raw(problog_export):
 
     def __call__(self, function, funcname=None):
         if funcname is None:
-            funcname = function.__name__
-
+            if self.functor is None:
+                funcname = function.__name__
+            else:
+                funcname = self.functor
 
         def _wrapped_function(*args, **kwdargs):
             bound = check_mode(args, list(self._extract_callmode()), funcname, **kwdargs)
@@ -1668,7 +1674,10 @@ class problog_export_raw(problog_export):
 class problog_export_nondet(problog_export):
     def __call__(self, function, funcname=None):
         if funcname is None:
-            funcname = function.__name__
+            if self.functor is None:
+                funcname = function.__name__
+            else:
+                funcname = self.functor
 
         def _wrapped_function(*args, **kwdargs):
             bound = check_mode(args, list(self._extract_callmode()), funcname, **kwdargs)
