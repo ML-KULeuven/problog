@@ -30,7 +30,7 @@ from .errors import GroundingError, UserError
 from .engine_unify import unify_value, UnifyError, substitute_simple
 from .engine import UnknownClauseInternal, UnknownClause
 
-import os
+import os, sys
 
 
 def add_standard_builtins(engine, b=None, s=None, sp=None):
@@ -223,7 +223,7 @@ def _builtin_atom_number(atom, number, **kwd):
 
 # noinspection PyUnusedLocal
 def _builtin_debugprint(*args, **kwd):
-    print(' '.join(map(term2str, args)))
+    print(' '.join(map(term2str, args)), file=sys.stderr)
     return True
 
 
