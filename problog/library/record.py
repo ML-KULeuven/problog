@@ -120,7 +120,7 @@ def erase(ref):
 
 @problog_export_nondet('+term', '-term')
 def recorded(key):
-    db = problog_export.database.get_data(recdb_key)
+    db = problog_export.database.get_data(recdb_key, {})
     lst = db.get(key)
     if lst is None:
         return ()
@@ -130,7 +130,7 @@ def recorded(key):
 
 @problog_export_nondet('+term', '-term', '-term')
 def recorded(key):
-    db = problog_export.database.get_data(recdb_key)
+    db = problog_export.database.get_data(recdb_key, {})
     lst = db.get(key)
     if lst is None:
         return ()
