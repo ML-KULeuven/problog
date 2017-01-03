@@ -883,7 +883,9 @@ class ClauseDB(LogicProgram):
             op2 = self._compile(struct.op2, variables)
             return self._add_or_node(op1, op2)
         elif isinstance(struct, Not):
+            variables.enter_local()
             child = self._compile(struct.child, variables)
+            variables.exit_local()
             return self._add_not_node(child, location=struct.location)
         elif isinstance(struct, Term) and struct.signature == 'not/1':
             child = self._compile(struct.args[0], variables)
