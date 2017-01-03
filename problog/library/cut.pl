@@ -14,6 +14,9 @@
 %       cut(r(a, X)) => X = b
 %       cut(r(X, c)) => X = a
 %       cut(r(b, X)) => X = c
+%
+%  The predicate cut/2 unifies the second argument with the Index of the matching rule.
+%
 
 cut(Call) :-
     Call =.. [Pred|Args],
@@ -22,8 +25,16 @@ cut(Call) :-
     sort(List, OList),
     cut(RCall, Index, OList, Call).
 
+cut(Call, Index) :-
+    Call =.. [Pred|Args],
+    RCall =.. [Pred, Index | Args],
+    all(Index, clause(RCall, _), List),
+    sort(List, OList),
+    cut(RCall, Index, OList, Call).
+
+
 cut(RCall, Index, [Index | Rest], Call) :-
     call(RCall).
-cut(RCall, Index, [_ | Rest], Call) :-
-    \+ call(RCall),
+cut(RCall, Index, [Value | Rest], Call) :-
+    \+ (Value = Index, call(RCall)),
     cut(RCall, Index, Rest, Call).
