@@ -514,6 +514,7 @@ class ClauseIndex(list):
         self.__basetype = OrderedSet
         self.__index = [defaultdict(self.__basetype) for _ in range(0, arity)]
         self.__optimized = False
+        self.__erased = set()
 
     def find(self, arguments):
         results = None
@@ -535,9 +536,15 @@ class ClauseIndex(list):
             if results is not None and not results:
                 return []
         if results is None:
-            return self
+            if self.__erased:
+                return OrderedSet(self) - self.__erased
+            else:
+                return self
         else:
-            return results
+            if self.__erased:
+                return results - self.__erased
+            else:
+                return results
 
     def _add(self, key, item):
         for i, k in enumerate(key):
@@ -553,6 +560,9 @@ class ClauseIndex(list):
             else:
                 key.append(None)
         self._add(key, item)
+
+    def erase(self, items):
+        self.__erased |= set(items)
 
 
 class ClauseDB(LogicProgram):
@@ -873,7 +883,9 @@ class ClauseDB(LogicProgram):
             op2 = self._compile(struct.op2, variables)
             return self._add_or_node(op1, op2)
         elif isinstance(struct, Not):
+            variables.enter_local()
             child = self._compile(struct.child, variables)
+            variables.exit_local()
             return self._add_not_node(child, location=struct.location)
         elif isinstance(struct, Term) and struct.signature == 'not/1':
             child = self._compile(struct.args[0], variables)
@@ -983,6 +995,15 @@ class ClauseDB(LogicProgram):
             return Not('\+', self._extract(node.child))
         else:
             raise ValueError("Unknown node type: '%s'" % nodetype)
+
+    def to_clause(self, index):
+        node = self.get_node(index)
+        nodetype = type(node).__name__
+        if nodetype == 'fact':
+            return Term(node.functor, *node.args, p=node.probability)
+        elif nodetype == 'clause':
+            head = self._create_vars(Term(node.functor, *node.args, p=node.probability))
+            return Clause(head, self._extract(node.child))
 
     def __iter__(self):
         clause_groups = defaultdict(list)

@@ -30,7 +30,7 @@ from .errors import GroundingError, UserError
 from .engine_unify import unify_value, UnifyError, substitute_simple
 from .engine import UnknownClauseInternal, UnknownClause
 
-import os
+import os, sys
 
 
 def add_standard_builtins(engine, b=None, s=None, sp=None):
@@ -141,12 +141,45 @@ def add_standard_builtins(engine, b=None, s=None, sp=None):
     engine.add_builtin('subsumes_chk', 2, b(_builtin_subsumes_term))
 
     engine.add_builtin('possible', 1, s(_builtin_possible))
+    engine.add_builtin('clause', 2, s(_builtin_clause))
 
 
 def _builtin_nocache(functor, arity, database=None, **kwd):
     check_mode((functor, arity), ['ai'], **kwd)
     database.dont_cache.add((str(functor), int(arity)))
     return True
+
+
+def _builtin_clause(head, body, database=None, **kwd):
+    mode = check_mode((head, body), ['c*', 'v*'], **kwd)
+
+    if mode == 0:
+        clause_def = database.find(head)
+        if clause_def is None:
+            clauses = []
+        else:
+            clause_ids = database.get_node(clause_def).children
+            clauses = [database.to_clause(c) for c in clause_ids]
+    elif mode == 1:
+        clauses = list(database)
+
+    result = []
+    for clause in clauses:
+        if isinstance(clause, Clause):
+            h = clause.head
+            b = clause.body
+        else:
+            h = clause
+            b = Term('true')
+
+        try:
+            unify_value(head, h, {})
+            unify_value(body, b, {})
+            result.append((h, b))
+        except UnifyError:
+            pass
+
+    return result
 
 
 def _builtin_cmdargs(lst, engine=None, **kwd):
@@ -190,7 +223,7 @@ def _builtin_atom_number(atom, number, **kwd):
 
 # noinspection PyUnusedLocal
 def _builtin_debugprint(*args, **kwd):
-    print(' '.join(map(term2str, args)))
+    print(' '.join(map(term2str, args)), file=sys.stderr)
     return True
 
 
@@ -1462,6 +1495,7 @@ class problog_export(object):
         # TODO check if arguments are in order: input first, output last
         self.input_arguments = [a[1:] for a in args if a[0] == '+']
         self.output_arguments = [a[1:] for a in args if a[0] == '-']
+        self.functor = kwdargs.get('functor')
 
     def _convert_input(self, a, t):
         if t == 'str':
@@ -1536,7 +1570,10 @@ class problog_export(object):
 
     def __call__(self, function, funcname=None):
         if funcname is None:
-            funcname = function.__name__
+            if self.functor is None:
+                funcname = function.__name__
+            else:
+                funcname = self.functor
 
         def _wrapped_function(*args, **kwdargs):
             bound = check_mode(args, list(self._extract_callmode()), funcname, **kwdargs)
@@ -1597,8 +1634,10 @@ class problog_export_raw(problog_export):
 
     def __call__(self, function, funcname=None):
         if funcname is None:
-            funcname = function.__name__
-
+            if self.functor is None:
+                funcname = function.__name__
+            else:
+                funcname = self.functor
 
         def _wrapped_function(*args, **kwdargs):
             bound = check_mode(args, list(self._extract_callmode()), funcname, **kwdargs)
@@ -1635,7 +1674,10 @@ class problog_export_raw(problog_export):
 class problog_export_nondet(problog_export):
     def __call__(self, function, funcname=None):
         if funcname is None:
-            funcname = function.__name__
+            if self.functor is None:
+                funcname = function.__name__
+            else:
+                funcname = self.functor
 
         def _wrapped_function(*args, **kwdargs):
             bound = check_mode(args, list(self._extract_callmode()), funcname, **kwdargs)

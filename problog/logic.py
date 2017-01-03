@@ -135,7 +135,7 @@ def term2list(term):
     """
     from .pypl import pl2py
     result = []
-    while term.functor == '.' and term.arity == 2:
+    while not is_variable(term) and term.functor == '.' and term.arity == 2:
         result.append(pl2py(term.args[0]))
         term = term.args[1]
     if not term == Term('[]'):
@@ -414,7 +414,11 @@ class Term(object):
             elif isinstance(current, Term) and current.op_spec is not None:
                 # Is a binary or unary operator.
                 if len(current.op_spec) == 2:  # unary operator
-                    put(str(current.functor).strip("'"))
+                    cf = str(current.functor).strip("'")
+                    if 'a' <= cf[0] <= 'z':
+                        put(' ' + cf + ' ')
+                    else:
+                        put(cf)
                     q = deque()
                     q.append(current.args[0])
                     stack.append(q)
@@ -431,11 +435,11 @@ class Term(object):
                         q.append('(')
                         q.append(a)
                         q.append(')')
-                    op = str(current.functor)
+                    op = str(current.functor).strip("'")
                     if 'a' <= op[0] <= 'z':
-                        q.append(' %s ' % str(current.functor).strip("'"))
+                        q.append(' %s ' % op)
                     else:
-                        q.append('%s' % str(current.functor).strip("'"))
+                        q.append('%s' % op)
                     if not isinstance(b, Term) or \
                             b.op_priority is None or b.op_priority < current.op_priority or \
                             (b.op_priority == current.op_priority and current.op_spec == 'xfy'):
