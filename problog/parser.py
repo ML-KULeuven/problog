@@ -567,6 +567,7 @@ class PrologParser(object):
 
         self.string_operators = {
             'is': {'binop': (700, 'xfx', self.factory.build_binop)},
+            'as': {'binop': (700, 'xfx', self.factory.build_binop)},
             'not': {'unop': (900, 'fy', self.factory.build_not), 'atom': True},
             'xor': {'binop': (500, 'yfx', self.factory.build_binop)},
             'rdiv': {'binop': (400, 'yfx', self.factory.build_binop)},
