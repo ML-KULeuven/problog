@@ -1274,8 +1274,7 @@ label_all=True)
 
     def extract_relevant(self):
         relevant = [False] * (len(self)+1)
-        roots = set(abs(n) for q, n in self.queries() if self.is_probabilistic(n))
-        roots |= set(abs(n) for q, n in self.evidence() if self.is_probabilistic(n))
+        roots = {abs(r) for r in self.get_roots()}
         while roots:
             root = roots.pop()
             if not relevant[root]:
@@ -1287,6 +1286,11 @@ label_all=True)
                         if not relevant[abs(c)]:
                             roots.add(abs(c))
         return relevant
+
+    def get_roots(self):
+        roots = set(n for q, n in self.queries() if self.is_probabilistic(n))
+        roots |= set(n for q, n in self.evidence() if self.is_probabilistic(n))
+        return roots
 
     def get_node_multiplicity(self, index):
         if self.is_true(index):
@@ -1530,6 +1534,41 @@ class LogicNNF(LogicDAG, Evaluatable):
         else:
             return FormulaEvaluator(self, semiring, weights)
 
+    def copy_node_from(self, source, index, translate=None):
+        """Copy a node with transformation to Negation Normal Form (only negation on facts)."""
+        if translate is None:
+            translate = {}
+        if index in translate:
+            return translate[index]
+        elif source.is_true(index):
+            return self.TRUE
+        elif source.is_false(index):
+            return self.FALSE
+        else:
+            node = source.get_node(abs(index))
+            ntype = type(node).__name__
+            sign = 1 if index > 0 else -1
+            if ntype == 'atom':
+                at = self.add_atom(*node)
+                if sign < 0:
+                    at = self.negate(at)
+            elif ntype == 'conj':
+                if sign > 0:
+                    children = [self.copy_node_from(source, c, translate) for c in node.children]
+                    at = self.add_and(children)
+                else:
+                    children = [self.copy_node_from(source, source.negate(c), translate) for c in node.children]
+                    at = self.add_or(children)
+            elif ntype == 'disj':
+                if sign > 0:
+                    children = [self.copy_node_from(source, c, translate) for c in node.children]
+                    at = self.add_or(children)
+                else:
+                    children = [self.copy_node_from(source, source.negate(c), translate) for c in node.children]
+                    at = self.add_and(children)
+            translate[index] = at
+            return at
+
 
 class DeterministicLogicFormula(LogicFormula):
     """A deterministic logic formula."""
@@ -1543,8 +1582,23 @@ class DeterministicLogicFormula(LogicFormula):
 
 @transform(LogicDAG, LogicNNF)
 def dag_to_nnf(source, target=None, **kwargs):
-    # TODO implement transformation
     if target is None:
         target = LogicNNF()
-    source.clone(target)
+
+    # Keep a translation table.
+    translate = {}
+
+    # Translate all labeled nodes (query, evidence, ...)
+    for q, n, l in source.get_names_with_label():
+        nn = target.copy_node_from(source, n, translate)
+        target.add_name(q, nn, l)
+
+    # Copy constraints
+    for c in source.constraints():
+        # Ensure that all nodes used in constraint are in NNF form.
+        for n in c.get_nodes():
+            target.copy_node_from(source, n, translate)
+        target.add_constraint(c.copy(translate))
+
     return target
+
