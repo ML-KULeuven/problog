@@ -84,7 +84,7 @@ class UAIReader:
 
 
 def construct_var(pgm, var_num):
-    rv = 'v{}'.format(var_num)
+    rv = str(var_num)
     values = domains[var_num]
     pgm.add_var(Variable(rv, values, detect_boolean=detect_bool, force_boolean=force_bool))
 
@@ -96,13 +96,13 @@ def construct_cpt(pgm, func_num):
         error('Variables not defined for function {}'.format(func_num), halt=True)
     variables = func_vars[func_num]
     var = variables[-1]
-    rv = 'v{}'.format(var)
+    rv = str(var)
     parents = variables[0:-1]
     if var >= len(domains) or domains[var] is None:
         error('Variable domain is not defined: {}'.format(var), halt=True)
     dom_size = dom_sizes[var]
 
-    parents_str = ['v{}'.format(p) for p in parents]
+    parents_str = [str(p) for p in parents]
     if len(parents) == 0:
         table = func_values[var]
         pgm.add_factor(Factor(pgm, rv, parents_str, table))
@@ -134,7 +134,7 @@ def construct_factor(pgm, func_num):
     parents = variables
     dom_size = 1
 
-    parents_str = ['v{}'.format(p) for p in parents]
+    parents_str = [str(p) for p in parents]
     assert(len(parents) != 0)
     parent_domains = []
     for parent in parents:
