@@ -21,7 +21,7 @@ from __future__ import print_function
 import os
 import sys
 
-from problog.formula import LogicDAG, LogicFormula
+from problog.formula import LogicDAG, LogicFormula, LogicNNF
 from problog.evaluator import SemiringLogProbability
 from problog.parser import DefaultPrologParser
 from problog.program import ExtendedPrologFactory, PrologFile
@@ -37,6 +37,7 @@ def main(argv, result_handler=None):
     parser.add_argument('--format', choices=('dot', 'pl', 'cnf', 'svg', 'internal'), default=None,
                         help='output format')
     parser.add_argument('--break-cycles', action='store_true', help='perform cycle breaking')
+    parser.add_argument('--transform-nnf', action='store_true', help='transform to NNF')
     parser.add_argument('--keep-all', action='store_true', help='also output deterministic nodes')
     parser.add_argument('--keep-duplicates', action='store_true', help='don\'t eliminate duplicate literals')
     parser.add_argument('--any-order', action='store_true', help='allow reordering nodes')
@@ -64,7 +65,9 @@ def main(argv, result_handler=None):
         print('Warning: CNF output requires cycle-breaking; cycle breaking enabled.',
               file=sys.stderr)
 
-    if args.break_cycles or outformat == 'cnf':
+    if args.transform_nnf:
+        target = LogicNNF
+    elif args.break_cycles or outformat == 'cnf':
         target = LogicDAG
     else:
         target = LogicFormula
