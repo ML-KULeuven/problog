@@ -30,14 +30,14 @@ from problog.logic import Term
 from problog.program import PrologString, ExtendedPrologFactory, LogicProgram
 from problog.evaluator import SemiringLogProbability
 from problog.parser import DefaultPrologParser
-from problog.nnf_formula import NNF
+from problog.ddnnf_formula import DDNNF
 from problog.sdd_formula import SDD
 import problog.tasks.sample as plsample
 
 if SDD.is_available():
     knowledge_default = SDD
 else:
-    knowledge_default = NNF
+    knowledge_default = DDNNF
 
 from IPython.core.display import display_html
 from IPython.core.magic import (
@@ -112,14 +112,14 @@ class ProbLogMagics(Magics):
         """problog line/cell magic"""
         args = parse_argstring(self.problog, line)
         if args.knowledge == 'nnf':
-            knowledge = NNF
+            knowledge = DDNNF
         elif args.knowledge == 'sdd':
             knowledge = SDD
         elif args.knowledge is None:
             if SDD.is_available():
                 knowledge = SDD
             else:
-                knowledge = NNF
+                knowledge = DDNNF
         else:
             error("Unknown option for --knowledge: '%s'" % args.knowledge)
         if args.logspace:

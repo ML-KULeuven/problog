@@ -48,7 +48,7 @@ class DSharpError(CompilationError):
         CompilationError.__init__(self, msg)
 
 
-class NNF(LogicDAG, EvaluatableDSP):
+class DDNNF(LogicDAG, EvaluatableDSP):
     """A d-DNNF formula."""
 
     transform_preference = 20
@@ -58,10 +58,10 @@ class NNF(LogicDAG, EvaluatableDSP):
         LogicDAG.__init__(self, auto_compact=False)
 
     def _create_evaluator(self, semiring, weights, **kwargs):
-        return SimpleNNFEvaluator(self, semiring, weights)
+        return SimpleDDNNFEvaluator(self, semiring, weights)
 
 
-class SimpleNNFEvaluator(Evaluator):
+class SimpleDDNNFEvaluator(Evaluator):
     """Evaluator for d-DNNFs."""
 
     def __init__(self, formula, semiring, weights=None, **kwargs):
@@ -235,7 +235,7 @@ class Compiler(object):
 
 if system_info.get('c2d', False):
     # noinspection PyUnusedLocal
-    @transform(CNF, NNF)
+    @transform(CNF, DDNNF)
     def _compile_with_c2d(cnf, nnf=None, smooth=True, **kwdargs):
         fd, cnf_file = tempfile.mkstemp('.cnf')
         os.close(fd)
@@ -263,7 +263,7 @@ if system_info.get('c2d', False):
 
 
 # noinspection PyUnusedLocal
-@transform(CNF, NNF)
+@transform(CNF, DDNNF)
 def _compile_with_dsharp(cnf, nnf=None, smooth=True, **kwdargs):
     result = None
     with Timer('DSharp compilation'):
@@ -301,7 +301,7 @@ def _compile(cnf, cmd, cnf_file, nnf_file):
     names = cnf.get_names_with_label()
 
     if cnf.is_trivial():
-        nnf = NNF()
+        nnf = DDNNF()
         weights = cnf.get_weights()
         for i in range(1, cnf.atomcount + 1):
             nnf.add_atom(i, weights.get(i))
@@ -336,7 +336,7 @@ def _compile(cnf, cmd, cnf_file, nnf_file):
 
 
 def _load_nnf(filename, cnf):
-    nnf = NNF()
+    nnf = DDNNF()
 
     weights = cnf.get_weights()
 

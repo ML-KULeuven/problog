@@ -67,7 +67,7 @@ def mpe_semiring(args):
             kc_class = get_evaluatable(name='sdd')        # TODO should pass semiring
                                                 # -> no compilation required for MPE
                                                 # BUT semiring does not support negation
-                                                # so formula should be NNF (only negation of facts)
+                                                # so formula should be DDNNF (only negation of facts)
             lf = LogicFormula.create_from(pl, label_all=True)
 
             if lf.evidence():
