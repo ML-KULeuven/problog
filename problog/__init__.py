@@ -73,7 +73,7 @@ def get_evaluatable(name=None, semiring=None):
         if semiring is None or semiring.is_dsp():
             return evaluator.EvaluatableDSP
         else:
-            return formula.LogicDAG
+            return formula.LogicNNF
     else:
         return _evaluatables[name]
 

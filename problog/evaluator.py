@@ -500,7 +500,7 @@ class FormulaEvaluator(object):
         elif index == self.formula.FALSE:
             return self.semiring.zero()
         elif index < 0:
-            weight = self._fact_weights.get(index)
+            weight = self._fact_weights.get(abs(index))
             if weight is None:
                 # This will only work if the semiring support negation!
                 nw = self.get_weight(-index)
