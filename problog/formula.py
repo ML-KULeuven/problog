@@ -1548,6 +1548,10 @@ class LogicNNF(LogicDAG, Evaluatable):
             node = source.get_node(abs(index))
             ntype = type(node).__name__
             sign = 1 if index > 0 else -1
+            not_name = None
+            if node.name:
+                not_name = -node.name
+
             if ntype == 'atom':
                 at = self.add_atom(*node)
                 if sign < 0:
@@ -1555,17 +1559,17 @@ class LogicNNF(LogicDAG, Evaluatable):
             elif ntype == 'conj':
                 if sign > 0:
                     children = [self.copy_node_from(source, c, translate) for c in node.children]
-                    at = self.add_and(children)
+                    at = self.add_and(children, name=node.name)
                 else:
                     children = [self.copy_node_from(source, source.negate(c), translate) for c in node.children]
-                    at = self.add_or(children)
+                    at = self.add_or(children, name=not_name)
             elif ntype == 'disj':
                 if sign > 0:
                     children = [self.copy_node_from(source, c, translate) for c in node.children]
-                    at = self.add_or(children)
+                    at = self.add_or(children, name=node.name)
                 else:
                     children = [self.copy_node_from(source, source.negate(c), translate) for c in node.children]
-                    at = self.add_and(children)
+                    at = self.add_and(children, name=not_name)
             translate[index] = at
             return at
 
