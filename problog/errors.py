@@ -26,6 +26,8 @@ class ProbLogError(Exception):
         if self.location is None:
             return ''
         if type(self.location) == tuple:
+            if len(self.location) != 3:
+                return ''
             fn, ln, cn = self.location
             if fn is None:
                 return ' at %s:%s' % (ln, cn)
