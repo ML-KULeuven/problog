@@ -69,7 +69,11 @@ class DD(LogicFormula, EvaluatableDSP):
         :return: internal node corresponding to the given index
         """
         negate = False
-        if index < 0:
+        if self.is_false(index):
+            return self.get_manager().false()
+        elif self.is_true(index):
+            return self.get_manager().true()
+        elif index < 0:
             index = -index
             negate = True
         node = self.get_node(index)
