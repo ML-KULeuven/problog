@@ -1043,6 +1043,8 @@ def compute_function(func, args, extra_functions=None):
             return None
         else:
             return function(*values)
+    except ValueError as err:
+        raise ArithmeticError(err.message)
     except ZeroDivisionError:
         raise ArithmeticError("Division by zero.")
 
