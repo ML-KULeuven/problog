@@ -276,8 +276,7 @@ class LFIProblem(SemiringProbability, LogicProgram):
                     num_random_weights += 1
                 except ArithmeticError:
                     num_random_weights += 1
-
-            elif atom.probability:
+            elif atom.probability and atom.probability.is_constant():
                 available_probability -= float(atom.probability)
 
         random_weights = [random.random() for i in range(0, num_random_weights + 1)]
