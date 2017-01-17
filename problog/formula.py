@@ -363,6 +363,11 @@ class BaseFormula(ProbLogObject):
         return hasattr(self, flag) and getattr(self, flag)
 
 
+atom = namedtuple('atom', ('identifier', 'probability', 'group', 'name', 'source'))
+conj = namedtuple('conj', ('children', 'name'))
+disj = namedtuple('disj', ('children', 'name'))
+
+
 class LogicFormula(BaseFormula):
     """A logic formula is a data structure that is used to represent generic And-Or graphs.
     It can typically contain three types of nodes:
@@ -382,19 +387,16 @@ class LogicFormula(BaseFormula):
     by simplifying nodes or by reusing existing nodes.
     """
 
-    _atom = namedtuple('atom', ('identifier', 'probability', 'group', 'name', 'source'))
-    _conj = namedtuple('conj', ('children', 'name'))
-    _disj = namedtuple('disj', ('children', 'name'))
     # negation is encoded by using a negative number for the key
 
     def _create_atom(self, identifier, probability, group, name=None, source=None):
-        return self._atom(identifier, probability, group, name, source)
+        return atom(identifier, probability, group, name, source)
 
     def _create_conj(self, children, name=None):
-        return self._conj(children, name)
+        return conj(children, name)
 
     def _create_disj(self, children, name=None):
-        return self._disj(children, name)
+        return disj(children, name)
 
     # noinspection PyUnusedLocal
     def __init__(self, auto_compact=True, avoid_name_clash=False, keep_order=False,

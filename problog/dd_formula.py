@@ -26,7 +26,7 @@ from __future__ import print_function
 
 
 from .util import Timer
-from .formula import LogicFormula
+from .formula import LogicFormula, atom
 from .evaluator import EvaluatableDSP, Evaluator, FormulaEvaluatorNSP, FormulaEvaluator, SemiringLogProbability, SemiringProbability
 from .errors import InconsistentEvidenceError
 
@@ -60,7 +60,7 @@ class DD(LogicFormula, EvaluatableDSP):
         var = self.get_manager().add_variable()
         self.atom2var[index] = var
         self.var2atom[var] = index
-        return self._atom(identifier, probability, group, name, source)
+        return atom(identifier, probability, group, name, source)
 
     def get_inode(self, index):
         """Get the internal node corresponding to the entry at the given index.
