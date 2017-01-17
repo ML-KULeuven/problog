@@ -512,35 +512,10 @@ class LFIProblem(SemiringProbability, LogicProgram):
         results = []
         i = 0
         logging.getLogger('problog_lfi').debug('Evaluating examples ...')
-        for at, val, comp, n in self._compiled_examples:
-            evidence = {}
-            for a, v in zip(at, val):
-                if a in evidence:
-                    if evidence[a] != v:
-                        context = ' (found evidence({},{}) and evidence({},{}) in example {})'.format(a, evidence[a], a, v, n+1)
-                        raise InconsistentEvidenceError(source=a, context=context)
-                else:
-                    evidence[a] = v
-            try:
-                evaluator = comp.get_evaluator(semiring=self, evidence=evidence)
-            except InconsistentEvidenceError as err:
-                if err.context == '':
-                    context = ' (example {})'.format(n+1)
-                else:
-                    context = err.context + ' (example {})'.format(n+1)
-                raise InconsistentEvidenceError(err.source, context)
-            p_queries = {}
-            # Probability of query given evidence
-            for name, node, label in evaluator.formula.labeled():
-                w = evaluator.evaluate_fact(node)
-                if w < 1e-6:
-                    p_queries[name] = 0.0
-                else:
-                    p_queries[name] = w
-            p_evidence = evaluator.evaluate_evidence()
-            i += 1
-            results.append((p_evidence, p_queries))
-        return results
+
+        evaluator = ExampleEvaluator(self._weights)
+
+        return map(evaluator, self._compiled_examples)
     
     def _update(self, results):
         """Update the current estimates based on the latest evaluation results."""
@@ -611,6 +586,74 @@ class LFIProblem(SemiringProbability, LogicProgram):
             delta = score - prev_score
             prev_score = score
         return prev_score
+
+
+class ExampleEvaluator(SemiringProbability):
+
+    def __init__(self, weights):
+        SemiringProbability.__init__(self)
+        self._weights = weights
+
+    def _get_weight(self, index, args, strict=True):
+        index = int(index)
+        weight = self._weights[index]
+        if isinstance(weight, dict):
+            if strict:
+                return weight[args]
+            else:
+                return weight.get(args, 0.0)
+        else:
+            return weight
+
+
+    def value(self, a):
+        """Overrides from SemiringProbability.
+        Replaces a weight of the form ``lfi(i, t(...))`` by its current estimated value.
+        Other weights are passed through unchanged.
+
+        :param a: term representing the weight
+        :type a: Term
+        :return: current weight
+        :rtype: float
+        """
+        if isinstance(a, Term) and a.functor == 'lfi':
+            # index = int(a.args[0])
+            return self._get_weight(*a.args)
+        else:
+            return float(a)
+
+    def __call__(self, example_info):
+        """Evaluate the model with its current estimates for all examples."""
+
+        at, val, comp, n = example_info
+
+        evidence = {}
+        for a, v in zip(at, val):
+            if a in evidence:
+                if evidence[a] != v:
+                    context = ' (found evidence({},{}) and evidence({},{}) in example {})'.format(
+                        a, evidence[a], a, v, n + 1)
+                    raise InconsistentEvidenceError(source=a, context=context)
+            else:
+                evidence[a] = v
+        try:
+            evaluator = comp.get_evaluator(semiring=self, evidence=evidence)
+        except InconsistentEvidenceError as err:
+            if err.context == '':
+                context = ' (example {})'.format(n + 1)
+            else:
+                context = err.context + ' (example {})'.format(n + 1)
+            raise InconsistentEvidenceError(err.source, context)
+        p_queries = {}
+        # Probability of query given evidence
+        for name, node, label in evaluator.formula.labeled():
+            w = evaluator.evaluate_fact(node)
+            if w < 1e-6:
+                p_queries[name] = 0.0
+            else:
+                p_queries[name] = w
+        p_evidence = evaluator.evaluate_evidence()
+        return p_evidence, p_queries
 
 
 def extract_evidence(pl):
