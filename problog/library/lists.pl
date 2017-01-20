@@ -119,4 +119,16 @@ permutation([],[]).
 permutation([X|R],[Y|S]) :-
     select(Y,[X|R],T),
     permutation(T,S).
-    
+
+
+% Flatten a list (e.g. [1, [2, [3, 4], [5, 6], 7]] => [1,2,3,4,5,6,7]
+flatten(In, Out) :- flatten(In, [], Out).
+
+flatten([], Acc, Acc).
+flatten([H|T], Acc, List) :-
+    flatten(H, Acc, Acc1),
+    flatten(T, Acc1, List).
+flatten(H, Acc, List) :-
+    \+ is_list(H),
+    append(Acc, [H], List).
+
