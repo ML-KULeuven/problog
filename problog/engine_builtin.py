@@ -106,10 +106,14 @@ def add_standard_builtins(engine, b=None, s=None, sp=None):
     engine.add_builtin('unknown', 1, b(_builtin_unknown))
 
     engine.add_builtin('use_module', 1, b(_builtin_use_module))
+    engine.add_builtin('use_module', 2, b(_builtin_use_module2))
+    engine.add_builtin('module', 2, b(_builtin_module))
 
     engine.add_builtin('call', 1, _builtin_call)
+    engine.add_builtin('call_nc', 1, _builtin_call_nc)
     for i in range(2, 10):
         engine.add_builtin('call', i, _builtin_calln)
+        engine.add_builtin('call_nc', i, _builtin_calln_nc)
 
     engine.add_builtin('subquery', 2, s(_builtin_subquery))
     engine.add_builtin('subquery', 3, s(_builtin_subquery))
@@ -1705,6 +1709,14 @@ class problog_export_nondet(problog_export):
         return function
 
 
+def _builtin_module(name, predicates, **kwargs):
+    return True
+
+
+def _builtin_use_module2(filename, predicates, **kwdargs):
+    return _builtin_use_module(filename, **kwdargs)
+
+
 def _builtin_use_module(filename, database=None, location=None, **kwdargs):
     if filename.functor == 'library' and filename.arity == 1:
         filename = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'library',
@@ -1761,6 +1773,10 @@ def _builtin_call(term, args=(), engine=None, callback=None, transform=None, con
     return True, actions
 
 
+def _builtin_call_nc(*args, **kwdargs):
+    return _builtin_call(*args, dont_cache=True, **kwdargs)
+
+
 def _builtin_subquery(term, prob, evidence=None, engine=None, database=None, **kwdargs):
     if evidence:
         check_mode((term, prob, evidence), ['cvL'], functor='subquery')
@@ -1786,6 +1802,10 @@ def _builtin_subquery(term, prob, evidence=None, engine=None, database=None, **k
 
 def _builtin_calln(term, *args, **kwdargs):
     return _builtin_call(term, args, **kwdargs)
+
+
+def _builtin_calln_nc(term, *args, **kwdargs):
+    return _builtin_call(term, args, dont_cache=True, **kwdargs)
 
 
 def _builtin_subsumes_term(generic, specific, **kwargs):
