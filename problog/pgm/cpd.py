@@ -25,15 +25,15 @@ import re
 from functools import reduce
 import sys
 import math
-from collections import Counter, defaultdict
+from collections import Counter, defaultdict, OrderedDict
 
 
 class PGM(object):
     def __init__(self, directed=True, vars=None, factors=None):
         """Probabilistic Graphical Model."""
         self.directed = directed
-        self.factors = {}
-        self.vars = {}
+        self.factors = OrderedDict()
+        self.vars = OrderedDict()
         if vars:
             for var in vars:
                 self.add_var(var)
@@ -123,7 +123,7 @@ class PGM(object):
         http://www.hugin.com/technology/documentation/api-manuals
         """
         assert self.directed
-        cpds = [cpd.to_factor(self) for cpd in self.factors_topological()]
+        cpds = [cpd.to_factor() for cpd in self.factors_topological()]
         lines = ["%% Hugin Net format",
                  "%% Created on {}\n".format(datetime.now()),
                  "%% Network\n",
@@ -141,7 +141,7 @@ class PGM(object):
         https://dslpitt.org/genie/wiki/Appendices:_XDSL_File_Format_-_XML_Schema_Definitions
         """
         assert self.directed
-        cpds = [cpd.to_factor(self) for cpd in self.factors_topological()]
+        cpds = [cpd.to_factor() for cpd in self.factors_topological()]
         lines = ['<?xml version="1.0" encoding="ISO-8859-1" ?>',
                  '<smile version="1.0" id="Aa" numsamples="1000">',
                  '  <nodes>']
@@ -160,9 +160,11 @@ class PGM(object):
         http://graphmod.ics.uci.edu/uai08/FileFormat
         """
         assert self.directed
-        cpds = [cpd.to_factor(self) for cpd in self.factors_topological()]
+        # do not sort topological such that reading in and writing out UAI format is identical (thus ordered by
+        # variable name instead of topological)
+        cpds = [cpd.to_factor() for cpd in self.factors.values()]
         number_variables = str(len(cpds))
-        domain_sizes = [str(len(cpd.values)) for cpd in cpds]
+        domain_sizes = [str(len(self.vars[cpd.rv].values)) for cpd in cpds]
         number_functions = str(len(cpds))
         lines = ['BAYES',
                  number_variables,

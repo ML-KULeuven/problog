@@ -278,6 +278,8 @@ def main(argv=None):
     parser.add_argument('--allowdisjunct', action='store_true', help='Allow disjunctions in the body')
     parser.add_argument('--compress', action='store_true', help='Compress tables')
     parser.add_argument('--output', '-o', help='Output file')
+    parser.add_argument('--output-format', default='problog',
+                        help='Output format (\'problog\', \'uai\', \'hugin\', \'xdsl\')')
     parser.add_argument('input', help='Input UAI08 file')
     args = parser.parse_args(argv)
 
@@ -320,7 +322,14 @@ def main(argv=None):
     ofile = sys.stdout
     if args.output is not None:
         ofile = open(args.output, 'w')
-    print(pgm.to_problog(drop_zero=drop_zero, use_neglit=use_neglit), file=ofile)
+    if args.output_format in ["uai", "uai08"]:
+        print(pgm.to_uai08(), file=ofile)
+    elif args.output_format == "hugin":
+        print(pgm.to_hugin_net(), file=ofile)
+    elif args.output_format in ["smile", "xdsl"]:
+        print(pgm.to_xdsl(), file=ofile)
+    else:
+        print(pgm.to_problog(drop_zero=drop_zero, use_neglit=use_neglit), file=ofile)
 
 
 if __name__ == "__main__":
