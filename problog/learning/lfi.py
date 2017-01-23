@@ -207,17 +207,18 @@ class LFIProblem(SemiringProbability, LogicProgram):
         # Simple implementation: don't add neutral evidence.
 
         if self.propagate_evidence:
-            result = []
-            for example in self.examples:
+            result = ExampleSet()
+            for index, example in enumerate(self.examples):
                 atoms, values = zip(*example)
-                result.append((atoms, [values]))
+                result.add(index, atoms, values)
             return result
         else:
-            result = defaultdict(list)
-            for example in self.examples:
+            # smarter: compile-once all examples with same atoms
+            result = ExampleSet()
+            for index, example in enumerate(self.examples):
                 atoms, values = zip(*example)
-                result[atoms].append(values)
-            return result.items()
+                result.add(index, atoms, values)
+            return result
     
     def _compile_examples(self):
         """Compile examples.
@@ -229,27 +230,9 @@ class LFIProblem(SemiringProbability, LogicProgram):
         baseprogram = DefaultEngine(**self.extra).prepare(self)
         examples = self._process_examples()
         result = []
-        for atoms, example_group in examples:
-            ground_program = None   # Let the grounder decide
-            for n, example in enumerate(example_group):
-                if self.verbose:
-                    logger.debug('Compiling example %s ...' % n)
-
-                ground_program = ground(baseprogram, ground_program,
-                                        evidence=list(zip(atoms, example)),
-                                        propagate_evidence=self.propagate_evidence)
-                for i, node, t in ground_program:
-                    if t == 'atom' and \
-                            isinstance(node.probability, Term) and \
-                            node.probability.functor == 'lfi':
-                        factargs = ()
-                        if type(node.identifier) == tuple:
-                            factargs = node.identifier[1]
-                        fact = Term('lfi_fact', node.probability.args[0], node.probability.args[1], *factargs)
-                        ground_program.add_query(fact, i)
-                compiled_program = self.knowledge.create_from(ground_program)
-                result.append((atoms, example, compiled_program, n))
-        self._compiled_examples = result
+        for example in examples:
+            example.compile(self, baseprogram)
+        self._compiled_examples = examples
 
     def _process_atom(self, atom, body):
         """Returns tuple ( prob_atom, [ additional clauses ] )"""
@@ -523,11 +506,11 @@ class LFIProblem(SemiringProbability, LogicProgram):
         fact_marg = defaultdict(float)
         fact_count = defaultdict(int)
         score = 0.0
-        for pEvidence, result in results:
+        for m, pEvidence, result in results:
             for fact, value in result.items():
                 index = fact.args[0:2]
-                fact_marg[index] += value
-                fact_count[index] += 1
+                fact_marg[index] += value * m
+                fact_count[index] += m
             try:
                 score += math.log(pEvidence)
             except ValueError:
@@ -588,6 +571,57 @@ class LFIProblem(SemiringProbability, LogicProgram):
         return prev_score
 
 
+class ExampleSet(object):
+
+    def __init__(self):
+        self._examples = {}
+
+    def add(self, index, atoms, values):
+        ex = self._examples.get((atoms, values))
+        if ex is None:
+            self._examples[(atoms,values)] = Example(index, atoms, values)
+        else:
+            ex.add_index(index)
+
+    def __iter__(self):
+        return iter(self._examples.values())
+
+
+class Example(object):
+
+    def __init__(self, index, atoms, values):
+        """An example consists of a list of atoms and their corresponding values (True/False)."""
+        self.atoms = tuple(atoms)
+        self.values = tuple(values)
+        self.compiled = []
+        self.n = [index]
+
+    def __hash__(self):
+        return hash((self.atoms, self.values))
+
+    def __eq__(self, other):
+        if other is None:
+            return False
+        return self.atoms == other.atoms and self.values == other.values
+
+    def compile(self, lfi, baseprogram):
+        ground_program = None  # Let the grounder decide
+        ground_program = ground(baseprogram, ground_program,
+                                evidence=list(zip(self.atoms, self.values)),
+                                propagate_evidence=lfi.propagate_evidence)
+        for i, node, t in ground_program:
+            if t == 'atom' and isinstance(node.probability, Term) and node.probability.functor == 'lfi':
+                factargs = ()
+                if type(node.identifier) == tuple:
+                    factargs = node.identifier[1]
+                fact = Term('lfi_fact', node.probability.args[0], node.probability.args[1], *factargs)
+                ground_program.add_query(fact, i)
+        self.compiled = lfi.knowledge.create_from(ground_program)
+
+    def add_index(self, index):
+        self.n.append(index)
+
+
 class ExampleEvaluator(SemiringProbability):
 
     def __init__(self, weights):
@@ -622,10 +656,13 @@ class ExampleEvaluator(SemiringProbability):
         else:
             return float(a)
 
-    def __call__(self, example_info):
+    def __call__(self, example):
         """Evaluate the model with its current estimates for all examples."""
 
-        at, val, comp, n = example_info
+        at = example.atoms
+        val = example.values
+        comp = example.compiled
+        n = example.n
 
         evidence = {}
         for a, v in zip(at, val):
@@ -653,7 +690,7 @@ class ExampleEvaluator(SemiringProbability):
             else:
                 p_queries[name] = w
         p_evidence = evaluator.evaluate_evidence()
-        return p_evidence, p_queries
+        return len(n), p_evidence, p_queries
 
 
 def extract_evidence(pl):
