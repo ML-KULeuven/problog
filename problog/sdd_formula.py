@@ -27,6 +27,8 @@ from .formula import LogicDAG, LogicFormula
 from .core import transform
 from .errors import InstallError
 from .dd_formula import DD, build_dd, DDManager
+from .util import mktempfile
+import os
 
 
 # noinspection PyBroadException
@@ -243,6 +245,53 @@ class SDDManager(DDManager):
         # if sdd is not None and sdd.sdd_manager_free is not None:
         #     sdd.sdd_manager_free(self.__manager)
         self.__manager = None
+
+    def __getstate__(self):
+        tempfile = mktempfile()
+        vtree = sdd.sdd_manager_vtree(self.get_manager())
+        sdd.sdd_vtree_save(tempfile, vtree)
+        with open(tempfile) as f:
+            vtree_data = f.read()
+
+        nodes = []
+        for n in self.nodes:
+            if n is not None:
+                sdd.sdd_save(tempfile, n)
+
+                with open(tempfile) as f:
+                    nodes.append(f.read())
+            else:
+                nodes.append(None)
+
+        sdd.sdd_save(tempfile, self.constraint_dd)
+        with open(tempfile) as f:
+            constraint_dd = f.read()
+
+        os.remove(tempfile)
+        return {'varcount': self.varcount, 'nodes': nodes, 'vtree': vtree_data, 'constraint_dd': constraint_dd}
+
+    def __setstate__(self, state):
+        self.nodes = []
+        self.varcount = state['varcount']
+        tempfile = mktempfile()
+        with open(tempfile, 'w') as f:
+            f.write(state['vtree'])
+        vtree = sdd.sdd_vtree_read(tempfile)
+        self.__manager = sdd.sdd_manager_new(vtree)
+
+        for n in state['nodes']:
+            if n is None:
+                self.nodes.append(None)
+            else:
+                with open(tempfile, 'w') as f:
+                    f.write(n)
+                self.nodes.append(sdd.sdd_read(tempfile, self.__manager))
+
+        with open(tempfile, 'w') as f:
+            f.write(state['constraint_dd'])
+        self.constraint_dd = sdd.sdd_read(tempfile, self.__manager)
+        os.remove(tempfile)
+        return
 
 
 @transform(LogicDAG, SDD)

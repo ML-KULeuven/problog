@@ -38,12 +38,11 @@ class DD(LogicFormula, EvaluatableDSP):
         LogicFormula.__init__(self, **kwdargs)
 
         self.inode_manager = None
-        self.inodes = []
 
         self.atom2var = {}
         self.var2atom = {}
 
-        self._constraint_dd = None
+        # self._constraint_dd = None
 
     def _create_manager(self):
         """Create and return a new underlying manager."""
@@ -81,11 +80,11 @@ class DD(LogicFormula, EvaluatableDSP):
             result = self.get_manager().literal(self.atom2var[index])
         else:
             # Extend list
-            while len(self.inodes) < index:
-                self.inodes.append(None)
-            if self.inodes[index - 1] is None:
-                self.inodes[index - 1] = self._create_inode(node)
-            result = self.inodes[index - 1]
+            while len(self.get_manager().nodes) < index:
+                self.get_manager().nodes.append(None)
+            if self.get_manager().nodes[index - 1] is None:
+                self.get_manager().nodes[index - 1] = self._create_inode(node)
+            result = self.get_manager().nodes[index - 1]
         if negate:
             new_sdd = self.get_manager().negate(result)
             return new_sdd
@@ -107,14 +106,14 @@ class DD(LogicFormula, EvaluatableDSP):
         """
         assert index is not None
         assert index > 0
-        self.inodes[index - 1] = node
+        self.get_manager().nodes[index - 1] = node
 
     def get_constraint_inode(self):
         """Get the internal node representing the constraints for this formula."""
-        if self._constraint_dd is None:
+        if self.get_manager().constraint_dd is None:
             return self.get_manager().true()
         else:
-            return self._constraint_dd
+            return self.get_manager().constraint_dd
 
     def _create_evaluator(self, semiring, weights, **kwargs):
         if isinstance(semiring, SemiringLogProbability) or isinstance(semiring, SemiringProbability):
@@ -136,14 +135,14 @@ class DD(LogicFormula, EvaluatableDSP):
 
     def build_constraint_dd(self):
         """Build the internal representation of the constraint of this formula."""
-        self._constraint_dd = self.get_manager().true()
+        self.get_manager().constraint_dd = self.get_manager().true()
         for c in self.constraints():
             for rule in c.as_clauses():
                 rule_sdd = self.get_manager().disjoin(*[self.get_inode(r) for r in rule])
-                new_constraint_dd = self.get_manager().conjoin(self._constraint_dd, rule_sdd)
-                self.get_manager().deref(self._constraint_dd)
+                new_constraint_dd = self.get_manager().conjoin(self.get_manager().constraint_dd, rule_sdd)
+                self.get_manager().deref(self.get_manager().constraint_dd)
                 self.get_manager().deref(rule_sdd)
-                self._constraint_dd = new_constraint_dd
+                self.get_manager().constraint_dd = new_constraint_dd
 
 
 class DDManager(object):
@@ -152,7 +151,17 @@ class DDManager(object):
     """
 
     def __init__(self):
-        pass
+        self.nodes = []
+        self.constraint_dd = None
+
+    def set_node(self, index, node):
+        self.nodes[index] = node
+
+    def get_node(self, index):
+        return self.nodes[index]
+
+    def add_node(self, node):
+        self.nodes.append(node)
 
     def add_variable(self, label=0):
         """Add a variable to the manager and return its label.
