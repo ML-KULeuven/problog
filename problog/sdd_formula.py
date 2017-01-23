@@ -104,6 +104,9 @@ class SDD(DD):
                 children.append(c_n)
             return formula.add_or(children)
 
+    def to_dot(self, *args, **kwargs):
+        return self.to_formula().to_dot(*args, **kwargs)
+
 
 class SDDManager(DDManager):
     """
