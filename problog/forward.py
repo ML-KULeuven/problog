@@ -22,7 +22,7 @@ Forward compilation using TP-operator.
     limitations under the License.
 """
 from __future__ import print_function
-from .formula import LogicFormula, OrderedSet
+from .formula import LogicFormula, OrderedSet, atom
 from .dd_formula import DD
 from .sdd_formula import SDD
 from .bdd_formula import BDD
@@ -71,7 +71,7 @@ class ForwardInference(DD):
         self._update_listeners.append(obj)
 
     def _create_atom(self, identifier, probability, group, name=None, source=None):
-        return self._atom(identifier, probability, group, name, source)
+        return atom(identifier, probability, group, name, source)
 
     def is_complete(self, node):
         node = abs(node)
@@ -418,6 +418,17 @@ class ForwardInference(DD):
             return result
         else:
             return self.inodes[index - 1]
+
+    def set_inode(self, index, node):
+        """Set the internal node for the given index.
+
+        :param index: index at which to set the new node
+        :type index: int > 0
+        :param node: new node
+        """
+        assert index is not None
+        assert index > 0
+        self.inodes[index - 1] = node
 
     def add_constraint(self, c):
         LogicFormula.add_constraint(self, c)
