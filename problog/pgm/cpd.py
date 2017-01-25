@@ -29,13 +29,13 @@ from collections import Counter, defaultdict, OrderedDict
 
 
 class PGM(object):
-    def __init__(self, directed=True, vars=None, factors=None):
+    def __init__(self, directed=True, variables=None, factors=None):
         """Probabilistic Graphical Model."""
         self.directed = directed
         self.factors = OrderedDict()
         self.vars = OrderedDict()
-        if vars:
-            for var in vars:
+        if variables:
+            for var in variables:
                 self.add_var(var)
         if factors:
             for factor in factors:
@@ -45,7 +45,7 @@ class PGM(object):
         return PGM(
             directed=kwargs.get('directed', self.directed),
             factors=kwargs.get('factors', self.factors.values()),
-            vars=kwargs.get('vars', self.vars.values())
+            variables=kwargs.get('variables', self.vars.values())
         )
 
     def add_var(self, var):
@@ -59,7 +59,7 @@ class PGM(object):
             name = factor.rv
         else:
             name = factor.name
-        assert(name is not None)
+        assert (name is not None)
         factor.pgm = self
         if name in self.factors:
             self.factors[name] += factor
@@ -131,9 +131,9 @@ class PGM(object):
                  "  node_size = (50,50);",
                  "}\n",
                  "%% Nodes\n"]
-        lines += [cpd.to_HuginNetNode() for cpd in cpds]
+        lines += [cpd.to_huginnet_node() for cpd in cpds]
         lines += ["%% Potentials\n"]
-        lines += [cpd.to_HuginNetPotential() for cpd in cpds]
+        lines += [cpd.to_huginnet_potential() for cpd in cpds]
         return '\n'.join(lines)
 
     def to_xdsl(self):
@@ -145,11 +145,11 @@ class PGM(object):
         lines = ['<?xml version="1.0" encoding="ISO-8859-1" ?>',
                  '<smile version="1.0" id="Aa" numsamples="1000">',
                  '  <nodes>']
-        lines += [cpd.to_XdslCpt() for cpd in cpds]
+        lines += [cpd.to_xdsl_cpt() for cpd in cpds]
         lines += ['  </nodes>',
                   '  <extensions>',
                   '    <genie version="1.0" app="ProbLog" name="Network1" faultnameformat="nodestate">']
-        lines += [cpd.to_XdslNode() for cpd in cpds]
+        lines += [cpd.to_xdsl_node() for cpd in cpds]
         lines += ['    </genie>',
                   '  </extensions>',
                   '</smile>']
@@ -170,9 +170,9 @@ class PGM(object):
                  number_variables,
                  ' '.join(domain_sizes),
                  number_functions]
-        lines += [cpd.to_Uai08Preamble(cpds) for cpd in cpds]
+        lines += [cpd.to_uai08_preamble(cpds) for cpd in cpds]
         lines += ['']
-        lines += [cpd.to_Uai08Function() for cpd in cpds]
+        lines += [cpd.to_uai08_function() for cpd in cpds]
         return '\n'.join(lines)
 
     def to_problog(self, drop_zero=False, use_neglit=False, value_as_term=True, ad_is_function=False):
@@ -186,12 +186,16 @@ class PGM(object):
         lines = ["%% ProbLog program",
                  "%% Created on {}\n".format(datetime.now())]
         if self.directed:
-            lines += [factor.to_ProbLog(self, drop_zero=drop_zero, use_neglit=use_neglit,
-                                        value_as_term=value_as_term, ad_is_function=ad_is_function) for factor in factors]
+            lines += [factor.to_problog(self, drop_zero=drop_zero,
+                                        use_neglit=use_neglit,
+                                        value_as_term=value_as_term,
+                                        ad_is_function=ad_is_function) for factor in factors]
         else:
-            lines += [factor.to_ProbLog_undirected(self, drop_zero=drop_zero, use_neglit=use_neglit,
-                                                   value_as_term=value_as_term, ad_is_function=ad_is_function) for factor in factors]
-        # if ad_is_function:
+            lines += [factor.to_problog_undirected(self, drop_zero=drop_zero,
+                                                   use_neglit=use_neglit,
+                                                   value_as_term=value_as_term,
+                                                   ad_is_function=ad_is_function) for factor in factors]
+            # if ad_is_function:
             # lines += ["evidence(false_constraints,false)."]
         return '\n'.join(lines)
 
@@ -212,20 +216,21 @@ class PGM(object):
         return '\n'.join([str(factor) for factor in self.factors.values()])
 
 
-re_toundercore = re.compile(r"[\(\),\]\[ ]")
+re_tounderscore = re.compile(r'[\(\),\]\[ ]')
 re_toremove = re.compile(r"""[^a-zA-Z0-9_]""")
 
 boolean_values = [
-  ['0', '1'],
-  [0, 1],
-  ['f', 't'],
-  ['false', 'true'],
-  ['no', 'yes'],
-  ['n', 'y'],
-  ['neg', 'pos'],
-  ['nay', 'aye'],
-  [False, True]
+    ['0', '1'],
+    [0, 1],
+    ['f', 't'],
+    ['false', 'true'],
+    ['no', 'yes'],
+    ['n', 'y'],
+    ['neg', 'pos'],
+    ['nay', 'aye'],
+    [False, True]
 ]
+
 
 class Variable(object):
     def __init__(self, name, values, detect_boolean=True, force_boolean=False, boolean_true=None):
@@ -238,12 +243,12 @@ class Variable(object):
             for values in boolean_values:
                 if (values[0] == self.values[0] and values[1] == self.values[1]) or \
                    (type(self.values[0]) == str and type(self.values[1]) == str and
-                    values[0] == self.values[0].lower() and values[1] == self.values[1].lower()):
+                   values[0] == self.values[0].lower() and values[1] == self.values[1].lower()):
                     self.booleantrue = 1
                     break
                 elif (values[1] == self.values[0] and values[0] == self.values[1]) or \
                      (type(self.values[0]) == str and type(self.values[1]) == str and
-                      values[1] == self.values[0].lower() and values[0] == self.values[1].lower()):
+                     values[1] == self.values[0].lower() and values[0] == self.values[1].lower()):
                     self.booleantrue = 0
                     break
             if force_boolean and self.booleantrue is None:
@@ -254,43 +259,45 @@ class Variable(object):
             rv = self.name
         else:
             rv = value
-        rv = re_toundercore.sub('_', rv)
+        rv = re_tounderscore.sub('_', rv)
         rv = re_toremove.sub('', rv)
         if not rv[0].islower():
             rv = rv[0].lower() + rv[1:]
             if not rv[0].islower():
-                rv = "v"+rv
+                rv = "v" + rv
         return rv
 
-    def to_ProbLogValue(self, value, value_as_term=True):
+    def to_problog_value(self, value, value_as_term=True):
         if self.booleantrue is None:
             if type(value) is frozenset and len(value) == 1:
                 value, = value
             if type(value) is frozenset:
                 # It is a disjunction of possible values
-                if len(value) == len(self.values)-1:
+                if len(value) == len(self.values) - 1:
                     # This is the negation of one value
                     new_value, = frozenset(self.values) - value
                     if value_as_term:
-                        return '\+'+self.clean() + '("' + str(new_value) + '")'
+                        return '\+' + self.clean() + '("' + str(new_value) + '")'
                     else:
-                        return '\+'+self.clean() + '_' + self.clean(str(new_value))
+                        return '\+' + self.clean() + '_' + self.clean(str(new_value))
                 else:
                     if value_as_term:
-                        return '('+'; '.join([self.clean() + '("' + str(new_value) + '")' for new_value in value])+')'
+                        return '(' + '; '.join(
+                            [self.clean() + '("' + str(new_value) + '")' for new_value in value]) + ')'
                     else:
-                        return '(' + '; '.join([self.clean() + '_' + self.clean(str(new_value)) for new_value in value]) + ')'
+                        return '(' + \
+                               '; '.join([self.clean() + '_' + self.clean(str(new_value)) for new_value in value]) + ')'
             else:
                 if value_as_term:
-                    return self.clean()+'("'+str(value)+'")'
+                    return self.clean() + '("' + str(value) + '")'
                 else:
-                    return self.clean()+'_'+self.clean(str(value))
+                    return self.clean() + '_' + self.clean(str(value))
         else:
             # It is a Boolean atom
             if self.values[self.booleantrue] == value:
                 return self.clean()
-            elif self.values[1-self.booleantrue] == value:
-                return '\+'+self.clean()
+            elif self.values[1 - self.booleantrue] == value:
+                return '\+' + self.clean()
             else:
                 raise Exception('Unknown value: {} = {}'.format(self.name, value))
 
@@ -361,7 +368,7 @@ class Factor(object):
         for k, v in self.table.items():
             # Tuples allow hashing for IG
             table.append((k, tuple(v)))
-        nodes = [(tuple([None]*len(self.parents)), table)]
+        nodes = [(tuple([None] * len(self.parents)), table)]
         new_table = {}
         cnt = 0
         while len(nodes) > 0:
@@ -398,15 +405,15 @@ class Factor(object):
                 iv = 0  # Intrinsic Value
                 for bin_value, bin_labels in bins.items():
                     label_cnt = Counter(bin_labels)
-                    ps = [cnt/len(bin_labels) for cnt in label_cnt.values()]  # Pr(x_i)
-                    h = -sum([p*math.log(p, 2) for p in ps])  # Entropy
-                    r = len(bin_labels)/len(node)
-                    ig -= r*h
+                    ps = [cnt / len(bin_labels) for cnt in label_cnt.values()]  # Pr(x_i)
+                    h = -sum([p * math.log(p, 2) for p in ps])  # Entropy
+                    r = len(bin_labels) / len(node)
+                    ig -= r * h
                     if r == 0:
                         iv -= 9999999
                     else:
-                        iv -= r*math.log(r,2)
-                igr = ig/iv  # Information Gain Ratio
+                        iv -= r * math.log(r, 2)
+                igr = ig / iv  # Information Gain Ratio
                 # print('ig={:.4f}, iv={:.4f}, igr={:.4f}, hc={:.4f}, idx={}, parent={}'.format(ig, iv, igr, h_cur, parent_idx, self.parents[parent_idx]))
                 if igr > igr_max:
                     igr_max = igr
@@ -453,7 +460,7 @@ class Factor(object):
                     nodes.append(newnode)
         return self.copy(table=new_table)
 
-    def to_HuginNetNode(self):
+    def to_huginnet_node(self):
         rv = self.pgm.vars[self.rv]
         lines = ["node {} {{".format(rv.clean()),
                  "  label = \"{}\";".format(self.rv),
@@ -462,22 +469,22 @@ class Factor(object):
                  "}\n"]
         return '\n'.join(lines)
 
-    def to_HuginNetPotential(self):
+    def to_huginnet_potential(self):
         rv = self.pgm.vars[self.rv]
         name = rv.clean()
         if len(self.parents) > 0:
-            name += ' | '+' '.join([rv.clean(p) for p in self.parents])
+            name += ' | ' + ' '.join([rv.clean(p) for p in self.parents])
         lines = ['potential ({}) {{'.format(name),
-                 '  % '+' '.join([str(v) for v in rv.values]),
+                 '  % ' + ' '.join([str(v) for v in rv.values]),
                  '  data = (']
         table = sorted(self.table.items())
         for k, v in table:
-            lines.append('    '+' '.join([str(vv) for vv in v])+' % '+' '.join([str(kk) for kk in k]))
+            lines.append('    ' + ' '.join([str(vv) for vv in v]) + ' % ' + ' '.join([str(kk) for kk in k]))
         lines += ['  );',
                   '}\n']
         return '\n'.join(lines)
 
-    def to_XdslCpt(self):
+    def to_xdsl_cpt(self):
         rv = self.pgm.vars[self.rv]
         lines = ['    <cpt id="{}">'.format(rv.clean())]
         for v in rv.values:
@@ -490,7 +497,7 @@ class Factor(object):
         lines.append('    </cpt>')
         return '\n'.join(lines)
 
-    def to_XdslNode(self):
+    def to_xdsl_node(self):
         rv = self.pgm.vars[self.rv]
         lines = [
             '      <node id="{}">'.format(rv.clean()),
@@ -502,25 +509,29 @@ class Factor(object):
             '      </node>']
         return '\n'.join(lines)
 
-    def to_Uai08Preamble(self, cpds):
+    def to_uai08_preamble(self, cpds):
         function_size = 1 + len(self.parents)
-        rvToIdx = {}
+        rv_to_idx = {}
         for idx, cpd in enumerate(cpds):
-            rvToIdx[cpd.rv] = idx
-        variables = [str(rvToIdx[rv]) for rv in self.parents] + [str(rvToIdx[self.rv])]
+            rv_to_idx[cpd.rv] = idx
+        variables = [str(rv_to_idx[rv]) for rv in self.parents] + [str(rv_to_idx[self.rv])]
         return '{} {}'.format(function_size, ' '.join(variables))
 
-    def to_Uai08Function(self):
+    def to_uai08_function(self):
         rv = self.pgm.vars[self.rv]
-        number_entries = str(len(self.table)*len(rv.values))
+        number_entries = str(len(self.table) * len(rv.values))
         lines = [number_entries]
-        table = sorted(self.table.items())
+        try:
+            table = sorted(self.table.items())
+        except TypeError:
+            print('ERROR: Cannot convert compressed CPTs to UAI08 format')
+            sys.exit(1)
         for k, v in table:
-            lines.append(' '+' '.join([str(vv) for vv in v]))
+            lines.append(' ' + ' '.join([str(vv) for vv in v]))
         lines.append('')
         return '\n'.join(lines)
 
-    def to_ProbLog(self, pgm, drop_zero=False, use_neglit=False, value_as_term=True, ad_is_function=False):
+    def to_problog(self, pgm, drop_zero=False, use_neglit=False, value_as_term=True, ad_is_function=False):
         lines = []
         var = pgm.vars[self.rv]
         name = var.clean()
@@ -538,20 +549,20 @@ class Factor(object):
             if var.booleantrue is None:
                 for idx, vv in enumerate(v):
                     if not (drop_zero and vv == 0.0):
-                        head_problits.append((vv, var.to_ProbLogValue(var.values[idx], value_as_term)))
+                        head_problits.append((vv, var.to_problog_value(var.values[idx], value_as_term)))
             else:
                 if drop_zero and v[var.booleantrue] == 0.0 and use_neglit:
-                    head_problits.append((None, var.to_ProbLogValue(var.values[1-var.booleantrue], value_as_term)))
+                    head_problits.append((None, var.to_problog_value(var.values[1 - var.booleantrue], value_as_term)))
                 elif v[var.booleantrue] == 1.0:
-                    head_problits.append((None,var.to_ProbLogValue(var.values[var.booleantrue], value_as_term)))
+                    head_problits.append((None, var.to_problog_value(var.values[var.booleantrue], value_as_term)))
                 else:
                     head_problits.append((v[var.booleantrue],
-                                          var.to_ProbLogValue(var.values[var.booleantrue], value_as_term)))
+                                          var.to_problog_value(var.values[var.booleantrue], value_as_term)))
             body_lits = []
             for parent, parent_value in zip(self.parents, k):
                 if parent_value is not None:
                     parent_var = pgm.vars[parent]
-                    body_lits.append(parent_var.to_ProbLogValue(parent_value, value_as_term))
+                    body_lits.append(parent_var.to_problog_value(parent_value, value_as_term))
 
             if ad_is_function:
                 for head_cnt, (head_prob, head_lit) in enumerate(head_problits):
@@ -579,27 +590,27 @@ class Factor(object):
             line_cnt += 1
 
         if ad_is_function and var.booleantrue is None:
-            head_lits = [var.to_ProbLogValue(value, value_as_term) for value in var.values]
+            head_lits = [var.to_problog_value(value, value_as_term) for value in var.values]
             # lines.append('false_constraints :- '+', '.join(['\+'+l for l in head_lits])+'.')
-            lines.append('constraint(['+', '.join(['\+'+l for l in head_lits])+'], false).')
+            lines.append('constraint([' + ', '.join(['\+' + l for l in head_lits]) + '], false).')
             for lit1, lit2 in itertools.combinations(head_lits, 2):
                 # lines.append('false_constraints :- {}, {}.'.format(lit1, lit2))
                 lines.append('constraint([{}, {}], false).'.format(lit1, lit2))
 
         return '\n'.join(lines)
 
-    def to_ProbLog_undirected(self, pgm, drop_zero=False, use_neglit=False, value_as_term=True, ad_is_function=False):
+    def to_problog_undirected(self, pgm, drop_zero=False, use_neglit=False, value_as_term=True, ad_is_function=False):
         lines = []
         name = self.name
         table = self.table.items()
         line_cnt = 0
         for k, v in table:
-            assert(len(v) == 1)
+            assert (len(v) == 1)
             body_lits = []
             for parent, parent_value in zip(self.parents, k):
                 if parent_value is not None:
                     parent_var = pgm.vars[parent]
-                    body_lits.append(parent_var.to_ProbLogValue(parent_value, value_as_term))
+                    body_lits.append(parent_var.to_problog_value(parent_value, value_as_term))
 
             body_str = ' :- ' + ', '.join(body_lits)
             head_str = '{}::{}({})'.format(v[0], name, line_cnt)
@@ -671,4 +682,4 @@ class OrCPT(Factor):
         parents = ''
         if len(self.parents) > 0:
             parents = ' -- {}'.format(','.join(self.parents))
-        return 'OrCPT {} [{}]{}\n{}\n'.format(self.rv, ','.join(map(str,rv.values)), parents, table)
+        return 'OrCPT {} [{}]{}\n{}\n'.format(self.rv, ','.join(map(str, rv.values)), parents, table)

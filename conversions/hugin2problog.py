@@ -6,19 +6,21 @@ hugin2problog.py
 Created by Wannes Meert on 23-02-2016.
 Copyright (c) 2016 KU Leuven. All rights reserved.
 """
+from __future__ import print_function
 
 import sys
 import os
 import argparse
-sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
-from problog.pgm.cpd import Variable, Factor, PGM
 import itertools
 import logging
 import re
-from pyparsing import Word, Literal, nums, ParseException, alphanums, \
+
+from pyparsing import Word, nums, ParseException, alphanums, \
                       OneOrMore, Or, Optional, dblQuotedString, Regex, \
-                      Forward, ZeroOrMore, printables, LineEnd, Suppress, \
-                      nestedExpr, removeQuotes, Group
+                      Forward, ZeroOrMore, Suppress, removeQuotes, Group
+
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+from problog.pgm.cpd import Variable, Factor, PGM
 
 force_bool = False
 drop_zero = False
@@ -53,35 +55,38 @@ def error(*args, **kwargs):
     if halt:
         sys.exit(1)
 
-## PARSER
+
+# PARSER
+
 
 re_comments = re.compile(r"""%.*?[\n\r]""")
-def rmComments(string):
+def rm_comments(string):
     return re_comments.sub("\n", string)
 
 S = Suppress
 
-p_optval = Or([dblQuotedString, S("(") + OneOrMore(Word(nums))  + S(")")])
+p_optval = Or([dblQuotedString, S("(") + OneOrMore(Word(nums)) + S(")")])
 p_option = S(Group(Word(alphanums+"_") + S("=") + Group(p_optval) + S(";")))
 p_net = S(Word("net") + "{" + ZeroOrMore(p_option) + "}")
 p_var = Word(alphanums+"_")
 p_val = dblQuotedString.setParseAction(removeQuotes)
-p_states = Group(Word("states") + S("=") + S("(") + Group(OneOrMore(p_val))  + S(")") + S(";"))
+p_states = Group(Word("states") + S("=") + S("(") + Group(OneOrMore(p_val)) + S(")") + S(";"))
 p_node = S(Word("node")) + p_var + S("{") + Group(ZeroOrMore(Or([p_states, p_option]))) + S("}")
 p_par = Regex(r'\d+(\.\d*)?([eE]\d+)?')
 p_parlist = Forward()
 p_parlist << S("(") + Or([OneOrMore(p_par), OneOrMore(p_parlist)]) + S(")")
 p_data = S(Word("data")) + S("=") + Group(p_parlist) + S(";")
-p_potential = S(Word("potential")) + S("(") + p_var + Group(Optional(S("|") + OneOrMore(p_var))) + S(")") + S("{") + p_data + S("}")
+p_potential = S(Word("potential")) + S("(") + p_var + Group(Optional(S("|") + OneOrMore(p_var))) + S(")") + S("{") + \
+              p_data + S("}")
 
 parser = OneOrMore(Or([p_net, p_node, p_potential]))
 
 
-def parseOption(s,l,t):
+def parse_option(s, l, t):
     return None
 
 
-def parseNode(s,l,t):
+def parse_node(s, l, t):
     global domains
     # print(t)
     rv = t[0]
@@ -91,7 +96,7 @@ def parseNode(s,l,t):
             pgm.add_var(Variable(rv, val, detect_boolean=detect_bool, force_boolean=force_bool))
 
 
-def parsePotential(s,l,t):
+def parse_potential(s, l, t):
     # print(t)
     rv = t[0]
     if rv not in domains:
@@ -114,11 +119,14 @@ def parsePotential(s,l,t):
         idx += dom_size
     pgm.add_factor(Factor(pgm, rv, parents, table))
 
-p_option.setParseAction(parseOption)
-p_node.setParseAction(parseNode)
-p_potential.setParseAction((parsePotential))
+p_option.setParseAction(parse_option)
+p_node.setParseAction(parse_node)
+p_potential.setParseAction(parse_potential)
 
-## Test
+
+# Test
+
+
 def tests():
     # test('net {}')
     # test('node a { states = ( x y );}')
@@ -139,7 +147,7 @@ def tests():
 
 def test(string):
     try:
-        result = parse(string)
+        parse(string)
         # print('{} -> {}\n'.format(string,result))
     except ParseException as err:
         # print(string)
@@ -147,10 +155,11 @@ def test(string):
         print('\n')
 
 
-## Processing
+# Processing
+
 
 def parse(text):
-    text = rmComments(text)
+    text = rm_comments(text)
     result = None
     try:
         result = parser.parseString(text, parseAll=True)
@@ -202,7 +211,7 @@ def main(argv=None):
     global pgm
     with open(args.input, 'r') as ifile:
         text = ifile.read()
-    ast = parse(text)
+    parse(text)
     if args.compress:
         pgm = pgm.compress_tables()
     if pgm is None:

@@ -13,24 +13,11 @@ from __future__ import print_function
 import sys
 import os
 import argparse
-sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
-from problog.pgm.cpd import Variable, Factor, PGM
 import itertools
 import logging
 
-force_bool = False
-detect_bool = True
-drop_zero = False
-use_neglit = False
-
-directed = True
-num_vars = 0
-num_funcs = 0
-dom_sizes = []
-domains = []
-func_vars = []
-func_values = []
-factor_cnt = 0
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+from problog.pgm.cpd import Variable, Factor, PGM
 
 
 logger = logging.getLogger('problog.uai2problog')
@@ -83,195 +70,207 @@ class UAIReader:
             self.file.close()
 
 
-def construct_var(pgm, var_num):
-    rv = str(var_num)
-    values = domains[var_num]
-    pgm.add_var(Variable(rv, values, detect_boolean=detect_bool, force_boolean=force_bool))
+class UAIParser:
 
+    def __init__(self, fn):
+        self.fn = fn
+        self.reader = None
+        self.pgm = None
 
-def construct_cpt(pgm, func_num):
-    global factor_cnt
-    global domains
-    if func_num >= len(func_vars) or func_vars[func_num] is None:
-        error('Variables not defined for function {}'.format(func_num), halt=True)
-    variables = func_vars[func_num]
-    var = variables[-1]
-    rv = str(var)
-    parents = variables[0:-1]
-    if var >= len(domains) or domains[var] is None:
-        error('Variable domain is not defined: {}'.format(var), halt=True)
-    dom_size = dom_sizes[var]
+        self.force_bool = False
+        self.detect_bool = True
+        self.drop_zero = False
+        self.use_neglit = False
 
-    parents_str = [str(p) for p in parents]
-    if len(parents) == 0:
-        table = func_values[var]
-        pgm.add_factor(Factor(pgm, rv, parents_str, table))
-        return
-    parent_domains = []
-    for parent in parents:
-        parent_domains.append(domains[parent])
-    idx = 0
-    try:
-        cur_func_values = func_values[func_num]
-    except:
-        error('Could not find function definition for {}'.format(func_num), halt=True)
-    table = {}
-    for val_assignment in itertools.product(*parent_domains):
-        table[val_assignment] = cur_func_values[idx:idx+dom_size]
-        idx += dom_size
+        self.directed = True
+        self.num_vars = 0
+        self.num_funcs = 0
+        self.dom_sizes = []
+        self.domains = []
+        self.func_vars = []
+        self.func_values = []
+        self.factor_cnt = 0
 
-    pgm.add_factor(Factor(pgm, rv, parents_str, table))
+    def construct_var(self, var_num):
+        rv = str(var_num)
+        values = self.domains[var_num]
+        self.pgm.add_var(Variable(rv, values, detect_boolean=self.detect_bool, force_boolean=self.force_bool))
 
+    def construct_cpt(self, func_num):
+        if func_num >= len(self.func_vars) or self.func_vars[func_num] is None:
+            error('Variables not defined for function {}'.format(func_num), halt=True)
+        variables = self.func_vars[func_num]
+        var = variables[-1]
+        rv = str(var)
+        parents = variables[0:-1]
+        if var >= len(self.domains) or self.domains[var] is None:
+            error('Variable domain is not defined: {}'.format(var), halt=True)
+        dom_size = self.dom_sizes[var]
 
-def construct_factor(pgm, func_num):
-    global factor_cnt
-    global domains
-    if func_num >= len(func_vars) or func_vars[func_num] is None:
-        error('Variables not defined for function {}'.format(func_num), halt=True)
-    variables = func_vars[func_num]
-    name = 'pf_{}'.format(factor_cnt)
-    factor_cnt += 1
-    parents = variables
-    dom_size = 1
-
-    parents_str = [str(p) for p in parents]
-    assert(len(parents) != 0)
-    parent_domains = []
-    for parent in parents:
-        parent_domains.append(domains[parent])
-    idx = 0
-    table = {}
-    try:
-        cur_func_values = func_values[func_num]
-        for val_assignment in itertools.product(*parent_domains):
-            table[val_assignment] = cur_func_values[idx:idx + dom_size]
-            idx += dom_size
-    except:
-        error('Could not find function definition for {}'.format(func_num), halt=True)
-
-    pgm.add_factor(Factor(pgm, None, parents_str, table, name=name))
-
-
-def construct_pgm():
-    pgm = PGM(directed=directed)
-    for var_num in range(num_vars):
-        construct_var(pgm, var_num)
-    for func_num in range(num_funcs):
-        if directed:
-            construct_cpt(pgm, func_num)
+        parents_str = [str(p) for p in parents]
+        if len(parents) == 0:
+            table = self.func_values[var]
+            self.pgm.add_factor(Factor(self.pgm, rv, parents_str, table))
+            return
+        parent_domains = []
+        for parent in parents:
+            parent_domains.append(self.domains[parent])
+        table = {}
+        try:
+            cur_func_values = self.func_values[func_num]
+        except KeyError:
+            error('Could not find function definition for {}'.format(func_num), halt=True)
         else:
-            construct_factor(pgm, func_num)
-    return pgm
+            idx = 0
+            for val_assignment in itertools.product(*parent_domains):
+                table[val_assignment] = cur_func_values[idx:idx+dom_size]
+                idx += dom_size
 
+        self.pgm.add_factor(Factor(self.pgm, rv, parents_str, table))
 
-def parse_header(reader):
-    logger.debug('Parsing header')
-    global var_parents
+    def construct_factor(self, func_num):
+        if func_num >= len(self.func_vars) or self.func_vars[func_num] is None:
+            error('Variables not defined for function {}'.format(func_num), halt=True)
+        variables = self.func_vars[func_num]
+        name = 'pf_{}'.format(self.factor_cnt)
+        self.factor_cnt += 1
+        parents = variables
+        dom_size = 1
 
-    # Type
-    token = reader.get_token()
-    global directed
-    if token == 'BAYES':
-        directed = True
-    elif token == 'MARKOV':
-        directed = False
-    else:
-        directed = None
-        error('Expected a BAYES or MARKOV network, found: {} (line {})'.format(token, reader.linenb), halt=True)
-    logger.debug('Type: {}'.format(token))
+        parents_str = [str(p) for p in parents]
+        assert(len(parents) != 0)
+        parent_domains = []
+        for parent in parents:
+            parent_domains.append(self.domains[parent])
+        table = {}
+        try:
+            cur_func_values = self.func_values[func_num]
+        except KeyError:
+            error('Could not find function definition for {}'.format(func_num), halt=True)
+        else:
+            idx = 0
+            for val_assignment in itertools.product(*parent_domains):
+                table[val_assignment] = cur_func_values[idx:idx + dom_size]
+                idx += dom_size
 
-    # Number of variables
-    global num_vars
-    token = reader.get_token()
-    num_vars = int(token)
-    var_parents = [None]*num_vars
-    logger.debug("Number of variables: {}".format(num_vars))
+        self.pgm.add_factor(Factor(self.pgm, None, parents_str, table, name=name))
 
-    # Domain sizes
-    global dom_sizes
-    global domains
-    tokens = reader.get_tokens(num_vars)
-    dom_size = []
-    for size in tokens:
-        size = int(size)
-        dom_sizes.append(size)
-        values = [str(d) for d in range(size)]
-        domains.append(values)
-    if len(dom_sizes) != num_vars:
-        error('Expected {} domain sizes, found {} (line {})'.format(num_vars, len(dom_sizes), reader.linenb), halt=True)
-    logger.debug("Domain sizes: {}".format(" ".join(map(str,dom_sizes))))
+    def construct_pgm(self):
+        self.pgm = PGM(directed=self.directed)
+        for var_num in range(self.num_vars):
+            self.construct_var(var_num)
+        for func_num in range(self.num_funcs):
+            if self.directed:
+                self.construct_cpt(func_num)
+            else:
+                self.construct_factor(func_num)
 
-    # Number of functions
-    token = reader.get_token()
-    global num_funcs
-    num_funcs = int(token)
-    if directed and num_funcs != num_vars:
-        error('For BAYES we expect one function for every variables but found: {} (line {})'.format(num_funcs, reader.linenb), halt=True)
-    logger.debug("Number of functions: {}".format(num_funcs))
+    def parse_header(self):
+        logger.debug('Parsing header')
 
+        # Type
+        token = self.reader.get_token()
+        if token == 'BAYES':
+            self.directed = True
+        elif token == 'MARKOV':
+            self.directed = False
+        else:
+            self.directed = None
+            error('Expected a BAYES or MARKOV network, found: ' +
+                  '{} (line {})'.format(token, self.reader.linenb), halt=True)
+        logger.debug('Type: {}'.format(token))
 
-def parse_graph(reader):
-    global func_vars
-    logger.debug('Parsing function structures')
-    for num_func in range(num_funcs):
-        logger.debug('Parsing function structure {}'.format(num_func))
-        func_size = int(reader.get_token())
-        tokens = reader.get_tokens(func_size)
-        tokens = [int(v) for v in tokens]
+        # Number of variables
+        token = self.reader.get_token()
+        self.num_vars = int(token)
+        logger.debug("Number of variables: {}".format(self.num_vars))
 
-        if len(tokens) != func_size:
-            error('Expected {} variables, found {}\n{}'.format(func_size, len(tokens), tokens), halt=True)
-        # if num_func != rv:
-            # error('Expected current variable ({}) as last variable, found {}'.format(num_func, rv), halt=True)
-        # for parent in parents:
-            # if parent >= num_func:
-                # error('Found parent ({}) that is not yet defined\n{}'.format(parent, line), halt=True)
-        func_vars.append(tokens)
-        logger.debug('Parsed structure: {}'.format(" ".join(map(str,tokens))))
+        # Domain sizes
+        tokens = self.reader.get_tokens(self.num_vars)
+        for size in tokens:
+            size = int(size)
+            self.dom_sizes.append(size)
+            values = [str(d) for d in range(size)]
+            self.domains.append(values)
+        if len(self.dom_sizes) != self.num_vars:
+            error('Expected {} domain sizes, '.format(self.num_vars) +
+                  'found {} (line {})'.format(len(self.dom_sizes), self.reader.linenb), halt=True)
+        logger.debug("Domain sizes: {}".format(" ".join(map(str, self.dom_sizes))))
 
+        # Number of functions
+        token = self.reader.get_token()
+        self.num_funcs = int(token)
+        if self.directed and self.num_funcs != self.num_vars:
+            error('For BAYES we expect one function for every variables but found: ' +
+                  '{} (line {})'.format(self.num_funcs, self.reader.linenb), halt=True)
+        logger.debug("Number of functions: {}".format(self.num_funcs))
 
-def parse_functions(reader):
-    global func_values
-    logger.debug('Parsing function values')
-    for num_func in range(num_funcs):
-        logger.debug('Parsing function values {}'.format(num_func))
-        num_values = int(reader.get_token())
-        exp_num_values = 1
-        for var in func_vars[num_func]:
-            exp_num_values *= dom_sizes[var]
-        if exp_num_values != num_values:
-            logger.warning('% WARNING: Function {} says {} values but {} values are expected given the domain size for variable {}.'.format(num_func, num_values, exp_num_values, num_func))
-        tokens = reader.get_tokens(num_values)
-        values = [float(v) for v in tokens]
-        if len(values) != num_values:
-            error('Expected {} values in function {}, found {} (line {})'.format(num_values, num_func, len(values), reader.linenb), halt=True)
-        func_values.append(values)
+    def parse_graph(self):
+        logger.debug('Parsing function structures')
+        for num_func in range(self.num_funcs):
+            logger.debug('Parsing function structure {}'.format(num_func))
+            func_size = int(self.reader.get_token())
+            tokens = self.reader.get_tokens(func_size)
+            tokens = [int(v) for v in tokens]
 
+            if len(tokens) != func_size:
+                error('Expected {} variables, found {}\n{}'.format(func_size, len(tokens), tokens), halt=True)
+            # if num_func != rv:
+            #     error('Expected current variable ({}) as last variable, found {}'.format(num_func, rv), halt=True)
+            # for parent in parents:
+            #     if parent >= num_func:
+            #         error('Found parent ({}) that is not yet defined\n{}'.format(parent, line), halt=True)
+            self.func_vars.append(tokens)
+            logger.debug('Parsed structure: {}'.format(" ".join(map(str, tokens))))
 
-def parse_rest(reader):
-    token = reader.get_token()
-    # for line in reader:
-    #     line = line.strip()
-    #     if line != '':
-    #         warning('Did not expect more lines, ignoring: {}'.format(line))
+    def parse_functions(self):
+        logger.debug('Parsing function values')
+        for num_func in range(self.num_funcs):
+            logger.debug('Parsing function values {}'.format(num_func))
+            num_values = int(self.reader.get_token())
+            exp_num_values = 1
+            for var in self.func_vars[num_func]:
+                exp_num_values *= self.dom_sizes[var]
+            if exp_num_values != num_values:
+                logger.warning(('% WARNING: Function {} says {} values but {} values ' +
+                                'are expected given the domain size ' +
+                                'for variable {}.').format(num_func, num_values, exp_num_values, num_func))
+            tokens = self.reader.get_tokens(num_values)
+            values = [float(v) for v in tokens]
+            if len(values) != num_values:
+                error('Expected {} values in function {}, '.format(num_values, num_func) +
+                      'found {} (line {})'.format(len(values), self.reader.linenb), halt=True)
+            self.func_values.append(values)
 
+    def parse_rest(self):
+        self.reader.get_token()
+        # for line in reader:
+        #     line = line.strip()
+        #     if line != '':
+        #         warning('Did not expect more lines, ignoring: {}'.format(line))
 
-def parse(reader):
-    parse_header(reader)
-    parse_graph(reader)
-    parse_functions(reader)
-    parse_rest(reader)
+    def parse(self):
+        self.reader = UAIReader(self.fn)
 
+        self.parse_header()
+        self.parse_graph()
+        self.parse_functions()
+        self.parse_rest()
 
-def print_datastructures():
-    print('Domain sizes: {}'.format(' '.join([str(s) for s in dom_sizes])))
-    print('Function structures:\n  {}'.format('\n  '.join([' '.join([str(pp) for pp in p]) for p in func_vars])))
+        self.construct_pgm()
+        return self.pgm
+
+    def print_datastructures(self):
+        print('Domain sizes: {}'.format(' '.join([str(s) for s in self.dom_sizes])))
+        print('Function structures:\n' +
+              '  {}'.format('\n  '.join([' '.join([str(pp) for pp in p]) for p in self.func_vars])))
 
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description='Translate Bayesian net in UAI08 format to ProbLog')
     parser.add_argument('--verbose', '-v', action='count', help='Verbose output')
-    parser.add_argument('--forcebool', action='store_true', help='Force binary nodes to be represented as Boolean predicates (0=f, 1=t)')
+    parser.add_argument('--forcebool', action='store_true',
+                        help='Force binary nodes to be represented as Boolean predicates (0=f, 1=t)')
     parser.add_argument('--nobooldetection', action='store_true', help='Do not try to detect Boolean predicates')
     parser.add_argument('--dropzero', action='store_true', help='Drop zero probabilities (if possible)')
     parser.add_argument('--useneglit', action='store_true', help='Use negative head literals')
@@ -295,25 +294,18 @@ def main(argv=None):
         ch.setLevel(logging.DEBUG)
     logger.addHandler(ch)
 
-    global verbose
-    if args.verbose is not None:
-        verbose = args.verbose
-    global force_bool
-    if args.forcebool:
-        force_bool = args.forcebool
-    global detect_bool
-    if args.nobooldetection:
-        detect_bool = False
-    global drop_zero
-    if args.dropzero:
-        drop_zero = args.dropzero
-    global use_neglit
-    if args.useneglit:
-        use_neglit = args.useneglit
+    uai_parser = UAIParser(args.input)
 
-    reader = UAIReader(args.input)
-    parse(reader)
-    pgm = construct_pgm()
+    if args.forcebool:
+        uai_parser.force_bool = args.forcebool
+    if args.nobooldetection:
+        uai_parser.detect_bool = False
+    if args.dropzero:
+        uai_parser.drop_zero = args.dropzero
+    if args.useneglit:
+        uai_parser.use_neglit = args.useneglit
+
+    pgm = uai_parser.parse()
     if args.compress:
         pgm = pgm.compress_tables(allow_disjunct=args.allowdisjunct)
     if pgm is None:
@@ -329,9 +321,8 @@ def main(argv=None):
     elif args.output_format in ["smile", "xdsl"]:
         print(pgm.to_xdsl(), file=ofile)
     else:
-        print(pgm.to_problog(drop_zero=drop_zero, use_neglit=use_neglit), file=ofile)
+        print(pgm.to_problog(drop_zero=uai_parser.drop_zero, use_neglit=uai_parser.use_neglit), file=ofile)
 
 
 if __name__ == "__main__":
     sys.exit(main())
-

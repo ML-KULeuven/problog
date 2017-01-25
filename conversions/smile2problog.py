@@ -11,11 +11,12 @@ from __future__ import print_function
 import os
 import sys
 import argparse
-sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
-from problog.pgm.cpd import Variable, Factor, PGM
 import itertools
 import logging
 import xml.etree.ElementTree as ET
+
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+from problog.pgm.cpd import Variable, Factor, PGM
 
 force_bool = False
 drop_zero = False
@@ -50,18 +51,19 @@ def error(*args, **kwargs):
     if halt:
         sys.exit(1)
 
-## PARSER
+
+# PARSER
 
 def parse(ifile):
     tree = ET.parse(ifile)
     root = tree.getroot()
 
-    parseDomains(root)
+    parse_domains(root)
     for cpt in root.find("nodes").findall('cpt'):
-        parseCPT(cpt)
+        parse_cpt(cpt)
 
 
-def parseDomains(root):
+def parse_domains(root):
     global pgm
     detect_boolean = not no_bool_detection
     for cpt in root.find("nodes").findall('cpt'):
@@ -72,7 +74,7 @@ def parseDomains(root):
         pgm.add_var(Variable(rv, values, detect_boolean=detect_boolean, force_boolean=force_bool))
 
 
-def parseCPT(cpt):
+def parse_cpt(cpt):
     global pgm
     rv = cpt.get('id')
     if rv not in domains:
@@ -95,7 +97,7 @@ def parseCPT(cpt):
     table = {}
     idx = 0
     for val_assignment in itertools.product(*parent_domains):
-        table[val_assignment] = parameters[idx:idx+dom_size]
+        table[val_assignment] = parameters[idx:idx + dom_size]
         idx += dom_size
     pgm.add_factor(Factor(pgm, rv, parents, table))
 
@@ -164,4 +166,3 @@ def main(argv=None):
 
 if __name__ == "__main__":
     sys.exit(main())
-
