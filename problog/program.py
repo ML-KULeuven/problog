@@ -498,5 +498,5 @@ DefaultPrologFactory = ExtendedPrologFactory
 
 
 @transform(str, LogicProgram)
-def _string_to_program(source, target=None):
+def _string_to_program(source, target=None, **kwargs):
     return PrologString(source)
