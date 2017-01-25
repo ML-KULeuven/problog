@@ -25,6 +25,7 @@ from __future__ import print_function
 
 from .errors import GroundingError
 from .logic import Term, Var, Constant, AnnotatedDisjunction, Clause, And, Or, Not
+from .core import transform, ProbLogObject
 
 from .parser import DefaultPrologParser, Factory
 from .core import ProbLogError
@@ -33,7 +34,7 @@ import os
 import sys
 
 
-class LogicProgram(object):
+class LogicProgram(ProbLogObject):
     """LogicProgram"""
 
     def __init__(self, source_root='.', source_files=None, line_info=None, **extra_info):
@@ -494,3 +495,8 @@ class ExtendedPrologFactory(PrologFactory):
         return super(ExtendedPrologFactory, self).build_clause(functor, new_heads, operand2, location, **extra)
 
 DefaultPrologFactory = ExtendedPrologFactory
+
+
+@transform(str, LogicProgram)
+def _string_to_program(source, target=None):
+    return PrologString(source)
