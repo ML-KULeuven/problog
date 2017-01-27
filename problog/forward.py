@@ -83,8 +83,9 @@ class ForwardInference(DD):
     def init_build(self):
         if self.evidence():
             self.evidence_node = self.add_and([n for q, n in self.evidence() if n is None or n != 0])
+
         self._facts = []  # list of facts
-        self._atoms_in_rules = defaultdict(set)  # lookup all rules in which an atom is used
+        self._atoms_in_rules = defaultdict(OrderedSet)  # lookup all rules in which an atom is used
         self._completed = [False] * len(self)
 
         self._compute_node_depths()
@@ -232,7 +233,6 @@ class ForwardInference(DD):
         # nodes_to_recompute should be an updateable heap without duplicates
         while to_recompute:
             key, node = to_recompute.pop_with_key()
-            # print ('recompute node:', node, len(to_recompute), key, self.get_node(node))
             if self.update_inode(node):  # The node has changed
                 # Find rules that may be affected
                 for rule in self._atoms_in_rules[node]:
@@ -280,12 +280,12 @@ class ForwardInference(DD):
             if self._completed[i]:
                 self._inodes_prev[i] = n
         self._inodes_neg = [None] * len(self)
+
         return updated_nodes
 
     def build_dd(self):
         required_nodes = set([abs(n) for q, n, l in self.labeled() if self.is_probabilistic(n)])
         required_nodes |= set([abs(n) for q, n, v in self.evidence_all() if self.is_probabilistic(n)])
-
         if self.timeout:
             # signal.signal(signal.SIGALRM, timeout_handler)
             signal.alarm(self.timeout)
@@ -339,6 +339,9 @@ class ForwardInference(DD):
 
     def update_inode(self, index):
         """Recompute the inode at the given index."""
+
+        was_complete = self.is_complete(index)
+
         oldnode = self.get_inode(index)
         node = self.get_node(index)
         assert index > 0
@@ -352,6 +355,7 @@ class ForwardInference(DD):
                 newnode = self.get_manager().conjoin(*children)
             if False not in children_complete:
                 self.set_complete(index)
+
         elif nodetype == 'disj':
             children = [self.get_inode(c) for c in node.children]
             children_complete = [self.is_complete(c) for c in node.children]
@@ -362,6 +366,7 @@ class ForwardInference(DD):
                 newnode = None
             if False not in children_complete:
                 self.set_complete(index)
+
         else:
             raise TypeError('Unexpected node type.')
 
@@ -372,7 +377,7 @@ class ForwardInference(DD):
             newnode = newernode
 
         if self.get_manager().same(oldnode, newnode):
-            return False  # no change occurred
+            return self.is_complete(index) != was_complete  # no change occurred
         else:
             if oldnode is not None:
                 self.get_manager().deref(oldnode)
@@ -528,9 +533,10 @@ class ForwardEvaluator(Evaluator):
 
     def node_updated(self, source, node, complete):
 
+        is_evidence = node == abs(source.evidence_node)
         name = [n for n, i, l in self.formula.labeled()
                 if source.is_probabilistic(i) and abs(i) == node]
-        if node == abs(source.evidence_node):
+        if is_evidence:
             name = ('evidence',)
         if name:
             name = name[0]
@@ -556,6 +562,10 @@ class ForwardEvaluator(Evaluator):
 
             if complete:
                 self._complete.add(node)
+        # if is_evidence:
+        #     for c in self._complete:
+        #         if c != node:
+        #             self.node_updated(source, c, complete)
 
     def node_completed(self, source, node):
         qs = set(abs(qi) for qn, qi, ql in source.labeled() if source.is_probabilistic(qi))
