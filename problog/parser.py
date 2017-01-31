@@ -740,9 +740,9 @@ class PrologParser(object):
         expr_stack = []
         for token_i, token in enumerate(tokens):
             if token.is_special(SPECIAL_PAREN_OPEN):  # Open a parenthesis expression
-                expr_stack.append(ParenExpression(string, token))
+                expr_stack.append(self._create_paren_expression(string, token))
             elif token.is_special(SPECIAL_BRACK_OPEN):  # Open a list expression
-                expr_stack.append(ListExpression(string, token))
+                expr_stack.append(self._create_list_expression(string, token))
             elif token.is_special(SPECIAL_PAREN_CLOSE) or token.is_special(SPECIAL_BRACK_CLOSE):
                 try:
                     current_expr = expr_stack.pop(-1)  # Close a parenthesis expression
@@ -766,6 +766,12 @@ class PrologParser(object):
 
         toks = self.label_tokens(string, root_tokens)
         return self.fold(string, toks, 0, len(toks))
+
+    def _create_paren_expression(self, string, token):
+        return ParenExpression(string, token)
+
+    def _create_list_expression(self, string, token):
+        return ListExpression(string, token)
 
 
 def mapl(f, l):
