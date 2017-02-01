@@ -34,7 +34,7 @@ from .formula import LogicFormula
 from .engine_unify import *
 
 from .core import transform
-from .errors import GroundingError
+from .errors import GroundingError, InvalidValue
 from .util import Timer, OrderedSet
 
 
@@ -1101,7 +1101,8 @@ class PrologFunction(object):
         args = args[:self.arity - 1]
         query_term = Term(self.functor, *(args + (None,)))
         result = self.database.engine.query(self.database, query_term)
-        assert len(result) == 1
+        if len(result) != 1:
+            raise InvalidValue("Function should return one result: %s returned %s" % (query_term, result))
         return result[0][-1]
 
 
