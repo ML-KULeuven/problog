@@ -169,6 +169,12 @@ class LogicProgram(ProbLogObject):
                 filename = self.source_files[fn]
             return filename, lineno, charno
 
+    def to_prolog(self):
+        s = ''
+        for statement in self:
+            s += '%s.\n' % statement
+        return s
+
 
 class SimpleProgram(LogicProgram):
     """LogicProgram implementation as a list of clauses."""

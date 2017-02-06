@@ -1274,9 +1274,10 @@ label_all=True)
                 else:
                     yield Clause(n.name, self.get_body(i, parent_name=n.name))
 
-    def extract_relevant(self):
+    def extract_relevant(self, roots=None):
         relevant = [False] * (len(self)+1)
-        roots = {abs(r) for r in self.get_roots()}
+        if roots is None:
+            roots = {abs(r) for r in self.get_roots()}
         while roots:
             root = roots.pop()
             if not relevant[root]:
@@ -1386,12 +1387,15 @@ label_all=True)
             children = node.children
         return children
 
-    def to_dot(self, not_as_node=True, nodeprops={}):
+    def to_dot(self, not_as_node=True, nodeprops=None):
         """Write out in GraphViz (dot) format.
 
         :param not_as_node: represent negation as a node
+        :param nodeprops: additional properties for nodes
         :return: string containing dot representation
         """
+        if nodeprops is None:
+            nodeprops = {}
 
         not_as_edge = not not_as_node
 

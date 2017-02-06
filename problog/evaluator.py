@@ -221,6 +221,8 @@ class SemiringLogProbability(SemiringProbability):
         return a + b
 
     def negate(self, a):
+        if not self.in_domain(a):
+            raise InvalidValue("Not a valid value for this semiring: '%s'" % a)
         if a > -1e-10:
             return self.zero()
         return math.log1p(-math.exp(a))
