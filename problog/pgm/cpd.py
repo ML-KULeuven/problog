@@ -73,11 +73,13 @@ class PGM(object):
             return self.factors.values()
         links = dict()
         for factor in self.factors.values():
+            if factor.rv not in links:
+                links[factor.rv] = set()
             for parent in factor.parents:
                 if parent in links:
                     links[parent].add(factor.rv)
                 else:
-                    links[parent] = {factor.rv}
+                    links[parent] = set([factor.rv])
         all_links = set(links.keys())
         nonroot = reduce(set.union, links.values())
         root = all_links - nonroot
