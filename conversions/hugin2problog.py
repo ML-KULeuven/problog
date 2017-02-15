@@ -14,13 +14,16 @@ import argparse
 import itertools
 import logging
 import re
+import time
 
 from pyparsing import Word, nums, ParseException, alphanums, \
                       OneOrMore, Or, Optional, dblQuotedString, Regex, \
-                      Forward, ZeroOrMore, Suppress, removeQuotes, Group
+                      Forward, ZeroOrMore, Suppress, removeQuotes, Group, ParserElement
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 from problog.pgm.cpd import Variable, Factor, PGM
+
+ParserElement.enablePackrat()
 
 force_bool = False
 drop_zero = False
@@ -170,7 +173,8 @@ def parse(text):
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description='Translate Bayesian net in Hugin .net/.hugin format format to ProbLog')
-    parser.add_argument('--verbose', '-v', action='count', help='Verbose output')
+    parser.add_argument('--verbose', '-v', action='count', default=0, help='Verbose output')
+    parser.add_argument('--quiet', '-q', action='count', default=0, help='Quiet output')
     parser.add_argument('--nobooldetection', action='store_true',
                         help='Do not try to infer if a node is Boolean (true/false, yes/no, ...)')
     parser.add_argument('--forcebool', action='store_true',
@@ -187,12 +191,8 @@ def main(argv=None):
     parser.add_argument('input', help='Input Hugin file')
     args = parser.parse_args(argv)
 
-    if args.verbose is None:
-        logger.setLevel(logging.WARNING)
-    elif args.verbose == 1:
-        logger.setLevel(logging.INFO)
-    elif args.verbose >= 2:
-        logger.setLevel(logging.DEBUG)
+    logger.setLevel(max(logging.INFO - 10 * (args.verbose - args.quiet), logging.DEBUG))
+    logger.addHandler(logging.StreamHandler(sys.stdout))
 
     global detect_bool
     if args.nobooldetection:
@@ -209,11 +209,20 @@ def main(argv=None):
 
     text = None
     global pgm
+    logger.info("Start parsing ...")
+    ts1 = time.clock()
     with open(args.input, 'r') as ifile:
         text = ifile.read()
     parse(text)
+    ts2 = time.clock()
+    logger.info("Parsing took {:.3f} sec".format(ts2 - ts1))
+    ts1 = ts2
     if args.compress:
+        logger.info("Start compressing ...")
         pgm = pgm.compress_tables()
+        ts2 = time.clock()
+        logger.info("Compressing tables took {:.3f} sec".format(ts2 - ts1))
+        ts1 = ts2
     if pgm is None:
         error('Could not build PGM structure', halt=True)
 
