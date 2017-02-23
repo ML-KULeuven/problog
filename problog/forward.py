@@ -409,6 +409,7 @@ class ForwardInference(DD):
             if av is None:
                 av = self.get_manager().add_variable()
                 self.atom2var[abs(index)] = av
+                self.var2atom[av] = abs(index)
             result = self.get_manager().literal(av)
             if index < 0:
                 return self.get_manager().negate(result)
