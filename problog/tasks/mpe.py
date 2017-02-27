@@ -39,12 +39,12 @@ def main(argv):
     args = argparser().parse_args(argv)
 
     if args.use_semiring:
-        return mpe_semiring(args)
+        return main_mpe_semiring(args)
     else:
-        return mpe_maxsat(args)
+        return main_mpe_maxsat(args)
 
 
-def mpe_semiring(args):
+def main_mpe_semiring(args):
     inputfile = args.inputfile
 
     init_logger(args.verbose)
@@ -63,34 +63,9 @@ def mpe_semiring(args):
         try:
             pl = PrologFile(inputfile)
 
-            semiring = SemiringMPEState()
-            kc_class = get_evaluatable(name='sdd')        # TODO should pass semiring
-                                                # -> no compilation required for MPE
-                                                # BUT semiring does not support negation
-                                                # so formula should be DDNNF (only negation of facts)
-            lf = LogicFormula.create_from(pl, label_all=True)
+            lf = LogicFormula.create_from(model, label_all=True)
 
-            if lf.evidence():
-                # Query = evidence + constraints
-                qn = lf.add_and([y for x, y in lf.evidence()])
-                lf.clear_evidence()
-
-                if lf.queries():
-                    print ('%% WARNING: ignoring queries in file', file=sys.stderr)
-                lf.clear_queries()
-
-                query_name = Term('query')
-                lf.add_query(query_name, qn)
-                kc = kc_class.create_from(lf)
-
-                with open('/tmp/x.dot', 'w') as f:
-                    print (kc.to_formula().to_dot(), file=f)
-
-                results = kc.evaluate(semiring=semiring)
-                prob, facts = results[query_name]
-            else:
-                prob, facts = 1.0, []
-
+            prob, facts = mpe_semiring(lf, args.verbose)
             result_handler((True, (prob, facts)), outf)
 
         except Exception as err:
@@ -99,7 +74,35 @@ def mpe_semiring(args):
             result_handler((False, err), outf)
 
 
-def mpe_maxsat(args):
+def mpe_semiring(lf, verbose=0, solver=None):
+    semiring = SemiringMPEState()
+    kc_class = get_evaluatable(semiring=semiring)
+
+    if lf.evidence():
+        # Query = evidence + constraints
+        qn = lf.add_and([y for x, y in lf.evidence()])
+        lf.clear_evidence()
+
+        if lf.queries():
+            print('%% WARNING: ignoring queries in file', file=sys.stderr)
+        lf.clear_queries()
+
+        query_name = Term('query')
+        lf.add_query(query_name, qn)
+        kc = kc_class.create_from(lf)
+
+        # with open('/tmp/x.dot', 'w') as f:
+        #     print(kc.to_dot(), file=f)
+
+        results = kc.evaluate(semiring=semiring)
+        prob, facts = results[query_name]
+    else:
+        prob, facts = 1.0, []
+
+    return prob, facts
+
+
+def main_mpe_maxsat(args):
     inputfile = args.inputfile
 
     if args.web:
@@ -112,60 +115,13 @@ def mpe_maxsat(args):
     else:
         outf = sys.stdout
 
-    logger = init_logger(args.verbose)
-
     with Timer("Total"):
         try:
             pl = PrologFile(inputfile)
 
             dag = LogicDAG.createFrom(pl, avoid_name_clash=True, label_all=True, labels=[('output', 1)])
 
-            if dag.queries():
-                print('%% WARNING: ignoring queries in file', file=sys.stderr)
-                dag.clear_queries()
-
-            logger.info('Ground program size: %s' % len(dag))
-
-            cnf = CNF.createFrom(dag)
-
-            for qn, qi in cnf.evidence():
-                if not cnf.is_true(qi):
-                    cnf.add_constraint(TrueConstraint(qi))
-
-            queries = list(cnf.labeled())
-
-            logger.info('CNF size: %s' % cnf.clausecount)
-
-            if not cnf.is_trivial():
-                solver = get_solver(args.solver)
-
-                with Timer('Solving'):
-                    result = frozenset(solver.evaluate(cnf))
-                weights = cnf.extract_weights(SemiringProbability())
-                output_facts = None
-                prob = 1.0
-                if result is not None:
-                    output_facts = []
-
-                    if queries:
-                        for qn, qi, ql in queries:
-                            if qi in result:
-                                output_facts.append(qn)
-                            elif -qi in result:
-                                output_facts.append(-qn)
-                    for i, n, t in dag:
-                        if t == 'atom':
-                            if i in result:
-                                if not queries:
-                                    output_facts.append(n.name)
-                                prob *= weights[i][0]
-                            elif -i in result:
-                                if not queries:
-                                    output_facts.append(-n.name)
-                                prob *= weights[i][1]
-            else:
-                prob = 1.0
-                output_facts = []
+            prob, output_facts = mpe_maxsat(dag, verbose=args.verbose, solver=args.solver)
 
             result_handler((True, (prob, output_facts)), outf)
         except Exception as err:
@@ -173,8 +129,61 @@ def mpe_maxsat(args):
             err.trace = trace
             result_handler((False, err), outf)
 
-        if args.output is not None:
-            outf.close()
+    if args.output is not None:
+        outf.close()
+
+
+def mpe_maxsat(dag, verbose=0, solver=None):
+    if dag.queries():
+        print('%% WARNING: ignoring queries in file', file=sys.stderr)
+        dag.clear_queries()
+
+    logger = init_logger(verbose)
+    logger.info('Ground program size: %s' % len(dag))
+
+    cnf = CNF.createFrom(dag)
+
+    for qn, qi in cnf.evidence():
+        if not cnf.is_true(qi):
+            cnf.add_constraint(TrueConstraint(qi))
+
+    queries = list(cnf.labeled())
+
+    logger.info('CNF size: %s' % cnf.clausecount)
+
+    if not cnf.is_trivial():
+        solver = get_solver(solver)
+
+        with Timer('Solving'):
+            result = frozenset(solver.evaluate(cnf))
+        weights = cnf.extract_weights(SemiringProbability())
+        output_facts = None
+        prob = 1.0
+        if result is not None:
+            output_facts = []
+
+            if queries:
+                for qn, qi, ql in queries:
+                    if qi in result:
+                        output_facts.append(qn)
+                    elif -qi in result:
+                        output_facts.append(-qn)
+            for i, n, t in dag:
+                if t == 'atom':
+                    if i in result:
+                        if not queries:
+                            output_facts.append(n.name)
+                        prob *= weights[i][0]
+                    elif -i in result:
+                        if not queries:
+                            output_facts.append(-n.name)
+                        prob *= weights[i][1]
+    else:
+        prob = 1.0
+        output_facts = []
+
+    return prob, output_facts
+
 
 
 def print_result(result, output=sys.stdout):

@@ -534,6 +534,13 @@ class LogicFormula(BaseFormula):
         node = constraint.add(node, self)
         return node
 
+    def force_weights(self):
+        weights = self.get_weights()
+        for i, n, t in self:
+            if t == 'atom':
+                w = weights.get(i, n.probability)
+                self._nodes[i - 1] = atom(n.identifier, w, n.group, n.name, n.source)
+
     def add_atom(self, identifier, probability, group=None, name=None, source=None):
         """Add an atom to the formula.
 
