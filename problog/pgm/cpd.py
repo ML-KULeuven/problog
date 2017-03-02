@@ -42,11 +42,37 @@ class PGM(object):
                 self.add_factor(factor)
 
     def copy(self, **kwargs):
+        variables = kwargs.get('variables', None)
+        if variables is None:
+            variables = list(self.vars.values())
+        factors = kwargs.get('factors', None)
+        if factors is None:
+            factors = list(self.factors.values())
         return PGM(
             directed=kwargs.get('directed', self.directed),
-            factors=kwargs.get('factors', self.factors.values()),
-            variables=kwargs.get('variables', self.vars.values())
+            factors=factors,
+            variables=variables
         )
+
+    def split(self, variables):
+        """Split the PGM based on the given set of variables.
+
+        The given nodes will be duplicated in a node with no outgoing edge
+        (thus a sink node) and a node with no incoming edges (thus a root
+        node).
+        """
+        def splitvar(var):
+            return var+"_sink"
+        new_vars = [self.vars[var].copy(name=splitvar(var)) for var in variables]
+        pgm = self.copy(factors=[], variables=list(self.vars.values()) + new_vars)
+        for factor in self.factors.values():
+            if factor.rv in variables:
+                nb_values = len(self.vars[factor.rv].values)
+                pgm.add_factor(Factor(pgm, factor.rv, [], [1.0/nb_values]*nb_values))
+                pgm.add_factor(factor.copy(pgm=pgm, rv=splitvar(factor.rv)))
+            else:
+                pgm.add_factor(factor.copy(pgm=pgm))
+        return pgm
 
     def add_var(self, var):
         self.vars[var.name] = var
@@ -208,9 +234,9 @@ class PGM(object):
         assert self.directed
         lines = ['digraph bayesnet {']
         for cpd in self.factors.values():
-            lines.append('  {} [label="{}"];'.format(cpd.rv_clean(), cpd.rv))
+            lines.append('  {} [label="{}"];'.format(self.vars[cpd.rv].clean(), cpd.rv))
             for p in cpd.parents:
-                lines.append('  {} -> {}'.format(cpd.rv_clean(p), cpd.rv_clean()))
+                lines.append('  {} -> {}'.format(self.vars[cpd.rv].clean(p), self.vars[cpd.rv].clean()))
         lines += ['}']
         return '\n'.join(lines)
 
@@ -235,26 +261,37 @@ boolean_values = [
 
 
 class Variable(object):
-    def __init__(self, name, values, detect_boolean=True, force_boolean=False, boolean_true=None):
+    def __init__(self, name, values, detect_boolean=True, force_boolean=False, boolean_true=None,
+                 latent=False):
         """Conditional Probability Distribution."""
         self.name = name
         self.values = values
-        self.latent = False
-        self.booleantrue = boolean_true  # Value that represents true
+        self.latent = latent
+        self.boolean_true = boolean_true  # Value that represents true
         if (force_boolean or detect_boolean) and len(self.values) == 2:
             for values in boolean_values:
                 if (values[0] == self.values[0] and values[1] == self.values[1]) or \
                    (type(self.values[0]) == str and type(self.values[1]) == str and
                    values[0] == self.values[0].lower() and values[1] == self.values[1].lower()):
-                    self.booleantrue = 1
+                    self.boolean_true = 1
                     break
                 elif (values[1] == self.values[0] and values[0] == self.values[1]) or \
                      (type(self.values[0]) == str and type(self.values[1]) == str and
                      values[1] == self.values[0].lower() and values[0] == self.values[1].lower()):
-                    self.booleantrue = 0
+                    self.boolean_true = 0
                     break
-            if force_boolean and self.booleantrue is None:
-                self.booleantrue = 1
+            if force_boolean and self.boolean_true is None:
+                self.boolean_true = 1
+
+    def copy(self, **kwargs):
+        return Variable(
+            name=kwargs.get('name', self.name),
+            values=kwargs.get('values', self.values),
+            latent=kwargs.get('latent', self.latent),
+            detect_boolean=False,
+            force_boolean=False,
+            boolean_true=kwargs.get('boolean_true', self.boolean_true),
+        )
 
     def clean(self, value=None):
         if value is None:
@@ -270,7 +307,7 @@ class Variable(object):
         return rv
 
     def to_problog_value(self, value, value_as_term=True):
-        if self.booleantrue is None:
+        if self.boolean_true is None:
             if type(value) is frozenset and len(value) == 1:
                 value, = value
             if type(value) is frozenset:
@@ -296,9 +333,9 @@ class Variable(object):
                     return self.clean() + '_' + self.clean(str(value))
         else:
             # It is a Boolean atom
-            if self.values[self.booleantrue] == value:
+            if self.values[self.boolean_true] == value:
                 return self.clean()
-            elif self.values[1 - self.booleantrue] == value:
+            elif self.values[1 - self.boolean_true] == value:
                 return '\+' + self.clean()
             else:
                 raise Exception('Unknown value: {} = {}'.format(self.name, value))
@@ -310,7 +347,7 @@ class Variable(object):
         return Variable(
             name=kwargs.get('name', self.name),
             values=kwargs.get('values', self.values),
-            boolean_true=kwargs.get('boolean_true', self.booleantrue)
+            boolean_true=kwargs.get('boolean_true', self.boolean_true)
         )
 
 

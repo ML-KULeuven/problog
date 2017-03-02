@@ -185,6 +185,7 @@ def main(argv=None):
                         help='Add value to atom name instead as a term (this removes invalid characters, be careful \
                               that clean values do not overlap)')
     parser.add_argument('--compress', action='store_true', help='Compress tables')
+    parser.add_argument('--split', help='Comma-separated list of variable names to split on')
     parser.add_argument('--output', '-o', help='Output file')
     parser.add_argument('--output-format', default='problog',
                         help='Output format (\'problog\', \'uai\', \'hugin\', \'xdsl\')')
@@ -223,6 +224,8 @@ def main(argv=None):
         ts2 = time.clock()
         logger.info("Compressing tables took {:.3f} sec".format(ts2 - ts1))
         ts1 = ts2
+    if args.split:
+        pgm = pgm.split(set(args.split.split(',')))
     if pgm is None:
         error('Could not build PGM structure', halt=True)
 

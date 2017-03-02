@@ -118,9 +118,10 @@ def main(argv=None):
     parser.add_argument('--adisfunction', action='store_true',
                         help='Consider all ADs to represent functions of mutual exclusive conditions (like in a \
                               Bayesian net)')
+    parser.add_argument('--split', help='Comma-separated list of variable names to split on')
     parser.add_argument('--output', '-o', help='Output file')
     parser.add_argument('--output-format', default='problog',
-                        help='Output format (\'problog\', \'uai\', \'hugin\', \'xdsl\')')
+                        help='Output format (\'problog\', \'uai\', \'hugin\', \'xdsl\', \'dot\', \'graphviz\')')
     parser.add_argument('input', help='Input Hugin file')
     args = parser.parse_args(argv)
 
@@ -149,19 +150,29 @@ def main(argv=None):
         parse(ifile)
     if args.compress:
         pgm = pgm.compress_tables()
+    if args.split:
+        pgm = pgm.split(set(args.split.split(',')))
+    if pgm is None:
+        error('Could not build PGM structure', halt=True)
 
     ofile = sys.stdout
-    if args.output is not None:
+    if args.output:
         ofile = open(args.output, 'w')
-    if args.output_format in ["uai", "uai08"]:
-        print(pgm.to_uai08(), file=ofile)
-    elif args.output_format == "hugin":
-        print(pgm.to_hugin_net(), file=ofile)
-    elif args.output_format in ["smile", "xdsl"]:
-        print(pgm.to_xdsl(), file=ofile)
-    else:
-        print(pgm.to_problog(drop_zero=drop_zero, use_neglit=use_neglit, value_as_term=args.valueinatomname,
-                             ad_is_function=args.adisfunction), file=ofile)
+    try:
+        if args.output_format in ["uai", "uai08"]:
+            print(pgm.to_uai08(), file=ofile)
+        elif args.output_format == "hugin":
+            print(pgm.to_hugin_net(), file=ofile)
+        elif args.output_format in ["smile", "xdsl"]:
+            print(pgm.to_xdsl(), file=ofile)
+        elif args.output_format in ["graphiz", "dot"]:
+            print(pgm.to_graphviz(), file=ofile)
+        else:
+            print(pgm.to_problog(drop_zero=drop_zero, use_neglit=use_neglit, value_as_term=args.valueinatomname,
+                                 ad_is_function=args.adisfunction), file=ofile)
+    finally:
+        if args.output:
+            ofile.close()
 
 
 if __name__ == "__main__":

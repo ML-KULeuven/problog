@@ -276,6 +276,7 @@ def main(argv=None):
     parser.add_argument('--useneglit', action='store_true', help='Use negative head literals')
     parser.add_argument('--allowdisjunct', action='store_true', help='Allow disjunctions in the body')
     parser.add_argument('--compress', action='store_true', help='Compress tables')
+    parser.add_argument('--split', help='Comma-separated list of variable names to split on')
     parser.add_argument('--output', '-o', help='Output file')
     parser.add_argument('--output-format', default='problog',
                         help='Output format (\'problog\', \'uai\', \'hugin\', \'xdsl\')')
@@ -308,6 +309,8 @@ def main(argv=None):
     pgm = uai_parser.parse()
     if args.compress:
         pgm = pgm.compress_tables(allow_disjunct=args.allowdisjunct)
+    if args.split:
+        pgm = pgm.split(set(args.split.split(',')))
     if pgm is None:
         error('Could not build PGM structure', halt=True)
 
