@@ -27,7 +27,7 @@ domains = {}
 potentials = []
 pgm = PGM()
 
-logger = logging.getLogger('problog.smile2problog')
+logger = logging.getLogger('be.kuleuven.cs.dtai.problog.smile2problog')
 
 
 def info(*args, **kwargs):

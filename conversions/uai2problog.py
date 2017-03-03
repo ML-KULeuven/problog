@@ -20,7 +20,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 from problog.pgm.cpd import Variable, Factor, PGM
 
 
-logger = logging.getLogger('problog.uai2problog')
+logger = logging.getLogger('be.kuleuven.cs.dtai.problog.uai2problog')
 
 
 def error(*args, **kwargs):
@@ -323,6 +323,8 @@ def main(argv=None):
         print(pgm.to_hugin_net(), file=ofile)
     elif args.output_format in ["smile", "xdsl"]:
         print(pgm.to_xdsl(), file=ofile)
+    elif args.output_format in ["graphiz", "dot"]:
+        print(pgm.to_graphviz(), file=ofile)
     else:
         print(pgm.to_problog(drop_zero=uai_parser.drop_zero, use_neglit=uai_parser.use_neglit), file=ofile)
 

@@ -34,7 +34,7 @@ domains = {}
 potentials = []
 pgm = PGM()
 
-logger = logging.getLogger('problog.hugin2problog')
+logger = logging.getLogger('be.kuleuven.cs.dtai.problog.hugin2problog')
 
 
 def info(*args, **kwargs):
@@ -61,8 +61,9 @@ def error(*args, **kwargs):
 
 # PARSER
 
-
 re_comments = re.compile(r"""%.*?[\n\r]""")
+
+
 def rm_comments(string):
     return re_comments.sub("\n", string)
 
@@ -172,7 +173,8 @@ def parse(text):
 
 
 def main(argv=None):
-    parser = argparse.ArgumentParser(description='Translate Bayesian net in Hugin .net/.hugin format format to ProbLog')
+    description = 'Translate Bayesian net in Hugin .net/.hugin format format to ProbLog'
+    parser = argparse.ArgumentParser(description=description)
     parser.add_argument('--verbose', '-v', action='count', default=0, help='Verbose output')
     parser.add_argument('--quiet', '-q', action='count', default=0, help='Quiet output')
     parser.add_argument('--nobooldetection', action='store_true',
@@ -238,6 +240,8 @@ def main(argv=None):
         print(pgm.to_hugin_net(), file=ofile)
     elif args.output_format in ["smile", "xdsl"]:
         print(pgm.to_xdsl(), file=ofile)
+    elif args.output_format in ["graphiz", "dot"]:
+        print(pgm.to_graphviz(), file=ofile)
     else:
         print(pgm.to_problog(drop_zero=drop_zero, use_neglit=use_neglit, value_as_term=args.valueinatomname),
               file=ofile)

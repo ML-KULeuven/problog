@@ -60,6 +60,8 @@ class PGM(object):
         The given nodes will be duplicated in a node with no outgoing edge
         (thus a sink node) and a node with no incoming edges (thus a root
         node).
+
+        :param variables: Set of variable names.
         """
         def splitvar(var):
             return var+"_sink"
@@ -105,7 +107,7 @@ class PGM(object):
                 if parent in links:
                     links[parent].add(factor.rv)
                 else:
-                    links[parent] = set([factor.rv])
+                    links[parent] = {factor.rv}
         all_links = set(links.keys())
         nonroot = reduce(set.union, links.values())
         root = all_links - nonroot
@@ -276,8 +278,8 @@ class Variable(object):
                     self.boolean_true = 1
                     break
                 elif (values[1] == self.values[0] and values[0] == self.values[1]) or \
-                     (type(self.values[0]) == str and type(self.values[1]) == str and
-                     values[1] == self.values[0].lower() and values[0] == self.values[1].lower()):
+                    (type(self.values[0]) == str and type(self.values[1]) == str and
+                        values[1] == self.values[0].lower() and values[0] == self.values[1].lower()):
                     self.boolean_true = 0
                     break
             if force_boolean and self.boolean_true is None:
@@ -343,22 +345,15 @@ class Variable(object):
     def __str__(self):
         return '{}'.format(self.name)
 
-    def copy(self, **kwargs):
-        return Variable(
-            name=kwargs.get('name', self.name),
-            values=kwargs.get('values', self.values),
-            boolean_true=kwargs.get('boolean_true', self.boolean_true)
-        )
-
 
 class Factor(object):
     def __init__(self, pgm, rv, parents, table, name=None, *args, **kwargs):
         """Conditional Probability Table with discrete probabilities.
 
-        :param rv: random variable
-        :param values: random variable domain
-        :param parents: parent random variables
+        :param rv: random variable. None for an undirected factor.
+        :param parents: Parent random variables.
         :param table:
+        :param name: Name, for undirected factor.
 
         a = Factor(pgm, 'a', [], [0.4,0.6])
         b = Factor(pgm, 'b', [a],
@@ -418,11 +413,11 @@ class Factor(object):
             # All the same or all different? Then stop.
             k, v = zip(*node)
             c = Counter(v)
-            if len(c.keys()) == len(v):
+            if len(c) == len(v):
                 for new_path, new_probs in node:
                     new_table[new_path] = new_probs
                 continue
-            if len(c.keys()) == 1:
+            if len(c) == 1:
                 new_table[curpath] = node[0][1]
                 continue
             # Find max information gain
@@ -572,7 +567,7 @@ class Factor(object):
 
     def to_problog(self, pgm, drop_zero=False, use_neglit=False, value_as_term=True, ad_is_function=False):
         lines = []
-        var = pgm.vars[self.rv]
+        var = pgm.vars[self.rv]  # type: Variable
         name = var.clean()
         # if len(self.parents) > 0:
         #   name += ' | '+' '.join([self.rv_clean(p) for p in self.parents])
@@ -582,21 +577,21 @@ class Factor(object):
 
         line_cnt = 0
         for k, v in table:
-            if var.booleantrue is not None and drop_zero and v[var.booleantrue] == 0.0 and not use_neglit:
+            if var.boolean_true is not None and drop_zero and v[var.boolean_true] == 0.0 and not use_neglit:
                 continue
             head_problits = []
-            if var.booleantrue is None:
+            if var.boolean_true is None:
                 for idx, vv in enumerate(v):
                     if not (drop_zero and vv == 0.0):
                         head_problits.append((vv, var.to_problog_value(var.values[idx], value_as_term)))
             else:
-                if drop_zero and v[var.booleantrue] == 0.0 and use_neglit:
-                    head_problits.append((None, var.to_problog_value(var.values[1 - var.booleantrue], value_as_term)))
-                elif v[var.booleantrue] == 1.0:
-                    head_problits.append((None, var.to_problog_value(var.values[var.booleantrue], value_as_term)))
+                if drop_zero and v[var.boolean_true] == 0.0 and use_neglit:
+                    head_problits.append((None, var.to_problog_value(var.values[1 - var.boolean_true], value_as_term)))
+                elif v[var.boolean_true] == 1.0:
+                    head_problits.append((None, var.to_problog_value(var.values[var.boolean_true], value_as_term)))
                 else:
-                    head_problits.append((v[var.booleantrue],
-                                          var.to_problog_value(var.values[var.booleantrue], value_as_term)))
+                    head_problits.append((v[var.boolean_true],
+                                          var.to_problog_value(var.values[var.boolean_true], value_as_term)))
             body_lits = []
             for parent, parent_value in zip(self.parents, k):
                 if parent_value is not None:
@@ -628,7 +623,7 @@ class Factor(object):
                 lines.append('{}{}.'.format(head_str, body_str))
             line_cnt += 1
 
-        if ad_is_function and var.booleantrue is None:
+        if ad_is_function and var.boolean_true is None:
             head_lits = [var.to_problog_value(value, value_as_term) for value in var.values]
             # lines.append('false_constraints :- '+', '.join(['\+'+l for l in head_lits])+'.')
             lines.append('constraint([' + ', '.join(['\+' + l for l in head_lits]) + '], false).')
@@ -682,19 +677,19 @@ class Factor(object):
 
 class OrCPT(Factor):
     def __init__(self, pgm, rv, parentvalues=None):
-        super(OrCPT, self).__init__(pgm, rv, set(), [])
+        super(OrCPT, self).__init__(pgm, rv, [], [])
         if parentvalues is None:
             self.parentvalues = []
         else:
             self.parentvalues = parentvalues
-        self.parents.update([pv[0] for pv in self.parentvalues])
+        self.parents += [pv[0] for pv in self.parentvalues]
 
     def add(self, parentvalues):
         """Add list of tuples [('a', 1)].
         :param parentvalues: List of tuples (parent, index)
         """
         self.parentvalues += parentvalues
-        self.parents.update([pv[0] for pv in parentvalues])
+        self.parents += [pv[0] for pv in parentvalues]
 
     def to_factor(self):
         rv = self.pgm.vars[self.rv]
@@ -710,7 +705,7 @@ class OrCPT(Factor):
                 table[keys] = [0.0, 1.0]
             else:
                 table[keys] = [1.0, 0.0]
-        return Factor(self.pgm, self.rv, rv.values, parents, table)
+        return Factor(self.pgm, self.rv, parents, table)
 
     def __add__(self, other):
         return OrCPT(self.pgm, self.rv, self.parentvalues + other.parentvalues)
