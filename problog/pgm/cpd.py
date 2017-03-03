@@ -110,8 +110,8 @@ class PGM(object):
         delay_roots= root - first_roots
 
         factor_strata = self.factors_topological(keep_strata=True, delay_roots=[delay_roots])
-        for fs_i, fs in enumerate(factor_strata):
-            print('{}: {}'.format(fs_i, ', '.join([f.rv for f in fs])))
+        # for fs_i, fs in enumerate(factor_strata):
+        #     print('{}: {}'.format(fs_i, ', '.join([f.rv for f in fs])))
         strata = dict()
         for strata_i, factors in enumerate(factor_strata):
             for factor in factors:
@@ -290,21 +290,22 @@ class PGM(object):
             factors.append(factor.compress(allow_disjunct=allow_disjunct))
         return self.copy(factors=factors)
 
-    def to_hugin_net(self):
+    def to_hugin_net(self, include_layout=False):
         """Export PGM to the Hugin net format.
         http://www.hugin.com/technology/documentation/api-manuals
         """
         assert self.directed
         cpds = [cpd.to_factor() for cpd in self.factors_topological()]
         lines = ["%% Hugin Net: {}\n".format(self.name),
-                 "%% Created on {}\n".format(datetime.now()),
-                 "net {",
-                 "  node_size = (50,50);",
-                 "}\n",
-                 "%% Nodes\n"]
-        lines += [cpd.to_huginnet_node() for cpd in cpds]
+                 "%% Created on {}\n".format(datetime.now())]
+        if include_layout:
+            lines += ["net {",
+                      "  node_size = (50,50);",
+                      "}\n"]
+        lines += ["%% Nodes\n"]
+        lines += [cpd.to_huginnet_node(include_layout=include_layout) for cpd in cpds]
         lines += ["%% Potentials\n"]
-        lines += [cpd.to_huginnet_potential() for cpd in cpds]
+        lines += [cpd.to_huginnet_potential(include_layout=include_layout) for cpd in cpds]
         return '\n'.join(lines)
 
     def to_xdsl(self):
@@ -641,16 +642,17 @@ class Factor(object):
                     nodes.append(newnode)
         return self.copy(table=new_table)
 
-    def to_huginnet_node(self):
+    def to_huginnet_node(self, include_layout=False):
         rv = self.pgm.vars[self.rv]
         lines = ["node {} {{".format(rv.clean()),
-                 "  label = \"{}\";".format(self.rv),
-                 "  position = (100,100);",
-                 "  states = ({});".format(' '.join(['"{}"'.format(v) for v in rv.values])),
+                 "  label = \"{}\";".format(self.rv)]
+        if include_layout:
+            lines += ["  position = (100,100);"]
+        lines += ["  states = ({});".format(' '.join(['"{}"'.format(v) for v in rv.values])),
                  "}\n"]
         return '\n'.join(lines)
 
-    def to_huginnet_potential(self):
+    def to_huginnet_potential(self, include_layout=False):
         rv = self.pgm.vars[self.rv]
         name = rv.clean()
         if len(self.parents) > 0:
