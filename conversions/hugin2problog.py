@@ -229,7 +229,7 @@ def main(argv=None):
         logger.info("Compressing tables took {:.3f} sec".format(ts2 - ts1))
         ts1 = ts2
     if args.split:
-        pgm = pgm.split(set(args.split.split(',')))
+        pgm = pgm.split_topological(set(args.split.split(',')))
     if pgm is None:
         error('Could not build PGM structure', halt=True)
     if args.splitoutput:

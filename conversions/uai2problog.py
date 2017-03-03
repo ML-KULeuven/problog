@@ -312,7 +312,7 @@ def main(argv=None):
     if args.compress:
         pgm = pgm.compress_tables(allow_disjunct=args.allowdisjunct)
     if args.split:
-        pgm = pgm.split(set(args.split.split(',')))
+        pgm = pgm.split_topological(set(args.split.split(',')))
     if pgm is None:
         error('Could not build PGM structure', halt=True)
     if args.splitoutput:

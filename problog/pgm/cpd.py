@@ -71,6 +71,73 @@ class PGM(object):
             variables=variables
         )
 
+    def split_topological(self, split_vars):
+        """Split the PGM based on the given set of variables.
+
+        The graph will be split in two graphs where all nodes in graph 1 are an ancestor
+        of a variable in the given set of split variables.
+
+        TODO: We split on all parents. Would be sufficient to split on parents with lower
+              index. But this requires a marginalize operator
+
+        :param split_vars: Set of variable names.
+        """
+        if not self.directed:
+            return self
+
+        children = dict()
+        for factor in self.factors.values():
+            if factor.rv is not None and factor.rv not in children:
+                children[factor.rv] = set()
+            for parent in factor.parents:
+                if parent in children:
+                    children[parent].add(factor.rv)
+                else:
+                    children[parent] = {factor.rv}
+
+        all_links = set(children.keys())
+        nonroot = reduce(set.union, children.values())
+        root = all_links - nonroot
+
+        first_roots = set()
+        queue = list(split_vars)
+        while len(queue) > 0:
+            qvar = queue.pop()
+            if len(self.factors[qvar].parents) > 0:
+                queue.extend(self.factors[qvar].parents)
+            else:
+                first_roots.add(qvar)
+        delay_roots= root - first_roots
+
+        factor_strata = self.factors_topological(keep_strata=True, delay_roots=[delay_roots])
+        for fs_i, fs in enumerate(factor_strata):
+            print('{}: {}'.format(fs_i, ', '.join([f.rv for f in fs])))
+        strata = dict()
+        for strata_i, factors in enumerate(factor_strata):
+            for factor in factors:
+                strata[factor.rv] = strata_i
+        max_strata = max((strata[svar] for svar in split_vars))
+
+        def rootvar(var):
+            return var+"_root"
+        pgm = self.copy(factors=[])
+        for factor in self.factors.values():
+            if strata[factor.rv] <= max_strata and any((strata[cvar] > max_strata for cvar in children[factor.rv])):
+                nb_values = len(self.vars[factor.rv].values)
+                pgm.add_var(self.vars[factor.rv].copy(name=rootvar(factor.rv)))
+                pgm.add_factor(Factor(pgm, rootvar(factor.rv), [], [1.0 / nb_values] * nb_values))
+            if strata[factor.rv] > max_strata and any((strata[pvar] <= max_strata for pvar in factor.parents)):
+                parents = []
+                for pvar in factor.parents:
+                    if strata[pvar] <= max_strata:
+                        parents.append(rootvar(pvar))
+                    else:
+                        parents.append(pvar)
+                pgm.add_factor(factor.copy(pgm=pgm, parents=parents))
+            else:
+                pgm.add_factor(factor.copy(pgm=pgm))
+        return pgm
+
     def split(self, variables):
         """Split the PGM based on the given set of variables.
 
@@ -154,9 +221,11 @@ class PGM(object):
         else:
             self.factors[name] = factor
 
-    def factors_topological(self):
+    def factors_topological(self, keep_strata=False, delay_roots=None):
         """Return the factors in a topological order."""
         # Links from parent-node to child-node
+        if delay_roots is None:
+            delay_roots = []
         if not self.directed:
             return self.factors.values()
         links = dict()
@@ -171,10 +240,17 @@ class PGM(object):
         all_links = set(links.keys())
         nonroot = reduce(set.union, links.values())
         root = all_links - nonroot
-        queue = root
+        if delay_roots:
+            queue = root - reduce(set.union, delay_roots)
+        else:
+            queue = root
         visited = set()
         factors = []
-        while len(queue) > 0:
+        while len(queue) > 0 or len(delay_roots) > 0:
+            if len(queue) == 0:
+                queue = delay_roots.pop()
+            strata = []
+            visited_new = set()
             for rv in queue:
                 if rv in visited:
                     continue
@@ -190,8 +266,14 @@ class PGM(object):
                         all_parents_visited = False
                         break
                 if all_parents_visited:
-                    factors.append(factor)
-                    visited.add(rv)
+                    strata.append(factor)
+                    visited_new.add(rv)
+            visited.update(visited_new)
+            if keep_strata:
+                if len(strata) > 0:
+                    factors.append(strata)
+            else:
+                factors.extend(strata)
             queue2 = set()
             for rv in queue:
                 if rv in links:
