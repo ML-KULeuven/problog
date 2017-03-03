@@ -1,6 +1,5 @@
 """
-Conditional Probability Distributions (CPD) to expert ProbLog to a
-Probabilistic Graphical Model (PGM).
+Conditional Probability Distributions.
 
 Copyright 2015 KU Leuven, DTAI Research Group
 
@@ -36,12 +35,19 @@ class PGM(object):
     __count = 0
 
     def __init__(self, directed=True, variables=None, factors=None, name=None):
-        """Probabilistic Graphical Model."""
+        """Probabilistic Graphical Model.
+
+        Simple Probabilistic Graphical Model (PGM) representation to
+        - translate between PGMs and ProbLog
+        - translate between different PGM formats
+        - perform a number of PGM transformations (split, compress, ...)
+        """
         PGM.__count += 1
         if name:
             self.name = name
         else:
             self.name = 'PGM {}'.format(PGM.__count)
+            PGM.__count += 1
         self.directed = directed
         self.factors = OrderedDict()
         self.vars = OrderedDict()
@@ -208,9 +214,8 @@ class PGM(object):
         """
         assert self.directed
         cpds = [cpd.to_factor() for cpd in self.factors_topological()]
-        lines = ["%% Hugin Net format",
+        lines = ["%% Hugin Net: {}\n".format(self.name),
                  "%% Created on {}\n".format(datetime.now()),
-                 "%% Network\n",
                  "net {",
                  "  node_size = (50,50);",
                  "}\n",
@@ -223,6 +228,7 @@ class PGM(object):
     def to_xdsl(self):
         """Export PGM to the XDSL format defined by SMILE.
         https://dslpitt.org/genie/wiki/Appendices:_XDSL_File_Format_-_XML_Schema_Definitions
+        http://support.bayesfusion.com/docs/
         """
         assert self.directed
         cpds = [cpd.to_factor() for cpd in self.factors_topological()]
@@ -232,7 +238,7 @@ class PGM(object):
         lines += [cpd.to_xdsl_cpt() for cpd in cpds]
         lines += ['  </nodes>',
                   '  <extensions>',
-                  '    <genie version="1.0" app="ProbLog" name="Network1" faultnameformat="nodestate">']
+                  '    <genie version="1.0" app="ProbLog" name="{}" faultnameformat="nodestate">'.format(self.name)]
         lines += [cpd.to_xdsl_node() for cpd in cpds]
         lines += ['    </genie>',
                   '  </extensions>',
@@ -267,7 +273,7 @@ class PGM(object):
         :param drop_zero: Do not include head literals with probability zero
         """
         factors = [factor.to_factor() for factor in self.factors_topological()]
-        lines = ["%% ProbLog program",
+        lines = ["%% ProbLog program: {}".format(self.name),
                  "%% Created on {}\n".format(datetime.now())]
         if self.directed:
             lines += [factor.to_problog(self, drop_zero=drop_zero,
@@ -288,7 +294,11 @@ class PGM(object):
         http://www.graphviz.org
         """
         assert self.directed
-        lines = ['digraph bayesnet {']
+        lines = [
+            '// Graphiz DOT: {}'.format(self.name),
+            "// Created on {}\n".format(datetime.now()),
+            'digraph pgm {'
+        ]
         for cpd in self.factors.values():
             lines.append('  {} [label="{}"];'.format(self.vars[cpd.rv].clean(), cpd.rv))
             for p in cpd.parents:
@@ -502,7 +512,8 @@ class Factor(object):
                     else:
                         iv -= r * math.log(r, 2)
                 igr = ig / iv  # Information Gain Ratio
-                # print('ig={:.4f}, iv={:.4f}, igr={:.4f}, hc={:.4f}, idx={}, parent={}'.format(ig, iv, igr, h_cur, parent_idx, self.parents[parent_idx]))
+                # print('ig={:.4f}, iv={:.4f}, igr={:.4f}, hc={:.4f}, idx={}, parent={}'
+                # .format(ig, iv, igr, h_cur, parent_idx, self.parents[parent_idx]))
                 if igr > igr_max:
                     igr_max = igr
                     igr_idx = parent_idx
@@ -638,7 +649,7 @@ class Factor(object):
                 for idx, vv in enumerate(v):
                     if not (drop_zero and vv == 0.0):
                         head_problits.append((vv, var.to_problog_value(var.values[idx], value_as_term)))
-            else:
+            elif isinstance(var.boolean_true, int):
                 if drop_zero and v[var.boolean_true] == 0.0 and use_neglit:
                     head_problits.append((None, var.to_problog_value(var.values[1 - var.boolean_true], value_as_term)))
                 elif v[var.boolean_true] == 1.0:
