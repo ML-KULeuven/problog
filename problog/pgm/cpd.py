@@ -26,11 +26,22 @@ from functools import reduce
 import sys
 import math
 from collections import Counter, defaultdict, OrderedDict
+import logging
+
+
+logger = logging.getLogger('be.kuleuven.cs.dtai.problog.cpd')
 
 
 class PGM(object):
-    def __init__(self, directed=True, variables=None, factors=None):
+    __count = 0
+
+    def __init__(self, directed=True, variables=None, factors=None, name=None):
         """Probabilistic Graphical Model."""
+        PGM.__count += 1
+        if name:
+            self.name = name
+        else:
+            self.name = 'PGM {}'.format(PGM.__count)
         self.directed = directed
         self.factors = OrderedDict()
         self.vars = OrderedDict()
@@ -75,6 +86,49 @@ class PGM(object):
             else:
                 pgm.add_factor(factor.copy(pgm=pgm))
         return pgm
+
+    def to_connected_parts(self):
+        """Return a set of PGMs that are disconnected."""
+        children = dict()
+        for factor in self.factors.values():
+            if factor.rv is not None and factor.rv not in children:
+                children[factor.rv] = set()
+            for parent in factor.parents:
+                if parent in children:
+                    children[parent].add(factor.rv)
+                else:
+                    children[parent] = {factor.rv}
+        parts = dict()
+        nb_parts = 0
+        vars = list(self.vars.values())
+        queue = [(v.name, None) for v in vars[1:]]
+        queue.append((vars[0].name, 0))
+        while len(queue) > 0:
+            var, cur_part = queue.pop()
+            if var in parts:
+                continue
+            if cur_part is None:
+                nb_parts += 1
+                cur_part = nb_parts
+            parts[var] = cur_part
+            logger.debug('PGM[{}] = {}'.format(var, cur_part))
+            for cvar in children[var]:
+                logger.debug('{} -> {}'.format(var, cvar))
+                queue.append((cvar, cur_part))
+            for pvar in self.factors[var].parents:
+                logger.debug('{} -> {}'.format(pvar, var))
+                queue.append((pvar, cur_part))
+        nb_parts += 1
+        pgms = [self.copy(factors=[], variables=[]) for i in range(nb_parts)]
+        logger.debug('Creating {} PGMs'.format(len(pgms)))
+        for var, part in parts.items():
+            factor = self.factors[var]
+            if factor.rv:
+                pgms[part].add_var(self.vars[factor.rv].copy())
+            for pvar in factor.parents:
+                pgms[part].add_var(self.vars[pvar].copy())
+            pgms[part].add_factor(factor.copy())
+        return pgms
 
     def add_var(self, var):
         self.vars[var.name] = var

@@ -313,21 +313,35 @@ def main(argv=None):
         pgm = pgm.split(set(args.split.split(',')))
     if pgm is None:
         error('Could not build PGM structure', halt=True)
-
-    ofile = sys.stdout
-    if args.output is not None:
-        ofile = open(args.output, 'w')
-    if args.output_format in ["uai", "uai08"]:
-        print(pgm.to_uai08(), file=ofile)
-    elif args.output_format == "hugin":
-        print(pgm.to_hugin_net(), file=ofile)
-    elif args.output_format in ["smile", "xdsl"]:
-        print(pgm.to_xdsl(), file=ofile)
-    elif args.output_format in ["graphiz", "dot"]:
-        print(pgm.to_graphviz(), file=ofile)
+    if args.splitoutput:
+        pgms = pgm.to_connected_parts()
     else:
-        print(pgm.to_problog(drop_zero=uai_parser.drop_zero, use_neglit=uai_parser.use_neglit), file=ofile)
+        pgms = [pgm]
 
+    for pgm_i, pgm in enumerate(pgms):
+        if args.output:
+            if len(pgms) == 1:
+                fn = args.output
+            else:
+                fn_base, fn_ext = os.path.splitext(args.output)
+                fn = fn_base + '.' + str(pgm_i) + fn_ext
+            ofile = open(fn, 'w')
+        else:
+            ofile = sys.stdout
+        try:
+            if args.output_format in ["uai", "uai08"]:
+                print(pgm.to_uai08(), file=ofile)
+            elif args.output_format == "hugin":
+                print(pgm.to_hugin_net(), file=ofile)
+            elif args.output_format in ["smile", "xdsl"]:
+                print(pgm.to_xdsl(), file=ofile)
+            elif args.output_format in ["graphiz", "dot"]:
+                print(pgm.to_graphviz(), file=ofile)
+            else:
+                print(pgm.to_problog(drop_zero=uai_parser.drop_zero, use_neglit=uai_parser.use_neglit), file=ofile)
+        finally:
+            if args.output:
+                ofile.close()
 
 if __name__ == "__main__":
     sys.exit(main())

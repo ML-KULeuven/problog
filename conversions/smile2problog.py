@@ -119,6 +119,7 @@ def main(argv=None):
                         help='Consider all ADs to represent functions of mutual exclusive conditions (like in a \
                               Bayesian net)')
     parser.add_argument('--split', help='Comma-separated list of variable names to split on')
+    parser.add_argument('--split-output', dest='splitoutput', action='store_true', help='Create one output file per connected network')
     parser.add_argument('--output', '-o', help='Output file')
     parser.add_argument('--output-format', default='problog',
                         help='Output format (\'problog\', \'uai\', \'hugin\', \'xdsl\', \'dot\', \'graphviz\')')
@@ -154,25 +155,36 @@ def main(argv=None):
         pgm = pgm.split(set(args.split.split(',')))
     if pgm is None:
         error('Could not build PGM structure', halt=True)
+    if args.splitoutput:
+        pgms = pgm.to_connected_parts()
+    else:
+        pgms = [pgm]
 
-    ofile = sys.stdout
-    if args.output:
-        ofile = open(args.output, 'w')
-    try:
-        if args.output_format in ["uai", "uai08"]:
-            print(pgm.to_uai08(), file=ofile)
-        elif args.output_format == "hugin":
-            print(pgm.to_hugin_net(), file=ofile)
-        elif args.output_format in ["smile", "xdsl"]:
-            print(pgm.to_xdsl(), file=ofile)
-        elif args.output_format in ["graphiz", "dot"]:
-            print(pgm.to_graphviz(), file=ofile)
-        else:
-            print(pgm.to_problog(drop_zero=drop_zero, use_neglit=use_neglit, value_as_term=args.valueinatomname,
-                                 ad_is_function=args.adisfunction), file=ofile)
-    finally:
+    for pgm_i, pgm in enumerate(pgms):
         if args.output:
-            ofile.close()
+            if len(pgms) == 1:
+                fn = args.output
+            else:
+                fn_base, fn_ext = os.path.splitext(args.output)
+                fn = fn_base + '.' + str(pgm_i) + fn_ext
+            ofile = open(fn, 'w')
+        else:
+            ofile = sys.stdout
+        try:
+            if args.output_format in ["uai", "uai08"]:
+                print(pgm.to_uai08(), file=ofile)
+            elif args.output_format == "hugin":
+                print(pgm.to_hugin_net(), file=ofile)
+            elif args.output_format in ["smile", "xdsl"]:
+                print(pgm.to_xdsl(), file=ofile)
+            elif args.output_format in ["graphiz", "dot"]:
+                print(pgm.to_graphviz(), file=ofile)
+            else:
+                print(pgm.to_problog(drop_zero=drop_zero, use_neglit=use_neglit, value_as_term=args.valueinatomname,
+                                     ad_is_function=args.adisfunction), file=ofile)
+        finally:
+            if args.output:
+                ofile.close()
 
 
 if __name__ == "__main__":
