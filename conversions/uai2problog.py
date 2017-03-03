@@ -277,6 +277,8 @@ def main(argv=None):
     parser.add_argument('--allowdisjunct', action='store_true', help='Allow disjunctions in the body')
     parser.add_argument('--compress', action='store_true', help='Compress tables')
     parser.add_argument('--split', help='Comma-separated list of variable names to split on')
+    parser.add_argument('--split-output', dest='splitoutput', action='store_true',
+                        help='Create one output file per connected network')
     parser.add_argument('--output', '-o', help='Output file')
     parser.add_argument('--output-format', default='problog',
                         help='Output format (\'problog\', \'uai\', \'hugin\', \'xdsl\')')

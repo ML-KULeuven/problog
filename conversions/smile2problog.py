@@ -119,7 +119,8 @@ def main(argv=None):
                         help='Consider all ADs to represent functions of mutual exclusive conditions (like in a \
                               Bayesian net)')
     parser.add_argument('--split', help='Comma-separated list of variable names to split on')
-    parser.add_argument('--split-output', dest='splitoutput', action='store_true', help='Create one output file per connected network')
+    parser.add_argument('--split-output', dest='splitoutput', action='store_true',
+                        help='Create one output file per connected network')
     parser.add_argument('--output', '-o', help='Output file')
     parser.add_argument('--output-format', default='problog',
                         help='Output format (\'problog\', \'uai\', \'hugin\', \'xdsl\', \'dot\', \'graphviz\')')
