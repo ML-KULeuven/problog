@@ -116,3 +116,51 @@ class BNParser:
             finally:
                 if args.output:
                     ofile.close()
+
+
+def main(argv=None):
+    description = 'Translate Bayesian net to ProbLog'
+    parser = argparse.ArgumentParser(description=description)
+    parser.add_argument('--verbose', '-v', action='count', default=0, help='Verbose output')
+    parser.add_argument('--quiet', '-q', action='count', default=0, help='Quiet output')
+    parser.add_argument('--input-format', help='Input type (\'smile\', \'hugin\', \'uai\')')
+    BNParser.add_parser_arguments(parser)
+    args = parser.parse_args(argv)
+
+    logger.setLevel(max(logging.INFO - 10 * (args.verbose - args.quiet), logging.DEBUG))
+    logger.addHandler(logging.StreamHandler(sys.stdout))
+
+    parser = None
+    input_format = None
+    if args.input_format:
+        input_format = args.input_format
+    else:
+        # try to infer
+        _, ext = os.path.splitext(args.input)
+        if ext in ['.uai']:
+            input_format = 'uai'
+        elif ext in ['.net']:
+            input_format = 'hugin'
+        elif ext in ['.xdsl']:
+            input_format = 'smile'
+
+    if input_format is None:
+        logger.error('No file format given or detected (.uai, .net, .xdsl).')
+        sys.exit(1)
+
+    if input_format in ['uai', 'uai08']:
+        from uai2problog import UAIParser
+        parser = UAIParser(args)
+    elif input_format in ['hugin', 'net']:
+        from hugin2problog import HuginParser
+        parser = HuginParser(args)
+    elif input_format in ['smile', 'xdsl']:
+        from smile2problog import SmileParser
+        parser = SmileParser(args)
+
+    if parser:
+        parser.run(args)
+
+
+if __name__ == "__main__":
+    sys.exit(main())
