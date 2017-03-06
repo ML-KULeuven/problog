@@ -72,6 +72,28 @@ def str2bool(s):
         return None
 
 
+def str2num(s):
+    if s.is_constant() and (s.is_float() or s.is_integer()):
+        return True, s.compute_value()
+    else:
+        return None, None
+
+cdist_names = ['normal']
+
+def dist_prob(d, x, eps=1e-3):
+    """Compute the probability of the value x given the distribution d (use interval 2*eps around x)."""
+    import scipy.stats
+    # TODO Put in more general, easier to extend location
+    # TODO add more distributions
+    # TODO use density instead of interval
+    if d.functor == 'normal':
+        m, s = map(float, d.args)
+        return scipy.stats.norm(m, s).cdf(x + eps) - \
+               scipy.stats.norm(m, s).cdf(x - eps)
+    else:
+        raise ValueError("Distribution not supported '%s'" % d.functor)
+
+
 class LFIProblem(SemiringProbability, LogicProgram):
 
     def __init__(self, source, examples, max_iter=10000, min_improv=1e-10, verbose=0, knowledge=None,
@@ -179,9 +201,11 @@ class LFIProblem(SemiringProbability, LogicProgram):
         if isinstance(weight, dict):
             return list(weight.items())
         else:
+            print('Return t({})'.form(weight))
             return [(Term('t'), weight)]
 
     def _set_weight(self, index, args, weight):
+        print("_set_weight({},{},{})".format(index, args, weight))
         index = int(index)
         if not args:
             assert not isinstance(self._weights[index], dict)
@@ -209,7 +233,7 @@ class LFIProblem(SemiringProbability, LogicProgram):
         if self.propagate_evidence:
             result = ExampleSet()
             for index, example in enumerate(self.examples):
-                atoms, values = zip(*example)
+                atoms, values, cvalues = zip(*example)
                 result.add(index, atoms, values)
             return result
         else:
@@ -235,6 +259,92 @@ class LFIProblem(SemiringProbability, LogicProgram):
         self._compiled_examples = examples
 
     def _process_atom(self, atom, body):
+        """Returns tuple ( prob_atom, [ additional clauses ] )"""
+        result = None
+        if isinstance(atom, Or):
+            result = self._process_atom_discr(atom, body)
+        if result is None and atom.probability.functor == 't' and \
+                isinstance(Term, atom.probability.args[0]):
+            cdist= atom.probability.args[0]
+            if cdist.function in cdist_names:
+                result = self._process_atom_cont(atom, body)
+        if result is None:
+            result =  self._process_atom_discr(atom, body)
+        return result
+
+    def _process_atom_cont(self, atom, body):
+        """Returns tuple ( prob_atom, [ additional clauses ] )"""
+        atoms_out = []
+        extra_clauses = []
+
+        has_lfi_fact = False
+        available_probability = 1.0
+
+        if atom.probability and atom.probability.functor == 't':
+            has_lfi_fact = True
+            cdist = atom.probability.args[0]
+            if isinstance(cdist, Term) and cdist.function in cdist_names:
+                start_dist = cdist
+            else:
+                start_dist = None
+
+            # Learnable probability
+            print('get start_value from {}'.format(atom.probability.args[0]))
+
+            # Replace anonymous variables with non-anonymous variables.
+            class ReplaceAnon(object):
+
+                def __init__(self):
+                    self.cnt = 0
+
+                def __getitem__(self, key):
+                    if key == '_':
+                        self.cnt += 1
+                        return Var('anon_%s' % self.cnt)
+                    else:
+                        return Var(key)
+
+            # TODO: Continue from here
+            atom1 = atom.apply(ReplaceAnon())
+            prob_args = atom.probability.args[1:]
+
+            # 1) Introduce a new fact
+            lfi_fact = Term('lfi_fact', Constant(self.count), Term('t', *prob_args), *atom1.args)
+            lfi_prob = Term('lfi', Constant(self.count), Term('t', *prob_args))
+
+            # 2) Replacement atom
+            replacement = lfi_fact.with_probability(lfi_prob)
+            if body is None:
+                new_body = lfi_fact
+            else:
+                new_body = body & lfi_fact
+
+            # 3) Create redirection clause
+            extra_clauses += [Clause(atom1.with_probability(), new_body)]
+
+            self._adatoms[-1][1].append(len(self._weights))
+            # 4) Set initial weight
+            if start_dist is None:
+                self._add_weight(random_weights.pop(-1))
+            else:
+                print('do add_weight {}'.format(start_value))
+                self._add_weight(start_value)
+
+            # 5) Add name
+            self.names.append(atom)
+            atoms_out.append(replacement)
+        else:
+            atoms_out.append(atom)
+
+        if has_lfi_fact:
+            return [atoms_out[0]] + extra_clauses
+        else:
+            if body is None:
+                return [atoms_out[0]]
+            else:
+                return [Clause(atoms_out[0], body)]
+
+    def _process_atom_discr(self, atom, body):
         """Returns tuple ( prob_atom, [ additional clauses ] )"""
         if isinstance(atom, Or):
             # Annotated disjunction
@@ -283,6 +393,7 @@ class LFIProblem(SemiringProbability, LogicProgram):
                 has_lfi_fact = True
 
                 # Learnable probability
+                print('get start_value from {}'.format(atom.probability.args[0]))
                 try:
                     start_value = float(atom.probability.args[0])
                 except InstantiationError:
@@ -325,6 +436,7 @@ class LFIProblem(SemiringProbability, LogicProgram):
                 if start_value is None:
                     self._add_weight(random_weights.pop(-1))
                 else:
+                    print('do add_weight {}'.format(start_value))
                     self._add_weight(start_value)
 
                 # 5) Add name
@@ -650,6 +762,7 @@ class ExampleEvaluator(SemiringProbability):
         :return: current weight
         :rtype: float
         """
+        print('value({})'.format(a))
         if isinstance(a, Term) and a.functor == 'lfi':
             # index = int(a.args[0])
             return self._get_weight(*a.args)
@@ -704,11 +817,18 @@ def extract_evidence(pl):
             atoms.append((-atom, Term('false')))
         else:
             atoms.append((atom, Term('true')))
-    return [(at, str2bool(vl)) for at, vl in atoms]
+    result = []
+    for at, vl in atoms:
+        vlr = str2bool(vl)
+        vlv = None
+        if vlr is None:  # TODO: also check that atom is a continuous distribution
+            vlr, vlv = str2num(vl)
+        result.append((at, vlr, vlv))
+    # return [(at, str2bool(vl)) for at, vl in atoms]
+    return result
 
 
 def read_examples(*filenames):
-    
     for filename in filenames:
         engine = DefaultEngine()
         
@@ -740,6 +860,8 @@ class DefaultDict(object):
 
     
 def run_lfi(program, examples, output_model=None, **kwdargs):
+    print('run_lfi')
+    print(examples)
     lfi = LFIProblem(program, examples, **kwdargs)
     score = lfi.run()
 
