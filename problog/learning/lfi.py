@@ -133,6 +133,7 @@ class LFIProblem(SemiringProbability, LogicProgram):
         self._weights = []
 
         self.examples = examples
+        print('LFIProblem.examples = ', examples)
         self.leakprob = leakprob
         self.leakprobatoms = None
         self.propagate_evidence = propagate_evidence
@@ -165,7 +166,9 @@ class LFIProblem(SemiringProbability, LogicProgram):
         """
         if isinstance(a, Term) and a.functor == 'lfi':
             # index = int(a.args[0])
-            return self._get_weight(*a.args)
+            w = self._get_weight(*a.args)
+            print('LFIProblem.value({}) = {}'.format(a, w))
+            return w
         else:
             return float(a)
          
@@ -181,6 +184,7 @@ class LFIProblem(SemiringProbability, LogicProgram):
     def _get_weight(self, index, args, strict=True):
         index = int(index)
         weight = self._weights[index]
+        print('get_weight({}, {}) = {}'.format(index, args, weight))
         if isinstance(weight, dict):
             if strict:
                 return weight[args]
@@ -234,14 +238,14 @@ class LFIProblem(SemiringProbability, LogicProgram):
             result = ExampleSet()
             for index, example in enumerate(self.examples):
                 atoms, values, cvalues = zip(*example)
-                result.add(index, atoms, values)
+                result.add(index, atoms, values, cvalues)
             return result
         else:
             # smarter: compile-once all examples with same atoms
             result = ExampleSet()
             for index, example in enumerate(self.examples):
-                atoms, values = zip(*example)
-                result.add(index, atoms, values)
+                atoms, values, cvalues = zip(*example)
+                result.add(index, atoms, values, cvalues)
             return result
     
     def _compile_examples(self):
@@ -264,9 +268,10 @@ class LFIProblem(SemiringProbability, LogicProgram):
         if isinstance(atom, Or):
             result = self._process_atom_discr(atom, body)
         if result is None and atom.probability.functor == 't' and \
-                isinstance(Term, atom.probability.args[0]):
+                isinstance(atom.probability.args[0], Term) and \
+                not isinstance(atom.probability.args[0], Var):
             cdist= atom.probability.args[0]
-            if cdist.function in cdist_names:
+            if cdist.functor in cdist_names:
                 result = self._process_atom_cont(atom, body)
         if result is None:
             result =  self._process_atom_discr(atom, body)
@@ -274,6 +279,7 @@ class LFIProblem(SemiringProbability, LogicProgram):
 
     def _process_atom_cont(self, atom, body):
         """Returns tuple ( prob_atom, [ additional clauses ] )"""
+        print('process_atom_cont({}, {}'.format(atom, body))
         atoms_out = []
         extra_clauses = []
 
@@ -283,17 +289,34 @@ class LFIProblem(SemiringProbability, LogicProgram):
         if atom.probability and atom.probability.functor == 't':
             has_lfi_fact = True
             cdist = atom.probability.args[0]
-            if isinstance(cdist, Term) and cdist.function in cdist_names:
+            if isinstance(cdist, Term) and cdist.functor in cdist_names:
                 start_dist = cdist
+                if cdist.functor == 'normal':
+                    start_params = [None, None]
+                    try:
+                        start_params[0] = float(cdist.args[0])
+                    except InstantiationError:
+                        start_params[0] = None
+                    except ArithmeticError:
+                        start_params[0] = None
+                    try:
+                        start_params[1] = float(cdist.args[1])
+                    except InstantiationError:
+                        start_params[1] = None
+                    except ArithmeticError:
+                        start_params[1] = None
+                else:
+                    start_params = None
             else:
                 start_dist = None
+                start_params = None
+            print('start_dist: {} with params {}'.format(start_dist, start_params))
 
             # Learnable probability
-            print('get start_value from {}'.format(atom.probability.args[0]))
+            print('get start_value from {}'.format(cdist))
 
             # Replace anonymous variables with non-anonymous variables.
             class ReplaceAnon(object):
-
                 def __init__(self):
                     self.cnt = 0
 
@@ -311,6 +334,7 @@ class LFIProblem(SemiringProbability, LogicProgram):
             # 1) Introduce a new fact
             lfi_fact = Term('lfi_fact', Constant(self.count), Term('t', *prob_args), *atom1.args)
             lfi_prob = Term('lfi', Constant(self.count), Term('t', *prob_args))
+            print('new facts', lfi_fact, lfi_prob)
 
             # 2) Replacement atom
             replacement = lfi_fact.with_probability(lfi_prob)
@@ -318,17 +342,23 @@ class LFIProblem(SemiringProbability, LogicProgram):
                 new_body = lfi_fact
             else:
                 new_body = body & lfi_fact
+            print('replacement', replacement)
 
             # 3) Create redirection clause
             extra_clauses += [Clause(atom1.with_probability(), new_body)]
+            print('extra_clauses', extra_clauses)
 
-            self._adatoms[-1][1].append(len(self._weights))
             # 4) Set initial weight
             if start_dist is None:
-                self._add_weight(random_weights.pop(-1))
-            else:
-                print('do add_weight {}'.format(start_value))
-                self._add_weight(start_value)
+                raise Exception('no start dist defined')
+            elif start_dist.functor == 'normal':
+                if start_params[0] is None:
+                    start_params[0] = Constant(0)
+                if start_params[1] is None:
+                    start_params[1] = Constant(1e9)
+                start_dist = start_dist.with_args(start_params[0], start_params[1])
+                print('do add_weight {}'.format(start_dist))
+                self._add_weight(start_dist)
 
             # 5) Add name
             self.names.append(atom)
@@ -688,10 +718,10 @@ class ExampleSet(object):
     def __init__(self):
         self._examples = {}
 
-    def add(self, index, atoms, values):
-        ex = self._examples.get((atoms, values))
+    def add(self, index, atoms, values, cvalues):
+        ex = self._examples.get((atoms, values, cvalues))
         if ex is None:
-            self._examples[(atoms,values)] = Example(index, atoms, values)
+            self._examples[(atoms,values, cvalues)] = Example(index, atoms, values, cvalues)
         else:
             ex.add_index(index)
 
@@ -701,10 +731,11 @@ class ExampleSet(object):
 
 class Example(object):
 
-    def __init__(self, index, atoms, values):
+    def __init__(self, index, atoms, values, cvalues):
         """An example consists of a list of atoms and their corresponding values (True/False)."""
         self.atoms = tuple(atoms)
         self.values = tuple(values)
+        self.cvalues = tuple(cvalues)
         self.compiled = []
         self.n = [index]
 
@@ -737,6 +768,7 @@ class Example(object):
 class ExampleEvaluator(SemiringProbability):
 
     def __init__(self, weights):
+        print('ExampleEvaluator.init', weights)
         SemiringProbability.__init__(self)
         self._weights = weights
 
@@ -762,19 +794,22 @@ class ExampleEvaluator(SemiringProbability):
         :return: current weight
         :rtype: float
         """
-        print('value({})'.format(a))
         if isinstance(a, Term) and a.functor == 'lfi':
             # index = int(a.args[0])
-            return self._get_weight(*a.args)
+            w = self._get_weight(*a.args)
+            print('ExampleEvaluator.value({}) = {}'.format(a, w))
+            return w
         else:
             return float(a)
 
     def __call__(self, example):
         """Evaluate the model with its current estimates for all examples."""
 
+        print('ExampleEvaluator.__call__({},{},{},{})'.format(example.n, example.atoms, example.values, example.cvalues))
         at = example.atoms
         val = example.values
         comp = example.compiled
+        print(type(comp))
         n = example.n
 
         evidence = {}
@@ -786,7 +821,32 @@ class ExampleEvaluator(SemiringProbability):
                     raise InconsistentEvidenceError(source=a, context=context)
             else:
                 evidence[a] = v
+
+        # Update continuous distributions
+        # TODO: if present
+        weights = {}
+        # Recompute weights based on given values.
+        for i, n, t in comp:
+            if t == 'atom':
+                print(i, n.name.functor)
+                if n.name.functor == 'lfi_fact':
+                    print(n.name)
+                    base = n.name.args[0]
+                    value = comp.get(base)
+                    print(base, value)
+                    if value is not None:
+                        p = dist_prob(n.probability, value)
+                        print(base, value, n.probability, p)
+                        weights[i] = p
+                    else:
+                        weights[i] = n.probability
+                else:
+                    weights[i] = n.probability
+        comp.set_weights(weights)
+        comp.force_weights()  # store weights directly in atoms (a bit of a hack, previous statement should be enough)
+
         try:
+            print('ExampleEvaluator.comp.get_evaluator(evidence={})'.format(evidence))
             evaluator = comp.get_evaluator(semiring=self, evidence=evidence)
         except InconsistentEvidenceError as err:
             if err.context == '':
@@ -796,6 +856,7 @@ class ExampleEvaluator(SemiringProbability):
             raise InconsistentEvidenceError(err.source, context)
         p_queries = {}
         # Probability of query given evidence
+        print('evaluator', evaluator)
         for name, node, label in evaluator.formula.labeled():
             w = evaluator.evaluate_fact(node)
             if w < 1e-6:
