@@ -82,6 +82,7 @@ cdist_names = ['normal']
 
 def dist_prob(d, x, eps=1e-3):
     """Compute the probability of the value x given the distribution d (use interval 2*eps around x)."""
+    print('dist_prob({}, {})'.format(d, x))
     import scipy.stats
     # TODO Put in more general, easier to extend location
     # TODO add more distributions
@@ -90,8 +91,26 @@ def dist_prob(d, x, eps=1e-3):
         m, s = map(float, d.args)
         return scipy.stats.norm(m, s).cdf(x + eps) - \
                scipy.stats.norm(m, s).cdf(x - eps)
-    else:
-        raise ValueError("Distribution not supported '%s'" % d.functor)
+    raise ValueError("Distribution not supported '%s'" % d.functor)
+
+
+def dist_prob_set(d, values):
+    """Fit parameters"""
+    import scipy.stats
+    if d.functor == 'normal':
+        pf = 0.0
+        mu = 0.0
+        std = 0.0
+        for value, weight in values:
+            pf += weight
+            mu += weight*value
+        mu /= pf
+        for value, weight in values:
+            std += weight*(value - mu)**2
+        std /= pf
+        std = math.sqrt(std)
+        return d.with_args(Constant(mu), Constant(std))
+    raise ValueError("Distribution not supported '%s'" % d.functor)
 
 
 class LFIProblem(SemiringProbability, LogicProgram):
@@ -125,12 +144,14 @@ class LFIProblem(SemiringProbability, LogicProgram):
 
         # The names of the atom for which we want to learn weights.
         self.names = []
+        self.name_to_cindex = defaultdict(lambda: defaultdict(lambda: list()))
 
         # The weights to learn.
         # The initial weights are of type 'float'.
         # When necessary they are replaced by a dictionary [t(arg1, arg2, ...) -> float]
         #  for weights of form t(SV, arg1, arg2, ...).
         self._weights = []
+        self._cweights = []
 
         self.examples = examples
         print('LFIProblem.examples = ', examples)
@@ -170,9 +191,10 @@ class LFIProblem(SemiringProbability, LogicProgram):
             print('LFIProblem.value({}) = {}'.format(a, w))
             return w
         else:
+            print('LFIProblem.value({}) = float({})'.format(a, a))
             return float(a)
          
-    @property 
+    @property
     def count(self):
         """Number of parameters to learn."""
         return len(self.names)
@@ -222,6 +244,9 @@ class LFIProblem(SemiringProbability, LogicProgram):
     def _add_weight(self, weight):
         self._weights.append(weight)
 
+    def _add_cweight(self, weight):
+        self._cweights.append(weight)
+
     def _process_examples(self):
         """Process examples by grouping together examples with similar structure.
     
@@ -238,14 +263,32 @@ class LFIProblem(SemiringProbability, LogicProgram):
             result = ExampleSet()
             for index, example in enumerate(self.examples):
                 atoms, values, cvalues = zip(*example)
-                result.add(index, atoms, values, cvalues)
+                cindices = []
+                for atom, cvalue in zip(atoms, cvalues):
+                    if cvalue is None:
+                        cindices.append(None)
+                    else:
+                        try:
+                            cindices.append(self.name_to_cindex[atom.functor][atom.args])
+                        except KeyError:
+                            raise ProbLogError('Could not find continuous atom {}'.format(atom))
+                result.add(index, atoms, values, cvalues, cindices)
             return result
         else:
             # smarter: compile-once all examples with same atoms
             result = ExampleSet()
             for index, example in enumerate(self.examples):
                 atoms, values, cvalues = zip(*example)
-                result.add(index, atoms, values, cvalues)
+                cindices = []
+                for atom, cvalue in zip(atoms, cvalues):
+                    if cvalue is None:
+                        cindices.append(None)
+                    else:
+                        try:
+                            cindices.append(self.name_to_cindex[atom.functor][atom.args])
+                        except KeyError:
+                            raise ProbLogError('Could not find continuous atom {}'.format(atom))
+                result.add(index, atoms, values, cvalues, cindices)
             return result
     
     def _compile_examples(self):
@@ -327,7 +370,6 @@ class LFIProblem(SemiringProbability, LogicProgram):
                     else:
                         return Var(key)
 
-            # TODO: Continue from here
             atom1 = atom.apply(ReplaceAnon())
             prob_args = atom.probability.args[1:]
 
@@ -350,7 +392,7 @@ class LFIProblem(SemiringProbability, LogicProgram):
 
             # 4) Set initial weight
             if start_dist is None:
-                raise Exception('no start dist defined')
+                raise ProbLogError('no start dist defined')
             elif start_dist.functor == 'normal':
                 if start_params[0] is None:
                     start_params[0] = Constant(0)
@@ -359,8 +401,10 @@ class LFIProblem(SemiringProbability, LogicProgram):
                 start_dist = start_dist.with_args(start_params[0], start_params[1])
                 print('do add_weight {}'.format(start_dist))
                 self._add_weight(start_dist)
+                self._add_cweight(0.0)
 
             # 5) Add name
+            self.name_to_cindex[atom.functor][atom.args].append(len(self.names))  # TODO: is this a good approach?
             self.names.append(atom)
             atoms_out.append(replacement)
         else:
@@ -468,6 +512,7 @@ class LFIProblem(SemiringProbability, LogicProgram):
                 else:
                     print('do add_weight {}'.format(start_value))
                     self._add_weight(start_value)
+                self._add_cweight(None)
 
                 # 5) Add name
                 self.names.append(atom)
@@ -516,10 +561,14 @@ class LFIProblem(SemiringProbability, LogicProgram):
 
                 index = self.output_names.index(atom)
                 weights = self.get_weights(index)
+                print('output weights: ', weights)
 
                 for w_args, w_val in weights:
                     translate = tuple(zip(atom.probability.args[1:], w_args.args))
-                    transforms[translate].append(atom.with_probability(Constant(w_val)))
+                    if isinstance(w_val, Term) and w_val.functor in cdist_names:
+                        transforms[translate].append(atom.with_probability(w_val))
+                    else:
+                        transforms[translate].append(atom.with_probability(Constant(w_val)))
                 self.output_names[index] = None
                 fixed_only = False
             else:
@@ -633,34 +682,43 @@ class LFIProblem(SemiringProbability, LogicProgram):
 
     def _evaluate_examples(self):
         """Evaluate the model with its current estimates for all examples."""
-        
+        print('LFIProblem._evaluate_examples')
         results = []
         i = 0
         logging.getLogger('problog_lfi').debug('Evaluating examples ...')
 
-        evaluator = ExampleEvaluator(self._weights)
+        evaluator = ExampleEvaluator(self._weights, self._cweights)
 
         return map(evaluator, self._compiled_examples)
     
     def _update(self, results):
         """Update the current estimates based on the latest evaluation results."""
-        
+
         fact_marg = defaultdict(float)
         fact_count = defaultdict(int)
+        fact_values = defaultdict(list)
         score = 0.0
-        for m, pEvidence, result in results:
+        for m, pEvidence, result, p_values in results:
             for fact, value in result.items():
                 index = fact.args[0:2]
                 fact_marg[index] += value * m
                 fact_count[index] += m
+                if index[0] in p_values:
+                    fact_values[index[0]].append(p_values[index[0]])
             try:
                 score += math.log(pEvidence)
             except ValueError:
                 raise ProbLogError('Inconsistent evidence.')
 
+        print(fact_values)
+
         for index in fact_marg:
-            if fact_count[index] > 0:
-                self._set_weight(index[0], index[1], fact_marg[index] / fact_count[index])
+            if index[0] in fact_values:
+                self._set_weight(index[0], index[1], dist_prob_set(self._get_weight(index[0], index[1]),
+                                                                   fact_values[index[0]]))
+            else:
+                if fact_count[index] > 0:
+                    self._set_weight(index[0], index[1], fact_marg[index] / fact_count[index])
 
         if self._enable_normalize:
             self._normalize_weights()
@@ -687,6 +745,7 @@ class LFIProblem(SemiringProbability, LogicProgram):
     def step(self):
         self.iteration += 1
         results = self._evaluate_examples()
+        print("Step {}: {}".format(self.iteration, results))
         return self._update(results)
 
     def get_model(self):
@@ -718,10 +777,10 @@ class ExampleSet(object):
     def __init__(self):
         self._examples = {}
 
-    def add(self, index, atoms, values, cvalues):
+    def add(self, index, atoms, values, cvalues, cindices):
         ex = self._examples.get((atoms, values, cvalues))
         if ex is None:
-            self._examples[(atoms,values, cvalues)] = Example(index, atoms, values, cvalues)
+            self._examples[(atoms,values, cvalues)] = Example(index, atoms, values, cvalues, cindices)
         else:
             ex.add_index(index)
 
@@ -731,11 +790,12 @@ class ExampleSet(object):
 
 class Example(object):
 
-    def __init__(self, index, atoms, values, cvalues):
+    def __init__(self, index, atoms, values, cvalues, cindices):
         """An example consists of a list of atoms and their corresponding values (True/False)."""
         self.atoms = tuple(atoms)
         self.values = tuple(values)
         self.cvalues = tuple(cvalues)
+        self.cindices = tuple(cindices)
         self.compiled = []
         self.n = [index]
 
@@ -753,12 +813,17 @@ class Example(object):
                                 evidence=list(zip(self.atoms, self.values)),
                                 propagate_evidence=lfi.propagate_evidence)
         for i, node, t in ground_program:
+            print(i, node, t)
             if t == 'atom' and isinstance(node.probability, Term) and node.probability.functor == 'lfi':
                 factargs = ()
                 if type(node.identifier) == tuple:
                     factargs = node.identifier[1]
                 fact = Term('lfi_fact', node.probability.args[0], node.probability.args[1], *factargs)
                 ground_program.add_query(fact, i)
+            elif t == 'atom':
+                # TODO: check if non-lfi and continuous and save locations to replace later
+                #       lfi continuous probs are associated with lfi/2
+                print(node.probability)
         self.compiled = lfi.knowledge.create_from(ground_program)
 
     def add_index(self, index):
@@ -767,13 +832,16 @@ class Example(object):
 
 class ExampleEvaluator(SemiringProbability):
 
-    def __init__(self, weights):
-        print('ExampleEvaluator.init', weights)
+    def __init__(self, weights, cweights):
+        print('ExampleEvaluator.init', weights, cweights)
         SemiringProbability.__init__(self)
         self._weights = weights
+        self._cweights = cweights
 
     def _get_weight(self, index, args, strict=True):
         index = int(index)
+        if self._cweights[index] is not None:
+            return self._cweights[index]
         weight = self._weights[index]
         if isinstance(weight, dict):
             if strict:
@@ -783,6 +851,13 @@ class ExampleEvaluator(SemiringProbability):
         else:
             return weight
 
+    def _set_cweight(self, index, args, weight):
+        index = int(index)
+        prev_cweight = self._cweights[index]
+        if isinstance(prev_cweight, dict):
+            prev_cweight[args] = weight
+        else:
+            self._cweights[index] = weight
 
     def value(self, a):
         """Overrides from SemiringProbability.
@@ -800,50 +875,47 @@ class ExampleEvaluator(SemiringProbability):
             print('ExampleEvaluator.value({}) = {}'.format(a, w))
             return w
         else:
+            print('ExampleEvaluator.value({}) = float({})'.format(a, a))
             return float(a)
 
     def __call__(self, example):
         """Evaluate the model with its current estimates for all examples."""
 
-        print('ExampleEvaluator.__call__({},{},{},{})'.format(example.n, example.atoms, example.values, example.cvalues))
+        print('ExampleEvaluator.__call__({},{},{},{},{})'.format(example.n, example.atoms, example.values, example.cvalues, example.cindices))
         at = example.atoms
         val = example.values
+        cval = example.cvalues
+        cind = example.cindices
         comp = example.compiled
         print(type(comp))
         n = example.n
 
+        print('_weights: ', self._weights)
         evidence = {}
-        for a, v in zip(at, val):
+        cevidence = {}
+        p_values = {}
+        for a, v, cv, ci in zip(at, val, cval, cind):
             if a in evidence:
+                if cv is not None:
+                    if cevidence[a] != cv:
+                        context = ' (found evidence({},{}) and evidence({},{}) in example {})'.format(
+                            a, evidence[a], a, cv, n + 1)
+                        raise InconsistentEvidenceError(source=a, context=context)
                 if evidence[a] != v:
                     context = ' (found evidence({},{}) and evidence({},{}) in example {})'.format(
                         a, evidence[a], a, v, n + 1)
                     raise InconsistentEvidenceError(source=a, context=context)
             else:
+                if cv is not None:
+                    cevidence[a] = (cv, ci)
+                    for cii in ci:
+                        cdist = self._weights[cii]
+                        if isinstance(cdist, dict):
+                            print(cdist)
+                            cdist = cdist.values()[0]  # TODO: this is hardcoded to first
+                        self._set_cweight(cii, None, dist_prob(cdist, cv))
+                        p_values[cii] = [cv, 0]
                 evidence[a] = v
-
-        # Update continuous distributions
-        # TODO: if present
-        weights = {}
-        # Recompute weights based on given values.
-        for i, n, t in comp:
-            if t == 'atom':
-                print(i, n.name.functor)
-                if n.name.functor == 'lfi_fact':
-                    print(n.name)
-                    base = n.name.args[0]
-                    value = comp.get(base)
-                    print(base, value)
-                    if value is not None:
-                        p = dist_prob(n.probability, value)
-                        print(base, value, n.probability, p)
-                        weights[i] = p
-                    else:
-                        weights[i] = n.probability
-                else:
-                    weights[i] = n.probability
-        comp.set_weights(weights)
-        comp.force_weights()  # store weights directly in atoms (a bit of a hack, previous statement should be enough)
 
         try:
             print('ExampleEvaluator.comp.get_evaluator(evidence={})'.format(evidence))
@@ -863,8 +935,11 @@ class ExampleEvaluator(SemiringProbability):
                 p_queries[name] = 0.0
             else:
                 p_queries[name] = w
+            if name.args[0] in p_values:
+                p_values[name.args[0]][1] = p_queries[name]
         p_evidence = evaluator.evaluate_evidence()
-        return len(n), p_evidence, p_queries
+        print(p_evidence, p_queries, p_values)
+        return len(n), p_evidence, p_queries, p_values
 
 
 def extract_evidence(pl):
@@ -1036,7 +1111,12 @@ def print_result(d, output, precision=8):
     success, d = d
     if success:
         score, weights, names, iterations, lfi = d
-        weights = list(map(lambda x: round(x, precision), weights))
+        weights_print = []
+        for weight in weights:
+            if isinstance(weight, Term) and weight.functor in cdist_names:
+                weights_print.append(weight)
+            else:
+                weights_print.append(round(weight, precision))
         print (score, weights, names, iterations, file=output)
         return 0
     else:
