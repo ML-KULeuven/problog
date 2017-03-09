@@ -30,9 +30,10 @@ import attr
 
 print("WARNING: py2problog.py is an experimental and incomplete library, use with caution.")
 
-## Settings
+# Settings
 
-@attr.s
+
+@attr.s(slots=True)
 class Settings:
     memoization = attr.ib(default=True)
     uniform_prob = attr.ib(default=True)
@@ -43,7 +44,7 @@ class Settings:
 settings = Settings()
 
 
-## Global variables
+# Global variables
 
 root_nodes = list()
 trace_stack = None
@@ -62,7 +63,8 @@ probabilistic_funcs = set()
 
 logger = logging.getLogger('be.kuleuven.be.dtai.problog')
 
-## Probabilistic primitives
+
+# Probabilistic primitives
 
 class ProbFactObject:
     def __init__(self, prob, name=None):
@@ -171,7 +173,7 @@ class ADObject:
 
     def get_idx(self, value):
         idx = None
-        for pr,v in self.probs:
+        for pr, v in self.probs:
             if v == value:
                 return idx
         return idx
@@ -190,7 +192,7 @@ class ADObject:
         r = random.random()
         s = 0
         rvalue = None
-        for pr,rv in self.probs:
+        for pr, rv in self.probs:
             if settings.uniform_prob:
                 prob = pr + (1/len(self.probs)-pr)*iteration/settings.nb_samples
                 # print("{}::{}={}".format(prob,self.name,rvalue))
@@ -205,7 +207,7 @@ class ADObject:
         return rvalue
 
     def __str__(self):
-        return "; ".join(["{}::{}={}".format(pr, self.name, rvalue) for pr,rvalue in self.probs])
+        return "; ".join(["{}::{}={}".format(pr, self.name, rvalue) for pr, rvalue in self.probs])
 
 
 def AD(probs, name=None):
@@ -240,6 +242,7 @@ def AD(probs, name=None):
 
 dot_re = re.compile("[\[\]()= ,<>.':-]")
 
+
 def clean_dot(name):
     # print('{} -> {}'.format(name, dot_re.sub("_", name)))
     return dot_re.sub("_", name)
@@ -261,14 +264,16 @@ class FuncNode:
         self.pf = None
         self.root = False
 
-        for k,v in self.terms.items():
+        for k, v in self.terms.items():
             primitives = (int, str, bool, float)
             if type(v) in (list, tuple):
                 for vv in v:
                     if type(vv) not in primitives:
-                        print("WARNING: py2problog can not yet deal properly with non-primitive data types in a sequence ({}={}, {})".format(k,v,type(v)))
+                        print("WARNING: py2problog can not yet deal properly with non-primitive data types in a "
+                              "sequence ({}={}, {})".format(k, v, type(v)))
             elif type(v) not in primitives:
-                print("WARNING: py2problog can not yet deal properly with non-primitive data types ({}={}, {})".format(k,v,type(v)))
+                print("WARNING: py2problog can not yet deal properly with non-primitive data types"
+                      " ({}={}, {})".format(k, v, type(v)))
 
     def add_to_body(self, node):
         self.body.add(node)
@@ -288,18 +293,19 @@ class FuncNode:
         h = 1
         for b in self.body:
             h *= (1779033703 + 2*b.__hash__())
-        if not h in self.bodies:
+        if h not in self.bodies:
             self.bodies[h] = self.body
         self.body = set()
 
     def dot(self):
         if self.printed:
             return ""
-        d = "  {} [label=\"{}\\n{} - {}\"];\n".format(clean_dot(self.unique_name()), self.unique_name(), self.visited, self.first_visit)
+        d = "  {} [label=\"{}\\n{} - {}\"];\n".format(clean_dot(self.unique_name()), self.unique_name(),
+                                                      self.visited, self.first_visit)
         if self.pf is None and len(self.bodies) == 0:
             d += "  {}_{} [label=\"True\"];\n".format(clean_dot(self.unique_name()), 0)
             d += "  {} -> {}_{};\n".format(clean_dot(self.unique_name()), clean_dot(self.unique_name()), 0)
-        for i, (h,bs) in enumerate(self.bodies.items()):
+        for i, (h, bs) in enumerate(self.bodies.items()):
             d += "  {}_{} [label=\"^\"];\n".format(clean_dot(self.unique_name()), i)
             d += "  {} -> {}_{};\n".format(clean_dot(self.unique_name()), clean_dot(self.unique_name()), i)
             for b in bs:
@@ -317,7 +323,7 @@ class FuncNode:
         d = ""
         if self.pf is None and len(self.bodies) == 0:
             d += "{}.\n".format(self.problog_name())
-        for i, (h,bs) in enumerate(self.bodies.items()):
+        for i, (h, bs) in enumerate(self.bodies.items()):
             body = ", ".join([b.problog_name() for b in bs])
             d += "{} :- {}.\n".format(self.problog_name(), body)
             for b in bs:
@@ -327,10 +333,10 @@ class FuncNode:
 
     def unique_name(self):
         terms = []
-        for k,v in self.terms.items():
+        for k, v in self.terms.items():
             # Only focus on actual values of simple objects
             # just an experiment, not enough
-            terms.append("{}={}".format(k,v))
+            terms.append("{}={}".format(k, v))
         terms.sort()
         term_str = ",".join(terms)
         s = "{}({})".format(self.pred, term_str)
@@ -342,14 +348,16 @@ class FuncNode:
         if self.pf is not None:
             if type(self.pf) == ProbFactObject:
                 s = "{}p_{}".format("" if self.rvalue else "\\+", self.pf.name)
-            if type(self.pf) == ADObject:
+            elif type(self.pf) == ADObject:
                 s = "p_{}({})".format(self.pf.name, str(self.rvalue).lower())
+            else:
+                s = None
             return s
         terms = []
-        for k,v in self.terms.items():
+        for k, v in self.terms.items():
             # Only focus on actual values of simple objects
             # just an experiment, not enough
-            terms.append("{},t_{}".format(k,clean_dot(str(v))))
+            terms.append("{},t_{}".format(k, clean_dot(str(v))))
         terms.sort()
         terms.append("{}".format(str(self.rvalue).lower()))
         term_str = ",".join(terms)
@@ -381,7 +389,8 @@ def deterministic(func):
     deterministic but it reduces the size of the underlying graph and speeds
     up inference.
     """
-    deterministic_funcs.add(func.__name__) # TODO: name is too simple
+    deterministic_funcs.add(func.__name__)  # TODO: name is too simple
+
     def deterministic_wrapper(*args, **kwargs):
         if not settings.use_trace:
             sig = inspect.signature(func)
@@ -397,7 +406,8 @@ def deterministic(func):
 
 def probabilistic(func):
     """Decorator"""
-    probabilistic_funcs.add(func.__name__) # TODO: name is too simple
+    probabilistic_funcs.add(func.__name__)  # TODO: name is too simple
+
     def probabilistic_wrapper(*args, **kwargs):
         if not settings.use_trace:
             sig = inspect.signature(func)
@@ -498,7 +508,7 @@ def p2p_trace_calls(frame, event, arg):
         logger.debug('{}: {}.{}.{} -> {}'.format(event, func_fn, func_name, func_line_no, frame.f_locals))
         if stop_tracing > 0:
             stop_tracing += 1
-            logger.debug("Not tracing call ({}->{})".format(stop_tracing-1,stop_tracing))
+            logger.debug("Not tracing call ({}->{})".format(stop_tracing-1, stop_tracing))
             return
         if func_name in deterministic_funcs:
             logger.debug("Stop tracing at {}".format(func_name))
@@ -513,7 +523,7 @@ def p2p_trace_calls(frame, event, arg):
             # print(inspect.getclosurevars(frame.f_code))
             terms = frame.f_locals
         else:
-            terms = {k:v for k,v in frame.f_locals.items() if k in argvalues.args}
+            terms = {k: v for k, v in frame.f_locals.items() if k in argvalues.args}
         # Line number is part of the name to differentiate between lambda funcs
         process_def_call(func_name+"_"+str(func_line_no), terms)
         return p2p_trace_calls
@@ -523,7 +533,7 @@ def p2p_trace_calls(frame, event, arg):
         if stop_tracing > 0:
             stop_tracing -= 1
             if stop_tracing > 1:
-                logger.debug('Not tracing return ({}->{})'.format(stop_tracing+1,stop_tracing))
+                logger.debug('Not tracing return ({}->{})'.format(stop_tracing+1, stop_tracing))
                 return
         process_def_return(arg)
         return p2p_trace_calls
@@ -564,16 +574,16 @@ def problog():
         if type(pf) == ProbFactObject:
             s += "{}::p_{}.\n".format(pf.prob, pf.name)
         elif type(pf) == ADObject:
-            s += "; ".join(["{}::p_{}({})".format(pr,pf.name,str(v).lower()) for pr,v in pf.probs])+".\n"
+            s += "; ".join(["{}::p_{}({})".format(pr, pf.name, str(v).lower()) for pr, v in pf.probs])+".\n"
     s += "\n%% Rules\n"
     for root_node in root_nodes:
-        for i, (h,bs) in enumerate(root_node.bodies.items()):
+        for i, (h, bs) in enumerate(root_node.bodies.items()):
             for b in bs:
                 s += b.problog()
     # s += root_node.problog()+"\n"
     s += "\n%% Queries\n"
     for root_node in root_nodes:
-        for i, (h,bs) in enumerate(root_node.bodies.items()):
+        for i, (h, bs) in enumerate(root_node.bodies.items()):
             for b in bs:
                 s += "query({}).\n".format(b.problog_name())
     return s
@@ -606,6 +616,7 @@ reset()
 
 def setup():
     global trace_stack
+    global is_running
     reset_memoization()
     trace_stack = deque()
     is_running = True
@@ -614,12 +625,13 @@ def setup():
 
 
 def teardown():
+    global is_running
     sys.settrace(None)
     is_running = False
     print("--- STATS ---")
     print("Number of iterations: {}".format(settings.nb_samples))
     print("Created nodes: {}".format(cnt_created_nodes))
-    print("Nodes in cache: {}".format(len(node_cache)))
+    print("Nodes in cache: {}".format(0 if node_cache is None else len(node_cache)))
     print("ProbFacts in cache: {}".format(len(pf_cache)))
     print("Last iteration that added a node: {}".format(last_useful_iteration()))
     print("-------------")
@@ -637,6 +649,8 @@ def query(fun, args=None):
 
 def query_sampling(funcs):
     """Run set of queries with sampling.
+
+    The adviced way to run py2problog.
     Not guaranteed to contain all paths. You can call this function multiple
     times.
 
@@ -663,9 +677,9 @@ def query_sampling(funcs):
         root_nodes.append(root_node)
         if args is None:
             args = tuple()
-        for iteration in range(iteration,iteration+settings.nb_samples):
+        for iteration in range(iteration, iteration+settings.nb_samples):
             print('Iteration {}'.format(iteration))
-            if len(trace_stack) > 0:
+            if trace_stack is not None and len(trace_stack) > 0:
                 raise Exception('Stack should be empty')
             result = fun(*args)
             memoization_cache = dict()
@@ -674,12 +688,14 @@ def query_sampling(funcs):
     teardown()
     # global node_cache
     # for k,v in node_cache.items():
-        # print("{} -> {}".format(v, v.bodies))
+    #     print("{} -> {}".format(v, v.bodies))
 
 
 def query_es(fun, args=None):
     """Run query with exhaustive search over all defined probabilistic facts.
-    This is intractable in practice!
+
+    This is intractable in practice! It is only here for testing purposes.
+    Use the query() definition.
     """
     global exhaustive_search
     global current_node
@@ -723,6 +739,9 @@ def query_es(fun, args=None):
 def count_samples(func, repeat=None):
     """Generate samples by running the given function multiple times.
 
+    This is a naive approach for sampling. It is only here for testing
+    purposes. Use the query() definition.
+
     :param func: Function for which we will sample the output
     :param repeat: Number of samples to generate (default is
         settings.nb_samples)
@@ -731,6 +750,7 @@ def count_samples(func, repeat=None):
         repeat = settings.nb_samples
     uniform_prob = settings.uniform_prob
     settings.uniform_prob = False
+
     def func2():
         reset_memoization()
         return func()
@@ -740,7 +760,11 @@ def count_samples(func, repeat=None):
 
 
 def hist_samples(func, repeat=None, title=None):
-    """Plot histogram for the outcomes of the given function."""
+    """Plot histogram for the outcomes of the given function.
+
+    This is a naive approach for sampling based on count_samples().
+    It is only here for testing purposes. Use the query() definition.
+    """
     if repeat is None:
         repeat = settings.nb_samples
     import matplotlib
@@ -759,8 +783,7 @@ def hist_samples(func, repeat=None, title=None):
     plt.barh(indexes, values, width)
     plt.yticks([i+width*0.5 for i in indexes], ["{:>10}".format(str(l)) for l in labels])
     plt.xlim(0, 100)
-    plt.gca().xaxis.set_major_formatter(FuncFormatter(lambda x,p: '{:.0f}%'.format(x)))
+    plt.gca().xaxis.set_major_formatter(FuncFormatter(lambda x, p: '{:.0f}%'.format(x)))
     if title is not None:
         plt.title(title)
     plt.show(block=True)
-
