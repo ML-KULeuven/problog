@@ -87,6 +87,7 @@ def dist_prob(d, x, eps=1e-3):
     # TODO Put in more general, easier to extend location
     # TODO add more distributions
     # TODO use density instead of interval
+    # TODO: We should use any scipy.stats dist
     if d.functor == 'normal':
         m, s = map(float, d.args)
         return scipy.stats.norm(m, s).cdf(x + eps) - \
@@ -96,6 +97,7 @@ def dist_prob(d, x, eps=1e-3):
 
 def dist_prob_set(d, values):
     """Fit parameters"""
+    # TODO: We should use any scipy.stats dist, how to use weights?
     import scipy.stats
     if d.functor == 'normal':
         pf = 0.0
@@ -310,6 +312,7 @@ class LFIProblem(SemiringProbability, LogicProgram):
         result = None
         if isinstance(atom, Or):
             result = self._process_atom_discr(atom, body)
+        print(atom)
         if result is None and atom.probability.functor == 't' and \
                 isinstance(atom.probability.args[0], Term) and \
                 not isinstance(atom.probability.args[0], Var):
