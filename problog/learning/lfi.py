@@ -54,7 +54,7 @@ from itertools import chain
 from problog.engine import DefaultEngine, ground
 from problog.evaluator import SemiringProbability
 from problog.logic import Term, Constant, Clause, AnnotatedDisjunction, Or, Var,\
-    InstantiationError, ArithmeticError
+    InstantiationError, ArithmeticError, term2list, list2term
 from problog.program import PrologString, PrologFile, LogicProgram
 from problog.core import ProbLogError
 from problog.errors import process_error, InconsistentEvidenceError
@@ -76,6 +76,15 @@ def str2bool(s):
 def str2num(s):
     if s.is_constant() and (s.is_float() or s.is_integer()):
         return True, s.compute_value()
+    elif s.functor == '.':
+        values = term2list(s)
+        numvalues = []
+        for value in values:
+            if isinstance(value, int) or isinstance(value, float):
+                numvalues.append(value)
+            else:
+                return None, None
+        return True, tuple(numvalues)
     else:
         return None, None
 
@@ -91,71 +100,100 @@ def dist_prob(d, x, eps=1e-4):
     :param eps: Binsize for implicit discretisation
     :return: Probability
     """
-    print('dist_prob({}, {})'.format(d, x))
     import scipy.stats
+    import numpy as np
     # TODO add more distributions
     # TODO use density instead of interval
     # TODO: We should use any scipy.stats dist
     if d.functor == 'normal':
-        m, s = map(float, d.args)
-        return scipy.stats.norm(m, s).cdf(x + eps) - \
-               scipy.stats.norm(m, s).cdf(x - eps)
+        print('args:', d.args)
+        print(type(d.args[0]))
+        if isinstance(d.args[0], Term) and d.args[0].functor == '.':
+            args = (term2list(d.args[0]), term2list(d.args[1]))
+        else:
+            args = d.args
+        if isinstance(args[0], list):  # multivariate
+            m = args[0]
+            ndim = len(m)
+            s = args[1]
+            if len(s) != ndim*ndim:
+                raise ValueError("Distribution parameters do not match: {}".format(d))
+            rv = scipy.stats.multivariate_normal(m, np.reshape(s, (ndim, ndim)))
+            result = rv.pdf(x)*2*eps
+            print('dist_prob({}, {}) -> {}'.format(d, x, result))
+            return result
+        else:  # univariate
+            m, s = map(float, d.args)
+            rv = scipy.stats.norm(m, s)
+            result = rv.cdf(x + eps) - rv.cdf(x - eps)
+            print('dist_prob({}, {}) -> {}'.format(d, x, result))
+            return result
     raise ValueError("Distribution not supported '%s'" % d.functor)
 
 
 def dist_prob_set(d, values):
-    """Fit parameters"""
-    # TODO: We should use any scipy.stats dist, how to use weights?
-    # TODO: Base on prior distribution?
-    # print('set dist with ', d, values)
-    import scipy.stats
-    import numpy as np
-    if d.functor == 'normal':
-        # std = float(d.args[1])
-        # weight_th = scipy.stats.norm(0, std).pdf(2*std) * std / 5
-        # weight_th = 0.1 * max((w for v, w in values))
-        # E[t(<D,H>)] = sum_m E_Q[t(o[m], h[m])]  (from Koller and Friedman, 2009)
-        # e_ss = np.array([0.0, 0.0, 0.0])  # Expected sufficient statistic
-        # for value, weight in values:
-        #     if weight >= weight_th:
-        #         # Sum expected sufficient statistics
-        #         # We approximate with: if low probability, it is zero
-        #         e_ss += [1, value, value**2]
-        # mu = e_ss[1] / e_ss[0]
-        # std2 = (e_ss[2] - 2*mu*e_ss[1])/e_ss[0] + mu**2
-        # if std2 == 0:
-        #     print('correct std')
-        #     std = 1
-        # else:
-        #     std = math.sqrt(std2)
+    """Fit parameters
 
-        pf = 0.0
-        mu = 0.0
-        std = 0.0
-        for value, weight in values:
-            pf += weight
-            mu += weight*value
-        if pf == 0.0:
-            # Reuse previous distribution, no samples found
-            return d
-        mu /= pf
-        # std = float(d.args[1])
-        # pf_th = scipy.stats.norm(0,std).pdf(2*std) * std/5  # threshold
-        # a, loc, scale = scipy.stats.gamma.fit([(value - mu)**2 for value, weight in values if weight >= pf_th])
-        # std = math.sqrt(scale/2)
-        for value, weight in values:
-            std += weight*(value - mu)**2
-        if std == 0:
-            print('correct std')
-            std = 1
+    :param d: Distribution Term
+    :param values: List of (value, weight, count)
+    """
+    if d.functor == 'normal':
+        if isinstance(d.args[0], Term) and d.args[0].functor == '.':
+            args = (term2list(d.args[0]), term2list(d.args[1]))
         else:
+            args = d.args
+        if isinstance(args[0], list):  # multivariate
+            # TODO: cleanup (make nices with numpy, store numpy in Term to avoid conversions?)
+            import numpy as np
+            pf = 0.0
+            mu = np.zeros(len(args[0]))
+            std = np.zeros((len(args[0]), len(args[0])))
+            for value, weight, count in values:
+                pf += weight * count
+                mu += weight * count * np.array(value)
+            if pf == 0.0:
+                # Reuse previous distribution, no samples found
+                return d
+            mu /= pf
+            for value, weight, count in values:
+                xmu = np.matrix(value) - mu
+                std += weight * count * xmu.T * xmu
             std /= pf
-            std = math.sqrt(std)
-        print('Update: {} -> normal({},{})'.format(d, mu, std))
-        values.sort(key=lambda t: t[0])
-        for value, weight in values:
-            print('({:<4}, {:7.5f})'.format(value, weight))
-        return d.with_args(Constant(mu), Constant(std))
+            std = np.sqrt(std)
+            for i in range(std.shape[0]):
+                if std[i, i] < 1e-10:
+                    print('correct std')
+                    std[i, i] = 1
+            std = std.reshape(-1)
+            print('Update: {} -> normal({},{})'.format(d, mu, std))
+            values.sort(key=lambda t: t[0])
+            for value, weight, count in values:
+                print('({:<4}, {:7.5f}, {:<4})'.format(value, weight, count))
+            return d.with_args(list2term(mu.tolist()), list2term(std.tolist()))
+        else:  # univariate
+            pf = 0.0
+            mu = 0.0
+            std = 0.0
+            for value, weight, count in values:
+                pf += weight*count
+                mu += weight*count*value
+            if pf == 0.0:
+                # Reuse previous distribution, no samples found
+                return d
+            mu /= pf
+            for value, weight, count in values:
+                std += weight*count*(value - mu)**2
+            if std == 0:
+                print('correct std')
+                std = 1
+            else:
+                std /= pf
+                std = math.sqrt(std)
+            print('Update: {} -> normal({},{})'.format(d, mu, std))
+            values.sort(key=lambda t: t[0])
+            for value, weight, count in values:
+                print('({:<4}, {:7.5f}, {:<4})'.format(value, weight, count))
+            return d.with_args(Constant(mu), Constant(std))
     raise ValueError("Distribution not supported '%s'" % d.functor)
 
 
@@ -390,13 +428,19 @@ class LFIProblem(SemiringProbability, LogicProgram):
                 if cdist.functor == 'normal':
                     start_params = [None, None]
                     try:
-                        start_params[0] = float(cdist.args[0])
+                        if cdist.args[0].functor == '.':
+                            start_params[0] = term2list(cdist.args[0])  # multivariate
+                        else:
+                            start_params[0] = float(cdist.args[0])  # univariate
                     except InstantiationError:
                         start_params[0] = None
                     except ArithmeticError:
                         start_params[0] = None
                     try:
-                        start_params[1] = float(cdist.args[1])
+                        if cdist.args[1].functor == '.':
+                            start_params[1] = term2list(cdist.args[1])  # multivariate
+                        else:
+                            start_params[1] = float(cdist.args[1])  # univariate
                     except InstantiationError:
                         start_params[1] = None
                     except ArithmeticError:
@@ -760,7 +804,8 @@ class LFIProblem(SemiringProbability, LogicProgram):
                 if index[0] in p_values:
                     if index[0] not in fact_values:
                         fact_values[index[0]] = (self._get_weight(index[0], index[1]), list())
-                    fact_values[index[0]][1].append(p_values[index[0]])
+                    p_value = p_values[index[0]]
+                    fact_values[index[0]][1].append((p_value[0], p_value[1], m))
             try:
                 score += math.log(pEvidence)
             except ValueError:
