@@ -70,7 +70,7 @@ try:
     import numpy.random
 
     def sample_poisson(l):
-        l = list(l)
+        l = [l]
         return numpy.random.poisson(l)[0]
 
 except ImportError:
