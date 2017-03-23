@@ -59,6 +59,15 @@ from problog.program import PrologString, PrologFile, LogicProgram
 from problog.core import ProbLogError
 from problog.errors import process_error, InconsistentEvidenceError
 
+# Scipy and Numpy are optional installs (only required for continuous variables)
+try:
+    import scipy.stats as stats
+except ImportError:
+    stats = None
+try:
+    import numpy as np
+except ImportError:
+    np = None
 
 from problog import get_evaluatable, get_evaluatables
 import traceback
@@ -74,6 +83,10 @@ def str2bool(s):
 
 
 def str2num(s):
+    """Translate a Term that represents a number or list of numbers to observations (as Python primitives).
+
+    :return: Tuple of (isobserved?, values)
+    """
     if s.is_constant() and (s.is_float() or s.is_integer()):
         return True, s.compute_value()
     elif s.functor == '.':
@@ -100,11 +113,8 @@ def dist_prob(d, x, eps=1e-4):
     :param eps: Binsize for implicit discretisation
     :return: Probability
     """
-    import scipy.stats
-    import numpy as np
-    # TODO add more distributions
-    # TODO use density instead of interval
-    # TODO: We should use any scipy.stats dist
+    if stats is None or np is None:
+        raise ProbLogError('Continuous variables require Scipy and Numpy to be installed.')
     if d.functor == 'normal':
         print('args:', d.args)
         print(type(d.args[0]))
@@ -118,13 +128,13 @@ def dist_prob(d, x, eps=1e-4):
             s = args[1]
             if len(s) != ndim*ndim:
                 raise ValueError("Distribution parameters do not match: {}".format(d))
-            rv = scipy.stats.multivariate_normal(m, np.reshape(s, (ndim, ndim)))
+            rv = stats.multivariate_normal(m, np.reshape(s, (ndim, ndim)))
             result = rv.pdf(x)*2*eps
             print('dist_prob({}, {}) -> {}'.format(d, x, result))
             return result
         else:  # univariate
             m, s = map(float, d.args)
-            rv = scipy.stats.norm(m, s)
+            rv = stats.norm(m, s)
             result = rv.cdf(x + eps) - rv.cdf(x - eps)
             print('dist_prob({}, {}) -> {}'.format(d, x, result))
             return result
@@ -132,11 +142,13 @@ def dist_prob(d, x, eps=1e-4):
 
 
 def dist_prob_set(d, values):
-    """Fit parameters
+    """Fit parameters based on EM.
 
     :param d: Distribution Term
     :param values: List of (value, weight, count)
     """
+    if stats is None or np is None:
+        raise ProbLogError('Continuous variables require Scipy and Numpy to be installed.')
     if d.functor == 'normal':
         if isinstance(d.args[0], Term) and d.args[0].functor == '.':
             args = (term2list(d.args[0]), term2list(d.args[1]))
@@ -144,7 +156,6 @@ def dist_prob_set(d, values):
             args = d.args
         if isinstance(args[0], list):  # multivariate
             # TODO: cleanup (make nices with numpy, store numpy in Term to avoid conversions?)
-            import numpy as np
             pf = 0.0
             mu = np.zeros(len(args[0]))
             std = np.zeros((len(args[0]), len(args[0])))
@@ -202,6 +213,10 @@ class LFIProblem(SemiringProbability, LogicProgram):
     def __init__(self, source, examples, max_iter=10000, min_improv=1e-10, verbose=0, knowledge=None,
                  leakprob=None, propagate_evidence=True, normalize=False, **extra):
         """
+        Learn parameters using LFI.
+
+        The atoms with to be learned continuous distributions can only appear in the head of a rule.
+
         :param source: filename of file containing input model
         :type source: str
         :param examples: list of observed terms / value
@@ -222,23 +237,26 @@ class LFIProblem(SemiringProbability, LogicProgram):
         :type leakprob: float or None
         :param extra: catch all for additional parameters (not used)
         """
+        logger = logging.getLogger('problog_lfi')
         SemiringProbability.__init__(self)
         LogicProgram.__init__(self)
         self.source = source
 
         # The names of the atom for which we want to learn weights.
         self.names = []
-        self.name_to_cindex = defaultdict(lambda: defaultdict(lambda: set()))  # [functor][atom] = [indices]
+        self.name_to_cindex = defaultdict(lambda: defaultdict(lambda: set()))  # [functor][args] = [indices]
 
         # The weights to learn.
         # The initial weights are of type 'float'.
         # When necessary they are replaced by a dictionary [t(arg1, arg2, ...) -> float]
         #  for weights of form t(SV, arg1, arg2, ...).
         self._weights = []
+        # If _weights contains a Term instead of a value (e.g. [t(arg1, arg2, ...) -> normal(float,float)]),
+        # then _cweights contains the actual probability given the current set of observations.
         self._cweights = []
 
         self.examples = examples
-        print('LFIProblem.examples = ', examples)
+        logger.debug('LFI examples = ', examples)
         self.leakprob = leakprob
         self.leakprobatoms = None
         self.propagate_evidence = propagate_evidence
@@ -272,10 +290,8 @@ class LFIProblem(SemiringProbability, LogicProgram):
         if isinstance(a, Term) and a.functor == 'lfi':
             # index = int(a.args[0])
             w = self._get_weight(*a.args)
-            print('LFIProblem.value({}) = {}'.format(a, w))
             return w
         else:
-            print('LFIProblem.value({}) = float({})'.format(a, a))
             return float(a)
          
     @property
@@ -341,23 +357,46 @@ class LFIProblem(SemiringProbability, LogicProgram):
 
         # Simple implementation: don't add neutral evidence.
 
+        print('name_to_cindex')
+        print(self.name_to_cindex)
+
         if self.propagate_evidence:
             result = ExampleSet()
             for index, example in enumerate(self.examples):
                 atoms, values, cvalues = zip(*example)
                 cindices = []
+                # TODO: we're building a lot of bookkeeping data structures here. Avoidable?
                 for atom, cvalue in zip(atoms, cvalues):
                     if cvalue is None:
                         cindices.append(None)
                     else:
-                        try:
-                            # TODO: this should use unification for atom.args?
-                            new_cindices = self.name_to_cindex[atom.functor][atom.args]
-                            if len(new_cindices) == 0:
-                                raise KeyError()
-                            cindices.append(tuple(new_cindices))
-                        except KeyError:
-                            raise ProbLogError('Could not find continuous atom {}'.format(atom))
+                        new_cindices = None
+                        if atom.args in self.name_to_cindex[atom.functor]:
+                            new_cindices = (tuple(), tuple(self.name_to_cindex[atom.functor][atom.args]))
+                        else:
+                            # Perform very simple unification
+                            # TODO: improve unification
+                            for args, cur_cindices in self.name_to_cindex[atom.functor].items():
+                                if len(args) != len(atom.args):
+                                    continue
+                                t_args = []
+                                for arg, aarg in zip(args, atom.args):
+                                    if isinstance(aarg, Var):
+                                        # Assume observations are ground
+                                        break
+                                    if isinstance(arg, Var):
+                                        t_args.append(aarg)
+                                        continue
+                                    if arg == aarg:
+                                        continue
+                                new_cindices = (tuple(t_args), tuple(cur_cindices))
+                                break
+                            if new_cindices is None:
+                                raise ProbLogError('Could not find continuous atom {}'.format(atom))
+                            # print('Unified {} with {}'.format(atom, args))
+                        if len(new_cindices) == 0:
+                            raise KeyError('Could not find continuous atom {}'.format(atom))
+                        cindices.append(new_cindices)
                 result.add(index, atoms, values, cvalues, cindices)
             return result
         else:
@@ -370,14 +409,28 @@ class LFIProblem(SemiringProbability, LogicProgram):
                     if cvalue is None:
                         cindices.append(None)
                     else:
-                        try:
-                            # TODO: this should use unification for atom.args?
-                            new_cindices = self.name_to_cindex[atom.functor][atom]
-                            if len(new_cindices) == 0:
-                                raise KeyError()
-                            cindices.append(new_cindices)
-                        except KeyError:
-                            raise ProbLogError('Could not find continuous atom {}'.format(atom))
+                        new_cindices = None
+                        if atom.args in self.name_to_cindex[atom.functor]:
+                            new_cindices = (atom.args, tuple(self.name_to_cindex[atom.functor][atom.args]))
+                        else:
+                            # Perform very simple unification
+                            # TODO: improve unification
+                            for args, cur_cindices in self.name_to_cindex[atom.functor].items():
+                                if len(args) != len(atom.args):
+                                    continue
+                                for arg, aarg in zip(args, atom.args):
+                                    print(arg, aarg)
+                                    if arg == aarg:
+                                        continue
+                                    if isinstance(arg, Var):
+                                        continue
+                                new_cindices = (atom.args, tuple(cur_cindices))
+                                break
+                            if new_cindices is None:
+                                raise ProbLogError('Could not find continuous atom {}'.format(atom))
+                        if len(new_cindices) == 0:
+                            raise KeyError('Could not find continuous atom {}'.format(atom))
+                        cindices.append(new_cindices)
                 result.add(index, atoms, values, cvalues, cindices)
             return result
     
@@ -787,24 +840,28 @@ class LFIProblem(SemiringProbability, LogicProgram):
 
         evaluator = ExampleEvaluator(self._weights, self._cweights)
 
-        return chain.from_iterable(map(evaluator, self._compiled_examples))
+        return list(chain.from_iterable(map(evaluator, self._compiled_examples)))
     
     def _update(self, results):
         """Update the current estimates based on the latest evaluation results."""
         print('_update')
+        print('results', list(results))
         fact_marg = defaultdict(float)
         fact_count = defaultdict(int)
         fact_values = dict()
         score = 0.0
         for m, pEvidence, result, p_values in results:
+            print('result', result)
+            print('p_values', p_values)
             for fact, value in result.items():
                 index = fact.args[0:2]
+                t_args = fact.args[2:]
                 fact_marg[index] += value * m
                 fact_count[index] += m
                 if index[0] in p_values:
                     if index[0] not in fact_values:
                         fact_values[index[0]] = (self._get_weight(index[0], index[1]), list())
-                    p_value = p_values[index[0]]
+                    p_value = p_values[index[0]][t_args]
                     fact_values[index[0]][1].append((p_value[0], p_value[1], m))
             try:
                 score += math.log(pEvidence)
@@ -949,6 +1006,8 @@ class ExampleEvaluator(SemiringProbability):
     def _get_weight(self, index, args, strict=True):
         index = int(index)
         if self._cweights[index] is not None:
+            # If the weight is a continuous distribution, use _cweights which stores the current weight
+            # given the observations.
             weight = self._cweights[index]
         else:
             weight = self._weights[index]
@@ -972,7 +1031,8 @@ class ExampleEvaluator(SemiringProbability):
                 prev_cweight[args] = weight
         else:
             if args is not None:
-                self._cweights[index] = dict([(None, self._cweights[index]), (args, weight)])
+                # TODO: do we need to include None again?
+                self._cweights[index] = dict([(None, prev_cweight), (args, weight)])
             else:
                 self._cweights[index] = weight
 
@@ -988,11 +1048,8 @@ class ExampleEvaluator(SemiringProbability):
         """
         if isinstance(a, Term) and a.functor == 'lfi':
             # index = int(a.args[0])
-            w = self._get_weight(*a.args)
-            print('ExampleEvaluator.value({}) = {}'.format(a, w))
-            return w
+            return self._get_weight(*a.args)
         else:
-            print('ExampleEvaluator.value({}) = float({})'.format(a, a))
             return float(a)
 
     def __call__(self, example):
@@ -1016,7 +1073,7 @@ class ExampleEvaluator(SemiringProbability):
         cevidence = {}
         p_values = {}
         for a, v, cv, ci in zip(at, val, cval, cind):
-            print('__call__', a,v,cv,ci)
+            print('__call__', a, v, cv, ci)
             if a in evidence:
                 if cv is not None:
                     if cevidence[a] != cv:
@@ -1029,10 +1086,11 @@ class ExampleEvaluator(SemiringProbability):
                     raise InconsistentEvidenceError(source=a, context=context)
             else:
                 if cv is not None:
-                    cevidence[a] = (cv, ci)
+                    cevidence[a] = cv
                     if len(ci) == 0:
                         raise ProbLogError('Did not connect correctly to continuous atom ({})'.format(a))
-                    for cii in ci:
+                    ci_args, ci_ind = ci
+                    for cii in ci_ind:
                         cdist = self._weights[cii]
                         print('cdist = ', cdist)
                         if isinstance(cdist, dict):
@@ -1040,7 +1098,10 @@ class ExampleEvaluator(SemiringProbability):
                                 self._set_cweight(cii, t, dist_prob(cdisti, cv))
                         else:
                             self._set_cweight(cii, None, dist_prob(cdist, cv))
-                        p_values[cii] = [cv, 0]
+                        if cii not in p_values:
+                            p_values[cii] = {ci_args: [cv, 0]}
+                        else:
+                            p_values[cii][ci_args] = [cv, 0]
                 evidence[a] = v
 
         try:
@@ -1057,15 +1118,16 @@ class ExampleEvaluator(SemiringProbability):
         # Probability of query given evidence
         print(evaluator.weights)
         for name, node, label in evaluator.formula.labeled():
+            print('name = ', name)
             w = evaluator.evaluate_fact(node)
             if w < 1e-6:
                 p_queries[name] = 0.0
             else:
                 p_queries[name] = w
             if name.args[0] in p_values:
-                p_values[name.args[0]][1] = p_queries[name]
+                p_values[name.args[0]][name.args[2:]][1] = w
         p_evidence = evaluator.evaluate_evidence()
-        print('__call__.result', p_evidence, p_queries, p_values)
+        print('__call__.result', p_evidence, '\n', p_queries, '\n', '\n '.join([str(v) for v in p_values.items()]))
         return len(n), p_evidence, p_queries, p_values
 
 
