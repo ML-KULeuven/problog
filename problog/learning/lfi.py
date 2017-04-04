@@ -116,8 +116,6 @@ def dist_prob(d, x, eps=1e-4):
     if stats is None or np is None:
         raise ProbLogError('Continuous variables require Scipy and Numpy to be installed.')
     if d.functor == 'normal':
-        print('args:', d.args)
-        print(type(d.args[0]))
         if isinstance(d.args[0], Term) and d.args[0].functor == '.':
             args = (term2list(d.args[0]), term2list(d.args[1]))
         else:
@@ -129,7 +127,7 @@ def dist_prob(d, x, eps=1e-4):
             if len(s) != ndim*ndim:
                 raise ValueError("Distribution parameters do not match: {}".format(d))
             rv = stats.multivariate_normal(m, np.reshape(s, (ndim, ndim)))
-            result = rv.pdf(x)*2*eps
+            result = rv.pdf(x) * 2 * eps
             print('dist_prob({}, {}) -> {}'.format(d, x, result))
             return result
         else:  # univariate
@@ -155,7 +153,7 @@ def dist_prob_set(d, values):
         else:
             args = d.args
         if isinstance(args[0], list):  # multivariate
-            # TODO: cleanup (make nices with numpy, store numpy in Term to avoid conversions?)
+            # TODO: cleanup (make nice with numpy, store numpy in Term to avoid conversions?)
             pf = 0.0
             mu = np.zeros(len(args[0]))
             std = np.zeros((len(args[0]), len(args[0])))
@@ -256,7 +254,6 @@ class LFIProblem(SemiringProbability, LogicProgram):
         self._cweights = []
 
         self.examples = examples
-        logger.debug('LFI examples = ', examples)
         self.leakprob = leakprob
         self.leakprobatoms = None
         self.propagate_evidence = propagate_evidence
@@ -372,7 +369,7 @@ class LFIProblem(SemiringProbability, LogicProgram):
                     else:
                         new_cindices = None
                         if atom.args in self.name_to_cindex[atom.functor]:
-                            new_cindices = (tuple(), tuple(self.name_to_cindex[atom.functor][atom.args]))
+                            new_cindices = self.name_to_cindex[atom.functor][atom.args]
                         else:
                             # Perform very simple unification
                             # TODO: improve unification
@@ -385,11 +382,10 @@ class LFIProblem(SemiringProbability, LogicProgram):
                                         # Assume observations are ground
                                         break
                                     if isinstance(arg, Var):
-                                        t_args.append(aarg)
                                         continue
                                     if arg == aarg:
                                         continue
-                                new_cindices = (tuple(t_args), tuple(cur_cindices))
+                                new_cindices = cur_cindices
                                 break
                             if new_cindices is None:
                                 raise ProbLogError('Could not find continuous atom {}'.format(atom))
@@ -411,7 +407,7 @@ class LFIProblem(SemiringProbability, LogicProgram):
                     else:
                         new_cindices = None
                         if atom.args in self.name_to_cindex[atom.functor]:
-                            new_cindices = (atom.args, tuple(self.name_to_cindex[atom.functor][atom.args]))
+                            new_cindices = self.name_to_cindex[atom.functor][atom.args]
                         else:
                             # Perform very simple unification
                             # TODO: improve unification
@@ -424,7 +420,7 @@ class LFIProblem(SemiringProbability, LogicProgram):
                                         continue
                                     if isinstance(arg, Var):
                                         continue
-                                new_cindices = (atom.args, tuple(cur_cindices))
+                                new_cindices = cur_cindices
                                 break
                             if new_cindices is None:
                                 raise ProbLogError('Could not find continuous atom {}'.format(atom))
@@ -524,6 +520,11 @@ class LFIProblem(SemiringProbability, LogicProgram):
             prob_args = atom.probability.args[1:]
 
             # 1) Introduce a new fact
+            #  lfi_fact(0, t(1), 2, 3)
+            #           |    |   |
+            #           |    |   `-> Arguments for atom in head
+            #           |    `-> Arguments for prob in head in t(_, 1)
+            #           `-> Identifier for original to learn term
             lfi_fact = Term('lfi_fact', Constant(self.count), Term('t', *prob_args), *atom1.args)
             lfi_prob = Term('lfi', Constant(self.count), Term('t', *prob_args))
             print('new facts', lfi_fact, lfi_prob)
@@ -542,12 +543,12 @@ class LFIProblem(SemiringProbability, LogicProgram):
 
             # 4) Set initial weight
             if start_dist is None:
-                raise ProbLogError('no start dist defined')
+                raise ProbLogError('No correct initial distribution defined')
             elif start_dist.functor == 'normal':
                 if start_params[0] is None:
-                    start_params[0] = Constant(random.gauss(0, 10))  # TODO: this should be based on evidence
+                    start_params[0] = Constant(random.gauss(0, 10))
                 if start_params[1] is None:
-                    start_params[1] = Constant(100)  # TODO: this should be based on evidence
+                    start_params[1] = Constant(1000000)
                 start_dist = start_dist.with_args(start_params[0], start_params[1])
                 self._add_weight(start_dist)
                 self._add_cweight(0.0)
@@ -627,7 +628,7 @@ class LFIProblem(SemiringProbability, LogicProgram):
                     start_value = None
 
                 # Replace anonymous variables with non-anonymous variables.
-                class ReplaceAnon(object):
+                class ReplaceAnon(object):  # TODO: can be defined outside of for loop?
 
                     def __init__(self):
                         self.cnt = 0
@@ -954,10 +955,9 @@ class Example(object):
         """
         self.atoms = tuple(atoms)
         self.values = tuple(values)
+        self.cindices = tuple(cindices)
         self.compiled = []
-        print(tuple(cvalues))
-        print(tuple(cindices))
-        self.n = {(tuple(cvalues), tuple(cindices)): [index]}
+        self.n = {tuple(cvalues): [index]}
 
     def __hash__(self):
         return hash((self.atoms, self.values))
@@ -988,7 +988,9 @@ class Example(object):
         self.compiled = lfi.knowledge.create_from(ground_program)
 
     def add_index(self, index, cvalues, cindices):
-        k = (tuple(cvalues), tuple(cindices))
+        if cindices != self.cindices:
+            raise('Expected cindices to be the same: {} <> {}'.format(cindices, self.cindices))
+        k = tuple(cvalues)
         if k in self.n:
             self.n[k].append(index)
         else:
@@ -1057,9 +1059,10 @@ class ExampleEvaluator(SemiringProbability):
         print('=========>>>')
         at = example.atoms
         val = example.values
+        cind = example.cindices
         comp = example.compiled
         results = []
-        for (cval, cind), n in example.n.items():
+        for cval, n in example.n.items():
             results.append(self._call_internal(at, val, cval, cind, comp, n))
         print('<<<=========')
         return results
@@ -1125,7 +1128,7 @@ class ExampleEvaluator(SemiringProbability):
             else:
                 p_queries[name] = w
             if name.args[0] in p_values:
-                p_values[name.args[0]][name.args[2:]][1] = w
+                p_values[name.args[0]][tuple([])][1] = w
         p_evidence = evaluator.evaluate_evidence()
         print('__call__.result', p_evidence, '\n', p_queries, '\n', '\n '.join([str(v) for v in p_values.items()]))
         return len(n), p_evidence, p_queries, p_values
