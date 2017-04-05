@@ -849,7 +849,7 @@ class LFIProblem(SemiringProbability, LogicProgram):
     def _update(self, results):
         """Update the current estimates based on the latest evaluation results."""
         print('_update')
-        print('results', list(results))
+        # print('results', list(results))
         fact_marg = defaultdict(float)
         fact_count = defaultdict(int)
         fact_values = dict()
@@ -862,11 +862,12 @@ class LFIProblem(SemiringProbability, LogicProgram):
                 t_args = fact.args[2:]
                 fact_marg[index] += value * m
                 fact_count[index] += m
-                if index[0] in p_values:
+                if fact in p_values:
+                    print('fact in p_values', fact)
                     if index[0] not in fact_values:
                         fact_values[index[0]] = (self._get_weight(index[0], index[1]), list())
-                    p_value = p_values[index[0]][t_args]
-                    fact_values[index[0]][1].append((p_value[0], p_value[1], m))
+                    p_value = p_values[fact]
+                    fact_values[index[0]][1].append((p_value, value, m))
             try:
                 score += math.log(pEvidence)
             except ValueError:
@@ -1023,32 +1024,22 @@ class ExampleEvaluator(SemiringProbability):
 
     def _get_cweight(self, index, args, atom, strict=True):
         index = int(index)
-        # print('_get_cweight({}, {}, {}) - weight = {}'.format(index, args, atom, self._weights[index]))
+        print('_get_cweight({}, {}, {}) - weight = {}'.format(index, args, atom, self._weights[index]))
+        dist = self._weights[index]
+        if isinstance(dist, dict):
+            if strict:
+                dist = dist[args]
+            else:
+                raise ProbLogError('Continuous distribution is not available for {}, {}'.format(index, args))
+        if not isinstance(dist, Term):
+            raise ProbLogError('Expected a continuous distribution, got {}'.format(dist))
         value = self._cevidence.get(atom)
         if value is not None:
-            dist = self._weights[index]
             p = dist_prob(dist, value)
         else:
             raise ProbLogError('Expected continuous evidence for {}')
         # print('_get_cweight.return = ', p)
         return p
-
-    # def _set_cweight(self, index, args, weight):
-    #     print('_set_cweight({}, {}, {})'.format(index, args, weight))
-    #     index = int(index)
-    #     prev_cweight = self._cweights[index]
-    #     if isinstance(prev_cweight, dict):
-    #         if args is None:
-    #             for key in prev_cweight:
-    #                 prev_cweight[key] = weight
-    #         else:
-    #             prev_cweight[args] = weight
-    #     else:
-    #         if args is not None:
-    #             # TODO: do we need to include None again?
-    #             self._cweights[index] = dict([(None, prev_cweight), (args, weight)])
-    #         else:
-    #             self._cweights[index] = weight
 
     def value(self, a):
         """Overrides from SemiringProbability.
@@ -1103,21 +1094,6 @@ class ExampleEvaluator(SemiringProbability):
             else:
                 if cv is not None:
                     self._cevidence[a] = cv
-                #     if len(ci) == 0:
-                #         raise ProbLogError('Did not connect correctly to continuous atom ({})'.format(a))
-                #     ci_args, ci_ind = ci
-                #     for cii in ci_ind:
-                #         cdist = self._weights[cii]
-                #         print('cdist = ', cdist)
-                #         if isinstance(cdist, dict):
-                #             for t, cdisti in cdist.items():
-                #                 self._set_cweight(cii, t, dist_prob(cdisti, cv))
-                #         else:
-                #             self._set_cweight(cii, None, dist_prob(cdist, cv))
-                #         if cii not in p_values:
-                #             p_values[cii] = {ci_args: [cv, 0]}
-                #         else:
-                #             p_values[cii][ci_args] = [cv, 0]
                 evidence[a] = v
 
         # print('cevidence', cevidence)
@@ -1157,8 +1133,6 @@ class ExampleEvaluator(SemiringProbability):
                 p_queries[name] = 0.0
             else:
                 p_queries[name] = w
-            # if name.args[0] in p_values:
-            #     p_values[name.args[0]][tuple([])][1] = w
         p_evidence = evaluator.evaluate_evidence()
         print('__call__.result', p_evidence, '\n', p_queries, '\n', '\n '.join([str(v) for v in p_values.items()]))
         return len(n), p_evidence, p_queries, p_values
