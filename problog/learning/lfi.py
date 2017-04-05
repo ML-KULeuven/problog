@@ -9,6 +9,45 @@ Parameter learning for ProbLog.
 Given a probabilistic program with parameterized weights and a set of partial implementations,
 learns appropriate values of the parameters.
 
+
+Continuous distributions
+++++++++++++++++++++++++
+
+A parametrized weight can also be a continuous normal distribution if the atom it is associated
+with only appears as a head (thus is not used in any bodies of other ProbLog rules).
+
+For example, the following GMM::
+
+    t(0.5)::c.
+    t(normal(1,10))::fa :- c.
+    t(normal(10,10))::fa :- \+c.
+
+with evidence::
+
+    evidence(fa, 10).
+    ---
+    evidence(fa, 18).
+    ---
+    evidence(fa, 8).
+
+
+Or a multivariate GMM:
+
+    t(0.5)::c.
+    t(normal([1,1],[10,1,1,10]))::fa :- c.
+    t(normal([10,10],[10,1,1,10]))::fa :- \+c.
+
+with evidence::
+
+    evidence(fa, [10,11]).
+    ---
+    evidence(fa, [18,12]).
+    ---
+    evidence(fa, [8,7]).
+
+The covariance matrix is represented as a row-based list ([[10,1],[1,10]] is [10,1,1,10]).
+
+
 Algorithm
 +++++++++
 
