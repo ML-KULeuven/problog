@@ -274,23 +274,19 @@ class LFIProblem(SemiringProbability, LogicProgram):
         :type leakprob: float or None
         :param extra: catch all for additional parameters (not used)
         """
-        logger = logging.getLogger('problog_lfi')
+        # logger = logging.getLogger('problog_lfi')
         SemiringProbability.__init__(self)
         LogicProgram.__init__(self)
         self.source = source
 
         # The names of the atom for which we want to learn weights.
         self.names = []
-        # self.name_to_cindex = defaultdict(lambda: defaultdict(lambda: set()))  # [functor][args] = [indices]
 
         # The weights to learn.
         # The initial weights are of type 'float'.
         # When necessary they are replaced by a dictionary [t(arg1, arg2, ...) -> float]
         #  for weights of form t(SV, arg1, arg2, ...).
         self._weights = []
-        # If _weights contains a Term instead of a value (e.g. [t(arg1, arg2, ...) -> normal(float,float)]),
-        # then _cweights contains the actual probability given the current set of observations.
-        self._cweights = []
 
         self.examples = examples
         self.leakprob = leakprob
@@ -325,8 +321,7 @@ class LFIProblem(SemiringProbability, LogicProgram):
         """
         if isinstance(a, Term) and a.functor == 'lfi':
             # index = int(a.args[0])
-            w = self._get_weight(*a.args)
-            return w
+            return self._get_weight(*a.args)
         else:
             return float(a)
          
@@ -377,9 +372,6 @@ class LFIProblem(SemiringProbability, LogicProgram):
     def _add_weight(self, weight):
         self._weights.append(weight)
 
-    def _add_cweight(self, weight):
-        self._cweights.append(weight)
-
     def _process_examples(self):
         """Process examples by grouping together examples with similar structure.
     
@@ -392,46 +384,10 @@ class LFIProblem(SemiringProbability, LogicProgram):
 
         # Simple implementation: don't add neutral evidence.
 
-        # print('name_to_cindex')
-        # print(self.name_to_cindex)
-
         if self.propagate_evidence:
             result = ExampleSet()
             for index, example in enumerate(self.examples):
                 atoms, values, cvalues = zip(*example)
-                # cindices = []
-                # # TODO: we're building a lot of bookkeeping data structures here. Avoidable?
-                # for atom, cvalue in zip(atoms, cvalues):
-                #     if cvalue is None:
-                #         cindices.append(None)
-                #     else:
-                #         new_cindices = None
-                #         if atom.args in self.name_to_cindex[atom.functor]:
-                #             new_cindices = self.name_to_cindex[atom.functor][atom.args]
-                #         else:
-                #             # Perform very simple unification
-                #             # TODO: improve unification
-                #             for args, cur_cindices in self.name_to_cindex[atom.functor].items():
-                #                 if len(args) != len(atom.args):
-                #                     continue
-                #                 t_args = []
-                #                 for arg, aarg in zip(args, atom.args):
-                #                     if isinstance(aarg, Var):
-                #                         # Assume observations are ground
-                #                         break
-                #                     if isinstance(arg, Var):
-                #                         continue
-                #                     if arg == aarg:
-                #                         continue
-                #                 new_cindices = cur_cindices
-                #                 break
-                #             if new_cindices is None:
-                #                 raise ProbLogError('Could not find continuous atom {}'.format(atom))
-                #             # print('Unified {} with {}'.format(atom, args))
-                #         if len(new_cindices) == 0:
-                #             raise KeyError('Could not find continuous atom {}'.format(atom))
-                #         cindices.append(new_cindices)
-                # result.add(index, atoms, values, cvalues, cindices)
                 result.add(index, atoms, values, cvalues)
             return result
         else:
@@ -439,34 +395,6 @@ class LFIProblem(SemiringProbability, LogicProgram):
             result = ExampleSet()
             for index, example in enumerate(self.examples):
                 atoms, values, cvalues = zip(*example)
-                # cindices = []
-                # for atom, cvalue in zip(atoms, cvalues):
-                #     if cvalue is None:
-                #         cindices.append(None)
-                #     else:
-                #         new_cindices = None
-                #         if atom.args in self.name_to_cindex[atom.functor]:
-                #             new_cindices = self.name_to_cindex[atom.functor][atom.args]
-                #         else:
-                #             # Perform very simple unification
-                #             # TODO: improve unification
-                #             for args, cur_cindices in self.name_to_cindex[atom.functor].items():
-                #                 if len(args) != len(atom.args):
-                #                     continue
-                #                 for arg, aarg in zip(args, atom.args):
-                #                     print(arg, aarg)
-                #                     if arg == aarg:
-                #                         continue
-                #                     if isinstance(arg, Var):
-                #                         continue
-                #                 new_cindices = cur_cindices
-                #                 break
-                #             if new_cindices is None:
-                #                 raise ProbLogError('Could not find continuous atom {}'.format(atom))
-                #         if len(new_cindices) == 0:
-                #             raise KeyError('Could not find continuous atom {}'.format(atom))
-                #         cindices.append(new_cindices)
-                # result.add(index, atoms, values, cvalues, cindices)
                 result.add(index, atoms, values, cvalues)
             return result
     
@@ -660,7 +588,6 @@ class LFIProblem(SemiringProbability, LogicProgram):
                 has_lfi_fact = True
 
                 # Learnable probability
-                # print('get start_value from {}'.format(atom.probability.args[0]))
                 try:
                     start_value = float(atom.probability.args[0])
                 except InstantiationError:
@@ -703,9 +630,7 @@ class LFIProblem(SemiringProbability, LogicProgram):
                 if start_value is None:
                     self._add_weight(random_weights.pop(-1))
                 else:
-                    # print('do add_weight {}'.format(start_value))
                     self._add_weight(start_value)
-                self._add_cweight(None)
 
                 # 5) Add name
                 self.names.append(atom)
@@ -754,11 +679,11 @@ class LFIProblem(SemiringProbability, LogicProgram):
 
                 index = self.output_names.index(atom)
                 weights = self.get_weights(index)
-                # print('output weights: ', weights)
 
                 for w_args, w_val in weights:
                     translate = tuple(zip(atom.probability.args[1:], w_args.args))
                     if isinstance(w_val, Term) and w_val.functor in cdist_names:
+                        # Keep the complex structure that represents the distribution
                         transforms[translate].append(atom.with_probability(w_val))
                     else:
                         transforms[translate].append(atom.with_probability(Constant(w_val)))
@@ -875,7 +800,6 @@ class LFIProblem(SemiringProbability, LogicProgram):
 
     def _evaluate_examples(self):
         """Evaluate the model with its current estimates for all examples."""
-        # print('LFIProblem._evaluate_examples')
         results = []
         i = 0
         logging.getLogger('problog_lfi').debug('Evaluating examples ...')
@@ -886,8 +810,6 @@ class LFIProblem(SemiringProbability, LogicProgram):
     
     def _update(self, results):
         """Update the current estimates based on the latest evaluation results."""
-        # print('_update')
-        # print('results', list(results))
         fact_marg = defaultdict(float)
         fact_count = defaultdict(int)
         fact_values = dict()
@@ -897,7 +819,6 @@ class LFIProblem(SemiringProbability, LogicProgram):
             # print('p_values', p_values)
             for fact, value in result.items():
                 index = fact.args[0:2]
-                t_args = fact.args[2:]
                 fact_marg[index] += value * m
                 fact_count[index] += m
                 if fact in p_values:
@@ -1105,7 +1026,6 @@ class ExampleEvaluator(SemiringProbability):
         # print('<<<=========')
         return results
 
-
     def _call_internal(self, at, val, cval, comp, n):
         # print('=========')
         # print('ExampleEvaluator.__call__({},{},{},{})'.format(n, at, val, cval))
@@ -1250,8 +1170,8 @@ def argparser():
     parser = argparse.ArgumentParser(description="Learning from interpretations with ProbLog")
     parser.add_argument('model')
     parser.add_argument('examples', nargs='+')
-    parser.add_argument('-n', dest='max_iter', default=10000, type=int )
-    parser.add_argument('-d', dest='min_improv', default=1e-10, type=float )
+    parser.add_argument('-n', dest='max_iter', default=10000, type=int)
+    parser.add_argument('-d', dest='min_improv', default=1e-10, type=float)
     parser.add_argument('-O', '--output-model', type=str, default=None,
                         help='write resulting model to given file')
     parser.add_argument('-o', '--output', type=str, default=None,
@@ -1311,7 +1231,7 @@ def main(argv, result_handler=None):
     program = PrologFile(args.model)
     examples = list(read_examples(*args.examples))
     if len(examples) == 0:
-        logging.getLogger('problog_lfi').warn('no examples specified')
+        logging.getLogger('problog_lfi').warning('no examples specified')
     else:
         logging.getLogger('problog_lfi').info('Number of examples: %s' % len(examples))
     options = vars(args)
