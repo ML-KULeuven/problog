@@ -16,14 +16,16 @@ Continuous distributions
 A parametrized weight can also be a continuous normal distribution if the atom it is associated
 with only appears as a head (thus is not used in any bodies of other ProbLog rules).
 
-For example, the following GMM::
+For example, the following GMM:
 
+.. code-block:: prolog::
     t(0.5)::c.
     t(normal(1,10))::fa :- c.
     t(normal(10,10))::fa :- \+c.
 
-with evidence::
+with evidence:
 
+.. code-block:: prolog::
     evidence(fa, 10).
     ---
     evidence(fa, 18).
@@ -33,12 +35,14 @@ with evidence::
 
 Or a multivariate GMM:
 
+.. code-block:: prolog
     t(0.5)::c.
     t(normal([1,1],[10,1,1,10]))::fa :- c.
     t(normal([10,10],[10,1,1,10]))::fa :- \+c.
 
-with evidence::
+with evidence:
 
+.. code-block:: prolog
     evidence(fa, [10,11]).
     ---
     evidence(fa, [18,12]).
@@ -399,14 +403,9 @@ class LFIProblem(SemiringProbability, LogicProgram):
             return result
     
     def _compile_examples(self):
-        """Compile examples.
-    
-        :param examples: Output of ::func::`process_examples`.
-        """
+        """Compile examples."""
         logger = logging.getLogger('problog_lfi')
-
         baseprogram = DefaultEngine(**self.extra).prepare(self)
-        # print('baseprogram:\n', baseprogram.to_prolog())
         examples = self._process_examples()
         result = []
         for example in examples:
@@ -426,12 +425,10 @@ class LFIProblem(SemiringProbability, LogicProgram):
                     result = self._process_atom_cont(atom, body)
         if result is None:
             result = self._process_atom_discr(atom, body)
-        # print('_process_atom -> {}'.format(result))
         return result
 
     def _process_atom_cont(self, atom, body):
         """Returns tuple ( prob_atom, [ additional clauses ] )"""
-        # print('process_atom_cont({}, {}'.format(atom, body))
         atoms_out = []
         extra_clauses = []
 
@@ -467,7 +464,6 @@ class LFIProblem(SemiringProbability, LogicProgram):
             else:
                 start_dist = None
                 start_params = None
-            # print('start_dist: {} with params {}'.format(start_dist, start_params))
 
             # Learnable probability
             # print('get start_value from {}'.format(cdist))
@@ -496,7 +492,6 @@ class LFIProblem(SemiringProbability, LogicProgram):
             # TODO: naming it clfi_fact instead of lfi_fact is not really necessary
             lfi_fact = Term('clfi_fact', Constant(self.count), Term('t', *prob_args), *atom1.args)
             lfi_prob = Term('clfi', Constant(self.count), Term('t', *prob_args), atom.with_probability())
-            # print('new facts', lfi_fact, lfi_prob)
 
             # 2) Replacement atom
             replacement = lfi_fact.with_probability(lfi_prob)
@@ -504,11 +499,9 @@ class LFIProblem(SemiringProbability, LogicProgram):
                 new_body = lfi_fact
             else:
                 new_body = body & lfi_fact
-            # print('replacement', replacement)
 
             # 3) Create redirection clause
             extra_clauses += [Clause(atom1.with_probability(), new_body)]
-            # print('extra_clauses', extra_clauses)
 
             # 4) Set initial weight
             if start_dist is None:
@@ -517,13 +510,11 @@ class LFIProblem(SemiringProbability, LogicProgram):
                 if start_params[0] is None:
                     start_params[0] = Constant(random.gauss(0, 10))
                 if start_params[1] is None:
-                    start_params[1] = Constant(1000000)
+                    start_params[1] = Constant(1000000)  # TODO: What is a good choice here?
                 start_dist = start_dist.with_args(start_params[0], start_params[1])
                 self._add_weight(start_dist)
-                self._add_cweight(0.0)
 
             # 5) Add name
-            # self.name_to_cindex[atom1.functor][atom1.args].add(len(self.names))
             self.names.append(atom)
             atoms_out.append(replacement)
         else:
@@ -978,8 +969,8 @@ class ExampleEvaluator(SemiringProbability):
             return weight
 
     def _get_cweight(self, index, args, atom, strict=True):
+        # TODO: Should we cache this? This method is called multiple times with the same arguments
         index = int(index)
-        # print('_get_cweight({}, {}, {}) - weight = {}'.format(index, args, atom, self._weights[index]))
         dist = self._weights[index]
         if isinstance(dist, dict):
             if strict:
@@ -993,7 +984,6 @@ class ExampleEvaluator(SemiringProbability):
             p = dist_prob(dist, value)
         else:
             raise ProbLogError('Expected continuous evidence for {}')
-        # print('_get_cweight.return = ', p)
         return p
 
     def value(self, a):
@@ -1050,25 +1040,19 @@ class ExampleEvaluator(SemiringProbability):
                     self._cevidence[a] = cv
                 evidence[a] = v
 
-        # print('cevidence', cevidence)
-        # cweights = {}
         p_values = {}
+        # TODO: this loop is not required if there are no clfi_facts
         for idx, node, ty in comp:
-            # print('t = ', ty, 'e.f.n = ', node.name)
             if ty == 'atom':
                 name = node.name
                 if name.functor == 'clfi_fact':  # TODO: when is this wrapped in 'choice'? Before compilation?
                     clfi = node.probability
-                    # print('clfi = ', clfi)
-                    base = clfi.args[2]
-                    # print('base = ', base)
-                    value = self._cevidence.get(base)
+                    ev_atom = clfi.args[2]
+                    value = self._cevidence.get(ev_atom)
                     if value is not None:
                         p_values[node.name] = value
-        # print('p_values', p_values)
 
         try:
-            # print('ExampleEvaluator.comp.get_evaluator(evidence={})'.format(evidence))
             evaluator = comp.get_evaluator(semiring=self, evidence=evidence)
         except InconsistentEvidenceError as err:
             n = ','.join([str(ni) for ni in n]) if isinstance(n, list) else n + 1
@@ -1081,7 +1065,6 @@ class ExampleEvaluator(SemiringProbability):
         p_queries = {}
         # Probability of query given evidence
         for name, node, label in evaluator.formula.labeled():
-            # print('name = ', name, 'node = ', node, 'label = ', label)
             w = evaluator.evaluate_fact(node)
             if w < 1e-6:
                 p_queries[name] = 0.0
