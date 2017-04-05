@@ -848,22 +848,22 @@ class LFIProblem(SemiringProbability, LogicProgram):
     
     def _update(self, results):
         """Update the current estimates based on the latest evaluation results."""
-        print('_update')
+        # print('_update')
         # print('results', list(results))
         fact_marg = defaultdict(float)
         fact_count = defaultdict(int)
         fact_values = dict()
         score = 0.0
         for m, pEvidence, result, p_values in results:
-            print('result', result)
-            print('p_values', p_values)
+            # print('result', result)
+            # print('p_values', p_values)
             for fact, value in result.items():
                 index = fact.args[0:2]
                 t_args = fact.args[2:]
                 fact_marg[index] += value * m
                 fact_count[index] += m
                 if fact in p_values:
-                    print('fact in p_values', fact)
+                    # print('fact in p_values', fact)
                     if index[0] not in fact_values:
                         fact_values[index[0]] = (self._get_weight(index[0], index[1]), list())
                     p_value = p_values[fact]
