@@ -490,6 +490,15 @@ class FormulaEvaluator(object):
         self._computed_weights.clear()
         self._fact_weights = weights
 
+    def update_weights(self, weights):
+        """Update weights to given known weights.
+
+        :param weights: dictionary of weights
+        :return:
+        """
+        self._computed_weights.clear()
+        self._fact_weights.update(weights)
+
     def get_weight(self, index):
         """Get the weight of the node with the given index.
 

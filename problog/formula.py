@@ -96,6 +96,14 @@ class BaseFormula(ProbLogObject):
         """
         self._weights = weights
 
+    def update_weights(self, weights):
+        """Update weights of the atoms in the formula.
+
+        :param weights: dictionary of weights
+        :type weights: dict[int, Term]
+        """
+        self._weights.update(weights)
+
     def get_weight(self, key, semiring):
         """Get actual value of the node with the given key according to the given semiring.
 
