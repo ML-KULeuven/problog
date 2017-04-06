@@ -51,6 +51,20 @@ with evidence:
 
 The covariance matrix is represented as a row-based list ([[10,1],[1,10]] is [10,1,1,10]).
 
+The GMM can also be represent compactly and as one examples:
+
+.. code-block:: prolog
+    t(0.5)::c(ID,1); t(0.5)::c(ID,2).
+    comp(1). comp(2).
+    t(normal(_,_),C)::fa(ID) :- comp(C), c(ID,C).
+
+with evidence:
+
+.. code-block:: prolog::
+    evidence(fa(1), 10).
+    evidence(fa(2), 18).
+    evidence(fa(3), 8).
+
 
 Algorithm
 +++++++++
@@ -249,6 +263,33 @@ def dist_prob_set(d, values):
     raise ValueError("Distribution not supported '%s'" % d.functor)
 
 
+def dist_perturb(d):
+    if stats is None or np is None:
+        raise ProbLogError('Continuous variables require Scipy and Numpy to be installed.')
+    if d.functor == 'normal':
+        if isinstance(d.args[0], Term) and d.args[0].functor == '.':
+            args = (term2list(d.args[0]), term2list(d.args[1]))
+        else:
+            args = d.args
+        if isinstance(args[0], list):  # multivariate
+            mu = args[0]
+            ndim = len(mu)
+            std = args[1]
+            if len(std) != ndim*ndim:
+                raise ValueError("Distribution parameters do not match: {}".format(d))
+            rv = stats.multivariate_normal(mu, np.reshape(std, (ndim, ndim))/10)
+            mu = rv.rvs()
+            dn = d.with_args(list2term(mu.tolist()), list2term(std.tolist()))
+            return dn
+        else:  # univariate
+            mu, std = map(float, d.args)
+            rv = stats.norm(mu, std/10)
+            mu = float(rv.rvs())
+            dn = d.with_args(Constant(mu), Constant(std))
+            return dn
+    raise ValueError("Distribution not supported '%s'" % d.functor)
+
+
 class LFIProblem(SemiringProbability, LogicProgram):
 
     def __init__(self, source, examples, max_iter=10000, min_improv=1e-10, verbose=0, knowledge=None,
@@ -312,6 +353,7 @@ class LFIProblem(SemiringProbability, LogicProgram):
 
         self._enable_normalize = normalize
         self._adatoms = []
+        self._catoms = set()  # Continuous atoms
     
     def value(self, a):
         """Overrides from SemiringProbability.
@@ -371,6 +413,10 @@ class LFIProblem(SemiringProbability, LogicProgram):
         elif isinstance(self._weights[index], dict):
             self._weights[index][args] = weight
         else:
+            if index in self._catoms:
+                # If new t args, perturb the distribution a bit to avoid identical ones
+                weight = dist_perturb(weight)
+            # TODO: Shouldn't all weights be perturbed to avoid identical updates?
             self._weights[index] = {args: weight}
 
     def _add_weight(self, weight):
@@ -515,6 +561,7 @@ class LFIProblem(SemiringProbability, LogicProgram):
                 self._add_weight(start_dist)
 
             # 5) Add name
+            self._catoms.add(len(self.names))
             self.names.append(atom)
             atoms_out.append(replacement)
         else:
@@ -814,24 +861,43 @@ class LFIProblem(SemiringProbability, LogicProgram):
                 fact_count[index] += m
                 if fact in p_values:
                     # print('fact in p_values', fact)
-                    if index[0] not in fact_values:
-                        fact_values[index[0]] = (self._get_weight(index[0], index[1]), list())
+                    k = (index[0], index[1])
+                    if k not in fact_values:
+                        fact_values[k] = (self._get_weight(index[0], index[1]), list())
                     p_value = p_values[fact]
-                    fact_values[index[0]][1].append((p_value, value, m))
+                    fact_values[k][1].append((p_value, value, m))
             try:
                 score += math.log(pEvidence)
             except ValueError:
                 raise ProbLogError('Inconsistent evidence.')
 
         for index in fact_marg:
-            if index[0] in fact_values:
-                self._set_weight(index[0], index[1], dist_prob_set(*fact_values[index[0]]))
+            k = (index[0], index[1])
+            if k in fact_values:
+                self._set_weight(index[0], index[1], dist_prob_set(*fact_values[k]))
             else:
                 if fact_count[index] > 0:
                     self._set_weight(index[0], index[1], fact_marg[index] / fact_count[index])
 
         if self._enable_normalize:
             self._normalize_weights()
+
+        # Avoid that continuous distributions are identical
+        # for idx, weight in enumerate(self._weights):
+        #     if idx in self._catoms and isinstance(weight, dict):
+        #         same = dict()
+        #         for t, dist in weight.items():
+        #             if dist in same:
+        #                 same[dist].append(t)
+        #             else:
+        #                 same[dist] = [t]
+        #         print(same)
+        #         for dist, ts in same.items():
+        #             if len(ts) <= 1:
+        #                 continue
+        #             for t in ts:
+        #                 weight[t] = dist_perturb(dist)
+
         return score
 
     def _normalize_weights(self):
