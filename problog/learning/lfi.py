@@ -882,22 +882,6 @@ class LFIProblem(SemiringProbability, LogicProgram):
         if self._enable_normalize:
             self._normalize_weights()
 
-        # Avoid that continuous distributions are identical
-        # for idx, weight in enumerate(self._weights):
-        #     if idx in self._catoms and isinstance(weight, dict):
-        #         same = dict()
-        #         for t, dist in weight.items():
-        #             if dist in same:
-        #                 same[dist].append(t)
-        #             else:
-        #                 same[dist] = [t]
-        #         print(same)
-        #         for dist, ts in same.items():
-        #             if len(ts) <= 1:
-        #                 continue
-        #             for t in ts:
-        #                 weight[t] = dist_perturb(dist)
-
         return score
 
     def _normalize_weights(self):
