@@ -450,10 +450,8 @@ class LFIProblem(SemiringProbability, LogicProgram):
     
     def _compile_examples(self):
         """Compile examples."""
-        logger = logging.getLogger('problog_lfi')
         baseprogram = DefaultEngine(**self.extra).prepare(self)
         examples = self._process_examples()
-        result = []
         for example in examples:
             example.compile(self, baseprogram)
         self._compiled_examples = examples
@@ -874,6 +872,8 @@ class LFIProblem(SemiringProbability, LogicProgram):
         for index in fact_marg:
             k = (index[0], index[1])
             if k in fact_values:
+                logging.getLogger('problog_lfi').debug('Update continuous distribution {}: '.format(index) +
+                                                       ', '.join([str(v) for v in fact_values[k]]))
                 self._set_weight(index[0], index[1], dist_prob_set(*fact_values[k]))
             else:
                 if fact_count[index] > 0:
@@ -885,6 +885,8 @@ class LFIProblem(SemiringProbability, LogicProgram):
         return score
 
     def _normalize_weights(self):
+        # TODO: This is actually indirectly the derived rule for EM for multivalued variables, thus should always be applied.
+        # Derivation is sum(all values for var=k) / sum(all values for i sum(all values for var=i))
 
         for p, idx in self._adatoms:
             keys = set()
@@ -923,7 +925,8 @@ class LFIProblem(SemiringProbability, LogicProgram):
         logging.getLogger('problog_lfi').info('Initial weights: %s' % self._weights)
         delta = 1000
         prev_score = -1e10
-        while self.iteration < self.max_iter and (delta < 0 or delta > self.min_improv):  # TODO: isn't this comparing delta i logprob with min_improv in prob?
+        # TODO: isn't this comparing delta i logprob with min_improv in prob?
+        while self.iteration < self.max_iter and (delta < 0 or delta > self.min_improv):
             score = self.step()
             logging.getLogger('problog_lfi').info('Weights after iteration %s: %s' % (self.iteration, self._weights))
             logging.getLogger('problog_lfi').info('Score after iteration %s: %s' % (self.iteration, score))
@@ -940,7 +943,7 @@ class ExampleSet(object):
     def add(self, index, atoms, values, cvalues):
         ex = self._examples.get((atoms, values))
         if ex is None:
-            self._examples[(atoms,values)] = Example(index, atoms, values, cvalues)
+            self._examples[(atoms, values)] = Example(index, atoms, values, cvalues)
         else:
             ex.add_index(index, cvalues)
 
@@ -1221,7 +1224,11 @@ def argparser():
                         dest='propagate_evidence',
                         default=True,
                         help="Disable evidence propagation")
-    parser.add_argument('--normalize', action='store_true', help="Normalize AD-weights.")
+    normalize_group = parser.add_mutually_exclusive_group()
+    normalize_group.add_argument('--normalize', action='store_true', dest='normalize', default=True,
+                                 help="Normalize AD-weights (default).")
+    normalize_group.add_argument('--nonormalize', action='store_false', dest='normalize',
+                                 help="Do not normalize AD-weights.")
     parser.add_argument('-v', '--verbose', action='count', default=0)
     parser.add_argument('--web', action='store_true', help=argparse.SUPPRESS)
     parser.add_argument('-a', '--arg', dest='args', action='append',
