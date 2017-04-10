@@ -462,7 +462,9 @@ class LFIProblem(SemiringProbability, LogicProgram):
         if isinstance(atom, Or):
             # Annotated disjuntions are always discrete distributions
             result = self._process_atom_discr(atom, body)
-        if result is None and atom.probability:
+        if result is None and atom.probability and isinstance(atom.probability, Term) and \
+            len(atom.probability.args) > 0:
+            print(atom.probability)
             cdist = atom.probability.args[0]
             if isinstance(cdist, Term) and not isinstance(cdist, Var):
                 if cdist.functor in cdist_names:
