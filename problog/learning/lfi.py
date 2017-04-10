@@ -189,7 +189,12 @@ def dist_prob(d, x, eps=1e-4, log=False):
             if len(cov) != ndim*ndim:
                 raise ValueError("Distribution parameters do not match: {}".format(d))
             cov = np.reshape(cov, (ndim, ndim))
-            rv = stats.multivariate_normal(m, cov)
+            try:
+                rv = stats.multivariate_normal(m, cov)
+            except np.linalg.linalg.LinAlgError as exc:
+                logger = logging.getLogger('problog_lfi')
+                logger.debug('Encountered a singular covariance matrix: N({},\n{})'.format(m, cov))
+                raise exc
             if log:
                 result = rv.logpdf(x) + (math.log(2) + math.log(eps))*ndim
             else:
@@ -201,7 +206,10 @@ def dist_prob(d, x, eps=1e-4, log=False):
             rv = stats.norm(m, s)
             result = rv.cdf(x + eps) - rv.cdf(x - eps)
             if log:
-                result = math.log(result)
+                try:
+                    result = math.log(result)
+                except ValueError:
+                    result = -math.inf
             # print('dist_prob({}, {}) -> {}'.format(d, x, result))
             return result
     raise ValueError("Distribution not supported '%s'" % d.functor)
@@ -224,8 +232,9 @@ def dist_prob_set(d, values, eps=1e-4):
         if isinstance(args[0], list):  # multivariate
             # TODO: cleanup (make nice with numpy, store numpy in Term to avoid conversions?)
             pf = 0.0
-            mu = np.zeros(len(args[0]))
-            cov = np.zeros((len(args[0]), len(args[0])))
+            ndim = len(args[0])
+            mu = np.zeros(ndim)
+            cov = np.zeros((ndim, ndim))
             for value, weight, count in values:
                 pf += weight * count
                 mu += weight * count * np.array(value)
@@ -238,15 +247,28 @@ def dist_prob_set(d, values, eps=1e-4):
                 cov += weight * count * xmu.T * xmu
             cov /= pf
             s_eps = eps**2
+            # if np.linalg.matrix_rank(cov) != ndim:
+            #     # The matrix is singular, reinitialise to random value
+            #     # See Bishop 9.2.1 on singularities in GMM. Better solutions exist.
+            #     logger.debug('Singular matrix, reset to random values')
+            #     mu = np.random.random(ndim)
+            #     cov = np.diagflat([1000.0]*ndim)
+            try:
+                stats.multivariate_normal(mu, cov)
+            except np.linalg.linalg.LinAlgError:
+                logger.debug('Singular matrix for normal dist, reset to random values')
+                logger.debug('mu = {}'.format(mu))
+                logger.debug('cov = \n{}'.format(cov))
+                mu = np.random.random(ndim)
+                cov = np.diagflat([1000.0] * ndim)
             for i in range(cov.shape[0]):
                 if cov[i, i] < s_eps:
-                    # TODO: Is this a good approach?
                     # Covariance is corrected to not have probabilities larger than 1
                     # Pdf is multiplied with eps to translate to prob
                     logger.debug('Corrected covar from {} to {}'.format(cov[i, i], s_eps))
                     cov[i, i] = s_eps
             cov = cov.reshape(-1)
-            # print('Update: {} -> normal({},{})'.format(d, mu, std))
+            # print('Update: {} -> normal({},{})'.format(d, mu, cov))
             # values.sort(key=lambda t: t[0])
             # for value, weight, count in values:
             #     print('({:<4}, {:7.5f}, {:<4})'.format(value, weight, count))
@@ -266,7 +288,7 @@ def dist_prob_set(d, values, eps=1e-4):
                 var += weight*count*(value - mu)**2
             var /= pf
             if var < eps**2:
-                # TODO: Is this a good approach?
+                # TODO: Is this a good approach? Should also take singularity into account
                 # Std is corrected to not have probabilities larger than 1
                 # Pdf is multiplied with eps to translate to prob
                 std = eps
@@ -895,7 +917,8 @@ class LFIProblem(SemiringProbability, LogicProgram):
             try:
                 score += math.log(pEvidence)
             except ValueError:
-                raise ProbLogError('Inconsistent evidence when updating')
+                logger.debug('Pr(evidence) == 0.0')
+                # raise ProbLogError('Inconsistent evidence when updating')
 
         for index in fact_marg:
             k = (index[0], index[1])
@@ -1176,7 +1199,7 @@ class ExampleEvaluatorLog(SemiringLogProbability):
             else:
                 weight = weight.get(args, 0.0)
         if weight == 0.0:
-            return -math.inf
+            return -math.inf  # TODO: only py3
         return math.log(weight)
 
     def _get_cweight(self, index, args, atom, strict=True):
@@ -1276,11 +1299,12 @@ class ExampleEvaluatorLog(SemiringLogProbability):
         # Probability of query given evidence
         for name, node, label in evaluator.formula.labeled():
             w = evaluator.evaluate_fact(node)
-            # if w < 1e-6:  # TODO: too high for multivariate dists? Also for many observations?
+            # if w < 1e-6:  # TODO: too high for multivariate dists
             #     print('Set w to 0: ', w)
             #     p_queries[name] = 0.0
             # else:
             p_queries[name] = w
+        # TODO: p_evidence becomes too small for many continuous observations
         p_evidence = evaluator.evaluate_evidence()
         # print('__call__.result', p_evidence, '\n', p_queries, '\n', '\n '.join([str(v) for v in p_values.items()]))
         return len(n), p_evidence, p_queries, p_values
