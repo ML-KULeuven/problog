@@ -180,10 +180,10 @@ def dist_prob(d, x, eps=1e-4):
         if isinstance(args[0], list):  # multivariate
             m = args[0]
             ndim = len(m)
-            s = args[1]
-            if len(s) != ndim*ndim:
+            cov = args[1]
+            if len(cov) != ndim*ndim:
                 raise ValueError("Distribution parameters do not match: {}".format(d))
-            rv = stats.multivariate_normal(m, np.reshape(s, (ndim, ndim)))
+            rv = stats.multivariate_normal(m, np.reshape(cov, (ndim, ndim)))
             result = rv.pdf(x) * 2 * eps
             # print('dist_prob({}, {}) -> {}'.format(d, x, result))
             return result
@@ -213,7 +213,7 @@ def dist_prob_set(d, values):
             # TODO: cleanup (make nice with numpy, store numpy in Term to avoid conversions?)
             pf = 0.0
             mu = np.zeros(len(args[0]))
-            std = np.zeros((len(args[0]), len(args[0])))
+            cov = np.zeros((len(args[0]), len(args[0])))
             for value, weight, count in values:
                 pf += weight * count
                 mu += weight * count * np.array(value)
@@ -223,19 +223,18 @@ def dist_prob_set(d, values):
             mu /= pf
             for value, weight, count in values:
                 xmu = np.matrix(value) - mu
-                std += weight * count * xmu.T * xmu
-            std /= pf
-            std = np.sqrt(std)
-            for i in range(std.shape[0]):
-                if std[i, i] < 1e-10:
+                cov += weight * count * xmu.T * xmu
+            cov /= pf
+            for i in range(cov.shape[0]):
+                if cov[i, i] < 1e-10:
                     print('correct std')
-                    std[i, i] = 1
-            std = std.reshape(-1)
+                    cov[i, i] = 1
+            cov = cov.reshape(-1)
             # print('Update: {} -> normal({},{})'.format(d, mu, std))
             # values.sort(key=lambda t: t[0])
             # for value, weight, count in values:
             #     print('({:<4}, {:7.5f}, {:<4})'.format(value, weight, count))
-            return d.with_args(list2term(mu.tolist()), list2term(std.tolist()))
+            return d.with_args(list2term(mu.tolist()), list2term(cov.tolist()))
         else:  # univariate
             pf = 0.0
             mu = 0.0
