@@ -195,6 +195,7 @@ def dist_prob(d, x, eps=1e-4, log=False):
                 logger = logging.getLogger('problog_lfi')
                 logger.debug('Encountered a singular covariance matrix: N({},\n{})'.format(m, cov))
                 raise exc
+            # TODO: The multiplication with eps should be avoided by working with densities
             if log:
                 result = rv.logpdf(x) + (math.log(2) + math.log(eps))*ndim
             else:
@@ -204,6 +205,7 @@ def dist_prob(d, x, eps=1e-4, log=False):
         else:  # univariate
             m, s = map(float, d.args)
             rv = stats.norm(m, s)
+            # TODO: The multiplication with eps should be avoided by working with densities
             result = rv.cdf(x + eps) - rv.cdf(x - eps)
             if log:
                 try:
@@ -253,20 +255,25 @@ def dist_prob_set(d, values, eps=1e-4):
             #     logger.debug('Singular matrix, reset to random values')
             #     mu = np.random.random(ndim)
             #     cov = np.diagflat([1000.0]*ndim)
+            # for i in range(cov.shape[0]):
+            #     if cov[i, i] < s_eps:
+            #         # Covariance is corrected to not have probabilities larger than 1
+            #         # Pdf is multiplied with eps to translate to prob
+            #         logger.debug('Corrected covar from {} to {}'.format(cov[i, i], s_eps))
+            #         cov[i, i] = s_eps
             try:
-                stats.multivariate_normal(mu, cov)
+                rv = stats.multivariate_normal(mu, cov)
+                if rv.pdf(mu) > 1.0/(2*eps):
+                    logger.debug('PDF larger than 1.0/(2*eps), assume singularity')
+                    raise np.linalg.linalg.LinAlgError()
             except np.linalg.linalg.LinAlgError:
                 logger.debug('Singular matrix for normal dist, reset to random values')
                 logger.debug('mu = {}'.format(mu))
                 logger.debug('cov = \n{}'.format(cov))
+                # The matrix is singular, reinitialise to random value
+                # See Bishop 9.2.1 on singularities in GMM. Better solutions exist.
                 mu = np.random.random(ndim)
                 cov = np.diagflat([1000.0] * ndim)
-            for i in range(cov.shape[0]):
-                if cov[i, i] < s_eps:
-                    # Covariance is corrected to not have probabilities larger than 1
-                    # Pdf is multiplied with eps to translate to prob
-                    logger.debug('Corrected covar from {} to {}'.format(cov[i, i], s_eps))
-                    cov[i, i] = s_eps
             cov = cov.reshape(-1)
             # print('Update: {} -> normal({},{})'.format(d, mu, cov))
             # values.sort(key=lambda t: t[0])
@@ -334,7 +341,7 @@ def dist_perturb(d):
 class LFIProblem(SemiringProbability, LogicProgram):
 
     def __init__(self, source, examples, max_iter=10000, min_improv=1e-10, verbose=0, knowledge=None,
-                 leakprob=None, propagate_evidence=True, normalize=False, eps=1e-4, **extra):
+                 leakprob=None, propagate_evidence=True, normalize=False, log=False, eps=1e-4, **extra):
         """
         Learn parameters using LFI.
 
@@ -366,7 +373,7 @@ class LFIProblem(SemiringProbability, LogicProgram):
         SemiringProbability.__init__(self)
         LogicProgram.__init__(self)
         self.source = source
-        self._log = True
+        self._log = log
         self._eps = eps
 
         # The names of the atom for which we want to learn weights.
@@ -1198,9 +1205,11 @@ class ExampleEvaluatorLog(SemiringLogProbability):
                 weight = weight[args]
             else:
                 weight = weight.get(args, 0.0)
-        if weight == 0.0:
-            return -math.inf  # TODO: only py3
-        return math.log(weight)
+        try:
+            result = math.log(weight)
+        except ValueError:
+            return float('-inf')
+        return result
 
     def _get_cweight(self, index, args, atom, strict=True):
         # TODO: Should we cache this? This method is called multiple times with the same arguments
