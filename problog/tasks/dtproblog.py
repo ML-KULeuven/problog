@@ -112,14 +112,19 @@ def dtproblog(model, search=None, koption=None, locations=False, web=False, **kw
                 if set(c.get_nodes()) & decision_nodes:
                     constraints.append(c)
 
-        with Timer('Compile', logger='dtproblog'):
-            knowledge = get_evaluatable(koption).create_from(gp)
+        if decision_nodes:
+            with Timer('Compile', logger='dtproblog'):
+                knowledge = get_evaluatable(koption).create_from(gp)
 
-        with Timer('Optimize', logger='dtproblog'):
-            if search == 'local':
-                result = search_local(knowledge, decisions, utilities, constraints, **kwargs)
-            else:
-                result = search_exhaustive(knowledge, decisions, utilities, constraints, **kwargs)
+            with Timer('Optimize', logger='dtproblog'):
+                if search == 'local':
+                    result = search_local(knowledge, decisions, utilities, constraints, **kwargs)
+                else:
+                    result = search_exhaustive(knowledge, decisions, utilities, constraints, **kwargs)
+        else:
+            logging.getLogger('dtproblog').warn('no decisions found')
+            # no decisions to be made
+            result = {}, 0.0, {'eval': 0}
 
         if web or locations:
             for k, v in result[0].items():
