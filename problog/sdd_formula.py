@@ -74,23 +74,25 @@ class SDD(DD):
             node = self.get_inode(q)
             constraints = self.get_constraint_inode()
             nodec = self.get_manager().conjoin(node, constraints)
-            i = self._to_formula(formula, nodec)
+            i = self._to_formula(formula, nodec, {})
             formula.add_name(n, i, formula.LABEL_QUERY)
         return formula
 
-    def _to_formula(self, formula, current_node):
+    def _to_formula(self, formula, current_node, cache=None):
+        if cache is not None and int(current_node) in cache:
+            return cache[int(current_node)]
         if self.get_manager().is_true(current_node):
-            return formula.TRUE
+            retval = formula.TRUE
         elif self.get_manager().is_false(current_node):
-            return formula.FALSE
+            retval = formula.FALSE
         elif sdd.sdd_node_is_literal(current_node):  # it's a literal
             lit = sdd.sdd_node_literal(current_node)
             at = self.var2atom[abs(lit)]
             node = self.get_node(at)
             if lit < 0:
-                return -formula.add_atom(-lit, probability=node.probability, name=node.name, group=node.group)
+                retval = -formula.add_atom(-lit, probability=node.probability, name=node.name, group=node.group)
             else:
-                return formula.add_atom(lit, probability=node.probability, name=node.name, group=node.group)
+                retval = formula.add_atom(lit, probability=node.probability, name=node.name, group=node.group)
         else:  # is decision
             size = sdd.sdd_node_size(current_node)
             elements = sdd.sdd_node_elements(current_node)
@@ -100,14 +102,24 @@ class SDD(DD):
             # Formula: (p1^s1) v (p2^s2) v ...
             children = []
             for p, s in zip(primes, subs):
-                p_n = self._to_formula(formula, p)
-                s_n = self._to_formula(formula, s)
+                p_n = self._to_formula(formula, p, cache)
+                s_n = self._to_formula(formula, s, cache)
                 c_n = formula.add_and((p_n, s_n))
                 children.append(c_n)
-            return formula.add_or(children)
+            retval = formula.add_or(children)
+        if cache is not None:
+            cache[int(current_node)] = retval
+        return retval
 
     def to_dot(self, *args, **kwargs):
-        return self.to_formula().to_dot(*args, **kwargs)
+        if kwargs.get('use_internal'):
+            for qn, qi in self.queries():
+                filename = mktempfile('.dot')
+                self.get_manager().write_to_dot(self.get_inode(qi), filename)
+                with open(filename) as f:
+                    return f.read()
+        else:
+            return self.to_formula().to_dot(*args, **kwargs)
 
 
 class SDDManager(DDManager):

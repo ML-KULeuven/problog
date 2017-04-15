@@ -1889,8 +1889,11 @@ class EvalNot(EvalNode):
             if self.target.flag('keep_all'):
                 src_node = self.database.get_node(self.node.child)
                 min_var = self.engine._context_min_var(self.context)
-                args, _ = substitute_call_args(src_node.args, self.context, min_var=min_var)
-                name = Term(src_node.functor, *args)
+                if type(src_node).__name__ == 'atom':
+                    args, _ = substitute_call_args(src_node.args, self.context, min_var=min_var)
+                    name = Term(src_node.functor, *args)
+                else:
+                    name = None
                 node = -self.target.add_atom(name, False, None, name=name, source='negation')
             else:
                 node = NODE_TRUE

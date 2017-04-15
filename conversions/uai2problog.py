@@ -16,21 +16,13 @@ import argparse
 import itertools
 import logging
 
+from bn2problog import BNParser
+
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 from problog.pgm.cpd import Variable, Factor, PGM
 
 
-logger = logging.getLogger('be.kuleuven.cs.dtai.problog.uai2problog')
-
-
-def error(*args, **kwargs):
-    halt = False
-    if 'halt' in kwargs:
-        halt = kwargs['halt']
-        del kwargs['halt']
-    logger.error(*args, **kwargs)
-    if halt:
-        sys.exit(1)
+logger = logging.getLogger('be.kuleuven.cs.dtai.problog.bn2problog')
 
 
 class UAIReader:
@@ -70,17 +62,11 @@ class UAIReader:
             self.file.close()
 
 
-class UAIParser:
+class UAIParser(BNParser):
 
-    def __init__(self, fn):
-        self.fn = fn
+    def __init__(self, args):
+        super(UAIParser, self).__init__(args)
         self.reader = None
-        self.pgm = None
-
-        self.force_bool = False
-        self.detect_bool = True
-        self.drop_zero = False
-        self.use_neglit = False
 
         self.directed = True
         self.num_vars = 0
@@ -98,13 +84,15 @@ class UAIParser:
 
     def construct_cpt(self, func_num):
         if func_num >= len(self.func_vars) or self.func_vars[func_num] is None:
-            error('Variables not defined for function {}'.format(func_num), halt=True)
+            logger.error('Variables not defined for function {}'.format(func_num), halt=True)
+            sys.exit(1)
         variables = self.func_vars[func_num]
         var = variables[-1]
         rv = str(var)
         parents = variables[0:-1]
         if var >= len(self.domains) or self.domains[var] is None:
-            error('Variable domain is not defined: {}'.format(var), halt=True)
+            logger.error('Variable domain is not defined: {}'.format(var), halt=True)
+            sys.exit(1)
         dom_size = self.dom_sizes[var]
 
         parents_str = [str(p) for p in parents]
@@ -119,7 +107,8 @@ class UAIParser:
         try:
             cur_func_values = self.func_values[func_num]
         except KeyError:
-            error('Could not find function definition for {}'.format(func_num), halt=True)
+            logger.error('Could not find function definition for {}'.format(func_num), halt=True)
+            sys.exit(1)
         else:
             idx = 0
             for val_assignment in itertools.product(*parent_domains):
@@ -130,7 +119,8 @@ class UAIParser:
 
     def construct_factor(self, func_num):
         if func_num >= len(self.func_vars) or self.func_vars[func_num] is None:
-            error('Variables not defined for function {}'.format(func_num), halt=True)
+            logger.error('Variables not defined for function {}'.format(func_num), halt=True)
+            sys.exit(1)
         variables = self.func_vars[func_num]
         name = 'pf_{}'.format(self.factor_cnt)
         self.factor_cnt += 1
@@ -146,7 +136,8 @@ class UAIParser:
         try:
             cur_func_values = self.func_values[func_num]
         except KeyError:
-            error('Could not find function definition for {}'.format(func_num), halt=True)
+            logger.error('Could not find function definition for {}'.format(func_num), halt=True)
+            sys.exit(1)
         else:
             idx = 0
             for val_assignment in itertools.product(*parent_domains):
@@ -176,8 +167,9 @@ class UAIParser:
             self.directed = False
         else:
             self.directed = None
-            error('Expected a BAYES or MARKOV network, found: ' +
-                  '{} (line {})'.format(token, self.reader.linenb), halt=True)
+            logger.error('Expected a BAYES or MARKOV network, found: ' +
+                         '{} (line {})'.format(token, self.reader.linenb), halt=True)
+            sys.exit(1)
         logger.debug('Type: {}'.format(token))
 
         # Number of variables
@@ -193,16 +185,18 @@ class UAIParser:
             values = [str(d) for d in range(size)]
             self.domains.append(values)
         if len(self.dom_sizes) != self.num_vars:
-            error('Expected {} domain sizes, '.format(self.num_vars) +
-                  'found {} (line {})'.format(len(self.dom_sizes), self.reader.linenb), halt=True)
+            logger.error('Expected {} domain sizes, '.format(self.num_vars) +
+                         'found {} (line {})'.format(len(self.dom_sizes), self.reader.linenb), halt=True)
+            sys.exit(1)
         logger.debug("Domain sizes: {}".format(" ".join(map(str, self.dom_sizes))))
 
         # Number of functions
         token = self.reader.get_token()
         self.num_funcs = int(token)
         if self.directed and self.num_funcs != self.num_vars:
-            error('For BAYES we expect one function for every variables but found: ' +
-                  '{} (line {})'.format(self.num_funcs, self.reader.linenb), halt=True)
+            logger.error('For BAYES we expect one function for every variables but found: ' +
+                         '{} (line {})'.format(self.num_funcs, self.reader.linenb), halt=True)
+            sys.exit(1)
         logger.debug("Number of functions: {}".format(self.num_funcs))
 
     def parse_graph(self):
@@ -214,7 +208,8 @@ class UAIParser:
             tokens = [int(v) for v in tokens]
 
             if len(tokens) != func_size:
-                error('Expected {} variables, found {}\n{}'.format(func_size, len(tokens), tokens), halt=True)
+                logger.error('Expected {} variables, found {}\n{}'.format(func_size, len(tokens), tokens), halt=True)
+                sys.exit(1)
             # if num_func != rv:
             #     error('Expected current variable ({}) as last variable, found {}'.format(num_func, rv), halt=True)
             # for parent in parents:
@@ -238,8 +233,9 @@ class UAIParser:
             tokens = self.reader.get_tokens(num_values)
             values = [float(v) for v in tokens]
             if len(values) != num_values:
-                error('Expected {} values in function {}, '.format(num_values, num_func) +
-                      'found {} (line {})'.format(len(values), self.reader.linenb), halt=True)
+                logger.error('Expected {} values in function {}, '.format(num_values, num_func) +
+                             'found {} (line {})'.format(len(values), self.reader.linenb), halt=True)
+                sys.exit(1)
             self.func_values.append(values)
 
     def parse_rest(self):
@@ -268,82 +264,17 @@ class UAIParser:
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description='Translate Bayesian net in UAI08 format to ProbLog')
-    parser.add_argument('--verbose', '-v', action='count', help='Verbose output')
-    parser.add_argument('--forcebool', action='store_true',
-                        help='Force binary nodes to be represented as Boolean predicates (0=f, 1=t)')
-    parser.add_argument('--nobooldetection', action='store_true', help='Do not try to detect Boolean predicates')
-    parser.add_argument('--dropzero', action='store_true', help='Drop zero probabilities (if possible)')
-    parser.add_argument('--useneglit', action='store_true', help='Use negative head literals')
-    parser.add_argument('--allowdisjunct', action='store_true', help='Allow disjunctions in the body')
-    parser.add_argument('--compress', action='store_true', help='Compress tables')
-    parser.add_argument('--split', help='Comma-separated list of variable names to split on')
-    parser.add_argument('--split-output', dest='splitoutput', action='store_true',
-                        help='Create one output file per connected network')
-    parser.add_argument('--output', '-o', help='Output file')
-    parser.add_argument('--output-format', default='problog',
-                        help='Output format (\'problog\', \'uai\', \'hugin\', \'xdsl\')')
-    parser.add_argument('input', help='Input UAI08 file')
+    parser.add_argument('--verbose', '-v', action='count', default=0, help='Verbose output')
+    parser.add_argument('--quiet', '-q', action='count', default=0, help='Quiet output')
+    UAIParser.add_parser_arguments(parser)
     args = parser.parse_args(argv)
 
-    ch = logging.StreamHandler()
-    if args.verbose is None:
-        logger.setLevel(logging.WARNING)
-        ch.setLevel(logging.WARNING)
-    elif args.verbose == 1:
-        logger.setLevel(logging.INFO)
-        ch.setLevel(logging.INFO)
-    elif args.verbose >= 2:
-        logger.setLevel(logging.DEBUG)
-        ch.setLevel(logging.DEBUG)
-    logger.addHandler(ch)
+    logger.setLevel(max(logging.INFO - 10 * (args.verbose - args.quiet), logging.DEBUG))
+    logger.addHandler(logging.StreamHandler(sys.stdout))
 
-    uai_parser = UAIParser(args.input)
+    parser = UAIParser(args)
+    parser.run(args)
 
-    if args.forcebool:
-        uai_parser.force_bool = args.forcebool
-    if args.nobooldetection:
-        uai_parser.detect_bool = False
-    if args.dropzero:
-        uai_parser.drop_zero = args.dropzero
-    if args.useneglit:
-        uai_parser.use_neglit = args.useneglit
-
-    pgm = uai_parser.parse()
-    if args.compress:
-        pgm = pgm.compress_tables(allow_disjunct=args.allowdisjunct)
-    if args.split:
-        pgm = pgm.split_topological(set(args.split.split(',')))
-    if pgm is None:
-        error('Could not build PGM structure', halt=True)
-    if args.splitoutput:
-        pgms = pgm.to_connected_parts()
-    else:
-        pgms = [pgm]
-
-    for pgm_i, pgm in enumerate(pgms):
-        if args.output:
-            if len(pgms) == 1:
-                fn = args.output
-            else:
-                fn_base, fn_ext = os.path.splitext(args.output)
-                fn = fn_base + '.' + str(pgm_i) + fn_ext
-            ofile = open(fn, 'w')
-        else:
-            ofile = sys.stdout
-        try:
-            if args.output_format in ["uai", "uai08"]:
-                print(pgm.to_uai08(), file=ofile)
-            elif args.output_format == "hugin":
-                print(pgm.to_hugin_net(), file=ofile)
-            elif args.output_format in ["smile", "xdsl"]:
-                print(pgm.to_xdsl(), file=ofile)
-            elif args.output_format in ["graphiz", "dot"]:
-                print(pgm.to_graphviz(), file=ofile)
-            else:
-                print(pgm.to_problog(drop_zero=uai_parser.drop_zero, use_neglit=uai_parser.use_neglit), file=ofile)
-        finally:
-            if args.output:
-                ofile.close()
 
 if __name__ == "__main__":
     sys.exit(main())
