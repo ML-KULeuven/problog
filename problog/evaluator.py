@@ -26,7 +26,14 @@ from __future__ import print_function
 import math
 
 from .core import ProbLogObject, transform_allow_subclass
-from .errors import InconsistentEvidenceError, InvalidValue
+from .errors import InconsistentEvidenceError, InvalidValue, InstallError
+
+
+try:
+    from numpy import polynomial
+    pn = polynomial.polynomial
+except ImportError:
+    pn = None
 
 
 class OperationNotSupported(Exception):
@@ -250,6 +257,134 @@ class SemiringLogProbability(SemiringProbability):
 
     def in_domain(self, a):
         return a <= 1e-12
+
+
+class DensityValue(object):
+
+    def __init__(self, coefficients=(0,)):
+        if pn is None:
+            raise InstallError("Density calculation require the NumPy package.")
+        self.coefficients = coefficients
+
+    def __add__(self, other):
+        return DensityValue(pn.polyadd(self.coefficients, other.coefficients))
+
+    def __radd__(self, other):
+        other = DensityValue.wrap(other)
+        return DensityValue(pn.polyadd(self.coefficients, other.coefficients))
+
+    def __sub__(self, other):
+        return DensityValue(pn.polysub(self.coefficients, other.coefficients))
+
+    def __rsub__(self, other):
+        other = DensityValue.wrap(other)
+        return DensityValue(pn.polysub(other.coefficients, self.coefficients))
+
+    def __mul__(self, other):
+        if type(other) == DensityValue:
+            return DensityValue(pn.polymul(self.coefficients, other.coefficients))
+        else:
+            return DensityValue(pn.polymul(self.coefficients, [other]))
+
+    def __rmul__(self, other):
+        if type(other) == DensityValue:
+            return DensityValue(pn.polymul(self.coefficients, other.coefficients))
+        else:
+            return DensityValue(pn.polymul(self.coefficients, [other]))
+
+    def value(self, x=1e-5):
+        return pn.polyval([x], self.coefficients)[0]
+
+    def __float__(self):
+        return self.value()
+
+    def __div__(self, other):
+        if type(other) == DensityValue:
+            if other.is_one():
+                return self
+            else:
+                r = []
+                for ai, zi in zip(self.coefficients, other.coefficients):
+                    # Given ai <= zi
+                    if ai > 1e-12:
+                        return DensityValue([ai / zi])
+                if not r:
+                    r = DensityValue.zero()
+                return r
+        else:
+            return DensityValue(pn.polymul(self.coefficients, [1.0/other]))
+
+    @classmethod
+    def zero(cls):
+        return cls(pn.polyzero)
+
+    @classmethod
+    def one(cls):
+        return cls(pn.polyone)
+
+    def is_one(self):
+        return len(self.coefficients) == 1 and 1 - 1e-12 < self.coefficients[0] < 1 + 1e-12
+
+    def is_zero(self):
+        return len(self.coefficients) == 1 and -1e-12 < self.coefficients[0] < 1e-12
+
+    def is_prob(self):
+        return len(self.coefficients) == 1
+
+    @classmethod
+    def wrap(cls, value):
+        """Automatically wrap a value in a DensityValue object."""
+        if type(value) == DensityValue:
+            return value
+        else:
+            return DensityValue([value])
+
+    def __repr__(self):
+        return str(self.coefficients)
+
+
+class SemiringDensity(Semiring):
+    """A semiring for computing with densities.
+
+    Internally, weights are represented as polynomials in the variable 'dx'.
+    A discrete probability is represented as [p], a density is represented as [0, d].
+    All operations are defined in terms of polynomials, except for normalization.
+
+    """
+
+    def __init__(self):
+        if pn is None:
+            raise InstallError("Density calculation require the NumPy package.")
+        Semiring.__init__(self)
+
+    def one(self):
+        return 1.0
+
+    def zero(self):
+        return 0.0
+
+    def plus(self, a, b):
+        return a + b
+
+    def times(self, a, b):
+        return a * b
+
+    def is_zero(self, value):
+        return DensityValue.wrap(value).is_zero()
+
+    def is_one(self, value):
+        return DensityValue.wrap(value).is_one()
+
+    def negate(self, a):
+        return self.one() - a
+
+    def result(self, a, formula=None):
+        return a
+
+    def normalize(self, a, z):
+        """Normalization computes a_i / z_i and returns the lowest rank non-zero coefficient.
+        """
+        return DensityValue.wrap(a) / z
 
 
 class SemiringSymbolic(Semiring):
