@@ -199,59 +199,28 @@ class SDDManager(DDManager):
     def write_to_dot(self, node, filename):
         sdd.sdd_save_as_dot(filename, node)
 
-    def wmc(self, node, weights, semiring):
+    def wmc(self, node, weights, semiring, literal=None):
         logspace = 0
         if semiring.one() == 0.0:
             logspace = 1
         wmc_manager = sdd.wmc_manager_new(node, logspace, self.get_manager())
         varcount = sdd.sdd_manager_var_count(self.get_manager())
-
-        # varlist_intern = sdd.sdd_variables(node, self.get_manager())
-        # vc = sdd.sdd_manager_var_count(self.get_manager()) + 1
-        # varlist = [i for i in range(0, vc) if sdd.sdd_array_int_element(varlist_intern, i)]
-
         for n in weights:
             pos, neg = weights[n]
             if n <= varcount:
                 sdd.wmc_set_literal_weight(n, pos, wmc_manager)  # Set positive literal weight
                 sdd.wmc_set_literal_weight(-n, neg, wmc_manager)  # Set negative literal weight
         result = sdd.wmc_propagate(wmc_manager)
+        if literal is not None:
+            result = sdd.wmc_literal_pr(literal, wmc_manager)
         sdd.wmc_manager_free(wmc_manager)
         return result
 
     def wmc_literal(self, node, weights, semiring, literal):
-        logspace = 0
-        if semiring.one() == 0.0:
-            logspace = 1
-        wmc_manager = sdd.wmc_manager_new(node, logspace, self.get_manager())
-        varcount = sdd.sdd_manager_var_count(self.get_manager())
-        for i, n in enumerate(sorted(weights)):
-            i += 1
-            pos, neg = weights[n]
-            if n <= varcount:
-                sdd.wmc_set_literal_weight(n, pos, wmc_manager)  # Set positive literal weight
-                sdd.wmc_set_literal_weight(-n, neg, wmc_manager)  # Set negative literal weight
-        sdd.wmc_propagate(wmc_manager)
-
-        result = sdd.wmc_literal_pr(literal, wmc_manager)
-        sdd.wmc_manager_free(wmc_manager)
-        return result
+        return self.wmc(node, weights, semiring, literal)
 
     def wmc_true(self, weights, semiring):
-        logspace = 0
-        if semiring.one() == 0.0:
-            logspace = 1
-        wmc_manager = sdd.wmc_manager_new(self.true(), logspace, self.get_manager())
-        varcount = sdd.sdd_manager_var_count(self.get_manager())
-        for i, n in enumerate(sorted(weights)):
-            i += 1
-            pos, neg = weights[n]
-            if n <= varcount:
-                sdd.wmc_set_literal_weight(n, pos, wmc_manager)  # Set positive literal weight
-                sdd.wmc_set_literal_weight(-n, neg, wmc_manager)  # Set negative literal weight
-        result = sdd.wmc_propagate(wmc_manager)
-        sdd.wmc_manager_free(wmc_manager)
-        return result
+        return self.wmc(self.true(), weights, semiring)
 
     def __del__(self):
         # if sdd is not None and sdd.sdd_manager_free is not None:

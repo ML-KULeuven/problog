@@ -1181,12 +1181,14 @@ def _builtin_consult(filename, database=None, engine=None, **kwdargs):
         if source_root:
             root = os.path.dirname(source_root)
     check_mode((filename,), ['a'], functor='consult', **kwdargs)
-    filename = os.path.join(root, _atom_to_filename(filename))
+    filename = _atom_to_filename(filename)
     if not os.path.exists(filename):
-        filename += '.pl'
-    if not os.path.exists(filename):
-        raise ConsultError(message="Consult: file not found '%s'" % filename,
-                           location=database.lineno(kwdargs.get('location')))
+        filename = os.path.join(root, filename)
+        if not os.path.exists(filename):
+            filename += '.pl'
+        if not os.path.exists(filename):
+            raise ConsultError(message="Consult: file not found '%s'" % filename,
+                               location=database.lineno(kwdargs.get('location')))
 
     # Prevent loading the same file twice
     if filename not in database.source_files:
