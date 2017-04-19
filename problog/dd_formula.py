@@ -26,7 +26,7 @@ from __future__ import print_function
 
 
 from .util import Timer
-from .formula import LogicFormula, atom
+from .formula import LogicFormula, atom, LogicNNF
 from .evaluator import EvaluatableDSP, Evaluator, FormulaEvaluatorNSP, FormulaEvaluator, SemiringLogProbability, SemiringProbability
 from .errors import InconsistentEvidenceError
 
@@ -116,12 +116,10 @@ class DD(LogicFormula, EvaluatableDSP):
             return self.get_manager().constraint_dd
 
     def _create_evaluator(self, semiring, weights, **kwargs):
-        if isinstance(semiring, SemiringLogProbability) or isinstance(semiring, SemiringProbability):
-            return DDEvaluator(self, semiring, weights, **kwargs)
-        elif semiring.is_nsp():
+        if semiring.is_nsp():
             return FormulaEvaluatorNSP(self.to_formula(), semiring, weights)
         else:
-            return FormulaEvaluator(self.to_formula(), semiring, weights)
+            return DDEvaluator(self, semiring, weights, **kwargs)
 
     def build_dd(self):
         """Build the internal representation of the formula."""
@@ -409,7 +407,11 @@ class DDEvaluator(Evaluator):
 
     def propagate(self):
         self._initialize()
-        self.normalization = self._get_manager().wmc_true(self.weights, self.semiring)
+        if isinstance(self.semiring, SemiringLogProbability) or isinstance(self.semiring, SemiringProbability):
+            self.normalization = self._get_manager().wmc_true(self.weights, self.semiring)
+
+        else:
+            self.normalization = None
         self.evaluate_evidence()
 
     def _evaluate_evidence(self, recompute=False):
@@ -417,16 +419,29 @@ class DDEvaluator(Evaluator):
             constraint_inode = self.formula.get_constraint_inode()
             evidence_nodes = [self.formula.get_inode(ev) for ev in self.evidence()]
             self.evidence_inode = self._get_manager().conjoin(constraint_inode, *evidence_nodes)
-            result = self._get_manager().wmc(self.evidence_inode, self.weights, self.semiring)
-            if result == self.semiring.zero():
-                raise InconsistentEvidenceError(context=' during compilation')
-            self._evidence_weight = self.semiring.normalize(result, self.normalization)
+
+            if isinstance(self.semiring, SemiringLogProbability) or isinstance(self.semiring, SemiringProbability):
+                result = self._get_manager().wmc(self.evidence_inode, self.weights, self.semiring)
+                if result == self.semiring.zero():
+                    raise InconsistentEvidenceError(context=' during compilation')
+                self._evidence_weight = self.semiring.normalize(result, self.normalization)
+            else:
+                formula = LogicNNF()
+                i = self.formula._to_formula(formula, self.evidence_inode)
+                self._evidence_weight = formula.evaluate(index=i, semiring=self.semiring)
+
         return self._evidence_weight
 
     def evaluate_evidence(self, recompute=False):
         return self.semiring.result(self._evaluate_evidence(recompute=recompute), self.formula)
 
     def evaluate(self, node):
+        if isinstance(self.semiring, SemiringLogProbability) or isinstance(self.semiring, SemiringProbability):
+            return self.evaluate_standard(node)
+        else:
+            return self.evaluate_custom(node)
+
+    def evaluate_standard(self, node):
         # Trivial case: node is deterministically True or False
         if node == self.formula.TRUE:
             result = self.semiring.one()
@@ -445,6 +460,32 @@ class DDEvaluator(Evaluator):
             self._get_manager().deref(query_sdd)
             # TODO only normalize when there are evidence or constraints.
             result = self.semiring.normalize(result, self.normalization)
+            result = self.semiring.normalize(result, self._evidence_weight)
+        return self.semiring.result(result, self.formula)
+
+    def evaluate_custom(self, node):
+        # Trivial case: node is deterministically True or False
+        if node == self.formula.TRUE:
+            result = self.semiring.one()
+        elif node is self.formula.FALSE:
+            result = self.semiring.zero()
+        else:
+            query_def_inode = self.formula.get_inode(node)
+            evidence_inode = self.evidence_inode
+            query_sdd = self._get_manager().conjoin(query_def_inode, evidence_inode)
+
+
+
+            formula = LogicNNF()
+            i = self.formula._to_formula(formula, query_sdd)
+            result = formula.evaluate(index=i, semiring=self.semiring)
+
+            self._get_manager().deref(query_sdd)
+
+
+
+            # TODO only normalize when there are evidence or constraints.
+#            result = self.semiring.normalize(result, self.normalization)
             result = self.semiring.normalize(result, self._evidence_weight)
         return self.semiring.result(result, self.formula)
 
