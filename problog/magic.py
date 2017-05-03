@@ -47,7 +47,17 @@ from IPython.core.magic import (
 from IPython.core.magic_arguments import (
     argument, magic_arguments,
     parse_argstring)
-from IPython.utils.warn import info, error
+import IPython
+if IPython.version_info[0] >= 6:
+    import warnings
+
+    def info(message):
+        warnings.warn('WARNING: '+message)
+
+    def error(message):
+        warnings.warn('ERROR: '+message)
+else:
+    from IPython.utils.warn import info, error
 
 
 def runproblog(s, knowledge=knowledge_default, semiring=None, parser_class=DefaultPrologParser,
