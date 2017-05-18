@@ -24,7 +24,7 @@ Implementation of Prolog / ProbLog builtins.
 
 from __future__ import print_function
 
-from .logic import term2str, Term, Clause, Constant, term2list, list2term, is_ground, is_variable, Var
+from .logic import term2str, Term, Clause, Constant, term2list, list2term, is_ground, is_variable, Var, Or, AnnotatedDisjunction
 from .program import PrologFile
 from .errors import GroundingError, UserError
 from .engine_unify import unify_value, UnifyError, substitute_simple
@@ -146,6 +146,7 @@ def add_standard_builtins(engine, b=None, s=None, sp=None):
 
     engine.add_builtin('possible', 1, s(_builtin_possible))
     engine.add_builtin('clause', 2, s(_builtin_clause))
+    engine.add_builtin('clause', 3, s(_builtin_clause3))
 
 
 def _builtin_nocache(functor, arity, database=None, **kwd):
@@ -172,6 +173,9 @@ def _builtin_clause(head, body, database=None, **kwd):
         if isinstance(clause, Clause):
             h = clause.head
             b = clause.body
+        elif isinstance(clause, AnnotatedDisjunction):
+            h = list2term(clause.heads)
+            b = clause.body
         else:
             h = clause
             b = Term('true')
@@ -185,6 +189,46 @@ def _builtin_clause(head, body, database=None, **kwd):
 
     return result
 
+def _builtin_clause3(head, body, prob, database=None, **kwd):
+    mode = check_mode((head, body, prob), ['c**', 'v**'], **kwd)
+
+    if mode == 0:
+        clause_def = database.find(head)
+        if clause_def is None:
+            clauses = []
+        else:
+            clause_ids = database.get_node(clause_def).children
+            clauses = [database.to_clause(c) for c in clause_ids]
+    elif mode == 1:
+        clauses = list(database)
+
+    result = []
+    for clause in clauses:
+        if isinstance(clause, Clause):
+            h = clause.head
+            b = clause.body
+            p = clause.head.probability
+        elif isinstance(clause, AnnotatedDisjunction):
+            h = list2term(clause.heads)
+            b = clause.body
+            # p = clause.heads.probability
+            p = list2term([hh.probability for hh in clause.heads])
+        else:
+            h = clause
+            b = Term('true')
+            p = clause.probability
+        if p is None:
+            p = Constant(1.0)
+
+        try:
+            unify_value(head, h, {})
+            unify_value(body, b, {})
+            unify_value(prob, p, {})
+            result.append((h, b, p))
+        except UnifyError:
+            pass
+
+    return result
 
 def _builtin_cmdargs(lst, engine=None, **kwd):
     m = check_mode((lst,), ['v', 'L'], **kwd)
