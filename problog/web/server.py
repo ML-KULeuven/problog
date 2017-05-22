@@ -284,13 +284,18 @@ def run_lfi_jsonp(model, callback):
 
 @handle_url(api_root + 'english')
 def run_lfi_jsonp(model, callback):
-    retcode, result, stderr = call_extract(model)
-    retval = wrap_callback(callback[0], result)
+    retcode, result, stderr = call_extract(model[0])
+    if retcode == 0:
+        result['SUCCESS'] = True
+    else:
+        result['SUCCESS'] = False
+        result['message'] = 'An error has occurred.'
+    retval = wrap_callback(callback[0], json.dumps(result))
     return 200, 'application/json', retval
 
 
 def call_extract(text):
-    script = root_path('..', '..', 'nlp4plp', 'extract', 'extract.py')
+    script = root_path('..', '..', '..', 'nlp4plp', 'extract', 'extract.py')
     cmd = ['python', script, '--stdin', '--json', '--nosvg']
     try:
         command = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
