@@ -282,6 +282,31 @@ def run_lfi_jsonp(model, callback):
     return run_problog_task('ground', model[0], callback[0], options=['--format', 'svg'])
 
 
+@handle_url(api_root + 'english')
+def run_lfi_jsonp(model, callback):
+    retcode, result, stderr = call_extract(model)
+    retval = wrap_callback(callback[0], result)
+    return 200, 'application/json', retval
+
+
+def call_extract(text):
+    script = root_path('..', '..', 'nlp4plp', 'extract', 'extract.py')
+    cmd = ['python', script, '--stdin', '--json', '--nosvg']
+    try:
+        command = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        stdout, stderr = command.communicate(text)
+        retcode = command.returncode
+        try:
+            out = json.loads(stdout)
+        except:
+            out = stdout
+    except Exception as err:
+        retcode = 1
+        out = ""
+        stderr = str(err)
+    return retcode, out, stderr
+
+
 def store_hash(data, datatype):
     # Can raise UnicodeDecodeError
     if CACHE_MODELS:
