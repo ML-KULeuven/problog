@@ -68,7 +68,7 @@ class SDD(DD):
 
     def to_formula(self):
         """Extracts a LogicFormula from the SDD."""
-        formula = LogicFormula()
+        formula = LogicFormula(keep_order=True)
 
         for n, q, l in self.labeled():
             node = self.get_inode(q)
