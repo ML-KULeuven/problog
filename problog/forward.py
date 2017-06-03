@@ -27,7 +27,7 @@ from .dd_formula import DD
 from .sdd_formula import SDD
 from .bdd_formula import BDD
 from .core import transform
-from .evaluator import Evaluator, EvaluatableDSP
+from .evaluator import Evaluator, EvaluatableDSP, InconsistentEvidenceError
 
 from .dd_formula import build_dd
 
@@ -82,7 +82,12 @@ class ForwardInference(DD):
 
     def init_build(self):
         if self.evidence():
-            self.evidence_node = self.add_and([n for q, n in self.evidence() if n is None or n != 0])
+            ev = [n for q, n in self.evidence() if n is None or n != 0]
+            if ev:
+                self.evidence_node = self.add_and(ev)
+            else:
+                # Only deterministically true evidence
+                self.evidence_node = 0
 
         self._facts = []  # list of facts
         self._atoms_in_rules = defaultdict(OrderedSet)  # lookup all rules in which an atom is used
@@ -486,13 +491,18 @@ class ForwardSDD(LogicFormula, EvaluatableDSP):
         LogicFormula.__init__(self, **kwargs)
         EvaluatableDSP.__init__(self)
         self.kwargs = kwargs
+        self.internal = _ForwardSDD(**self.kwargs)
 
     @classmethod
     def is_available(cls):
         return SDD.is_available()
 
     def _create_evaluator(self, semiring, weights, **kwargs):
-        return ForwardEvaluator(self, semiring, _ForwardSDD(**self.kwargs), weights, **kwargs)
+        return ForwardEvaluator(self, semiring, self.internal, weights, **kwargs)
+
+    def to_formula(self):
+        build_dd(self, self.internal)
+        return self.internal.to_formula()
 
 
 class ForwardBDD(LogicFormula, EvaluatableDSP):
@@ -579,7 +589,8 @@ class ForwardEvaluator(Evaluator):
         # We should do all compilation here.
         self.fsdd.register_update_listener(self)
         self._start_time = time.time()
-        build_dd(self.formula, self.fsdd)
+        if len(self.fsdd) == 0:
+            build_dd(self.formula, self.fsdd)
 
         # Update weights with constraints and evidence
         enode = self.fsdd.get_manager().conjoin(self.fsdd.get_evidence_inode(),
