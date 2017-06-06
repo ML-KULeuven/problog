@@ -933,7 +933,8 @@ class LFIProblem(LogicProgram):
                 if fact_count[index] > 0:
                     logger.debug('Update probabilistic fact {}: {} / {}'
                                  .format(index, fact_marg[index], fact_count[index]))
-                    self._set_weight(index[0], index[1], fact_marg[index] / fact_count[index])
+                    prob = float(fact_marg[index] / fact_count[index])
+                    self._set_weight(index[0], index[1], prob)
 
         if self._enable_normalize:
             self._normalize_weights()
@@ -1179,7 +1180,11 @@ class ExampleEvaluator(SemiringDensity):
             w = evaluator.evaluate(node)
             # w = evaluator.evaluate_fact(node)
             # print ("WWW", w, w1, w2)
-            if w < 1e-6:  # TODO: too high for multivariate dists?
+            if isinstance(w, DensityValue):
+                # print("{} => {}".format(w, float(w)))
+                # w = float(w)
+                p_queries[name] = w
+            elif w < 1e-6:  # TODO: too high for multivariate dists?
                 p_queries[name] = 0.0
             else:
                 p_queries[name] = w
