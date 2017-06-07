@@ -901,12 +901,16 @@ class LFIProblem(LogicProgram):
         fact_values = dict()
         score = 0.0
         for m, pEvidence, result, p_values in results:
+            if not isinstance(pEvidence, DensityValue):
+                pEvidence = DensityValue.wrap(pEvidence)
             # print('result', result)
             # print('p_values', p_values)
             for fact, value in result.items():
                 index = fact.args[0:2]
                 # if not index in fact_marg:
                 #     fact_marg[index] = polynomial.polynomial.polyzero
+                if not isinstance(value, DensityValue):
+                    value = DensityValue.wrap(value)
                 fact_marg[index] += value * m
                 fact_count[index] += m
                 if fact in p_values:
