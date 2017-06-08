@@ -599,9 +599,6 @@ class ForwardEvaluator(Evaluator):
         enode = self.fsdd.get_manager().conjoin(self.fsdd.get_evidence_inode(),
                                                 self.fsdd.get_constraint_inode())
 
-        ii = self.fsdd.get_evidence_inode()
-        self.fsdd.get_manager().write_to_dot(ii, '/tmp/xx.dot')
-
         # Make sure all atoms exist in atom2var.
         for name, node, label in self.fsdd.labeled():
             if self.fsdd.is_probabilistic(node):
@@ -643,11 +640,11 @@ class ForwardEvaluator(Evaluator):
             n = self.formula.get_node(abs(index))
             nt = type(n).__name__
             if nt == 'atom':
-                wp = self._results[abs(index)]
+                wp = self._results[index]
                 # wp, wn = self.weights.get(abs(index))
                 if index < 0:
-                    wn = self.semiring.negate(wp)
-                    return self.semiring.result(wn, self.formula)
+                    #wn = self.semiring.negate(wp)
+                    return self.semiring.result(wp, self.formula)
                 else:
                     return self.semiring.result(wp, self.formula)
             else:
