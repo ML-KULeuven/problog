@@ -84,7 +84,10 @@ class ForwardInference(DD):
         if self.evidence():
             ev = [n for q, n in self.evidence() if n is None or n != 0]
             if ev:
-                self.evidence_node = self.add_and(ev)
+                if len(ev) == 1:
+                    self.evidence_node = ev[0]
+                else:
+                    self.evidence_node = self.add_and(ev)
             else:
                 # Only deterministically true evidence
                 self.evidence_node = 0
@@ -143,7 +146,7 @@ class ForwardInference(DD):
         # Start with current nodes
         current_nodes = set(abs(n) for q, n, l in self.labeled() if self.is_probabilistic(n))
         if self.is_probabilistic(self.evidence_node):
-            current_nodes.add(self.evidence_node)
+            current_nodes.add(abs(self.evidence_node))
         current_level = 0
         while current_nodes:
             self._node_levels.append(current_nodes)
@@ -393,13 +396,13 @@ class ForwardInference(DD):
         if not self.is_probabilistic(self.evidence_node):
             return self.get_manager().true()
         else:
-            inode = self.get_inode(self.evidence_node)
+            inode = self.get_inode(self.evidence_node, final=True)
             if inode:
                 return inode
             else:
                 return self.get_manager().true()
 
-    def get_inode(self, index):
+    def get_inode(self, index, final=False):
         """
         Get the internal node corresponding to the entry at the given index.
         :param index: index of node to retrieve
@@ -407,7 +410,6 @@ class ForwardInference(DD):
         :rtype: SDDNode
         """
         assert self.is_probabilistic(index)
-
         node = self.get_node(abs(index))
         if type(node).__name__ == 'atom':
             av = self.atom2var.get(abs(index))
@@ -420,13 +422,15 @@ class ForwardInference(DD):
                 return self.get_manager().negate(result)
             else:
                 return result
-        elif index < 0:
+        elif index < 0 and not final:
             # We are requesting a negated node => use previous stratum's result
             result = self._inodes_neg[-index - 1]
             if result is None and self._inodes_prev[-index - 1] is not None:
                 result = self.get_manager().negate(self._inodes_prev[-index - 1])
                 self._inodes_neg[-index - 1] = result
             return result
+        elif index < 0:
+            return self.get_manager().negate(self.inodes[-index - 1])
         else:
             return self.inodes[index - 1]
 
@@ -543,7 +547,6 @@ class ForwardEvaluator(Evaluator):
         self._start_time = None
 
     def node_updated(self, source, node, complete):
-
         is_evidence = node == abs(source.evidence_node)
         name = [n for n, i, l in self.formula.labeled()
                 if source.is_probabilistic(i) and abs(i) == node]
@@ -556,7 +559,7 @@ class ForwardEvaluator(Evaluator):
                 av = source.atom2var.get(atom)
                 if av is not None:
                     weights[av] = weight
-            inode = source.get_inode(node)
+            inode = source.get_inode(node, final=True)
             if inode is not None:
                 enode = source.get_manager().conjoin(source.get_evidence_inode(),
                                                      source.get_constraint_inode())
@@ -595,6 +598,9 @@ class ForwardEvaluator(Evaluator):
         # Update weights with constraints and evidence
         enode = self.fsdd.get_manager().conjoin(self.fsdd.get_evidence_inode(),
                                                 self.fsdd.get_constraint_inode())
+
+        ii = self.fsdd.get_evidence_inode()
+        self.fsdd.get_manager().write_to_dot(ii, '/tmp/xx.dot')
 
         # Make sure all atoms exist in atom2var.
         for name, node, label in self.fsdd.labeled():
