@@ -599,6 +599,9 @@ class ForwardEvaluator(Evaluator):
         enode = self.fsdd.get_manager().conjoin(self.fsdd.get_evidence_inode(),
                                                 self.fsdd.get_constraint_inode())
 
+        if self.fsdd.get_manager().is_false(enode):
+            raise InconsistentEvidenceError(context=' during compilation')
+
         # Make sure all atoms exist in atom2var.
         for name, node, label in self.fsdd.labeled():
             if self.fsdd.is_probabilistic(node):
