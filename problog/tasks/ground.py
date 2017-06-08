@@ -48,6 +48,7 @@ def main(argv, result_handler=None):
                         help='allow compact model (may remove some predicates)')
     parser.add_argument('--noninterpretable', action='store_true')
     parser.add_argument('--web', action='store_true', help=argparse.SUPPRESS)
+    parser.add_argument('--verbose', '-v', action='count', default=0, help='Verbose output')
     parser.add_argument('-o', '--output', type=str, help='output file', default=None)
     parser.add_argument('-a', '--arg', dest='args', action='append',
                         help='Pass additional arguments to the cmd_args builtin.')
@@ -103,7 +104,10 @@ def main(argv, result_handler=None):
             svg = subprocess_check_output(['dot', tmpfile, '-Tsvg'])
             rc = print_result((True, svg), output=outfile)
         elif outformat == 'cnf':
-            rc = print_result((True, CNF.createFrom(gp).to_dimacs()), output=outfile)
+            cnfnames = False
+            if args.verbose > 0:
+                cnfnames = True
+            rc = print_result((True, CNF.createFrom(gp).to_dimacs(names=cnfnames)), output=outfile)
         elif outformat == 'internal':
             rc = print_result((True, str(gp)), output=outfile)
         else:
