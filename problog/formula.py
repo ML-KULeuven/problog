@@ -595,7 +595,7 @@ class LogicFormula(BaseFormula):
         """
         return self._add_compound('conj', components, self.FALSE, self.TRUE, key=key, name=name)
 
-    def add_or(self, components, key=None, readonly=True, name=None):
+    def add_or(self, components, key=None, readonly=True, name=None, placeholder=False):
         """Add a disjunction to the logic formula.
 
         :param components: a list of node identifiers that already exist in the logic formula.
@@ -617,7 +617,7 @@ class LogicFormula(BaseFormula):
         This may cause the data structure to contain superfluous nodes.
         """
         return self._add_compound('disj', components, self.TRUE, self.FALSE, key=key,
-                                  readonly=readonly, name=name)
+                                  readonly=readonly and not placeholder, name=name, placeholder=placeholder)
 
     def add_disjunct(self, key, component):
         """Add a component to the node with the given key.
@@ -674,9 +674,10 @@ class LogicFormula(BaseFormula):
 
     # noinspection PyUnusedLocal
     def _add_compound(self, nodetype, content, t, f, key=None,
-                      readonly=True, update=None, name=None):
+                      readonly=True, update=None, name=None, placeholder=False):
         """Add a compound term (AND or OR)."""
-        assert content   # Content should not be empty
+        if not placeholder:
+            assert content   # Content should not be empty
 
         name_clash = False
         if self._auto_compact:
@@ -697,7 +698,7 @@ class LogicFormula(BaseFormula):
                 content = tuple(set(content))
 
             # Empty OR node fails, AND node is true
-            if not content:
+            if not content and not placeholder:
                 return f
 
             # Contains opposites: return 'TRUE' for or, 'FALSE' for and
