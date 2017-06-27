@@ -37,9 +37,24 @@ from .core import transform
 from .errors import GroundingError, InvalidValue
 from .util import Timer, OrderedSet
 
+@transform(LogicProgram, LogicFormula)
+def ground(model, target=None, grounder=None, **kwdargs):
+    """Ground a given model.
+
+    :param model: logic program to ground
+    :type model: LogicProgram
+    :return: the ground program
+    :rtype: LogicFormula
+    """
+    if grounder == 'yap':
+        from ground_yap import ground_yap
+        return ground_yap(model, target, **kwdargs)
+    else:
+        return ground_default(model, target, **kwdargs)
+
 
 @transform(LogicProgram, LogicFormula)
-def ground(model, target=None, queries=None, evidence=None, propagate_evidence=False,
+def ground_default(model, target=None, queries=None, evidence=None, propagate_evidence=False,
            labels=None, engine=None, **kwdargs):
     """Ground a given model.
 
@@ -906,7 +921,7 @@ class ClauseDB(LogicProgram):
             if len(new_heads) > 1:
                 heads_list = Term('multi')  # list2term(new_heads)
             else:
-                heads_list = new_heads[0]
+                heads_list = new_heads[0].with_probability(None)
             body_head = Term(body_functor, Constant(group), heads_list, *body_args)
             self._add_clause_node(body_head, body_node, len(variables), variables.local_variables)
             clause_body = self._add_head(body_head)
