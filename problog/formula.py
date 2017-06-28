@@ -401,7 +401,7 @@ class LogicFormula(BaseFormula):
     # noinspection PyUnusedLocal
     def __init__(self, auto_compact=True, avoid_name_clash=False, keep_order=False,
                  use_string_names=False, keep_all=False, propagate_weights=None,
-                 max_arity=0, keep_duplicates=False, keep_builtins=False, hide_builtins=False,
+                 max_arity=0, keep_duplicates=False, keep_builtins=False, hide_builtins=False, database=None,
                  **kwdargs):
         BaseFormula.__init__(self)
 
@@ -430,6 +430,11 @@ class LogicFormula(BaseFormula):
         self.semiring = propagate_weights
 
         self._use_string_names = use_string_names
+        self._database = database
+
+    @property
+    def database(self):
+        return self._database
 
     # ====================================================================================== #
     # ==========                         MANAGE LABELS                           =========== #
