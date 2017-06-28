@@ -6,10 +6,13 @@ from .logic import AnnotatedDisjunction, list2term, Term, Clause, Or, Constant
 import sys
 import os
 from collections import defaultdict, deque
+from subprocess import CalledProcessError
+from .errors import GroundingError
+from .engine import UnknownClause, NonGroundProbabilisticClause
 
 
 def ground_yap(model, target=None, queries=None, evidence=None, propagate_evidence=False,
-               labels=None, engine=None, **kwdargs):
+               labels=None, engine=None, debug=False, **kwdargs):
     """Ground a given model.
 
     :param model: logic program to ground
@@ -24,13 +27,18 @@ def ground_yap(model, target=None, queries=None, evidence=None, propagate_eviden
 
     with Timer('Grounding (YAP)'):
 
+        if debug:
+            fn_model = '/tmp/model.pl'
+            fn_ground = '/tmp/model.ground'
+            fn_evidence = '/tmp/model.evidence'
+            fn_query = '/tmp/model.query'
 
-        fn_model = mktempfile('.pl')
-        fn_ground = mktempfile('.ground')
-        fn_evidence = mktempfile('.evidence')
-        fn_query = mktempfile('.query')
+        else:
+            fn_model = mktempfile('.pl')
+            fn_ground = mktempfile('.ground')
+            fn_evidence = mktempfile('.evidence')
+            fn_query = mktempfile('.query')
 
-        fn_model = '/tmp/m.pl'
         with open(fn_model, 'w') as f:
             f.write('\n'.join(map(statement_to_yap, model)) + '\n')
 
@@ -38,14 +46,23 @@ def ground_yap(model, target=None, queries=None, evidence=None, propagate_eviden
 
         cmd = ['yap', '-L', yap_ground, '--', fn_model, fn_ground, fn_evidence, fn_query]
 
-        output = subprocess_check_output(cmd)
+        try:
+            output = subprocess_check_output(cmd)
+
+        except CalledProcessError as err:
+            errmsg = err.output.strip()
+            if errmsg.startswith('undefined'):
+                raise UnknownClause(errmsg.split()[1], None)
+            elif errmsg.startswith('non-ground'):
+                raise GroundingError('Non-ground clause detected: %s' % errmsg.split()[1], None)
+            else:
+                raise err
 
         with open(fn_query) as f:
             queries = f.readlines()
 
         with open(fn_evidence) as f:
             evidence = f.readlines()
-
 
         with open(fn_ground) as f:
             return read_grounding(f, target, queries, evidence)
@@ -158,6 +175,13 @@ def read_grounding(lines, target, queries, evidence):
 
 
 def statement_to_yap(statement):
+
+    if isinstance(statement, Clause) and statement.head.functor == '_directive':
+        if statement.body.functor in ('consult', 'use_module'):
+            return ''
+        else:
+            return ':- %s.' % statement.body
+
     if isinstance(statement, AnnotatedDisjunction):
         heads = statement.heads
 

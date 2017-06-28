@@ -46,7 +46,7 @@ def ground(model, target=None, grounder=None, **kwdargs):
     :return: the ground program
     :rtype: LogicFormula
     """
-    if grounder == 'yap':
+    if grounder in ('yap', 'yap_debug'):
         from ground_yap import ground_yap
         return ground_yap(model, target, **kwdargs)
     else:

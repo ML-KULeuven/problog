@@ -4,7 +4,7 @@
 :- use_module(library(lists)).
 
 :- op(900,xfx,['::']). % to support probabilistic facts
-:- op(1149,xfx,['<-']). % to support annotated disjunctions
+% :- op(1149,xfx,['<-']). % to support annotated disjunctions
 
 :- table possibly_true/1.
 :- table certainly_true/1.
@@ -17,7 +17,9 @@ problog_ad(_, _) :- fail.
 ground_id(_, _) :- fail.
 ground_id(_, _, _) :- fail.
 
-:- yap_flag(unknown, fail).
+unknown(F) :- yap_flag(unknown, F).
+
+% :- yap_flag(unknown, error).
 
 %%%%%%%%%%%%%%%%%%%%%%
 % Used for grounding a ProbLog program. Use: yap -q -l ground.pl -g "main('input','grounding_output','evidence_output','queries_output')" 
@@ -38,9 +40,7 @@ main :-
 
 main(Input, Grounding, Evidence, Queries) :- 
     init(Input, Grounding, Evidence, Queries),
-    catch(write_evidence,illegal_evidence,cleanup(0)),
-    catch(write_queries,illegal_query,cleanup(0)),
-    catch(catch(catch(write_grounding,illegal_fact,cleanup(0)),grounding_error,cleanup(0)),builtin_unsupported,cleanup(0)),
+    catch((write_evidence, write_queries, write_grounding),grounding_error,cleanup(1)),
     cleanup(0).
 
 init(Input, Grounding, Evidence, Queries) :-
@@ -134,6 +134,8 @@ format_all(Stream, Format, [H|T]) :-
 %%%%%%
 write_grounding :-
       query(Goal),
+      check_undefined(Goal),
+     % trace,
       possibly_true(Goal),
 		(certainly_true(Goal) ->
 			write_fact(1.0,Goal)
@@ -159,42 +161,87 @@ possibly_true(not(Goal)) :-
     \+ certainly_true(Goal).
 possibly_true(R-P-Fact) :-
     write_fact(P,R-Fact).
-possibly_true(Goal) :-
-    clause((P::Goal),Body),    
-    call(Body),
-    valid_probfact(Goal,P),
-    write_fact(P,Goal).
-possibly_true(Goal) :-
-	(	
-	% findall((AD,Body), clause((AD <- Body), true), ALL),
-    findall((AD,Body), problog_ad(AD, Body), ALL),
-	nth1(I,ALL,(AD,Body)),
-    % clause((AD <- Body),true,R),
-    % nth_clause(_,I,R),
-    ad_converter(Goal,AD,Body,I,Sum,ExtendedBody),
-    (Sum>1.00000000001 ->
-        format(user_error,'ERROR: Sum of annotated disjunction is larger than 1.0.~n~w <- ~w.~n',[AD, Body]),
-        fail
-        ;
-        true
-    ),
-    possibly_true(ExtendedBody),
-    write_clause(Goal,ExtendedBody)
-	;
-    catch(clause(Goal,Body),_,fail),
-    possibly_true(Body),
-    valid_for_grounding(Goal),
-    write_clause(Goal,Body)
-	).
+
 possibly_true((Goal1,Goal2)) :-
+    !,
     possibly_true(Goal1),
     possibly_true(Goal2).
 
+possibly_true((Goal1;Goal2)) :-
+    !,
+    write_or((Goal1;Goal2)).
+
+possibly_true(Call) :-
+    Call =.. [call, Goal1 | Args],
+    !,
+    Goal1 = user:Goal2,
+    Goal2 =.. [Pred | Args1],
+    append(Args1, Args, Args2),
+    Goal =.. [Pred | Args2],
+    possibly_true(Goal),
+    write_clause(Call, Goal).
+
+
+possibly_true(Goal) :-
+	(
+	    check_undefined(Goal),
+        clause((P::Goal),Body),
+        call(Body),
+        valid_probfact(Goal,P),
+        write_fact(P,Goal)
+    ;
+	    findall((AD,Body), problog_ad(AD, Body), ALL),
+        nth1(I,ALL,(AD,Body)),
+        % clause((AD <- Body),true,R),
+        % nth_clause(_,I,R),
+        ad_converter(Goal,AD,Body,I,Sum,ExtendedBody),
+        (Sum>1.00000000001 ->
+            format(user_error,'ERROR: Sum of annotated disjunction is larger than 1.0.~n~w <- ~w.~n',[AD, Body]),
+            fail
+            ;
+            true
+        ),
+        possibly_true(ExtendedBody),
+        write_clause(Goal,ExtendedBody)
+	;
+        catch(clause(Goal,Body),_,fail),
+        possibly_true(Body),
+        valid_for_grounding(Goal),
+        write_clause(Goal,Body)
+	).
+
+write_or(Goals) :- write_or(Goals, Goals).
+write_or((Goal1;Goal2), Root) :-
+    !,
+    write_clause(Root, Goal1),
+    write_or(Goal2, Root).
+write_or(Goal, Root) :-
+    write_clause(Root, Goal).
+
+check_undefined(_) :-
+    yap_flag(unknown, E),
+    E = fail,
+    !.
+check_undefined(Goal) :-
+    is_undefined(Goal),
+    !,
+    functor(Goal, F, N),
+    format(user_output,'undefined ~q/~q\n',[F,N]),
+    throw(grounding_error).
+check_undefined(_).
+
+is_undefined(Goal) :-
+    atomic(Goal),
+    functor(Goal, F, N),
+    \+ current_predicate(F/N),
+    \+ catch(clause(_::Goal, _), _, fail),
+    \+ (problog_ad(AD, _), member(_::Goal, AD)).
+
 ad_converter(Head,AD,Body,I,Sum,Result) :-
     ad_converter(Head,AD,Body,I,1,Sum,Result).
-ad_converter(Head,[P::Head],Body,I,Dev,P,Result) :-
-    Pnew is P / Dev,
-    Result = (Body,I-Pnew-Head).
+%ad_converter(Head,[P::Head],Body,I,Dev,P,Result) :-
+%    Pnew is P / Dev,
+%    Result = (Body,I-Pnew-Head).
 ad_converter(Head,([P::Head|_]),Body,I,Dev,P,Result) :-
     Pnew is P / Dev,
     Result = (Body,I-Pnew-Head).
@@ -224,13 +271,25 @@ certainly_true(not(Goal)) :-
     ;
         \+ possibly_true(Goal)
     ).
-certainly_true((Goal1,Goal2)) :- 
+certainly_true((Goal1,Goal2)) :-
     certainly_true(Goal1),
     certainly_true(Goal2).
 certainly_true((Goal1;Goal2)) :- %to handle disjunction in bodies
-    certainly_true(Goal1)
+    !,
+    (
+        certainly_true(Goal1)
     ;
-    certainly_true(Goal2).
+        certainly_true(Goal2)
+    ).
+
+certainly_true(Call) :-
+    Call =.. [call, user:Goal1 | Args],
+    !,
+    Goal1 =.. [Pred | Args1],
+    append(Args1, Args, Args2),
+    Goal =.. [Pred | Args2],
+    certainly_true(Goal).
+
 certainly_true(Goal) :-
 	 \+ builtin_reused(Goal),
     predicate_property(Goal,built_in),
@@ -272,9 +331,91 @@ valid_probfact(_,_).
 %%%%%%
 valid_for_grounding(Atom) :-
     \+ground(Atom),
-    format(user_error,'ERROR: encountered an ungrounded atom ~q during grounding. Heads of rules should be ground after calling the rule.\n',[Atom]),
+    format(user_output,'non-ground ~q',[Atom]),
     throw(grounding_error).
 valid_for_grounding(_).
+
+
+
+get_id(Goal,I,ID) :-
+    (ground_id(Goal,I,ID) ->
+        true
+    ;
+        new_id(ID),
+        assert(ground_id(Goal,I,ID) )
+    ).
+
+get_id(Goal,ID) :-
+    (ground_id(Goal,ID) ->
+        true
+    ;
+        new_id(ID),
+        assert( ground_id(Goal,ID) )
+    ).
+
+new_id(ID) :-
+    catch(nb_getval(factid,ID),_,ID=1),
+    ID1 is ID + 1,
+    nb_setval(factid,ID1).
+
+write_fact(P,I-Goal) :-
+    recorded(gstream,S,_),
+    get_id(Goal,I,ID),
+    format(S,'~q FACT ~q | ad~q_~q\n',[ID,P,I,Goal]).
+write_fact(P,Goal) :-
+    Goal \= ad-_,
+    get_id(Goal,ID),
+    recorded(gstream,S,_),
+    format(S,'~q FACT ~q | ~q\n',[ID,P,Goal]).
+
+%%%%%
+% Write clause
+%%%%%
+write_clause(Goal,true) :-
+    !,\+certainly_true(Goal),
+    recorded(gstream,S,_),
+    get_id(Goal,ID),
+    format(S,'~q FACT 1 | ~q\n',[Goal]).
+write_clause(Goal,Body) :-
+    recorded(gstream,S,_),
+    remove_certainly_true(Body,PBody),
+    get_id(Goal,ID),
+    (PBody == true ->
+        format(S,'~q FACT 1 | ~q\n',[ID, Goal])
+    ;
+        format(S,'~q AND ',[ID]),
+        write_body(PBody),
+        format(S,' | ~q\n',[Goal])
+    ).
+
+write_body((Atom,Rest)) :-
+    !,
+    recorded(gstream,S,_),
+    write_body(Atom),
+    format(S,' ',[]),
+    write_body(Rest).
+write_body(\+ Atom) :-
+    !,write_body(not(Atom)).
+
+write_body(not(Atom)) :-
+    !,
+    recorded(gstream,S,_),
+    (Atom = R-P-Fact ->
+        ground_id( Fact, R, ID ),
+        format(S,'-~q',[ID])
+    ;
+        ground_id( Atom, ID ),
+        format(S,'-~q',[ID])
+    ).
+write_body(Atom) :-
+    recorded(gstream,S,_),
+    (Atom = R-P-Fact ->
+        ground_id( Fact, R, ID ),
+        format(S,'~q',[ID])
+    ;
+        ground_id( Atom, ID ), !,
+        format(S,'~q',[ID])
+    ).
 
 %%%%%
 % Write fact
