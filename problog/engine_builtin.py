@@ -618,7 +618,7 @@ def _builtin_functor(term, functor, arity, **kwdargs):
     mode = check_mode((term, functor, arity), ['vaI', 'n**'], functor='functor', **kwdargs)
 
     if mode == 0:
-        kwdargs.get('callback').newResult(Term(functor, *((None,) * int(arity))), functor, arity)
+        return [(Term(functor, *((None,) * int(arity))), functor, arity)]
     else:
         try:
             values = {}
