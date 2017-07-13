@@ -1,6 +1,5 @@
 %Expected outcome:
-%  q(1,2)        0.784
-%  q(1)         0.3
+% ERROR NonGroundQuery
 
 0.4::a(1).
 0.5::a(2).
@@ -14,7 +13,7 @@ p(X, Y) :- a(X).
 p(X, Y) :- b(Y).
 p(X, Y) :- c(X, Y).
 
-%query(p(_,_)).
+query(p(_,_)).
 
 q(Y) :- p(X, Y), X = 3.
 

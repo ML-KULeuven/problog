@@ -34,7 +34,7 @@ from .formula import LogicFormula
 from .engine_unify import *
 
 from .core import transform
-from .errors import GroundingError, InvalidValue
+from .errors import GroundingError, InvalidValue, NonGroundQuery
 from .util import Timer, OrderedSet
 
 @transform(LogicProgram, LogicFormula)
@@ -272,6 +272,8 @@ class ClauseDBEngine(GenericEngine):
 
         target, results = self._ground(db, term, target, silent_fail=False, **kwdargs)
         for args, node_id in results:
+            if not is_ground(*args) and target.is_probabilistic(node_id):
+                raise NonGroundQuery(term, db.lineno(term.location))
             term_store = term.with_args(*args)
             if negated:
                 target.add_name(-term_store, target.negate(node_id), label)

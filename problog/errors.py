@@ -50,7 +50,6 @@ class ParseError(ProbLogError):
 
 class GroundingError(ProbLogError):
     """Represents an error that occurred during grounding."""
-
     pass
 
 
@@ -70,6 +69,12 @@ class InvalidValue(ProbLogError):
 
 class UserError(ProbLogError):
     pass
+
+
+class NonGroundQuery(ProbLogError):
+
+    def __init__(self, query, location):
+        super(NonGroundQuery, self).__init__("Query term still contains variables after grounding for query %s" % query, location)
 
 
 class InconsistentEvidenceError(ProbLogError):
