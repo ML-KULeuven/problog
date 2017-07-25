@@ -667,21 +667,22 @@ class Factor(object):
                  "  label = \"{}\";".format(self.rv)]
         if include_layout:
             lines += ["  position = (100,100);"]
-        lines += ["  states = ({});".format(' '.join(['"{}"'.format(v) for v in rv.values])),
+        lines += ["  states = ({});".format(' '.join(['"{}"'.format(v) for v in sorted(rv.values)])),
                  "}\n"]
         return '\n'.join(lines)
 
     def to_huginnet_potential(self, include_layout=False):
         rv = self.pgm.vars[self.rv]
         name = rv.clean()
+        value_idxs = sorted((v,i) for i,v in enumerate(rv.values))
         if len(self.parents) > 0:
             name += ' | ' + ' '.join([rv.clean(p) for p in self.parents])
         lines = ['potential ({}) {{'.format(name),
-                 '  % ' + ' '.join([str(v) for v in rv.values]),
+                 '  % ' + ' '.join([str(v) for v, _ in value_idxs]),
                  '  data = (']
         table = sorted(self.table.items())
-        for k, v in table:
-            lines.append('    ' + ' '.join([str(vv) for vv in v]) + ' % ' + ' '.join([str(kk) for kk in k]))
+        for k, probs in table:
+            lines.append('    ' + ' '.join([str(probs[value_idx[1]]) for value_idx in value_idxs]) + ' % ' + ' '.join([str(kk) for kk in k]))
         lines += ['  );',
                   '}\n']
         return '\n'.join(lines)
