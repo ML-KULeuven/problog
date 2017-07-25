@@ -48,6 +48,7 @@ class PGM(object):
         else:
             self.name = 'PGM {}'.format(PGM.__count)
             PGM.__count += 1
+        self.comments = []
         self.directed = directed
         self.factors = OrderedDict()
         self.vars = OrderedDict()
@@ -357,7 +358,10 @@ class PGM(object):
         """
         factors = [factor.to_factor() for factor in self.factors_topological()]
         lines = ["%% ProbLog program: {}".format(self.name),
-                 "%% Created on {}\n".format(datetime.now())]
+                 "%% Created on {}".format(datetime.now())]
+        if len(self.comments) > 0:
+            lines += ["%% {}".format(comment) for comment in self.comments]
+        lines += [""]
         if self.directed:
             lines += [factor.to_problog(self, drop_zero=drop_zero,
                                         use_neglit=use_neglit,
