@@ -79,6 +79,9 @@ class XMLBIFParser(BNParser):
     def parse_domains(self, root):
         for cpt in root.findall('VARIABLE'):
             rv = cpt.find('NAME').text
+            node_type = cpt.get("TYPE")
+            if node_type != "nature":
+                logger.error("Only probabilistic variables are supported. Found type {} for variable {}".format(node_type, name), halt=True)
             states = cpt.findall('OUTCOME')
             values = [state.text for state in states]
             self.domains[rv] = values
