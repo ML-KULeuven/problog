@@ -315,7 +315,6 @@ class StackBasedEngine(ClauseDBEngine):
 
     def execute_init(self, node_id, target=None, database=None, is_root=None, **kwargs):
 
-        print (target)
         # Initialize the cache/table.
         # This is stored in the target ground program because
         # node ids are only valid in that context.
