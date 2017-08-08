@@ -25,7 +25,7 @@ Common interface to decision diagrams (BDD, SDD).
 from __future__ import print_function
 
 
-from .util import Timer
+from .util import Timer, mktempfile
 from .formula import LogicFormula, atom, LogicNNF
 from .evaluator import EvaluatableDSP, Evaluator, FormulaEvaluatorNSP, FormulaEvaluator, SemiringLogProbability, SemiringProbability
 from .errors import InconsistentEvidenceError
@@ -141,6 +141,16 @@ class DD(LogicFormula, EvaluatableDSP):
                 self.get_manager().deref(self.get_manager().constraint_dd)
                 self.get_manager().deref(rule_sdd)
                 self.get_manager().constraint_dd = new_constraint_dd
+
+    def to_dot(self, *args, **kwargs):
+        if kwargs.get('use_internal'):
+            for qn, qi in self.queries():
+                filename = mktempfile('.dot')
+                self.get_manager().write_to_dot(self.get_inode(qi), filename)
+                with open(filename) as f:
+                    return f.read()
+        else:
+            return self.to_formula().to_dot(*args, **kwargs)
 
 
 class DDManager(object):

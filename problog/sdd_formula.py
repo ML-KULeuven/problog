@@ -111,15 +111,6 @@ class SDD(DD):
             cache[int(current_node)] = retval
         return retval
 
-    def to_dot(self, *args, **kwargs):
-        if kwargs.get('use_internal'):
-            for qn, qi in self.queries():
-                filename = mktempfile('.dot')
-                self.get_manager().write_to_dot(self.get_inode(qi), filename)
-                with open(filename) as f:
-                    return f.read()
-        else:
-            return self.to_formula().to_dot(*args, **kwargs)
 
 
 class SDDManager(DDManager):
