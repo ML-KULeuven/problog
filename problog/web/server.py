@@ -283,8 +283,8 @@ def run_lfi_jsonp(model, callback):
 
 
 @handle_url(api_root + 'english')
-def run_lfi_jsonp(model, callback):
-    retcode, result, stderr = call_extract(model[0])
+def run_natlang_jsonp(model, is_text, callback):
+    retcode, result, stderr = call_extract(model[0], is_text[0])
     if retcode == 0:
         result['SUCCESS'] = True
     else:
@@ -294,9 +294,12 @@ def run_lfi_jsonp(model, callback):
     return 200, 'application/json', retval
 
 
-def call_extract(text):
+def call_extract(text, is_text):
+    # script = root_path('..', '..', '..', '..', 'nlp_challenge', 'code', 'extract', 'extract.py')
     script = root_path('..', '..', '..', 'nlp4plp', 'extract', 'extract.py')
     cmd = ['python', script, '--stdin', '--json', '--nosvg']
+    if not is_text == 'true':
+        cmd += ['-m']
     try:
         command = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         stdout, stderr = command.communicate(text)
@@ -304,10 +307,10 @@ def call_extract(text):
         try:
             out = json.loads(stdout)
         except:
-            out = stdout
+            out = {'out': stdout}
     except Exception as err:
         retcode = 1
-        out = ""
+        out = {}
         stderr = str(err)
     return retcode, out, stderr
 
