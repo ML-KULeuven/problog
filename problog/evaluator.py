@@ -139,6 +139,14 @@ class Semiring(object):
             s = self.plus(s, w)
         return self.negate(s)
 
+    def true(self, key=None):
+        """Handle weight for deterministically true."""
+        return self.one(), self.zero()
+
+    def false(self, key=None):
+        """Handle weight for deterministically false."""
+        return self.zero(), self.one()
+
 
 class SemiringProbability(Semiring):
     """Implementation of the semiring interface for probabilities."""
@@ -213,6 +221,8 @@ class SemiringLogProbability(SemiringProbability):
         return a + b
 
     def negate(self, a):
+        if not self.in_domain(a):
+            raise InvalidValue("Not a valid value for this semiring: '%s'" % a)
         if a > -1e-10:
             return self.zero()
         return math.log1p(-math.exp(a))
@@ -492,7 +502,7 @@ class FormulaEvaluator(object):
         elif index == self.formula.FALSE:
             return self.semiring.zero()
         elif index < 0:
-            weight = self._fact_weights.get(index)
+            weight = self._fact_weights.get(abs(index))
             if weight is None:
                 # This will only work if the semiring support negation!
                 nw = self.get_weight(-index)

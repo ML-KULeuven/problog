@@ -30,12 +30,12 @@ import resource
 sys.path.insert(0, os.path.abspath( os.path.join( os.path.dirname(__file__), '..' ) ) )
 from problog.program import PrologString
 from problog.evaluator import SemiringSymbolic, Evaluator
-from problog.nnf_formula import NNF
+from problog.ddnnf_formula import DDNNF
 from problog.sdd_formula import SDD
 from problog.formula import LogicDAG, LogicFormula
 
-# Which compiled knowledge format to use? (SDD or NNF)
-KNOWLEDGE = NNF
+# Which compiled knowledge format to use? (SDD or DDNNF)
+KNOWLEDGE = DDNNF
 
 DEFAULT_PORT = 8000
 DEFAULT_TIMEOUT = 60

@@ -42,7 +42,7 @@ from . import engine
 from . import evaluator
 from . import formula
 from . import logic
-from . import nnf_formula
+from . import ddnnf_formula
 from . import parser
 from . import program
 from . import sdd_formula
@@ -57,8 +57,8 @@ from . import debug
 
 _evaluatables = {'sdd': sdd_formula.SDD,
                  'bdd': bdd_formula.BDD,
-                 'nnf': nnf_formula.NNF,
-                 'ddnnf': nnf_formula.NNF,
+                 'nnf': ddnnf_formula.DDNNF,
+                 'ddnnf': ddnnf_formula.DDNNF,
                  'kbest': kbest.KBestFormula,
                  'fsdd': forward.ForwardSDD,
                  'fbdd': forward.ForwardBDD}
@@ -73,7 +73,7 @@ def get_evaluatable(name=None, semiring=None):
         if semiring is None or semiring.is_dsp():
             return evaluator.EvaluatableDSP
         else:
-            return formula.LogicDAG
+            return formula.LogicNNF
     else:
         return _evaluatables[name]
 

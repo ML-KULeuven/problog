@@ -22,55 +22,42 @@ import sys
 import itertools
 import logging
 
-from problog.formula import LogicDAG, LogicFormula
+from problog.formula import LogicDAG
 from problog.parser import DefaultPrologParser
 from problog.program import ExtendedPrologFactory, PrologFile
-from problog.logic import Term, Or, Clause, And, is_ground, Not
+from problog.logic import Term, Or, Clause, And, Not
 from problog.pgm.cpd import Variable, Factor, OrCPT, PGM
 
-from ..util import Timer, start_timer, stop_timer, init_logger, format_dictionary
+from ..util import init_logger
 from ..errors import process_error
 
 
-def print_result_standard(result, output=sys.stdout, precision=8):
+def print_result_standard(result, output=sys.stdout):
     """Pretty print result.
 
     :param result: result from run_problog
     :param output: output file
-    :param precision:
     :return:
     """
     success, result = result
     if success:
-        print (result, file=output)
+        print(result, file=output)
         return 0
     else:
-        print (process_error(result), file=output)
+        print(process_error(result), file=output)
         return 1
 
 
-def print_result_json(d, output, precision=8):
-    """Pretty print result.
-
-    :param d: result from run_problog
-    :param output: output file
-    :param precision:
-    :return:
-    """
-    import json
-    return 0
-
-
-def termToAtoms(terms):
+def term_to_atoms(terms):
     """Visitor to list atoms in term."""
     if not isinstance(terms, list):
         terms = [terms]
     new_terms = []
     for term in terms:
         if isinstance(term, And):
-            new_terms += termToAtoms(term.to_list())
+            new_terms += term_to_atoms(term.to_list())
         elif isinstance(term, Or):
-            new_terms += termToAtoms(term.to_list())
+            new_terms += term_to_atoms(term.to_list())
         elif isinstance(term, Not):
             new_terms.append(term.child)
         else:
@@ -78,7 +65,7 @@ def termToAtoms(terms):
     return new_terms
 
 
-def termToBool(term, truth_values):
+def term_to_bool(term, truth_values):
     """Visitor that substitutes atoms with truth values.
 
     :param: truth_values: Dictionary atom -> True/False
@@ -86,11 +73,11 @@ def termToBool(term, truth_values):
     """
     logger = logging.getLogger('problog')
     if isinstance(term, And):
-        op1 = termToBool(term.op1, truth_values)
+        op1 = term_to_bool(term.op1, truth_values)
         if op1 is False:
             return False
         elif op1 is True:
-            op2 = termToBool(term.op2, truth_values)
+            op2 = term_to_bool(term.op2, truth_values)
             if op2 is False:
                 return False
             elif op2 is True:
@@ -102,11 +89,11 @@ def termToBool(term, truth_values):
             logger.error('and.op1 is not a boolean'.format(op1))
             return None
     elif isinstance(term, Or):
-        op1 = termToBool(term.op1, truth_values)
+        op1 = term_to_bool(term.op1, truth_values)
         if op1 is True:
             return True
         elif op1 is False:
-            op2 = termToBool(term.op2, truth_values)
+            op2 = term_to_bool(term.op2, truth_values)
             if op2 is True:
                 return True
             elif op2 is False:
@@ -118,7 +105,7 @@ def termToBool(term, truth_values):
             logger.error('or.op1 is not a boolean'.format(op1))
             return None
     elif isinstance(term, Not):
-        child = termToBool(term.child, truth_values)
+        child = term_to_bool(term.child, truth_values)
         if child is True:
             return False
         elif child is False:
@@ -131,10 +118,10 @@ def termToBool(term, truth_values):
             return truth_values[term]
         else:
             logger.error('Unknown term: {} ({})'.format(term, type(term)))
-            None
+            return None
 
 
-def clauseToCPT(clause, number, pgm):
+def clause_to_cpt(clause, number, pgm):
     logger = logging.getLogger('problog')
     # print('Clause: {} -- {}'.format(clause, type(clause)))
     if isinstance(clause, Clause):
@@ -148,7 +135,7 @@ def clauseToCPT(clause, number, pgm):
                                                              type(clause.head)))
         # CPT for the choice node
         rv_cn = 'c{}'.format(number)
-        parents = termToAtoms(clause.body)
+        parents = term_to_atoms(clause.body)
         parents_str = [str(t) for t in parents]
         probs_heads = []
         for head in heads:
@@ -160,7 +147,7 @@ def clauseToCPT(clause, number, pgm):
         table_cn = dict()
         for keys in itertools.product([False, True], repeat=len(parents)):
             truth_values = dict(zip(parents, keys))
-            truth_value = termToBool(clause.body, truth_values)
+            truth_value = term_to_bool(clause.body, truth_values)
             if truth_value is None:
                 logger.error('Expected a truth value. Instead god:\n'
                              ' {} -> {}'.format(truth_values, truth_value))
@@ -217,7 +204,7 @@ def clauseToCPT(clause, number, pgm):
     return
 
 
-def formulaToBN(formula):
+def formula_to_bn(formula):
     # factors = []
     # for i, n, t in formula:
     #     factors.append('{}: {}'.format(i, n))
@@ -229,7 +216,7 @@ def formulaToBN(formula):
     for idx, clause in enumerate(formula.enum_clauses()):
         logger.debug('clause: {}'.format(clause))
         clauses.append(clause)
-        clauseToCPT(clause, idx, bn)
+        clause_to_cpt(clause, idx, bn)
 
     # lines = ['{}'.format(c) for c in clauses]
     # for qn, qi in formula.queries():
@@ -296,7 +283,7 @@ def main(argv, result_handler=None):
         # db = engine.prepare(p)
         # gp = engine.ground_all(db)
 
-        bn = formulaToBN(gp)
+        bn = formula_to_bn(gp)
         if args.format == 'hugin':
             bn_str = bn.to_hugin_net()
         elif args.format == 'xdsl':

@@ -80,6 +80,7 @@ class ConstraintAD(Constraint):
         self.nodes = set()
         self.group = group
         self.extra_node = None
+        self.location = None
 
     def __str__(self):
         return 'annotated_disjunction(%s, %s)' % (list(self.nodes), self.extra_node)
@@ -108,6 +109,13 @@ class ConstraintAD(Constraint):
             return node
 
         is_extra = formula.get_node(node).probability == formula.WEIGHT_NEUTRAL
+
+        try:
+            if not self.location and formula.get_node(node).name and formula.get_node(node).name.args:
+                if formula.database:
+                    self.location = formula.database.lineno(formula.get_node(node).name.args[-1].location)
+        except AttributeError:
+            pass
 
         if formula.has_evidence_values() and not is_extra:
             # Propagate constraint: if one of the other nodes is True: this one is false
@@ -179,12 +187,15 @@ class ConstraintAD(Constraint):
                 pos, neg = weights.get(n, (semiring.one(), semiring.one()))
                 weights[n] = (pos, semiring.one())
                 ws.append(pos)
-            if not semiring.in_domain(s):
-                raise InvalidValue('Sum of annotated disjunction weigths exceed acceptable value')
-                # TODO add location
 
             name = Term('choice', Constant(self.group[0]), Term('e'), Term('null'), *self.group[1])
-            complement = semiring.ad_complement(ws, key=name)
+            try:
+                complement = semiring.ad_complement(ws, key=name)
+                if not semiring.in_domain(complement):
+                    raise InvalidValue('Sum of annotated disjunction weigths exceeds acceptable value', location=self.location)
+            except InvalidValue:
+                raise InvalidValue('Sum of annotated disjunction weigths exceeds acceptable value', location=self.location)
+                # TODO add location
             weights[self.extra_node] = (complement, semiring.one())
 
     def copy(self, rename=None):

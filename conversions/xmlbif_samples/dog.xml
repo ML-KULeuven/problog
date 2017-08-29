@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="US-ASCII"?>
+
+
+<!--
+	dog-problem Bayesian network, based on the discussion in
+	Charniak, E., Bayesian Networks without Tears, AI Magazine, 1991.
+	From: http://www.cs.cmu.edu/~fgcozman/Research/InterchangeFormat/
+
+	Bayesian network in XMLBIF v0.3 (BayesNet Interchange Format)
+	Produced by JavaBayes (http://www.cs.cmu.edu/~javabayes/
+	Output created Wed Aug 12 21:16:40 GMT+01:00 1998
+-->
+
+
+
+<!-- DTD for the XMLBIF 0.3 format -->
+<!DOCTYPE BIF [
+	<!ELEMENT BIF ( NETWORK )*>
+	      <!ATTLIST BIF VERSION CDATA #REQUIRED>
+	<!ELEMENT NETWORK ( NAME, ( PROPERTY | VARIABLE | DEFINITION )* )>
+	<!ELEMENT NAME (#PCDATA)>
+	<!ELEMENT VARIABLE ( NAME, ( OUTCOME |  PROPERTY )* ) >
+	      <!ATTLIST VARIABLE TYPE (nature|decision|utility) "nature">
+	<!ELEMENT OUTCOME (#PCDATA)>
+	<!ELEMENT DEFINITION ( FOR | GIVEN | TABLE | PROPERTY )* >
+	<!ELEMENT FOR (#PCDATA)>
+	<!ELEMENT GIVEN (#PCDATA)>
+	<!ELEMENT TABLE (#PCDATA)>
+	<!ELEMENT PROPERTY (#PCDATA)>
+]>
+
+
+<BIF VERSION="0.3">
+<NETWORK>
+<NAME>Dog-Problem</NAME>
+<PROPERTY>author: Charniak, E</PROPERTY>
+
+<!-- Variables -->
+<VARIABLE TYPE="nature">
+	<NAME>light-on</NAME>
+	<OUTCOME>true</OUTCOME>
+	<OUTCOME>false</OUTCOME>
+	<PROPERTY>position = (73, 165)</PROPERTY>
+</VARIABLE>
+
+<VARIABLE TYPE="nature">
+	<NAME>bowel-problem</NAME>
+	<OUTCOME>true</OUTCOME>
+	<OUTCOME>false</OUTCOME>
+	<PROPERTY>position = (190, 69)</PROPERTY>
+</VARIABLE>
+
+<VARIABLE TYPE="nature">
+	<NAME>dog-out</NAME>
+	<OUTCOME>true</OUTCOME>
+	<OUTCOME>false</OUTCOME>
+	<PROPERTY>position = (155, 165)</PROPERTY>
+</VARIABLE>
+
+<VARIABLE TYPE="nature">
+	<NAME>hear-bark</NAME>
+	<OUTCOME>true</OUTCOME>
+	<OUTCOME>false</OUTCOME>
+	<PROPERTY>position = (154, 241)</PROPERTY>
+</VARIABLE>
+
+<VARIABLE TYPE="nature">
+	<NAME>family-out</NAME>
+	<OUTCOME>true</OUTCOME>
+	<OUTCOME>false</OUTCOME>
+	<PROPERTY>position = (112, 69)</PROPERTY>
+</VARIABLE>
+
+
+<!-- Probability distributions -->
+<DEFINITION>
+	<FOR>light-on</FOR>
+	<GIVEN>family-out</GIVEN>
+	<TABLE>0.6 0.4 0.05 0.95 </TABLE>
+</DEFINITION>
+
+<DEFINITION>
+	<FOR>bowel-problem</FOR>
+	<TABLE>0.01 0.99 </TABLE>
+</DEFINITION>
+
+<DEFINITION>
+	<FOR>dog-out</FOR>
+	<GIVEN>bowel-problem</GIVEN>
+	<GIVEN>family-out</GIVEN>
+	<TABLE>0.99 0.01 0.97 0.03 0.9 0.1 0.3  0.7 </TABLE>
+</DEFINITION>
+
+<DEFINITION>
+	<FOR>hear-bark</FOR>
+	<GIVEN>dog-out</GIVEN>
+	<TABLE>0.7 0.3 0.01 0.99 </TABLE>
+</DEFINITION>
+
+<DEFINITION>
+	<FOR>family-out</FOR>
+	<TABLE>0.15 0.85 </TABLE>
+</DEFINITION>
+
+
+</NETWORK>
+</BIF>

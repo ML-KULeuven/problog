@@ -85,12 +85,13 @@ class CNF(BaseFormula):
             else:
                 return ' '.join(map(str, clause[1:])) + ' 0'
 
-    def to_dimacs(self, partial=False, weighted=False, semiring=None, smart_constraints=False):
+    def to_dimacs(self, partial=False, weighted=False, semiring=None, smart_constraints=False, names=False):
         """Transform to a string in DIMACS format.
 
         :param partial: split variables if possibly true / certainly true
         :param weighted: created a weighted (False, :class:`int`, :class:`float`)
         :param semiring: semiring for weight transformation (if weighted)
+        :param names: Print names in comments
         :return: string in DIMACS format
         """
         if weighted:
@@ -102,6 +103,10 @@ class CNF(BaseFormula):
                                          semiring=semiring, smart_constraints=smart_constraints)
 
         result = 'p %s %s\n' % (t, ' '.join(map(str, header)))
+        if names:
+            tpl = 'c {{:<{}}} {{}}\n'.format(len(str(self._atomcount)) + 1)
+            for n, i, l in self.get_names_with_label():
+                result += tpl.format(i, n)
         result += '\n'.join(map(lambda cl: ' '.join(map(str, cl)) + ' 0', content))
         return result
 

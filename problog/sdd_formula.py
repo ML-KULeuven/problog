@@ -27,6 +27,8 @@ from .formula import LogicDAG, LogicFormula
 from .core import transform
 from .errors import InstallError
 from .dd_formula import DD, build_dd, DDManager
+from .util import mktempfile
+import os
 
 
 # noinspection PyBroadException
@@ -66,29 +68,31 @@ class SDD(DD):
 
     def to_formula(self):
         """Extracts a LogicFormula from the SDD."""
-        formula = LogicFormula()
+        formula = LogicFormula(keep_order=True)
 
         for n, q, l in self.labeled():
             node = self.get_inode(q)
             constraints = self.get_constraint_inode()
             nodec = self.get_manager().conjoin(node, constraints)
-            i = self._to_formula(formula, nodec)
+            i = self._to_formula(formula, nodec, {})
             formula.add_name(n, i, formula.LABEL_QUERY)
         return formula
 
-    def _to_formula(self, formula, current_node):
+    def _to_formula(self, formula, current_node, cache=None):
+        if cache is not None and int(current_node) in cache:
+            return cache[int(current_node)]
         if self.get_manager().is_true(current_node):
-            return formula.TRUE
+            retval = formula.TRUE
         elif self.get_manager().is_false(current_node):
-            return formula.FALSE
+            retval = formula.FALSE
         elif sdd.sdd_node_is_literal(current_node):  # it's a literal
             lit = sdd.sdd_node_literal(current_node)
             at = self.var2atom[abs(lit)]
             node = self.get_node(at)
             if lit < 0:
-                return -formula.add_atom(-lit, probability=node.probability, name=node.name, group=node.group)
+                retval = -formula.add_atom(-lit, probability=node.probability, name=node.name, group=node.group)
             else:
-                return formula.add_atom(lit, probability=node.probability, name=node.name, group=node.group)
+                retval = formula.add_atom(lit, probability=node.probability, name=node.name, group=node.group)
         else:  # is decision
             size = sdd.sdd_node_size(current_node)
             elements = sdd.sdd_node_elements(current_node)
@@ -98,11 +102,15 @@ class SDD(DD):
             # Formula: (p1^s1) v (p2^s2) v ...
             children = []
             for p, s in zip(primes, subs):
-                p_n = self._to_formula(formula, p)
-                s_n = self._to_formula(formula, s)
+                p_n = self._to_formula(formula, p, cache)
+                s_n = self._to_formula(formula, s, cache)
                 c_n = formula.add_and((p_n, s_n))
                 children.append(c_n)
-            return formula.add_or(children)
+            retval = formula.add_or(children)
+        if cache is not None:
+            cache[int(current_node)] = retval
+        return retval
+
 
 
 class SDDManager(DDManager):
@@ -182,64 +190,80 @@ class SDDManager(DDManager):
     def write_to_dot(self, node, filename):
         sdd.sdd_save_as_dot(filename, node)
 
-    def wmc(self, node, weights, semiring):
+    def wmc(self, node, weights, semiring, literal=None):
         logspace = 0
         if semiring.one() == 0.0:
             logspace = 1
         wmc_manager = sdd.wmc_manager_new(node, logspace, self.get_manager())
         varcount = sdd.sdd_manager_var_count(self.get_manager())
-
-        # varlist_intern = sdd.sdd_variables(node, self.get_manager())
-        # vc = sdd.sdd_manager_var_count(self.get_manager()) + 1
-        # varlist = [i for i in range(0, vc) if sdd.sdd_array_int_element(varlist_intern, i)]
-
         for n in weights:
             pos, neg = weights[n]
             if n <= varcount:
                 sdd.wmc_set_literal_weight(n, pos, wmc_manager)  # Set positive literal weight
                 sdd.wmc_set_literal_weight(-n, neg, wmc_manager)  # Set negative literal weight
         result = sdd.wmc_propagate(wmc_manager)
+        if literal is not None:
+            result = sdd.wmc_literal_pr(literal, wmc_manager)
         sdd.wmc_manager_free(wmc_manager)
         return result
 
     def wmc_literal(self, node, weights, semiring, literal):
-        logspace = 0
-        if semiring.one() == 0.0:
-            logspace = 1
-        wmc_manager = sdd.wmc_manager_new(node, logspace, self.get_manager())
-        varcount = sdd.sdd_manager_var_count(self.get_manager())
-        for i, n in enumerate(sorted(weights)):
-            i += 1
-            pos, neg = weights[n]
-            if n <= varcount:
-                sdd.wmc_set_literal_weight(n, pos, wmc_manager)  # Set positive literal weight
-                sdd.wmc_set_literal_weight(-n, neg, wmc_manager)  # Set negative literal weight
-        sdd.wmc_propagate(wmc_manager)
-
-        result = sdd.wmc_literal_pr(literal, wmc_manager)
-        sdd.wmc_manager_free(wmc_manager)
-        return result
+        return self.wmc(node, weights, semiring, literal)
 
     def wmc_true(self, weights, semiring):
-        logspace = 0
-        if semiring.one() == 0.0:
-            logspace = 1
-        wmc_manager = sdd.wmc_manager_new(self.true(), logspace, self.get_manager())
-        varcount = sdd.sdd_manager_var_count(self.get_manager())
-        for i, n in enumerate(sorted(weights)):
-            i += 1
-            pos, neg = weights[n]
-            if n <= varcount:
-                sdd.wmc_set_literal_weight(n, pos, wmc_manager)  # Set positive literal weight
-                sdd.wmc_set_literal_weight(-n, neg, wmc_manager)  # Set negative literal weight
-        result = sdd.wmc_propagate(wmc_manager)
-        sdd.wmc_manager_free(wmc_manager)
-        return result
+        return self.wmc(self.true(), weights, semiring)
 
     def __del__(self):
         # if sdd is not None and sdd.sdd_manager_free is not None:
         #     sdd.sdd_manager_free(self.__manager)
         self.__manager = None
+
+    def __getstate__(self):
+        tempfile = mktempfile()
+        vtree = sdd.sdd_manager_vtree(self.get_manager())
+        sdd.sdd_vtree_save(tempfile, vtree)
+        with open(tempfile) as f:
+            vtree_data = f.read()
+
+        nodes = []
+        for n in self.nodes:
+            if n is not None:
+                sdd.sdd_save(tempfile, n)
+
+                with open(tempfile) as f:
+                    nodes.append(f.read())
+            else:
+                nodes.append(None)
+
+        sdd.sdd_save(tempfile, self.constraint_dd)
+        with open(tempfile) as f:
+            constraint_dd = f.read()
+
+        os.remove(tempfile)
+        return {'varcount': self.varcount, 'nodes': nodes, 'vtree': vtree_data, 'constraint_dd': constraint_dd}
+
+    def __setstate__(self, state):
+        self.nodes = []
+        self.varcount = state['varcount']
+        tempfile = mktempfile()
+        with open(tempfile, 'w') as f:
+            f.write(state['vtree'])
+        vtree = sdd.sdd_vtree_read(tempfile)
+        self.__manager = sdd.sdd_manager_new(vtree)
+
+        for n in state['nodes']:
+            if n is None:
+                self.nodes.append(None)
+            else:
+                with open(tempfile, 'w') as f:
+                    f.write(n)
+                self.nodes.append(sdd.sdd_read(tempfile, self.__manager))
+
+        with open(tempfile, 'w') as f:
+            f.write(state['constraint_dd'])
+        self.constraint_dd = sdd.sdd_read(tempfile, self.__manager)
+        os.remove(tempfile)
+        return
 
 
 @transform(LogicDAG, SDD)

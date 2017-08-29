@@ -34,12 +34,27 @@ from .formula import LogicFormula
 from .engine_unify import *
 
 from .core import transform
-from .errors import GroundingError
+from .errors import GroundingError, InvalidValue, NonGroundQuery
 from .util import Timer, OrderedSet
+
+@transform(LogicProgram, LogicFormula)
+def ground(model, target=None, grounder=None, **kwdargs):
+    """Ground a given model.
+
+    :param model: logic program to ground
+    :type model: LogicProgram
+    :return: the ground program
+    :rtype: LogicFormula
+    """
+    if grounder in ('yap', 'yap_debug'):
+        from ground_yap import ground_yap
+        return ground_yap(model, target, **kwdargs)
+    else:
+        return ground_default(model, target, **kwdargs)
 
 
 @transform(LogicProgram, LogicFormula)
-def ground(model, target=None, queries=None, evidence=None, propagate_evidence=False,
+def ground_default(model, target=None, queries=None, evidence=None, propagate_evidence=False,
            labels=None, engine=None, **kwdargs):
     """Ground a given model.
 
@@ -257,6 +272,8 @@ class ClauseDBEngine(GenericEngine):
 
         target, results = self._ground(db, term, target, silent_fail=False, **kwdargs)
         for args, node_id in results:
+            if not is_ground(*args) and target.is_probabilistic(node_id):
+                raise NonGroundQuery(term, db.lineno(term.location))
             term_store = term.with_args(*args)
             if negated:
                 target.add_name(-term_store, target.negate(node_id), label)
@@ -514,6 +531,7 @@ class ClauseIndex(list):
         self.__basetype = OrderedSet
         self.__index = [defaultdict(self.__basetype) for _ in range(0, arity)]
         self.__optimized = False
+        self.__erased = set()
 
     def find(self, arguments):
         results = None
@@ -535,9 +553,15 @@ class ClauseIndex(list):
             if results is not None and not results:
                 return []
         if results is None:
-            return self
+            if self.__erased:
+                return OrderedSet(self) - self.__erased
+            else:
+                return self
         else:
-            return results
+            if self.__erased:
+                return results - self.__erased
+            else:
+                return results
 
     def _add(self, key, item):
         for i, k in enumerate(key):
@@ -553,6 +577,9 @@ class ClauseIndex(list):
             else:
                 key.append(None)
         self._add(key, item)
+
+    def erase(self, items):
+        self.__erased |= set(items)
 
 
 class ClauseDB(LogicProgram):
@@ -873,7 +900,9 @@ class ClauseDB(LogicProgram):
             op2 = self._compile(struct.op2, variables)
             return self._add_or_node(op1, op2)
         elif isinstance(struct, Not):
+            variables.enter_local()
             child = self._compile(struct.child, variables)
+            variables.exit_local()
             return self._add_not_node(child, location=struct.location)
         elif isinstance(struct, Term) and struct.signature == 'not/1':
             child = self._compile(struct.args[0], variables)
@@ -894,7 +923,7 @@ class ClauseDB(LogicProgram):
             if len(new_heads) > 1:
                 heads_list = Term('multi')  # list2term(new_heads)
             else:
-                heads_list = new_heads[0]
+                heads_list = new_heads[0].with_probability(None)
             body_head = Term(body_functor, Constant(group), heads_list, *body_args)
             self._add_clause_node(body_head, body_node, len(variables), variables.local_variables)
             clause_body = self._add_head(body_head)
@@ -983,6 +1012,15 @@ class ClauseDB(LogicProgram):
             return Not('\+', self._extract(node.child))
         else:
             raise ValueError("Unknown node type: '%s'" % nodetype)
+
+    def to_clause(self, index):
+        node = self.get_node(index)
+        nodetype = type(node).__name__
+        if nodetype == 'fact':
+            return Term(node.functor, *node.args, p=node.probability)
+        elif nodetype == 'clause':
+            head = self._create_vars(Term(node.functor, *node.args, p=node.probability))
+            return Clause(head, self._extract(node.child))
 
     def __iter__(self):
         clause_groups = defaultdict(list)
@@ -1080,7 +1118,8 @@ class PrologFunction(object):
         args = args[:self.arity - 1]
         query_term = Term(self.functor, *(args + (None,)))
         result = self.database.engine.query(self.database, query_term)
-        assert len(result) == 1
+        if len(result) != 1:
+            raise InvalidValue("Function should return one result: %s returned %s" % (query_term, result))
         return result[0][-1]
 
 

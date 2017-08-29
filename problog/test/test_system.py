@@ -26,7 +26,7 @@ from problog import root_path
 
 from problog.setup import install
 from problog.program import PrologFile, DefaultPrologParser, ExtendedPrologFactory
-from problog.nnf_formula import NNF
+from problog.ddnnf_formula import DDNNF
 from problog.sdd_formula import SDD
 from problog.evaluator import SemiringProbability, SemiringLogProbability
 
@@ -116,7 +116,7 @@ def createSystemTestNNF(filename, logspace=False) :
     def test(self) :
         try :
             parser = DefaultPrologParser(ExtendedPrologFactory())
-            sdd = NNF.createFrom(PrologFile(filename, parser=parser))
+            sdd = DDNNF.createFrom(PrologFile(filename, parser=parser))
 
             if logspace :
                 semiring = SemiringLogProbability()
