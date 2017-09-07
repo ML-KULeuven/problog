@@ -26,13 +26,13 @@ from __future__ import print_function
 import math
 
 from .core import ProbLogObject, transform_allow_subclass
-from .errors import InconsistentEvidenceError, InvalidValue
+from .errors import InconsistentEvidenceError, InvalidValue, ProbLogError
 
 
-class OperationNotSupported(Exception):
+class OperationNotSupported(ProbLogError):
 
     def __init__(self):
-        Exception.__init__(self, 'This operation is not supported by this semiring.')
+        ProbLogError.__init__(self, 'This operation is not supported by this semiring')
 
 
 class Semiring(object):
