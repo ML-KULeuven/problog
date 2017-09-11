@@ -28,6 +28,7 @@ from __future__ import print_function
 from .util import Timer, mktempfile
 from .formula import LogicFormula, atom, LogicNNF
 from .evaluator import EvaluatableDSP, Evaluator, FormulaEvaluatorNSP, FormulaEvaluator, SemiringLogProbability, SemiringProbability
+from .logic import Term
 from .errors import InconsistentEvidenceError
 
 
@@ -56,7 +57,7 @@ class DD(LogicFormula, EvaluatableDSP):
 
     def _create_atom(self, identifier, probability, group, name=None, source=None):
         index = len(self) + 1
-        var = self.get_manager().add_variable()
+        var = self.get_manager().add_variable(decision_variable = (probability == Term('?'))) 
         self.atom2var[index] = var
         self.var2atom[var] = index
         return atom(identifier, probability, group, name, source)

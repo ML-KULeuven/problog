@@ -55,7 +55,10 @@ class SDD(DD):
     def __init__(self, sdd_auto_gc=False, **kwdargs):
         if sdd is None:
             raise InstallError('The SDD library is not available. Please run the installer.')
-        self.auto_gc = sdd_auto_gc
+        self.auto_gc = sdd_auto_gc    #sdd_auto_gc
+        self.mip_minimize = False     # auto_gc AND mip_minimize -> custom mini
+                                      # auto_gc AND NOT mip_minimize -> default mini
+                                      # NOT auto_gc -> no mini 
         DD.__init__(self, auto_compact=False, **kwdargs)
 
     def _create_manager(self):
