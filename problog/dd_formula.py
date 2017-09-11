@@ -60,7 +60,7 @@ class DD(LogicFormula, EvaluatableDSP):
         var = self.get_manager().add_variable(decision_variable = (probability == Term('?'))) 
         self.atom2var[index] = var
         self.var2atom[var] = index
-        return atom(identifier, probability, group, name, source)
+        return atom(identifier, probability, group, name, source)   # In the code we edited from the original problog, this returns self._atom(...), but this developers version seems to be a bit different
 
     def get_inode(self, index):
         """Get the internal node corresponding to the entry at the given index.

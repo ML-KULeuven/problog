@@ -56,13 +56,13 @@ class SDD(DD):
         if sdd is None:
             raise InstallError('The SDD library is not available. Please run the installer.')
         self.auto_gc = sdd_auto_gc    #sdd_auto_gc
-        self.mip_minimize = False     # auto_gc AND mip_minimize -> custom mini
+        self.mip_minimize = True      # auto_gc AND mip_minimize -> custom mini
                                       # auto_gc AND NOT mip_minimize -> default mini
                                       # NOT auto_gc -> no mini 
         DD.__init__(self, auto_compact=False, **kwdargs)
 
     def _create_manager(self):
-        return SDDManager(auto_gc=self.auto_gc)
+        return SDDManager(auto_gc=self.auto_gc,mip_minimize=self.mip_minimize)
 
     @classmethod
     def is_available(cls):
@@ -80,7 +80,21 @@ class SDD(DD):
             i = self._to_formula(formula, nodec, {})
             formula.add_name(n, i, formula.LABEL_QUERY)
         return formula
+    
+    def manual_minimize (self):
+        if self.auto_gc and self.mip_minimize:
+             sdd.sdd_manager_mip_minimize ( self.get_manager ().get_manager () )
 
+    def _create_inode(self, node, root = False):
+        l = [self.get_inode(c) for c in node.children]
+        if root and self.mip_minimize:
+            sdd.sdd_manager_set_mip_minimize ( self.get_manager().get_manager () )
+        if type(node).__name__ == 'conj':
+            ret = self.get_manager().conjoin(*l)
+        else:
+            ret = self.get_manager().disjoin(*l)
+        return ret
+    
     def _to_formula(self, formula, current_node, cache=None):
         if cache is not None and int(current_node) in cache:
             return cache[int(current_node)]
@@ -114,6 +128,15 @@ class SDD(DD):
             cache[int(current_node)] = retval
         return retval
 
+    def to_dot(self, *args, **kwargs):
+        if kwargs.get('use_internal'):
+            for qn, qi in self.queries():
+                filename = mktempfile('.dot')
+                self.get_manager().write_to_dot(self.get_inode(qi), filename)
+                with open(filename) as f:
+                    return f.read()
+        else:
+            return self.to_formula().to_dot(*args, **kwargs)
 
 
 class SDDManager(DDManager):
@@ -122,7 +145,7 @@ class SDDManager(DDManager):
     It wraps around the SDD library and offers some additional methods.
     """
 
-    def __init__(self, varcount=0, auto_gc=True):
+    def __init__(self, varcount=0, auto_gc=True, mip_minimize=True):
         """Create a new SDD manager.
 
         :param varcount: number of initial variables
@@ -134,20 +157,23 @@ class SDDManager(DDManager):
         if varcount is None or varcount == 0:
             varcount = 1
         self.__manager = sdd.sdd_manager_create(varcount, auto_gc)
-        self.varcount = varcount
+        if mip_minimize:
+            print("setting mip minimizer")
+            sdd.sdd_manager_set_mip_minimize(self.__manager)                                      #siegfried
+        self.varcount = 0 # actually there is one, but our sdd_manager_add_var_after_last_withtype is aware of that is going to use it 
 
     def get_manager(self):
         """Get the underlying sdd manager."""
         return self.__manager
 
-    def add_variable(self, label=0):
+    def add_variable(self, label=0, decision_variable=False):
         if label == 0 or label > self.varcount:
-            sdd.sdd_manager_add_var_after_last(self.__manager)
+            sdd.sdd_manager_add_var_after_last_withtype(self.__manager, decision_variable)
             self.varcount += 1
             return self.varcount
         else:
             return label
-
+        
     def literal(self, label):
         self.add_variable(abs(label))
         return sdd.sdd_manager_literal(label, self.__manager)
@@ -211,10 +237,38 @@ class SDDManager(DDManager):
         return result
 
     def wmc_literal(self, node, weights, semiring, literal):
-        return self.wmc(node, weights, semiring, literal)
+        logspace = 0
+        if semiring.one() == 0.0:
+            logspace = 1
+        wmc_manager = sdd.wmc_manager_new(node, logspace, self.get_manager())
+        varcount = sdd.sdd_manager_var_count(self.get_manager())
+        for i, n in enumerate(sorted(weights)):
+            i += 1
+            pos, neg = weights[n]
+            if n <= varcount:
+                sdd.wmc_set_literal_weight(n, pos, wmc_manager)  # Set positive literal weight
+                sdd.wmc_set_literal_weight(-n, neg, wmc_manager)  # Set negative literal weight
+        sdd.wmc_propagate(wmc_manager)
+
+        result = sdd.wmc_literal_pr(literal, wmc_manager)
+        sdd.wmc_manager_free(wmc_manager)
+        return result
 
     def wmc_true(self, weights, semiring):
-        return self.wmc(self.true(), weights, semiring)
+        logspace = 0
+        if semiring.one() == 0.0:
+            logspace = 1
+        wmc_manager = sdd.wmc_manager_new(self.true(), logspace, self.get_manager())
+        varcount = sdd.sdd_manager_var_count(self.get_manager())
+        for i, n in enumerate(sorted(weights)):
+            i += 1
+            pos, neg = weights[n]
+            if n <= varcount:
+                sdd.wmc_set_literal_weight(n, pos, wmc_manager)  # Set positive literal weight
+                sdd.wmc_set_literal_weight(-n, neg, wmc_manager)  # Set negative literal weight
+        result = sdd.wmc_propagate(wmc_manager)
+        sdd.wmc_manager_free(wmc_manager)
+        return result
 
     def __del__(self):
         # if sdd is not None and sdd.sdd_manager_free is not None:

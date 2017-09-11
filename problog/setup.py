@@ -125,8 +125,8 @@ def build_sdd(force=False):
     with WorkingDir(build_dir):
 
         from distutils.core import setup, Extension
-        sdd_module = Extension('_sdd', sources=['sdd/sdd_wrap.c', 'sdd/except.c'], libraries=['sdd'],
-                               library_dirs=[lib_dir])
+        #sdd_module = Extension('_sdd', sources=['sdd/sdd_wrap.c', 'sdd/except.c'], libraries=['sdd'], library_dirs=[lib_dir])
+        sdd_module = Extension('_sdd', sources=['sdd/sdd_wrap.c', 'sdd/except.c', 'sdd/mipsearch.c', 'sdd/mipstate.c'], libraries=['sdd'], library_dirs=[lib_dir], extra_compile_args=['-std=c99', '-Wno-error=declaration-after-statement', '-L./linux/'])
 
         setup(name='sdd',
               version='1.0',

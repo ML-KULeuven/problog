@@ -550,6 +550,7 @@ void sdd_manager_mip_minimize ( SddManager *manager ) {
 
 void sdd_manager_set_mip_minimize(SddManager* manager) {
   //if ( cnt == 0 ) {
+    printf ( "called sdd_manager_set_mip_minimize");
     sdd_manager_set_minimize_function ( mip_vtree_search_switch, manager );
   /*  cnt++;
   //}
