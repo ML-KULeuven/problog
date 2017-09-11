@@ -24,13 +24,13 @@ def build_sdd():
     build_lib = '.'  # where to put final library?
     build_dir = '.'  # where to put temporary build files?
 
-    lib_dir = '.'   # where to find SDD library
+    lib_dir = './linux/'   # where to find SDD library
 
     curr = os.curdir
     os.chdir(build_dir)
 
     from distutils.core import setup, Extension
-    sdd_module = Extension('_sdd', sources=['sdd_wrap.c', 'except.c'], libraries=['sdd'], library_dirs=[lib_dir])
+    sdd_module = Extension('_sdd', sources=['sdd_wrap.c', 'except.c', 'mipsearch.c', 'mipstate.c'], libraries=['sdd'], library_dirs=[lib_dir], extra_compile_args=['-std=c99', '-Wno-error=declaration-after-statement', '-L./linux/'])
 
     setup (name='sdd',
            version='1.0',
