@@ -49,9 +49,10 @@ SC-ProbLog requires ProbLog v2.1, Python 3.4 and Gurobi 6.5.2.
 
 2. Installation
 ---------------
-Clone repository and checkout sc-problog branch.
-Install SC-ProbLog by running
+Clone repository and checkout sc-problog branch. Install SC-ProbLog by running
+
 $ python3.4 setup.py
+
 in the problog subdirectory.
 
 3. Usage
