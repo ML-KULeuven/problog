@@ -923,14 +923,8 @@ def struct_cmp(a, b):
         return res
 
     # 4.2) By functor
-    if isinstance(a.functor, Term):
-        fa = str(a.functor)
-    else:
-        fa = a
-    if isinstance(b.functor, Term):
-        fb = str(b.functor)
-    else:
-        fb = b
+    fa = str(a.functor)
+    fb = str(b.functor)
     res = compare(fa, fb)
     if res != 0:
         return res
