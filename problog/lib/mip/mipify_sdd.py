@@ -2,16 +2,38 @@
 # -*- coding: utf-8 -*-
 
 """
-*******************************************************************************
+mipify_sdd.py - Converting SDDs to MIPs
+--------------------------------------------------
+
+Interface to for converting formulas to MIPs
+
+..
+    Part of the ProbLog distribution.
+
+    Copyright 2015 KU Leuven, DTAI Research Group (ProbLog)
+    Copyright 2017 KU Leuven, DTAI Research Group;
+    UC Louvain, ICTEAM; and Leiden University, LIACS (SC-ProbLog)
+
+    Licensed under the Apache License, Version 2.0 (the "License");
+    you may not use this file except in compliance with the License.
+    You may obtain a copy of the License at
+
+        http://www.apache.org/licenses/LICENSE-2.0
+
+    Unless required by applicable law or agreed to in writing, software
+    distributed under the License is distributed on an "AS IS" BASIS,
+    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+    See the License for the specific language governing permissions and
+    limitations under the License.
+
+--------------------------------------------------
 File name:          mipify_sdd.py
 Author:             Behrouz Babaki, Anna Latour
 Date created:       27/3/2017
-Date last modified: 16/7/2017
+Date last modified: 20/9/2017
 Python Version:     3.4
-
 Short description:  Class for transforming SDD into MIP, and having it solved
                     by Gurobi
-
 Prerequisite:       Obtain academic license and install Gurobi:
                     http://www.gurobi.com/
 """

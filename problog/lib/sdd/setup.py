@@ -2,6 +2,8 @@
 Part of the ProbLog distribution.
 
 Copyright 2015 KU Leuven, DTAI Research Group
+SC-ProbLog modifications: Copyright 2017 KU Leuven, DTAI Research Group;
+UC Louvain, ICTEAM; and Leiden University, LIACS
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.

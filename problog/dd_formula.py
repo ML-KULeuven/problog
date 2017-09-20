@@ -8,6 +8,8 @@ Common interface to decision diagrams (BDD, SDD).
     Part of the ProbLog distribution.
 
     Copyright 2015 KU Leuven, DTAI Research Group
+    SC-ProbLog modifications: Copyright 2017 KU Leuven, DTAI Research Group;
+    UC Louvain, ICTEAM; and Leiden University, LIACS
 
     Licensed under the Apache License, Version 2.0 (the "License");
     you may not use this file except in compliance with the License.
@@ -60,7 +62,7 @@ class DD(LogicFormula, EvaluatableDSP):
         var = self.get_manager().add_variable(decision_variable = (probability == Term('?'))) 
         self.atom2var[index] = var
         self.var2atom[var] = index
-        return atom(identifier, probability, group, name, source)   # In the code we edited from the original problog, this returns self._atom(...), but this developers version seems to be a bit different
+        return atom(identifier, probability, group, name, source)   # In the code we edited from the original problog, this returns self._atom(...), but this developers version is a bit different
 
     def get_inode(self, index):
         """Get the internal node corresponding to the entry at the given index.

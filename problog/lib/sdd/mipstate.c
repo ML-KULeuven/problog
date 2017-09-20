@@ -2,6 +2,15 @@
  * The Sentential Decision Diagram Package
  * sdd version 1.1.1, January 31, 2014
  * http://reasoning.cs.ucla.edu/sdd
+ * 
+ * The code in this file is based on the state.c file of the sdd package. It includes a 
+ * modification to the standard search algorithm of the sdd package, such that it becomes 
+ * an SMP property preserving search algorithm. 
+ * 
+ * This is part of the SC-ProbLog modifications made to the sdd package.
+ * 
+ * SC-ProbLog modifications: Copyright 2017 KU Leuven, DTAI Research Group;
+ * UC Louvain, ICTEAM; and Leiden University, LIACS
  ****************************************************************************************/
 
 #include "sddapi.h"
