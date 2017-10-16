@@ -646,7 +646,10 @@ class StackBasedEngine(ClauseDBEngine):
                         self.cleanup(obj)
 
         if subcall:
-            raise IndirectCallCycleError(database.lineno(kwdargs['call_origin'][1]))
+            call_origin = kwdargs.get('call_origin')
+            if call_origin is not None:
+                call_origin = database.lineno(call_origin[1])
+            raise IndirectCallCycleError()
         else:
             # This should never happen.
             self.printStack()  # pragma: no cover
