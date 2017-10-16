@@ -421,6 +421,9 @@ class PrologParser(object):
         return Token('|', pos, atom=False, binop=(1100, 'xfy', self.factory.build_binop),
                      special=SPECIAL_PIPE), pos + 1
 
+    def _token_ampersand(self, s, pos):
+        return Token('&', pos, atom=False, binop=(1000, 'xfy', self.factory.build_binop)), pos + 1
+
     def _token_tilde(self, s, pos):
         if s[pos:pos + 3] == '~==':
             return Token('~==', pos, binop=(700, 'xfx', self.factory.build_binop),
@@ -530,7 +533,7 @@ class PrologParser(object):
             self._token_pound,  # 35 #
             self._token_notsupported,  # 36 $
             self._token_percent,  # 37 %
-            self._token_notsupported,  # 38 &
+            self._token_ampersand,  # 38 &
             self._token_squot,  # 39 '
             self._token_paren_open,  # 40 (
             self._token_paren_close,  # 41 )
