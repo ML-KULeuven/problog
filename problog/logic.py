@@ -698,6 +698,11 @@ class Term(object):
             return parsed[0]
 
 
+class AggTerm(Term):
+
+    def __init__(self, *args, **kwargs):
+        Term.__init__(self, *args, **kwargs)
+
 class Var(Term):
     """A Term representing a variable.
 

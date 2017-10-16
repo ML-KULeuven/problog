@@ -24,7 +24,7 @@ Provides tools for loading logic programs.
 from __future__ import print_function
 
 from .errors import GroundingError
-from .logic import Term, Var, Constant, AnnotatedDisjunction, Clause, And, Or, Not
+from .logic import Term, Var, Constant, AnnotatedDisjunction, Clause, And, Or, Not, AggTerm, list2term
 from .core import transform, ProbLogObject
 
 from .parser import DefaultPrologParser, Factory
@@ -318,6 +318,9 @@ class PrologFactory(Factory):
     def build_function(self, functor, arguments, location=None, **extra):
         return Term(functor, *arguments, location=(self.loc_id, location), **extra)
 
+    def build_aggregate(self, functor, arguments, location=None, **extra):
+        return AggTerm(functor, *arguments, location=(self.loc_id, location), **extra)
+
     def build_variable(self, name, location=None):
         return Var(name, location=(self.loc_id, location))
 
@@ -365,7 +368,26 @@ class PrologFactory(Factory):
         if len(heads) > 1:
             return AnnotatedDisjunction(heads, operand2, location=(self.loc_id, location))
         else:
-            return Clause(operand1[0], operand2, location=(self.loc_id, location))
+            has_agg = False
+            # TODO add tests and errors
+            for arg in operand1[0].args:
+                if isinstance(arg, AggTerm):
+                    has_agg = True
+                    break
+            if has_agg:
+                groupvars = list2term(operand1[0].args[:-1])
+                body = operand2
+
+                aggfunc = operand1[0].args[-1]()
+                aggvar = operand1[0].args[-1].args[0]
+                result = Var('R_VAR')
+                body = Term('aggregate', aggfunc, aggvar, groupvars, body, Term(',', groupvars, result))
+                headargs = operand1[0].args[:-1] + (result,)
+                head = operand1[0](*headargs)
+                # aggregate(avg_list, Salary, [Dept], (person(X), salary(X, Salary), dept(X, Dept)), ([Dept], AvgSalary)).
+                return Clause(head, body, location=(self.loc_id, location))
+            else:
+                return Clause(operand1[0], operand2, location=(self.loc_id, location))
 
     # noinspection PyUnusedLocal
     def build_disjunction(self, functor, operand1, operand2, location=None, **extra):
