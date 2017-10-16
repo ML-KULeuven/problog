@@ -80,6 +80,7 @@ class Token(object):
         self.unop = unop
         self.special = special
         self.arglist = False
+        self.aggregate = False
         if atom:
             self.functor = functor
         else:
@@ -146,6 +147,8 @@ SPECIAL_INTEGER = 8
 SPECIAL_PIPE = 9
 SPECIAL_STRING = 10
 SPECIAL_ARGLIST = 11
+SPECIAL_SHARP_OPEN = 12
+SPECIAL_SHARP_CLOSE = 13
 
 import re
 
@@ -239,6 +242,12 @@ class PrologParser(object):
     def _token_paren_close(self, s, pos):
         return Token(s[pos], pos, atom=False, special=SPECIAL_PAREN_CLOSE), pos + 1
 
+    # def _token_sharp_open(self, s, pos):
+    #     return Token(s[pos], pos, atom=False, special=SPECIAL_SHARP_OPEN), pos + 1
+    #
+    # def _token_sharp_close(self, s, pos):
+    #     return Token(s[pos], pos, atom=False, special=SPECIAL_SHARP_CLOSE), pos + 1
+
     def _token_asterisk(self, s, pos):
         if s[pos:pos + 2] == '**':
             return Token('**', pos, binop=(200, 'xfx', self.factory.build_binop),
@@ -322,7 +331,7 @@ class PrologParser(object):
                          functor=self._next_paren_open(s, pos)), pos + 2
         else:
             return Token('<', pos, binop=(700, 'xfx', self.factory.build_binop),
-                         functor=self._next_paren_open(s, pos)), pos + 1
+                         functor=self._next_paren_open(s, pos), special=SPECIAL_SHARP_OPEN), pos + 1
 
     def _token_equal(self, s, pos):
         if s[pos:pos + 2] == '=<':
@@ -359,7 +368,7 @@ class PrologParser(object):
                          functor=self._next_paren_open(s, pos)), pos + 2
         else:
             return Token('>', pos, binop=(700, 'xfx', self.factory.build_binop),
-                         functor=self._next_paren_open(s, pos)), pos + 1
+                         functor=self._next_paren_open(s, pos), special=SPECIAL_SHARP_CLOSE), pos + 1
 
     def _token_question(self, s, pos):
         return Token('?', pos, atom=True), pos + 1
@@ -624,10 +633,17 @@ class PrologParser(object):
             elif token.is_special(SPECIAL_STRING):
                 return self.factory.build_string(token.string[1:-1], location=token.location)
             else:
-                return self.factory.build_function(token.string, (), location=token.location)
+                if token.aggregate:
+                    return self.factory.build_aggregate(token.string, (), location=token.location)
+                else:
+                    return self.factory.build_function(token.string, (), location=token.location)
         elif len(tokens) == 2:
             args = [tok for tok in tokens[1].tokens]
-            return self.factory.build_function(tokens[0].string, args, location=tokens[0].location)
+            if tokens[0].aggregate:
+                # print (type(args[0]))
+                return self.factory.build_aggregate(tokens[0].string, args, location=tokens[0].location)
+            else:
+                return self.factory.build_function(tokens[0].string, args, location=tokens[0].location)
         elif len(tokens) != 0:
             raise ParseError(string, 'Unexpected token', tokens[0].location)
         else:
@@ -691,6 +707,9 @@ class PrologParser(object):
             if i == 0:
                 t.binop = None  # First token can not be a binop
                 t.arglist = False
+            elif p.aggregate:
+                p.atom = False
+                p.functor = True
             elif p.functor:
                 t.atom = False
                 t.arglist = t.is_comma_list
@@ -742,7 +761,14 @@ class PrologParser(object):
         root_tokens = []
         expr_stack = []
         for token_i, token in enumerate(tokens):
-            if token.is_special(SPECIAL_PAREN_OPEN):  # Open a parenthesis expression
+
+            if token.is_special(SPECIAL_SHARP_OPEN) \
+                    and tokens[token_i+1].is_special(SPECIAL_VARIABLE) \
+                    and tokens[token_i+2].is_special(SPECIAL_SHARP_CLOSE):
+                expr_stack.append(self._create_paren_expression(string, token, SPECIAL_SHARP_CLOSE))
+                tokens[token_i - 1].aggregate = True
+
+            elif token.is_special(SPECIAL_PAREN_OPEN):  # Open a parenthesis expression
                 expr_stack.append(self._create_paren_expression(string, token))
             elif token.is_special(SPECIAL_BRACK_OPEN):  # Open a list expression
                 expr_stack.append(self._create_list_expression(string, token))
@@ -760,6 +786,15 @@ class PrologParser(object):
                             expr_stack[-1].append(current_expr)
                 except IndexError:
                     raise UnmatchedCharacter(string, token.location)
+            elif token.is_special(SPECIAL_SHARP_CLOSE) and expr_stack and expr_stack[-1].close_char == SPECIAL_SHARP_CLOSE and expr_stack[-1].accepts(token):
+                current_expr = expr_stack.pop(-1)
+                current_expr.append(token)
+                current_expr.parse(self)
+                if not expr_stack:
+                    root_tokens.append(current_expr)
+                else:
+                    expr_stack[-1].append(current_expr)
+
             elif expr_stack:
                 expr_stack[-1].append(token)
             else:
@@ -770,11 +805,11 @@ class PrologParser(object):
         toks = self.label_tokens(string, root_tokens)
         return self.fold(string, toks, 0, len(toks))
 
-    def _create_paren_expression(self, string, token):
-        return ParenExpression(string, token)
+    def _create_paren_expression(self, string, token, close_char=SPECIAL_PAREN_CLOSE):
+        return ParenExpression(string, token, close_char)
 
-    def _create_list_expression(self, string, token):
-        return ListExpression(string, token)
+    def _create_list_expression(self, string, token, close_char=SPECIAL_BRACK_CLOSE):
+        return ListExpression(string, token, close_char)
 
 
 def mapl(f, l):
@@ -798,6 +833,7 @@ class SubExpression(object):
         self.atom = True
         self._arglist = True
         self.max_operators = []
+        self.aggregate = False
 
         self.priority = 0
 
@@ -867,9 +903,9 @@ class SubExpression(object):
 
 
 class ListExpression(SubExpression):
-    def __init__(self, string, start):
+    def __init__(self, string, start, close_char=SPECIAL_BRACK_CLOSE):
         SubExpression.__init__(self, string, start)
-        self.close_char = SPECIAL_BRACK_CLOSE
+        self.close_char = close_char
         self.is_comma_list = False
 
     def accepts(self, token):
@@ -903,9 +939,9 @@ class ListExpression(SubExpression):
 
 
 class ParenExpression(SubExpression):
-    def __init__(self, string, tokens):
+    def __init__(self, string, tokens, close_char=SPECIAL_PAREN_CLOSE):
         SubExpression.__init__(self, string, tokens)
-        self.close_char = SPECIAL_PAREN_CLOSE
+        self.close_char = close_char
 
     @property
     def is_comma_list(self):
@@ -966,6 +1002,8 @@ class Factory(object):
     build_not = build_unop
     build_mathop1 = build_unop
     build_directive = build_unop
+
+    build_aggregate = build_function
 
 
 def main(filenames):
