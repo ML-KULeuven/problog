@@ -893,7 +893,7 @@ class StackBasedEngine(ClauseDBEngine):
         return min_var
 
     def eval_clause(self, context, node, node_id, parent, transform=None, identifier=None,
-                    **kwdargs):
+                    current_clause=None, **kwdargs):
         new_context = self.create_context([None] * node.varcount)
 
         try:
@@ -922,7 +922,7 @@ class StackBasedEngine(ClauseDBEngine):
 
             transform.addFunction(result_transform)
             return self.eval(node.child, context=new_context, parent=parent, transform=transform,
-                             **kwdargs)
+                             current_clause=node_id, **kwdargs)
         except UnifyError:
             # Call and clause head are not unifiable, just fail (complete without results).
             return [complete(parent, identifier)]
@@ -1159,7 +1159,7 @@ class MessageOrderDrc(MessageAnyOrder):
 
 class EvalNode(object):
     def __init__(self, engine, database, target, node_id, node, context, parent, pointer,
-                 identifier=None, transform=None, call=None, **extra):
+                 identifier=None, transform=None, call=None, current_clause=None, **extra):
         self.engine = engine
         self.database = database
         self.target = target
@@ -1172,6 +1172,7 @@ class EvalNode(object):
         self.transform = transform
         self.call = call
         self.on_cycle = False
+        self.current_clause = current_clause
 
     def notifyResult(self, arguments, node=0, is_last=False, parent=None):
         if parent is None:
@@ -1200,6 +1201,7 @@ class EvalNode(object):
         base_args['identifier'] = self.identifier
         base_args['transform'] = None
         base_args['call'] = self.call
+        base_args['current_clause'] = self.current_clause
         base_args.update(kwdargs)
         return call(node_id, args, base_args)
 
@@ -2013,7 +2015,8 @@ class EvalBuiltIn(EvalNode):
             return self.node(*self.context, engine=self.engine, database=self.database,
                              target=self.target, location=self.location, callback=self,
                              transform=self.transform, parent=self.parent, context=self.context,
-                             identifier=self.identifier, call_origin=self.call_origin)
+                             identifier=self.identifier, call_origin=self.call_origin,
+                             current_clause=self.current_clause)
         except ArithmeticError as err:
             if self.database and self.location:
                 functor = self.call_origin[0].split('/')[0]
