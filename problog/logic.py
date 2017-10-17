@@ -790,6 +790,57 @@ class Constant(Term):
         return str(self) == str(other)
 
 
+class Object(Term):
+    """A wrapped object.
+
+        :param value: the wrapped object
+
+    """
+
+    def __init__(self, value, location=None, **kwdargs):
+        Term.__init__(self, value, location=location, **kwdargs)
+
+    def compute_value(self, functions=None):
+        return float(self.functor)
+        return self.functor
+
+    def is_constant(self):
+        return True
+
+    def __hash__(self):
+        return hash(id(self.functor))
+
+    def __str__(self):
+        return str(self.functor)
+
+    def is_string(self):
+        """Check whether this constant is a string.
+
+            :returns: true if the value represents a string
+            :rtype: :class:`bool`
+        """
+        return False
+
+    def is_float(self):
+        """Check whether this constant is a float.
+
+            :returns: true if the value represents a float
+            :rtype: :class:`bool`
+        """
+        return False
+
+    def is_integer(self):
+        """Check whether this constant is an integer.
+
+            :returns: true if the value represents an integer
+            :rtype: :class:`bool`
+        """
+        return False
+
+    def __eq__(self, other):
+        return id(self) == id(other)
+
+
 class Clause(Term):
     """A clause."""
 
