@@ -24,7 +24,7 @@ Implementation of Prolog / ProbLog builtins.
 
 from __future__ import print_function
 
-from .logic import term2str, Term, Clause, Constant, term2list, list2term, is_ground, is_variable, Var, Or, AnnotatedDisjunction
+from .logic import term2str, Term, Clause, Constant, term2list, list2term, is_ground, is_variable, Var, Or, AnnotatedDisjunction, Object
 from .program import PrologFile
 from .errors import GroundingError, UserError
 from .engine_unify import unify_value, UnifyError, substitute_simple
@@ -147,6 +147,11 @@ def add_standard_builtins(engine, b=None, s=None, sp=None):
     engine.add_builtin('possible', 1, s(_builtin_possible))
     engine.add_builtin('clause', 2, s(_builtin_clause))
     engine.add_builtin('clause', 3, s(_builtin_clause3))
+
+    engine.add_builtin('create_scope', 2, s(_builtin_create_scope))
+
+    engine.add_builtin('subquery_in_scope', 3, s(_builtin_subquery_in_scope))
+    engine.add_builtin('subquery_in_scope', 4, s(_builtin_subquery_in_scope))
 
 
 def _builtin_nocache(functor, arity, database=None, **kwd):
@@ -1870,3 +1875,64 @@ class IndirectCallCycleError(GroundingError):
         GroundingError.__init__(self,
                                 'Indirect cycle detected (passing through findall/3)',
                                 location)
+
+
+def _build_scope(term):
+
+    if term.functor == "'&'":
+        a = _build_scope(term.args[0])
+        b = _build_scope(term.args[1])
+        print (a, b, a & b)
+        return a & b
+    elif term.functor == "'|'":
+        a = _build_scope(term.args[0])
+        b = _build_scope(term.args[1])
+        return a | b
+    elif term.functor == "'-'":
+        a = _build_scope(term.args[0])
+        b = _build_scope(term.args[1])
+        return a - b
+    elif _is_list(term):
+        return frozenset(term2list(term))
+    elif isinstance(term, Object):
+        if isinstance(term.functor, frozenset) or isinstance(term.functor, set):
+            return term.functor
+        else:
+            raise GroundingError('Unknown object type in set operation')
+    else:
+        raise GroundingError('Unknown set construction')
+
+
+def _builtin_create_scope(term, scope, **kwargs):
+    mode = check_mode((term, scope), ['Lv','gv'], **kwargs)
+    if mode in (0, 1):
+        result = Object(_build_scope(term))
+    else:
+        raise NotImplemented
+    return [(term, result)]
+
+
+def _builtin_subquery_in_scope(scope, term, prob, evidence=None, engine=None, database=None, **kwdargs):
+    if evidence:
+        check_mode((scope, term, prob, evidence), ['gcvL'], functor='subquery')
+    else:
+        check_mode((scope, term, prob), ['gcv'], functor='subquery')
+
+    from .sdd_formula import SDD  # TODO use get_evaluatable
+
+    print (database)
+    scopel = _build_scope(scope)
+
+    eng = engine.__class__()
+
+    target = eng.ground(database, term, label='query', include=scopel)
+
+    if evidence:
+        for ev in term2list(evidence):
+            target = eng.ground(database, ev, target=target, label=target.LABEL_EVIDENCE_POS, include=scopel)
+
+    results = SDD.create_from(target).evaluate()
+    if evidence:
+        return [(scope, t, Constant(p), evidence) for t, p in results.items()]
+    else:
+        return [(scope, t, Constant(p)) for t, p in results.items()]

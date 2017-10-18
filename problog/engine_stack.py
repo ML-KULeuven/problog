@@ -171,6 +171,9 @@ class StackBasedEngine(ClauseDBEngine):
                 raise UnknownClauseInternal()
         return exec_func(node_id=node_id, node=node, **kwdargs)
 
+    def skip(self, node_id, **kwdargs):
+        return [complete(kwdargs['parent'], kwdargs.get('identifier'))]
+
     def create_node_type(self, node_type):
         return self.node_types.get(node_type)
 
@@ -481,7 +484,7 @@ class StackBasedEngine(ClauseDBEngine):
             raise InvalidEngineState('Engine did not complete correctly!')  # pragma: no cover
 
     def execute(self, node_id, target=None, database=None, subcall=False,
-                is_root=False, name=None, **kwdargs):
+                is_root=False, name=None, exclude=None, include=None, **kwdargs):
         """
         Execute the given node.
         :param node_id: pointer of the node in the database
@@ -586,8 +589,15 @@ class StackBasedEngine(ClauseDBEngine):
                         # else:
                         try:
                             # Evaluate the next node.
-                            next_actions = self.eval(obj, **context)
-                            obj = self.pointer
+                            if exclude is not None and obj in exclude:
+                                next_actions = self.skip(obj, **context)
+                                obj = self.pointer
+                            elif include is not None and obj not in include:
+                                next_actions = self.skip(obj, **context)
+                                obj = self.pointer
+                            else:
+                                next_actions = self.eval(obj, **context)
+                                obj = self.pointer
                         except UnknownClauseInternal:
                             # An unknown clause was encountered.
                             # TODO why is this handled here?
