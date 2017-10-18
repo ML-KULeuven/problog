@@ -22,3 +22,42 @@ Interface for calling Python from ProbLog.
     limitations under the License.
 """
 from .engine_builtin import problog_export, problog_export_nondet, problog_export_raw
+
+from problog.logic import Constant
+
+
+def problog_export_class(cls):
+    prefix = cls.__name__.lower()
+    for k, v in cls.__dict__.items():
+        if k == '__init__':
+            arguments = []
+            for an, av in v.__annotations__.items():
+                if an != 'return':
+                    arguments.append('+%s' % av.__name__)
+            arguments.append('-term')
+
+            def wrap(*args):
+                return Constant(cls(*args))
+
+            problog_export(*arguments)(wrap, funcname='%s_init' % (prefix))
+        else:
+            if type(v).__name__ == 'function':
+                arguments = ['+term']
+                for an, av in v.__annotations__.items():
+                    if an == 'return':
+                        arguments.append('-%s' % av.__name__)
+                    else:
+                        arguments.append('+%s' % av.__name__)
+
+                problog_export(*arguments)(_call_func(v), funcname='%s_%s' % (prefix, k))
+
+
+def _call_func(func):
+    def wrap(s, *args):
+        f = func(s.functor, *args)
+        if f is None:
+            return ()
+        else:
+            return f
+
+    return wrap
