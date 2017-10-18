@@ -152,6 +152,13 @@ class StackBasedEngine(ClauseDBEngine):
     def eval(self, node_id, **kwdargs):
         # print (kwdargs.get('parent'))
         database = kwdargs['database']
+        include_ids = kwdargs.get('include')
+        exclude_ids = kwdargs.get('exclude')
+
+        if include_ids is not None and node_id not in include_ids:
+            return [complete(kwdargs['parent'], kwdargs.get('identifier'))]
+        elif exclude_ids is not None and node_id in exclude_ids:
+            return [complete(kwdargs['parent'], kwdargs.get('identifier'))]
 
         if kwdargs.get('parent') in self.ignoring:
             # The parent node is ignoring new results, so there is no point in generating them.
@@ -163,6 +170,7 @@ class StackBasedEngine(ClauseDBEngine):
         else:
             node = database.get_node(node_id)
             node_type = type(node).__name__
+
         exec_func = self.create_node_type(node_type)
         if exec_func is None:
             if self.unknown == self.UNKNOWN_FAIL:
@@ -589,15 +597,15 @@ class StackBasedEngine(ClauseDBEngine):
                         # else:
                         try:
                             # Evaluate the next node.
-                            if exclude is not None and obj in exclude:
-                                next_actions = self.skip(obj, **context)
-                                obj = self.pointer
-                            elif include is not None and obj not in include:
-                                next_actions = self.skip(obj, **context)
-                                obj = self.pointer
-                            else:
-                                next_actions = self.eval(obj, **context)
-                                obj = self.pointer
+                            # if exclude is not None and obj in exclude:
+                            #     next_actions = self.skip(obj, **context)
+                            #     obj = self.pointer
+                            # elif include is not None and obj not in include:
+                            #     next_actions = self.skip(obj, **context)
+                            #     obj = self.pointer
+                            # else:
+                            next_actions = self.eval(obj, **context)
+                            obj = self.pointer
                         except UnknownClauseInternal:
                             # An unknown clause was encountered.
                             # TODO why is this handled here?
@@ -773,7 +781,7 @@ class StackBasedEngine(ClauseDBEngine):
             return resultnode
 
     def eval_define(self, node, context, target, parent, identifier=None, transform=None,
-                    is_root=False, **kwdargs):
+                    is_root=False, no_cache=False, **kwdargs):
 
         # This function evaluates the 'define' nodes in the database.
         # This is basically the same as evaluating a goal in Prolog.
@@ -786,9 +794,11 @@ class StackBasedEngine(ClauseDBEngine):
         # Extract a descriptor for the current goal being evaluated.
         functor = node.functor
         goal = (functor, context)
-
         # Look up the results in the cache.
-        results = target._cache.get(goal)
+        if no_cache:
+            results = None
+        else:
+            results = target._cache.get(goal)
         if results is not None:
             # We have results for this goal, i.e. it has been fully evaluated before.
             # Transform the results to actions and return.
@@ -811,6 +821,7 @@ class StackBasedEngine(ClauseDBEngine):
                     evalnode = EvalDefine(pointer=self.pointer, engine=self, node=node,
                                           context=context, target=target, identifier=identifier,
                                           parent=parent, transform=transform, is_root=is_root,
+                                          no_cache=no_cache,
                                           **kwdargs)
                     self.add_record(evalnode)
                     return evalnode.cycleDetected(active_node)
@@ -828,6 +839,7 @@ class StackBasedEngine(ClauseDBEngine):
                     evalnode = EvalDefine(to_complete=to_complete, pointer=self.pointer,
                                           engine=self, node=node, context=context, target=target,
                                           identifier=identifier, transform=transform, parent=parent,
+                                          no_cache=no_cache,
                                           **kwdargs)
                     self.add_record(evalnode)
                     target._cache.activate(goal, evalnode)
@@ -1169,7 +1181,8 @@ class MessageOrderDrc(MessageAnyOrder):
 
 class EvalNode(object):
     def __init__(self, engine, database, target, node_id, node, context, parent, pointer,
-                 identifier=None, transform=None, call=None, current_clause=None, **extra):
+                 identifier=None, transform=None, call=None, current_clause=None, include=None,
+                 exclude=None, no_cache=False, **extra):
         self.engine = engine
         self.database = database
         self.target = target
@@ -1183,6 +1196,9 @@ class EvalNode(object):
         self.call = call
         self.on_cycle = False
         self.current_clause = current_clause
+        self.include = include
+        self.exclude = exclude
+        self.no_cache = no_cache
 
     def notifyResult(self, arguments, node=0, is_last=False, parent=None):
         if parent is None:
@@ -1212,6 +1228,9 @@ class EvalNode(object):
         base_args['transform'] = None
         base_args['call'] = self.call
         base_args['current_clause'] = self.current_clause
+        base_args['no_cache'] = self.no_cache
+        base_args['include'] = self.include
+        base_args['exclude'] = self.exclude
         base_args.update(kwdargs)
         return call(node_id, args, base_args)
 
@@ -1634,7 +1653,7 @@ class EvalDefine(EvalNode):
                     return a, actions
                 else:
                     cache_key = (self.node.functor, res)
-                    if cache_key in self.target._cache:
+                    if not self.no_cache and cache_key in self.target._cache:
                         # Get direct
                         stored_result = self.target._cache[cache_key]
                         assert (len(stored_result) == 1)
@@ -1651,7 +1670,7 @@ class EvalDefine(EvalNode):
                                 node = self.engine.propagate_evidence(self.database, self.target, self.node.functor, res, node)
                         result_node = self.target.add_or((node,), readonly=False, name=name)
                     self.results[res] = result_node
-                    if is_ground(*res) and is_ground(*self.call[1]):
+                    if not self.no_cache and is_ground(*res) and is_ground(*self.call[1]):
                         self.target._cache[cache_key] = {res: result_node}
                     actions = []
                     # Send results to cycle
@@ -1717,7 +1736,7 @@ class EvalDefine(EvalNode):
     def flushBuffer(self, cycle=False):
         def func(res, nodes):
             cache_key = (self.node.functor, res)
-            if cache_key in self.target._cache:
+            if not self.no_cache and cache_key in self.target._cache:
                 stored_result = self.target._cache[cache_key]
                 assert (len(stored_result) == 1)
                 node = stored_result[0][1]
@@ -1736,7 +1755,7 @@ class EvalDefine(EvalNode):
                         new_nodes.append(node)
                     nodes = new_nodes
                 node = self.target.add_or(nodes, readonly=(not cycle), name=name)
-                if is_ground(*res) and is_ground(*self.call[1]):
+                if not self.no_cache and is_ground(*res) and is_ground(*self.call[1]):
                     self.target._cache[cache_key] = {res: node}
 
             return node

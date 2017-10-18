@@ -153,6 +153,11 @@ def add_standard_builtins(engine, b=None, s=None, sp=None):
     engine.add_builtin('subquery_in_scope', 3, s(_builtin_subquery_in_scope))
     engine.add_builtin('subquery_in_scope', 4, s(_builtin_subquery_in_scope))
 
+    engine.add_builtin('call_in_scope', 2, _builtin_call_in_scope)
+    for i in range(2, 10):
+        engine.add_builtin('call_in_scope', i + 1, _builtin_calln_in_scope)
+
+
 
 def _builtin_nocache(functor, arity, database=None, **kwd):
     check_mode((functor, arity), ['ai'], **kwd)
@@ -1920,7 +1925,6 @@ def _builtin_subquery_in_scope(scope, term, prob, evidence=None, engine=None, da
 
     from .sdd_formula import SDD  # TODO use get_evaluatable
 
-    print (database)
     scopel = _build_scope(scope)
 
     eng = engine.__class__()
@@ -1936,3 +1940,32 @@ def _builtin_subquery_in_scope(scope, term, prob, evidence=None, engine=None, da
         return [(scope, t, Constant(p), evidence) for t, p in results.items()]
     else:
         return [(scope, t, Constant(p)) for t, p in results.items()]
+
+
+def _builtin_call_in_scope(scope, term, args=(), engine=None, callback=None, transform=None, context=None, **kwdargs):
+    check_mode((term,), ['c'], functor='call')
+    # Find the define node for the given query term.
+    term_call = term.with_args(*(term.args + args))
+
+    scopel = _build_scope(scope)
+
+    try:
+        if transform is None:
+            from .engine_stack import Transformations
+            transform = Transformations()
+
+        def _trans(result):
+            n = len(term.args)
+            res1 = result[:n]
+            res2 = result[n:]
+            return [scope, term.with_args(*res1)] + list(res2)
+        transform.addFunction(_trans)
+
+        actions = engine.call_intern(term_call, transform=transform, dont_cache=True, no_cache=True, include=scopel, **kwdargs)
+    except UnknownClauseInternal:
+        raise UnknownClause(term_call.signature, kwdargs['database'].lineno(kwdargs['location']))
+    return True, actions
+
+
+def _builtin_calln_in_scope(scope, term, *args, **kwdargs):
+    return _builtin_call_in_scope(scope, term, args, **kwdargs)
