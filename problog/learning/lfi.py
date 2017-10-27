@@ -663,6 +663,8 @@ class ExampleEvaluator(SemiringProbability):
         val = example.values
         comp = example.compiled
         n = example.n
+        if type(n) == list:
+            n = n[0]
 
         evidence = {}
         for a, v in zip(at, val):
