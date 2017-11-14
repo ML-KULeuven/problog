@@ -23,7 +23,7 @@ from __future__ import print_function
 import sys
 import traceback
 
-from problog.program import PrologFile
+from problog.program import PrologFile, SimpleProgram
 from problog.constraint import TrueConstraint
 from problog.formula import LogicFormula, LogicDAG
 from problog.cnf_formula import CNF
@@ -63,7 +63,7 @@ def main_mpe_semiring(args):
         try:
             pl = PrologFile(inputfile)
 
-            lf = LogicFormula.create_from(model, label_all=True)
+            lf = LogicFormula.create_from(pl, label_all=True)
 
             prob, facts = mpe_semiring(lf, args.verbose)
             result_handler((True, (prob, facts)), outf)
@@ -119,6 +119,16 @@ def main_mpe_maxsat(args):
         try:
             pl = PrologFile(inputfile)
 
+            # filtered_pl = SimpleProgram()
+            # has_queries = False
+            # for statement in pl:
+            #     if 'query/1' in statement.predicates:
+            #         has_queries = True
+            #     else:
+            #         filtered_pl += statement
+            # if has_queries:
+            #     print('%% WARNING: ignoring queries in file', file=sys.stderr)
+
             dag = LogicDAG.createFrom(pl, avoid_name_clash=True, label_all=True, labels=[('output', 1)])
 
             prob, output_facts = mpe_maxsat(dag, verbose=args.verbose, solver=args.solver)
@@ -134,15 +144,10 @@ def main_mpe_maxsat(args):
 
 
 def mpe_maxsat(dag, verbose=0, solver=None):
-    if dag.queries():
-        print('%% WARNING: ignoring queries in file', file=sys.stderr)
-        dag.clear_queries()
-
     logger = init_logger(verbose)
     logger.info('Ground program size: %s' % len(dag))
 
-    cnf = CNF.createFrom(dag)
-
+    cnf = CNF.createFrom(dag, force_atoms=True)
     for qn, qi in cnf.evidence():
         if not cnf.is_true(qi):
             cnf.add_constraint(TrueConstraint(qi))
@@ -183,7 +188,6 @@ def mpe_maxsat(dag, verbose=0, solver=None):
         output_facts = []
 
     return prob, output_facts
-
 
 
 def print_result(result, output=sys.stdout):

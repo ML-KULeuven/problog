@@ -42,12 +42,16 @@ class CNF(BaseFormula):
         self._clausecount = 0     # Number of actual clauses (not incl. comment)
 
     # noinspection PyUnusedLocal
-    def add_atom(self, atom):
+    def add_atom(self, atom, force=False):
         """Add an atom to the CNF.
 
         :param atom: name of the atom
+        :param force: add a clause for each atom to force it's existence in the final CNF
         """
         self._atomcount += 1
+        if force:
+            self._clauses.append([atom, -atom])
+            self._clausecount += 1
 
     def add_comment(self, comment):
         """Add a comment clause.
@@ -307,7 +311,7 @@ class CNF(BaseFormula):
 
 # noinspection PyUnusedLocal
 @transform(LogicDAG, CNF)
-def clarks_completion(source, destination, **kwdargs):
+def clarks_completion(source, destination, force_atoms=False, **kwdargs):
     """Transform an acyclic propositional program to a CNF using Clark's completion.
 
     :param source: acyclic program to transform
@@ -324,7 +328,7 @@ def clarks_completion(source, destination, **kwdargs):
 
         # Add atoms.
         for i in range(0, num_atoms):
-            destination.add_atom(i+1)
+            destination.add_atom(i+1, force=force_atoms)
 
         # Complete other nodes
         # Note: assumes negation is encoded as negative number.

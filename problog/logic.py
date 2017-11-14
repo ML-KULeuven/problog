@@ -230,6 +230,10 @@ class Term(object):
         """Value of the Term obtained by computing the function is represents"""
         return self.compute_value()
 
+    @property
+    def predicates(self):
+        return [self.signature]
+
     def compute_value(self, functions=None):
         """Compute value of the Term by computing the function it represents.
 
@@ -852,6 +856,10 @@ class Clause(Term):
     def __repr__(self):
         return "%s :- %s" % (self.head, self.body)
 
+    @property
+    def predicates(self):
+        return [self.head.signature]
+
 
 class AnnotatedDisjunction(Term):
     """An annotated disjunction."""
@@ -866,6 +874,10 @@ class AnnotatedDisjunction(Term):
             return "%s" % ('; '.join(map(str, self.heads)))
         else:
             return "%s :- %s" % ('; '.join(map(str, self.heads)), self.body)
+
+    @property
+    def predicates(self):
+        return [x.signature for x in self.heads]
 
 
 class Or(Term):
@@ -919,6 +931,10 @@ class Or(Term):
 
     def with_args(self, *args):
         return self.__class__(*args, location=self.location)
+
+    @property
+    def predicates(self):
+        return [self.op1.signature] + self.op2.predicates
 
 
 class And(Term):

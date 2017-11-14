@@ -663,13 +663,15 @@ class ExampleEvaluator(SemiringProbability):
         val = example.values
         comp = example.compiled
         n = example.n
+        # if type(n) == list:
+        #     n = n[0]
 
         evidence = {}
         for a, v in zip(at, val):
             if a in evidence:
                 if evidence[a] != v:
                     context = ' (found evidence({},{}) and evidence({},{}) in example {})'.format(
-                        a, evidence[a], a, v, n + 1)
+                        a, evidence[a], a, v, n[0] + 1)
                     raise InconsistentEvidenceError(source=a, context=context)
             else:
                 evidence[a] = v
@@ -677,9 +679,9 @@ class ExampleEvaluator(SemiringProbability):
             evaluator = comp.get_evaluator(semiring=self, evidence=evidence)
         except InconsistentEvidenceError as err:
             if err.context == '':
-                context = ' (example {})'.format(n + 1)
+                context = ' (example {})'.format(n[0] + 1)
             else:
-                context = err.context + ' (example {})'.format(n + 1)
+                context = err.context + ' (example {})'.format(n[0] + 1)
             raise InconsistentEvidenceError(err.source, context)
         p_queries = {}
         # Probability of query given evidence
