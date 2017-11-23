@@ -157,6 +157,8 @@ def add_standard_builtins(engine, b=None, s=None, sp=None):
     for i in range(2, 10):
         engine.add_builtin('call_in_scope', i + 1, _builtin_calln_in_scope)
 
+    engine.add_builtin('find_scope', 2, s(_builtin_find_scope))
+
 
 
 def _builtin_nocache(functor, arity, database=None, **kwd):
@@ -1969,3 +1971,20 @@ def _builtin_call_in_scope(scope, term, args=(), engine=None, callback=None, tra
 
 def _builtin_calln_in_scope(scope, term, *args, **kwdargs):
     return _builtin_call_in_scope(scope, term, args, **kwdargs)
+
+
+def _builtin_find_scope(term, scope, engine=None, database=None, **kwargs):
+    check_mode((term, scope), ['cv'], functor='find_scope')
+
+    if term.functor == '*':
+        nodes = range(0, len(database))
+    else:
+        define = database.find(term)
+        if define is None:
+            nodes = 0
+        else:
+            define_node = database.get_node(define).children
+            nodes = define_node.find(term.args)
+
+    nodes = Object(frozenset(nodes))
+    return [(term, nodes)]
