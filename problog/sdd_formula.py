@@ -75,7 +75,7 @@ class SDD(DD):
             constraints = self.get_constraint_inode()
             nodec = self.get_manager().conjoin(node, constraints)
             i = self._to_formula(formula, nodec, {})
-            formula.add_name(n, i, formula.LABEL_QUERY)
+            formula.add_name(n, i, l)
         return formula
 
     def _to_formula(self, formula, current_node, cache=None):
