@@ -88,7 +88,7 @@ def main(argv=None):
         elif argv[0] == 'unittest':
             import unittest
             test_results = unittest.TextTestResult(sys.stderr, False, 1)
-            unittest.TestLoader().discover(os.path.dirname(__file__)).run(test_results)
+            unittest.TestLoader().discover(os.path.join(os.path.dirname(__file__), '..')).run(test_results)
             return
         elif argv[0] == '--version':
             print (version.version)
