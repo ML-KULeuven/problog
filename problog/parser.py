@@ -764,7 +764,7 @@ class PrologParser(object):
 
             if token.is_special(SPECIAL_SHARP_OPEN) \
                     and tokens[token_i+1].is_special(SPECIAL_VARIABLE) \
-                    and tokens[token_i+2].is_special(SPECIAL_SHARP_CLOSE):
+                    and len(tokens) > token_i + 2 and tokens[token_i+2].is_special(SPECIAL_SHARP_CLOSE):
                 expr_stack.append(self._create_paren_expression(string, token, SPECIAL_SHARP_CLOSE))
                 tokens[token_i - 1].aggregate = True
 
