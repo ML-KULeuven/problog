@@ -698,9 +698,9 @@ class StackBasedEngine(ClauseDBEngine):
                 raise UnknownClause(query.signature, database.lineno(query.location))
 
         return self.execute(node_id, database=database, target=target,
-                        context=self.create_context(query.args), **kwdargs)
+                        context=self.create_context(query.args, parent=context), **kwdargs)
 
-    def call_intern(self, query, **kwdargs):
+    def call_intern(self, query, parent_context=None, **kwdargs):
         if query.is_negated():
             negated = True
             neg_func = query.functor
@@ -730,10 +730,10 @@ class StackBasedEngine(ClauseDBEngine):
             kwdargs['transform'].addFunction(func)
 
             return self.eval_neg(node_id=None, node=call_term,
-                                 context=self.create_context(query.args), **kwdargs)
+                                 context=self.create_context(query.args, parent=parent_context), **kwdargs)
         else:
             return self.eval_call(None, call_term,
-                                  context=self.create_context(query.args), **kwdargs)
+                                  context=self.create_context(query.args, parent=parent_context), **kwdargs)
 
     def printStack(self, pointer=None):  # pragma: no cover
         print('===========================')
@@ -758,7 +758,7 @@ class StackBasedEngine(ClauseDBEngine):
             # Successful unification: notify parent callback.
             target_node = target.add_atom(node_id, node.probability, name=name)
             if target_node is not None:
-                return [new_result(parent, self.create_context(node.args), target_node, identifier,
+                return [new_result(parent, self.create_context(node.args, parent=context), target_node, identifier,
                                   True)]
             else:
                 return [complete(parent, identifier)]
@@ -893,7 +893,7 @@ class StackBasedEngine(ClauseDBEngine):
 
         origin = '%s/%s' % (node.functor, len(node.args))
         kwdargs['call_origin'] = (origin, node.location)
-        kwdargs['context'] = self.create_context(call_args)
+        kwdargs['context'] = self.create_context(call_args, parent=context)
         kwdargs['transform'] = transform
 
         try:
@@ -916,7 +916,7 @@ class StackBasedEngine(ClauseDBEngine):
 
     def eval_clause(self, context, node, node_id, parent, transform=None, identifier=None,
                     current_clause=None, **kwdargs):
-        new_context = self.create_context([None] * node.varcount)
+        new_context = self.create_context([None] * node.varcount, parent=context)
 
         try:
             try:
@@ -940,7 +940,7 @@ class StackBasedEngine(ClauseDBEngine):
 
             def result_transform(result):
                 output = substitute_head_args(node.args, result)
-                return self.create_context(output)
+                return self.create_context(output, parent=result)
 
             transform.addFunction(result_transform)
             return self.eval(node.child, context=new_context, parent=parent, transform=transform,
@@ -2067,7 +2067,7 @@ class BooleanBuiltIn(object):
     def __call__(self, *args, **kwdargs):
         callback = kwdargs.get('callback')
         if self.base_function(*args, **kwdargs):
-            args = kwdargs['engine'].create_context(args)
+            args = kwdargs['engine'].create_context(args, parent=kwdargs['context'])
             if kwdargs['target'].flag('keep_builtins'):
                 call = kwdargs['call_origin'][0].split('/')[0]
                 name = Term(call, *args)
@@ -2095,7 +2095,7 @@ class SimpleBuiltIn(object):
         output = []
         if results:
             for i, result in enumerate(results):
-                result = kwdargs['engine'].create_context(result)
+                result = kwdargs['engine'].create_context(result, parent=kwdargs['context'])
 
                 if kwdargs['target'].flag('keep_builtins'):
                     # kwdargs['target'].add_node()
@@ -2126,7 +2126,7 @@ class SimpleProbabilisticBuiltIn(object):
         output = []
         if results:
             for i, result in enumerate(results):
-                output += callback.notifyResult(kwdargs['engine'].create_context(result[0]),
+                output += callback.notifyResult(kwdargs['engine'].create_context(result[0], parent=result[0]),
                                                 result[1], i == len(results) - 1)
             return True, output
         else:
