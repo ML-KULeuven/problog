@@ -36,7 +36,7 @@ import logging
 
 # noinspection PyUnusedLocal
 @transform(LogicFormula, LogicDAG)
-def break_cycles(source, target, **kwdargs):
+def break_cycles(source, target, translation=None, **kwdargs):
     """Break cycles in the source logic formula.
 
     :param source: logic formula with cycles
@@ -44,11 +44,13 @@ def break_cycles(source, target, **kwdargs):
     :param kwdargs: additional arguments (ignored)
     :return: target
     """
+
     logger = logging.getLogger('problog')
     with Timer('Cycle breaking'):
         cycles_broken = set()
         content = set()
-        translation = defaultdict(list)
+        if translation is None:
+            translation = defaultdict(list)
 
         for q, n, l in source.labeled():
             if source.is_probabilistic(n):
