@@ -29,8 +29,71 @@ from .program import PrologFile
 from .errors import GroundingError, UserError
 from .engine_unify import unify_value, UnifyError, substitute_simple
 from .engine import UnknownClauseInternal, UnknownClause
+from collections import defaultdict
+
 
 import os, sys
+
+
+class builtin(object):
+    registry = None
+
+    @classmethod
+    def register(cls, tp, name, arity, func):
+        if cls.registry is None:
+            cls.registry = []
+        cls.registry.append((tp, name, arity, func))
+
+
+    @classmethod
+    def add_builtins(cls, engine, b=None, s=None, sp=None):
+        if cls.registry is not None:
+            for bltn in cls.registry:
+                if bltn[0] == 'bool':
+                    engine.add_builtin(bltn[1], bltn[2], b(bltn[3]))
+                elif bltn[0] == 'det':
+                    engine.add_builtin(bltn[1], bltn[2], s(bltn[3]))
+                elif bltn[0] == 'prob':
+                    engine.add_builtin(bltn[1], bltn[2], sp(bltn[3]))
+                elif bltn[0] == 'raw':
+                    engine.add_builtin(bltn[1], bltn[2], bltn[3])
+                else:
+                    raise ValueError("Unknown builtin type '%s'." % bltn[0])
+
+    def __init__(self, builtin_type, builtin_name, builtin_arity):
+        self.type = builtin_type
+        self.name = builtin_name
+        self.arity = builtin_arity
+
+    def __call__(self, func):
+        builtin.register(self.type, self.name, self.arity, func)
+        return func
+
+
+class builtin_boolean(builtin):
+
+    def __init__(self, *args):
+        builtin.__init__(self, 'bool', *args)
+
+
+class builtin_simple(builtin):
+
+    def __init__(self, *args):
+        builtin.__init__(self, 'det', *args)
+
+
+class builtin_probabilistic(builtin):
+
+    def __init__(self, *args):
+        builtin.__init__(self, 'prob', *args)
+
+
+class builtin_raw(builtin):
+
+    def __init__(self, *args):
+        builtin.__init__(self, 'raw', *args)
+
+
 
 
 def add_standard_builtins(engine, b=None, s=None, sp=None):
