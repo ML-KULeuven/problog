@@ -1890,7 +1890,7 @@ def _builtin_call(term, args=(), engine=None, callback=None, transform=None, con
             n = len(term.args)
             res1 = result[:n]
             res2 = result[n:]
-            return [term.with_args(*res1)] + list(res2)
+            return engine.create_context([term.with_args(*res1)] + list(res2), state=result.state)
         transform.addFunction(_trans)
 
         actions = engine.call_intern(term_call, transform=transform, parent_context=context, **kwdargs)

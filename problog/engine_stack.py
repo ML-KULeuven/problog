@@ -548,7 +548,6 @@ class StackBasedEngine(ClauseDBEngine):
                 actions += reversed(next_actions)
             else:
                 act, obj, args, context = actions.pop()
-
                 if debugger:
                     debugger.process_message(act, obj, args, context)
 
@@ -1107,7 +1106,7 @@ class FixedContext(tuple):
         return tuple.__hash__(self) + hash(self.state)
 
     def __eq__(self, other):
-        return tuple.__eq__(self, other) + self.state == get_state(other)
+        return tuple.__eq__(self, other) and self.state == get_state(other)
 
 
 class MessageQueue(object):
