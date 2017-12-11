@@ -271,9 +271,18 @@ class ClauseDBEngine(GenericEngine):
             negated = False
 
         target, results = self._ground(db, term, target, silent_fail=False, **kwdargs)
+
+        args_node = defaultdict(list)
         for args, node_id in results:
             if not is_ground(*args) and target.is_probabilistic(node_id):
                 raise NonGroundQuery(term, db.lineno(term.location))
+            args = tuple(args)
+            args_node[args].append(node_id)
+        for args, node_ids in args_node.items():
+            if len(node_ids) > 1:
+                node_id = target.add_or(node_ids)
+            else:
+                node_id = node_ids[0]
             term_store = term.with_args(*args)
             if negated:
                 target.add_name(-term_store, target.negate(node_id), label)

@@ -106,6 +106,7 @@ def add_standard_builtins(engine, b=None, s=None, sp=None):
     :param sp: wrapper for probabilistic builtins (return probabilistic results)
     """
 
+    # SPECIAL CASES NEED TO BE IN ORDER
     engine.add_builtin('true', 0, b(_builtin_true))  # -1
     engine.add_builtin('fail', 0, b(_builtin_fail))  # -2
     engine.add_builtin('false', 0, b(_builtin_fail))  # -3
@@ -222,8 +223,10 @@ def add_standard_builtins(engine, b=None, s=None, sp=None):
 
     engine.add_builtin('find_scope', 2, s(_builtin_find_scope))
 
+    builtin.add_builtins(engine, b, s, sp)
 
 
+# @builtin_boolean('nocache', 1)
 def _builtin_nocache(functor, arity, database=None, **kwd):
     check_mode((functor, arity), ['ai'], **kwd)
     database.dont_cache.add((str(functor), int(arity)))
@@ -2051,3 +2054,44 @@ def _builtin_find_scope(term, scope, engine=None, database=None, **kwargs):
 
     nodes = Object(frozenset(nodes))
     return [(term, nodes)]
+
+
+@builtin_simple('set_state', 1)
+def _builtin_set_state(term, **kwargs):
+    return [Context([term], state=term)]
+
+@builtin_simple('reset_state', 0)
+def _builtin_reset_state(**kwargs):
+    return [Context()]
+
+
+@builtin_boolean('check_state', 1)
+def _builtin_check_state(term, context=None, **kwargs):
+    if get_state(context) == term:
+        return True
+    else:
+        return False
+
+
+@builtin_boolean('print_state', 0)
+def _builtin_print_state(context=None, **kwargs):
+    if hasattr(context, 'state') and context.state is not None:
+        print ('State:', context.state)
+    else:
+        print ('State not set')
+    return True
+
+
+@builtin_simple('condition', 1)
+def _builtin_condition(term, context=None, engine=None, **kwargs):
+    state = context.state | {'conditions': [term]}
+    res = engine.create_context([term], state=state)
+    return [res]
+
+
+@builtin_boolean('probability', 1)
+def _builtin_probability(term, context=None, engine=None, **kwargs):
+    conditions = context.state.get('conditions', [])
+    print ('Query %s with conditions %s' % (term, conditions))
+
+    return True

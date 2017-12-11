@@ -780,6 +780,7 @@ class StackBasedEngine(ClauseDBEngine):
         else:
             return resultnode
 
+
     def eval_define(self, node, context, target, parent, identifier=None, transform=None,
                     is_root=False, no_cache=False, **kwdargs):
 
@@ -874,11 +875,12 @@ class StackBasedEngine(ClauseDBEngine):
         ground_mask = [not is_ground(c) for c in call_args]
 
         def result_transform(result):
-            output = self._clone_context(context)
+            output1 = self._clone_context(context, state=result.state)
             try:
                 assert (len(result) == len(node.args))
-                output = unify_call_return(result, call_args, output, var_translate, min_var,
+                output = unify_call_return(result, call_args, output1, var_translate, min_var,
                                            mask=ground_mask)
+                output = self.create_context(output, parent=output1)
                 if self.debugger:
                     location = kwdargs['database'].lineno(node.location)
                     self.debugger.call_result(node_id, node.functor, call_args, result, location)
@@ -994,6 +996,118 @@ class StackBasedEngine(ClauseDBEngine):
         if not cleanup:
             self.add_record(node)
         return actions
+
+    def create_context(self, content, define=None, parent=None, state=None):
+        """Create a variable context."""
+
+        con = Context(content)
+        if state is not None:
+            con.state = state
+        elif not con.state:
+            con.state = get_state(parent)
+        if con.state is None:
+            con.state = State()
+        return con
+
+    def _clone_context(self, context, parent=None, state=None):
+        con = Context(context, state=state)
+        if not con.state:
+            con.state = get_state(parent)
+        return con
+
+    def _fix_context(self, context):
+        return FixedContext(context)
+
+
+def get_state(c):
+    if hasattr(c, 'state'):
+        return c.state
+    else:
+        return None
+
+
+class State(dict):
+    # TODO make immutable
+
+    def __init__(self, *args, **kwargs):
+        dict.__init__(self, *args, **kwargs)
+
+    def __add__(self, other):
+        """Update state by replacing data for keys in other.
+
+        :param other: dictionary with values
+        :return: new state
+        """
+        res = State()
+        for sk, sv in res.items():
+            res[sk] = sv
+        for ok, ov in other.items():
+            res[ok] = ov
+        return res
+
+    def __mult__(self, other):
+        """Update state by discarding current state and replacing it with other.
+
+        :param other: dictionary with values
+        :return: new state
+        """
+        res = State()
+        for ok, ov in other.items():
+            res[ok] = ov
+        return res
+
+    def __or__(self, other):
+        """Update state by combining values.
+
+        :param other: dictionary with values
+        :return: new state
+        """
+        res = State()
+        for sk, sv in self.items():
+            res[sk] = sv
+        for ok, ov in other.items():
+            if ok in res:
+                if isinstance(type(ov), set):
+                    res[ok] = sv | ov
+                else:
+                    res[ok] = sv + ov
+            else:
+                res[ok] = ov
+        return res
+
+    def __hash__(self):
+        return hash(tuple([(k, tuple(v)) for k, v in self.items()]))
+
+
+class Context(list):
+
+    def __init__(self, parent, state=None):
+        list.__init__(self, parent)
+        if state is None:
+            self.state = get_state(parent)
+        else:
+            self.state = state
+        if self.state is None:
+            self.state = State()
+
+    def __repr__(self):
+        return '%s {%s}' % (list.__repr__(self), self.state)
+
+
+class FixedContext(tuple):
+
+    def __init__(self, parent):
+        tuple.__init__(self, parent)
+        self.state = get_state(parent)
+
+    def __repr__(self):
+        return '%s {%s}' % (tuple.__repr__(self), self.state)
+
+    def __hash__(self):
+        return tuple.__hash__(self) + hash(self.state)
+
+    def __eq__(self, other):
+        return tuple.__eq__(self, other) + self.state == get_state(other)
 
 
 class MessageQueue(object):
@@ -1350,6 +1464,7 @@ class NestedDict(object):
     def __getitem__(self, key):
         p_key, s_key = key
         p_key = (p_key, len(s_key))
+        s_key = list(s_key) + [get_state(s_key)]
         elem = self.__base[p_key]
         for s in s_key:
             elem = elem[s]
@@ -1364,6 +1479,7 @@ class NestedDict(object):
     def __contains__(self, key):
         p_key, s_key = key
         p_key = (p_key, len(s_key))
+        s_key = list(s_key) + [get_state(s_key)]
         try:
             elem = self.__base[p_key]
             for s in s_key:
@@ -1375,6 +1491,7 @@ class NestedDict(object):
     def __setitem__(self, key, value):
         p_key, s_key = key
         p_key = (p_key, len(s_key))
+        s_key = list(s_key) + [get_state(s_key)]
         if s_key:
             elem = self.__base.get(p_key)
             if elem is None:
@@ -1393,6 +1510,7 @@ class NestedDict(object):
     def __delitem__(self, key):
         p_key, s_key = key
         p_key = (p_key, len(s_key))
+        s_key = list(s_key) + [get_state(s_key)]
         if s_key:
             elem = self.__base[p_key]
             elems = [(p_key, self.__base, elem)]
@@ -1630,7 +1748,8 @@ class EvalDefine(EvalNode):
         if self.is_ground and node == NODE_TRUE and not self.target.flag('keep_all'):
             # We have a ground node with a deterministically true proof.
             # We can ignore the remaining proofs.
-            self.engine.ignoring.add(self.pointer)
+            # self.engine.ignoring.add(self.pointer)
+            pass  # not when there is state
         if self.is_cycle_child:
             assert not self.siblings
             if is_last:
