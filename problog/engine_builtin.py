@@ -2090,8 +2090,14 @@ def _builtin_condition(term, context=None, engine=None, **kwargs):
 
 
 @builtin_boolean('probability', 1)
-def _builtin_probability(term, context=None, engine=None, **kwargs):
+def _builtin_probability(term, context=None, engine=None, database=None, **kwargs):
     conditions = context.state.get('conditions', [])
-    print ('Query %s with conditions %s' % (term, conditions))
+
+    database.queries.append((term, conditions))
+    # print ('Query %s with conditions %s' % (term, conditions))
+
+    results = _builtin_subquery(term, None, list2term(conditions), engine=engine, database=database, **kwargs)
+    for t, p, e in results:
+        print ('%s: %.8g {%s}' % (t, p, ', '.join(map(term2str, conditions))))
 
     return True
