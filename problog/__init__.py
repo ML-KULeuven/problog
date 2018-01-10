@@ -32,6 +32,9 @@ def root_path(*args):
     return os.path.abspath(os.path.join(os.path.dirname(__file__), '..', *args))
 
 
+library_paths = [root_path('problog', 'library')]
+
+
 # Load all submodules. This has two reasons:
 #   - initializes all transformations (@transform)
 #   - makes it possible to just import 'problog' and then use

@@ -1845,10 +1845,17 @@ def _builtin_use_module2(filename, predicates, **kwdargs):
 
 def _builtin_use_module(filename, database=None, location=None, **kwdargs):
     if filename.functor == 'library' and filename.arity == 1:
-        filename = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'library',
-                                _atom_to_filename(filename.args[0]))
-        if not os.path.exists(filename + '.pl'):
-            filename += '.py'
+        from . import library_paths
+        libname = _atom_to_filename(filename.args[0])
+        filename = None
+        for path in library_paths:
+            filename = os.path.join(path, libname)
+            if os.path.exists(filename + '.pl'):
+                filename += '.pl'
+                break
+            elif os.path.exists(filename + '.py'):
+                filename += '.py'
+                break
     else:
         root = database.source_root
         if filename.location:
@@ -1858,7 +1865,7 @@ def _builtin_use_module(filename, database=None, location=None, **kwdargs):
 
         filename = os.path.join(root, _atom_to_filename(filename))
 
-    if filename[-3:] == '.py':
+    if filename is not None and filename[-3:] == '.py':
         try:
             load_external_module(database, filename)
         except IOError as err:
