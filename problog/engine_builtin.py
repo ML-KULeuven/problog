@@ -29,7 +29,6 @@ from .program import PrologFile
 from .errors import GroundingError, UserError
 from .engine_unify import unify_value, UnifyError, substitute_simple
 from .engine import UnknownClauseInternal, UnknownClause
-from . import library_paths
 
 import os, sys
 
@@ -1768,6 +1767,7 @@ def _builtin_use_module2(filename, predicates, **kwdargs):
 
 def _builtin_use_module(filename, database=None, location=None, **kwdargs):
     if filename.functor == 'library' and filename.arity == 1:
+        from . import library_paths
         libname = _atom_to_filename(filename.args[0])
         filename = None
         for path in library_paths:
