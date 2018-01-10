@@ -1100,9 +1100,10 @@ class Context(list):
 
 class FixedContext(tuple):
 
-    def __init__(self, parent):
-        tuple.__init__(self, parent)
-        self.state = get_state(parent)
+    def __new__(cls, parent):
+        n = tuple.__new__(cls, parent)
+        n.state = get_state(parent)
+        return n
 
     def __repr__(self):
         return '%s {%s}' % (tuple.__repr__(self), self.state)
