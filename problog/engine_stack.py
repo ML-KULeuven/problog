@@ -874,7 +874,12 @@ class StackBasedEngine(ClauseDBEngine):
         ground_mask = [not is_ground(c) for c in call_args]
 
         def result_transform(result):
-            output1 = self._clone_context(context, state=result.state)
+            if hasattr(result, 'state'):
+                state1 = result.state
+            else:
+                state1 = None
+
+            output1 = self._clone_context(context, state=state1)
             try:
                 assert (len(result) == len(node.args))
                 output = unify_call_return(result, call_args, output1, var_translate, min_var,
