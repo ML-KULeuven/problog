@@ -26,7 +26,7 @@ import traceback
 from ..program import PrologFile, SimpleProgram
 from ..engine import DefaultEngine
 from ..evaluator import SemiringLogProbability, SemiringProbability, SemiringSymbolic
-from .. import get_evaluatable, get_evaluatables
+from .. import get_evaluatable, get_evaluatables, library_paths
 
 from ..util import Timer, start_timer, stop_timer, init_logger, format_dictionary, format_value
 from ..errors import process_error
@@ -222,6 +222,7 @@ def argparser():
     parser.add_argument('--trace', action='store_true', help='output runtime trace')
     parser.add_argument('--profile-level', type=int, default=0)
     parser.add_argument('--format', choices=['text', 'prolog'])
+    parser.add_argument('-L', '--library', action='append', help='Add to ProbLog library search path')
 
     # Additional arguments (passed through)
     parser.add_argument('--engine-debug', action='store_true', help=argparse.SUPPRESS)
@@ -261,6 +262,10 @@ def argparser():
 def main(argv, result_handler=None):
     parser = argparser()
     args = parser.parse_args(argv)
+
+    if args.library:
+        for path in args.library:
+            library_paths.append(path)
 
     if result_handler is None:
         if args.web:
