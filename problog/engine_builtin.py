@@ -44,21 +44,24 @@ class builtin(object):
             cls.registry = []
         cls.registry.append((tp, name, arity, func))
 
+    @classmethod
+    def _add_builtin(cls, engine, bltn, b=None, s=None, sp=None):
+        if bltn[0] == 'bool':
+            engine.add_builtin(bltn[1], bltn[2], b(bltn[3]))
+        elif bltn[0] == 'det':
+            engine.add_builtin(bltn[1], bltn[2], s(bltn[3]))
+        elif bltn[0] == 'prob':
+            engine.add_builtin(bltn[1], bltn[2], sp(bltn[3]))
+        elif bltn[0] == 'raw':
+            engine.add_builtin(bltn[1], bltn[2], bltn[3])
+        else:
+            raise ValueError("Unknown builtin type '%s'." % bltn[0])
 
     @classmethod
     def add_builtins(cls, engine, b=None, s=None, sp=None):
         if cls.registry is not None:
             for bltn in cls.registry:
-                if bltn[0] == 'bool':
-                    engine.add_builtin(bltn[1], bltn[2], b(bltn[3]))
-                elif bltn[0] == 'det':
-                    engine.add_builtin(bltn[1], bltn[2], s(bltn[3]))
-                elif bltn[0] == 'prob':
-                    engine.add_builtin(bltn[1], bltn[2], sp(bltn[3]))
-                elif bltn[0] == 'raw':
-                    engine.add_builtin(bltn[1], bltn[2], bltn[3])
-                else:
-                    raise ValueError("Unknown builtin type '%s'." % bltn[0])
+                cls._add_builtin(engine, bltn, b, s, sp)
 
     def __init__(self, builtin_type, builtin_name, builtin_arity):
         self.type = builtin_type
@@ -1726,6 +1729,17 @@ class problog_export(object):
 
         problog_export.add_function(funcname, len(self.input_arguments),
                                     len(self.output_arguments), _wrapped_function)
+        return function
+
+
+class problog_export_builtin(object):
+
+    def __init__(self, functor, arity, **kwargs):
+        self.functor = functor
+        self.arity = arity
+
+    def __call__(self, function):
+        problog_export.add_function(self.functor, self.arity, 0, function)
         return function
 
 

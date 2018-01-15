@@ -21,7 +21,7 @@ Interface for calling Python from ProbLog.
     See the License for the specific language governing permissions and
     limitations under the License.
 """
-from .engine_builtin import problog_export, problog_export_nondet, problog_export_raw
+from .engine_builtin import problog_export, problog_export_nondet, problog_export_raw, problog_export_builtin
 
 from problog.logic import Constant
 
