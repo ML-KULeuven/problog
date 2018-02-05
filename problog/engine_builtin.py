@@ -29,10 +29,9 @@ from .program import PrologFile
 from .errors import GroundingError, UserError
 from .engine_unify import unify_value, UnifyError, substitute_simple
 from .engine import UnknownClauseInternal, UnknownClause
-from collections import defaultdict
-
-
-import os, sys
+import inspect
+import os
+import sys
 
 
 class builtin(object):
@@ -1711,7 +1710,12 @@ class problog_export(object):
         def _wrapped_function(*args, **kwdargs):
             bound = check_mode(args, list(self._extract_callmode()), funcname, **kwdargs)
             converted_args = self._convert_inputs(args)
-            result = function(*converted_args)
+
+            argspec = inspect.getargspec(function)
+            if argspec.keywords is not None:
+                result = function(*converted_args, **kwdargs)
+            else:
+                result = function(*converted_args)
             if len(self.output_arguments) == 1:
                 result = [result]
 
