@@ -204,7 +204,7 @@ class PrologParser(object):
 
     def _next_paren_open(self, s, pos):
         try:
-            return s[pos + 1] == '('
+            return s[pos + 1] in ('(', '[')
         except IndexError:
             return False
 
@@ -638,7 +638,7 @@ class PrologParser(object):
                 else:
                     return self.factory.build_function(token.string, (), location=token.location)
         elif len(tokens) == 2:
-            args = [tok for tok in tokens[1].tokens]
+            args = [tok for tok in tokens[1].enum_tokens()]
             if tokens[0].aggregate:
                 # print (type(args[0]))
                 return self.factory.build_aggregate(tokens[0].string, args, location=tokens[0].location)
@@ -694,6 +694,7 @@ class PrologParser(object):
     def label_tokens(self, string, tokens):
         l = len(tokens) - 1
         p = None
+
         for i, t in enumerate(tokens):
             if i == l:  # Last token can not be an operator or functor
                 t.unop = None
@@ -906,7 +907,14 @@ class ListExpression(SubExpression):
     def __init__(self, string, start, close_char=SPECIAL_BRACK_CLOSE):
         SubExpression.__init__(self, string, start)
         self.close_char = close_char
-        self.is_comma_list = False
+        # self.is_comma_list = False
+        self.arglist = True
+        self._tokens = None
+
+    @property
+    def is_comma_list(self):
+        return not self.max_operators or self.max_operators[0].string == ',' \
+            or self.max_operators[0].priority < 1000
 
     def accepts(self, token):
         return not token.is_special(SPECIAL_PAREN_CLOSE)
@@ -933,9 +941,13 @@ class ListExpression(SubExpression):
                 current.append(token)
         if current:
             prefix.append(parser.fold(self.string, current, 0, len(current)))
+        self._tokens = [parser.factory.build_index(prefix)]
         self.tokens = parser.factory.build_list(prefix, tail)
         # else :
         #     self.tokens = parser.fold(self.string, self.tokens, 0, len(self.tokens) )
+
+    def enum_tokens(self):
+        return self._tokens
 
 
 class ParenExpression(SubExpression):
@@ -953,6 +965,9 @@ class ParenExpression(SubExpression):
 
     def __repr__(self):
         return 'PE %s {%s}' % (self.tokens, self.list_options())
+
+    def enum_tokens(self):
+        return self.tokens
 
 
 class Factory(object):
@@ -987,6 +1002,9 @@ class Factory(object):
 
     def build_cut(self, location=None):
         raise NotImplementedError('Not supported!')
+
+    def build_index(self, arguments, **kwargs):
+        return self.build_function('i', arguments, **kwargs)
 
     build_clause = build_binop
     build_probabilistic = build_binop
