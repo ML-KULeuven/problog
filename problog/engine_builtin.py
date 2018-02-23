@@ -24,7 +24,7 @@ Implementation of Prolog / ProbLog builtins.
 
 from __future__ import print_function
 
-from .logic import term2str, Term, Clause, Constant, term2list, list2term, is_ground, is_variable, Var, Or, AnnotatedDisjunction
+from .logic import term2str, Term, Clause, Constant, term2list, list2term, is_ground, is_variable, Var, Or, AnnotatedDisjunction, Object
 from .program import PrologFile
 from .errors import GroundingError, UserError
 from .engine_unify import unify_value, UnifyError, substitute_simple
@@ -474,6 +474,10 @@ def _is_compare(term):
     return _is_atom(term) and term.functor in ("'<'", "'='", "'>'")
 
 
+def _is_object(term):
+    return isinstance(term, Object)
+
+
 mode_types = {
     'i': ('integer', _is_integer),
     'I': ('positive_integer', _is_integer_pos),
@@ -486,7 +490,8 @@ mode_types = {
     '<': ('compare', _is_compare),  # < = >
     'g': ('ground', is_ground),
     'a': ('atom', _is_atom),
-    'c': ('callable', _is_term)
+    'c': ('callable', _is_term),
+    'o': ('object', _is_object)
 }
 
 
@@ -1560,6 +1565,8 @@ class problog_export(object):
             return term2list(a)
         elif t == 'term':
             return a
+        elif t == 'obj':
+            return a.functor
         else:
             raise ValueError("Unknown type specifier '%s'!" % t)
 
@@ -1574,6 +1581,8 @@ class problog_export(object):
             return 'L'
         elif t == 'term':
             return '*'
+        elif t == 'obj':
+            return 'o'
         else:
             raise ValueError("Unknown type specifier '%s'!" % t)
 
@@ -1611,6 +1620,11 @@ class problog_export(object):
             if not isinstance(a, Term):
                 raise ValueError("Expected term output, got '%s' instead." % type(a))
             return a
+        elif t == 'obj':
+            if not isinstance(a, Object):
+                return Object(a)
+            else:
+                return a
         else:
             raise ValueError("Unknown type specifier '%s'!" % t)
 
