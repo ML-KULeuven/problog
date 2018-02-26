@@ -44,7 +44,7 @@ import sys
 
 from problog.program import PrologFile
 from problog.logic import Term, Constant, ArithmeticError
-from problog.engine import DefaultEngine, UnknownClause
+from problog.engine import DefaultEngine, UnknownClause, UnknownClauseInternal
 from problog.engine_builtin import check_mode
 from problog.formula import LogicFormula
 from problog.errors import process_error, GroundingError
@@ -354,19 +354,21 @@ def translate(db, atom_id):
 
 
 def builtin_sample(term, result, target=None, engine=None, callback=None, **kwdargs):
-    # TODO wrong error message when call argument is wrong
     check_mode((term, result), ['cv'], functor='sample')
     # Find the define node for the given query term.
     term_call = term.with_args(*term.args)
-    results = engine.call(term_call, subcall=True, target=target, **kwdargs)
-    actions = []
-    n = len(term.args)
-    for res, node in results:
-        res1 = res[:n]
-        res_pass = (term.with_args(*res1), target.get_value(node))
-        actions += callback.notifyResult(res_pass, 0, False)
-    actions += callback.notifyComplete()
-    return True, actions
+    try:
+        results = engine.call(term_call, subcall=True, target=target, **kwdargs)
+        actions = []
+        n = len(term.args)
+        for res, node in results:
+            res1 = res[:n]
+            res_pass = (term.with_args(*res1), target.get_value(node))
+            actions += callback.notifyResult(res_pass, 0, False)
+        actions += callback.notifyComplete()
+        return True, actions
+    except UnknownClauseInternal:
+        raise UnknownClause(term.signature, term.location)
 
 
 def builtin_previous(term, default, engine=None, target=None, callback=None, **kwdargs):
