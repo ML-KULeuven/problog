@@ -43,9 +43,9 @@ from __future__ import print_function
 import sys
 
 from problog.program import PrologFile
-from problog.logic import Term, Constant, ArithmeticError
+from problog.logic import Term, Constant, ArithmeticError, term2list, list2term
 from problog.engine import DefaultEngine, UnknownClause, UnknownClauseInternal
-from problog.engine_builtin import check_mode
+from problog.engine_builtin import check_mode, builtin_simple
 from problog.formula import LogicFormula
 from problog.errors import process_error, GroundingError
 from problog.util import start_timer, stop_timer, format_dictionary, init_logger
@@ -369,6 +369,15 @@ def builtin_sample(term, result, target=None, engine=None, callback=None, **kwda
         return True, actions
     except UnknownClauseInternal:
         raise UnknownClause(term.signature, term.location)
+
+
+def builtin_shuffle(lst_in, lst_out, **kwargs):
+    check_mode((lst_in, lst_out), ['Lv'], **kwargs)
+    # TODO keep correct probability?
+    lst_in1 = term2list(lst_in)
+    random.shuffle(lst_in1)
+    lst_out = term2list(lst_out)
+    return [(lst_in, lst_out)]
 
 
 def builtin_previous(term, default, engine=None, target=None, callback=None, **kwdargs):
