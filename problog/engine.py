@@ -173,7 +173,6 @@ class ClauseDBEngine(GenericEngine):
         This also executes any directives in the input model.
 
         :param db: logic program to prepare for evaluation
-        :type db: LogicProgram
         :return: logic program in a suitable format for this engine
         :rtype: ClauseDB
         """

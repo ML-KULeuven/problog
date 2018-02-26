@@ -363,8 +363,8 @@ class PrologFactory(Factory):
             if not type(head) == Term:
                 # TODO compute correct location
                 raise GroundingError("Unexpected clause head '%s'" % head)
-            elif len(heads) > 1 and head.probability is None:
-                raise GroundingError("Non-probabilistic head in multi-head clause '%s'" % head)
+            # elif len(heads) > 1 and head.probability is None:
+            #     raise GroundingError("Non-probabilistic head in multi-head clause '%s'" % head)
         if len(heads) > 1:
             return AnnotatedDisjunction(heads, operand2, location=(self.loc_id, location))
         else:
