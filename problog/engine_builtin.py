@@ -1958,3 +1958,14 @@ class IndirectCallCycleError(GroundingError):
         GroundingError.__init__(self,
                                 'Indirect cycle detected (passing through findall/3)',
                                 location)
+
+
+@builtin_simple('seq', 1)
+def seq(term, database=None, **kwargs):
+    check_mode((term,), ['v'], functor='seq', database=None, **kwargs)
+
+    s = database.get_data('__seq__', 0)
+    s += 1
+    database.set_data('__seq__', s)
+
+    return [(Constant(s),)]
