@@ -37,6 +37,7 @@ problog_tasks['shell'] = 'problog.tasks.shell'
 problog_tasks['bn'] = 'problog.tasks.bayesnet'
 problog_tasks['parse'] = 'problog.parser'
 problog_tasks['map'] = 'problog.tasks.map'
+problog_tasks['time'] = 'problog.tasks.time1'
 
 problog_default_task = 'prob'
 
