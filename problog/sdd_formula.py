@@ -150,24 +150,31 @@ class SDDManager(DDManager):
         return sdd.sdd_manager_literal(label, self.__manager)
 
     def is_true(self, node):
+        assert node is not None
         return sdd.sdd_node_is_true(node)
 
     def true(self):
         return sdd.sdd_manager_true(self.__manager)
 
     def is_false(self, node):
+        assert node is not None
         return sdd.sdd_node_is_false(node)
 
     def false(self):
         return sdd.sdd_manager_false(self.__manager)
 
     def conjoin2(self, a, b):
+        assert a is not None
+        assert b is not None
         return sdd.sdd_conjoin(a, b, self.__manager)
 
     def disjoin2(self, a, b):
+        assert a is not None
+        assert b is not None
         return sdd.sdd_disjoin(a, b, self.__manager)
 
     def negate(self, node):
+        assert node is not None
         new_sdd = sdd.sdd_negate(node, self.__manager)
         self.ref(new_sdd)
         return new_sdd
@@ -181,10 +188,12 @@ class SDDManager(DDManager):
 
     def ref(self, *nodes):
         for node in nodes:
+            assert node is not None
             sdd.sdd_ref(node, self.__manager)
 
     def deref(self, *nodes):
         for node in nodes:
+            assert node is not None
             sdd.sdd_deref(node, self.__manager)
 
     def write_to_dot(self, node, filename):
