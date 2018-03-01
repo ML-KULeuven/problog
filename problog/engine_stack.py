@@ -838,7 +838,7 @@ class StackBasedEngine(ClauseDBEngine):
         return self.eval_default(EvalNot, **kwdargs)
 
     def eval_call(self, node_id, node, context, parent, transform=None, identifier=None, **kwdargs):
-        min_var = self._context_min_var(context)
+        min_var = self.context_min_var(context)
         call_args, var_translate = substitute_call_args(node.args, context, min_var)
 
         if self.debugger and node.functor != 'call':
@@ -877,7 +877,7 @@ class StackBasedEngine(ClauseDBEngine):
             loc = kwdargs['database'].lineno(node.location)
             raise UnknownClause(origin, location=loc)
 
-    def _context_min_var(self, context):
+    def context_min_var(self, context):
         min_var = 0
         for c in context:
             if is_variable(c):
@@ -903,7 +903,7 @@ class StackBasedEngine(ClauseDBEngine):
             # We should replace these with negative numbers.
             # 1. Find lowest negative number in new_context.
             #   TODO better option is to store this in context somewhere
-            min_var = self._context_min_var(new_context)
+            min_var = self.context_min_var(new_context)
             # 2. Replace None in new_context with negative values
             cc = min_var
             for i, c in enumerate(new_context):
@@ -1887,7 +1887,7 @@ class EvalNot(EvalNode):
         else:
             if self.target.flag('keep_all'):
                 src_node = self.database.get_node(self.node.child)
-                min_var = self.engine._context_min_var(self.context)
+                min_var = self.engine.context_min_var(self.context)
                 if type(src_node).__name__ == 'atom':
                     args, _ = substitute_call_args(src_node.args, self.context, min_var=min_var)
                     name = Term(src_node.functor, *args)
