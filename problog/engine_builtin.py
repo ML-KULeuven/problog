@@ -24,7 +24,8 @@ Implementation of Prolog / ProbLog builtins.
 
 from __future__ import print_function
 
-from .logic import term2str, Term, Clause, Constant, term2list, list2term, is_ground, is_variable, Var, Or, AnnotatedDisjunction, Object
+from .logic import term2str, Term, Clause, Constant, term2list, list2term, \
+    is_ground, is_variable, Var, AnnotatedDisjunction, Object
 from .program import PrologFile
 from .errors import GroundingError, UserError
 from .engine_unify import unify_value, UnifyError, substitute_simple
@@ -94,8 +95,6 @@ class builtin_raw(builtin):
 
     def __init__(self, *args):
         builtin.__init__(self, 'raw', *args)
-
-
 
 
 def add_standard_builtins(engine, b=None, s=None, sp=None):
@@ -245,7 +244,7 @@ def _builtin_clause(head, body, database=None, **kwd):
         else:
             clause_ids = database.get_node(clause_def).children
             clauses = [database.to_clause(c) for c in clause_ids]
-    elif mode == 1:
+    else:
         clauses = list(database)
 
     result = []
@@ -269,6 +268,7 @@ def _builtin_clause(head, body, database=None, **kwd):
 
     return result
 
+
 def _builtin_clause3(head, body, prob, database=None, **kwd):
     mode = check_mode((head, body, prob), ['c**', 'v**'], **kwd)
 
@@ -279,7 +279,7 @@ def _builtin_clause3(head, body, prob, database=None, **kwd):
         else:
             clause_ids = database.get_node(clause_def).children
             clauses = [database.to_clause(c) for c in clause_ids]
-    elif mode == 1:
+    else:
         clauses = list(database)
 
     result = []
@@ -309,6 +309,7 @@ def _builtin_clause3(head, body, prob, database=None, **kwd):
             pass
 
     return result
+
 
 def _builtin_cmdargs(lst, engine=None, **kwd):
     m = check_mode((lst,), ['v', 'L'], **kwd)
@@ -361,6 +362,7 @@ def term2str_noquote(term):
         res = res[1:-1]
     return res
 
+
 def _builtin_write(*args, **kwd):
     print(' '.join(map(term2str_noquote, args)), end='')
     return True
@@ -381,7 +383,6 @@ def _builtin_writenl(*args, **kwd):
 def _builtin_nl(**kwd):
     print()
     return True
-
 
 
 class CallModeError(GroundingError):
@@ -1093,8 +1094,8 @@ def _builtin_numbervars(term, start, output, **k):
 
 
 def _builtin_varnumbers(term, output, engine=None, context=None, **k):
-    mode = check_mode((term, output), ['cv', 'cc'], functor='varnumbers', **k)
-    start = engine._context_min_var(context)
+    check_mode((term, output), ['cv', 'cc'], functor='varnumbers', **k)
+    start = engine.context_min_var(context)
 
     class VarNumbers(object):
 
@@ -1115,7 +1116,6 @@ def _builtin_varnumbers(term, output, engine=None, context=None, **k):
                 self._table[item] = self._n
                 return self._n
     xx = term.apply_term(VarNumbers(start))
-    print (term, xx, start, output)
     out = unify_value(output, xx, {})
     return [(term, out)]
 
@@ -1162,7 +1162,7 @@ def _builtin_length(l, n, **k):
         if remain < 0:
             raise UnifyError()
         else:
-            min_var = k.get('engine')._context_min_var(k.get('context'))
+            min_var = k.get('engine').context_min_var(k.get('context'))
             extra = list(range(min_var, min_var - remain, -1))  # [None] * remain
         new_l = build_list(elements + extra, Term('[]'))
         return [(new_l, n)]
@@ -1326,7 +1326,8 @@ def _builtin_consult(filename, database=None, engine=None, **kwdargs):
         identifier = len(database.source_files)
         database.source_files.append(filename)
         database.source_parent.append(kwdargs.get('location'))
-        pl = PrologFile(filename, identifier=identifier, factory=database.extra_info.get('factory'), parser=database.extra_info.get('parser'))
+        pl = PrologFile(filename, identifier=identifier, factory=database.extra_info.get('factory'),
+                        parser=database.extra_info.get('parser'))
         database.line_info.append(pl.line_info[0])
         for clause in pl:
             database += clause
@@ -1357,13 +1358,13 @@ def _select_sublist(lst, target):
     :type target: LogicFormula
     :return: generator of sublists
     """
-    l = len(lst)
+    ln = len(lst)
 
     # Generate an array that indicates the decision bit for each element in the list.
     # If an element is deterministically true, then no decision bit is needed.
-    choice_bits = [None] * l
+    choice_bits = [None] * ln
     x = 0
-    for i in range(0, l):
+    for i in range(0, ln):
         if lst[i][1] not in (target.TRUE, target.FALSE):
             choice_bits[i] = x
             x += 1
@@ -1374,11 +1375,12 @@ def _select_sublist(lst, target):
     while n >= 0:
         # Generate the list of positive values and node identifiers
         # noinspection PyTypeChecker
-        sublist = [lst[i] for i in range(0, l)
-                   if (choice_bits[i] is None and lst[i][1] == target.TRUE) or (choice_bits[i] is not None and n & 1 << choice_bits[i])]
+        sublist = [lst[i] for i in range(0, ln)
+                   if (choice_bits[i] is None and lst[i][1] == target.TRUE) or
+                   (choice_bits[i] is not None and n & 1 << choice_bits[i])]
         # Generate the list of negative node identifiers
         # noinspection PyTypeChecker
-        sublist_no = tuple([target.negate(lst[i][1]) for i in range(0, l)
+        sublist_no = tuple([target.negate(lst[i][1]) for i in range(0, ln)
                             if (choice_bits[i] is None and lst[i][1] == target.FALSE) or (
                             choice_bits[i] is not None and not n & 1 << choice_bits[i])])
         if sublist:
@@ -1395,7 +1397,7 @@ def _builtin_all_or_none(pattern, goal, result, **kwargs):
 
 
 def _builtin_all(pattern, goal, result, allow_none=False, database=None, target=None,
-                      engine=None, context=None, **kwdargs):
+                 engine=None, context=None, **kwdargs):
     """
     Implementation of all/3 builtin.
    :param pattern: pattern to extract
@@ -1495,8 +1497,8 @@ def _builtin_findall_base(pattern, goal, result, database=None, target=None,
         raise IndirectCallCycleError(database.lineno(kwdargs.get('call_origin', (None, None))[1]))
 
     new_results = []
-    keep_all_restore = target._keep_all
-    target._keep_all = False
+    keep_all_restore = target.keep_all
+    target.keep_all = False
 
     for res, n in results:
         for mx, b in findall_target.enumerate_branches(n):
@@ -1511,7 +1513,7 @@ def _builtin_findall_base(pattern, goal, result, database=None, target=None,
                 new_results.append((mx, res[0], proof_node))
             else:
                 new_results.append((mx, res[0], proof_node))
-    target._keep_all = keep_all_restore
+    target.keep_all = keep_all_restore
     new_results = [(b, c) for a, b, c in sorted(new_results, key=lambda s: s[0])]
 
     output = []
@@ -1552,8 +1554,7 @@ def _builtin_possible(goal, engine=None, **kwdargs):
     except UnifyError:
         return []
     except RuntimeError:
-        raise IndirectCallCycleError(database.lineno(kwdargs.get('call_origin', (None, None))[1]))
-
+        raise IndirectCallCycleError(kwdargs['database'].lineno(kwdargs.get('call_origin', (None, None))[1]))
 
 
 # noinspection PyUnusedLocal
@@ -1623,9 +1624,9 @@ class problog_export(object):
     database = None
 
     @classmethod
-    def add_function(cls, name, in_args, out_args, function):
+    def add_function(cls, name, in_args, out_args, func):
         if problog_export.database is not None:
-            problog_export.database.add_extern(name, in_args + out_args, function)
+            problog_export.database.add_extern(name, in_args + out_args, func)
 
     # noinspection PyUnusedLocal
     def __init__(self, *args, **kwdargs):
@@ -1714,10 +1715,10 @@ class problog_export(object):
     def _convert_outputs(self, args):
         return [self._convert_output(a, t) for a, t in zip(args, self.output_arguments)]
 
-    def __call__(self, function, funcname=None):
+    def __call__(self, func, funcname=None):
         if funcname is None:
             if self.functor is None:
-                funcname = function.__name__
+                funcname = func.__name__
             else:
                 funcname = self.functor
 
@@ -1725,11 +1726,11 @@ class problog_export(object):
             bound = check_mode(args, list(self._extract_callmode()), funcname, **kwdargs)
             converted_args = self._convert_inputs(args)
 
-            argspec = inspect.getargspec(function)
+            argspec = inspect.getargspec(func)
             if argspec.keywords is not None:
-                result = function(*converted_args, **kwdargs)
+                result = func(*converted_args, **kwdargs)
             else:
-                result = function(*converted_args)
+                result = func(*converted_args)
             if len(self.output_arguments) == 1:
                 result = [result]
 
@@ -1747,7 +1748,18 @@ class problog_export(object):
 
         problog_export.add_function(funcname, len(self.input_arguments),
                                     len(self.output_arguments), _wrapped_function)
-        return function
+        return func
+
+
+class problog_export_builtin(object):
+
+    def __init__(self, functor, arity, **kwargs):
+        self.functor = functor
+        self.arity = arity
+
+    def __call__(self, func):
+        problog_export.add_function(self.functor, self.arity, 0, func)
+        return func
 
 
 class problog_export_builtin(object):
@@ -1794,10 +1806,10 @@ class problog_export_raw(problog_export):
                     callmode += 'v'
             yield callmode
 
-    def __call__(self, function, funcname=None):
+    def __call__(self, func, funcname=None):
         if funcname is None:
             if self.functor is None:
-                funcname = function.__name__
+                funcname = func.__name__
             else:
                 funcname = self.functor
 
@@ -1805,7 +1817,7 @@ class problog_export_raw(problog_export):
             bound = check_mode(args, list(self._extract_callmode()), funcname, **kwdargs)
             converted_args = self._convert_inputs(args)
             results = []
-            for result in function(*converted_args, **kwdargs):
+            for result in func(*converted_args, **kwdargs):
                 if len(result) == 2 and type(result[0]) == tuple:
                     # Probabilistic
                     result, p = result
@@ -1829,15 +1841,15 @@ class problog_export_raw(problog_export):
 
         problog_export.add_function(funcname, len(self.input_arguments),
                                     0, _wrapped_function)
-        return function
+        return func
 
 
 # noinspection PyPep8Naming
 class problog_export_nondet(problog_export):
-    def __call__(self, function, funcname=None):
+    def __call__(self, func, funcname=None):
         if funcname is None:
             if self.functor is None:
-                funcname = function.__name__
+                funcname = func.__name__
             else:
                 funcname = self.functor
 
@@ -1845,7 +1857,7 @@ class problog_export_nondet(problog_export):
             bound = check_mode(args, list(self._extract_callmode()), funcname, **kwdargs)
             converted_args = self._convert_inputs(args)
             results = []
-            for result in function(*converted_args):
+            for result in func(*converted_args):
                 if len(self.output_arguments) == 1:
                     result = [result]
 
@@ -1864,13 +1876,15 @@ class problog_export_nondet(problog_export):
 
         problog_export.add_function(funcname, len(self.input_arguments),
                                     len(self.output_arguments), _wrapped_function)
-        return function
+        return func
 
 
+# noinspection PyUnusedLocal
 def _builtin_module(name, predicates, **kwargs):
     return True
 
 
+# noinspection PyUnusedLocal
 def _builtin_use_module2(filename, predicates, **kwdargs):
     return _builtin_use_module(filename, **kwdargs)
 
@@ -1897,7 +1911,9 @@ def _builtin_use_module(filename, database=None, location=None, **kwdargs):
 
         filename = os.path.join(root, _atom_to_filename(filename))
 
-    if filename is not None and filename[-3:] == '.py':
+    if filename is None:
+        raise ConsultError('Unknown library location', database.lineno(location))
+    elif filename is not None and filename[-3:] == '.py':
         try:
             load_external_module(database, filename)
         except IOError as err:

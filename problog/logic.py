@@ -181,7 +181,7 @@ class Term(object):
     :param functor: the functor of the term ('p' in the example)
     :type functor: str
     :param args: the arguments of the Term ('X' and 'Y' in the example)
-    :type args: tuple of (Term | None | int)
+    :type args: Term | None | int
     :param kwdargs: additional arguments; currently 'p' (probability) and 'location' \
     (character position in input)
     """

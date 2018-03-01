@@ -419,7 +419,7 @@ class LogicFormula(BaseFormula):
         self._auto_compact = auto_compact
         self._avoid_name_clash = avoid_name_clash
         self._keep_order = keep_order
-        self._keep_all = keep_all
+        self.keep_all = keep_all
         self._keep_builtins = (keep_all or keep_builtins) and not hide_builtins
         self._keep_duplicates = keep_duplicates
 
@@ -566,9 +566,9 @@ class LogicFormula(BaseFormula):
          same group.
         * To add an explicitly present deterministic node you can set the probability to ``True``.
         """
-        if probability is None and not self._keep_all:
+        if probability is None and not self.keep_all:
             return self.TRUE
-        elif probability is False and not self._keep_all:
+        elif probability is False and not self.keep_all:
             return self.FALSE
         elif probability != self.WEIGHT_NEUTRAL and self.semiring and \
                 self.semiring.is_zero(self.semiring.value(probability)):
@@ -733,7 +733,7 @@ class LogicFormula(BaseFormula):
 
         if nodetype == 'conj':
             node = self._create_conj(content, name)
-            return self._add(node, reuse=self._auto_compact and not self._keep_all)
+            return self._add(node, reuse=self._auto_compact and not self.keep_all)
         elif nodetype == 'disj':
             node = self._create_disj(content, name)
             if update is not None:
@@ -741,7 +741,7 @@ class LogicFormula(BaseFormula):
                 return self._update(update, node)
             elif readonly:
                 # If the node is readonly, we can try to reuse an existing node.
-                new_node = self._add(node, reuse=self._auto_compact and not name_clash and not self._keep_all)
+                new_node = self._add(node, reuse=self._auto_compact and not name_clash and not self.keep_all)
                 return new_node
             else:
                 # If node is modifiable, we shouldn't reuse an existing node.
