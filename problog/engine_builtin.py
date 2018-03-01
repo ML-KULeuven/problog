@@ -2140,3 +2140,15 @@ def _builtin_probability(term, context=None, engine=None, database=None, **kwarg
         print ('%s: %.8g {%s}' % (t, p, ', '.join(map(term2str, conditions))))
 
     return True
+
+
+@builtin_simple('seq', 1)
+def seq(term, database=None, **kwargs):
+    check_mode((term,), ['v'], functor='seq', database=None, **kwargs)
+
+    s = database.get_data('__seq__', 0)
+    s += 1
+    database.set_data('__seq__', s)
+
+    return [(Constant(s),)]
+
