@@ -79,7 +79,7 @@ class SimpleDDNNFEvaluator(Evaluator):
             for ev in self.evidence():
                 self.set_evidence(abs(ev), ev > 0)
 
-        if self.semiring.result(self._get_z(), self.formula) == 0.0:
+        if self.semiring.is_zero(self._get_z()):
             raise InconsistentEvidenceError(context=" during evidence evaluation")
 
     def propagate(self):
