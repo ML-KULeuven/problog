@@ -983,7 +983,10 @@ class ClauseDB(LogicProgram):
             return Var('V_' + str(term))
         else:
             args = [self._create_vars(arg) for arg in term.args]
-            return term.with_args(*args)
+            term = term.with_args(*args)
+            if term.probability is not None:
+                term = term.with_probability(self._create_vars(term.probability))
+            return term
 
     def _extract(self, node_id):
         node = self.get_node(node_id)
