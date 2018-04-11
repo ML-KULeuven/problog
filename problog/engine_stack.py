@@ -332,15 +332,18 @@ class StackBasedEngine(ClauseDBEngine):
             par_node.siblings.append(pointer)  # add the current node as a sibling to the primary
 
             for rn in par_node.results:
-                actions += cur_node.notifyResultMe(*rn)   # TODO twice?
+                actions += cur_node.notifyResultMe(*rn)
 
             if not par_node.cycle_children:
                 anc2 = self.get_ancestors_siblings(pointer)
                 if par in anc2:
                     pass
                 else:
-                    for a in anc2:
-                        self.stack[a].subcycles.add(par)
+                    # TODO is this correct?
+                    # print ('SBC', par, par_node.subcycles)
+                    if par_node.subcycles:
+                        for a in anc2:
+                            self.stack[a].subcycles |= par_node.subcycles
         return actions
 
     def notify_cycle(self, cycle):
@@ -358,7 +361,7 @@ class StackBasedEngine(ClauseDBEngine):
 
         for cyc in self.active_cycles:
             cyc_node = self.stack[cyc]
-            if not cyc_node.subcycles:
+            if not cyc_node.subcycles:  # & self.active_cycles):
                 if self.full_trace:
                     self.printStack()
                     print('CLOSE CYCLE', cyc)
@@ -710,6 +713,7 @@ class StackBasedEngine(ClauseDBEngine):
             self.printStack()  # pragma: no cover
             print ('Actions:', actions)
             print('Collected results:', solutions)  # pragma: no cover
+            print ('Active cycles:', self.active_cycles)
             raise InvalidEngineState('Engine did not complete correctly!')  # pragma: no cover
 
     def cleanup(self, obj):
