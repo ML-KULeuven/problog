@@ -21,7 +21,7 @@ Provides common interface for evaluation of weighted logic formulas.
     See the License for the specific language governing permissions and
     limitations under the License.
 """
-from __future__ import print_function
+from __future__ import print_function, division
 
 import math
 
@@ -262,35 +262,50 @@ class SemiringLogProbability(SemiringProbability):
 class DensityValue(object):
 
     def __init__(self, coefficients=(0,)):
+        raise Exception('xxx')
         if pn is None:
             raise InstallError("Density calculation require the NumPy package.")
         self.coefficients = coefficients
 
     def __add__(self, other):
-        return DensityValue(pn.polyadd(self.coefficients, other.coefficients))
+        if not isinstance(other, DensityValue):
+            other = DensityValue.wrap(other)
+        result = DensityValue(pn.polyadd(self.coefficients, other.coefficients))
+        print('__add__', self, other, result)
+        return result
 
     def __radd__(self, other):
         other = DensityValue.wrap(other)
-        return DensityValue(pn.polyadd(self.coefficients, other.coefficients))
+        result = DensityValue(pn.polyadd(self.coefficients, other.coefficients))
+        print('__radd__', self, other, result)
+        return result
 
     def __sub__(self, other):
-        return DensityValue(pn.polysub(self.coefficients, other.coefficients))
+        result = DensityValue(pn.polysub(self.coefficients, other.coefficients))
+        print('__sub__', self, other, result)
+        return result
 
     def __rsub__(self, other):
         other = DensityValue.wrap(other)
-        return DensityValue(pn.polysub(other.coefficients, self.coefficients))
+        rval = DensityValue(pn.polysub(other.coefficients, self.coefficients))
+        print('__rsub__', self, other, rval)
+        return rval
 
     def __mul__(self, other):
         if type(other) == DensityValue:
-            return DensityValue(pn.polymul(self.coefficients, other.coefficients))
+            rval = DensityValue(pn.polymul(self.coefficients, other.coefficients))
         else:
-            return DensityValue(pn.polymul(self.coefficients, [other]))
+            rval = DensityValue(pn.polymul(self.coefficients, [other]))
+        print('__mul__', self, other, rval)
+        return rval
 
     def __rmul__(self, other):
         if type(other) == DensityValue:
-            return DensityValue(pn.polymul(self.coefficients, other.coefficients))
+            rval = DensityValue(pn.polymul(self.coefficients, other.coefficients))
         else:
-            return DensityValue(pn.polymul(self.coefficients, [other]))
+            rval = DensityValue(pn.polymul(self.coefficients, [other]))
+        print('__rmul__', self, other, rval)
+        return rval
 
     def value(self, x=1e-5):
         return pn.polyval([x], self.coefficients)[0]
@@ -302,20 +317,25 @@ class DensityValue(object):
         return self.__div__(other)
 
     def __div__(self, other):
+        result = None
         if type(other) == DensityValue:
             if other.is_one():
-                return self
+                result = self
             else:
                 r = []
                 for ai, zi in zip(self.coefficients, other.coefficients):
                     # Given ai <= zi
+                    # TODO: Is this assumption asserted somewhere?
                     if ai > 1e-12:
-                        return DensityValue([ai / zi])
-                if not r:
-                    r = DensityValue.zero()
-                return r
+                        result = DensityValue([ai / zi])
+                        # TODO: Why only the first coefficient?, is this an approximation?
+                        break
+                if result is None and not r:
+                    result = DensityValue.zero()
         else:
-            return DensityValue(pn.polymul(self.coefficients, [1.0/other]))
+            result = DensityValue(pn.polymul(self.coefficients, [1.0/other]))
+        print('__div__', self, other, '->', result)
+        return result
 
     @classmethod
     def zero(cls):
@@ -373,7 +393,11 @@ class SemiringDensity(Semiring):
         return a * b
 
     def is_zero(self, value):
-        return DensityValue.wrap(value).is_zero()
+        if isinstance(value, DensityValue):
+            return value.is_zero()
+        else:
+            return -1e-12 < value < 1e-12
+        # return DensityValue.wrap(value).is_zero()
 
     def is_one(self, value):
         return DensityValue.wrap(value).is_one()
@@ -387,7 +411,10 @@ class SemiringDensity(Semiring):
     def normalize(self, a, z):
         """Normalization computes a_i / z_i and returns the lowest rank non-zero coefficient.
         """
-        return DensityValue.wrap(a) / z
+        if -1e-12 < a < 1e-12:
+            return 0.0
+        return a / z
+        # return DensityValue.wrap(a) / z
 
 
 class SemiringSymbolic(Semiring):
@@ -496,7 +523,7 @@ class Evaluatable(ProbLogObject):
         evaluator.propagate()
         return evaluator
 
-    def evaluate(self, index=None, semiring=None, evidence=None, weights=None, **kwargs):
+    def evaluate(self, index=None, semiring=None, evidence=None, weights=None, smooth=None, **kwargs):
         """Evaluate a set of nodes.
 
         :param index: node to evaluate (default: all queries)
@@ -506,6 +533,7 @@ class Evaluatable(ProbLogObject):
         :return: The result of the evaluation expressed as an external value of the semiring. \
          If index is ``None`` (all queries) then the result is a dictionary of name to value.
         """
+        print('evaluator.evaluate')
         evaluator = self.get_evaluator(semiring, evidence, weights, **kwargs)
 
         if index is None:
@@ -514,11 +542,11 @@ class Evaluatable(ProbLogObject):
 
             # interrupted = False
             for name, node, label in evaluator.formula.labeled():
-                w = evaluator.evaluate(node)
+                w = evaluator.evaluate(node, smooth=smooth)
                 result[name] = w
             return result
         else:
-            return evaluator.evaluate(index)
+            return evaluator.evaluate(index, smooth=smooth)
 
 
 @transform_allow_subclass
@@ -551,7 +579,7 @@ class Evaluator(object):
         """Propagate changes in weight or evidence values."""
         raise NotImplementedError('Evaluator.propagate() is an abstract method.')
 
-    def evaluate(self, index):
+    def evaluate(self, index, smooth=True):
         """Compute the value of the given node."""
         raise NotImplementedError('abstract method')
 
@@ -605,6 +633,7 @@ class FormulaEvaluator(object):
 
     def __init__(self, formula, semiring, weights=None):
         self._computed_weights = {}
+        self._computed_smooth = {}
         self._semiring = semiring
         self._formula = formula
         self._fact_weights = {}
@@ -626,6 +655,7 @@ class FormulaEvaluator(object):
         :return:
         """
         self._computed_weights.clear()
+        self._computed_smooth.clear()
         self._fact_weights = weights
 
     def update_weights(self, weights):
@@ -635,9 +665,10 @@ class FormulaEvaluator(object):
         :return:
         """
         self._computed_weights.clear()
+        self._computed_smooth.clear()
         self._fact_weights.update(weights)
 
-    def get_weight(self, index):
+    def get_weight(self, index, smooth=None):
         """Get the weight of the node with the given index.
 
         :param index: integer or formula.TRUE or formula.FALSE
@@ -652,33 +683,47 @@ class FormulaEvaluator(object):
             weight = self._fact_weights.get(abs(index))
             if weight is None:
                 # This will only work if the semiring support negation!
-                nw = self.get_weight(-index)
+                nw = self.get_weight(-index, smooth=smooth)
                 return self.semiring.negate(nw)
             else:
+                self._computed_smooth[index] = {abs(index)}
                 return weight[1]
         else:
             weight = self._fact_weights.get(index)
             if weight is None:
                 weight = self._computed_weights.get(index)
                 if weight is None:
-                    weight = self.compute_weight(index)
+                    weight = self.compute_weight(index, smooth)
                     self._computed_weights[index] = weight
                 return weight
             else:
+                self._computed_smooth[index] = {index}
                 return weight[0]
 
     def propagate(self):
         self._fact_weights = self.formula.extract_weights(self.semiring)
 
-    def evaluate(self, index):
-        return self.semiring.result(self.get_weight(index), self.formula)
+    def evaluate(self, index, smooth=None):
+        # print('Start semiring.result')
+        # print(type(self.formula))
+        # print(self.formula)
+        with open("/Users/wannes/Desktop/nnf.gv", "w") as ofile:
+            print(self.formula.to_dot(), file=ofile)
+            print("\n\n\n", file=ofile)
+            print("\n".join(["// {}".format(line) for line in str(self.formula).split("\n")]), file=ofile)
+        result = self.semiring.result(self.get_weight(index, smooth=smooth), self.formula)
+        # print('smooth', self._computed_smooth)
+        return result
 
-    def compute_weight(self, index):
+    def compute_weight(self, index, smooth=None):
         """Compute the weight of the node with the given index.
 
         :param index: integer or formula.TRUE or formula.FALSE
         :return: weight of the node
         """
+        # print('handle smooth', smooth)
+        if smooth is None:
+            raise Exception()
 
         if index == self.formula.TRUE:
             return self.semiring.one()
@@ -689,9 +734,17 @@ class FormulaEvaluator(object):
             ntype = type(node).__name__
 
             if ntype == 'atom':
+                self._computed_smooth[index] = {index}
                 return self.semiring.one()
             else:
-                childprobs = [self.get_weight(c) for c in node.children]
+                childprobs = [self.get_weight(c, smooth=smooth) for c in node.children]
+                all_vars = set()
+                for c in node.children:
+                    if c not in self._computed_smooth:
+                        raise Exception("Smoothing expected node {} to be present".format(c))
+                    all_vars.update(self._computed_smooth[c])
+                # print('all_vars', all_vars)
+                self._computed_smooth[index] = all_vars
                 if ntype == 'conj':
                     p = self.semiring.one()
                     for c in childprobs:
@@ -699,7 +752,16 @@ class FormulaEvaluator(object):
                     return p
                 elif ntype == 'disj':
                     p = self.semiring.zero()
-                    for c in childprobs:
+                    for c, ci in zip(childprobs, node.children):
+                        if smooth:
+                            diff_vars = all_vars.difference(self._computed_smooth[ci])
+                            # print('diff_vars', diff_vars)
+                            for diff_var in diff_vars:
+                                vt = self.get_weight(diff_var)
+                                vn = self.semiring.negate(vt)
+                                vd = self.semiring.plus(vt, vn)
+                                print('smoothing', vt, vn, vd)
+                                c = self.semiring.times(c, vd)
                         p = self.semiring.plus(p, c)
                     return p
                 else:

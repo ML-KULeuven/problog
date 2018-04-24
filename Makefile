@@ -17,6 +17,13 @@ test3:
 	python3 -m unittest discover -v
 	@echo "======================================================================"
 	@echo ""
+
+test-lficont:
+	@echo "Running unit tests in python3"
+	@echo "============================="
+	python3 -m unittest discover -v -p test_lficont*.py
+	@echo "======================================================================"
+	@echo ""
 	
 docs:
 	@echo "Creating HTML documentation"

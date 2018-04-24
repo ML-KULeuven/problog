@@ -613,7 +613,7 @@ class ForwardEvaluator(Evaluator):
     def propagate(self):
         self.initialize()
 
-    def evaluate(self, index):
+    def evaluate(self, index, smooth=True):
         """Compute the value of the given node."""
         # We should get results from cache here.
 

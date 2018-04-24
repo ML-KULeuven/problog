@@ -104,7 +104,7 @@ class SimpleDDNNFEvaluator(Evaluator):
     def evaluate_fact(self, node):
         return self.evaluate(node)
 
-    def evaluate(self, node):
+    def evaluate(self, node, smooth=True):
         if node == 0:
             result = self.semiring.one()
         elif node is None:
@@ -115,6 +115,7 @@ class SimpleDDNNFEvaluator(Evaluator):
             self._set_value(abs(node), (node > 0))
             result = self._get_weight(len(self.formula))
             self._reset_value(abs(node), p, n)
+            print('simpleddnnfeval.evaluate.has_evidence = ', self.has_evidence())
             if self.has_evidence():
                 result = self.semiring.normalize(result, self._get_z())
         return self.semiring.result(result, self.formula)
@@ -181,7 +182,7 @@ class SimpleDDNNFEvaluator(Evaluator):
         ntype = type(node).__name__
 
         if ntype == 'atom':
-            return self.semiring.one()
+            result = self.semiring.one()
         else:
             assert key > 0
             childprobs = [self._get_weight(c) for c in node.children]
@@ -189,14 +190,16 @@ class SimpleDDNNFEvaluator(Evaluator):
                 p = self.semiring.one()
                 for c in childprobs:
                     p = self.semiring.times(p, c)
-                return p
+                result = p
             elif ntype == 'disj':
                 p = self.semiring.zero()
                 for c in childprobs:
                     p = self.semiring.plus(p, c)
-                return p
+                result = p
             else:
                 raise TypeError("Unexpected node type: '%s'." % ntype)
+        print('SimpleDDNFEval._calc_w({}) = {}'.format(key, result))
+        return result
 
 
 class Compiler(object):

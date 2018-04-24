@@ -30,8 +30,11 @@ def createTestLFICont(filename):
 
         model = filename
         examples = filename.replace(".pl", ".ev")
+        if not os.path.exists(examples):
+            raise Exception("Evidence file is missing: {}".format(examples))
 
-        out = subprocess_check_output([sys.executable, problogcli, 'lfi', model, examples])
+        out = subprocess_check_output([sys.executable, problogcli, 'lfi', '-n', '10', '-O',
+                                       model.replace('.pl', '.l_pl'), model, examples])
         outline = out.strip().split()
         print(outline)
 

@@ -71,15 +71,19 @@ class SDD(DD):
         formula = LogicFormula()
 
         for n, q, l in self.labeled():
+            print('to_formula', n, q, l)
             node = self.get_inode(q)
             constraints = self.get_constraint_inode()
+            print('constraints', constraints)
             nodec = self.get_manager().conjoin(node, constraints)
-            i = self._to_formula(formula, nodec, {})
+            i = self._to_formula(formula, nodec, {}, 0)
             formula.add_name(n, i, formula.LABEL_QUERY)
         return formula
 
-    def _to_formula(self, formula, current_node, cache=None):
+    def _to_formula(self, formula, current_node, cache=None, d=0):
+        # print('_to_formula', current_node, 'depth=', d, 'cache size=', len(cache))
         if cache is not None and int(current_node) in cache:
+            # print('in cache')
             return cache[int(current_node)]
         if self.get_manager().is_true(current_node):
             retval = formula.TRUE
@@ -102,8 +106,8 @@ class SDD(DD):
             # Formula: (p1^s1) v (p2^s2) v ...
             children = []
             for p, s in zip(primes, subs):
-                p_n = self._to_formula(formula, p, cache)
-                s_n = self._to_formula(formula, s, cache)
+                p_n = self._to_formula(formula, p, cache, d+1)
+                s_n = self._to_formula(formula, s, cache, d+1)
                 c_n = formula.add_and((p_n, s_n))
                 children.append(c_n)
             retval = formula.add_or(children)
@@ -221,6 +225,9 @@ class SDDManager(DDManager):
 
     def wmc_true(self, weights, semiring):
         return self.wmc(self.true(), weights, semiring)
+
+    def count(self):
+        return sdd.sdd_manager_count(self.get_manager())
 
     def __del__(self):
         # if sdd is not None and sdd.sdd_manager_free is not None:

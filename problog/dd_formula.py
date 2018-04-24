@@ -427,21 +427,33 @@ class DDEvaluator(Evaluator):
                 self._evidence_weight = self.semiring.normalize(result, self.normalization)
             else:
                 formula = LogicNNF()
-                i = self.formula._to_formula(formula, self.evidence_inode)
-                self._evidence_weight = formula.evaluate(index=i, semiring=self.semiring)
+                smooth = True
+                # print('count', self.formula.get_manager().count())
+                # print('inode', self.evidence_inode)
+                self.formula.get_manager().write_to_dot(self.evidence_inode, '/Users/wannes/Desktop/sdd.gv')
+                i = self.formula._to_formula(formula, self.evidence_inode, {})
+                print('Formula (evidence) to evaluate')
+                print(formula)
+                self._evidence_weight = formula.evaluate(index=i, semiring=self.semiring, smooth=smooth)
+                print('evidence weight', self._evidence_weight)
 
         return self._evidence_weight
 
     def evaluate_evidence(self, recompute=False):
         return self.semiring.result(self._evaluate_evidence(recompute=recompute), self.formula)
 
-    def evaluate(self, node):
+    def evaluate(self, node, smooth=True):
+        try:
+            vnode = self.formula.get_node(abs(node))
+        except Exception:
+            vnode = ''
+        print("DDEvaluator.evaluate", node, vnode)
         if isinstance(self.semiring, SemiringLogProbability) or isinstance(self.semiring, SemiringProbability):
-            return self.evaluate_standard(node)
+            return self.evaluate_standard(node, smooth=smooth)
         else:
-            return self.evaluate_custom(node)
+            return self.evaluate_custom(node, smooth=smooth)
 
-    def evaluate_standard(self, node):
+    def evaluate_standard(self, node, smooth=True):
         # Trivial case: node is deterministically True or False
         if node == self.formula.TRUE:
             result = self.semiring.one()
@@ -463,7 +475,7 @@ class DDEvaluator(Evaluator):
             result = self.semiring.normalize(result, self._evidence_weight)
         return self.semiring.result(result, self.formula)
 
-    def evaluate_custom(self, node):
+    def evaluate_custom(self, node, smooth=True):
         # Trivial case: node is deterministically True or False
         if node == self.formula.TRUE:
             result = self.semiring.one()
@@ -472,19 +484,23 @@ class DDEvaluator(Evaluator):
         else:
             query_def_inode = self.formula.get_inode(node)
             evidence_inode = self.evidence_inode
+            # TODO: When performing learning, the following steps are done every iteration, should be cached
             query_sdd = self._get_manager().conjoin(query_def_inode, evidence_inode)
 
-
-
             formula = LogicNNF()
-            i = self.formula._to_formula(formula, query_sdd)
-            result = formula.evaluate(index=i, semiring=self.semiring)
+            i = self.formula._to_formula(formula, query_sdd, {})
+
+            print('Formula (query ^ evidence) to evaluate (i={})'.format(i))
+            print(formula)
+            if i is None:
+                # TODO: i == None if formula is False. (BaseFormula.FALSE is None). Now mapped to 0.0, correct?
+                result = 0.0
+            else:
+                result = formula.evaluate(index=i, semiring=self.semiring, smooth=smooth)
+            print('result', result)
 
             self._get_manager().deref(query_sdd)
 
-
-
-            # TODO only normalize when there are evidence or constraints.
 #            result = self.semiring.normalize(result, self.normalization)
             result = self.semiring.normalize(result, self._evidence_weight)
         return self.semiring.result(result, self.formula)

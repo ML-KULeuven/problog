@@ -116,7 +116,7 @@ from itertools import chain
 from problog.engine import DefaultEngine, ground
 from problog.evaluator import SemiringProbability, SemiringLogProbability, SemiringDensity, DensityValue
 from problog.logic import Term, Constant, Clause, AnnotatedDisjunction, Or, Var, \
-    InstantiationError, ArithmeticError, term2list, list2term
+    InstantiationError, ArithmeticError, term2list, list2term, Not
 from problog.program import PrologString, PrologFile, LogicProgram
 from problog.core import ProbLogError
 from problog.errors import process_error, InconsistentEvidenceError
@@ -349,7 +349,8 @@ def dist_perturb(d):
 
 class LFIProblem(LogicProgram):
     def __init__(self, source, examples, max_iter=10000, min_improv=1e-10, verbose=0, knowledge=None,
-                 leakprob=None, propagate_evidence=True, normalize=False, log=False, eps=1e-4, **extra):
+                 leakprob=None, propagate_evidence=True, normalize=False, log=False, eps=1e-4, use_parents=False,
+                 **extra):
         """
         Learn parameters using LFI.
 
@@ -375,6 +376,8 @@ class LFIProblem(LogicProgram):
         :type leakprob: float or None
         :param eps: Epsilon value which is the smallest value that is used
         :type eps: float
+        :param use_parents: Perform EM with P(x, parents | ev) instead of P(x | ev)
+        :type use_parents: bool
         :param extra: catch all for additional parameters (not used)
         """
         # logger = logging.getLogger('problog_lfi')
@@ -382,9 +385,12 @@ class LFIProblem(LogicProgram):
         self.source = source
         self._log = log
         self._eps = eps
+        self._use_parents = use_parents
 
         # The names of the atom for which we want to learn weights.
         self.names = []
+        self.bodies = []
+        self.parents = []
 
         # The weights to learn.
         # The initial weights are of type 'float'.
@@ -411,13 +417,48 @@ class LFIProblem(LogicProgram):
         self.extra = extra
 
         self._enable_normalize = normalize
-        self._adatoms = []
+        self._adatoms = []  # list AD atoms and total probability
+        self._adatomc = {}  # complement of AD atom (complement that adds to prob 1.0)
+        self._adparent = {}  # atom representing parent of AD
         self._catoms = set()  # Continuous atoms
 
     @property
     def count(self):
         """Number of parameters to learn."""
         return len(self.names)
+
+    def add_ad(self, rem_prob, indices):
+        """
+        :param rem_prob: Remaining probability that can be learned (if no fixed probabilities given, this will be one)
+        :param indices: Indices of atoms that together form an annotated disjunction.
+        :return: None
+        """
+        self._adatoms.append((rem_prob, indices))
+        for idx in indices:
+           self._adatomc[idx] = [idxo for idxo in indices if idxo != idx]
+
+    def count_ad(self):
+        return len(self._adatoms)
+
+    def append_ad(self, atom_index, ad_index=None):
+        if ad_index is None:
+            ad_index = -1
+        self._adatoms[ad_index][1].append(atom_index)
+        indices = self._adatoms[ad_index][1]
+        for idx in indices:
+            self._adatomc[idx] = [idxo for idxo in indices if idxo != idx]
+
+    def verify_ad(self, ad_index=None):
+        if ad_index is None:
+            ad_index = -1
+        if len(self._adatoms[ad_index][1]) == 1:
+            indices = self._adatoms[ad_index][1]
+            if self._use_parents:
+                self._adatomc[indices[0]] = [-1-indices[0]]  # No AD, complement is negative variable
+            else:
+                self._adatoms.pop(ad_index)
+                for idx in indices:
+                    del self._adatomc[idx]
 
     def prepare(self):
         """Prepare for learning."""
@@ -449,6 +490,7 @@ class LFIProblem(LogicProgram):
             return [(Term('t'), weight)]
 
     def _set_weight(self, index, args, weight):
+        print(self._weights)
         index = int(index)
         if not args:
             assert not isinstance(self._weights[index], dict)
@@ -461,6 +503,7 @@ class LFIProblem(LogicProgram):
                 weight = dist_perturb(weight)
             # TODO: Shouldn't all weights be perturbed to avoid identical updates?
             self._weights[index] = {args: weight}
+        print(self._weights)
 
     def _add_weight(self, weight):
         self._weights.append(weight)
@@ -477,25 +520,32 @@ class LFIProblem(LogicProgram):
 
         # Simple implementation: don't add neutral evidence.
 
+        use_parents = None
+        if self._use_parents:
+            use_parents = {
+                "adatomc": self._adatomc
+            }
+
         if self.propagate_evidence:
             result = ExampleSet()
             for index, example in enumerate(self.examples):
                 atoms, values, cvalues = zip(*example)
-                result.add(index, atoms, values, cvalues)
+                result.add(index, atoms, values, cvalues, use_parents=use_parents)
             return result
         else:
             # smarter: compile-once all examples with same atoms
             result = ExampleSet()
             for index, example in enumerate(self.examples):
                 atoms, values, cvalues = zip(*example)
-                result.add(index, atoms, values, cvalues)
+                result.add(index, atoms, values, cvalues, use_parents=use_parents)
             return result
 
     def _compile_examples(self):
         """Compile examples."""
         baseprogram = DefaultEngine(**self.extra).prepare(self)
         examples = self._process_examples()
-        for example in examples:
+        for i, example in enumerate(examples):
+            print("Compiling example {}/{}".format(i+1, len(examples)))
             example.compile(self, baseprogram)
         self._compiled_examples = examples
 
@@ -517,6 +567,7 @@ class LFIProblem(LogicProgram):
 
     def _process_atom_cont(self, atom, body):
         """Returns tuple ( prob_atom, [ additional clauses ] )"""
+        logger = logging.getLogger('problog_lfi')
         atoms_out = []
         extra_clauses = []
 
@@ -612,12 +663,14 @@ class LFIProblem(LogicProgram):
             raise ProbLogError('Continuous distributions that do not have to be learned is not yet supported.')
 
         if has_lfi_fact:
-            return [atoms_out[0]] + extra_clauses
+            result = [atoms_out[0]] + extra_clauses
         else:
             if body is None:
-                return [atoms_out[0]]
+                result = [atoms_out[0]]
             else:
-                return [Clause(atoms_out[0], body)]
+                result = [Clause(atoms_out[0], body)]
+        logger.debug("New clauses: " + str(result))
+        return result
 
     def _process_atom_discr(self, atom, body):
         """Returns tuple ( prob_atom, [ additional clauses ] )"""
@@ -653,7 +706,7 @@ class LFIProblem(LogicProgram):
         random_weights = [r * norm_factor for r in random_weights]
 
         # First argument is probability available for learnable weights in the AD.
-        self._adatoms.append((1.0 - fixed_probability, []))
+        self.add_ad(1.0 - fixed_probability, [])
 
         for atom in atoms:
             if atom.probability and atom.probability.functor == 't':
@@ -661,11 +714,16 @@ class LFIProblem(LogicProgram):
                 #
                 # Translate to
                 #   lfi(1)::lfi_fact_1(X).
-                #   p(X) :- body, lfi_fact1(X).
+                #   p(X) :- lfi_body_1(X).
+                #   lfi_body_1(X) :- body,   lfi_fact_1(X).
+                #   lfi_body_2(X) :- body, \+lfi_fact_1(X).
+                #
                 # For annotated disjunction: t(_)::p1(X); t(_)::p2(X) :- body.
-                #   lfi1::lfi_fact1(X); lfi2::lfi_fact2(X); ... .
-                #   p1(X) :- body, lfi_fact1(X).
-                #   p2(X) :- body, lfi_fact2(X).
+                #   lfi1::lfi_fact_1(X); lfi2::lfi_fact_2(X); ... .
+                #   p1(X) :- lfi_body_1(X).
+                #   lfi_body_1(X) :- body, lfi_fact_1(X).
+                #   p2(X) :- lfi_body_2(X).
+                #   lfi_body_2(X) :- body, lfi_fact_2(X).
                 #  ....
                 has_lfi_fact = True
 
@@ -694,34 +752,46 @@ class LFIProblem(LogicProgram):
                 prob_args = atom.probability.args[1:]
 
                 # 1) Introduce a new fact
-                lfi_fact = Term('lfi_fact', Constant(self.count), Term('t', *prob_args), *atom1.args)
-                lfi_prob = Term('lfi', Constant(self.count), Term('t', *prob_args))
+                lfi_fact = Term('lfi_fact', Constant(self.count),      Term('t', *prob_args), *atom1.args)
+                lfi_body = Term('lfi_body', Constant(self.count),      Term('t', *prob_args), *atom1.args)
+                # lfi_par  = Term('lfi_par',  Constant(self.count_ad()), Term('t', *prob_args), *atom1.args)
+                #TODO: lfi_par should be unique for rule, not per disjunct
+                lfi_par = Term('lfi_par',   Constant(self.count),      Term('t', *prob_args), *atom1.args)
+                lfi_prob = Term('lfi',      Constant(self.count),      Term('t', *prob_args))
 
                 # 2) Replacement atom
                 replacement = lfi_fact.with_probability(lfi_prob)
                 if body is None:
-                    new_body = lfi_fact
+                    new_body = Term('true')
                 else:
-                    new_body = body & lfi_fact
+                    new_body = body
 
                 # 3) Create redirection clause
-                extra_clauses += [Clause(atom1.with_probability(), new_body)]
+                if self._use_parents:
+                    extra_clauses += [Clause(atom1.with_probability(), lfi_body),
+                                      Clause(lfi_body, lfi_par & lfi_fact),
+                                      Clause(lfi_par, new_body)]
+                else:
+                    extra_clauses += [Clause(atom1.with_probability(), new_body)]
 
-                self._adatoms[-1][1].append(len(self._weights))
+                self.append_ad(len(self._weights))
                 # 4) Set initial weight
                 if start_value is None:
-                    self._add_weight(random_weights.pop(-1))
+                    start_value = random_weights.pop(-1)
+                    self._add_weight(start_value)
                 else:
                     self._add_weight(start_value)
 
                 # 5) Add name
                 self.names.append(atom)
+                if self._use_parents:
+                    self.bodies.append(lfi_body)
+                    self.parents.append(lfi_par)
                 atoms_out.append(replacement)
             else:
                 atoms_out.append(atom)
 
-        if len(self._adatoms[-1][1]) < 2:
-            self._adatoms.pop(-1)
+        self.verify_ad()
 
         if has_lfi_fact:
             if len(atoms) == 1:  # Simple clause
@@ -852,10 +922,12 @@ class LFIProblem(LogicProgram):
                     continue
                 extra_clauses = process_atom(clause.head, clause.body)
                 for extra in extra_clauses:
+                    print('rule', extra)
                     yield extra
             elif isinstance(clause, AnnotatedDisjunction):
                 extra_clauses = process_atom(Or.from_list(clause.heads), clause.body)
                 for extra in extra_clauses:
+                    print('rule', extra)
                     yield extra
             else:
                 if clause.functor == 'query' and clause.arity == 1:
@@ -863,6 +935,7 @@ class LFIProblem(LogicProgram):
                 # Fact
                 extra_clauses = process_atom(clause, None)
                 for extra in extra_clauses:
+                    print('rule', extra)
                     yield extra
 
         if self.leakprob is not None:
@@ -887,31 +960,49 @@ class LFIProblem(LogicProgram):
         logging.getLogger('problog_lfi').debug('Evaluating examples ...')
 
         if self._log:
-            evaluator = ExampleEvaluatorLog(self._weights, eps=self._eps)
+            evaluator = ExampleEvaluatorLog(self._weights, eps=self._eps, use_parents=self._use_parents)
         else:
-            evaluator = ExampleEvaluator(self._weights, eps=self._eps)
+            evaluator = ExampleEvaluator(self._weights, eps=self._eps, use_parents=self._use_parents)
 
         return list(chain.from_iterable(map(evaluator, self._compiled_examples)))
 
     def _update(self, results):
         """Update the current estimates based on the latest evaluation results."""
+        print("_update", results)
         logger = logging.getLogger('problog_lfi')
-        fact_marg = defaultdict(DensityValue)
+        # fact_marg = defaultdict(DensityValue)
+        fact_marg = defaultdict(int)
+        fact_body = defaultdict(int)
+        fact_par  = defaultdict(int)
         fact_count = defaultdict(int)
         fact_values = dict()
         score = 0.0
         for m, pEvidence, result, p_values in results:
-            if not isinstance(pEvidence, DensityValue):
-                pEvidence = DensityValue.wrap(pEvidence)
-            # print('result', result)
+            # if not isinstance(pEvidence, DensityValue):
+            #     pEvidence = DensityValue.wrap(pEvidence)
+            print('_update.result', result)
+            par_marg = dict()
             # print('p_values', p_values)
             for fact, value in result.items():
+                print(fact, value)
                 index = fact.args[0:2]
                 # if not index in fact_marg:
                 #     fact_marg[index] = polynomial.polynomial.polyzero
-                if not isinstance(value, DensityValue):
-                    value = DensityValue.wrap(value)
-                fact_marg[index] += value * m
+                # if not isinstance(value, DensityValue):
+                #     value = DensityValue.wrap(value)
+                if fact.functor == "lfi_fact":
+                    fact_marg[index] += value * m
+                if fact.functor == "lfi_body":
+                    fact_body[index] += value * m
+                elif fact.functor == "lfi_par":
+                    if index in par_marg:
+                        if par_marg[index] != value:
+                            raise Exception("Different parent margs for {}={} and previous {}={}"
+                                            .format(fact,value,index,par_marg[index]))
+                    par_marg[index] = value
+                    for o_index in self._adatomc[index[0]]:
+                        if o_index >= 0:
+                            par_marg[(o_index, index[1])] = value
                 fact_count[index] += m
                 if fact in p_values:
                     # print('fact in p_values', fact)
@@ -920,24 +1011,41 @@ class LFIProblem(LogicProgram):
                         fact_values[k] = (self._get_weight(index[0], index[1]), list())
                     p_value = p_values[fact]
                     fact_values[k][1].append((p_value, value, m))
+            for index, value in par_marg.items():
+                print('value[{}]={} ({})'.format(index, value, m))
+                fact_par[index] += value * m
             try:
-                pEvidence = pEvidence.value()
+                if isinstance(pEvidence, DensityValue):
+                    pEvidence = pEvidence.value()
                 score += math.log(pEvidence)
             except ValueError:
                 logger.debug('Pr(evidence) == 0.0')
                 # raise ProbLogError('Inconsistent evidence when updating')
 
-        for index in fact_marg:
+        if self._use_parents:
+            update_list = fact_body
+        else:
+            update_list = fact_marg
+        for index in update_list:
             k = (index[0], index[1])
             if k in fact_values:
                 logger.debug('Update continuous distribution {}: '.format(index) +
                              ', '.join([str(v) for v in fact_values[k]]))
                 self._set_weight(index[0], index[1], dist_prob_set(*fact_values[k], eps=self._eps))
             else:
-                if fact_count[index] > 0:
-                    logger.debug('Update probabilistic fact {}: {} / {}'
-                                 .format(index, fact_marg[index], fact_count[index]))
-                    prob = float(fact_marg[index] / fact_count[index])
+                if self._use_parents:
+                    if float(fact_body[index]) == 0.0:
+                        prob = 0.0
+                    else:
+                        prob = float(fact_body[index]) / float(fact_par[index])
+                    logger.debug('Update probabilistic fact {}: {} / {} = {}'
+                                 .format(index, fact_body[index], fact_par[index], prob))
+                    self._set_weight(index[0], index[1], prob)
+                elif fact_count[index] > 0:
+                    # TODO: This assumes the estimate for true and false add up to one (not true for AD)
+                    prob = float(fact_marg[index]) / float(fact_count[index])
+                    logger.debug('Update probabilistic fact {}: {} / {} = {}'
+                                 .format(index, fact_marg[index], fact_count[index], prob))
                     self._set_weight(index[0], index[1], prob)
 
         if self._enable_normalize:
@@ -946,10 +1054,13 @@ class LFIProblem(LogicProgram):
         return score
 
     def _normalize_weights(self):
-        # TODO: This is actually indirectly the derived rule for EM for multivalued variables, thus should always be applied.
+        # TODO: too late here, AD should be taken into account in _update
         # Derivation is sum(all values for var=k) / sum(all values for i sum(all values for var=i))
+        print('_adatoms', self._adatoms)
 
         for available_prob, idx in self._adatoms:
+            if len(idx) == 1:
+                continue
             keys = set()
             for i in idx:
                 for key, val in self.get_weights(i):
@@ -963,6 +1074,7 @@ class LFIProblem(LogicProgram):
                 w = sum(self._get_weight(i, key, strict=False) for i in idx)
                 n = available_prob / w  # Some part of probability might be taken by non-learnable weights in AD.
                 for i in idx:
+                    print('normalize {}, {}: {} * {}'.format(i, key, self._get_weight(i, key, strict=False) * n))
                     self._set_weight(i, key, self._get_weight(i, key, strict=False) * n)
 
     def step(self):
@@ -982,7 +1094,12 @@ class LFIProblem(LogicProgram):
 
     def run(self):
         self.prepare()
-        logging.getLogger('problog_lfi').info('Weights to learn: %s' % self.names)
+        if self._use_parents:
+            logging.getLogger('problog_lfi').info('Weights to learn: %s' % self.names)
+            logging.getLogger('problog_lfi').info('Bodies: %s' % self.bodies)
+            logging.getLogger('problog_lfi').info('Parents: %s' % self.parents)
+        else:
+            logging.getLogger('problog_lfi').info('Weights to learn: %s' % self.names)
         logging.getLogger('problog_lfi').info('Initial weights: %s' % self._weights)
         delta = 1000
         prev_score = -1e10
@@ -1000,19 +1117,22 @@ class ExampleSet(object):
     def __init__(self):
         self._examples = {}
 
-    def add(self, index, atoms, values, cvalues):
+    def add(self, index, atoms, values, cvalues, use_parents=None):
         ex = self._examples.get((atoms, values))
         if ex is None:
-            self._examples[(atoms, values)] = Example(index, atoms, values, cvalues)
+            self._examples[(atoms, values)] = Example(index, atoms, values, cvalues, use_parents=use_parents)
         else:
             ex.add_index(index, cvalues)
 
     def __iter__(self):
         return iter(self._examples.values())
 
+    def __len__(self):
+        return len(self._examples)
+
 
 class Example(object):
-    def __init__(self, index, atoms, values, cvalues):
+    def __init__(self, index, atoms, values, cvalues, use_parents=None):
         """An example consists of a list of atoms and their corresponding values (True/False).
 
         Different continuous values are all mapped to True and stored in self.n.
@@ -1021,6 +1141,7 @@ class Example(object):
         self.values = tuple(values)
         self.compiled = []
         self.n = {tuple(cvalues): [index]}
+        self._use_parents = use_parents
 
     def __hash__(self):
         return hash((self.atoms, self.values))
@@ -1032,16 +1153,29 @@ class Example(object):
 
     def compile(self, lfi, baseprogram):
         ground_program = None  # Let the grounder decide
+        print('compile grounding:')
+        print(baseprogram)
+        print('...')
+        print(ground_program)
+        print(self.atoms)
         ground_program = ground(baseprogram, ground_program,
                                 evidence=list(zip(self.atoms, self.values)),
                                 propagate_evidence=lfi.propagate_evidence)
+        print('...')
+        print(ground_program)
+        lfi_queries = []
         for i, node, t in ground_program:
             if t == 'atom' and isinstance(node.probability, Term) and node.probability.functor == 'lfi':
                 factargs = ()
+                print('node.identifier', node.identifier)
                 if type(node.identifier) == tuple:
                     factargs = node.identifier[1]
                 fact = Term('lfi_fact', node.probability.args[0], node.probability.args[1], *factargs)
+                print('Adding query: ', fact, i)
                 ground_program.add_query(fact, i)
+                if self._use_parents:
+                    lfi_queries.append(Term('lfi_body', node.probability.args[0], node.probability.args[1], *factargs))
+                    lfi_queries.append(Term('lfi_par', node.probability.args[0], node.probability.args[1], *factargs))
             elif t == 'atom' and isinstance(node.probability, Term) and node.probability.functor == 'clfi':
                 factargs = ()
                 if type(node.identifier) == tuple:
@@ -1052,7 +1186,19 @@ class Example(object):
                 # TODO: check if non-lfi and continuous and save locations to replace later
                 #       lfi continuous probs are associated with lfi/2
                 pass
+
+        if self._use_parents:
+            ground_program = ground(baseprogram, ground_program,
+                                    evidence=list(zip(self.atoms, self.values)),
+                                    propagate_evidence=lfi.propagate_evidence,
+                                    queries=lfi_queries)
+            print('extra ground_program')
+            print(ground_program)
+
         self.compiled = lfi.knowledge.create_from(ground_program)
+        print("Compiled program")
+        print(self.compiled)
+
 
     def add_index(self, index, cvalues):
         k = tuple(cvalues)
@@ -1063,11 +1209,12 @@ class Example(object):
 
 
 class ExampleEvaluator(SemiringDensity):
-    def __init__(self, weights, eps):
+    def __init__(self, weights, eps, use_parents=None):
         SemiringDensity.__init__(self)
         self._weights = weights
         self._cevidence = None
         self._eps = eps
+        self._use_parents = use_parents
 
     def _get_weight(self, index, args, strict=True):
         index = int(index)
@@ -1124,6 +1271,7 @@ class ExampleEvaluator(SemiringDensity):
             return float(a)
 
     def __call__(self, example):
+        print('__call__')
         """Evaluate the model with its current estimates for all examples."""
         # print('=========>>>')
         at = example.atoms
@@ -1133,9 +1281,11 @@ class ExampleEvaluator(SemiringDensity):
         for cval, n in example.n.items():
             results.append(self._call_internal(at, val, cval, comp, n))
         # print('<<<=========')
+        print('__call__.results = ', results)
         return results
 
     def _call_internal(self, at, val, cval, comp, n):
+        print('__call_internal__')
         # print('=========')
         # print('ExampleEvaluator.__call__({},{},{},{})'.format(n, at, val, cval))
         # print('_weights: ', self._weights)
@@ -1143,7 +1293,6 @@ class ExampleEvaluator(SemiringDensity):
         self._cevidence = {}
         # p_values = {}
         for a, v, cv in zip(at, val, cval):
-            # print('__call__', a, v, cv)
             if a in evidence:
                 if cv is not None:
                     if self._cevidence[a] != cv:
@@ -1172,6 +1321,7 @@ class ExampleEvaluator(SemiringDensity):
                         p_values[node.name] = value
 
         try:
+            # TODO: The next step generates the entire formula if it is density and this is redone later (caching?)
             evaluator = comp.get_evaluator(semiring=self, evidence=evidence)
         except InconsistentEvidenceError as err:
             n = ','.join([str(ni + 1) for ni in n]) if isinstance(n, list) else n + 1
@@ -1181,7 +1331,11 @@ class ExampleEvaluator(SemiringDensity):
         p_queries = {}
         # Probability of query given evidence
         for name, node, label in evaluator.formula.labeled():
+            if self._use_parents and name.functor not in ['lfi_body', 'lfi_par']:
+                continue
+            print('evaluate start {}'.format(name), node)
             w = evaluator.evaluate(node)
+            print('evaluate {}: {} ({})'.format(name, w, len(n)))
             # w = evaluator.evaluate_fact(node)
             # print ("WWW", w, w1, w2)
             if isinstance(w, DensityValue):
@@ -1192,18 +1346,20 @@ class ExampleEvaluator(SemiringDensity):
                 p_queries[name] = 0.0
             else:
                 p_queries[name] = w
+        print('_call_internal.evaluate_evidence')
         p_evidence = evaluator.evaluate_evidence()
-        # print('__call__.result', p_evidence, '\n', p_queries, '\n', '\n '.join([str(v) for v in p_values.items()]))
+        print('_call_internal.result', p_evidence, '\n', p_queries, '\n\n '.join([str(v) for v in p_values.items()]))
 
         return len(n), p_evidence, p_queries, p_values
 
 
 class ExampleEvaluatorLog(SemiringLogProbability):
-    def __init__(self, weights, eps):
+    def __init__(self, weights, eps, use_parents=None):
         SemiringLogProbability.__init__(self)
         self._weights = weights
         self._cevidence = None
         self._eps = eps
+        self._use_parents = use_parents
 
     def _get_weight(self, index, args, strict=True):
         index = int(index)
@@ -1429,6 +1585,8 @@ def argparser():
                                  help="Normalize AD-weights (default).")
     normalize_group.add_argument('--nonormalize', action='store_false', dest='normalize',
                                  help="Do not normalize AD-weights.")
+    parser.add_argument('--useparents', action='store_true', dest='use_parents',
+                        help='Use parents to compute expectation')
     parser.add_argument('-v', '--verbose', action='count', default=0)
     parser.add_argument('--web', action='store_true', help=argparse.SUPPRESS)
     parser.add_argument('-a', '--arg', dest='args', action='append',
