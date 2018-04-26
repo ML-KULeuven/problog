@@ -343,6 +343,9 @@ class PrologParser(object):
         elif s[pos:pos + 2] == '==':
             return Token('==', pos, binop=(700, 'xfx', self.factory.build_binop),
                          functor=self._next_paren_open(s, pos)), pos + 2
+        elif s[pos:pos + 2] == '=>':
+            return Token('=>', pos, binop=(700, 'yfx', self.factory.build_binop),
+                         functor=self._next_paren_open(s, pos)), pos + 2
         else:
             return Token('=', pos, binop=(700, 'xfx', self.factory.build_binop),
                          functor=self._next_paren_open(s, pos)), pos + 1
