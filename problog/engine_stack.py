@@ -26,13 +26,14 @@ from __future__ import print_function
 import sys
 import random
 
-from .logic import Term, ArithmeticError, is_ground
+from .logic import Term, ArithmeticError, is_ground, list2term
 from .engine import UnifyError, instantiate, UnknownClause, UnknownClauseInternal, is_variable
 from .engine import NonGroundProbabilisticClause
 from .errors import GroundingError
 from .engine import ClauseDBEngine, substitute_head_args, substitute_call_args, unify_call_head, \
     unify_call_return, OccursCheck, substitute_simple
 from .engine_builtin import add_standard_builtins, IndirectCallCycleError
+from collections import defaultdict
 
 
 class NegativeCycle(GroundingError):
@@ -63,11 +64,10 @@ def complete(obj, source):
 
 
 def results_to_actions(resultlist, engine, node, context, target, parent, identifier,
-                       transform, is_root, database, **kwdargs):
+                        transform, is_root, database, **kwdargs):
     """Translates a list of results to actions.
 
-    :param resultlist:
-    :param engine:
+    :param results:
     :param node:
     :param context:
     :param target:
@@ -128,8 +128,7 @@ class StackBasedEngine(ClauseDBEngine):
         self.node_types['builtin'] = self.eval_builtin
         self.node_types['extern'] = self.eval_extern
 
-        self.active_cycles = set()
-
+        self.cycle_root = None
         self.pointer = 0
         self.stack_size = 128
         self.stack = [None] * self.stack_size
@@ -151,6 +150,7 @@ class StackBasedEngine(ClauseDBEngine):
         self.ignoring = set()
 
     def eval(self, node_id, **kwdargs):
+        # print (kwdargs.get('parent'))
         database = kwdargs['database']
 
         if kwdargs.get('parent') in self.ignoring:
@@ -194,29 +194,28 @@ class StackBasedEngine(ClauseDBEngine):
         self.stack[self.pointer] = record
         self.pointer += 1
 
-    # def notifyCycle(self, childnode):
-    #     # Optimization: we can usually stop when we reach a node on_cycle.
-    #     #   However, when we swap the cycle root we need to also notify the old cycle root
-    #     #    up to the new cycle root.
-    #     assert self.cycle_root is not None
-    #     root = self.cycle_root.pointer
-    #     # childnode = self.stack[child]
-    #     current = childnode.parent
-    #     actions = []
-    #     while current != root:
-    #         if current is None:
-    #             raise IndirectCallCycleError(
-    #                 location=childnode.database.lineno(childnode.node.location))
-    #         exec_node = self.stack[current]
-    #         if exec_node.on_cycle:
-    #             break
-    #         new_actions = exec_node.createCycle()
-    #         actions += new_actions
-    #         current = exec_node.parent
-    #     return actions
+    def notifyCycle(self, childnode):
+        # Optimization: we can usually stop when we reach a node on_cycle.
+        #   However, when we swap the cycle root we need to also notify the old cycle root
+        #    up to the new cycle root.
+        assert self.cycle_root is not None
+        root = self.cycle_root.pointer
+        # childnode = self.stack[child]
+        current = childnode.parent
+        actions = []
+        while current != root:
+            if current is None:
+                raise IndirectCallCycleError(
+                    location=childnode.database.lineno(childnode.node.location))
+            exec_node = self.stack[current]
+            if exec_node.on_cycle:
+                break
+            new_actions = exec_node.createCycle()
+            actions += new_actions
+            current = exec_node.parent
+        return actions
 
     def checkCycle(self, child, parent):
-        """Checks whether the cycle contains a Not"""
         current = child
         while current > parent:
             exec_node = self.stack[current]
@@ -241,8 +240,6 @@ class StackBasedEngine(ClauseDBEngine):
         else:
             return MessageFIFO(self)
 
-    # ##### CYCLE HANDLING ##########
-
     def in_cycle(self, pointer):
         """Check whether the node at the given pointer is inside a cycle.
 
@@ -251,133 +248,70 @@ class StackBasedEngine(ClauseDBEngine):
         """
         if pointer is None:
             return False
-        elif self.active_cycles is None:
+        elif self.cycle_root is None:
             return False
+        elif pointer == self.cycle_root.pointer:
+            return True
         else:
             node = self.stack[pointer]
             res = node.on_cycle or self.in_cycle(node.parent)
             return res
 
-    def get_ancestors(self, pointer):
-        """Retrieve the list of ancestors as a list of pointers."""
-
-        result = []
-        parent = self.stack[pointer].parent
-        while parent is not None:
-            parent_node = self.stack[parent]
-            result.append(parent)
-            parent = parent_node.parent
-        return result
-
-    def get_ancestors_siblings(self, pointer):
-        """Retrieve the list of ancestors, incl. those through siblings as a set of pointers."""
-        result = set()
-        parent_set = {self.stack[pointer].parent}
-        while parent_set:
-            result |= parent_set
-            parent_set = {self.stack[p].parent for p in parent_set if p is not None}
-            parent_set = parent_set - result
-        result -= {None}
-        return result
-
-    def find_cycle(self, pointer, primary):
+    def find_cycle(self, child, parent, force=False):
+        root_encountered = None
         cycle = []
-        while pointer is not None:
-            cycle.append(pointer)
-            current = self.stack[pointer]
-            if hasattr(current, 'siblings'):
-                for s in current.siblings:
-                    cycle_rest = self.find_cycle(s, primary)
+        while child is not None:
+            cycle.append(child)
+            childnode = self.stack[child]
+            if hasattr(childnode, 'siblings'):
+                for s in childnode.siblings:
+                    cycle_rest = self.find_cycle(s, parent, force=force)
                     if cycle_rest:
                         return cycle + cycle_rest
-            pointer = current.parent
-            if pointer == primary:
+            child = childnode.parent
+            if child == parent:
                 return cycle
-        return None
-
-    def process_cycle(self, pointer, primary):
-        actions = []
-
-        par = primary
-        par_node = self.stack[primary]
-        cur_node = self.stack[pointer]
-        cycle = self.find_cycle(pointer, primary)
-
-        # The current node is always a proxy (child or sibling).
-        cur_node.is_cycle_child = True
-
-        if cycle:
-            # is child
-
-            # Add cycle child to parent
-
-            actions += self.notify_cycle(cycle[1:])
-            if not par_node.cycle_children:
-                for p in [par] + par_node.siblings:
-                    anc2 = self.get_ancestors_siblings(p)
-                    if par in anc2:
-                        pass
-                    else:
-                        for a in anc2:
-                            self.stack[a].subcycles.add(par)
-            par_node.cycle_children.append(pointer)
-            par_node.flush_buffer(True)
-            for rn in par_node.results:
-                actions += cur_node.notifyResultMe(*rn)
-
-            self.active_cycles.add(par)
-
+            if self.cycle_root is not None and child == self.cycle_root.pointer:
+                root_encountered = len(cycle)
+        # if force:
+        #     return cycle
+        # else:
+        if root_encountered is not None:
+            return cycle[:root_encountered]
         else:
-            # there is no real cycle, but only a sibling
-            par_node.siblings.append(pointer)  # add the current node as a sibling to the primary
-
-            for rn in par_node.results:
-                actions += cur_node.notifyResultMe(*rn)
-
-            if not par_node.cycle_children:
-                anc2 = self.get_ancestors_siblings(pointer)
-                if par in anc2:
-                    pass
-                else:
-                    # TODO is this correct?
-                    # print ('SBC', par, par_node.subcycles)
-                    if par_node.subcycles:
-                        for a in anc2:
-                            self.stack[a].subcycles |= par_node.subcycles
-        return actions
+            return None
 
     def notify_cycle(self, cycle):
-        """Notify nodes that they are on a cycle and should continue unbuffered."""
         actions = []
-        for current in cycle:
+        for current in cycle[1:]:
             exec_node = self.stack[current]
             actions += exec_node.createCycle()
         return actions
+        #
+        #
+        # assert self.cycle_root is not None
+        # root = self.cycle_root.pointer
+        # # childnode = self.stack[child]
+        # current = childnode.parent
+        # actions = []
+        # while current != root:
+        #     if current is None:
+        #         raise IndirectCallCycleError(
+        #             location=childnode.database.lineno(childnode.node.location))
+        #     exec_node = self.stack[current]
+        #     if exec_node.on_cycle:
+        #         break
+        #     new_actions = exec_node.createCycle()
+        #     actions += new_actions
+        #     current = exec_node.parent
+        # return actions
 
-    def close_cycle(self, toplevel):
-
-        if self.full_trace:
-            print(self.active_cycles)
-
-        for cyc in self.active_cycles:
-            cyc_node = self.stack[cyc]
-            if not cyc_node.subcycles:  # & self.active_cycles):
-                if self.full_trace:
-                    self.printStack()
-                    print('CLOSE CYCLE', cyc)
-                    self.plotStack()
-                    sys.stdin.readline()
-
-                self.active_cycles.remove(cyc)
-
-                anc2 = self.get_ancestors_siblings(cyc)
-                for a in anc2:
-                    self.stack[a].subcycles.remove(cyc)
-
-                return cyc_node.closeCycle(toplevel)
-        return []
-
-    # ##### END CYCLE HANDLING ####
+    def is_real_cycle(self, child, parent):
+        cycle = self.find_cycle(child, parent)
+        if cycle:
+            return True
+        else:
+            return False
 
     def execute_init(self, node_id, target=None, database=None, is_root=None, **kwargs):
 
@@ -419,14 +353,14 @@ class StackBasedEngine(ClauseDBEngine):
             #   - args: the arguments of the action
             #   - context: the execution context
 
-            if self.active_cycles and actions.cycle_exhausted():
+            if self.cycle_root is not None and actions.cycle_exhausted():
                 if self.full_trace:
                     print('CLOSING CYCLE')
                     sys.stdin.readline()
                 # for message in actions:   # TODO cache
                 #     parent = actions._msg_parent(message)
                 #     print (parent, self.in_cycle(parent))
-                next_actions = self.close_cycle(not subcall)
+                next_actions = self.cycle_root.closeCycle(True)
                 actions += reversed(next_actions)
             else:
                 act, obj, args, context = actions.pop()
@@ -512,9 +446,12 @@ class StackBasedEngine(ClauseDBEngine):
                         else:  # pragma: no cover
                             raise InvalidEngineState('Unknown message')
 
-                    if not actions and not next_actions and self.active_cycles:
+                    if not actions and not next_actions and self.cycle_root is not None:
+                        if self.full_trace:
+                            print('CLOSE CYCLE')
+                            sys.stdin.readline()
                         # If there are no more actions and we have an active cycle, we should close the cycle.
-                        next_actions = self.close_cycle(not subcall)
+                        next_actions = self.cycle_root.closeCycle(True)
                     # Update the list of actions.
                     actions += list(reversed(next_actions))
 
@@ -589,15 +526,14 @@ class StackBasedEngine(ClauseDBEngine):
             #   - args: the arguments of the action
             #   - context: the execution context
 
-            if False and self.active_cycles and actions.cycle_exhausted():
-                # TODO close cycle when done
+            if self.cycle_root is not None and actions.cycle_exhausted():
                 if self.full_trace:
                     print ('CLOSING CYCLE')
                     sys.stdin.readline()
                 # for message in actions:   # TODO cache
                 #     parent = actions._msg_parent(message)
                 #     print (parent, self.in_cycle(parent))
-                next_actions = self.close_cycle(not subcall)
+                next_actions = self.cycle_root.closeCycle(True)
                 actions += reversed(next_actions)
             else:
                 act, obj, args, context = actions.pop()
@@ -684,9 +620,12 @@ class StackBasedEngine(ClauseDBEngine):
                         else:  # pragma: no cover
                             raise InvalidEngineState('Unknown message')
 
-                    if not actions and not next_actions and self.active_cycles:
+                    if not actions and not next_actions and self.cycle_root is not None:
+                        if self.full_trace:
+                            print ('CLOSE CYCLE')
+                            sys.stdin.readline()
                         # If there are no more actions and we have an active cycle, we should close the cycle.
-                        next_actions = self.close_cycle(not subcall)
+                        next_actions = self.cycle_root.closeCycle(True)
                     # Update the list of actions.
                     actions += list(reversed(next_actions))
 
@@ -713,7 +652,6 @@ class StackBasedEngine(ClauseDBEngine):
             self.printStack()  # pragma: no cover
             print ('Actions:', actions)
             print('Collected results:', solutions)  # pragma: no cover
-            print ('Active cycles:', self.active_cycles)
             raise InvalidEngineState('Engine did not complete correctly!')  # pragma: no cover
 
     def cleanup(self, obj):
@@ -725,7 +663,8 @@ class StackBasedEngine(ClauseDBEngine):
 
         self.ignoring.discard(obj)
 
-        assert obj not in self.active_cycles
+        if self.cycle_root and self.cycle_root.pointer == obj:
+            self.cycle_root = None
         self.stack[obj] = None
         while self.pointer > 0 and self.stack[self.pointer - 1] is None:
             self.pointer -= 1
@@ -781,73 +720,10 @@ class StackBasedEngine(ClauseDBEngine):
             if (pointer is None or pointer - 20 < i < pointer + 20) and x is not None:
                 if i == pointer:
                     print('>>> %s: %s' % (i, x))
+                elif self.cycle_root is not None and i == self.cycle_root.pointer:
+                    print('ccc %s: %s' % (i, x))
                 else:
                     print('    %s: %s' % (i, x))
-
-    def plotStack(self):
-
-        ds = ['digraph G {']
-        dss = []
-
-        skip = {}
-        for i, x in enumerate(self.stack):
-
-            ac = i in self.active_cycles
-
-            if x is None:
-                continue
-            cc = hasattr(x, 'is_cycle_child') and x.is_cycle_child
-            cp = ac and hasattr(x, 'is_cycle_parent') and x.is_cycle_parent
-
-
-            ptr = i
-            par = x.parent
-            try:
-                call = '\\n' + str(Term(x.call[0], *x.call[1:][0]))
-            except AttributeError:
-                call = ''
-
-            if call:
-                par = skip.get(par, par)
-
-                try:
-                    sbl = x.siblings
-                except AttributeError:
-                    sbl = []
-
-                if ac:
-                    try:
-                        ccs = x.cycle_children
-                    except AttributeError:
-                        ccs = []
-                else:
-                    ccs = []
-
-                if cp or ccs:
-                    e = ' style="filled" fillcolor="gray80"'
-                elif cc:
-                    e = ' shape="rect"'
-                else:
-                    e = ' '
-
-                ds.append('%(ptr)s [label="%(ptr)s%(call)s"%(e)s];' % locals())
-                ds.append('%(par)s -> %(ptr)s [weight="1000"];' % locals())
-                for s1 in sbl:
-                    dss.append('%(ptr)s -> %(s1)s [style="dotted", dir="none", weight="0"];' % locals())
-
-                for s1 in ccs:
-                    dss.append('%(ptr)s -> %(s1)s [style="dashed", dir="none", weight="0"];' % locals())
-
-            else:
-                skip[ptr] = skip.get(par, par)
-
-    #        print (m.groupdict())
-
-        ds += dss
-        ds.append('}')
-
-        with open('x.dot', 'w') as f:
-            f.write('\n'.join(ds))
 
     def eval_fact(self, parent, node_id, node, context, target, identifier, **kwdargs):
         try:
@@ -911,7 +787,7 @@ class StackBasedEngine(ClauseDBEngine):
                 # There is an active node.
                 if active_node.is_ground and active_node.results:
                     # If the node is ground, we can simply return the current result node.
-                    active_node.flush_buffer(True)
+                    active_node.flushBuffer(True)
                     active_node.is_cycle_parent = True  # Notify it that it's buffer was flushed
                     queue = results_to_actions(active_node.results, self, node, context, target, parent, identifier, transform, is_root, **kwdargs)
                     assert (len(queue) == 1)
@@ -1210,7 +1086,7 @@ class MessageAnyOrder(MessageQueue):
             return message[1]
 
     def cycle_exhausted(self):
-        if not self.engine.active_cycles:
+        if self.engine.cycle_root is None:
             return False
         else:
             for message in self:   # TODO cache
@@ -1293,7 +1169,6 @@ class EvalNode(object):
         self.transform = transform
         self.call = call
         self.on_cycle = False
-        self.subcycles = set()
 
     def notifyResult(self, arguments, node=0, is_last=False, parent=None):
         if parent is None:
@@ -1358,7 +1233,7 @@ class EvalOr(EvalNode):
         EvalNode.__init__(self, **parent_args)
         self.results = ResultSet()
         if not self.is_buffered():
-            self.flush_buffer(True)
+            self.flushBuffer(True)
         self.to_complete = len(self.node.children)
         self.engine.stats[0] += 1
 
@@ -1368,7 +1243,7 @@ class EvalOr(EvalNode):
     def isOnCycle(self):
         return self.on_cycle
 
-    def flush_buffer(self, cycle=False):
+    def flushBuffer(self, cycle=False):
         func = lambda result, nodes: self.target.add_or(nodes, readonly=(not cycle), name=None)
         self.results.collapse(func)
 
@@ -1405,7 +1280,7 @@ class EvalOr(EvalNode):
     def complete(self, source=None):
         self.to_complete -= 1
         if self.to_complete == 0:
-            self.flush_buffer()
+            self.flushBuffer()
             actions = []
             if self.is_buffered():
                 for result, node in self.results:
@@ -1418,7 +1293,7 @@ class EvalOr(EvalNode):
     def createCycle(self):
         if self.is_buffered():
             self.on_cycle = True
-            self.flush_buffer(True)
+            self.flushBuffer(True)
             actions = []
             for result, node in self.results:
                 actions += self.notifyResult(result, node)
@@ -1685,7 +1560,6 @@ class EvalDefine(EvalNode):
 
         self.cycle_children = []
         self.cycle_close = set()
-        self.subcycles = set()
         self.is_cycle_root = False
         self.is_cycle_child = False
         self.is_cycle_parent = False
@@ -1698,7 +1572,7 @@ class EvalDefine(EvalNode):
         self.engine.stats[1] += 1
 
         if not self.is_buffered():
-            self.flush_buffer(True)
+            self.flushBuffer(True)
 
     def notifyResult(self, arguments, node=0, is_last=False, parent=None):
         if not self.is_root:
@@ -1802,7 +1676,7 @@ class EvalDefine(EvalNode):
             if self.to_complete == 0:
                 cache_key = (self.node.functor, self.context)
                 # assert (not cache_key in self.target._cache)
-                self.flush_buffer()
+                self.flushBuffer()
                 self.target._cache[cache_key] = self.results
                 self.target._cache.deactivate(cache_key)
                 actions = []
@@ -1825,7 +1699,7 @@ class EvalDefine(EvalNode):
             else:
                 return False, []
 
-    def flush_buffer(self, cycle=False):
+    def flushBuffer(self, cycle=False):
         def func(res, nodes):
             cache_key = (self.node.functor, res)
             if cache_key in self.target._cache:
@@ -1863,85 +1737,78 @@ class EvalDefine(EvalNode):
         return bool(self.cycle_children) or self.is_cycle_parent
 
     def cycleDetected(self, cycle_parent):
-        """Informs the node that a cycle was detected.
+        queue = []
+        cycle = self.engine.find_cycle(self.pointer, cycle_parent.pointer, cycle_parent.isCycleParent())
 
-        The 'self' node is the new child node that was added to the tree.
+        if not cycle:
+            cycle_parent.siblings.append(self.pointer)
+            self.is_cycle_child = True
+            for result, node in cycle_parent.results:
+                if type(node) == list:
+                    raise IndirectCallCycleError()
+                queue += self.notifyResultMe(result, node)
+                queue += self.notifyResultMe(result, node)
+        else:
+            # goal = (self.node.functor, self.context)
+            # Get the top node of this cycle.
+            cycle_root = self.engine.cycle_root
+            # Mark this node as a cycle child
+            self.is_cycle_child = True
+            # Register this node as a cycle child of cycle_parent
+            cycle_parent.cycle_children.append(self.pointer)
 
-        :param cycle_parent: active evaluation node for the call
-        :return:
-        """
+            cycle_parent.flushBuffer(True)
+            for result, node in cycle_parent.results:
+                queue += self.notifyResultMe(result, node)
 
-        return self.engine.process_cycle(self.pointer, cycle_parent.pointer)
-
-
-        # queue = []
-        # cycle = self.engine.find_cycle(self.pointer, cycle_parent.pointer, cycle_parent.isCycleParent())
-        #
-        # if not cycle:
-        #     cycle_parent.siblings.append(self.pointer)
-        #     self.is_cycle_child = True
-        #     for result, node in cycle_parent.results:
-        #         if type(node) == list:
-        #             raise IndirectCallCycleError()
-        #         queue += self.notifyResultMe(result, node)
-        #         queue += self.notifyResultMe(result, node)
-        # else:
-        #     # goal = (self.node.functor, self.context)
-        #     # Get the top node of this cycle.
-        #     cycle_root = self.engine.cycle_root
-        #     # Mark this node as a cycle child
-        #     self.is_cycle_child = True
-        #     # Register this node as a cycle child of cycle_parent
-        #     cycle_parent.cycle_children.append(self.pointer)
-        #
-        #     cycle_parent.flush_buffer(True)
-        #     for result, node in cycle_parent.results:
-        #         queue += self.notifyResultMe(result, node)
-        #
-        #     if cycle_root is not None and cycle_parent.pointer < cycle_root.pointer:
-        #         # New parent is earlier in call stack as current cycle root
-        #         # Unset current root
-        #         # Unmark current cycle root
-        #         cycle_root.is_cycle_root = False
-        #         # Copy subcycle information from old root to new root
-        #         cycle_parent.cycle_close = cycle_root.cycle_close
-        #         cycle_root.cycle_close = set()
-        #         self.engine.cycle_root = cycle_parent
-        #         queue += cycle_root.createCycle()
-        #         queue += self.engine.notify_cycle(cycle)
-        #         # queue += self.engine.notifyCycle(cycle_root)
-        #             # cycle_root)  # Notify old cycle root up to new cycle root
-        #         cycle_root = None
-        #     if cycle_root is None:  # No active cycle
-        #         # Register cycle root with engine
-        #         self.engine.cycle_root = cycle_parent
-        #         # Mark parent as cycle root
-        #         cycle_parent.is_cycle_root = True
-        #         #
-        #         cycle_parent.cycle_close.add(self.pointer)
-        #         # Queue a create cycle message that will be passed up the call stack.
-        #         queue += self.engine.notify_cycle(cycle)
-        #         # queue += self.engine.notifyCycle(self)
-        #         # Send a close cycle message to the cycle root.
-        #     else:  # A cycle is already active
-        #         # The new one is a subcycle
-        #         # if not self.is_ground :
-        #         cycle_root.cycle_close.add(self.pointer)
-        #         # Queue a create cycle message that will be passed up the call stack.
-        #         queue += self.engine.notify_cycle(cycle)
-        #         if cycle_parent.pointer != self.engine.cycle_root.pointer:
-        #             to_cycle_root = self.engine.find_cycle(cycle_parent.pointer, self.engine.cycle_root.pointer)
-        #             if to_cycle_root is None:
-        #                 raise IndirectCallCycleError(self.database.lineno(self.node.location))
-        #             queue += cycle_parent.createCycle()
-        #             queue += self.engine.notify_cycle(to_cycle_root)
-        # return queue
+            if cycle_root is not None and cycle_parent.pointer < cycle_root.pointer:
+                # New parent is earlier in call stack as current cycle root
+                # Unset current root
+                # Unmark current cycle root
+                cycle_root.is_cycle_root = False
+                # Copy subcycle information from old root to new root
+                cycle_parent.cycle_close = cycle_root.cycle_close
+                cycle_root.cycle_close = set()
+                self.engine.cycle_root = cycle_parent
+                queue += cycle_root.createCycle()
+                queue += self.engine.notify_cycle(cycle)
+                # queue += self.engine.notifyCycle(cycle_root)
+                    # cycle_root)  # Notify old cycle root up to new cycle root
+                cycle_root = None
+            if cycle_root is None:  # No active cycle
+                # Register cycle root with engine
+                self.engine.cycle_root = cycle_parent
+                # Mark parent as cycle root
+                cycle_parent.is_cycle_root = True
+                #
+                cycle_parent.cycle_close.add(self.pointer)
+                # Queue a create cycle message that will be passed up the call stack.
+                queue += self.engine.notify_cycle(cycle)
+                # queue += self.engine.notifyCycle(self)
+                # Send a close cycle message to the cycle root.
+            else:  # A cycle is already active
+                # The new one is a subcycle
+                # if not self.is_ground :
+                cycle_root.cycle_close.add(self.pointer)
+                # Queue a create cycle message that will be passed up the call stack.
+                queue += self.engine.notify_cycle(cycle)
+                if cycle_parent.pointer != self.engine.cycle_root.pointer:
+                    to_cycle_root = self.engine.find_cycle(cycle_parent.pointer, self.engine.cycle_root.pointer)
+                    if to_cycle_root is None:
+                        raise IndirectCallCycleError(self.database.lineno(self.node.location))
+                    queue += cycle_parent.createCycle()
+                    queue += self.engine.notify_cycle(to_cycle_root)
+        return queue
 
     def closeCycle(self, toplevel):
-        actions = []
-        for cc in self.cycle_children:
-            actions += self.notifyComplete(parent=cc)
-        return actions
+        if self.is_cycle_root and toplevel:
+            self.engine.cycle_root = None
+            actions = []
+            for cc in self.cycle_close:
+                actions += self.notifyComplete(parent=cc)
+            return actions
+        else:
+            return []
 
     def createCycle(self):
         if self.on_cycle:  # Already on cycle
@@ -1952,7 +1819,7 @@ class EvalDefine(EvalNode):
         elif self.is_buffered():
             # Define node
             self.on_cycle = True
-            self.flush_buffer(True)
+            self.flushBuffer(True)
             actions = []
             for result, node in self.results:
                 actions += self.notifyResult(result, node)
@@ -1982,8 +1849,6 @@ class EvalDefine(EvalNode):
             extra.append('c_cl: %s' % (self.cycle_close,))
         if self.siblings:
             extra.append('sbl: %s' % (self.siblings,))
-        if self.subcycles:
-            extra.append('sbc: %s' % (self.subcycles,))
         if not self.is_buffered():
             extra.append('U')
         return EvalNode.__str__(self) + ' ' + ' '.join(extra)
