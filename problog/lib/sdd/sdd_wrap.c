@@ -9,11 +9,9 @@
  * ----------------------------------------------------------------------------- */
 
 
-#ifndef SWIGPYTHON
-#define SWIGPYTHON
+#ifndef SWIGTCL
+#define SWIGTCL
 #endif
-
-#define SWIG_PYTHON_DIRECTOR_NO_VTABLE
 
 /* -----------------------------------------------------------------------------
  *  This section contains generic SWIG labels for method/variable
@@ -140,14 +138,12 @@
 #endif
 
 
-#if defined(_DEBUG) && defined(SWIG_PYTHON_INTERPRETER_NO_DEBUG)
-/* Use debug wrappers with the Python release dll */
-# undef _DEBUG
-# include <Python.h>
-# define _DEBUG
-#else
-# include <Python.h>
-#endif
+#include <stdio.h>
+#include <tcl.h>
+#include <errno.h>
+#include <stdlib.h>
+#include <stdarg.h>
+#include <ctype.h>
 
 /* -----------------------------------------------------------------------------
  * swigrun.swg
@@ -739,364 +735,86 @@ SWIG_UnpackDataName(const char *c, void *ptr, size_t sz, const char *name) {
 
 
 
-/* Compatibility macros for Python 3 */
-#if PY_VERSION_HEX >= 0x03000000
-
-#define PyClass_Check(obj) PyObject_IsInstance(obj, (PyObject *)&PyType_Type)
-#define PyInt_Check(x) PyLong_Check(x)
-#define PyInt_AsLong(x) PyLong_AsLong(x)
-#define PyInt_FromLong(x) PyLong_FromLong(x)
-#define PyInt_FromSize_t(x) PyLong_FromSize_t(x)
-#define PyString_Check(name) PyBytes_Check(name)
-#define PyString_FromString(x) PyUnicode_FromString(x)
-#define PyString_Format(fmt, args)  PyUnicode_Format(fmt, args)
-#define PyString_AsString(str) PyBytes_AsString(str)
-#define PyString_Size(str) PyBytes_Size(str)	
-#define PyString_InternFromString(key) PyUnicode_InternFromString(key)
-#define Py_TPFLAGS_HAVE_CLASS Py_TPFLAGS_BASETYPE
-#define PyString_AS_STRING(x) PyUnicode_AS_STRING(x)
-#define _PyLong_FromSsize_t(x) PyLong_FromSsize_t(x)
-
-#endif
-
-#ifndef Py_TYPE
-#  define Py_TYPE(op) ((op)->ob_type)
-#endif
-
-/* SWIG APIs for compatibility of both Python 2 & 3 */
-
-#if PY_VERSION_HEX >= 0x03000000
-#  define SWIG_Python_str_FromFormat PyUnicode_FromFormat
-#else
-#  define SWIG_Python_str_FromFormat PyString_FromFormat
-#endif
-
-
-/* Warning: This function will allocate a new string in Python 3,
- * so please call SWIG_Python_str_DelForPy3(x) to free the space.
- */
-SWIGINTERN char*
-SWIG_Python_str_AsChar(PyObject *str)
-{
-#if PY_VERSION_HEX >= 0x03000000
-  char *cstr;
-  char *newstr;
-  Py_ssize_t len;
-  str = PyUnicode_AsUTF8String(str);
-  PyBytes_AsStringAndSize(str, &cstr, &len);
-  newstr = (char *) malloc(len+1);
-  memcpy(newstr, cstr, len+1);
-  Py_XDECREF(str);
-  return newstr;
-#else
-  return PyString_AsString(str);
-#endif
-}
-
-#if PY_VERSION_HEX >= 0x03000000
-#  define SWIG_Python_str_DelForPy3(x) free( (void*) (x) )
-#else
-#  define SWIG_Python_str_DelForPy3(x) 
-#endif
-
-
-SWIGINTERN PyObject*
-SWIG_Python_str_FromChar(const char *c)
-{
-#if PY_VERSION_HEX >= 0x03000000
-  return PyUnicode_FromString(c); 
-#else
-  return PyString_FromString(c);
-#endif
-}
-
-/* Add PyOS_snprintf for old Pythons */
-#if PY_VERSION_HEX < 0x02020000
-# if defined(_MSC_VER) || defined(__BORLANDC__) || defined(_WATCOM)
-#  define PyOS_snprintf _snprintf
-# else
-#  define PyOS_snprintf snprintf
-# endif
-#endif
-
-/* A crude PyString_FromFormat implementation for old Pythons */
-#if PY_VERSION_HEX < 0x02020000
-
-#ifndef SWIG_PYBUFFER_SIZE
-# define SWIG_PYBUFFER_SIZE 1024
-#endif
-
-static PyObject *
-PyString_FromFormat(const char *fmt, ...) {
-  va_list ap;
-  char buf[SWIG_PYBUFFER_SIZE * 2];
-  int res;
-  va_start(ap, fmt);
-  res = vsnprintf(buf, sizeof(buf), fmt, ap);
-  va_end(ap);
-  return (res < 0 || res >= (int)sizeof(buf)) ? 0 : PyString_FromString(buf);
-}
-#endif
-
-#ifndef PyObject_DEL
-# define PyObject_DEL PyObject_Del
-#endif
-
-/* A crude PyExc_StopIteration exception for old Pythons */
-#if PY_VERSION_HEX < 0x02020000
-# ifndef PyExc_StopIteration
-#  define PyExc_StopIteration PyExc_RuntimeError
-# endif
-# ifndef PyObject_GenericGetAttr
-#  define PyObject_GenericGetAttr 0
-# endif
-#endif
-
-/* Py_NotImplemented is defined in 2.1 and up. */
-#if PY_VERSION_HEX < 0x02010000
-# ifndef Py_NotImplemented
-#  define Py_NotImplemented PyExc_RuntimeError
-# endif
-#endif
-
-/* A crude PyString_AsStringAndSize implementation for old Pythons */
-#if PY_VERSION_HEX < 0x02010000
-# ifndef PyString_AsStringAndSize
-#  define PyString_AsStringAndSize(obj, s, len) {*s = PyString_AsString(obj); *len = *s ? strlen(*s) : 0;}
-# endif
-#endif
-
-/* PySequence_Size for old Pythons */
-#if PY_VERSION_HEX < 0x02000000
-# ifndef PySequence_Size
-#  define PySequence_Size PySequence_Length
-# endif
-#endif
-
-/* PyBool_FromLong for old Pythons */
-#if PY_VERSION_HEX < 0x02030000
-static
-PyObject *PyBool_FromLong(long ok)
-{
-  PyObject *result = ok ? Py_True : Py_False;
-  Py_INCREF(result);
-  return result;
-}
-#endif
-
-/* Py_ssize_t for old Pythons */
-/* This code is as recommended by: */
-/* http://www.python.org/dev/peps/pep-0353/#conversion-guidelines */
-#if PY_VERSION_HEX < 0x02050000 && !defined(PY_SSIZE_T_MIN)
-typedef int Py_ssize_t;
-# define PY_SSIZE_T_MAX INT_MAX
-# define PY_SSIZE_T_MIN INT_MIN
-typedef inquiry lenfunc;
-typedef intargfunc ssizeargfunc;
-typedef intintargfunc ssizessizeargfunc;
-typedef intobjargproc ssizeobjargproc;
-typedef intintobjargproc ssizessizeobjargproc;
-typedef getreadbufferproc readbufferproc;
-typedef getwritebufferproc writebufferproc;
-typedef getsegcountproc segcountproc;
-typedef getcharbufferproc charbufferproc;
-static long PyNumber_AsSsize_t (PyObject *x, void *SWIGUNUSEDPARM(exc))
-{
-  long result = 0;
-  PyObject *i = PyNumber_Int(x);
-  if (i) {
-    result = PyInt_AsLong(i);
-    Py_DECREF(i);
-  }
-  return result;
-}
-#endif
-
-#if PY_VERSION_HEX < 0x02050000
-#define PyInt_FromSize_t(x) PyInt_FromLong((long)x)
-#endif
-
-#if PY_VERSION_HEX < 0x02040000
-#define Py_VISIT(op)				\
-  do { 						\
-    if (op) {					\
-      int vret = visit((op), arg);		\
-      if (vret)					\
-        return vret;				\
-    }						\
-  } while (0)
-#endif
-
-#if PY_VERSION_HEX < 0x02030000
-typedef struct {
-  PyTypeObject type;
-  PyNumberMethods as_number;
-  PyMappingMethods as_mapping;
-  PySequenceMethods as_sequence;
-  PyBufferProcs as_buffer;
-  PyObject *name, *slots;
-} PyHeapTypeObject;
-#endif
-
-#if PY_VERSION_HEX < 0x02030000
-typedef destructor freefunc;
-#endif
-
-#if ((PY_MAJOR_VERSION == 2 && PY_MINOR_VERSION > 6) || \
-     (PY_MAJOR_VERSION == 3 && PY_MINOR_VERSION > 0) || \
-     (PY_MAJOR_VERSION > 3))
-# define SWIGPY_USE_CAPSULE
-# define SWIGPY_CAPSULE_NAME ((char*)"swig_runtime_data" SWIG_RUNTIME_VERSION ".type_pointer_capsule" SWIG_TYPE_TABLE_NAME)
-#endif
-
-#if PY_VERSION_HEX < 0x03020000
-#define PyDescr_TYPE(x) (((PyDescrObject *)(x))->d_type)
-#define PyDescr_NAME(x) (((PyDescrObject *)(x))->d_name)
-#define Py_hash_t long
-#endif
-
 /* -----------------------------------------------------------------------------
  * error manipulation
  * ----------------------------------------------------------------------------- */
 
-SWIGRUNTIME PyObject*
-SWIG_Python_ErrorType(int code) {
-  PyObject* type = 0;
+SWIGINTERN const char*
+SWIG_Tcl_ErrorType(int code) {
+  const char* type = 0;
   switch(code) {
   case SWIG_MemoryError:
-    type = PyExc_MemoryError;
+    type = "MemoryError";
     break;
   case SWIG_IOError:
-    type = PyExc_IOError;
+    type = "IOError";
     break;
   case SWIG_RuntimeError:
-    type = PyExc_RuntimeError;
+    type = "RuntimeError";
     break;
   case SWIG_IndexError:
-    type = PyExc_IndexError;
+    type = "IndexError";
     break;
   case SWIG_TypeError:
-    type = PyExc_TypeError;
+    type = "TypeError";
     break;
   case SWIG_DivisionByZero:
-    type = PyExc_ZeroDivisionError;
+    type = "ZeroDivisionError";
     break;
   case SWIG_OverflowError:
-    type = PyExc_OverflowError;
+    type = "OverflowError";
     break;
   case SWIG_SyntaxError:
-    type = PyExc_SyntaxError;
+    type = "SyntaxError";
     break;
   case SWIG_ValueError:
-    type = PyExc_ValueError;
+    type = "ValueError";
     break;
   case SWIG_SystemError:
-    type = PyExc_SystemError;
+    type = "SystemError";
     break;
   case SWIG_AttributeError:
-    type = PyExc_AttributeError;
+    type = "AttributeError";
     break;
   default:
-    type = PyExc_RuntimeError;
+    type = "RuntimeError";
   }
   return type;
 }
 
 
-SWIGRUNTIME void
-SWIG_Python_AddErrorMsg(const char* mesg)
+SWIGINTERN void
+SWIG_Tcl_SetErrorObj(Tcl_Interp *interp, const char *ctype, Tcl_Obj *obj)
 {
-  PyObject *type = 0;
-  PyObject *value = 0;
-  PyObject *traceback = 0;
-
-  if (PyErr_Occurred()) PyErr_Fetch(&type, &value, &traceback);
-  if (value) {
-    char *tmp;
-    PyObject *old_str = PyObject_Str(value);
-    PyErr_Clear();
-    Py_XINCREF(type);
-
-    PyErr_Format(type, "%s %s", tmp = SWIG_Python_str_AsChar(old_str), mesg);
-    SWIG_Python_str_DelForPy3(tmp);
-    Py_DECREF(old_str);
-    Py_DECREF(value);
-  } else {
-    PyErr_SetString(PyExc_RuntimeError, mesg);
-  }
+  Tcl_ResetResult(interp);
+  Tcl_SetObjResult(interp, obj);
+  Tcl_SetErrorCode(interp, "SWIG", ctype, NULL);
 }
 
-#if defined(SWIG_PYTHON_NO_THREADS)
-#  if defined(SWIG_PYTHON_THREADS)
-#    undef SWIG_PYTHON_THREADS
-#  endif
-#endif
-#if defined(SWIG_PYTHON_THREADS) /* Threading support is enabled */
-#  if !defined(SWIG_PYTHON_USE_GIL) && !defined(SWIG_PYTHON_NO_USE_GIL)
-#    if (PY_VERSION_HEX >= 0x02030000) /* For 2.3 or later, use the PyGILState calls */
-#      define SWIG_PYTHON_USE_GIL
-#    endif
-#  endif
-#  if defined(SWIG_PYTHON_USE_GIL) /* Use PyGILState threads calls */
-#    ifndef SWIG_PYTHON_INITIALIZE_THREADS
-#     define SWIG_PYTHON_INITIALIZE_THREADS  PyEval_InitThreads() 
-#    endif
-#    ifdef __cplusplus /* C++ code */
-       class SWIG_Python_Thread_Block {
-         bool status;
-         PyGILState_STATE state;
-       public:
-         void end() { if (status) { PyGILState_Release(state); status = false;} }
-         SWIG_Python_Thread_Block() : status(true), state(PyGILState_Ensure()) {}
-         ~SWIG_Python_Thread_Block() { end(); }
-       };
-       class SWIG_Python_Thread_Allow {
-         bool status;
-         PyThreadState *save;
-       public:
-         void end() { if (status) { PyEval_RestoreThread(save); status = false; }}
-         SWIG_Python_Thread_Allow() : status(true), save(PyEval_SaveThread()) {}
-         ~SWIG_Python_Thread_Allow() { end(); }
-       };
-#      define SWIG_PYTHON_THREAD_BEGIN_BLOCK   SWIG_Python_Thread_Block _swig_thread_block
-#      define SWIG_PYTHON_THREAD_END_BLOCK     _swig_thread_block.end()
-#      define SWIG_PYTHON_THREAD_BEGIN_ALLOW   SWIG_Python_Thread_Allow _swig_thread_allow
-#      define SWIG_PYTHON_THREAD_END_ALLOW     _swig_thread_allow.end()
-#    else /* C code */
-#      define SWIG_PYTHON_THREAD_BEGIN_BLOCK   PyGILState_STATE _swig_thread_block = PyGILState_Ensure()
-#      define SWIG_PYTHON_THREAD_END_BLOCK     PyGILState_Release(_swig_thread_block)
-#      define SWIG_PYTHON_THREAD_BEGIN_ALLOW   PyThreadState *_swig_thread_allow = PyEval_SaveThread()
-#      define SWIG_PYTHON_THREAD_END_ALLOW     PyEval_RestoreThread(_swig_thread_allow)
-#    endif
-#  else /* Old thread way, not implemented, user must provide it */
-#    if !defined(SWIG_PYTHON_INITIALIZE_THREADS)
-#      define SWIG_PYTHON_INITIALIZE_THREADS
-#    endif
-#    if !defined(SWIG_PYTHON_THREAD_BEGIN_BLOCK)
-#      define SWIG_PYTHON_THREAD_BEGIN_BLOCK
-#    endif
-#    if !defined(SWIG_PYTHON_THREAD_END_BLOCK)
-#      define SWIG_PYTHON_THREAD_END_BLOCK
-#    endif
-#    if !defined(SWIG_PYTHON_THREAD_BEGIN_ALLOW)
-#      define SWIG_PYTHON_THREAD_BEGIN_ALLOW
-#    endif
-#    if !defined(SWIG_PYTHON_THREAD_END_ALLOW)
-#      define SWIG_PYTHON_THREAD_END_ALLOW
-#    endif
-#  endif
-#else /* No thread support */
-#  define SWIG_PYTHON_INITIALIZE_THREADS
-#  define SWIG_PYTHON_THREAD_BEGIN_BLOCK
-#  define SWIG_PYTHON_THREAD_END_BLOCK
-#  define SWIG_PYTHON_THREAD_BEGIN_ALLOW
-#  define SWIG_PYTHON_THREAD_END_ALLOW
-#endif
+SWIGINTERN void
+SWIG_Tcl_SetErrorMsg(Tcl_Interp *interp, const char *ctype, const char *mesg)
+{
+  Tcl_ResetResult(interp);
+  Tcl_SetErrorCode(interp, "SWIG", ctype, NULL);
+  Tcl_AppendResult(interp, ctype, " ", mesg, NULL);
+  /*
+  Tcl_AddErrorInfo(interp, ctype);
+  Tcl_AddErrorInfo(interp, " ");
+  Tcl_AddErrorInfo(interp, mesg);
+  */
+}
+
+SWIGINTERNINLINE void
+SWIG_Tcl_AddErrorMsg(Tcl_Interp *interp, const char* mesg)
+{
+  Tcl_AddErrorInfo(interp, mesg);
+}
+
+
 
 /* -----------------------------------------------------------------------------
- * Python API portion that goes into the runtime
+ * SWIG API. Portion that goes into the runtime
  * ----------------------------------------------------------------------------- */
-
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -1106,1864 +824,789 @@ extern "C" {
  * ----------------------------------------------------------------------------- */
 
 /* Constant Types */
-#define SWIG_PY_POINTER 4
-#define SWIG_PY_BINARY  5
+#define SWIG_TCL_POINTER 4
+#define SWIG_TCL_BINARY  5
 
 /* Constant information structure */
 typedef struct swig_const_info {
-  int type;
-  char *name;
-  long lvalue;
-  double dvalue;
-  void   *pvalue;
-  swig_type_info **ptype;
+    int type;
+    char *name;
+    long lvalue;
+    double dvalue;
+    void   *pvalue;
+    swig_type_info **ptype;
 } swig_const_info;
 
+typedef int   (*swig_wrapper)(ClientData, Tcl_Interp *, int, Tcl_Obj *CONST []);
+typedef int   (*swig_wrapper_func)(ClientData, Tcl_Interp *, int, Tcl_Obj *CONST []);
+typedef char *(*swig_variable_func)(ClientData, Tcl_Interp *, char *, char *, int);
+typedef void  (*swig_delete_func)(ClientData);
 
-/* -----------------------------------------------------------------------------
- * Wrapper of PyInstanceMethod_New() used in Python 3
- * It is exported to the generated module, used for -fastproxy
- * ----------------------------------------------------------------------------- */
-#if PY_VERSION_HEX >= 0x03000000
-SWIGRUNTIME PyObject* SWIG_PyInstanceMethod_New(PyObject *SWIGUNUSEDPARM(self), PyObject *func)
-{
-  return PyInstanceMethod_New(func);
+typedef struct swig_method {
+  const char     *name;
+  swig_wrapper   method;
+} swig_method;
+
+typedef struct swig_attribute {
+  const char     *name;
+  swig_wrapper   getmethod;
+  swig_wrapper   setmethod;
+} swig_attribute;
+
+typedef struct swig_class {
+  const char         *name;
+  swig_type_info   **type;
+  swig_wrapper       constructor;
+  void              (*destructor)(void *);
+  swig_method        *methods;
+  swig_attribute     *attributes;
+  struct swig_class **bases;
+  const char              **base_names;
+  swig_module_info   *module;
+  Tcl_HashTable       hashtable;
+} swig_class;
+
+typedef struct swig_instance {
+  Tcl_Obj       *thisptr;
+  void          *thisvalue;
+  swig_class   *classptr;
+  int            destroy;
+  Tcl_Command    cmdtok;
+} swig_instance;
+
+/* Structure for command table */
+typedef struct {
+  const char *name;
+  int       (*wrapper)(ClientData, Tcl_Interp *, int, Tcl_Obj *CONST []);
+  ClientData  clientdata;
+} swig_command_info;
+
+/* Structure for variable linking table */
+typedef struct {
+  const char *name;
+  void *addr;
+  char * (*get)(ClientData, Tcl_Interp *, char *, char *, int);
+  char * (*set)(ClientData, Tcl_Interp *, char *, char *, int);
+} swig_var_info;
+
+
+/* -----------------------------------------------------------------------------*
+ *  Install a constant object 
+ * -----------------------------------------------------------------------------*/
+
+static Tcl_HashTable   swigconstTable;
+static int             swigconstTableinit = 0;
+
+SWIGINTERN void
+SWIG_Tcl_SetConstantObj(Tcl_Interp *interp, const char* name, Tcl_Obj *obj) {
+  int newobj;
+  Tcl_ObjSetVar2(interp,Tcl_NewStringObj(name,-1), NULL, obj, TCL_GLOBAL_ONLY);
+  Tcl_SetHashValue(Tcl_CreateHashEntry(&swigconstTable, name, &newobj), (ClientData) obj);
 }
-#else
-SWIGRUNTIME PyObject* SWIG_PyInstanceMethod_New(PyObject *SWIGUNUSEDPARM(self), PyObject *SWIGUNUSEDPARM(func))
-{
-  return NULL;
+
+SWIGINTERN Tcl_Obj *
+SWIG_Tcl_GetConstantObj(const char *key) {
+  Tcl_HashEntry *entryPtr;
+  if (!swigconstTableinit) return 0;
+  entryPtr = Tcl_FindHashEntry(&swigconstTable, key);
+  if (entryPtr) {
+    return (Tcl_Obj *) Tcl_GetHashValue(entryPtr);
+  }
+  return 0;
 }
-#endif
 
 #ifdef __cplusplus
 }
 #endif
 
 
+
 /* -----------------------------------------------------------------------------
- * pyrun.swg
+ * tclrun.swg
  *
- * This file contains the runtime support for Python modules
- * and includes code for managing global variables and pointer
- * type checking.
- *
+ * This file contains the runtime support for Tcl modules and includes
+ * code for managing global variables and pointer type checking.
  * ----------------------------------------------------------------------------- */
 
 /* Common SWIG API */
 
 /* for raw pointers */
-#define SWIG_Python_ConvertPtr(obj, pptr, type, flags)  SWIG_Python_ConvertPtrAndOwn(obj, pptr, type, flags, 0)
-#define SWIG_ConvertPtr(obj, pptr, type, flags)         SWIG_Python_ConvertPtr(obj, pptr, type, flags)
-#define SWIG_ConvertPtrAndOwn(obj,pptr,type,flags,own)  SWIG_Python_ConvertPtrAndOwn(obj, pptr, type, flags, own)
-
-#ifdef SWIGPYTHON_BUILTIN
-#define SWIG_NewPointerObj(ptr, type, flags)            SWIG_Python_NewPointerObj(self, ptr, type, flags)
-#else
-#define SWIG_NewPointerObj(ptr, type, flags)            SWIG_Python_NewPointerObj(NULL, ptr, type, flags)
-#endif
-
-#define SWIG_InternalNewPointerObj(ptr, type, flags)	SWIG_Python_NewPointerObj(NULL, ptr, type, flags)
-
-#define SWIG_CheckImplicit(ty)                          SWIG_Python_CheckImplicit(ty) 
-#define SWIG_AcquirePtr(ptr, src)                       SWIG_Python_AcquirePtr(ptr, src)
-#define swig_owntype                                    int
+#define SWIG_ConvertPtr(oc, ptr, ty, flags)             SWIG_Tcl_ConvertPtr(interp, oc, ptr, ty, flags)
+#define SWIG_NewPointerObj(ptr, type, flags)            SWIG_Tcl_NewPointerObj(ptr, type, flags)
 
 /* for raw packed data */
-#define SWIG_ConvertPacked(obj, ptr, sz, ty)            SWIG_Python_ConvertPacked(obj, ptr, sz, ty)
-#define SWIG_NewPackedObj(ptr, sz, type)                SWIG_Python_NewPackedObj(ptr, sz, type)
+#define SWIG_ConvertPacked(obj, ptr, sz, ty)            SWIG_Tcl_ConvertPacked(interp, obj, ptr, sz, ty)
+#define SWIG_NewPackedObj(ptr, sz, type)                SWIG_Tcl_NewPackedObj(ptr, sz, type)
 
 /* for class or struct pointers */
-#define SWIG_ConvertInstance(obj, pptr, type, flags)    SWIG_ConvertPtr(obj, pptr, type, flags)
-#define SWIG_NewInstanceObj(ptr, type, flags)           SWIG_NewPointerObj(ptr, type, flags)
+#define SWIG_ConvertInstance(obj, pptr, type, flags)    SWIG_Tcl_ConvertPtr(interp, obj, pptr, type, flags)
+#define SWIG_NewInstanceObj(thisvalue, type, flags)     SWIG_Tcl_NewInstanceObj(interp, thisvalue, type, flags)
 
 /* for C or C++ function pointers */
-#define SWIG_ConvertFunctionPtr(obj, pptr, type)        SWIG_Python_ConvertFunctionPtr(obj, pptr, type)
-#define SWIG_NewFunctionPtrObj(ptr, type)               SWIG_Python_NewPointerObj(NULL, ptr, type, 0)
+#define SWIG_ConvertFunctionPtr(obj, pptr, type)        SWIG_Tcl_ConvertPtr(interp, obj, pptr, type, 0)
+#define SWIG_NewFunctionPtrObj(ptr, type)               SWIG_Tcl_NewPointerObj(ptr, type, 0)
 
 /* for C++ member pointers, ie, member methods */
-#define SWIG_ConvertMember(obj, ptr, sz, ty)            SWIG_Python_ConvertPacked(obj, ptr, sz, ty)
-#define SWIG_NewMemberObj(ptr, sz, type)                SWIG_Python_NewPackedObj(ptr, sz, type)
+#define SWIG_ConvertMember(obj, ptr, sz, ty)            SWIG_Tcl_ConvertPacked(interp,obj, ptr, sz, ty)
+#define SWIG_NewMemberObj(ptr, sz, type)                SWIG_Tcl_NewPackedObj(ptr, sz, type)
 
 
 /* Runtime API */
 
-#define SWIG_GetModule(clientdata)                      SWIG_Python_GetModule(clientdata)
-#define SWIG_SetModule(clientdata, pointer)             SWIG_Python_SetModule(pointer)
-#define SWIG_NewClientData(obj)                         SwigPyClientData_New(obj)
+#define SWIG_GetModule(clientdata)                      SWIG_Tcl_GetModule((Tcl_Interp *) (clientdata))	     
+#define SWIG_SetModule(clientdata, pointer)          	SWIG_Tcl_SetModule((Tcl_Interp *) (clientdata), pointer)
 
-#define SWIG_SetErrorObj                                SWIG_Python_SetErrorObj                            
-#define SWIG_SetErrorMsg                        	SWIG_Python_SetErrorMsg				   
-#define SWIG_ErrorType(code)                    	SWIG_Python_ErrorType(code)                        
-#define SWIG_Error(code, msg)            		SWIG_Python_SetErrorMsg(SWIG_ErrorType(code), msg) 
-#define SWIG_fail                        		goto fail					   
-
-
-/* Runtime API implementation */
 
 /* Error manipulation */
 
-SWIGINTERN void 
-SWIG_Python_SetErrorObj(PyObject *errtype, PyObject *obj) {
-  SWIG_PYTHON_THREAD_BEGIN_BLOCK; 
-  PyErr_SetObject(errtype, obj);
-  Py_DECREF(obj);
-  SWIG_PYTHON_THREAD_END_BLOCK;
-}
+#define SWIG_ErrorType(code)                            SWIG_Tcl_ErrorType(code)                                      
+#define SWIG_Error(code, msg)            		SWIG_Tcl_SetErrorMsg(interp, SWIG_Tcl_ErrorType(code), msg)
+#define SWIG_fail                        		goto fail						    
 
-SWIGINTERN void 
-SWIG_Python_SetErrorMsg(PyObject *errtype, const char *msg) {
-  SWIG_PYTHON_THREAD_BEGIN_BLOCK;
-  PyErr_SetString(errtype, msg);
-  SWIG_PYTHON_THREAD_END_BLOCK;
-}
 
-#define SWIG_Python_Raise(obj, type, desc)  SWIG_Python_SetErrorObj(SWIG_Python_ExceptionType(desc), obj)
+/* Tcl-specific SWIG API */
 
-/* Set a constant value */
+#define SWIG_Acquire(ptr)                               SWIG_Tcl_Acquire(ptr)                                     
+#define SWIG_MethodCommand                           	SWIG_Tcl_MethodCommand				       
+#define SWIG_Disown(ptr)                             	SWIG_Tcl_Disown(ptr)				       
+#define SWIG_ConvertPtrFromString(c, ptr, ty, flags) 	SWIG_Tcl_ConvertPtrFromString(interp, c, ptr, ty, flags)  
+#define SWIG_MakePtr(c, ptr, ty, flags)              	SWIG_Tcl_MakePtr(c, ptr, ty, flags)		       
+#define SWIG_PointerTypeFromString(c)                	SWIG_Tcl_PointerTypeFromString(c)			       
+#define SWIG_GetArgs                                 	SWIG_Tcl_GetArgs					       
+#define SWIG_GetConstantObj(key)                     	SWIG_Tcl_GetConstantObj(key)			       
+#define SWIG_ObjectConstructor                       	SWIG_Tcl_ObjectConstructor				       
+#define SWIG_Thisown(ptr)                            	SWIG_Tcl_Thisown(ptr)				       
+#define SWIG_ObjectDelete                            	SWIG_Tcl_ObjectDelete				       
 
-#if defined(SWIGPYTHON_BUILTIN)
 
-SWIGINTERN void
-SwigPyBuiltin_AddPublicSymbol(PyObject *seq, const char *key) {
-  PyObject *s = PyString_InternFromString(key);
-  PyList_Append(seq, s);
-  Py_DECREF(s);
-}
-
-SWIGINTERN void
-SWIG_Python_SetConstant(PyObject *d, PyObject *public_interface, const char *name, PyObject *obj) {   
-#if PY_VERSION_HEX < 0x02030000
-  PyDict_SetItemString(d, (char *)name, obj);
-#else
-  PyDict_SetItemString(d, name, obj);
-#endif
-  Py_DECREF(obj);
-  if (public_interface)
-    SwigPyBuiltin_AddPublicSymbol(public_interface, name);
-}
-
-#else
-
-SWIGINTERN void
-SWIG_Python_SetConstant(PyObject *d, const char *name, PyObject *obj) {   
-#if PY_VERSION_HEX < 0x02030000
-  PyDict_SetItemString(d, (char *)name, obj);
-#else
-  PyDict_SetItemString(d, name, obj);
-#endif
-  Py_DECREF(obj);                            
-}
-
-#endif
-
-/* Append a value to the result obj */
-
-SWIGINTERN PyObject*
-SWIG_Python_AppendOutput(PyObject* result, PyObject* obj) {
-#if !defined(SWIG_PYTHON_OUTPUT_TUPLE)
-  if (!result) {
-    result = obj;
-  } else if (result == Py_None) {
-    Py_DECREF(result);
-    result = obj;
-  } else {
-    if (!PyList_Check(result)) {
-      PyObject *o2 = result;
-      result = PyList_New(1);
-      PyList_SetItem(result, 0, o2);
-    }
-    PyList_Append(result,obj);
-    Py_DECREF(obj);
-  }
-  return result;
-#else
-  PyObject*   o2;
-  PyObject*   o3;
-  if (!result) {
-    result = obj;
-  } else if (result == Py_None) {
-    Py_DECREF(result);
-    result = obj;
-  } else {
-    if (!PyTuple_Check(result)) {
-      o2 = result;
-      result = PyTuple_New(1);
-      PyTuple_SET_ITEM(result, 0, o2);
-    }
-    o3 = PyTuple_New(1);
-    PyTuple_SET_ITEM(o3, 0, obj);
-    o2 = result;
-    result = PySequence_Concat(o2, o3);
-    Py_DECREF(o2);
-    Py_DECREF(o3);
-  }
-  return result;
-#endif
-}
-
-/* Unpack the argument tuple */
-
-SWIGINTERN Py_ssize_t
-SWIG_Python_UnpackTuple(PyObject *args, const char *name, Py_ssize_t min, Py_ssize_t max, PyObject **objs)
-{
-  if (!args) {
-    if (!min && !max) {
-      return 1;
-    } else {
-      PyErr_Format(PyExc_TypeError, "%s expected %s%d arguments, got none", 
-		   name, (min == max ? "" : "at least "), (int)min);
-      return 0;
-    }
-  }  
-  if (!PyTuple_Check(args)) {
-    if (min <= 1 && max >= 1) {
-      Py_ssize_t i;
-      objs[0] = args;
-      for (i = 1; i < max; ++i) {
-	objs[i] = 0;
-      }
-      return 2;
-    }
-    PyErr_SetString(PyExc_SystemError, "UnpackTuple() argument list is not a tuple");
-    return 0;
-  } else {
-    Py_ssize_t l = PyTuple_GET_SIZE(args);
-    if (l < min) {
-      PyErr_Format(PyExc_TypeError, "%s expected %s%d arguments, got %d", 
-		   name, (min == max ? "" : "at least "), (int)min, (int)l);
-      return 0;
-    } else if (l > max) {
-      PyErr_Format(PyExc_TypeError, "%s expected %s%d arguments, got %d", 
-		   name, (min == max ? "" : "at most "), (int)max, (int)l);
-      return 0;
-    } else {
-      Py_ssize_t i;
-      for (i = 0; i < l; ++i) {
-	objs[i] = PyTuple_GET_ITEM(args, i);
-      }
-      for (; l < max; ++l) {
-	objs[l] = 0;
-      }
-      return i + 1;
-    }    
-  }
-}
-
-/* A functor is a function object with one single object argument */
-#if PY_VERSION_HEX >= 0x02020000
-#define SWIG_Python_CallFunctor(functor, obj)	        PyObject_CallFunctionObjArgs(functor, obj, NULL);
-#else
-#define SWIG_Python_CallFunctor(functor, obj)	        PyObject_CallFunction(functor, "O", obj);
-#endif
-
-/*
-  Helper for static pointer initialization for both C and C++ code, for example
-  static PyObject *SWIG_STATIC_POINTER(MyVar) = NewSomething(...);
-*/
-#ifdef __cplusplus
-#define SWIG_STATIC_POINTER(var)  var
-#else
-#define SWIG_STATIC_POINTER(var)  var = 0; if (!var) var
-#endif
-
+#define SWIG_TCL_DECL_ARGS_2(arg1, arg2)                (Tcl_Interp *interp SWIGUNUSED, arg1, arg2)
+#define SWIG_TCL_CALL_ARGS_2(arg1, arg2)                (interp, arg1, arg2)
 /* -----------------------------------------------------------------------------
- * Pointer declarations
+ * pointers/data manipulation
  * ----------------------------------------------------------------------------- */
 
-/* Flags for new pointer objects */
-#define SWIG_POINTER_NOSHADOW       (SWIG_POINTER_OWN      << 1)
-#define SWIG_POINTER_NEW            (SWIG_POINTER_NOSHADOW | SWIG_POINTER_OWN)
+/* For backward compatibility only */
+#define SWIG_POINTER_EXCEPTION  0
+#define SWIG_GetConstant        SWIG_GetConstantObj
+#define SWIG_Tcl_GetConstant    SWIG_Tcl_GetConstantObj
 
-#define SWIG_POINTER_IMPLICIT_CONV  (SWIG_POINTER_DISOWN   << 1)
+#if TCL_MAJOR_VERSION >= 8 && TCL_MINOR_VERSION >= 5
+#define SWIG_TCL_HASHTABLE_INIT {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
+#else
+#define SWIG_TCL_HASHTABLE_INIT {0}
+#endif
 
-#define SWIG_BUILTIN_TP_INIT	    (SWIG_POINTER_OWN << 2)
-#define SWIG_BUILTIN_INIT	    (SWIG_BUILTIN_TP_INIT | SWIG_POINTER_OWN)
+#include "assert.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-/*  How to access Py_None */
-#if defined(_WIN32) || defined(__WIN32__) || defined(__CYGWIN__)
-#  ifndef SWIG_PYTHON_NO_BUILD_NONE
-#    ifndef SWIG_PYTHON_BUILD_NONE
-#      define SWIG_PYTHON_BUILD_NONE
-#    endif
-#  endif
-#endif
+/* Object support */
 
-#ifdef SWIG_PYTHON_BUILD_NONE
-#  ifdef Py_None
-#   undef Py_None
-#   define Py_None SWIG_Py_None()
-#  endif
-SWIGRUNTIMEINLINE PyObject * 
-_SWIG_Py_None(void)
-{
-  PyObject *none = Py_BuildValue((char*)"");
-  Py_DECREF(none);
-  return none;
-}
-SWIGRUNTIME PyObject * 
-SWIG_Py_None(void)
-{
-  static PyObject *SWIG_STATIC_POINTER(none) = _SWIG_Py_None();
-  return none;
-}
-#endif
-
-/* The python void return value */
-
-SWIGRUNTIMEINLINE PyObject * 
-SWIG_Py_Void(void)
-{
-  PyObject *none = Py_None;
-  Py_INCREF(none);
-  return none;
-}
-
-/* SwigPyClientData */
-
-typedef struct {
-  PyObject *klass;
-  PyObject *newraw;
-  PyObject *newargs;
-  PyObject *destroy;
-  int delargs;
-  int implicitconv;
-  PyTypeObject *pytype;
-} SwigPyClientData;
-
-SWIGRUNTIMEINLINE int 
-SWIG_Python_CheckImplicit(swig_type_info *ty)
-{
-  SwigPyClientData *data = (SwigPyClientData *)ty->clientdata;
-  return data ? data->implicitconv : 0;
-}
-
-SWIGRUNTIMEINLINE PyObject *
-SWIG_Python_ExceptionType(swig_type_info *desc) {
-  SwigPyClientData *data = desc ? (SwigPyClientData *) desc->clientdata : 0;
-  PyObject *klass = data ? data->klass : 0;
-  return (klass ? klass : PyExc_RuntimeError);
-}
-
-
-SWIGRUNTIME SwigPyClientData * 
-SwigPyClientData_New(PyObject* obj)
-{
-  if (!obj) {
-    return 0;
-  } else {
-    SwigPyClientData *data = (SwigPyClientData *)malloc(sizeof(SwigPyClientData));
-    /* the klass element */
-    data->klass = obj;
-    Py_INCREF(data->klass);
-    /* the newraw method and newargs arguments used to create a new raw instance */
-    if (PyClass_Check(obj)) {
-      data->newraw = 0;
-      data->newargs = obj;
-      Py_INCREF(obj);
-    } else {
-#if (PY_VERSION_HEX < 0x02020000)
-      data->newraw = 0;
-#else
-      data->newraw = PyObject_GetAttrString(data->klass, (char *)"__new__");
-#endif
-      if (data->newraw) {
-	Py_INCREF(data->newraw);
-	data->newargs = PyTuple_New(1);
-	PyTuple_SetItem(data->newargs, 0, obj);
-      } else {
-	data->newargs = obj;
-      }
-      Py_INCREF(data->newargs);
-    }
-    /* the destroy method, aka as the C++ delete method */
-    data->destroy = PyObject_GetAttrString(data->klass, (char *)"__swig_destroy__");
-    if (PyErr_Occurred()) {
-      PyErr_Clear();
-      data->destroy = 0;
-    }
-    if (data->destroy) {
-      int flags;
-      Py_INCREF(data->destroy);
-      flags = PyCFunction_GET_FLAGS(data->destroy);
-#ifdef METH_O
-      data->delargs = !(flags & (METH_O));
-#else
-      data->delargs = 0;
-#endif
-    } else {
-      data->delargs = 0;
-    }
-    data->implicitconv = 0;
-    data->pytype = 0;
-    return data;
+SWIGRUNTIME Tcl_HashTable*
+SWIG_Tcl_ObjectTable(void) {
+  static Tcl_HashTable  swigobjectTable;
+  static int            swigobjectTableinit = 0;
+  if (!swigobjectTableinit) {
+    Tcl_InitHashTable(&swigobjectTable, TCL_ONE_WORD_KEYS);
+    swigobjectTableinit = 1;
   }
+  return &swigobjectTable;
 }
 
-SWIGRUNTIME void 
-SwigPyClientData_Del(SwigPyClientData *data) {
-  Py_XDECREF(data->newraw);
-  Py_XDECREF(data->newargs);
-  Py_XDECREF(data->destroy);
-}
-
-/* =============== SwigPyObject =====================*/
-
-typedef struct {
-  PyObject_HEAD
-  void *ptr;
-  swig_type_info *ty;
-  int own;
-  PyObject *next;
-#ifdef SWIGPYTHON_BUILTIN
-  PyObject *dict;
-#endif
-} SwigPyObject;
-
-
-#ifdef SWIGPYTHON_BUILTIN
-
-SWIGRUNTIME PyObject *
-SwigPyObject_get___dict__(PyObject *v, PyObject *SWIGUNUSEDPARM(args))
-{
-  SwigPyObject *sobj = (SwigPyObject *)v;
-
-  if (!sobj->dict)
-    sobj->dict = PyDict_New();
-
-  Py_INCREF(sobj->dict);
-  return sobj->dict;
-}
-
-#endif
-
-SWIGRUNTIME PyObject *
-SwigPyObject_long(SwigPyObject *v)
-{
-  return PyLong_FromVoidPtr(v->ptr);
-}
-
-SWIGRUNTIME PyObject *
-SwigPyObject_format(const char* fmt, SwigPyObject *v)
-{
-  PyObject *res = NULL;
-  PyObject *args = PyTuple_New(1);
-  if (args) {
-    if (PyTuple_SetItem(args, 0, SwigPyObject_long(v)) == 0) {
-      PyObject *ofmt = SWIG_Python_str_FromChar(fmt);
-      if (ofmt) {
-#if PY_VERSION_HEX >= 0x03000000
-	res = PyUnicode_Format(ofmt,args);
-#else
-	res = PyString_Format(ofmt,args);
-#endif
-	Py_DECREF(ofmt);
-      }
-      Py_DECREF(args);
-    }
-  }
-  return res;
-}
-
-SWIGRUNTIME PyObject *
-SwigPyObject_oct(SwigPyObject *v)
-{
-  return SwigPyObject_format("%o",v);
-}
-
-SWIGRUNTIME PyObject *
-SwigPyObject_hex(SwigPyObject *v)
-{
-  return SwigPyObject_format("%x",v);
-}
-
-SWIGRUNTIME PyObject *
-#ifdef METH_NOARGS
-SwigPyObject_repr(SwigPyObject *v)
-#else
-SwigPyObject_repr(SwigPyObject *v, PyObject *args)
-#endif
-{
-  const char *name = SWIG_TypePrettyName(v->ty);
-  PyObject *repr = SWIG_Python_str_FromFormat("<Swig Object of type '%s' at %p>", (name ? name : "unknown"), (void *)v);
-  if (v->next) {
-# ifdef METH_NOARGS
-    PyObject *nrep = SwigPyObject_repr((SwigPyObject *)v->next);
-# else
-    PyObject *nrep = SwigPyObject_repr((SwigPyObject *)v->next, args);
-# endif
-# if PY_VERSION_HEX >= 0x03000000
-    PyObject *joined = PyUnicode_Concat(repr, nrep);
-    Py_DecRef(repr);
-    Py_DecRef(nrep);
-    repr = joined;
-# else
-    PyString_ConcatAndDel(&repr,nrep);
-# endif
-  }
-  return repr;  
+/* Acquire ownership of a pointer */
+SWIGRUNTIME void
+SWIG_Tcl_Acquire(void *ptr) {
+  int newobj;
+  Tcl_CreateHashEntry(SWIG_Tcl_ObjectTable(), (char *) ptr, &newobj);
 }
 
 SWIGRUNTIME int
-SwigPyObject_compare(SwigPyObject *v, SwigPyObject *w)
-{
-  void *i = v->ptr;
-  void *j = w->ptr;
-  return (i < j) ? -1 : ((i > j) ? 1 : 0);
-}
-
-/* Added for Python 3.x, would it also be useful for Python 2.x? */
-SWIGRUNTIME PyObject*
-SwigPyObject_richcompare(SwigPyObject *v, SwigPyObject *w, int op)
-{
-  PyObject* res;
-  if( op != Py_EQ && op != Py_NE ) {
-    Py_INCREF(Py_NotImplemented);
-    return Py_NotImplemented;
-  }
-  res = PyBool_FromLong( (SwigPyObject_compare(v, w)==0) == (op == Py_EQ) ? 1 : 0);
-  return res;  
-}
-
-
-SWIGRUNTIME PyTypeObject* SwigPyObject_TypeOnce(void);
-
-#ifdef SWIGPYTHON_BUILTIN
-static swig_type_info *SwigPyObject_stype = 0;
-SWIGRUNTIME PyTypeObject*
-SwigPyObject_type(void) {
-    SwigPyClientData *cd;
-    assert(SwigPyObject_stype);
-    cd = (SwigPyClientData*) SwigPyObject_stype->clientdata;
-    assert(cd);
-    assert(cd->pytype);
-    return cd->pytype;
-}
-#else
-SWIGRUNTIME PyTypeObject*
-SwigPyObject_type(void) {
-  static PyTypeObject *SWIG_STATIC_POINTER(type) = SwigPyObject_TypeOnce();
-  return type;
-}
-#endif
-
-SWIGRUNTIMEINLINE int
-SwigPyObject_Check(PyObject *op) {
-#ifdef SWIGPYTHON_BUILTIN
-  PyTypeObject *target_tp = SwigPyObject_type();
-  if (PyType_IsSubtype(op->ob_type, target_tp))
+SWIG_Tcl_Thisown(void *ptr) {
+  if (Tcl_FindHashEntry(SWIG_Tcl_ObjectTable(), (char *) ptr)) {
     return 1;
-  return (strcmp(op->ob_type->tp_name, "SwigPyObject") == 0);
-#else
-  return (Py_TYPE(op) == SwigPyObject_type())
-    || (strcmp(Py_TYPE(op)->tp_name,"SwigPyObject") == 0);
-#endif
-}
-
-SWIGRUNTIME PyObject *
-SwigPyObject_New(void *ptr, swig_type_info *ty, int own);
-
-SWIGRUNTIME void
-SwigPyObject_dealloc(PyObject *v)
-{
-  SwigPyObject *sobj = (SwigPyObject *) v;
-  PyObject *next = sobj->next;
-  if (sobj->own == SWIG_POINTER_OWN) {
-    swig_type_info *ty = sobj->ty;
-    SwigPyClientData *data = ty ? (SwigPyClientData *) ty->clientdata : 0;
-    PyObject *destroy = data ? data->destroy : 0;
-    if (destroy) {
-      /* destroy is always a VARARGS method */
-      PyObject *res;
-
-      /* PyObject_CallFunction() has the potential to silently drop
-         the active active exception.  In cases of unnamed temporary
-         variable or where we just finished iterating over a generator
-         StopIteration will be active right now, and this needs to
-         remain true upon return from SwigPyObject_dealloc.  So save
-         and restore. */
-      
-      PyObject *val = NULL, *type = NULL, *tb = NULL;
-      PyErr_Fetch(&val, &type, &tb);
-
-      if (data->delargs) {
-        /* we need to create a temporary object to carry the destroy operation */
-        PyObject *tmp = SwigPyObject_New(sobj->ptr, ty, 0);
-        res = SWIG_Python_CallFunctor(destroy, tmp);
-        Py_DECREF(tmp);
-      } else {
-        PyCFunction meth = PyCFunction_GET_FUNCTION(destroy);
-        PyObject *mself = PyCFunction_GET_SELF(destroy);
-        res = ((*meth)(mself, v));
-      }
-      if (!res)
-        PyErr_WriteUnraisable(destroy);
-
-      PyErr_Restore(val, type, tb);
-
-      Py_XDECREF(res);
-    } 
-#if !defined(SWIG_PYTHON_SILENT_MEMLEAK)
-    else {
-      const char *name = SWIG_TypePrettyName(ty);
-      printf("swig/python detected a memory leak of type '%s', no destructor found.\n", (name ? name : "unknown"));
-    }
-#endif
-  } 
-  Py_XDECREF(next);
-  PyObject_DEL(v);
-}
-
-SWIGRUNTIME PyObject* 
-SwigPyObject_append(PyObject* v, PyObject* next)
-{
-  SwigPyObject *sobj = (SwigPyObject *) v;
-#ifndef METH_O
-  PyObject *tmp = 0;
-  if (!PyArg_ParseTuple(next,(char *)"O:append", &tmp)) return NULL;
-  next = tmp;
-#endif
-  if (!SwigPyObject_Check(next)) {
-    PyErr_SetString(PyExc_TypeError, "Attempt to append a non SwigPyObject");
-    return NULL;
   }
-  sobj->next = next;
-  Py_INCREF(next);
-  return SWIG_Py_Void();
+  return 0;
 }
 
-SWIGRUNTIME PyObject* 
-#ifdef METH_NOARGS
-SwigPyObject_next(PyObject* v)
-#else
-SwigPyObject_next(PyObject* v, PyObject *SWIGUNUSEDPARM(args))
-#endif
-{
-  SwigPyObject *sobj = (SwigPyObject *) v;
-  if (sobj->next) {    
-    Py_INCREF(sobj->next);
-    return sobj->next;
-  } else {
-    return SWIG_Py_Void();
-  }
-}
-
-SWIGINTERN PyObject*
-#ifdef METH_NOARGS
-SwigPyObject_disown(PyObject *v)
-#else
-SwigPyObject_disown(PyObject* v, PyObject *SWIGUNUSEDPARM(args))
-#endif
-{
-  SwigPyObject *sobj = (SwigPyObject *)v;
-  sobj->own = 0;
-  return SWIG_Py_Void();
-}
-
-SWIGINTERN PyObject*
-#ifdef METH_NOARGS
-SwigPyObject_acquire(PyObject *v)
-#else
-SwigPyObject_acquire(PyObject* v, PyObject *SWIGUNUSEDPARM(args))
-#endif
-{
-  SwigPyObject *sobj = (SwigPyObject *)v;
-  sobj->own = SWIG_POINTER_OWN;
-  return SWIG_Py_Void();
-}
-
-SWIGINTERN PyObject*
-SwigPyObject_own(PyObject *v, PyObject *args)
-{
-  PyObject *val = 0;
-#if (PY_VERSION_HEX < 0x02020000)
-  if (!PyArg_ParseTuple(args,(char *)"|O:own",&val))
-#elif (PY_VERSION_HEX < 0x02050000)
-  if (!PyArg_UnpackTuple(args, (char *)"own", 0, 1, &val)) 
-#else
-  if (!PyArg_UnpackTuple(args, "own", 0, 1, &val)) 
-#endif
-    {
-      return NULL;
-    } 
-  else
-    {
-      SwigPyObject *sobj = (SwigPyObject *)v;
-      PyObject *obj = PyBool_FromLong(sobj->own);
-      if (val) {
-#ifdef METH_NOARGS
-	if (PyObject_IsTrue(val)) {
-	  SwigPyObject_acquire(v);
-	} else {
-	  SwigPyObject_disown(v);
-	}
-#else
-	if (PyObject_IsTrue(val)) {
-	  SwigPyObject_acquire(v,args);
-	} else {
-	  SwigPyObject_disown(v,args);
-	}
-#endif
-      } 
-      return obj;
-    }
-}
-
-#ifdef METH_O
-static PyMethodDef
-swigobject_methods[] = {
-  {(char *)"disown",  (PyCFunction)SwigPyObject_disown,  METH_NOARGS,  (char *)"releases ownership of the pointer"},
-  {(char *)"acquire", (PyCFunction)SwigPyObject_acquire, METH_NOARGS,  (char *)"acquires ownership of the pointer"},
-  {(char *)"own",     (PyCFunction)SwigPyObject_own,     METH_VARARGS, (char *)"returns/sets ownership of the pointer"},
-  {(char *)"append",  (PyCFunction)SwigPyObject_append,  METH_O,       (char *)"appends another 'this' object"},
-  {(char *)"next",    (PyCFunction)SwigPyObject_next,    METH_NOARGS,  (char *)"returns the next 'this' object"},
-  {(char *)"__repr__",(PyCFunction)SwigPyObject_repr,    METH_NOARGS,  (char *)"returns object representation"},
-  {0, 0, 0, 0}  
-};
-#else
-static PyMethodDef
-swigobject_methods[] = {
-  {(char *)"disown",  (PyCFunction)SwigPyObject_disown,  METH_VARARGS,  (char *)"releases ownership of the pointer"},
-  {(char *)"acquire", (PyCFunction)SwigPyObject_acquire, METH_VARARGS,  (char *)"acquires ownership of the pointer"},
-  {(char *)"own",     (PyCFunction)SwigPyObject_own,     METH_VARARGS,  (char *)"returns/sets ownership of the pointer"},
-  {(char *)"append",  (PyCFunction)SwigPyObject_append,  METH_VARARGS,  (char *)"appends another 'this' object"},
-  {(char *)"next",    (PyCFunction)SwigPyObject_next,    METH_VARARGS,  (char *)"returns the next 'this' object"},
-  {(char *)"__repr__",(PyCFunction)SwigPyObject_repr,   METH_VARARGS,  (char *)"returns object representation"},
-  {0, 0, 0, 0}  
-};
-#endif
-
-#if PY_VERSION_HEX < 0x02020000
-SWIGINTERN PyObject *
-SwigPyObject_getattr(SwigPyObject *sobj,char *name)
-{
-  return Py_FindMethod(swigobject_methods, (PyObject *)sobj, name);
-}
-#endif
-
-SWIGRUNTIME PyTypeObject*
-SwigPyObject_TypeOnce(void) {
-  static char swigobject_doc[] = "Swig object carries a C/C++ instance pointer";
-
-  static PyNumberMethods SwigPyObject_as_number = {
-    (binaryfunc)0, /*nb_add*/
-    (binaryfunc)0, /*nb_subtract*/
-    (binaryfunc)0, /*nb_multiply*/
-    /* nb_divide removed in Python 3 */
-#if PY_VERSION_HEX < 0x03000000
-    (binaryfunc)0, /*nb_divide*/
-#endif
-    (binaryfunc)0, /*nb_remainder*/
-    (binaryfunc)0, /*nb_divmod*/
-    (ternaryfunc)0,/*nb_power*/
-    (unaryfunc)0,  /*nb_negative*/
-    (unaryfunc)0,  /*nb_positive*/
-    (unaryfunc)0,  /*nb_absolute*/
-    (inquiry)0,    /*nb_nonzero*/
-    0,		   /*nb_invert*/
-    0,		   /*nb_lshift*/
-    0,		   /*nb_rshift*/
-    0,		   /*nb_and*/
-    0,		   /*nb_xor*/
-    0,		   /*nb_or*/
-#if PY_VERSION_HEX < 0x03000000
-    0,   /*nb_coerce*/
-#endif
-    (unaryfunc)SwigPyObject_long, /*nb_int*/
-#if PY_VERSION_HEX < 0x03000000
-    (unaryfunc)SwigPyObject_long, /*nb_long*/
-#else
-    0, /*nb_reserved*/
-#endif
-    (unaryfunc)0,                 /*nb_float*/
-#if PY_VERSION_HEX < 0x03000000
-    (unaryfunc)SwigPyObject_oct,  /*nb_oct*/
-    (unaryfunc)SwigPyObject_hex,  /*nb_hex*/
-#endif
-#if PY_VERSION_HEX >= 0x03050000 /* 3.5 */
-    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0 /* nb_inplace_add -> nb_inplace_matrix_multiply */
-#elif PY_VERSION_HEX >= 0x03000000 /* 3.0 */
-    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0 /* nb_inplace_add -> nb_index, nb_inplace_divide removed */
-#elif PY_VERSION_HEX >= 0x02050000 /* 2.5.0 */
-    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0 /* nb_inplace_add -> nb_index */
-#elif PY_VERSION_HEX >= 0x02020000 /* 2.2.0 */
-    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0 /* nb_inplace_add -> nb_inplace_true_divide */
-#elif PY_VERSION_HEX >= 0x02000000 /* 2.0.0 */
-    0,0,0,0,0,0,0,0,0,0,0 /* nb_inplace_add -> nb_inplace_or */
-#endif
-  };
-
-  static PyTypeObject swigpyobject_type;
-  static int type_init = 0;
-  if (!type_init) {
-    const PyTypeObject tmp = {
-#if PY_VERSION_HEX >= 0x03000000
-      PyVarObject_HEAD_INIT(NULL, 0)
-#else
-      PyObject_HEAD_INIT(NULL)
-      0,                                    /* ob_size */
-#endif
-      (char *)"SwigPyObject",               /* tp_name */
-      sizeof(SwigPyObject),                 /* tp_basicsize */
-      0,                                    /* tp_itemsize */
-      (destructor)SwigPyObject_dealloc,     /* tp_dealloc */
-      0,                                    /* tp_print */
-#if PY_VERSION_HEX < 0x02020000
-      (getattrfunc)SwigPyObject_getattr,    /* tp_getattr */
-#else
-      (getattrfunc)0,                       /* tp_getattr */
-#endif
-      (setattrfunc)0,                       /* tp_setattr */
-#if PY_VERSION_HEX >= 0x03000000
-      0, /* tp_reserved in 3.0.1, tp_compare in 3.0.0 but not used */
-#else
-      (cmpfunc)SwigPyObject_compare,        /* tp_compare */
-#endif
-      (reprfunc)SwigPyObject_repr,          /* tp_repr */
-      &SwigPyObject_as_number,              /* tp_as_number */
-      0,                                    /* tp_as_sequence */
-      0,                                    /* tp_as_mapping */
-      (hashfunc)0,                          /* tp_hash */
-      (ternaryfunc)0,                       /* tp_call */
-      0,                                    /* tp_str */
-      PyObject_GenericGetAttr,              /* tp_getattro */
-      0,                                    /* tp_setattro */
-      0,                                    /* tp_as_buffer */
-      Py_TPFLAGS_DEFAULT,                   /* tp_flags */
-      swigobject_doc,                       /* tp_doc */
-      0,                                    /* tp_traverse */
-      0,                                    /* tp_clear */
-      (richcmpfunc)SwigPyObject_richcompare,/* tp_richcompare */
-      0,                                    /* tp_weaklistoffset */
-#if PY_VERSION_HEX >= 0x02020000
-      0,                                    /* tp_iter */
-      0,                                    /* tp_iternext */
-      swigobject_methods,                   /* tp_methods */
-      0,                                    /* tp_members */
-      0,                                    /* tp_getset */
-      0,                                    /* tp_base */
-      0,                                    /* tp_dict */
-      0,                                    /* tp_descr_get */
-      0,                                    /* tp_descr_set */
-      0,                                    /* tp_dictoffset */
-      0,                                    /* tp_init */
-      0,                                    /* tp_alloc */
-      0,                                    /* tp_new */
-      0,                                    /* tp_free */
-      0,                                    /* tp_is_gc */
-      0,                                    /* tp_bases */
-      0,                                    /* tp_mro */
-      0,                                    /* tp_cache */
-      0,                                    /* tp_subclasses */
-      0,                                    /* tp_weaklist */
-#endif
-#if PY_VERSION_HEX >= 0x02030000
-      0,                                    /* tp_del */
-#endif
-#if PY_VERSION_HEX >= 0x02060000
-      0,                                    /* tp_version_tag */
-#endif
-#if PY_VERSION_HEX >= 0x03040000
-      0,                                    /* tp_finalize */
-#endif
-#ifdef COUNT_ALLOCS
-      0,                                    /* tp_allocs */
-      0,                                    /* tp_frees */
-      0,                                    /* tp_maxalloc */
-#if PY_VERSION_HEX >= 0x02050000
-      0,                                    /* tp_prev */
-#endif
-      0                                     /* tp_next */
-#endif
-    };
-    swigpyobject_type = tmp;
-    type_init = 1;
-#if PY_VERSION_HEX < 0x02020000
-    swigpyobject_type.ob_type = &PyType_Type;
-#else
-    if (PyType_Ready(&swigpyobject_type) < 0)
-      return NULL;
-#endif
-  }
-  return &swigpyobject_type;
-}
-
-SWIGRUNTIME PyObject *
-SwigPyObject_New(void *ptr, swig_type_info *ty, int own)
-{
-  SwigPyObject *sobj = PyObject_NEW(SwigPyObject, SwigPyObject_type());
-  if (sobj) {
-    sobj->ptr  = ptr;
-    sobj->ty   = ty;
-    sobj->own  = own;
-    sobj->next = 0;
-  }
-  return (PyObject *)sobj;
-}
-
-/* -----------------------------------------------------------------------------
- * Implements a simple Swig Packed type, and use it instead of string
- * ----------------------------------------------------------------------------- */
-
-typedef struct {
-  PyObject_HEAD
-  void *pack;
-  swig_type_info *ty;
-  size_t size;
-} SwigPyPacked;
-
+/* Disown a pointer.  Returns 1 if we owned it to begin with */
 SWIGRUNTIME int
-SwigPyPacked_print(SwigPyPacked *v, FILE *fp, int SWIGUNUSEDPARM(flags))
-{
-  char result[SWIG_BUFFER_SIZE];
-  fputs("<Swig Packed ", fp); 
-  if (SWIG_PackDataName(result, v->pack, v->size, 0, sizeof(result))) {
-    fputs("at ", fp); 
-    fputs(result, fp); 
-  }
-  fputs(v->ty->name,fp); 
-  fputs(">", fp);
-  return 0; 
-}
-  
-SWIGRUNTIME PyObject *
-SwigPyPacked_repr(SwigPyPacked *v)
-{
-  char result[SWIG_BUFFER_SIZE];
-  if (SWIG_PackDataName(result, v->pack, v->size, 0, sizeof(result))) {
-    return SWIG_Python_str_FromFormat("<Swig Packed at %s%s>", result, v->ty->name);
-  } else {
-    return SWIG_Python_str_FromFormat("<Swig Packed %s>", v->ty->name);
-  }  
-}
-
-SWIGRUNTIME PyObject *
-SwigPyPacked_str(SwigPyPacked *v)
-{
-  char result[SWIG_BUFFER_SIZE];
-  if (SWIG_PackDataName(result, v->pack, v->size, 0, sizeof(result))){
-    return SWIG_Python_str_FromFormat("%s%s", result, v->ty->name);
-  } else {
-    return SWIG_Python_str_FromChar(v->ty->name);
-  }  
-}
-
-SWIGRUNTIME int
-SwigPyPacked_compare(SwigPyPacked *v, SwigPyPacked *w)
-{
-  size_t i = v->size;
-  size_t j = w->size;
-  int s = (i < j) ? -1 : ((i > j) ? 1 : 0);
-  return s ? s : strncmp((char *)v->pack, (char *)w->pack, 2*v->size);
-}
-
-SWIGRUNTIME PyTypeObject* SwigPyPacked_TypeOnce(void);
-
-SWIGRUNTIME PyTypeObject*
-SwigPyPacked_type(void) {
-  static PyTypeObject *SWIG_STATIC_POINTER(type) = SwigPyPacked_TypeOnce();
-  return type;
-}
-
-SWIGRUNTIMEINLINE int
-SwigPyPacked_Check(PyObject *op) {
-  return ((op)->ob_type == SwigPyPacked_TypeOnce()) 
-    || (strcmp((op)->ob_type->tp_name,"SwigPyPacked") == 0);
-}
-
-SWIGRUNTIME void
-SwigPyPacked_dealloc(PyObject *v)
-{
-  if (SwigPyPacked_Check(v)) {
-    SwigPyPacked *sobj = (SwigPyPacked *) v;
-    free(sobj->pack);
-  }
-  PyObject_DEL(v);
-}
-
-SWIGRUNTIME PyTypeObject*
-SwigPyPacked_TypeOnce(void) {
-  static char swigpacked_doc[] = "Swig object carries a C/C++ instance pointer";
-  static PyTypeObject swigpypacked_type;
-  static int type_init = 0;
-  if (!type_init) {
-    const PyTypeObject tmp = {
-#if PY_VERSION_HEX>=0x03000000
-      PyVarObject_HEAD_INIT(NULL, 0)
-#else
-      PyObject_HEAD_INIT(NULL)
-      0,                                    /* ob_size */
-#endif
-      (char *)"SwigPyPacked",               /* tp_name */
-      sizeof(SwigPyPacked),                 /* tp_basicsize */
-      0,                                    /* tp_itemsize */
-      (destructor)SwigPyPacked_dealloc,     /* tp_dealloc */
-      (printfunc)SwigPyPacked_print,        /* tp_print */
-      (getattrfunc)0,                       /* tp_getattr */
-      (setattrfunc)0,                       /* tp_setattr */
-#if PY_VERSION_HEX>=0x03000000
-      0, /* tp_reserved in 3.0.1 */
-#else
-      (cmpfunc)SwigPyPacked_compare,        /* tp_compare */
-#endif
-      (reprfunc)SwigPyPacked_repr,          /* tp_repr */
-      0,                                    /* tp_as_number */
-      0,                                    /* tp_as_sequence */
-      0,                                    /* tp_as_mapping */
-      (hashfunc)0,                          /* tp_hash */
-      (ternaryfunc)0,                       /* tp_call */
-      (reprfunc)SwigPyPacked_str,           /* tp_str */
-      PyObject_GenericGetAttr,              /* tp_getattro */
-      0,                                    /* tp_setattro */
-      0,                                    /* tp_as_buffer */
-      Py_TPFLAGS_DEFAULT,                   /* tp_flags */
-      swigpacked_doc,                       /* tp_doc */
-      0,                                    /* tp_traverse */
-      0,                                    /* tp_clear */
-      0,                                    /* tp_richcompare */
-      0,                                    /* tp_weaklistoffset */
-#if PY_VERSION_HEX >= 0x02020000
-      0,                                    /* tp_iter */
-      0,                                    /* tp_iternext */
-      0,                                    /* tp_methods */
-      0,                                    /* tp_members */
-      0,                                    /* tp_getset */
-      0,                                    /* tp_base */
-      0,                                    /* tp_dict */
-      0,                                    /* tp_descr_get */
-      0,                                    /* tp_descr_set */
-      0,                                    /* tp_dictoffset */
-      0,                                    /* tp_init */
-      0,                                    /* tp_alloc */
-      0,                                    /* tp_new */
-      0,                                    /* tp_free */
-      0,                                    /* tp_is_gc */
-      0,                                    /* tp_bases */
-      0,                                    /* tp_mro */
-      0,                                    /* tp_cache */
-      0,                                    /* tp_subclasses */
-      0,                                    /* tp_weaklist */
-#endif
-#if PY_VERSION_HEX >= 0x02030000
-      0,                                    /* tp_del */
-#endif
-#if PY_VERSION_HEX >= 0x02060000
-      0,                                    /* tp_version_tag */
-#endif
-#if PY_VERSION_HEX >= 0x03040000
-      0,                                    /* tp_finalize */
-#endif
-#ifdef COUNT_ALLOCS
-      0,                                    /* tp_allocs */
-      0,                                    /* tp_frees */
-      0,                                    /* tp_maxalloc */
-#if PY_VERSION_HEX >= 0x02050000
-      0,                                    /* tp_prev */
-#endif
-      0                                     /* tp_next */
-#endif
-    };
-    swigpypacked_type = tmp;
-    type_init = 1;
-#if PY_VERSION_HEX < 0x02020000
-    swigpypacked_type.ob_type = &PyType_Type;
-#else
-    if (PyType_Ready(&swigpypacked_type) < 0)
-      return NULL;
-#endif
-  }
-  return &swigpypacked_type;
-}
-
-SWIGRUNTIME PyObject *
-SwigPyPacked_New(void *ptr, size_t size, swig_type_info *ty)
-{
-  SwigPyPacked *sobj = PyObject_NEW(SwigPyPacked, SwigPyPacked_type());
-  if (sobj) {
-    void *pack = malloc(size);
-    if (pack) {
-      memcpy(pack, ptr, size);
-      sobj->pack = pack;
-      sobj->ty   = ty;
-      sobj->size = size;
-    } else {
-      PyObject_DEL((PyObject *) sobj);
-      sobj = 0;
-    }
-  }
-  return (PyObject *) sobj;
-}
-
-SWIGRUNTIME swig_type_info *
-SwigPyPacked_UnpackData(PyObject *obj, void *ptr, size_t size)
-{
-  if (SwigPyPacked_Check(obj)) {
-    SwigPyPacked *sobj = (SwigPyPacked *)obj;
-    if (sobj->size != size) return 0;
-    memcpy(ptr, sobj->pack, size);
-    return sobj->ty;
-  } else {
-    return 0;
-  }
-}
-
-/* -----------------------------------------------------------------------------
- * pointers/data manipulation
- * ----------------------------------------------------------------------------- */
-
-SWIGRUNTIMEINLINE PyObject *
-_SWIG_This(void)
-{
-    return SWIG_Python_str_FromChar("this");
-}
-
-static PyObject *swig_this = NULL;
-
-SWIGRUNTIME PyObject *
-SWIG_This(void)
-{
-  if (swig_this == NULL)
-    swig_this = _SWIG_This();
-  return swig_this;
-}
-
-/* #define SWIG_PYTHON_SLOW_GETSET_THIS */
-
-/* TODO: I don't know how to implement the fast getset in Python 3 right now */
-#if PY_VERSION_HEX>=0x03000000
-#define SWIG_PYTHON_SLOW_GETSET_THIS 
-#endif
-
-SWIGRUNTIME SwigPyObject *
-SWIG_Python_GetSwigThis(PyObject *pyobj) 
-{
-  PyObject *obj;
-
-  if (SwigPyObject_Check(pyobj))
-    return (SwigPyObject *) pyobj;
-
-#ifdef SWIGPYTHON_BUILTIN
-  (void)obj;
-# ifdef PyWeakref_CheckProxy
-  if (PyWeakref_CheckProxy(pyobj)) {
-    pyobj = PyWeakref_GET_OBJECT(pyobj);
-    if (pyobj && SwigPyObject_Check(pyobj))
-      return (SwigPyObject*) pyobj;
-  }
-# endif
-  return NULL;
-#else
-
-  obj = 0;
-
-#if (!defined(SWIG_PYTHON_SLOW_GETSET_THIS) && (PY_VERSION_HEX >= 0x02030000))
-  if (PyInstance_Check(pyobj)) {
-    obj = _PyInstance_Lookup(pyobj, SWIG_This());      
-  } else {
-    PyObject **dictptr = _PyObject_GetDictPtr(pyobj);
-    if (dictptr != NULL) {
-      PyObject *dict = *dictptr;
-      obj = dict ? PyDict_GetItem(dict, SWIG_This()) : 0;
-    } else {
-#ifdef PyWeakref_CheckProxy
-      if (PyWeakref_CheckProxy(pyobj)) {
-	PyObject *wobj = PyWeakref_GET_OBJECT(pyobj);
-	return wobj ? SWIG_Python_GetSwigThis(wobj) : 0;
-      }
-#endif
-      obj = PyObject_GetAttr(pyobj,SWIG_This());
-      if (obj) {
-	Py_DECREF(obj);
-      } else {
-	if (PyErr_Occurred()) PyErr_Clear();
-	return 0;
-      }
-    }
-  }
-#else
-  obj = PyObject_GetAttr(pyobj,SWIG_This());
-  if (obj) {
-    Py_DECREF(obj);
-  } else {
-    if (PyErr_Occurred()) PyErr_Clear();
-    return 0;
-  }
-#endif
-  if (obj && !SwigPyObject_Check(obj)) {
-    /* a PyObject is called 'this', try to get the 'real this'
-       SwigPyObject from it */ 
-    return SWIG_Python_GetSwigThis(obj);
-  }
-  return (SwigPyObject *)obj;
-#endif
-}
-
-/* Acquire a pointer value */
-
-SWIGRUNTIME int
-SWIG_Python_AcquirePtr(PyObject *obj, int own) {
-  if (own == SWIG_POINTER_OWN) {
-    SwigPyObject *sobj = SWIG_Python_GetSwigThis(obj);
-    if (sobj) {
-      int oldown = sobj->own;
-      sobj->own = own;
-      return oldown;
-    }
+SWIG_Tcl_Disown(void *ptr) {
+  Tcl_HashEntry *entryPtr = Tcl_FindHashEntry(SWIG_Tcl_ObjectTable(), (char *) ptr);
+  if (entryPtr) {
+    Tcl_DeleteHashEntry(entryPtr);
+    return 1;
   }
   return 0;
 }
 
 /* Convert a pointer value */
-
 SWIGRUNTIME int
-SWIG_Python_ConvertPtrAndOwn(PyObject *obj, void **ptr, swig_type_info *ty, int flags, int *own) {
-  int res;
-  SwigPyObject *sobj;
-  int implicit_conv = (flags & SWIG_POINTER_IMPLICIT_CONV) != 0;
+SWIG_Tcl_ConvertPtrFromString(Tcl_Interp *interp, const char *c, void **ptr, swig_type_info *ty, int flags) {
+  swig_cast_info *tc;
+  /* Pointer values must start with leading underscore */
+  while (*c != '_') {
+    *ptr = (void *) 0;
+    if (strcmp(c,"NULL") == 0) return SWIG_OK;
 
-  if (!obj)
-    return SWIG_ERROR;
-  if (obj == Py_None && !implicit_conv) {
-    if (ptr)
-      *ptr = 0;
-    return SWIG_OK;
-  }
+    /* Empty string: not a pointer */
+    if (*c == 0) return SWIG_ERROR; 
 
-  res = SWIG_ERROR;
+    /* Hmmm. It could be an object name. */
 
-  sobj = SWIG_Python_GetSwigThis(obj);
-  if (own)
-    *own = 0;
-  while (sobj) {
-    void *vptr = sobj->ptr;
-    if (ty) {
-      swig_type_info *to = sobj->ty;
-      if (to == ty) {
-        /* no type cast needed */
-        if (ptr) *ptr = vptr;
-        break;
-      } else {
-        swig_cast_info *tc = SWIG_TypeCheck(to->name,ty);
-        if (!tc) {
-          sobj = (SwigPyObject *)sobj->next;
-        } else {
-          if (ptr) {
-            int newmemory = 0;
-            *ptr = SWIG_TypeCast(tc,vptr,&newmemory);
-            if (newmemory == SWIG_CAST_NEW_MEMORY) {
-              assert(own); /* badly formed typemap which will lead to a memory leak - it must set and use own to delete *ptr */
-              if (own)
-                *own = *own | SWIG_CAST_NEW_MEMORY;
-            }
-          }
-          break;
-        }
-      }
-    } else {
-      if (ptr) *ptr = vptr;
-      break;
-    }
-  }
-  if (sobj) {
-    if (own)
-      *own = *own | sobj->own;
-    if (flags & SWIG_POINTER_DISOWN) {
-      sobj->own = 0;
-    }
-    res = SWIG_OK;
-  } else {
-    if (implicit_conv) {
-      SwigPyClientData *data = ty ? (SwigPyClientData *) ty->clientdata : 0;
-      if (data && !data->implicitconv) {
-        PyObject *klass = data->klass;
-        if (klass) {
-          PyObject *impconv;
-          data->implicitconv = 1; /* avoid recursion and call 'explicit' constructors*/
-          impconv = SWIG_Python_CallFunctor(klass, obj);
-          data->implicitconv = 0;
-          if (PyErr_Occurred()) {
-            PyErr_Clear();
-            impconv = 0;
-          }
-          if (impconv) {
-            SwigPyObject *iobj = SWIG_Python_GetSwigThis(impconv);
-            if (iobj) {
-              void *vptr;
-              res = SWIG_Python_ConvertPtrAndOwn((PyObject*)iobj, &vptr, ty, 0, 0);
-              if (SWIG_IsOK(res)) {
-                if (ptr) {
-                  *ptr = vptr;
-                  /* transfer the ownership to 'ptr' */
-                  iobj->own = 0;
-                  res = SWIG_AddCast(res);
-                  res = SWIG_AddNewMask(res);
-                } else {
-                  res = SWIG_AddCast(res);		    
-                }
-              }
-            }
-            Py_DECREF(impconv);
-          }
-        }
-      }
-    }
-    if (!SWIG_IsOK(res) && obj == Py_None) {
-      if (ptr)
-        *ptr = 0;
-      if (PyErr_Occurred())
-        PyErr_Clear();
-      res = SWIG_OK;
-    }
-  }
-  return res;
-}
-
-/* Convert a function ptr value */
-
-SWIGRUNTIME int
-SWIG_Python_ConvertFunctionPtr(PyObject *obj, void **ptr, swig_type_info *ty) {
-  if (!PyCFunction_Check(obj)) {
-    return SWIG_ConvertPtr(obj, ptr, ty, 0);
-  } else {
-    void *vptr = 0;
-    
-    /* here we get the method pointer for callbacks */
-    const char *doc = (((PyCFunctionObject *)obj) -> m_ml -> ml_doc);
-    const char *desc = doc ? strstr(doc, "swig_ptr: ") : 0;
-    if (desc)
-      desc = ty ? SWIG_UnpackVoidPtr(desc + 10, &vptr, ty->name) : 0;
-    if (!desc) 
-      return SWIG_ERROR;
-    if (ty) {
-      swig_cast_info *tc = SWIG_TypeCheck(desc,ty);
-      if (tc) {
-        int newmemory = 0;
-        *ptr = SWIG_TypeCast(tc,vptr,&newmemory);
-        assert(!newmemory); /* newmemory handling not yet implemented */
-      } else {
+    /* Check if this is a command at all. Prevents <c> cget -this         */
+    /* from being called when c is not a command, firing the unknown proc */
+    if (Tcl_VarEval(interp,"info commands ", c, (char *) NULL) == TCL_OK) {
+      Tcl_Obj *result = Tcl_GetObjResult(interp);
+      if (*(Tcl_GetStringFromObj(result, NULL)) == 0) {
+        /* It's not a command, so it can't be a pointer */
+        Tcl_ResetResult(interp);
         return SWIG_ERROR;
       }
     } else {
-      *ptr = vptr;
+      /* This will only fail if the argument is multiple words. */
+      /* Multiple words are also not commands.                  */
+      Tcl_ResetResult(interp);
+      return SWIG_ERROR;
     }
-    return SWIG_OK;
+
+    /* Check if this is really a SWIG pointer */
+    if (Tcl_VarEval(interp,c," cget -this", (char *) NULL) != TCL_OK) {
+      Tcl_ResetResult(interp);
+      return SWIG_ERROR;
+    }
+
+    c = Tcl_GetStringFromObj(Tcl_GetObjResult(interp), NULL);
   }
-}
 
-/* Convert a packed value value */
-
-SWIGRUNTIME int
-SWIG_Python_ConvertPacked(PyObject *obj, void *ptr, size_t sz, swig_type_info *ty) {
-  swig_type_info *to = SwigPyPacked_UnpackData(obj, ptr, sz);
-  if (!to) return SWIG_ERROR;
+  c++;
+  c = SWIG_UnpackData(c,ptr,sizeof(void *));
   if (ty) {
-    if (to != ty) {
-      /* check type cast? */
-      swig_cast_info *tc = SWIG_TypeCheck(to->name,ty);
-      if (!tc) return SWIG_ERROR;
+    tc = c ? SWIG_TypeCheck(c,ty) : 0;
+    if (!tc) {
+      return SWIG_ERROR;
+    }
+    if (flags & SWIG_POINTER_DISOWN) {
+      SWIG_Disown((void *) *ptr);
+    }
+    {
+      int newmemory = 0;
+      *ptr = SWIG_TypeCast(tc,(void *) *ptr,&newmemory);
+      assert(!newmemory); /* newmemory handling not yet implemented */
     }
   }
   return SWIG_OK;
-}  
-
-/* -----------------------------------------------------------------------------
- * Create a new pointer object
- * ----------------------------------------------------------------------------- */
-
-/*
-  Create a new instance object, without calling __init__, and set the
-  'this' attribute.
-*/
-
-SWIGRUNTIME PyObject* 
-SWIG_Python_NewShadowInstance(SwigPyClientData *data, PyObject *swig_this)
-{
-#if (PY_VERSION_HEX >= 0x02020000)
-  PyObject *inst = 0;
-  PyObject *newraw = data->newraw;
-  if (newraw) {
-    inst = PyObject_Call(newraw, data->newargs, NULL);
-    if (inst) {
-#if !defined(SWIG_PYTHON_SLOW_GETSET_THIS)
-      PyObject **dictptr = _PyObject_GetDictPtr(inst);
-      if (dictptr != NULL) {
-	PyObject *dict = *dictptr;
-	if (dict == NULL) {
-	  dict = PyDict_New();
-	  *dictptr = dict;
-	  PyDict_SetItem(dict, SWIG_This(), swig_this);
-	}
-      }
-#else
-      PyObject *key = SWIG_This();
-      PyObject_SetAttr(inst, key, swig_this);
-#endif
-    }
-  } else {
-#if PY_VERSION_HEX >= 0x03000000
-    inst = ((PyTypeObject*) data->newargs)->tp_new((PyTypeObject*) data->newargs, Py_None, Py_None);
-    if (inst) {
-      PyObject_SetAttr(inst, SWIG_This(), swig_this);
-      Py_TYPE(inst)->tp_flags &= ~Py_TPFLAGS_VALID_VERSION_TAG;
-    }
-#else
-    PyObject *dict = PyDict_New();
-    if (dict) {
-      PyDict_SetItem(dict, SWIG_This(), swig_this);
-      inst = PyInstance_NewRaw(data->newargs, dict);
-      Py_DECREF(dict);
-    }
-#endif
-  }
-  return inst;
-#else
-#if (PY_VERSION_HEX >= 0x02010000)
-  PyObject *inst = 0;
-  PyObject *dict = PyDict_New();
-  if (dict) {
-    PyDict_SetItem(dict, SWIG_This(), swig_this);
-    inst = PyInstance_NewRaw(data->newargs, dict);
-    Py_DECREF(dict);
-  }
-  return (PyObject *) inst;
-#else
-  PyInstanceObject *inst = PyObject_NEW(PyInstanceObject, &PyInstance_Type);
-  if (inst == NULL) {
-    return NULL;
-  }
-  inst->in_class = (PyClassObject *)data->newargs;
-  Py_INCREF(inst->in_class);
-  inst->in_dict = PyDict_New();
-  if (inst->in_dict == NULL) {
-    Py_DECREF(inst);
-    return NULL;
-  }
-#ifdef Py_TPFLAGS_HAVE_WEAKREFS
-  inst->in_weakreflist = NULL;
-#endif
-#ifdef Py_TPFLAGS_GC
-  PyObject_GC_Init(inst);
-#endif
-  PyDict_SetItem(inst->in_dict, SWIG_This(), swig_this);
-  return (PyObject *) inst;
-#endif
-#endif
 }
 
+/* Convert a pointer value */
+SWIGRUNTIMEINLINE int
+SWIG_Tcl_ConvertPtr(Tcl_Interp *interp, Tcl_Obj *oc, void **ptr, swig_type_info *ty, int flags) {
+  return SWIG_Tcl_ConvertPtrFromString(interp, Tcl_GetStringFromObj(oc,NULL), ptr, ty, flags);
+}
+
+/* Convert a pointer value */
+SWIGRUNTIME char *
+SWIG_Tcl_PointerTypeFromString(char *c) {
+  char d;
+  /* Pointer values must start with leading underscore. NULL has no type */
+  if (*c != '_') {
+    return 0;
+  }
+  c++;
+  /* Extract hex value from pointer */
+  while ((d = *c)) {
+    if (!(((d >= '0') && (d <= '9')) || ((d >= 'a') && (d <= 'f')))) break;
+    c++;
+  }
+  return c;
+}
+
+/* Convert a packed value value */
+SWIGRUNTIME int
+SWIG_Tcl_ConvertPacked(Tcl_Interp *SWIGUNUSEDPARM(interp) , Tcl_Obj *obj, void *ptr, int sz, swig_type_info *ty) {
+  swig_cast_info *tc;
+  const char  *c;
+
+  if (!obj) goto type_error;
+  c = Tcl_GetStringFromObj(obj,NULL);
+  /* Pointer values must start with leading underscore */
+  if (*c != '_') goto type_error;
+  c++;
+  c = SWIG_UnpackData(c,ptr,sz);
+  if (ty) {
+    tc = SWIG_TypeCheck(c,ty);
+    if (!tc) goto type_error;
+  }
+  return SWIG_OK;
+
+ type_error:
+
+  return SWIG_ERROR;
+}
+
+
+/* Take a pointer and convert it to a string */
 SWIGRUNTIME void
-SWIG_Python_SetSwigThis(PyObject *inst, PyObject *swig_this)
-{
- PyObject *dict;
-#if (PY_VERSION_HEX >= 0x02020000) && !defined(SWIG_PYTHON_SLOW_GETSET_THIS)
- PyObject **dictptr = _PyObject_GetDictPtr(inst);
- if (dictptr != NULL) {
-   dict = *dictptr;
-   if (dict == NULL) {
-     dict = PyDict_New();
-     *dictptr = dict;
-   }
-   PyDict_SetItem(dict, SWIG_This(), swig_this);
-   return;
- }
-#endif
- dict = PyObject_GetAttrString(inst, (char*)"__dict__");
- PyDict_SetItem(dict, SWIG_This(), swig_this);
- Py_DECREF(dict);
-} 
-
-
-SWIGINTERN PyObject *
-SWIG_Python_InitShadowInstance(PyObject *args) {
-  PyObject *obj[2];
-  if (!SWIG_Python_UnpackTuple(args, "swiginit", 2, 2, obj)) {
-    return NULL;
+SWIG_Tcl_MakePtr(char *c, void *ptr, swig_type_info *ty, int SWIGUNUSEDPARM(flags)) {
+  if (ptr) {
+    *(c++) = '_';
+    c = SWIG_PackData(c,&ptr,sizeof(void *));
+    strcpy(c,ty->name);
   } else {
-    SwigPyObject *sthis = SWIG_Python_GetSwigThis(obj[0]);
-    if (sthis) {
-      SwigPyObject_append((PyObject*) sthis, obj[1]);
-    } else {
-      SWIG_Python_SetSwigThis(obj[0], obj[1]);
-    }
-    return SWIG_Py_Void();
+    strcpy(c,"NULL");
   }
 }
 
 /* Create a new pointer object */
-
-SWIGRUNTIME PyObject *
-SWIG_Python_NewPointerObj(PyObject *self, void *ptr, swig_type_info *type, int flags) {
-  SwigPyClientData *clientdata;
-  PyObject * robj;
-  int own;
-
-  if (!ptr)
-    return SWIG_Py_Void();
-
-  clientdata = type ? (SwigPyClientData *)(type->clientdata) : 0;
-  own = (flags & SWIG_POINTER_OWN) ? SWIG_POINTER_OWN : 0;
-  if (clientdata && clientdata->pytype) {
-    SwigPyObject *newobj;
-    if (flags & SWIG_BUILTIN_TP_INIT) {
-      newobj = (SwigPyObject*) self;
-      if (newobj->ptr) {
-        PyObject *next_self = clientdata->pytype->tp_alloc(clientdata->pytype, 0);
-        while (newobj->next)
-	  newobj = (SwigPyObject *) newobj->next;
-        newobj->next = next_self;
-        newobj = (SwigPyObject *)next_self;
-#ifdef SWIGPYTHON_BUILTIN
-        newobj->dict = 0;
-#endif
-      }
-    } else {
-      newobj = PyObject_New(SwigPyObject, clientdata->pytype);
-#ifdef SWIGPYTHON_BUILTIN
-      newobj->dict = 0;
-#endif
-    }
-    if (newobj) {
-      newobj->ptr = ptr;
-      newobj->ty = type;
-      newobj->own = own;
-      newobj->next = 0;
-      return (PyObject*) newobj;
-    }
-    return SWIG_Py_Void();
-  }
-
-  assert(!(flags & SWIG_BUILTIN_TP_INIT));
-
-  robj = SwigPyObject_New(ptr, type, own);
-  if (robj && clientdata && !(flags & SWIG_POINTER_NOSHADOW)) {
-    PyObject *inst = SWIG_Python_NewShadowInstance(clientdata, robj);
-    Py_DECREF(robj);
-    robj = inst;
-  }
+SWIGRUNTIMEINLINE Tcl_Obj *
+SWIG_Tcl_NewPointerObj(void *ptr, swig_type_info *type, int flags) {
+  Tcl_Obj *robj;
+  char result[SWIG_BUFFER_SIZE];
+  SWIG_MakePtr(result,ptr,type,flags);
+  robj = Tcl_NewStringObj(result,-1);
   return robj;
 }
 
-/* Create a new packed object */
-
-SWIGRUNTIMEINLINE PyObject *
-SWIG_Python_NewPackedObj(void *ptr, size_t sz, swig_type_info *type) {
-  return ptr ? SwigPyPacked_New((void *) ptr, sz, type) : SWIG_Py_Void();
+SWIGRUNTIME Tcl_Obj *
+SWIG_Tcl_NewPackedObj(void *ptr, int sz, swig_type_info *type) {
+  char result[1024];
+  char *r = result;
+  if ((2*sz + 1 + strlen(type->name)) > 1000) return 0;
+  *(r++) = '_';
+  r = SWIG_PackData(r,ptr,sz);
+  strcpy(r,type->name);
+  return Tcl_NewStringObj(result,-1);
 }
 
 /* -----------------------------------------------------------------------------*
  *  Get type list 
  * -----------------------------------------------------------------------------*/
 
-#ifdef SWIG_LINK_RUNTIME
-void *SWIG_ReturnGlobalTypeList(void *);
-#endif
-
-SWIGRUNTIME swig_module_info *
-SWIG_Python_GetModule(void *SWIGUNUSEDPARM(clientdata)) {
-  static void *type_pointer = (void *)0;
-  /* first check if module already created */
-  if (!type_pointer) {
-#ifdef SWIG_LINK_RUNTIME
-    type_pointer = SWIG_ReturnGlobalTypeList((void *)0);
-#else
-# ifdef SWIGPY_USE_CAPSULE
-    type_pointer = PyCapsule_Import(SWIGPY_CAPSULE_NAME, 0);
-# else
-    type_pointer = PyCObject_Import((char*)"swig_runtime_data" SWIG_RUNTIME_VERSION,
-				    (char*)"type_pointer" SWIG_TYPE_TABLE_NAME);
-# endif
-    if (PyErr_Occurred()) {
-      PyErr_Clear();
-      type_pointer = (void *)0;
-    }
-#endif
-  }
-  return (swig_module_info *) type_pointer;
-}
-
-#if PY_MAJOR_VERSION < 2
-/* PyModule_AddObject function was introduced in Python 2.0.  The following function
-   is copied out of Python/modsupport.c in python version 2.3.4 */
-SWIGINTERN int
-PyModule_AddObject(PyObject *m, char *name, PyObject *o)
-{
-  PyObject *dict;
-  if (!PyModule_Check(m)) {
-    PyErr_SetString(PyExc_TypeError, "PyModule_AddObject() needs module as first arg");
-    return SWIG_ERROR;
-  }
-  if (!o) {
-    PyErr_SetString(PyExc_TypeError, "PyModule_AddObject() needs non-NULL value");
-    return SWIG_ERROR;
-  }
+SWIGRUNTIME swig_module_info * 
+SWIG_Tcl_GetModule(Tcl_Interp *interp) {
+  const char *data;
+  swig_module_info *ret = 0;
   
-  dict = PyModule_GetDict(m);
-  if (dict == NULL) {
-    /* Internal error -- modules must have a dict! */
-    PyErr_Format(PyExc_SystemError, "module '%s' has no __dict__",
-		 PyModule_GetName(m));
-    return SWIG_ERROR;
+  /* first check if pointer already created */
+  data = Tcl_GetVar(interp, (char *)"swig_runtime_data_type_pointer" SWIG_RUNTIME_VERSION SWIG_TYPE_TABLE_NAME, TCL_GLOBAL_ONLY);
+  if (data) {
+    SWIG_UnpackData(data, &ret, sizeof(swig_type_info **));
   }
-  if (PyDict_SetItemString(dict, name, o))
-    return SWIG_ERROR;
-  Py_DECREF(o);
-  return SWIG_OK;
-}
-#endif
 
-SWIGRUNTIME void
-#ifdef SWIGPY_USE_CAPSULE
-SWIG_Python_DestroyModule(PyObject *obj)
-#else
-SWIG_Python_DestroyModule(void *vptr)
-#endif
-{
-#ifdef SWIGPY_USE_CAPSULE
-  swig_module_info *swig_module = (swig_module_info *) PyCapsule_GetPointer(obj, SWIGPY_CAPSULE_NAME);
-#else
-  swig_module_info *swig_module = (swig_module_info *) vptr;
-#endif
-  swig_type_info **types = swig_module->types;
-  size_t i;
-  for (i =0; i < swig_module->size; ++i) {
-    swig_type_info *ty = types[i];
-    if (ty->owndata) {
-      SwigPyClientData *data = (SwigPyClientData *) ty->clientdata;
-      if (data) SwigPyClientData_Del(data);
-    }
-  }
-  Py_DECREF(SWIG_This());
-  swig_this = NULL;
+  return ret;
 }
 
 SWIGRUNTIME void
-SWIG_Python_SetModule(swig_module_info *swig_module) {
-#if PY_VERSION_HEX >= 0x03000000
- /* Add a dummy module object into sys.modules */
-  PyObject *module = PyImport_AddModule((char*)"swig_runtime_data" SWIG_RUNTIME_VERSION);
-#else
-  static PyMethodDef swig_empty_runtime_method_table[] = { {NULL, NULL, 0, NULL} }; /* Sentinel */
-  PyObject *module = Py_InitModule((char*)"swig_runtime_data" SWIG_RUNTIME_VERSION, swig_empty_runtime_method_table);
-#endif
-#ifdef SWIGPY_USE_CAPSULE
-  PyObject *pointer = PyCapsule_New((void *) swig_module, SWIGPY_CAPSULE_NAME, SWIG_Python_DestroyModule);
-  if (pointer && module) {
-    PyModule_AddObject(module, (char*)"type_pointer_capsule" SWIG_TYPE_TABLE_NAME, pointer);
-  } else {
-    Py_XDECREF(pointer);
-  }
-#else
-  PyObject *pointer = PyCObject_FromVoidPtr((void *) swig_module, SWIG_Python_DestroyModule);
-  if (pointer && module) {
-    PyModule_AddObject(module, (char*)"type_pointer" SWIG_TYPE_TABLE_NAME, pointer);
-  } else {
-    Py_XDECREF(pointer);
-  }
-#endif
+SWIG_Tcl_SetModule(Tcl_Interp *interp, swig_module_info *module) {
+  char buf[SWIG_BUFFER_SIZE];
+  char *data;
+
+  /* create a new pointer */
+  data = SWIG_PackData(buf, &module, sizeof(swig_type_info **));
+  *data = 0;
+  Tcl_SetVar(interp, (char *)"swig_runtime_data_type_pointer" SWIG_RUNTIME_VERSION SWIG_TYPE_TABLE_NAME, buf, TCL_GLOBAL_ONLY);
 }
 
-/* The python cached type query */
-SWIGRUNTIME PyObject *
-SWIG_Python_TypeCache(void) {
-  static PyObject *SWIG_STATIC_POINTER(cache) = PyDict_New();
-  return cache;
-}
+/* -----------------------------------------------------------------------------*
+ *  Object auxiliaries
+ * -----------------------------------------------------------------------------*/
 
-SWIGRUNTIME swig_type_info *
-SWIG_Python_TypeQuery(const char *type)
-{
-  PyObject *cache = SWIG_Python_TypeCache();
-  PyObject *key = SWIG_Python_str_FromChar(type); 
-  PyObject *obj = PyDict_GetItem(cache, key);
-  swig_type_info *descriptor;
-  if (obj) {
-#ifdef SWIGPY_USE_CAPSULE
-    descriptor = (swig_type_info *) PyCapsule_GetPointer(obj, NULL);
-#else
-    descriptor = (swig_type_info *) PyCObject_AsVoidPtr(obj);
-#endif
-  } else {
-    swig_module_info *swig_module = SWIG_GetModule(0);
-    descriptor = SWIG_TypeQueryModule(swig_module, swig_module, type);
-    if (descriptor) {
-#ifdef SWIGPY_USE_CAPSULE
-      obj = PyCapsule_New((void*) descriptor, NULL, NULL);
-#else
-      obj = PyCObject_FromVoidPtr(descriptor, NULL);
-#endif
-      PyDict_SetItem(cache, key, obj);
-      Py_DECREF(obj);
-    }
-  }
-  Py_DECREF(key);
-  return descriptor;
-}
-
-/* 
-   For backward compatibility only
-*/
-#define SWIG_POINTER_EXCEPTION  0
-#define SWIG_arg_fail(arg)      SWIG_Python_ArgFail(arg)
-#define SWIG_MustGetPtr(p, type, argnum, flags)  SWIG_Python_MustGetPtr(p, type, argnum, flags)
-
-SWIGRUNTIME int
-SWIG_Python_AddErrMesg(const char* mesg, int infront)
-{  
-  if (PyErr_Occurred()) {
-    PyObject *type = 0;
-    PyObject *value = 0;
-    PyObject *traceback = 0;
-    PyErr_Fetch(&type, &value, &traceback);
-    if (value) {
-      char *tmp;
-      PyObject *old_str = PyObject_Str(value);
-      Py_XINCREF(type);
-      PyErr_Clear();
-      if (infront) {
-	PyErr_Format(type, "%s %s", mesg, tmp = SWIG_Python_str_AsChar(old_str));
-      } else {
-	PyErr_Format(type, "%s %s", tmp = SWIG_Python_str_AsChar(old_str), mesg);
-      }
-      SWIG_Python_str_DelForPy3(tmp);
-      Py_DECREF(old_str);
-    }
-    return 1;
-  } else {
-    return 0;
-  }
-}
-  
-SWIGRUNTIME int
-SWIG_Python_ArgFail(int argnum)
-{
-  if (PyErr_Occurred()) {
-    /* add information about failing argument */
-    char mesg[256];
-    PyOS_snprintf(mesg, sizeof(mesg), "argument number %d:", argnum);
-    return SWIG_Python_AddErrMesg(mesg, 1);
-  } else {
-    return 0;
-  }
-}
-
-SWIGRUNTIMEINLINE const char *
-SwigPyObject_GetDesc(PyObject *self)
-{
-  SwigPyObject *v = (SwigPyObject *)self;
-  swig_type_info *ty = v ? v->ty : 0;
-  return ty ? ty->str : "";
-}
 
 SWIGRUNTIME void
-SWIG_Python_TypeError(const char *type, PyObject *obj)
-{
-  if (type) {
-#if defined(SWIG_COBJECT_TYPES)
-    if (obj && SwigPyObject_Check(obj)) {
-      const char *otype = (const char *) SwigPyObject_GetDesc(obj);
-      if (otype) {
-	PyErr_Format(PyExc_TypeError, "a '%s' is expected, 'SwigPyObject(%s)' is received",
-		     type, otype);
-	return;
-      }
-    } else 
-#endif      
-    {
-      const char *otype = (obj ? obj->ob_type->tp_name : 0); 
-      if (otype) {
-	PyObject *str = PyObject_Str(obj);
-	const char *cstr = str ? SWIG_Python_str_AsChar(str) : 0;
-	if (cstr) {
-	  PyErr_Format(PyExc_TypeError, "a '%s' is expected, '%s(%s)' is received",
-		       type, otype, cstr);
-          SWIG_Python_str_DelForPy3(cstr);
-	} else {
-	  PyErr_Format(PyExc_TypeError, "a '%s' is expected, '%s' is received",
-		       type, otype);
-	}
-	Py_XDECREF(str);
-	return;
-      }
-    }   
-    PyErr_Format(PyExc_TypeError, "a '%s' is expected", type);
-  } else {
-    PyErr_Format(PyExc_TypeError, "unexpected type is received");
-  }
-}
-
-
-/* Convert a pointer value, signal an exception on a type mismatch */
-SWIGRUNTIME void *
-SWIG_Python_MustGetPtr(PyObject *obj, swig_type_info *ty, int SWIGUNUSEDPARM(argnum), int flags) {
-  void *result;
-  if (SWIG_Python_ConvertPtr(obj, &result, ty, flags) == -1) {
-    PyErr_Clear();
-#if SWIG_POINTER_EXCEPTION
-    if (flags) {
-      SWIG_Python_TypeError(SWIG_TypePrettyName(ty), obj);
-      SWIG_Python_ArgFail(argnum);
+SWIG_Tcl_ObjectDelete(ClientData clientData) {
+  swig_instance *si = (swig_instance *) clientData;
+  if (!si) return;
+  if (si->destroy && SWIG_Disown(si->thisvalue)) {
+    if (si->classptr->destructor) {
+      (si->classptr->destructor)(si->thisvalue);
     }
-#endif
   }
-  return result;
+  Tcl_DecrRefCount(si->thisptr);
+  free(si);
 }
 
-#ifdef SWIGPYTHON_BUILTIN
+/* Function to invoke object methods given an instance */
 SWIGRUNTIME int
-SWIG_Python_NonDynamicSetAttr(PyObject *obj, PyObject *name, PyObject *value) {
-  PyTypeObject *tp = obj->ob_type;
-  PyObject *descr;
-  PyObject *encoded_name;
-  descrsetfunc f;
-  int res = -1;
+SWIG_Tcl_MethodCommand(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST _objv[]) {
+  char *method,   *attrname;
+  swig_instance   *inst = (swig_instance *) clientData;
+  swig_method     *meth;
+  swig_attribute  *attr;
+  Tcl_Obj         *oldarg;
+  Tcl_Obj         **objv;
+  int              rcode;
+  swig_class      *cls;
+  swig_class      *cls_stack[64];
+  int              cls_stack_bi[64];
+  int              cls_stack_top = 0;
+  int              numconf = 2;
+  int              bi;
 
-# ifdef Py_USING_UNICODE
-  if (PyString_Check(name)) {
-    name = PyUnicode_Decode(PyString_AsString(name), PyString_Size(name), NULL, NULL);
-    if (!name)
-      return -1;
-  } else if (!PyUnicode_Check(name))
-# else
-  if (!PyString_Check(name))
-# endif
-  {
-    PyErr_Format(PyExc_TypeError, "attribute name must be string, not '%.200s'", name->ob_type->tp_name);
-    return -1;
-  } else {
-    Py_INCREF(name);
+  objv = (Tcl_Obj **) _objv;
+  if (objc < 2) {
+    Tcl_SetResult(interp, (char *) "wrong # args.", TCL_STATIC);
+    return TCL_ERROR;
   }
-
-  if (!tp->tp_dict) {
-    if (PyType_Ready(tp) < 0)
-      goto done;
+  method = Tcl_GetStringFromObj(objv[1],NULL);
+  if (strcmp(method,"-acquire") == 0) {
+    inst->destroy = 1;
+    SWIG_Acquire(inst->thisvalue);
+    return TCL_OK;
   }
+  if (strcmp(method,"-disown") == 0) {
+    if (inst->destroy) {
+      SWIG_Disown(inst->thisvalue);
+    }
+    inst->destroy = 0;
+    return TCL_OK;
+  }
+  if (strcmp(method,"-delete") == 0) {
+    Tcl_DeleteCommandFromToken(interp,inst->cmdtok);
+    return TCL_OK;
+  }
+  cls_stack[cls_stack_top] = inst->classptr;
+  cls_stack_bi[cls_stack_top] = -1;
+  while (1) {
+    Tcl_HashEntry* hashentry;
+    bi = cls_stack_bi[cls_stack_top];
+    cls = cls_stack[cls_stack_top];
+    if (bi != -1) {
+      if (!cls->bases[bi] && cls->base_names[bi]) {
+        /* lookup and cache the base class */
+	swig_type_info *info = SWIG_TypeQueryModule(cls->module, cls->module, cls->base_names[bi]);
+	if (info) cls->bases[bi] = (swig_class *) info->clientdata;
+      }
+      cls = cls->bases[bi];
+      if (cls) {
+        cls_stack_bi[cls_stack_top]++;
+        cls_stack_top++;
+        cls_stack[cls_stack_top] = cls;
+        cls_stack_bi[cls_stack_top] = -1;
+        continue;
+      }
+    }
+    if (!cls) {
+      cls_stack_top--;
+      if (cls_stack_top < 0) break;
+      else continue;
+    }
+    cls_stack_bi[cls_stack_top]++;
 
-  descr = _PyType_Lookup(tp, name);
-  f = NULL;
-  if (descr != NULL)
-    f = descr->ob_type->tp_descr_set;
-  if (!f) {
-    if (PyString_Check(name)) {
-      encoded_name = name;
-      Py_INCREF(name);
+    hashentry = Tcl_FindHashEntry(&(cls->hashtable), method);
+    if (hashentry) {
+        ClientData cd = Tcl_GetHashValue(hashentry);
+        swig_wrapper method_wrapper = (swig_wrapper)cd;
+        oldarg = objv[1];
+        objv[1] = inst->thisptr;
+        Tcl_IncrRefCount(inst->thisptr);
+        rcode = (method_wrapper)(clientData,interp,objc,objv);
+        objv[1] = oldarg;
+        Tcl_DecrRefCount(inst->thisptr);
+        return rcode;
+    }
+    /* Check class methods for a match */
+    if (strcmp(method,"cget") == 0) {
+      if (objc < 3) {
+        Tcl_SetResult(interp, (char *) "wrong # args.", TCL_STATIC);
+        return TCL_ERROR;
+      }
+      attrname = Tcl_GetStringFromObj(objv[2],NULL);
+      attr = cls->attributes;
+      while (attr && attr->name) {
+        if ((strcmp(attr->name, attrname) == 0) && (attr->getmethod)) {
+          oldarg = objv[1];
+          objv[1] = inst->thisptr;
+          Tcl_IncrRefCount(inst->thisptr);
+          rcode = (*attr->getmethod)(clientData,interp,2, objv);
+          objv[1] = oldarg;
+          Tcl_DecrRefCount(inst->thisptr);
+          return rcode;
+        }
+        attr++;
+      }
+      if (strcmp(attrname, "-this") == 0) {
+        Tcl_SetObjResult(interp, Tcl_DuplicateObj(inst->thisptr));
+        return TCL_OK;
+      }
+      if (strcmp(attrname, "-thisown") == 0) {
+        if (SWIG_Thisown(inst->thisvalue)) {
+          Tcl_SetResult(interp,(char*)"1",TCL_STATIC);
+        } else {
+          Tcl_SetResult(interp,(char*)"0",TCL_STATIC);
+        }
+        return TCL_OK;
+      }
+    } else if (strcmp(method, "configure") == 0) {
+      int i;
+      if (objc < 4) {
+        Tcl_SetResult(interp, (char *) "wrong # args.", TCL_STATIC);
+        return TCL_ERROR;
+      }
+      i = 2;
+      while (i < objc) {
+        attrname = Tcl_GetStringFromObj(objv[i],NULL);
+        attr = cls->attributes;
+        while (attr && attr->name) {
+          if ((strcmp(attr->name, attrname) == 0) && (attr->setmethod)) {
+            oldarg = objv[i];
+            objv[i] = inst->thisptr;
+            Tcl_IncrRefCount(inst->thisptr);
+            rcode = (*attr->setmethod)(clientData,interp,3, &objv[i-1]);
+            objv[i] = oldarg;
+            Tcl_DecrRefCount(inst->thisptr);
+            if (rcode != TCL_OK) return rcode;
+            numconf += 2;
+          }
+          attr++;
+        }
+        i+=2;
+      }
+    }
+  }
+  if (strcmp(method,"configure") == 0) {
+    if (numconf >= objc) {
+      return TCL_OK;
     } else {
-      encoded_name = PyUnicode_AsUTF8String(name);
+      Tcl_SetResult(interp,(char *) "Invalid attribute name.", TCL_STATIC);
+      return TCL_ERROR;
     }
-    PyErr_Format(PyExc_AttributeError, "'%.100s' object has no attribute '%.200s'", tp->tp_name, PyString_AsString(encoded_name));
-    Py_DECREF(encoded_name);
-  } else {
-    res = f(descr, obj, value);
   }
-  
-  done:
-  Py_DECREF(name);
-  return res;
-}
-#endif
+  if (strcmp(method,"cget") == 0) {
+    Tcl_SetResult(interp,(char *) "Invalid attribute name.", TCL_STATIC);
+    return TCL_ERROR;
+  }
+  Tcl_SetResult(interp, (char *) "Invalid method. Must be one of: configure cget -acquire -disown -delete", TCL_STATIC);
+  cls = inst->classptr;
+  bi = 0;
+  while (cls) {
+    meth = cls->methods;
+    while (meth && meth->name) {
+      char *cr = (char *) Tcl_GetStringResult(interp);
+      size_t meth_len = strlen(meth->name);
+      char* where = strchr(cr,':');
+      while(where) {
+        where = strstr(where, meth->name);
+        if(where) {
+          if(where[-1] == ' ' && (where[meth_len] == ' ' || where[meth_len]==0)) {
+            break;
+          } else {
+            where++;
+          }
+        }
+      }
 
+      if (!where)
+        Tcl_AppendElement(interp, (char *) meth->name);
+      meth++;
+    }
+    cls = inst->classptr->bases[bi++];
+  }
+  return TCL_ERROR;
+}
+
+/* This function takes the current result and turns it into an object command */
+SWIGRUNTIME Tcl_Obj *
+SWIG_Tcl_NewInstanceObj(Tcl_Interp *interp, void *thisvalue, swig_type_info *type, int flags) {
+  Tcl_Obj *robj = SWIG_NewPointerObj(thisvalue, type,0);
+  /* Check to see if this pointer belongs to a class or not */
+  if (thisvalue && (type->clientdata) && (interp)) {
+    Tcl_CmdInfo    ci;
+    char          *name;
+    name = Tcl_GetStringFromObj(robj,NULL);
+    if (!Tcl_GetCommandInfo(interp,name, &ci) || (flags)) {
+      swig_instance *newinst = (swig_instance *) malloc(sizeof(swig_instance));
+      newinst->thisptr = Tcl_DuplicateObj(robj);
+      Tcl_IncrRefCount(newinst->thisptr);
+      newinst->thisvalue = thisvalue;
+      newinst->classptr = (swig_class *) type->clientdata;
+      newinst->destroy = flags;
+      newinst->cmdtok = Tcl_CreateObjCommand(interp, Tcl_GetStringFromObj(robj,NULL), (swig_wrapper_func) SWIG_MethodCommand, (ClientData) newinst, (swig_delete_func) SWIG_ObjectDelete);
+      if (flags) {
+        SWIG_Acquire(thisvalue);
+      }
+    }
+  }
+  return robj;
+}
+
+/* Function to create objects */
+SWIGRUNTIME int
+SWIG_Tcl_ObjectConstructor(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]) {
+  Tcl_Obj          *newObj = 0;
+  void             *thisvalue = 0;
+  swig_instance   *newinst = 0;
+  swig_class      *classptr = (swig_class *) clientData;
+  swig_wrapper     cons = 0;
+  char             *name = 0;
+  int               firstarg = 0;
+  int               thisarg = 0;
+  int               destroy = 1;
+
+  if (!classptr) {
+    Tcl_SetResult(interp, (char *) "swig: internal runtime error. No class object defined.", TCL_STATIC);
+    return TCL_ERROR;
+  }
+  cons = classptr->constructor;
+  if (objc > 1) {
+    char *s = Tcl_GetStringFromObj(objv[1],NULL);
+    if (strcmp(s,"-this") == 0) {
+      thisarg = 2;
+      cons = 0;
+    } else if (strcmp(s,"-args") == 0) {
+      firstarg = 1;
+    } else if (objc == 2) {
+      firstarg = 1;
+      name = s;
+    } else if (objc >= 3) {
+      char *s1;
+      name = s;
+      s1 = Tcl_GetStringFromObj(objv[2],NULL);
+      if (strcmp(s1,"-this") == 0) {
+	thisarg = 3;
+	cons = 0;
+      } else {
+	firstarg = 1;
+      }
+    }
+  }
+  if (cons) {
+    int result;
+    result = (*cons)(0, interp, objc-firstarg, &objv[firstarg]);
+    if (result != TCL_OK) {
+      return result;
+    }
+    newObj = Tcl_DuplicateObj(Tcl_GetObjResult(interp));
+    if (!name) name = Tcl_GetStringFromObj(newObj,NULL);
+  } else if (thisarg > 0) {
+    if (thisarg < objc) {
+      destroy = 0;
+      newObj = Tcl_DuplicateObj(objv[thisarg]);
+      if (!name) name = Tcl_GetStringFromObj(newObj,NULL);
+    } else {
+      Tcl_SetResult(interp, (char *) "wrong # args.", TCL_STATIC);
+      return TCL_ERROR;
+    }
+  } else {
+    Tcl_SetResult(interp, (char *) "No constructor available.", TCL_STATIC);
+    return TCL_ERROR;
+  }
+  if (SWIG_Tcl_ConvertPtr(interp,newObj, (void **) &thisvalue, *(classptr->type), 0) != SWIG_OK) {
+    Tcl_DecrRefCount(newObj);
+    return TCL_ERROR;
+  }
+  newinst = (swig_instance *) malloc(sizeof(swig_instance));
+  newinst->thisptr = newObj;
+  Tcl_IncrRefCount(newObj);
+  newinst->thisvalue = thisvalue;
+  newinst->classptr = classptr;
+  newinst->destroy = destroy;
+  if (destroy) {
+    SWIG_Acquire(thisvalue);
+  }
+  newinst->cmdtok = Tcl_CreateObjCommand(interp,name, (swig_wrapper) SWIG_MethodCommand, (ClientData) newinst, (swig_delete_func) SWIG_ObjectDelete);
+  return TCL_OK;
+}
+
+/* -----------------------------------------------------------------------------*
+ *   Get arguments 
+ * -----------------------------------------------------------------------------*/
+SWIGRUNTIME int
+SWIG_Tcl_GetArgs(Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[], const char *fmt, ...) {
+  int        argno = 0, opt = 0;
+  long       tempi;
+  double     tempd;
+  const char *c;
+  va_list    ap;
+  void      *vptr;
+  Tcl_Obj   *obj = 0;
+  swig_type_info *ty;
+
+  va_start(ap,fmt);
+  for (c = fmt; (*c && (*c != ':') && (*c != ';')); c++,argno++) {
+    if (*c == '|') {
+      opt = 1;
+      c++;
+    }
+    if (argno >= (objc-1)) {
+      if (!opt) {
+        Tcl_SetResult(interp, (char *) "Wrong number of arguments ", TCL_STATIC);
+        goto argerror;
+      } else {
+        va_end(ap);
+        return TCL_OK;
+      }
+    }
+
+    vptr = va_arg(ap,void *);
+    if (vptr) {
+      if (isupper(*c)) {
+        obj = SWIG_Tcl_GetConstantObj(Tcl_GetStringFromObj(objv[argno+1],0));
+        if (!obj) obj = objv[argno+1];
+      } else {
+        obj = objv[argno+1];
+      }
+      switch(*c) {
+      case 'i': case 'I':
+      case 'l': case 'L':
+      case 'h': case 'H':
+      case 'b': case 'B':
+        if (Tcl_GetLongFromObj(interp,obj,&tempi) != TCL_OK) goto argerror;
+        if ((*c == 'i') || (*c == 'I')) *((int *)vptr) = (int)tempi;
+        else if ((*c == 'l') || (*c == 'L')) *((long *)vptr) = (long)tempi;
+        else if ((*c == 'h') || (*c == 'H')) *((short*)vptr) = (short)tempi;
+        else if ((*c == 'b') || (*c == 'B')) *((unsigned char *)vptr) = (unsigned char)tempi;
+        break;
+      case 'f': case 'F':
+      case 'd': case 'D':
+        if (Tcl_GetDoubleFromObj(interp,obj,&tempd) != TCL_OK) goto argerror;
+        if ((*c == 'f') || (*c == 'F')) *((float *) vptr) = (float)tempd;
+        else if ((*c == 'd') || (*c == 'D')) *((double*) vptr) = tempd;
+        break;
+      case 's': case 'S':
+        if (*(c+1) == '#') {
+          int *vlptr = (int *) va_arg(ap, void *);
+          *((char **) vptr) = Tcl_GetStringFromObj(obj, vlptr);
+          c++;
+        } else {
+          *((char **)vptr) = Tcl_GetStringFromObj(obj,NULL);
+        }
+        break;
+      case 'c': case 'C':
+        *((char *)vptr) = *(Tcl_GetStringFromObj(obj,NULL));
+        break;
+      case 'p': case 'P':
+        ty = (swig_type_info *) va_arg(ap, void *);
+        if (SWIG_Tcl_ConvertPtr(interp, obj, (void **) vptr, ty, 0) != SWIG_OK) goto argerror;
+        break;
+      case 'o': case 'O':
+        *((Tcl_Obj **)vptr) = objv[argno+1];
+        break;
+      default:
+        break;
+      }
+    }
+  }
+
+  if ((*c != ';') && ((objc-1) > argno)) {
+    Tcl_SetResult(interp, (char *) "Wrong # args.", TCL_STATIC);
+    goto argerror;
+  }
+  va_end(ap);
+  return TCL_OK;
+
+ argerror:
+  {
+    char temp[32];
+    sprintf(temp,"%d", argno+1);
+    c = strchr(fmt,':');
+    if (!c) c = strchr(fmt,';');
+    if (!c) c = (char *)"";
+    Tcl_AppendResult(interp,c," argument ", temp, NULL);
+    va_end(ap);
+    return TCL_ERROR;
+  }
+}
 
 #ifdef __cplusplus
 }
@@ -2975,9 +1618,6 @@ SWIG_Python_NonDynamicSetAttr(PyObject *obj, PyObject *name, PyObject *value) {
 
 #define SWIG_contract_assert(expr, msg) if (!(expr)) { SWIG_Error(SWIG_RuntimeError, msg); SWIG_fail; } else 
 
-
-
-  #define SWIG_exception(code, msg) do { SWIG_Error(code, msg); SWIG_fail;; } while(0) 
 
 
 /* -------- TYPES TABLE (BEGIN) -------- */
@@ -3005,23 +1645,10 @@ static swig_module_info swig_module = {swig_types, 16, 0, 0, 0, 0};
 
 /* -------- TYPES TABLE (END) -------- */
 
-#if (PY_VERSION_HEX <= 0x02000000)
-# if !defined(SWIG_PYTHON_CLASSIC)
-#  error "This python version requires swig to be run with the '-classic' option"
-# endif
-#endif
-
-/*-----------------------------------------------
-              @(target):= _sdd.so
-  ------------------------------------------------*/
-#if PY_VERSION_HEX >= 0x03000000
-#  define SWIG_init    PyInit__sdd
-
-#else
-#  define SWIG_init    init_sdd
-
-#endif
-#define SWIG_name    "_sdd"
+#define SWIG_init    Sdd_Init
+#define SWIG_name    "sdd"
+#define SWIG_prefix  ""
+#define SWIG_version "0.0"
 
 #define SWIGVERSION 0x030012 
 #define SWIG_VERSION SWIGVERSION
@@ -3031,12 +1658,35 @@ static swig_module_info swig_module = {swig_types, 16, 0, 0, 0, 0};
 #define SWIG_as_voidptrptr(a) ((void)SWIG_as_voidptr(*a),(void**)(a)) 
 
 
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+#ifdef MAC_TCL
+#pragma export on
+#endif
+SWIGEXPORT int SWIG_init(Tcl_Interp *);
+#ifdef MAC_TCL
+#pragma export off
+#endif
+#ifdef __cplusplus
+}
+#endif
+
+/* Compatibility version for TCL stubs */
+#ifndef SWIG_TCL_STUBS_VERSION
+#define SWIG_TCL_STUBS_VERSION "8.1"
+#endif
+
+
+
 #define SWIG_FILE_WITH_INIT
 #include "sddapi.h"
 #include "parameters.h"
 #include "compiler.h"
 #include "array_access.h"
 
+/*
 #include <execinfo.h>
 #include <signal.h>
 
@@ -3046,6 +1696,7 @@ static void c_handler(int sig)
 {
   throw(sig);
 }
+*/
 
 
 
@@ -3060,135 +1711,22 @@ static void c_handler(int sig)
 
 
 SWIGINTERN int
-SWIG_AsVal_double (PyObject *obj, double *val)
+SWIG_AsVal_long SWIG_TCL_DECL_ARGS_2(Tcl_Obj *obj, long* val)
 {
-  int res = SWIG_TypeError;
-  if (PyFloat_Check(obj)) {
-    if (val) *val = PyFloat_AsDouble(obj);
+  long v;
+  if (Tcl_GetLongFromObj(0,obj, &v) == TCL_OK) {
+    if (val) *val = (long) v;
     return SWIG_OK;
-#if PY_VERSION_HEX < 0x03000000
-  } else if (PyInt_Check(obj)) {
-    if (val) *val = (double) PyInt_AsLong(obj);
-    return SWIG_OK;
-#endif
-  } else if (PyLong_Check(obj)) {
-    double v = PyLong_AsDouble(obj);
-    if (!PyErr_Occurred()) {
-      if (val) *val = v;
-      return SWIG_OK;
-    } else {
-      PyErr_Clear();
-    }
   }
-#ifdef SWIG_PYTHON_CAST_MODE
-  {
-    int dispatch = 0;
-    double d = PyFloat_AsDouble(obj);
-    if (!PyErr_Occurred()) {
-      if (val) *val = d;
-      return SWIG_AddCast(SWIG_OK);
-    } else {
-      PyErr_Clear();
-    }
-    if (!dispatch) {
-      long v = PyLong_AsLong(obj);
-      if (!PyErr_Occurred()) {
-	if (val) *val = v;
-	return SWIG_AddCast(SWIG_AddCast(SWIG_OK));
-      } else {
-	PyErr_Clear();
-      }
-    }
-  }
-#endif
-  return res;
-}
-
-
-#include <float.h>
-
-
-#include <math.h>
-
-
-SWIGINTERNINLINE int
-SWIG_CanCastAsInteger(double *d, double min, double max) {
-  double x = *d;
-  if ((min <= x && x <= max)) {
-   double fx = floor(x);
-   double cx = ceil(x);
-   double rd =  ((x - fx) < 0.5) ? fx : cx; /* simple rint */
-   if ((errno == EDOM) || (errno == ERANGE)) {
-     errno = 0;
-   } else {
-     double summ, reps, diff;
-     if (rd < x) {
-       diff = x - rd;
-     } else if (rd > x) {
-       diff = rd - x;
-     } else {
-       return 1;
-     }
-     summ = rd + x;
-     reps = diff/summ;
-     if (reps < 8*DBL_EPSILON) {
-       *d = rd;
-       return 1;
-     }
-   }
-  }
-  return 0;
-}
-
-
-SWIGINTERN int
-SWIG_AsVal_long (PyObject *obj, long* val)
-{
-#if PY_VERSION_HEX < 0x03000000
-  if (PyInt_Check(obj)) {
-    if (val) *val = PyInt_AsLong(obj);
-    return SWIG_OK;
-  } else
-#endif
-  if (PyLong_Check(obj)) {
-    long v = PyLong_AsLong(obj);
-    if (!PyErr_Occurred()) {
-      if (val) *val = v;
-      return SWIG_OK;
-    } else {
-      PyErr_Clear();
-      return SWIG_OverflowError;
-    }
-  }
-#ifdef SWIG_PYTHON_CAST_MODE
-  {
-    int dispatch = 0;
-    long v = PyInt_AsLong(obj);
-    if (!PyErr_Occurred()) {
-      if (val) *val = v;
-      return SWIG_AddCast(SWIG_OK);
-    } else {
-      PyErr_Clear();
-    }
-    if (!dispatch) {
-      double d;
-      int res = SWIG_AddCast(SWIG_AsVal_double (obj,&d));
-      if (SWIG_IsOK(res) && SWIG_CanCastAsInteger(&d, LONG_MIN, LONG_MAX)) {
-	if (val) *val = (long)(d);
-	return res;
-      }
-    }
-  }
-#endif
   return SWIG_TypeError;
 }
 
 
 SWIGINTERN int
-SWIG_AsVal_int (PyObject * obj, int *val)
+SWIG_AsVal_int SWIG_TCL_DECL_ARGS_2(Tcl_Obj * obj, int *val)
 {
   long v;
-  int res = SWIG_AsVal_long (obj, &v);
+  int res = SWIG_AsVal_long SWIG_TCL_CALL_ARGS_2(obj, &v);
   if (SWIG_IsOK(res)) {
     if ((v < INT_MIN || v > INT_MAX)) {
       return SWIG_OverflowError;
@@ -3200,56 +1738,32 @@ SWIG_AsVal_int (PyObject * obj, int *val)
 }
 
 
-SWIGINTERNINLINE PyObject*
-  SWIG_From_int  (int value)
+SWIGINTERNINLINE Tcl_Obj* 
+SWIG_From_long  (long value)
 {
-  return PyInt_FromLong((long) value);
-}
-
-
-SWIGINTERN swig_type_info*
-SWIG_pchar_descriptor(void)
-{
-  static int init = 0;
-  static swig_type_info* info = 0;
-  if (!init) {
-    info = SWIG_TypeQuery("_p_char");
-    init = 1;
+  if (((long) INT_MIN <= value) && (value <= (long) INT_MAX)) {
+    return Tcl_NewIntObj((int)(value));
+  } else {
+    return Tcl_NewLongObj(value);
   }
-  return info;
 }
 
 
-SWIGINTERNINLINE PyObject *
+SWIGINTERNINLINE Tcl_Obj *
+SWIG_From_int  (int value)
+{    
+  return SWIG_From_long  (value);
+}
+
+
+SWIGINTERNINLINE Tcl_Obj *
 SWIG_FromCharPtrAndSize(const char* carray, size_t size)
 {
-  if (carray) {
-    if (size > INT_MAX) {
-      swig_type_info* pchar_descriptor = SWIG_pchar_descriptor();
-      return pchar_descriptor ? 
-	SWIG_InternalNewPointerObj((char *)(carray), pchar_descriptor, 0) : SWIG_Py_Void();
-    } else {
-#if PY_VERSION_HEX >= 0x03000000
-#if defined(SWIG_PYTHON_STRICT_BYTE_CHAR)
-      return PyBytes_FromStringAndSize(carray, (Py_ssize_t)(size));
-#else
-#if PY_VERSION_HEX >= 0x03010000
-      return PyUnicode_DecodeUTF8(carray, (Py_ssize_t)(size), "surrogateescape");
-#else
-      return PyUnicode_FromStringAndSize(carray, (Py_ssize_t)(size));
-#endif
-#endif
-#else
-      return PyString_FromStringAndSize(carray, (Py_ssize_t)(size));
-#endif
-    }
-  } else {
-    return SWIG_Py_Void();
-  }
+  return (size < INT_MAX) ? Tcl_NewStringObj(carray, (int)(size)) : NULL;
 }
 
 
-SWIGINTERNINLINE PyObject * 
+SWIGINTERNINLINE Tcl_Obj * 
 SWIG_FromCharPtr(const char *cptr)
 { 
   return SWIG_FromCharPtrAndSize(cptr, (cptr ? strlen(cptr) : 0));
@@ -3257,49 +1771,40 @@ SWIG_FromCharPtr(const char *cptr)
 
 
 SWIGINTERN int
-SWIG_AsVal_unsigned_SS_long (PyObject *obj, unsigned long *val) 
-{
-#if PY_VERSION_HEX < 0x03000000
-  if (PyInt_Check(obj)) {
-    long v = PyInt_AsLong(obj);
+SWIG_AsVal_unsigned_SS_long SWIG_TCL_DECL_ARGS_2(Tcl_Obj *obj, unsigned long *val) {
+  long v;
+  if (Tcl_GetLongFromObj(0,obj, &v) == TCL_OK) {
     if (v >= 0) {
-      if (val) *val = v;
+      if (val) *val = (unsigned long) v;
       return SWIG_OK;
-    } else {
-      return SWIG_OverflowError;
     }
-  } else
-#endif
-  if (PyLong_Check(obj)) {
-    unsigned long v = PyLong_AsUnsignedLong(obj);
-    if (!PyErr_Occurred()) {
-      if (val) *val = v;
-      return SWIG_OK;
-    } else {
-      PyErr_Clear();
-      return SWIG_OverflowError;
-    }
+    /* If v is negative, then this could be a negative number, or an
+       unsigned value which doesn't fit in a signed long, so try to
+       get it as a string so we can distinguish these cases. */
   }
-#ifdef SWIG_PYTHON_CAST_MODE
   {
-    int dispatch = 0;
-    unsigned long v = PyLong_AsUnsignedLong(obj);
-    if (!PyErr_Occurred()) {
-      if (val) *val = v;
-      return SWIG_AddCast(SWIG_OK);
-    } else {
-      PyErr_Clear();
-    }
-    if (!dispatch) {
-      double d;
-      int res = SWIG_AddCast(SWIG_AsVal_double (obj,&d));
-      if (SWIG_IsOK(res) && SWIG_CanCastAsInteger(&d, 0, ULONG_MAX)) {
-	if (val) *val = (unsigned long)(d);
-	return res;
+    int len = 0;
+    const char *nptr = Tcl_GetStringFromObj(obj, &len);
+    if (nptr && len > 0) {
+      char *endptr;
+      unsigned long v;
+      if (*nptr == '-') return SWIG_OverflowError;
+      errno = 0;
+      v = strtoul(nptr, &endptr,0);
+      if (nptr[0] == '\0' || *endptr != '\0')
+	return SWIG_TypeError;
+      if (v == ULONG_MAX && errno == ERANGE) {
+	errno = 0;
+	return SWIG_OverflowError;
+      } else {
+	if (*endptr == '\0') {
+	  if (val) *val = v;
+	  return SWIG_OK;
+	}
       }
     }
   }
-#endif
+  
   return SWIG_TypeError;
 }
 
@@ -3309,61 +1814,66 @@ SWIG_AsVal_unsigned_SS_long (PyObject *obj, unsigned long *val)
 #endif
 
 
+#include <stdlib.h>
+#ifdef _MSC_VER
+# ifndef strtoull
+#  define strtoull _strtoui64
+# endif
+# ifndef strtoll
+#  define strtoll _strtoi64
+# endif
+#endif
+
+
 #ifdef SWIG_LONG_LONG_AVAILABLE
 SWIGINTERN int
-SWIG_AsVal_unsigned_SS_long_SS_long (PyObject *obj, unsigned long long *val)
+SWIG_AsVal_unsigned_SS_long_SS_long SWIG_TCL_DECL_ARGS_2(Tcl_Obj *obj, unsigned long long *val)
 {
-  int res = SWIG_TypeError;
-  if (PyLong_Check(obj)) {
-    unsigned long long v = PyLong_AsUnsignedLongLong(obj);
-    if (!PyErr_Occurred()) {
-      if (val) *val = v;
-      return SWIG_OK;
-    } else {
-      PyErr_Clear();
-      res = SWIG_OverflowError;
-    }
+  long v;
+  if (Tcl_GetLongFromObj(0,obj, &v) == TCL_OK) {
+    if (val) *val = (unsigned long) v;
+    return SWIG_OK;
   } else {
-    unsigned long v;
-    res = SWIG_AsVal_unsigned_SS_long (obj,&v);
-    if (SWIG_IsOK(res)) {
-      if (val) *val = v;
-      return res;
+    int len = 0;
+    const char *nptr = Tcl_GetStringFromObj(obj, &len);
+    if (nptr && len > 0) {
+      char *endptr;
+      unsigned long long v;
+      if (*nptr == '-') return SWIG_OverflowError;
+      errno = 0;
+      v = strtoull(nptr, &endptr,0);
+      if (nptr[0] == '\0' || *endptr != '\0')
+	return SWIG_TypeError;
+      if (v == ULLONG_MAX && errno == ERANGE) {
+	errno = 0;
+	return SWIG_OverflowError;
+      } else {
+	if (*endptr == '\0') {
+	  if (val) *val = v;
+	  return SWIG_OK;
+	}
+      }
     }
   }
-#ifdef SWIG_PYTHON_CAST_MODE
-  {
-    const double mant_max = 1LL << DBL_MANT_DIG;
-    double d;
-    res = SWIG_AsVal_double (obj,&d);
-    if (SWIG_IsOK(res) && !SWIG_CanCastAsInteger(&d, 0, mant_max))
-      return SWIG_OverflowError;
-    if (SWIG_IsOK(res) && SWIG_CanCastAsInteger(&d, 0, mant_max)) {
-      if (val) *val = (unsigned long long)(d);
-      return SWIG_AddCast(res);
-    }
-    res = SWIG_TypeError;
-  }
-#endif
-  return res;
+  return SWIG_TypeError;
 }
 #endif
 
 
 SWIGINTERNINLINE int
-SWIG_AsVal_size_t (PyObject * obj, size_t *val)
+SWIG_AsVal_size_t SWIG_TCL_DECL_ARGS_2(Tcl_Obj * obj, size_t *val)
 {
   int res = SWIG_TypeError;
 #ifdef SWIG_LONG_LONG_AVAILABLE
   if (sizeof(size_t) <= sizeof(unsigned long)) {
 #endif
     unsigned long v;
-    res = SWIG_AsVal_unsigned_SS_long (obj, val ? &v : 0);
+    res = SWIG_AsVal_unsigned_SS_long SWIG_TCL_CALL_ARGS_2(obj, val ? &v : 0);
     if (SWIG_IsOK(res) && val) *val = (size_t)(v);
 #ifdef SWIG_LONG_LONG_AVAILABLE
   } else if (sizeof(size_t) <= sizeof(unsigned long long)) {
     unsigned long long v;
-    res = SWIG_AsVal_unsigned_SS_long_SS_long (obj, val ? &v : 0);
+    res = SWIG_AsVal_unsigned_SS_long_SS_long SWIG_TCL_CALL_ARGS_2(obj, val ? &v : 0);
     if (SWIG_IsOK(res) && val) *val = (size_t)(v);
   }
 #endif
@@ -3371,14 +1881,11 @@ SWIG_AsVal_size_t (PyObject * obj, size_t *val)
 }
 
 
-  #define SWIG_From_long   PyInt_FromLong 
-
-
 SWIGINTERN int
-SWIG_AsVal_unsigned_SS_short (PyObject * obj, unsigned short *val)
+SWIG_AsVal_unsigned_SS_short SWIG_TCL_DECL_ARGS_2(Tcl_Obj * obj, unsigned short *val)
 {
   unsigned long v;
-  int res = SWIG_AsVal_unsigned_SS_long (obj, &v);
+  int res = SWIG_AsVal_unsigned_SS_long SWIG_TCL_CALL_ARGS_2(obj, &v);
   if (SWIG_IsOK(res)) {
     if ((v > USHRT_MAX)) {
       return SWIG_OverflowError;
@@ -3390,32 +1897,65 @@ SWIG_AsVal_unsigned_SS_short (PyObject * obj, unsigned short *val)
 }
 
 
+#include <stdio.h>
+#if defined(_MSC_VER) || defined(__BORLANDC__) || defined(_WATCOM)
+# ifndef snprintf
+#  define snprintf _snprintf
+# endif
+#endif
+
+
 #ifdef SWIG_LONG_LONG_AVAILABLE
-SWIGINTERNINLINE PyObject* 
-SWIG_From_unsigned_SS_long_SS_long  (unsigned long long value)
+SWIGINTERNINLINE Tcl_Obj* 
+SWIG_From_long_SS_long  (long long value)
 {
-  return (value > LONG_MAX) ?
-    PyLong_FromUnsignedLongLong(value) : PyInt_FromLong((long)(value));
+  if (((long long) LONG_MIN <= value) && (value <= (long long) LONG_MAX)) {
+    return SWIG_From_long  ((long)(value));
+  } else {    
+    char temp[256]; 
+    sprintf(temp, "%lld", value);
+    return Tcl_NewStringObj(temp,-1);
+  }
 }
 #endif
 
 
-SWIGINTERNINLINE PyObject*
-  SWIG_From_unsigned_SS_int  (unsigned int value)
+#ifdef SWIG_LONG_LONG_AVAILABLE
+SWIGINTERNINLINE Tcl_Obj* 
+SWIG_From_unsigned_SS_long_SS_long  (unsigned long long value)
 {
-  return PyInt_FromSize_t((size_t) value);
+  if (value < (unsigned long long) LONG_MAX) {
+    return SWIG_From_long_SS_long  ((long long)(value));
+  } else {
+    char temp[256]; 
+    sprintf(temp, "%llu", value);
+    return Tcl_NewStringObj(temp,-1);
+  }
 }
+#endif
 
 
-SWIGINTERNINLINE PyObject* 
+SWIGINTERNINLINE Tcl_Obj* 
 SWIG_From_unsigned_SS_long  (unsigned long value)
 {
-  return (value > LONG_MAX) ?
-    PyLong_FromUnsignedLong(value) : PyInt_FromLong((long)(value));
+  if (value < (unsigned long) LONG_MAX) {
+    return SWIG_From_long  ((long)(value));
+  } else {
+    char temp[256]; 
+    sprintf(temp, "%lu", value);
+    return Tcl_NewStringObj(temp,-1);
+  }
 }
 
 
-SWIGINTERNINLINE PyObject *
+SWIGINTERNINLINE Tcl_Obj *
+SWIG_From_unsigned_SS_int  (unsigned int value)
+{    
+  return SWIG_From_unsigned_SS_long  (value);
+}
+
+
+SWIGINTERNINLINE Tcl_Obj *
 SWIG_From_size_t  (size_t value)
 {    
 #ifdef SWIG_LONG_LONG_AVAILABLE
@@ -3432,119 +1972,27 @@ SWIG_From_size_t  (size_t value)
 
 
 SWIGINTERN int
-SWIG_AsCharPtrAndSize(PyObject *obj, char** cptr, size_t* psize, int *alloc)
-{
-#if PY_VERSION_HEX>=0x03000000
-#if defined(SWIG_PYTHON_STRICT_BYTE_CHAR)
-  if (PyBytes_Check(obj))
-#else
-  if (PyUnicode_Check(obj))
-#endif
-#else  
-  if (PyString_Check(obj))
-#endif
-  {
-    char *cstr; Py_ssize_t len;
-#if PY_VERSION_HEX>=0x03000000
-#if !defined(SWIG_PYTHON_STRICT_BYTE_CHAR)
-    if (!alloc && cptr) {
-        /* We can't allow converting without allocation, since the internal
-           representation of string in Python 3 is UCS-2/UCS-4 but we require
-           a UTF-8 representation.
-           TODO(bhy) More detailed explanation */
-        return SWIG_RuntimeError;
-    }
-    obj = PyUnicode_AsUTF8String(obj);
-    if(alloc) *alloc = SWIG_NEWOBJ;
-#endif
-    PyBytes_AsStringAndSize(obj, &cstr, &len);
-#else
-    PyString_AsStringAndSize(obj, &cstr, &len);
-#endif
-    if (cptr) {
-      if (alloc) {
-	/* 
-	   In python the user should not be able to modify the inner
-	   string representation. To warranty that, if you define
-	   SWIG_PYTHON_SAFE_CSTRINGS, a new/copy of the python string
-	   buffer is always returned.
-
-	   The default behavior is just to return the pointer value,
-	   so, be careful.
-	*/ 
-#if defined(SWIG_PYTHON_SAFE_CSTRINGS)
-	if (*alloc != SWIG_OLDOBJ) 
-#else
-	if (*alloc == SWIG_NEWOBJ) 
-#endif
-	{
-	  *cptr = (char *)memcpy(malloc((len + 1)*sizeof(char)), cstr, sizeof(char)*(len + 1));
-	  *alloc = SWIG_NEWOBJ;
-	} else {
-	  *cptr = cstr;
-	  *alloc = SWIG_OLDOBJ;
-	}
-      } else {
-#if PY_VERSION_HEX>=0x03000000
-#if defined(SWIG_PYTHON_STRICT_BYTE_CHAR)
-	*cptr = PyBytes_AsString(obj);
-#else
-	assert(0); /* Should never reach here with Unicode strings in Python 3 */
-#endif
-#else
-	*cptr = SWIG_Python_str_AsChar(obj);
-#endif
-      }
-    }
+SWIG_AsCharPtrAndSize(Tcl_Obj *obj, char** cptr, size_t* psize, int *alloc)
+{ 
+  int len = 0;
+  char *cstr = Tcl_GetStringFromObj(obj, &len);
+  if (cstr) {
+    if (cptr)  *cptr = cstr;
     if (psize) *psize = len + 1;
-#if PY_VERSION_HEX>=0x03000000 && !defined(SWIG_PYTHON_STRICT_BYTE_CHAR)
-    Py_XDECREF(obj);
-#endif
+    if (alloc) *alloc = SWIG_OLDOBJ;
     return SWIG_OK;
-  } else {
-#if defined(SWIG_PYTHON_2_UNICODE)
-#if defined(SWIG_PYTHON_STRICT_BYTE_CHAR)
-#error "Cannot use both SWIG_PYTHON_2_UNICODE and SWIG_PYTHON_STRICT_BYTE_CHAR at once"
-#endif
-#if PY_VERSION_HEX<0x03000000
-    if (PyUnicode_Check(obj)) {
-      char *cstr; Py_ssize_t len;
-      if (!alloc && cptr) {
-        return SWIG_RuntimeError;
-      }
-      obj = PyUnicode_AsUTF8String(obj);
-      if (PyString_AsStringAndSize(obj, &cstr, &len) != -1) {
-        if (cptr) {
-          if (alloc) *alloc = SWIG_NEWOBJ;
-          *cptr = (char *)memcpy(malloc((len + 1)*sizeof(char)), cstr, sizeof(char)*(len + 1));
-        }
-        if (psize) *psize = len + 1;
-
-        Py_XDECREF(obj);
-        return SWIG_OK;
-      } else {
-        Py_XDECREF(obj);
-      }
-    }
-#endif
-#endif
-
-    swig_type_info* pchar_descriptor = SWIG_pchar_descriptor();
-    if (pchar_descriptor) {
-      void* vptr = 0;
-      if (SWIG_ConvertPtr(obj, &vptr, pchar_descriptor, 0) == SWIG_OK) {
-	if (cptr) *cptr = (char *) vptr;
-	if (psize) *psize = vptr ? (strlen((char *)vptr) + 1) : 0;
-	if (alloc) *alloc = SWIG_OLDOBJ;
-	return SWIG_OK;
-      }
-    }
   }
   return SWIG_TypeError;
 }
 
 
 
+
+
+#include <float.h>
+
+
+#include <math.h>
 
 
 /* Getting isfinite working pre C99 across multiple platforms is non-trivial. Users can provide SWIG_isfinite on older platforms. */
@@ -3586,10 +2034,22 @@ inline int SWIG_isfinite_func(T x) {
 
 
 SWIGINTERN int
-SWIG_AsVal_float (PyObject * obj, float *val)
+SWIG_AsVal_double SWIG_TCL_DECL_ARGS_2(Tcl_Obj *obj, double *val)
 {
   double v;
-  int res = SWIG_AsVal_double (obj, &v);
+  if (Tcl_GetDoubleFromObj(0, obj, &v) == TCL_OK) {
+    if (val) *val = v;
+    return SWIG_OK;
+  }
+  return SWIG_TypeError;
+}
+
+
+SWIGINTERN int
+SWIG_AsVal_float SWIG_TCL_DECL_ARGS_2(Tcl_Obj * obj, float *val)
+{
+  double v;
+  int res = SWIG_AsVal_double SWIG_TCL_CALL_ARGS_2(obj, &v);
   if (SWIG_IsOK(res)) {
     if (SWIG_Float_Overflow_Check(v)) {
       return SWIG_OverflowError;
@@ -3601,340 +2061,121 @@ SWIG_AsVal_float (PyObject * obj, float *val)
 }
 
 
-  #define SWIG_From_double   PyFloat_FromDouble 
+  #define SWIG_From_double   Tcl_NewDoubleObj 
 
 #ifdef __cplusplus
 extern "C" {
 #endif
-SWIGINTERN PyObject *_wrap_sdd_array_element(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
+SWIGINTERN int
+_wrap_sdd_array_element(ClientData clientData SWIGUNUSED, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]) {
   SddNode **arg1 = (SddNode **) 0 ;
   int arg2 ;
   void *argp1 = 0 ;
   int res1 = 0 ;
   int val2 ;
   int ecode2 = 0 ;
-  PyObject * obj0 = 0 ;
-  PyObject * obj1 = 0 ;
   SddNode *result = 0 ;
   
-  if (!PyArg_ParseTuple(args,(char *)"OO:sdd_array_element",&obj0,&obj1)) SWIG_fail;
-  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_p_sdd_node_t, 0 |  0 );
+  if (SWIG_GetArgs(interp, objc, objv,"oo:sdd_array_element arr element ",(void *)0,(void *)0) == TCL_ERROR) SWIG_fail;
+  res1 = SWIG_ConvertPtr(objv[1], &argp1,SWIGTYPE_p_p_sdd_node_t, 0 |  0 );
   if (!SWIG_IsOK(res1)) {
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "sdd_array_element" "', argument " "1"" of type '" "SddNode **""'"); 
   }
   arg1 = (SddNode **)(argp1);
-  ecode2 = SWIG_AsVal_int(obj1, &val2);
+  ecode2 = SWIG_AsVal_int SWIG_TCL_CALL_ARGS_2(objv[2], &val2);
   if (!SWIG_IsOK(ecode2)) {
     SWIG_exception_fail(SWIG_ArgError(ecode2), "in method '" "sdd_array_element" "', argument " "2"" of type '" "int""'");
   } 
   arg2 = (int)(val2);
-  {
-    //
-    //    signal(SIGFPE,  handler);
-    //    signal(SIGILL,  handler);
-    
-    // signal(SIGSEGV, handler);
-    
-    struct sigaction new_action;
-    new_action.sa_handler = c_handler;
-    sigemptyset (&new_action.sa_mask);
-    new_action.sa_flags = SA_RESTART;
-    
-    struct sigaction old_action_term;
-    struct sigaction old_action_abrt;
-    struct sigaction old_action_int;
-    struct sigaction old_action_alrm;
-    
-    sigaction(SIGTERM,  &new_action, &old_action_term);
-    sigaction(SIGABRT,  &new_action, &old_action_abrt);
-    sigaction(SIGINT,  &new_action, &old_action_int);
-    sigaction(SIGALRM,  &new_action, &old_action_alrm);
-    try {
-      result = (SddNode *)sdd_array_element(arg1,arg2);
-    } catch(SIGINT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process interrupted");
-    } catch(SIGTERM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process terminated");
-    } catch(SIGABRT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process aborted");
-    } catch(SIGALRM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process timeout");
-    }
-    sigaction(SIGTERM, &old_action_term, NULL);
-    sigaction(SIGABRT, &old_action_abrt, NULL);
-    sigaction(SIGINT, &old_action_int, NULL);
-    sigaction(SIGALRM, &old_action_alrm, NULL);
-    
-  }
-  resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_sdd_node_t, 0 |  0 );
-  return resultobj;
+  result = (SddNode *)sdd_array_element(arg1,arg2);
+  Tcl_SetObjResult(interp, SWIG_NewInstanceObj( SWIG_as_voidptr(result), SWIGTYPE_p_sdd_node_t,0));
+  return TCL_OK;
 fail:
-  return NULL;
+  return TCL_ERROR;
 }
 
 
-SWIGINTERN PyObject *_wrap_sdd_array_int_element(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
+SWIGINTERN int
+_wrap_sdd_array_int_element(ClientData clientData SWIGUNUSED, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]) {
   int *arg1 = (int *) 0 ;
   int arg2 ;
   void *argp1 = 0 ;
   int res1 = 0 ;
   int val2 ;
   int ecode2 = 0 ;
-  PyObject * obj0 = 0 ;
-  PyObject * obj1 = 0 ;
   int result;
   
-  if (!PyArg_ParseTuple(args,(char *)"OO:sdd_array_int_element",&obj0,&obj1)) SWIG_fail;
-  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_int, 0 |  0 );
+  if (SWIG_GetArgs(interp, objc, objv,"oo:sdd_array_int_element arr element ",(void *)0,(void *)0) == TCL_ERROR) SWIG_fail;
+  res1 = SWIG_ConvertPtr(objv[1], &argp1,SWIGTYPE_p_int, 0 |  0 );
   if (!SWIG_IsOK(res1)) {
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "sdd_array_int_element" "', argument " "1"" of type '" "int *""'"); 
   }
   arg1 = (int *)(argp1);
-  ecode2 = SWIG_AsVal_int(obj1, &val2);
+  ecode2 = SWIG_AsVal_int SWIG_TCL_CALL_ARGS_2(objv[2], &val2);
   if (!SWIG_IsOK(ecode2)) {
     SWIG_exception_fail(SWIG_ArgError(ecode2), "in method '" "sdd_array_int_element" "', argument " "2"" of type '" "int""'");
   } 
   arg2 = (int)(val2);
-  {
-    //
-    //    signal(SIGFPE,  handler);
-    //    signal(SIGILL,  handler);
-    
-    // signal(SIGSEGV, handler);
-    
-    struct sigaction new_action;
-    new_action.sa_handler = c_handler;
-    sigemptyset (&new_action.sa_mask);
-    new_action.sa_flags = SA_RESTART;
-    
-    struct sigaction old_action_term;
-    struct sigaction old_action_abrt;
-    struct sigaction old_action_int;
-    struct sigaction old_action_alrm;
-    
-    sigaction(SIGTERM,  &new_action, &old_action_term);
-    sigaction(SIGABRT,  &new_action, &old_action_abrt);
-    sigaction(SIGINT,  &new_action, &old_action_int);
-    sigaction(SIGALRM,  &new_action, &old_action_alrm);
-    try {
-      result = (int)sdd_array_int_element(arg1,arg2);
-    } catch(SIGINT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process interrupted");
-    } catch(SIGTERM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process terminated");
-    } catch(SIGABRT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process aborted");
-    } catch(SIGALRM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process timeout");
-    }
-    sigaction(SIGTERM, &old_action_term, NULL);
-    sigaction(SIGABRT, &old_action_abrt, NULL);
-    sigaction(SIGINT, &old_action_int, NULL);
-    sigaction(SIGALRM, &old_action_alrm, NULL);
-    
-  }
-  resultobj = SWIG_From_int((int)(result));
-  return resultobj;
+  result = (int)sdd_array_int_element(arg1,arg2);
+  Tcl_SetObjResult(interp,SWIG_From_int((int)(result)));
+  return TCL_OK;
 fail:
-  return NULL;
+  return TCL_ERROR;
 }
 
 
-SWIGINTERN PyObject *_wrap_sdd_manager_new(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
+SWIGINTERN int
+_wrap_sdd_manager_new(ClientData clientData SWIGUNUSED, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]) {
   Vtree *arg1 = (Vtree *) 0 ;
   void *argp1 = 0 ;
   int res1 = 0 ;
-  PyObject * obj0 = 0 ;
   SddManager *result = 0 ;
   
-  if (!PyArg_ParseTuple(args,(char *)"O:sdd_manager_new",&obj0)) SWIG_fail;
-  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_vtree_t, 0 |  0 );
+  if (SWIG_GetArgs(interp, objc, objv,"o:sdd_manager_new vtree ",(void *)0) == TCL_ERROR) SWIG_fail;
+  res1 = SWIG_ConvertPtr(objv[1], &argp1,SWIGTYPE_p_vtree_t, 0 |  0 );
   if (!SWIG_IsOK(res1)) {
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "sdd_manager_new" "', argument " "1"" of type '" "Vtree *""'"); 
   }
   arg1 = (Vtree *)(argp1);
-  {
-    //
-    //    signal(SIGFPE,  handler);
-    //    signal(SIGILL,  handler);
-    
-    // signal(SIGSEGV, handler);
-    
-    struct sigaction new_action;
-    new_action.sa_handler = c_handler;
-    sigemptyset (&new_action.sa_mask);
-    new_action.sa_flags = SA_RESTART;
-    
-    struct sigaction old_action_term;
-    struct sigaction old_action_abrt;
-    struct sigaction old_action_int;
-    struct sigaction old_action_alrm;
-    
-    sigaction(SIGTERM,  &new_action, &old_action_term);
-    sigaction(SIGABRT,  &new_action, &old_action_abrt);
-    sigaction(SIGINT,  &new_action, &old_action_int);
-    sigaction(SIGALRM,  &new_action, &old_action_alrm);
-    try {
-      result = (SddManager *)sdd_manager_new(arg1);
-    } catch(SIGINT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process interrupted");
-    } catch(SIGTERM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process terminated");
-    } catch(SIGABRT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process aborted");
-    } catch(SIGALRM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process timeout");
-    }
-    sigaction(SIGTERM, &old_action_term, NULL);
-    sigaction(SIGABRT, &old_action_abrt, NULL);
-    sigaction(SIGINT, &old_action_int, NULL);
-    sigaction(SIGALRM, &old_action_alrm, NULL);
-    
-  }
-  resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_sdd_manager_t, 0 |  0 );
-  return resultobj;
+  result = (SddManager *)sdd_manager_new(arg1);
+  Tcl_SetObjResult(interp, SWIG_NewInstanceObj( SWIG_as_voidptr(result), SWIGTYPE_p_sdd_manager_t,0));
+  return TCL_OK;
 fail:
-  return NULL;
+  return TCL_ERROR;
 }
 
 
-SWIGINTERN PyObject *_wrap_sdd_manager_create(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
+SWIGINTERN int
+_wrap_sdd_manager_create(ClientData clientData SWIGUNUSED, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]) {
   SddLiteral arg1 ;
   int arg2 ;
   long val1 ;
   int ecode1 = 0 ;
   int val2 ;
   int ecode2 = 0 ;
-  PyObject * obj0 = 0 ;
-  PyObject * obj1 = 0 ;
   SddManager *result = 0 ;
   
-  if (!PyArg_ParseTuple(args,(char *)"OO:sdd_manager_create",&obj0,&obj1)) SWIG_fail;
-  ecode1 = SWIG_AsVal_long(obj0, &val1);
+  if (SWIG_GetArgs(interp, objc, objv,"oo:sdd_manager_create var_count auto_gc_and_minimize ",(void *)0,(void *)0) == TCL_ERROR) SWIG_fail;
+  ecode1 = SWIG_AsVal_long SWIG_TCL_CALL_ARGS_2(objv[1], &val1);
   if (!SWIG_IsOK(ecode1)) {
     SWIG_exception_fail(SWIG_ArgError(ecode1), "in method '" "sdd_manager_create" "', argument " "1"" of type '" "SddLiteral""'");
   } 
   arg1 = (SddLiteral)(val1);
-  ecode2 = SWIG_AsVal_int(obj1, &val2);
+  ecode2 = SWIG_AsVal_int SWIG_TCL_CALL_ARGS_2(objv[2], &val2);
   if (!SWIG_IsOK(ecode2)) {
     SWIG_exception_fail(SWIG_ArgError(ecode2), "in method '" "sdd_manager_create" "', argument " "2"" of type '" "int""'");
   } 
   arg2 = (int)(val2);
-  {
-    //
-    //    signal(SIGFPE,  handler);
-    //    signal(SIGILL,  handler);
-    
-    // signal(SIGSEGV, handler);
-    
-    struct sigaction new_action;
-    new_action.sa_handler = c_handler;
-    sigemptyset (&new_action.sa_mask);
-    new_action.sa_flags = SA_RESTART;
-    
-    struct sigaction old_action_term;
-    struct sigaction old_action_abrt;
-    struct sigaction old_action_int;
-    struct sigaction old_action_alrm;
-    
-    sigaction(SIGTERM,  &new_action, &old_action_term);
-    sigaction(SIGABRT,  &new_action, &old_action_abrt);
-    sigaction(SIGINT,  &new_action, &old_action_int);
-    sigaction(SIGALRM,  &new_action, &old_action_alrm);
-    try {
-      result = (SddManager *)sdd_manager_create(arg1,arg2);
-    } catch(SIGINT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process interrupted");
-    } catch(SIGTERM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process terminated");
-    } catch(SIGABRT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process aborted");
-    } catch(SIGALRM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process timeout");
-    }
-    sigaction(SIGTERM, &old_action_term, NULL);
-    sigaction(SIGABRT, &old_action_abrt, NULL);
-    sigaction(SIGINT, &old_action_int, NULL);
-    sigaction(SIGALRM, &old_action_alrm, NULL);
-    
-  }
-  resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_sdd_manager_t, 0 |  0 );
-  return resultobj;
+  result = (SddManager *)sdd_manager_create(arg1,arg2);
+  Tcl_SetObjResult(interp, SWIG_NewInstanceObj( SWIG_as_voidptr(result), SWIGTYPE_p_sdd_manager_t,0));
+  return TCL_OK;
 fail:
-  return NULL;
+  return TCL_ERROR;
 }
 
 
-SWIGINTERN PyObject *_wrap_sdd_manager_copy(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
+SWIGINTERN int
+_wrap_sdd_manager_copy(ClientData clientData SWIGUNUSED, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]) {
   SddSize arg1 ;
   SddNode **arg2 = (SddNode **) 0 ;
   SddManager *arg3 = (SddManager *) 0 ;
@@ -3944,941 +2185,287 @@ SWIGINTERN PyObject *_wrap_sdd_manager_copy(PyObject *SWIGUNUSEDPARM(self), PyOb
   int res2 = 0 ;
   void *argp3 = 0 ;
   int res3 = 0 ;
-  PyObject * obj0 = 0 ;
-  PyObject * obj1 = 0 ;
-  PyObject * obj2 = 0 ;
   SddManager *result = 0 ;
   
-  if (!PyArg_ParseTuple(args,(char *)"OOO:sdd_manager_copy",&obj0,&obj1,&obj2)) SWIG_fail;
-  ecode1 = SWIG_AsVal_size_t(obj0, &val1);
+  if (SWIG_GetArgs(interp, objc, objv,"ooo:sdd_manager_copy size nodes from_manager ",(void *)0,(void *)0,(void *)0) == TCL_ERROR) SWIG_fail;
+  ecode1 = SWIG_AsVal_size_t SWIG_TCL_CALL_ARGS_2(objv[1], &val1);
   if (!SWIG_IsOK(ecode1)) {
     SWIG_exception_fail(SWIG_ArgError(ecode1), "in method '" "sdd_manager_copy" "', argument " "1"" of type '" "SddSize""'");
   } 
   arg1 = (SddSize)(val1);
-  res2 = SWIG_ConvertPtr(obj1, &argp2,SWIGTYPE_p_p_sdd_node_t, 0 |  0 );
+  res2 = SWIG_ConvertPtr(objv[2], &argp2,SWIGTYPE_p_p_sdd_node_t, 0 |  0 );
   if (!SWIG_IsOK(res2)) {
     SWIG_exception_fail(SWIG_ArgError(res2), "in method '" "sdd_manager_copy" "', argument " "2"" of type '" "SddNode **""'"); 
   }
   arg2 = (SddNode **)(argp2);
-  res3 = SWIG_ConvertPtr(obj2, &argp3,SWIGTYPE_p_sdd_manager_t, 0 |  0 );
+  res3 = SWIG_ConvertPtr(objv[3], &argp3,SWIGTYPE_p_sdd_manager_t, 0 |  0 );
   if (!SWIG_IsOK(res3)) {
     SWIG_exception_fail(SWIG_ArgError(res3), "in method '" "sdd_manager_copy" "', argument " "3"" of type '" "SddManager *""'"); 
   }
   arg3 = (SddManager *)(argp3);
-  {
-    //
-    //    signal(SIGFPE,  handler);
-    //    signal(SIGILL,  handler);
-    
-    // signal(SIGSEGV, handler);
-    
-    struct sigaction new_action;
-    new_action.sa_handler = c_handler;
-    sigemptyset (&new_action.sa_mask);
-    new_action.sa_flags = SA_RESTART;
-    
-    struct sigaction old_action_term;
-    struct sigaction old_action_abrt;
-    struct sigaction old_action_int;
-    struct sigaction old_action_alrm;
-    
-    sigaction(SIGTERM,  &new_action, &old_action_term);
-    sigaction(SIGABRT,  &new_action, &old_action_abrt);
-    sigaction(SIGINT,  &new_action, &old_action_int);
-    sigaction(SIGALRM,  &new_action, &old_action_alrm);
-    try {
-      result = (SddManager *)sdd_manager_copy(arg1,arg2,arg3);
-    } catch(SIGINT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process interrupted");
-    } catch(SIGTERM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process terminated");
-    } catch(SIGABRT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process aborted");
-    } catch(SIGALRM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process timeout");
-    }
-    sigaction(SIGTERM, &old_action_term, NULL);
-    sigaction(SIGABRT, &old_action_abrt, NULL);
-    sigaction(SIGINT, &old_action_int, NULL);
-    sigaction(SIGALRM, &old_action_alrm, NULL);
-    
-  }
-  resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_sdd_manager_t, 0 |  0 );
-  return resultobj;
+  result = (SddManager *)sdd_manager_copy(arg1,arg2,arg3);
+  Tcl_SetObjResult(interp, SWIG_NewInstanceObj( SWIG_as_voidptr(result), SWIGTYPE_p_sdd_manager_t,0));
+  return TCL_OK;
 fail:
-  return NULL;
+  return TCL_ERROR;
 }
 
 
-SWIGINTERN PyObject *_wrap_sdd_manager_free(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
+SWIGINTERN int
+_wrap_sdd_manager_free(ClientData clientData SWIGUNUSED, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]) {
   SddManager *arg1 = (SddManager *) 0 ;
   void *argp1 = 0 ;
   int res1 = 0 ;
-  PyObject * obj0 = 0 ;
   
-  if (!PyArg_ParseTuple(args,(char *)"O:sdd_manager_free",&obj0)) SWIG_fail;
-  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_sdd_manager_t, 0 |  0 );
+  if (SWIG_GetArgs(interp, objc, objv,"o:sdd_manager_free manager ",(void *)0) == TCL_ERROR) SWIG_fail;
+  res1 = SWIG_ConvertPtr(objv[1], &argp1,SWIGTYPE_p_sdd_manager_t, 0 |  0 );
   if (!SWIG_IsOK(res1)) {
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "sdd_manager_free" "', argument " "1"" of type '" "SddManager *""'"); 
   }
   arg1 = (SddManager *)(argp1);
-  {
-    //
-    //    signal(SIGFPE,  handler);
-    //    signal(SIGILL,  handler);
-    
-    // signal(SIGSEGV, handler);
-    
-    struct sigaction new_action;
-    new_action.sa_handler = c_handler;
-    sigemptyset (&new_action.sa_mask);
-    new_action.sa_flags = SA_RESTART;
-    
-    struct sigaction old_action_term;
-    struct sigaction old_action_abrt;
-    struct sigaction old_action_int;
-    struct sigaction old_action_alrm;
-    
-    sigaction(SIGTERM,  &new_action, &old_action_term);
-    sigaction(SIGABRT,  &new_action, &old_action_abrt);
-    sigaction(SIGINT,  &new_action, &old_action_int);
-    sigaction(SIGALRM,  &new_action, &old_action_alrm);
-    try {
-      sdd_manager_free(arg1);
-    } catch(SIGINT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process interrupted");
-    } catch(SIGTERM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process terminated");
-    } catch(SIGABRT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process aborted");
-    } catch(SIGALRM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process timeout");
-    }
-    sigaction(SIGTERM, &old_action_term, NULL);
-    sigaction(SIGABRT, &old_action_abrt, NULL);
-    sigaction(SIGINT, &old_action_int, NULL);
-    sigaction(SIGALRM, &old_action_alrm, NULL);
-    
-  }
-  resultobj = SWIG_Py_Void();
-  return resultobj;
+  sdd_manager_free(arg1);
+  
+  return TCL_OK;
 fail:
-  return NULL;
+  return TCL_ERROR;
 }
 
 
-SWIGINTERN PyObject *_wrap_sdd_manager_print(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
+SWIGINTERN int
+_wrap_sdd_manager_print(ClientData clientData SWIGUNUSED, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]) {
   SddManager *arg1 = (SddManager *) 0 ;
   void *argp1 = 0 ;
   int res1 = 0 ;
-  PyObject * obj0 = 0 ;
   
-  if (!PyArg_ParseTuple(args,(char *)"O:sdd_manager_print",&obj0)) SWIG_fail;
-  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_sdd_manager_t, 0 |  0 );
+  if (SWIG_GetArgs(interp, objc, objv,"o:sdd_manager_print manager ",(void *)0) == TCL_ERROR) SWIG_fail;
+  res1 = SWIG_ConvertPtr(objv[1], &argp1,SWIGTYPE_p_sdd_manager_t, 0 |  0 );
   if (!SWIG_IsOK(res1)) {
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "sdd_manager_print" "', argument " "1"" of type '" "SddManager *""'"); 
   }
   arg1 = (SddManager *)(argp1);
-  {
-    //
-    //    signal(SIGFPE,  handler);
-    //    signal(SIGILL,  handler);
-    
-    // signal(SIGSEGV, handler);
-    
-    struct sigaction new_action;
-    new_action.sa_handler = c_handler;
-    sigemptyset (&new_action.sa_mask);
-    new_action.sa_flags = SA_RESTART;
-    
-    struct sigaction old_action_term;
-    struct sigaction old_action_abrt;
-    struct sigaction old_action_int;
-    struct sigaction old_action_alrm;
-    
-    sigaction(SIGTERM,  &new_action, &old_action_term);
-    sigaction(SIGABRT,  &new_action, &old_action_abrt);
-    sigaction(SIGINT,  &new_action, &old_action_int);
-    sigaction(SIGALRM,  &new_action, &old_action_alrm);
-    try {
-      sdd_manager_print(arg1);
-    } catch(SIGINT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process interrupted");
-    } catch(SIGTERM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process terminated");
-    } catch(SIGABRT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process aborted");
-    } catch(SIGALRM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process timeout");
-    }
-    sigaction(SIGTERM, &old_action_term, NULL);
-    sigaction(SIGABRT, &old_action_abrt, NULL);
-    sigaction(SIGINT, &old_action_int, NULL);
-    sigaction(SIGALRM, &old_action_alrm, NULL);
-    
-  }
-  resultobj = SWIG_Py_Void();
-  return resultobj;
+  sdd_manager_print(arg1);
+  
+  return TCL_OK;
 fail:
-  return NULL;
+  return TCL_ERROR;
 }
 
 
-SWIGINTERN PyObject *_wrap_sdd_manager_auto_gc_and_minimize_on(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
+SWIGINTERN int
+_wrap_sdd_manager_auto_gc_and_minimize_on(ClientData clientData SWIGUNUSED, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]) {
   SddManager *arg1 = (SddManager *) 0 ;
   void *argp1 = 0 ;
   int res1 = 0 ;
-  PyObject * obj0 = 0 ;
   
-  if (!PyArg_ParseTuple(args,(char *)"O:sdd_manager_auto_gc_and_minimize_on",&obj0)) SWIG_fail;
-  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_sdd_manager_t, 0 |  0 );
+  if (SWIG_GetArgs(interp, objc, objv,"o:sdd_manager_auto_gc_and_minimize_on manager ",(void *)0) == TCL_ERROR) SWIG_fail;
+  res1 = SWIG_ConvertPtr(objv[1], &argp1,SWIGTYPE_p_sdd_manager_t, 0 |  0 );
   if (!SWIG_IsOK(res1)) {
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "sdd_manager_auto_gc_and_minimize_on" "', argument " "1"" of type '" "SddManager *""'"); 
   }
   arg1 = (SddManager *)(argp1);
-  {
-    //
-    //    signal(SIGFPE,  handler);
-    //    signal(SIGILL,  handler);
-    
-    // signal(SIGSEGV, handler);
-    
-    struct sigaction new_action;
-    new_action.sa_handler = c_handler;
-    sigemptyset (&new_action.sa_mask);
-    new_action.sa_flags = SA_RESTART;
-    
-    struct sigaction old_action_term;
-    struct sigaction old_action_abrt;
-    struct sigaction old_action_int;
-    struct sigaction old_action_alrm;
-    
-    sigaction(SIGTERM,  &new_action, &old_action_term);
-    sigaction(SIGABRT,  &new_action, &old_action_abrt);
-    sigaction(SIGINT,  &new_action, &old_action_int);
-    sigaction(SIGALRM,  &new_action, &old_action_alrm);
-    try {
-      sdd_manager_auto_gc_and_minimize_on(arg1);
-    } catch(SIGINT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process interrupted");
-    } catch(SIGTERM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process terminated");
-    } catch(SIGABRT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process aborted");
-    } catch(SIGALRM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process timeout");
-    }
-    sigaction(SIGTERM, &old_action_term, NULL);
-    sigaction(SIGABRT, &old_action_abrt, NULL);
-    sigaction(SIGINT, &old_action_int, NULL);
-    sigaction(SIGALRM, &old_action_alrm, NULL);
-    
-  }
-  resultobj = SWIG_Py_Void();
-  return resultobj;
+  sdd_manager_auto_gc_and_minimize_on(arg1);
+  
+  return TCL_OK;
 fail:
-  return NULL;
+  return TCL_ERROR;
 }
 
 
-SWIGINTERN PyObject *_wrap_sdd_manager_auto_gc_and_minimize_off(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
+SWIGINTERN int
+_wrap_sdd_manager_auto_gc_and_minimize_off(ClientData clientData SWIGUNUSED, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]) {
   SddManager *arg1 = (SddManager *) 0 ;
   void *argp1 = 0 ;
   int res1 = 0 ;
-  PyObject * obj0 = 0 ;
   
-  if (!PyArg_ParseTuple(args,(char *)"O:sdd_manager_auto_gc_and_minimize_off",&obj0)) SWIG_fail;
-  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_sdd_manager_t, 0 |  0 );
+  if (SWIG_GetArgs(interp, objc, objv,"o:sdd_manager_auto_gc_and_minimize_off manager ",(void *)0) == TCL_ERROR) SWIG_fail;
+  res1 = SWIG_ConvertPtr(objv[1], &argp1,SWIGTYPE_p_sdd_manager_t, 0 |  0 );
   if (!SWIG_IsOK(res1)) {
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "sdd_manager_auto_gc_and_minimize_off" "', argument " "1"" of type '" "SddManager *""'"); 
   }
   arg1 = (SddManager *)(argp1);
-  {
-    //
-    //    signal(SIGFPE,  handler);
-    //    signal(SIGILL,  handler);
-    
-    // signal(SIGSEGV, handler);
-    
-    struct sigaction new_action;
-    new_action.sa_handler = c_handler;
-    sigemptyset (&new_action.sa_mask);
-    new_action.sa_flags = SA_RESTART;
-    
-    struct sigaction old_action_term;
-    struct sigaction old_action_abrt;
-    struct sigaction old_action_int;
-    struct sigaction old_action_alrm;
-    
-    sigaction(SIGTERM,  &new_action, &old_action_term);
-    sigaction(SIGABRT,  &new_action, &old_action_abrt);
-    sigaction(SIGINT,  &new_action, &old_action_int);
-    sigaction(SIGALRM,  &new_action, &old_action_alrm);
-    try {
-      sdd_manager_auto_gc_and_minimize_off(arg1);
-    } catch(SIGINT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process interrupted");
-    } catch(SIGTERM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process terminated");
-    } catch(SIGABRT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process aborted");
-    } catch(SIGALRM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process timeout");
-    }
-    sigaction(SIGTERM, &old_action_term, NULL);
-    sigaction(SIGABRT, &old_action_abrt, NULL);
-    sigaction(SIGINT, &old_action_int, NULL);
-    sigaction(SIGALRM, &old_action_alrm, NULL);
-    
-  }
-  resultobj = SWIG_Py_Void();
-  return resultobj;
+  sdd_manager_auto_gc_and_minimize_off(arg1);
+  
+  return TCL_OK;
 fail:
-  return NULL;
+  return TCL_ERROR;
 }
 
 
-SWIGINTERN PyObject *_wrap_sdd_manager_is_auto_gc_and_minimize_on(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
+SWIGINTERN int
+_wrap_sdd_manager_is_auto_gc_and_minimize_on(ClientData clientData SWIGUNUSED, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]) {
   SddManager *arg1 = (SddManager *) 0 ;
   void *argp1 = 0 ;
   int res1 = 0 ;
-  PyObject * obj0 = 0 ;
   int result;
   
-  if (!PyArg_ParseTuple(args,(char *)"O:sdd_manager_is_auto_gc_and_minimize_on",&obj0)) SWIG_fail;
-  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_sdd_manager_t, 0 |  0 );
+  if (SWIG_GetArgs(interp, objc, objv,"o:sdd_manager_is_auto_gc_and_minimize_on manager ",(void *)0) == TCL_ERROR) SWIG_fail;
+  res1 = SWIG_ConvertPtr(objv[1], &argp1,SWIGTYPE_p_sdd_manager_t, 0 |  0 );
   if (!SWIG_IsOK(res1)) {
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "sdd_manager_is_auto_gc_and_minimize_on" "', argument " "1"" of type '" "SddManager *""'"); 
   }
   arg1 = (SddManager *)(argp1);
-  {
-    //
-    //    signal(SIGFPE,  handler);
-    //    signal(SIGILL,  handler);
-    
-    // signal(SIGSEGV, handler);
-    
-    struct sigaction new_action;
-    new_action.sa_handler = c_handler;
-    sigemptyset (&new_action.sa_mask);
-    new_action.sa_flags = SA_RESTART;
-    
-    struct sigaction old_action_term;
-    struct sigaction old_action_abrt;
-    struct sigaction old_action_int;
-    struct sigaction old_action_alrm;
-    
-    sigaction(SIGTERM,  &new_action, &old_action_term);
-    sigaction(SIGABRT,  &new_action, &old_action_abrt);
-    sigaction(SIGINT,  &new_action, &old_action_int);
-    sigaction(SIGALRM,  &new_action, &old_action_alrm);
-    try {
-      result = (int)sdd_manager_is_auto_gc_and_minimize_on(arg1);
-    } catch(SIGINT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process interrupted");
-    } catch(SIGTERM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process terminated");
-    } catch(SIGABRT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process aborted");
-    } catch(SIGALRM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process timeout");
-    }
-    sigaction(SIGTERM, &old_action_term, NULL);
-    sigaction(SIGABRT, &old_action_abrt, NULL);
-    sigaction(SIGINT, &old_action_int, NULL);
-    sigaction(SIGALRM, &old_action_alrm, NULL);
-    
-  }
-  resultobj = SWIG_From_int((int)(result));
-  return resultobj;
+  result = (int)sdd_manager_is_auto_gc_and_minimize_on(arg1);
+  Tcl_SetObjResult(interp,SWIG_From_int((int)(result)));
+  return TCL_OK;
 fail:
-  return NULL;
+  return TCL_ERROR;
 }
 
 
-SWIGINTERN PyObject *_wrap_sdd_manager_set_minimize_function(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
+SWIGINTERN int
+_wrap_sdd_manager_set_minimize_function(ClientData clientData SWIGUNUSED, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]) {
   SddVtreeSearchFunc *arg1 = (SddVtreeSearchFunc *) 0 ;
   SddManager *arg2 = (SddManager *) 0 ;
   void *argp2 = 0 ;
   int res2 = 0 ;
-  PyObject * obj0 = 0 ;
-  PyObject * obj1 = 0 ;
   
-  if (!PyArg_ParseTuple(args,(char *)"OO:sdd_manager_set_minimize_function",&obj0,&obj1)) SWIG_fail;
+  if (SWIG_GetArgs(interp, objc, objv,"oo:sdd_manager_set_minimize_function func manager ",(void *)0,(void *)0) == TCL_ERROR) SWIG_fail;
   {
-    int res = SWIG_ConvertFunctionPtr(obj0, (void**)(&arg1), SWIGTYPE_p_f_p_struct_vtree_t_p_struct_sdd_manager_t__p_vtree_t);
+    int res = SWIG_ConvertFunctionPtr(objv[1], (void**)(&arg1), SWIGTYPE_p_f_p_struct_vtree_t_p_struct_sdd_manager_t__p_vtree_t);
     if (!SWIG_IsOK(res)) {
       SWIG_exception_fail(SWIG_ArgError(res), "in method '" "sdd_manager_set_minimize_function" "', argument " "1"" of type '" "SddVtreeSearchFunc *""'"); 
     }
   }
-  res2 = SWIG_ConvertPtr(obj1, &argp2,SWIGTYPE_p_sdd_manager_t, 0 |  0 );
+  res2 = SWIG_ConvertPtr(objv[2], &argp2,SWIGTYPE_p_sdd_manager_t, 0 |  0 );
   if (!SWIG_IsOK(res2)) {
     SWIG_exception_fail(SWIG_ArgError(res2), "in method '" "sdd_manager_set_minimize_function" "', argument " "2"" of type '" "SddManager *""'"); 
   }
   arg2 = (SddManager *)(argp2);
-  {
-    //
-    //    signal(SIGFPE,  handler);
-    //    signal(SIGILL,  handler);
-    
-    // signal(SIGSEGV, handler);
-    
-    struct sigaction new_action;
-    new_action.sa_handler = c_handler;
-    sigemptyset (&new_action.sa_mask);
-    new_action.sa_flags = SA_RESTART;
-    
-    struct sigaction old_action_term;
-    struct sigaction old_action_abrt;
-    struct sigaction old_action_int;
-    struct sigaction old_action_alrm;
-    
-    sigaction(SIGTERM,  &new_action, &old_action_term);
-    sigaction(SIGABRT,  &new_action, &old_action_abrt);
-    sigaction(SIGINT,  &new_action, &old_action_int);
-    sigaction(SIGALRM,  &new_action, &old_action_alrm);
-    try {
-      sdd_manager_set_minimize_function(arg1,arg2);
-    } catch(SIGINT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process interrupted");
-    } catch(SIGTERM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process terminated");
-    } catch(SIGABRT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process aborted");
-    } catch(SIGALRM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process timeout");
-    }
-    sigaction(SIGTERM, &old_action_term, NULL);
-    sigaction(SIGABRT, &old_action_abrt, NULL);
-    sigaction(SIGINT, &old_action_int, NULL);
-    sigaction(SIGALRM, &old_action_alrm, NULL);
-    
-  }
-  resultobj = SWIG_Py_Void();
-  return resultobj;
+  sdd_manager_set_minimize_function(arg1,arg2);
+  
+  return TCL_OK;
 fail:
-  return NULL;
+  return TCL_ERROR;
 }
 
 
-SWIGINTERN PyObject *_wrap_sdd_manager_unset_minimize_function(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
+SWIGINTERN int
+_wrap_sdd_manager_unset_minimize_function(ClientData clientData SWIGUNUSED, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]) {
   SddManager *arg1 = (SddManager *) 0 ;
   void *argp1 = 0 ;
   int res1 = 0 ;
-  PyObject * obj0 = 0 ;
   
-  if (!PyArg_ParseTuple(args,(char *)"O:sdd_manager_unset_minimize_function",&obj0)) SWIG_fail;
-  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_sdd_manager_t, 0 |  0 );
+  if (SWIG_GetArgs(interp, objc, objv,"o:sdd_manager_unset_minimize_function manager ",(void *)0) == TCL_ERROR) SWIG_fail;
+  res1 = SWIG_ConvertPtr(objv[1], &argp1,SWIGTYPE_p_sdd_manager_t, 0 |  0 );
   if (!SWIG_IsOK(res1)) {
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "sdd_manager_unset_minimize_function" "', argument " "1"" of type '" "SddManager *""'"); 
   }
   arg1 = (SddManager *)(argp1);
-  {
-    //
-    //    signal(SIGFPE,  handler);
-    //    signal(SIGILL,  handler);
-    
-    // signal(SIGSEGV, handler);
-    
-    struct sigaction new_action;
-    new_action.sa_handler = c_handler;
-    sigemptyset (&new_action.sa_mask);
-    new_action.sa_flags = SA_RESTART;
-    
-    struct sigaction old_action_term;
-    struct sigaction old_action_abrt;
-    struct sigaction old_action_int;
-    struct sigaction old_action_alrm;
-    
-    sigaction(SIGTERM,  &new_action, &old_action_term);
-    sigaction(SIGABRT,  &new_action, &old_action_abrt);
-    sigaction(SIGINT,  &new_action, &old_action_int);
-    sigaction(SIGALRM,  &new_action, &old_action_alrm);
-    try {
-      sdd_manager_unset_minimize_function(arg1);
-    } catch(SIGINT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process interrupted");
-    } catch(SIGTERM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process terminated");
-    } catch(SIGABRT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process aborted");
-    } catch(SIGALRM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process timeout");
-    }
-    sigaction(SIGTERM, &old_action_term, NULL);
-    sigaction(SIGABRT, &old_action_abrt, NULL);
-    sigaction(SIGINT, &old_action_int, NULL);
-    sigaction(SIGALRM, &old_action_alrm, NULL);
-    
-  }
-  resultobj = SWIG_Py_Void();
-  return resultobj;
+  sdd_manager_unset_minimize_function(arg1);
+  
+  return TCL_OK;
 fail:
-  return NULL;
+  return TCL_ERROR;
 }
 
 
-SWIGINTERN PyObject *_wrap_sdd_manager_options(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
+SWIGINTERN int
+_wrap_sdd_manager_options(ClientData clientData SWIGUNUSED, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]) {
   SddManager *arg1 = (SddManager *) 0 ;
   void *argp1 = 0 ;
   int res1 = 0 ;
-  PyObject * obj0 = 0 ;
   void *result = 0 ;
   
-  if (!PyArg_ParseTuple(args,(char *)"O:sdd_manager_options",&obj0)) SWIG_fail;
-  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_sdd_manager_t, 0 |  0 );
+  if (SWIG_GetArgs(interp, objc, objv,"o:sdd_manager_options manager ",(void *)0) == TCL_ERROR) SWIG_fail;
+  res1 = SWIG_ConvertPtr(objv[1], &argp1,SWIGTYPE_p_sdd_manager_t, 0 |  0 );
   if (!SWIG_IsOK(res1)) {
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "sdd_manager_options" "', argument " "1"" of type '" "SddManager *""'"); 
   }
   arg1 = (SddManager *)(argp1);
-  {
-    //
-    //    signal(SIGFPE,  handler);
-    //    signal(SIGILL,  handler);
-    
-    // signal(SIGSEGV, handler);
-    
-    struct sigaction new_action;
-    new_action.sa_handler = c_handler;
-    sigemptyset (&new_action.sa_mask);
-    new_action.sa_flags = SA_RESTART;
-    
-    struct sigaction old_action_term;
-    struct sigaction old_action_abrt;
-    struct sigaction old_action_int;
-    struct sigaction old_action_alrm;
-    
-    sigaction(SIGTERM,  &new_action, &old_action_term);
-    sigaction(SIGABRT,  &new_action, &old_action_abrt);
-    sigaction(SIGINT,  &new_action, &old_action_int);
-    sigaction(SIGALRM,  &new_action, &old_action_alrm);
-    try {
-      result = (void *)sdd_manager_options(arg1);
-    } catch(SIGINT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process interrupted");
-    } catch(SIGTERM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process terminated");
-    } catch(SIGABRT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process aborted");
-    } catch(SIGALRM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process timeout");
-    }
-    sigaction(SIGTERM, &old_action_term, NULL);
-    sigaction(SIGABRT, &old_action_abrt, NULL);
-    sigaction(SIGINT, &old_action_int, NULL);
-    sigaction(SIGALRM, &old_action_alrm, NULL);
-    
-  }
-  resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_void, 0 |  0 );
-  return resultobj;
+  result = (void *)sdd_manager_options(arg1);
+  Tcl_SetObjResult(interp, SWIG_NewInstanceObj( SWIG_as_voidptr(result), SWIGTYPE_p_void,0));
+  return TCL_OK;
 fail:
-  return NULL;
+  return TCL_ERROR;
 }
 
 
-SWIGINTERN PyObject *_wrap_sdd_manager_set_options(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
+SWIGINTERN int
+_wrap_sdd_manager_set_options(ClientData clientData SWIGUNUSED, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]) {
   void *arg1 = (void *) 0 ;
   SddManager *arg2 = (SddManager *) 0 ;
   int res1 ;
   void *argp2 = 0 ;
   int res2 = 0 ;
-  PyObject * obj0 = 0 ;
-  PyObject * obj1 = 0 ;
   
-  if (!PyArg_ParseTuple(args,(char *)"OO:sdd_manager_set_options",&obj0,&obj1)) SWIG_fail;
-  res1 = SWIG_ConvertPtr(obj0,SWIG_as_voidptrptr(&arg1), 0, 0);
+  if (SWIG_GetArgs(interp, objc, objv,"oo:sdd_manager_set_options options manager ",(void *)0,(void *)0) == TCL_ERROR) SWIG_fail;
+  res1 = SWIG_ConvertPtr(objv[1],SWIG_as_voidptrptr(&arg1), 0, 0);
   if (!SWIG_IsOK(res1)) {
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "sdd_manager_set_options" "', argument " "1"" of type '" "void *""'"); 
   }
-  res2 = SWIG_ConvertPtr(obj1, &argp2,SWIGTYPE_p_sdd_manager_t, 0 |  0 );
+  res2 = SWIG_ConvertPtr(objv[2], &argp2,SWIGTYPE_p_sdd_manager_t, 0 |  0 );
   if (!SWIG_IsOK(res2)) {
     SWIG_exception_fail(SWIG_ArgError(res2), "in method '" "sdd_manager_set_options" "', argument " "2"" of type '" "SddManager *""'"); 
   }
   arg2 = (SddManager *)(argp2);
-  {
-    //
-    //    signal(SIGFPE,  handler);
-    //    signal(SIGILL,  handler);
-    
-    // signal(SIGSEGV, handler);
-    
-    struct sigaction new_action;
-    new_action.sa_handler = c_handler;
-    sigemptyset (&new_action.sa_mask);
-    new_action.sa_flags = SA_RESTART;
-    
-    struct sigaction old_action_term;
-    struct sigaction old_action_abrt;
-    struct sigaction old_action_int;
-    struct sigaction old_action_alrm;
-    
-    sigaction(SIGTERM,  &new_action, &old_action_term);
-    sigaction(SIGABRT,  &new_action, &old_action_abrt);
-    sigaction(SIGINT,  &new_action, &old_action_int);
-    sigaction(SIGALRM,  &new_action, &old_action_alrm);
-    try {
-      sdd_manager_set_options(arg1,arg2);
-    } catch(SIGINT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process interrupted");
-    } catch(SIGTERM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process terminated");
-    } catch(SIGABRT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process aborted");
-    } catch(SIGALRM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process timeout");
-    }
-    sigaction(SIGTERM, &old_action_term, NULL);
-    sigaction(SIGABRT, &old_action_abrt, NULL);
-    sigaction(SIGINT, &old_action_int, NULL);
-    sigaction(SIGALRM, &old_action_alrm, NULL);
-    
-  }
-  resultobj = SWIG_Py_Void();
-  return resultobj;
+  sdd_manager_set_options(arg1,arg2);
+  
+  return TCL_OK;
 fail:
-  return NULL;
+  return TCL_ERROR;
 }
 
 
-SWIGINTERN PyObject *_wrap_sdd_manager_is_var_used(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
+SWIGINTERN int
+_wrap_sdd_manager_is_var_used(ClientData clientData SWIGUNUSED, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]) {
   SddLiteral arg1 ;
   SddManager *arg2 = (SddManager *) 0 ;
   long val1 ;
   int ecode1 = 0 ;
   void *argp2 = 0 ;
   int res2 = 0 ;
-  PyObject * obj0 = 0 ;
-  PyObject * obj1 = 0 ;
   int result;
   
-  if (!PyArg_ParseTuple(args,(char *)"OO:sdd_manager_is_var_used",&obj0,&obj1)) SWIG_fail;
-  ecode1 = SWIG_AsVal_long(obj0, &val1);
+  if (SWIG_GetArgs(interp, objc, objv,"oo:sdd_manager_is_var_used var manager ",(void *)0,(void *)0) == TCL_ERROR) SWIG_fail;
+  ecode1 = SWIG_AsVal_long SWIG_TCL_CALL_ARGS_2(objv[1], &val1);
   if (!SWIG_IsOK(ecode1)) {
     SWIG_exception_fail(SWIG_ArgError(ecode1), "in method '" "sdd_manager_is_var_used" "', argument " "1"" of type '" "SddLiteral""'");
   } 
   arg1 = (SddLiteral)(val1);
-  res2 = SWIG_ConvertPtr(obj1, &argp2,SWIGTYPE_p_sdd_manager_t, 0 |  0 );
+  res2 = SWIG_ConvertPtr(objv[2], &argp2,SWIGTYPE_p_sdd_manager_t, 0 |  0 );
   if (!SWIG_IsOK(res2)) {
     SWIG_exception_fail(SWIG_ArgError(res2), "in method '" "sdd_manager_is_var_used" "', argument " "2"" of type '" "SddManager *""'"); 
   }
   arg2 = (SddManager *)(argp2);
-  {
-    //
-    //    signal(SIGFPE,  handler);
-    //    signal(SIGILL,  handler);
-    
-    // signal(SIGSEGV, handler);
-    
-    struct sigaction new_action;
-    new_action.sa_handler = c_handler;
-    sigemptyset (&new_action.sa_mask);
-    new_action.sa_flags = SA_RESTART;
-    
-    struct sigaction old_action_term;
-    struct sigaction old_action_abrt;
-    struct sigaction old_action_int;
-    struct sigaction old_action_alrm;
-    
-    sigaction(SIGTERM,  &new_action, &old_action_term);
-    sigaction(SIGABRT,  &new_action, &old_action_abrt);
-    sigaction(SIGINT,  &new_action, &old_action_int);
-    sigaction(SIGALRM,  &new_action, &old_action_alrm);
-    try {
-      result = (int)sdd_manager_is_var_used(arg1,arg2);
-    } catch(SIGINT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process interrupted");
-    } catch(SIGTERM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process terminated");
-    } catch(SIGABRT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process aborted");
-    } catch(SIGALRM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process timeout");
-    }
-    sigaction(SIGTERM, &old_action_term, NULL);
-    sigaction(SIGABRT, &old_action_abrt, NULL);
-    sigaction(SIGINT, &old_action_int, NULL);
-    sigaction(SIGALRM, &old_action_alrm, NULL);
-    
-  }
-  resultobj = SWIG_From_int((int)(result));
-  return resultobj;
+  result = (int)sdd_manager_is_var_used(arg1,arg2);
+  Tcl_SetObjResult(interp,SWIG_From_int((int)(result)));
+  return TCL_OK;
 fail:
-  return NULL;
+  return TCL_ERROR;
 }
 
 
-SWIGINTERN PyObject *_wrap_sdd_manager_vtree_of_var(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
+SWIGINTERN int
+_wrap_sdd_manager_vtree_of_var(ClientData clientData SWIGUNUSED, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]) {
   SddLiteral arg1 ;
   SddManager *arg2 = (SddManager *) 0 ;
   long val1 ;
   int ecode1 = 0 ;
   void *argp2 = 0 ;
   int res2 = 0 ;
-  PyObject * obj0 = 0 ;
-  PyObject * obj1 = 0 ;
   Vtree *result = 0 ;
   
-  if (!PyArg_ParseTuple(args,(char *)"OO:sdd_manager_vtree_of_var",&obj0,&obj1)) SWIG_fail;
-  ecode1 = SWIG_AsVal_long(obj0, &val1);
+  if (SWIG_GetArgs(interp, objc, objv,"oo:sdd_manager_vtree_of_var var manager ",(void *)0,(void *)0) == TCL_ERROR) SWIG_fail;
+  ecode1 = SWIG_AsVal_long SWIG_TCL_CALL_ARGS_2(objv[1], &val1);
   if (!SWIG_IsOK(ecode1)) {
     SWIG_exception_fail(SWIG_ArgError(ecode1), "in method '" "sdd_manager_vtree_of_var" "', argument " "1"" of type '" "SddLiteral""'");
   } 
   arg1 = (SddLiteral)(val1);
-  res2 = SWIG_ConvertPtr(obj1, &argp2,SWIGTYPE_p_sdd_manager_t, 0 |  0 );
+  res2 = SWIG_ConvertPtr(objv[2], &argp2,SWIGTYPE_p_sdd_manager_t, 0 |  0 );
   if (!SWIG_IsOK(res2)) {
     SWIG_exception_fail(SWIG_ArgError(res2), "in method '" "sdd_manager_vtree_of_var" "', argument " "2"" of type '" "SddManager const *""'"); 
   }
   arg2 = (SddManager *)(argp2);
-  {
-    //
-    //    signal(SIGFPE,  handler);
-    //    signal(SIGILL,  handler);
-    
-    // signal(SIGSEGV, handler);
-    
-    struct sigaction new_action;
-    new_action.sa_handler = c_handler;
-    sigemptyset (&new_action.sa_mask);
-    new_action.sa_flags = SA_RESTART;
-    
-    struct sigaction old_action_term;
-    struct sigaction old_action_abrt;
-    struct sigaction old_action_int;
-    struct sigaction old_action_alrm;
-    
-    sigaction(SIGTERM,  &new_action, &old_action_term);
-    sigaction(SIGABRT,  &new_action, &old_action_abrt);
-    sigaction(SIGINT,  &new_action, &old_action_int);
-    sigaction(SIGALRM,  &new_action, &old_action_alrm);
-    try {
-      result = (Vtree *)sdd_manager_vtree_of_var(arg1,(struct sdd_manager_t const *)arg2);
-    } catch(SIGINT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process interrupted");
-    } catch(SIGTERM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process terminated");
-    } catch(SIGABRT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process aborted");
-    } catch(SIGALRM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process timeout");
-    }
-    sigaction(SIGTERM, &old_action_term, NULL);
-    sigaction(SIGABRT, &old_action_abrt, NULL);
-    sigaction(SIGINT, &old_action_int, NULL);
-    sigaction(SIGALRM, &old_action_alrm, NULL);
-    
-  }
-  resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_vtree_t, 0 |  0 );
-  return resultobj;
+  result = (Vtree *)sdd_manager_vtree_of_var(arg1,(struct sdd_manager_t const *)arg2);
+  Tcl_SetObjResult(interp, SWIG_NewInstanceObj( SWIG_as_voidptr(result), SWIGTYPE_p_vtree_t,0));
+  return TCL_OK;
 fail:
-  return NULL;
+  return TCL_ERROR;
 }
 
 
-SWIGINTERN PyObject *_wrap_sdd_manager_lca_of_literals(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
+SWIGINTERN int
+_wrap_sdd_manager_lca_of_literals(ClientData clientData SWIGUNUSED, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]) {
   int arg1 ;
   SddLiteral *arg2 = (SddLiteral *) 0 ;
   SddManager *arg3 = (SddManager *) 0 ;
@@ -4888,796 +2475,250 @@ SWIGINTERN PyObject *_wrap_sdd_manager_lca_of_literals(PyObject *SWIGUNUSEDPARM(
   int res2 = 0 ;
   void *argp3 = 0 ;
   int res3 = 0 ;
-  PyObject * obj0 = 0 ;
-  PyObject * obj1 = 0 ;
-  PyObject * obj2 = 0 ;
   Vtree *result = 0 ;
   
-  if (!PyArg_ParseTuple(args,(char *)"OOO:sdd_manager_lca_of_literals",&obj0,&obj1,&obj2)) SWIG_fail;
-  ecode1 = SWIG_AsVal_int(obj0, &val1);
+  if (SWIG_GetArgs(interp, objc, objv,"ooo:sdd_manager_lca_of_literals count literals manager ",(void *)0,(void *)0,(void *)0) == TCL_ERROR) SWIG_fail;
+  ecode1 = SWIG_AsVal_int SWIG_TCL_CALL_ARGS_2(objv[1], &val1);
   if (!SWIG_IsOK(ecode1)) {
     SWIG_exception_fail(SWIG_ArgError(ecode1), "in method '" "sdd_manager_lca_of_literals" "', argument " "1"" of type '" "int""'");
   } 
   arg1 = (int)(val1);
-  res2 = SWIG_ConvertPtr(obj1, &argp2,SWIGTYPE_p_long, 0 |  0 );
+  res2 = SWIG_ConvertPtr(objv[2], &argp2,SWIGTYPE_p_long, 0 |  0 );
   if (!SWIG_IsOK(res2)) {
     SWIG_exception_fail(SWIG_ArgError(res2), "in method '" "sdd_manager_lca_of_literals" "', argument " "2"" of type '" "SddLiteral *""'"); 
   }
   arg2 = (SddLiteral *)(argp2);
-  res3 = SWIG_ConvertPtr(obj2, &argp3,SWIGTYPE_p_sdd_manager_t, 0 |  0 );
+  res3 = SWIG_ConvertPtr(objv[3], &argp3,SWIGTYPE_p_sdd_manager_t, 0 |  0 );
   if (!SWIG_IsOK(res3)) {
     SWIG_exception_fail(SWIG_ArgError(res3), "in method '" "sdd_manager_lca_of_literals" "', argument " "3"" of type '" "SddManager *""'"); 
   }
   arg3 = (SddManager *)(argp3);
-  {
-    //
-    //    signal(SIGFPE,  handler);
-    //    signal(SIGILL,  handler);
-    
-    // signal(SIGSEGV, handler);
-    
-    struct sigaction new_action;
-    new_action.sa_handler = c_handler;
-    sigemptyset (&new_action.sa_mask);
-    new_action.sa_flags = SA_RESTART;
-    
-    struct sigaction old_action_term;
-    struct sigaction old_action_abrt;
-    struct sigaction old_action_int;
-    struct sigaction old_action_alrm;
-    
-    sigaction(SIGTERM,  &new_action, &old_action_term);
-    sigaction(SIGABRT,  &new_action, &old_action_abrt);
-    sigaction(SIGINT,  &new_action, &old_action_int);
-    sigaction(SIGALRM,  &new_action, &old_action_alrm);
-    try {
-      result = (Vtree *)sdd_manager_lca_of_literals(arg1,arg2,arg3);
-    } catch(SIGINT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process interrupted");
-    } catch(SIGTERM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process terminated");
-    } catch(SIGABRT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process aborted");
-    } catch(SIGALRM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process timeout");
-    }
-    sigaction(SIGTERM, &old_action_term, NULL);
-    sigaction(SIGABRT, &old_action_abrt, NULL);
-    sigaction(SIGINT, &old_action_int, NULL);
-    sigaction(SIGALRM, &old_action_alrm, NULL);
-    
-  }
-  resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_vtree_t, 0 |  0 );
-  return resultobj;
+  result = (Vtree *)sdd_manager_lca_of_literals(arg1,arg2,arg3);
+  Tcl_SetObjResult(interp, SWIG_NewInstanceObj( SWIG_as_voidptr(result), SWIGTYPE_p_vtree_t,0));
+  return TCL_OK;
 fail:
-  return NULL;
+  return TCL_ERROR;
 }
 
 
-SWIGINTERN PyObject *_wrap_sdd_manager_var_count(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
+SWIGINTERN int
+_wrap_sdd_manager_var_count(ClientData clientData SWIGUNUSED, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]) {
   SddManager *arg1 = (SddManager *) 0 ;
   void *argp1 = 0 ;
   int res1 = 0 ;
-  PyObject * obj0 = 0 ;
   SddLiteral result;
   
-  if (!PyArg_ParseTuple(args,(char *)"O:sdd_manager_var_count",&obj0)) SWIG_fail;
-  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_sdd_manager_t, 0 |  0 );
+  if (SWIG_GetArgs(interp, objc, objv,"o:sdd_manager_var_count manager ",(void *)0) == TCL_ERROR) SWIG_fail;
+  res1 = SWIG_ConvertPtr(objv[1], &argp1,SWIGTYPE_p_sdd_manager_t, 0 |  0 );
   if (!SWIG_IsOK(res1)) {
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "sdd_manager_var_count" "', argument " "1"" of type '" "SddManager *""'"); 
   }
   arg1 = (SddManager *)(argp1);
-  {
-    //
-    //    signal(SIGFPE,  handler);
-    //    signal(SIGILL,  handler);
-    
-    // signal(SIGSEGV, handler);
-    
-    struct sigaction new_action;
-    new_action.sa_handler = c_handler;
-    sigemptyset (&new_action.sa_mask);
-    new_action.sa_flags = SA_RESTART;
-    
-    struct sigaction old_action_term;
-    struct sigaction old_action_abrt;
-    struct sigaction old_action_int;
-    struct sigaction old_action_alrm;
-    
-    sigaction(SIGTERM,  &new_action, &old_action_term);
-    sigaction(SIGABRT,  &new_action, &old_action_abrt);
-    sigaction(SIGINT,  &new_action, &old_action_int);
-    sigaction(SIGALRM,  &new_action, &old_action_alrm);
-    try {
-      result = (SddLiteral)sdd_manager_var_count(arg1);
-    } catch(SIGINT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process interrupted");
-    } catch(SIGTERM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process terminated");
-    } catch(SIGABRT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process aborted");
-    } catch(SIGALRM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process timeout");
-    }
-    sigaction(SIGTERM, &old_action_term, NULL);
-    sigaction(SIGABRT, &old_action_abrt, NULL);
-    sigaction(SIGINT, &old_action_int, NULL);
-    sigaction(SIGALRM, &old_action_alrm, NULL);
-    
-  }
-  resultobj = SWIG_From_long((long)(result));
-  return resultobj;
+  result = (SddLiteral)sdd_manager_var_count(arg1);
+  Tcl_SetObjResult(interp,SWIG_From_long((long)(result)));
+  return TCL_OK;
 fail:
-  return NULL;
+  return TCL_ERROR;
 }
 
 
-SWIGINTERN PyObject *_wrap_sdd_manager_var_order(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
+SWIGINTERN int
+_wrap_sdd_manager_var_order(ClientData clientData SWIGUNUSED, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]) {
   SddLiteral *arg1 = (SddLiteral *) 0 ;
   SddManager *arg2 = (SddManager *) 0 ;
   void *argp1 = 0 ;
   int res1 = 0 ;
   void *argp2 = 0 ;
   int res2 = 0 ;
-  PyObject * obj0 = 0 ;
-  PyObject * obj1 = 0 ;
   
-  if (!PyArg_ParseTuple(args,(char *)"OO:sdd_manager_var_order",&obj0,&obj1)) SWIG_fail;
-  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_long, 0 |  0 );
+  if (SWIG_GetArgs(interp, objc, objv,"oo:sdd_manager_var_order var_order manager ",(void *)0,(void *)0) == TCL_ERROR) SWIG_fail;
+  res1 = SWIG_ConvertPtr(objv[1], &argp1,SWIGTYPE_p_long, 0 |  0 );
   if (!SWIG_IsOK(res1)) {
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "sdd_manager_var_order" "', argument " "1"" of type '" "SddLiteral *""'"); 
   }
   arg1 = (SddLiteral *)(argp1);
-  res2 = SWIG_ConvertPtr(obj1, &argp2,SWIGTYPE_p_sdd_manager_t, 0 |  0 );
+  res2 = SWIG_ConvertPtr(objv[2], &argp2,SWIGTYPE_p_sdd_manager_t, 0 |  0 );
   if (!SWIG_IsOK(res2)) {
     SWIG_exception_fail(SWIG_ArgError(res2), "in method '" "sdd_manager_var_order" "', argument " "2"" of type '" "SddManager *""'"); 
   }
   arg2 = (SddManager *)(argp2);
-  {
-    //
-    //    signal(SIGFPE,  handler);
-    //    signal(SIGILL,  handler);
-    
-    // signal(SIGSEGV, handler);
-    
-    struct sigaction new_action;
-    new_action.sa_handler = c_handler;
-    sigemptyset (&new_action.sa_mask);
-    new_action.sa_flags = SA_RESTART;
-    
-    struct sigaction old_action_term;
-    struct sigaction old_action_abrt;
-    struct sigaction old_action_int;
-    struct sigaction old_action_alrm;
-    
-    sigaction(SIGTERM,  &new_action, &old_action_term);
-    sigaction(SIGABRT,  &new_action, &old_action_abrt);
-    sigaction(SIGINT,  &new_action, &old_action_int);
-    sigaction(SIGALRM,  &new_action, &old_action_alrm);
-    try {
-      sdd_manager_var_order(arg1,arg2);
-    } catch(SIGINT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process interrupted");
-    } catch(SIGTERM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process terminated");
-    } catch(SIGABRT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process aborted");
-    } catch(SIGALRM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process timeout");
-    }
-    sigaction(SIGTERM, &old_action_term, NULL);
-    sigaction(SIGABRT, &old_action_abrt, NULL);
-    sigaction(SIGINT, &old_action_int, NULL);
-    sigaction(SIGALRM, &old_action_alrm, NULL);
-    
-  }
-  resultobj = SWIG_Py_Void();
-  return resultobj;
+  sdd_manager_var_order(arg1,arg2);
+  
+  return TCL_OK;
 fail:
-  return NULL;
+  return TCL_ERROR;
 }
 
 
-SWIGINTERN PyObject *_wrap_sdd_manager_add_var_before_first(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
+SWIGINTERN int
+_wrap_sdd_manager_add_var_before_first(ClientData clientData SWIGUNUSED, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]) {
   SddManager *arg1 = (SddManager *) 0 ;
   void *argp1 = 0 ;
   int res1 = 0 ;
-  PyObject * obj0 = 0 ;
   
-  if (!PyArg_ParseTuple(args,(char *)"O:sdd_manager_add_var_before_first",&obj0)) SWIG_fail;
-  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_sdd_manager_t, 0 |  0 );
+  if (SWIG_GetArgs(interp, objc, objv,"o:sdd_manager_add_var_before_first manager ",(void *)0) == TCL_ERROR) SWIG_fail;
+  res1 = SWIG_ConvertPtr(objv[1], &argp1,SWIGTYPE_p_sdd_manager_t, 0 |  0 );
   if (!SWIG_IsOK(res1)) {
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "sdd_manager_add_var_before_first" "', argument " "1"" of type '" "SddManager *""'"); 
   }
   arg1 = (SddManager *)(argp1);
-  {
-    //
-    //    signal(SIGFPE,  handler);
-    //    signal(SIGILL,  handler);
-    
-    // signal(SIGSEGV, handler);
-    
-    struct sigaction new_action;
-    new_action.sa_handler = c_handler;
-    sigemptyset (&new_action.sa_mask);
-    new_action.sa_flags = SA_RESTART;
-    
-    struct sigaction old_action_term;
-    struct sigaction old_action_abrt;
-    struct sigaction old_action_int;
-    struct sigaction old_action_alrm;
-    
-    sigaction(SIGTERM,  &new_action, &old_action_term);
-    sigaction(SIGABRT,  &new_action, &old_action_abrt);
-    sigaction(SIGINT,  &new_action, &old_action_int);
-    sigaction(SIGALRM,  &new_action, &old_action_alrm);
-    try {
-      sdd_manager_add_var_before_first(arg1);
-    } catch(SIGINT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process interrupted");
-    } catch(SIGTERM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process terminated");
-    } catch(SIGABRT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process aborted");
-    } catch(SIGALRM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process timeout");
-    }
-    sigaction(SIGTERM, &old_action_term, NULL);
-    sigaction(SIGABRT, &old_action_abrt, NULL);
-    sigaction(SIGINT, &old_action_int, NULL);
-    sigaction(SIGALRM, &old_action_alrm, NULL);
-    
-  }
-  resultobj = SWIG_Py_Void();
-  return resultobj;
+  sdd_manager_add_var_before_first(arg1);
+  
+  return TCL_OK;
 fail:
-  return NULL;
+  return TCL_ERROR;
 }
 
 
-SWIGINTERN PyObject *_wrap_sdd_manager_add_var_after_last(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
+SWIGINTERN int
+_wrap_sdd_manager_add_var_after_last(ClientData clientData SWIGUNUSED, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]) {
   SddManager *arg1 = (SddManager *) 0 ;
   void *argp1 = 0 ;
   int res1 = 0 ;
-  PyObject * obj0 = 0 ;
   
-  if (!PyArg_ParseTuple(args,(char *)"O:sdd_manager_add_var_after_last",&obj0)) SWIG_fail;
-  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_sdd_manager_t, 0 |  0 );
+  if (SWIG_GetArgs(interp, objc, objv,"o:sdd_manager_add_var_after_last manager ",(void *)0) == TCL_ERROR) SWIG_fail;
+  res1 = SWIG_ConvertPtr(objv[1], &argp1,SWIGTYPE_p_sdd_manager_t, 0 |  0 );
   if (!SWIG_IsOK(res1)) {
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "sdd_manager_add_var_after_last" "', argument " "1"" of type '" "SddManager *""'"); 
   }
   arg1 = (SddManager *)(argp1);
-  {
-    //
-    //    signal(SIGFPE,  handler);
-    //    signal(SIGILL,  handler);
-    
-    // signal(SIGSEGV, handler);
-    
-    struct sigaction new_action;
-    new_action.sa_handler = c_handler;
-    sigemptyset (&new_action.sa_mask);
-    new_action.sa_flags = SA_RESTART;
-    
-    struct sigaction old_action_term;
-    struct sigaction old_action_abrt;
-    struct sigaction old_action_int;
-    struct sigaction old_action_alrm;
-    
-    sigaction(SIGTERM,  &new_action, &old_action_term);
-    sigaction(SIGABRT,  &new_action, &old_action_abrt);
-    sigaction(SIGINT,  &new_action, &old_action_int);
-    sigaction(SIGALRM,  &new_action, &old_action_alrm);
-    try {
-      sdd_manager_add_var_after_last(arg1);
-    } catch(SIGINT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process interrupted");
-    } catch(SIGTERM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process terminated");
-    } catch(SIGABRT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process aborted");
-    } catch(SIGALRM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process timeout");
-    }
-    sigaction(SIGTERM, &old_action_term, NULL);
-    sigaction(SIGABRT, &old_action_abrt, NULL);
-    sigaction(SIGINT, &old_action_int, NULL);
-    sigaction(SIGALRM, &old_action_alrm, NULL);
-    
-  }
-  resultobj = SWIG_Py_Void();
-  return resultobj;
+  sdd_manager_add_var_after_last(arg1);
+  
+  return TCL_OK;
 fail:
-  return NULL;
+  return TCL_ERROR;
 }
 
 
-SWIGINTERN PyObject *_wrap_sdd_manager_add_var_before(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
+SWIGINTERN int
+_wrap_sdd_manager_add_var_before(ClientData clientData SWIGUNUSED, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]) {
   SddLiteral arg1 ;
   SddManager *arg2 = (SddManager *) 0 ;
   long val1 ;
   int ecode1 = 0 ;
   void *argp2 = 0 ;
   int res2 = 0 ;
-  PyObject * obj0 = 0 ;
-  PyObject * obj1 = 0 ;
   
-  if (!PyArg_ParseTuple(args,(char *)"OO:sdd_manager_add_var_before",&obj0,&obj1)) SWIG_fail;
-  ecode1 = SWIG_AsVal_long(obj0, &val1);
+  if (SWIG_GetArgs(interp, objc, objv,"oo:sdd_manager_add_var_before target_var manager ",(void *)0,(void *)0) == TCL_ERROR) SWIG_fail;
+  ecode1 = SWIG_AsVal_long SWIG_TCL_CALL_ARGS_2(objv[1], &val1);
   if (!SWIG_IsOK(ecode1)) {
     SWIG_exception_fail(SWIG_ArgError(ecode1), "in method '" "sdd_manager_add_var_before" "', argument " "1"" of type '" "SddLiteral""'");
   } 
   arg1 = (SddLiteral)(val1);
-  res2 = SWIG_ConvertPtr(obj1, &argp2,SWIGTYPE_p_sdd_manager_t, 0 |  0 );
+  res2 = SWIG_ConvertPtr(objv[2], &argp2,SWIGTYPE_p_sdd_manager_t, 0 |  0 );
   if (!SWIG_IsOK(res2)) {
     SWIG_exception_fail(SWIG_ArgError(res2), "in method '" "sdd_manager_add_var_before" "', argument " "2"" of type '" "SddManager *""'"); 
   }
   arg2 = (SddManager *)(argp2);
-  {
-    //
-    //    signal(SIGFPE,  handler);
-    //    signal(SIGILL,  handler);
-    
-    // signal(SIGSEGV, handler);
-    
-    struct sigaction new_action;
-    new_action.sa_handler = c_handler;
-    sigemptyset (&new_action.sa_mask);
-    new_action.sa_flags = SA_RESTART;
-    
-    struct sigaction old_action_term;
-    struct sigaction old_action_abrt;
-    struct sigaction old_action_int;
-    struct sigaction old_action_alrm;
-    
-    sigaction(SIGTERM,  &new_action, &old_action_term);
-    sigaction(SIGABRT,  &new_action, &old_action_abrt);
-    sigaction(SIGINT,  &new_action, &old_action_int);
-    sigaction(SIGALRM,  &new_action, &old_action_alrm);
-    try {
-      sdd_manager_add_var_before(arg1,arg2);
-    } catch(SIGINT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process interrupted");
-    } catch(SIGTERM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process terminated");
-    } catch(SIGABRT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process aborted");
-    } catch(SIGALRM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process timeout");
-    }
-    sigaction(SIGTERM, &old_action_term, NULL);
-    sigaction(SIGABRT, &old_action_abrt, NULL);
-    sigaction(SIGINT, &old_action_int, NULL);
-    sigaction(SIGALRM, &old_action_alrm, NULL);
-    
-  }
-  resultobj = SWIG_Py_Void();
-  return resultobj;
+  sdd_manager_add_var_before(arg1,arg2);
+  
+  return TCL_OK;
 fail:
-  return NULL;
+  return TCL_ERROR;
 }
 
 
-SWIGINTERN PyObject *_wrap_sdd_manager_add_var_after(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
+SWIGINTERN int
+_wrap_sdd_manager_add_var_after(ClientData clientData SWIGUNUSED, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]) {
   SddLiteral arg1 ;
   SddManager *arg2 = (SddManager *) 0 ;
   long val1 ;
   int ecode1 = 0 ;
   void *argp2 = 0 ;
   int res2 = 0 ;
-  PyObject * obj0 = 0 ;
-  PyObject * obj1 = 0 ;
   
-  if (!PyArg_ParseTuple(args,(char *)"OO:sdd_manager_add_var_after",&obj0,&obj1)) SWIG_fail;
-  ecode1 = SWIG_AsVal_long(obj0, &val1);
+  if (SWIG_GetArgs(interp, objc, objv,"oo:sdd_manager_add_var_after target_var manager ",(void *)0,(void *)0) == TCL_ERROR) SWIG_fail;
+  ecode1 = SWIG_AsVal_long SWIG_TCL_CALL_ARGS_2(objv[1], &val1);
   if (!SWIG_IsOK(ecode1)) {
     SWIG_exception_fail(SWIG_ArgError(ecode1), "in method '" "sdd_manager_add_var_after" "', argument " "1"" of type '" "SddLiteral""'");
   } 
   arg1 = (SddLiteral)(val1);
-  res2 = SWIG_ConvertPtr(obj1, &argp2,SWIGTYPE_p_sdd_manager_t, 0 |  0 );
+  res2 = SWIG_ConvertPtr(objv[2], &argp2,SWIGTYPE_p_sdd_manager_t, 0 |  0 );
   if (!SWIG_IsOK(res2)) {
     SWIG_exception_fail(SWIG_ArgError(res2), "in method '" "sdd_manager_add_var_after" "', argument " "2"" of type '" "SddManager *""'"); 
   }
   arg2 = (SddManager *)(argp2);
-  {
-    //
-    //    signal(SIGFPE,  handler);
-    //    signal(SIGILL,  handler);
-    
-    // signal(SIGSEGV, handler);
-    
-    struct sigaction new_action;
-    new_action.sa_handler = c_handler;
-    sigemptyset (&new_action.sa_mask);
-    new_action.sa_flags = SA_RESTART;
-    
-    struct sigaction old_action_term;
-    struct sigaction old_action_abrt;
-    struct sigaction old_action_int;
-    struct sigaction old_action_alrm;
-    
-    sigaction(SIGTERM,  &new_action, &old_action_term);
-    sigaction(SIGABRT,  &new_action, &old_action_abrt);
-    sigaction(SIGINT,  &new_action, &old_action_int);
-    sigaction(SIGALRM,  &new_action, &old_action_alrm);
-    try {
-      sdd_manager_add_var_after(arg1,arg2);
-    } catch(SIGINT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process interrupted");
-    } catch(SIGTERM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process terminated");
-    } catch(SIGABRT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process aborted");
-    } catch(SIGALRM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process timeout");
-    }
-    sigaction(SIGTERM, &old_action_term, NULL);
-    sigaction(SIGABRT, &old_action_abrt, NULL);
-    sigaction(SIGINT, &old_action_int, NULL);
-    sigaction(SIGALRM, &old_action_alrm, NULL);
-    
-  }
-  resultobj = SWIG_Py_Void();
-  return resultobj;
+  sdd_manager_add_var_after(arg1,arg2);
+  
+  return TCL_OK;
 fail:
-  return NULL;
+  return TCL_ERROR;
 }
 
 
-SWIGINTERN PyObject *_wrap_sdd_manager_true(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
+SWIGINTERN int
+_wrap_sdd_manager_true(ClientData clientData SWIGUNUSED, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]) {
   SddManager *arg1 = (SddManager *) 0 ;
   void *argp1 = 0 ;
   int res1 = 0 ;
-  PyObject * obj0 = 0 ;
   SddNode *result = 0 ;
   
-  if (!PyArg_ParseTuple(args,(char *)"O:sdd_manager_true",&obj0)) SWIG_fail;
-  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_sdd_manager_t, 0 |  0 );
+  if (SWIG_GetArgs(interp, objc, objv,"o:sdd_manager_true manager ",(void *)0) == TCL_ERROR) SWIG_fail;
+  res1 = SWIG_ConvertPtr(objv[1], &argp1,SWIGTYPE_p_sdd_manager_t, 0 |  0 );
   if (!SWIG_IsOK(res1)) {
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "sdd_manager_true" "', argument " "1"" of type '" "SddManager const *""'"); 
   }
   arg1 = (SddManager *)(argp1);
-  {
-    //
-    //    signal(SIGFPE,  handler);
-    //    signal(SIGILL,  handler);
-    
-    // signal(SIGSEGV, handler);
-    
-    struct sigaction new_action;
-    new_action.sa_handler = c_handler;
-    sigemptyset (&new_action.sa_mask);
-    new_action.sa_flags = SA_RESTART;
-    
-    struct sigaction old_action_term;
-    struct sigaction old_action_abrt;
-    struct sigaction old_action_int;
-    struct sigaction old_action_alrm;
-    
-    sigaction(SIGTERM,  &new_action, &old_action_term);
-    sigaction(SIGABRT,  &new_action, &old_action_abrt);
-    sigaction(SIGINT,  &new_action, &old_action_int);
-    sigaction(SIGALRM,  &new_action, &old_action_alrm);
-    try {
-      result = (SddNode *)sdd_manager_true((struct sdd_manager_t const *)arg1);
-    } catch(SIGINT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process interrupted");
-    } catch(SIGTERM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process terminated");
-    } catch(SIGABRT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process aborted");
-    } catch(SIGALRM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process timeout");
-    }
-    sigaction(SIGTERM, &old_action_term, NULL);
-    sigaction(SIGABRT, &old_action_abrt, NULL);
-    sigaction(SIGINT, &old_action_int, NULL);
-    sigaction(SIGALRM, &old_action_alrm, NULL);
-    
-  }
-  resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_sdd_node_t, 0 |  0 );
-  return resultobj;
+  result = (SddNode *)sdd_manager_true((struct sdd_manager_t const *)arg1);
+  Tcl_SetObjResult(interp, SWIG_NewInstanceObj( SWIG_as_voidptr(result), SWIGTYPE_p_sdd_node_t,0));
+  return TCL_OK;
 fail:
-  return NULL;
+  return TCL_ERROR;
 }
 
 
-SWIGINTERN PyObject *_wrap_sdd_manager_false(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
+SWIGINTERN int
+_wrap_sdd_manager_false(ClientData clientData SWIGUNUSED, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]) {
   SddManager *arg1 = (SddManager *) 0 ;
   void *argp1 = 0 ;
   int res1 = 0 ;
-  PyObject * obj0 = 0 ;
   SddNode *result = 0 ;
   
-  if (!PyArg_ParseTuple(args,(char *)"O:sdd_manager_false",&obj0)) SWIG_fail;
-  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_sdd_manager_t, 0 |  0 );
+  if (SWIG_GetArgs(interp, objc, objv,"o:sdd_manager_false manager ",(void *)0) == TCL_ERROR) SWIG_fail;
+  res1 = SWIG_ConvertPtr(objv[1], &argp1,SWIGTYPE_p_sdd_manager_t, 0 |  0 );
   if (!SWIG_IsOK(res1)) {
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "sdd_manager_false" "', argument " "1"" of type '" "SddManager const *""'"); 
   }
   arg1 = (SddManager *)(argp1);
-  {
-    //
-    //    signal(SIGFPE,  handler);
-    //    signal(SIGILL,  handler);
-    
-    // signal(SIGSEGV, handler);
-    
-    struct sigaction new_action;
-    new_action.sa_handler = c_handler;
-    sigemptyset (&new_action.sa_mask);
-    new_action.sa_flags = SA_RESTART;
-    
-    struct sigaction old_action_term;
-    struct sigaction old_action_abrt;
-    struct sigaction old_action_int;
-    struct sigaction old_action_alrm;
-    
-    sigaction(SIGTERM,  &new_action, &old_action_term);
-    sigaction(SIGABRT,  &new_action, &old_action_abrt);
-    sigaction(SIGINT,  &new_action, &old_action_int);
-    sigaction(SIGALRM,  &new_action, &old_action_alrm);
-    try {
-      result = (SddNode *)sdd_manager_false((struct sdd_manager_t const *)arg1);
-    } catch(SIGINT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process interrupted");
-    } catch(SIGTERM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process terminated");
-    } catch(SIGABRT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process aborted");
-    } catch(SIGALRM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process timeout");
-    }
-    sigaction(SIGTERM, &old_action_term, NULL);
-    sigaction(SIGABRT, &old_action_abrt, NULL);
-    sigaction(SIGINT, &old_action_int, NULL);
-    sigaction(SIGALRM, &old_action_alrm, NULL);
-    
-  }
-  resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_sdd_node_t, 0 |  0 );
-  return resultobj;
+  result = (SddNode *)sdd_manager_false((struct sdd_manager_t const *)arg1);
+  Tcl_SetObjResult(interp, SWIG_NewInstanceObj( SWIG_as_voidptr(result), SWIGTYPE_p_sdd_node_t,0));
+  return TCL_OK;
 fail:
-  return NULL;
+  return TCL_ERROR;
 }
 
 
-SWIGINTERN PyObject *_wrap_sdd_manager_literal(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
+SWIGINTERN int
+_wrap_sdd_manager_literal(ClientData clientData SWIGUNUSED, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]) {
   SddLiteral arg1 ;
   SddManager *arg2 = (SddManager *) 0 ;
   long val1 ;
   int ecode1 = 0 ;
   void *argp2 = 0 ;
   int res2 = 0 ;
-  PyObject * obj0 = 0 ;
-  PyObject * obj1 = 0 ;
   SddNode *result = 0 ;
   
-  if (!PyArg_ParseTuple(args,(char *)"OO:sdd_manager_literal",&obj0,&obj1)) SWIG_fail;
-  ecode1 = SWIG_AsVal_long(obj0, &val1);
+  if (SWIG_GetArgs(interp, objc, objv,"oo:sdd_manager_literal literal manager ",(void *)0,(void *)0) == TCL_ERROR) SWIG_fail;
+  ecode1 = SWIG_AsVal_long SWIG_TCL_CALL_ARGS_2(objv[1], &val1);
   if (!SWIG_IsOK(ecode1)) {
     SWIG_exception_fail(SWIG_ArgError(ecode1), "in method '" "sdd_manager_literal" "', argument " "1"" of type '" "SddLiteral""'");
   } 
   arg1 = (SddLiteral)(val1);
-  res2 = SWIG_ConvertPtr(obj1, &argp2,SWIGTYPE_p_sdd_manager_t, 0 |  0 );
+  res2 = SWIG_ConvertPtr(objv[2], &argp2,SWIGTYPE_p_sdd_manager_t, 0 |  0 );
   if (!SWIG_IsOK(res2)) {
     SWIG_exception_fail(SWIG_ArgError(res2), "in method '" "sdd_manager_literal" "', argument " "2"" of type '" "SddManager *""'"); 
   }
   arg2 = (SddManager *)(argp2);
-  {
-    //
-    //    signal(SIGFPE,  handler);
-    //    signal(SIGILL,  handler);
-    
-    // signal(SIGSEGV, handler);
-    
-    struct sigaction new_action;
-    new_action.sa_handler = c_handler;
-    sigemptyset (&new_action.sa_mask);
-    new_action.sa_flags = SA_RESTART;
-    
-    struct sigaction old_action_term;
-    struct sigaction old_action_abrt;
-    struct sigaction old_action_int;
-    struct sigaction old_action_alrm;
-    
-    sigaction(SIGTERM,  &new_action, &old_action_term);
-    sigaction(SIGABRT,  &new_action, &old_action_abrt);
-    sigaction(SIGINT,  &new_action, &old_action_int);
-    sigaction(SIGALRM,  &new_action, &old_action_alrm);
-    try {
-      result = (SddNode *)sdd_manager_literal(arg1,arg2);
-    } catch(SIGINT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process interrupted");
-    } catch(SIGTERM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process terminated");
-    } catch(SIGABRT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process aborted");
-    } catch(SIGALRM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process timeout");
-    }
-    sigaction(SIGTERM, &old_action_term, NULL);
-    sigaction(SIGABRT, &old_action_abrt, NULL);
-    sigaction(SIGINT, &old_action_int, NULL);
-    sigaction(SIGALRM, &old_action_alrm, NULL);
-    
-  }
-  resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_sdd_node_t, 0 |  0 );
-  return resultobj;
+  result = (SddNode *)sdd_manager_literal(arg1,arg2);
+  Tcl_SetObjResult(interp, SWIG_NewInstanceObj( SWIG_as_voidptr(result), SWIGTYPE_p_sdd_node_t,0));
+  return TCL_OK;
 fail:
-  return NULL;
+  return TCL_ERROR;
 }
 
 
-SWIGINTERN PyObject *_wrap_sdd_apply(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
+SWIGINTERN int
+_wrap_sdd_apply(ClientData clientData SWIGUNUSED, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]) {
   SddNode *arg1 = (SddNode *) 0 ;
   SddNode *arg2 = (SddNode *) 0 ;
   BoolOp arg3 ;
@@ -5690,96 +2731,39 @@ SWIGINTERN PyObject *_wrap_sdd_apply(PyObject *SWIGUNUSEDPARM(self), PyObject *a
   int ecode3 = 0 ;
   void *argp4 = 0 ;
   int res4 = 0 ;
-  PyObject * obj0 = 0 ;
-  PyObject * obj1 = 0 ;
-  PyObject * obj2 = 0 ;
-  PyObject * obj3 = 0 ;
   SddNode *result = 0 ;
   
-  if (!PyArg_ParseTuple(args,(char *)"OOOO:sdd_apply",&obj0,&obj1,&obj2,&obj3)) SWIG_fail;
-  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_sdd_node_t, 0 |  0 );
+  if (SWIG_GetArgs(interp, objc, objv,"oooo:sdd_apply node1 node2 op manager ",(void *)0,(void *)0,(void *)0,(void *)0) == TCL_ERROR) SWIG_fail;
+  res1 = SWIG_ConvertPtr(objv[1], &argp1,SWIGTYPE_p_sdd_node_t, 0 |  0 );
   if (!SWIG_IsOK(res1)) {
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "sdd_apply" "', argument " "1"" of type '" "SddNode *""'"); 
   }
   arg1 = (SddNode *)(argp1);
-  res2 = SWIG_ConvertPtr(obj1, &argp2,SWIGTYPE_p_sdd_node_t, 0 |  0 );
+  res2 = SWIG_ConvertPtr(objv[2], &argp2,SWIGTYPE_p_sdd_node_t, 0 |  0 );
   if (!SWIG_IsOK(res2)) {
     SWIG_exception_fail(SWIG_ArgError(res2), "in method '" "sdd_apply" "', argument " "2"" of type '" "SddNode *""'"); 
   }
   arg2 = (SddNode *)(argp2);
-  ecode3 = SWIG_AsVal_unsigned_SS_short(obj2, &val3);
+  ecode3 = SWIG_AsVal_unsigned_SS_short SWIG_TCL_CALL_ARGS_2(objv[3], &val3);
   if (!SWIG_IsOK(ecode3)) {
     SWIG_exception_fail(SWIG_ArgError(ecode3), "in method '" "sdd_apply" "', argument " "3"" of type '" "BoolOp""'");
   } 
   arg3 = (BoolOp)(val3);
-  res4 = SWIG_ConvertPtr(obj3, &argp4,SWIGTYPE_p_sdd_manager_t, 0 |  0 );
+  res4 = SWIG_ConvertPtr(objv[4], &argp4,SWIGTYPE_p_sdd_manager_t, 0 |  0 );
   if (!SWIG_IsOK(res4)) {
     SWIG_exception_fail(SWIG_ArgError(res4), "in method '" "sdd_apply" "', argument " "4"" of type '" "SddManager *""'"); 
   }
   arg4 = (SddManager *)(argp4);
-  {
-    //
-    //    signal(SIGFPE,  handler);
-    //    signal(SIGILL,  handler);
-    
-    // signal(SIGSEGV, handler);
-    
-    struct sigaction new_action;
-    new_action.sa_handler = c_handler;
-    sigemptyset (&new_action.sa_mask);
-    new_action.sa_flags = SA_RESTART;
-    
-    struct sigaction old_action_term;
-    struct sigaction old_action_abrt;
-    struct sigaction old_action_int;
-    struct sigaction old_action_alrm;
-    
-    sigaction(SIGTERM,  &new_action, &old_action_term);
-    sigaction(SIGABRT,  &new_action, &old_action_abrt);
-    sigaction(SIGINT,  &new_action, &old_action_int);
-    sigaction(SIGALRM,  &new_action, &old_action_alrm);
-    try {
-      result = (SddNode *)sdd_apply(arg1,arg2,arg3,arg4);
-    } catch(SIGINT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process interrupted");
-    } catch(SIGTERM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process terminated");
-    } catch(SIGABRT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process aborted");
-    } catch(SIGALRM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process timeout");
-    }
-    sigaction(SIGTERM, &old_action_term, NULL);
-    sigaction(SIGABRT, &old_action_abrt, NULL);
-    sigaction(SIGINT, &old_action_int, NULL);
-    sigaction(SIGALRM, &old_action_alrm, NULL);
-    
-  }
-  resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_sdd_node_t, 0 |  0 );
-  return resultobj;
+  result = (SddNode *)sdd_apply(arg1,arg2,arg3,arg4);
+  Tcl_SetObjResult(interp, SWIG_NewInstanceObj( SWIG_as_voidptr(result), SWIGTYPE_p_sdd_node_t,0));
+  return TCL_OK;
 fail:
-  return NULL;
+  return TCL_ERROR;
 }
 
 
-SWIGINTERN PyObject *_wrap_sdd_conjoin(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
+SWIGINTERN int
+_wrap_sdd_conjoin(ClientData clientData SWIGUNUSED, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]) {
   SddNode *arg1 = (SddNode *) 0 ;
   SddNode *arg2 = (SddNode *) 0 ;
   SddManager *arg3 = (SddManager *) 0 ;
@@ -5789,90 +2773,34 @@ SWIGINTERN PyObject *_wrap_sdd_conjoin(PyObject *SWIGUNUSEDPARM(self), PyObject 
   int res2 = 0 ;
   void *argp3 = 0 ;
   int res3 = 0 ;
-  PyObject * obj0 = 0 ;
-  PyObject * obj1 = 0 ;
-  PyObject * obj2 = 0 ;
   SddNode *result = 0 ;
   
-  if (!PyArg_ParseTuple(args,(char *)"OOO:sdd_conjoin",&obj0,&obj1,&obj2)) SWIG_fail;
-  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_sdd_node_t, 0 |  0 );
+  if (SWIG_GetArgs(interp, objc, objv,"ooo:sdd_conjoin node1 node2 manager ",(void *)0,(void *)0,(void *)0) == TCL_ERROR) SWIG_fail;
+  res1 = SWIG_ConvertPtr(objv[1], &argp1,SWIGTYPE_p_sdd_node_t, 0 |  0 );
   if (!SWIG_IsOK(res1)) {
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "sdd_conjoin" "', argument " "1"" of type '" "SddNode *""'"); 
   }
   arg1 = (SddNode *)(argp1);
-  res2 = SWIG_ConvertPtr(obj1, &argp2,SWIGTYPE_p_sdd_node_t, 0 |  0 );
+  res2 = SWIG_ConvertPtr(objv[2], &argp2,SWIGTYPE_p_sdd_node_t, 0 |  0 );
   if (!SWIG_IsOK(res2)) {
     SWIG_exception_fail(SWIG_ArgError(res2), "in method '" "sdd_conjoin" "', argument " "2"" of type '" "SddNode *""'"); 
   }
   arg2 = (SddNode *)(argp2);
-  res3 = SWIG_ConvertPtr(obj2, &argp3,SWIGTYPE_p_sdd_manager_t, 0 |  0 );
+  res3 = SWIG_ConvertPtr(objv[3], &argp3,SWIGTYPE_p_sdd_manager_t, 0 |  0 );
   if (!SWIG_IsOK(res3)) {
     SWIG_exception_fail(SWIG_ArgError(res3), "in method '" "sdd_conjoin" "', argument " "3"" of type '" "SddManager *""'"); 
   }
   arg3 = (SddManager *)(argp3);
-  {
-    //
-    //    signal(SIGFPE,  handler);
-    //    signal(SIGILL,  handler);
-    
-    // signal(SIGSEGV, handler);
-    
-    struct sigaction new_action;
-    new_action.sa_handler = c_handler;
-    sigemptyset (&new_action.sa_mask);
-    new_action.sa_flags = SA_RESTART;
-    
-    struct sigaction old_action_term;
-    struct sigaction old_action_abrt;
-    struct sigaction old_action_int;
-    struct sigaction old_action_alrm;
-    
-    sigaction(SIGTERM,  &new_action, &old_action_term);
-    sigaction(SIGABRT,  &new_action, &old_action_abrt);
-    sigaction(SIGINT,  &new_action, &old_action_int);
-    sigaction(SIGALRM,  &new_action, &old_action_alrm);
-    try {
-      result = (SddNode *)sdd_conjoin(arg1,arg2,arg3);
-    } catch(SIGINT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process interrupted");
-    } catch(SIGTERM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process terminated");
-    } catch(SIGABRT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process aborted");
-    } catch(SIGALRM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process timeout");
-    }
-    sigaction(SIGTERM, &old_action_term, NULL);
-    sigaction(SIGABRT, &old_action_abrt, NULL);
-    sigaction(SIGINT, &old_action_int, NULL);
-    sigaction(SIGALRM, &old_action_alrm, NULL);
-    
-  }
-  resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_sdd_node_t, 0 |  0 );
-  return resultobj;
+  result = (SddNode *)sdd_conjoin(arg1,arg2,arg3);
+  Tcl_SetObjResult(interp, SWIG_NewInstanceObj( SWIG_as_voidptr(result), SWIGTYPE_p_sdd_node_t,0));
+  return TCL_OK;
 fail:
-  return NULL;
+  return TCL_ERROR;
 }
 
 
-SWIGINTERN PyObject *_wrap_sdd_disjoin(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
+SWIGINTERN int
+_wrap_sdd_disjoin(ClientData clientData SWIGUNUSED, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]) {
   SddNode *arg1 = (SddNode *) 0 ;
   SddNode *arg2 = (SddNode *) 0 ;
   SddManager *arg3 = (SddManager *) 0 ;
@@ -5882,174 +2810,63 @@ SWIGINTERN PyObject *_wrap_sdd_disjoin(PyObject *SWIGUNUSEDPARM(self), PyObject 
   int res2 = 0 ;
   void *argp3 = 0 ;
   int res3 = 0 ;
-  PyObject * obj0 = 0 ;
-  PyObject * obj1 = 0 ;
-  PyObject * obj2 = 0 ;
   SddNode *result = 0 ;
   
-  if (!PyArg_ParseTuple(args,(char *)"OOO:sdd_disjoin",&obj0,&obj1,&obj2)) SWIG_fail;
-  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_sdd_node_t, 0 |  0 );
+  if (SWIG_GetArgs(interp, objc, objv,"ooo:sdd_disjoin node1 node2 manager ",(void *)0,(void *)0,(void *)0) == TCL_ERROR) SWIG_fail;
+  res1 = SWIG_ConvertPtr(objv[1], &argp1,SWIGTYPE_p_sdd_node_t, 0 |  0 );
   if (!SWIG_IsOK(res1)) {
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "sdd_disjoin" "', argument " "1"" of type '" "SddNode *""'"); 
   }
   arg1 = (SddNode *)(argp1);
-  res2 = SWIG_ConvertPtr(obj1, &argp2,SWIGTYPE_p_sdd_node_t, 0 |  0 );
+  res2 = SWIG_ConvertPtr(objv[2], &argp2,SWIGTYPE_p_sdd_node_t, 0 |  0 );
   if (!SWIG_IsOK(res2)) {
     SWIG_exception_fail(SWIG_ArgError(res2), "in method '" "sdd_disjoin" "', argument " "2"" of type '" "SddNode *""'"); 
   }
   arg2 = (SddNode *)(argp2);
-  res3 = SWIG_ConvertPtr(obj2, &argp3,SWIGTYPE_p_sdd_manager_t, 0 |  0 );
+  res3 = SWIG_ConvertPtr(objv[3], &argp3,SWIGTYPE_p_sdd_manager_t, 0 |  0 );
   if (!SWIG_IsOK(res3)) {
     SWIG_exception_fail(SWIG_ArgError(res3), "in method '" "sdd_disjoin" "', argument " "3"" of type '" "SddManager *""'"); 
   }
   arg3 = (SddManager *)(argp3);
-  {
-    //
-    //    signal(SIGFPE,  handler);
-    //    signal(SIGILL,  handler);
-    
-    // signal(SIGSEGV, handler);
-    
-    struct sigaction new_action;
-    new_action.sa_handler = c_handler;
-    sigemptyset (&new_action.sa_mask);
-    new_action.sa_flags = SA_RESTART;
-    
-    struct sigaction old_action_term;
-    struct sigaction old_action_abrt;
-    struct sigaction old_action_int;
-    struct sigaction old_action_alrm;
-    
-    sigaction(SIGTERM,  &new_action, &old_action_term);
-    sigaction(SIGABRT,  &new_action, &old_action_abrt);
-    sigaction(SIGINT,  &new_action, &old_action_int);
-    sigaction(SIGALRM,  &new_action, &old_action_alrm);
-    try {
-      result = (SddNode *)sdd_disjoin(arg1,arg2,arg3);
-    } catch(SIGINT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process interrupted");
-    } catch(SIGTERM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process terminated");
-    } catch(SIGABRT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process aborted");
-    } catch(SIGALRM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process timeout");
-    }
-    sigaction(SIGTERM, &old_action_term, NULL);
-    sigaction(SIGABRT, &old_action_abrt, NULL);
-    sigaction(SIGINT, &old_action_int, NULL);
-    sigaction(SIGALRM, &old_action_alrm, NULL);
-    
-  }
-  resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_sdd_node_t, 0 |  0 );
-  return resultobj;
+  result = (SddNode *)sdd_disjoin(arg1,arg2,arg3);
+  Tcl_SetObjResult(interp, SWIG_NewInstanceObj( SWIG_as_voidptr(result), SWIGTYPE_p_sdd_node_t,0));
+  return TCL_OK;
 fail:
-  return NULL;
+  return TCL_ERROR;
 }
 
 
-SWIGINTERN PyObject *_wrap_sdd_negate(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
+SWIGINTERN int
+_wrap_sdd_negate(ClientData clientData SWIGUNUSED, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]) {
   SddNode *arg1 = (SddNode *) 0 ;
   SddManager *arg2 = (SddManager *) 0 ;
   void *argp1 = 0 ;
   int res1 = 0 ;
   void *argp2 = 0 ;
   int res2 = 0 ;
-  PyObject * obj0 = 0 ;
-  PyObject * obj1 = 0 ;
   SddNode *result = 0 ;
   
-  if (!PyArg_ParseTuple(args,(char *)"OO:sdd_negate",&obj0,&obj1)) SWIG_fail;
-  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_sdd_node_t, 0 |  0 );
+  if (SWIG_GetArgs(interp, objc, objv,"oo:sdd_negate node manager ",(void *)0,(void *)0) == TCL_ERROR) SWIG_fail;
+  res1 = SWIG_ConvertPtr(objv[1], &argp1,SWIGTYPE_p_sdd_node_t, 0 |  0 );
   if (!SWIG_IsOK(res1)) {
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "sdd_negate" "', argument " "1"" of type '" "SddNode *""'"); 
   }
   arg1 = (SddNode *)(argp1);
-  res2 = SWIG_ConvertPtr(obj1, &argp2,SWIGTYPE_p_sdd_manager_t, 0 |  0 );
+  res2 = SWIG_ConvertPtr(objv[2], &argp2,SWIGTYPE_p_sdd_manager_t, 0 |  0 );
   if (!SWIG_IsOK(res2)) {
     SWIG_exception_fail(SWIG_ArgError(res2), "in method '" "sdd_negate" "', argument " "2"" of type '" "SddManager *""'"); 
   }
   arg2 = (SddManager *)(argp2);
-  {
-    //
-    //    signal(SIGFPE,  handler);
-    //    signal(SIGILL,  handler);
-    
-    // signal(SIGSEGV, handler);
-    
-    struct sigaction new_action;
-    new_action.sa_handler = c_handler;
-    sigemptyset (&new_action.sa_mask);
-    new_action.sa_flags = SA_RESTART;
-    
-    struct sigaction old_action_term;
-    struct sigaction old_action_abrt;
-    struct sigaction old_action_int;
-    struct sigaction old_action_alrm;
-    
-    sigaction(SIGTERM,  &new_action, &old_action_term);
-    sigaction(SIGABRT,  &new_action, &old_action_abrt);
-    sigaction(SIGINT,  &new_action, &old_action_int);
-    sigaction(SIGALRM,  &new_action, &old_action_alrm);
-    try {
-      result = (SddNode *)sdd_negate(arg1,arg2);
-    } catch(SIGINT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process interrupted");
-    } catch(SIGTERM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process terminated");
-    } catch(SIGABRT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process aborted");
-    } catch(SIGALRM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process timeout");
-    }
-    sigaction(SIGTERM, &old_action_term, NULL);
-    sigaction(SIGABRT, &old_action_abrt, NULL);
-    sigaction(SIGINT, &old_action_int, NULL);
-    sigaction(SIGALRM, &old_action_alrm, NULL);
-    
-  }
-  resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_sdd_node_t, 0 |  0 );
-  return resultobj;
+  result = (SddNode *)sdd_negate(arg1,arg2);
+  Tcl_SetObjResult(interp, SWIG_NewInstanceObj( SWIG_as_voidptr(result), SWIGTYPE_p_sdd_node_t,0));
+  return TCL_OK;
 fail:
-  return NULL;
+  return TCL_ERROR;
 }
 
 
-SWIGINTERN PyObject *_wrap_sdd_condition(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
+SWIGINTERN int
+_wrap_sdd_condition(ClientData clientData SWIGUNUSED, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]) {
   SddLiteral arg1 ;
   SddNode *arg2 = (SddNode *) 0 ;
   SddManager *arg3 = (SddManager *) 0 ;
@@ -6059,90 +2876,34 @@ SWIGINTERN PyObject *_wrap_sdd_condition(PyObject *SWIGUNUSEDPARM(self), PyObjec
   int res2 = 0 ;
   void *argp3 = 0 ;
   int res3 = 0 ;
-  PyObject * obj0 = 0 ;
-  PyObject * obj1 = 0 ;
-  PyObject * obj2 = 0 ;
   SddNode *result = 0 ;
   
-  if (!PyArg_ParseTuple(args,(char *)"OOO:sdd_condition",&obj0,&obj1,&obj2)) SWIG_fail;
-  ecode1 = SWIG_AsVal_long(obj0, &val1);
+  if (SWIG_GetArgs(interp, objc, objv,"ooo:sdd_condition lit node manager ",(void *)0,(void *)0,(void *)0) == TCL_ERROR) SWIG_fail;
+  ecode1 = SWIG_AsVal_long SWIG_TCL_CALL_ARGS_2(objv[1], &val1);
   if (!SWIG_IsOK(ecode1)) {
     SWIG_exception_fail(SWIG_ArgError(ecode1), "in method '" "sdd_condition" "', argument " "1"" of type '" "SddLiteral""'");
   } 
   arg1 = (SddLiteral)(val1);
-  res2 = SWIG_ConvertPtr(obj1, &argp2,SWIGTYPE_p_sdd_node_t, 0 |  0 );
+  res2 = SWIG_ConvertPtr(objv[2], &argp2,SWIGTYPE_p_sdd_node_t, 0 |  0 );
   if (!SWIG_IsOK(res2)) {
     SWIG_exception_fail(SWIG_ArgError(res2), "in method '" "sdd_condition" "', argument " "2"" of type '" "SddNode *""'"); 
   }
   arg2 = (SddNode *)(argp2);
-  res3 = SWIG_ConvertPtr(obj2, &argp3,SWIGTYPE_p_sdd_manager_t, 0 |  0 );
+  res3 = SWIG_ConvertPtr(objv[3], &argp3,SWIGTYPE_p_sdd_manager_t, 0 |  0 );
   if (!SWIG_IsOK(res3)) {
     SWIG_exception_fail(SWIG_ArgError(res3), "in method '" "sdd_condition" "', argument " "3"" of type '" "SddManager *""'"); 
   }
   arg3 = (SddManager *)(argp3);
-  {
-    //
-    //    signal(SIGFPE,  handler);
-    //    signal(SIGILL,  handler);
-    
-    // signal(SIGSEGV, handler);
-    
-    struct sigaction new_action;
-    new_action.sa_handler = c_handler;
-    sigemptyset (&new_action.sa_mask);
-    new_action.sa_flags = SA_RESTART;
-    
-    struct sigaction old_action_term;
-    struct sigaction old_action_abrt;
-    struct sigaction old_action_int;
-    struct sigaction old_action_alrm;
-    
-    sigaction(SIGTERM,  &new_action, &old_action_term);
-    sigaction(SIGABRT,  &new_action, &old_action_abrt);
-    sigaction(SIGINT,  &new_action, &old_action_int);
-    sigaction(SIGALRM,  &new_action, &old_action_alrm);
-    try {
-      result = (SddNode *)sdd_condition(arg1,arg2,arg3);
-    } catch(SIGINT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process interrupted");
-    } catch(SIGTERM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process terminated");
-    } catch(SIGABRT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process aborted");
-    } catch(SIGALRM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process timeout");
-    }
-    sigaction(SIGTERM, &old_action_term, NULL);
-    sigaction(SIGABRT, &old_action_abrt, NULL);
-    sigaction(SIGINT, &old_action_int, NULL);
-    sigaction(SIGALRM, &old_action_alrm, NULL);
-    
-  }
-  resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_sdd_node_t, 0 |  0 );
-  return resultobj;
+  result = (SddNode *)sdd_condition(arg1,arg2,arg3);
+  Tcl_SetObjResult(interp, SWIG_NewInstanceObj( SWIG_as_voidptr(result), SWIGTYPE_p_sdd_node_t,0));
+  return TCL_OK;
 fail:
-  return NULL;
+  return TCL_ERROR;
 }
 
 
-SWIGINTERN PyObject *_wrap_sdd_exists(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
+SWIGINTERN int
+_wrap_sdd_exists(ClientData clientData SWIGUNUSED, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]) {
   SddLiteral arg1 ;
   SddNode *arg2 = (SddNode *) 0 ;
   SddManager *arg3 = (SddManager *) 0 ;
@@ -6152,90 +2913,34 @@ SWIGINTERN PyObject *_wrap_sdd_exists(PyObject *SWIGUNUSEDPARM(self), PyObject *
   int res2 = 0 ;
   void *argp3 = 0 ;
   int res3 = 0 ;
-  PyObject * obj0 = 0 ;
-  PyObject * obj1 = 0 ;
-  PyObject * obj2 = 0 ;
   SddNode *result = 0 ;
   
-  if (!PyArg_ParseTuple(args,(char *)"OOO:sdd_exists",&obj0,&obj1,&obj2)) SWIG_fail;
-  ecode1 = SWIG_AsVal_long(obj0, &val1);
+  if (SWIG_GetArgs(interp, objc, objv,"ooo:sdd_exists var node manager ",(void *)0,(void *)0,(void *)0) == TCL_ERROR) SWIG_fail;
+  ecode1 = SWIG_AsVal_long SWIG_TCL_CALL_ARGS_2(objv[1], &val1);
   if (!SWIG_IsOK(ecode1)) {
     SWIG_exception_fail(SWIG_ArgError(ecode1), "in method '" "sdd_exists" "', argument " "1"" of type '" "SddLiteral""'");
   } 
   arg1 = (SddLiteral)(val1);
-  res2 = SWIG_ConvertPtr(obj1, &argp2,SWIGTYPE_p_sdd_node_t, 0 |  0 );
+  res2 = SWIG_ConvertPtr(objv[2], &argp2,SWIGTYPE_p_sdd_node_t, 0 |  0 );
   if (!SWIG_IsOK(res2)) {
     SWIG_exception_fail(SWIG_ArgError(res2), "in method '" "sdd_exists" "', argument " "2"" of type '" "SddNode *""'"); 
   }
   arg2 = (SddNode *)(argp2);
-  res3 = SWIG_ConvertPtr(obj2, &argp3,SWIGTYPE_p_sdd_manager_t, 0 |  0 );
+  res3 = SWIG_ConvertPtr(objv[3], &argp3,SWIGTYPE_p_sdd_manager_t, 0 |  0 );
   if (!SWIG_IsOK(res3)) {
     SWIG_exception_fail(SWIG_ArgError(res3), "in method '" "sdd_exists" "', argument " "3"" of type '" "SddManager *""'"); 
   }
   arg3 = (SddManager *)(argp3);
-  {
-    //
-    //    signal(SIGFPE,  handler);
-    //    signal(SIGILL,  handler);
-    
-    // signal(SIGSEGV, handler);
-    
-    struct sigaction new_action;
-    new_action.sa_handler = c_handler;
-    sigemptyset (&new_action.sa_mask);
-    new_action.sa_flags = SA_RESTART;
-    
-    struct sigaction old_action_term;
-    struct sigaction old_action_abrt;
-    struct sigaction old_action_int;
-    struct sigaction old_action_alrm;
-    
-    sigaction(SIGTERM,  &new_action, &old_action_term);
-    sigaction(SIGABRT,  &new_action, &old_action_abrt);
-    sigaction(SIGINT,  &new_action, &old_action_int);
-    sigaction(SIGALRM,  &new_action, &old_action_alrm);
-    try {
-      result = (SddNode *)sdd_exists(arg1,arg2,arg3);
-    } catch(SIGINT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process interrupted");
-    } catch(SIGTERM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process terminated");
-    } catch(SIGABRT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process aborted");
-    } catch(SIGALRM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process timeout");
-    }
-    sigaction(SIGTERM, &old_action_term, NULL);
-    sigaction(SIGABRT, &old_action_abrt, NULL);
-    sigaction(SIGINT, &old_action_int, NULL);
-    sigaction(SIGALRM, &old_action_alrm, NULL);
-    
-  }
-  resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_sdd_node_t, 0 |  0 );
-  return resultobj;
+  result = (SddNode *)sdd_exists(arg1,arg2,arg3);
+  Tcl_SetObjResult(interp, SWIG_NewInstanceObj( SWIG_as_voidptr(result), SWIGTYPE_p_sdd_node_t,0));
+  return TCL_OK;
 fail:
-  return NULL;
+  return TCL_ERROR;
 }
 
 
-SWIGINTERN PyObject *_wrap_sdd_exists_multiple(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
+SWIGINTERN int
+_wrap_sdd_exists_multiple(ClientData clientData SWIGUNUSED, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]) {
   int *arg1 = (int *) 0 ;
   SddNode *arg2 = (SddNode *) 0 ;
   SddManager *arg3 = (SddManager *) 0 ;
@@ -6245,90 +2950,34 @@ SWIGINTERN PyObject *_wrap_sdd_exists_multiple(PyObject *SWIGUNUSEDPARM(self), P
   int res2 = 0 ;
   void *argp3 = 0 ;
   int res3 = 0 ;
-  PyObject * obj0 = 0 ;
-  PyObject * obj1 = 0 ;
-  PyObject * obj2 = 0 ;
   SddNode *result = 0 ;
   
-  if (!PyArg_ParseTuple(args,(char *)"OOO:sdd_exists_multiple",&obj0,&obj1,&obj2)) SWIG_fail;
-  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_int, 0 |  0 );
+  if (SWIG_GetArgs(interp, objc, objv,"ooo:sdd_exists_multiple exists_map node manager ",(void *)0,(void *)0,(void *)0) == TCL_ERROR) SWIG_fail;
+  res1 = SWIG_ConvertPtr(objv[1], &argp1,SWIGTYPE_p_int, 0 |  0 );
   if (!SWIG_IsOK(res1)) {
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "sdd_exists_multiple" "', argument " "1"" of type '" "int *""'"); 
   }
   arg1 = (int *)(argp1);
-  res2 = SWIG_ConvertPtr(obj1, &argp2,SWIGTYPE_p_sdd_node_t, 0 |  0 );
+  res2 = SWIG_ConvertPtr(objv[2], &argp2,SWIGTYPE_p_sdd_node_t, 0 |  0 );
   if (!SWIG_IsOK(res2)) {
     SWIG_exception_fail(SWIG_ArgError(res2), "in method '" "sdd_exists_multiple" "', argument " "2"" of type '" "SddNode *""'"); 
   }
   arg2 = (SddNode *)(argp2);
-  res3 = SWIG_ConvertPtr(obj2, &argp3,SWIGTYPE_p_sdd_manager_t, 0 |  0 );
+  res3 = SWIG_ConvertPtr(objv[3], &argp3,SWIGTYPE_p_sdd_manager_t, 0 |  0 );
   if (!SWIG_IsOK(res3)) {
     SWIG_exception_fail(SWIG_ArgError(res3), "in method '" "sdd_exists_multiple" "', argument " "3"" of type '" "SddManager *""'"); 
   }
   arg3 = (SddManager *)(argp3);
-  {
-    //
-    //    signal(SIGFPE,  handler);
-    //    signal(SIGILL,  handler);
-    
-    // signal(SIGSEGV, handler);
-    
-    struct sigaction new_action;
-    new_action.sa_handler = c_handler;
-    sigemptyset (&new_action.sa_mask);
-    new_action.sa_flags = SA_RESTART;
-    
-    struct sigaction old_action_term;
-    struct sigaction old_action_abrt;
-    struct sigaction old_action_int;
-    struct sigaction old_action_alrm;
-    
-    sigaction(SIGTERM,  &new_action, &old_action_term);
-    sigaction(SIGABRT,  &new_action, &old_action_abrt);
-    sigaction(SIGINT,  &new_action, &old_action_int);
-    sigaction(SIGALRM,  &new_action, &old_action_alrm);
-    try {
-      result = (SddNode *)sdd_exists_multiple(arg1,arg2,arg3);
-    } catch(SIGINT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process interrupted");
-    } catch(SIGTERM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process terminated");
-    } catch(SIGABRT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process aborted");
-    } catch(SIGALRM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process timeout");
-    }
-    sigaction(SIGTERM, &old_action_term, NULL);
-    sigaction(SIGABRT, &old_action_abrt, NULL);
-    sigaction(SIGINT, &old_action_int, NULL);
-    sigaction(SIGALRM, &old_action_alrm, NULL);
-    
-  }
-  resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_sdd_node_t, 0 |  0 );
-  return resultobj;
+  result = (SddNode *)sdd_exists_multiple(arg1,arg2,arg3);
+  Tcl_SetObjResult(interp, SWIG_NewInstanceObj( SWIG_as_voidptr(result), SWIGTYPE_p_sdd_node_t,0));
+  return TCL_OK;
 fail:
-  return NULL;
+  return TCL_ERROR;
 }
 
 
-SWIGINTERN PyObject *_wrap_sdd_exists_multiple_static(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
+SWIGINTERN int
+_wrap_sdd_exists_multiple_static(ClientData clientData SWIGUNUSED, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]) {
   int *arg1 = (int *) 0 ;
   SddNode *arg2 = (SddNode *) 0 ;
   SddManager *arg3 = (SddManager *) 0 ;
@@ -6338,90 +2987,34 @@ SWIGINTERN PyObject *_wrap_sdd_exists_multiple_static(PyObject *SWIGUNUSEDPARM(s
   int res2 = 0 ;
   void *argp3 = 0 ;
   int res3 = 0 ;
-  PyObject * obj0 = 0 ;
-  PyObject * obj1 = 0 ;
-  PyObject * obj2 = 0 ;
   SddNode *result = 0 ;
   
-  if (!PyArg_ParseTuple(args,(char *)"OOO:sdd_exists_multiple_static",&obj0,&obj1,&obj2)) SWIG_fail;
-  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_int, 0 |  0 );
+  if (SWIG_GetArgs(interp, objc, objv,"ooo:sdd_exists_multiple_static exists_map node manager ",(void *)0,(void *)0,(void *)0) == TCL_ERROR) SWIG_fail;
+  res1 = SWIG_ConvertPtr(objv[1], &argp1,SWIGTYPE_p_int, 0 |  0 );
   if (!SWIG_IsOK(res1)) {
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "sdd_exists_multiple_static" "', argument " "1"" of type '" "int *""'"); 
   }
   arg1 = (int *)(argp1);
-  res2 = SWIG_ConvertPtr(obj1, &argp2,SWIGTYPE_p_sdd_node_t, 0 |  0 );
+  res2 = SWIG_ConvertPtr(objv[2], &argp2,SWIGTYPE_p_sdd_node_t, 0 |  0 );
   if (!SWIG_IsOK(res2)) {
     SWIG_exception_fail(SWIG_ArgError(res2), "in method '" "sdd_exists_multiple_static" "', argument " "2"" of type '" "SddNode *""'"); 
   }
   arg2 = (SddNode *)(argp2);
-  res3 = SWIG_ConvertPtr(obj2, &argp3,SWIGTYPE_p_sdd_manager_t, 0 |  0 );
+  res3 = SWIG_ConvertPtr(objv[3], &argp3,SWIGTYPE_p_sdd_manager_t, 0 |  0 );
   if (!SWIG_IsOK(res3)) {
     SWIG_exception_fail(SWIG_ArgError(res3), "in method '" "sdd_exists_multiple_static" "', argument " "3"" of type '" "SddManager *""'"); 
   }
   arg3 = (SddManager *)(argp3);
-  {
-    //
-    //    signal(SIGFPE,  handler);
-    //    signal(SIGILL,  handler);
-    
-    // signal(SIGSEGV, handler);
-    
-    struct sigaction new_action;
-    new_action.sa_handler = c_handler;
-    sigemptyset (&new_action.sa_mask);
-    new_action.sa_flags = SA_RESTART;
-    
-    struct sigaction old_action_term;
-    struct sigaction old_action_abrt;
-    struct sigaction old_action_int;
-    struct sigaction old_action_alrm;
-    
-    sigaction(SIGTERM,  &new_action, &old_action_term);
-    sigaction(SIGABRT,  &new_action, &old_action_abrt);
-    sigaction(SIGINT,  &new_action, &old_action_int);
-    sigaction(SIGALRM,  &new_action, &old_action_alrm);
-    try {
-      result = (SddNode *)sdd_exists_multiple_static(arg1,arg2,arg3);
-    } catch(SIGINT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process interrupted");
-    } catch(SIGTERM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process terminated");
-    } catch(SIGABRT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process aborted");
-    } catch(SIGALRM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process timeout");
-    }
-    sigaction(SIGTERM, &old_action_term, NULL);
-    sigaction(SIGABRT, &old_action_abrt, NULL);
-    sigaction(SIGINT, &old_action_int, NULL);
-    sigaction(SIGALRM, &old_action_alrm, NULL);
-    
-  }
-  resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_sdd_node_t, 0 |  0 );
-  return resultobj;
+  result = (SddNode *)sdd_exists_multiple_static(arg1,arg2,arg3);
+  Tcl_SetObjResult(interp, SWIG_NewInstanceObj( SWIG_as_voidptr(result), SWIGTYPE_p_sdd_node_t,0));
+  return TCL_OK;
 fail:
-  return NULL;
+  return TCL_ERROR;
 }
 
 
-SWIGINTERN PyObject *_wrap_sdd_forall(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
+SWIGINTERN int
+_wrap_sdd_forall(ClientData clientData SWIGUNUSED, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]) {
   SddLiteral arg1 ;
   SddNode *arg2 = (SddNode *) 0 ;
   SddManager *arg3 = (SddManager *) 0 ;
@@ -6431,1502 +3024,467 @@ SWIGINTERN PyObject *_wrap_sdd_forall(PyObject *SWIGUNUSEDPARM(self), PyObject *
   int res2 = 0 ;
   void *argp3 = 0 ;
   int res3 = 0 ;
-  PyObject * obj0 = 0 ;
-  PyObject * obj1 = 0 ;
-  PyObject * obj2 = 0 ;
   SddNode *result = 0 ;
   
-  if (!PyArg_ParseTuple(args,(char *)"OOO:sdd_forall",&obj0,&obj1,&obj2)) SWIG_fail;
-  ecode1 = SWIG_AsVal_long(obj0, &val1);
+  if (SWIG_GetArgs(interp, objc, objv,"ooo:sdd_forall var node manager ",(void *)0,(void *)0,(void *)0) == TCL_ERROR) SWIG_fail;
+  ecode1 = SWIG_AsVal_long SWIG_TCL_CALL_ARGS_2(objv[1], &val1);
   if (!SWIG_IsOK(ecode1)) {
     SWIG_exception_fail(SWIG_ArgError(ecode1), "in method '" "sdd_forall" "', argument " "1"" of type '" "SddLiteral""'");
   } 
   arg1 = (SddLiteral)(val1);
-  res2 = SWIG_ConvertPtr(obj1, &argp2,SWIGTYPE_p_sdd_node_t, 0 |  0 );
+  res2 = SWIG_ConvertPtr(objv[2], &argp2,SWIGTYPE_p_sdd_node_t, 0 |  0 );
   if (!SWIG_IsOK(res2)) {
     SWIG_exception_fail(SWIG_ArgError(res2), "in method '" "sdd_forall" "', argument " "2"" of type '" "SddNode *""'"); 
   }
   arg2 = (SddNode *)(argp2);
-  res3 = SWIG_ConvertPtr(obj2, &argp3,SWIGTYPE_p_sdd_manager_t, 0 |  0 );
+  res3 = SWIG_ConvertPtr(objv[3], &argp3,SWIGTYPE_p_sdd_manager_t, 0 |  0 );
   if (!SWIG_IsOK(res3)) {
     SWIG_exception_fail(SWIG_ArgError(res3), "in method '" "sdd_forall" "', argument " "3"" of type '" "SddManager *""'"); 
   }
   arg3 = (SddManager *)(argp3);
-  {
-    //
-    //    signal(SIGFPE,  handler);
-    //    signal(SIGILL,  handler);
-    
-    // signal(SIGSEGV, handler);
-    
-    struct sigaction new_action;
-    new_action.sa_handler = c_handler;
-    sigemptyset (&new_action.sa_mask);
-    new_action.sa_flags = SA_RESTART;
-    
-    struct sigaction old_action_term;
-    struct sigaction old_action_abrt;
-    struct sigaction old_action_int;
-    struct sigaction old_action_alrm;
-    
-    sigaction(SIGTERM,  &new_action, &old_action_term);
-    sigaction(SIGABRT,  &new_action, &old_action_abrt);
-    sigaction(SIGINT,  &new_action, &old_action_int);
-    sigaction(SIGALRM,  &new_action, &old_action_alrm);
-    try {
-      result = (SddNode *)sdd_forall(arg1,arg2,arg3);
-    } catch(SIGINT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process interrupted");
-    } catch(SIGTERM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process terminated");
-    } catch(SIGABRT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process aborted");
-    } catch(SIGALRM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process timeout");
-    }
-    sigaction(SIGTERM, &old_action_term, NULL);
-    sigaction(SIGABRT, &old_action_abrt, NULL);
-    sigaction(SIGINT, &old_action_int, NULL);
-    sigaction(SIGALRM, &old_action_alrm, NULL);
-    
-  }
-  resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_sdd_node_t, 0 |  0 );
-  return resultobj;
+  result = (SddNode *)sdd_forall(arg1,arg2,arg3);
+  Tcl_SetObjResult(interp, SWIG_NewInstanceObj( SWIG_as_voidptr(result), SWIGTYPE_p_sdd_node_t,0));
+  return TCL_OK;
 fail:
-  return NULL;
+  return TCL_ERROR;
 }
 
 
-SWIGINTERN PyObject *_wrap_sdd_minimize_cardinality(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
+SWIGINTERN int
+_wrap_sdd_minimize_cardinality(ClientData clientData SWIGUNUSED, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]) {
   SddNode *arg1 = (SddNode *) 0 ;
   SddManager *arg2 = (SddManager *) 0 ;
   void *argp1 = 0 ;
   int res1 = 0 ;
   void *argp2 = 0 ;
   int res2 = 0 ;
-  PyObject * obj0 = 0 ;
-  PyObject * obj1 = 0 ;
   SddNode *result = 0 ;
   
-  if (!PyArg_ParseTuple(args,(char *)"OO:sdd_minimize_cardinality",&obj0,&obj1)) SWIG_fail;
-  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_sdd_node_t, 0 |  0 );
+  if (SWIG_GetArgs(interp, objc, objv,"oo:sdd_minimize_cardinality node manager ",(void *)0,(void *)0) == TCL_ERROR) SWIG_fail;
+  res1 = SWIG_ConvertPtr(objv[1], &argp1,SWIGTYPE_p_sdd_node_t, 0 |  0 );
   if (!SWIG_IsOK(res1)) {
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "sdd_minimize_cardinality" "', argument " "1"" of type '" "SddNode *""'"); 
   }
   arg1 = (SddNode *)(argp1);
-  res2 = SWIG_ConvertPtr(obj1, &argp2,SWIGTYPE_p_sdd_manager_t, 0 |  0 );
+  res2 = SWIG_ConvertPtr(objv[2], &argp2,SWIGTYPE_p_sdd_manager_t, 0 |  0 );
   if (!SWIG_IsOK(res2)) {
     SWIG_exception_fail(SWIG_ArgError(res2), "in method '" "sdd_minimize_cardinality" "', argument " "2"" of type '" "SddManager *""'"); 
   }
   arg2 = (SddManager *)(argp2);
-  {
-    //
-    //    signal(SIGFPE,  handler);
-    //    signal(SIGILL,  handler);
-    
-    // signal(SIGSEGV, handler);
-    
-    struct sigaction new_action;
-    new_action.sa_handler = c_handler;
-    sigemptyset (&new_action.sa_mask);
-    new_action.sa_flags = SA_RESTART;
-    
-    struct sigaction old_action_term;
-    struct sigaction old_action_abrt;
-    struct sigaction old_action_int;
-    struct sigaction old_action_alrm;
-    
-    sigaction(SIGTERM,  &new_action, &old_action_term);
-    sigaction(SIGABRT,  &new_action, &old_action_abrt);
-    sigaction(SIGINT,  &new_action, &old_action_int);
-    sigaction(SIGALRM,  &new_action, &old_action_alrm);
-    try {
-      result = (SddNode *)sdd_minimize_cardinality(arg1,arg2);
-    } catch(SIGINT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process interrupted");
-    } catch(SIGTERM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process terminated");
-    } catch(SIGABRT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process aborted");
-    } catch(SIGALRM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process timeout");
-    }
-    sigaction(SIGTERM, &old_action_term, NULL);
-    sigaction(SIGABRT, &old_action_abrt, NULL);
-    sigaction(SIGINT, &old_action_int, NULL);
-    sigaction(SIGALRM, &old_action_alrm, NULL);
-    
-  }
-  resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_sdd_node_t, 0 |  0 );
-  return resultobj;
+  result = (SddNode *)sdd_minimize_cardinality(arg1,arg2);
+  Tcl_SetObjResult(interp, SWIG_NewInstanceObj( SWIG_as_voidptr(result), SWIGTYPE_p_sdd_node_t,0));
+  return TCL_OK;
 fail:
-  return NULL;
+  return TCL_ERROR;
 }
 
 
-SWIGINTERN PyObject *_wrap_sdd_global_minimize_cardinality(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
+SWIGINTERN int
+_wrap_sdd_global_minimize_cardinality(ClientData clientData SWIGUNUSED, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]) {
   SddNode *arg1 = (SddNode *) 0 ;
   SddManager *arg2 = (SddManager *) 0 ;
   void *argp1 = 0 ;
   int res1 = 0 ;
   void *argp2 = 0 ;
   int res2 = 0 ;
-  PyObject * obj0 = 0 ;
-  PyObject * obj1 = 0 ;
   SddNode *result = 0 ;
   
-  if (!PyArg_ParseTuple(args,(char *)"OO:sdd_global_minimize_cardinality",&obj0,&obj1)) SWIG_fail;
-  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_sdd_node_t, 0 |  0 );
+  if (SWIG_GetArgs(interp, objc, objv,"oo:sdd_global_minimize_cardinality node manager ",(void *)0,(void *)0) == TCL_ERROR) SWIG_fail;
+  res1 = SWIG_ConvertPtr(objv[1], &argp1,SWIGTYPE_p_sdd_node_t, 0 |  0 );
   if (!SWIG_IsOK(res1)) {
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "sdd_global_minimize_cardinality" "', argument " "1"" of type '" "SddNode *""'"); 
   }
   arg1 = (SddNode *)(argp1);
-  res2 = SWIG_ConvertPtr(obj1, &argp2,SWIGTYPE_p_sdd_manager_t, 0 |  0 );
+  res2 = SWIG_ConvertPtr(objv[2], &argp2,SWIGTYPE_p_sdd_manager_t, 0 |  0 );
   if (!SWIG_IsOK(res2)) {
     SWIG_exception_fail(SWIG_ArgError(res2), "in method '" "sdd_global_minimize_cardinality" "', argument " "2"" of type '" "SddManager *""'"); 
   }
   arg2 = (SddManager *)(argp2);
-  {
-    //
-    //    signal(SIGFPE,  handler);
-    //    signal(SIGILL,  handler);
-    
-    // signal(SIGSEGV, handler);
-    
-    struct sigaction new_action;
-    new_action.sa_handler = c_handler;
-    sigemptyset (&new_action.sa_mask);
-    new_action.sa_flags = SA_RESTART;
-    
-    struct sigaction old_action_term;
-    struct sigaction old_action_abrt;
-    struct sigaction old_action_int;
-    struct sigaction old_action_alrm;
-    
-    sigaction(SIGTERM,  &new_action, &old_action_term);
-    sigaction(SIGABRT,  &new_action, &old_action_abrt);
-    sigaction(SIGINT,  &new_action, &old_action_int);
-    sigaction(SIGALRM,  &new_action, &old_action_alrm);
-    try {
-      result = (SddNode *)sdd_global_minimize_cardinality(arg1,arg2);
-    } catch(SIGINT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process interrupted");
-    } catch(SIGTERM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process terminated");
-    } catch(SIGABRT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process aborted");
-    } catch(SIGALRM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process timeout");
-    }
-    sigaction(SIGTERM, &old_action_term, NULL);
-    sigaction(SIGABRT, &old_action_abrt, NULL);
-    sigaction(SIGINT, &old_action_int, NULL);
-    sigaction(SIGALRM, &old_action_alrm, NULL);
-    
-  }
-  resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_sdd_node_t, 0 |  0 );
-  return resultobj;
+  result = (SddNode *)sdd_global_minimize_cardinality(arg1,arg2);
+  Tcl_SetObjResult(interp, SWIG_NewInstanceObj( SWIG_as_voidptr(result), SWIGTYPE_p_sdd_node_t,0));
+  return TCL_OK;
 fail:
-  return NULL;
+  return TCL_ERROR;
 }
 
 
-SWIGINTERN PyObject *_wrap_sdd_minimum_cardinality(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
+SWIGINTERN int
+_wrap_sdd_minimum_cardinality(ClientData clientData SWIGUNUSED, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]) {
   SddNode *arg1 = (SddNode *) 0 ;
   void *argp1 = 0 ;
   int res1 = 0 ;
-  PyObject * obj0 = 0 ;
   SddLiteral result;
   
-  if (!PyArg_ParseTuple(args,(char *)"O:sdd_minimum_cardinality",&obj0)) SWIG_fail;
-  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_sdd_node_t, 0 |  0 );
+  if (SWIG_GetArgs(interp, objc, objv,"o:sdd_minimum_cardinality node ",(void *)0) == TCL_ERROR) SWIG_fail;
+  res1 = SWIG_ConvertPtr(objv[1], &argp1,SWIGTYPE_p_sdd_node_t, 0 |  0 );
   if (!SWIG_IsOK(res1)) {
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "sdd_minimum_cardinality" "', argument " "1"" of type '" "SddNode *""'"); 
   }
   arg1 = (SddNode *)(argp1);
-  {
-    //
-    //    signal(SIGFPE,  handler);
-    //    signal(SIGILL,  handler);
-    
-    // signal(SIGSEGV, handler);
-    
-    struct sigaction new_action;
-    new_action.sa_handler = c_handler;
-    sigemptyset (&new_action.sa_mask);
-    new_action.sa_flags = SA_RESTART;
-    
-    struct sigaction old_action_term;
-    struct sigaction old_action_abrt;
-    struct sigaction old_action_int;
-    struct sigaction old_action_alrm;
-    
-    sigaction(SIGTERM,  &new_action, &old_action_term);
-    sigaction(SIGABRT,  &new_action, &old_action_abrt);
-    sigaction(SIGINT,  &new_action, &old_action_int);
-    sigaction(SIGALRM,  &new_action, &old_action_alrm);
-    try {
-      result = (SddLiteral)sdd_minimum_cardinality(arg1);
-    } catch(SIGINT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process interrupted");
-    } catch(SIGTERM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process terminated");
-    } catch(SIGABRT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process aborted");
-    } catch(SIGALRM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process timeout");
-    }
-    sigaction(SIGTERM, &old_action_term, NULL);
-    sigaction(SIGABRT, &old_action_abrt, NULL);
-    sigaction(SIGINT, &old_action_int, NULL);
-    sigaction(SIGALRM, &old_action_alrm, NULL);
-    
-  }
-  resultobj = SWIG_From_long((long)(result));
-  return resultobj;
+  result = (SddLiteral)sdd_minimum_cardinality(arg1);
+  Tcl_SetObjResult(interp,SWIG_From_long((long)(result)));
+  return TCL_OK;
 fail:
-  return NULL;
+  return TCL_ERROR;
 }
 
 
-SWIGINTERN PyObject *_wrap_sdd_model_count(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
+SWIGINTERN int
+_wrap_sdd_model_count(ClientData clientData SWIGUNUSED, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]) {
   SddNode *arg1 = (SddNode *) 0 ;
   SddManager *arg2 = (SddManager *) 0 ;
   void *argp1 = 0 ;
   int res1 = 0 ;
   void *argp2 = 0 ;
   int res2 = 0 ;
-  PyObject * obj0 = 0 ;
-  PyObject * obj1 = 0 ;
   SddModelCount result;
   
-  if (!PyArg_ParseTuple(args,(char *)"OO:sdd_model_count",&obj0,&obj1)) SWIG_fail;
-  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_sdd_node_t, 0 |  0 );
+  if (SWIG_GetArgs(interp, objc, objv,"oo:sdd_model_count node manager ",(void *)0,(void *)0) == TCL_ERROR) SWIG_fail;
+  res1 = SWIG_ConvertPtr(objv[1], &argp1,SWIGTYPE_p_sdd_node_t, 0 |  0 );
   if (!SWIG_IsOK(res1)) {
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "sdd_model_count" "', argument " "1"" of type '" "SddNode *""'"); 
   }
   arg1 = (SddNode *)(argp1);
-  res2 = SWIG_ConvertPtr(obj1, &argp2,SWIGTYPE_p_sdd_manager_t, 0 |  0 );
+  res2 = SWIG_ConvertPtr(objv[2], &argp2,SWIGTYPE_p_sdd_manager_t, 0 |  0 );
   if (!SWIG_IsOK(res2)) {
     SWIG_exception_fail(SWIG_ArgError(res2), "in method '" "sdd_model_count" "', argument " "2"" of type '" "SddManager *""'"); 
   }
   arg2 = (SddManager *)(argp2);
-  {
-    //
-    //    signal(SIGFPE,  handler);
-    //    signal(SIGILL,  handler);
-    
-    // signal(SIGSEGV, handler);
-    
-    struct sigaction new_action;
-    new_action.sa_handler = c_handler;
-    sigemptyset (&new_action.sa_mask);
-    new_action.sa_flags = SA_RESTART;
-    
-    struct sigaction old_action_term;
-    struct sigaction old_action_abrt;
-    struct sigaction old_action_int;
-    struct sigaction old_action_alrm;
-    
-    sigaction(SIGTERM,  &new_action, &old_action_term);
-    sigaction(SIGABRT,  &new_action, &old_action_abrt);
-    sigaction(SIGINT,  &new_action, &old_action_int);
-    sigaction(SIGALRM,  &new_action, &old_action_alrm);
-    try {
-      result = (SddModelCount)sdd_model_count(arg1,arg2);
-    } catch(SIGINT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process interrupted");
-    } catch(SIGTERM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process terminated");
-    } catch(SIGABRT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process aborted");
-    } catch(SIGALRM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process timeout");
-    }
-    sigaction(SIGTERM, &old_action_term, NULL);
-    sigaction(SIGABRT, &old_action_abrt, NULL);
-    sigaction(SIGINT, &old_action_int, NULL);
-    sigaction(SIGALRM, &old_action_alrm, NULL);
-    
-  }
-  resultobj = SWIG_From_unsigned_SS_long_SS_long((unsigned long long)(result));
-  return resultobj;
+  result = (SddModelCount)sdd_model_count(arg1,arg2);
+  Tcl_SetObjResult(interp,SWIG_From_unsigned_SS_long_SS_long((unsigned long long)(result)));
+  return TCL_OK;
 fail:
-  return NULL;
+  return TCL_ERROR;
 }
 
 
-SWIGINTERN PyObject *_wrap_sdd_global_model_count(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
+SWIGINTERN int
+_wrap_sdd_global_model_count(ClientData clientData SWIGUNUSED, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]) {
   SddNode *arg1 = (SddNode *) 0 ;
   SddManager *arg2 = (SddManager *) 0 ;
   void *argp1 = 0 ;
   int res1 = 0 ;
   void *argp2 = 0 ;
   int res2 = 0 ;
-  PyObject * obj0 = 0 ;
-  PyObject * obj1 = 0 ;
   SddModelCount result;
   
-  if (!PyArg_ParseTuple(args,(char *)"OO:sdd_global_model_count",&obj0,&obj1)) SWIG_fail;
-  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_sdd_node_t, 0 |  0 );
+  if (SWIG_GetArgs(interp, objc, objv,"oo:sdd_global_model_count node manager ",(void *)0,(void *)0) == TCL_ERROR) SWIG_fail;
+  res1 = SWIG_ConvertPtr(objv[1], &argp1,SWIGTYPE_p_sdd_node_t, 0 |  0 );
   if (!SWIG_IsOK(res1)) {
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "sdd_global_model_count" "', argument " "1"" of type '" "SddNode *""'"); 
   }
   arg1 = (SddNode *)(argp1);
-  res2 = SWIG_ConvertPtr(obj1, &argp2,SWIGTYPE_p_sdd_manager_t, 0 |  0 );
+  res2 = SWIG_ConvertPtr(objv[2], &argp2,SWIGTYPE_p_sdd_manager_t, 0 |  0 );
   if (!SWIG_IsOK(res2)) {
     SWIG_exception_fail(SWIG_ArgError(res2), "in method '" "sdd_global_model_count" "', argument " "2"" of type '" "SddManager *""'"); 
   }
   arg2 = (SddManager *)(argp2);
-  {
-    //
-    //    signal(SIGFPE,  handler);
-    //    signal(SIGILL,  handler);
-    
-    // signal(SIGSEGV, handler);
-    
-    struct sigaction new_action;
-    new_action.sa_handler = c_handler;
-    sigemptyset (&new_action.sa_mask);
-    new_action.sa_flags = SA_RESTART;
-    
-    struct sigaction old_action_term;
-    struct sigaction old_action_abrt;
-    struct sigaction old_action_int;
-    struct sigaction old_action_alrm;
-    
-    sigaction(SIGTERM,  &new_action, &old_action_term);
-    sigaction(SIGABRT,  &new_action, &old_action_abrt);
-    sigaction(SIGINT,  &new_action, &old_action_int);
-    sigaction(SIGALRM,  &new_action, &old_action_alrm);
-    try {
-      result = (SddModelCount)sdd_global_model_count(arg1,arg2);
-    } catch(SIGINT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process interrupted");
-    } catch(SIGTERM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process terminated");
-    } catch(SIGABRT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process aborted");
-    } catch(SIGALRM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process timeout");
-    }
-    sigaction(SIGTERM, &old_action_term, NULL);
-    sigaction(SIGABRT, &old_action_abrt, NULL);
-    sigaction(SIGINT, &old_action_int, NULL);
-    sigaction(SIGALRM, &old_action_alrm, NULL);
-    
-  }
-  resultobj = SWIG_From_unsigned_SS_long_SS_long((unsigned long long)(result));
-  return resultobj;
+  result = (SddModelCount)sdd_global_model_count(arg1,arg2);
+  Tcl_SetObjResult(interp,SWIG_From_unsigned_SS_long_SS_long((unsigned long long)(result)));
+  return TCL_OK;
 fail:
-  return NULL;
+  return TCL_ERROR;
 }
 
 
-SWIGINTERN PyObject *_wrap_sdd_node_is_true(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
+SWIGINTERN int
+_wrap_sdd_node_is_true(ClientData clientData SWIGUNUSED, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]) {
   SddNode *arg1 = (SddNode *) 0 ;
   void *argp1 = 0 ;
   int res1 = 0 ;
-  PyObject * obj0 = 0 ;
   int result;
   
-  if (!PyArg_ParseTuple(args,(char *)"O:sdd_node_is_true",&obj0)) SWIG_fail;
-  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_sdd_node_t, 0 |  0 );
+  if (SWIG_GetArgs(interp, objc, objv,"o:sdd_node_is_true node ",(void *)0) == TCL_ERROR) SWIG_fail;
+  res1 = SWIG_ConvertPtr(objv[1], &argp1,SWIGTYPE_p_sdd_node_t, 0 |  0 );
   if (!SWIG_IsOK(res1)) {
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "sdd_node_is_true" "', argument " "1"" of type '" "SddNode *""'"); 
   }
   arg1 = (SddNode *)(argp1);
-  {
-    //
-    //    signal(SIGFPE,  handler);
-    //    signal(SIGILL,  handler);
-    
-    // signal(SIGSEGV, handler);
-    
-    struct sigaction new_action;
-    new_action.sa_handler = c_handler;
-    sigemptyset (&new_action.sa_mask);
-    new_action.sa_flags = SA_RESTART;
-    
-    struct sigaction old_action_term;
-    struct sigaction old_action_abrt;
-    struct sigaction old_action_int;
-    struct sigaction old_action_alrm;
-    
-    sigaction(SIGTERM,  &new_action, &old_action_term);
-    sigaction(SIGABRT,  &new_action, &old_action_abrt);
-    sigaction(SIGINT,  &new_action, &old_action_int);
-    sigaction(SIGALRM,  &new_action, &old_action_alrm);
-    try {
-      result = (int)sdd_node_is_true(arg1);
-    } catch(SIGINT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process interrupted");
-    } catch(SIGTERM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process terminated");
-    } catch(SIGABRT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process aborted");
-    } catch(SIGALRM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process timeout");
-    }
-    sigaction(SIGTERM, &old_action_term, NULL);
-    sigaction(SIGABRT, &old_action_abrt, NULL);
-    sigaction(SIGINT, &old_action_int, NULL);
-    sigaction(SIGALRM, &old_action_alrm, NULL);
-    
-  }
-  resultobj = SWIG_From_int((int)(result));
-  return resultobj;
+  result = (int)sdd_node_is_true(arg1);
+  Tcl_SetObjResult(interp,SWIG_From_int((int)(result)));
+  return TCL_OK;
 fail:
-  return NULL;
+  return TCL_ERROR;
 }
 
 
-SWIGINTERN PyObject *_wrap_sdd_node_is_false(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
+SWIGINTERN int
+_wrap_sdd_node_is_false(ClientData clientData SWIGUNUSED, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]) {
   SddNode *arg1 = (SddNode *) 0 ;
   void *argp1 = 0 ;
   int res1 = 0 ;
-  PyObject * obj0 = 0 ;
   int result;
   
-  if (!PyArg_ParseTuple(args,(char *)"O:sdd_node_is_false",&obj0)) SWIG_fail;
-  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_sdd_node_t, 0 |  0 );
+  if (SWIG_GetArgs(interp, objc, objv,"o:sdd_node_is_false node ",(void *)0) == TCL_ERROR) SWIG_fail;
+  res1 = SWIG_ConvertPtr(objv[1], &argp1,SWIGTYPE_p_sdd_node_t, 0 |  0 );
   if (!SWIG_IsOK(res1)) {
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "sdd_node_is_false" "', argument " "1"" of type '" "SddNode *""'"); 
   }
   arg1 = (SddNode *)(argp1);
-  {
-    //
-    //    signal(SIGFPE,  handler);
-    //    signal(SIGILL,  handler);
-    
-    // signal(SIGSEGV, handler);
-    
-    struct sigaction new_action;
-    new_action.sa_handler = c_handler;
-    sigemptyset (&new_action.sa_mask);
-    new_action.sa_flags = SA_RESTART;
-    
-    struct sigaction old_action_term;
-    struct sigaction old_action_abrt;
-    struct sigaction old_action_int;
-    struct sigaction old_action_alrm;
-    
-    sigaction(SIGTERM,  &new_action, &old_action_term);
-    sigaction(SIGABRT,  &new_action, &old_action_abrt);
-    sigaction(SIGINT,  &new_action, &old_action_int);
-    sigaction(SIGALRM,  &new_action, &old_action_alrm);
-    try {
-      result = (int)sdd_node_is_false(arg1);
-    } catch(SIGINT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process interrupted");
-    } catch(SIGTERM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process terminated");
-    } catch(SIGABRT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process aborted");
-    } catch(SIGALRM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process timeout");
-    }
-    sigaction(SIGTERM, &old_action_term, NULL);
-    sigaction(SIGABRT, &old_action_abrt, NULL);
-    sigaction(SIGINT, &old_action_int, NULL);
-    sigaction(SIGALRM, &old_action_alrm, NULL);
-    
-  }
-  resultobj = SWIG_From_int((int)(result));
-  return resultobj;
+  result = (int)sdd_node_is_false(arg1);
+  Tcl_SetObjResult(interp,SWIG_From_int((int)(result)));
+  return TCL_OK;
 fail:
-  return NULL;
+  return TCL_ERROR;
 }
 
 
-SWIGINTERN PyObject *_wrap_sdd_node_is_literal(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
+SWIGINTERN int
+_wrap_sdd_node_is_literal(ClientData clientData SWIGUNUSED, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]) {
   SddNode *arg1 = (SddNode *) 0 ;
   void *argp1 = 0 ;
   int res1 = 0 ;
-  PyObject * obj0 = 0 ;
   int result;
   
-  if (!PyArg_ParseTuple(args,(char *)"O:sdd_node_is_literal",&obj0)) SWIG_fail;
-  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_sdd_node_t, 0 |  0 );
+  if (SWIG_GetArgs(interp, objc, objv,"o:sdd_node_is_literal node ",(void *)0) == TCL_ERROR) SWIG_fail;
+  res1 = SWIG_ConvertPtr(objv[1], &argp1,SWIGTYPE_p_sdd_node_t, 0 |  0 );
   if (!SWIG_IsOK(res1)) {
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "sdd_node_is_literal" "', argument " "1"" of type '" "SddNode *""'"); 
   }
   arg1 = (SddNode *)(argp1);
-  {
-    //
-    //    signal(SIGFPE,  handler);
-    //    signal(SIGILL,  handler);
-    
-    // signal(SIGSEGV, handler);
-    
-    struct sigaction new_action;
-    new_action.sa_handler = c_handler;
-    sigemptyset (&new_action.sa_mask);
-    new_action.sa_flags = SA_RESTART;
-    
-    struct sigaction old_action_term;
-    struct sigaction old_action_abrt;
-    struct sigaction old_action_int;
-    struct sigaction old_action_alrm;
-    
-    sigaction(SIGTERM,  &new_action, &old_action_term);
-    sigaction(SIGABRT,  &new_action, &old_action_abrt);
-    sigaction(SIGINT,  &new_action, &old_action_int);
-    sigaction(SIGALRM,  &new_action, &old_action_alrm);
-    try {
-      result = (int)sdd_node_is_literal(arg1);
-    } catch(SIGINT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process interrupted");
-    } catch(SIGTERM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process terminated");
-    } catch(SIGABRT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process aborted");
-    } catch(SIGALRM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process timeout");
-    }
-    sigaction(SIGTERM, &old_action_term, NULL);
-    sigaction(SIGABRT, &old_action_abrt, NULL);
-    sigaction(SIGINT, &old_action_int, NULL);
-    sigaction(SIGALRM, &old_action_alrm, NULL);
-    
-  }
-  resultobj = SWIG_From_int((int)(result));
-  return resultobj;
+  result = (int)sdd_node_is_literal(arg1);
+  Tcl_SetObjResult(interp,SWIG_From_int((int)(result)));
+  return TCL_OK;
 fail:
-  return NULL;
+  return TCL_ERROR;
 }
 
 
-SWIGINTERN PyObject *_wrap_sdd_node_is_decision(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
+SWIGINTERN int
+_wrap_sdd_node_is_decision(ClientData clientData SWIGUNUSED, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]) {
   SddNode *arg1 = (SddNode *) 0 ;
   void *argp1 = 0 ;
   int res1 = 0 ;
-  PyObject * obj0 = 0 ;
   int result;
   
-  if (!PyArg_ParseTuple(args,(char *)"O:sdd_node_is_decision",&obj0)) SWIG_fail;
-  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_sdd_node_t, 0 |  0 );
+  if (SWIG_GetArgs(interp, objc, objv,"o:sdd_node_is_decision node ",(void *)0) == TCL_ERROR) SWIG_fail;
+  res1 = SWIG_ConvertPtr(objv[1], &argp1,SWIGTYPE_p_sdd_node_t, 0 |  0 );
   if (!SWIG_IsOK(res1)) {
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "sdd_node_is_decision" "', argument " "1"" of type '" "SddNode *""'"); 
   }
   arg1 = (SddNode *)(argp1);
-  {
-    //
-    //    signal(SIGFPE,  handler);
-    //    signal(SIGILL,  handler);
-    
-    // signal(SIGSEGV, handler);
-    
-    struct sigaction new_action;
-    new_action.sa_handler = c_handler;
-    sigemptyset (&new_action.sa_mask);
-    new_action.sa_flags = SA_RESTART;
-    
-    struct sigaction old_action_term;
-    struct sigaction old_action_abrt;
-    struct sigaction old_action_int;
-    struct sigaction old_action_alrm;
-    
-    sigaction(SIGTERM,  &new_action, &old_action_term);
-    sigaction(SIGABRT,  &new_action, &old_action_abrt);
-    sigaction(SIGINT,  &new_action, &old_action_int);
-    sigaction(SIGALRM,  &new_action, &old_action_alrm);
-    try {
-      result = (int)sdd_node_is_decision(arg1);
-    } catch(SIGINT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process interrupted");
-    } catch(SIGTERM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process terminated");
-    } catch(SIGABRT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process aborted");
-    } catch(SIGALRM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process timeout");
-    }
-    sigaction(SIGTERM, &old_action_term, NULL);
-    sigaction(SIGABRT, &old_action_abrt, NULL);
-    sigaction(SIGINT, &old_action_int, NULL);
-    sigaction(SIGALRM, &old_action_alrm, NULL);
-    
-  }
-  resultobj = SWIG_From_int((int)(result));
-  return resultobj;
+  result = (int)sdd_node_is_decision(arg1);
+  Tcl_SetObjResult(interp,SWIG_From_int((int)(result)));
+  return TCL_OK;
 fail:
-  return NULL;
+  return TCL_ERROR;
 }
 
 
-SWIGINTERN PyObject *_wrap_sdd_node_size(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
+SWIGINTERN int
+_wrap_sdd_node_size(ClientData clientData SWIGUNUSED, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]) {
   SddNode *arg1 = (SddNode *) 0 ;
   void *argp1 = 0 ;
   int res1 = 0 ;
-  PyObject * obj0 = 0 ;
   SddNodeSize result;
   
-  if (!PyArg_ParseTuple(args,(char *)"O:sdd_node_size",&obj0)) SWIG_fail;
-  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_sdd_node_t, 0 |  0 );
+  if (SWIG_GetArgs(interp, objc, objv,"o:sdd_node_size node ",(void *)0) == TCL_ERROR) SWIG_fail;
+  res1 = SWIG_ConvertPtr(objv[1], &argp1,SWIGTYPE_p_sdd_node_t, 0 |  0 );
   if (!SWIG_IsOK(res1)) {
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "sdd_node_size" "', argument " "1"" of type '" "SddNode *""'"); 
   }
   arg1 = (SddNode *)(argp1);
-  {
-    //
-    //    signal(SIGFPE,  handler);
-    //    signal(SIGILL,  handler);
-    
-    // signal(SIGSEGV, handler);
-    
-    struct sigaction new_action;
-    new_action.sa_handler = c_handler;
-    sigemptyset (&new_action.sa_mask);
-    new_action.sa_flags = SA_RESTART;
-    
-    struct sigaction old_action_term;
-    struct sigaction old_action_abrt;
-    struct sigaction old_action_int;
-    struct sigaction old_action_alrm;
-    
-    sigaction(SIGTERM,  &new_action, &old_action_term);
-    sigaction(SIGABRT,  &new_action, &old_action_abrt);
-    sigaction(SIGINT,  &new_action, &old_action_int);
-    sigaction(SIGALRM,  &new_action, &old_action_alrm);
-    try {
-      result = (SddNodeSize)sdd_node_size(arg1);
-    } catch(SIGINT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process interrupted");
-    } catch(SIGTERM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process terminated");
-    } catch(SIGABRT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process aborted");
-    } catch(SIGALRM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process timeout");
-    }
-    sigaction(SIGTERM, &old_action_term, NULL);
-    sigaction(SIGABRT, &old_action_abrt, NULL);
-    sigaction(SIGINT, &old_action_int, NULL);
-    sigaction(SIGALRM, &old_action_alrm, NULL);
-    
-  }
-  resultobj = SWIG_From_unsigned_SS_int((unsigned int)(result));
-  return resultobj;
+  result = (SddNodeSize)sdd_node_size(arg1);
+  Tcl_SetObjResult(interp,SWIG_From_unsigned_SS_int((unsigned int)(result)));
+  return TCL_OK;
 fail:
-  return NULL;
+  return TCL_ERROR;
 }
 
 
-SWIGINTERN PyObject *_wrap_sdd_node_literal(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
+SWIGINTERN int
+_wrap_sdd_node_literal(ClientData clientData SWIGUNUSED, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]) {
   SddNode *arg1 = (SddNode *) 0 ;
   void *argp1 = 0 ;
   int res1 = 0 ;
-  PyObject * obj0 = 0 ;
   SddLiteral result;
   
-  if (!PyArg_ParseTuple(args,(char *)"O:sdd_node_literal",&obj0)) SWIG_fail;
-  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_sdd_node_t, 0 |  0 );
+  if (SWIG_GetArgs(interp, objc, objv,"o:sdd_node_literal node ",(void *)0) == TCL_ERROR) SWIG_fail;
+  res1 = SWIG_ConvertPtr(objv[1], &argp1,SWIGTYPE_p_sdd_node_t, 0 |  0 );
   if (!SWIG_IsOK(res1)) {
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "sdd_node_literal" "', argument " "1"" of type '" "SddNode *""'"); 
   }
   arg1 = (SddNode *)(argp1);
-  {
-    //
-    //    signal(SIGFPE,  handler);
-    //    signal(SIGILL,  handler);
-    
-    // signal(SIGSEGV, handler);
-    
-    struct sigaction new_action;
-    new_action.sa_handler = c_handler;
-    sigemptyset (&new_action.sa_mask);
-    new_action.sa_flags = SA_RESTART;
-    
-    struct sigaction old_action_term;
-    struct sigaction old_action_abrt;
-    struct sigaction old_action_int;
-    struct sigaction old_action_alrm;
-    
-    sigaction(SIGTERM,  &new_action, &old_action_term);
-    sigaction(SIGABRT,  &new_action, &old_action_abrt);
-    sigaction(SIGINT,  &new_action, &old_action_int);
-    sigaction(SIGALRM,  &new_action, &old_action_alrm);
-    try {
-      result = (SddLiteral)sdd_node_literal(arg1);
-    } catch(SIGINT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process interrupted");
-    } catch(SIGTERM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process terminated");
-    } catch(SIGABRT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process aborted");
-    } catch(SIGALRM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process timeout");
-    }
-    sigaction(SIGTERM, &old_action_term, NULL);
-    sigaction(SIGABRT, &old_action_abrt, NULL);
-    sigaction(SIGINT, &old_action_int, NULL);
-    sigaction(SIGALRM, &old_action_alrm, NULL);
-    
-  }
-  resultobj = SWIG_From_long((long)(result));
-  return resultobj;
+  result = (SddLiteral)sdd_node_literal(arg1);
+  Tcl_SetObjResult(interp,SWIG_From_long((long)(result)));
+  return TCL_OK;
 fail:
-  return NULL;
+  return TCL_ERROR;
 }
 
 
-SWIGINTERN PyObject *_wrap_sdd_node_elements(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
+SWIGINTERN int
+_wrap_sdd_node_elements(ClientData clientData SWIGUNUSED, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]) {
   SddNode *arg1 = (SddNode *) 0 ;
   void *argp1 = 0 ;
   int res1 = 0 ;
-  PyObject * obj0 = 0 ;
   SddNode **result = 0 ;
   
-  if (!PyArg_ParseTuple(args,(char *)"O:sdd_node_elements",&obj0)) SWIG_fail;
-  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_sdd_node_t, 0 |  0 );
+  if (SWIG_GetArgs(interp, objc, objv,"o:sdd_node_elements node ",(void *)0) == TCL_ERROR) SWIG_fail;
+  res1 = SWIG_ConvertPtr(objv[1], &argp1,SWIGTYPE_p_sdd_node_t, 0 |  0 );
   if (!SWIG_IsOK(res1)) {
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "sdd_node_elements" "', argument " "1"" of type '" "SddNode *""'"); 
   }
   arg1 = (SddNode *)(argp1);
-  {
-    //
-    //    signal(SIGFPE,  handler);
-    //    signal(SIGILL,  handler);
-    
-    // signal(SIGSEGV, handler);
-    
-    struct sigaction new_action;
-    new_action.sa_handler = c_handler;
-    sigemptyset (&new_action.sa_mask);
-    new_action.sa_flags = SA_RESTART;
-    
-    struct sigaction old_action_term;
-    struct sigaction old_action_abrt;
-    struct sigaction old_action_int;
-    struct sigaction old_action_alrm;
-    
-    sigaction(SIGTERM,  &new_action, &old_action_term);
-    sigaction(SIGABRT,  &new_action, &old_action_abrt);
-    sigaction(SIGINT,  &new_action, &old_action_int);
-    sigaction(SIGALRM,  &new_action, &old_action_alrm);
-    try {
-      result = (SddNode **)sdd_node_elements(arg1);
-    } catch(SIGINT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process interrupted");
-    } catch(SIGTERM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process terminated");
-    } catch(SIGABRT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process aborted");
-    } catch(SIGALRM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process timeout");
-    }
-    sigaction(SIGTERM, &old_action_term, NULL);
-    sigaction(SIGABRT, &old_action_abrt, NULL);
-    sigaction(SIGINT, &old_action_int, NULL);
-    sigaction(SIGALRM, &old_action_alrm, NULL);
-    
-  }
-  resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_p_sdd_node_t, 0 |  0 );
-  return resultobj;
+  result = (SddNode **)sdd_node_elements(arg1);
+  Tcl_SetObjResult(interp, SWIG_NewInstanceObj( SWIG_as_voidptr(result), SWIGTYPE_p_p_sdd_node_t,0));
+  return TCL_OK;
 fail:
-  return NULL;
+  return TCL_ERROR;
 }
 
 
-SWIGINTERN PyObject *_wrap_sdd_node_set_bit(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
+SWIGINTERN int
+_wrap_sdd_node_set_bit(ClientData clientData SWIGUNUSED, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]) {
   int arg1 ;
   SddNode *arg2 = (SddNode *) 0 ;
   int val1 ;
   int ecode1 = 0 ;
   void *argp2 = 0 ;
   int res2 = 0 ;
-  PyObject * obj0 = 0 ;
-  PyObject * obj1 = 0 ;
   
-  if (!PyArg_ParseTuple(args,(char *)"OO:sdd_node_set_bit",&obj0,&obj1)) SWIG_fail;
-  ecode1 = SWIG_AsVal_int(obj0, &val1);
+  if (SWIG_GetArgs(interp, objc, objv,"oo:sdd_node_set_bit bit node ",(void *)0,(void *)0) == TCL_ERROR) SWIG_fail;
+  ecode1 = SWIG_AsVal_int SWIG_TCL_CALL_ARGS_2(objv[1], &val1);
   if (!SWIG_IsOK(ecode1)) {
     SWIG_exception_fail(SWIG_ArgError(ecode1), "in method '" "sdd_node_set_bit" "', argument " "1"" of type '" "int""'");
   } 
   arg1 = (int)(val1);
-  res2 = SWIG_ConvertPtr(obj1, &argp2,SWIGTYPE_p_sdd_node_t, 0 |  0 );
+  res2 = SWIG_ConvertPtr(objv[2], &argp2,SWIGTYPE_p_sdd_node_t, 0 |  0 );
   if (!SWIG_IsOK(res2)) {
     SWIG_exception_fail(SWIG_ArgError(res2), "in method '" "sdd_node_set_bit" "', argument " "2"" of type '" "SddNode *""'"); 
   }
   arg2 = (SddNode *)(argp2);
-  {
-    //
-    //    signal(SIGFPE,  handler);
-    //    signal(SIGILL,  handler);
-    
-    // signal(SIGSEGV, handler);
-    
-    struct sigaction new_action;
-    new_action.sa_handler = c_handler;
-    sigemptyset (&new_action.sa_mask);
-    new_action.sa_flags = SA_RESTART;
-    
-    struct sigaction old_action_term;
-    struct sigaction old_action_abrt;
-    struct sigaction old_action_int;
-    struct sigaction old_action_alrm;
-    
-    sigaction(SIGTERM,  &new_action, &old_action_term);
-    sigaction(SIGABRT,  &new_action, &old_action_abrt);
-    sigaction(SIGINT,  &new_action, &old_action_int);
-    sigaction(SIGALRM,  &new_action, &old_action_alrm);
-    try {
-      sdd_node_set_bit(arg1,arg2);
-    } catch(SIGINT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process interrupted");
-    } catch(SIGTERM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process terminated");
-    } catch(SIGABRT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process aborted");
-    } catch(SIGALRM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process timeout");
-    }
-    sigaction(SIGTERM, &old_action_term, NULL);
-    sigaction(SIGABRT, &old_action_abrt, NULL);
-    sigaction(SIGINT, &old_action_int, NULL);
-    sigaction(SIGALRM, &old_action_alrm, NULL);
-    
-  }
-  resultobj = SWIG_Py_Void();
-  return resultobj;
+  sdd_node_set_bit(arg1,arg2);
+  
+  return TCL_OK;
 fail:
-  return NULL;
+  return TCL_ERROR;
 }
 
 
-SWIGINTERN PyObject *_wrap_sdd_node_bit(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
+SWIGINTERN int
+_wrap_sdd_node_bit(ClientData clientData SWIGUNUSED, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]) {
   SddNode *arg1 = (SddNode *) 0 ;
   void *argp1 = 0 ;
   int res1 = 0 ;
-  PyObject * obj0 = 0 ;
   int result;
   
-  if (!PyArg_ParseTuple(args,(char *)"O:sdd_node_bit",&obj0)) SWIG_fail;
-  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_sdd_node_t, 0 |  0 );
+  if (SWIG_GetArgs(interp, objc, objv,"o:sdd_node_bit node ",(void *)0) == TCL_ERROR) SWIG_fail;
+  res1 = SWIG_ConvertPtr(objv[1], &argp1,SWIGTYPE_p_sdd_node_t, 0 |  0 );
   if (!SWIG_IsOK(res1)) {
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "sdd_node_bit" "', argument " "1"" of type '" "SddNode *""'"); 
   }
   arg1 = (SddNode *)(argp1);
-  {
-    //
-    //    signal(SIGFPE,  handler);
-    //    signal(SIGILL,  handler);
-    
-    // signal(SIGSEGV, handler);
-    
-    struct sigaction new_action;
-    new_action.sa_handler = c_handler;
-    sigemptyset (&new_action.sa_mask);
-    new_action.sa_flags = SA_RESTART;
-    
-    struct sigaction old_action_term;
-    struct sigaction old_action_abrt;
-    struct sigaction old_action_int;
-    struct sigaction old_action_alrm;
-    
-    sigaction(SIGTERM,  &new_action, &old_action_term);
-    sigaction(SIGABRT,  &new_action, &old_action_abrt);
-    sigaction(SIGINT,  &new_action, &old_action_int);
-    sigaction(SIGALRM,  &new_action, &old_action_alrm);
-    try {
-      result = (int)sdd_node_bit(arg1);
-    } catch(SIGINT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process interrupted");
-    } catch(SIGTERM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process terminated");
-    } catch(SIGABRT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process aborted");
-    } catch(SIGALRM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process timeout");
-    }
-    sigaction(SIGTERM, &old_action_term, NULL);
-    sigaction(SIGABRT, &old_action_abrt, NULL);
-    sigaction(SIGINT, &old_action_int, NULL);
-    sigaction(SIGALRM, &old_action_alrm, NULL);
-    
-  }
-  resultobj = SWIG_From_int((int)(result));
-  return resultobj;
+  result = (int)sdd_node_bit(arg1);
+  Tcl_SetObjResult(interp,SWIG_From_int((int)(result)));
+  return TCL_OK;
 fail:
-  return NULL;
+  return TCL_ERROR;
 }
 
 
-SWIGINTERN PyObject *_wrap_sdd_id(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
+SWIGINTERN int
+_wrap_sdd_id(ClientData clientData SWIGUNUSED, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]) {
   SddNode *arg1 = (SddNode *) 0 ;
   void *argp1 = 0 ;
   int res1 = 0 ;
-  PyObject * obj0 = 0 ;
   SddSize result;
   
-  if (!PyArg_ParseTuple(args,(char *)"O:sdd_id",&obj0)) SWIG_fail;
-  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_sdd_node_t, 0 |  0 );
+  if (SWIG_GetArgs(interp, objc, objv,"o:sdd_id node ",(void *)0) == TCL_ERROR) SWIG_fail;
+  res1 = SWIG_ConvertPtr(objv[1], &argp1,SWIGTYPE_p_sdd_node_t, 0 |  0 );
   if (!SWIG_IsOK(res1)) {
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "sdd_id" "', argument " "1"" of type '" "SddNode *""'"); 
   }
   arg1 = (SddNode *)(argp1);
-  {
-    //
-    //    signal(SIGFPE,  handler);
-    //    signal(SIGILL,  handler);
-    
-    // signal(SIGSEGV, handler);
-    
-    struct sigaction new_action;
-    new_action.sa_handler = c_handler;
-    sigemptyset (&new_action.sa_mask);
-    new_action.sa_flags = SA_RESTART;
-    
-    struct sigaction old_action_term;
-    struct sigaction old_action_abrt;
-    struct sigaction old_action_int;
-    struct sigaction old_action_alrm;
-    
-    sigaction(SIGTERM,  &new_action, &old_action_term);
-    sigaction(SIGABRT,  &new_action, &old_action_abrt);
-    sigaction(SIGINT,  &new_action, &old_action_int);
-    sigaction(SIGALRM,  &new_action, &old_action_alrm);
-    try {
-      result = sdd_id(arg1);
-    } catch(SIGINT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process interrupted");
-    } catch(SIGTERM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process terminated");
-    } catch(SIGABRT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process aborted");
-    } catch(SIGALRM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process timeout");
-    }
-    sigaction(SIGTERM, &old_action_term, NULL);
-    sigaction(SIGABRT, &old_action_abrt, NULL);
-    sigaction(SIGINT, &old_action_int, NULL);
-    sigaction(SIGALRM, &old_action_alrm, NULL);
-    
-  }
-  resultobj = SWIG_From_size_t((size_t)(result));
-  return resultobj;
+  result = sdd_id(arg1);
+  Tcl_SetObjResult(interp,SWIG_From_size_t((size_t)(result)));
+  return TCL_OK;
 fail:
-  return NULL;
+  return TCL_ERROR;
 }
 
 
-SWIGINTERN PyObject *_wrap_sdd_garbage_collected(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
+SWIGINTERN int
+_wrap_sdd_garbage_collected(ClientData clientData SWIGUNUSED, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]) {
   SddNode *arg1 = (SddNode *) 0 ;
   SddSize arg2 ;
   void *argp1 = 0 ;
   int res1 = 0 ;
   size_t val2 ;
   int ecode2 = 0 ;
-  PyObject * obj0 = 0 ;
-  PyObject * obj1 = 0 ;
   int result;
   
-  if (!PyArg_ParseTuple(args,(char *)"OO:sdd_garbage_collected",&obj0,&obj1)) SWIG_fail;
-  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_sdd_node_t, 0 |  0 );
+  if (SWIG_GetArgs(interp, objc, objv,"oo:sdd_garbage_collected node id ",(void *)0,(void *)0) == TCL_ERROR) SWIG_fail;
+  res1 = SWIG_ConvertPtr(objv[1], &argp1,SWIGTYPE_p_sdd_node_t, 0 |  0 );
   if (!SWIG_IsOK(res1)) {
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "sdd_garbage_collected" "', argument " "1"" of type '" "SddNode *""'"); 
   }
   arg1 = (SddNode *)(argp1);
-  ecode2 = SWIG_AsVal_size_t(obj1, &val2);
+  ecode2 = SWIG_AsVal_size_t SWIG_TCL_CALL_ARGS_2(objv[2], &val2);
   if (!SWIG_IsOK(ecode2)) {
     SWIG_exception_fail(SWIG_ArgError(ecode2), "in method '" "sdd_garbage_collected" "', argument " "2"" of type '" "SddSize""'");
   } 
   arg2 = (SddSize)(val2);
-  {
-    //
-    //    signal(SIGFPE,  handler);
-    //    signal(SIGILL,  handler);
-    
-    // signal(SIGSEGV, handler);
-    
-    struct sigaction new_action;
-    new_action.sa_handler = c_handler;
-    sigemptyset (&new_action.sa_mask);
-    new_action.sa_flags = SA_RESTART;
-    
-    struct sigaction old_action_term;
-    struct sigaction old_action_abrt;
-    struct sigaction old_action_int;
-    struct sigaction old_action_alrm;
-    
-    sigaction(SIGTERM,  &new_action, &old_action_term);
-    sigaction(SIGABRT,  &new_action, &old_action_abrt);
-    sigaction(SIGINT,  &new_action, &old_action_int);
-    sigaction(SIGALRM,  &new_action, &old_action_alrm);
-    try {
-      result = (int)sdd_garbage_collected(arg1,arg2);
-    } catch(SIGINT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process interrupted");
-    } catch(SIGTERM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process terminated");
-    } catch(SIGABRT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process aborted");
-    } catch(SIGALRM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process timeout");
-    }
-    sigaction(SIGTERM, &old_action_term, NULL);
-    sigaction(SIGABRT, &old_action_abrt, NULL);
-    sigaction(SIGINT, &old_action_int, NULL);
-    sigaction(SIGALRM, &old_action_alrm, NULL);
-    
-  }
-  resultobj = SWIG_From_int((int)(result));
-  return resultobj;
+  result = (int)sdd_garbage_collected(arg1,arg2);
+  Tcl_SetObjResult(interp,SWIG_From_int((int)(result)));
+  return TCL_OK;
 fail:
-  return NULL;
+  return TCL_ERROR;
 }
 
 
-SWIGINTERN PyObject *_wrap_sdd_vtree_of(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
+SWIGINTERN int
+_wrap_sdd_vtree_of(ClientData clientData SWIGUNUSED, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]) {
   SddNode *arg1 = (SddNode *) 0 ;
   void *argp1 = 0 ;
   int res1 = 0 ;
-  PyObject * obj0 = 0 ;
   Vtree *result = 0 ;
   
-  if (!PyArg_ParseTuple(args,(char *)"O:sdd_vtree_of",&obj0)) SWIG_fail;
-  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_sdd_node_t, 0 |  0 );
+  if (SWIG_GetArgs(interp, objc, objv,"o:sdd_vtree_of node ",(void *)0) == TCL_ERROR) SWIG_fail;
+  res1 = SWIG_ConvertPtr(objv[1], &argp1,SWIGTYPE_p_sdd_node_t, 0 |  0 );
   if (!SWIG_IsOK(res1)) {
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "sdd_vtree_of" "', argument " "1"" of type '" "SddNode *""'"); 
   }
   arg1 = (SddNode *)(argp1);
-  {
-    //
-    //    signal(SIGFPE,  handler);
-    //    signal(SIGILL,  handler);
-    
-    // signal(SIGSEGV, handler);
-    
-    struct sigaction new_action;
-    new_action.sa_handler = c_handler;
-    sigemptyset (&new_action.sa_mask);
-    new_action.sa_flags = SA_RESTART;
-    
-    struct sigaction old_action_term;
-    struct sigaction old_action_abrt;
-    struct sigaction old_action_int;
-    struct sigaction old_action_alrm;
-    
-    sigaction(SIGTERM,  &new_action, &old_action_term);
-    sigaction(SIGABRT,  &new_action, &old_action_abrt);
-    sigaction(SIGINT,  &new_action, &old_action_int);
-    sigaction(SIGALRM,  &new_action, &old_action_alrm);
-    try {
-      result = (Vtree *)sdd_vtree_of(arg1);
-    } catch(SIGINT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process interrupted");
-    } catch(SIGTERM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process terminated");
-    } catch(SIGABRT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process aborted");
-    } catch(SIGALRM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process timeout");
-    }
-    sigaction(SIGTERM, &old_action_term, NULL);
-    sigaction(SIGABRT, &old_action_abrt, NULL);
-    sigaction(SIGINT, &old_action_int, NULL);
-    sigaction(SIGALRM, &old_action_alrm, NULL);
-    
-  }
-  resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_vtree_t, 0 |  0 );
-  return resultobj;
+  result = (Vtree *)sdd_vtree_of(arg1);
+  Tcl_SetObjResult(interp, SWIG_NewInstanceObj( SWIG_as_voidptr(result), SWIGTYPE_p_vtree_t,0));
+  return TCL_OK;
 fail:
-  return NULL;
+  return TCL_ERROR;
 }
 
 
-SWIGINTERN PyObject *_wrap_sdd_copy(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
+SWIGINTERN int
+_wrap_sdd_copy(ClientData clientData SWIGUNUSED, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]) {
   SddNode *arg1 = (SddNode *) 0 ;
   SddManager *arg2 = (SddManager *) 0 ;
   void *argp1 = 0 ;
   int res1 = 0 ;
   void *argp2 = 0 ;
   int res2 = 0 ;
-  PyObject * obj0 = 0 ;
-  PyObject * obj1 = 0 ;
   SddNode *result = 0 ;
   
-  if (!PyArg_ParseTuple(args,(char *)"OO:sdd_copy",&obj0,&obj1)) SWIG_fail;
-  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_sdd_node_t, 0 |  0 );
+  if (SWIG_GetArgs(interp, objc, objv,"oo:sdd_copy node dest_manager ",(void *)0,(void *)0) == TCL_ERROR) SWIG_fail;
+  res1 = SWIG_ConvertPtr(objv[1], &argp1,SWIGTYPE_p_sdd_node_t, 0 |  0 );
   if (!SWIG_IsOK(res1)) {
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "sdd_copy" "', argument " "1"" of type '" "SddNode *""'"); 
   }
   arg1 = (SddNode *)(argp1);
-  res2 = SWIG_ConvertPtr(obj1, &argp2,SWIGTYPE_p_sdd_manager_t, 0 |  0 );
+  res2 = SWIG_ConvertPtr(objv[2], &argp2,SWIGTYPE_p_sdd_manager_t, 0 |  0 );
   if (!SWIG_IsOK(res2)) {
     SWIG_exception_fail(SWIG_ArgError(res2), "in method '" "sdd_copy" "', argument " "2"" of type '" "SddManager *""'"); 
   }
   arg2 = (SddManager *)(argp2);
-  {
-    //
-    //    signal(SIGFPE,  handler);
-    //    signal(SIGILL,  handler);
-    
-    // signal(SIGSEGV, handler);
-    
-    struct sigaction new_action;
-    new_action.sa_handler = c_handler;
-    sigemptyset (&new_action.sa_mask);
-    new_action.sa_flags = SA_RESTART;
-    
-    struct sigaction old_action_term;
-    struct sigaction old_action_abrt;
-    struct sigaction old_action_int;
-    struct sigaction old_action_alrm;
-    
-    sigaction(SIGTERM,  &new_action, &old_action_term);
-    sigaction(SIGABRT,  &new_action, &old_action_abrt);
-    sigaction(SIGINT,  &new_action, &old_action_int);
-    sigaction(SIGALRM,  &new_action, &old_action_alrm);
-    try {
-      result = (SddNode *)sdd_copy(arg1,arg2);
-    } catch(SIGINT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process interrupted");
-    } catch(SIGTERM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process terminated");
-    } catch(SIGABRT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process aborted");
-    } catch(SIGALRM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process timeout");
-    }
-    sigaction(SIGTERM, &old_action_term, NULL);
-    sigaction(SIGABRT, &old_action_abrt, NULL);
-    sigaction(SIGINT, &old_action_int, NULL);
-    sigaction(SIGALRM, &old_action_alrm, NULL);
-    
-  }
-  resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_sdd_node_t, 0 |  0 );
-  return resultobj;
+  result = (SddNode *)sdd_copy(arg1,arg2);
+  Tcl_SetObjResult(interp, SWIG_NewInstanceObj( SWIG_as_voidptr(result), SWIGTYPE_p_sdd_node_t,0));
+  return TCL_OK;
 fail:
-  return NULL;
+  return TCL_ERROR;
 }
 
 
-SWIGINTERN PyObject *_wrap_sdd_rename_variables(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
+SWIGINTERN int
+_wrap_sdd_rename_variables(ClientData clientData SWIGUNUSED, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]) {
   SddNode *arg1 = (SddNode *) 0 ;
   SddLiteral *arg2 = (SddLiteral *) 0 ;
   SddManager *arg3 = (SddManager *) 0 ;
@@ -7936,174 +3494,63 @@ SWIGINTERN PyObject *_wrap_sdd_rename_variables(PyObject *SWIGUNUSEDPARM(self), 
   int res2 = 0 ;
   void *argp3 = 0 ;
   int res3 = 0 ;
-  PyObject * obj0 = 0 ;
-  PyObject * obj1 = 0 ;
-  PyObject * obj2 = 0 ;
   SddNode *result = 0 ;
   
-  if (!PyArg_ParseTuple(args,(char *)"OOO:sdd_rename_variables",&obj0,&obj1,&obj2)) SWIG_fail;
-  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_sdd_node_t, 0 |  0 );
+  if (SWIG_GetArgs(interp, objc, objv,"ooo:sdd_rename_variables node variable_map manager ",(void *)0,(void *)0,(void *)0) == TCL_ERROR) SWIG_fail;
+  res1 = SWIG_ConvertPtr(objv[1], &argp1,SWIGTYPE_p_sdd_node_t, 0 |  0 );
   if (!SWIG_IsOK(res1)) {
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "sdd_rename_variables" "', argument " "1"" of type '" "SddNode *""'"); 
   }
   arg1 = (SddNode *)(argp1);
-  res2 = SWIG_ConvertPtr(obj1, &argp2,SWIGTYPE_p_long, 0 |  0 );
+  res2 = SWIG_ConvertPtr(objv[2], &argp2,SWIGTYPE_p_long, 0 |  0 );
   if (!SWIG_IsOK(res2)) {
     SWIG_exception_fail(SWIG_ArgError(res2), "in method '" "sdd_rename_variables" "', argument " "2"" of type '" "SddLiteral *""'"); 
   }
   arg2 = (SddLiteral *)(argp2);
-  res3 = SWIG_ConvertPtr(obj2, &argp3,SWIGTYPE_p_sdd_manager_t, 0 |  0 );
+  res3 = SWIG_ConvertPtr(objv[3], &argp3,SWIGTYPE_p_sdd_manager_t, 0 |  0 );
   if (!SWIG_IsOK(res3)) {
     SWIG_exception_fail(SWIG_ArgError(res3), "in method '" "sdd_rename_variables" "', argument " "3"" of type '" "SddManager *""'"); 
   }
   arg3 = (SddManager *)(argp3);
-  {
-    //
-    //    signal(SIGFPE,  handler);
-    //    signal(SIGILL,  handler);
-    
-    // signal(SIGSEGV, handler);
-    
-    struct sigaction new_action;
-    new_action.sa_handler = c_handler;
-    sigemptyset (&new_action.sa_mask);
-    new_action.sa_flags = SA_RESTART;
-    
-    struct sigaction old_action_term;
-    struct sigaction old_action_abrt;
-    struct sigaction old_action_int;
-    struct sigaction old_action_alrm;
-    
-    sigaction(SIGTERM,  &new_action, &old_action_term);
-    sigaction(SIGABRT,  &new_action, &old_action_abrt);
-    sigaction(SIGINT,  &new_action, &old_action_int);
-    sigaction(SIGALRM,  &new_action, &old_action_alrm);
-    try {
-      result = (SddNode *)sdd_rename_variables(arg1,arg2,arg3);
-    } catch(SIGINT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process interrupted");
-    } catch(SIGTERM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process terminated");
-    } catch(SIGABRT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process aborted");
-    } catch(SIGALRM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process timeout");
-    }
-    sigaction(SIGTERM, &old_action_term, NULL);
-    sigaction(SIGABRT, &old_action_abrt, NULL);
-    sigaction(SIGINT, &old_action_int, NULL);
-    sigaction(SIGALRM, &old_action_alrm, NULL);
-    
-  }
-  resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_sdd_node_t, 0 |  0 );
-  return resultobj;
+  result = (SddNode *)sdd_rename_variables(arg1,arg2,arg3);
+  Tcl_SetObjResult(interp, SWIG_NewInstanceObj( SWIG_as_voidptr(result), SWIGTYPE_p_sdd_node_t,0));
+  return TCL_OK;
 fail:
-  return NULL;
+  return TCL_ERROR;
 }
 
 
-SWIGINTERN PyObject *_wrap_sdd_variables(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
+SWIGINTERN int
+_wrap_sdd_variables(ClientData clientData SWIGUNUSED, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]) {
   SddNode *arg1 = (SddNode *) 0 ;
   SddManager *arg2 = (SddManager *) 0 ;
   void *argp1 = 0 ;
   int res1 = 0 ;
   void *argp2 = 0 ;
   int res2 = 0 ;
-  PyObject * obj0 = 0 ;
-  PyObject * obj1 = 0 ;
   int *result = 0 ;
   
-  if (!PyArg_ParseTuple(args,(char *)"OO:sdd_variables",&obj0,&obj1)) SWIG_fail;
-  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_sdd_node_t, 0 |  0 );
+  if (SWIG_GetArgs(interp, objc, objv,"oo:sdd_variables node manager ",(void *)0,(void *)0) == TCL_ERROR) SWIG_fail;
+  res1 = SWIG_ConvertPtr(objv[1], &argp1,SWIGTYPE_p_sdd_node_t, 0 |  0 );
   if (!SWIG_IsOK(res1)) {
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "sdd_variables" "', argument " "1"" of type '" "SddNode *""'"); 
   }
   arg1 = (SddNode *)(argp1);
-  res2 = SWIG_ConvertPtr(obj1, &argp2,SWIGTYPE_p_sdd_manager_t, 0 |  0 );
+  res2 = SWIG_ConvertPtr(objv[2], &argp2,SWIGTYPE_p_sdd_manager_t, 0 |  0 );
   if (!SWIG_IsOK(res2)) {
     SWIG_exception_fail(SWIG_ArgError(res2), "in method '" "sdd_variables" "', argument " "2"" of type '" "SddManager *""'"); 
   }
   arg2 = (SddManager *)(argp2);
-  {
-    //
-    //    signal(SIGFPE,  handler);
-    //    signal(SIGILL,  handler);
-    
-    // signal(SIGSEGV, handler);
-    
-    struct sigaction new_action;
-    new_action.sa_handler = c_handler;
-    sigemptyset (&new_action.sa_mask);
-    new_action.sa_flags = SA_RESTART;
-    
-    struct sigaction old_action_term;
-    struct sigaction old_action_abrt;
-    struct sigaction old_action_int;
-    struct sigaction old_action_alrm;
-    
-    sigaction(SIGTERM,  &new_action, &old_action_term);
-    sigaction(SIGABRT,  &new_action, &old_action_abrt);
-    sigaction(SIGINT,  &new_action, &old_action_int);
-    sigaction(SIGALRM,  &new_action, &old_action_alrm);
-    try {
-      result = (int *)sdd_variables(arg1,arg2);
-    } catch(SIGINT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process interrupted");
-    } catch(SIGTERM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process terminated");
-    } catch(SIGABRT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process aborted");
-    } catch(SIGALRM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process timeout");
-    }
-    sigaction(SIGTERM, &old_action_term, NULL);
-    sigaction(SIGABRT, &old_action_abrt, NULL);
-    sigaction(SIGINT, &old_action_int, NULL);
-    sigaction(SIGALRM, &old_action_alrm, NULL);
-    
-  }
-  resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_int, 0 |  0 );
-  return resultobj;
+  result = (int *)sdd_variables(arg1,arg2);
+  Tcl_SetObjResult(interp, SWIG_NewInstanceObj( SWIG_as_voidptr(result), SWIGTYPE_p_int,0));
+  return TCL_OK;
 fail:
-  return NULL;
+  return TCL_ERROR;
 }
 
 
-SWIGINTERN PyObject *_wrap_sdd_read(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
+SWIGINTERN int
+_wrap_sdd_read(ClientData clientData SWIGUNUSED, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]) {
   char *arg1 = (char *) 0 ;
   SddManager *arg2 = (SddManager *) 0 ;
   int res1 ;
@@ -8111,86 +3558,31 @@ SWIGINTERN PyObject *_wrap_sdd_read(PyObject *SWIGUNUSEDPARM(self), PyObject *ar
   int alloc1 = 0 ;
   void *argp2 = 0 ;
   int res2 = 0 ;
-  PyObject * obj0 = 0 ;
-  PyObject * obj1 = 0 ;
   SddNode *result = 0 ;
   
-  if (!PyArg_ParseTuple(args,(char *)"OO:sdd_read",&obj0,&obj1)) SWIG_fail;
-  res1 = SWIG_AsCharPtrAndSize(obj0, &buf1, NULL, &alloc1);
+  if (SWIG_GetArgs(interp, objc, objv,"oo:sdd_read filename manager ",(void *)0,(void *)0) == TCL_ERROR) SWIG_fail;
+  res1 = SWIG_AsCharPtrAndSize(objv[1], &buf1, NULL, &alloc1);
   if (!SWIG_IsOK(res1)) {
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "sdd_read" "', argument " "1"" of type '" "char const *""'");
   }
   arg1 = (char *)(buf1);
-  res2 = SWIG_ConvertPtr(obj1, &argp2,SWIGTYPE_p_sdd_manager_t, 0 |  0 );
+  res2 = SWIG_ConvertPtr(objv[2], &argp2,SWIGTYPE_p_sdd_manager_t, 0 |  0 );
   if (!SWIG_IsOK(res2)) {
     SWIG_exception_fail(SWIG_ArgError(res2), "in method '" "sdd_read" "', argument " "2"" of type '" "SddManager *""'"); 
   }
   arg2 = (SddManager *)(argp2);
-  {
-    //
-    //    signal(SIGFPE,  handler);
-    //    signal(SIGILL,  handler);
-    
-    // signal(SIGSEGV, handler);
-    
-    struct sigaction new_action;
-    new_action.sa_handler = c_handler;
-    sigemptyset (&new_action.sa_mask);
-    new_action.sa_flags = SA_RESTART;
-    
-    struct sigaction old_action_term;
-    struct sigaction old_action_abrt;
-    struct sigaction old_action_int;
-    struct sigaction old_action_alrm;
-    
-    sigaction(SIGTERM,  &new_action, &old_action_term);
-    sigaction(SIGABRT,  &new_action, &old_action_abrt);
-    sigaction(SIGINT,  &new_action, &old_action_int);
-    sigaction(SIGALRM,  &new_action, &old_action_alrm);
-    try {
-      result = (SddNode *)sdd_read((char const *)arg1,arg2);
-    } catch(SIGINT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process interrupted");
-    } catch(SIGTERM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process terminated");
-    } catch(SIGABRT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process aborted");
-    } catch(SIGALRM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process timeout");
-    }
-    sigaction(SIGTERM, &old_action_term, NULL);
-    sigaction(SIGABRT, &old_action_abrt, NULL);
-    sigaction(SIGINT, &old_action_int, NULL);
-    sigaction(SIGALRM, &old_action_alrm, NULL);
-    
-  }
-  resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_sdd_node_t, 0 |  0 );
+  result = (SddNode *)sdd_read((char const *)arg1,arg2);
+  Tcl_SetObjResult(interp, SWIG_NewInstanceObj( SWIG_as_voidptr(result), SWIGTYPE_p_sdd_node_t,0));
   if (alloc1 == SWIG_NEWOBJ) free((char*)buf1);
-  return resultobj;
+  return TCL_OK;
 fail:
   if (alloc1 == SWIG_NEWOBJ) free((char*)buf1);
-  return NULL;
+  return TCL_ERROR;
 }
 
 
-SWIGINTERN PyObject *_wrap_sdd_save(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
+SWIGINTERN int
+_wrap_sdd_save(ClientData clientData SWIGUNUSED, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]) {
   char *arg1 = (char *) 0 ;
   SddNode *arg2 = (SddNode *) 0 ;
   int res1 ;
@@ -8198,85 +3590,30 @@ SWIGINTERN PyObject *_wrap_sdd_save(PyObject *SWIGUNUSEDPARM(self), PyObject *ar
   int alloc1 = 0 ;
   void *argp2 = 0 ;
   int res2 = 0 ;
-  PyObject * obj0 = 0 ;
-  PyObject * obj1 = 0 ;
   
-  if (!PyArg_ParseTuple(args,(char *)"OO:sdd_save",&obj0,&obj1)) SWIG_fail;
-  res1 = SWIG_AsCharPtrAndSize(obj0, &buf1, NULL, &alloc1);
+  if (SWIG_GetArgs(interp, objc, objv,"oo:sdd_save fname node ",(void *)0,(void *)0) == TCL_ERROR) SWIG_fail;
+  res1 = SWIG_AsCharPtrAndSize(objv[1], &buf1, NULL, &alloc1);
   if (!SWIG_IsOK(res1)) {
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "sdd_save" "', argument " "1"" of type '" "char const *""'");
   }
   arg1 = (char *)(buf1);
-  res2 = SWIG_ConvertPtr(obj1, &argp2,SWIGTYPE_p_sdd_node_t, 0 |  0 );
+  res2 = SWIG_ConvertPtr(objv[2], &argp2,SWIGTYPE_p_sdd_node_t, 0 |  0 );
   if (!SWIG_IsOK(res2)) {
     SWIG_exception_fail(SWIG_ArgError(res2), "in method '" "sdd_save" "', argument " "2"" of type '" "SddNode *""'"); 
   }
   arg2 = (SddNode *)(argp2);
-  {
-    //
-    //    signal(SIGFPE,  handler);
-    //    signal(SIGILL,  handler);
-    
-    // signal(SIGSEGV, handler);
-    
-    struct sigaction new_action;
-    new_action.sa_handler = c_handler;
-    sigemptyset (&new_action.sa_mask);
-    new_action.sa_flags = SA_RESTART;
-    
-    struct sigaction old_action_term;
-    struct sigaction old_action_abrt;
-    struct sigaction old_action_int;
-    struct sigaction old_action_alrm;
-    
-    sigaction(SIGTERM,  &new_action, &old_action_term);
-    sigaction(SIGABRT,  &new_action, &old_action_abrt);
-    sigaction(SIGINT,  &new_action, &old_action_int);
-    sigaction(SIGALRM,  &new_action, &old_action_alrm);
-    try {
-      sdd_save((char const *)arg1,arg2);
-    } catch(SIGINT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process interrupted");
-    } catch(SIGTERM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process terminated");
-    } catch(SIGABRT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process aborted");
-    } catch(SIGALRM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process timeout");
-    }
-    sigaction(SIGTERM, &old_action_term, NULL);
-    sigaction(SIGABRT, &old_action_abrt, NULL);
-    sigaction(SIGINT, &old_action_int, NULL);
-    sigaction(SIGALRM, &old_action_alrm, NULL);
-    
-  }
-  resultobj = SWIG_Py_Void();
+  sdd_save((char const *)arg1,arg2);
+  
   if (alloc1 == SWIG_NEWOBJ) free((char*)buf1);
-  return resultobj;
+  return TCL_OK;
 fail:
   if (alloc1 == SWIG_NEWOBJ) free((char*)buf1);
-  return NULL;
+  return TCL_ERROR;
 }
 
 
-SWIGINTERN PyObject *_wrap_sdd_save_as_dot(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
+SWIGINTERN int
+_wrap_sdd_save_as_dot(ClientData clientData SWIGUNUSED, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]) {
   char *arg1 = (char *) 0 ;
   SddNode *arg2 = (SddNode *) 0 ;
   int res1 ;
@@ -8284,85 +3621,30 @@ SWIGINTERN PyObject *_wrap_sdd_save_as_dot(PyObject *SWIGUNUSEDPARM(self), PyObj
   int alloc1 = 0 ;
   void *argp2 = 0 ;
   int res2 = 0 ;
-  PyObject * obj0 = 0 ;
-  PyObject * obj1 = 0 ;
   
-  if (!PyArg_ParseTuple(args,(char *)"OO:sdd_save_as_dot",&obj0,&obj1)) SWIG_fail;
-  res1 = SWIG_AsCharPtrAndSize(obj0, &buf1, NULL, &alloc1);
+  if (SWIG_GetArgs(interp, objc, objv,"oo:sdd_save_as_dot fname node ",(void *)0,(void *)0) == TCL_ERROR) SWIG_fail;
+  res1 = SWIG_AsCharPtrAndSize(objv[1], &buf1, NULL, &alloc1);
   if (!SWIG_IsOK(res1)) {
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "sdd_save_as_dot" "', argument " "1"" of type '" "char const *""'");
   }
   arg1 = (char *)(buf1);
-  res2 = SWIG_ConvertPtr(obj1, &argp2,SWIGTYPE_p_sdd_node_t, 0 |  0 );
+  res2 = SWIG_ConvertPtr(objv[2], &argp2,SWIGTYPE_p_sdd_node_t, 0 |  0 );
   if (!SWIG_IsOK(res2)) {
     SWIG_exception_fail(SWIG_ArgError(res2), "in method '" "sdd_save_as_dot" "', argument " "2"" of type '" "SddNode *""'"); 
   }
   arg2 = (SddNode *)(argp2);
-  {
-    //
-    //    signal(SIGFPE,  handler);
-    //    signal(SIGILL,  handler);
-    
-    // signal(SIGSEGV, handler);
-    
-    struct sigaction new_action;
-    new_action.sa_handler = c_handler;
-    sigemptyset (&new_action.sa_mask);
-    new_action.sa_flags = SA_RESTART;
-    
-    struct sigaction old_action_term;
-    struct sigaction old_action_abrt;
-    struct sigaction old_action_int;
-    struct sigaction old_action_alrm;
-    
-    sigaction(SIGTERM,  &new_action, &old_action_term);
-    sigaction(SIGABRT,  &new_action, &old_action_abrt);
-    sigaction(SIGINT,  &new_action, &old_action_int);
-    sigaction(SIGALRM,  &new_action, &old_action_alrm);
-    try {
-      sdd_save_as_dot((char const *)arg1,arg2);
-    } catch(SIGINT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process interrupted");
-    } catch(SIGTERM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process terminated");
-    } catch(SIGABRT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process aborted");
-    } catch(SIGALRM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process timeout");
-    }
-    sigaction(SIGTERM, &old_action_term, NULL);
-    sigaction(SIGABRT, &old_action_abrt, NULL);
-    sigaction(SIGINT, &old_action_int, NULL);
-    sigaction(SIGALRM, &old_action_alrm, NULL);
-    
-  }
-  resultobj = SWIG_Py_Void();
+  sdd_save_as_dot((char const *)arg1,arg2);
+  
   if (alloc1 == SWIG_NEWOBJ) free((char*)buf1);
-  return resultobj;
+  return TCL_OK;
 fail:
   if (alloc1 == SWIG_NEWOBJ) free((char*)buf1);
-  return NULL;
+  return TCL_ERROR;
 }
 
 
-SWIGINTERN PyObject *_wrap_sdd_shared_save_as_dot(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
+SWIGINTERN int
+_wrap_sdd_shared_save_as_dot(ClientData clientData SWIGUNUSED, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]) {
   char *arg1 = (char *) 0 ;
   SddManager *arg2 = (SddManager *) 0 ;
   int res1 ;
@@ -8370,2119 +3652,605 @@ SWIGINTERN PyObject *_wrap_sdd_shared_save_as_dot(PyObject *SWIGUNUSEDPARM(self)
   int alloc1 = 0 ;
   void *argp2 = 0 ;
   int res2 = 0 ;
-  PyObject * obj0 = 0 ;
-  PyObject * obj1 = 0 ;
   
-  if (!PyArg_ParseTuple(args,(char *)"OO:sdd_shared_save_as_dot",&obj0,&obj1)) SWIG_fail;
-  res1 = SWIG_AsCharPtrAndSize(obj0, &buf1, NULL, &alloc1);
+  if (SWIG_GetArgs(interp, objc, objv,"oo:sdd_shared_save_as_dot fname manager ",(void *)0,(void *)0) == TCL_ERROR) SWIG_fail;
+  res1 = SWIG_AsCharPtrAndSize(objv[1], &buf1, NULL, &alloc1);
   if (!SWIG_IsOK(res1)) {
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "sdd_shared_save_as_dot" "', argument " "1"" of type '" "char const *""'");
   }
   arg1 = (char *)(buf1);
-  res2 = SWIG_ConvertPtr(obj1, &argp2,SWIGTYPE_p_sdd_manager_t, 0 |  0 );
+  res2 = SWIG_ConvertPtr(objv[2], &argp2,SWIGTYPE_p_sdd_manager_t, 0 |  0 );
   if (!SWIG_IsOK(res2)) {
     SWIG_exception_fail(SWIG_ArgError(res2), "in method '" "sdd_shared_save_as_dot" "', argument " "2"" of type '" "SddManager *""'"); 
   }
   arg2 = (SddManager *)(argp2);
-  {
-    //
-    //    signal(SIGFPE,  handler);
-    //    signal(SIGILL,  handler);
-    
-    // signal(SIGSEGV, handler);
-    
-    struct sigaction new_action;
-    new_action.sa_handler = c_handler;
-    sigemptyset (&new_action.sa_mask);
-    new_action.sa_flags = SA_RESTART;
-    
-    struct sigaction old_action_term;
-    struct sigaction old_action_abrt;
-    struct sigaction old_action_int;
-    struct sigaction old_action_alrm;
-    
-    sigaction(SIGTERM,  &new_action, &old_action_term);
-    sigaction(SIGABRT,  &new_action, &old_action_abrt);
-    sigaction(SIGINT,  &new_action, &old_action_int);
-    sigaction(SIGALRM,  &new_action, &old_action_alrm);
-    try {
-      sdd_shared_save_as_dot((char const *)arg1,arg2);
-    } catch(SIGINT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process interrupted");
-    } catch(SIGTERM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process terminated");
-    } catch(SIGABRT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process aborted");
-    } catch(SIGALRM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process timeout");
-    }
-    sigaction(SIGTERM, &old_action_term, NULL);
-    sigaction(SIGABRT, &old_action_abrt, NULL);
-    sigaction(SIGINT, &old_action_int, NULL);
-    sigaction(SIGALRM, &old_action_alrm, NULL);
-    
-  }
-  resultobj = SWIG_Py_Void();
+  sdd_shared_save_as_dot((char const *)arg1,arg2);
+  
   if (alloc1 == SWIG_NEWOBJ) free((char*)buf1);
-  return resultobj;
+  return TCL_OK;
 fail:
   if (alloc1 == SWIG_NEWOBJ) free((char*)buf1);
-  return NULL;
+  return TCL_ERROR;
 }
 
 
-SWIGINTERN PyObject *_wrap_sdd_count(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
+SWIGINTERN int
+_wrap_sdd_count(ClientData clientData SWIGUNUSED, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]) {
   SddNode *arg1 = (SddNode *) 0 ;
   void *argp1 = 0 ;
   int res1 = 0 ;
-  PyObject * obj0 = 0 ;
   SddSize result;
   
-  if (!PyArg_ParseTuple(args,(char *)"O:sdd_count",&obj0)) SWIG_fail;
-  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_sdd_node_t, 0 |  0 );
+  if (SWIG_GetArgs(interp, objc, objv,"o:sdd_count node ",(void *)0) == TCL_ERROR) SWIG_fail;
+  res1 = SWIG_ConvertPtr(objv[1], &argp1,SWIGTYPE_p_sdd_node_t, 0 |  0 );
   if (!SWIG_IsOK(res1)) {
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "sdd_count" "', argument " "1"" of type '" "SddNode *""'"); 
   }
   arg1 = (SddNode *)(argp1);
-  {
-    //
-    //    signal(SIGFPE,  handler);
-    //    signal(SIGILL,  handler);
-    
-    // signal(SIGSEGV, handler);
-    
-    struct sigaction new_action;
-    new_action.sa_handler = c_handler;
-    sigemptyset (&new_action.sa_mask);
-    new_action.sa_flags = SA_RESTART;
-    
-    struct sigaction old_action_term;
-    struct sigaction old_action_abrt;
-    struct sigaction old_action_int;
-    struct sigaction old_action_alrm;
-    
-    sigaction(SIGTERM,  &new_action, &old_action_term);
-    sigaction(SIGABRT,  &new_action, &old_action_abrt);
-    sigaction(SIGINT,  &new_action, &old_action_int);
-    sigaction(SIGALRM,  &new_action, &old_action_alrm);
-    try {
-      result = sdd_count(arg1);
-    } catch(SIGINT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process interrupted");
-    } catch(SIGTERM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process terminated");
-    } catch(SIGABRT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process aborted");
-    } catch(SIGALRM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process timeout");
-    }
-    sigaction(SIGTERM, &old_action_term, NULL);
-    sigaction(SIGABRT, &old_action_abrt, NULL);
-    sigaction(SIGINT, &old_action_int, NULL);
-    sigaction(SIGALRM, &old_action_alrm, NULL);
-    
-  }
-  resultobj = SWIG_From_size_t((size_t)(result));
-  return resultobj;
+  result = sdd_count(arg1);
+  Tcl_SetObjResult(interp,SWIG_From_size_t((size_t)(result)));
+  return TCL_OK;
 fail:
-  return NULL;
+  return TCL_ERROR;
 }
 
 
-SWIGINTERN PyObject *_wrap_sdd_size(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
+SWIGINTERN int
+_wrap_sdd_size(ClientData clientData SWIGUNUSED, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]) {
   SddNode *arg1 = (SddNode *) 0 ;
   void *argp1 = 0 ;
   int res1 = 0 ;
-  PyObject * obj0 = 0 ;
   SddSize result;
   
-  if (!PyArg_ParseTuple(args,(char *)"O:sdd_size",&obj0)) SWIG_fail;
-  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_sdd_node_t, 0 |  0 );
+  if (SWIG_GetArgs(interp, objc, objv,"o:sdd_size node ",(void *)0) == TCL_ERROR) SWIG_fail;
+  res1 = SWIG_ConvertPtr(objv[1], &argp1,SWIGTYPE_p_sdd_node_t, 0 |  0 );
   if (!SWIG_IsOK(res1)) {
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "sdd_size" "', argument " "1"" of type '" "SddNode *""'"); 
   }
   arg1 = (SddNode *)(argp1);
-  {
-    //
-    //    signal(SIGFPE,  handler);
-    //    signal(SIGILL,  handler);
-    
-    // signal(SIGSEGV, handler);
-    
-    struct sigaction new_action;
-    new_action.sa_handler = c_handler;
-    sigemptyset (&new_action.sa_mask);
-    new_action.sa_flags = SA_RESTART;
-    
-    struct sigaction old_action_term;
-    struct sigaction old_action_abrt;
-    struct sigaction old_action_int;
-    struct sigaction old_action_alrm;
-    
-    sigaction(SIGTERM,  &new_action, &old_action_term);
-    sigaction(SIGABRT,  &new_action, &old_action_abrt);
-    sigaction(SIGINT,  &new_action, &old_action_int);
-    sigaction(SIGALRM,  &new_action, &old_action_alrm);
-    try {
-      result = sdd_size(arg1);
-    } catch(SIGINT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process interrupted");
-    } catch(SIGTERM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process terminated");
-    } catch(SIGABRT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process aborted");
-    } catch(SIGALRM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process timeout");
-    }
-    sigaction(SIGTERM, &old_action_term, NULL);
-    sigaction(SIGABRT, &old_action_abrt, NULL);
-    sigaction(SIGINT, &old_action_int, NULL);
-    sigaction(SIGALRM, &old_action_alrm, NULL);
-    
-  }
-  resultobj = SWIG_From_size_t((size_t)(result));
-  return resultobj;
+  result = sdd_size(arg1);
+  Tcl_SetObjResult(interp,SWIG_From_size_t((size_t)(result)));
+  return TCL_OK;
 fail:
-  return NULL;
+  return TCL_ERROR;
 }
 
 
-SWIGINTERN PyObject *_wrap_sdd_shared_size(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
+SWIGINTERN int
+_wrap_sdd_shared_size(ClientData clientData SWIGUNUSED, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]) {
   SddNode **arg1 = (SddNode **) 0 ;
   SddSize arg2 ;
   void *argp1 = 0 ;
   int res1 = 0 ;
   size_t val2 ;
   int ecode2 = 0 ;
-  PyObject * obj0 = 0 ;
-  PyObject * obj1 = 0 ;
   SddSize result;
   
-  if (!PyArg_ParseTuple(args,(char *)"OO:sdd_shared_size",&obj0,&obj1)) SWIG_fail;
-  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_p_sdd_node_t, 0 |  0 );
+  if (SWIG_GetArgs(interp, objc, objv,"oo:sdd_shared_size nodes count ",(void *)0,(void *)0) == TCL_ERROR) SWIG_fail;
+  res1 = SWIG_ConvertPtr(objv[1], &argp1,SWIGTYPE_p_p_sdd_node_t, 0 |  0 );
   if (!SWIG_IsOK(res1)) {
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "sdd_shared_size" "', argument " "1"" of type '" "SddNode **""'"); 
   }
   arg1 = (SddNode **)(argp1);
-  ecode2 = SWIG_AsVal_size_t(obj1, &val2);
+  ecode2 = SWIG_AsVal_size_t SWIG_TCL_CALL_ARGS_2(objv[2], &val2);
   if (!SWIG_IsOK(ecode2)) {
     SWIG_exception_fail(SWIG_ArgError(ecode2), "in method '" "sdd_shared_size" "', argument " "2"" of type '" "SddSize""'");
   } 
   arg2 = (SddSize)(val2);
-  {
-    //
-    //    signal(SIGFPE,  handler);
-    //    signal(SIGILL,  handler);
-    
-    // signal(SIGSEGV, handler);
-    
-    struct sigaction new_action;
-    new_action.sa_handler = c_handler;
-    sigemptyset (&new_action.sa_mask);
-    new_action.sa_flags = SA_RESTART;
-    
-    struct sigaction old_action_term;
-    struct sigaction old_action_abrt;
-    struct sigaction old_action_int;
-    struct sigaction old_action_alrm;
-    
-    sigaction(SIGTERM,  &new_action, &old_action_term);
-    sigaction(SIGABRT,  &new_action, &old_action_abrt);
-    sigaction(SIGINT,  &new_action, &old_action_int);
-    sigaction(SIGALRM,  &new_action, &old_action_alrm);
-    try {
-      result = sdd_shared_size(arg1,arg2);
-    } catch(SIGINT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process interrupted");
-    } catch(SIGTERM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process terminated");
-    } catch(SIGABRT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process aborted");
-    } catch(SIGALRM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process timeout");
-    }
-    sigaction(SIGTERM, &old_action_term, NULL);
-    sigaction(SIGABRT, &old_action_abrt, NULL);
-    sigaction(SIGINT, &old_action_int, NULL);
-    sigaction(SIGALRM, &old_action_alrm, NULL);
-    
-  }
-  resultobj = SWIG_From_size_t((size_t)(result));
-  return resultobj;
+  result = sdd_shared_size(arg1,arg2);
+  Tcl_SetObjResult(interp,SWIG_From_size_t((size_t)(result)));
+  return TCL_OK;
 fail:
-  return NULL;
+  return TCL_ERROR;
 }
 
 
-SWIGINTERN PyObject *_wrap_sdd_manager_size(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
+SWIGINTERN int
+_wrap_sdd_manager_size(ClientData clientData SWIGUNUSED, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]) {
   SddManager *arg1 = (SddManager *) 0 ;
   void *argp1 = 0 ;
   int res1 = 0 ;
-  PyObject * obj0 = 0 ;
   SddSize result;
   
-  if (!PyArg_ParseTuple(args,(char *)"O:sdd_manager_size",&obj0)) SWIG_fail;
-  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_sdd_manager_t, 0 |  0 );
+  if (SWIG_GetArgs(interp, objc, objv,"o:sdd_manager_size manager ",(void *)0) == TCL_ERROR) SWIG_fail;
+  res1 = SWIG_ConvertPtr(objv[1], &argp1,SWIGTYPE_p_sdd_manager_t, 0 |  0 );
   if (!SWIG_IsOK(res1)) {
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "sdd_manager_size" "', argument " "1"" of type '" "SddManager const *""'"); 
   }
   arg1 = (SddManager *)(argp1);
-  {
-    //
-    //    signal(SIGFPE,  handler);
-    //    signal(SIGILL,  handler);
-    
-    // signal(SIGSEGV, handler);
-    
-    struct sigaction new_action;
-    new_action.sa_handler = c_handler;
-    sigemptyset (&new_action.sa_mask);
-    new_action.sa_flags = SA_RESTART;
-    
-    struct sigaction old_action_term;
-    struct sigaction old_action_abrt;
-    struct sigaction old_action_int;
-    struct sigaction old_action_alrm;
-    
-    sigaction(SIGTERM,  &new_action, &old_action_term);
-    sigaction(SIGABRT,  &new_action, &old_action_abrt);
-    sigaction(SIGINT,  &new_action, &old_action_int);
-    sigaction(SIGALRM,  &new_action, &old_action_alrm);
-    try {
-      result = sdd_manager_size((struct sdd_manager_t const *)arg1);
-    } catch(SIGINT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process interrupted");
-    } catch(SIGTERM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process terminated");
-    } catch(SIGABRT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process aborted");
-    } catch(SIGALRM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process timeout");
-    }
-    sigaction(SIGTERM, &old_action_term, NULL);
-    sigaction(SIGABRT, &old_action_abrt, NULL);
-    sigaction(SIGINT, &old_action_int, NULL);
-    sigaction(SIGALRM, &old_action_alrm, NULL);
-    
-  }
-  resultobj = SWIG_From_size_t((size_t)(result));
-  return resultobj;
+  result = sdd_manager_size((struct sdd_manager_t const *)arg1);
+  Tcl_SetObjResult(interp,SWIG_From_size_t((size_t)(result)));
+  return TCL_OK;
 fail:
-  return NULL;
+  return TCL_ERROR;
 }
 
 
-SWIGINTERN PyObject *_wrap_sdd_manager_live_size(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
+SWIGINTERN int
+_wrap_sdd_manager_live_size(ClientData clientData SWIGUNUSED, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]) {
   SddManager *arg1 = (SddManager *) 0 ;
   void *argp1 = 0 ;
   int res1 = 0 ;
-  PyObject * obj0 = 0 ;
   SddSize result;
   
-  if (!PyArg_ParseTuple(args,(char *)"O:sdd_manager_live_size",&obj0)) SWIG_fail;
-  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_sdd_manager_t, 0 |  0 );
+  if (SWIG_GetArgs(interp, objc, objv,"o:sdd_manager_live_size manager ",(void *)0) == TCL_ERROR) SWIG_fail;
+  res1 = SWIG_ConvertPtr(objv[1], &argp1,SWIGTYPE_p_sdd_manager_t, 0 |  0 );
   if (!SWIG_IsOK(res1)) {
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "sdd_manager_live_size" "', argument " "1"" of type '" "SddManager const *""'"); 
   }
   arg1 = (SddManager *)(argp1);
-  {
-    //
-    //    signal(SIGFPE,  handler);
-    //    signal(SIGILL,  handler);
-    
-    // signal(SIGSEGV, handler);
-    
-    struct sigaction new_action;
-    new_action.sa_handler = c_handler;
-    sigemptyset (&new_action.sa_mask);
-    new_action.sa_flags = SA_RESTART;
-    
-    struct sigaction old_action_term;
-    struct sigaction old_action_abrt;
-    struct sigaction old_action_int;
-    struct sigaction old_action_alrm;
-    
-    sigaction(SIGTERM,  &new_action, &old_action_term);
-    sigaction(SIGABRT,  &new_action, &old_action_abrt);
-    sigaction(SIGINT,  &new_action, &old_action_int);
-    sigaction(SIGALRM,  &new_action, &old_action_alrm);
-    try {
-      result = sdd_manager_live_size((struct sdd_manager_t const *)arg1);
-    } catch(SIGINT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process interrupted");
-    } catch(SIGTERM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process terminated");
-    } catch(SIGABRT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process aborted");
-    } catch(SIGALRM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process timeout");
-    }
-    sigaction(SIGTERM, &old_action_term, NULL);
-    sigaction(SIGABRT, &old_action_abrt, NULL);
-    sigaction(SIGINT, &old_action_int, NULL);
-    sigaction(SIGALRM, &old_action_alrm, NULL);
-    
-  }
-  resultobj = SWIG_From_size_t((size_t)(result));
-  return resultobj;
+  result = sdd_manager_live_size((struct sdd_manager_t const *)arg1);
+  Tcl_SetObjResult(interp,SWIG_From_size_t((size_t)(result)));
+  return TCL_OK;
 fail:
-  return NULL;
+  return TCL_ERROR;
 }
 
 
-SWIGINTERN PyObject *_wrap_sdd_manager_dead_size(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
+SWIGINTERN int
+_wrap_sdd_manager_dead_size(ClientData clientData SWIGUNUSED, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]) {
   SddManager *arg1 = (SddManager *) 0 ;
   void *argp1 = 0 ;
   int res1 = 0 ;
-  PyObject * obj0 = 0 ;
   SddSize result;
   
-  if (!PyArg_ParseTuple(args,(char *)"O:sdd_manager_dead_size",&obj0)) SWIG_fail;
-  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_sdd_manager_t, 0 |  0 );
+  if (SWIG_GetArgs(interp, objc, objv,"o:sdd_manager_dead_size manager ",(void *)0) == TCL_ERROR) SWIG_fail;
+  res1 = SWIG_ConvertPtr(objv[1], &argp1,SWIGTYPE_p_sdd_manager_t, 0 |  0 );
   if (!SWIG_IsOK(res1)) {
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "sdd_manager_dead_size" "', argument " "1"" of type '" "SddManager const *""'"); 
   }
   arg1 = (SddManager *)(argp1);
-  {
-    //
-    //    signal(SIGFPE,  handler);
-    //    signal(SIGILL,  handler);
-    
-    // signal(SIGSEGV, handler);
-    
-    struct sigaction new_action;
-    new_action.sa_handler = c_handler;
-    sigemptyset (&new_action.sa_mask);
-    new_action.sa_flags = SA_RESTART;
-    
-    struct sigaction old_action_term;
-    struct sigaction old_action_abrt;
-    struct sigaction old_action_int;
-    struct sigaction old_action_alrm;
-    
-    sigaction(SIGTERM,  &new_action, &old_action_term);
-    sigaction(SIGABRT,  &new_action, &old_action_abrt);
-    sigaction(SIGINT,  &new_action, &old_action_int);
-    sigaction(SIGALRM,  &new_action, &old_action_alrm);
-    try {
-      result = sdd_manager_dead_size((struct sdd_manager_t const *)arg1);
-    } catch(SIGINT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process interrupted");
-    } catch(SIGTERM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process terminated");
-    } catch(SIGABRT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process aborted");
-    } catch(SIGALRM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process timeout");
-    }
-    sigaction(SIGTERM, &old_action_term, NULL);
-    sigaction(SIGABRT, &old_action_abrt, NULL);
-    sigaction(SIGINT, &old_action_int, NULL);
-    sigaction(SIGALRM, &old_action_alrm, NULL);
-    
-  }
-  resultobj = SWIG_From_size_t((size_t)(result));
-  return resultobj;
+  result = sdd_manager_dead_size((struct sdd_manager_t const *)arg1);
+  Tcl_SetObjResult(interp,SWIG_From_size_t((size_t)(result)));
+  return TCL_OK;
 fail:
-  return NULL;
+  return TCL_ERROR;
 }
 
 
-SWIGINTERN PyObject *_wrap_sdd_manager_count(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
+SWIGINTERN int
+_wrap_sdd_manager_count(ClientData clientData SWIGUNUSED, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]) {
   SddManager *arg1 = (SddManager *) 0 ;
   void *argp1 = 0 ;
   int res1 = 0 ;
-  PyObject * obj0 = 0 ;
   SddSize result;
   
-  if (!PyArg_ParseTuple(args,(char *)"O:sdd_manager_count",&obj0)) SWIG_fail;
-  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_sdd_manager_t, 0 |  0 );
+  if (SWIG_GetArgs(interp, objc, objv,"o:sdd_manager_count manager ",(void *)0) == TCL_ERROR) SWIG_fail;
+  res1 = SWIG_ConvertPtr(objv[1], &argp1,SWIGTYPE_p_sdd_manager_t, 0 |  0 );
   if (!SWIG_IsOK(res1)) {
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "sdd_manager_count" "', argument " "1"" of type '" "SddManager const *""'"); 
   }
   arg1 = (SddManager *)(argp1);
-  {
-    //
-    //    signal(SIGFPE,  handler);
-    //    signal(SIGILL,  handler);
-    
-    // signal(SIGSEGV, handler);
-    
-    struct sigaction new_action;
-    new_action.sa_handler = c_handler;
-    sigemptyset (&new_action.sa_mask);
-    new_action.sa_flags = SA_RESTART;
-    
-    struct sigaction old_action_term;
-    struct sigaction old_action_abrt;
-    struct sigaction old_action_int;
-    struct sigaction old_action_alrm;
-    
-    sigaction(SIGTERM,  &new_action, &old_action_term);
-    sigaction(SIGABRT,  &new_action, &old_action_abrt);
-    sigaction(SIGINT,  &new_action, &old_action_int);
-    sigaction(SIGALRM,  &new_action, &old_action_alrm);
-    try {
-      result = sdd_manager_count((struct sdd_manager_t const *)arg1);
-    } catch(SIGINT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process interrupted");
-    } catch(SIGTERM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process terminated");
-    } catch(SIGABRT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process aborted");
-    } catch(SIGALRM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process timeout");
-    }
-    sigaction(SIGTERM, &old_action_term, NULL);
-    sigaction(SIGABRT, &old_action_abrt, NULL);
-    sigaction(SIGINT, &old_action_int, NULL);
-    sigaction(SIGALRM, &old_action_alrm, NULL);
-    
-  }
-  resultobj = SWIG_From_size_t((size_t)(result));
-  return resultobj;
+  result = sdd_manager_count((struct sdd_manager_t const *)arg1);
+  Tcl_SetObjResult(interp,SWIG_From_size_t((size_t)(result)));
+  return TCL_OK;
 fail:
-  return NULL;
+  return TCL_ERROR;
 }
 
 
-SWIGINTERN PyObject *_wrap_sdd_manager_live_count(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
+SWIGINTERN int
+_wrap_sdd_manager_live_count(ClientData clientData SWIGUNUSED, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]) {
   SddManager *arg1 = (SddManager *) 0 ;
   void *argp1 = 0 ;
   int res1 = 0 ;
-  PyObject * obj0 = 0 ;
   SddSize result;
   
-  if (!PyArg_ParseTuple(args,(char *)"O:sdd_manager_live_count",&obj0)) SWIG_fail;
-  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_sdd_manager_t, 0 |  0 );
+  if (SWIG_GetArgs(interp, objc, objv,"o:sdd_manager_live_count manager ",(void *)0) == TCL_ERROR) SWIG_fail;
+  res1 = SWIG_ConvertPtr(objv[1], &argp1,SWIGTYPE_p_sdd_manager_t, 0 |  0 );
   if (!SWIG_IsOK(res1)) {
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "sdd_manager_live_count" "', argument " "1"" of type '" "SddManager const *""'"); 
   }
   arg1 = (SddManager *)(argp1);
-  {
-    //
-    //    signal(SIGFPE,  handler);
-    //    signal(SIGILL,  handler);
-    
-    // signal(SIGSEGV, handler);
-    
-    struct sigaction new_action;
-    new_action.sa_handler = c_handler;
-    sigemptyset (&new_action.sa_mask);
-    new_action.sa_flags = SA_RESTART;
-    
-    struct sigaction old_action_term;
-    struct sigaction old_action_abrt;
-    struct sigaction old_action_int;
-    struct sigaction old_action_alrm;
-    
-    sigaction(SIGTERM,  &new_action, &old_action_term);
-    sigaction(SIGABRT,  &new_action, &old_action_abrt);
-    sigaction(SIGINT,  &new_action, &old_action_int);
-    sigaction(SIGALRM,  &new_action, &old_action_alrm);
-    try {
-      result = sdd_manager_live_count((struct sdd_manager_t const *)arg1);
-    } catch(SIGINT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process interrupted");
-    } catch(SIGTERM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process terminated");
-    } catch(SIGABRT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process aborted");
-    } catch(SIGALRM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process timeout");
-    }
-    sigaction(SIGTERM, &old_action_term, NULL);
-    sigaction(SIGABRT, &old_action_abrt, NULL);
-    sigaction(SIGINT, &old_action_int, NULL);
-    sigaction(SIGALRM, &old_action_alrm, NULL);
-    
-  }
-  resultobj = SWIG_From_size_t((size_t)(result));
-  return resultobj;
+  result = sdd_manager_live_count((struct sdd_manager_t const *)arg1);
+  Tcl_SetObjResult(interp,SWIG_From_size_t((size_t)(result)));
+  return TCL_OK;
 fail:
-  return NULL;
+  return TCL_ERROR;
 }
 
 
-SWIGINTERN PyObject *_wrap_sdd_manager_dead_count(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
+SWIGINTERN int
+_wrap_sdd_manager_dead_count(ClientData clientData SWIGUNUSED, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]) {
   SddManager *arg1 = (SddManager *) 0 ;
   void *argp1 = 0 ;
   int res1 = 0 ;
-  PyObject * obj0 = 0 ;
   SddSize result;
   
-  if (!PyArg_ParseTuple(args,(char *)"O:sdd_manager_dead_count",&obj0)) SWIG_fail;
-  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_sdd_manager_t, 0 |  0 );
+  if (SWIG_GetArgs(interp, objc, objv,"o:sdd_manager_dead_count manager ",(void *)0) == TCL_ERROR) SWIG_fail;
+  res1 = SWIG_ConvertPtr(objv[1], &argp1,SWIGTYPE_p_sdd_manager_t, 0 |  0 );
   if (!SWIG_IsOK(res1)) {
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "sdd_manager_dead_count" "', argument " "1"" of type '" "SddManager const *""'"); 
   }
   arg1 = (SddManager *)(argp1);
-  {
-    //
-    //    signal(SIGFPE,  handler);
-    //    signal(SIGILL,  handler);
-    
-    // signal(SIGSEGV, handler);
-    
-    struct sigaction new_action;
-    new_action.sa_handler = c_handler;
-    sigemptyset (&new_action.sa_mask);
-    new_action.sa_flags = SA_RESTART;
-    
-    struct sigaction old_action_term;
-    struct sigaction old_action_abrt;
-    struct sigaction old_action_int;
-    struct sigaction old_action_alrm;
-    
-    sigaction(SIGTERM,  &new_action, &old_action_term);
-    sigaction(SIGABRT,  &new_action, &old_action_abrt);
-    sigaction(SIGINT,  &new_action, &old_action_int);
-    sigaction(SIGALRM,  &new_action, &old_action_alrm);
-    try {
-      result = sdd_manager_dead_count((struct sdd_manager_t const *)arg1);
-    } catch(SIGINT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process interrupted");
-    } catch(SIGTERM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process terminated");
-    } catch(SIGABRT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process aborted");
-    } catch(SIGALRM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process timeout");
-    }
-    sigaction(SIGTERM, &old_action_term, NULL);
-    sigaction(SIGABRT, &old_action_abrt, NULL);
-    sigaction(SIGINT, &old_action_int, NULL);
-    sigaction(SIGALRM, &old_action_alrm, NULL);
-    
-  }
-  resultobj = SWIG_From_size_t((size_t)(result));
-  return resultobj;
+  result = sdd_manager_dead_count((struct sdd_manager_t const *)arg1);
+  Tcl_SetObjResult(interp,SWIG_From_size_t((size_t)(result)));
+  return TCL_OK;
 fail:
-  return NULL;
+  return TCL_ERROR;
 }
 
 
-SWIGINTERN PyObject *_wrap_sdd_vtree_size(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
+SWIGINTERN int
+_wrap_sdd_vtree_size(ClientData clientData SWIGUNUSED, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]) {
   Vtree *arg1 = (Vtree *) 0 ;
   void *argp1 = 0 ;
   int res1 = 0 ;
-  PyObject * obj0 = 0 ;
   SddSize result;
   
-  if (!PyArg_ParseTuple(args,(char *)"O:sdd_vtree_size",&obj0)) SWIG_fail;
-  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_vtree_t, 0 |  0 );
+  if (SWIG_GetArgs(interp, objc, objv,"o:sdd_vtree_size vtree ",(void *)0) == TCL_ERROR) SWIG_fail;
+  res1 = SWIG_ConvertPtr(objv[1], &argp1,SWIGTYPE_p_vtree_t, 0 |  0 );
   if (!SWIG_IsOK(res1)) {
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "sdd_vtree_size" "', argument " "1"" of type '" "Vtree const *""'"); 
   }
   arg1 = (Vtree *)(argp1);
-  {
-    //
-    //    signal(SIGFPE,  handler);
-    //    signal(SIGILL,  handler);
-    
-    // signal(SIGSEGV, handler);
-    
-    struct sigaction new_action;
-    new_action.sa_handler = c_handler;
-    sigemptyset (&new_action.sa_mask);
-    new_action.sa_flags = SA_RESTART;
-    
-    struct sigaction old_action_term;
-    struct sigaction old_action_abrt;
-    struct sigaction old_action_int;
-    struct sigaction old_action_alrm;
-    
-    sigaction(SIGTERM,  &new_action, &old_action_term);
-    sigaction(SIGABRT,  &new_action, &old_action_abrt);
-    sigaction(SIGINT,  &new_action, &old_action_int);
-    sigaction(SIGALRM,  &new_action, &old_action_alrm);
-    try {
-      result = sdd_vtree_size((struct vtree_t const *)arg1);
-    } catch(SIGINT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process interrupted");
-    } catch(SIGTERM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process terminated");
-    } catch(SIGABRT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process aborted");
-    } catch(SIGALRM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process timeout");
-    }
-    sigaction(SIGTERM, &old_action_term, NULL);
-    sigaction(SIGABRT, &old_action_abrt, NULL);
-    sigaction(SIGINT, &old_action_int, NULL);
-    sigaction(SIGALRM, &old_action_alrm, NULL);
-    
-  }
-  resultobj = SWIG_From_size_t((size_t)(result));
-  return resultobj;
+  result = sdd_vtree_size((struct vtree_t const *)arg1);
+  Tcl_SetObjResult(interp,SWIG_From_size_t((size_t)(result)));
+  return TCL_OK;
 fail:
-  return NULL;
+  return TCL_ERROR;
 }
 
 
-SWIGINTERN PyObject *_wrap_sdd_vtree_live_size(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
+SWIGINTERN int
+_wrap_sdd_vtree_live_size(ClientData clientData SWIGUNUSED, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]) {
   Vtree *arg1 = (Vtree *) 0 ;
   void *argp1 = 0 ;
   int res1 = 0 ;
-  PyObject * obj0 = 0 ;
   SddSize result;
   
-  if (!PyArg_ParseTuple(args,(char *)"O:sdd_vtree_live_size",&obj0)) SWIG_fail;
-  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_vtree_t, 0 |  0 );
+  if (SWIG_GetArgs(interp, objc, objv,"o:sdd_vtree_live_size vtree ",(void *)0) == TCL_ERROR) SWIG_fail;
+  res1 = SWIG_ConvertPtr(objv[1], &argp1,SWIGTYPE_p_vtree_t, 0 |  0 );
   if (!SWIG_IsOK(res1)) {
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "sdd_vtree_live_size" "', argument " "1"" of type '" "Vtree const *""'"); 
   }
   arg1 = (Vtree *)(argp1);
-  {
-    //
-    //    signal(SIGFPE,  handler);
-    //    signal(SIGILL,  handler);
-    
-    // signal(SIGSEGV, handler);
-    
-    struct sigaction new_action;
-    new_action.sa_handler = c_handler;
-    sigemptyset (&new_action.sa_mask);
-    new_action.sa_flags = SA_RESTART;
-    
-    struct sigaction old_action_term;
-    struct sigaction old_action_abrt;
-    struct sigaction old_action_int;
-    struct sigaction old_action_alrm;
-    
-    sigaction(SIGTERM,  &new_action, &old_action_term);
-    sigaction(SIGABRT,  &new_action, &old_action_abrt);
-    sigaction(SIGINT,  &new_action, &old_action_int);
-    sigaction(SIGALRM,  &new_action, &old_action_alrm);
-    try {
-      result = sdd_vtree_live_size((struct vtree_t const *)arg1);
-    } catch(SIGINT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process interrupted");
-    } catch(SIGTERM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process terminated");
-    } catch(SIGABRT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process aborted");
-    } catch(SIGALRM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process timeout");
-    }
-    sigaction(SIGTERM, &old_action_term, NULL);
-    sigaction(SIGABRT, &old_action_abrt, NULL);
-    sigaction(SIGINT, &old_action_int, NULL);
-    sigaction(SIGALRM, &old_action_alrm, NULL);
-    
-  }
-  resultobj = SWIG_From_size_t((size_t)(result));
-  return resultobj;
+  result = sdd_vtree_live_size((struct vtree_t const *)arg1);
+  Tcl_SetObjResult(interp,SWIG_From_size_t((size_t)(result)));
+  return TCL_OK;
 fail:
-  return NULL;
+  return TCL_ERROR;
 }
 
 
-SWIGINTERN PyObject *_wrap_sdd_vtree_dead_size(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
+SWIGINTERN int
+_wrap_sdd_vtree_dead_size(ClientData clientData SWIGUNUSED, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]) {
   Vtree *arg1 = (Vtree *) 0 ;
   void *argp1 = 0 ;
   int res1 = 0 ;
-  PyObject * obj0 = 0 ;
   SddSize result;
   
-  if (!PyArg_ParseTuple(args,(char *)"O:sdd_vtree_dead_size",&obj0)) SWIG_fail;
-  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_vtree_t, 0 |  0 );
+  if (SWIG_GetArgs(interp, objc, objv,"o:sdd_vtree_dead_size vtree ",(void *)0) == TCL_ERROR) SWIG_fail;
+  res1 = SWIG_ConvertPtr(objv[1], &argp1,SWIGTYPE_p_vtree_t, 0 |  0 );
   if (!SWIG_IsOK(res1)) {
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "sdd_vtree_dead_size" "', argument " "1"" of type '" "Vtree const *""'"); 
   }
   arg1 = (Vtree *)(argp1);
-  {
-    //
-    //    signal(SIGFPE,  handler);
-    //    signal(SIGILL,  handler);
-    
-    // signal(SIGSEGV, handler);
-    
-    struct sigaction new_action;
-    new_action.sa_handler = c_handler;
-    sigemptyset (&new_action.sa_mask);
-    new_action.sa_flags = SA_RESTART;
-    
-    struct sigaction old_action_term;
-    struct sigaction old_action_abrt;
-    struct sigaction old_action_int;
-    struct sigaction old_action_alrm;
-    
-    sigaction(SIGTERM,  &new_action, &old_action_term);
-    sigaction(SIGABRT,  &new_action, &old_action_abrt);
-    sigaction(SIGINT,  &new_action, &old_action_int);
-    sigaction(SIGALRM,  &new_action, &old_action_alrm);
-    try {
-      result = sdd_vtree_dead_size((struct vtree_t const *)arg1);
-    } catch(SIGINT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process interrupted");
-    } catch(SIGTERM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process terminated");
-    } catch(SIGABRT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process aborted");
-    } catch(SIGALRM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process timeout");
-    }
-    sigaction(SIGTERM, &old_action_term, NULL);
-    sigaction(SIGABRT, &old_action_abrt, NULL);
-    sigaction(SIGINT, &old_action_int, NULL);
-    sigaction(SIGALRM, &old_action_alrm, NULL);
-    
-  }
-  resultobj = SWIG_From_size_t((size_t)(result));
-  return resultobj;
+  result = sdd_vtree_dead_size((struct vtree_t const *)arg1);
+  Tcl_SetObjResult(interp,SWIG_From_size_t((size_t)(result)));
+  return TCL_OK;
 fail:
-  return NULL;
+  return TCL_ERROR;
 }
 
 
-SWIGINTERN PyObject *_wrap_sdd_vtree_size_at(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
+SWIGINTERN int
+_wrap_sdd_vtree_size_at(ClientData clientData SWIGUNUSED, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]) {
   Vtree *arg1 = (Vtree *) 0 ;
   void *argp1 = 0 ;
   int res1 = 0 ;
-  PyObject * obj0 = 0 ;
   SddSize result;
   
-  if (!PyArg_ParseTuple(args,(char *)"O:sdd_vtree_size_at",&obj0)) SWIG_fail;
-  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_vtree_t, 0 |  0 );
+  if (SWIG_GetArgs(interp, objc, objv,"o:sdd_vtree_size_at vtree ",(void *)0) == TCL_ERROR) SWIG_fail;
+  res1 = SWIG_ConvertPtr(objv[1], &argp1,SWIGTYPE_p_vtree_t, 0 |  0 );
   if (!SWIG_IsOK(res1)) {
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "sdd_vtree_size_at" "', argument " "1"" of type '" "Vtree const *""'"); 
   }
   arg1 = (Vtree *)(argp1);
-  {
-    //
-    //    signal(SIGFPE,  handler);
-    //    signal(SIGILL,  handler);
-    
-    // signal(SIGSEGV, handler);
-    
-    struct sigaction new_action;
-    new_action.sa_handler = c_handler;
-    sigemptyset (&new_action.sa_mask);
-    new_action.sa_flags = SA_RESTART;
-    
-    struct sigaction old_action_term;
-    struct sigaction old_action_abrt;
-    struct sigaction old_action_int;
-    struct sigaction old_action_alrm;
-    
-    sigaction(SIGTERM,  &new_action, &old_action_term);
-    sigaction(SIGABRT,  &new_action, &old_action_abrt);
-    sigaction(SIGINT,  &new_action, &old_action_int);
-    sigaction(SIGALRM,  &new_action, &old_action_alrm);
-    try {
-      result = sdd_vtree_size_at((struct vtree_t const *)arg1);
-    } catch(SIGINT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process interrupted");
-    } catch(SIGTERM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process terminated");
-    } catch(SIGABRT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process aborted");
-    } catch(SIGALRM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process timeout");
-    }
-    sigaction(SIGTERM, &old_action_term, NULL);
-    sigaction(SIGABRT, &old_action_abrt, NULL);
-    sigaction(SIGINT, &old_action_int, NULL);
-    sigaction(SIGALRM, &old_action_alrm, NULL);
-    
-  }
-  resultobj = SWIG_From_size_t((size_t)(result));
-  return resultobj;
+  result = sdd_vtree_size_at((struct vtree_t const *)arg1);
+  Tcl_SetObjResult(interp,SWIG_From_size_t((size_t)(result)));
+  return TCL_OK;
 fail:
-  return NULL;
+  return TCL_ERROR;
 }
 
 
-SWIGINTERN PyObject *_wrap_sdd_vtree_live_size_at(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
+SWIGINTERN int
+_wrap_sdd_vtree_live_size_at(ClientData clientData SWIGUNUSED, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]) {
   Vtree *arg1 = (Vtree *) 0 ;
   void *argp1 = 0 ;
   int res1 = 0 ;
-  PyObject * obj0 = 0 ;
   SddSize result;
   
-  if (!PyArg_ParseTuple(args,(char *)"O:sdd_vtree_live_size_at",&obj0)) SWIG_fail;
-  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_vtree_t, 0 |  0 );
+  if (SWIG_GetArgs(interp, objc, objv,"o:sdd_vtree_live_size_at vtree ",(void *)0) == TCL_ERROR) SWIG_fail;
+  res1 = SWIG_ConvertPtr(objv[1], &argp1,SWIGTYPE_p_vtree_t, 0 |  0 );
   if (!SWIG_IsOK(res1)) {
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "sdd_vtree_live_size_at" "', argument " "1"" of type '" "Vtree const *""'"); 
   }
   arg1 = (Vtree *)(argp1);
-  {
-    //
-    //    signal(SIGFPE,  handler);
-    //    signal(SIGILL,  handler);
-    
-    // signal(SIGSEGV, handler);
-    
-    struct sigaction new_action;
-    new_action.sa_handler = c_handler;
-    sigemptyset (&new_action.sa_mask);
-    new_action.sa_flags = SA_RESTART;
-    
-    struct sigaction old_action_term;
-    struct sigaction old_action_abrt;
-    struct sigaction old_action_int;
-    struct sigaction old_action_alrm;
-    
-    sigaction(SIGTERM,  &new_action, &old_action_term);
-    sigaction(SIGABRT,  &new_action, &old_action_abrt);
-    sigaction(SIGINT,  &new_action, &old_action_int);
-    sigaction(SIGALRM,  &new_action, &old_action_alrm);
-    try {
-      result = sdd_vtree_live_size_at((struct vtree_t const *)arg1);
-    } catch(SIGINT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process interrupted");
-    } catch(SIGTERM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process terminated");
-    } catch(SIGABRT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process aborted");
-    } catch(SIGALRM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process timeout");
-    }
-    sigaction(SIGTERM, &old_action_term, NULL);
-    sigaction(SIGABRT, &old_action_abrt, NULL);
-    sigaction(SIGINT, &old_action_int, NULL);
-    sigaction(SIGALRM, &old_action_alrm, NULL);
-    
-  }
-  resultobj = SWIG_From_size_t((size_t)(result));
-  return resultobj;
+  result = sdd_vtree_live_size_at((struct vtree_t const *)arg1);
+  Tcl_SetObjResult(interp,SWIG_From_size_t((size_t)(result)));
+  return TCL_OK;
 fail:
-  return NULL;
+  return TCL_ERROR;
 }
 
 
-SWIGINTERN PyObject *_wrap_sdd_vtree_dead_size_at(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
+SWIGINTERN int
+_wrap_sdd_vtree_dead_size_at(ClientData clientData SWIGUNUSED, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]) {
   Vtree *arg1 = (Vtree *) 0 ;
   void *argp1 = 0 ;
   int res1 = 0 ;
-  PyObject * obj0 = 0 ;
   SddSize result;
   
-  if (!PyArg_ParseTuple(args,(char *)"O:sdd_vtree_dead_size_at",&obj0)) SWIG_fail;
-  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_vtree_t, 0 |  0 );
+  if (SWIG_GetArgs(interp, objc, objv,"o:sdd_vtree_dead_size_at vtree ",(void *)0) == TCL_ERROR) SWIG_fail;
+  res1 = SWIG_ConvertPtr(objv[1], &argp1,SWIGTYPE_p_vtree_t, 0 |  0 );
   if (!SWIG_IsOK(res1)) {
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "sdd_vtree_dead_size_at" "', argument " "1"" of type '" "Vtree const *""'"); 
   }
   arg1 = (Vtree *)(argp1);
-  {
-    //
-    //    signal(SIGFPE,  handler);
-    //    signal(SIGILL,  handler);
-    
-    // signal(SIGSEGV, handler);
-    
-    struct sigaction new_action;
-    new_action.sa_handler = c_handler;
-    sigemptyset (&new_action.sa_mask);
-    new_action.sa_flags = SA_RESTART;
-    
-    struct sigaction old_action_term;
-    struct sigaction old_action_abrt;
-    struct sigaction old_action_int;
-    struct sigaction old_action_alrm;
-    
-    sigaction(SIGTERM,  &new_action, &old_action_term);
-    sigaction(SIGABRT,  &new_action, &old_action_abrt);
-    sigaction(SIGINT,  &new_action, &old_action_int);
-    sigaction(SIGALRM,  &new_action, &old_action_alrm);
-    try {
-      result = sdd_vtree_dead_size_at((struct vtree_t const *)arg1);
-    } catch(SIGINT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process interrupted");
-    } catch(SIGTERM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process terminated");
-    } catch(SIGABRT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process aborted");
-    } catch(SIGALRM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process timeout");
-    }
-    sigaction(SIGTERM, &old_action_term, NULL);
-    sigaction(SIGABRT, &old_action_abrt, NULL);
-    sigaction(SIGINT, &old_action_int, NULL);
-    sigaction(SIGALRM, &old_action_alrm, NULL);
-    
-  }
-  resultobj = SWIG_From_size_t((size_t)(result));
-  return resultobj;
+  result = sdd_vtree_dead_size_at((struct vtree_t const *)arg1);
+  Tcl_SetObjResult(interp,SWIG_From_size_t((size_t)(result)));
+  return TCL_OK;
 fail:
-  return NULL;
+  return TCL_ERROR;
 }
 
 
-SWIGINTERN PyObject *_wrap_sdd_vtree_size_above(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
+SWIGINTERN int
+_wrap_sdd_vtree_size_above(ClientData clientData SWIGUNUSED, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]) {
   Vtree *arg1 = (Vtree *) 0 ;
   void *argp1 = 0 ;
   int res1 = 0 ;
-  PyObject * obj0 = 0 ;
   SddSize result;
   
-  if (!PyArg_ParseTuple(args,(char *)"O:sdd_vtree_size_above",&obj0)) SWIG_fail;
-  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_vtree_t, 0 |  0 );
+  if (SWIG_GetArgs(interp, objc, objv,"o:sdd_vtree_size_above vtree ",(void *)0) == TCL_ERROR) SWIG_fail;
+  res1 = SWIG_ConvertPtr(objv[1], &argp1,SWIGTYPE_p_vtree_t, 0 |  0 );
   if (!SWIG_IsOK(res1)) {
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "sdd_vtree_size_above" "', argument " "1"" of type '" "Vtree const *""'"); 
   }
   arg1 = (Vtree *)(argp1);
-  {
-    //
-    //    signal(SIGFPE,  handler);
-    //    signal(SIGILL,  handler);
-    
-    // signal(SIGSEGV, handler);
-    
-    struct sigaction new_action;
-    new_action.sa_handler = c_handler;
-    sigemptyset (&new_action.sa_mask);
-    new_action.sa_flags = SA_RESTART;
-    
-    struct sigaction old_action_term;
-    struct sigaction old_action_abrt;
-    struct sigaction old_action_int;
-    struct sigaction old_action_alrm;
-    
-    sigaction(SIGTERM,  &new_action, &old_action_term);
-    sigaction(SIGABRT,  &new_action, &old_action_abrt);
-    sigaction(SIGINT,  &new_action, &old_action_int);
-    sigaction(SIGALRM,  &new_action, &old_action_alrm);
-    try {
-      result = sdd_vtree_size_above((struct vtree_t const *)arg1);
-    } catch(SIGINT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process interrupted");
-    } catch(SIGTERM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process terminated");
-    } catch(SIGABRT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process aborted");
-    } catch(SIGALRM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process timeout");
-    }
-    sigaction(SIGTERM, &old_action_term, NULL);
-    sigaction(SIGABRT, &old_action_abrt, NULL);
-    sigaction(SIGINT, &old_action_int, NULL);
-    sigaction(SIGALRM, &old_action_alrm, NULL);
-    
-  }
-  resultobj = SWIG_From_size_t((size_t)(result));
-  return resultobj;
+  result = sdd_vtree_size_above((struct vtree_t const *)arg1);
+  Tcl_SetObjResult(interp,SWIG_From_size_t((size_t)(result)));
+  return TCL_OK;
 fail:
-  return NULL;
+  return TCL_ERROR;
 }
 
 
-SWIGINTERN PyObject *_wrap_sdd_vtree_live_size_above(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
+SWIGINTERN int
+_wrap_sdd_vtree_live_size_above(ClientData clientData SWIGUNUSED, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]) {
   Vtree *arg1 = (Vtree *) 0 ;
   void *argp1 = 0 ;
   int res1 = 0 ;
-  PyObject * obj0 = 0 ;
   SddSize result;
   
-  if (!PyArg_ParseTuple(args,(char *)"O:sdd_vtree_live_size_above",&obj0)) SWIG_fail;
-  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_vtree_t, 0 |  0 );
+  if (SWIG_GetArgs(interp, objc, objv,"o:sdd_vtree_live_size_above vtree ",(void *)0) == TCL_ERROR) SWIG_fail;
+  res1 = SWIG_ConvertPtr(objv[1], &argp1,SWIGTYPE_p_vtree_t, 0 |  0 );
   if (!SWIG_IsOK(res1)) {
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "sdd_vtree_live_size_above" "', argument " "1"" of type '" "Vtree const *""'"); 
   }
   arg1 = (Vtree *)(argp1);
-  {
-    //
-    //    signal(SIGFPE,  handler);
-    //    signal(SIGILL,  handler);
-    
-    // signal(SIGSEGV, handler);
-    
-    struct sigaction new_action;
-    new_action.sa_handler = c_handler;
-    sigemptyset (&new_action.sa_mask);
-    new_action.sa_flags = SA_RESTART;
-    
-    struct sigaction old_action_term;
-    struct sigaction old_action_abrt;
-    struct sigaction old_action_int;
-    struct sigaction old_action_alrm;
-    
-    sigaction(SIGTERM,  &new_action, &old_action_term);
-    sigaction(SIGABRT,  &new_action, &old_action_abrt);
-    sigaction(SIGINT,  &new_action, &old_action_int);
-    sigaction(SIGALRM,  &new_action, &old_action_alrm);
-    try {
-      result = sdd_vtree_live_size_above((struct vtree_t const *)arg1);
-    } catch(SIGINT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process interrupted");
-    } catch(SIGTERM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process terminated");
-    } catch(SIGABRT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process aborted");
-    } catch(SIGALRM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process timeout");
-    }
-    sigaction(SIGTERM, &old_action_term, NULL);
-    sigaction(SIGABRT, &old_action_abrt, NULL);
-    sigaction(SIGINT, &old_action_int, NULL);
-    sigaction(SIGALRM, &old_action_alrm, NULL);
-    
-  }
-  resultobj = SWIG_From_size_t((size_t)(result));
-  return resultobj;
+  result = sdd_vtree_live_size_above((struct vtree_t const *)arg1);
+  Tcl_SetObjResult(interp,SWIG_From_size_t((size_t)(result)));
+  return TCL_OK;
 fail:
-  return NULL;
+  return TCL_ERROR;
 }
 
 
-SWIGINTERN PyObject *_wrap_sdd_vtree_dead_size_above(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
+SWIGINTERN int
+_wrap_sdd_vtree_dead_size_above(ClientData clientData SWIGUNUSED, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]) {
   Vtree *arg1 = (Vtree *) 0 ;
   void *argp1 = 0 ;
   int res1 = 0 ;
-  PyObject * obj0 = 0 ;
   SddSize result;
   
-  if (!PyArg_ParseTuple(args,(char *)"O:sdd_vtree_dead_size_above",&obj0)) SWIG_fail;
-  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_vtree_t, 0 |  0 );
+  if (SWIG_GetArgs(interp, objc, objv,"o:sdd_vtree_dead_size_above vtree ",(void *)0) == TCL_ERROR) SWIG_fail;
+  res1 = SWIG_ConvertPtr(objv[1], &argp1,SWIGTYPE_p_vtree_t, 0 |  0 );
   if (!SWIG_IsOK(res1)) {
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "sdd_vtree_dead_size_above" "', argument " "1"" of type '" "Vtree const *""'"); 
   }
   arg1 = (Vtree *)(argp1);
-  {
-    //
-    //    signal(SIGFPE,  handler);
-    //    signal(SIGILL,  handler);
-    
-    // signal(SIGSEGV, handler);
-    
-    struct sigaction new_action;
-    new_action.sa_handler = c_handler;
-    sigemptyset (&new_action.sa_mask);
-    new_action.sa_flags = SA_RESTART;
-    
-    struct sigaction old_action_term;
-    struct sigaction old_action_abrt;
-    struct sigaction old_action_int;
-    struct sigaction old_action_alrm;
-    
-    sigaction(SIGTERM,  &new_action, &old_action_term);
-    sigaction(SIGABRT,  &new_action, &old_action_abrt);
-    sigaction(SIGINT,  &new_action, &old_action_int);
-    sigaction(SIGALRM,  &new_action, &old_action_alrm);
-    try {
-      result = sdd_vtree_dead_size_above((struct vtree_t const *)arg1);
-    } catch(SIGINT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process interrupted");
-    } catch(SIGTERM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process terminated");
-    } catch(SIGABRT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process aborted");
-    } catch(SIGALRM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process timeout");
-    }
-    sigaction(SIGTERM, &old_action_term, NULL);
-    sigaction(SIGABRT, &old_action_abrt, NULL);
-    sigaction(SIGINT, &old_action_int, NULL);
-    sigaction(SIGALRM, &old_action_alrm, NULL);
-    
-  }
-  resultobj = SWIG_From_size_t((size_t)(result));
-  return resultobj;
+  result = sdd_vtree_dead_size_above((struct vtree_t const *)arg1);
+  Tcl_SetObjResult(interp,SWIG_From_size_t((size_t)(result)));
+  return TCL_OK;
 fail:
-  return NULL;
+  return TCL_ERROR;
 }
 
 
-SWIGINTERN PyObject *_wrap_sdd_vtree_count(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
+SWIGINTERN int
+_wrap_sdd_vtree_count(ClientData clientData SWIGUNUSED, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]) {
   Vtree *arg1 = (Vtree *) 0 ;
   void *argp1 = 0 ;
   int res1 = 0 ;
-  PyObject * obj0 = 0 ;
   SddSize result;
   
-  if (!PyArg_ParseTuple(args,(char *)"O:sdd_vtree_count",&obj0)) SWIG_fail;
-  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_vtree_t, 0 |  0 );
+  if (SWIG_GetArgs(interp, objc, objv,"o:sdd_vtree_count vtree ",(void *)0) == TCL_ERROR) SWIG_fail;
+  res1 = SWIG_ConvertPtr(objv[1], &argp1,SWIGTYPE_p_vtree_t, 0 |  0 );
   if (!SWIG_IsOK(res1)) {
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "sdd_vtree_count" "', argument " "1"" of type '" "Vtree const *""'"); 
   }
   arg1 = (Vtree *)(argp1);
-  {
-    //
-    //    signal(SIGFPE,  handler);
-    //    signal(SIGILL,  handler);
-    
-    // signal(SIGSEGV, handler);
-    
-    struct sigaction new_action;
-    new_action.sa_handler = c_handler;
-    sigemptyset (&new_action.sa_mask);
-    new_action.sa_flags = SA_RESTART;
-    
-    struct sigaction old_action_term;
-    struct sigaction old_action_abrt;
-    struct sigaction old_action_int;
-    struct sigaction old_action_alrm;
-    
-    sigaction(SIGTERM,  &new_action, &old_action_term);
-    sigaction(SIGABRT,  &new_action, &old_action_abrt);
-    sigaction(SIGINT,  &new_action, &old_action_int);
-    sigaction(SIGALRM,  &new_action, &old_action_alrm);
-    try {
-      result = sdd_vtree_count((struct vtree_t const *)arg1);
-    } catch(SIGINT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process interrupted");
-    } catch(SIGTERM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process terminated");
-    } catch(SIGABRT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process aborted");
-    } catch(SIGALRM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process timeout");
-    }
-    sigaction(SIGTERM, &old_action_term, NULL);
-    sigaction(SIGABRT, &old_action_abrt, NULL);
-    sigaction(SIGINT, &old_action_int, NULL);
-    sigaction(SIGALRM, &old_action_alrm, NULL);
-    
-  }
-  resultobj = SWIG_From_size_t((size_t)(result));
-  return resultobj;
+  result = sdd_vtree_count((struct vtree_t const *)arg1);
+  Tcl_SetObjResult(interp,SWIG_From_size_t((size_t)(result)));
+  return TCL_OK;
 fail:
-  return NULL;
+  return TCL_ERROR;
 }
 
 
-SWIGINTERN PyObject *_wrap_sdd_vtree_live_count(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
+SWIGINTERN int
+_wrap_sdd_vtree_live_count(ClientData clientData SWIGUNUSED, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]) {
   Vtree *arg1 = (Vtree *) 0 ;
   void *argp1 = 0 ;
   int res1 = 0 ;
-  PyObject * obj0 = 0 ;
   SddSize result;
   
-  if (!PyArg_ParseTuple(args,(char *)"O:sdd_vtree_live_count",&obj0)) SWIG_fail;
-  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_vtree_t, 0 |  0 );
+  if (SWIG_GetArgs(interp, objc, objv,"o:sdd_vtree_live_count vtree ",(void *)0) == TCL_ERROR) SWIG_fail;
+  res1 = SWIG_ConvertPtr(objv[1], &argp1,SWIGTYPE_p_vtree_t, 0 |  0 );
   if (!SWIG_IsOK(res1)) {
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "sdd_vtree_live_count" "', argument " "1"" of type '" "Vtree const *""'"); 
   }
   arg1 = (Vtree *)(argp1);
-  {
-    //
-    //    signal(SIGFPE,  handler);
-    //    signal(SIGILL,  handler);
-    
-    // signal(SIGSEGV, handler);
-    
-    struct sigaction new_action;
-    new_action.sa_handler = c_handler;
-    sigemptyset (&new_action.sa_mask);
-    new_action.sa_flags = SA_RESTART;
-    
-    struct sigaction old_action_term;
-    struct sigaction old_action_abrt;
-    struct sigaction old_action_int;
-    struct sigaction old_action_alrm;
-    
-    sigaction(SIGTERM,  &new_action, &old_action_term);
-    sigaction(SIGABRT,  &new_action, &old_action_abrt);
-    sigaction(SIGINT,  &new_action, &old_action_int);
-    sigaction(SIGALRM,  &new_action, &old_action_alrm);
-    try {
-      result = sdd_vtree_live_count((struct vtree_t const *)arg1);
-    } catch(SIGINT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process interrupted");
-    } catch(SIGTERM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process terminated");
-    } catch(SIGABRT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process aborted");
-    } catch(SIGALRM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process timeout");
-    }
-    sigaction(SIGTERM, &old_action_term, NULL);
-    sigaction(SIGABRT, &old_action_abrt, NULL);
-    sigaction(SIGINT, &old_action_int, NULL);
-    sigaction(SIGALRM, &old_action_alrm, NULL);
-    
-  }
-  resultobj = SWIG_From_size_t((size_t)(result));
-  return resultobj;
+  result = sdd_vtree_live_count((struct vtree_t const *)arg1);
+  Tcl_SetObjResult(interp,SWIG_From_size_t((size_t)(result)));
+  return TCL_OK;
 fail:
-  return NULL;
+  return TCL_ERROR;
 }
 
 
-SWIGINTERN PyObject *_wrap_sdd_vtree_dead_count(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
+SWIGINTERN int
+_wrap_sdd_vtree_dead_count(ClientData clientData SWIGUNUSED, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]) {
   Vtree *arg1 = (Vtree *) 0 ;
   void *argp1 = 0 ;
   int res1 = 0 ;
-  PyObject * obj0 = 0 ;
   SddSize result;
   
-  if (!PyArg_ParseTuple(args,(char *)"O:sdd_vtree_dead_count",&obj0)) SWIG_fail;
-  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_vtree_t, 0 |  0 );
+  if (SWIG_GetArgs(interp, objc, objv,"o:sdd_vtree_dead_count vtree ",(void *)0) == TCL_ERROR) SWIG_fail;
+  res1 = SWIG_ConvertPtr(objv[1], &argp1,SWIGTYPE_p_vtree_t, 0 |  0 );
   if (!SWIG_IsOK(res1)) {
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "sdd_vtree_dead_count" "', argument " "1"" of type '" "Vtree const *""'"); 
   }
   arg1 = (Vtree *)(argp1);
-  {
-    //
-    //    signal(SIGFPE,  handler);
-    //    signal(SIGILL,  handler);
-    
-    // signal(SIGSEGV, handler);
-    
-    struct sigaction new_action;
-    new_action.sa_handler = c_handler;
-    sigemptyset (&new_action.sa_mask);
-    new_action.sa_flags = SA_RESTART;
-    
-    struct sigaction old_action_term;
-    struct sigaction old_action_abrt;
-    struct sigaction old_action_int;
-    struct sigaction old_action_alrm;
-    
-    sigaction(SIGTERM,  &new_action, &old_action_term);
-    sigaction(SIGABRT,  &new_action, &old_action_abrt);
-    sigaction(SIGINT,  &new_action, &old_action_int);
-    sigaction(SIGALRM,  &new_action, &old_action_alrm);
-    try {
-      result = sdd_vtree_dead_count((struct vtree_t const *)arg1);
-    } catch(SIGINT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process interrupted");
-    } catch(SIGTERM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process terminated");
-    } catch(SIGABRT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process aborted");
-    } catch(SIGALRM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process timeout");
-    }
-    sigaction(SIGTERM, &old_action_term, NULL);
-    sigaction(SIGABRT, &old_action_abrt, NULL);
-    sigaction(SIGINT, &old_action_int, NULL);
-    sigaction(SIGALRM, &old_action_alrm, NULL);
-    
-  }
-  resultobj = SWIG_From_size_t((size_t)(result));
-  return resultobj;
+  result = sdd_vtree_dead_count((struct vtree_t const *)arg1);
+  Tcl_SetObjResult(interp,SWIG_From_size_t((size_t)(result)));
+  return TCL_OK;
 fail:
-  return NULL;
+  return TCL_ERROR;
 }
 
 
-SWIGINTERN PyObject *_wrap_sdd_vtree_count_at(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
+SWIGINTERN int
+_wrap_sdd_vtree_count_at(ClientData clientData SWIGUNUSED, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]) {
   Vtree *arg1 = (Vtree *) 0 ;
   void *argp1 = 0 ;
   int res1 = 0 ;
-  PyObject * obj0 = 0 ;
   SddSize result;
   
-  if (!PyArg_ParseTuple(args,(char *)"O:sdd_vtree_count_at",&obj0)) SWIG_fail;
-  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_vtree_t, 0 |  0 );
+  if (SWIG_GetArgs(interp, objc, objv,"o:sdd_vtree_count_at vtree ",(void *)0) == TCL_ERROR) SWIG_fail;
+  res1 = SWIG_ConvertPtr(objv[1], &argp1,SWIGTYPE_p_vtree_t, 0 |  0 );
   if (!SWIG_IsOK(res1)) {
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "sdd_vtree_count_at" "', argument " "1"" of type '" "Vtree const *""'"); 
   }
   arg1 = (Vtree *)(argp1);
-  {
-    //
-    //    signal(SIGFPE,  handler);
-    //    signal(SIGILL,  handler);
-    
-    // signal(SIGSEGV, handler);
-    
-    struct sigaction new_action;
-    new_action.sa_handler = c_handler;
-    sigemptyset (&new_action.sa_mask);
-    new_action.sa_flags = SA_RESTART;
-    
-    struct sigaction old_action_term;
-    struct sigaction old_action_abrt;
-    struct sigaction old_action_int;
-    struct sigaction old_action_alrm;
-    
-    sigaction(SIGTERM,  &new_action, &old_action_term);
-    sigaction(SIGABRT,  &new_action, &old_action_abrt);
-    sigaction(SIGINT,  &new_action, &old_action_int);
-    sigaction(SIGALRM,  &new_action, &old_action_alrm);
-    try {
-      result = sdd_vtree_count_at((struct vtree_t const *)arg1);
-    } catch(SIGINT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process interrupted");
-    } catch(SIGTERM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process terminated");
-    } catch(SIGABRT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process aborted");
-    } catch(SIGALRM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process timeout");
-    }
-    sigaction(SIGTERM, &old_action_term, NULL);
-    sigaction(SIGABRT, &old_action_abrt, NULL);
-    sigaction(SIGINT, &old_action_int, NULL);
-    sigaction(SIGALRM, &old_action_alrm, NULL);
-    
-  }
-  resultobj = SWIG_From_size_t((size_t)(result));
-  return resultobj;
+  result = sdd_vtree_count_at((struct vtree_t const *)arg1);
+  Tcl_SetObjResult(interp,SWIG_From_size_t((size_t)(result)));
+  return TCL_OK;
 fail:
-  return NULL;
+  return TCL_ERROR;
 }
 
 
-SWIGINTERN PyObject *_wrap_sdd_vtree_live_count_at(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
+SWIGINTERN int
+_wrap_sdd_vtree_live_count_at(ClientData clientData SWIGUNUSED, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]) {
   Vtree *arg1 = (Vtree *) 0 ;
   void *argp1 = 0 ;
   int res1 = 0 ;
-  PyObject * obj0 = 0 ;
   SddSize result;
   
-  if (!PyArg_ParseTuple(args,(char *)"O:sdd_vtree_live_count_at",&obj0)) SWIG_fail;
-  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_vtree_t, 0 |  0 );
+  if (SWIG_GetArgs(interp, objc, objv,"o:sdd_vtree_live_count_at vtree ",(void *)0) == TCL_ERROR) SWIG_fail;
+  res1 = SWIG_ConvertPtr(objv[1], &argp1,SWIGTYPE_p_vtree_t, 0 |  0 );
   if (!SWIG_IsOK(res1)) {
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "sdd_vtree_live_count_at" "', argument " "1"" of type '" "Vtree const *""'"); 
   }
   arg1 = (Vtree *)(argp1);
-  {
-    //
-    //    signal(SIGFPE,  handler);
-    //    signal(SIGILL,  handler);
-    
-    // signal(SIGSEGV, handler);
-    
-    struct sigaction new_action;
-    new_action.sa_handler = c_handler;
-    sigemptyset (&new_action.sa_mask);
-    new_action.sa_flags = SA_RESTART;
-    
-    struct sigaction old_action_term;
-    struct sigaction old_action_abrt;
-    struct sigaction old_action_int;
-    struct sigaction old_action_alrm;
-    
-    sigaction(SIGTERM,  &new_action, &old_action_term);
-    sigaction(SIGABRT,  &new_action, &old_action_abrt);
-    sigaction(SIGINT,  &new_action, &old_action_int);
-    sigaction(SIGALRM,  &new_action, &old_action_alrm);
-    try {
-      result = sdd_vtree_live_count_at((struct vtree_t const *)arg1);
-    } catch(SIGINT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process interrupted");
-    } catch(SIGTERM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process terminated");
-    } catch(SIGABRT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process aborted");
-    } catch(SIGALRM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process timeout");
-    }
-    sigaction(SIGTERM, &old_action_term, NULL);
-    sigaction(SIGABRT, &old_action_abrt, NULL);
-    sigaction(SIGINT, &old_action_int, NULL);
-    sigaction(SIGALRM, &old_action_alrm, NULL);
-    
-  }
-  resultobj = SWIG_From_size_t((size_t)(result));
-  return resultobj;
+  result = sdd_vtree_live_count_at((struct vtree_t const *)arg1);
+  Tcl_SetObjResult(interp,SWIG_From_size_t((size_t)(result)));
+  return TCL_OK;
 fail:
-  return NULL;
+  return TCL_ERROR;
 }
 
 
-SWIGINTERN PyObject *_wrap_sdd_vtree_dead_count_at(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
+SWIGINTERN int
+_wrap_sdd_vtree_dead_count_at(ClientData clientData SWIGUNUSED, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]) {
   Vtree *arg1 = (Vtree *) 0 ;
   void *argp1 = 0 ;
   int res1 = 0 ;
-  PyObject * obj0 = 0 ;
   SddSize result;
   
-  if (!PyArg_ParseTuple(args,(char *)"O:sdd_vtree_dead_count_at",&obj0)) SWIG_fail;
-  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_vtree_t, 0 |  0 );
+  if (SWIG_GetArgs(interp, objc, objv,"o:sdd_vtree_dead_count_at vtree ",(void *)0) == TCL_ERROR) SWIG_fail;
+  res1 = SWIG_ConvertPtr(objv[1], &argp1,SWIGTYPE_p_vtree_t, 0 |  0 );
   if (!SWIG_IsOK(res1)) {
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "sdd_vtree_dead_count_at" "', argument " "1"" of type '" "Vtree const *""'"); 
   }
   arg1 = (Vtree *)(argp1);
-  {
-    //
-    //    signal(SIGFPE,  handler);
-    //    signal(SIGILL,  handler);
-    
-    // signal(SIGSEGV, handler);
-    
-    struct sigaction new_action;
-    new_action.sa_handler = c_handler;
-    sigemptyset (&new_action.sa_mask);
-    new_action.sa_flags = SA_RESTART;
-    
-    struct sigaction old_action_term;
-    struct sigaction old_action_abrt;
-    struct sigaction old_action_int;
-    struct sigaction old_action_alrm;
-    
-    sigaction(SIGTERM,  &new_action, &old_action_term);
-    sigaction(SIGABRT,  &new_action, &old_action_abrt);
-    sigaction(SIGINT,  &new_action, &old_action_int);
-    sigaction(SIGALRM,  &new_action, &old_action_alrm);
-    try {
-      result = sdd_vtree_dead_count_at((struct vtree_t const *)arg1);
-    } catch(SIGINT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process interrupted");
-    } catch(SIGTERM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process terminated");
-    } catch(SIGABRT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process aborted");
-    } catch(SIGALRM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process timeout");
-    }
-    sigaction(SIGTERM, &old_action_term, NULL);
-    sigaction(SIGABRT, &old_action_abrt, NULL);
-    sigaction(SIGINT, &old_action_int, NULL);
-    sigaction(SIGALRM, &old_action_alrm, NULL);
-    
-  }
-  resultobj = SWIG_From_size_t((size_t)(result));
-  return resultobj;
+  result = sdd_vtree_dead_count_at((struct vtree_t const *)arg1);
+  Tcl_SetObjResult(interp,SWIG_From_size_t((size_t)(result)));
+  return TCL_OK;
 fail:
-  return NULL;
+  return TCL_ERROR;
 }
 
 
-SWIGINTERN PyObject *_wrap_sdd_vtree_count_above(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
+SWIGINTERN int
+_wrap_sdd_vtree_count_above(ClientData clientData SWIGUNUSED, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]) {
   Vtree *arg1 = (Vtree *) 0 ;
   void *argp1 = 0 ;
   int res1 = 0 ;
-  PyObject * obj0 = 0 ;
   SddSize result;
   
-  if (!PyArg_ParseTuple(args,(char *)"O:sdd_vtree_count_above",&obj0)) SWIG_fail;
-  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_vtree_t, 0 |  0 );
+  if (SWIG_GetArgs(interp, objc, objv,"o:sdd_vtree_count_above vtree ",(void *)0) == TCL_ERROR) SWIG_fail;
+  res1 = SWIG_ConvertPtr(objv[1], &argp1,SWIGTYPE_p_vtree_t, 0 |  0 );
   if (!SWIG_IsOK(res1)) {
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "sdd_vtree_count_above" "', argument " "1"" of type '" "Vtree const *""'"); 
   }
   arg1 = (Vtree *)(argp1);
-  {
-    //
-    //    signal(SIGFPE,  handler);
-    //    signal(SIGILL,  handler);
-    
-    // signal(SIGSEGV, handler);
-    
-    struct sigaction new_action;
-    new_action.sa_handler = c_handler;
-    sigemptyset (&new_action.sa_mask);
-    new_action.sa_flags = SA_RESTART;
-    
-    struct sigaction old_action_term;
-    struct sigaction old_action_abrt;
-    struct sigaction old_action_int;
-    struct sigaction old_action_alrm;
-    
-    sigaction(SIGTERM,  &new_action, &old_action_term);
-    sigaction(SIGABRT,  &new_action, &old_action_abrt);
-    sigaction(SIGINT,  &new_action, &old_action_int);
-    sigaction(SIGALRM,  &new_action, &old_action_alrm);
-    try {
-      result = sdd_vtree_count_above((struct vtree_t const *)arg1);
-    } catch(SIGINT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process interrupted");
-    } catch(SIGTERM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process terminated");
-    } catch(SIGABRT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process aborted");
-    } catch(SIGALRM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process timeout");
-    }
-    sigaction(SIGTERM, &old_action_term, NULL);
-    sigaction(SIGABRT, &old_action_abrt, NULL);
-    sigaction(SIGINT, &old_action_int, NULL);
-    sigaction(SIGALRM, &old_action_alrm, NULL);
-    
-  }
-  resultobj = SWIG_From_size_t((size_t)(result));
-  return resultobj;
+  result = sdd_vtree_count_above((struct vtree_t const *)arg1);
+  Tcl_SetObjResult(interp,SWIG_From_size_t((size_t)(result)));
+  return TCL_OK;
 fail:
-  return NULL;
+  return TCL_ERROR;
 }
 
 
-SWIGINTERN PyObject *_wrap_sdd_vtree_live_count_above(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
+SWIGINTERN int
+_wrap_sdd_vtree_live_count_above(ClientData clientData SWIGUNUSED, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]) {
   Vtree *arg1 = (Vtree *) 0 ;
   void *argp1 = 0 ;
   int res1 = 0 ;
-  PyObject * obj0 = 0 ;
   SddSize result;
   
-  if (!PyArg_ParseTuple(args,(char *)"O:sdd_vtree_live_count_above",&obj0)) SWIG_fail;
-  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_vtree_t, 0 |  0 );
+  if (SWIG_GetArgs(interp, objc, objv,"o:sdd_vtree_live_count_above vtree ",(void *)0) == TCL_ERROR) SWIG_fail;
+  res1 = SWIG_ConvertPtr(objv[1], &argp1,SWIGTYPE_p_vtree_t, 0 |  0 );
   if (!SWIG_IsOK(res1)) {
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "sdd_vtree_live_count_above" "', argument " "1"" of type '" "Vtree const *""'"); 
   }
   arg1 = (Vtree *)(argp1);
-  {
-    //
-    //    signal(SIGFPE,  handler);
-    //    signal(SIGILL,  handler);
-    
-    // signal(SIGSEGV, handler);
-    
-    struct sigaction new_action;
-    new_action.sa_handler = c_handler;
-    sigemptyset (&new_action.sa_mask);
-    new_action.sa_flags = SA_RESTART;
-    
-    struct sigaction old_action_term;
-    struct sigaction old_action_abrt;
-    struct sigaction old_action_int;
-    struct sigaction old_action_alrm;
-    
-    sigaction(SIGTERM,  &new_action, &old_action_term);
-    sigaction(SIGABRT,  &new_action, &old_action_abrt);
-    sigaction(SIGINT,  &new_action, &old_action_int);
-    sigaction(SIGALRM,  &new_action, &old_action_alrm);
-    try {
-      result = sdd_vtree_live_count_above((struct vtree_t const *)arg1);
-    } catch(SIGINT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process interrupted");
-    } catch(SIGTERM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process terminated");
-    } catch(SIGABRT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process aborted");
-    } catch(SIGALRM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process timeout");
-    }
-    sigaction(SIGTERM, &old_action_term, NULL);
-    sigaction(SIGABRT, &old_action_abrt, NULL);
-    sigaction(SIGINT, &old_action_int, NULL);
-    sigaction(SIGALRM, &old_action_alrm, NULL);
-    
-  }
-  resultobj = SWIG_From_size_t((size_t)(result));
-  return resultobj;
+  result = sdd_vtree_live_count_above((struct vtree_t const *)arg1);
+  Tcl_SetObjResult(interp,SWIG_From_size_t((size_t)(result)));
+  return TCL_OK;
 fail:
-  return NULL;
+  return TCL_ERROR;
 }
 
 
-SWIGINTERN PyObject *_wrap_sdd_vtree_dead_count_above(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
+SWIGINTERN int
+_wrap_sdd_vtree_dead_count_above(ClientData clientData SWIGUNUSED, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]) {
   Vtree *arg1 = (Vtree *) 0 ;
   void *argp1 = 0 ;
   int res1 = 0 ;
-  PyObject * obj0 = 0 ;
   SddSize result;
   
-  if (!PyArg_ParseTuple(args,(char *)"O:sdd_vtree_dead_count_above",&obj0)) SWIG_fail;
-  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_vtree_t, 0 |  0 );
+  if (SWIG_GetArgs(interp, objc, objv,"o:sdd_vtree_dead_count_above vtree ",(void *)0) == TCL_ERROR) SWIG_fail;
+  res1 = SWIG_ConvertPtr(objv[1], &argp1,SWIGTYPE_p_vtree_t, 0 |  0 );
   if (!SWIG_IsOK(res1)) {
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "sdd_vtree_dead_count_above" "', argument " "1"" of type '" "Vtree const *""'"); 
   }
   arg1 = (Vtree *)(argp1);
-  {
-    //
-    //    signal(SIGFPE,  handler);
-    //    signal(SIGILL,  handler);
-    
-    // signal(SIGSEGV, handler);
-    
-    struct sigaction new_action;
-    new_action.sa_handler = c_handler;
-    sigemptyset (&new_action.sa_mask);
-    new_action.sa_flags = SA_RESTART;
-    
-    struct sigaction old_action_term;
-    struct sigaction old_action_abrt;
-    struct sigaction old_action_int;
-    struct sigaction old_action_alrm;
-    
-    sigaction(SIGTERM,  &new_action, &old_action_term);
-    sigaction(SIGABRT,  &new_action, &old_action_abrt);
-    sigaction(SIGINT,  &new_action, &old_action_int);
-    sigaction(SIGALRM,  &new_action, &old_action_alrm);
-    try {
-      result = sdd_vtree_dead_count_above((struct vtree_t const *)arg1);
-    } catch(SIGINT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process interrupted");
-    } catch(SIGTERM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process terminated");
-    } catch(SIGABRT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process aborted");
-    } catch(SIGALRM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process timeout");
-    }
-    sigaction(SIGTERM, &old_action_term, NULL);
-    sigaction(SIGABRT, &old_action_abrt, NULL);
-    sigaction(SIGINT, &old_action_int, NULL);
-    sigaction(SIGALRM, &old_action_alrm, NULL);
-    
-  }
-  resultobj = SWIG_From_size_t((size_t)(result));
-  return resultobj;
+  result = sdd_vtree_dead_count_above((struct vtree_t const *)arg1);
+  Tcl_SetObjResult(interp,SWIG_From_size_t((size_t)(result)));
+  return TCL_OK;
 fail:
-  return NULL;
+  return TCL_ERROR;
 }
 
 
-SWIGINTERN PyObject *_wrap_sdd_vtree_new(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
+SWIGINTERN int
+_wrap_sdd_vtree_new(ClientData clientData SWIGUNUSED, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]) {
   SddLiteral arg1 ;
   char *arg2 = (char *) 0 ;
   long val1 ;
@@ -10490,86 +4258,31 @@ SWIGINTERN PyObject *_wrap_sdd_vtree_new(PyObject *SWIGUNUSEDPARM(self), PyObjec
   int res2 ;
   char *buf2 = 0 ;
   int alloc2 = 0 ;
-  PyObject * obj0 = 0 ;
-  PyObject * obj1 = 0 ;
   Vtree *result = 0 ;
   
-  if (!PyArg_ParseTuple(args,(char *)"OO:sdd_vtree_new",&obj0,&obj1)) SWIG_fail;
-  ecode1 = SWIG_AsVal_long(obj0, &val1);
+  if (SWIG_GetArgs(interp, objc, objv,"oo:sdd_vtree_new var_count type ",(void *)0,(void *)0) == TCL_ERROR) SWIG_fail;
+  ecode1 = SWIG_AsVal_long SWIG_TCL_CALL_ARGS_2(objv[1], &val1);
   if (!SWIG_IsOK(ecode1)) {
     SWIG_exception_fail(SWIG_ArgError(ecode1), "in method '" "sdd_vtree_new" "', argument " "1"" of type '" "SddLiteral""'");
   } 
   arg1 = (SddLiteral)(val1);
-  res2 = SWIG_AsCharPtrAndSize(obj1, &buf2, NULL, &alloc2);
+  res2 = SWIG_AsCharPtrAndSize(objv[2], &buf2, NULL, &alloc2);
   if (!SWIG_IsOK(res2)) {
     SWIG_exception_fail(SWIG_ArgError(res2), "in method '" "sdd_vtree_new" "', argument " "2"" of type '" "char const *""'");
   }
   arg2 = (char *)(buf2);
-  {
-    //
-    //    signal(SIGFPE,  handler);
-    //    signal(SIGILL,  handler);
-    
-    // signal(SIGSEGV, handler);
-    
-    struct sigaction new_action;
-    new_action.sa_handler = c_handler;
-    sigemptyset (&new_action.sa_mask);
-    new_action.sa_flags = SA_RESTART;
-    
-    struct sigaction old_action_term;
-    struct sigaction old_action_abrt;
-    struct sigaction old_action_int;
-    struct sigaction old_action_alrm;
-    
-    sigaction(SIGTERM,  &new_action, &old_action_term);
-    sigaction(SIGABRT,  &new_action, &old_action_abrt);
-    sigaction(SIGINT,  &new_action, &old_action_int);
-    sigaction(SIGALRM,  &new_action, &old_action_alrm);
-    try {
-      result = (Vtree *)sdd_vtree_new(arg1,(char const *)arg2);
-    } catch(SIGINT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process interrupted");
-    } catch(SIGTERM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process terminated");
-    } catch(SIGABRT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process aborted");
-    } catch(SIGALRM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process timeout");
-    }
-    sigaction(SIGTERM, &old_action_term, NULL);
-    sigaction(SIGABRT, &old_action_abrt, NULL);
-    sigaction(SIGINT, &old_action_int, NULL);
-    sigaction(SIGALRM, &old_action_alrm, NULL);
-    
-  }
-  resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_vtree_t, 0 |  0 );
+  result = (Vtree *)sdd_vtree_new(arg1,(char const *)arg2);
+  Tcl_SetObjResult(interp, SWIG_NewInstanceObj( SWIG_as_voidptr(result), SWIGTYPE_p_vtree_t,0));
   if (alloc2 == SWIG_NEWOBJ) free((char*)buf2);
-  return resultobj;
+  return TCL_OK;
 fail:
   if (alloc2 == SWIG_NEWOBJ) free((char*)buf2);
-  return NULL;
+  return TCL_ERROR;
 }
 
 
-SWIGINTERN PyObject *_wrap_sdd_vtree_new_with_var_order(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
+SWIGINTERN int
+_wrap_sdd_vtree_new_with_var_order(ClientData clientData SWIGUNUSED, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]) {
   SddLiteral arg1 ;
   SddLiteral *arg2 = (SddLiteral *) 0 ;
   char *arg3 = (char *) 0 ;
@@ -10580,92 +4293,36 @@ SWIGINTERN PyObject *_wrap_sdd_vtree_new_with_var_order(PyObject *SWIGUNUSEDPARM
   int res3 ;
   char *buf3 = 0 ;
   int alloc3 = 0 ;
-  PyObject * obj0 = 0 ;
-  PyObject * obj1 = 0 ;
-  PyObject * obj2 = 0 ;
   Vtree *result = 0 ;
   
-  if (!PyArg_ParseTuple(args,(char *)"OOO:sdd_vtree_new_with_var_order",&obj0,&obj1,&obj2)) SWIG_fail;
-  ecode1 = SWIG_AsVal_long(obj0, &val1);
+  if (SWIG_GetArgs(interp, objc, objv,"ooo:sdd_vtree_new_with_var_order var_count var_order type ",(void *)0,(void *)0,(void *)0) == TCL_ERROR) SWIG_fail;
+  ecode1 = SWIG_AsVal_long SWIG_TCL_CALL_ARGS_2(objv[1], &val1);
   if (!SWIG_IsOK(ecode1)) {
     SWIG_exception_fail(SWIG_ArgError(ecode1), "in method '" "sdd_vtree_new_with_var_order" "', argument " "1"" of type '" "SddLiteral""'");
   } 
   arg1 = (SddLiteral)(val1);
-  res2 = SWIG_ConvertPtr(obj1, &argp2,SWIGTYPE_p_long, 0 |  0 );
+  res2 = SWIG_ConvertPtr(objv[2], &argp2,SWIGTYPE_p_long, 0 |  0 );
   if (!SWIG_IsOK(res2)) {
     SWIG_exception_fail(SWIG_ArgError(res2), "in method '" "sdd_vtree_new_with_var_order" "', argument " "2"" of type '" "SddLiteral *""'"); 
   }
   arg2 = (SddLiteral *)(argp2);
-  res3 = SWIG_AsCharPtrAndSize(obj2, &buf3, NULL, &alloc3);
+  res3 = SWIG_AsCharPtrAndSize(objv[3], &buf3, NULL, &alloc3);
   if (!SWIG_IsOK(res3)) {
     SWIG_exception_fail(SWIG_ArgError(res3), "in method '" "sdd_vtree_new_with_var_order" "', argument " "3"" of type '" "char const *""'");
   }
   arg3 = (char *)(buf3);
-  {
-    //
-    //    signal(SIGFPE,  handler);
-    //    signal(SIGILL,  handler);
-    
-    // signal(SIGSEGV, handler);
-    
-    struct sigaction new_action;
-    new_action.sa_handler = c_handler;
-    sigemptyset (&new_action.sa_mask);
-    new_action.sa_flags = SA_RESTART;
-    
-    struct sigaction old_action_term;
-    struct sigaction old_action_abrt;
-    struct sigaction old_action_int;
-    struct sigaction old_action_alrm;
-    
-    sigaction(SIGTERM,  &new_action, &old_action_term);
-    sigaction(SIGABRT,  &new_action, &old_action_abrt);
-    sigaction(SIGINT,  &new_action, &old_action_int);
-    sigaction(SIGALRM,  &new_action, &old_action_alrm);
-    try {
-      result = (Vtree *)sdd_vtree_new_with_var_order(arg1,arg2,(char const *)arg3);
-    } catch(SIGINT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process interrupted");
-    } catch(SIGTERM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process terminated");
-    } catch(SIGABRT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process aborted");
-    } catch(SIGALRM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process timeout");
-    }
-    sigaction(SIGTERM, &old_action_term, NULL);
-    sigaction(SIGABRT, &old_action_abrt, NULL);
-    sigaction(SIGINT, &old_action_int, NULL);
-    sigaction(SIGALRM, &old_action_alrm, NULL);
-    
-  }
-  resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_vtree_t, 0 |  0 );
+  result = (Vtree *)sdd_vtree_new_with_var_order(arg1,arg2,(char const *)arg3);
+  Tcl_SetObjResult(interp, SWIG_NewInstanceObj( SWIG_as_voidptr(result), SWIGTYPE_p_vtree_t,0));
   if (alloc3 == SWIG_NEWOBJ) free((char*)buf3);
-  return resultobj;
+  return TCL_OK;
 fail:
   if (alloc3 == SWIG_NEWOBJ) free((char*)buf3);
-  return NULL;
+  return TCL_ERROR;
 }
 
 
-SWIGINTERN PyObject *_wrap_sdd_vtree_new_X_constrained(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
+SWIGINTERN int
+_wrap_sdd_vtree_new_X_constrained(ClientData clientData SWIGUNUSED, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]) {
   SddLiteral arg1 ;
   SddLiteral *arg2 = (SddLiteral *) 0 ;
   char *arg3 = (char *) 0 ;
@@ -10676,166 +4333,56 @@ SWIGINTERN PyObject *_wrap_sdd_vtree_new_X_constrained(PyObject *SWIGUNUSEDPARM(
   int res3 ;
   char *buf3 = 0 ;
   int alloc3 = 0 ;
-  PyObject * obj0 = 0 ;
-  PyObject * obj1 = 0 ;
-  PyObject * obj2 = 0 ;
   Vtree *result = 0 ;
   
-  if (!PyArg_ParseTuple(args,(char *)"OOO:sdd_vtree_new_X_constrained",&obj0,&obj1,&obj2)) SWIG_fail;
-  ecode1 = SWIG_AsVal_long(obj0, &val1);
+  if (SWIG_GetArgs(interp, objc, objv,"ooo:sdd_vtree_new_X_constrained var_count is_X_var type ",(void *)0,(void *)0,(void *)0) == TCL_ERROR) SWIG_fail;
+  ecode1 = SWIG_AsVal_long SWIG_TCL_CALL_ARGS_2(objv[1], &val1);
   if (!SWIG_IsOK(ecode1)) {
     SWIG_exception_fail(SWIG_ArgError(ecode1), "in method '" "sdd_vtree_new_X_constrained" "', argument " "1"" of type '" "SddLiteral""'");
   } 
   arg1 = (SddLiteral)(val1);
-  res2 = SWIG_ConvertPtr(obj1, &argp2,SWIGTYPE_p_long, 0 |  0 );
+  res2 = SWIG_ConvertPtr(objv[2], &argp2,SWIGTYPE_p_long, 0 |  0 );
   if (!SWIG_IsOK(res2)) {
     SWIG_exception_fail(SWIG_ArgError(res2), "in method '" "sdd_vtree_new_X_constrained" "', argument " "2"" of type '" "SddLiteral *""'"); 
   }
   arg2 = (SddLiteral *)(argp2);
-  res3 = SWIG_AsCharPtrAndSize(obj2, &buf3, NULL, &alloc3);
+  res3 = SWIG_AsCharPtrAndSize(objv[3], &buf3, NULL, &alloc3);
   if (!SWIG_IsOK(res3)) {
     SWIG_exception_fail(SWIG_ArgError(res3), "in method '" "sdd_vtree_new_X_constrained" "', argument " "3"" of type '" "char const *""'");
   }
   arg3 = (char *)(buf3);
-  {
-    //
-    //    signal(SIGFPE,  handler);
-    //    signal(SIGILL,  handler);
-    
-    // signal(SIGSEGV, handler);
-    
-    struct sigaction new_action;
-    new_action.sa_handler = c_handler;
-    sigemptyset (&new_action.sa_mask);
-    new_action.sa_flags = SA_RESTART;
-    
-    struct sigaction old_action_term;
-    struct sigaction old_action_abrt;
-    struct sigaction old_action_int;
-    struct sigaction old_action_alrm;
-    
-    sigaction(SIGTERM,  &new_action, &old_action_term);
-    sigaction(SIGABRT,  &new_action, &old_action_abrt);
-    sigaction(SIGINT,  &new_action, &old_action_int);
-    sigaction(SIGALRM,  &new_action, &old_action_alrm);
-    try {
-      result = (Vtree *)sdd_vtree_new_X_constrained(arg1,arg2,(char const *)arg3);
-    } catch(SIGINT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process interrupted");
-    } catch(SIGTERM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process terminated");
-    } catch(SIGABRT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process aborted");
-    } catch(SIGALRM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process timeout");
-    }
-    sigaction(SIGTERM, &old_action_term, NULL);
-    sigaction(SIGABRT, &old_action_abrt, NULL);
-    sigaction(SIGINT, &old_action_int, NULL);
-    sigaction(SIGALRM, &old_action_alrm, NULL);
-    
-  }
-  resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_vtree_t, 0 |  0 );
+  result = (Vtree *)sdd_vtree_new_X_constrained(arg1,arg2,(char const *)arg3);
+  Tcl_SetObjResult(interp, SWIG_NewInstanceObj( SWIG_as_voidptr(result), SWIGTYPE_p_vtree_t,0));
   if (alloc3 == SWIG_NEWOBJ) free((char*)buf3);
-  return resultobj;
+  return TCL_OK;
 fail:
   if (alloc3 == SWIG_NEWOBJ) free((char*)buf3);
-  return NULL;
+  return TCL_ERROR;
 }
 
 
-SWIGINTERN PyObject *_wrap_sdd_vtree_free(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
+SWIGINTERN int
+_wrap_sdd_vtree_free(ClientData clientData SWIGUNUSED, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]) {
   Vtree *arg1 = (Vtree *) 0 ;
   void *argp1 = 0 ;
   int res1 = 0 ;
-  PyObject * obj0 = 0 ;
   
-  if (!PyArg_ParseTuple(args,(char *)"O:sdd_vtree_free",&obj0)) SWIG_fail;
-  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_vtree_t, 0 |  0 );
+  if (SWIG_GetArgs(interp, objc, objv,"o:sdd_vtree_free vtree ",(void *)0) == TCL_ERROR) SWIG_fail;
+  res1 = SWIG_ConvertPtr(objv[1], &argp1,SWIGTYPE_p_vtree_t, 0 |  0 );
   if (!SWIG_IsOK(res1)) {
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "sdd_vtree_free" "', argument " "1"" of type '" "Vtree *""'"); 
   }
   arg1 = (Vtree *)(argp1);
-  {
-    //
-    //    signal(SIGFPE,  handler);
-    //    signal(SIGILL,  handler);
-    
-    // signal(SIGSEGV, handler);
-    
-    struct sigaction new_action;
-    new_action.sa_handler = c_handler;
-    sigemptyset (&new_action.sa_mask);
-    new_action.sa_flags = SA_RESTART;
-    
-    struct sigaction old_action_term;
-    struct sigaction old_action_abrt;
-    struct sigaction old_action_int;
-    struct sigaction old_action_alrm;
-    
-    sigaction(SIGTERM,  &new_action, &old_action_term);
-    sigaction(SIGABRT,  &new_action, &old_action_abrt);
-    sigaction(SIGINT,  &new_action, &old_action_int);
-    sigaction(SIGALRM,  &new_action, &old_action_alrm);
-    try {
-      sdd_vtree_free(arg1);
-    } catch(SIGINT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process interrupted");
-    } catch(SIGTERM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process terminated");
-    } catch(SIGABRT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process aborted");
-    } catch(SIGALRM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process timeout");
-    }
-    sigaction(SIGTERM, &old_action_term, NULL);
-    sigaction(SIGABRT, &old_action_abrt, NULL);
-    sigaction(SIGINT, &old_action_int, NULL);
-    sigaction(SIGALRM, &old_action_alrm, NULL);
-    
-  }
-  resultobj = SWIG_Py_Void();
-  return resultobj;
+  sdd_vtree_free(arg1);
+  
+  return TCL_OK;
 fail:
-  return NULL;
+  return TCL_ERROR;
 }
 
 
-SWIGINTERN PyObject *_wrap_sdd_vtree_save(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
+SWIGINTERN int
+_wrap_sdd_vtree_save(ClientData clientData SWIGUNUSED, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]) {
   char *arg1 = (char *) 0 ;
   Vtree *arg2 = (Vtree *) 0 ;
   int res1 ;
@@ -10843,163 +4390,54 @@ SWIGINTERN PyObject *_wrap_sdd_vtree_save(PyObject *SWIGUNUSEDPARM(self), PyObje
   int alloc1 = 0 ;
   void *argp2 = 0 ;
   int res2 = 0 ;
-  PyObject * obj0 = 0 ;
-  PyObject * obj1 = 0 ;
   
-  if (!PyArg_ParseTuple(args,(char *)"OO:sdd_vtree_save",&obj0,&obj1)) SWIG_fail;
-  res1 = SWIG_AsCharPtrAndSize(obj0, &buf1, NULL, &alloc1);
+  if (SWIG_GetArgs(interp, objc, objv,"oo:sdd_vtree_save fname vtree ",(void *)0,(void *)0) == TCL_ERROR) SWIG_fail;
+  res1 = SWIG_AsCharPtrAndSize(objv[1], &buf1, NULL, &alloc1);
   if (!SWIG_IsOK(res1)) {
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "sdd_vtree_save" "', argument " "1"" of type '" "char const *""'");
   }
   arg1 = (char *)(buf1);
-  res2 = SWIG_ConvertPtr(obj1, &argp2,SWIGTYPE_p_vtree_t, 0 |  0 );
+  res2 = SWIG_ConvertPtr(objv[2], &argp2,SWIGTYPE_p_vtree_t, 0 |  0 );
   if (!SWIG_IsOK(res2)) {
     SWIG_exception_fail(SWIG_ArgError(res2), "in method '" "sdd_vtree_save" "', argument " "2"" of type '" "Vtree *""'"); 
   }
   arg2 = (Vtree *)(argp2);
-  {
-    //
-    //    signal(SIGFPE,  handler);
-    //    signal(SIGILL,  handler);
-    
-    // signal(SIGSEGV, handler);
-    
-    struct sigaction new_action;
-    new_action.sa_handler = c_handler;
-    sigemptyset (&new_action.sa_mask);
-    new_action.sa_flags = SA_RESTART;
-    
-    struct sigaction old_action_term;
-    struct sigaction old_action_abrt;
-    struct sigaction old_action_int;
-    struct sigaction old_action_alrm;
-    
-    sigaction(SIGTERM,  &new_action, &old_action_term);
-    sigaction(SIGABRT,  &new_action, &old_action_abrt);
-    sigaction(SIGINT,  &new_action, &old_action_int);
-    sigaction(SIGALRM,  &new_action, &old_action_alrm);
-    try {
-      sdd_vtree_save((char const *)arg1,arg2);
-    } catch(SIGINT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process interrupted");
-    } catch(SIGTERM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process terminated");
-    } catch(SIGABRT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process aborted");
-    } catch(SIGALRM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process timeout");
-    }
-    sigaction(SIGTERM, &old_action_term, NULL);
-    sigaction(SIGABRT, &old_action_abrt, NULL);
-    sigaction(SIGINT, &old_action_int, NULL);
-    sigaction(SIGALRM, &old_action_alrm, NULL);
-    
-  }
-  resultobj = SWIG_Py_Void();
+  sdd_vtree_save((char const *)arg1,arg2);
+  
   if (alloc1 == SWIG_NEWOBJ) free((char*)buf1);
-  return resultobj;
+  return TCL_OK;
 fail:
   if (alloc1 == SWIG_NEWOBJ) free((char*)buf1);
-  return NULL;
+  return TCL_ERROR;
 }
 
 
-SWIGINTERN PyObject *_wrap_sdd_vtree_read(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
+SWIGINTERN int
+_wrap_sdd_vtree_read(ClientData clientData SWIGUNUSED, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]) {
   char *arg1 = (char *) 0 ;
   int res1 ;
   char *buf1 = 0 ;
   int alloc1 = 0 ;
-  PyObject * obj0 = 0 ;
   Vtree *result = 0 ;
   
-  if (!PyArg_ParseTuple(args,(char *)"O:sdd_vtree_read",&obj0)) SWIG_fail;
-  res1 = SWIG_AsCharPtrAndSize(obj0, &buf1, NULL, &alloc1);
+  if (SWIG_GetArgs(interp, objc, objv,"o:sdd_vtree_read filename ",(void *)0) == TCL_ERROR) SWIG_fail;
+  res1 = SWIG_AsCharPtrAndSize(objv[1], &buf1, NULL, &alloc1);
   if (!SWIG_IsOK(res1)) {
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "sdd_vtree_read" "', argument " "1"" of type '" "char const *""'");
   }
   arg1 = (char *)(buf1);
-  {
-    //
-    //    signal(SIGFPE,  handler);
-    //    signal(SIGILL,  handler);
-    
-    // signal(SIGSEGV, handler);
-    
-    struct sigaction new_action;
-    new_action.sa_handler = c_handler;
-    sigemptyset (&new_action.sa_mask);
-    new_action.sa_flags = SA_RESTART;
-    
-    struct sigaction old_action_term;
-    struct sigaction old_action_abrt;
-    struct sigaction old_action_int;
-    struct sigaction old_action_alrm;
-    
-    sigaction(SIGTERM,  &new_action, &old_action_term);
-    sigaction(SIGABRT,  &new_action, &old_action_abrt);
-    sigaction(SIGINT,  &new_action, &old_action_int);
-    sigaction(SIGALRM,  &new_action, &old_action_alrm);
-    try {
-      result = (Vtree *)sdd_vtree_read((char const *)arg1);
-    } catch(SIGINT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process interrupted");
-    } catch(SIGTERM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process terminated");
-    } catch(SIGABRT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process aborted");
-    } catch(SIGALRM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process timeout");
-    }
-    sigaction(SIGTERM, &old_action_term, NULL);
-    sigaction(SIGABRT, &old_action_abrt, NULL);
-    sigaction(SIGINT, &old_action_int, NULL);
-    sigaction(SIGALRM, &old_action_alrm, NULL);
-    
-  }
-  resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_vtree_t, 0 |  0 );
+  result = (Vtree *)sdd_vtree_read((char const *)arg1);
+  Tcl_SetObjResult(interp, SWIG_NewInstanceObj( SWIG_as_voidptr(result), SWIGTYPE_p_vtree_t,0));
   if (alloc1 == SWIG_NEWOBJ) free((char*)buf1);
-  return resultobj;
+  return TCL_OK;
 fail:
   if (alloc1 == SWIG_NEWOBJ) free((char*)buf1);
-  return NULL;
+  return TCL_ERROR;
 }
 
 
-SWIGINTERN PyObject *_wrap_sdd_vtree_save_as_dot(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
+SWIGINTERN int
+_wrap_sdd_vtree_save_as_dot(ClientData clientData SWIGUNUSED, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]) {
   char *arg1 = (char *) 0 ;
   Vtree *arg2 = (Vtree *) 0 ;
   int res1 ;
@@ -11007,619 +4445,185 @@ SWIGINTERN PyObject *_wrap_sdd_vtree_save_as_dot(PyObject *SWIGUNUSEDPARM(self),
   int alloc1 = 0 ;
   void *argp2 = 0 ;
   int res2 = 0 ;
-  PyObject * obj0 = 0 ;
-  PyObject * obj1 = 0 ;
   
-  if (!PyArg_ParseTuple(args,(char *)"OO:sdd_vtree_save_as_dot",&obj0,&obj1)) SWIG_fail;
-  res1 = SWIG_AsCharPtrAndSize(obj0, &buf1, NULL, &alloc1);
+  if (SWIG_GetArgs(interp, objc, objv,"oo:sdd_vtree_save_as_dot fname vtree ",(void *)0,(void *)0) == TCL_ERROR) SWIG_fail;
+  res1 = SWIG_AsCharPtrAndSize(objv[1], &buf1, NULL, &alloc1);
   if (!SWIG_IsOK(res1)) {
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "sdd_vtree_save_as_dot" "', argument " "1"" of type '" "char const *""'");
   }
   arg1 = (char *)(buf1);
-  res2 = SWIG_ConvertPtr(obj1, &argp2,SWIGTYPE_p_vtree_t, 0 |  0 );
+  res2 = SWIG_ConvertPtr(objv[2], &argp2,SWIGTYPE_p_vtree_t, 0 |  0 );
   if (!SWIG_IsOK(res2)) {
     SWIG_exception_fail(SWIG_ArgError(res2), "in method '" "sdd_vtree_save_as_dot" "', argument " "2"" of type '" "Vtree *""'"); 
   }
   arg2 = (Vtree *)(argp2);
-  {
-    //
-    //    signal(SIGFPE,  handler);
-    //    signal(SIGILL,  handler);
-    
-    // signal(SIGSEGV, handler);
-    
-    struct sigaction new_action;
-    new_action.sa_handler = c_handler;
-    sigemptyset (&new_action.sa_mask);
-    new_action.sa_flags = SA_RESTART;
-    
-    struct sigaction old_action_term;
-    struct sigaction old_action_abrt;
-    struct sigaction old_action_int;
-    struct sigaction old_action_alrm;
-    
-    sigaction(SIGTERM,  &new_action, &old_action_term);
-    sigaction(SIGABRT,  &new_action, &old_action_abrt);
-    sigaction(SIGINT,  &new_action, &old_action_int);
-    sigaction(SIGALRM,  &new_action, &old_action_alrm);
-    try {
-      sdd_vtree_save_as_dot((char const *)arg1,arg2);
-    } catch(SIGINT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process interrupted");
-    } catch(SIGTERM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process terminated");
-    } catch(SIGABRT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process aborted");
-    } catch(SIGALRM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process timeout");
-    }
-    sigaction(SIGTERM, &old_action_term, NULL);
-    sigaction(SIGABRT, &old_action_abrt, NULL);
-    sigaction(SIGINT, &old_action_int, NULL);
-    sigaction(SIGALRM, &old_action_alrm, NULL);
-    
-  }
-  resultobj = SWIG_Py_Void();
+  sdd_vtree_save_as_dot((char const *)arg1,arg2);
+  
   if (alloc1 == SWIG_NEWOBJ) free((char*)buf1);
-  return resultobj;
+  return TCL_OK;
 fail:
   if (alloc1 == SWIG_NEWOBJ) free((char*)buf1);
-  return NULL;
+  return TCL_ERROR;
 }
 
 
-SWIGINTERN PyObject *_wrap_sdd_manager_vtree(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
+SWIGINTERN int
+_wrap_sdd_manager_vtree(ClientData clientData SWIGUNUSED, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]) {
   SddManager *arg1 = (SddManager *) 0 ;
   void *argp1 = 0 ;
   int res1 = 0 ;
-  PyObject * obj0 = 0 ;
   Vtree *result = 0 ;
   
-  if (!PyArg_ParseTuple(args,(char *)"O:sdd_manager_vtree",&obj0)) SWIG_fail;
-  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_sdd_manager_t, 0 |  0 );
+  if (SWIG_GetArgs(interp, objc, objv,"o:sdd_manager_vtree manager ",(void *)0) == TCL_ERROR) SWIG_fail;
+  res1 = SWIG_ConvertPtr(objv[1], &argp1,SWIGTYPE_p_sdd_manager_t, 0 |  0 );
   if (!SWIG_IsOK(res1)) {
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "sdd_manager_vtree" "', argument " "1"" of type '" "SddManager const *""'"); 
   }
   arg1 = (SddManager *)(argp1);
-  {
-    //
-    //    signal(SIGFPE,  handler);
-    //    signal(SIGILL,  handler);
-    
-    // signal(SIGSEGV, handler);
-    
-    struct sigaction new_action;
-    new_action.sa_handler = c_handler;
-    sigemptyset (&new_action.sa_mask);
-    new_action.sa_flags = SA_RESTART;
-    
-    struct sigaction old_action_term;
-    struct sigaction old_action_abrt;
-    struct sigaction old_action_int;
-    struct sigaction old_action_alrm;
-    
-    sigaction(SIGTERM,  &new_action, &old_action_term);
-    sigaction(SIGABRT,  &new_action, &old_action_abrt);
-    sigaction(SIGINT,  &new_action, &old_action_int);
-    sigaction(SIGALRM,  &new_action, &old_action_alrm);
-    try {
-      result = (Vtree *)sdd_manager_vtree((struct sdd_manager_t const *)arg1);
-    } catch(SIGINT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process interrupted");
-    } catch(SIGTERM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process terminated");
-    } catch(SIGABRT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process aborted");
-    } catch(SIGALRM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process timeout");
-    }
-    sigaction(SIGTERM, &old_action_term, NULL);
-    sigaction(SIGABRT, &old_action_abrt, NULL);
-    sigaction(SIGINT, &old_action_int, NULL);
-    sigaction(SIGALRM, &old_action_alrm, NULL);
-    
-  }
-  resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_vtree_t, 0 |  0 );
-  return resultobj;
+  result = (Vtree *)sdd_manager_vtree((struct sdd_manager_t const *)arg1);
+  Tcl_SetObjResult(interp, SWIG_NewInstanceObj( SWIG_as_voidptr(result), SWIGTYPE_p_vtree_t,0));
+  return TCL_OK;
 fail:
-  return NULL;
+  return TCL_ERROR;
 }
 
 
-SWIGINTERN PyObject *_wrap_sdd_manager_vtree_copy(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
+SWIGINTERN int
+_wrap_sdd_manager_vtree_copy(ClientData clientData SWIGUNUSED, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]) {
   SddManager *arg1 = (SddManager *) 0 ;
   void *argp1 = 0 ;
   int res1 = 0 ;
-  PyObject * obj0 = 0 ;
   Vtree *result = 0 ;
   
-  if (!PyArg_ParseTuple(args,(char *)"O:sdd_manager_vtree_copy",&obj0)) SWIG_fail;
-  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_sdd_manager_t, 0 |  0 );
+  if (SWIG_GetArgs(interp, objc, objv,"o:sdd_manager_vtree_copy manager ",(void *)0) == TCL_ERROR) SWIG_fail;
+  res1 = SWIG_ConvertPtr(objv[1], &argp1,SWIGTYPE_p_sdd_manager_t, 0 |  0 );
   if (!SWIG_IsOK(res1)) {
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "sdd_manager_vtree_copy" "', argument " "1"" of type '" "SddManager const *""'"); 
   }
   arg1 = (SddManager *)(argp1);
-  {
-    //
-    //    signal(SIGFPE,  handler);
-    //    signal(SIGILL,  handler);
-    
-    // signal(SIGSEGV, handler);
-    
-    struct sigaction new_action;
-    new_action.sa_handler = c_handler;
-    sigemptyset (&new_action.sa_mask);
-    new_action.sa_flags = SA_RESTART;
-    
-    struct sigaction old_action_term;
-    struct sigaction old_action_abrt;
-    struct sigaction old_action_int;
-    struct sigaction old_action_alrm;
-    
-    sigaction(SIGTERM,  &new_action, &old_action_term);
-    sigaction(SIGABRT,  &new_action, &old_action_abrt);
-    sigaction(SIGINT,  &new_action, &old_action_int);
-    sigaction(SIGALRM,  &new_action, &old_action_alrm);
-    try {
-      result = (Vtree *)sdd_manager_vtree_copy((struct sdd_manager_t const *)arg1);
-    } catch(SIGINT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process interrupted");
-    } catch(SIGTERM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process terminated");
-    } catch(SIGABRT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process aborted");
-    } catch(SIGALRM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process timeout");
-    }
-    sigaction(SIGTERM, &old_action_term, NULL);
-    sigaction(SIGABRT, &old_action_abrt, NULL);
-    sigaction(SIGINT, &old_action_int, NULL);
-    sigaction(SIGALRM, &old_action_alrm, NULL);
-    
-  }
-  resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_vtree_t, 0 |  0 );
-  return resultobj;
+  result = (Vtree *)sdd_manager_vtree_copy((struct sdd_manager_t const *)arg1);
+  Tcl_SetObjResult(interp, SWIG_NewInstanceObj( SWIG_as_voidptr(result), SWIGTYPE_p_vtree_t,0));
+  return TCL_OK;
 fail:
-  return NULL;
+  return TCL_ERROR;
 }
 
 
-SWIGINTERN PyObject *_wrap_sdd_vtree_left(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
+SWIGINTERN int
+_wrap_sdd_vtree_left(ClientData clientData SWIGUNUSED, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]) {
   Vtree *arg1 = (Vtree *) 0 ;
   void *argp1 = 0 ;
   int res1 = 0 ;
-  PyObject * obj0 = 0 ;
   Vtree *result = 0 ;
   
-  if (!PyArg_ParseTuple(args,(char *)"O:sdd_vtree_left",&obj0)) SWIG_fail;
-  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_vtree_t, 0 |  0 );
+  if (SWIG_GetArgs(interp, objc, objv,"o:sdd_vtree_left vtree ",(void *)0) == TCL_ERROR) SWIG_fail;
+  res1 = SWIG_ConvertPtr(objv[1], &argp1,SWIGTYPE_p_vtree_t, 0 |  0 );
   if (!SWIG_IsOK(res1)) {
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "sdd_vtree_left" "', argument " "1"" of type '" "Vtree const *""'"); 
   }
   arg1 = (Vtree *)(argp1);
-  {
-    //
-    //    signal(SIGFPE,  handler);
-    //    signal(SIGILL,  handler);
-    
-    // signal(SIGSEGV, handler);
-    
-    struct sigaction new_action;
-    new_action.sa_handler = c_handler;
-    sigemptyset (&new_action.sa_mask);
-    new_action.sa_flags = SA_RESTART;
-    
-    struct sigaction old_action_term;
-    struct sigaction old_action_abrt;
-    struct sigaction old_action_int;
-    struct sigaction old_action_alrm;
-    
-    sigaction(SIGTERM,  &new_action, &old_action_term);
-    sigaction(SIGABRT,  &new_action, &old_action_abrt);
-    sigaction(SIGINT,  &new_action, &old_action_int);
-    sigaction(SIGALRM,  &new_action, &old_action_alrm);
-    try {
-      result = (Vtree *)sdd_vtree_left((struct vtree_t const *)arg1);
-    } catch(SIGINT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process interrupted");
-    } catch(SIGTERM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process terminated");
-    } catch(SIGABRT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process aborted");
-    } catch(SIGALRM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process timeout");
-    }
-    sigaction(SIGTERM, &old_action_term, NULL);
-    sigaction(SIGABRT, &old_action_abrt, NULL);
-    sigaction(SIGINT, &old_action_int, NULL);
-    sigaction(SIGALRM, &old_action_alrm, NULL);
-    
-  }
-  resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_vtree_t, 0 |  0 );
-  return resultobj;
+  result = (Vtree *)sdd_vtree_left((struct vtree_t const *)arg1);
+  Tcl_SetObjResult(interp, SWIG_NewInstanceObj( SWIG_as_voidptr(result), SWIGTYPE_p_vtree_t,0));
+  return TCL_OK;
 fail:
-  return NULL;
+  return TCL_ERROR;
 }
 
 
-SWIGINTERN PyObject *_wrap_sdd_vtree_right(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
+SWIGINTERN int
+_wrap_sdd_vtree_right(ClientData clientData SWIGUNUSED, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]) {
   Vtree *arg1 = (Vtree *) 0 ;
   void *argp1 = 0 ;
   int res1 = 0 ;
-  PyObject * obj0 = 0 ;
   Vtree *result = 0 ;
   
-  if (!PyArg_ParseTuple(args,(char *)"O:sdd_vtree_right",&obj0)) SWIG_fail;
-  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_vtree_t, 0 |  0 );
+  if (SWIG_GetArgs(interp, objc, objv,"o:sdd_vtree_right vtree ",(void *)0) == TCL_ERROR) SWIG_fail;
+  res1 = SWIG_ConvertPtr(objv[1], &argp1,SWIGTYPE_p_vtree_t, 0 |  0 );
   if (!SWIG_IsOK(res1)) {
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "sdd_vtree_right" "', argument " "1"" of type '" "Vtree const *""'"); 
   }
   arg1 = (Vtree *)(argp1);
-  {
-    //
-    //    signal(SIGFPE,  handler);
-    //    signal(SIGILL,  handler);
-    
-    // signal(SIGSEGV, handler);
-    
-    struct sigaction new_action;
-    new_action.sa_handler = c_handler;
-    sigemptyset (&new_action.sa_mask);
-    new_action.sa_flags = SA_RESTART;
-    
-    struct sigaction old_action_term;
-    struct sigaction old_action_abrt;
-    struct sigaction old_action_int;
-    struct sigaction old_action_alrm;
-    
-    sigaction(SIGTERM,  &new_action, &old_action_term);
-    sigaction(SIGABRT,  &new_action, &old_action_abrt);
-    sigaction(SIGINT,  &new_action, &old_action_int);
-    sigaction(SIGALRM,  &new_action, &old_action_alrm);
-    try {
-      result = (Vtree *)sdd_vtree_right((struct vtree_t const *)arg1);
-    } catch(SIGINT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process interrupted");
-    } catch(SIGTERM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process terminated");
-    } catch(SIGABRT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process aborted");
-    } catch(SIGALRM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process timeout");
-    }
-    sigaction(SIGTERM, &old_action_term, NULL);
-    sigaction(SIGABRT, &old_action_abrt, NULL);
-    sigaction(SIGINT, &old_action_int, NULL);
-    sigaction(SIGALRM, &old_action_alrm, NULL);
-    
-  }
-  resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_vtree_t, 0 |  0 );
-  return resultobj;
+  result = (Vtree *)sdd_vtree_right((struct vtree_t const *)arg1);
+  Tcl_SetObjResult(interp, SWIG_NewInstanceObj( SWIG_as_voidptr(result), SWIGTYPE_p_vtree_t,0));
+  return TCL_OK;
 fail:
-  return NULL;
+  return TCL_ERROR;
 }
 
 
-SWIGINTERN PyObject *_wrap_sdd_vtree_parent(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
+SWIGINTERN int
+_wrap_sdd_vtree_parent(ClientData clientData SWIGUNUSED, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]) {
   Vtree *arg1 = (Vtree *) 0 ;
   void *argp1 = 0 ;
   int res1 = 0 ;
-  PyObject * obj0 = 0 ;
   Vtree *result = 0 ;
   
-  if (!PyArg_ParseTuple(args,(char *)"O:sdd_vtree_parent",&obj0)) SWIG_fail;
-  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_vtree_t, 0 |  0 );
+  if (SWIG_GetArgs(interp, objc, objv,"o:sdd_vtree_parent vtree ",(void *)0) == TCL_ERROR) SWIG_fail;
+  res1 = SWIG_ConvertPtr(objv[1], &argp1,SWIGTYPE_p_vtree_t, 0 |  0 );
   if (!SWIG_IsOK(res1)) {
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "sdd_vtree_parent" "', argument " "1"" of type '" "Vtree const *""'"); 
   }
   arg1 = (Vtree *)(argp1);
-  {
-    //
-    //    signal(SIGFPE,  handler);
-    //    signal(SIGILL,  handler);
-    
-    // signal(SIGSEGV, handler);
-    
-    struct sigaction new_action;
-    new_action.sa_handler = c_handler;
-    sigemptyset (&new_action.sa_mask);
-    new_action.sa_flags = SA_RESTART;
-    
-    struct sigaction old_action_term;
-    struct sigaction old_action_abrt;
-    struct sigaction old_action_int;
-    struct sigaction old_action_alrm;
-    
-    sigaction(SIGTERM,  &new_action, &old_action_term);
-    sigaction(SIGABRT,  &new_action, &old_action_abrt);
-    sigaction(SIGINT,  &new_action, &old_action_int);
-    sigaction(SIGALRM,  &new_action, &old_action_alrm);
-    try {
-      result = (Vtree *)sdd_vtree_parent((struct vtree_t const *)arg1);
-    } catch(SIGINT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process interrupted");
-    } catch(SIGTERM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process terminated");
-    } catch(SIGABRT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process aborted");
-    } catch(SIGALRM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process timeout");
-    }
-    sigaction(SIGTERM, &old_action_term, NULL);
-    sigaction(SIGABRT, &old_action_abrt, NULL);
-    sigaction(SIGINT, &old_action_int, NULL);
-    sigaction(SIGALRM, &old_action_alrm, NULL);
-    
-  }
-  resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_vtree_t, 0 |  0 );
-  return resultobj;
+  result = (Vtree *)sdd_vtree_parent((struct vtree_t const *)arg1);
+  Tcl_SetObjResult(interp, SWIG_NewInstanceObj( SWIG_as_voidptr(result), SWIGTYPE_p_vtree_t,0));
+  return TCL_OK;
 fail:
-  return NULL;
+  return TCL_ERROR;
 }
 
 
-SWIGINTERN PyObject *_wrap_sdd_vtree_is_leaf(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
+SWIGINTERN int
+_wrap_sdd_vtree_is_leaf(ClientData clientData SWIGUNUSED, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]) {
   Vtree *arg1 = (Vtree *) 0 ;
   void *argp1 = 0 ;
   int res1 = 0 ;
-  PyObject * obj0 = 0 ;
   int result;
   
-  if (!PyArg_ParseTuple(args,(char *)"O:sdd_vtree_is_leaf",&obj0)) SWIG_fail;
-  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_vtree_t, 0 |  0 );
+  if (SWIG_GetArgs(interp, objc, objv,"o:sdd_vtree_is_leaf vtree ",(void *)0) == TCL_ERROR) SWIG_fail;
+  res1 = SWIG_ConvertPtr(objv[1], &argp1,SWIGTYPE_p_vtree_t, 0 |  0 );
   if (!SWIG_IsOK(res1)) {
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "sdd_vtree_is_leaf" "', argument " "1"" of type '" "Vtree const *""'"); 
   }
   arg1 = (Vtree *)(argp1);
-  {
-    //
-    //    signal(SIGFPE,  handler);
-    //    signal(SIGILL,  handler);
-    
-    // signal(SIGSEGV, handler);
-    
-    struct sigaction new_action;
-    new_action.sa_handler = c_handler;
-    sigemptyset (&new_action.sa_mask);
-    new_action.sa_flags = SA_RESTART;
-    
-    struct sigaction old_action_term;
-    struct sigaction old_action_abrt;
-    struct sigaction old_action_int;
-    struct sigaction old_action_alrm;
-    
-    sigaction(SIGTERM,  &new_action, &old_action_term);
-    sigaction(SIGABRT,  &new_action, &old_action_abrt);
-    sigaction(SIGINT,  &new_action, &old_action_int);
-    sigaction(SIGALRM,  &new_action, &old_action_alrm);
-    try {
-      result = (int)sdd_vtree_is_leaf((struct vtree_t const *)arg1);
-    } catch(SIGINT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process interrupted");
-    } catch(SIGTERM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process terminated");
-    } catch(SIGABRT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process aborted");
-    } catch(SIGALRM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process timeout");
-    }
-    sigaction(SIGTERM, &old_action_term, NULL);
-    sigaction(SIGABRT, &old_action_abrt, NULL);
-    sigaction(SIGINT, &old_action_int, NULL);
-    sigaction(SIGALRM, &old_action_alrm, NULL);
-    
-  }
-  resultobj = SWIG_From_int((int)(result));
-  return resultobj;
+  result = (int)sdd_vtree_is_leaf((struct vtree_t const *)arg1);
+  Tcl_SetObjResult(interp,SWIG_From_int((int)(result)));
+  return TCL_OK;
 fail:
-  return NULL;
+  return TCL_ERROR;
 }
 
 
-SWIGINTERN PyObject *_wrap_sdd_vtree_is_sub(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
+SWIGINTERN int
+_wrap_sdd_vtree_is_sub(ClientData clientData SWIGUNUSED, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]) {
   Vtree *arg1 = (Vtree *) 0 ;
   Vtree *arg2 = (Vtree *) 0 ;
   void *argp1 = 0 ;
   int res1 = 0 ;
   void *argp2 = 0 ;
   int res2 = 0 ;
-  PyObject * obj0 = 0 ;
-  PyObject * obj1 = 0 ;
   int result;
   
-  if (!PyArg_ParseTuple(args,(char *)"OO:sdd_vtree_is_sub",&obj0,&obj1)) SWIG_fail;
-  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_vtree_t, 0 |  0 );
+  if (SWIG_GetArgs(interp, objc, objv,"oo:sdd_vtree_is_sub vtree1 vtree2 ",(void *)0,(void *)0) == TCL_ERROR) SWIG_fail;
+  res1 = SWIG_ConvertPtr(objv[1], &argp1,SWIGTYPE_p_vtree_t, 0 |  0 );
   if (!SWIG_IsOK(res1)) {
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "sdd_vtree_is_sub" "', argument " "1"" of type '" "Vtree const *""'"); 
   }
   arg1 = (Vtree *)(argp1);
-  res2 = SWIG_ConvertPtr(obj1, &argp2,SWIGTYPE_p_vtree_t, 0 |  0 );
+  res2 = SWIG_ConvertPtr(objv[2], &argp2,SWIGTYPE_p_vtree_t, 0 |  0 );
   if (!SWIG_IsOK(res2)) {
     SWIG_exception_fail(SWIG_ArgError(res2), "in method '" "sdd_vtree_is_sub" "', argument " "2"" of type '" "Vtree const *""'"); 
   }
   arg2 = (Vtree *)(argp2);
-  {
-    //
-    //    signal(SIGFPE,  handler);
-    //    signal(SIGILL,  handler);
-    
-    // signal(SIGSEGV, handler);
-    
-    struct sigaction new_action;
-    new_action.sa_handler = c_handler;
-    sigemptyset (&new_action.sa_mask);
-    new_action.sa_flags = SA_RESTART;
-    
-    struct sigaction old_action_term;
-    struct sigaction old_action_abrt;
-    struct sigaction old_action_int;
-    struct sigaction old_action_alrm;
-    
-    sigaction(SIGTERM,  &new_action, &old_action_term);
-    sigaction(SIGABRT,  &new_action, &old_action_abrt);
-    sigaction(SIGINT,  &new_action, &old_action_int);
-    sigaction(SIGALRM,  &new_action, &old_action_alrm);
-    try {
-      result = (int)sdd_vtree_is_sub((struct vtree_t const *)arg1,(struct vtree_t const *)arg2);
-    } catch(SIGINT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process interrupted");
-    } catch(SIGTERM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process terminated");
-    } catch(SIGABRT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process aborted");
-    } catch(SIGALRM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process timeout");
-    }
-    sigaction(SIGTERM, &old_action_term, NULL);
-    sigaction(SIGABRT, &old_action_abrt, NULL);
-    sigaction(SIGINT, &old_action_int, NULL);
-    sigaction(SIGALRM, &old_action_alrm, NULL);
-    
-  }
-  resultobj = SWIG_From_int((int)(result));
-  return resultobj;
+  result = (int)sdd_vtree_is_sub((struct vtree_t const *)arg1,(struct vtree_t const *)arg2);
+  Tcl_SetObjResult(interp,SWIG_From_int((int)(result)));
+  return TCL_OK;
 fail:
-  return NULL;
+  return TCL_ERROR;
 }
 
 
-SWIGINTERN PyObject *_wrap_sdd_vtree_lca(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
+SWIGINTERN int
+_wrap_sdd_vtree_lca(ClientData clientData SWIGUNUSED, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]) {
   Vtree *arg1 = (Vtree *) 0 ;
   Vtree *arg2 = (Vtree *) 0 ;
   Vtree *arg3 = (Vtree *) 0 ;
@@ -11629,399 +4633,126 @@ SWIGINTERN PyObject *_wrap_sdd_vtree_lca(PyObject *SWIGUNUSEDPARM(self), PyObjec
   int res2 = 0 ;
   void *argp3 = 0 ;
   int res3 = 0 ;
-  PyObject * obj0 = 0 ;
-  PyObject * obj1 = 0 ;
-  PyObject * obj2 = 0 ;
   Vtree *result = 0 ;
   
-  if (!PyArg_ParseTuple(args,(char *)"OOO:sdd_vtree_lca",&obj0,&obj1,&obj2)) SWIG_fail;
-  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_vtree_t, 0 |  0 );
+  if (SWIG_GetArgs(interp, objc, objv,"ooo:sdd_vtree_lca vtree1 vtree2 root ",(void *)0,(void *)0,(void *)0) == TCL_ERROR) SWIG_fail;
+  res1 = SWIG_ConvertPtr(objv[1], &argp1,SWIGTYPE_p_vtree_t, 0 |  0 );
   if (!SWIG_IsOK(res1)) {
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "sdd_vtree_lca" "', argument " "1"" of type '" "Vtree *""'"); 
   }
   arg1 = (Vtree *)(argp1);
-  res2 = SWIG_ConvertPtr(obj1, &argp2,SWIGTYPE_p_vtree_t, 0 |  0 );
+  res2 = SWIG_ConvertPtr(objv[2], &argp2,SWIGTYPE_p_vtree_t, 0 |  0 );
   if (!SWIG_IsOK(res2)) {
     SWIG_exception_fail(SWIG_ArgError(res2), "in method '" "sdd_vtree_lca" "', argument " "2"" of type '" "Vtree *""'"); 
   }
   arg2 = (Vtree *)(argp2);
-  res3 = SWIG_ConvertPtr(obj2, &argp3,SWIGTYPE_p_vtree_t, 0 |  0 );
+  res3 = SWIG_ConvertPtr(objv[3], &argp3,SWIGTYPE_p_vtree_t, 0 |  0 );
   if (!SWIG_IsOK(res3)) {
     SWIG_exception_fail(SWIG_ArgError(res3), "in method '" "sdd_vtree_lca" "', argument " "3"" of type '" "Vtree *""'"); 
   }
   arg3 = (Vtree *)(argp3);
-  {
-    //
-    //    signal(SIGFPE,  handler);
-    //    signal(SIGILL,  handler);
-    
-    // signal(SIGSEGV, handler);
-    
-    struct sigaction new_action;
-    new_action.sa_handler = c_handler;
-    sigemptyset (&new_action.sa_mask);
-    new_action.sa_flags = SA_RESTART;
-    
-    struct sigaction old_action_term;
-    struct sigaction old_action_abrt;
-    struct sigaction old_action_int;
-    struct sigaction old_action_alrm;
-    
-    sigaction(SIGTERM,  &new_action, &old_action_term);
-    sigaction(SIGABRT,  &new_action, &old_action_abrt);
-    sigaction(SIGINT,  &new_action, &old_action_int);
-    sigaction(SIGALRM,  &new_action, &old_action_alrm);
-    try {
-      result = (Vtree *)sdd_vtree_lca(arg1,arg2,arg3);
-    } catch(SIGINT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process interrupted");
-    } catch(SIGTERM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process terminated");
-    } catch(SIGABRT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process aborted");
-    } catch(SIGALRM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process timeout");
-    }
-    sigaction(SIGTERM, &old_action_term, NULL);
-    sigaction(SIGABRT, &old_action_abrt, NULL);
-    sigaction(SIGINT, &old_action_int, NULL);
-    sigaction(SIGALRM, &old_action_alrm, NULL);
-    
-  }
-  resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_vtree_t, 0 |  0 );
-  return resultobj;
+  result = (Vtree *)sdd_vtree_lca(arg1,arg2,arg3);
+  Tcl_SetObjResult(interp, SWIG_NewInstanceObj( SWIG_as_voidptr(result), SWIGTYPE_p_vtree_t,0));
+  return TCL_OK;
 fail:
-  return NULL;
+  return TCL_ERROR;
 }
 
 
-SWIGINTERN PyObject *_wrap_sdd_vtree_var_count(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
+SWIGINTERN int
+_wrap_sdd_vtree_var_count(ClientData clientData SWIGUNUSED, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]) {
   Vtree *arg1 = (Vtree *) 0 ;
   void *argp1 = 0 ;
   int res1 = 0 ;
-  PyObject * obj0 = 0 ;
   SddLiteral result;
   
-  if (!PyArg_ParseTuple(args,(char *)"O:sdd_vtree_var_count",&obj0)) SWIG_fail;
-  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_vtree_t, 0 |  0 );
+  if (SWIG_GetArgs(interp, objc, objv,"o:sdd_vtree_var_count vtree ",(void *)0) == TCL_ERROR) SWIG_fail;
+  res1 = SWIG_ConvertPtr(objv[1], &argp1,SWIGTYPE_p_vtree_t, 0 |  0 );
   if (!SWIG_IsOK(res1)) {
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "sdd_vtree_var_count" "', argument " "1"" of type '" "Vtree const *""'"); 
   }
   arg1 = (Vtree *)(argp1);
-  {
-    //
-    //    signal(SIGFPE,  handler);
-    //    signal(SIGILL,  handler);
-    
-    // signal(SIGSEGV, handler);
-    
-    struct sigaction new_action;
-    new_action.sa_handler = c_handler;
-    sigemptyset (&new_action.sa_mask);
-    new_action.sa_flags = SA_RESTART;
-    
-    struct sigaction old_action_term;
-    struct sigaction old_action_abrt;
-    struct sigaction old_action_int;
-    struct sigaction old_action_alrm;
-    
-    sigaction(SIGTERM,  &new_action, &old_action_term);
-    sigaction(SIGABRT,  &new_action, &old_action_abrt);
-    sigaction(SIGINT,  &new_action, &old_action_int);
-    sigaction(SIGALRM,  &new_action, &old_action_alrm);
-    try {
-      result = (SddLiteral)sdd_vtree_var_count((struct vtree_t const *)arg1);
-    } catch(SIGINT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process interrupted");
-    } catch(SIGTERM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process terminated");
-    } catch(SIGABRT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process aborted");
-    } catch(SIGALRM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process timeout");
-    }
-    sigaction(SIGTERM, &old_action_term, NULL);
-    sigaction(SIGABRT, &old_action_abrt, NULL);
-    sigaction(SIGINT, &old_action_int, NULL);
-    sigaction(SIGALRM, &old_action_alrm, NULL);
-    
-  }
-  resultobj = SWIG_From_long((long)(result));
-  return resultobj;
+  result = (SddLiteral)sdd_vtree_var_count((struct vtree_t const *)arg1);
+  Tcl_SetObjResult(interp,SWIG_From_long((long)(result)));
+  return TCL_OK;
 fail:
-  return NULL;
+  return TCL_ERROR;
 }
 
 
-SWIGINTERN PyObject *_wrap_sdd_vtree_var(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
+SWIGINTERN int
+_wrap_sdd_vtree_var(ClientData clientData SWIGUNUSED, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]) {
   Vtree *arg1 = (Vtree *) 0 ;
   void *argp1 = 0 ;
   int res1 = 0 ;
-  PyObject * obj0 = 0 ;
   SddLiteral result;
   
-  if (!PyArg_ParseTuple(args,(char *)"O:sdd_vtree_var",&obj0)) SWIG_fail;
-  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_vtree_t, 0 |  0 );
+  if (SWIG_GetArgs(interp, objc, objv,"o:sdd_vtree_var vtree ",(void *)0) == TCL_ERROR) SWIG_fail;
+  res1 = SWIG_ConvertPtr(objv[1], &argp1,SWIGTYPE_p_vtree_t, 0 |  0 );
   if (!SWIG_IsOK(res1)) {
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "sdd_vtree_var" "', argument " "1"" of type '" "Vtree const *""'"); 
   }
   arg1 = (Vtree *)(argp1);
-  {
-    //
-    //    signal(SIGFPE,  handler);
-    //    signal(SIGILL,  handler);
-    
-    // signal(SIGSEGV, handler);
-    
-    struct sigaction new_action;
-    new_action.sa_handler = c_handler;
-    sigemptyset (&new_action.sa_mask);
-    new_action.sa_flags = SA_RESTART;
-    
-    struct sigaction old_action_term;
-    struct sigaction old_action_abrt;
-    struct sigaction old_action_int;
-    struct sigaction old_action_alrm;
-    
-    sigaction(SIGTERM,  &new_action, &old_action_term);
-    sigaction(SIGABRT,  &new_action, &old_action_abrt);
-    sigaction(SIGINT,  &new_action, &old_action_int);
-    sigaction(SIGALRM,  &new_action, &old_action_alrm);
-    try {
-      result = (SddLiteral)sdd_vtree_var((struct vtree_t const *)arg1);
-    } catch(SIGINT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process interrupted");
-    } catch(SIGTERM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process terminated");
-    } catch(SIGABRT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process aborted");
-    } catch(SIGALRM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process timeout");
-    }
-    sigaction(SIGTERM, &old_action_term, NULL);
-    sigaction(SIGABRT, &old_action_abrt, NULL);
-    sigaction(SIGINT, &old_action_int, NULL);
-    sigaction(SIGALRM, &old_action_alrm, NULL);
-    
-  }
-  resultobj = SWIG_From_long((long)(result));
-  return resultobj;
+  result = (SddLiteral)sdd_vtree_var((struct vtree_t const *)arg1);
+  Tcl_SetObjResult(interp,SWIG_From_long((long)(result)));
+  return TCL_OK;
 fail:
-  return NULL;
+  return TCL_ERROR;
 }
 
 
-SWIGINTERN PyObject *_wrap_sdd_vtree_position(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
+SWIGINTERN int
+_wrap_sdd_vtree_position(ClientData clientData SWIGUNUSED, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]) {
   Vtree *arg1 = (Vtree *) 0 ;
   void *argp1 = 0 ;
   int res1 = 0 ;
-  PyObject * obj0 = 0 ;
   SddLiteral result;
   
-  if (!PyArg_ParseTuple(args,(char *)"O:sdd_vtree_position",&obj0)) SWIG_fail;
-  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_vtree_t, 0 |  0 );
+  if (SWIG_GetArgs(interp, objc, objv,"o:sdd_vtree_position vtree ",(void *)0) == TCL_ERROR) SWIG_fail;
+  res1 = SWIG_ConvertPtr(objv[1], &argp1,SWIGTYPE_p_vtree_t, 0 |  0 );
   if (!SWIG_IsOK(res1)) {
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "sdd_vtree_position" "', argument " "1"" of type '" "Vtree const *""'"); 
   }
   arg1 = (Vtree *)(argp1);
-  {
-    //
-    //    signal(SIGFPE,  handler);
-    //    signal(SIGILL,  handler);
-    
-    // signal(SIGSEGV, handler);
-    
-    struct sigaction new_action;
-    new_action.sa_handler = c_handler;
-    sigemptyset (&new_action.sa_mask);
-    new_action.sa_flags = SA_RESTART;
-    
-    struct sigaction old_action_term;
-    struct sigaction old_action_abrt;
-    struct sigaction old_action_int;
-    struct sigaction old_action_alrm;
-    
-    sigaction(SIGTERM,  &new_action, &old_action_term);
-    sigaction(SIGABRT,  &new_action, &old_action_abrt);
-    sigaction(SIGINT,  &new_action, &old_action_int);
-    sigaction(SIGALRM,  &new_action, &old_action_alrm);
-    try {
-      result = (SddLiteral)sdd_vtree_position((struct vtree_t const *)arg1);
-    } catch(SIGINT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process interrupted");
-    } catch(SIGTERM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process terminated");
-    } catch(SIGABRT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process aborted");
-    } catch(SIGALRM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process timeout");
-    }
-    sigaction(SIGTERM, &old_action_term, NULL);
-    sigaction(SIGABRT, &old_action_abrt, NULL);
-    sigaction(SIGINT, &old_action_int, NULL);
-    sigaction(SIGALRM, &old_action_alrm, NULL);
-    
-  }
-  resultobj = SWIG_From_long((long)(result));
-  return resultobj;
+  result = (SddLiteral)sdd_vtree_position((struct vtree_t const *)arg1);
+  Tcl_SetObjResult(interp,SWIG_From_long((long)(result)));
+  return TCL_OK;
 fail:
-  return NULL;
+  return TCL_ERROR;
 }
 
 
-SWIGINTERN PyObject *_wrap_sdd_vtree_location(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
+SWIGINTERN int
+_wrap_sdd_vtree_location(ClientData clientData SWIGUNUSED, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]) {
   Vtree *arg1 = (Vtree *) 0 ;
   SddManager *arg2 = (SddManager *) 0 ;
   void *argp1 = 0 ;
   int res1 = 0 ;
   void *argp2 = 0 ;
   int res2 = 0 ;
-  PyObject * obj0 = 0 ;
-  PyObject * obj1 = 0 ;
   Vtree **result = 0 ;
   
-  if (!PyArg_ParseTuple(args,(char *)"OO:sdd_vtree_location",&obj0,&obj1)) SWIG_fail;
-  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_vtree_t, 0 |  0 );
+  if (SWIG_GetArgs(interp, objc, objv,"oo:sdd_vtree_location vtree manager ",(void *)0,(void *)0) == TCL_ERROR) SWIG_fail;
+  res1 = SWIG_ConvertPtr(objv[1], &argp1,SWIGTYPE_p_vtree_t, 0 |  0 );
   if (!SWIG_IsOK(res1)) {
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "sdd_vtree_location" "', argument " "1"" of type '" "Vtree *""'"); 
   }
   arg1 = (Vtree *)(argp1);
-  res2 = SWIG_ConvertPtr(obj1, &argp2,SWIGTYPE_p_sdd_manager_t, 0 |  0 );
+  res2 = SWIG_ConvertPtr(objv[2], &argp2,SWIGTYPE_p_sdd_manager_t, 0 |  0 );
   if (!SWIG_IsOK(res2)) {
     SWIG_exception_fail(SWIG_ArgError(res2), "in method '" "sdd_vtree_location" "', argument " "2"" of type '" "SddManager *""'"); 
   }
   arg2 = (SddManager *)(argp2);
-  {
-    //
-    //    signal(SIGFPE,  handler);
-    //    signal(SIGILL,  handler);
-    
-    // signal(SIGSEGV, handler);
-    
-    struct sigaction new_action;
-    new_action.sa_handler = c_handler;
-    sigemptyset (&new_action.sa_mask);
-    new_action.sa_flags = SA_RESTART;
-    
-    struct sigaction old_action_term;
-    struct sigaction old_action_abrt;
-    struct sigaction old_action_int;
-    struct sigaction old_action_alrm;
-    
-    sigaction(SIGTERM,  &new_action, &old_action_term);
-    sigaction(SIGABRT,  &new_action, &old_action_abrt);
-    sigaction(SIGINT,  &new_action, &old_action_int);
-    sigaction(SIGALRM,  &new_action, &old_action_alrm);
-    try {
-      result = (Vtree **)sdd_vtree_location(arg1,arg2);
-    } catch(SIGINT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process interrupted");
-    } catch(SIGTERM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process terminated");
-    } catch(SIGABRT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process aborted");
-    } catch(SIGALRM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process timeout");
-    }
-    sigaction(SIGTERM, &old_action_term, NULL);
-    sigaction(SIGABRT, &old_action_abrt, NULL);
-    sigaction(SIGINT, &old_action_int, NULL);
-    sigaction(SIGALRM, &old_action_alrm, NULL);
-    
-  }
-  resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_p_vtree_t, 0 |  0 );
-  return resultobj;
+  result = (Vtree **)sdd_vtree_location(arg1,arg2);
+  Tcl_SetObjResult(interp, SWIG_NewInstanceObj( SWIG_as_voidptr(result), SWIGTYPE_p_p_vtree_t,0));
+  return TCL_OK;
 fail:
-  return NULL;
+  return TCL_ERROR;
 }
 
 
-SWIGINTERN PyObject *_wrap_sdd_vtree_rotate_left(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
+SWIGINTERN int
+_wrap_sdd_vtree_rotate_left(ClientData clientData SWIGUNUSED, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]) {
   Vtree *arg1 = (Vtree *) 0 ;
   SddManager *arg2 = (SddManager *) 0 ;
   int arg3 ;
@@ -12031,90 +4762,34 @@ SWIGINTERN PyObject *_wrap_sdd_vtree_rotate_left(PyObject *SWIGUNUSEDPARM(self),
   int res2 = 0 ;
   int val3 ;
   int ecode3 = 0 ;
-  PyObject * obj0 = 0 ;
-  PyObject * obj1 = 0 ;
-  PyObject * obj2 = 0 ;
   int result;
   
-  if (!PyArg_ParseTuple(args,(char *)"OOO:sdd_vtree_rotate_left",&obj0,&obj1,&obj2)) SWIG_fail;
-  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_vtree_t, 0 |  0 );
+  if (SWIG_GetArgs(interp, objc, objv,"ooo:sdd_vtree_rotate_left vtree manager limited ",(void *)0,(void *)0,(void *)0) == TCL_ERROR) SWIG_fail;
+  res1 = SWIG_ConvertPtr(objv[1], &argp1,SWIGTYPE_p_vtree_t, 0 |  0 );
   if (!SWIG_IsOK(res1)) {
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "sdd_vtree_rotate_left" "', argument " "1"" of type '" "Vtree *""'"); 
   }
   arg1 = (Vtree *)(argp1);
-  res2 = SWIG_ConvertPtr(obj1, &argp2,SWIGTYPE_p_sdd_manager_t, 0 |  0 );
+  res2 = SWIG_ConvertPtr(objv[2], &argp2,SWIGTYPE_p_sdd_manager_t, 0 |  0 );
   if (!SWIG_IsOK(res2)) {
     SWIG_exception_fail(SWIG_ArgError(res2), "in method '" "sdd_vtree_rotate_left" "', argument " "2"" of type '" "SddManager *""'"); 
   }
   arg2 = (SddManager *)(argp2);
-  ecode3 = SWIG_AsVal_int(obj2, &val3);
+  ecode3 = SWIG_AsVal_int SWIG_TCL_CALL_ARGS_2(objv[3], &val3);
   if (!SWIG_IsOK(ecode3)) {
     SWIG_exception_fail(SWIG_ArgError(ecode3), "in method '" "sdd_vtree_rotate_left" "', argument " "3"" of type '" "int""'");
   } 
   arg3 = (int)(val3);
-  {
-    //
-    //    signal(SIGFPE,  handler);
-    //    signal(SIGILL,  handler);
-    
-    // signal(SIGSEGV, handler);
-    
-    struct sigaction new_action;
-    new_action.sa_handler = c_handler;
-    sigemptyset (&new_action.sa_mask);
-    new_action.sa_flags = SA_RESTART;
-    
-    struct sigaction old_action_term;
-    struct sigaction old_action_abrt;
-    struct sigaction old_action_int;
-    struct sigaction old_action_alrm;
-    
-    sigaction(SIGTERM,  &new_action, &old_action_term);
-    sigaction(SIGABRT,  &new_action, &old_action_abrt);
-    sigaction(SIGINT,  &new_action, &old_action_int);
-    sigaction(SIGALRM,  &new_action, &old_action_alrm);
-    try {
-      result = (int)sdd_vtree_rotate_left(arg1,arg2,arg3);
-    } catch(SIGINT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process interrupted");
-    } catch(SIGTERM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process terminated");
-    } catch(SIGABRT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process aborted");
-    } catch(SIGALRM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process timeout");
-    }
-    sigaction(SIGTERM, &old_action_term, NULL);
-    sigaction(SIGABRT, &old_action_abrt, NULL);
-    sigaction(SIGINT, &old_action_int, NULL);
-    sigaction(SIGALRM, &old_action_alrm, NULL);
-    
-  }
-  resultobj = SWIG_From_int((int)(result));
-  return resultobj;
+  result = (int)sdd_vtree_rotate_left(arg1,arg2,arg3);
+  Tcl_SetObjResult(interp,SWIG_From_int((int)(result)));
+  return TCL_OK;
 fail:
-  return NULL;
+  return TCL_ERROR;
 }
 
 
-SWIGINTERN PyObject *_wrap_sdd_vtree_rotate_right(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
+SWIGINTERN int
+_wrap_sdd_vtree_rotate_right(ClientData clientData SWIGUNUSED, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]) {
   Vtree *arg1 = (Vtree *) 0 ;
   SddManager *arg2 = (SddManager *) 0 ;
   int arg3 ;
@@ -12124,90 +4799,34 @@ SWIGINTERN PyObject *_wrap_sdd_vtree_rotate_right(PyObject *SWIGUNUSEDPARM(self)
   int res2 = 0 ;
   int val3 ;
   int ecode3 = 0 ;
-  PyObject * obj0 = 0 ;
-  PyObject * obj1 = 0 ;
-  PyObject * obj2 = 0 ;
   int result;
   
-  if (!PyArg_ParseTuple(args,(char *)"OOO:sdd_vtree_rotate_right",&obj0,&obj1,&obj2)) SWIG_fail;
-  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_vtree_t, 0 |  0 );
+  if (SWIG_GetArgs(interp, objc, objv,"ooo:sdd_vtree_rotate_right vtree manager limited ",(void *)0,(void *)0,(void *)0) == TCL_ERROR) SWIG_fail;
+  res1 = SWIG_ConvertPtr(objv[1], &argp1,SWIGTYPE_p_vtree_t, 0 |  0 );
   if (!SWIG_IsOK(res1)) {
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "sdd_vtree_rotate_right" "', argument " "1"" of type '" "Vtree *""'"); 
   }
   arg1 = (Vtree *)(argp1);
-  res2 = SWIG_ConvertPtr(obj1, &argp2,SWIGTYPE_p_sdd_manager_t, 0 |  0 );
+  res2 = SWIG_ConvertPtr(objv[2], &argp2,SWIGTYPE_p_sdd_manager_t, 0 |  0 );
   if (!SWIG_IsOK(res2)) {
     SWIG_exception_fail(SWIG_ArgError(res2), "in method '" "sdd_vtree_rotate_right" "', argument " "2"" of type '" "SddManager *""'"); 
   }
   arg2 = (SddManager *)(argp2);
-  ecode3 = SWIG_AsVal_int(obj2, &val3);
+  ecode3 = SWIG_AsVal_int SWIG_TCL_CALL_ARGS_2(objv[3], &val3);
   if (!SWIG_IsOK(ecode3)) {
     SWIG_exception_fail(SWIG_ArgError(ecode3), "in method '" "sdd_vtree_rotate_right" "', argument " "3"" of type '" "int""'");
   } 
   arg3 = (int)(val3);
-  {
-    //
-    //    signal(SIGFPE,  handler);
-    //    signal(SIGILL,  handler);
-    
-    // signal(SIGSEGV, handler);
-    
-    struct sigaction new_action;
-    new_action.sa_handler = c_handler;
-    sigemptyset (&new_action.sa_mask);
-    new_action.sa_flags = SA_RESTART;
-    
-    struct sigaction old_action_term;
-    struct sigaction old_action_abrt;
-    struct sigaction old_action_int;
-    struct sigaction old_action_alrm;
-    
-    sigaction(SIGTERM,  &new_action, &old_action_term);
-    sigaction(SIGABRT,  &new_action, &old_action_abrt);
-    sigaction(SIGINT,  &new_action, &old_action_int);
-    sigaction(SIGALRM,  &new_action, &old_action_alrm);
-    try {
-      result = (int)sdd_vtree_rotate_right(arg1,arg2,arg3);
-    } catch(SIGINT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process interrupted");
-    } catch(SIGTERM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process terminated");
-    } catch(SIGABRT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process aborted");
-    } catch(SIGALRM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process timeout");
-    }
-    sigaction(SIGTERM, &old_action_term, NULL);
-    sigaction(SIGABRT, &old_action_abrt, NULL);
-    sigaction(SIGINT, &old_action_int, NULL);
-    sigaction(SIGALRM, &old_action_alrm, NULL);
-    
-  }
-  resultobj = SWIG_From_int((int)(result));
-  return resultobj;
+  result = (int)sdd_vtree_rotate_right(arg1,arg2,arg3);
+  Tcl_SetObjResult(interp,SWIG_From_int((int)(result)));
+  return TCL_OK;
 fail:
-  return NULL;
+  return TCL_ERROR;
 }
 
 
-SWIGINTERN PyObject *_wrap_sdd_vtree_swap(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
+SWIGINTERN int
+_wrap_sdd_vtree_swap(ClientData clientData SWIGUNUSED, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]) {
   Vtree *arg1 = (Vtree *) 0 ;
   SddManager *arg2 = (SddManager *) 0 ;
   int arg3 ;
@@ -12217,1201 +4836,381 @@ SWIGINTERN PyObject *_wrap_sdd_vtree_swap(PyObject *SWIGUNUSEDPARM(self), PyObje
   int res2 = 0 ;
   int val3 ;
   int ecode3 = 0 ;
-  PyObject * obj0 = 0 ;
-  PyObject * obj1 = 0 ;
-  PyObject * obj2 = 0 ;
   int result;
   
-  if (!PyArg_ParseTuple(args,(char *)"OOO:sdd_vtree_swap",&obj0,&obj1,&obj2)) SWIG_fail;
-  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_vtree_t, 0 |  0 );
+  if (SWIG_GetArgs(interp, objc, objv,"ooo:sdd_vtree_swap vtree manager limited ",(void *)0,(void *)0,(void *)0) == TCL_ERROR) SWIG_fail;
+  res1 = SWIG_ConvertPtr(objv[1], &argp1,SWIGTYPE_p_vtree_t, 0 |  0 );
   if (!SWIG_IsOK(res1)) {
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "sdd_vtree_swap" "', argument " "1"" of type '" "Vtree *""'"); 
   }
   arg1 = (Vtree *)(argp1);
-  res2 = SWIG_ConvertPtr(obj1, &argp2,SWIGTYPE_p_sdd_manager_t, 0 |  0 );
+  res2 = SWIG_ConvertPtr(objv[2], &argp2,SWIGTYPE_p_sdd_manager_t, 0 |  0 );
   if (!SWIG_IsOK(res2)) {
     SWIG_exception_fail(SWIG_ArgError(res2), "in method '" "sdd_vtree_swap" "', argument " "2"" of type '" "SddManager *""'"); 
   }
   arg2 = (SddManager *)(argp2);
-  ecode3 = SWIG_AsVal_int(obj2, &val3);
+  ecode3 = SWIG_AsVal_int SWIG_TCL_CALL_ARGS_2(objv[3], &val3);
   if (!SWIG_IsOK(ecode3)) {
     SWIG_exception_fail(SWIG_ArgError(ecode3), "in method '" "sdd_vtree_swap" "', argument " "3"" of type '" "int""'");
   } 
   arg3 = (int)(val3);
-  {
-    //
-    //    signal(SIGFPE,  handler);
-    //    signal(SIGILL,  handler);
-    
-    // signal(SIGSEGV, handler);
-    
-    struct sigaction new_action;
-    new_action.sa_handler = c_handler;
-    sigemptyset (&new_action.sa_mask);
-    new_action.sa_flags = SA_RESTART;
-    
-    struct sigaction old_action_term;
-    struct sigaction old_action_abrt;
-    struct sigaction old_action_int;
-    struct sigaction old_action_alrm;
-    
-    sigaction(SIGTERM,  &new_action, &old_action_term);
-    sigaction(SIGABRT,  &new_action, &old_action_abrt);
-    sigaction(SIGINT,  &new_action, &old_action_int);
-    sigaction(SIGALRM,  &new_action, &old_action_alrm);
-    try {
-      result = (int)sdd_vtree_swap(arg1,arg2,arg3);
-    } catch(SIGINT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process interrupted");
-    } catch(SIGTERM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process terminated");
-    } catch(SIGABRT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process aborted");
-    } catch(SIGALRM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process timeout");
-    }
-    sigaction(SIGTERM, &old_action_term, NULL);
-    sigaction(SIGABRT, &old_action_abrt, NULL);
-    sigaction(SIGINT, &old_action_int, NULL);
-    sigaction(SIGALRM, &old_action_alrm, NULL);
-    
-  }
-  resultobj = SWIG_From_int((int)(result));
-  return resultobj;
+  result = (int)sdd_vtree_swap(arg1,arg2,arg3);
+  Tcl_SetObjResult(interp,SWIG_From_int((int)(result)));
+  return TCL_OK;
 fail:
-  return NULL;
+  return TCL_ERROR;
 }
 
 
-SWIGINTERN PyObject *_wrap_sdd_manager_init_vtree_size_limit(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
+SWIGINTERN int
+_wrap_sdd_manager_init_vtree_size_limit(ClientData clientData SWIGUNUSED, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]) {
   Vtree *arg1 = (Vtree *) 0 ;
   SddManager *arg2 = (SddManager *) 0 ;
   void *argp1 = 0 ;
   int res1 = 0 ;
   void *argp2 = 0 ;
   int res2 = 0 ;
-  PyObject * obj0 = 0 ;
-  PyObject * obj1 = 0 ;
   
-  if (!PyArg_ParseTuple(args,(char *)"OO:sdd_manager_init_vtree_size_limit",&obj0,&obj1)) SWIG_fail;
-  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_vtree_t, 0 |  0 );
+  if (SWIG_GetArgs(interp, objc, objv,"oo:sdd_manager_init_vtree_size_limit vtree manager ",(void *)0,(void *)0) == TCL_ERROR) SWIG_fail;
+  res1 = SWIG_ConvertPtr(objv[1], &argp1,SWIGTYPE_p_vtree_t, 0 |  0 );
   if (!SWIG_IsOK(res1)) {
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "sdd_manager_init_vtree_size_limit" "', argument " "1"" of type '" "Vtree *""'"); 
   }
   arg1 = (Vtree *)(argp1);
-  res2 = SWIG_ConvertPtr(obj1, &argp2,SWIGTYPE_p_sdd_manager_t, 0 |  0 );
+  res2 = SWIG_ConvertPtr(objv[2], &argp2,SWIGTYPE_p_sdd_manager_t, 0 |  0 );
   if (!SWIG_IsOK(res2)) {
     SWIG_exception_fail(SWIG_ArgError(res2), "in method '" "sdd_manager_init_vtree_size_limit" "', argument " "2"" of type '" "SddManager *""'"); 
   }
   arg2 = (SddManager *)(argp2);
-  {
-    //
-    //    signal(SIGFPE,  handler);
-    //    signal(SIGILL,  handler);
-    
-    // signal(SIGSEGV, handler);
-    
-    struct sigaction new_action;
-    new_action.sa_handler = c_handler;
-    sigemptyset (&new_action.sa_mask);
-    new_action.sa_flags = SA_RESTART;
-    
-    struct sigaction old_action_term;
-    struct sigaction old_action_abrt;
-    struct sigaction old_action_int;
-    struct sigaction old_action_alrm;
-    
-    sigaction(SIGTERM,  &new_action, &old_action_term);
-    sigaction(SIGABRT,  &new_action, &old_action_abrt);
-    sigaction(SIGINT,  &new_action, &old_action_int);
-    sigaction(SIGALRM,  &new_action, &old_action_alrm);
-    try {
-      sdd_manager_init_vtree_size_limit(arg1,arg2);
-    } catch(SIGINT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process interrupted");
-    } catch(SIGTERM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process terminated");
-    } catch(SIGABRT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process aborted");
-    } catch(SIGALRM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process timeout");
-    }
-    sigaction(SIGTERM, &old_action_term, NULL);
-    sigaction(SIGABRT, &old_action_abrt, NULL);
-    sigaction(SIGINT, &old_action_int, NULL);
-    sigaction(SIGALRM, &old_action_alrm, NULL);
-    
-  }
-  resultobj = SWIG_Py_Void();
-  return resultobj;
+  sdd_manager_init_vtree_size_limit(arg1,arg2);
+  
+  return TCL_OK;
 fail:
-  return NULL;
+  return TCL_ERROR;
 }
 
 
-SWIGINTERN PyObject *_wrap_sdd_manager_update_vtree_size_limit(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
+SWIGINTERN int
+_wrap_sdd_manager_update_vtree_size_limit(ClientData clientData SWIGUNUSED, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]) {
   SddManager *arg1 = (SddManager *) 0 ;
   void *argp1 = 0 ;
   int res1 = 0 ;
-  PyObject * obj0 = 0 ;
   
-  if (!PyArg_ParseTuple(args,(char *)"O:sdd_manager_update_vtree_size_limit",&obj0)) SWIG_fail;
-  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_sdd_manager_t, 0 |  0 );
+  if (SWIG_GetArgs(interp, objc, objv,"o:sdd_manager_update_vtree_size_limit manager ",(void *)0) == TCL_ERROR) SWIG_fail;
+  res1 = SWIG_ConvertPtr(objv[1], &argp1,SWIGTYPE_p_sdd_manager_t, 0 |  0 );
   if (!SWIG_IsOK(res1)) {
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "sdd_manager_update_vtree_size_limit" "', argument " "1"" of type '" "SddManager *""'"); 
   }
   arg1 = (SddManager *)(argp1);
-  {
-    //
-    //    signal(SIGFPE,  handler);
-    //    signal(SIGILL,  handler);
-    
-    // signal(SIGSEGV, handler);
-    
-    struct sigaction new_action;
-    new_action.sa_handler = c_handler;
-    sigemptyset (&new_action.sa_mask);
-    new_action.sa_flags = SA_RESTART;
-    
-    struct sigaction old_action_term;
-    struct sigaction old_action_abrt;
-    struct sigaction old_action_int;
-    struct sigaction old_action_alrm;
-    
-    sigaction(SIGTERM,  &new_action, &old_action_term);
-    sigaction(SIGABRT,  &new_action, &old_action_abrt);
-    sigaction(SIGINT,  &new_action, &old_action_int);
-    sigaction(SIGALRM,  &new_action, &old_action_alrm);
-    try {
-      sdd_manager_update_vtree_size_limit(arg1);
-    } catch(SIGINT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process interrupted");
-    } catch(SIGTERM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process terminated");
-    } catch(SIGABRT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process aborted");
-    } catch(SIGALRM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process timeout");
-    }
-    sigaction(SIGTERM, &old_action_term, NULL);
-    sigaction(SIGABRT, &old_action_abrt, NULL);
-    sigaction(SIGINT, &old_action_int, NULL);
-    sigaction(SIGALRM, &old_action_alrm, NULL);
-    
-  }
-  resultobj = SWIG_Py_Void();
-  return resultobj;
+  sdd_manager_update_vtree_size_limit(arg1);
+  
+  return TCL_OK;
 fail:
-  return NULL;
+  return TCL_ERROR;
 }
 
 
-SWIGINTERN PyObject *_wrap_sdd_vtree_bit(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
+SWIGINTERN int
+_wrap_sdd_vtree_bit(ClientData clientData SWIGUNUSED, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]) {
   Vtree *arg1 = (Vtree *) 0 ;
   void *argp1 = 0 ;
   int res1 = 0 ;
-  PyObject * obj0 = 0 ;
   int result;
   
-  if (!PyArg_ParseTuple(args,(char *)"O:sdd_vtree_bit",&obj0)) SWIG_fail;
-  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_vtree_t, 0 |  0 );
+  if (SWIG_GetArgs(interp, objc, objv,"o:sdd_vtree_bit vtree ",(void *)0) == TCL_ERROR) SWIG_fail;
+  res1 = SWIG_ConvertPtr(objv[1], &argp1,SWIGTYPE_p_vtree_t, 0 |  0 );
   if (!SWIG_IsOK(res1)) {
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "sdd_vtree_bit" "', argument " "1"" of type '" "Vtree const *""'"); 
   }
   arg1 = (Vtree *)(argp1);
-  {
-    //
-    //    signal(SIGFPE,  handler);
-    //    signal(SIGILL,  handler);
-    
-    // signal(SIGSEGV, handler);
-    
-    struct sigaction new_action;
-    new_action.sa_handler = c_handler;
-    sigemptyset (&new_action.sa_mask);
-    new_action.sa_flags = SA_RESTART;
-    
-    struct sigaction old_action_term;
-    struct sigaction old_action_abrt;
-    struct sigaction old_action_int;
-    struct sigaction old_action_alrm;
-    
-    sigaction(SIGTERM,  &new_action, &old_action_term);
-    sigaction(SIGABRT,  &new_action, &old_action_abrt);
-    sigaction(SIGINT,  &new_action, &old_action_int);
-    sigaction(SIGALRM,  &new_action, &old_action_alrm);
-    try {
-      result = (int)sdd_vtree_bit((struct vtree_t const *)arg1);
-    } catch(SIGINT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process interrupted");
-    } catch(SIGTERM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process terminated");
-    } catch(SIGABRT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process aborted");
-    } catch(SIGALRM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process timeout");
-    }
-    sigaction(SIGTERM, &old_action_term, NULL);
-    sigaction(SIGABRT, &old_action_abrt, NULL);
-    sigaction(SIGINT, &old_action_int, NULL);
-    sigaction(SIGALRM, &old_action_alrm, NULL);
-    
-  }
-  resultobj = SWIG_From_int((int)(result));
-  return resultobj;
+  result = (int)sdd_vtree_bit((struct vtree_t const *)arg1);
+  Tcl_SetObjResult(interp,SWIG_From_int((int)(result)));
+  return TCL_OK;
 fail:
-  return NULL;
+  return TCL_ERROR;
 }
 
 
-SWIGINTERN PyObject *_wrap_sdd_vtree_set_bit(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
+SWIGINTERN int
+_wrap_sdd_vtree_set_bit(ClientData clientData SWIGUNUSED, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]) {
   int arg1 ;
   Vtree *arg2 = (Vtree *) 0 ;
   int val1 ;
   int ecode1 = 0 ;
   void *argp2 = 0 ;
   int res2 = 0 ;
-  PyObject * obj0 = 0 ;
-  PyObject * obj1 = 0 ;
   
-  if (!PyArg_ParseTuple(args,(char *)"OO:sdd_vtree_set_bit",&obj0,&obj1)) SWIG_fail;
-  ecode1 = SWIG_AsVal_int(obj0, &val1);
+  if (SWIG_GetArgs(interp, objc, objv,"oo:sdd_vtree_set_bit bit vtree ",(void *)0,(void *)0) == TCL_ERROR) SWIG_fail;
+  ecode1 = SWIG_AsVal_int SWIG_TCL_CALL_ARGS_2(objv[1], &val1);
   if (!SWIG_IsOK(ecode1)) {
     SWIG_exception_fail(SWIG_ArgError(ecode1), "in method '" "sdd_vtree_set_bit" "', argument " "1"" of type '" "int""'");
   } 
   arg1 = (int)(val1);
-  res2 = SWIG_ConvertPtr(obj1, &argp2,SWIGTYPE_p_vtree_t, 0 |  0 );
+  res2 = SWIG_ConvertPtr(objv[2], &argp2,SWIGTYPE_p_vtree_t, 0 |  0 );
   if (!SWIG_IsOK(res2)) {
     SWIG_exception_fail(SWIG_ArgError(res2), "in method '" "sdd_vtree_set_bit" "', argument " "2"" of type '" "Vtree *""'"); 
   }
   arg2 = (Vtree *)(argp2);
-  {
-    //
-    //    signal(SIGFPE,  handler);
-    //    signal(SIGILL,  handler);
-    
-    // signal(SIGSEGV, handler);
-    
-    struct sigaction new_action;
-    new_action.sa_handler = c_handler;
-    sigemptyset (&new_action.sa_mask);
-    new_action.sa_flags = SA_RESTART;
-    
-    struct sigaction old_action_term;
-    struct sigaction old_action_abrt;
-    struct sigaction old_action_int;
-    struct sigaction old_action_alrm;
-    
-    sigaction(SIGTERM,  &new_action, &old_action_term);
-    sigaction(SIGABRT,  &new_action, &old_action_abrt);
-    sigaction(SIGINT,  &new_action, &old_action_int);
-    sigaction(SIGALRM,  &new_action, &old_action_alrm);
-    try {
-      sdd_vtree_set_bit(arg1,arg2);
-    } catch(SIGINT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process interrupted");
-    } catch(SIGTERM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process terminated");
-    } catch(SIGABRT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process aborted");
-    } catch(SIGALRM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process timeout");
-    }
-    sigaction(SIGTERM, &old_action_term, NULL);
-    sigaction(SIGABRT, &old_action_abrt, NULL);
-    sigaction(SIGINT, &old_action_int, NULL);
-    sigaction(SIGALRM, &old_action_alrm, NULL);
-    
-  }
-  resultobj = SWIG_Py_Void();
-  return resultobj;
+  sdd_vtree_set_bit(arg1,arg2);
+  
+  return TCL_OK;
 fail:
-  return NULL;
+  return TCL_ERROR;
 }
 
 
-SWIGINTERN PyObject *_wrap_sdd_vtree_data(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
+SWIGINTERN int
+_wrap_sdd_vtree_data(ClientData clientData SWIGUNUSED, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]) {
   Vtree *arg1 = (Vtree *) 0 ;
   void *argp1 = 0 ;
   int res1 = 0 ;
-  PyObject * obj0 = 0 ;
   void *result = 0 ;
   
-  if (!PyArg_ParseTuple(args,(char *)"O:sdd_vtree_data",&obj0)) SWIG_fail;
-  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_vtree_t, 0 |  0 );
+  if (SWIG_GetArgs(interp, objc, objv,"o:sdd_vtree_data vtree ",(void *)0) == TCL_ERROR) SWIG_fail;
+  res1 = SWIG_ConvertPtr(objv[1], &argp1,SWIGTYPE_p_vtree_t, 0 |  0 );
   if (!SWIG_IsOK(res1)) {
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "sdd_vtree_data" "', argument " "1"" of type '" "Vtree *""'"); 
   }
   arg1 = (Vtree *)(argp1);
-  {
-    //
-    //    signal(SIGFPE,  handler);
-    //    signal(SIGILL,  handler);
-    
-    // signal(SIGSEGV, handler);
-    
-    struct sigaction new_action;
-    new_action.sa_handler = c_handler;
-    sigemptyset (&new_action.sa_mask);
-    new_action.sa_flags = SA_RESTART;
-    
-    struct sigaction old_action_term;
-    struct sigaction old_action_abrt;
-    struct sigaction old_action_int;
-    struct sigaction old_action_alrm;
-    
-    sigaction(SIGTERM,  &new_action, &old_action_term);
-    sigaction(SIGABRT,  &new_action, &old_action_abrt);
-    sigaction(SIGINT,  &new_action, &old_action_int);
-    sigaction(SIGALRM,  &new_action, &old_action_alrm);
-    try {
-      result = (void *)sdd_vtree_data(arg1);
-    } catch(SIGINT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process interrupted");
-    } catch(SIGTERM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process terminated");
-    } catch(SIGABRT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process aborted");
-    } catch(SIGALRM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process timeout");
-    }
-    sigaction(SIGTERM, &old_action_term, NULL);
-    sigaction(SIGABRT, &old_action_abrt, NULL);
-    sigaction(SIGINT, &old_action_int, NULL);
-    sigaction(SIGALRM, &old_action_alrm, NULL);
-    
-  }
-  resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_void, 0 |  0 );
-  return resultobj;
+  result = (void *)sdd_vtree_data(arg1);
+  Tcl_SetObjResult(interp, SWIG_NewInstanceObj( SWIG_as_voidptr(result), SWIGTYPE_p_void,0));
+  return TCL_OK;
 fail:
-  return NULL;
+  return TCL_ERROR;
 }
 
 
-SWIGINTERN PyObject *_wrap_sdd_vtree_set_data(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
+SWIGINTERN int
+_wrap_sdd_vtree_set_data(ClientData clientData SWIGUNUSED, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]) {
   void *arg1 = (void *) 0 ;
   Vtree *arg2 = (Vtree *) 0 ;
   int res1 ;
   void *argp2 = 0 ;
   int res2 = 0 ;
-  PyObject * obj0 = 0 ;
-  PyObject * obj1 = 0 ;
   
-  if (!PyArg_ParseTuple(args,(char *)"OO:sdd_vtree_set_data",&obj0,&obj1)) SWIG_fail;
-  res1 = SWIG_ConvertPtr(obj0,SWIG_as_voidptrptr(&arg1), 0, 0);
+  if (SWIG_GetArgs(interp, objc, objv,"oo:sdd_vtree_set_data data vtree ",(void *)0,(void *)0) == TCL_ERROR) SWIG_fail;
+  res1 = SWIG_ConvertPtr(objv[1],SWIG_as_voidptrptr(&arg1), 0, 0);
   if (!SWIG_IsOK(res1)) {
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "sdd_vtree_set_data" "', argument " "1"" of type '" "void *""'"); 
   }
-  res2 = SWIG_ConvertPtr(obj1, &argp2,SWIGTYPE_p_vtree_t, 0 |  0 );
+  res2 = SWIG_ConvertPtr(objv[2], &argp2,SWIGTYPE_p_vtree_t, 0 |  0 );
   if (!SWIG_IsOK(res2)) {
     SWIG_exception_fail(SWIG_ArgError(res2), "in method '" "sdd_vtree_set_data" "', argument " "2"" of type '" "Vtree *""'"); 
   }
   arg2 = (Vtree *)(argp2);
-  {
-    //
-    //    signal(SIGFPE,  handler);
-    //    signal(SIGILL,  handler);
-    
-    // signal(SIGSEGV, handler);
-    
-    struct sigaction new_action;
-    new_action.sa_handler = c_handler;
-    sigemptyset (&new_action.sa_mask);
-    new_action.sa_flags = SA_RESTART;
-    
-    struct sigaction old_action_term;
-    struct sigaction old_action_abrt;
-    struct sigaction old_action_int;
-    struct sigaction old_action_alrm;
-    
-    sigaction(SIGTERM,  &new_action, &old_action_term);
-    sigaction(SIGABRT,  &new_action, &old_action_abrt);
-    sigaction(SIGINT,  &new_action, &old_action_int);
-    sigaction(SIGALRM,  &new_action, &old_action_alrm);
-    try {
-      sdd_vtree_set_data(arg1,arg2);
-    } catch(SIGINT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process interrupted");
-    } catch(SIGTERM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process terminated");
-    } catch(SIGABRT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process aborted");
-    } catch(SIGALRM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process timeout");
-    }
-    sigaction(SIGTERM, &old_action_term, NULL);
-    sigaction(SIGABRT, &old_action_abrt, NULL);
-    sigaction(SIGINT, &old_action_int, NULL);
-    sigaction(SIGALRM, &old_action_alrm, NULL);
-    
-  }
-  resultobj = SWIG_Py_Void();
-  return resultobj;
+  sdd_vtree_set_data(arg1,arg2);
+  
+  return TCL_OK;
 fail:
-  return NULL;
+  return TCL_ERROR;
 }
 
 
-SWIGINTERN PyObject *_wrap_sdd_vtree_search_state(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
+SWIGINTERN int
+_wrap_sdd_vtree_search_state(ClientData clientData SWIGUNUSED, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]) {
   Vtree *arg1 = (Vtree *) 0 ;
   void *argp1 = 0 ;
   int res1 = 0 ;
-  PyObject * obj0 = 0 ;
   void *result = 0 ;
   
-  if (!PyArg_ParseTuple(args,(char *)"O:sdd_vtree_search_state",&obj0)) SWIG_fail;
-  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_vtree_t, 0 |  0 );
+  if (SWIG_GetArgs(interp, objc, objv,"o:sdd_vtree_search_state vtree ",(void *)0) == TCL_ERROR) SWIG_fail;
+  res1 = SWIG_ConvertPtr(objv[1], &argp1,SWIGTYPE_p_vtree_t, 0 |  0 );
   if (!SWIG_IsOK(res1)) {
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "sdd_vtree_search_state" "', argument " "1"" of type '" "Vtree const *""'"); 
   }
   arg1 = (Vtree *)(argp1);
-  {
-    //
-    //    signal(SIGFPE,  handler);
-    //    signal(SIGILL,  handler);
-    
-    // signal(SIGSEGV, handler);
-    
-    struct sigaction new_action;
-    new_action.sa_handler = c_handler;
-    sigemptyset (&new_action.sa_mask);
-    new_action.sa_flags = SA_RESTART;
-    
-    struct sigaction old_action_term;
-    struct sigaction old_action_abrt;
-    struct sigaction old_action_int;
-    struct sigaction old_action_alrm;
-    
-    sigaction(SIGTERM,  &new_action, &old_action_term);
-    sigaction(SIGABRT,  &new_action, &old_action_abrt);
-    sigaction(SIGINT,  &new_action, &old_action_int);
-    sigaction(SIGALRM,  &new_action, &old_action_alrm);
-    try {
-      result = (void *)sdd_vtree_search_state((struct vtree_t const *)arg1);
-    } catch(SIGINT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process interrupted");
-    } catch(SIGTERM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process terminated");
-    } catch(SIGABRT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process aborted");
-    } catch(SIGALRM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process timeout");
-    }
-    sigaction(SIGTERM, &old_action_term, NULL);
-    sigaction(SIGABRT, &old_action_abrt, NULL);
-    sigaction(SIGINT, &old_action_int, NULL);
-    sigaction(SIGALRM, &old_action_alrm, NULL);
-    
-  }
-  resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_void, 0 |  0 );
-  return resultobj;
+  result = (void *)sdd_vtree_search_state((struct vtree_t const *)arg1);
+  Tcl_SetObjResult(interp, SWIG_NewInstanceObj( SWIG_as_voidptr(result), SWIGTYPE_p_void,0));
+  return TCL_OK;
 fail:
-  return NULL;
+  return TCL_ERROR;
 }
 
 
-SWIGINTERN PyObject *_wrap_sdd_vtree_set_search_state(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
+SWIGINTERN int
+_wrap_sdd_vtree_set_search_state(ClientData clientData SWIGUNUSED, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]) {
   void *arg1 = (void *) 0 ;
   Vtree *arg2 = (Vtree *) 0 ;
   int res1 ;
   void *argp2 = 0 ;
   int res2 = 0 ;
-  PyObject * obj0 = 0 ;
-  PyObject * obj1 = 0 ;
   
-  if (!PyArg_ParseTuple(args,(char *)"OO:sdd_vtree_set_search_state",&obj0,&obj1)) SWIG_fail;
-  res1 = SWIG_ConvertPtr(obj0,SWIG_as_voidptrptr(&arg1), 0, 0);
+  if (SWIG_GetArgs(interp, objc, objv,"oo:sdd_vtree_set_search_state search_state vtree ",(void *)0,(void *)0) == TCL_ERROR) SWIG_fail;
+  res1 = SWIG_ConvertPtr(objv[1],SWIG_as_voidptrptr(&arg1), 0, 0);
   if (!SWIG_IsOK(res1)) {
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "sdd_vtree_set_search_state" "', argument " "1"" of type '" "void *""'"); 
   }
-  res2 = SWIG_ConvertPtr(obj1, &argp2,SWIGTYPE_p_vtree_t, 0 |  0 );
+  res2 = SWIG_ConvertPtr(objv[2], &argp2,SWIGTYPE_p_vtree_t, 0 |  0 );
   if (!SWIG_IsOK(res2)) {
     SWIG_exception_fail(SWIG_ArgError(res2), "in method '" "sdd_vtree_set_search_state" "', argument " "2"" of type '" "Vtree *""'"); 
   }
   arg2 = (Vtree *)(argp2);
-  {
-    //
-    //    signal(SIGFPE,  handler);
-    //    signal(SIGILL,  handler);
-    
-    // signal(SIGSEGV, handler);
-    
-    struct sigaction new_action;
-    new_action.sa_handler = c_handler;
-    sigemptyset (&new_action.sa_mask);
-    new_action.sa_flags = SA_RESTART;
-    
-    struct sigaction old_action_term;
-    struct sigaction old_action_abrt;
-    struct sigaction old_action_int;
-    struct sigaction old_action_alrm;
-    
-    sigaction(SIGTERM,  &new_action, &old_action_term);
-    sigaction(SIGABRT,  &new_action, &old_action_abrt);
-    sigaction(SIGINT,  &new_action, &old_action_int);
-    sigaction(SIGALRM,  &new_action, &old_action_alrm);
-    try {
-      sdd_vtree_set_search_state(arg1,arg2);
-    } catch(SIGINT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process interrupted");
-    } catch(SIGTERM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process terminated");
-    } catch(SIGABRT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process aborted");
-    } catch(SIGALRM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process timeout");
-    }
-    sigaction(SIGTERM, &old_action_term, NULL);
-    sigaction(SIGABRT, &old_action_abrt, NULL);
-    sigaction(SIGINT, &old_action_int, NULL);
-    sigaction(SIGALRM, &old_action_alrm, NULL);
-    
-  }
-  resultobj = SWIG_Py_Void();
-  return resultobj;
+  sdd_vtree_set_search_state(arg1,arg2);
+  
+  return TCL_OK;
 fail:
-  return NULL;
+  return TCL_ERROR;
 }
 
 
-SWIGINTERN PyObject *_wrap_sdd_ref_count(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
+SWIGINTERN int
+_wrap_sdd_ref_count(ClientData clientData SWIGUNUSED, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]) {
   SddNode *arg1 = (SddNode *) 0 ;
   void *argp1 = 0 ;
   int res1 = 0 ;
-  PyObject * obj0 = 0 ;
   SddRefCount result;
   
-  if (!PyArg_ParseTuple(args,(char *)"O:sdd_ref_count",&obj0)) SWIG_fail;
-  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_sdd_node_t, 0 |  0 );
+  if (SWIG_GetArgs(interp, objc, objv,"o:sdd_ref_count node ",(void *)0) == TCL_ERROR) SWIG_fail;
+  res1 = SWIG_ConvertPtr(objv[1], &argp1,SWIGTYPE_p_sdd_node_t, 0 |  0 );
   if (!SWIG_IsOK(res1)) {
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "sdd_ref_count" "', argument " "1"" of type '" "SddNode *""'"); 
   }
   arg1 = (SddNode *)(argp1);
-  {
-    //
-    //    signal(SIGFPE,  handler);
-    //    signal(SIGILL,  handler);
-    
-    // signal(SIGSEGV, handler);
-    
-    struct sigaction new_action;
-    new_action.sa_handler = c_handler;
-    sigemptyset (&new_action.sa_mask);
-    new_action.sa_flags = SA_RESTART;
-    
-    struct sigaction old_action_term;
-    struct sigaction old_action_abrt;
-    struct sigaction old_action_int;
-    struct sigaction old_action_alrm;
-    
-    sigaction(SIGTERM,  &new_action, &old_action_term);
-    sigaction(SIGABRT,  &new_action, &old_action_abrt);
-    sigaction(SIGINT,  &new_action, &old_action_int);
-    sigaction(SIGALRM,  &new_action, &old_action_alrm);
-    try {
-      result = (SddRefCount)sdd_ref_count(arg1);
-    } catch(SIGINT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process interrupted");
-    } catch(SIGTERM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process terminated");
-    } catch(SIGABRT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process aborted");
-    } catch(SIGALRM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process timeout");
-    }
-    sigaction(SIGTERM, &old_action_term, NULL);
-    sigaction(SIGABRT, &old_action_abrt, NULL);
-    sigaction(SIGINT, &old_action_int, NULL);
-    sigaction(SIGALRM, &old_action_alrm, NULL);
-    
-  }
-  resultobj = SWIG_From_unsigned_SS_int((unsigned int)(result));
-  return resultobj;
+  result = (SddRefCount)sdd_ref_count(arg1);
+  Tcl_SetObjResult(interp,SWIG_From_unsigned_SS_int((unsigned int)(result)));
+  return TCL_OK;
 fail:
-  return NULL;
+  return TCL_ERROR;
 }
 
 
-SWIGINTERN PyObject *_wrap_sdd_ref(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
+SWIGINTERN int
+_wrap_sdd_ref(ClientData clientData SWIGUNUSED, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]) {
   SddNode *arg1 = (SddNode *) 0 ;
   SddManager *arg2 = (SddManager *) 0 ;
   void *argp1 = 0 ;
   int res1 = 0 ;
   void *argp2 = 0 ;
   int res2 = 0 ;
-  PyObject * obj0 = 0 ;
-  PyObject * obj1 = 0 ;
   SddNode *result = 0 ;
   
-  if (!PyArg_ParseTuple(args,(char *)"OO:sdd_ref",&obj0,&obj1)) SWIG_fail;
-  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_sdd_node_t, 0 |  0 );
+  if (SWIG_GetArgs(interp, objc, objv,"oo:sdd_ref node manager ",(void *)0,(void *)0) == TCL_ERROR) SWIG_fail;
+  res1 = SWIG_ConvertPtr(objv[1], &argp1,SWIGTYPE_p_sdd_node_t, 0 |  0 );
   if (!SWIG_IsOK(res1)) {
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "sdd_ref" "', argument " "1"" of type '" "SddNode *""'"); 
   }
   arg1 = (SddNode *)(argp1);
-  res2 = SWIG_ConvertPtr(obj1, &argp2,SWIGTYPE_p_sdd_manager_t, 0 |  0 );
+  res2 = SWIG_ConvertPtr(objv[2], &argp2,SWIGTYPE_p_sdd_manager_t, 0 |  0 );
   if (!SWIG_IsOK(res2)) {
     SWIG_exception_fail(SWIG_ArgError(res2), "in method '" "sdd_ref" "', argument " "2"" of type '" "SddManager *""'"); 
   }
   arg2 = (SddManager *)(argp2);
-  {
-    //
-    //    signal(SIGFPE,  handler);
-    //    signal(SIGILL,  handler);
-    
-    // signal(SIGSEGV, handler);
-    
-    struct sigaction new_action;
-    new_action.sa_handler = c_handler;
-    sigemptyset (&new_action.sa_mask);
-    new_action.sa_flags = SA_RESTART;
-    
-    struct sigaction old_action_term;
-    struct sigaction old_action_abrt;
-    struct sigaction old_action_int;
-    struct sigaction old_action_alrm;
-    
-    sigaction(SIGTERM,  &new_action, &old_action_term);
-    sigaction(SIGABRT,  &new_action, &old_action_abrt);
-    sigaction(SIGINT,  &new_action, &old_action_int);
-    sigaction(SIGALRM,  &new_action, &old_action_alrm);
-    try {
-      result = (SddNode *)sdd_ref(arg1,arg2);
-    } catch(SIGINT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process interrupted");
-    } catch(SIGTERM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process terminated");
-    } catch(SIGABRT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process aborted");
-    } catch(SIGALRM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process timeout");
-    }
-    sigaction(SIGTERM, &old_action_term, NULL);
-    sigaction(SIGABRT, &old_action_abrt, NULL);
-    sigaction(SIGINT, &old_action_int, NULL);
-    sigaction(SIGALRM, &old_action_alrm, NULL);
-    
-  }
-  resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_sdd_node_t, 0 |  0 );
-  return resultobj;
+  result = (SddNode *)sdd_ref(arg1,arg2);
+  Tcl_SetObjResult(interp, SWIG_NewInstanceObj( SWIG_as_voidptr(result), SWIGTYPE_p_sdd_node_t,0));
+  return TCL_OK;
 fail:
-  return NULL;
+  return TCL_ERROR;
 }
 
 
-SWIGINTERN PyObject *_wrap_sdd_deref(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
+SWIGINTERN int
+_wrap_sdd_deref(ClientData clientData SWIGUNUSED, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]) {
   SddNode *arg1 = (SddNode *) 0 ;
   SddManager *arg2 = (SddManager *) 0 ;
   void *argp1 = 0 ;
   int res1 = 0 ;
   void *argp2 = 0 ;
   int res2 = 0 ;
-  PyObject * obj0 = 0 ;
-  PyObject * obj1 = 0 ;
   SddNode *result = 0 ;
   
-  if (!PyArg_ParseTuple(args,(char *)"OO:sdd_deref",&obj0,&obj1)) SWIG_fail;
-  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_sdd_node_t, 0 |  0 );
+  if (SWIG_GetArgs(interp, objc, objv,"oo:sdd_deref node manager ",(void *)0,(void *)0) == TCL_ERROR) SWIG_fail;
+  res1 = SWIG_ConvertPtr(objv[1], &argp1,SWIGTYPE_p_sdd_node_t, 0 |  0 );
   if (!SWIG_IsOK(res1)) {
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "sdd_deref" "', argument " "1"" of type '" "SddNode *""'"); 
   }
   arg1 = (SddNode *)(argp1);
-  res2 = SWIG_ConvertPtr(obj1, &argp2,SWIGTYPE_p_sdd_manager_t, 0 |  0 );
+  res2 = SWIG_ConvertPtr(objv[2], &argp2,SWIGTYPE_p_sdd_manager_t, 0 |  0 );
   if (!SWIG_IsOK(res2)) {
     SWIG_exception_fail(SWIG_ArgError(res2), "in method '" "sdd_deref" "', argument " "2"" of type '" "SddManager *""'"); 
   }
   arg2 = (SddManager *)(argp2);
-  {
-    //
-    //    signal(SIGFPE,  handler);
-    //    signal(SIGILL,  handler);
-    
-    // signal(SIGSEGV, handler);
-    
-    struct sigaction new_action;
-    new_action.sa_handler = c_handler;
-    sigemptyset (&new_action.sa_mask);
-    new_action.sa_flags = SA_RESTART;
-    
-    struct sigaction old_action_term;
-    struct sigaction old_action_abrt;
-    struct sigaction old_action_int;
-    struct sigaction old_action_alrm;
-    
-    sigaction(SIGTERM,  &new_action, &old_action_term);
-    sigaction(SIGABRT,  &new_action, &old_action_abrt);
-    sigaction(SIGINT,  &new_action, &old_action_int);
-    sigaction(SIGALRM,  &new_action, &old_action_alrm);
-    try {
-      result = (SddNode *)sdd_deref(arg1,arg2);
-    } catch(SIGINT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process interrupted");
-    } catch(SIGTERM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process terminated");
-    } catch(SIGABRT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process aborted");
-    } catch(SIGALRM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process timeout");
-    }
-    sigaction(SIGTERM, &old_action_term, NULL);
-    sigaction(SIGABRT, &old_action_abrt, NULL);
-    sigaction(SIGINT, &old_action_int, NULL);
-    sigaction(SIGALRM, &old_action_alrm, NULL);
-    
-  }
-  resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_sdd_node_t, 0 |  0 );
-  return resultobj;
+  result = (SddNode *)sdd_deref(arg1,arg2);
+  Tcl_SetObjResult(interp, SWIG_NewInstanceObj( SWIG_as_voidptr(result), SWIGTYPE_p_sdd_node_t,0));
+  return TCL_OK;
 fail:
-  return NULL;
+  return TCL_ERROR;
 }
 
 
-SWIGINTERN PyObject *_wrap_sdd_manager_garbage_collect(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
+SWIGINTERN int
+_wrap_sdd_manager_garbage_collect(ClientData clientData SWIGUNUSED, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]) {
   SddManager *arg1 = (SddManager *) 0 ;
   void *argp1 = 0 ;
   int res1 = 0 ;
-  PyObject * obj0 = 0 ;
   
-  if (!PyArg_ParseTuple(args,(char *)"O:sdd_manager_garbage_collect",&obj0)) SWIG_fail;
-  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_sdd_manager_t, 0 |  0 );
+  if (SWIG_GetArgs(interp, objc, objv,"o:sdd_manager_garbage_collect manager ",(void *)0) == TCL_ERROR) SWIG_fail;
+  res1 = SWIG_ConvertPtr(objv[1], &argp1,SWIGTYPE_p_sdd_manager_t, 0 |  0 );
   if (!SWIG_IsOK(res1)) {
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "sdd_manager_garbage_collect" "', argument " "1"" of type '" "SddManager *""'"); 
   }
   arg1 = (SddManager *)(argp1);
-  {
-    //
-    //    signal(SIGFPE,  handler);
-    //    signal(SIGILL,  handler);
-    
-    // signal(SIGSEGV, handler);
-    
-    struct sigaction new_action;
-    new_action.sa_handler = c_handler;
-    sigemptyset (&new_action.sa_mask);
-    new_action.sa_flags = SA_RESTART;
-    
-    struct sigaction old_action_term;
-    struct sigaction old_action_abrt;
-    struct sigaction old_action_int;
-    struct sigaction old_action_alrm;
-    
-    sigaction(SIGTERM,  &new_action, &old_action_term);
-    sigaction(SIGABRT,  &new_action, &old_action_abrt);
-    sigaction(SIGINT,  &new_action, &old_action_int);
-    sigaction(SIGALRM,  &new_action, &old_action_alrm);
-    try {
-      sdd_manager_garbage_collect(arg1);
-    } catch(SIGINT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process interrupted");
-    } catch(SIGTERM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process terminated");
-    } catch(SIGABRT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process aborted");
-    } catch(SIGALRM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process timeout");
-    }
-    sigaction(SIGTERM, &old_action_term, NULL);
-    sigaction(SIGABRT, &old_action_abrt, NULL);
-    sigaction(SIGINT, &old_action_int, NULL);
-    sigaction(SIGALRM, &old_action_alrm, NULL);
-    
-  }
-  resultobj = SWIG_Py_Void();
-  return resultobj;
+  sdd_manager_garbage_collect(arg1);
+  
+  return TCL_OK;
 fail:
-  return NULL;
+  return TCL_ERROR;
 }
 
 
-SWIGINTERN PyObject *_wrap_sdd_vtree_garbage_collect(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
+SWIGINTERN int
+_wrap_sdd_vtree_garbage_collect(ClientData clientData SWIGUNUSED, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]) {
   Vtree *arg1 = (Vtree *) 0 ;
   SddManager *arg2 = (SddManager *) 0 ;
   void *argp1 = 0 ;
   int res1 = 0 ;
   void *argp2 = 0 ;
   int res2 = 0 ;
-  PyObject * obj0 = 0 ;
-  PyObject * obj1 = 0 ;
   
-  if (!PyArg_ParseTuple(args,(char *)"OO:sdd_vtree_garbage_collect",&obj0,&obj1)) SWIG_fail;
-  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_vtree_t, 0 |  0 );
+  if (SWIG_GetArgs(interp, objc, objv,"oo:sdd_vtree_garbage_collect vtree manager ",(void *)0,(void *)0) == TCL_ERROR) SWIG_fail;
+  res1 = SWIG_ConvertPtr(objv[1], &argp1,SWIGTYPE_p_vtree_t, 0 |  0 );
   if (!SWIG_IsOK(res1)) {
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "sdd_vtree_garbage_collect" "', argument " "1"" of type '" "Vtree *""'"); 
   }
   arg1 = (Vtree *)(argp1);
-  res2 = SWIG_ConvertPtr(obj1, &argp2,SWIGTYPE_p_sdd_manager_t, 0 |  0 );
+  res2 = SWIG_ConvertPtr(objv[2], &argp2,SWIGTYPE_p_sdd_manager_t, 0 |  0 );
   if (!SWIG_IsOK(res2)) {
     SWIG_exception_fail(SWIG_ArgError(res2), "in method '" "sdd_vtree_garbage_collect" "', argument " "2"" of type '" "SddManager *""'"); 
   }
   arg2 = (SddManager *)(argp2);
-  {
-    //
-    //    signal(SIGFPE,  handler);
-    //    signal(SIGILL,  handler);
-    
-    // signal(SIGSEGV, handler);
-    
-    struct sigaction new_action;
-    new_action.sa_handler = c_handler;
-    sigemptyset (&new_action.sa_mask);
-    new_action.sa_flags = SA_RESTART;
-    
-    struct sigaction old_action_term;
-    struct sigaction old_action_abrt;
-    struct sigaction old_action_int;
-    struct sigaction old_action_alrm;
-    
-    sigaction(SIGTERM,  &new_action, &old_action_term);
-    sigaction(SIGABRT,  &new_action, &old_action_abrt);
-    sigaction(SIGINT,  &new_action, &old_action_int);
-    sigaction(SIGALRM,  &new_action, &old_action_alrm);
-    try {
-      sdd_vtree_garbage_collect(arg1,arg2);
-    } catch(SIGINT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process interrupted");
-    } catch(SIGTERM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process terminated");
-    } catch(SIGABRT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process aborted");
-    } catch(SIGALRM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process timeout");
-    }
-    sigaction(SIGTERM, &old_action_term, NULL);
-    sigaction(SIGABRT, &old_action_abrt, NULL);
-    sigaction(SIGINT, &old_action_int, NULL);
-    sigaction(SIGALRM, &old_action_alrm, NULL);
-    
-  }
-  resultobj = SWIG_Py_Void();
-  return resultobj;
+  sdd_vtree_garbage_collect(arg1,arg2);
+  
+  return TCL_OK;
 fail:
-  return NULL;
+  return TCL_ERROR;
 }
 
 
-SWIGINTERN PyObject *_wrap_sdd_manager_garbage_collect_if(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
+SWIGINTERN int
+_wrap_sdd_manager_garbage_collect_if(ClientData clientData SWIGUNUSED, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]) {
   float arg1 ;
   SddManager *arg2 = (SddManager *) 0 ;
   float val1 ;
   int ecode1 = 0 ;
   void *argp2 = 0 ;
   int res2 = 0 ;
-  PyObject * obj0 = 0 ;
-  PyObject * obj1 = 0 ;
   int result;
   
-  if (!PyArg_ParseTuple(args,(char *)"OO:sdd_manager_garbage_collect_if",&obj0,&obj1)) SWIG_fail;
-  ecode1 = SWIG_AsVal_float(obj0, &val1);
+  if (SWIG_GetArgs(interp, objc, objv,"oo:sdd_manager_garbage_collect_if dead_node_threshold manager ",(void *)0,(void *)0) == TCL_ERROR) SWIG_fail;
+  ecode1 = SWIG_AsVal_float SWIG_TCL_CALL_ARGS_2(objv[1], &val1);
   if (!SWIG_IsOK(ecode1)) {
     SWIG_exception_fail(SWIG_ArgError(ecode1), "in method '" "sdd_manager_garbage_collect_if" "', argument " "1"" of type '" "float""'");
   } 
   arg1 = (float)(val1);
-  res2 = SWIG_ConvertPtr(obj1, &argp2,SWIGTYPE_p_sdd_manager_t, 0 |  0 );
+  res2 = SWIG_ConvertPtr(objv[2], &argp2,SWIGTYPE_p_sdd_manager_t, 0 |  0 );
   if (!SWIG_IsOK(res2)) {
     SWIG_exception_fail(SWIG_ArgError(res2), "in method '" "sdd_manager_garbage_collect_if" "', argument " "2"" of type '" "SddManager *""'"); 
   }
   arg2 = (SddManager *)(argp2);
-  {
-    //
-    //    signal(SIGFPE,  handler);
-    //    signal(SIGILL,  handler);
-    
-    // signal(SIGSEGV, handler);
-    
-    struct sigaction new_action;
-    new_action.sa_handler = c_handler;
-    sigemptyset (&new_action.sa_mask);
-    new_action.sa_flags = SA_RESTART;
-    
-    struct sigaction old_action_term;
-    struct sigaction old_action_abrt;
-    struct sigaction old_action_int;
-    struct sigaction old_action_alrm;
-    
-    sigaction(SIGTERM,  &new_action, &old_action_term);
-    sigaction(SIGABRT,  &new_action, &old_action_abrt);
-    sigaction(SIGINT,  &new_action, &old_action_int);
-    sigaction(SIGALRM,  &new_action, &old_action_alrm);
-    try {
-      result = (int)sdd_manager_garbage_collect_if(arg1,arg2);
-    } catch(SIGINT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process interrupted");
-    } catch(SIGTERM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process terminated");
-    } catch(SIGABRT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process aborted");
-    } catch(SIGALRM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process timeout");
-    }
-    sigaction(SIGTERM, &old_action_term, NULL);
-    sigaction(SIGABRT, &old_action_abrt, NULL);
-    sigaction(SIGINT, &old_action_int, NULL);
-    sigaction(SIGALRM, &old_action_alrm, NULL);
-    
-  }
-  resultobj = SWIG_From_int((int)(result));
-  return resultobj;
+  result = (int)sdd_manager_garbage_collect_if(arg1,arg2);
+  Tcl_SetObjResult(interp,SWIG_From_int((int)(result)));
+  return TCL_OK;
 fail:
-  return NULL;
+  return TCL_ERROR;
 }
 
 
-SWIGINTERN PyObject *_wrap_sdd_vtree_garbage_collect_if(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
+SWIGINTERN int
+_wrap_sdd_vtree_garbage_collect_if(ClientData clientData SWIGUNUSED, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]) {
   float arg1 ;
   Vtree *arg2 = (Vtree *) 0 ;
   SddManager *arg3 = (SddManager *) 0 ;
@@ -13421,1070 +5220,356 @@ SWIGINTERN PyObject *_wrap_sdd_vtree_garbage_collect_if(PyObject *SWIGUNUSEDPARM
   int res2 = 0 ;
   void *argp3 = 0 ;
   int res3 = 0 ;
-  PyObject * obj0 = 0 ;
-  PyObject * obj1 = 0 ;
-  PyObject * obj2 = 0 ;
   int result;
   
-  if (!PyArg_ParseTuple(args,(char *)"OOO:sdd_vtree_garbage_collect_if",&obj0,&obj1,&obj2)) SWIG_fail;
-  ecode1 = SWIG_AsVal_float(obj0, &val1);
+  if (SWIG_GetArgs(interp, objc, objv,"ooo:sdd_vtree_garbage_collect_if dead_node_threshold vtree manager ",(void *)0,(void *)0,(void *)0) == TCL_ERROR) SWIG_fail;
+  ecode1 = SWIG_AsVal_float SWIG_TCL_CALL_ARGS_2(objv[1], &val1);
   if (!SWIG_IsOK(ecode1)) {
     SWIG_exception_fail(SWIG_ArgError(ecode1), "in method '" "sdd_vtree_garbage_collect_if" "', argument " "1"" of type '" "float""'");
   } 
   arg1 = (float)(val1);
-  res2 = SWIG_ConvertPtr(obj1, &argp2,SWIGTYPE_p_vtree_t, 0 |  0 );
+  res2 = SWIG_ConvertPtr(objv[2], &argp2,SWIGTYPE_p_vtree_t, 0 |  0 );
   if (!SWIG_IsOK(res2)) {
     SWIG_exception_fail(SWIG_ArgError(res2), "in method '" "sdd_vtree_garbage_collect_if" "', argument " "2"" of type '" "Vtree *""'"); 
   }
   arg2 = (Vtree *)(argp2);
-  res3 = SWIG_ConvertPtr(obj2, &argp3,SWIGTYPE_p_sdd_manager_t, 0 |  0 );
+  res3 = SWIG_ConvertPtr(objv[3], &argp3,SWIGTYPE_p_sdd_manager_t, 0 |  0 );
   if (!SWIG_IsOK(res3)) {
     SWIG_exception_fail(SWIG_ArgError(res3), "in method '" "sdd_vtree_garbage_collect_if" "', argument " "3"" of type '" "SddManager *""'"); 
   }
   arg3 = (SddManager *)(argp3);
-  {
-    //
-    //    signal(SIGFPE,  handler);
-    //    signal(SIGILL,  handler);
-    
-    // signal(SIGSEGV, handler);
-    
-    struct sigaction new_action;
-    new_action.sa_handler = c_handler;
-    sigemptyset (&new_action.sa_mask);
-    new_action.sa_flags = SA_RESTART;
-    
-    struct sigaction old_action_term;
-    struct sigaction old_action_abrt;
-    struct sigaction old_action_int;
-    struct sigaction old_action_alrm;
-    
-    sigaction(SIGTERM,  &new_action, &old_action_term);
-    sigaction(SIGABRT,  &new_action, &old_action_abrt);
-    sigaction(SIGINT,  &new_action, &old_action_int);
-    sigaction(SIGALRM,  &new_action, &old_action_alrm);
-    try {
-      result = (int)sdd_vtree_garbage_collect_if(arg1,arg2,arg3);
-    } catch(SIGINT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process interrupted");
-    } catch(SIGTERM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process terminated");
-    } catch(SIGABRT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process aborted");
-    } catch(SIGALRM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process timeout");
-    }
-    sigaction(SIGTERM, &old_action_term, NULL);
-    sigaction(SIGABRT, &old_action_abrt, NULL);
-    sigaction(SIGINT, &old_action_int, NULL);
-    sigaction(SIGALRM, &old_action_alrm, NULL);
-    
-  }
-  resultobj = SWIG_From_int((int)(result));
-  return resultobj;
+  result = (int)sdd_vtree_garbage_collect_if(arg1,arg2,arg3);
+  Tcl_SetObjResult(interp,SWIG_From_int((int)(result)));
+  return TCL_OK;
 fail:
-  return NULL;
+  return TCL_ERROR;
 }
 
 
-SWIGINTERN PyObject *_wrap_sdd_manager_minimize(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
+SWIGINTERN int
+_wrap_sdd_manager_minimize(ClientData clientData SWIGUNUSED, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]) {
   SddManager *arg1 = (SddManager *) 0 ;
   void *argp1 = 0 ;
   int res1 = 0 ;
-  PyObject * obj0 = 0 ;
   
-  if (!PyArg_ParseTuple(args,(char *)"O:sdd_manager_minimize",&obj0)) SWIG_fail;
-  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_sdd_manager_t, 0 |  0 );
+  if (SWIG_GetArgs(interp, objc, objv,"o:sdd_manager_minimize manager ",(void *)0) == TCL_ERROR) SWIG_fail;
+  res1 = SWIG_ConvertPtr(objv[1], &argp1,SWIGTYPE_p_sdd_manager_t, 0 |  0 );
   if (!SWIG_IsOK(res1)) {
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "sdd_manager_minimize" "', argument " "1"" of type '" "SddManager *""'"); 
   }
   arg1 = (SddManager *)(argp1);
-  {
-    //
-    //    signal(SIGFPE,  handler);
-    //    signal(SIGILL,  handler);
-    
-    // signal(SIGSEGV, handler);
-    
-    struct sigaction new_action;
-    new_action.sa_handler = c_handler;
-    sigemptyset (&new_action.sa_mask);
-    new_action.sa_flags = SA_RESTART;
-    
-    struct sigaction old_action_term;
-    struct sigaction old_action_abrt;
-    struct sigaction old_action_int;
-    struct sigaction old_action_alrm;
-    
-    sigaction(SIGTERM,  &new_action, &old_action_term);
-    sigaction(SIGABRT,  &new_action, &old_action_abrt);
-    sigaction(SIGINT,  &new_action, &old_action_int);
-    sigaction(SIGALRM,  &new_action, &old_action_alrm);
-    try {
-      sdd_manager_minimize(arg1);
-    } catch(SIGINT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process interrupted");
-    } catch(SIGTERM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process terminated");
-    } catch(SIGABRT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process aborted");
-    } catch(SIGALRM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process timeout");
-    }
-    sigaction(SIGTERM, &old_action_term, NULL);
-    sigaction(SIGABRT, &old_action_abrt, NULL);
-    sigaction(SIGINT, &old_action_int, NULL);
-    sigaction(SIGALRM, &old_action_alrm, NULL);
-    
-  }
-  resultobj = SWIG_Py_Void();
-  return resultobj;
+  sdd_manager_minimize(arg1);
+  
+  return TCL_OK;
 fail:
-  return NULL;
+  return TCL_ERROR;
 }
 
 
-SWIGINTERN PyObject *_wrap_sdd_vtree_minimize(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
+SWIGINTERN int
+_wrap_sdd_vtree_minimize(ClientData clientData SWIGUNUSED, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]) {
   Vtree *arg1 = (Vtree *) 0 ;
   SddManager *arg2 = (SddManager *) 0 ;
   void *argp1 = 0 ;
   int res1 = 0 ;
   void *argp2 = 0 ;
   int res2 = 0 ;
-  PyObject * obj0 = 0 ;
-  PyObject * obj1 = 0 ;
   Vtree *result = 0 ;
   
-  if (!PyArg_ParseTuple(args,(char *)"OO:sdd_vtree_minimize",&obj0,&obj1)) SWIG_fail;
-  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_vtree_t, 0 |  0 );
+  if (SWIG_GetArgs(interp, objc, objv,"oo:sdd_vtree_minimize vtree manager ",(void *)0,(void *)0) == TCL_ERROR) SWIG_fail;
+  res1 = SWIG_ConvertPtr(objv[1], &argp1,SWIGTYPE_p_vtree_t, 0 |  0 );
   if (!SWIG_IsOK(res1)) {
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "sdd_vtree_minimize" "', argument " "1"" of type '" "Vtree *""'"); 
   }
   arg1 = (Vtree *)(argp1);
-  res2 = SWIG_ConvertPtr(obj1, &argp2,SWIGTYPE_p_sdd_manager_t, 0 |  0 );
+  res2 = SWIG_ConvertPtr(objv[2], &argp2,SWIGTYPE_p_sdd_manager_t, 0 |  0 );
   if (!SWIG_IsOK(res2)) {
     SWIG_exception_fail(SWIG_ArgError(res2), "in method '" "sdd_vtree_minimize" "', argument " "2"" of type '" "SddManager *""'"); 
   }
   arg2 = (SddManager *)(argp2);
-  {
-    //
-    //    signal(SIGFPE,  handler);
-    //    signal(SIGILL,  handler);
-    
-    // signal(SIGSEGV, handler);
-    
-    struct sigaction new_action;
-    new_action.sa_handler = c_handler;
-    sigemptyset (&new_action.sa_mask);
-    new_action.sa_flags = SA_RESTART;
-    
-    struct sigaction old_action_term;
-    struct sigaction old_action_abrt;
-    struct sigaction old_action_int;
-    struct sigaction old_action_alrm;
-    
-    sigaction(SIGTERM,  &new_action, &old_action_term);
-    sigaction(SIGABRT,  &new_action, &old_action_abrt);
-    sigaction(SIGINT,  &new_action, &old_action_int);
-    sigaction(SIGALRM,  &new_action, &old_action_alrm);
-    try {
-      result = (Vtree *)sdd_vtree_minimize(arg1,arg2);
-    } catch(SIGINT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process interrupted");
-    } catch(SIGTERM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process terminated");
-    } catch(SIGABRT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process aborted");
-    } catch(SIGALRM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process timeout");
-    }
-    sigaction(SIGTERM, &old_action_term, NULL);
-    sigaction(SIGABRT, &old_action_abrt, NULL);
-    sigaction(SIGINT, &old_action_int, NULL);
-    sigaction(SIGALRM, &old_action_alrm, NULL);
-    
-  }
-  resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_vtree_t, 0 |  0 );
-  return resultobj;
+  result = (Vtree *)sdd_vtree_minimize(arg1,arg2);
+  Tcl_SetObjResult(interp, SWIG_NewInstanceObj( SWIG_as_voidptr(result), SWIGTYPE_p_vtree_t,0));
+  return TCL_OK;
 fail:
-  return NULL;
+  return TCL_ERROR;
 }
 
 
-SWIGINTERN PyObject *_wrap_sdd_manager_minimize_limited(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
+SWIGINTERN int
+_wrap_sdd_manager_minimize_limited(ClientData clientData SWIGUNUSED, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]) {
   SddManager *arg1 = (SddManager *) 0 ;
   void *argp1 = 0 ;
   int res1 = 0 ;
-  PyObject * obj0 = 0 ;
   
-  if (!PyArg_ParseTuple(args,(char *)"O:sdd_manager_minimize_limited",&obj0)) SWIG_fail;
-  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_sdd_manager_t, 0 |  0 );
+  if (SWIG_GetArgs(interp, objc, objv,"o:sdd_manager_minimize_limited manager ",(void *)0) == TCL_ERROR) SWIG_fail;
+  res1 = SWIG_ConvertPtr(objv[1], &argp1,SWIGTYPE_p_sdd_manager_t, 0 |  0 );
   if (!SWIG_IsOK(res1)) {
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "sdd_manager_minimize_limited" "', argument " "1"" of type '" "SddManager *""'"); 
   }
   arg1 = (SddManager *)(argp1);
-  {
-    //
-    //    signal(SIGFPE,  handler);
-    //    signal(SIGILL,  handler);
-    
-    // signal(SIGSEGV, handler);
-    
-    struct sigaction new_action;
-    new_action.sa_handler = c_handler;
-    sigemptyset (&new_action.sa_mask);
-    new_action.sa_flags = SA_RESTART;
-    
-    struct sigaction old_action_term;
-    struct sigaction old_action_abrt;
-    struct sigaction old_action_int;
-    struct sigaction old_action_alrm;
-    
-    sigaction(SIGTERM,  &new_action, &old_action_term);
-    sigaction(SIGABRT,  &new_action, &old_action_abrt);
-    sigaction(SIGINT,  &new_action, &old_action_int);
-    sigaction(SIGALRM,  &new_action, &old_action_alrm);
-    try {
-      sdd_manager_minimize_limited(arg1);
-    } catch(SIGINT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process interrupted");
-    } catch(SIGTERM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process terminated");
-    } catch(SIGABRT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process aborted");
-    } catch(SIGALRM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process timeout");
-    }
-    sigaction(SIGTERM, &old_action_term, NULL);
-    sigaction(SIGABRT, &old_action_abrt, NULL);
-    sigaction(SIGINT, &old_action_int, NULL);
-    sigaction(SIGALRM, &old_action_alrm, NULL);
-    
-  }
-  resultobj = SWIG_Py_Void();
-  return resultobj;
+  sdd_manager_minimize_limited(arg1);
+  
+  return TCL_OK;
 fail:
-  return NULL;
+  return TCL_ERROR;
 }
 
 
-SWIGINTERN PyObject *_wrap_sdd_vtree_minimize_limited(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
+SWIGINTERN int
+_wrap_sdd_vtree_minimize_limited(ClientData clientData SWIGUNUSED, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]) {
   Vtree *arg1 = (Vtree *) 0 ;
   SddManager *arg2 = (SddManager *) 0 ;
   void *argp1 = 0 ;
   int res1 = 0 ;
   void *argp2 = 0 ;
   int res2 = 0 ;
-  PyObject * obj0 = 0 ;
-  PyObject * obj1 = 0 ;
   Vtree *result = 0 ;
   
-  if (!PyArg_ParseTuple(args,(char *)"OO:sdd_vtree_minimize_limited",&obj0,&obj1)) SWIG_fail;
-  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_vtree_t, 0 |  0 );
+  if (SWIG_GetArgs(interp, objc, objv,"oo:sdd_vtree_minimize_limited vtree manager ",(void *)0,(void *)0) == TCL_ERROR) SWIG_fail;
+  res1 = SWIG_ConvertPtr(objv[1], &argp1,SWIGTYPE_p_vtree_t, 0 |  0 );
   if (!SWIG_IsOK(res1)) {
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "sdd_vtree_minimize_limited" "', argument " "1"" of type '" "Vtree *""'"); 
   }
   arg1 = (Vtree *)(argp1);
-  res2 = SWIG_ConvertPtr(obj1, &argp2,SWIGTYPE_p_sdd_manager_t, 0 |  0 );
+  res2 = SWIG_ConvertPtr(objv[2], &argp2,SWIGTYPE_p_sdd_manager_t, 0 |  0 );
   if (!SWIG_IsOK(res2)) {
     SWIG_exception_fail(SWIG_ArgError(res2), "in method '" "sdd_vtree_minimize_limited" "', argument " "2"" of type '" "SddManager *""'"); 
   }
   arg2 = (SddManager *)(argp2);
-  {
-    //
-    //    signal(SIGFPE,  handler);
-    //    signal(SIGILL,  handler);
-    
-    // signal(SIGSEGV, handler);
-    
-    struct sigaction new_action;
-    new_action.sa_handler = c_handler;
-    sigemptyset (&new_action.sa_mask);
-    new_action.sa_flags = SA_RESTART;
-    
-    struct sigaction old_action_term;
-    struct sigaction old_action_abrt;
-    struct sigaction old_action_int;
-    struct sigaction old_action_alrm;
-    
-    sigaction(SIGTERM,  &new_action, &old_action_term);
-    sigaction(SIGABRT,  &new_action, &old_action_abrt);
-    sigaction(SIGINT,  &new_action, &old_action_int);
-    sigaction(SIGALRM,  &new_action, &old_action_alrm);
-    try {
-      result = (Vtree *)sdd_vtree_minimize_limited(arg1,arg2);
-    } catch(SIGINT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process interrupted");
-    } catch(SIGTERM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process terminated");
-    } catch(SIGABRT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process aborted");
-    } catch(SIGALRM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process timeout");
-    }
-    sigaction(SIGTERM, &old_action_term, NULL);
-    sigaction(SIGABRT, &old_action_abrt, NULL);
-    sigaction(SIGINT, &old_action_int, NULL);
-    sigaction(SIGALRM, &old_action_alrm, NULL);
-    
-  }
-  resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_vtree_t, 0 |  0 );
-  return resultobj;
+  result = (Vtree *)sdd_vtree_minimize_limited(arg1,arg2);
+  Tcl_SetObjResult(interp, SWIG_NewInstanceObj( SWIG_as_voidptr(result), SWIGTYPE_p_vtree_t,0));
+  return TCL_OK;
 fail:
-  return NULL;
+  return TCL_ERROR;
 }
 
 
-SWIGINTERN PyObject *_wrap_sdd_manager_set_vtree_search_convergence_threshold(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
+SWIGINTERN int
+_wrap_sdd_manager_set_vtree_search_convergence_threshold(ClientData clientData SWIGUNUSED, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]) {
   float arg1 ;
   SddManager *arg2 = (SddManager *) 0 ;
   float val1 ;
   int ecode1 = 0 ;
   void *argp2 = 0 ;
   int res2 = 0 ;
-  PyObject * obj0 = 0 ;
-  PyObject * obj1 = 0 ;
   
-  if (!PyArg_ParseTuple(args,(char *)"OO:sdd_manager_set_vtree_search_convergence_threshold",&obj0,&obj1)) SWIG_fail;
-  ecode1 = SWIG_AsVal_float(obj0, &val1);
+  if (SWIG_GetArgs(interp, objc, objv,"oo:sdd_manager_set_vtree_search_convergence_threshold threshold manager ",(void *)0,(void *)0) == TCL_ERROR) SWIG_fail;
+  ecode1 = SWIG_AsVal_float SWIG_TCL_CALL_ARGS_2(objv[1], &val1);
   if (!SWIG_IsOK(ecode1)) {
     SWIG_exception_fail(SWIG_ArgError(ecode1), "in method '" "sdd_manager_set_vtree_search_convergence_threshold" "', argument " "1"" of type '" "float""'");
   } 
   arg1 = (float)(val1);
-  res2 = SWIG_ConvertPtr(obj1, &argp2,SWIGTYPE_p_sdd_manager_t, 0 |  0 );
+  res2 = SWIG_ConvertPtr(objv[2], &argp2,SWIGTYPE_p_sdd_manager_t, 0 |  0 );
   if (!SWIG_IsOK(res2)) {
     SWIG_exception_fail(SWIG_ArgError(res2), "in method '" "sdd_manager_set_vtree_search_convergence_threshold" "', argument " "2"" of type '" "SddManager *""'"); 
   }
   arg2 = (SddManager *)(argp2);
-  {
-    //
-    //    signal(SIGFPE,  handler);
-    //    signal(SIGILL,  handler);
-    
-    // signal(SIGSEGV, handler);
-    
-    struct sigaction new_action;
-    new_action.sa_handler = c_handler;
-    sigemptyset (&new_action.sa_mask);
-    new_action.sa_flags = SA_RESTART;
-    
-    struct sigaction old_action_term;
-    struct sigaction old_action_abrt;
-    struct sigaction old_action_int;
-    struct sigaction old_action_alrm;
-    
-    sigaction(SIGTERM,  &new_action, &old_action_term);
-    sigaction(SIGABRT,  &new_action, &old_action_abrt);
-    sigaction(SIGINT,  &new_action, &old_action_int);
-    sigaction(SIGALRM,  &new_action, &old_action_alrm);
-    try {
-      sdd_manager_set_vtree_search_convergence_threshold(arg1,arg2);
-    } catch(SIGINT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process interrupted");
-    } catch(SIGTERM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process terminated");
-    } catch(SIGABRT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process aborted");
-    } catch(SIGALRM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process timeout");
-    }
-    sigaction(SIGTERM, &old_action_term, NULL);
-    sigaction(SIGABRT, &old_action_abrt, NULL);
-    sigaction(SIGINT, &old_action_int, NULL);
-    sigaction(SIGALRM, &old_action_alrm, NULL);
-    
-  }
-  resultobj = SWIG_Py_Void();
-  return resultobj;
+  sdd_manager_set_vtree_search_convergence_threshold(arg1,arg2);
+  
+  return TCL_OK;
 fail:
-  return NULL;
+  return TCL_ERROR;
 }
 
 
-SWIGINTERN PyObject *_wrap_sdd_manager_set_vtree_search_time_limit(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
+SWIGINTERN int
+_wrap_sdd_manager_set_vtree_search_time_limit(ClientData clientData SWIGUNUSED, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]) {
   float arg1 ;
   SddManager *arg2 = (SddManager *) 0 ;
   float val1 ;
   int ecode1 = 0 ;
   void *argp2 = 0 ;
   int res2 = 0 ;
-  PyObject * obj0 = 0 ;
-  PyObject * obj1 = 0 ;
   
-  if (!PyArg_ParseTuple(args,(char *)"OO:sdd_manager_set_vtree_search_time_limit",&obj0,&obj1)) SWIG_fail;
-  ecode1 = SWIG_AsVal_float(obj0, &val1);
+  if (SWIG_GetArgs(interp, objc, objv,"oo:sdd_manager_set_vtree_search_time_limit time_limit manager ",(void *)0,(void *)0) == TCL_ERROR) SWIG_fail;
+  ecode1 = SWIG_AsVal_float SWIG_TCL_CALL_ARGS_2(objv[1], &val1);
   if (!SWIG_IsOK(ecode1)) {
     SWIG_exception_fail(SWIG_ArgError(ecode1), "in method '" "sdd_manager_set_vtree_search_time_limit" "', argument " "1"" of type '" "float""'");
   } 
   arg1 = (float)(val1);
-  res2 = SWIG_ConvertPtr(obj1, &argp2,SWIGTYPE_p_sdd_manager_t, 0 |  0 );
+  res2 = SWIG_ConvertPtr(objv[2], &argp2,SWIGTYPE_p_sdd_manager_t, 0 |  0 );
   if (!SWIG_IsOK(res2)) {
     SWIG_exception_fail(SWIG_ArgError(res2), "in method '" "sdd_manager_set_vtree_search_time_limit" "', argument " "2"" of type '" "SddManager *""'"); 
   }
   arg2 = (SddManager *)(argp2);
-  {
-    //
-    //    signal(SIGFPE,  handler);
-    //    signal(SIGILL,  handler);
-    
-    // signal(SIGSEGV, handler);
-    
-    struct sigaction new_action;
-    new_action.sa_handler = c_handler;
-    sigemptyset (&new_action.sa_mask);
-    new_action.sa_flags = SA_RESTART;
-    
-    struct sigaction old_action_term;
-    struct sigaction old_action_abrt;
-    struct sigaction old_action_int;
-    struct sigaction old_action_alrm;
-    
-    sigaction(SIGTERM,  &new_action, &old_action_term);
-    sigaction(SIGABRT,  &new_action, &old_action_abrt);
-    sigaction(SIGINT,  &new_action, &old_action_int);
-    sigaction(SIGALRM,  &new_action, &old_action_alrm);
-    try {
-      sdd_manager_set_vtree_search_time_limit(arg1,arg2);
-    } catch(SIGINT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process interrupted");
-    } catch(SIGTERM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process terminated");
-    } catch(SIGABRT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process aborted");
-    } catch(SIGALRM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process timeout");
-    }
-    sigaction(SIGTERM, &old_action_term, NULL);
-    sigaction(SIGABRT, &old_action_abrt, NULL);
-    sigaction(SIGINT, &old_action_int, NULL);
-    sigaction(SIGALRM, &old_action_alrm, NULL);
-    
-  }
-  resultobj = SWIG_Py_Void();
-  return resultobj;
+  sdd_manager_set_vtree_search_time_limit(arg1,arg2);
+  
+  return TCL_OK;
 fail:
-  return NULL;
+  return TCL_ERROR;
 }
 
 
-SWIGINTERN PyObject *_wrap_sdd_manager_set_vtree_fragment_time_limit(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
+SWIGINTERN int
+_wrap_sdd_manager_set_vtree_fragment_time_limit(ClientData clientData SWIGUNUSED, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]) {
   float arg1 ;
   SddManager *arg2 = (SddManager *) 0 ;
   float val1 ;
   int ecode1 = 0 ;
   void *argp2 = 0 ;
   int res2 = 0 ;
-  PyObject * obj0 = 0 ;
-  PyObject * obj1 = 0 ;
   
-  if (!PyArg_ParseTuple(args,(char *)"OO:sdd_manager_set_vtree_fragment_time_limit",&obj0,&obj1)) SWIG_fail;
-  ecode1 = SWIG_AsVal_float(obj0, &val1);
+  if (SWIG_GetArgs(interp, objc, objv,"oo:sdd_manager_set_vtree_fragment_time_limit time_limit manager ",(void *)0,(void *)0) == TCL_ERROR) SWIG_fail;
+  ecode1 = SWIG_AsVal_float SWIG_TCL_CALL_ARGS_2(objv[1], &val1);
   if (!SWIG_IsOK(ecode1)) {
     SWIG_exception_fail(SWIG_ArgError(ecode1), "in method '" "sdd_manager_set_vtree_fragment_time_limit" "', argument " "1"" of type '" "float""'");
   } 
   arg1 = (float)(val1);
-  res2 = SWIG_ConvertPtr(obj1, &argp2,SWIGTYPE_p_sdd_manager_t, 0 |  0 );
+  res2 = SWIG_ConvertPtr(objv[2], &argp2,SWIGTYPE_p_sdd_manager_t, 0 |  0 );
   if (!SWIG_IsOK(res2)) {
     SWIG_exception_fail(SWIG_ArgError(res2), "in method '" "sdd_manager_set_vtree_fragment_time_limit" "', argument " "2"" of type '" "SddManager *""'"); 
   }
   arg2 = (SddManager *)(argp2);
-  {
-    //
-    //    signal(SIGFPE,  handler);
-    //    signal(SIGILL,  handler);
-    
-    // signal(SIGSEGV, handler);
-    
-    struct sigaction new_action;
-    new_action.sa_handler = c_handler;
-    sigemptyset (&new_action.sa_mask);
-    new_action.sa_flags = SA_RESTART;
-    
-    struct sigaction old_action_term;
-    struct sigaction old_action_abrt;
-    struct sigaction old_action_int;
-    struct sigaction old_action_alrm;
-    
-    sigaction(SIGTERM,  &new_action, &old_action_term);
-    sigaction(SIGABRT,  &new_action, &old_action_abrt);
-    sigaction(SIGINT,  &new_action, &old_action_int);
-    sigaction(SIGALRM,  &new_action, &old_action_alrm);
-    try {
-      sdd_manager_set_vtree_fragment_time_limit(arg1,arg2);
-    } catch(SIGINT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process interrupted");
-    } catch(SIGTERM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process terminated");
-    } catch(SIGABRT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process aborted");
-    } catch(SIGALRM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process timeout");
-    }
-    sigaction(SIGTERM, &old_action_term, NULL);
-    sigaction(SIGABRT, &old_action_abrt, NULL);
-    sigaction(SIGINT, &old_action_int, NULL);
-    sigaction(SIGALRM, &old_action_alrm, NULL);
-    
-  }
-  resultobj = SWIG_Py_Void();
-  return resultobj;
+  sdd_manager_set_vtree_fragment_time_limit(arg1,arg2);
+  
+  return TCL_OK;
 fail:
-  return NULL;
+  return TCL_ERROR;
 }
 
 
-SWIGINTERN PyObject *_wrap_sdd_manager_set_vtree_operation_time_limit(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
+SWIGINTERN int
+_wrap_sdd_manager_set_vtree_operation_time_limit(ClientData clientData SWIGUNUSED, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]) {
   float arg1 ;
   SddManager *arg2 = (SddManager *) 0 ;
   float val1 ;
   int ecode1 = 0 ;
   void *argp2 = 0 ;
   int res2 = 0 ;
-  PyObject * obj0 = 0 ;
-  PyObject * obj1 = 0 ;
   
-  if (!PyArg_ParseTuple(args,(char *)"OO:sdd_manager_set_vtree_operation_time_limit",&obj0,&obj1)) SWIG_fail;
-  ecode1 = SWIG_AsVal_float(obj0, &val1);
+  if (SWIG_GetArgs(interp, objc, objv,"oo:sdd_manager_set_vtree_operation_time_limit time_limit manager ",(void *)0,(void *)0) == TCL_ERROR) SWIG_fail;
+  ecode1 = SWIG_AsVal_float SWIG_TCL_CALL_ARGS_2(objv[1], &val1);
   if (!SWIG_IsOK(ecode1)) {
     SWIG_exception_fail(SWIG_ArgError(ecode1), "in method '" "sdd_manager_set_vtree_operation_time_limit" "', argument " "1"" of type '" "float""'");
   } 
   arg1 = (float)(val1);
-  res2 = SWIG_ConvertPtr(obj1, &argp2,SWIGTYPE_p_sdd_manager_t, 0 |  0 );
+  res2 = SWIG_ConvertPtr(objv[2], &argp2,SWIGTYPE_p_sdd_manager_t, 0 |  0 );
   if (!SWIG_IsOK(res2)) {
     SWIG_exception_fail(SWIG_ArgError(res2), "in method '" "sdd_manager_set_vtree_operation_time_limit" "', argument " "2"" of type '" "SddManager *""'"); 
   }
   arg2 = (SddManager *)(argp2);
-  {
-    //
-    //    signal(SIGFPE,  handler);
-    //    signal(SIGILL,  handler);
-    
-    // signal(SIGSEGV, handler);
-    
-    struct sigaction new_action;
-    new_action.sa_handler = c_handler;
-    sigemptyset (&new_action.sa_mask);
-    new_action.sa_flags = SA_RESTART;
-    
-    struct sigaction old_action_term;
-    struct sigaction old_action_abrt;
-    struct sigaction old_action_int;
-    struct sigaction old_action_alrm;
-    
-    sigaction(SIGTERM,  &new_action, &old_action_term);
-    sigaction(SIGABRT,  &new_action, &old_action_abrt);
-    sigaction(SIGINT,  &new_action, &old_action_int);
-    sigaction(SIGALRM,  &new_action, &old_action_alrm);
-    try {
-      sdd_manager_set_vtree_operation_time_limit(arg1,arg2);
-    } catch(SIGINT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process interrupted");
-    } catch(SIGTERM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process terminated");
-    } catch(SIGABRT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process aborted");
-    } catch(SIGALRM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process timeout");
-    }
-    sigaction(SIGTERM, &old_action_term, NULL);
-    sigaction(SIGABRT, &old_action_abrt, NULL);
-    sigaction(SIGINT, &old_action_int, NULL);
-    sigaction(SIGALRM, &old_action_alrm, NULL);
-    
-  }
-  resultobj = SWIG_Py_Void();
-  return resultobj;
+  sdd_manager_set_vtree_operation_time_limit(arg1,arg2);
+  
+  return TCL_OK;
 fail:
-  return NULL;
+  return TCL_ERROR;
 }
 
 
-SWIGINTERN PyObject *_wrap_sdd_manager_set_vtree_apply_time_limit(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
+SWIGINTERN int
+_wrap_sdd_manager_set_vtree_apply_time_limit(ClientData clientData SWIGUNUSED, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]) {
   float arg1 ;
   SddManager *arg2 = (SddManager *) 0 ;
   float val1 ;
   int ecode1 = 0 ;
   void *argp2 = 0 ;
   int res2 = 0 ;
-  PyObject * obj0 = 0 ;
-  PyObject * obj1 = 0 ;
   
-  if (!PyArg_ParseTuple(args,(char *)"OO:sdd_manager_set_vtree_apply_time_limit",&obj0,&obj1)) SWIG_fail;
-  ecode1 = SWIG_AsVal_float(obj0, &val1);
+  if (SWIG_GetArgs(interp, objc, objv,"oo:sdd_manager_set_vtree_apply_time_limit time_limit manager ",(void *)0,(void *)0) == TCL_ERROR) SWIG_fail;
+  ecode1 = SWIG_AsVal_float SWIG_TCL_CALL_ARGS_2(objv[1], &val1);
   if (!SWIG_IsOK(ecode1)) {
     SWIG_exception_fail(SWIG_ArgError(ecode1), "in method '" "sdd_manager_set_vtree_apply_time_limit" "', argument " "1"" of type '" "float""'");
   } 
   arg1 = (float)(val1);
-  res2 = SWIG_ConvertPtr(obj1, &argp2,SWIGTYPE_p_sdd_manager_t, 0 |  0 );
+  res2 = SWIG_ConvertPtr(objv[2], &argp2,SWIGTYPE_p_sdd_manager_t, 0 |  0 );
   if (!SWIG_IsOK(res2)) {
     SWIG_exception_fail(SWIG_ArgError(res2), "in method '" "sdd_manager_set_vtree_apply_time_limit" "', argument " "2"" of type '" "SddManager *""'"); 
   }
   arg2 = (SddManager *)(argp2);
-  {
-    //
-    //    signal(SIGFPE,  handler);
-    //    signal(SIGILL,  handler);
-    
-    // signal(SIGSEGV, handler);
-    
-    struct sigaction new_action;
-    new_action.sa_handler = c_handler;
-    sigemptyset (&new_action.sa_mask);
-    new_action.sa_flags = SA_RESTART;
-    
-    struct sigaction old_action_term;
-    struct sigaction old_action_abrt;
-    struct sigaction old_action_int;
-    struct sigaction old_action_alrm;
-    
-    sigaction(SIGTERM,  &new_action, &old_action_term);
-    sigaction(SIGABRT,  &new_action, &old_action_abrt);
-    sigaction(SIGINT,  &new_action, &old_action_int);
-    sigaction(SIGALRM,  &new_action, &old_action_alrm);
-    try {
-      sdd_manager_set_vtree_apply_time_limit(arg1,arg2);
-    } catch(SIGINT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process interrupted");
-    } catch(SIGTERM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process terminated");
-    } catch(SIGABRT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process aborted");
-    } catch(SIGALRM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process timeout");
-    }
-    sigaction(SIGTERM, &old_action_term, NULL);
-    sigaction(SIGABRT, &old_action_abrt, NULL);
-    sigaction(SIGINT, &old_action_int, NULL);
-    sigaction(SIGALRM, &old_action_alrm, NULL);
-    
-  }
-  resultobj = SWIG_Py_Void();
-  return resultobj;
+  sdd_manager_set_vtree_apply_time_limit(arg1,arg2);
+  
+  return TCL_OK;
 fail:
-  return NULL;
+  return TCL_ERROR;
 }
 
 
-SWIGINTERN PyObject *_wrap_sdd_manager_set_vtree_operation_memory_limit(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
+SWIGINTERN int
+_wrap_sdd_manager_set_vtree_operation_memory_limit(ClientData clientData SWIGUNUSED, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]) {
   float arg1 ;
   SddManager *arg2 = (SddManager *) 0 ;
   float val1 ;
   int ecode1 = 0 ;
   void *argp2 = 0 ;
   int res2 = 0 ;
-  PyObject * obj0 = 0 ;
-  PyObject * obj1 = 0 ;
   
-  if (!PyArg_ParseTuple(args,(char *)"OO:sdd_manager_set_vtree_operation_memory_limit",&obj0,&obj1)) SWIG_fail;
-  ecode1 = SWIG_AsVal_float(obj0, &val1);
+  if (SWIG_GetArgs(interp, objc, objv,"oo:sdd_manager_set_vtree_operation_memory_limit memory_limit manager ",(void *)0,(void *)0) == TCL_ERROR) SWIG_fail;
+  ecode1 = SWIG_AsVal_float SWIG_TCL_CALL_ARGS_2(objv[1], &val1);
   if (!SWIG_IsOK(ecode1)) {
     SWIG_exception_fail(SWIG_ArgError(ecode1), "in method '" "sdd_manager_set_vtree_operation_memory_limit" "', argument " "1"" of type '" "float""'");
   } 
   arg1 = (float)(val1);
-  res2 = SWIG_ConvertPtr(obj1, &argp2,SWIGTYPE_p_sdd_manager_t, 0 |  0 );
+  res2 = SWIG_ConvertPtr(objv[2], &argp2,SWIGTYPE_p_sdd_manager_t, 0 |  0 );
   if (!SWIG_IsOK(res2)) {
     SWIG_exception_fail(SWIG_ArgError(res2), "in method '" "sdd_manager_set_vtree_operation_memory_limit" "', argument " "2"" of type '" "SddManager *""'"); 
   }
   arg2 = (SddManager *)(argp2);
-  {
-    //
-    //    signal(SIGFPE,  handler);
-    //    signal(SIGILL,  handler);
-    
-    // signal(SIGSEGV, handler);
-    
-    struct sigaction new_action;
-    new_action.sa_handler = c_handler;
-    sigemptyset (&new_action.sa_mask);
-    new_action.sa_flags = SA_RESTART;
-    
-    struct sigaction old_action_term;
-    struct sigaction old_action_abrt;
-    struct sigaction old_action_int;
-    struct sigaction old_action_alrm;
-    
-    sigaction(SIGTERM,  &new_action, &old_action_term);
-    sigaction(SIGABRT,  &new_action, &old_action_abrt);
-    sigaction(SIGINT,  &new_action, &old_action_int);
-    sigaction(SIGALRM,  &new_action, &old_action_alrm);
-    try {
-      sdd_manager_set_vtree_operation_memory_limit(arg1,arg2);
-    } catch(SIGINT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process interrupted");
-    } catch(SIGTERM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process terminated");
-    } catch(SIGABRT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process aborted");
-    } catch(SIGALRM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process timeout");
-    }
-    sigaction(SIGTERM, &old_action_term, NULL);
-    sigaction(SIGABRT, &old_action_abrt, NULL);
-    sigaction(SIGINT, &old_action_int, NULL);
-    sigaction(SIGALRM, &old_action_alrm, NULL);
-    
-  }
-  resultobj = SWIG_Py_Void();
-  return resultobj;
+  sdd_manager_set_vtree_operation_memory_limit(arg1,arg2);
+  
+  return TCL_OK;
 fail:
-  return NULL;
+  return TCL_ERROR;
 }
 
 
-SWIGINTERN PyObject *_wrap_sdd_manager_set_vtree_operation_size_limit(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
+SWIGINTERN int
+_wrap_sdd_manager_set_vtree_operation_size_limit(ClientData clientData SWIGUNUSED, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]) {
   float arg1 ;
   SddManager *arg2 = (SddManager *) 0 ;
   float val1 ;
   int ecode1 = 0 ;
   void *argp2 = 0 ;
   int res2 = 0 ;
-  PyObject * obj0 = 0 ;
-  PyObject * obj1 = 0 ;
   
-  if (!PyArg_ParseTuple(args,(char *)"OO:sdd_manager_set_vtree_operation_size_limit",&obj0,&obj1)) SWIG_fail;
-  ecode1 = SWIG_AsVal_float(obj0, &val1);
+  if (SWIG_GetArgs(interp, objc, objv,"oo:sdd_manager_set_vtree_operation_size_limit size_limit manager ",(void *)0,(void *)0) == TCL_ERROR) SWIG_fail;
+  ecode1 = SWIG_AsVal_float SWIG_TCL_CALL_ARGS_2(objv[1], &val1);
   if (!SWIG_IsOK(ecode1)) {
     SWIG_exception_fail(SWIG_ArgError(ecode1), "in method '" "sdd_manager_set_vtree_operation_size_limit" "', argument " "1"" of type '" "float""'");
   } 
   arg1 = (float)(val1);
-  res2 = SWIG_ConvertPtr(obj1, &argp2,SWIGTYPE_p_sdd_manager_t, 0 |  0 );
+  res2 = SWIG_ConvertPtr(objv[2], &argp2,SWIGTYPE_p_sdd_manager_t, 0 |  0 );
   if (!SWIG_IsOK(res2)) {
     SWIG_exception_fail(SWIG_ArgError(res2), "in method '" "sdd_manager_set_vtree_operation_size_limit" "', argument " "2"" of type '" "SddManager *""'"); 
   }
   arg2 = (SddManager *)(argp2);
-  {
-    //
-    //    signal(SIGFPE,  handler);
-    //    signal(SIGILL,  handler);
-    
-    // signal(SIGSEGV, handler);
-    
-    struct sigaction new_action;
-    new_action.sa_handler = c_handler;
-    sigemptyset (&new_action.sa_mask);
-    new_action.sa_flags = SA_RESTART;
-    
-    struct sigaction old_action_term;
-    struct sigaction old_action_abrt;
-    struct sigaction old_action_int;
-    struct sigaction old_action_alrm;
-    
-    sigaction(SIGTERM,  &new_action, &old_action_term);
-    sigaction(SIGABRT,  &new_action, &old_action_abrt);
-    sigaction(SIGINT,  &new_action, &old_action_int);
-    sigaction(SIGALRM,  &new_action, &old_action_alrm);
-    try {
-      sdd_manager_set_vtree_operation_size_limit(arg1,arg2);
-    } catch(SIGINT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process interrupted");
-    } catch(SIGTERM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process terminated");
-    } catch(SIGABRT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process aborted");
-    } catch(SIGALRM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process timeout");
-    }
-    sigaction(SIGTERM, &old_action_term, NULL);
-    sigaction(SIGABRT, &old_action_abrt, NULL);
-    sigaction(SIGINT, &old_action_int, NULL);
-    sigaction(SIGALRM, &old_action_alrm, NULL);
-    
-  }
-  resultobj = SWIG_Py_Void();
-  return resultobj;
+  sdd_manager_set_vtree_operation_size_limit(arg1,arg2);
+  
+  return TCL_OK;
 fail:
-  return NULL;
+  return TCL_ERROR;
 }
 
 
-SWIGINTERN PyObject *_wrap_sdd_manager_set_vtree_cartesian_product_limit(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
+SWIGINTERN int
+_wrap_sdd_manager_set_vtree_cartesian_product_limit(ClientData clientData SWIGUNUSED, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]) {
   SddSize arg1 ;
   SddManager *arg2 = (SddManager *) 0 ;
   size_t val1 ;
   int ecode1 = 0 ;
   void *argp2 = 0 ;
   int res2 = 0 ;
-  PyObject * obj0 = 0 ;
-  PyObject * obj1 = 0 ;
   
-  if (!PyArg_ParseTuple(args,(char *)"OO:sdd_manager_set_vtree_cartesian_product_limit",&obj0,&obj1)) SWIG_fail;
-  ecode1 = SWIG_AsVal_size_t(obj0, &val1);
+  if (SWIG_GetArgs(interp, objc, objv,"oo:sdd_manager_set_vtree_cartesian_product_limit size_limit manager ",(void *)0,(void *)0) == TCL_ERROR) SWIG_fail;
+  ecode1 = SWIG_AsVal_size_t SWIG_TCL_CALL_ARGS_2(objv[1], &val1);
   if (!SWIG_IsOK(ecode1)) {
     SWIG_exception_fail(SWIG_ArgError(ecode1), "in method '" "sdd_manager_set_vtree_cartesian_product_limit" "', argument " "1"" of type '" "SddSize""'");
   } 
   arg1 = (SddSize)(val1);
-  res2 = SWIG_ConvertPtr(obj1, &argp2,SWIGTYPE_p_sdd_manager_t, 0 |  0 );
+  res2 = SWIG_ConvertPtr(objv[2], &argp2,SWIGTYPE_p_sdd_manager_t, 0 |  0 );
   if (!SWIG_IsOK(res2)) {
     SWIG_exception_fail(SWIG_ArgError(res2), "in method '" "sdd_manager_set_vtree_cartesian_product_limit" "', argument " "2"" of type '" "SddManager *""'"); 
   }
   arg2 = (SddManager *)(argp2);
-  {
-    //
-    //    signal(SIGFPE,  handler);
-    //    signal(SIGILL,  handler);
-    
-    // signal(SIGSEGV, handler);
-    
-    struct sigaction new_action;
-    new_action.sa_handler = c_handler;
-    sigemptyset (&new_action.sa_mask);
-    new_action.sa_flags = SA_RESTART;
-    
-    struct sigaction old_action_term;
-    struct sigaction old_action_abrt;
-    struct sigaction old_action_int;
-    struct sigaction old_action_alrm;
-    
-    sigaction(SIGTERM,  &new_action, &old_action_term);
-    sigaction(SIGABRT,  &new_action, &old_action_abrt);
-    sigaction(SIGINT,  &new_action, &old_action_int);
-    sigaction(SIGALRM,  &new_action, &old_action_alrm);
-    try {
-      sdd_manager_set_vtree_cartesian_product_limit(arg1,arg2);
-    } catch(SIGINT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process interrupted");
-    } catch(SIGTERM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process terminated");
-    } catch(SIGABRT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process aborted");
-    } catch(SIGALRM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process timeout");
-    }
-    sigaction(SIGTERM, &old_action_term, NULL);
-    sigaction(SIGABRT, &old_action_abrt, NULL);
-    sigaction(SIGINT, &old_action_int, NULL);
-    sigaction(SIGALRM, &old_action_alrm, NULL);
-    
-  }
-  resultobj = SWIG_Py_Void();
-  return resultobj;
+  sdd_manager_set_vtree_cartesian_product_limit(arg1,arg2);
+  
+  return TCL_OK;
 fail:
-  return NULL;
+  return TCL_ERROR;
 }
 
 
-SWIGINTERN PyObject *_wrap_wmc_manager_new(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
+SWIGINTERN int
+_wrap_wmc_manager_new(ClientData clientData SWIGUNUSED, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]) {
   SddNode *arg1 = (SddNode *) 0 ;
   int arg2 ;
   SddManager *arg3 = (SddManager *) 0 ;
@@ -14494,164 +5579,54 @@ SWIGINTERN PyObject *_wrap_wmc_manager_new(PyObject *SWIGUNUSEDPARM(self), PyObj
   int ecode2 = 0 ;
   void *argp3 = 0 ;
   int res3 = 0 ;
-  PyObject * obj0 = 0 ;
-  PyObject * obj1 = 0 ;
-  PyObject * obj2 = 0 ;
   WmcManager *result = 0 ;
   
-  if (!PyArg_ParseTuple(args,(char *)"OOO:wmc_manager_new",&obj0,&obj1,&obj2)) SWIG_fail;
-  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_sdd_node_t, 0 |  0 );
+  if (SWIG_GetArgs(interp, objc, objv,"ooo:wmc_manager_new node log_mode manager ",(void *)0,(void *)0,(void *)0) == TCL_ERROR) SWIG_fail;
+  res1 = SWIG_ConvertPtr(objv[1], &argp1,SWIGTYPE_p_sdd_node_t, 0 |  0 );
   if (!SWIG_IsOK(res1)) {
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "wmc_manager_new" "', argument " "1"" of type '" "SddNode *""'"); 
   }
   arg1 = (SddNode *)(argp1);
-  ecode2 = SWIG_AsVal_int(obj1, &val2);
+  ecode2 = SWIG_AsVal_int SWIG_TCL_CALL_ARGS_2(objv[2], &val2);
   if (!SWIG_IsOK(ecode2)) {
     SWIG_exception_fail(SWIG_ArgError(ecode2), "in method '" "wmc_manager_new" "', argument " "2"" of type '" "int""'");
   } 
   arg2 = (int)(val2);
-  res3 = SWIG_ConvertPtr(obj2, &argp3,SWIGTYPE_p_sdd_manager_t, 0 |  0 );
+  res3 = SWIG_ConvertPtr(objv[3], &argp3,SWIGTYPE_p_sdd_manager_t, 0 |  0 );
   if (!SWIG_IsOK(res3)) {
     SWIG_exception_fail(SWIG_ArgError(res3), "in method '" "wmc_manager_new" "', argument " "3"" of type '" "SddManager *""'"); 
   }
   arg3 = (SddManager *)(argp3);
-  {
-    //
-    //    signal(SIGFPE,  handler);
-    //    signal(SIGILL,  handler);
-    
-    // signal(SIGSEGV, handler);
-    
-    struct sigaction new_action;
-    new_action.sa_handler = c_handler;
-    sigemptyset (&new_action.sa_mask);
-    new_action.sa_flags = SA_RESTART;
-    
-    struct sigaction old_action_term;
-    struct sigaction old_action_abrt;
-    struct sigaction old_action_int;
-    struct sigaction old_action_alrm;
-    
-    sigaction(SIGTERM,  &new_action, &old_action_term);
-    sigaction(SIGABRT,  &new_action, &old_action_abrt);
-    sigaction(SIGINT,  &new_action, &old_action_int);
-    sigaction(SIGALRM,  &new_action, &old_action_alrm);
-    try {
-      result = (WmcManager *)wmc_manager_new(arg1,arg2,arg3);
-    } catch(SIGINT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process interrupted");
-    } catch(SIGTERM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process terminated");
-    } catch(SIGABRT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process aborted");
-    } catch(SIGALRM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process timeout");
-    }
-    sigaction(SIGTERM, &old_action_term, NULL);
-    sigaction(SIGABRT, &old_action_abrt, NULL);
-    sigaction(SIGINT, &old_action_int, NULL);
-    sigaction(SIGALRM, &old_action_alrm, NULL);
-    
-  }
-  resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_wmc_manager_t, 0 |  0 );
-  return resultobj;
+  result = (WmcManager *)wmc_manager_new(arg1,arg2,arg3);
+  Tcl_SetObjResult(interp, SWIG_NewInstanceObj( SWIG_as_voidptr(result), SWIGTYPE_p_wmc_manager_t,0));
+  return TCL_OK;
 fail:
-  return NULL;
+  return TCL_ERROR;
 }
 
 
-SWIGINTERN PyObject *_wrap_wmc_manager_free(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
+SWIGINTERN int
+_wrap_wmc_manager_free(ClientData clientData SWIGUNUSED, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]) {
   WmcManager *arg1 = (WmcManager *) 0 ;
   void *argp1 = 0 ;
   int res1 = 0 ;
-  PyObject * obj0 = 0 ;
   
-  if (!PyArg_ParseTuple(args,(char *)"O:wmc_manager_free",&obj0)) SWIG_fail;
-  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_wmc_manager_t, 0 |  0 );
+  if (SWIG_GetArgs(interp, objc, objv,"o:wmc_manager_free wmc_manager ",(void *)0) == TCL_ERROR) SWIG_fail;
+  res1 = SWIG_ConvertPtr(objv[1], &argp1,SWIGTYPE_p_wmc_manager_t, 0 |  0 );
   if (!SWIG_IsOK(res1)) {
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "wmc_manager_free" "', argument " "1"" of type '" "WmcManager *""'"); 
   }
   arg1 = (WmcManager *)(argp1);
-  {
-    //
-    //    signal(SIGFPE,  handler);
-    //    signal(SIGILL,  handler);
-    
-    // signal(SIGSEGV, handler);
-    
-    struct sigaction new_action;
-    new_action.sa_handler = c_handler;
-    sigemptyset (&new_action.sa_mask);
-    new_action.sa_flags = SA_RESTART;
-    
-    struct sigaction old_action_term;
-    struct sigaction old_action_abrt;
-    struct sigaction old_action_int;
-    struct sigaction old_action_alrm;
-    
-    sigaction(SIGTERM,  &new_action, &old_action_term);
-    sigaction(SIGABRT,  &new_action, &old_action_abrt);
-    sigaction(SIGINT,  &new_action, &old_action_int);
-    sigaction(SIGALRM,  &new_action, &old_action_alrm);
-    try {
-      wmc_manager_free(arg1);
-    } catch(SIGINT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process interrupted");
-    } catch(SIGTERM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process terminated");
-    } catch(SIGABRT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process aborted");
-    } catch(SIGALRM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process timeout");
-    }
-    sigaction(SIGTERM, &old_action_term, NULL);
-    sigaction(SIGABRT, &old_action_abrt, NULL);
-    sigaction(SIGINT, &old_action_int, NULL);
-    sigaction(SIGALRM, &old_action_alrm, NULL);
-    
-  }
-  resultobj = SWIG_Py_Void();
-  return resultobj;
+  wmc_manager_free(arg1);
+  
+  return TCL_OK;
 fail:
-  return NULL;
+  return TCL_ERROR;
 }
 
 
-SWIGINTERN PyObject *_wrap_wmc_set_literal_weight(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
+SWIGINTERN int
+_wrap_wmc_set_literal_weight(ClientData clientData SWIGUNUSED, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]) {
   SddLiteral arg1 ;
   SddWmc arg2 ;
   WmcManager *arg3 = (WmcManager *) 0 ;
@@ -14661,713 +5636,337 @@ SWIGINTERN PyObject *_wrap_wmc_set_literal_weight(PyObject *SWIGUNUSEDPARM(self)
   int ecode2 = 0 ;
   void *argp3 = 0 ;
   int res3 = 0 ;
-  PyObject * obj0 = 0 ;
-  PyObject * obj1 = 0 ;
-  PyObject * obj2 = 0 ;
   
-  if (!PyArg_ParseTuple(args,(char *)"OOO:wmc_set_literal_weight",&obj0,&obj1,&obj2)) SWIG_fail;
-  ecode1 = SWIG_AsVal_long(obj0, &val1);
+  if (SWIG_GetArgs(interp, objc, objv,"ooo:wmc_set_literal_weight literal weight wmc_manager ",(void *)0,(void *)0,(void *)0) == TCL_ERROR) SWIG_fail;
+  ecode1 = SWIG_AsVal_long SWIG_TCL_CALL_ARGS_2(objv[1], &val1);
   if (!SWIG_IsOK(ecode1)) {
     SWIG_exception_fail(SWIG_ArgError(ecode1), "in method '" "wmc_set_literal_weight" "', argument " "1"" of type '" "SddLiteral""'");
   } 
   arg1 = (SddLiteral)(val1);
-  ecode2 = SWIG_AsVal_double(obj1, &val2);
+  ecode2 = SWIG_AsVal_double SWIG_TCL_CALL_ARGS_2(objv[2], &val2);
   if (!SWIG_IsOK(ecode2)) {
     SWIG_exception_fail(SWIG_ArgError(ecode2), "in method '" "wmc_set_literal_weight" "', argument " "2"" of type '" "SddWmc""'");
   } 
   arg2 = (SddWmc)(val2);
-  res3 = SWIG_ConvertPtr(obj2, &argp3,SWIGTYPE_p_wmc_manager_t, 0 |  0 );
+  res3 = SWIG_ConvertPtr(objv[3], &argp3,SWIGTYPE_p_wmc_manager_t, 0 |  0 );
   if (!SWIG_IsOK(res3)) {
     SWIG_exception_fail(SWIG_ArgError(res3), "in method '" "wmc_set_literal_weight" "', argument " "3"" of type '" "WmcManager *""'"); 
   }
   arg3 = (WmcManager *)(argp3);
-  {
-    //
-    //    signal(SIGFPE,  handler);
-    //    signal(SIGILL,  handler);
-    
-    // signal(SIGSEGV, handler);
-    
-    struct sigaction new_action;
-    new_action.sa_handler = c_handler;
-    sigemptyset (&new_action.sa_mask);
-    new_action.sa_flags = SA_RESTART;
-    
-    struct sigaction old_action_term;
-    struct sigaction old_action_abrt;
-    struct sigaction old_action_int;
-    struct sigaction old_action_alrm;
-    
-    sigaction(SIGTERM,  &new_action, &old_action_term);
-    sigaction(SIGABRT,  &new_action, &old_action_abrt);
-    sigaction(SIGINT,  &new_action, &old_action_int);
-    sigaction(SIGALRM,  &new_action, &old_action_alrm);
-    try {
-      wmc_set_literal_weight(arg1,arg2,arg3);
-    } catch(SIGINT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process interrupted");
-    } catch(SIGTERM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process terminated");
-    } catch(SIGABRT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process aborted");
-    } catch(SIGALRM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process timeout");
-    }
-    sigaction(SIGTERM, &old_action_term, NULL);
-    sigaction(SIGABRT, &old_action_abrt, NULL);
-    sigaction(SIGINT, &old_action_int, NULL);
-    sigaction(SIGALRM, &old_action_alrm, NULL);
-    
-  }
-  resultobj = SWIG_Py_Void();
-  return resultobj;
+  wmc_set_literal_weight(arg1,arg2,arg3);
+  
+  return TCL_OK;
 fail:
-  return NULL;
+  return TCL_ERROR;
 }
 
 
-SWIGINTERN PyObject *_wrap_wmc_propagate(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
+SWIGINTERN int
+_wrap_wmc_propagate(ClientData clientData SWIGUNUSED, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]) {
   WmcManager *arg1 = (WmcManager *) 0 ;
   void *argp1 = 0 ;
   int res1 = 0 ;
-  PyObject * obj0 = 0 ;
   SddWmc result;
   
-  if (!PyArg_ParseTuple(args,(char *)"O:wmc_propagate",&obj0)) SWIG_fail;
-  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_wmc_manager_t, 0 |  0 );
+  if (SWIG_GetArgs(interp, objc, objv,"o:wmc_propagate wmc_manager ",(void *)0) == TCL_ERROR) SWIG_fail;
+  res1 = SWIG_ConvertPtr(objv[1], &argp1,SWIGTYPE_p_wmc_manager_t, 0 |  0 );
   if (!SWIG_IsOK(res1)) {
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "wmc_propagate" "', argument " "1"" of type '" "WmcManager *""'"); 
   }
   arg1 = (WmcManager *)(argp1);
-  {
-    //
-    //    signal(SIGFPE,  handler);
-    //    signal(SIGILL,  handler);
-    
-    // signal(SIGSEGV, handler);
-    
-    struct sigaction new_action;
-    new_action.sa_handler = c_handler;
-    sigemptyset (&new_action.sa_mask);
-    new_action.sa_flags = SA_RESTART;
-    
-    struct sigaction old_action_term;
-    struct sigaction old_action_abrt;
-    struct sigaction old_action_int;
-    struct sigaction old_action_alrm;
-    
-    sigaction(SIGTERM,  &new_action, &old_action_term);
-    sigaction(SIGABRT,  &new_action, &old_action_abrt);
-    sigaction(SIGINT,  &new_action, &old_action_int);
-    sigaction(SIGALRM,  &new_action, &old_action_alrm);
-    try {
-      result = (SddWmc)wmc_propagate(arg1);
-    } catch(SIGINT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process interrupted");
-    } catch(SIGTERM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process terminated");
-    } catch(SIGABRT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process aborted");
-    } catch(SIGALRM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process timeout");
-    }
-    sigaction(SIGTERM, &old_action_term, NULL);
-    sigaction(SIGABRT, &old_action_abrt, NULL);
-    sigaction(SIGINT, &old_action_int, NULL);
-    sigaction(SIGALRM, &old_action_alrm, NULL);
-    
-  }
-  resultobj = SWIG_From_double((double)(result));
-  return resultobj;
+  result = (SddWmc)wmc_propagate(arg1);
+  Tcl_SetObjResult(interp,SWIG_From_double((double)(result)));
+  return TCL_OK;
 fail:
-  return NULL;
+  return TCL_ERROR;
 }
 
 
-SWIGINTERN PyObject *_wrap_wmc_zero_weight(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
+SWIGINTERN int
+_wrap_wmc_zero_weight(ClientData clientData SWIGUNUSED, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]) {
   WmcManager *arg1 = (WmcManager *) 0 ;
   void *argp1 = 0 ;
   int res1 = 0 ;
-  PyObject * obj0 = 0 ;
   SddWmc result;
   
-  if (!PyArg_ParseTuple(args,(char *)"O:wmc_zero_weight",&obj0)) SWIG_fail;
-  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_wmc_manager_t, 0 |  0 );
+  if (SWIG_GetArgs(interp, objc, objv,"o:wmc_zero_weight wmc_manager ",(void *)0) == TCL_ERROR) SWIG_fail;
+  res1 = SWIG_ConvertPtr(objv[1], &argp1,SWIGTYPE_p_wmc_manager_t, 0 |  0 );
   if (!SWIG_IsOK(res1)) {
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "wmc_zero_weight" "', argument " "1"" of type '" "WmcManager *""'"); 
   }
   arg1 = (WmcManager *)(argp1);
-  {
-    //
-    //    signal(SIGFPE,  handler);
-    //    signal(SIGILL,  handler);
-    
-    // signal(SIGSEGV, handler);
-    
-    struct sigaction new_action;
-    new_action.sa_handler = c_handler;
-    sigemptyset (&new_action.sa_mask);
-    new_action.sa_flags = SA_RESTART;
-    
-    struct sigaction old_action_term;
-    struct sigaction old_action_abrt;
-    struct sigaction old_action_int;
-    struct sigaction old_action_alrm;
-    
-    sigaction(SIGTERM,  &new_action, &old_action_term);
-    sigaction(SIGABRT,  &new_action, &old_action_abrt);
-    sigaction(SIGINT,  &new_action, &old_action_int);
-    sigaction(SIGALRM,  &new_action, &old_action_alrm);
-    try {
-      result = (SddWmc)wmc_zero_weight(arg1);
-    } catch(SIGINT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process interrupted");
-    } catch(SIGTERM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process terminated");
-    } catch(SIGABRT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process aborted");
-    } catch(SIGALRM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process timeout");
-    }
-    sigaction(SIGTERM, &old_action_term, NULL);
-    sigaction(SIGABRT, &old_action_abrt, NULL);
-    sigaction(SIGINT, &old_action_int, NULL);
-    sigaction(SIGALRM, &old_action_alrm, NULL);
-    
-  }
-  resultobj = SWIG_From_double((double)(result));
-  return resultobj;
+  result = (SddWmc)wmc_zero_weight(arg1);
+  Tcl_SetObjResult(interp,SWIG_From_double((double)(result)));
+  return TCL_OK;
 fail:
-  return NULL;
+  return TCL_ERROR;
 }
 
 
-SWIGINTERN PyObject *_wrap_wmc_one_weight(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
+SWIGINTERN int
+_wrap_wmc_one_weight(ClientData clientData SWIGUNUSED, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]) {
   WmcManager *arg1 = (WmcManager *) 0 ;
   void *argp1 = 0 ;
   int res1 = 0 ;
-  PyObject * obj0 = 0 ;
   SddWmc result;
   
-  if (!PyArg_ParseTuple(args,(char *)"O:wmc_one_weight",&obj0)) SWIG_fail;
-  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_wmc_manager_t, 0 |  0 );
+  if (SWIG_GetArgs(interp, objc, objv,"o:wmc_one_weight wmc_manager ",(void *)0) == TCL_ERROR) SWIG_fail;
+  res1 = SWIG_ConvertPtr(objv[1], &argp1,SWIGTYPE_p_wmc_manager_t, 0 |  0 );
   if (!SWIG_IsOK(res1)) {
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "wmc_one_weight" "', argument " "1"" of type '" "WmcManager *""'"); 
   }
   arg1 = (WmcManager *)(argp1);
-  {
-    //
-    //    signal(SIGFPE,  handler);
-    //    signal(SIGILL,  handler);
-    
-    // signal(SIGSEGV, handler);
-    
-    struct sigaction new_action;
-    new_action.sa_handler = c_handler;
-    sigemptyset (&new_action.sa_mask);
-    new_action.sa_flags = SA_RESTART;
-    
-    struct sigaction old_action_term;
-    struct sigaction old_action_abrt;
-    struct sigaction old_action_int;
-    struct sigaction old_action_alrm;
-    
-    sigaction(SIGTERM,  &new_action, &old_action_term);
-    sigaction(SIGABRT,  &new_action, &old_action_abrt);
-    sigaction(SIGINT,  &new_action, &old_action_int);
-    sigaction(SIGALRM,  &new_action, &old_action_alrm);
-    try {
-      result = (SddWmc)wmc_one_weight(arg1);
-    } catch(SIGINT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process interrupted");
-    } catch(SIGTERM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process terminated");
-    } catch(SIGABRT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process aborted");
-    } catch(SIGALRM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process timeout");
-    }
-    sigaction(SIGTERM, &old_action_term, NULL);
-    sigaction(SIGABRT, &old_action_abrt, NULL);
-    sigaction(SIGINT, &old_action_int, NULL);
-    sigaction(SIGALRM, &old_action_alrm, NULL);
-    
-  }
-  resultobj = SWIG_From_double((double)(result));
-  return resultobj;
+  result = (SddWmc)wmc_one_weight(arg1);
+  Tcl_SetObjResult(interp,SWIG_From_double((double)(result)));
+  return TCL_OK;
 fail:
-  return NULL;
+  return TCL_ERROR;
 }
 
 
-SWIGINTERN PyObject *_wrap_wmc_literal_weight(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
+SWIGINTERN int
+_wrap_wmc_literal_weight(ClientData clientData SWIGUNUSED, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]) {
   SddLiteral arg1 ;
   WmcManager *arg2 = (WmcManager *) 0 ;
   long val1 ;
   int ecode1 = 0 ;
   void *argp2 = 0 ;
   int res2 = 0 ;
-  PyObject * obj0 = 0 ;
-  PyObject * obj1 = 0 ;
   SddWmc result;
   
-  if (!PyArg_ParseTuple(args,(char *)"OO:wmc_literal_weight",&obj0,&obj1)) SWIG_fail;
-  ecode1 = SWIG_AsVal_long(obj0, &val1);
+  if (SWIG_GetArgs(interp, objc, objv,"oo:wmc_literal_weight literal wmc_manager ",(void *)0,(void *)0) == TCL_ERROR) SWIG_fail;
+  ecode1 = SWIG_AsVal_long SWIG_TCL_CALL_ARGS_2(objv[1], &val1);
   if (!SWIG_IsOK(ecode1)) {
     SWIG_exception_fail(SWIG_ArgError(ecode1), "in method '" "wmc_literal_weight" "', argument " "1"" of type '" "SddLiteral""'");
   } 
   arg1 = (SddLiteral)(val1);
-  res2 = SWIG_ConvertPtr(obj1, &argp2,SWIGTYPE_p_wmc_manager_t, 0 |  0 );
+  res2 = SWIG_ConvertPtr(objv[2], &argp2,SWIGTYPE_p_wmc_manager_t, 0 |  0 );
   if (!SWIG_IsOK(res2)) {
     SWIG_exception_fail(SWIG_ArgError(res2), "in method '" "wmc_literal_weight" "', argument " "2"" of type '" "WmcManager const *""'"); 
   }
   arg2 = (WmcManager *)(argp2);
-  {
-    //
-    //    signal(SIGFPE,  handler);
-    //    signal(SIGILL,  handler);
-    
-    // signal(SIGSEGV, handler);
-    
-    struct sigaction new_action;
-    new_action.sa_handler = c_handler;
-    sigemptyset (&new_action.sa_mask);
-    new_action.sa_flags = SA_RESTART;
-    
-    struct sigaction old_action_term;
-    struct sigaction old_action_abrt;
-    struct sigaction old_action_int;
-    struct sigaction old_action_alrm;
-    
-    sigaction(SIGTERM,  &new_action, &old_action_term);
-    sigaction(SIGABRT,  &new_action, &old_action_abrt);
-    sigaction(SIGINT,  &new_action, &old_action_int);
-    sigaction(SIGALRM,  &new_action, &old_action_alrm);
-    try {
-      result = (SddWmc)wmc_literal_weight(arg1,(struct wmc_manager_t const *)arg2);
-    } catch(SIGINT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process interrupted");
-    } catch(SIGTERM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process terminated");
-    } catch(SIGABRT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process aborted");
-    } catch(SIGALRM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process timeout");
-    }
-    sigaction(SIGTERM, &old_action_term, NULL);
-    sigaction(SIGABRT, &old_action_abrt, NULL);
-    sigaction(SIGINT, &old_action_int, NULL);
-    sigaction(SIGALRM, &old_action_alrm, NULL);
-    
-  }
-  resultobj = SWIG_From_double((double)(result));
-  return resultobj;
+  result = (SddWmc)wmc_literal_weight(arg1,(struct wmc_manager_t const *)arg2);
+  Tcl_SetObjResult(interp,SWIG_From_double((double)(result)));
+  return TCL_OK;
 fail:
-  return NULL;
+  return TCL_ERROR;
 }
 
 
-SWIGINTERN PyObject *_wrap_wmc_literal_derivative(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
+SWIGINTERN int
+_wrap_wmc_literal_derivative(ClientData clientData SWIGUNUSED, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]) {
   SddLiteral arg1 ;
   WmcManager *arg2 = (WmcManager *) 0 ;
   long val1 ;
   int ecode1 = 0 ;
   void *argp2 = 0 ;
   int res2 = 0 ;
-  PyObject * obj0 = 0 ;
-  PyObject * obj1 = 0 ;
   SddWmc result;
   
-  if (!PyArg_ParseTuple(args,(char *)"OO:wmc_literal_derivative",&obj0,&obj1)) SWIG_fail;
-  ecode1 = SWIG_AsVal_long(obj0, &val1);
+  if (SWIG_GetArgs(interp, objc, objv,"oo:wmc_literal_derivative literal wmc_manager ",(void *)0,(void *)0) == TCL_ERROR) SWIG_fail;
+  ecode1 = SWIG_AsVal_long SWIG_TCL_CALL_ARGS_2(objv[1], &val1);
   if (!SWIG_IsOK(ecode1)) {
     SWIG_exception_fail(SWIG_ArgError(ecode1), "in method '" "wmc_literal_derivative" "', argument " "1"" of type '" "SddLiteral""'");
   } 
   arg1 = (SddLiteral)(val1);
-  res2 = SWIG_ConvertPtr(obj1, &argp2,SWIGTYPE_p_wmc_manager_t, 0 |  0 );
+  res2 = SWIG_ConvertPtr(objv[2], &argp2,SWIGTYPE_p_wmc_manager_t, 0 |  0 );
   if (!SWIG_IsOK(res2)) {
     SWIG_exception_fail(SWIG_ArgError(res2), "in method '" "wmc_literal_derivative" "', argument " "2"" of type '" "WmcManager const *""'"); 
   }
   arg2 = (WmcManager *)(argp2);
-  {
-    //
-    //    signal(SIGFPE,  handler);
-    //    signal(SIGILL,  handler);
-    
-    // signal(SIGSEGV, handler);
-    
-    struct sigaction new_action;
-    new_action.sa_handler = c_handler;
-    sigemptyset (&new_action.sa_mask);
-    new_action.sa_flags = SA_RESTART;
-    
-    struct sigaction old_action_term;
-    struct sigaction old_action_abrt;
-    struct sigaction old_action_int;
-    struct sigaction old_action_alrm;
-    
-    sigaction(SIGTERM,  &new_action, &old_action_term);
-    sigaction(SIGABRT,  &new_action, &old_action_abrt);
-    sigaction(SIGINT,  &new_action, &old_action_int);
-    sigaction(SIGALRM,  &new_action, &old_action_alrm);
-    try {
-      result = (SddWmc)wmc_literal_derivative(arg1,(struct wmc_manager_t const *)arg2);
-    } catch(SIGINT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process interrupted");
-    } catch(SIGTERM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process terminated");
-    } catch(SIGABRT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process aborted");
-    } catch(SIGALRM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process timeout");
-    }
-    sigaction(SIGTERM, &old_action_term, NULL);
-    sigaction(SIGABRT, &old_action_abrt, NULL);
-    sigaction(SIGINT, &old_action_int, NULL);
-    sigaction(SIGALRM, &old_action_alrm, NULL);
-    
-  }
-  resultobj = SWIG_From_double((double)(result));
-  return resultobj;
+  result = (SddWmc)wmc_literal_derivative(arg1,(struct wmc_manager_t const *)arg2);
+  Tcl_SetObjResult(interp,SWIG_From_double((double)(result)));
+  return TCL_OK;
 fail:
-  return NULL;
+  return TCL_ERROR;
 }
 
 
-SWIGINTERN PyObject *_wrap_wmc_literal_pr(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
+SWIGINTERN int
+_wrap_wmc_literal_pr(ClientData clientData SWIGUNUSED, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]) {
   SddLiteral arg1 ;
   WmcManager *arg2 = (WmcManager *) 0 ;
   long val1 ;
   int ecode1 = 0 ;
   void *argp2 = 0 ;
   int res2 = 0 ;
-  PyObject * obj0 = 0 ;
-  PyObject * obj1 = 0 ;
   SddWmc result;
   
-  if (!PyArg_ParseTuple(args,(char *)"OO:wmc_literal_pr",&obj0,&obj1)) SWIG_fail;
-  ecode1 = SWIG_AsVal_long(obj0, &val1);
+  if (SWIG_GetArgs(interp, objc, objv,"oo:wmc_literal_pr literal wmc_manager ",(void *)0,(void *)0) == TCL_ERROR) SWIG_fail;
+  ecode1 = SWIG_AsVal_long SWIG_TCL_CALL_ARGS_2(objv[1], &val1);
   if (!SWIG_IsOK(ecode1)) {
     SWIG_exception_fail(SWIG_ArgError(ecode1), "in method '" "wmc_literal_pr" "', argument " "1"" of type '" "SddLiteral""'");
   } 
   arg1 = (SddLiteral)(val1);
-  res2 = SWIG_ConvertPtr(obj1, &argp2,SWIGTYPE_p_wmc_manager_t, 0 |  0 );
+  res2 = SWIG_ConvertPtr(objv[2], &argp2,SWIGTYPE_p_wmc_manager_t, 0 |  0 );
   if (!SWIG_IsOK(res2)) {
     SWIG_exception_fail(SWIG_ArgError(res2), "in method '" "wmc_literal_pr" "', argument " "2"" of type '" "WmcManager const *""'"); 
   }
   arg2 = (WmcManager *)(argp2);
-  {
-    //
-    //    signal(SIGFPE,  handler);
-    //    signal(SIGILL,  handler);
-    
-    // signal(SIGSEGV, handler);
-    
-    struct sigaction new_action;
-    new_action.sa_handler = c_handler;
-    sigemptyset (&new_action.sa_mask);
-    new_action.sa_flags = SA_RESTART;
-    
-    struct sigaction old_action_term;
-    struct sigaction old_action_abrt;
-    struct sigaction old_action_int;
-    struct sigaction old_action_alrm;
-    
-    sigaction(SIGTERM,  &new_action, &old_action_term);
-    sigaction(SIGABRT,  &new_action, &old_action_abrt);
-    sigaction(SIGINT,  &new_action, &old_action_int);
-    sigaction(SIGALRM,  &new_action, &old_action_alrm);
-    try {
-      result = (SddWmc)wmc_literal_pr(arg1,(struct wmc_manager_t const *)arg2);
-    } catch(SIGINT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process interrupted");
-    } catch(SIGTERM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process terminated");
-    } catch(SIGABRT) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process aborted");
-    } catch(SIGALRM) {
-      sigaction(SIGTERM, &old_action_term, NULL);
-      sigaction(SIGABRT, &old_action_abrt, NULL);
-      sigaction(SIGINT, &old_action_int, NULL);
-      sigaction(SIGALRM, &old_action_alrm, NULL);
-      SWIG_exception(SWIG_SystemError, "Process timeout");
-    }
-    sigaction(SIGTERM, &old_action_term, NULL);
-    sigaction(SIGABRT, &old_action_abrt, NULL);
-    sigaction(SIGINT, &old_action_int, NULL);
-    sigaction(SIGALRM, &old_action_alrm, NULL);
-    
-  }
-  resultobj = SWIG_From_double((double)(result));
-  return resultobj;
+  result = (SddWmc)wmc_literal_pr(arg1,(struct wmc_manager_t const *)arg2);
+  Tcl_SetObjResult(interp,SWIG_From_double((double)(result)));
+  return TCL_OK;
 fail:
-  return NULL;
+  return TCL_ERROR;
 }
 
 
-static PyMethodDef SwigMethods[] = {
-	 { (char *)"SWIG_PyInstanceMethod_New", (PyCFunction)SWIG_PyInstanceMethod_New, METH_O, NULL},
-	 { (char *)"sdd_array_element", _wrap_sdd_array_element, METH_VARARGS, NULL},
-	 { (char *)"sdd_array_int_element", _wrap_sdd_array_int_element, METH_VARARGS, NULL},
-	 { (char *)"sdd_manager_new", _wrap_sdd_manager_new, METH_VARARGS, NULL},
-	 { (char *)"sdd_manager_create", _wrap_sdd_manager_create, METH_VARARGS, NULL},
-	 { (char *)"sdd_manager_copy", _wrap_sdd_manager_copy, METH_VARARGS, NULL},
-	 { (char *)"sdd_manager_free", _wrap_sdd_manager_free, METH_VARARGS, NULL},
-	 { (char *)"sdd_manager_print", _wrap_sdd_manager_print, METH_VARARGS, NULL},
-	 { (char *)"sdd_manager_auto_gc_and_minimize_on", _wrap_sdd_manager_auto_gc_and_minimize_on, METH_VARARGS, NULL},
-	 { (char *)"sdd_manager_auto_gc_and_minimize_off", _wrap_sdd_manager_auto_gc_and_minimize_off, METH_VARARGS, NULL},
-	 { (char *)"sdd_manager_is_auto_gc_and_minimize_on", _wrap_sdd_manager_is_auto_gc_and_minimize_on, METH_VARARGS, NULL},
-	 { (char *)"sdd_manager_set_minimize_function", _wrap_sdd_manager_set_minimize_function, METH_VARARGS, NULL},
-	 { (char *)"sdd_manager_unset_minimize_function", _wrap_sdd_manager_unset_minimize_function, METH_VARARGS, NULL},
-	 { (char *)"sdd_manager_options", _wrap_sdd_manager_options, METH_VARARGS, NULL},
-	 { (char *)"sdd_manager_set_options", _wrap_sdd_manager_set_options, METH_VARARGS, NULL},
-	 { (char *)"sdd_manager_is_var_used", _wrap_sdd_manager_is_var_used, METH_VARARGS, NULL},
-	 { (char *)"sdd_manager_vtree_of_var", _wrap_sdd_manager_vtree_of_var, METH_VARARGS, NULL},
-	 { (char *)"sdd_manager_lca_of_literals", _wrap_sdd_manager_lca_of_literals, METH_VARARGS, NULL},
-	 { (char *)"sdd_manager_var_count", _wrap_sdd_manager_var_count, METH_VARARGS, NULL},
-	 { (char *)"sdd_manager_var_order", _wrap_sdd_manager_var_order, METH_VARARGS, NULL},
-	 { (char *)"sdd_manager_add_var_before_first", _wrap_sdd_manager_add_var_before_first, METH_VARARGS, NULL},
-	 { (char *)"sdd_manager_add_var_after_last", _wrap_sdd_manager_add_var_after_last, METH_VARARGS, NULL},
-	 { (char *)"sdd_manager_add_var_before", _wrap_sdd_manager_add_var_before, METH_VARARGS, NULL},
-	 { (char *)"sdd_manager_add_var_after", _wrap_sdd_manager_add_var_after, METH_VARARGS, NULL},
-	 { (char *)"sdd_manager_true", _wrap_sdd_manager_true, METH_VARARGS, NULL},
-	 { (char *)"sdd_manager_false", _wrap_sdd_manager_false, METH_VARARGS, NULL},
-	 { (char *)"sdd_manager_literal", _wrap_sdd_manager_literal, METH_VARARGS, NULL},
-	 { (char *)"sdd_apply", _wrap_sdd_apply, METH_VARARGS, NULL},
-	 { (char *)"sdd_conjoin", _wrap_sdd_conjoin, METH_VARARGS, NULL},
-	 { (char *)"sdd_disjoin", _wrap_sdd_disjoin, METH_VARARGS, NULL},
-	 { (char *)"sdd_negate", _wrap_sdd_negate, METH_VARARGS, NULL},
-	 { (char *)"sdd_condition", _wrap_sdd_condition, METH_VARARGS, NULL},
-	 { (char *)"sdd_exists", _wrap_sdd_exists, METH_VARARGS, NULL},
-	 { (char *)"sdd_exists_multiple", _wrap_sdd_exists_multiple, METH_VARARGS, NULL},
-	 { (char *)"sdd_exists_multiple_static", _wrap_sdd_exists_multiple_static, METH_VARARGS, NULL},
-	 { (char *)"sdd_forall", _wrap_sdd_forall, METH_VARARGS, NULL},
-	 { (char *)"sdd_minimize_cardinality", _wrap_sdd_minimize_cardinality, METH_VARARGS, NULL},
-	 { (char *)"sdd_global_minimize_cardinality", _wrap_sdd_global_minimize_cardinality, METH_VARARGS, NULL},
-	 { (char *)"sdd_minimum_cardinality", _wrap_sdd_minimum_cardinality, METH_VARARGS, NULL},
-	 { (char *)"sdd_model_count", _wrap_sdd_model_count, METH_VARARGS, NULL},
-	 { (char *)"sdd_global_model_count", _wrap_sdd_global_model_count, METH_VARARGS, NULL},
-	 { (char *)"sdd_node_is_true", _wrap_sdd_node_is_true, METH_VARARGS, NULL},
-	 { (char *)"sdd_node_is_false", _wrap_sdd_node_is_false, METH_VARARGS, NULL},
-	 { (char *)"sdd_node_is_literal", _wrap_sdd_node_is_literal, METH_VARARGS, NULL},
-	 { (char *)"sdd_node_is_decision", _wrap_sdd_node_is_decision, METH_VARARGS, NULL},
-	 { (char *)"sdd_node_size", _wrap_sdd_node_size, METH_VARARGS, NULL},
-	 { (char *)"sdd_node_literal", _wrap_sdd_node_literal, METH_VARARGS, NULL},
-	 { (char *)"sdd_node_elements", _wrap_sdd_node_elements, METH_VARARGS, NULL},
-	 { (char *)"sdd_node_set_bit", _wrap_sdd_node_set_bit, METH_VARARGS, NULL},
-	 { (char *)"sdd_node_bit", _wrap_sdd_node_bit, METH_VARARGS, NULL},
-	 { (char *)"sdd_id", _wrap_sdd_id, METH_VARARGS, NULL},
-	 { (char *)"sdd_garbage_collected", _wrap_sdd_garbage_collected, METH_VARARGS, NULL},
-	 { (char *)"sdd_vtree_of", _wrap_sdd_vtree_of, METH_VARARGS, NULL},
-	 { (char *)"sdd_copy", _wrap_sdd_copy, METH_VARARGS, NULL},
-	 { (char *)"sdd_rename_variables", _wrap_sdd_rename_variables, METH_VARARGS, NULL},
-	 { (char *)"sdd_variables", _wrap_sdd_variables, METH_VARARGS, NULL},
-	 { (char *)"sdd_read", _wrap_sdd_read, METH_VARARGS, NULL},
-	 { (char *)"sdd_save", _wrap_sdd_save, METH_VARARGS, NULL},
-	 { (char *)"sdd_save_as_dot", _wrap_sdd_save_as_dot, METH_VARARGS, NULL},
-	 { (char *)"sdd_shared_save_as_dot", _wrap_sdd_shared_save_as_dot, METH_VARARGS, NULL},
-	 { (char *)"sdd_count", _wrap_sdd_count, METH_VARARGS, NULL},
-	 { (char *)"sdd_size", _wrap_sdd_size, METH_VARARGS, NULL},
-	 { (char *)"sdd_shared_size", _wrap_sdd_shared_size, METH_VARARGS, NULL},
-	 { (char *)"sdd_manager_size", _wrap_sdd_manager_size, METH_VARARGS, NULL},
-	 { (char *)"sdd_manager_live_size", _wrap_sdd_manager_live_size, METH_VARARGS, NULL},
-	 { (char *)"sdd_manager_dead_size", _wrap_sdd_manager_dead_size, METH_VARARGS, NULL},
-	 { (char *)"sdd_manager_count", _wrap_sdd_manager_count, METH_VARARGS, NULL},
-	 { (char *)"sdd_manager_live_count", _wrap_sdd_manager_live_count, METH_VARARGS, NULL},
-	 { (char *)"sdd_manager_dead_count", _wrap_sdd_manager_dead_count, METH_VARARGS, NULL},
-	 { (char *)"sdd_vtree_size", _wrap_sdd_vtree_size, METH_VARARGS, NULL},
-	 { (char *)"sdd_vtree_live_size", _wrap_sdd_vtree_live_size, METH_VARARGS, NULL},
-	 { (char *)"sdd_vtree_dead_size", _wrap_sdd_vtree_dead_size, METH_VARARGS, NULL},
-	 { (char *)"sdd_vtree_size_at", _wrap_sdd_vtree_size_at, METH_VARARGS, NULL},
-	 { (char *)"sdd_vtree_live_size_at", _wrap_sdd_vtree_live_size_at, METH_VARARGS, NULL},
-	 { (char *)"sdd_vtree_dead_size_at", _wrap_sdd_vtree_dead_size_at, METH_VARARGS, NULL},
-	 { (char *)"sdd_vtree_size_above", _wrap_sdd_vtree_size_above, METH_VARARGS, NULL},
-	 { (char *)"sdd_vtree_live_size_above", _wrap_sdd_vtree_live_size_above, METH_VARARGS, NULL},
-	 { (char *)"sdd_vtree_dead_size_above", _wrap_sdd_vtree_dead_size_above, METH_VARARGS, NULL},
-	 { (char *)"sdd_vtree_count", _wrap_sdd_vtree_count, METH_VARARGS, NULL},
-	 { (char *)"sdd_vtree_live_count", _wrap_sdd_vtree_live_count, METH_VARARGS, NULL},
-	 { (char *)"sdd_vtree_dead_count", _wrap_sdd_vtree_dead_count, METH_VARARGS, NULL},
-	 { (char *)"sdd_vtree_count_at", _wrap_sdd_vtree_count_at, METH_VARARGS, NULL},
-	 { (char *)"sdd_vtree_live_count_at", _wrap_sdd_vtree_live_count_at, METH_VARARGS, NULL},
-	 { (char *)"sdd_vtree_dead_count_at", _wrap_sdd_vtree_dead_count_at, METH_VARARGS, NULL},
-	 { (char *)"sdd_vtree_count_above", _wrap_sdd_vtree_count_above, METH_VARARGS, NULL},
-	 { (char *)"sdd_vtree_live_count_above", _wrap_sdd_vtree_live_count_above, METH_VARARGS, NULL},
-	 { (char *)"sdd_vtree_dead_count_above", _wrap_sdd_vtree_dead_count_above, METH_VARARGS, NULL},
-	 { (char *)"sdd_vtree_new", _wrap_sdd_vtree_new, METH_VARARGS, NULL},
-	 { (char *)"sdd_vtree_new_with_var_order", _wrap_sdd_vtree_new_with_var_order, METH_VARARGS, NULL},
-	 { (char *)"sdd_vtree_new_X_constrained", _wrap_sdd_vtree_new_X_constrained, METH_VARARGS, NULL},
-	 { (char *)"sdd_vtree_free", _wrap_sdd_vtree_free, METH_VARARGS, NULL},
-	 { (char *)"sdd_vtree_save", _wrap_sdd_vtree_save, METH_VARARGS, NULL},
-	 { (char *)"sdd_vtree_read", _wrap_sdd_vtree_read, METH_VARARGS, NULL},
-	 { (char *)"sdd_vtree_save_as_dot", _wrap_sdd_vtree_save_as_dot, METH_VARARGS, NULL},
-	 { (char *)"sdd_manager_vtree", _wrap_sdd_manager_vtree, METH_VARARGS, NULL},
-	 { (char *)"sdd_manager_vtree_copy", _wrap_sdd_manager_vtree_copy, METH_VARARGS, NULL},
-	 { (char *)"sdd_vtree_left", _wrap_sdd_vtree_left, METH_VARARGS, NULL},
-	 { (char *)"sdd_vtree_right", _wrap_sdd_vtree_right, METH_VARARGS, NULL},
-	 { (char *)"sdd_vtree_parent", _wrap_sdd_vtree_parent, METH_VARARGS, NULL},
-	 { (char *)"sdd_vtree_is_leaf", _wrap_sdd_vtree_is_leaf, METH_VARARGS, NULL},
-	 { (char *)"sdd_vtree_is_sub", _wrap_sdd_vtree_is_sub, METH_VARARGS, NULL},
-	 { (char *)"sdd_vtree_lca", _wrap_sdd_vtree_lca, METH_VARARGS, NULL},
-	 { (char *)"sdd_vtree_var_count", _wrap_sdd_vtree_var_count, METH_VARARGS, NULL},
-	 { (char *)"sdd_vtree_var", _wrap_sdd_vtree_var, METH_VARARGS, NULL},
-	 { (char *)"sdd_vtree_position", _wrap_sdd_vtree_position, METH_VARARGS, NULL},
-	 { (char *)"sdd_vtree_location", _wrap_sdd_vtree_location, METH_VARARGS, NULL},
-	 { (char *)"sdd_vtree_rotate_left", _wrap_sdd_vtree_rotate_left, METH_VARARGS, NULL},
-	 { (char *)"sdd_vtree_rotate_right", _wrap_sdd_vtree_rotate_right, METH_VARARGS, NULL},
-	 { (char *)"sdd_vtree_swap", _wrap_sdd_vtree_swap, METH_VARARGS, NULL},
-	 { (char *)"sdd_manager_init_vtree_size_limit", _wrap_sdd_manager_init_vtree_size_limit, METH_VARARGS, NULL},
-	 { (char *)"sdd_manager_update_vtree_size_limit", _wrap_sdd_manager_update_vtree_size_limit, METH_VARARGS, NULL},
-	 { (char *)"sdd_vtree_bit", _wrap_sdd_vtree_bit, METH_VARARGS, NULL},
-	 { (char *)"sdd_vtree_set_bit", _wrap_sdd_vtree_set_bit, METH_VARARGS, NULL},
-	 { (char *)"sdd_vtree_data", _wrap_sdd_vtree_data, METH_VARARGS, NULL},
-	 { (char *)"sdd_vtree_set_data", _wrap_sdd_vtree_set_data, METH_VARARGS, NULL},
-	 { (char *)"sdd_vtree_search_state", _wrap_sdd_vtree_search_state, METH_VARARGS, NULL},
-	 { (char *)"sdd_vtree_set_search_state", _wrap_sdd_vtree_set_search_state, METH_VARARGS, NULL},
-	 { (char *)"sdd_ref_count", _wrap_sdd_ref_count, METH_VARARGS, NULL},
-	 { (char *)"sdd_ref", _wrap_sdd_ref, METH_VARARGS, NULL},
-	 { (char *)"sdd_deref", _wrap_sdd_deref, METH_VARARGS, NULL},
-	 { (char *)"sdd_manager_garbage_collect", _wrap_sdd_manager_garbage_collect, METH_VARARGS, NULL},
-	 { (char *)"sdd_vtree_garbage_collect", _wrap_sdd_vtree_garbage_collect, METH_VARARGS, NULL},
-	 { (char *)"sdd_manager_garbage_collect_if", _wrap_sdd_manager_garbage_collect_if, METH_VARARGS, NULL},
-	 { (char *)"sdd_vtree_garbage_collect_if", _wrap_sdd_vtree_garbage_collect_if, METH_VARARGS, NULL},
-	 { (char *)"sdd_manager_minimize", _wrap_sdd_manager_minimize, METH_VARARGS, NULL},
-	 { (char *)"sdd_vtree_minimize", _wrap_sdd_vtree_minimize, METH_VARARGS, NULL},
-	 { (char *)"sdd_manager_minimize_limited", _wrap_sdd_manager_minimize_limited, METH_VARARGS, NULL},
-	 { (char *)"sdd_vtree_minimize_limited", _wrap_sdd_vtree_minimize_limited, METH_VARARGS, NULL},
-	 { (char *)"sdd_manager_set_vtree_search_convergence_threshold", _wrap_sdd_manager_set_vtree_search_convergence_threshold, METH_VARARGS, NULL},
-	 { (char *)"sdd_manager_set_vtree_search_time_limit", _wrap_sdd_manager_set_vtree_search_time_limit, METH_VARARGS, NULL},
-	 { (char *)"sdd_manager_set_vtree_fragment_time_limit", _wrap_sdd_manager_set_vtree_fragment_time_limit, METH_VARARGS, NULL},
-	 { (char *)"sdd_manager_set_vtree_operation_time_limit", _wrap_sdd_manager_set_vtree_operation_time_limit, METH_VARARGS, NULL},
-	 { (char *)"sdd_manager_set_vtree_apply_time_limit", _wrap_sdd_manager_set_vtree_apply_time_limit, METH_VARARGS, NULL},
-	 { (char *)"sdd_manager_set_vtree_operation_memory_limit", _wrap_sdd_manager_set_vtree_operation_memory_limit, METH_VARARGS, NULL},
-	 { (char *)"sdd_manager_set_vtree_operation_size_limit", _wrap_sdd_manager_set_vtree_operation_size_limit, METH_VARARGS, NULL},
-	 { (char *)"sdd_manager_set_vtree_cartesian_product_limit", _wrap_sdd_manager_set_vtree_cartesian_product_limit, METH_VARARGS, NULL},
-	 { (char *)"wmc_manager_new", _wrap_wmc_manager_new, METH_VARARGS, NULL},
-	 { (char *)"wmc_manager_free", _wrap_wmc_manager_free, METH_VARARGS, NULL},
-	 { (char *)"wmc_set_literal_weight", _wrap_wmc_set_literal_weight, METH_VARARGS, NULL},
-	 { (char *)"wmc_propagate", _wrap_wmc_propagate, METH_VARARGS, NULL},
-	 { (char *)"wmc_zero_weight", _wrap_wmc_zero_weight, METH_VARARGS, NULL},
-	 { (char *)"wmc_one_weight", _wrap_wmc_one_weight, METH_VARARGS, NULL},
-	 { (char *)"wmc_literal_weight", _wrap_wmc_literal_weight, METH_VARARGS, NULL},
-	 { (char *)"wmc_literal_derivative", _wrap_wmc_literal_derivative, METH_VARARGS, NULL},
-	 { (char *)"wmc_literal_pr", _wrap_wmc_literal_pr, METH_VARARGS, NULL},
-	 { NULL, NULL, 0, NULL }
+
+static swig_command_info swig_commands[] = {
+    { SWIG_prefix "sdd_array_element", (swig_wrapper_func) _wrap_sdd_array_element, NULL},
+    { SWIG_prefix "sdd_array_int_element", (swig_wrapper_func) _wrap_sdd_array_int_element, NULL},
+    { SWIG_prefix "sdd_manager_new", (swig_wrapper_func) _wrap_sdd_manager_new, NULL},
+    { SWIG_prefix "sdd_manager_create", (swig_wrapper_func) _wrap_sdd_manager_create, NULL},
+    { SWIG_prefix "sdd_manager_copy", (swig_wrapper_func) _wrap_sdd_manager_copy, NULL},
+    { SWIG_prefix "sdd_manager_free", (swig_wrapper_func) _wrap_sdd_manager_free, NULL},
+    { SWIG_prefix "sdd_manager_print", (swig_wrapper_func) _wrap_sdd_manager_print, NULL},
+    { SWIG_prefix "sdd_manager_auto_gc_and_minimize_on", (swig_wrapper_func) _wrap_sdd_manager_auto_gc_and_minimize_on, NULL},
+    { SWIG_prefix "sdd_manager_auto_gc_and_minimize_off", (swig_wrapper_func) _wrap_sdd_manager_auto_gc_and_minimize_off, NULL},
+    { SWIG_prefix "sdd_manager_is_auto_gc_and_minimize_on", (swig_wrapper_func) _wrap_sdd_manager_is_auto_gc_and_minimize_on, NULL},
+    { SWIG_prefix "sdd_manager_set_minimize_function", (swig_wrapper_func) _wrap_sdd_manager_set_minimize_function, NULL},
+    { SWIG_prefix "sdd_manager_unset_minimize_function", (swig_wrapper_func) _wrap_sdd_manager_unset_minimize_function, NULL},
+    { SWIG_prefix "sdd_manager_options", (swig_wrapper_func) _wrap_sdd_manager_options, NULL},
+    { SWIG_prefix "sdd_manager_set_options", (swig_wrapper_func) _wrap_sdd_manager_set_options, NULL},
+    { SWIG_prefix "sdd_manager_is_var_used", (swig_wrapper_func) _wrap_sdd_manager_is_var_used, NULL},
+    { SWIG_prefix "sdd_manager_vtree_of_var", (swig_wrapper_func) _wrap_sdd_manager_vtree_of_var, NULL},
+    { SWIG_prefix "sdd_manager_lca_of_literals", (swig_wrapper_func) _wrap_sdd_manager_lca_of_literals, NULL},
+    { SWIG_prefix "sdd_manager_var_count", (swig_wrapper_func) _wrap_sdd_manager_var_count, NULL},
+    { SWIG_prefix "sdd_manager_var_order", (swig_wrapper_func) _wrap_sdd_manager_var_order, NULL},
+    { SWIG_prefix "sdd_manager_add_var_before_first", (swig_wrapper_func) _wrap_sdd_manager_add_var_before_first, NULL},
+    { SWIG_prefix "sdd_manager_add_var_after_last", (swig_wrapper_func) _wrap_sdd_manager_add_var_after_last, NULL},
+    { SWIG_prefix "sdd_manager_add_var_before", (swig_wrapper_func) _wrap_sdd_manager_add_var_before, NULL},
+    { SWIG_prefix "sdd_manager_add_var_after", (swig_wrapper_func) _wrap_sdd_manager_add_var_after, NULL},
+    { SWIG_prefix "sdd_manager_true", (swig_wrapper_func) _wrap_sdd_manager_true, NULL},
+    { SWIG_prefix "sdd_manager_false", (swig_wrapper_func) _wrap_sdd_manager_false, NULL},
+    { SWIG_prefix "sdd_manager_literal", (swig_wrapper_func) _wrap_sdd_manager_literal, NULL},
+    { SWIG_prefix "sdd_apply", (swig_wrapper_func) _wrap_sdd_apply, NULL},
+    { SWIG_prefix "sdd_conjoin", (swig_wrapper_func) _wrap_sdd_conjoin, NULL},
+    { SWIG_prefix "sdd_disjoin", (swig_wrapper_func) _wrap_sdd_disjoin, NULL},
+    { SWIG_prefix "sdd_negate", (swig_wrapper_func) _wrap_sdd_negate, NULL},
+    { SWIG_prefix "sdd_condition", (swig_wrapper_func) _wrap_sdd_condition, NULL},
+    { SWIG_prefix "sdd_exists", (swig_wrapper_func) _wrap_sdd_exists, NULL},
+    { SWIG_prefix "sdd_exists_multiple", (swig_wrapper_func) _wrap_sdd_exists_multiple, NULL},
+    { SWIG_prefix "sdd_exists_multiple_static", (swig_wrapper_func) _wrap_sdd_exists_multiple_static, NULL},
+    { SWIG_prefix "sdd_forall", (swig_wrapper_func) _wrap_sdd_forall, NULL},
+    { SWIG_prefix "sdd_minimize_cardinality", (swig_wrapper_func) _wrap_sdd_minimize_cardinality, NULL},
+    { SWIG_prefix "sdd_global_minimize_cardinality", (swig_wrapper_func) _wrap_sdd_global_minimize_cardinality, NULL},
+    { SWIG_prefix "sdd_minimum_cardinality", (swig_wrapper_func) _wrap_sdd_minimum_cardinality, NULL},
+    { SWIG_prefix "sdd_model_count", (swig_wrapper_func) _wrap_sdd_model_count, NULL},
+    { SWIG_prefix "sdd_global_model_count", (swig_wrapper_func) _wrap_sdd_global_model_count, NULL},
+    { SWIG_prefix "sdd_node_is_true", (swig_wrapper_func) _wrap_sdd_node_is_true, NULL},
+    { SWIG_prefix "sdd_node_is_false", (swig_wrapper_func) _wrap_sdd_node_is_false, NULL},
+    { SWIG_prefix "sdd_node_is_literal", (swig_wrapper_func) _wrap_sdd_node_is_literal, NULL},
+    { SWIG_prefix "sdd_node_is_decision", (swig_wrapper_func) _wrap_sdd_node_is_decision, NULL},
+    { SWIG_prefix "sdd_node_size", (swig_wrapper_func) _wrap_sdd_node_size, NULL},
+    { SWIG_prefix "sdd_node_literal", (swig_wrapper_func) _wrap_sdd_node_literal, NULL},
+    { SWIG_prefix "sdd_node_elements", (swig_wrapper_func) _wrap_sdd_node_elements, NULL},
+    { SWIG_prefix "sdd_node_set_bit", (swig_wrapper_func) _wrap_sdd_node_set_bit, NULL},
+    { SWIG_prefix "sdd_node_bit", (swig_wrapper_func) _wrap_sdd_node_bit, NULL},
+    { SWIG_prefix "sdd_id", (swig_wrapper_func) _wrap_sdd_id, NULL},
+    { SWIG_prefix "sdd_garbage_collected", (swig_wrapper_func) _wrap_sdd_garbage_collected, NULL},
+    { SWIG_prefix "sdd_vtree_of", (swig_wrapper_func) _wrap_sdd_vtree_of, NULL},
+    { SWIG_prefix "sdd_copy", (swig_wrapper_func) _wrap_sdd_copy, NULL},
+    { SWIG_prefix "sdd_rename_variables", (swig_wrapper_func) _wrap_sdd_rename_variables, NULL},
+    { SWIG_prefix "sdd_variables", (swig_wrapper_func) _wrap_sdd_variables, NULL},
+    { SWIG_prefix "sdd_read", (swig_wrapper_func) _wrap_sdd_read, NULL},
+    { SWIG_prefix "sdd_save", (swig_wrapper_func) _wrap_sdd_save, NULL},
+    { SWIG_prefix "sdd_save_as_dot", (swig_wrapper_func) _wrap_sdd_save_as_dot, NULL},
+    { SWIG_prefix "sdd_shared_save_as_dot", (swig_wrapper_func) _wrap_sdd_shared_save_as_dot, NULL},
+    { SWIG_prefix "sdd_count", (swig_wrapper_func) _wrap_sdd_count, NULL},
+    { SWIG_prefix "sdd_size", (swig_wrapper_func) _wrap_sdd_size, NULL},
+    { SWIG_prefix "sdd_shared_size", (swig_wrapper_func) _wrap_sdd_shared_size, NULL},
+    { SWIG_prefix "sdd_manager_size", (swig_wrapper_func) _wrap_sdd_manager_size, NULL},
+    { SWIG_prefix "sdd_manager_live_size", (swig_wrapper_func) _wrap_sdd_manager_live_size, NULL},
+    { SWIG_prefix "sdd_manager_dead_size", (swig_wrapper_func) _wrap_sdd_manager_dead_size, NULL},
+    { SWIG_prefix "sdd_manager_count", (swig_wrapper_func) _wrap_sdd_manager_count, NULL},
+    { SWIG_prefix "sdd_manager_live_count", (swig_wrapper_func) _wrap_sdd_manager_live_count, NULL},
+    { SWIG_prefix "sdd_manager_dead_count", (swig_wrapper_func) _wrap_sdd_manager_dead_count, NULL},
+    { SWIG_prefix "sdd_vtree_size", (swig_wrapper_func) _wrap_sdd_vtree_size, NULL},
+    { SWIG_prefix "sdd_vtree_live_size", (swig_wrapper_func) _wrap_sdd_vtree_live_size, NULL},
+    { SWIG_prefix "sdd_vtree_dead_size", (swig_wrapper_func) _wrap_sdd_vtree_dead_size, NULL},
+    { SWIG_prefix "sdd_vtree_size_at", (swig_wrapper_func) _wrap_sdd_vtree_size_at, NULL},
+    { SWIG_prefix "sdd_vtree_live_size_at", (swig_wrapper_func) _wrap_sdd_vtree_live_size_at, NULL},
+    { SWIG_prefix "sdd_vtree_dead_size_at", (swig_wrapper_func) _wrap_sdd_vtree_dead_size_at, NULL},
+    { SWIG_prefix "sdd_vtree_size_above", (swig_wrapper_func) _wrap_sdd_vtree_size_above, NULL},
+    { SWIG_prefix "sdd_vtree_live_size_above", (swig_wrapper_func) _wrap_sdd_vtree_live_size_above, NULL},
+    { SWIG_prefix "sdd_vtree_dead_size_above", (swig_wrapper_func) _wrap_sdd_vtree_dead_size_above, NULL},
+    { SWIG_prefix "sdd_vtree_count", (swig_wrapper_func) _wrap_sdd_vtree_count, NULL},
+    { SWIG_prefix "sdd_vtree_live_count", (swig_wrapper_func) _wrap_sdd_vtree_live_count, NULL},
+    { SWIG_prefix "sdd_vtree_dead_count", (swig_wrapper_func) _wrap_sdd_vtree_dead_count, NULL},
+    { SWIG_prefix "sdd_vtree_count_at", (swig_wrapper_func) _wrap_sdd_vtree_count_at, NULL},
+    { SWIG_prefix "sdd_vtree_live_count_at", (swig_wrapper_func) _wrap_sdd_vtree_live_count_at, NULL},
+    { SWIG_prefix "sdd_vtree_dead_count_at", (swig_wrapper_func) _wrap_sdd_vtree_dead_count_at, NULL},
+    { SWIG_prefix "sdd_vtree_count_above", (swig_wrapper_func) _wrap_sdd_vtree_count_above, NULL},
+    { SWIG_prefix "sdd_vtree_live_count_above", (swig_wrapper_func) _wrap_sdd_vtree_live_count_above, NULL},
+    { SWIG_prefix "sdd_vtree_dead_count_above", (swig_wrapper_func) _wrap_sdd_vtree_dead_count_above, NULL},
+    { SWIG_prefix "sdd_vtree_new", (swig_wrapper_func) _wrap_sdd_vtree_new, NULL},
+    { SWIG_prefix "sdd_vtree_new_with_var_order", (swig_wrapper_func) _wrap_sdd_vtree_new_with_var_order, NULL},
+    { SWIG_prefix "sdd_vtree_new_X_constrained", (swig_wrapper_func) _wrap_sdd_vtree_new_X_constrained, NULL},
+    { SWIG_prefix "sdd_vtree_free", (swig_wrapper_func) _wrap_sdd_vtree_free, NULL},
+    { SWIG_prefix "sdd_vtree_save", (swig_wrapper_func) _wrap_sdd_vtree_save, NULL},
+    { SWIG_prefix "sdd_vtree_read", (swig_wrapper_func) _wrap_sdd_vtree_read, NULL},
+    { SWIG_prefix "sdd_vtree_save_as_dot", (swig_wrapper_func) _wrap_sdd_vtree_save_as_dot, NULL},
+    { SWIG_prefix "sdd_manager_vtree", (swig_wrapper_func) _wrap_sdd_manager_vtree, NULL},
+    { SWIG_prefix "sdd_manager_vtree_copy", (swig_wrapper_func) _wrap_sdd_manager_vtree_copy, NULL},
+    { SWIG_prefix "sdd_vtree_left", (swig_wrapper_func) _wrap_sdd_vtree_left, NULL},
+    { SWIG_prefix "sdd_vtree_right", (swig_wrapper_func) _wrap_sdd_vtree_right, NULL},
+    { SWIG_prefix "sdd_vtree_parent", (swig_wrapper_func) _wrap_sdd_vtree_parent, NULL},
+    { SWIG_prefix "sdd_vtree_is_leaf", (swig_wrapper_func) _wrap_sdd_vtree_is_leaf, NULL},
+    { SWIG_prefix "sdd_vtree_is_sub", (swig_wrapper_func) _wrap_sdd_vtree_is_sub, NULL},
+    { SWIG_prefix "sdd_vtree_lca", (swig_wrapper_func) _wrap_sdd_vtree_lca, NULL},
+    { SWIG_prefix "sdd_vtree_var_count", (swig_wrapper_func) _wrap_sdd_vtree_var_count, NULL},
+    { SWIG_prefix "sdd_vtree_var", (swig_wrapper_func) _wrap_sdd_vtree_var, NULL},
+    { SWIG_prefix "sdd_vtree_position", (swig_wrapper_func) _wrap_sdd_vtree_position, NULL},
+    { SWIG_prefix "sdd_vtree_location", (swig_wrapper_func) _wrap_sdd_vtree_location, NULL},
+    { SWIG_prefix "sdd_vtree_rotate_left", (swig_wrapper_func) _wrap_sdd_vtree_rotate_left, NULL},
+    { SWIG_prefix "sdd_vtree_rotate_right", (swig_wrapper_func) _wrap_sdd_vtree_rotate_right, NULL},
+    { SWIG_prefix "sdd_vtree_swap", (swig_wrapper_func) _wrap_sdd_vtree_swap, NULL},
+    { SWIG_prefix "sdd_manager_init_vtree_size_limit", (swig_wrapper_func) _wrap_sdd_manager_init_vtree_size_limit, NULL},
+    { SWIG_prefix "sdd_manager_update_vtree_size_limit", (swig_wrapper_func) _wrap_sdd_manager_update_vtree_size_limit, NULL},
+    { SWIG_prefix "sdd_vtree_bit", (swig_wrapper_func) _wrap_sdd_vtree_bit, NULL},
+    { SWIG_prefix "sdd_vtree_set_bit", (swig_wrapper_func) _wrap_sdd_vtree_set_bit, NULL},
+    { SWIG_prefix "sdd_vtree_data", (swig_wrapper_func) _wrap_sdd_vtree_data, NULL},
+    { SWIG_prefix "sdd_vtree_set_data", (swig_wrapper_func) _wrap_sdd_vtree_set_data, NULL},
+    { SWIG_prefix "sdd_vtree_search_state", (swig_wrapper_func) _wrap_sdd_vtree_search_state, NULL},
+    { SWIG_prefix "sdd_vtree_set_search_state", (swig_wrapper_func) _wrap_sdd_vtree_set_search_state, NULL},
+    { SWIG_prefix "sdd_ref_count", (swig_wrapper_func) _wrap_sdd_ref_count, NULL},
+    { SWIG_prefix "sdd_ref", (swig_wrapper_func) _wrap_sdd_ref, NULL},
+    { SWIG_prefix "sdd_deref", (swig_wrapper_func) _wrap_sdd_deref, NULL},
+    { SWIG_prefix "sdd_manager_garbage_collect", (swig_wrapper_func) _wrap_sdd_manager_garbage_collect, NULL},
+    { SWIG_prefix "sdd_vtree_garbage_collect", (swig_wrapper_func) _wrap_sdd_vtree_garbage_collect, NULL},
+    { SWIG_prefix "sdd_manager_garbage_collect_if", (swig_wrapper_func) _wrap_sdd_manager_garbage_collect_if, NULL},
+    { SWIG_prefix "sdd_vtree_garbage_collect_if", (swig_wrapper_func) _wrap_sdd_vtree_garbage_collect_if, NULL},
+    { SWIG_prefix "sdd_manager_minimize", (swig_wrapper_func) _wrap_sdd_manager_minimize, NULL},
+    { SWIG_prefix "sdd_vtree_minimize", (swig_wrapper_func) _wrap_sdd_vtree_minimize, NULL},
+    { SWIG_prefix "sdd_manager_minimize_limited", (swig_wrapper_func) _wrap_sdd_manager_minimize_limited, NULL},
+    { SWIG_prefix "sdd_vtree_minimize_limited", (swig_wrapper_func) _wrap_sdd_vtree_minimize_limited, NULL},
+    { SWIG_prefix "sdd_manager_set_vtree_search_convergence_threshold", (swig_wrapper_func) _wrap_sdd_manager_set_vtree_search_convergence_threshold, NULL},
+    { SWIG_prefix "sdd_manager_set_vtree_search_time_limit", (swig_wrapper_func) _wrap_sdd_manager_set_vtree_search_time_limit, NULL},
+    { SWIG_prefix "sdd_manager_set_vtree_fragment_time_limit", (swig_wrapper_func) _wrap_sdd_manager_set_vtree_fragment_time_limit, NULL},
+    { SWIG_prefix "sdd_manager_set_vtree_operation_time_limit", (swig_wrapper_func) _wrap_sdd_manager_set_vtree_operation_time_limit, NULL},
+    { SWIG_prefix "sdd_manager_set_vtree_apply_time_limit", (swig_wrapper_func) _wrap_sdd_manager_set_vtree_apply_time_limit, NULL},
+    { SWIG_prefix "sdd_manager_set_vtree_operation_memory_limit", (swig_wrapper_func) _wrap_sdd_manager_set_vtree_operation_memory_limit, NULL},
+    { SWIG_prefix "sdd_manager_set_vtree_operation_size_limit", (swig_wrapper_func) _wrap_sdd_manager_set_vtree_operation_size_limit, NULL},
+    { SWIG_prefix "sdd_manager_set_vtree_cartesian_product_limit", (swig_wrapper_func) _wrap_sdd_manager_set_vtree_cartesian_product_limit, NULL},
+    { SWIG_prefix "wmc_manager_new", (swig_wrapper_func) _wrap_wmc_manager_new, NULL},
+    { SWIG_prefix "wmc_manager_free", (swig_wrapper_func) _wrap_wmc_manager_free, NULL},
+    { SWIG_prefix "wmc_set_literal_weight", (swig_wrapper_func) _wrap_wmc_set_literal_weight, NULL},
+    { SWIG_prefix "wmc_propagate", (swig_wrapper_func) _wrap_wmc_propagate, NULL},
+    { SWIG_prefix "wmc_zero_weight", (swig_wrapper_func) _wrap_wmc_zero_weight, NULL},
+    { SWIG_prefix "wmc_one_weight", (swig_wrapper_func) _wrap_wmc_one_weight, NULL},
+    { SWIG_prefix "wmc_literal_weight", (swig_wrapper_func) _wrap_wmc_literal_weight, NULL},
+    { SWIG_prefix "wmc_literal_derivative", (swig_wrapper_func) _wrap_wmc_literal_derivative, NULL},
+    { SWIG_prefix "wmc_literal_pr", (swig_wrapper_func) _wrap_wmc_literal_pr, NULL},
+    {0, 0, 0}
 };
 
+static swig_var_info swig_variables[] = {
+    {0,0,0,0}
+};
+
+static swig_const_info swig_constants[] = {
+    {0,0,0,0,0,0}
+};
 
 /* -------- TYPE CONVERSION AND EQUIVALENCE RULES (BEGIN) -------- */
 
@@ -15445,9 +6044,6 @@ static swig_cast_info *swig_cast_initial[] = {
 
 
 /* -------- TYPE CONVERSION AND EQUIVALENCE RULES (END) -------- */
-
-static swig_const_info swig_const_table[] = {
-{0, 0, 0, 0.0, 0, 0}};
 
 #ifdef __cplusplus
 }
@@ -15684,255 +6280,31 @@ SWIG_PropagateClientData(void) {
 #endif
 
 
-
 #ifdef __cplusplus
 extern "C" {
 #endif
-  
-  /* Python-specific SWIG API */
-#define SWIG_newvarlink()                             SWIG_Python_newvarlink()
-#define SWIG_addvarlink(p, name, get_attr, set_attr)  SWIG_Python_addvarlink(p, name, get_attr, set_attr)
-#define SWIG_InstallConstants(d, constants)           SWIG_Python_InstallConstants(d, constants)
-  
-  /* -----------------------------------------------------------------------------
-   * global variable support code.
-   * ----------------------------------------------------------------------------- */
-  
-  typedef struct swig_globalvar {
-    char       *name;                  /* Name of global variable */
-    PyObject *(*get_attr)(void);       /* Return the current value */
-    int       (*set_attr)(PyObject *); /* Set the value */
-    struct swig_globalvar *next;
-  } swig_globalvar;
-  
-  typedef struct swig_varlinkobject {
-    PyObject_HEAD
-    swig_globalvar *vars;
-  } swig_varlinkobject;
-  
-  SWIGINTERN PyObject *
-  swig_varlink_repr(swig_varlinkobject *SWIGUNUSEDPARM(v)) {
-#if PY_VERSION_HEX >= 0x03000000
-    return PyUnicode_InternFromString("<Swig global variables>");
-#else
-    return PyString_FromString("<Swig global variables>");
-#endif
-  }
-  
-  SWIGINTERN PyObject *
-  swig_varlink_str(swig_varlinkobject *v) {
-#if PY_VERSION_HEX >= 0x03000000
-    PyObject *str = PyUnicode_InternFromString("(");
-    PyObject *tail;
-    PyObject *joined;
-    swig_globalvar *var;
-    for (var = v->vars; var; var=var->next) {
-      tail = PyUnicode_FromString(var->name);
-      joined = PyUnicode_Concat(str, tail);
-      Py_DecRef(str);
-      Py_DecRef(tail);
-      str = joined;
-      if (var->next) {
-        tail = PyUnicode_InternFromString(", ");
-        joined = PyUnicode_Concat(str, tail);
-        Py_DecRef(str);
-        Py_DecRef(tail);
-        str = joined;
-      }
-    }
-    tail = PyUnicode_InternFromString(")");
-    joined = PyUnicode_Concat(str, tail);
-    Py_DecRef(str);
-    Py_DecRef(tail);
-    str = joined;
-#else
-    PyObject *str = PyString_FromString("(");
-    swig_globalvar *var;
-    for (var = v->vars; var; var=var->next) {
-      PyString_ConcatAndDel(&str,PyString_FromString(var->name));
-      if (var->next) PyString_ConcatAndDel(&str,PyString_FromString(", "));
-    }
-    PyString_ConcatAndDel(&str,PyString_FromString(")"));
-#endif
-    return str;
-  }
-  
-  SWIGINTERN int
-  swig_varlink_print(swig_varlinkobject *v, FILE *fp, int SWIGUNUSEDPARM(flags)) {
-    char *tmp;
-    PyObject *str = swig_varlink_str(v);
-    fprintf(fp,"Swig global variables ");
-    fprintf(fp,"%s\n", tmp = SWIG_Python_str_AsChar(str));
-    SWIG_Python_str_DelForPy3(tmp);
-    Py_DECREF(str);
-    return 0;
-  }
-  
-  SWIGINTERN void
-  swig_varlink_dealloc(swig_varlinkobject *v) {
-    swig_globalvar *var = v->vars;
-    while (var) {
-      swig_globalvar *n = var->next;
-      free(var->name);
-      free(var);
-      var = n;
-    }
-  }
-  
-  SWIGINTERN PyObject *
-  swig_varlink_getattr(swig_varlinkobject *v, char *n) {
-    PyObject *res = NULL;
-    swig_globalvar *var = v->vars;
-    while (var) {
-      if (strcmp(var->name,n) == 0) {
-        res = (*var->get_attr)();
-        break;
-      }
-      var = var->next;
-    }
-    if (res == NULL && !PyErr_Occurred()) {
-      PyErr_Format(PyExc_AttributeError, "Unknown C global variable '%s'", n);
-    }
-    return res;
-  }
-  
-  SWIGINTERN int
-  swig_varlink_setattr(swig_varlinkobject *v, char *n, PyObject *p) {
-    int res = 1;
-    swig_globalvar *var = v->vars;
-    while (var) {
-      if (strcmp(var->name,n) == 0) {
-        res = (*var->set_attr)(p);
-        break;
-      }
-      var = var->next;
-    }
-    if (res == 1 && !PyErr_Occurred()) {
-      PyErr_Format(PyExc_AttributeError, "Unknown C global variable '%s'", n);
-    }
-    return res;
-  }
-  
-  SWIGINTERN PyTypeObject*
-  swig_varlink_type(void) {
-    static char varlink__doc__[] = "Swig var link object";
-    static PyTypeObject varlink_type;
-    static int type_init = 0;
-    if (!type_init) {
-      const PyTypeObject tmp = {
-#if PY_VERSION_HEX >= 0x03000000
-        PyVarObject_HEAD_INIT(NULL, 0)
-#else
-        PyObject_HEAD_INIT(NULL)
-        0,                                  /* ob_size */
-#endif
-        (char *)"swigvarlink",              /* tp_name */
-        sizeof(swig_varlinkobject),         /* tp_basicsize */
-        0,                                  /* tp_itemsize */
-        (destructor) swig_varlink_dealloc,  /* tp_dealloc */
-        (printfunc) swig_varlink_print,     /* tp_print */
-        (getattrfunc) swig_varlink_getattr, /* tp_getattr */
-        (setattrfunc) swig_varlink_setattr, /* tp_setattr */
-        0,                                  /* tp_compare */
-        (reprfunc) swig_varlink_repr,       /* tp_repr */
-        0,                                  /* tp_as_number */
-        0,                                  /* tp_as_sequence */
-        0,                                  /* tp_as_mapping */
-        0,                                  /* tp_hash */
-        0,                                  /* tp_call */
-        (reprfunc) swig_varlink_str,        /* tp_str */
-        0,                                  /* tp_getattro */
-        0,                                  /* tp_setattro */
-        0,                                  /* tp_as_buffer */
-        0,                                  /* tp_flags */
-        varlink__doc__,                     /* tp_doc */
-        0,                                  /* tp_traverse */
-        0,                                  /* tp_clear */
-        0,                                  /* tp_richcompare */
-        0,                                  /* tp_weaklistoffset */
-#if PY_VERSION_HEX >= 0x02020000
-        0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, /* tp_iter -> tp_weaklist */
-#endif
-#if PY_VERSION_HEX >= 0x02030000
-        0,                                  /* tp_del */
-#endif
-#if PY_VERSION_HEX >= 0x02060000
-        0,                                  /* tp_version_tag */
-#endif
-#if PY_VERSION_HEX >= 0x03040000
-        0,                                  /* tp_finalize */
-#endif
-#ifdef COUNT_ALLOCS
-        0,                                  /* tp_allocs */
-        0,                                  /* tp_frees */
-        0,                                  /* tp_maxalloc */
-#if PY_VERSION_HEX >= 0x02050000
-        0,                                  /* tp_prev */
-#endif
-        0                                   /* tp_next */
-#endif
-      };
-      varlink_type = tmp;
-      type_init = 1;
-#if PY_VERSION_HEX < 0x02020000
-      varlink_type.ob_type = &PyType_Type;
-#else
-      if (PyType_Ready(&varlink_type) < 0)
-      return NULL;
-#endif
-    }
-    return &varlink_type;
-  }
-  
-  /* Create a variable linking object for use later */
-  SWIGINTERN PyObject *
-  SWIG_Python_newvarlink(void) {
-    swig_varlinkobject *result = PyObject_NEW(swig_varlinkobject, swig_varlink_type());
-    if (result) {
-      result->vars = 0;
-    }
-    return ((PyObject*) result);
-  }
-  
-  SWIGINTERN void 
-  SWIG_Python_addvarlink(PyObject *p, char *name, PyObject *(*get_attr)(void), int (*set_attr)(PyObject *p)) {
-    swig_varlinkobject *v = (swig_varlinkobject *) p;
-    swig_globalvar *gv = (swig_globalvar *) malloc(sizeof(swig_globalvar));
-    if (gv) {
-      size_t size = strlen(name)+1;
-      gv->name = (char *)malloc(size);
-      if (gv->name) {
-        strncpy(gv->name,name,size);
-        gv->get_attr = get_attr;
-        gv->set_attr = set_attr;
-        gv->next = v->vars;
-      }
-    }
-    v->vars = gv;
-  }
-  
-  SWIGINTERN PyObject *
-  SWIG_globals(void) {
-    static PyObject *_SWIG_globals = 0; 
-    if (!_SWIG_globals) _SWIG_globals = SWIG_newvarlink();  
-    return _SWIG_globals;
-  }
   
   /* -----------------------------------------------------------------------------
    * constants/methods manipulation
    * ----------------------------------------------------------------------------- */
   
   /* Install Constants */
+  
   SWIGINTERN void
-  SWIG_Python_InstallConstants(PyObject *d, swig_const_info constants[]) {
-    PyObject *obj = 0;
+  SWIG_Tcl_InstallConstants(Tcl_Interp *interp, swig_const_info constants[]) {
     size_t i;
-    for (i = 0; constants[i].type; ++i) {
+    Tcl_Obj *obj;
+    
+    if (!swigconstTableinit) {
+      Tcl_InitHashTable(&swigconstTable, TCL_STRING_KEYS);
+      swigconstTableinit = 1;
+    }
+    for (i = 0; constants[i].type; i++) {
       switch(constants[i].type) {
-      case SWIG_PY_POINTER:
-        obj = SWIG_InternalNewPointerObj(constants[i].pvalue, *(constants[i]).ptype,0);
+      case SWIG_TCL_POINTER:
+        obj = SWIG_NewPointerObj(constants[i].pvalue, *(constants[i]).ptype,0);
         break;
-      case SWIG_PY_BINARY:
+      case SWIG_TCL_BINARY:
         obj = SWIG_NewPackedObj(constants[i].pvalue, constants[i].lvalue, *(constants[i].ptype));
         break;
       default:
@@ -15940,59 +6312,31 @@ extern "C" {
         break;
       }
       if (obj) {
-        PyDict_SetItemString(d, constants[i].name, obj);
-        Py_DECREF(obj);
+        SWIG_Tcl_SetConstantObj(interp, constants[i].name, obj);
       }
     }
   }
   
-  /* -----------------------------------------------------------------------------*/
-  /* Fix SwigMethods to carry the callback ptrs when needed */
-  /* -----------------------------------------------------------------------------*/
+  /* Create fast method lookup tables */
   
   SWIGINTERN void
-  SWIG_Python_FixMethods(PyMethodDef *methods,
-    swig_const_info *const_table,
-    swig_type_info **types,
-    swig_type_info **types_initial) {
+  SWIG_Tcl_InstallMethodLookupTables(void) {
     size_t i;
-    for (i = 0; methods[i].ml_name; ++i) {
-      const char *c = methods[i].ml_doc;
-      if (!c) continue;
-      c = strstr(c, "swig_ptr: ");
-      if (c) {
-        int j;
-        swig_const_info *ci = 0;
-        const char *name = c + 10;
-        for (j = 0; const_table[j].type; ++j) {
-          if (strncmp(const_table[j].name, name, 
-              strlen(const_table[j].name)) == 0) {
-            ci = &(const_table[j]);
-            break;
-          }
-        }
-        if (ci) {
-          void *ptr = (ci->type == SWIG_PY_POINTER) ? ci->pvalue : 0;
-          if (ptr) {
-            size_t shift = (ci->ptype) - types;
-            swig_type_info *ty = types_initial[shift];
-            size_t ldoc = (c - methods[i].ml_doc);
-            size_t lptr = strlen(ty->name)+2*sizeof(void*)+2;
-            char *ndoc = (char*)malloc(ldoc + lptr + 10);
-            if (ndoc) {
-              char *buff = ndoc;
-              strncpy(buff, methods[i].ml_doc, ldoc);
-              buff += ldoc;
-              strncpy(buff, "swig_ptr: ", 10);
-              buff += 10;
-              SWIG_PackVoidPtr(buff, ptr, ty->name, lptr);
-              methods[i].ml_doc = ndoc;
-            }
-          }
+    
+    for (i = 0; i < swig_module.size; ++i) {
+      swig_type_info *type = swig_module.type_initial[i];
+      if (type->clientdata) {
+        swig_class* klass = (swig_class*) type->clientdata;
+        swig_method* meth;
+        Tcl_InitHashTable(&(klass->hashtable), TCL_STRING_KEYS);
+        for (meth = klass->methods; meth && meth->name; ++meth) {
+          int newEntry;
+          Tcl_HashEntry* hashentry = Tcl_CreateHashEntry(&(klass->hashtable), meth->name, &newEntry);
+          Tcl_SetHashValue(hashentry, (ClientData)meth->method);
         }
       }
     }
-  } 
+  }
   
 #ifdef __cplusplus
 }
@@ -16002,146 +6346,57 @@ extern "C" {
  *  Partial Init method
  * -----------------------------------------------------------------------------*/
 
-#ifdef __cplusplus
-extern "C"
-#endif
-
-SWIGEXPORT 
-#if PY_VERSION_HEX >= 0x03000000
-PyObject*
-#else
-void
-#endif
-SWIG_init(void) {
-  PyObject *m, *d, *md;
-#if PY_VERSION_HEX >= 0x03000000
-  static struct PyModuleDef SWIG_module = {
-# if PY_VERSION_HEX >= 0x03020000
-    PyModuleDef_HEAD_INIT,
-# else
-    {
-      PyObject_HEAD_INIT(NULL)
-      NULL, /* m_init */
-      0,    /* m_index */
-      NULL, /* m_copy */
-    },
-# endif
-    (char *) SWIG_name,
-    NULL,
-    -1,
-    SwigMethods,
-    NULL,
-    NULL,
-    NULL,
-    NULL
-  };
+SWIGEXPORT int SWIG_init(Tcl_Interp *interp) {
+  size_t i;
+  if (interp == 0) return TCL_ERROR;
+#ifdef USE_TCL_STUBS
+  /* (char*) cast is required to avoid compiler warning/error for Tcl < 8.4. */
+  if (Tcl_InitStubs(interp, (char*)SWIG_TCL_STUBS_VERSION, 0) == NULL) {
+    return TCL_ERROR;
+  }
+#endif  
+#ifdef USE_TK_STUBS
+  /* (char*) cast is required to avoid compiler warning/error. */
+  if (Tk_InitStubs(interp, (char*)SWIG_TCL_STUBS_VERSION, 0) == NULL) {
+    return TCL_ERROR;
+  }
 #endif
   
-#if defined(SWIGPYTHON_BUILTIN)
-  static SwigPyClientData SwigPyObject_clientdata = {
-    0, 0, 0, 0, 0, 0, 0
-  };
-  static PyGetSetDef this_getset_def = {
-    (char *)"this", &SwigPyBuiltin_ThisClosure, NULL, NULL, NULL
-  };
-  static SwigPyGetSet thisown_getset_closure = {
-    (PyCFunction) SwigPyObject_own,
-    (PyCFunction) SwigPyObject_own
-  };
-  static PyGetSetDef thisown_getset_def = {
-    (char *)"thisown", SwigPyBuiltin_GetterClosure, SwigPyBuiltin_SetterClosure, NULL, &thisown_getset_closure
-  };
-  PyTypeObject *builtin_pytype;
-  int builtin_base_count;
-  swig_type_info *builtin_basetype;
-  PyObject *tuple;
-  PyGetSetDescrObject *static_getset;
-  PyTypeObject *metatype;
-  PyTypeObject *swigpyobject;
-  SwigPyClientData *cd;
-  PyObject *public_interface, *public_symbol;
-  PyObject *this_descr;
-  PyObject *thisown_descr;
-  PyObject *self = 0;
-  int i;
+  Tcl_PkgProvide(interp, (char*)SWIG_name, (char*)SWIG_version);
   
-  (void)builtin_pytype;
-  (void)builtin_base_count;
-  (void)builtin_basetype;
-  (void)tuple;
-  (void)static_getset;
-  (void)self;
-  
-  /* Metaclass is used to implement static member variables */
-  metatype = SwigPyObjectType();
-  assert(metatype);
+#ifdef SWIG_namespace
+  Tcl_Eval(interp, "namespace eval " SWIG_namespace " { }");
 #endif
   
-  /* Fix SwigMethods to carry the callback ptrs when needed */
-  SWIG_Python_FixMethods(SwigMethods, swig_const_table, swig_types, swig_type_initial);
+  SWIG_InitializeModule((void *) interp);
+  SWIG_PropagateClientData();
   
-#if PY_VERSION_HEX >= 0x03000000
-  m = PyModule_Create(&SWIG_module);
-#else
-  m = Py_InitModule((char *) SWIG_name, SwigMethods);
-#endif
-  
-  md = d = PyModule_GetDict(m);
-  (void)md;
-  
-  SWIG_InitializeModule(0);
-  
-#ifdef SWIGPYTHON_BUILTIN
-  swigpyobject = SwigPyObject_TypeOnce();
-  
-  SwigPyObject_stype = SWIG_MangledTypeQuery("_p_SwigPyObject");
-  assert(SwigPyObject_stype);
-  cd = (SwigPyClientData*) SwigPyObject_stype->clientdata;
-  if (!cd) {
-    SwigPyObject_stype->clientdata = &SwigPyObject_clientdata;
-    SwigPyObject_clientdata.pytype = swigpyobject;
-  } else if (swigpyobject->tp_basicsize != cd->pytype->tp_basicsize) {
-    PyErr_SetString(PyExc_RuntimeError, "Import error: attempted to load two incompatible swig-generated modules.");
-# if PY_VERSION_HEX >= 0x03000000
-    return NULL;
-# else
-    return;
-# endif
+  for (i = 0; swig_commands[i].name; i++) {
+    Tcl_CreateObjCommand(interp, (char *) swig_commands[i].name, (swig_wrapper_func) swig_commands[i].wrapper,
+      swig_commands[i].clientdata, NULL);
+  }
+  for (i = 0; swig_variables[i].name; i++) {
+    Tcl_SetVar(interp, (char *) swig_variables[i].name, (char *) "", TCL_GLOBAL_ONLY);
+    Tcl_TraceVar(interp, (char *) swig_variables[i].name, TCL_TRACE_READS | TCL_GLOBAL_ONLY, 
+      (Tcl_VarTraceProc *) swig_variables[i].get, (ClientData) swig_variables[i].addr);
+    Tcl_TraceVar(interp, (char *) swig_variables[i].name, TCL_TRACE_WRITES | TCL_GLOBAL_ONLY, 
+      (Tcl_VarTraceProc *) swig_variables[i].set, (ClientData) swig_variables[i].addr);
   }
   
-  /* All objects have a 'this' attribute */
-  this_descr = PyDescr_NewGetSet(SwigPyObject_type(), &this_getset_def);
-  (void)this_descr;
+  SWIG_Tcl_InstallConstants(interp, swig_constants);
+  SWIG_Tcl_InstallMethodLookupTables();
   
-  /* All objects have a 'thisown' attribute */
-  thisown_descr = PyDescr_NewGetSet(SwigPyObject_type(), &thisown_getset_def);
-  (void)thisown_descr;
   
-  public_interface = PyList_New(0);
-  public_symbol = 0;
-  (void)public_symbol;
-  
-  PyDict_SetItemString(md, "__all__", public_interface);
-  Py_DECREF(public_interface);
-  for (i = 0; SwigMethods[i].ml_name != NULL; ++i)
-  SwigPyBuiltin_AddPublicSymbol(public_interface, SwigMethods[i].ml_name);
-  for (i = 0; swig_const_table[i].name != 0; ++i)
-  SwigPyBuiltin_AddPublicSymbol(public_interface, swig_const_table[i].name);
-#endif
-  
-  SWIG_InstallConstants(d,swig_const_table);
-  
-  SWIG_Python_SetConstant(d, "PRIsS",SWIG_FromCharPtr("zu"));
-  SWIG_Python_SetConstant(d, "PRInsS",SWIG_FromCharPtr("u"));
-  SWIG_Python_SetConstant(d, "PRIrcS",SWIG_FromCharPtr("u"));
-  SWIG_Python_SetConstant(d, "PRImcS",SWIG_FromCharPtr("llu"));
-  SWIG_Python_SetConstant(d, "PRIlitS",SWIG_FromCharPtr("ld"));
-  SWIG_Python_SetConstant(d, "CONJOIN",SWIG_From_int((int)(0)));
-  SWIG_Python_SetConstant(d, "DISJOIN",SWIG_From_int((int)(1)));
-#if PY_VERSION_HEX >= 0x03000000
-  return m;
-#else
-  return;
-#endif
+  SWIG_Tcl_SetConstantObj(interp, "PRIsS", SWIG_FromCharPtr("zu"));
+  SWIG_Tcl_SetConstantObj(interp, "PRInsS", SWIG_FromCharPtr("u"));
+  SWIG_Tcl_SetConstantObj(interp, "PRIrcS", SWIG_FromCharPtr("u"));
+  SWIG_Tcl_SetConstantObj(interp, "PRImcS", SWIG_FromCharPtr("llu"));
+  SWIG_Tcl_SetConstantObj(interp, "PRIlitS", SWIG_FromCharPtr("ld"));
+  SWIG_Tcl_SetConstantObj(interp, "CONJOIN", SWIG_From_int((int)(0)));
+  SWIG_Tcl_SetConstantObj(interp, "DISJOIN", SWIG_From_int((int)(1)));
+  return TCL_OK;
+}
+SWIGEXPORT int Sdd_SafeInit(Tcl_Interp *interp) {
+  return SWIG_init(interp);
 }
 
