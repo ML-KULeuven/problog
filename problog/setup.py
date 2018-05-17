@@ -125,7 +125,7 @@ def build_sdd(force=False):
     with WorkingDir(build_dir):
 
         from distutils.core import setup, Extension
-        sdd_module = Extension('_sdd', sources=['sdd/sdd_wrap.c', 'sdd/except.c'], libraries=['sdd'],
+        sdd_module = Extension('_sdd', sources=['sdd/sdd_wrap.c'], libraries=['sdd'],
                                library_dirs=[lib_dir])
 
         setup(name='sdd',
