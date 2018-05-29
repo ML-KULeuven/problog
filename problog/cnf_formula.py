@@ -89,7 +89,8 @@ class CNF(BaseFormula):
             else:
                 return ' '.join(map(str, clause[1:])) + ' 0'
 
-    def to_dimacs(self, partial=False, weighted=False, semiring=None, smart_constraints=False, names=False):
+    def to_dimacs(self, partial=False, weighted=False, semiring=None, smart_constraints=False, names=False,
+                  invert_weights=False):
         """Transform to a string in DIMACS format.
 
         :param partial: split variables if possibly true / certainly true
@@ -103,8 +104,8 @@ class CNF(BaseFormula):
         else:
             t = 'cnf'
 
-        header, content = self._contents(partial=partial, weighted=weighted,
-                                         semiring=semiring, smart_constraints=smart_constraints)
+        header, content = self._contents(partial=partial, weighted=weighted, semiring=semiring,
+                                         smart_constraints=smart_constraints, invert_weights=invert_weights)
 
         result = 'p %s %s\n' % (t, ' '.join(map(str, header)))
         if names:
@@ -170,7 +171,7 @@ class CNF(BaseFormula):
         result += 'end\n'
         return result
 
-    def _contents(self, partial=False, weighted=False, semiring=None, smart_constraints=False):
+    def _contents(self, partial=False, weighted=False, semiring=None, smart_constraints=False, invert_weights=False):
         # Helper function to determine the certainly true / possibly true names (for partial)
 
         ct = lambda i: 2 * i
@@ -183,17 +184,20 @@ class CNF(BaseFormula):
         if weighted == int:
             w_mult = 10000
             w_min = -10000
-            wt = lambda w: int(max(w_min, w) * w_mult)
+            wt1 = lambda w: int(max(w_min, w) * w_mult)
         elif weighted == float:
             w_mult = 1
             w_min = -10000
-            wt = lambda w: w
+            wt1 = lambda w: w
         elif weighted:
             w_min = -10000
             w_mult = 10000
-            wt = lambda w: int(max(w_min, w) * w_mult)
-
+            wt1 = lambda w: int(max(w_min, w) * w_mult)
         if weighted:
+            if invert_weights:
+                wt = lambda w: wt1(-w)
+            else:
+                wt = wt1
             if semiring is None:
                 semiring = SemiringLogProbability()
             weights = self.extract_weights(semiring)
