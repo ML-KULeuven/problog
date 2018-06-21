@@ -124,7 +124,7 @@ def list2term(lst):
     return tail
 
 
-def term2list(term):
+def term2list(term, deep=True):
     """Transform a Prolog list to a Python list of terms.
 
     :param term: term representing a fixed length Prolog list
@@ -136,7 +136,10 @@ def term2list(term):
     from .pypl import pl2py
     result = []
     while not is_variable(term) and term.functor == '.' and term.arity == 2:
-        result.append(pl2py(term.args[0]))
+        if deep:
+            result.append(pl2py(term.args[0]))
+        else:
+            result.append(term.args[0])
         term = term.args[1]
     if not term == Term('[]'):
         raise ValueError('Expected fixed list.')
