@@ -16,6 +16,7 @@ Currently, the following modes are supported
   * ``dt``: decision-theoretic problog
   * ``explain``: evaluate using mutually exclusive proofs
   * ``ground``: generate a ground program
+  * ``bn``: export a Bayesian network
   * ``shell``: interactive shell
   * ``install``: run the installer
   * ``unittest``: run the testsuite
@@ -181,10 +182,10 @@ For example, consider the following program.
                  Y \== Z,
                  path(Z,Y).
 
-    query(path(1,5)).
-    query(path(1,6)).
+    evidence(path(1,5)).
+    evidence(path(1,6)).
 
-This program queries for paths in the following probabilistic graph.
+This program describes a probabilistic graph.
 
 .. digraph:: probabilistic_graph
 
@@ -208,12 +209,13 @@ The result is
     edge(1,2)
     edge(2,5)
     edge(2,6)
+    \+edge(1,3)
+    \+edge(3,4)
+    \+edge(5,6)
+    % Probability: 0.0290304
 
 Note that the first edge is not necessary for the paths to exist, but it is included because it is
 more likely to exist.
-
-The result only included facts that are true.
-To also include the negative facts, you can specify the argument ``--full``.
 
 .. code-block:: prolog
 
@@ -416,6 +418,28 @@ Evidence can be specified using a pipe (``|``):
 Type ``help.`` for more information.
 
 
+Bayesian network (``bn``)
+-------------------------
+
+ProbLog can export a program to a Bayesian network for comparison and
+verification purposes. The grounded program that is exported is defined by the
+query statements present in the program. The resulting network is not guaranteed
+to be the most efficient representation and includes additional latent variables
+to be able to express concepts such as annotated disjunctions. Decision nodes
+are not supported.
+
+.. code-block:: prolog
+
+    $ ./problog-cli.py bn some_heads.pl --format=xdsl -o some_heads.xdsl
+
+The resulting file can be read by tools such as
+`GeNIe and SMILE <https://dslpitt.org>`_,
+`BayesiaLab <http://www.bayesialab.com>`_,
+`Hugin <http://www.hugin.com>`_ or
+`SamIam <http://reasoning.cs.ucla.edu/samiam/>`_
+(depending on the chosen output format).
+
+
 Installation (``install``)
 --------------------------
 
@@ -436,3 +460,4 @@ Testing (``unittest``)
 ----------------------
 
 Run the unittests.
+

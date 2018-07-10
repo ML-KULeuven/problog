@@ -26,7 +26,7 @@ from problog.program import PrologFile
 from problog.logic import Term
 from problog.evaluator import SemiringSymbolic, Evaluator
 from problog.engine import DefaultEngine
-from problog.nnf_formula import NNF
+from problog.ddnnf_formula import DDNNF
 from problog.cnf_formula import CNF
 from problog.sdd_formula import SDD
 
@@ -107,7 +107,7 @@ def main(filename, with_dot, knowledge) :
 
         print ('\n=== Compile to d-DNNF ===')
         with Timer('compile') :
-            nnf = NNF.createFrom(cnf)
+            nnf = DDNNF.createFrom(cnf)
 
     if dotprefix != None :
         with open(dotprefix + 'nnf.dot', 'w') as f :

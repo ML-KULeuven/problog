@@ -1,178 +1,167 @@
 #!/usr/bin/env python3
 # encoding: utf-8
 """
-HUGIN (.net) Bayesian network format convertor for ProbLog.
+hugin2problog.py
 
-Author: Michiel Derhaeg
+Created by Wannes Meert on 23-02-2016.
+Copyright (c) 2016 KU Leuven. All rights reserved.
 """
 from __future__ import print_function
 
 import sys
-import re
+import os
 import argparse
+import itertools
+import logging
+import re
+import time
 
-desc = "HUGIN (.net) Bayesian network format convertor for ProbLog (.pl)."
+from pyparsing import Word, nums, ParseException, alphanums, \
+                      OneOrMore, Or, Optional, dblQuotedString, Regex, \
+                      Forward, ZeroOrMore, Suppress, removeQuotes, Group, ParserElement
 
-parser = argparse.ArgumentParser(description=desc)
-parser.add_argument("input_file", type=str, help="Input .net file")
-parser.add_argument("-o", "--output_file", type=str, help="ProbLog file")
-args = parser.parse_args()
+from bn2problog import BNParser
 
-netregex = re.compile("net[\s\n]*{(\n|.)*}")
-noderegex = re.compile("node\s+([_\w-]+)[\n\s]*{([^}]*)}")
-potentialregex = re.compile("potential\s*\(\s*([_\w-]+)\s*(\|\s*([_\w-]+\s*)+)?\)[\n\s]*{([^}]*)}")
-statementRegex = re.compile("([_\w-]+)[]\s\n]*=[\n\s]*([^;]+);")
-wordRegex = re.compile("(\w+)")
-GoodBoolStates = [["true","false"],["yes","no"],["y","n"], ["t","f"]]
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+from problog.pgm.cpd import Variable, Factor, PGM
 
-def netlog(inputfilepath):
-    inputfile = open(inputfilepath, "r")
-    netcode = re.sub("%.*","",inputfile.read()).lower()
-    NodeList = []
-    PotentialList =  []
-    for nodematch in noderegex.finditer(netcode):
-        NodeList.append(parseNode(nodematch.group(1),nodematch.group(2)))
-    for potentialmatch in potentialregex.finditer(netcode):
-        PotentialList.append(parsePotential(potentialmatch.groups()))
-    return makeProblog(NodeList,PotentialList)
+ParserElement.enablePackrat()
+logger = logging.getLogger('be.kuleuven.cs.dtai.problog.bn2problog')
 
-def parseNode(name,body):
-    newnode = Node(name)
-    for statementMatch in statementRegex.finditer(body):
-        parseStatement(newnode, statementMatch.group(1), statementMatch.group(2))
-    return newnode
 
-def parseStatement(node, element, value):
-    if element == "states":
-        for match in wordRegex.finditer(value):
-            node.states.append(match.group(1))
+class HuginParser(BNParser):
 
-def parsePotential(groups):
-    node = groups[0]
-    othernodes = groups[1]
-    body = groups[3]
-    newpotential = Potential(node)
-    if othernodes:
-        for nodematch in re.finditer("([_\w-]+)",othernodes):
-            newpotential.othernodes.append(nodematch.group(0))
-    for statementMatch in statementRegex.finditer(body):
-        parseDataStatement(newpotential,statementMatch.group(1),statementMatch.group(2))
-    return newpotential
+    re_comments = re.compile(r"""%.*?[\n\r]""")
 
-def parseDataStatement(potential,element,value):
-    if element == "data":
-        value = re.sub("\)\s+\(",")(",re.sub("[\n\r]","",value ))
-        data = []
-        value = re.sub("[)(]"," ",value)
-        output = ""
-        for char in value:
-            if char == " ":
-                if len(output):
-                    data.append(output)
-                output = ""
-            else:
-                output += char
-        potential.data = data
+    @staticmethod
+    def rm_comments(string):
+        return HuginParser.re_comments.sub("\n", string)
 
-def normalizeData(data,nrOfStates):
-    if (len(data)):
-        for j in range(0,len(data), nrOfStates):
-            sumofdata = 0
-            for i in range(j, nrOfStates+j):
-                sumofdata += float(data[i])
-            for i in range(j, nrOfStates+j):
-                data[i] = float(data[i]) / sumofdata
-        data = list(map(str,data))
-    return data
+    def __init__(self, args):
+        super(HuginParser, self).__init__(args)
 
-class Node():
-    def __init__(self,_name):
-        self.name = _name
-        self.states = []
-    def nameWithState(self):
-        reverse = list(self.states)
-        reverse.reverse()
-        if self.states in GoodBoolStates:
-            return [self.name, "\+" + self.name]
-        else:
-            reverse = list(self.states)
-            reverse.reverse()
-            if reverse in GoodBoolStates:
-                return ["\+" + self.name, self.name]
-            else:
-                names = list(self.states)
-                for i in range(0,len(names)):
-                    names[i] = self.name + "_" + names[i]
-                return names
+        self.domains = {}
+        self.potentials = []
 
-class Potential():
-    def __init__(self,node):
-        self.node = node
-        self.othernodes = []
-        self.data = []
-    def dimension(self):
-        return 1 + len(self.othernodes)
+        S = Suppress
 
-def makeProblog(nodes,potentials):
-    output = ""
-    for p in potentials:
-        mainNode = findnode(p.node,nodes)
-        p.data = normalizeData(p.data, len(mainNode.states))
-        if not(len(p.data)): #TODO fix
-            continue
-        if p.dimension() == 1:
-            # Potential without parents
-            if len(mainNode.states) == 2 and \
-               (mainNode.states in GoodBoolStates or \
-                reversed(mainNode.states) in GoodBoolStates):
-                output += p.data[0] + "::" + mainNode.nameWithState()[0] + ".\n"
-            else:
-                ad = []
-                for i in range(0,len(p.data)):
-                    ad.append(p.data[i] + "::" + mainNode.nameWithState()[i])
-                output += "; ".join(ad)+".\n"
-        else:
-            # Potential with parents
-            cartlist = []
-            for n in p.othernodes:
-                node = findnode(n,nodes)
-                cartlist.append(node.nameWithState())
-            cart = cartesian(cartlist)
-            for i in range(0,len(p.data), len(mainNode.states)):
-                chances = {}
-                if (len(mainNode.states) == 2 and \
-                    (mainNode.states in GoodBoolStates or \
-                     reversed(mainNode.states) in GoodBoolStates)):
-                    chances[0] = p.data[i] + "::" + mainNode.nameWithState()[0]
-                else:
-                    for j in range(0,len(mainNode.states)):
-                        chances[j] = p.data[i+j] + "::" + mainNode.nameWithState()[j]
-                output += ";".join(chances.values()) + " :- "
-                aboutFacts = {}
-                for l in range(0,len(cart[int(i/len(mainNode.states))])):
-                    aboutFacts[l] = cart[int(i/len(mainNode.states))][l]
-                output += ",".join(aboutFacts.values())
-                output += ".\n"
+        p_optval = Or([dblQuotedString, S("(") + OneOrMore(Word(nums)) + S(")")])
+        p_option = S(Group(Word(alphanums+"_") + S("=") + Group(p_optval) + S(";")))
+        p_net = S(Word("net") + "{" + ZeroOrMore(p_option) + "}")
+        p_var = Word(alphanums+"_")
+        p_val = dblQuotedString.setParseAction(removeQuotes)
+        p_states = Group(Word("states") + S("=") + S("(") + Group(OneOrMore(p_val)) + S(")") + S(";"))
+        p_node = S(Word("node")) + p_var + S("{") + Group(ZeroOrMore(Or([p_states, p_option]))) + S("}")
+        p_par = Regex(r'\d+(\.\d*)?([eE]\d+)?')
+        p_parlist = Forward()
+        p_parlist << S("(") + Or([OneOrMore(p_par), OneOrMore(p_parlist)]) + S(")")
+        p_data = S(Word("data")) + S("=") + Group(p_parlist) + S(";")
+        p_potential = S(Word("potential")) + S("(") + p_var + Group(Optional(S("|") + OneOrMore(p_var))) + S(")") + S("{") + \
+                      p_data + S("}")
 
-    return output
+        p_option.setParseAction(self.parse_option)
+        p_node.setParseAction(self.parse_node)
+        p_potential.setParseAction(self.parse_potential)
 
-def findnode(name,nodes):
-    output = None
-    for n in nodes:
-        if n.name == name:
-            output = n
-            break
-    return output
+        self.parser = OneOrMore(Or([p_net, p_node, p_potential]))
 
-def cartesian (lists):
-    if lists == []: return [()]
-    return [x + (y,) for x in cartesian(lists[:-1]) for y in lists[-1]]
+    def parse_option(self, s, l, t):
+        return None
+
+    def parse_node(self, s, l, t):
+        # print(t)
+        rv = t[0]
+        for key, val in t[1]:
+            if key == 'states':
+                self.domains[rv] = val
+                self.pgm.add_var(Variable(rv, val, detect_boolean=self.detect_bool, force_boolean=self.force_bool))
+
+    def parse_potential(self, s, l, t):
+        # print(t)
+        rv = t[0]
+        if rv not in self.domains:
+            logger.error('Domain for {} not defined.'.format(rv), halt=True)
+            sys.exit(1)
+        values = self.domains[rv]
+        parents = t[1]
+        parameters = t[2]
+        if len(parents) == 0:
+            table = list([float(p) for p in parameters])
+            self.pgm.add_factor(Factor(self.pgm, rv, parents, table))
+            return
+        parent_domains = []
+        for parent in parents:
+            parent_domains.append(self.domains[parent])
+        dom_size = len(values)
+        table = {}
+        idx = 0
+        for val_assignment in itertools.product(*parent_domains):
+            table[val_assignment] = [float(p) for p in parameters[idx:idx+dom_size]]
+            idx += dom_size
+        self.pgm.add_factor(Factor(self.pgm, rv, parents, table))
+
+    def parse_string(self, text):
+        text = HuginParser.rm_comments(text)
+        result = None
+        try:
+            result = self.parser.parseString(text, parseAll=True)
+        except ParseException as err:
+            print(err)
+        return result
+
+    def parse(self):
+        if self.fn is None:
+            logger.warning('No filename given to parser')
+            return None
+        text = None
+        logger.info("Start parsing ...")
+        ts1 = time.clock()
+        with open(self.fn, 'r') as ifile:
+            text = ifile.read()
+        self.parse_string(text)
+        ts2 = time.clock()
+        logger.info("Parsing took {:.3f} sec".format(ts2 - ts1))
+        return self.pgm
+
+
+def test(text):
+    parser = HuginParser()
+    return parser.parse_string(text)
+
+
+def tests():
+    # test('net {}')
+    # test('node a { states = ( x y );}')
+    # test('node a { states = ( "x" "y" );}')
+    # test('potential (a) { data = (0.5 0.5); }')
+    # test('potential (a | b c) { data = (0.5 0.5); }')
+    # test('potential (a) { data = ((0.5 0.5)); }')
+    # test('potential (a) { data = ((0.5 0.5)(0.5 0.5)); }')
+    # test('potential (a) { data = ((1 0)(0 1)); }')
+    # test('potential (a) { data = ((1 0)(0 1)); %test\n}')
+    # test('net { val = "x"; }')
+    # test('net { val = (0 1); }')
+    # test('net { val_x = "x"; }')
+    # test('node a { label = ""; }')
+    # test('node a { label = ""; states = ("1" "2"); }')
+    pass
+
+
+def main(argv=None):
+    description = 'Translate Bayesian net in Hugin .net/.hugin format format to ProbLog'
+    parser = argparse.ArgumentParser(description=description)
+    parser.add_argument('--verbose', '-v', action='count', default=0, help='Verbose output')
+    parser.add_argument('--quiet', '-q', action='count', default=0, help='Quiet output')
+    HuginParser.add_parser_arguments(parser)
+    args = parser.parse_args(argv)
+
+    logger.setLevel(max(logging.INFO - 10 * (args.verbose - args.quiet), logging.DEBUG))
+    logger.addHandler(logging.StreamHandler(sys.stdout))
+
+    parser = HuginParser(args)
+    parser.run(args)
+
 
 if __name__ == "__main__":
-    output_file = sys.stdout
-    if args.output_file:
-        output_file = open(args.output_file,'w')
-
-    output_file.write(netlog(args.input_file))
-    output_file.close()
+    sys.exit(main())
 

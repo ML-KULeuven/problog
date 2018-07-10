@@ -229,7 +229,7 @@ def run_problog_task(task, model, callback=None, data=None, options=None):
     except subprocess.CalledProcessError as err:
         logger.error('ProbLog didn\'t finish correctly: %s' % err)
         result = {'SUCCESS': False, 'url': url,
-                  'err': 'ProbLog learning exceeded time or memory limit'}
+                  'err': 'ProbLog exceeded time or memory limit'}
         return 200, 'application/json', wrap_callback(callback, json.dumps(result))
 
 
@@ -280,6 +280,39 @@ def run_lfi_jsonp(model, examples, callback):
 @handle_url(api_root + 'ground')
 def run_lfi_jsonp(model, callback):
     return run_problog_task('ground', model[0], callback[0], options=['--format', 'svg'])
+
+
+@handle_url(api_root + 'english')
+def run_natlang_jsonp(model, is_text, callback):
+    retcode, result, stderr = call_extract(model[0], is_text[0])
+    if retcode == 0:
+        result['SUCCESS'] = True
+    else:
+        result['SUCCESS'] = False
+        result['message'] = 'An error has occurred.'
+    retval = wrap_callback(callback[0], json.dumps(result))
+    return 200, 'application/json', retval
+
+
+def call_extract(text, is_text):
+    # script = root_path('..', '..', '..', '..', 'nlp_challenge', 'code', 'extract', 'extract.py')
+    script = root_path('..', '..', '..', 'nlp4plp', 'extract', 'extract.py')
+    cmd = ['python', script, '--stdin', '--json', '--nosvg']
+    if not is_text == 'true':
+        cmd += ['-m']
+    try:
+        command = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        stdout, stderr = command.communicate(text)
+        retcode = command.returncode
+        try:
+            out = json.loads(stdout)
+        except:
+            out = {'out': stdout}
+    except Exception as err:
+        retcode = 1
+        out = {}
+        stderr = str(err)
+    return retcode, out, stderr
 
 
 def store_hash(data, datatype):

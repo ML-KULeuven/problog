@@ -10,10 +10,10 @@ include(P, [X|T], S) :-
 exclude(P, [], []).
 exclude(P, [X|T], [X|S]) :-
     \+ call(P, X),
-    include(P, T, S).
+    exclude(P, T, S).
 exclude(P, [X|T], S) :-
     call(P, X),
-    include(P, T, S).
+    exclude(P, T, S).
 
 partition(_, [], [], []).
 partition(P, [X|R], [X|S], T) :-

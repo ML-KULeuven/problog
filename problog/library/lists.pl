@@ -99,7 +99,8 @@ select(X,[_|XList],Y,[_|YList]) :-
     
 nth0(0,[X|L],X).
 nth0(I,[_|L],X) :-
-    I > 0,
+    length(L, Len),
+    between(1, Len, I),
     J is I - 1,
     nth0(J,L,X).
     
@@ -108,6 +109,7 @@ nth1(I,L,X) :-
     nth0(J,L,X).
     
 last(List,Last) :- append(_, [Last], List).
+head([H|_], H).
 
 reverse(L1,L2) :- reverse(L1,[],L2).
 reverse([],L,L).
@@ -118,4 +120,30 @@ permutation([],[]).
 permutation([X|R],[Y|S]) :-
     select(Y,[X|R],T),
     permutation(T,S).
-    
+
+
+% Flatten a list (e.g. [1, [2, [3, 4], [5, 6], 7]] => [1,2,3,4,5,6,7]
+flatten(In, Out) :- flatten(In, [], Out).
+
+flatten([], Acc, Acc).
+flatten([H|T], Acc, List) :-
+    flatten(H, Acc, Acc1),
+    flatten(T, Acc1, List).
+flatten(H, Acc, List) :-
+    \+ is_list(H),
+    append(Acc, [H], List).
+
+groupby([], []).
+groupby([[G|X]|T], Out) :-
+    groupby(T, G, [X], Out).
+
+% groupby(ListIn, CurEl, CurGroup, Out)
+groupby([], G, S, [[G,S]]).
+
+groupby([[G|X]|T], G, S,  Out) :-
+    groupby(T, G, [X|S], Out).
+
+groupby([[G|X]|T], G1, S,  [[G1,S]|Out]) :-
+    G \= G1,
+    groupby(T, G, [X], Out).
+

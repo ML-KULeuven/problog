@@ -25,8 +25,8 @@ Common interface to decision diagrams (BDD, SDD).
 from __future__ import print_function
 
 
-from .util import Timer
-from .formula import LogicFormula
+from .util import Timer, mktempfile
+from .formula import LogicFormula, atom, LogicNNF
 from .evaluator import EvaluatableDSP, Evaluator, FormulaEvaluatorNSP, FormulaEvaluator, SemiringLogProbability, SemiringProbability
 from .errors import InconsistentEvidenceError
 
@@ -38,12 +38,11 @@ class DD(LogicFormula, EvaluatableDSP):
         LogicFormula.__init__(self, **kwdargs)
 
         self.inode_manager = None
-        self.inodes = []
 
         self.atom2var = {}
         self.var2atom = {}
 
-        self._constraint_dd = None
+        # self._constraint_dd = None
 
     def _create_manager(self):
         """Create and return a new underlying manager."""
@@ -60,7 +59,7 @@ class DD(LogicFormula, EvaluatableDSP):
         var = self.get_manager().add_variable()
         self.atom2var[index] = var
         self.var2atom[var] = index
-        return self._atom(identifier, probability, group, name, source)
+        return atom(identifier, probability, group, name, source)
 
     def get_inode(self, index):
         """Get the internal node corresponding to the entry at the given index.
@@ -69,7 +68,11 @@ class DD(LogicFormula, EvaluatableDSP):
         :return: internal node corresponding to the given index
         """
         negate = False
-        if index < 0:
+        if self.is_false(index):
+            return self.get_manager().false()
+        elif self.is_true(index):
+            return self.get_manager().true()
+        elif index < 0:
             index = -index
             negate = True
         node = self.get_node(index)
@@ -77,11 +80,11 @@ class DD(LogicFormula, EvaluatableDSP):
             result = self.get_manager().literal(self.atom2var[index])
         else:
             # Extend list
-            while len(self.inodes) < index:
-                self.inodes.append(None)
-            if self.inodes[index - 1] is None:
-                self.inodes[index - 1] = self._create_inode(node)
-            result = self.inodes[index - 1]
+            while len(self.get_manager().nodes) < index:
+                self.get_manager().nodes.append(None)
+            if self.get_manager().nodes[index - 1] is None:
+                self.get_manager().nodes[index - 1] = self._create_inode(node)
+            result = self.get_manager().nodes[index - 1]
         if negate:
             new_sdd = self.get_manager().negate(result)
             return new_sdd
@@ -103,22 +106,20 @@ class DD(LogicFormula, EvaluatableDSP):
         """
         assert index is not None
         assert index > 0
-        self.inodes[index - 1] = node
+        self.get_manager().nodes[index - 1] = node
 
     def get_constraint_inode(self):
         """Get the internal node representing the constraints for this formula."""
-        if self._constraint_dd is None:
+        if self.get_manager().constraint_dd is None:
             return self.get_manager().true()
         else:
-            return self._constraint_dd
+            return self.get_manager().constraint_dd
 
     def _create_evaluator(self, semiring, weights, **kwargs):
-        if isinstance(semiring, SemiringLogProbability) or isinstance(semiring, SemiringProbability):
-            return DDEvaluator(self, semiring, weights, **kwargs)
-        elif semiring.is_nsp():
+        if semiring.is_nsp():
             return FormulaEvaluatorNSP(self.to_formula(), semiring, weights)
         else:
-            return FormulaEvaluator(self.to_formula(), semiring, weights)
+            return DDEvaluator(self, semiring, weights, **kwargs)
 
     def build_dd(self):
         """Build the internal representation of the formula."""
@@ -132,15 +133,25 @@ class DD(LogicFormula, EvaluatableDSP):
 
     def build_constraint_dd(self):
         """Build the internal representation of the constraint of this formula."""
-        self._constraint_dd = self.get_manager().true()
+        self.get_manager().constraint_dd = self.get_manager().true()
         for c in self.constraints():
             print('build constraint dd: {}'.format(c))
             for rule in c.as_clauses():
                 rule_sdd = self.get_manager().disjoin(*[self.get_inode(r) for r in rule])
-                new_constraint_dd = self.get_manager().conjoin(self._constraint_dd, rule_sdd)
-                self.get_manager().deref(self._constraint_dd)
+                new_constraint_dd = self.get_manager().conjoin(self.get_manager().constraint_dd, rule_sdd)
+                self.get_manager().deref(self.get_manager().constraint_dd)
                 self.get_manager().deref(rule_sdd)
-                self._constraint_dd = new_constraint_dd
+                self.get_manager().constraint_dd = new_constraint_dd
+
+    def to_dot(self, *args, **kwargs):
+        if kwargs.get('use_internal'):
+            for qn, qi in self.queries():
+                filename = mktempfile('.dot')
+                self.get_manager().write_to_dot(self.get_inode(qi), filename)
+                with open(filename) as f:
+                    return f.read()
+        else:
+            return self.to_formula().to_dot(*args, **kwargs)
 
 
 class DDManager(object):
@@ -149,7 +160,17 @@ class DDManager(object):
     """
 
     def __init__(self):
-        pass
+        self.nodes = []
+        self.constraint_dd = None
+
+    def set_node(self, index, node):
+        self.nodes[index] = node
+
+    def get_node(self, index):
+        return self.nodes[index]
+
+    def add_node(self, node):
+        self.nodes.append(node)
 
     def add_variable(self, label=0):
         """Add a variable to the manager and return its label.
@@ -397,7 +418,11 @@ class DDEvaluator(Evaluator):
 
     def propagate(self):
         self._initialize()
-        self.normalization = self._get_manager().wmc_true(self.weights, self.semiring)
+        if isinstance(self.semiring, SemiringLogProbability) or isinstance(self.semiring, SemiringProbability):
+            self.normalization = self._get_manager().wmc_true(self.weights, self.semiring)
+
+        else:
+            self.normalization = None
         self.evaluate_evidence()
 
     def _evaluate_evidence(self, recompute=False):
@@ -405,16 +430,29 @@ class DDEvaluator(Evaluator):
             constraint_inode = self.formula.get_constraint_inode()
             evidence_nodes = [self.formula.get_inode(ev) for ev in self.evidence()]
             self.evidence_inode = self._get_manager().conjoin(constraint_inode, *evidence_nodes)
-            result = self._get_manager().wmc(self.evidence_inode, self.weights, self.semiring)
-            if result == self.semiring.zero():
-                raise InconsistentEvidenceError()
-            self._evidence_weight = self.semiring.normalize(result, self.normalization)
+
+            if isinstance(self.semiring, SemiringLogProbability) or isinstance(self.semiring, SemiringProbability):
+                result = self._get_manager().wmc(self.evidence_inode, self.weights, self.semiring)
+                if result == self.semiring.zero():
+                    raise InconsistentEvidenceError(context=' during compilation')
+                self._evidence_weight = self.semiring.normalize(result, self.normalization)
+            else:
+                formula = LogicNNF()
+                i = self.formula._to_formula(formula, self.evidence_inode)
+                self._evidence_weight = formula.evaluate(index=i, semiring=self.semiring)
+
         return self._evidence_weight
 
     def evaluate_evidence(self, recompute=False):
         return self.semiring.result(self._evaluate_evidence(recompute=recompute), self.formula)
 
     def evaluate(self, node):
+        if isinstance(self.semiring, SemiringLogProbability) or isinstance(self.semiring, SemiringProbability):
+            return self.evaluate_standard(node)
+        else:
+            return self.evaluate_custom(node)
+
+    def evaluate_standard(self, node):
         # Trivial case: node is deterministically True or False
         if node == self.formula.TRUE:
             result = self.semiring.one()
@@ -433,6 +471,32 @@ class DDEvaluator(Evaluator):
             self._get_manager().deref(query_sdd)
             # TODO only normalize when there are evidence or constraints.
             result = self.semiring.normalize(result, self.normalization)
+            result = self.semiring.normalize(result, self._evidence_weight)
+        return self.semiring.result(result, self.formula)
+
+    def evaluate_custom(self, node):
+        # Trivial case: node is deterministically True or False
+        if node == self.formula.TRUE:
+            result = self.semiring.one()
+        elif node is self.formula.FALSE:
+            result = self.semiring.zero()
+        else:
+            query_def_inode = self.formula.get_inode(node)
+            evidence_inode = self.evidence_inode
+            query_sdd = self._get_manager().conjoin(query_def_inode, evidence_inode)
+
+
+
+            formula = LogicNNF()
+            i = self.formula._to_formula(formula, query_sdd)
+            result = formula.evaluate(index=i, semiring=self.semiring)
+
+            self._get_manager().deref(query_sdd)
+
+
+
+            # TODO only normalize when there are evidence or constraints.
+#            result = self.semiring.normalize(result, self.normalization)
             result = self.semiring.normalize(result, self._evidence_weight)
         return self.semiring.result(result, self.formula)
 

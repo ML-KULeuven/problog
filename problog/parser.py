@@ -310,6 +310,9 @@ class PrologParser(object):
         return Token(';', pos, binop=(1100, 'xfy', self.factory.build_disjunction),
                      functor=self._next_paren_open(s, pos)), pos + 1
 
+    def _token_exclamation(self, s, pos):
+        return Token('!', pos, atom=True), pos + 1
+
     def _token_less(self, s, pos):
         if s[pos:pos + 2] == '<-':
             return Token('<-', pos, binop=(1200, 'xfx', self._build_clause),
@@ -339,6 +342,9 @@ class PrologParser(object):
                          functor=self._next_paren_open(s, pos)), pos + 3
         elif s[pos:pos + 2] == '==':
             return Token('==', pos, binop=(700, 'xfx', self.factory.build_binop),
+                         functor=self._next_paren_open(s, pos)), pos + 2
+        elif s[pos:pos + 2] == '=>':
+            return Token('=>', pos, binop=(700, 'yfx', self.factory.build_binop),
                          functor=self._next_paren_open(s, pos)), pos + 2
         else:
             return Token('=', pos, binop=(700, 'xfx', self.factory.build_binop),
@@ -419,7 +425,30 @@ class PrologParser(object):
                      special=SPECIAL_PIPE), pos + 1
 
     def _token_tilde(self, s, pos):
-        return Token('~', pos, unop=(900, 'fx', self.factory.build_unop)), pos + 1
+        if s[pos:pos + 3] == '~==':
+            return Token('~==', pos, binop=(700, 'xfx', self.factory.build_binop),
+                         functor=self._next_paren_open(s, pos)), pos + 3
+        elif s[pos:pos + 4] == '~=/=':
+            return Token('~=/=', pos, binop=(700, 'xfx', self.factory.build_binop),
+                         functor=self._next_paren_open(s, pos)), pos + 4
+        elif s[pos:pos + 2] == '~<':
+            return Token('~<', pos, binop=(700, 'xfx', self.factory.build_binop),
+                         functor=self._next_paren_open(s, pos)), pos + 2
+        elif s[pos:pos + 3] == '~=<':
+            return Token('~=<', pos, binop=(700, 'xfx', self.factory.build_binop),
+                         functor=self._next_paren_open(s, pos)), pos + 3
+        elif s[pos:pos + 3] == '~>=':
+            return Token('~>=', pos, binop=(700, 'xfx', self.factory.build_binop),
+                         functor=self._next_paren_open(s, pos)), pos + 3
+        elif s[pos:pos + 2] == '~>':
+            return Token('~>', pos, binop=(700, 'xfx', self.factory.build_binop),
+                         functor=self._next_paren_open(s, pos)), pos + 2
+        elif s[pos:pos + 2] == '~=':
+            return Token('~=', pos, unop=(200, 'fy', self.factory.build_unop),
+                         functor=self._next_paren_open(s, pos)), pos + 2
+        else:
+            return Token('~', pos, unop=(900, 'fx', self.factory.build_unop),
+                         binop=(1000, 'xfx', self.factory.build_probabilistic)), pos + 1
 
     def _token_lower(self, s, pos):
         end = pos + 1
@@ -499,7 +528,7 @@ class PrologParser(object):
 
     def prepare(self):
         self._token_act1 = [
-            self._token_notsupported,  # 33 !
+            self._token_exclamation,  # 33 !
             self._token_dquot,  # 34 "
             self._token_pound,  # 35 #
             self._token_notsupported,  # 36 $
@@ -541,6 +570,7 @@ class PrologParser(object):
 
         self.string_operators = {
             'is': {'binop': (700, 'xfx', self.factory.build_binop)},
+            'as': {'binop': (700, 'xfx', self.factory.build_binop)},
             'not': {'unop': (900, 'fy', self.factory.build_not), 'atom': True},
             'xor': {'binop': (500, 'yfx', self.factory.build_binop)},
             'rdiv': {'binop': (400, 'yfx', self.factory.build_binop)},
@@ -713,9 +743,9 @@ class PrologParser(object):
         expr_stack = []
         for token_i, token in enumerate(tokens):
             if token.is_special(SPECIAL_PAREN_OPEN):  # Open a parenthesis expression
-                expr_stack.append(ParenExpression(string, token))
+                expr_stack.append(self._create_paren_expression(string, token))
             elif token.is_special(SPECIAL_BRACK_OPEN):  # Open a list expression
-                expr_stack.append(ListExpression(string, token))
+                expr_stack.append(self._create_list_expression(string, token))
             elif token.is_special(SPECIAL_PAREN_CLOSE) or token.is_special(SPECIAL_BRACK_CLOSE):
                 try:
                     current_expr = expr_stack.pop(-1)  # Close a parenthesis expression
@@ -739,6 +769,12 @@ class PrologParser(object):
 
         toks = self.label_tokens(string, root_tokens)
         return self.fold(string, toks, 0, len(toks))
+
+    def _create_paren_expression(self, string, token):
+        return ParenExpression(string, token)
+
+    def _create_list_expression(self, string, token):
+        return ListExpression(string, token)
 
 
 def mapl(f, l):

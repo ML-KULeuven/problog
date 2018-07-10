@@ -42,14 +42,15 @@ class _SubstitutionWrapper(object):
             return key
 
 
-def substitute_all(terms, subst):
+def substitute_all(terms, subst, wrapped=False):
     """
 
     :param terms:
     :param subst:
     :return:
     """
-    subst = _SubstitutionWrapper(subst)
+    if not wrapped:
+        subst = _SubstitutionWrapper(subst)
     result = []
     for term in terms:
         if is_variable(term):
@@ -73,8 +74,8 @@ def instantiate(term, context):
 
 
 class OccursCheck(GroundingError):
-    def __init__(self):
-        GroundingError.__init__(self, 'Infinite unification')
+    def __init__(self, location=None):
+        GroundingError.__init__(self, 'Infinite unification', location=location)
 
 
 def unify_value(value1, value2, source_values):
@@ -100,8 +101,10 @@ def unify_value(value1, value2, source_values):
             value = unify_value(source_values.get(value1), source_values.get(value2), source_values)
             if value is None:
                 value = max(value1, value2)
-            source_values[value1] = value
-            source_values[value2] = value
+            if value1 != value:
+                source_values[value1] = value
+            if value2 != value:
+                source_values[value2] = value
             # Return the one of lowest rank: negative numbers, so max
             return value
     elif is_variable(value1):
@@ -129,12 +132,77 @@ def unify_value(value1, value2, source_values):
         raise UnifyError()
 
 
+def unify_value_dc(value1, value2, source_values, target_values):
+    """
+    Unify two values that exist in different contexts.
+    Updates the mapping of variables from value1 to values from value2.
+
+    :param value1:
+    :param value2:
+    :param source_values: mapping of source variable to target value
+    :param target_values: mapping of target variable to TARGET value
+    """
+    # Variables are negative numbers or None
+    if is_variable(value1) and is_variable(value2):
+        if value1 is None:
+            pass
+        elif value2 is None:  # second one is anonymous
+            pass
+        else:
+            # Two named variables
+
+            # Check whether value2 is already linked to another value in the target context
+            sv2 = target_values.get(value2, value2)
+            if sv2 == value2:  # no
+                # Check whether value1 is already linked to a value
+                sv1 = source_values.get(value1)
+                if sv1 is None:  # no
+                    # We can link variable 1 with variable 2
+                    source_values[value1] = value2
+                else:
+                    # yes: we need to unify sv1 and value2 (they both are in target scope)
+                    unify_value(sv1, value2, target_values)
+            else:
+                # value2 is already linked to another value
+                # we need to unify value1 with that value
+                unify_value_dc(value1, sv2, source_values, target_values)
+    elif is_variable(value1):
+        if value1 is None:
+            pass
+        else:
+            sv1 = source_values.get(value1)
+            if sv1 is None:
+                source_values[value1] = value2
+            elif is_variable(sv1):
+                if sv1 in value2.variables():
+                    raise OccursCheck()
+                if sv1 != value2:
+                    target_values[sv1] = value2
+                source_values[value1] = value2
+            else:
+                # unify in same context target_values
+                source_values[value1] = unify_value(source_values[value1], value2, target_values)
+    elif is_variable(value2):
+        sv2 = target_values.get(value2)
+        if sv2 is None:
+            target_values[value2] = value1.apply(source_values)
+        elif is_variable(sv2):
+            pass
+        else:
+            unify_value_dc(value1, sv2, source_values, target_values)
+    elif value1.signature == value2.signature:  # Assume Term
+        for a1, a2 in zip(value1.args, value2.args):
+            unify_value_dc(a1, a2, source_values, target_values)
+    else:
+        raise UnifyError()
+
+
 class _ContextWrapper(object):
-    def __init__(self, context):
+    def __init__(self, context, min_var):
         self.context = context
         self.numbers = {}
         self.translate = {None: None}
-        self.num_count = 0
+        self.num_count = 0  # min_var
 
     def __getitem__(self, key):
         if key is None:
@@ -166,7 +234,7 @@ class _ContextWrapper(object):
         return value
 
 
-def substitute_call_args(terms, context):
+def substitute_call_args(terms, context, min_var):
     """
 
     :param terms:
@@ -174,7 +242,7 @@ def substitute_call_args(terms, context):
     :return:
     """
     result = []
-    cw = _ContextWrapper(context)
+    cw = _ContextWrapper(context, min_var)
     for term in terms:
         if term is None:
             cw.num_count -= 1
@@ -275,7 +343,6 @@ class _VarTranslateWrapper(object):
     def __init__(self, var_translate, min_var):
         self.base = var_translate
         self.min_var = min_var
-#         self.min_var = min([min_var] + self.values())
 
     def __getitem__(self, item):
         if item in self.base:
@@ -285,72 +352,86 @@ class _VarTranslateWrapper(object):
             self.base[item] = self.min_var
             return self.min_var
 
+    def __setitem__(self, key, item):
+        self.base[key] = item
+
+    def items(self):
+        return self.base.items()
+
+    def get(self, item, default=None):
+        if item in self.base:
+            return self.base[item]
+        else:
+            return default
+
     def values(self):
         return [x for x in self.base.values() if x is not None]
 
+    def __repr__(self):
+        return repr(self.base)
 
-def unify_call_return(call_args, head_args, target_context, var_translate, min_var, mask=None):
+
+def unify_call_return(result, call_args, context, var_translate, min_var, mask=None):
+    """Transforms the result returned by a call into the calling context.
+
+    :param result: result returned by call
+    :param call_args: arguments used in the call
+    :param context: calling context
+    :param var_translate: variable translation for local variables from call context to
+    calling context
+    :param min_var: number of local variables currently in calling context
+    :param mask: mask indicating whether call_args are non-ground (ground can be skipped in
+    unification)
+
     """
-    Unify argument list from clause call and clause head.
-    :param call_args: arguments of the call
-    :param head_args: arguments of the head
-    :param target_context: list of values of variables in the clause
-    :param var_translate:
-    :raise UnifyError: unification failed
-    """
+    # TODO is this the correct min_var?
+    # TODO is one-hop lookup in 'tv' sufficient?
+
+    # Each context contains local variables (indicated by negative numbers).
+    # We indicate them as lvars callee and lvars caller.
+
+    # var_translate: lvars callee -> lvars caller
+
+    # Construct default mask if none is given: check all
     if mask is None:
         mask = [True] * len(call_args)
 
-    var_translate = _VarTranslateWrapper(var_translate, min_var)
-    source_values = {}  # contains the values unified to the variables in the call arguments
-    for call_arg, head_arg, mask_arg in zip(call_args, head_args, mask):
-        if mask_arg:
-            # Translate the variables in the source value (V3) to negative variables in current context (V2)
-            call_arg = substitute_simple(call_arg, var_translate)
-            _unify_call_return_single(call_arg, head_arg, target_context, source_values)
-    result = substitute_all(target_context, source_values)
-    return result
+    sv = _VarTranslateWrapper({}, min_var)
+    # dict: variable in call -> value from result  (lvars callee -> expr with lvars caller)
+    tv = {}  # dict: internal mapping in caller
+    for r, c, m in zip(result, call_args, mask):
+        if m:
+            # Unify values (from different contexts)
+            #  This updates the sv and tv maps.
+            unify_value_dc(c, r, sv, tv)
+    min_var = sv.min_var
+    sv = {k: tv.get(v, v) for k, v in sv.items()}
+
+    # Using a _VarTranslateWrapper will cause any unknown variables in 'v' to be replaced by
+    #  new variables with a safe name (taking into account min_var).
+    tvw = _VarTranslateWrapper(tv, min_var)
+    sv = {k: substitute_all([v], tvw, True)[0] for k, v in sv.items()}
+
+    # Context contains lvars from caller.
+    # Use var_translate to make sv a map lvars caller -> expr lvars caller.
+    sv = {var_translate.get(k, k): v for k, v in sv.items()}
+
+    # Wrap sv -> failed lookup creates a new local variable.
+    sv = _VarTranslateWrapper(sv, tvw.min_var)
+
+    # Apply sv substitution to each slot in the context.
+    # Replaces lvars caller with expr lvars caller.
+    return [substitute_simple(c, sv) for c in context]
 
 
-def _unify_call_return_single(source_value, target_value, target_context, source_values):
-    """
+def subsumes(generic, specific):
 
-    :param source_value: value from call result. Can contain variables < 0.
-    :param target_value: value from call itself. Can contain variables >= 0.
-    :param target_context:
-    :param source_values:
-    :return:
-    """
-    if is_variable(target_value):
-        if target_value is None:
-            pass
-        elif target_value >= 0:
-            # Get current value of target.
-            current_value = target_context[target_value]
-            # Three possibilities: None, negative variable (from V2), Term (with variables from V2)
-            if current_value is None:
-                target_context[target_value] = source_value
-            elif type(current_value) == int:
-                # Negative variable (from V2)
-                source_values[current_value] = unify_value(
-                    source_values.get(current_value), source_value, source_values)
-            else:
-                # Term (with variables from V2)
-                target_context[target_value] = unify_value(
-                    current_value, source_value, source_values)
-        else:
-            # Not possible. Target comes from static variables
-            assert not target_value < 0
-    else:
-        # Target value is Term (which can contain variables)
-        if is_variable(source_value):  # source value is variable (integer < 0)
-            assert type(source_value) == int and source_value < 0
-            source_values[source_value] = \
-                unify_value(source_values.get(source_value), target_value, source_values)
-        else:  # source value is a Term (which can still contain variables)
-            if target_value.signature == source_value.signature:
-                # When signatures match, recursively unify the arguments.
-                for s_arg, t_arg in zip(source_value.args, target_value.args):
-                    _unify_call_return_single(s_arg, t_arg, target_context, source_values)
-            else:
-                raise UnifyError()
+    sv = _VarTranslateWrapper({}, 0)
+    tv = {}  # dict: internal mapping in caller
+
+    # Unify both terms.
+    unify_value_dc(generic, specific, sv, tv)
+
+    # tv contains all bindings to variables in specific (to constants, or to values within tv).
+    # There should be none.
+    return not tv

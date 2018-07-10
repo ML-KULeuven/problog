@@ -26,13 +26,13 @@ from __future__ import print_function
 import math
 
 from .core import ProbLogObject, transform_allow_subclass
-from .errors import InconsistentEvidenceError, InvalidValue
+from .errors import InconsistentEvidenceError, InvalidValue, ProbLogError
 
 
-class OperationNotSupported(Exception):
+class OperationNotSupported(ProbLogError):
 
     def __init__(self):
-        Exception.__init__(self, 'This operation is not supported by this semiring.')
+        ProbLogError.__init__(self, 'This operation is not supported by this semiring')
 
 
 class Semiring(object):
@@ -143,6 +143,14 @@ class Semiring(object):
             s = self.plus(s, w)
         return self.negate(s)
 
+    def true(self, key=None):
+        """Handle weight for deterministically true."""
+        return self.one(), self.zero()
+
+    def false(self, key=None):
+        """Handle weight for deterministically false."""
+        return self.zero(), self.one()
+
 
 class SemiringProbability(Semiring):
     """Implementation of the semiring interface for probabilities."""
@@ -217,6 +225,8 @@ class SemiringLogProbability(SemiringProbability):
         return a + b
 
     def negate(self, a):
+        if not self.in_domain(a):
+            raise InvalidValue("Not a valid value for this semiring: '%s'" % a)
         if a > -1e-10:
             return self.zero()
         return math.log1p(-math.exp(a))
@@ -340,7 +350,9 @@ class Evaluatable(ProbLogObject):
             elif evidence is not None:
                 try:
                     value = evidence[ev_name]
-                    if value:
+                    if value is None:
+                        pass
+                    elif value:
                         evaluator.add_evidence(ev_index)
                     else:
                         evaluator.add_evidence(-ev_index)
@@ -501,7 +513,7 @@ class FormulaEvaluator(object):
         elif index == self.formula.FALSE:
             return self.semiring.zero()
         elif index < 0:
-            weight = self._fact_weights.get(index)
+            weight = self._fact_weights.get(abs(index))
             if weight is None:
                 # This will only work if the semiring support negation!
                 nw = self.get_weight(-index)

@@ -124,7 +124,7 @@ def list2term(lst):
     return tail
 
 
-def term2list(term):
+def term2list(term, deep=True):
     """Transform a Prolog list to a Python list of terms.
 
     :param term: term representing a fixed length Prolog list
@@ -135,8 +135,11 @@ def term2list(term):
     """
     from .pypl import pl2py
     result = []
-    while term.functor == '.' and term.arity == 2:
-        result.append(pl2py(term.args[0]))
+    while not is_variable(term) and term.functor == '.' and term.arity == 2:
+        if deep:
+            result.append(pl2py(term.args[0]))
+        else:
+            result.append(term.args[0])
         term = term.args[1]
     if not term == Term('[]'):
         raise ValueError('Expected fixed list.')
@@ -163,7 +166,7 @@ def is_variable(term):
     :param term: term to check
     :return: True if the expression is a variable
     """
-    return term is None or type(term) == int
+    return term is None or type(term) == int or term.is_var()
 
 
 def is_list(term):
@@ -181,7 +184,7 @@ class Term(object):
     :param functor: the functor of the term ('p' in the example)
     :type functor: str
     :param args: the arguments of the Term ('X' and 'Y' in the example)
-    :type args: tuple of (Term | None | int)
+    :type args: Term | None | int
     :param kwdargs: additional arguments; currently 'p' (probability) and 'location' \
     (character position in input)
     """
@@ -230,6 +233,10 @@ class Term(object):
         """Value of the Term obtained by computing the function is represents"""
         return self.compute_value()
 
+    @property
+    def predicates(self):
+        return [self.signature]
+
     def compute_value(self, functions=None):
         """Compute value of the Term by computing the function it represents.
 
@@ -275,6 +282,50 @@ class Term(object):
                     new_stack[-1].append(subst[current.name])
                 else:
                     return subst[current.name]
+            else:
+                # Add arguments to stack
+                term_stack.append(current)
+                q = deque(current.args)
+                if current.probability is not None:
+                    q.append(current.probability)
+                old_stack.append(q)
+                new_stack.append([])
+            while old_stack and not old_stack[-1]:
+                old_stack.pop(-1)
+                new_args = new_stack.pop(-1)
+                term = term_stack.pop(-1)
+                if term.probability is not None:
+                    new_term = term.with_args(*new_args[:-1], p=new_args[-1])
+                else:
+                    new_term = term.with_args(*new_args)
+                if new_stack:
+                    new_stack[-1].append(new_term)
+                else:
+                    return new_term
+
+    def apply_term(self, subst):
+        """Apply the given substitution to all (sub)terms in the term.
+
+        :param subst: A mapping from variable names to something else
+        :type subst: an object with a __getitem__ method
+        :raises: whatever subst.__getitem__ raises
+        :returns: a new Term with all variables replaced by their values from the given substitution
+        :rtype: :class:`Term`
+
+        """
+
+        old_stack = [deque([self])]
+        new_stack = []
+        term_stack = []
+        while old_stack:
+            current = old_stack[-1].popleft()
+            if current in subst:
+                if new_stack:
+                    new_stack[-1].append(subst[current])
+                else:
+                    return subst[current]
+            elif current is None or type(current) == int:
+                new_stack[-1].append(current)
             else:
                 # Add arguments to stack
                 term_stack.append(current)
@@ -370,7 +421,11 @@ class Term(object):
             elif isinstance(current, Term) and current.op_spec is not None:
                 # Is a binary or unary operator.
                 if len(current.op_spec) == 2:  # unary operator
-                    put(str(current.functor).strip("'"))
+                    cf = str(current.functor).strip("'")
+                    if 'a' <= cf[0] <= 'z':
+                        put(' ' + cf + ' ')
+                    else:
+                        put(cf)
                     q = deque()
                     q.append(current.args[0])
                     stack.append(q)
@@ -387,11 +442,11 @@ class Term(object):
                         q.append('(')
                         q.append(a)
                         q.append(')')
-                    op = str(current.functor)
+                    op = str(current.functor).strip("'")
                     if 'a' <= op[0] <= 'z':
-                        q.append(' %s ' % str(current.functor).strip("'"))
+                        q.append(' %s ' % op)
                     else:
-                        q.append('%s' % str(current.functor).strip("'"))
+                        q.append('%s' % op)
                     if not isinstance(b, Term) or \
                             b.op_priority is None or b.op_priority < current.op_priority or \
                             (b.op_priority == current.op_priority and current.op_spec == 'xfy'):
@@ -631,6 +686,29 @@ class Term(object):
     def __abs__(self):
         return self
 
+    @classmethod
+    def from_string(cls, str, factory=None, parser=None):
+        if factory is None:
+            from .program import ExtendedPrologFactory
+            factory = ExtendedPrologFactory()
+        if parser is None:
+            from .parser import PrologParser
+            parser = PrologParser(factory)
+
+        if not str.strip().endswith("."):
+            str += "."
+
+        parsed = parser.parseString(str)
+        if len(parsed) != 1:
+            raise ValueError("Invalid term: '" + str + "'")
+        else:
+            return parsed[0]
+
+
+class AggTerm(Term):
+
+    def __init__(self, *args, **kwargs):
+        Term.__init__(self, *args, **kwargs)
 
 class Var(Term):
     """A Term representing a variable.
@@ -672,7 +750,11 @@ class Constant(Term):
 
     """
 
+    FLOAT_PRECISION = 15
+
     def __init__(self, value, location=None, **kwdargs):
+        if self.FLOAT_PRECISION is not None and type(value) == float:
+            value = round(value, self.FLOAT_PRECISION)
         Term.__init__(self, value, location=location, **kwdargs)
 
     def compute_value(self, functions=None):
@@ -715,6 +797,57 @@ class Constant(Term):
         return str(self) == str(other)
 
 
+class Object(Term):
+    """A wrapped object.
+
+        :param value: the wrapped object
+
+    """
+
+    def __init__(self, value, location=None, **kwdargs):
+        Term.__init__(self, value, location=location, **kwdargs)
+
+    def compute_value(self, functions=None):
+        return float(self.functor)
+        return self.functor
+
+    def is_constant(self):
+        return True
+
+    def __hash__(self):
+        return hash(id(self.functor))
+
+    def __str__(self):
+        return str(self.functor)
+
+    def is_string(self):
+        """Check whether this constant is a string.
+
+            :returns: true if the value represents a string
+            :rtype: :class:`bool`
+        """
+        return False
+
+    def is_float(self):
+        """Check whether this constant is a float.
+
+            :returns: true if the value represents a float
+            :rtype: :class:`bool`
+        """
+        return False
+
+    def is_integer(self):
+        """Check whether this constant is an integer.
+
+            :returns: true if the value represents an integer
+            :rtype: :class:`bool`
+        """
+        return False
+
+    def __eq__(self, other):
+        return id(self) == id(other)
+
+
 class Clause(Term):
     """A clause."""
 
@@ -725,6 +858,10 @@ class Clause(Term):
 
     def __repr__(self):
         return "%s :- %s" % (self.head, self.body)
+
+    @property
+    def predicates(self):
+        return [self.head.signature]
 
 
 class AnnotatedDisjunction(Term):
@@ -740,6 +877,10 @@ class AnnotatedDisjunction(Term):
             return "%s" % ('; '.join(map(str, self.heads)))
         else:
             return "%s :- %s" % ('; '.join(map(str, self.heads)), self.body)
+
+    @property
+    def predicates(self):
+        return [x.signature for x in self.heads]
 
 
 class Or(Term):
@@ -793,6 +934,10 @@ class Or(Term):
 
     def with_args(self, *args):
         return self.__class__(*args, location=self.location)
+
+    @property
+    def predicates(self):
+        return [self.op1.signature] + self.op2.predicates
 
 
 class And(Term):
@@ -931,9 +1076,11 @@ _from_math_1 = ['exp', 'log', 'log10', 'sqrt', 'sin', 'cos', 'tan', 'asin', 'aco
 for _f in _from_math_1:
     _arithmetic_functions[(_f, 1)] = getattr(math, _f)
 
-_from_math_0 = ['pi', 'e']
-for _f in _from_math_0:
-    _arithmetic_functions[(_f, 0)] = lambda: getattr(math, _f)
+# _from_math_0 = ['pi', 'e']
+# for _f in _from_math_0:
+#     _x = getattr(math, _f)
+_arithmetic_functions[('pi', 0)] = lambda: math.pi
+_arithmetic_functions[('e', 0)] = lambda: math.e
 
 
 def unquote(s):
@@ -971,6 +1118,8 @@ def compute_function(func, args, extra_functions=None):
             return None
         else:
             return function(*values)
+    except ValueError as err:
+        raise ArithmeticError(err.message)
     except ZeroDivisionError:
         raise ArithmeticError("Division by zero.")
 

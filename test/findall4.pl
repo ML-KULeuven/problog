@@ -1,6 +1,6 @@
 %Expected outcome:
 %    f([1, 2])  0.12
-% f([X1, X2, X3])  0
+% f([X4, X5, X6])  0
 %    f([a, b])  0
 % f([c, b, a])  0
 

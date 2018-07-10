@@ -310,7 +310,67 @@ var problog = {
                         pbl.dom.results.html(result);
 
                     }
-                },]
+                },
+                {
+                    id: 'english',
+                    name: "Natural Language",
+                    text: "Solve question in natural language.",
+                    action: 'Solve',
+                    choices: [
+                        // {name:"-exact"},
+                        // {name:"SDD"},
+                        // {name:"d-DNNF"},
+                        // {name:"BDD"},
+                        // {name:"-approximate"},
+                        // {name:"forward"},
+                        // {name:"k-best"},
+                        // {name:"sample"}
+                    ],
+                    select: function(pbl) {},
+                    deselect: function(pbl) {},
+                    collectData: function(pbl) {
+                        var model = pbl.editor.getSession().getValue();
+
+                        if (model) {
+                            return {
+                                'model': model
+                                //'options': solve_choice
+                            };
+                        } else {
+                            return undefined;
+                        }
+                    },
+                    formatResult: function(pbl, data) {
+                        console.log(data);
+
+//                        var facts = data.probs
+//                        // Create table body
+//                        var result = $('<tbody>');
+//                        for (var k in facts) {
+//                            var n = facts[k][0];
+//                            var p = facts[k][1];
+//                            var l = facts[k][2];
+//                            var c = facts[k][3];
+//                            if (!isNaN(parseFloat(p))) {
+//                                p = problog.makeProgressBar(p);
+//                            }
+//
+//                            result.append($('<tr>')
+//                                  .append($('<td>').text(n))
+//                                  .append($('<td>').text(l+':'+c))
+//                                  .append($('<td>').append(p)));
+//                        }
+//                        var result = problog.createTable(result, [['Query','50%'],['Location','10%'],['Probability','40%']]);
+                        var result = $('<div>');
+                        result.append($('<span>').append($('<strong>').text('Solution: ')))
+                                .append($('<span>', {'class': 'label label-default'}).text(data.solve_output));
+                        console.log(result);
+                        pbl.dom.results.html(result);
+                    }
+                },
+
+
+                ]
 }
 
 problog.init = function(hostname) {
@@ -573,7 +633,7 @@ problog.init_editor = function(index, object) {
     pbl.editor = ace.edit(pbl.dom.edit_editor[0]);
     pbl.editor.getSession().setMode('ace/mode/problog');
     pbl.editor.getSession().setUseWrapMode(true);
-    pbl.editor.setShowInvisibles(true);
+    pbl.editor.setShowInvisibles(false);
     pbl.editor.setValue(pbl.initial, -1);
     if (pbl.dom.root.data('autosize')) {
         pbl.editor.setOptions({
@@ -759,7 +819,8 @@ problog.createTable = function(body, columns) {
 
 /** Load model from hash in editor **/
 problog.fetchModel = function(pbl) {
-    var task = problog.getTaskFromUrl();
+    var default_task = pbl.dom.root.data('task');
+    var task = problog.getTaskFromUrl(default_task);
 
     pbl.selectTaskByName(task);
 
@@ -804,7 +865,7 @@ problog.fetchModel = function(pbl) {
 
 
 
-problog.getTaskFromUrl = function() {
+problog.getTaskFromUrl = function(default_task) {
   var hash = window.location.hash;
   hashidx = hash.indexOf("task=");
   if (hashidx > 0) {
@@ -817,7 +878,7 @@ problog.getTaskFromUrl = function() {
     if (problog.getExamplesHashFromUrl()) {
         hash = 'lfi';
     } else {
-        hash = 'prob';
+        hash = default_task;
     }
   }
   return hash;

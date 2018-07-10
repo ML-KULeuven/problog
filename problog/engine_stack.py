@@ -31,8 +31,9 @@ from .engine import UnifyError, instantiate, UnknownClause, UnknownClauseInterna
 from .engine import NonGroundProbabilisticClause
 from .errors import GroundingError
 from .engine import ClauseDBEngine, substitute_head_args, substitute_call_args, unify_call_head, \
-    unify_call_return
+    unify_call_return, OccursCheck, substitute_simple
 from .engine_builtin import add_standard_builtins, IndirectCallCycleError
+from collections import defaultdict
 
 
 class NegativeCycle(GroundingError):
@@ -142,6 +143,7 @@ class StackBasedEngine(ClauseDBEngine):
         self.debugger = kwdargs.get('debugger')
 
         self.unbuffered = kwdargs.get('unbuffered')
+        self.rc_first = kwdargs.get('rc_first', False)
 
         self.full_trace = kwdargs.get('full_trace')
 
@@ -231,7 +233,10 @@ class StackBasedEngine(ClauseDBEngine):
 
     def init_message_stack(self):
         if self.unbuffered:
-            return MessageOrderD(self)
+            if self.rc_first:
+                return MessageOrderDrc(self)
+            else:
+                return MessageOrderD(self)
         else:
             return MessageFIFO(self)
 
@@ -308,20 +313,172 @@ class StackBasedEngine(ClauseDBEngine):
         else:
             return False
 
-        # if self.cycle_root and self.in_cycle(child):
-        #     return True
-        #
-        # child1 = child
-        # while child is not None and child != parent:
-        #     childnode = self.stack[child]
-        #     if hasattr(childnode, 'siblings'):
-        #         for s in childnode.siblings:
-        #             if self.is_real_cycle(s, parent):
-        #                 return True
-        #     child = childnode.parent
-        #     if childnode.parent == parent:
-        #         return True
-        # return False
+    def execute_init(self, node_id, target=None, database=None, is_root=None, **kwargs):
+
+        # Initialize the cache/table.
+        # This is stored in the target ground program because
+        # node ids are only valid in that context.
+        if not hasattr(target, '_cache'):
+            target._cache = DefineCache(database.dont_cache)
+
+        # Retrieve the list of actions needed to evaluate the top-level node.
+        # parent = kwdargs.get('parent')
+        # kwdargs['parent'] = parent
+
+        initial_actions = self.eval(node_id, parent=None, database=database, target=target,
+                                    is_root=is_root, **kwargs)
+
+        return initial_actions
+
+    def execute_step(self, initial_actions, steps=None, target=None, database=None, subcall=False,
+                     is_root=False, name=None, **kwdargs):
+
+        self.trace = kwdargs.get('trace')
+        self.debug = kwdargs.get('debug') or self.trace
+        debugger = self.debugger
+
+        actions = self.init_message_stack()
+        actions += initial_actions
+        solutions = []
+
+        # Main loop: process actions until there are no more.
+        while actions:
+            if self.full_trace:
+                self.printStack()
+                print(actions)
+            # Pop the next action.
+            # An action consists of 4 parts:
+            #   - act: the type of action (r, c, e)
+            #   - obj: the pointer on which to call the action
+            #   - args: the arguments of the action
+            #   - context: the execution context
+
+            if self.cycle_root is not None and actions.cycle_exhausted():
+                if self.full_trace:
+                    print('CLOSING CYCLE')
+                    sys.stdin.readline()
+                # for message in actions:   # TODO cache
+                #     parent = actions._msg_parent(message)
+                #     print (parent, self.in_cycle(parent))
+                next_actions = self.cycle_root.closeCycle(True)
+                actions += reversed(next_actions)
+            else:
+                act, obj, args, context = actions.pop()
+
+                # # Inform the debugger.
+                # if debugger:
+                #     debugger.process_message(act, obj, args, context)
+
+                if obj is None:
+                    # We have reached the top-level.
+                    if act == 'r':
+                        # A new result is available
+                        solutions.append((args[0], args[1]))
+                        if name is not None:
+                            negated, term, label = name
+                            term_store = term.with_args(*args[0])
+                            if negated:
+                                target.add_name(-term_store, -args[1], label)
+                            else:
+                                target.add_name(term_store, args[1], label)
+
+                        if args[3]:
+                            # Last result received
+                            if not subcall and self.pointer != 0:  # pragma: no cover
+                                # ERROR: the engine stack should be empty.
+                                self.printStack()
+                                raise InvalidEngineState('Stack not empty at end of execution!')
+                            if not subcall:
+                                # Clean up the stack to save memory.
+                                self.shrink_stack()
+                            # return True, solutions
+                            return actions
+                    elif act == 'c':
+                        # Indicates completion of the execution.
+                        return actions
+#                        return True, solutions
+                    else:
+                        # ERROR: unknown message
+                        raise InvalidEngineState('Unknown message!')
+                else:
+                    # We are not at the top-level.
+                    if act == 'e':
+                        if steps is None or steps > 0:
+                            if steps is not None:
+                                steps -= 1
+                            # Never clean up in this case because 'obj' doesn't contain a pointer.
+                            cleanup = False
+                            try:
+                                # Evaluate the next node.
+                                next_actions = self.eval(obj, **context)
+                                obj = self.pointer
+                            except UnknownClauseInternal:
+                                # An unknown clause was encountered.
+                                # TODO why is this handled here?
+                                call_origin = context.get('call_origin')
+                                if call_origin is None:
+                                    sig = 'unknown'
+                                    raise UnknownClause(sig, location=None)
+                                else:
+                                    loc = database.lineno(call_origin[1])
+                                    raise UnknownClause(call_origin[0], location=loc)
+                        else:
+                            return list(actions) + [(act, obj, args, context)]
+                    else:
+                        # The message is 'r' or 'c'. This means 'obj' should be a valid pointer.
+                        try:
+                            # Retrieve the execution node from the stack.
+                            exec_node = self.stack[obj]
+                        except IndexError:  # pragma: no cover
+                            self.printStack()
+                            raise InvalidEngineState('Non-existing pointer: %s' % obj)
+                        if exec_node is None:  # pragma: no cover
+                            print(act, obj, args)
+                            self.printStack()
+                            raise InvalidEngineState('Invalid node at given pointer: %s' % obj)
+
+                        if act == 'r':
+                            # A new result was received.
+                            cleanup, next_actions = exec_node.new_result(*args, **context)
+                        elif act == 'c':
+                            # A completion message was received.
+                            cleanup, next_actions = exec_node.complete(*args, **context)
+                        else:  # pragma: no cover
+                            raise InvalidEngineState('Unknown message')
+
+                    if not actions and not next_actions and self.cycle_root is not None:
+                        if self.full_trace:
+                            print('CLOSE CYCLE')
+                            sys.stdin.readline()
+                        # If there are no more actions and we have an active cycle, we should close the cycle.
+                        next_actions = self.cycle_root.closeCycle(True)
+                    # Update the list of actions.
+                    actions += list(reversed(next_actions))
+
+                    # Do debugging.
+                    if self.debug:  # pragma: no cover
+                        self.printStack(obj)
+                        if act in 'rco':
+                            print(obj, act, args)
+                        print([(a, o, x) for a, o, x, t in actions[-10:]])
+                        if self.trace:
+                            a = sys.stdin.readline()
+                            if a.strip() == 'gp':
+                                print(target)
+                            elif a.strip() == 'l':
+                                self.trace = False
+                                self.debug = False
+                    if cleanup:
+                        self.cleanup(obj)
+
+        if subcall:
+            raise IndirectCallCycleError(database.lineno(kwdargs['call_origin'][1]))
+        else:
+            # This should never happen.
+            self.printStack()  # pragma: no cover
+            print('Actions:', actions)
+            print('Collected results:', solutions)  # pragma: no cover
+            raise InvalidEngineState('Engine did not complete correctly!')  # pragma: no cover
 
     def execute(self, node_id, target=None, database=None, subcall=False,
                 is_root=False, name=None, **kwdargs):
@@ -381,8 +538,6 @@ class StackBasedEngine(ClauseDBEngine):
             else:
                 act, obj, args, context = actions.pop()
 
-
-                # Inform the debugger.
                 if debugger:
                     debugger.process_message(act, obj, args, context)
 
@@ -522,9 +677,19 @@ class StackBasedEngine(ClauseDBEngine):
                 raise UnknownClause(query.signature, database.lineno(query.location))
 
         return self.execute(node_id, database=database, target=target,
-                            context=self.create_context(query.args), **kwdargs)
+                        context=self.create_context(query.args), **kwdargs)
 
     def call_intern(self, query, **kwdargs):
+        if query.is_negated():
+            negated = True
+            neg_func = query.functor
+            query = -query
+        elif query.functor in ('not', '\+') and query.arity == 1:
+            negated = True
+            neg_func = query.functor
+            query = query.args[0]
+        else:
+            negated = False
         database = kwdargs.get('database')
         node_id = database.find(query)
         if node_id is None:
@@ -535,9 +700,19 @@ class StackBasedEngine(ClauseDBEngine):
         call_args = range(0, len(query.args))
         call_term = query.with_args(*call_args)
         call_term.defnode = node_id
+        call_term.child = node_id
 
-        return self.eval_call(None, call_term,
-                              context=self.create_context(query.args), **kwdargs)
+        if negated:
+            def func(result):
+                return Term(neg_func, Term(call_term.functor, *result)),
+
+            kwdargs['transform'].addFunction(func)
+
+            return self.eval_neg(node_id=None, node=call_term,
+                                 context=self.create_context(query.args), **kwdargs)
+        else:
+            return self.eval_call(None, call_term,
+                                  context=self.create_context(query.args), **kwdargs)
 
     def printStack(self, pointer=None):  # pragma: no cover
         print('===========================')
@@ -573,7 +748,14 @@ class StackBasedEngine(ClauseDBEngine):
 
     def propagate_evidence(self, db, target, functor, args, resultnode):
         if hasattr(target, 'lookup_evidence'):
-            return target.lookup_evidence.get(resultnode, resultnode)
+            if resultnode in target.lookup_evidence:
+                return target.lookup_evidence[resultnode]
+            else:
+                neg = target.negate(resultnode)
+                if neg in target.lookup_evidence:
+                    return target.negate(target.lookup_evidence[neg])
+                else:
+                    return resultnode
         else:
             return resultnode
 
@@ -656,11 +838,13 @@ class StackBasedEngine(ClauseDBEngine):
         return self.eval_default(EvalNot, **kwdargs)
 
     def eval_call(self, node_id, node, context, parent, transform=None, identifier=None, **kwdargs):
-        call_args, var_translate = substitute_call_args(node.args, context)
-        min_var = self._context_min_var(context)
+        min_var = self.context_min_var(context)
+        call_args, var_translate = substitute_call_args(node.args, context, min_var)
 
-        if self.debugger:
-            self.debugger.call_create(node_id, node.functor, call_args, parent)
+        if self.debugger and node.functor != 'call':
+            # 'call(X)' is virtual so result and return can not be detected => don't register it.
+            location = kwdargs['database'].lineno(node.location)
+            self.debugger.call_create(node_id, node.functor, call_args, parent, location)
 
         ground_mask = [not is_ground(c) for c in call_args]
 
@@ -668,10 +852,11 @@ class StackBasedEngine(ClauseDBEngine):
             output = self._clone_context(context)
             try:
                 assert (len(result) == len(node.args))
-                output = unify_call_return(result, node.args, output, var_translate, min_var,
+                output = unify_call_return(result, call_args, output, var_translate, min_var,
                                            mask=ground_mask)
                 if self.debugger:
-                    self.debugger.call_result(node_id, node.functor, call_args, result)
+                    location = kwdargs['database'].lineno(node.location)
+                    self.debugger.call_result(node_id, node.functor, call_args, result, location)
                 return output
             except UnifyError:
                 pass
@@ -692,7 +877,7 @@ class StackBasedEngine(ClauseDBEngine):
             loc = kwdargs['database'].lineno(node.location)
             raise UnknownClause(origin, location=loc)
 
-    def _context_min_var(self, context):
+    def context_min_var(self, context):
         min_var = 0
         for c in context:
             if is_variable(c):
@@ -709,12 +894,16 @@ class StackBasedEngine(ClauseDBEngine):
         new_context = self.create_context([None] * node.varcount)
 
         try:
-            unify_call_head(context, node.args, new_context)
+            try:
+                unify_call_head(context, node.args, new_context)
+            except OccursCheck as err:
+                raise OccursCheck(location=kwdargs['database'].lineno(node.location))
+
             # Note: new_context should not contain None values.
             # We should replace these with negative numbers.
             # 1. Find lowest negative number in new_context.
             #   TODO better option is to store this in context somewhere
-            min_var = self._context_min_var(new_context)
+            min_var = self.context_min_var(new_context)
             # 2. Replace None in new_context with negative values
             cc = min_var
             for i, c in enumerate(new_context):
@@ -853,6 +1042,9 @@ class MessageFIFO(MessageQueue):
 
     def append(self, message):
         self.messages.append(message)
+        # Inform the debugger.
+        if self.engine.debugger:
+            self.engine.debugger.process_message(*message)
 
     def pop(self):
         return self.messages.pop(-1)
@@ -927,6 +1119,39 @@ class MessageOrderD(MessageAnyOrder):
 
     def __iter__(self):
         return iter(self.messages)
+
+
+class MessageOrderDrc(MessageAnyOrder):
+    def __init__(self, engine):
+        MessageAnyOrder.__init__(self, engine)
+        self.messages_rc = []
+        self.messages_e = []
+
+    def append(self, message):
+        if message[0] == 'e':
+            self.messages_e.append(message)
+        else:
+            self.messages_rc.append(message)
+
+    def pop(self):
+        if self.messages_rc:
+            msg = self.messages_rc.pop(-1)
+            return msg
+        else:
+            res = self.messages_e.pop(-1)
+            return res
+
+    def __nonzero__(self):
+        return bool(self.messages_e) or bool(self.messages_rc)
+
+    def __bool__(self):
+        return bool(self.messages_e) or bool(self.messages_rc)
+
+    def __len__(self):
+        return len(self.messages_e) + len(self.messages_rc)
+
+    def __iter__(self):
+        return iter(self.messages_e + self.messages_rc)
 
 
 class EvalNode(object):
@@ -1154,6 +1379,26 @@ class NestedDict(object):
         return str(self.__base)
 
 
+class VarReindex(object):
+
+    def __init__(self):
+        self.v = 0
+        self.n = {}
+
+    def __getitem__(self, var):
+        if var is None:
+            return var
+        else:
+            if var in self.n:
+                return self.n[var]
+            else:
+                self.v -= 1
+                self.n[var] = self.v
+                return self.v
+        # else:
+        #     return var
+
+
 class DefineCache(object):
     def __init__(self, dont_cache):
         self.__non_ground = NestedDict()
@@ -1161,17 +1406,25 @@ class DefineCache(object):
         self.__active = NestedDict()
         self.__dont_cache = dont_cache
 
+    def reset(self):
+        self.__non_ground = NestedDict()
+        self.__ground = NestedDict()
+
+    def _reindex_vars(self, goal):
+        ri = VarReindex()
+        return goal[0], [substitute_simple(g, ri) for g in goal[1]]
+
     def is_dont_cache(self, goal):
         return goal[0][:9] == '_nocache_' or (goal[0], len(goal[1])) in self.__dont_cache
 
     def activate(self, goal, node):
-        self.__active[goal] = node
+        self.__active[self._reindex_vars(goal)] = node
 
     def deactivate(self, goal):
-        del self.__active[goal]
+        del self.__active[self._reindex_vars(goal)]
 
     def getEvalNode(self, goal):
-        return self.__active.get(goal)
+        return self.__active.get(self._reindex_vars(goal))
 
     def __setitem__(self, goal, results):
         if self.is_dont_cache(goal):
@@ -1188,11 +1441,21 @@ class DefineCache(object):
                 key = (functor, args)
                 self.__ground[key] = NODE_FALSE  # Goal failed
         else:
+            goal = self._reindex_vars(goal)
             res_keys = list(results.keys())
             self.__non_ground[goal] = results
-            # for res_key in res_keys:
-            #     key = (functor, res_key)
-            #     self.__ground[key] = results[res_key]
+            all_ground = True
+            for res_key in res_keys:
+                key = (functor, res_key)
+                all_ground &= is_ground(*res_key)
+                if not all_ground:
+                    break
+
+            # TODO caching might be incorrect if program contains var(X) or nonvar(X) or ground(X).
+            if all_ground:
+                for res_key in res_keys:
+                    key = (functor, res_key)
+                    self.__ground[key] = results[res_key]
 
     def get(self, key, default=None):
         try:
@@ -1205,14 +1468,24 @@ class DefineCache(object):
         if is_ground(*args):
             return [(args, self.__ground[goal])]
         else:
+            goal = self._reindex_vars(goal)
             # res_keys = self.__non_ground[goal]
             return self.__non_ground[goal].items()
+
+    def __delitem__(self, goal):
+        functor, args = goal
+        if is_ground(*args):
+            del self.__ground[goal]
+        else:
+            goal = self._reindex_vars(goal)
+            del self.__non_ground[goal]
 
     def __contains__(self, goal):
         functor, args = goal
         if is_ground(*args):
             return goal in self.__ground
         else:
+            goal = self._reindex_vars(goal)
             return goal in self.__non_ground
 
     def __str__(self):  # pragma: no cover
@@ -1449,13 +1722,8 @@ class EvalDefine(EvalNode):
                     nodes = new_nodes
                 node = self.target.add_or(nodes, readonly=(not cycle), name=name)
                 if is_ground(*res) and is_ground(*self.call[1]):
-                    # print ('CACHING X', self.call, cache_key, res, node)
                     self.target._cache[cache_key] = {res: node}
 
-            # node = self.target.add_or( nodes, readonly=(not cycle) )
-            # if self.engine.label_all:
-            #     name = str(Term(self.node.functor, *res))
-            #     self.target.addName(name, node, self.target.LABEL_NAMED)
             return node
         self.results.collapse(func)
 
@@ -1526,6 +1794,8 @@ class EvalDefine(EvalNode):
                 queue += self.engine.notify_cycle(cycle)
                 if cycle_parent.pointer != self.engine.cycle_root.pointer:
                     to_cycle_root = self.engine.find_cycle(cycle_parent.pointer, self.engine.cycle_root.pointer)
+                    if to_cycle_root is None:
+                        raise IndirectCallCycleError(self.database.lineno(self.node.location))
                     queue += cycle_parent.createCycle()
                     queue += self.engine.notify_cycle(to_cycle_root)
         return queue
@@ -1617,8 +1887,12 @@ class EvalNot(EvalNode):
         else:
             if self.target.flag('keep_all'):
                 src_node = self.database.get_node(self.node.child)
-                args, _ = substitute_call_args(src_node.args, self.context)
-                name = Term(src_node.functor, *args)
+                min_var = self.engine.context_min_var(self.context)
+                if type(src_node).__name__ == 'atom':
+                    args, _ = substitute_call_args(src_node.args, self.context, min_var=min_var)
+                    name = Term(src_node.functor, *args)
+                else:
+                    name = None
                 node = -self.target.add_atom(name, False, None, name=name, source='negation')
             else:
                 node = NODE_TRUE
@@ -1741,9 +2015,11 @@ class EvalBuiltIn(EvalNode):
             if self.database and self.location:
                 functor = self.call_origin[0].split('/')[0]
                 callterm = Term(functor, *self.context)
-                err.base_message = 'Error while evaluating %s: %s' % (callterm, err.base_message)
-                err.location = self.database.lineno(self.location)
-            raise err
+                base_message = 'Error while evaluating %s: %s' % (callterm, err.base_message)
+                location = self.database.lineno(self.location)
+                raise ArithmeticError(base_message, location)
+            else:
+                raise err
 
 
 class BooleanBuiltIn(object):

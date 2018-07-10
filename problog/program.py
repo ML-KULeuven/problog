@@ -25,6 +25,7 @@ from __future__ import print_function
 
 from .errors import GroundingError
 from .logic import Term, Var, Constant, AnnotatedDisjunction, Clause, And, Or, Not
+from .core import transform, ProbLogObject
 
 from .parser import DefaultPrologParser, Factory
 from .core import ProbLogError
@@ -33,10 +34,10 @@ import os
 import sys
 
 
-class LogicProgram(object):
+class LogicProgram(ProbLogObject):
     """LogicProgram"""
 
-    def __init__(self, source_root='.', source_files=None, line_info=None):
+    def __init__(self, source_root='.', source_files=None, line_info=None, **extra_info):
         if source_files is None:
             source_files = [None]
         if line_info is None:
@@ -44,6 +45,7 @@ class LogicProgram(object):
         self.source_root = source_root
         self.source_files = source_files
         self.source_parent = [None]
+        self.extra_info = extra_info
         # line_info should be array, corresponding to 'source_files'.
         self.line_info = line_info
 
@@ -127,8 +129,11 @@ class LogicProgram(object):
             return src
         else:
             obj = cls(**extra)
-            if hasattr(src, 'source_root') and hasattr(src, 'source_files'):
+            if hasattr(src, 'extra_info'):
+                obj.extra_info.update(src.extra_info)
+            if hasattr(src, 'source_root'):
                 obj.source_root = src.source_root
+            if hasattr(src, 'source_files'):
                 obj.source_files = src.source_files[:]
                 obj.source_parent = src.source_parent[:]
             if hasattr(src, 'line_info'):
@@ -163,6 +168,12 @@ class LogicProgram(object):
             else:
                 filename = self.source_files[fn]
             return filename, lineno, charno
+
+    def to_prolog(self):
+        s = ''
+        for statement in self:
+            s += '%s.\n' % statement
+        return s
 
 
 class SimpleProgram(LogicProgram):
@@ -203,14 +214,17 @@ class PrologString(LogicProgram):
         self.__program = None
         self.__identifier = identifier
         lines = [self._find_lines(string)]
-        LogicProgram.__init__(self, source_root=source_root, source_files=source_files,
-                              line_info=lines)
         if parser is None:
             if factory is None:
                 factory = DefaultPrologFactory(identifier=identifier)
+            else:
+                factory = factory.__class__(identifier=identifier)
             self.parser = DefaultPrologParser(factory)
         else:
             self.parser = parser
+
+        LogicProgram.__init__(self, source_root=source_root, source_files=source_files,
+                              line_info=lines, factory=factory, parser=parser)
 
     def _program(self):
         """Parsed program"""
@@ -346,8 +360,8 @@ class PrologFactory(Factory):
             if not type(head) == Term:
                 # TODO compute correct location
                 raise GroundingError("Unexpected clause head '%s'" % head)
-            elif len(heads) > 1 and head.probability is None:
-                raise GroundingError("Non-probabilistic head in multi-head clause '%s'" % head)
+            # elif len(heads) > 1 and head.probability is None:
+            #     raise GroundingError("Non-probabilistic head in multi-head clause '%s'" % head)
         if len(heads) > 1:
             return AnnotatedDisjunction(heads, operand2, location=(self.loc_id, location))
         else:
@@ -396,6 +410,7 @@ class ExtendedPrologFactory(PrologFactory):
     def _update_functors(self, t):
         """Adapt functors that appear as a negative literal to be f_p and f_n
         where f appears in the head.
+        TODO: Should be implemented using a more general visitor pattern
         """
         if type(t) is Clause:
             self._update_functors(t.head)
@@ -430,7 +445,7 @@ class ExtendedPrologFactory(PrologFactory):
         # literal such that:
         # f :- f_p, \+f_n.
         for k, v in self.neg_head_lits.items():
-            cur_vars = [Var("v{}".format(i)) for i in range(v['c'])]
+            cur_vars = [Var("V{}".format(i)) for i in range(v['c'])]
             new_clause = Clause(Term(v['f'], *cur_vars),
                                 And(Term(v['p'], *cur_vars), Not('\+', Term(v['n'], *cur_vars))))
             clauses.append(new_clause)
@@ -488,3 +503,8 @@ class ExtendedPrologFactory(PrologFactory):
         return super(ExtendedPrologFactory, self).build_clause(functor, new_heads, operand2, location, **extra)
 
 DefaultPrologFactory = ExtendedPrologFactory
+
+
+@transform(str, LogicProgram)
+def _string_to_program(source, target=None, **kwargs):
+    return PrologString(source)

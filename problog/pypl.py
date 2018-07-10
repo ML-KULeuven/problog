@@ -17,7 +17,7 @@ limitations under the License.
 """
 from __future__ import print_function
 
-from .logic import Constant, Term
+from .logic import Constant, Term, Var, term2str
 
 
 def py2pl(d):
@@ -42,7 +42,7 @@ def py2pl(d):
     if type(d) == int or type(d) == float:
         return Constant(d)
 
-    if type(d) == Term:
+    if isinstance(d, Term):
         return d
 
     raise ValueError("Cannot convert from Python to Prolog: {} ({}).".format(d, type(d)))
@@ -79,6 +79,9 @@ def pl2py(d):
             return elements
         else:
             return d
+
+    if isinstance(d, int):
+        return Var(term2str(d))
 
     raise ValueError("Cannot convert from Prolog to Python: {} ({}).".format(d, type(d)))
 

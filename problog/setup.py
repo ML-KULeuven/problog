@@ -115,7 +115,7 @@ def gather_info():
     return system_info
 
 
-def build_sdd():
+def build_sdd(force=False):
     if get_system() == 'windows':
         print('The SDD library is not yet available for Windows.')
         return
@@ -123,12 +123,16 @@ def build_sdd():
     build_lib = get_module_paths()[0]
     build_dir = get_module_paths()[-1]
 
+    filename = os.path.join(build_lib, '_sdd.so')
+    if force and os.path.exists(filename):
+        os.remove(filename)
+
     lib_dir = os.path.abspath(os.path.join(build_dir, 'sdd', os.uname()[0].lower()))
 
     with WorkingDir(build_dir):
 
         from distutils.core import setup, Extension
-        sdd_module = Extension('_sdd', sources=['sdd/sdd_wrap.c', 'sdd/except.c'], libraries=['sdd'],
+        sdd_module = Extension('_sdd', sources=['sdd/sdd_wrap.c'], libraries=['sdd'],
                                library_dirs=[lib_dir])
 
         setup(name='sdd',
@@ -163,7 +167,7 @@ def install(force=True):
     update = False
 
     if force or not info.get('sdd_module'):
-        build_sdd()
+        build_sdd(force=force)
         update = True
 
     build_maxsatz()

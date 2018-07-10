@@ -20,6 +20,7 @@ Contents:
    modeling_basic
    modeling_advanced
    prolog
+   faq
    api
 .. notes
 ..   engine   
