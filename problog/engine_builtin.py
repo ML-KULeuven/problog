@@ -2124,15 +2124,19 @@ def _builtin_find_scope(term, scope, engine=None, database=None, **kwargs):
 
 @builtin_simple('set_state', 1)
 def _builtin_set_state(term, **kwargs):
+    from engine_stack import Context
     return [Context([term], state=term)]
+
 
 @builtin_simple('reset_state', 0)
 def _builtin_reset_state(**kwargs):
+    from engine_stack import Context
     return [Context()]
 
 
 @builtin_boolean('check_state', 1)
 def _builtin_check_state(term, context=None, **kwargs):
+    from engine_stack import get_state
     if get_state(context) == term:
         return True
     else:
@@ -2145,27 +2149,6 @@ def _builtin_print_state(context=None, **kwargs):
         print ('State:', context.state)
     else:
         print ('State not set')
-    return True
-
-
-@builtin_simple('condition', 1)
-def _builtin_condition(term, context=None, engine=None, **kwargs):
-    state = context.state | {'conditions': [term]}
-    res = engine.create_context([term], state=state)
-    return [res]
-
-
-@builtin_boolean('probability', 1)
-def _builtin_probability(term, context=None, engine=None, database=None, **kwargs):
-    conditions = context.state.get('conditions', [])
-
-    database.queries.append((term, conditions))
-    # print ('Query %s with conditions %s' % (term, conditions))
-
-    results = _builtin_subquery(term, None, list2term(conditions), engine=engine, database=database, **kwargs)
-    for t, p, e in results:
-        print ('%s: %.8g {%s}' % (t, p, ', '.join(map(term2str, conditions))))
-
     return True
 
 
