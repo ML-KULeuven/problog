@@ -109,6 +109,7 @@ nth1(I,L,X) :-
     nth0(J,L,X).
     
 last(List,Last) :- append(_, [Last], List).
+head([H|_], H).
 
 reverse(L1,L2) :- reverse(L1,[],L2).
 reverse([],L,L).
@@ -131,4 +132,18 @@ flatten([H|T], Acc, List) :-
 flatten(H, Acc, List) :-
     \+ is_list(H),
     append(Acc, [H], List).
+
+groupby([], []).
+groupby([[G|X]|T], Out) :-
+    groupby(T, G, [X], Out).
+
+% groupby(ListIn, CurEl, CurGroup, Out)
+groupby([], G, S, [[G,S]]).
+
+groupby([[G|X]|T], G, S,  Out) :-
+    groupby(T, G, [X|S], Out).
+
+groupby([[G|X]|T], G1, S,  [[G1,S]|Out]) :-
+    G \= G1,
+    groupby(T, G, [X], Out).
 

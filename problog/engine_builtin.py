@@ -176,9 +176,11 @@ def add_standard_builtins(engine, b=None, s=None, sp=None):
 
     engine.add_builtin('call', 1, _builtin_call)
     engine.add_builtin('call_nc', 1, _builtin_call_nc)
+    engine.add_builtin('try_call', 1, _builtin_try_call)
     for i in range(2, 10):
         engine.add_builtin('call', i, _builtin_calln)
         engine.add_builtin('call_nc', i, _builtin_calln_nc)
+        engine.add_builtin('try_call', i, _builtin_try_calln)
 
     engine.add_builtin('subquery', 2, s(_builtin_subquery))
     engine.add_builtin('subquery', 3, s(_builtin_subquery))
@@ -1931,6 +1933,12 @@ def load_external_module(database, filename):
         imp.load_module('externals', extfile, filename, ('.py', 'U', 1))
 
 
+def _builtin_try_call(term, **kwdargs):
+    try:
+        return _builtin_call(term, **kwdargs)
+    except UnknownClause:
+        return True, kwdargs['callback'].notifyComplete()
+
 def _builtin_call(term, args=(), engine=None, callback=None, transform=None, context=None, **kwdargs):
     check_mode((term,), ['c'], functor='call')
     # Find the define node for the given query term.
@@ -1983,6 +1991,9 @@ def _builtin_subquery(term, prob, evidence=None, engine=None, database=None, **k
 
 def _builtin_calln(term, *args, **kwdargs):
     return _builtin_call(term, args, **kwdargs)
+
+def _builtin_try_calln(term, *args, **kwdargs):
+    return _builtin_try_call(term, args, **kwdargs)
 
 
 def _builtin_calln_nc(term, *args, **kwdargs):

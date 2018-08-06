@@ -65,7 +65,7 @@ def main_mpe_semiring(args):
 
             lf = LogicFormula.create_from(pl, label_all=True)
 
-            prob, facts = mpe_semiring(lf, args.verbose)
+            prob, facts = mpe_semiring(lf, args.verbose, minpe=args.minpe)
             result_handler((True, (prob, facts)), outf)
 
         except Exception as err:
@@ -74,8 +74,11 @@ def main_mpe_semiring(args):
             result_handler((False, err), outf)
 
 
-def mpe_semiring(lf, verbose=0, solver=None):
-    semiring = SemiringMPEState()
+def mpe_semiring(lf, verbose=0, solver=None, minpe=False):
+    if minpe:
+        semiring = SemiringMinPEState()
+    else:
+        semiring = SemiringMPEState()
     kc_class = get_evaluatable(semiring=semiring)
 
     if lf.evidence():
@@ -131,7 +134,7 @@ def main_mpe_maxsat(args):
 
             dag = LogicDAG.createFrom(pl, avoid_name_clash=True, label_all=True, labels=[('output', 1)])
 
-            prob, output_facts = mpe_maxsat(dag, verbose=args.verbose, solver=args.solver)
+            prob, output_facts = mpe_maxsat(dag, verbose=args.verbose, solver=args.solver, minpe=args.minpe)
 
             result_handler((True, (prob, output_facts)), outf)
         except Exception as err:
@@ -143,7 +146,7 @@ def main_mpe_maxsat(args):
         outf.close()
 
 
-def mpe_maxsat(dag, verbose=0, solver=None):
+def mpe_maxsat(dag, verbose=0, solver=None, minpe=False):
     logger = init_logger(verbose)
     logger.info('Ground program size: %s' % len(dag))
 
@@ -160,7 +163,7 @@ def mpe_maxsat(dag, verbose=0, solver=None):
         solver = get_solver(solver)
 
         with Timer('Solving'):
-            result = frozenset(solver.evaluate(cnf))
+            result = frozenset(solver.evaluate(cnf, invert_weights=minpe))
         weights = cnf.extract_weights(SemiringProbability())
         output_facts = None
         prob = 1.0
@@ -312,6 +315,25 @@ class SemiringMPEState(Semiring):
         return 1.0 - s, {key}
 
 
+class SemiringMinPEState(SemiringMPEState):
+
+    def __init__(self):
+        SemiringMPEState.__init__(self)
+
+    def plus(self, a, b):
+        if a[0] == 0:
+            return b
+        elif b[0] == 0:
+            return a
+        elif a[0] > b[0]:
+            return b
+        elif a[0] < b[0]:
+            return a
+        else:
+            return a[0], a[1]  # | b[1]   # doesn't matter?
+
+
+
 def argparser():
     import argparse
 
@@ -326,6 +348,7 @@ def argparser():
     parser.add_argument('--web', action='store_true', help=argparse.SUPPRESS)
     parser.add_argument('--use-maxsat', action='store_true', help=argparse.SUPPRESS)
     parser.add_argument('--use-semiring', action='store_true', help=argparse.SUPPRESS)
+    parser.add_argument('--minpe', action='store_true', help=argparse.SUPPRESS)
     parser.add_argument('-v', '--verbose', action='count', help='Increase verbosity')
     return parser
 

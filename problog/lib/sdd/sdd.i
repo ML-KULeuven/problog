@@ -9,6 +9,7 @@
 #include "compiler.h"
 #include "array_access.h"
 
+/*
 #include <execinfo.h>
 #include <signal.h>
 
@@ -18,9 +19,11 @@ static void c_handler(int sig)
 {
   throw(sig);
 }
+*/
 
 %}
 
+/*
 %include exception.i
 
 %exception {
@@ -77,6 +80,7 @@ static void c_handler(int sig)
     sigaction(SIGALRM, &old_action_alrm, NULL);
 
 }
+*/
 
 %include "array_access.h"
 %include "sddapi.h"

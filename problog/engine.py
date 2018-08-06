@@ -578,7 +578,10 @@ class ClauseIndex(list):
     def append(self, item):
         list.append(self, item)
         key = []
-        args = self.__parent.get_node(item).args
+        try:
+            args = self.__parent.get_node(item).args
+        except AttributeError:
+            args = [None] * self.__parent.get_node(item).arity
         for arg in args:
             if is_ground(arg):
                 key.append(arg)
@@ -877,8 +880,8 @@ class ClauseDB(LogicProgram):
             if node == ():
                 self._set_node(node_id, self._extern(predicate, arity, function))
             else:
-                raise AccessError("External function overrides already defined predicate '%s'"
-                                  % head.signature)
+                node_id = self._append_node(self._extern(predicate, arity, function))
+                self._add_define_node(Term(predicate, *([None]*arity)), node_id)
 
     def get_local_scope(self, signature):
         if signature in ('findall/3', 'all/3', 'all_or_none/3'):
@@ -992,7 +995,10 @@ class ClauseDB(LogicProgram):
             return Var('V_' + str(term))
         else:
             args = [self._create_vars(arg) for arg in term.args]
-            return term.with_args(*args)
+            term = term.with_args(*args)
+            if term.probability is not None:
+                term = term.with_probability(self._create_vars(term.probability))
+            return term
 
     def _extract(self, node_id):
         node = self.get_node(node_id)

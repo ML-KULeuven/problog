@@ -1053,10 +1053,9 @@ label_all=True)
                     lines.append('%s :- fail.' % qn)
                 lines.append('evidence(%s).' % qn)
             elif qi < 0:
-                lines.append('evidence(%s).' % qn)
+                lines.append('evidence(\+%s).' % qn)
             else:
                 lines.append('evidence(%s).' % qn)
-
 
         return '\n'.join(lines)
 
