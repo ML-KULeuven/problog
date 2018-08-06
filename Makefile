@@ -57,23 +57,23 @@ update_server:
 	ssh ssh.cs.kuleuven.be ssh -p 2222 problog@adams.cs.kuleuven.be python3 /home/problog/problog2.1/problog-cli.py install
 	@echo "======================================================================"
 
-prepare_deploy: test2 test3
-	git checkout master
-	git merge develop --squash
-	python -c 'import setup; setup.increment_version_release()'
-	git add problog/version.py
-	@echo "Next steps: git commit && make deploy"
+# prepare_deploy: test2 test3
+# 	git checkout master
+# 	git merge develop --squash
+# 	python -c 'import setup; setup.increment_version_release()'
+# 	git add problog/version.py
+# 	@echo "Next steps: git commit && make deploy"
 
-deploy: test2 test3
+deploy: test2 test3 incr_version_release
 	@read -r -p "WARNING: This will upload a new public release! Press ENTER to proceed, CTRL-C to cancel."
-	git checkout master
+	# git checkout master
 	git push
-	git push public master
+	# git push public master
 	rm -f dist/*
 	python setup.py sdist
 	twine upload dist/*
-	git checkout develop
-	git merge master
+	# git checkout develop
+	# git merge master
 
 deploy_dev: test2 test3 incr_version_dev
 	@read -r -p "WARNING: This will upload a new development release! Press ENTER to proceed, CTRL-C to cancel."

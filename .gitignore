@@ -5,6 +5,7 @@ __pycache__
 .coveragerc
 .idea/
 .ipynb_checkpoints
+dist/
 
 
 build/
