@@ -147,3 +147,5 @@ groupby([[G|X]|T], G1, S,  [[G1,S]|Out]) :-
     G \= G1,
     groupby(T, G, [X], Out).
 
+:- use_module(library('lists.py')).
+

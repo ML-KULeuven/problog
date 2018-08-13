@@ -1701,7 +1701,8 @@ class problog_export(object):
             return list2term(a)
         elif t == 'term':
             if not isinstance(a, Term):
-                raise ValueError("Expected term output, got '%s' instead." % type(a))
+                return Term(a)
+                # raise ValueError("Expected term output, got '%s' instead." % type(a))
             return a
         elif t == 'obj':
             if not isinstance(a, Object):

@@ -1,27 +1,11 @@
 :- use_module(library(lists)).
-
-
-groupby([], []).
-groupby([(G,X,V)|T], Out) :-
-    groupby(T, G, [V], Out).
-
-
-% groupby(ListIn, CurEl, CurGroup, Out)
-groupby([], G, S, [(G, S)]).
-
-groupby([(G,X,V)|T], G, S,  Out) :-
-    groupby(T, G, [V|S], Out).
-
-groupby([(G,X,V)|T], G1, S,  [(G1,S)|Out]) :-
-    G \= G1,
-    groupby(T, G, [V], Out).
-
+:- use_module(library(apply)).
 
 aggregate(AggFunc, Var, Group, Body, (Group, Result)) :-
-    all((Group, Body, Var), Body, L),
-    sort(L, Ls),
-    groupby(Ls, Groups),
-    member((Group, Values), Groups),
+    all([Group, Body, Var], Body, L),
+    maplist(nth0(0), L, LG),
+    maplist(nth0(2), L, LV),
+    enum_groups(LG, LV, Group, Values),
     call(AggFunc, Values, Result).
 
 

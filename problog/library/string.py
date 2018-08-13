@@ -11,4 +11,4 @@ def concat(terms):
     
 @problog_export('+str', '+list', '-str')
 def join(sep, terms):
-    return sep.join(map(lambda x: unquote(str(x)), terms))
+    return unquote(sep).join(map(lambda x: unquote(str(x)), terms))
