@@ -155,8 +155,6 @@ class StackBasedEngine(ClauseDBEngine):
         include_ids = kwdargs.get('include')
         exclude_ids = kwdargs.get('exclude')
 
-        print (exclude_ids)
-
         if include_ids is not None and node_id not in include_ids:
             return [complete(kwdargs['parent'], kwdargs.get('identifier'))]
         elif exclude_ids is not None and node_id in exclude_ids:
