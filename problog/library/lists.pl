@@ -160,5 +160,5 @@ sub_list([X|List], [], AccLen, Length, After, [X|SubList]) :-
     TmpLen is AccLen + 1,
     sub_list(List, [], TmpLen, Length, After, SubList).
 
-:- use_module('lists.py').
+:- use_module(library('lists.py')).
 
