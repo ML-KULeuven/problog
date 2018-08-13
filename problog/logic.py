@@ -82,6 +82,7 @@ from __future__ import division  # consistent behaviour of / and // in python 2 
 
 import math
 import sys
+import re
 
 
 from .util import OrderedSet
@@ -1090,6 +1091,18 @@ def unquote(s):
     :return: string with quotes removed
     """
     return s.strip("'")
+
+
+safe_expr = re.compile('[a-z]+(\w)*$')
+def is_safe(t):
+    return safe_expr.match(t) is not None
+
+
+def make_safe(t):
+    if not is_safe(t):
+        return "'%s'" % t
+    else:
+        return t
 
 
 def compute_function(func, args, extra_functions=None):
