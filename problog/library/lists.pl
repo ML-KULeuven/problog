@@ -147,5 +147,18 @@ groupby([[G|X]|T], G1, S,  [[G1,S]|Out]) :-
     G \= G1,
     groupby(T, G, [X], Out).
 
-:- use_module(library('lists.py')).
+
+sub_list(List, Before, Length, After, SubList) :-
+    sub_list(List, Before, 0, Length, After, SubList).
+
+sub_list([X|List], [X|Before], 0, Length, After, SubList) :-
+    sub_list(List, Before, 0, Length, After, SubList).
+
+sub_list(List, [], Length, Length, List, []).
+
+sub_list([X|List], [], AccLen, Length, After, [X|SubList]) :-
+    TmpLen is AccLen + 1,
+    sub_list(List, [], TmpLen, Length, After, SubList).
+
+:- use_module('lists.py').
 
