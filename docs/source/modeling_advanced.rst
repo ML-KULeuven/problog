@@ -47,6 +47,8 @@ contains a value for each argument listed in the specification.
 A function decorated with this decorator should have only ``+`` specifiers and it should be prepared to receive
 additional arguments containing the execution context (i.e. by adding **kwargs as last argument).
 
+The internal Prolog database that is in use can be accessed through the variable ``problog_export.database''.
+
 For example, consider the following Python module ``numbers.py`` which defines two functions.
 
 .. code-block:: python
