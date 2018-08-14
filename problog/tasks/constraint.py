@@ -66,8 +66,8 @@ def formula_to_flatzinc_float(formula):
         index = str(index).replace('-', 'n')
         con = name.args[1]
         if con.functor == 'ensure_prob':
-            constraints.append('constraint float_le(V%s, %s);' % (index, con.args[1]))
-            constraints.append('constraint float_le(%s, V%s);' % (con.args[0], index))
+            constraints.append('constraint float_lin_le([1.0],[V%s], %s);' % (index, con.args[1]))
+            constraints.append('constraint float_lin_le([-1.0], [V%s], -%s);' % (index, con.args[0]))
         elif con.functor == 'ensure_true':
             constraints.append('constraint float_eq(V%s, 1.0);' % (index,))
         elif con.functor == 'ensure_false':
@@ -104,13 +104,14 @@ def formula_to_flatzinc_bool(formula):
         constraints.append('constraint bool_not(B%s, Bn%s);' % (i, i))
 
     for name, index in formula.get_names(label='constraint'):
-        index = str(index).replace('-', 'n')
-        con = name.args[1]
-        assert con.functor != 'ensure_prob'
-        if con.functor == 'ensure_true':
-            constraints.append('constraint bool_eq(B%s, true);' % (index,))
-        elif con.functor == 'ensure_false':
-            constraints.append('constraint bool_eq(B%s, false);' % (index,))
+        if index is not None:
+            index = str(index).replace('-', 'n')
+            con = name.args[1]
+            assert con.functor != 'ensure_prob'
+            if con.functor == 'ensure_true':
+                constraints.append('constraint bool_eq(B%s, true);' % (index,))
+            elif con.functor == 'ensure_false':
+                constraints.append('constraint bool_eq(B%s, false);' % (index,))
 
     solve = ['solve :: bool_search([%s], input_order, indomain_min, complete) satisfy;' % ', '.join(boolvars)]
 
@@ -231,8 +232,9 @@ def main(argv, handle_output=None):
 
     has_prob_constraint = False
     for name, index in target.get_names(label='constraint'):
-        if name.args[1].functor == 'ensure_prob':
-            has_prob_constraint = True
+        if index is not None:
+            if name.args[1].functor == 'ensure_prob':
+                has_prob_constraint = True
 
     # Compile and turn into CP-problem
     if has_prob_constraint:
@@ -252,6 +254,7 @@ def main(argv, handle_output=None):
         if verbose: debug('Solving...')
         sols = list(solve(fzn))
 
+        has_solution = False
         for i, res in enumerate(sols):
             if verbose: debug('Evaluating solution %s/%s...' % (i + 1, len(sols)))
             # target.lookup_evidence = {}
@@ -266,6 +269,12 @@ def main(argv, handle_output=None):
                 if v > 0.0:
                     print(k, v)
             print('----------')
+            has_solution = True
+        if has_solution:
+            print('==========')
+        else:
+            print('=== UNSATISFIABLE ===')
+
     else:
         formula = LogicDAG()
         break_cycles(target, formula)
@@ -278,6 +287,7 @@ def main(argv, handle_output=None):
         if verbose: debug('Solving...')
         sols = list(solve(fzn))
 
+        has_solution = False
         for i, res in enumerate(sols):
             if verbose: debug('Evaluating solution %s/%s...' % (i + 1, len(sols)))
 
@@ -292,7 +302,11 @@ def main(argv, handle_output=None):
                 if v > 0.0:
                     print(k, v)
             print('----------')
-        print('==========')
+            has_solution = True
+        if has_solution:
+            print('==========')
+        else:
+            print('=== UNSATISFIABLE ===')
 
 
 def argparser():
