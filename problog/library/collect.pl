@@ -9,18 +9,18 @@ collectgroup(CodeBlock, AggVar, GroupBy, Values) :-
 '=>'(CodeBlock, GroupBy/Collector) :-
     Collector =.. [Predicate | Args],
     concat(['collect_', Predicate], NewPredicate),
-    CollectorNew =.. [NewPredicate, CodeBlock | Args],
-    call(CollectorNew, GroupBy).
+    CollectorNew =.. [NewPredicate, CodeBlock, GroupBy | Args],
+    call(CollectorNew).
 
 '=>'(CodeBlock, Collector) :-
     Collector \= _/_,
     Collector =.. [Predicate | Args],
     concat(['collect_', Predicate], NewPredicate),
-    CollectorNew =.. [NewPredicate, CodeBlock | Args],
-    call(CollectorNew, none).
+    CollectorNew =.. [NewPredicate, CodeBlock, none | Args],
+    call(CollectorNew).
     
 collect_list(CodeBlock, Y, Result) :-
-    collect_list(CodeBlock, Y, Result, g).  % fall back to the grouped version with a dummy group
+    collect_list(CodeBlock, none, Y, Result).  % fall back to the grouped version with a dummy group
     
-collect_list(CodeBlock, Y, Result, GB) :-
+collect_list(CodeBlock, GB, Y, Result) :-
     collectgroup(CodeBlock, Y, GB, Result).
