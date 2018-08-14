@@ -2153,6 +2153,19 @@ def _builtin_print_state(context=None, **kwargs):
     return True
 
 
+@builtin_boolean('probability', 1)
+def _builtin_probability(term, context=None, database=None, **kwargs):
+    check_mode([term], ['c'], functor='probability')
+    database.queries.append((term, context.state.get('conditions', ())))
+    print (database.queries, file=sys.stderr)
+    return True
+
+@builtin_simple('condition', 1)
+def _builtin_condition(term, context=None, database=None, **kwargs):
+    check_mode([term], ['c'], functor='condition')
+    from engine_stack import Context
+    return [Context([term], state=context.state | {'conditions': [term]})]
+
 @builtin_simple('seq', 1)
 def seq(term, database=None, **kwargs):
     check_mode((term,), ['v'], functor='seq', database=None, **kwargs)

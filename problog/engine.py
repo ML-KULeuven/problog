@@ -200,15 +200,14 @@ class ClauseDBEngine(GenericEngine):
         """Process directives present in the database."""
         term = Term('_directive')
         directive_node = db.find(term)
-        if directive_node is None:
-            return True    # no directives
-        directives = db.get_node(directive_node).children
+        if directive_node is not None:
+            directives = db.get_node(directive_node).children
 
-        gp = LogicFormula()
-        while directives:
-            current = directives.pop(0)
-            self.execute(current, database=db, context=self.create_context((), define=None),
-                         target=gp)
+            gp = LogicFormula()
+            while directives:
+                current = directives.pop(0)
+                self.execute(current, database=db, context=self.create_context((), define=None),
+                             target=gp)
         return True
 
     # noinspection PyUnusedLocal
@@ -432,6 +431,7 @@ class ClauseDBEngine(GenericEngine):
             target = LogicFormula()
 
         db = self.prepare(db)
+
         logger = logging.getLogger('problog')
         with Timer('Grounding'):
             # Load queries: use argument if available, otherwise load from database.
@@ -666,6 +666,8 @@ class ClauseDB(LogicProgram):
 
         self.dont_cache = set()
 
+        self.queries = []
+
     def __len__(self):
         return len(self.__nodes) + self.__offset
 
@@ -745,8 +747,8 @@ class ClauseDB(LogicProgram):
 
     def _add_call_node(self, term):
         """Add a *call* node."""
-        if term.signature in ('query/1', 'evidence/1', 'evidence/2'):
-            raise AccessError("Can\'t call %s directly." % term.signature)
+        #if term.signature in ('query/1', 'evidence/1', 'evidence/2'):
+        #    raise AccessError("Can\'t call %s directly." % term.signature)
 
         defnode = self._add_head(term, create=False)
         return self._append_node(self._call(term.functor, term.args, defnode, term.location,
@@ -1120,7 +1122,6 @@ class ClauseDB(LogicProgram):
         return iter(self.__nodes)
 
 
-
 class PrologFunction(object):
 
     def __init__(self, database, functor, arity):
@@ -1135,7 +1136,6 @@ class PrologFunction(object):
         if len(result) != 1:
             raise InvalidValue("Function should return one result: %s returned %s" % (query_term, result))
         return result[0][-1]
-
 
 
 class AccessError(GroundingError):
