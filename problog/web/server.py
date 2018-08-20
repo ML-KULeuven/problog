@@ -381,10 +381,10 @@ def update_problog():
 
     workingdir = os.path.abspath(os.path.dirname(__file__))
     try:
-        out = subprocess.check_output(['git', 'pull'], cwd=workingdir).decode()
+        out = subprocess.check_output(['git', 'pull'], cwd=workingdir, stderr=subprocess.STDOUT).decode()
         result = {'success': True, 'output': out}
     except subprocess.CalledProcessError as err:
-        result = {'success': False, 'error': str(err)}
+        result = {'success': False, 'error': str(err.output)}
 
     return 200, 'application/json', json.dumps(result)
 
