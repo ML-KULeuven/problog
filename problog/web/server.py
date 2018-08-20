@@ -376,6 +376,19 @@ def get_editor():
     return 200, 'text/html', data
 
 
+@handle_url(api_root + 'update')
+def update_problog():
+
+    workingdir = os.path.abspath(os.path.dirname(__file__))
+    try:
+        out = subprocess.check_output(['git', 'pull'], cwd=workingdir).decode()
+        result = {'success': True, 'output': out}
+    except subprocess.CalledProcessError as err:
+        result = {'success': False, 'error': str(err)}
+
+    return 200, 'application/json', json.dumps(result)
+
+
 def make_local(html):
     import re
 
