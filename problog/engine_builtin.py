@@ -2153,7 +2153,7 @@ def _builtin_print_state(context=None, **kwargs):
     return True
 
 
-@builtin_boolean('probability', 1)
+@builtin_boolean('probabilityX', 1)
 def _builtin_probability(term, context=None, database=None, **kwargs):
     check_mode([term], ['c'], functor='probability')
     database.queries.append((term, context.state.get('conditions', ())))
