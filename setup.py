@@ -53,7 +53,8 @@ elif __name__ == '__main__':
             'web/editor_local.html'
             'web/editor_adv.html',
             'web/js/problog_editor.js',
-            'library/*',
+            'library/*.pl',
+            'library/*.py',
             'library/nlp4plp.d/*'
         ]
     }
