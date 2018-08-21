@@ -131,7 +131,7 @@ class ClauseDBEngine(GenericEngine):
         self.__externals = {}
 
         self._unique_number = 0
-        self.unknown = self.UNKNOWN_ERROR
+        self.unknown = kwdargs.get('unknown', self.UNKNOWN_ERROR)
 
         if builtins:
             self.load_builtins()
