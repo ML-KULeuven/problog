@@ -57,7 +57,9 @@ elif __name__ == '__main__':
             'library/apply.pl',
             'library/control.pl',
             'library/db.py',
-            'library/aproblog.py'
+            'library/aproblog.py',
+            'library/nlp4plp.pl',
+            'library/nlp4plp.d/*'
         ]
     }
 
