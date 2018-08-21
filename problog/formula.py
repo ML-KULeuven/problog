@@ -158,7 +158,7 @@ class BaseFormula(ProbLogObject):
     # ==========                           NODE NAMES                            =========== #
     # ====================================================================================== #
 
-    def add_name(self, name, key, label=None):
+    def add_name(self, name, key, label=None, keep_name=False):
         """Add a name to the given node.
 
         :param name: name of the node
@@ -188,7 +188,7 @@ class BaseFormula(ProbLogObject):
     #     names = self.get_names()
     #     print (names)
 
-    def add_query(self, name, key):
+    def add_query(self, name, key, keep_name=False):
         """Add a query name.
 
         Same as ``add_name(name, key, self.LABEL_QUERY)``.
@@ -196,9 +196,9 @@ class BaseFormula(ProbLogObject):
         :param name: name of the query
         :param key: key of the query node
         """
-        self.add_name(name, key, self.LABEL_QUERY)
+        self.add_name(name, key, self.LABEL_QUERY, keep_name=keep_name)
 
-    def add_evidence(self, name, key, value):
+    def add_evidence(self, name, key, value, keep_name=False):
         """Add an evidence name.
 
         Same as ``add_name(name, key, self.LABEL_EVIDENCE_???)``.
@@ -208,11 +208,11 @@ class BaseFormula(ProbLogObject):
         :param value: value of the evidence (True, False or None)
         """
         if value is None:
-            self.add_name(name, key, self.LABEL_EVIDENCE_MAYBE)
+            self.add_name(name, key, self.LABEL_EVIDENCE_MAYBE, keep_name=keep_name)
         elif value:
-            self.add_name(name, key, self.LABEL_EVIDENCE_POS)
+            self.add_name(name, key, self.LABEL_EVIDENCE_POS, keep_name=keep_name)
         else:
-            self.add_name(name, key, self.LABEL_EVIDENCE_NEG)
+            self.add_name(name, key, self.LABEL_EVIDENCE_NEG, keep_name=keep_name)
 
     def clear_evidence(self):
         """Remove all evidence."""
@@ -440,12 +440,13 @@ class LogicFormula(BaseFormula):
     # ==========                         MANAGE LABELS                           =========== #
     # ====================================================================================== #
 
-    def add_name(self, name, key, label=None):
+    def add_name(self, name, key, label=None, keep_name=False):
         """Associates a name to the given node identifier.
 
             :param name: name of the node
             :param key: id of the node
             :param label: type of node (see LogicFormula.LABEL_*)
+            :param keep_name: keep name of node if it exists
         """
         if self._use_string_names:
             name = str(name)
@@ -457,11 +458,12 @@ class LogicFormula(BaseFormula):
                 lname = -name
             else:
                 lname = name
-            if ntype == 'atom':
-                node = type(node)(*(node[:-2] + (lname, node[-1])))
-            else:
-                node = type(node)(*(node[:-1] + (lname,)))
-            self._update(abs(key), node)
+            if not keep_name:
+                if ntype == 'atom':
+                    node = type(node)(*(node[:-2] + (lname, node[-1])))
+                else:
+                    node = type(node)(*(node[:-1] + (lname,)))
+                self._update(abs(key), node)
 
         BaseFormula.add_name(self, name, key, label)
 

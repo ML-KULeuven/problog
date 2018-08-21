@@ -63,7 +63,7 @@ def main_mpe_semiring(args):
         try:
             pl = PrologFile(inputfile)
 
-            lf = LogicFormula.create_from(pl, label_all=True)
+            lf = LogicFormula.create_from(pl, label_all=True, avoid_name_clash=True)
 
             prob, facts = mpe_semiring(lf, args.verbose, minpe=args.minpe)
             result_handler((True, (prob, facts)), outf)
@@ -91,7 +91,8 @@ def mpe_semiring(lf, verbose=0, solver=None, minpe=False):
         lf.clear_queries()
 
         query_name = Term('query')
-        lf.add_query(query_name, qn)
+        lf.add_query(query_name, qn, keep_name=True)
+
         kc = kc_class.create_from(lf)
 
         # with open('/tmp/x.dot', 'w') as f:
