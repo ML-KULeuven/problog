@@ -592,7 +592,7 @@ class LogicFormula(BaseFormula):
                 node_id = self._add_constraint_me(group, node_id)
             return node_id
 
-    def add_and(self, components, key=None, name=None):
+    def add_and(self, components, key=None, name=None, compact=None):
         """Add a conjunction to the logic formula.
 
         :param components: a list of node identifiers that already exist in the logic formula.
@@ -600,9 +600,9 @@ class LogicFormula(BaseFormula):
         :param name: name of the node
         :returns: the key of the node in the formula (returns 0 for deterministic atoms)
         """
-        return self._add_compound('conj', components, self.FALSE, self.TRUE, key=key, name=name)
+        return self._add_compound('conj', components, self.FALSE, self.TRUE, key=key, name=name, compact=compact)
 
-    def add_or(self, components, key=None, readonly=True, name=None, placeholder=False):
+    def add_or(self, components, key=None, readonly=True, name=None, placeholder=False, compact=None):
         """Add a disjunction to the logic formula.
 
         :param components: a list of node identifiers that already exist in the logic formula.
@@ -624,7 +624,8 @@ class LogicFormula(BaseFormula):
         This may cause the data structure to contain superfluous nodes.
         """
         return self._add_compound('disj', components, self.TRUE, self.FALSE, key=key,
-                                  readonly=readonly and not placeholder, name=name, placeholder=placeholder)
+                                  readonly=readonly and not placeholder, name=name,
+                                  placeholder=placeholder, compact=compact)
 
     def add_disjunct(self, key, component):
         """Add a component to the node with the given key.
@@ -681,13 +682,13 @@ class LogicFormula(BaseFormula):
 
     # noinspection PyUnusedLocal
     def _add_compound(self, nodetype, content, t, f, key=None,
-                      readonly=True, update=None, name=None, placeholder=False):
+                      readonly=True, update=None, name=None, placeholder=False, compact=None):
         """Add a compound term (AND or OR)."""
         if not placeholder:
             assert content   # Content should not be empty
 
         name_clash = False
-        if self._auto_compact:
+        if compact or self._auto_compact and compact is None:
             # If there is a t node, (true for OR, false for AND)
             if t in content:
                 return t

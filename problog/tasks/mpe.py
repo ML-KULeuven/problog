@@ -87,7 +87,23 @@ def mpe_semiring(lf, verbose=0, solver=None, minpe=False):
         lf.clear_evidence()
 
         if lf.queries():
-            print('%% WARNING: ignoring queries in file', file=sys.stderr)
+            non_atom = []
+            atom = []
+            qs = []
+            for qnm, qi in lf.queries():
+                if lf.is_probabilistic(qi):
+                    if type(lf.get_node(qi)).__name__ != 'atom':
+                        non_atom.append(qnm)
+                atom.append(qi)
+                qs += [qnm, -qnm]
+            qs = set(qs)
+            if non_atom:
+                print('WARNING: compound queries are not supported in the output: %s' % ', '.join(map(str, non_atom)), file=sys.stderr)
+
+            qn = lf.add_and([lf.add_or((qi, lf.negate(qi)), compact=False) for qi in atom] + [qn])
+
+        else:
+            qs = None
         lf.clear_queries()
 
         query_name = Term('query')
@@ -95,11 +111,10 @@ def mpe_semiring(lf, verbose=0, solver=None, minpe=False):
 
         kc = kc_class.create_from(lf)
 
-        # with open('/tmp/x.dot', 'w') as f:
-        #     print(kc.to_dot(), file=f)
-
         results = kc.evaluate(semiring=semiring)
         prob, facts = results[query_name]
+        if qs is not None:
+            facts &= qs
     else:
         prob, facts = 1.0, []
 
