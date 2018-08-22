@@ -1,1 +1,8 @@
 # No unit tests are run automatically for this branch
+
+pipelines:
+  default:
+    - step:
+        script:
+          - echo "Running nothing"
+
