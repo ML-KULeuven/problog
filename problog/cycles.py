@@ -59,6 +59,8 @@ def break_cycles(source, target, translation=None, **kwdargs):
                 newnode = n
             target.add_name(q, newnode, l)
 
+        # TODO copy constraints
+
         translation = defaultdict(list)
         for q, n, v in source.evidence_all():
             if source.is_probabilistic(n):
