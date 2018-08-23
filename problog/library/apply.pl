@@ -23,7 +23,17 @@ partition(P, [X|R], S, [X|T]) :-
     \+ call(P, X),
     partition(P, R, S, T).
 
-% TODO implement partition/5
+partition(_, [], [], [], []).
+partition(P, [X|R], [X|S], T, U) :-
+    call(P, X, <),
+    partition(P, R, S, T, U).
+partition(P, [X|R], S, [X|T], U) :-
+    call(P, X, =),
+    partition(P, R, S, T, U).
+partition(P, [X|R], S, T, [X|U]) :-
+    call(P, X, >),
+    partition(P, R, S, T, U).
+
 
 maplist(_, []).
 maplist(P, [A|S]) :-
@@ -38,6 +48,14 @@ maplist(_, [], []).
 maplist(P, [A|S], [B|T]) :-
     call(P, A, B),
     maplist(P, S, T).
+
+convlist(_, [], []).
+convlist(P, [A|S], [B|T]) :-
+    call(P, A, B),
+    convlist(P, S, T).
+convlist(P, [A|S], T) :-
+    \+ call(P, A, _),
+    convlist(P, S, T).
 
 maplist(_, [], [], []).
 maplist(P, [A|S], [B|T], [C|R]) :-
@@ -103,3 +121,6 @@ scanl(_, [], [], [], [], _, []).
 scanl(P, [L1|LR1], [L2|LR2], [L3|LR3], [L4|LR4], L0, [R|RR]) :-
     call(P, L1, L2, L3, L4, L0, R),
     scanl(P, LR1, LR2, LR3, LR4, R, RR).
+
+
+

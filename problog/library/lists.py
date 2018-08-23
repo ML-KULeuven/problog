@@ -1,7 +1,5 @@
 from __future__ import print_function
 
-import sys
-
 from problog.extern import problog_export_nondet
 from problog.logic import term2list, list2term
 from collections import defaultdict
@@ -28,4 +26,3 @@ def enum_groups(groups, values):
     for g, v in zip(groups_l, values_l):
         grouped[g].append(v)
     return list(grouped.items())
-
