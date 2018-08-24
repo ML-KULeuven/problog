@@ -50,7 +50,7 @@ def sqlite_load(filename):
     for table in tables:
         columns = get_colnames(conn, table)
         types = ['+term'] * len(columns)
-        problog_export_raw(*types)(QueryFunc(conn, table, columns), funcname=table)
+        problog_export_raw(*types)(QueryFunc(conn, table, columns), funcname=table, modname=None)
 
     return ()
 
@@ -135,7 +135,7 @@ def csv_load(filename, predicate):
     csvfile.close()
 
     types = ['+term'] * len(columns)
-    problog_export_raw(*types)(QueryFunc(conn, predicate, columns), funcname=predicate)
+    problog_export_raw(*types)(QueryFunc(conn, predicate, columns), funcname=predicate, modname=None)
 
     return ()
 

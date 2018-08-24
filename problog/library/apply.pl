@@ -1,3 +1,24 @@
+:- module(apply, [
+    include/3,
+    exclude/3,
+    partition/4,
+    partition/5,
+    maplist/2,
+    maplist/3,
+    maplist/4,
+    maplist/5,
+    convlist/3,
+    foldl/4,
+    foldl/5,
+    foldl/6,
+    foldl/7,
+    scanl/4,
+    scanl/5,
+    scanl/6,
+    scanl/7,
+    foldl_noinit/3
+]).
+
 
 include(P, [], []).
 include(P, [X|T], [X|S]) :-

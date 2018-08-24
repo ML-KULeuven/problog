@@ -53,14 +53,14 @@ class LogicProgram(ProbLogObject):
         """Iterator for the clauses in the program."""
         raise NotImplementedError("LogicProgram.__iter__ is an abstract method.")
 
-    def add_clause(self, clause):
+    def add_clause(self, clause, scope=None):
         """Add a clause to the logic program.
 
         :param clause: add a clause
         """
         raise NotImplementedError("LogicProgram.addClause is an abstract method.")
 
-    def add_fact(self, fact):
+    def add_fact(self, fact, scope=None):
         """Add a fact to the logic program.
 
         :param fact: add a fact
@@ -69,6 +69,10 @@ class LogicProgram(ProbLogObject):
 
     def __iadd__(self, clausefact):
         """Add clause or fact using the ``+=`` operator."""
+        self.add_statement(clausefact)
+        return self
+
+    def add_statement(self, clausefact, scope=None):
         if isinstance(clausefact, Or):
             heads = clausefact.to_list()
             # TODO move this to parser code
@@ -78,17 +82,16 @@ class LogicProgram(ProbLogObject):
                     raise GroundingError("Unexpected fact '%s'" % head)
                 elif len(heads) > 1 and head.probability is None:
                     raise GroundingError("Non-probabilistic head in multi-head clause '%s'" % head)
-            self.add_clause(AnnotatedDisjunction(heads, Term('true')))
+            self.add_clause(AnnotatedDisjunction(heads, Term('true')), scope=scope)
         elif isinstance(clausefact, AnnotatedDisjunction):
-            self.add_clause(clausefact)
+            self.add_clause(clausefact, scope=scope)
         elif isinstance(clausefact, Clause):
-            self.add_clause(clausefact)
+            self.add_clause(clausefact, scope=scope)
         elif type(clausefact) == Term:
-            self.add_fact(clausefact)
+            self.add_fact(clausefact, scope=scope)
         else:
             raise GroundingError("Unexpected fact '%s'" % clausefact,
                                  self.lineno(clausefact.location))
-        return self
 
     @classmethod
     def create_from(cls, src, force_copy=False, **extra):
@@ -138,8 +141,7 @@ class LogicProgram(ProbLogObject):
                 obj.source_parent = src.source_parent[:]
             if hasattr(src, 'line_info'):
                 obj.line_info = src.line_info[:]
-            for clause in src:
-                obj += clause
+            obj.add_all(src)
             return obj
 
     def lineno(self, char, force_filename=False):
@@ -183,7 +185,7 @@ class SimpleProgram(LogicProgram):
         LogicProgram.__init__(self)
         self.__clauses = []
 
-    def add_clause(self, clause):
+    def add_clause(self, clause, scope=None):
         """Add a clause to the logic program.
 
         :param clause: add a clause
@@ -194,7 +196,7 @@ class SimpleProgram(LogicProgram):
         else:
             self.__clauses.append(clause)
 
-    def add_fact(self, fact):
+    def add_fact(self, fact, scope=None):
         """Add a fact to the logic program.
 
         :param fact: add a fact
@@ -250,14 +252,14 @@ class PrologString(LogicProgram):
         program = self._program()
         return program[sl]
 
-    def add_clause(self, clause):
+    def add_clause(self, clause, scope=None):
         """Add a clause to the logic program.
 
         :param clause: add a clause
         """
         raise AttributeError('not supported')
 
-    def add_fact(self, fact):
+    def add_fact(self, fact, scope=None):
         """Add a fact to the logic program.
 
         :param fact: add a fact
@@ -291,14 +293,14 @@ class PrologFile(PrologString):
                               source_root=source_root, source_files=source_files,
                               identifier=identifier)
 
-    def add_clause(self, clause):
+    def add_clause(self, clause, scope=None):
         """Add a clause to the logic program.
 
         :param clause: add a clause
         """
         raise AttributeError('not supported')
 
-    def add_fact(self, fact):
+    def add_fact(self, fact, scope=None):
         """Add a fact to the logic program.
 
         :param fact: add a fact

@@ -1,3 +1,43 @@
+:- module(lists, [
+    memberchk/2,
+    member/2,
+    append/3,
+    append/2,
+    prefix/2,
+    select/3,
+    selectchk/3,
+    select/4,
+    selectchk/4,
+    nextto/3,
+    delete/3,
+    nth0/3,
+    nth1/3,
+    nth0/4,
+    nth1/4,
+    last/2,
+    proper_length/2,
+    same_length/2,
+    reverse/2,
+    permutation/2,
+    flatten/2,
+    max_member/2,
+    min_member/2,
+    sum_list/2,
+    max_list/2,
+    min_list/2,
+    numlist/3,
+    is_set/1,
+    list_to_set/2,
+    intersection/3,
+    union/3,
+    subset/2,
+    subtract/3,
+    enum_groups/3,
+    enum_groups/4,
+    select_uniform/4,
+    select_weighted/5
+]).
+
 % member(X,L)
 %  X is an element from list L
 memberchk(X,[X|_]).
@@ -251,10 +291,10 @@ subtract([X|T], Delete, [X|R]) :-
 delete([], _, []).
 delete([H|T], Elem, [H|R]) :-
     Elem \= H,
-    delete(T, R).
+    delete(T, Elem, R).
 delete([H|T], Elem, R) :-
     \+ Elem \= H,
-    delete(T, R).
+    delete(T, Elem, R).
 
 nextto(X, Y, [X, Y|_]).
 nextto(X, Y, [_|T]) :-
@@ -272,7 +312,4 @@ list_to_set(List, Set) :-
     ), MinList),                      % Create a list of (min position, value) for unique values.
     sort(MinList, SortedMinList),     % Sort the list such that first occurring values come first.
     unzip(SortedMinList, _, Set).     % Remove the index information from the list.
-
-
-
 

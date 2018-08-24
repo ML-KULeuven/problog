@@ -8,7 +8,10 @@ API Documentation
 .. automodule:: problog.formula
     :members:
     :show-inheritance:
-    
+
+.. automodule:: problog.clausedb
+    :members:
+    :show-inheritance:
 
 .. automodule:: problog.cycles
     :members:

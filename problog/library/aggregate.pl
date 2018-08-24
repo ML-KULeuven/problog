@@ -1,5 +1,5 @@
-:- use_module(library(lists)).
-:- use_module(library(apply)).
+:- use_module(library(lists), [enum_groups/4]).
+:- use_module(library(apply), [maplist/3]).
 
 aggregate(AggFunc, Var, Group, Body, (Group, Result)) :-
     all([Group, Body, Var], Body, L),
