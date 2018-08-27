@@ -1776,7 +1776,7 @@ class EvalDefine(EvalNode):
                         a = False
                     return a, actions
                 else:
-                    cache_key = (self.node.functor, res)
+                    cache_key = self.call  # (self.node.functor, res)
                     if not self.no_cache and cache_key in self.target._cache:
                         # Get direct
                         stored_result = self.target._cache[cache_key]
@@ -1832,7 +1832,8 @@ class EvalDefine(EvalNode):
         else:
             self.to_complete -= 1
             if self.to_complete == 0:
-                cache_key = (self.node.functor, self.context)
+                cache_key = self.call
+                # cache_key = (self.node.functor, self.context)
                 # assert (not cache_key in self.target._cache)
                 self.flushBuffer()
                 self.target._cache[cache_key] = self.results
@@ -1859,28 +1860,29 @@ class EvalDefine(EvalNode):
 
     def flushBuffer(self, cycle=False):
         def func(res, nodes):
-            cache_key = (self.node.functor, res)
-            # if not self.no_cache and cache_key in self.target._cache:
-            #     stored_result = self.target._cache[cache_key]
-            #     assert (len(stored_result) == 1)
-            #     node = stored_result[0][1]
-            #     if not self.is_root:
-            #         node = self.engine.propagate_evidence(self.database, self.target, self.node.functor, res, node)
-#            else:
-            if self.engine.label_all:
-                name = Term(self.node.functor, *res)
-            else:
-                name = None
-
-            if not self.is_root:
-                new_nodes = []
-                for node in nodes:
+            cache_key = self.call
+#            cache_key = (self.node.functor, res)
+            if not self.no_cache and cache_key in self.target._cache:
+                stored_result = self.target._cache[cache_key]
+                assert (len(stored_result) == 1)
+                node = stored_result[0][1]
+                if not self.is_root:
                     node = self.engine.propagate_evidence(self.database, self.target, self.node.functor, res, node)
-                    new_nodes.append(node)
-                nodes = new_nodes
-            node = self.target.add_or(nodes, readonly=(not cycle), name=name)
-            if not self.no_cache and is_ground(*res) and is_ground(*self.call[1]):
-                self.target._cache[cache_key] = {res: node}
+            else:
+                if self.engine.label_all:
+                    name = Term(self.node.functor, *res)
+                else:
+                    name = None
+
+                if not self.is_root:
+                    new_nodes = []
+                    for node in nodes:
+                        node = self.engine.propagate_evidence(self.database, self.target, self.node.functor, res, node)
+                        new_nodes.append(node)
+                    nodes = new_nodes
+                node = self.target.add_or(nodes, readonly=(not cycle), name=name)
+                if not self.no_cache and is_ground(*res) and is_ground(*self.call[1]):
+                    self.target._cache[cache_key] = {res: node}
 
             return node
         self.results.collapse(func)
