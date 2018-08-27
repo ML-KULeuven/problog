@@ -20,6 +20,7 @@ from __future__ import print_function
 from .logic import Term
 from collections import defaultdict
 import time
+import sys
 
 
 def printtrace(func):
@@ -44,11 +45,12 @@ def printtrace_self(func):
 
 class EngineTracer(object):
 
-    def __init__(self, keep_trace=True):
+    def __init__(self, keep_trace=True, interactive=False):
         self.call_redirect = {}
         self.call_results = defaultdict(int)
         self.level = 0    # level of calls (depth of stack)
         self.stack = []   # stack of calls (approximate?)
+        self.interactive = interactive
         if keep_trace:
             self.trace = []
         else:
@@ -59,6 +61,15 @@ class EngineTracer(object):
         self.resultstats = defaultdict(int)
         self.callstats = defaultdict(int)
         self.time_start_global = None
+
+    def interact(self, record):
+        if self.interactive and record:
+            print (self.show_record(record), end='\t?')
+            a = sys.stdin.readline()
+            if a.strip() == 'gp':
+                pass
+            elif a.strip() == 'l':
+                self.interactive = False
 
     def process_message(self, msgtype, msgtarget, msgargs, context):
         if msgtarget is None and msgtype == 'r' and msgtarget in self.call_redirect:
@@ -76,18 +87,22 @@ class EngineTracer(object):
             self.time_start_global = time.time()
 
         term = Term(functor, *context, location=location)
+        record = (self.level, "call", term, time.time() - self.time_start_global)
         if self.trace is not None:
-            self.trace.append((self.level, "call", term, time.time()-self.time_start_global))
+            self.trace.append(record)
         self.time_start[term] = time.time(), location
         self.stack.append(term)
         self.level += 1
         self.call_redirect[parent] = (node_id, functor, context)
+        self.interact(record)
 
     def call_result(self, node_id, functor, context, result=None, location=None):
         term = Term(functor, *context, location=location)
+        record = (self.level, "result", term, time.time() - self.time_start_global, result)
         if self.trace is not None:
-            self.trace.append((self.level, "result", term, time.time()-self.time_start_global, result))
+            self.trace.append(record)
         self.call_results[(node_id, term)] += 1
+        self.interact(record)
 
     def call_return(self, node_id, functor, context, location=None):
         term = Term(functor, *context, location=location)
@@ -97,16 +112,18 @@ class EngineTracer(object):
         now = time.time()
         if self.stack:
             self.stack.pop(-1)
+        if self.call_results[(node_id, term)] > 0:
+            record = (self.level, "complete", term, now-self.time_start_global, now-ts)
+        else:
+            record = (self.level, "fail", term, now-self.time_start_global, now-ts)
         if self.trace is not None:
-            if self.call_results[(node_id, term)] > 0:
-                self.trace.append((self.level, "complete", term, now-self.time_start_global, now-ts))
-            else:
-                self.trace.append((self.level, "fail", term, now-self.time_start_global, now-ts))
+            self.trace.append(record)
 
         self.timestats[(term, loc)] += now - ts
         self.resultstats[(term, loc)] = self.call_results[node_id, term]
         self.callstats[(term, loc)] += 1
         # self.call_results[(node_id, term)] = 0
+        self.interact(record)
 
     def show_profile(self, aggregate=0):
         """Creates a table with profile information.
@@ -151,19 +168,24 @@ class EngineTracer(object):
         s = ''
         if self.trace is not None:
             for record in self.trace:
-                lvl = record[0]
-                msg = record[1]
-                term = record[2]
-                tm_cumul = record[3]
-                if msg == 'call':
-                    s += "%s %s %s {%.5f} [%s]\n" % (' ' * lvl, msg, term, tm_cumul, location_string(term.location))
-                elif msg == 'result':
-                    args = record[4]
-                    s += "%s %s %s %s {%.5f} [%s]\n" % (' ' * lvl, msg, term, args, tm_cumul, location_string(term.location))
-                else:
-                    tm_local = record[4]
-                    s += "%s %s %s {%.5f} {%.5f} [%s]\n" % (' ' * lvl, msg, term, tm_cumul, tm_local, location_string(term.location))
+                s += self.show_record(record) + '\n'
         return s
+
+    def show_record(self, record):
+        lvl = record[0]
+        msg = record[1]
+        term = record[2]
+        tm_cumul = record[3]
+        if msg == 'call':
+            s = "%s %s %s {%.5f} [%s]" % (' ' * lvl, msg, term, tm_cumul, location_string(term.location))
+        elif msg == 'result':
+            args = record[4]
+            s = "%s %s %s %s {%.5f} [%s]" % (' ' * lvl, msg, term, args, tm_cumul, location_string(term.location))
+        else:
+            tm_local = record[4]
+            s = "%s %s %s {%.5f} {%.5f} [%s]" % (' ' * lvl, msg, term, tm_cumul, tm_local, location_string(term.location))
+        return s
+
 
 def location_string(location):
     if location is None:

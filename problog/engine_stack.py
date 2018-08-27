@@ -472,13 +472,13 @@ class StackBasedEngine(ClauseDBEngine):
                         if act in 'rco':
                             print(obj, act, args)
                         print([(a, o, x) for a, o, x, t in actions[-10:]])
-                        if self.trace:
-                            a = sys.stdin.readline()
-                            if a.strip() == 'gp':
-                                print(target)
-                            elif a.strip() == 'l':
-                                self.trace = False
-                                self.debug = False
+                    if self.trace:
+                        a = sys.stdin.readline()
+                        if a.strip() == 'gp':
+                            print(target)
+                        elif a.strip() == 'l':
+                            self.trace = False
+                            self.debug = False
                     if cleanup:
                         self.cleanup(obj)
 
@@ -1862,8 +1862,15 @@ class EvalDefine(EvalNode):
             cache_key = (self.node.functor, res)
             if not self.no_cache and cache_key in self.target._cache:
                 stored_result = self.target._cache[cache_key]
-                assert (len(stored_result) == 1)
-                node = stored_result[0][1]
+                if len(stored_result) == 1:
+                    node = stored_result[0][1]
+                else:
+                    if self.engine.label_all:
+                        name = Term(self.node.functor, *res)
+                    else:
+                        name = None
+                    node = self.target.add_or([y for x, y in stored_result], name=name)
+                # assert (len(stored_result) == 1)
                 if not self.is_root:
                     node = self.engine.propagate_evidence(self.database, self.target, self.node.functor, res, node)
             else:

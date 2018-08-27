@@ -1879,3 +1879,14 @@ def seq(term, database=None, **kwargs):
 
     return [(Constant(s),)]
 
+@builtin_boolean('trace', 0)
+def trace(engine=None, **kwargs):
+    if engine.debugger:
+        engine.debugger.interactive = True
+    return True
+
+@builtin_boolean('notrace', 0)
+def notrace(engine=None, **kwargs):
+    if engine.debugger:
+        engine.debugger.interactive = False
+    return True
