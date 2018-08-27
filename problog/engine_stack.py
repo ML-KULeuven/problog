@@ -950,7 +950,7 @@ class StackBasedEngine(ClauseDBEngine):
 
             transform.addFunction(result_transform)
             return self.eval(node.child, context=new_context, parent=parent, transform=transform,
-                             current_clause=node_id, **kwdargs)
+                             current_clause=node_id, identifier=identifier, **kwdargs)
         except UnifyError:
             # Call and clause head are not unifiable, just fail (complete without results).
             return [complete(parent, identifier)]
@@ -1860,27 +1860,27 @@ class EvalDefine(EvalNode):
     def flushBuffer(self, cycle=False):
         def func(res, nodes):
             cache_key = (self.node.functor, res)
-            if not self.no_cache and cache_key in self.target._cache:
-                stored_result = self.target._cache[cache_key]
-                assert (len(stored_result) == 1)
-                node = stored_result[0][1]
-                if not self.is_root:
-                    node = self.engine.propagate_evidence(self.database, self.target, self.node.functor, res, node)
+            # if not self.no_cache and cache_key in self.target._cache:
+            #     stored_result = self.target._cache[cache_key]
+            #     assert (len(stored_result) == 1)
+            #     node = stored_result[0][1]
+            #     if not self.is_root:
+            #         node = self.engine.propagate_evidence(self.database, self.target, self.node.functor, res, node)
+#            else:
+            if self.engine.label_all:
+                name = Term(self.node.functor, *res)
             else:
-                if self.engine.label_all:
-                    name = Term(self.node.functor, *res)
-                else:
-                    name = None
+                name = None
 
-                if not self.is_root:
-                    new_nodes = []
-                    for node in nodes:
-                        node = self.engine.propagate_evidence(self.database, self.target, self.node.functor, res, node)
-                        new_nodes.append(node)
-                    nodes = new_nodes
-                node = self.target.add_or(nodes, readonly=(not cycle), name=name)
-                if not self.no_cache and is_ground(*res) and is_ground(*self.call[1]):
-                    self.target._cache[cache_key] = {res: node}
+            if not self.is_root:
+                new_nodes = []
+                for node in nodes:
+                    node = self.engine.propagate_evidence(self.database, self.target, self.node.functor, res, node)
+                    new_nodes.append(node)
+                nodes = new_nodes
+            node = self.target.add_or(nodes, readonly=(not cycle), name=name)
+            if not self.no_cache and is_ground(*res) and is_ground(*self.call[1]):
+                self.target._cache[cache_key] = {res: node}
 
             return node
         self.results.collapse(func)
