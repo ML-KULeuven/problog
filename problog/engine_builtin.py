@@ -174,6 +174,7 @@ def add_standard_builtins(engine, b=None, s=None, sp=None):
     engine.add_builtin('use_module', 2, b(_builtin_use_module2))
     engine.add_builtin('module', 2, b(_builtin_module))
 
+    engine.add_builtin('once', 1, _builtin_call)
     engine.add_builtin('call', 1, _builtin_call)
     engine.add_builtin('call_nc', 1, _builtin_call_nc)
     engine.add_builtin('try_call', 1, _builtin_try_call)
