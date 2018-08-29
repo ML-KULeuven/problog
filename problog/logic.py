@@ -858,7 +858,10 @@ class Clause(Term):
         self.body = body
 
     def __repr__(self):
-        return "%s :- %s" % (self.head, self.body)
+        if self.head.functor == '_directive':
+            return ":- %s" % self.body
+        else:
+            return "%s :- %s" % (self.head, self.body)
 
     @property
     def predicates(self):
