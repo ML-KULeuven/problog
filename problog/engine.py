@@ -37,6 +37,8 @@ from .core import transform
 from .errors import GroundingError, InvalidValue, NonGroundQuery
 from .util import Timer, OrderedSet
 
+from subprocess import CalledProcessError
+
 @transform(LogicProgram, LogicFormula)
 def ground(model, target=None, grounder=None, **kwdargs):
     """Ground a given model.
@@ -240,8 +242,21 @@ class ClauseDBEngine(GenericEngine):
             from problog.logic import term2str
             termstr = term2str(term)
             cmd = ['swipl', '-l', tmpfn, '-g', '%s, writeln(%s), fail; halt' % (termstr, termstr)]
-            with open(os.devnull, 'w') as dn:
-                output = subprocess_check_output(cmd, stderr=dn)
+
+            try:
+                output = subprocess_check_output(cmd)
+            except CalledProcessError as err:
+                in_error = True
+                error_message = []
+                for line in err.output.split('\n'):
+                    if line.startswith('Warning:'):
+                        in_error = False
+                    elif line.startswith('ERROR:'):
+                        in_error = True
+                    if in_error:
+                        error_message.append(line)
+                error_message = 'SWI-Prolog returned some errors:\n' + '\n'.join(error_message)
+                raise GroundingError(error_message)
 
             return [Term.from_string(line).args for line in output.split('\n') if line.strip()]
         else:
