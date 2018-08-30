@@ -36,6 +36,8 @@ from .core import transform
 from .errors import GroundingError, NonGroundQuery
 from .util import Timer
 
+from subprocess import CalledProcessError
+
 @transform(LogicProgram, LogicFormula)
 def ground(model, target=None, grounder=None, **kwdargs):
     """Ground a given model.
@@ -220,28 +222,57 @@ class ClauseDBEngine(GenericEngine):
     def _clone_context(self, context):
         return list(context)
 
-    def query(self, db, term, **kwdargs):
+    def query(self, db, term, backend=None, **kwdargs):
         """
 
-       :param db:
-       :param term:
-       :param kwdargs:
-       :return:
+        :param db:
+        :param term:
+        :param kwdargs:
+        :return:
         """
-        gp = LogicFormula()
-        if term.is_negated():
-            term = -term
-            negative = True
+
+        if backend in ('swipl', 'yap'):
+            from .util import mktempfile, subprocess_check_output
+
+            tmpfn = mktempfile('.pl')
+            with open(tmpfn, 'w') as tmpf:
+                print(db.to_prolog(), file=tmpf)
+
+            from problog.logic import term2str
+            termstr = term2str(term)
+            cmd = ['swipl', '-l', tmpfn, '-g', '%s, writeln(%s), fail; halt' % (termstr, termstr)]
+
+            try:
+                output = subprocess_check_output(cmd)
+            except CalledProcessError as err:
+                in_error = True
+                error_message = []
+                for line in err.output.split('\n'):
+                    if line.startswith('Warning:'):
+                        in_error = False
+                    elif line.startswith('ERROR:'):
+                        in_error = True
+                    if in_error:
+                        error_message.append(line)
+                error_message = 'SWI-Prolog returned some errors:\n' + '\n'.join(error_message)
+                raise GroundingError(error_message)
+
+            return [Term.from_string(line).args for line in output.split('\n') if line.strip()]
         else:
-            negative = False
-        gp, result = self._ground(db, term, gp, **kwdargs)
-        if negative:
-            if not result:
-                return [term]
+            gp = LogicFormula()
+            if term.is_negated():
+                term = -term
+                negative = True
             else:
-                return []
-        else:
-            return [x for x, y in result]
+                negative = False
+            gp, result = self._ground(db, term, gp, **kwdargs)
+            if negative:
+                if not result:
+                    return [term]
+                else:
+                    return []
+            else:
+                return [x for x, y in result]
 
     def ground(self, db, term, target=None, label=None, **kwdargs):
         """Ground a query on the given database.

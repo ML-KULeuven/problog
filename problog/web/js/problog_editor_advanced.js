@@ -153,8 +153,58 @@ var problog = {
                         pbl.dom.results.html(result);
                     }
                 },
-//                {id: 'map', name: "MAP", select: function(pbl){}, deselect: function(pbl){}},
-                                {
+                    {
+                    id: 'map',
+                    name: "MAP",
+                    action: 'Solve',
+                    text: "Compute MAP.",
+                    select: function(pbl){},
+                    deselect: function(pbl){},
+                    collectData: function(pbl){
+                        var model = pbl.editor.getSession().getValue();
+                        if (model) {
+                            result = {'model': model};
+                            if (pbl.solve_choice > 0) {
+                                result['solve'] = pbl.task.choices[pbl.solve_choice].identifier;
+                            }
+                            return result;
+                        } else {
+                            return undefined;
+                        }
+
+                    },
+                    formatResult: function(pbl, data) {
+                        var facts = data.choices;
+
+                        // Create table body
+                        var result = $('<tbody>');
+                        for (var k in facts) {
+                            var n = facts[k][0];
+                            var p = facts[k][1];
+                            result.append($('<tr>')
+                                  .append($('<td>').text(n))
+                                  .append($('<td>').append(problog.makeProgressBar(p))));
+                        }
+                        var result = problog.createTable(result, [['Atom','50%'],['Value','50%']]);
+                        pbl.dom.results.html(result);
+
+                        var meta_str = "<p><strong>Score</strong>: ";
+                        var sep = " ";
+                        meta_str += data.score;
+                        meta_str += "</p>";
+                        $(meta_str).appendTo(pbl.dom.results);
+
+                        var meta_str = "<p><strong>Stats</strong>:";
+                        var sep = " ";
+                        for (var k in data.stats) {
+                            meta_str += sep+k+"="+data.stats[k];
+                            sep = ", ";
+                        }
+                        meta_str += "</p>";
+                        $(meta_str).appendTo(pbl.dom.results);
+                      }
+                    },
+                    {
                     id: 'dt',
                     name: "DTProbLog",
                     action: 'Solve',
@@ -326,19 +376,46 @@ var problog = {
                         // {name:"k-best"},
                         // {name:"sample"}
                     ],
-                    select: function(pbl) {},
-                    deselect: function(pbl) {},
-                    collectData: function(pbl) {
-                        var model = pbl.editor.getSession().getValue();
+                    select: function(pbl) {
+                      pbl.natlang = false;
+                      $('<h3>').text("Enter your question:").appendTo(pbl.dom.root.preface);
+                      pbl.natlang_text = $('<textarea>', {'rows': 5}).addClass('form-control').appendTo(pbl.dom.root.preface);
+                      var button = $('<button>').addClass("btn btn-primary pull-right")
+                                                            .text('Solve')
+                                                            .click(function() {
+                                                              pbl.natlang = true;
+                                                              pbl.solve();
+                                                              pbl.natlang = false;
+                                                             })
+                                                            .appendTo(pbl.dom.root.preface);
+                      $('<h3>').html('Or, enter your model:').appendTo(pbl.dom.root.preface);
 
-                        if (model) {
-                            return {
-                                'model': model
-                                //'options': solve_choice
-                            };
-                        } else {
+                    },
+                    deselect: function(pbl) {
+                      pbl.dom.root.preface.empty();
+
+
+                    },
+                    collectData: function(pbl) {
+                        if (pbl.natlang) {
+                          var text = $(pbl.natlang_text).val();
+                          if (text) {
+                            return {'model': text, 'is_text': pbl.natlang};
+                          } else {
                             return undefined;
+                          }
+                        } else {
+                          var model = pbl.editor.getSession().getValue();
+                          if (model) {
+                              return {
+                                'model': model,
+                                'is_text': pbl.natlang
+                                  //'options': solve_choice
+                              };
+                          } else {
+                              return undefined;
                         }
+                      }
                     },
                     formatResult: function(pbl, data) {
                         console.log(data);
@@ -364,6 +441,9 @@ var problog = {
                         var result = $('<div>');
                         result.append($('<span>').append($('<strong>').text('Solution: ')))
                                 .append($('<span>', {'class': 'label label-default'}).text(data.solve_output));
+
+                        pbl.editor.getSession().setValue(data.program);
+
                         console.log(result);
                         pbl.dom.results.html(result);
                     }
@@ -589,6 +669,7 @@ problog.init_editor = function(index, object) {
     pbl.dom.taskpane = $('<div>').addClass('problog-taskpane col-md-2 col-xs-12 pull-right')
                                  .appendTo(object);
 
+
     pbl.dom.task_select_grp = $('<div>').addClass("btn-group")
                                         .attr("style","width: 100%")
                                         .appendTo(pbl.dom.taskpane);
@@ -622,6 +703,9 @@ problog.init_editor = function(index, object) {
     }
 
     pbl.dom.editpane = $('<div>').addClass('problog-editpane').appendTo(object);
+
+    pbl.dom.root.preface = $('<div>').appendTo(pbl.dom.editpane);
+
     if (pbl.showtasks) {
         pbl.dom.editpane.addClass('col-md-10 col-xs-12');
     } else {

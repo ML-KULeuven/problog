@@ -334,6 +334,40 @@ The ProbLog lists module implements all predicates from the `SWI-Prolog apply li
 Cut
 +++
 
+ProbLog does not support cuts (``!``).
+However, it does provide the cut library to help with the modeling of ordered rulesets.
+
+This library implements a soft cut.
+
+1. Define a set of indexed-clauses (index is first argument)
+
+.. code-block:: prolog
+
+    r(1, a, b).
+    r(2, a, c).
+    r(3, b, c).
+
+2. Call the rule using cut where you should remove the first argument
+
+.. code-block:: prolog
+
+    cut(r(A, B))
+
+
+This will evaluate the rules in order of their index (note: NOT order in the file)
+and only ONE rule will match (the first one that succeeds).
+   e.g.:
+
+.. code-block:: prolog
+
+    cut(r(A, B)) => A = a, B = b
+    cut(r(a, X)) => X = b
+    cut(r(X, c)) => X = a
+    cut(r(b, X)) => X = c
+
+The predicate cut/2 unifies the second argument with the Index of the matching rule.
+
+
 
 Assert
 ++++++

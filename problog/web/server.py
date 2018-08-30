@@ -257,6 +257,11 @@ def run_mpe_jsonp(model, callback):
     return run_problog_task('mpe', model[0], callback[0], options=['--full'])
 
 
+@handle_url(api_root + 'map')
+def run_map_jsonp(model, callback):
+    return run_problog_task('map', model[0], callback[0], options=[])
+
+
 @handle_url(api_root + 'sample')
 def run_sample_jsonp(model, callback):
     return run_problog_task('sample', model[0], callback[0])

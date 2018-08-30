@@ -32,7 +32,7 @@ API Documentation
     :show-inheritance:
     
 
-.. automodule:: problog.nnf_formula
+.. automodule:: problog.ddnnf_formula
     :members:
     :show-inheritance:
     
@@ -117,4 +117,4 @@ API Documentation
     :show-inheritance:
     
 
-.. inheritance-diagram:: problog.logic problog.formula problog.cycles problog.constraint problog.cnf_formula problog.nnf_formula problog.dd_formula problog.sdd_formula problog.bdd_formula problog.core problog.engine problog.program problog.evaluator problog.forward
+.. inheritance-diagram:: problog.logic problog.formula problog.cycles problog.constraint problog.cnf_formula problog.ddnnf_formula problog.dd_formula problog.sdd_formula problog.bdd_formula problog.core problog.engine problog.program problog.evaluator problog.forward

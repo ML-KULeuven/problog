@@ -481,8 +481,7 @@ class ClauseDB(LogicProgram):
 
     def __iter__(self):
         clause_groups = defaultdict(list)
-        for index, node in enumerate(self.__nodes):
-            index += self.__offset
+        for index, node in self.enum_nodes():
             if not node:
                 continue
             nodetype = type(node).__name__
@@ -512,8 +511,7 @@ class ClauseDB(LogicProgram):
         """
 
         clause_groups = defaultdict(list)
-        for index, node in enumerate(self.__nodes):
-            index += self.__offset
+        for index, node in self.enum_nodes():
             if not node:
                 continue
             nodetype = type(node).__name__
@@ -572,9 +570,20 @@ class ClauseDB(LogicProgram):
         """
         return PrologFunction(self, functor, arity)
 
+    def enum_nodes(self):
+        if self.__parent:
+            for i, n in self.__parent.enum_nodes():
+                yield i, n
+        for i, n in enumerate(self.__nodes):
+            i += self.__offset
+            yield i, n
+
     def iter_nodes(self):
-        # TODO make this work for extended database
-        return iter(self.__nodes)
+        if self.__parent:
+            for n in self.__parent.iter_nodes():
+                yield n
+        for n in self.__nodes:
+            yield n
 
     def consult(self, filename, location=None, my_scope=None):
         filename = self.resolve_filename(filename)

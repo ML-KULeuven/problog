@@ -14,6 +14,7 @@ Currently, the following modes are supported
   * ``mpe``: most probable explanation
   * ``lfi``: learning from interpretations
   * ``dt``: decision-theoretic problog
+  * ``map``: MAP inference
   * ``explain``: evaluate using mutually exclusive proofs
   * ``ground``: generate a ground program
   * ``bn``: export a Bayesian network
@@ -336,6 +337,19 @@ Local search can be enabled with the argument ``-s local``.
 References:
 
     https://lirias.kuleuven.be/handle/123456789/270066
+
+
+MAP inference (``map``)
+-----------------------
+
+MAP inference is implemented on top of DT-ProbLog.
+MAP inference is similar to MPE inference, except that only facts that occur as explicit queries are assigned and all other probabilistic facts are marginalized over.
+
+.. code-block:: prolog
+
+
+
+
 
 
 

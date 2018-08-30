@@ -950,7 +950,7 @@ class StackBasedEngine(ClauseDBEngine):
 
             transform.addFunction(result_transform)
             return self.eval(node.child, context=new_context, parent=parent, transform=transform,
-                             current_clause=node_id, **kwdargs)
+                             current_clause=node_id, identifier=identifier, **kwdargs)
         except UnifyError:
             # Call and clause head are not unifiable, just fail (complete without results).
             return [complete(parent, identifier)]
@@ -1776,7 +1776,7 @@ class EvalDefine(EvalNode):
                         a = False
                     return a, actions
                 else:
-                    cache_key = (self.node.functor, res)
+                    cache_key = self.call  # (self.node.functor, res)
                     if not self.no_cache and cache_key in self.target._cache:
                         # Get direct
                         stored_result = self.target._cache[cache_key]
@@ -1832,7 +1832,8 @@ class EvalDefine(EvalNode):
         else:
             self.to_complete -= 1
             if self.to_complete == 0:
-                cache_key = (self.node.functor, self.context)
+                cache_key = self.call
+                # cache_key = (self.node.functor, self.context)
                 # assert (not cache_key in self.target._cache)
                 self.flushBuffer()
                 self.target._cache[cache_key] = self.results
@@ -1859,7 +1860,8 @@ class EvalDefine(EvalNode):
 
     def flushBuffer(self, cycle=False):
         def func(res, nodes):
-            cache_key = (self.node.functor, res)
+            cache_key = self.call
+#            cache_key = (self.node.functor, res)
             if not self.no_cache and cache_key in self.target._cache:
                 stored_result = self.target._cache[cache_key]
                 if len(stored_result) == 1:

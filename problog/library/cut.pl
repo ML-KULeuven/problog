@@ -1,3 +1,5 @@
+:- module(cut, [cut/1, cut2]).
+
 % Soft-cut.
 %
 %  Setup:
