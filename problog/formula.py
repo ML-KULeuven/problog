@@ -815,8 +815,7 @@ class LogicFormula(BaseFormula):
             self.get_evidence_values()[key] = value
 
     def propagate(self, nodeids, current=None):
-        """Propagate the value of the given node
-          (true if node is positive, false if node is negative)
+        """Propagate the value of the given node (true if node is positive, false if node is negative)
         The propagation algorithm is not complete.
 
         :param nodeids: evidence nodes to set (> 0 means true, < 0 means false)

@@ -377,11 +377,9 @@ def unify_call_return(result, call_args, context, var_translate, min_var, mask=N
     :param result: result returned by call
     :param call_args: arguments used in the call
     :param context: calling context
-    :param var_translate: variable translation for local variables from call context to
-    calling context
+    :param var_translate: variable translation for local variables from call context to calling context
     :param min_var: number of local variables currently in calling context
-    :param mask: mask indicating whether call_args are non-ground (ground can be skipped in
-    unification)
+    :param mask: mask indicating whether call_args are non-ground (ground can be skipped in unification)
 
     """
     # TODO is this the correct min_var?
