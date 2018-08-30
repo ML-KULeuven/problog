@@ -368,15 +368,22 @@ and only ONE rule will match (the first one that succeeds).
 The predicate cut/2 unifies the second argument with the Index of the matching rule.
 
 
-
 Assert
 ++++++
 
+The assert module allows assert and retracting facts dynamically from the internal database.
+
+It provides the predicates ``assertz/1``, ``retract/1``, ``retractall/1``.
+
+Record
+++++++
+
+The record module allows access to non-backtrackable storage in the internal database.
+
+It provides the predicates ``current_key/1``, ``recorda/2``, ``recorda/3``, ``recordz/2``, ``recordz/3``, ``erase/1``, ``recorded/2``, ``recorded/3``, ``instance/2``.
+
 
 Collect
-+++++++
-
-Control
 +++++++
 
 
@@ -388,8 +395,6 @@ DB
 ++
 
 
-Record
-++++++
 
 
 Scope
@@ -398,6 +403,8 @@ Scope
 
 String
 ++++++
+
+The ``string`` library provides predicates for string manipulation.
 
 
 NLP4PLP
