@@ -138,10 +138,13 @@ def dtproblog(model, search=None, koption=None, locations=False, web=False, **kw
 
 def evaluate(formula, decisions, utilities, verbose=0):
     result = formula.evaluate(weights=decisions)
-
     score = 0.0
     for r in result:
-        score += result[r] * float(utilities[r])
+        vpos = result[r]
+        vneg = 1.0 - result[r]
+
+        score += vpos * float(utilities.get(r, 0.0))
+        score += vneg * float(utilities.get(-r, 0.0))
 
     if verbose >= 3:
         print ('---------------')

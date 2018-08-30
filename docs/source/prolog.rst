@@ -28,6 +28,12 @@ Control predicates
  * ``call/1``
  * ``call/N`` (for N up to 9)
  * ``P`` (alternative to call/1)
+ * ``forall/2``
+
+
+**Special:**
+
+ * ``once/1``: In ProbLog ``once/1`` is an alias for ``call/1``.
 
 **Not supported:**
 
@@ -37,10 +43,7 @@ Control predicates
  * ``repeat``
  * ``incore/1`` (use ``call/1``)
  * ``call_with_args/N`` (use ``call/N``)
-
  * ``if(A,B,C)`` (use ``(A,B);(\+A,C)``)
- * ``once/1``
- * ``forall(A,B)`` (use ``\+(A,\+B)``)
  * ``ignore/1``
  * ``abort/0``
  * ``break/0``
@@ -55,10 +58,6 @@ Control predicates
  * ``grow_heap/1``
  * ``grow_stack/1``
 
-**To be added:**
-
- * ``forall/2``
- * ``if/3``
 
 Handling Undefined Procedures
 +++++++++++++++++++++++++++++
@@ -100,6 +99,7 @@ Predicates on Terms
  * ``X = Y``
  * ``X \= Y``
  * ``is_list/1``
+ * ``subsumes_term/2``
 
 **Not supported:**
 
@@ -108,7 +108,6 @@ Predicates on Terms
  * ``copy_term/2``
  * ``duplicate_term/2``
  * ``T1 =@= T2``
- * ``subsumes_term/2``
  * ``acyclic_term/1``
 
 Predicates on Atoms
@@ -248,22 +247,22 @@ ProbLog-specific builtins
 -------------------------
 
  * ``try_call/N``: same as ``call/N`` but silently fail if the called predicate is undefined
- * ``subquery(+Goal, ?Probability)``
- * ``subquery(+Goal, +Evidence, ?Probability)``
- * ``debugprint/N``
- * ``write/N``
- * ``writenl/N``
- * ``nl/0``
- * ``error/N``
- * ``cmd_args/1``
- * ``atom_number/2``
- * ``nocache/2``
- * ``numbervars/2``
+ * ``subquery(+Goal, ?Probability)``: evaluate the Goal and return its probability
+ * ``subquery(+Goal, +ListOfEvidence, ?Probability)``: evaluate the Goal, given the evidence, and return its Probability
+ * ``debugprint/N``: print messages to stderr
+ * ``write/N``: print messages to stdout
+ * ``writenl/N``: print messages and newline to stdout
+ * ``nl/0``: print newline to stdout
+ * ``error/N``: raise a UserError with some message
+ * ``cmd_args/1``: read the list of command line arguments passed to ProbLog with the '-a' arguments
+ * ``atom_number/2``: transfrom an atom into a number
+ * ``nocache(Functor, Arity)``: disable caching for the predicate Functor/Arity
+ * ``numbervars/2``:
  * ``numbervars/3``
  * ``varnumbers/2``
  * ``subsumes_term/2``
  * ``subsumes_chk/2``
- * ``possible/1``
+ * ``possible/1``: Perform a deterministic query on the given term.
  * ``clause/2``
  * ``clause/3``
 
@@ -276,7 +275,7 @@ ProbLog-specific builtins
  * ``reset_state/0``
  * ``check_state/1``
  * ``print_state/0``
- * ``seq/1``
+ * ``seq/1``: Unify the variable with a sequential number.  Each call generates a new sequential number.
 
 
 
@@ -394,7 +393,16 @@ Aggregate
 DB
 ++
 
+The ``db`` library provides access to data stored in an SQLite database or a CSV-file.
+It provides two predicates:
 
+``sqlite_load(+Filename)``
+    This creates virtual predicates for each table in the database.
+
+``sqlite_csv(+Filename, +Predicate)``
+    This creates a new predicate for the data in the CSV file.
+
+For a demonstration on how to use these, see `this tutorial article <https://dtai.cs.kuleuven.be/problog/tutorial/advanced/02_knowledgebases.html>`_.
 
 
 Scope
@@ -409,3 +417,6 @@ The ``string`` library provides predicates for string manipulation.
 
 NLP4PLP
 +++++++
+
+A library for representing and solving probability questions.
+See `the NLP4PLP webpage <https://dtai.cs.kuleuven.be/problog/natural_language>`_ for more information.

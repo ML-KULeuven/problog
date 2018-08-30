@@ -30,7 +30,7 @@ def main(argv, result_handler=None):
     else:
         outf = sys.stdout
 
-    search = None
+    search = args.search
 
     try:
 
@@ -60,7 +60,9 @@ def main(argv, result_handler=None):
             decisions.append((qi, qn))
             decision_nodes.add(qi)
             probability = prob
-            utilities.append((qn, math.log(float(probability)) - math.log(1 - float(probability))))
+            utilities.append((qn, float(probability)))
+            utilities.append((-qn, 1 - float(probability)))
+            # utilities.append((qn, math.log(float(probability)) - math.log(1 - float(probability))))
         utilities = dict(utilities)
 
         # Add constraints that enforce the evidence

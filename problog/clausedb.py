@@ -86,6 +86,10 @@ class ClauseDB(LogicProgram):
         self.dont_cache = set()
 
         self.queries = []
+        self._load_builtin_module()
+
+    def _load_builtin_module(self):
+        self.use_module(Term('library', Term('builtin')), None)
 
     def __len__(self):
         return len(self.__nodes) + self.__offset
@@ -320,7 +324,6 @@ class ClauseDB(LogicProgram):
                 node_id = self._append_node(ext)
                 self._add_define_node(head, node_id)
         self.__extern[scope].append(Term("'/'", Term(predicate), Constant(arity)))
-
 
     def get_local_scope(self, signature):
         if signature in ('findall/3', 'all/3', 'all_or_none/3'):
