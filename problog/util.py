@@ -148,16 +148,20 @@ def subprocess_check_output(*popenargs, **kwargs):
     :param kwargs: keyword arguments of subprocess.call
     :return: result of subprocess.call
     """
+
+    if 'stderr' not in kwargs:
+        kwargs['stderr'] = subprocess.PIPE
+
     popenargs = _find_process(*popenargs)
     process = subprocess.Popen(stdout=subprocess.PIPE, *popenargs, **kwargs)
     try:
-        output, unused_err = process.communicate()
+        output, err = process.communicate()
         retcode = process.poll()
         if retcode:
             cmd = kwargs.get("args")
             if cmd is None:
                 cmd = popenargs[0]
-            raise subprocess.CalledProcessError(retcode, cmd, output=output)
+            raise subprocess.CalledProcessError(retcode, cmd, output=err)
         return output.decode()
     except KeyboardInterrupt:
         kill_proc_tree(process)
