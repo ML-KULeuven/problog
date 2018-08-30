@@ -226,8 +226,8 @@ class problog_export_raw(problog_export):
                         if bound & (1 << i):
                             r = unify_value(r, args[i], {})
                         transformed.append(r)
-                    from .engine_stack import Context
-                    result = Context(tuple(transformed), state=result.state)
+                    from .engine_stack import Context, get_state
+                    result = Context(tuple(transformed), state=get_state(result))
                     results.append(result)
                 except UnifyError:
                     pass

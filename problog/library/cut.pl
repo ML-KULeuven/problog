@@ -1,4 +1,4 @@
-:- module(cut, [cut/1, cut2]).
+:- module(cut, [cut/1, cut/2]).
 
 % Soft-cut.
 %
