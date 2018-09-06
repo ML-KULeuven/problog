@@ -160,6 +160,7 @@ class SampledFormula(LogicFormula):
             'triangular': random.triangular,
             'vonmises': random.vonmisesvariate,
             'weibull': random.weibullvariate,
+            'in_range': random.randint
         }
 
     def sample_value(self, term):
