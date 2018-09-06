@@ -35,7 +35,8 @@
     enum_groups/3,
     enum_groups/4,
     select_uniform/4,
-    select_weighted/5
+    select_weighted/5,
+    select_weighted/4
 ]).
 
 % member(X,L)
