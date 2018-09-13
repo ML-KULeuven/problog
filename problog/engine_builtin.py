@@ -1649,6 +1649,7 @@ def _builtin_call(term, args=(), engine=None, callback=None, transform=None, con
     # Find the define node for the given query term.
     term_call = term.with_args(*(term.args + args))
 
+    from .engine_stack import get_state
     try:
         if transform is None:
             from .engine_stack import Transformations
@@ -1658,7 +1659,7 @@ def _builtin_call(term, args=(), engine=None, callback=None, transform=None, con
             n = len(term.args)
             res1 = result[:n]
             res2 = result[n:]
-            return engine.create_context([term.with_args(*res1)] + list(res2), state=result.state)
+            return engine.create_context([term.with_args(*res1)] + list(res2), state=get_state(result))
         transform.addFunction(_trans)
 
         actions = engine.call_intern(term_call, transform=transform, parent_context=context, **kwdargs)
