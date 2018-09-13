@@ -88,3 +88,4 @@ incr_version_dev:
 
 incr_version_release:
 	python -c 'import setup; setup.increment_version_release()'
+	git commit problog/version.py -m "Deploy new release version."
