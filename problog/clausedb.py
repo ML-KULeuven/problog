@@ -605,6 +605,8 @@ class ClauseDB(LogicProgram):
             self.line_info.append(program.line_info[0])
             # engine._process_directives(database)
             return self.add_all(program)
+        else:
+            return None, None
 
     def add_all(self, program):
         module_name = None
