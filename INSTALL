@@ -29,14 +29,11 @@ Linux (64-bit)
 SDD
 +++
 
-1. Run `python problog-cli.py install`
-
-Note: this installation requires 'python-dev' (i.e. Python.h)
+To be able to use SDDs, PySDD must be installed (https://github.com/wannesm/PySDD).
 
 Usage: 
 ProbLog will automatically use SDDs from now on.
-If you want to use d-DNNFs you can use add the command line options -k nnf. 
-
+If you want to use d-DNNFs you can use add the command line options -k nnf.
 
 C2D
 +++
@@ -56,7 +53,7 @@ Mac OSX
 SDD
 +++
 
-1. Run `python problog-cli.py install`
+To be able to use SDDs, PySDD must be installed (https://github.com/wannesm/PySDD).
 
 Usage: 
 ProbLog will automatically use SDDs from now on.

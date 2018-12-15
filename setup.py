@@ -44,11 +44,6 @@ elif __name__ == '__main__':
             'bin/windows/maxsatz.exe',
             'bin/windows/libgcc_s_dw2-1.dll',
             'bin/windows/libstdc++-6.dll',
-            'lib/sdd/*.h',
-            'lib/sdd/*.c',
-            'lib/sdd/linux/libsdd.so',
-            'lib/sdd/darwin/libsdd.a',
-            'lib/sdd/*.py',
             'web/*.py',
             'web/editor_local.html'
             'web/editor_adv.html',

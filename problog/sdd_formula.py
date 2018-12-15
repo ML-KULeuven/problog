@@ -33,7 +33,7 @@ import os
 
 # noinspection PyBroadException
 try:
-    import sdd
+    from pysdd import sdd
 except Exception as err:
     sdd = None
 
@@ -79,14 +79,14 @@ class SDD(DD):
         return formula
 
     def _to_formula(self, formula, current_node, cache=None):
-        if cache is not None and int(current_node) in cache:
-            return cache[int(current_node)]
+        if cache is not None and current_node.id in cache:
+            return cache[current_node.id]
         if self.get_manager().is_true(current_node):
             retval = formula.TRUE
         elif self.get_manager().is_false(current_node):
             retval = formula.FALSE
-        elif sdd.sdd_node_is_literal(current_node):  # it's a literal
-            lit = sdd.sdd_node_literal(current_node)
+        elif current_node.is_literal():  # it's a literal
+            lit = current_node.literal
             at = self.var2atom[abs(lit)]
             node = self.get_node(at)
             if lit < 0:
@@ -94,10 +94,9 @@ class SDD(DD):
             else:
                 retval = formula.add_atom(lit, probability=node.probability, name=node.name, group=node.group)
         else:  # is decision
-            size = sdd.sdd_node_size(current_node)
-            elements = sdd.sdd_node_elements(current_node)
-            primes = [sdd.sdd_array_element(elements, i) for i in range(0, size * 2, 2)]
-            subs = [sdd.sdd_array_element(elements, i) for i in range(1, size * 2, 2)]
+            elements = list(current_node.elements())
+            primes = [prime for (prime, sub) in elements]
+            subs = [sub for (prime, sub) in elements]
 
             # Formula: (p1^s1) v (p2^s2) v ...
             children = []
@@ -108,9 +107,8 @@ class SDD(DD):
                 children.append(c_n)
             retval = formula.add_or(children)
         if cache is not None:
-            cache[int(current_node)] = retval
+            cache[current_node.id] = retval
         return retval
-
 
 
 class SDDManager(DDManager):
@@ -130,7 +128,7 @@ class SDDManager(DDManager):
         DDManager.__init__(self)
         if varcount is None or varcount == 0:
             varcount = 1
-        self.__manager = sdd.sdd_manager_create(varcount, auto_gc)
+        self.__manager = sdd.SddManager(var_count=varcount, auto_gc_and_minimize=auto_gc)
         self.varcount = varcount
 
     def get_manager(self):
@@ -139,7 +137,7 @@ class SDDManager(DDManager):
 
     def add_variable(self, label=0):
         if label == 0 or label > self.varcount:
-            sdd.sdd_manager_add_var_after_last(self.__manager)
+            self.get_manager().add_var_after_last()
             self.varcount += 1
             return self.varcount
         else:
@@ -147,35 +145,35 @@ class SDDManager(DDManager):
 
     def literal(self, label):
         self.add_variable(abs(label))
-        return sdd.sdd_manager_literal(label, self.__manager)
+        return self.get_manager().literal(label)
 
     def is_true(self, node):
         assert node is not None
-        return sdd.sdd_node_is_true(node)
+        return node.is_true()
 
     def true(self):
-        return sdd.sdd_manager_true(self.__manager)
+        return self.get_manager().true()
 
     def is_false(self, node):
         assert node is not None
-        return sdd.sdd_node_is_false(node)
+        return node.is_false()
 
     def false(self):
-        return sdd.sdd_manager_false(self.__manager)
+        return self.get_manager().false()
 
     def conjoin2(self, a, b):
         assert a is not None
         assert b is not None
-        return sdd.sdd_conjoin(a, b, self.__manager)
+        return self.get_manager().conjoin(a, b)
 
     def disjoin2(self, a, b):
         assert a is not None
         assert b is not None
-        return sdd.sdd_disjoin(a, b, self.__manager)
+        return self.get_manager().disjoin(a, b)
 
     def negate(self, node):
         assert node is not None
-        new_sdd = sdd.sdd_negate(node, self.__manager)
+        new_sdd = self.get_manager().negate(node)
         self.ref(new_sdd)
         return new_sdd
 
@@ -184,36 +182,35 @@ class SDDManager(DDManager):
         if node1 is None or node2 is None:
             return node1 == node2
         else:
-            return int(node1) == int(node2)
+            return node1.id == node2.id
 
     def ref(self, *nodes):
         for node in nodes:
             assert node is not None
-            sdd.sdd_ref(node, self.__manager)
+            node.ref()
 
     def deref(self, *nodes):
         for node in nodes:
             assert node is not None
-            sdd.sdd_deref(node, self.__manager)
+            node.deref()
 
     def write_to_dot(self, node, filename):
-        sdd.sdd_save_as_dot(filename, node)
+        self.get_manager().save_as_dot(filename.encode(), node)
 
     def wmc(self, node, weights, semiring, literal=None):
         logspace = 0
         if semiring.one() == 0.0:
             logspace = 1
-        wmc_manager = sdd.wmc_manager_new(node, logspace, self.get_manager())
-        varcount = sdd.sdd_manager_var_count(self.get_manager())
-        for n in weights:
+        wmc_manager = sdd.WmcManager(node, log_mode=logspace)
+        varcount = self.get_manager().var_count()
+        for n in weights:  # TODO wmc_manager.set_literal_weights_from_array is faster
             pos, neg = weights[n]
             if n <= varcount:
-                sdd.wmc_set_literal_weight(n, pos, wmc_manager)  # Set positive literal weight
-                sdd.wmc_set_literal_weight(-n, neg, wmc_manager)  # Set negative literal weight
-        result = sdd.wmc_propagate(wmc_manager)
+                wmc_manager.set_literal_weight(n, pos)
+                wmc_manager.set_literal_weight(-n, neg)
+        result = wmc_manager.propagate()
         if literal is not None:
-            result = sdd.wmc_literal_pr(literal, wmc_manager)
-        sdd.wmc_manager_free(wmc_manager)
+            result = wmc_manager.literal_pr(literal)
         return result
 
     def wmc_literal(self, node, weights, semiring, literal):
@@ -229,22 +226,23 @@ class SDDManager(DDManager):
 
     def __getstate__(self):
         tempfile = mktempfile()
-        vtree = sdd.sdd_manager_vtree(self.get_manager())
-        sdd.sdd_vtree_save(tempfile, vtree)
+        vtree = self.get_manager().vtree()  # not a copy
+        vtree.save(tempfile.encode())
         with open(tempfile) as f:
             vtree_data = f.read()
+
 
         nodes = []
         for n in self.nodes:
             if n is not None:
-                sdd.sdd_save(tempfile, n)
+                self.get_manager().save(tempfile.encode(), n)
 
                 with open(tempfile) as f:
                     nodes.append(f.read())
             else:
                 nodes.append(None)
 
-        sdd.sdd_save(tempfile, self.constraint_dd)
+        self.get_manager().save(tempfile.encode(), self.constraint_dd)
         with open(tempfile) as f:
             constraint_dd = f.read()
 
@@ -257,8 +255,8 @@ class SDDManager(DDManager):
         tempfile = mktempfile()
         with open(tempfile, 'w') as f:
             f.write(state['vtree'])
-        vtree = sdd.sdd_vtree_read(tempfile)
-        self.__manager = sdd.sdd_manager_new(vtree)
+        vtree = sdd.Vtree.from_file(tempfile)
+        self.__manager = sdd.SddManager.from_vtree(vtree)
 
         for n in state['nodes']:
             if n is None:
@@ -266,11 +264,11 @@ class SDDManager(DDManager):
             else:
                 with open(tempfile, 'w') as f:
                     f.write(n)
-                self.nodes.append(sdd.sdd_read(tempfile, self.__manager))
+                self.nodes.append(self.__manager.read_sdd_file(tempfile.encode()))
 
         with open(tempfile, 'w') as f:
             f.write(state['constraint_dd'])
-        self.constraint_dd = sdd.sdd_read(tempfile, self.__manager)
+        self.constraint_dd = self.__manager.read_sdd_file(tempfile.encode())
         os.remove(tempfile)
         return
 

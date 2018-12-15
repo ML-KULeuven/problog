@@ -12,10 +12,8 @@ There are two possible solutions:
 
     - Use SDDs instead of d-DNNFs.
         In most cases d-DNNFs can be replaced by SDDs. 
-        You can install the SDD library by running the ProbLog installer:
-            
-            ./problog-cli.py install
-            
+        You can use the SDD library by installing PySDD (https://github.com/wannesm/PySDD).
+
         Once the library is installed, it will be used by default.
         
     - Use the Windows version of the c2d knowledge compiler through Wine.
