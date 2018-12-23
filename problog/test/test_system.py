@@ -23,12 +23,16 @@ if __name__ == '__main__' :
     sys.path.insert(0,os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')))
 
 from problog import root_path
+from problog import get_evaluatable
 
 from problog.setup import install
-from problog.program import PrologFile, DefaultPrologParser, ExtendedPrologFactory
+from problog.program import PrologFile, DefaultPrologParser, ExtendedPrologFactory, PrologString
+from problog.formula import LogicFormula
 from problog.ddnnf_formula import DDNNF
 from problog.sdd_formula import SDD
 from problog.evaluator import SemiringProbability, SemiringLogProbability
+from problog.logic import Term
+
 
 class TestDummy(unittest.TestCase):
 
@@ -42,6 +46,41 @@ class TestSystemSDD(unittest.TestCase) :
             self.assertSequenceEqual = self.assertItemsEqual
         except AttributeError :
             self.assertSequenceEqual = self.assertCountEqual
+
+    def test_evaluate_custom_weights(self):
+        """
+        Tests evaluate() with custom weights (not the ones from file)
+
+        """
+
+        class TestSemiringProbabilityNSP(SemiringProbability):
+            """
+            Uses NSP=True to test the FormulaEvaluatorNSP.
+            """
+
+            def is_nsp(self):
+                return True
+
+        program = """
+            0.25::a.
+            query(a).
+        """
+        pl = PrologString(program)
+        lf = LogicFormula.create_from(pl, label_all=True, avoid_name_clash=True)
+        semiring = TestSemiringProbabilityNSP()
+        kc_class = get_evaluatable(semiring=semiring)
+        kc = kc_class.create_from(lf)
+        a = Term('a')
+
+        # without custom weights
+        results = kc.evaluate(semiring=semiring)
+        self.assertEqual(0.25, results[a])
+
+        # with custom weights
+        weights = {a: 0.1}
+        results = kc.evaluate(semiring=semiring, weights=weights)
+        self.assertEqual(0.1, results[a])
+
 
 class TestSystemNNF(unittest.TestCase) :
 

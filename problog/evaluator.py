@@ -521,7 +521,7 @@ class FormulaEvaluator(object):
                 return weight[0]
 
     def propagate(self):
-        self._fact_weights = self.formula.extract_weights(self.semiring)
+        self._fact_weights = self.formula.extract_weights(self.semiring, self._fact_weights)
 
     def evaluate(self, index):
         return self.semiring.result(self.get_weight(index), self.formula)
