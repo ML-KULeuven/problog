@@ -564,6 +564,7 @@ class ClauseDB(LogicProgram):
                 return filename + '.pl'
             elif os.path.exists(filename + '.py'):
                 return filename + '.py'
+        return filename
 
     def create_function(self, functor, arity):
         """Create a Python function that can be used to query a specific predicate on this database.
