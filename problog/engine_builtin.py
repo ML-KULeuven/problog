@@ -1624,7 +1624,7 @@ def _use_module(scope, filename, database=None, location=None, **kwdargs):
     return True
 
 @builtin_boolean('_consult', 2)
-def _builtin_consult(scope, filename, database=None, engine=None, **kwdargs):
+def _consult(scope, filename, database=None, engine=None, **kwdargs):
     check_mode((filename,), ['a'], functor='consult', **kwdargs)
     scope = str(scope)
     if scope == 'None':

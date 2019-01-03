@@ -30,6 +30,7 @@ from problog.program import PrologFile, DefaultPrologParser, ExtendedPrologFacto
 from problog.formula import LogicFormula
 from problog.ddnnf_formula import DDNNF
 from problog.sdd_formula import SDD
+from problog import get_evaluatable
 from problog.evaluator import SemiringProbability, SemiringLogProbability
 from problog.logic import Term
 
@@ -38,7 +39,26 @@ class TestDummy(unittest.TestCase):
 
     def test_dummy(self) : pass
 
-class TestSystemSDD(unittest.TestCase) :
+# class TestSystemSDD(unittest.TestCase) :
+
+#     def setUp(self) :
+
+#         try :
+#             self.assertSequenceEqual = self.assertItemsEqual
+#         except AttributeError :
+#             self.assertSequenceEqual = self.assertCountEqual
+
+# class TestSystemNNF(unittest.TestCase) :
+
+#     def setUp(self) :
+
+#         try :
+#             self.assertSequenceEqual = self.assertItemsEqual
+#         except AttributeError :
+#             self.assertSequenceEqual = self.assertCountEqual
+
+
+class TestSystemGeneric(unittest.TestCase) :
 
     def setUp(self) :
 
@@ -47,7 +67,7 @@ class TestSystemSDD(unittest.TestCase) :
         except AttributeError :
             self.assertSequenceEqual = self.assertCountEqual
 
-    def test_evaluate_custom_weights(self):
+    def test_system_evaluate_custom_weights(self):
         """
         Tests evaluate() with custom weights (not the ones from file)
 
@@ -115,6 +135,40 @@ def read_result(filename) :
                 prob = l[pos+10:]
                 results[query.strip()] = float(prob.strip())
     return results
+
+
+def createSystemTestGeneric(filename, logspace=False) :
+
+    correct = read_result(filename)
+
+    def test(self) :
+        try :
+            parser = DefaultPrologParser(ExtendedPrologFactory())
+            sdd = get_evaluatable().create_from(PrologFile(filename, parser=parser))
+
+            if logspace:
+                semiring = SemiringLogProbability()
+            else :
+                semiring = SemiringProbability()
+
+            computed = sdd.evaluate(semiring=semiring)
+            computed = { str(k) : v for k,v in computed.items() }
+        except Exception as err :
+            e = err
+            computed = None
+
+        if computed is None :
+            self.assertEqual(correct, type(e).__name__)
+        else :
+            self.assertIsInstance( correct, dict )
+            self.assertSequenceEqual(correct, computed)
+
+            for query in correct :
+                self.assertAlmostEqual(correct[query], computed[query], msg=query)
+
+    return test
+
+
 
 def createSystemTestSDD(filename, logspace=False) :
 
@@ -191,12 +245,15 @@ for testfile in filenames :
     # setattr( TestSystemNNF, testname, createSystemTestNNF(testfile) )
 
     testname = 'test_system_' + os.path.splitext(os.path.basename(testfile))[0]
-    setattr( TestSystemSDD, testname, createSystemTestSDD(testfile, True) )
-    setattr( TestSystemNNF, testname, createSystemTestNNF(testfile, True) )
+    # setattr( TestSystemSDD, testname, createSystemTestSDD(testfile, True) )
+    # setattr( TestSystemNNF, testname, createSystemTestNNF(testfile, True) )
+    setattr( TestSystemGeneric, testname, createSystemTestGeneric(testfile, True) )
 
 
 if __name__ == '__main__' :
-    suite = unittest.TestLoader().loadTestsFromTestCase(TestSystemSDD)
-    unittest.TextTestRunner(verbosity=2).run(suite)
-    suite = unittest.TestLoader().loadTestsFromTestCase(TestSystemNNF)
+    # suite = unittest.TestLoader().loadTestsFromTestCase(TestSystemSDD)
+    # unittest.TextTestRunner(verbosity=2).run(suite)
+    # suite = unittest.TestLoader().loadTestsFromTestCase(TestSystemNNF)
+    # unittest.TextTestRunner(verbosity=2).run(suite)
+    suite = unittest.TestLoader().loadTestsFromTestCase(TestSystemGeneric)
     unittest.TextTestRunner(verbosity=2).run(suite)
