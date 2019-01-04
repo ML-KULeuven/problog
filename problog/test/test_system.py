@@ -102,17 +102,6 @@ class TestSystemGeneric(unittest.TestCase) :
         self.assertEqual(0.1, results[a])
 
 
-class TestSystemNNF(unittest.TestCase) :
-
-    def setUp(self) :
-
-        try :
-            self.assertSequenceEqual = self.assertItemsEqual
-        except AttributeError :
-            self.assertSequenceEqual = self.assertCountEqual
-
-
-
 def read_result(filename) :
     results = {}
     with open( filename ) as f :
