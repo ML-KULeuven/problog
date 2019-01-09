@@ -34,6 +34,12 @@ from problog import get_evaluatable
 from problog.evaluator import SemiringProbability, SemiringLogProbability
 from problog.logic import Term
 
+# noinspection PyBroadException
+try:
+    from pysdd import sdd
+    has_sdd = True
+except Exception as err:
+    has_sdd = False
 
 class TestDummy(unittest.TestCase):
 
@@ -60,8 +66,8 @@ class TestDummy(unittest.TestCase):
 
 class TestSystemGeneric(unittest.TestCase) :
 
-    def setUp(self) :
 
+    def setUp(self) :
         try :
             self.assertSequenceEqual = self.assertItemsEqual
         except AttributeError :
@@ -126,21 +132,21 @@ def read_result(filename) :
     return results
 
 
-def createSystemTestGeneric(filename, logspace=False) :
+def createSystemTestGeneric(filename, logspace=False, evaluatable_name=None) :
 
     correct = read_result(filename)
 
     def test(self) :
         try :
             parser = DefaultPrologParser(ExtendedPrologFactory())
-            sdd = get_evaluatable().create_from(PrologFile(filename, parser=parser))
+            kc = get_evaluatable(name=evaluatable_name).create_from(PrologFile(filename, parser=parser))
 
             if logspace:
                 semiring = SemiringLogProbability()
             else :
                 semiring = SemiringProbability()
 
-            computed = sdd.evaluate(semiring=semiring)
+            computed = kc.evaluate(semiring=semiring)
             computed = { str(k) : v for k,v in computed.items() }
         except Exception as err :
             e = err
@@ -166,14 +172,14 @@ def createSystemTestSDD(filename, logspace=False) :
     def test(self) :
         try :
             parser = DefaultPrologParser(ExtendedPrologFactory())
-            sdd = SDD.createFrom(PrologFile(filename, parser=parser))
+            sdd_kc = SDD.createFrom(PrologFile(filename, parser=parser))
 
             if logspace :
                 semiring = SemiringLogProbability()
             else :
                 semiring = SemiringProbability()
 
-            computed = sdd.evaluate(semiring=semiring)
+            computed = sdd_kc.evaluate(semiring=semiring)
             computed = { str(k) : v for k,v in computed.items() }
         except Exception as err :
             e = err
@@ -198,14 +204,14 @@ def createSystemTestNNF(filename, logspace=False) :
     def test(self) :
         try :
             parser = DefaultPrologParser(ExtendedPrologFactory())
-            sdd = DDNNF.createFrom(PrologFile(filename, parser=parser))
+            nnf_kc = DDNNF.createFrom(PrologFile(filename, parser=parser))
 
             if logspace :
                 semiring = SemiringLogProbability()
             else :
                 semiring = SemiringProbability()
 
-            computed = sdd.evaluate(semiring=semiring)
+            computed = nnf_kc.evaluate(semiring=semiring)
             computed = { str(k) : v for k,v in computed.items() }
         except Exception as err :
             e = err
@@ -228,15 +234,24 @@ if __name__ == '__main__' :
 else :
     filenames = glob.glob( root_path('test', '*.pl' ) )
 
-for testfile in filenames :
-    # testname = 'test_system_' + os.path.splitext(os.path.basename(testfile))[0]
-    # setattr( TestSystemSDD, testname, createSystemTestSDD(testfile) )
-    # setattr( TestSystemNNF, testname, createSystemTestNNF(testfile) )
 
-    testname = 'test_system_' + os.path.splitext(os.path.basename(testfile))[0]
-    # setattr( TestSystemSDD, testname, createSystemTestSDD(testfile, True) )
-    # setattr( TestSystemNNF, testname, createSystemTestNNF(testfile, True) )
-    setattr( TestSystemGeneric, testname, createSystemTestGeneric(testfile, True) )
+evaluatables = ["ddnnf"]
+
+if has_sdd:
+    evaluatables.append("sdd")
+else:
+    print("no SDD support")
+
+for evaluatable_name in evaluatables:
+    for testfile in filenames:
+        # testname = 'test_' + evaluatable_name + 'system_' + os.path.splitext(os.path.basename(testfile))[0]
+        # setattr( TestSystemSDD, testname, createSystemTestSDD(testfile) )
+        # setattr( TestSystemNNF, testname, createSystemTestNNF(testfile) )
+
+        testname = 'test_' + evaluatable_name + '_system_' + os.path.splitext(os.path.basename(testfile))[0]
+        # setattr( TestSystemSDD, testname, createSystemTestSDD(testfile, True) )
+        # setattr( TestSystemNNF, testname, createSystemTestNNF(testfile, True) )
+        setattr( TestSystemGeneric, testname, createSystemTestGeneric(testfile, True, evaluatable_name) )
 
 
 if __name__ == '__main__' :
