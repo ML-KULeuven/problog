@@ -144,11 +144,15 @@ class DD(LogicFormula, EvaluatableDSP):
 
     def to_dot(self, *args, **kwargs):
         if kwargs.get('use_internal'):
+            dot_text = ["digraph {\n", "overlap=false\n"]
             for qn, qi in self.queries():
                 filename = mktempfile('.dot')
                 self.get_manager().write_to_dot(self.get_inode(qi), filename)
                 with open(filename) as f:
-                    return f.read()
+                    dot_text += f.readlines()[4:-1]
+
+            dot_text.append("}")
+            return "".join(dot_text)
         else:
             return self.to_formula().to_dot(*args, **kwargs)
 
