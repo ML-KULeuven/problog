@@ -66,46 +66,11 @@ class TestDummy(unittest.TestCase):
 
 class TestSystemGeneric(unittest.TestCase) :
 
-
     def setUp(self) :
         try :
             self.assertSequenceEqual = self.assertItemsEqual
         except AttributeError :
             self.assertSequenceEqual = self.assertCountEqual
-
-    def test_system_evaluate_custom_weights(self):
-        """
-        Tests evaluate() with custom weights (not the ones from file)
-
-        """
-
-        class TestSemiringProbabilityNSP(SemiringProbability):
-            """
-            Uses NSP=True to test the FormulaEvaluatorNSP.
-            """
-
-            def is_nsp(self):
-                return True
-
-        program = """
-            0.25::a.
-            query(a).
-        """
-        pl = PrologString(program)
-        lf = LogicFormula.create_from(pl, label_all=True, avoid_name_clash=True)
-        semiring = TestSemiringProbabilityNSP()
-        kc_class = get_evaluatable(semiring=semiring)
-        kc = kc_class.create_from(lf)
-        a = Term('a')
-
-        # without custom weights
-        results = kc.evaluate(semiring=semiring)
-        self.assertEqual(0.25, results[a])
-
-        # with custom weights
-        weights = {a: 0.1}
-        results = kc.evaluate(semiring=semiring, weights=weights)
-        self.assertEqual(0.1, results[a])
 
 
 def read_result(filename) :
@@ -240,7 +205,7 @@ evaluatables = ["ddnnf"]
 if has_sdd:
     evaluatables.append("sdd")
 else:
-    print("no SDD support")
+    print("No SDD support - The system tests are not performed with SDDs.")
 
 for evaluatable_name in evaluatables:
     for testfile in filenames:
