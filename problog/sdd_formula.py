@@ -23,17 +23,19 @@ Interface to Sentential Decision Diagrams (SDD)
 """
 from __future__ import print_function
 
-from .formula import LogicDAG, LogicFormula
+from .formula import LogicDAG, LogicFormula, LogicNNF
 from .core import transform
-from .errors import InstallError
-from .dd_formula import DD, build_dd, DDManager
+from .errors import InstallError, InconsistentEvidenceError
+from .dd_formula import DD, build_dd, DDManager, DDEvaluator
+from .evaluator import FormulaEvaluatorNSP, SemiringLogProbability, SemiringProbability
+
 from .util import mktempfile
 import os
-
 
 # noinspection PyBroadException
 try:
     from pysdd import sdd
+    from pysdd.iterator import SddIterator
 except Exception as err:
     sdd = None
 
@@ -60,6 +62,9 @@ class SDD(DD):
 
     def _create_manager(self):
         return SDDManager(auto_gc=self.auto_gc)
+
+    def _create_evaluator(self, semiring, weights, **kwargs):
+        return SDDEvaluator(self, semiring, weights, **kwargs)
 
     @classmethod
     def is_available(cls):
@@ -90,17 +95,15 @@ class SDD(DD):
             at = self.var2atom[abs(lit)]
             node = self.get_node(at)
             if lit < 0:
-                retval = -formula.add_atom(-lit, probability=node.probability, name=node.name, group=node.group)
+                retval = -formula.add_atom(-lit, probability=node.probability, name=node.name, group=node.group,
+                                           cr_extra=False)
             else:
-                retval = formula.add_atom(lit, probability=node.probability, name=node.name, group=node.group)
+                retval = formula.add_atom(lit, probability=node.probability, name=node.name, group=node.group,
+                                          cr_extra=False)
         else:  # is decision
-            elements = list(current_node.elements())
-            primes = [prime for (prime, sub) in elements]
-            subs = [sub for (prime, sub) in elements]
-
             # Formula: (p1^s1) v (p2^s2) v ...
             children = []
-            for p, s in zip(primes, subs):
+            for p, s in current_node.elements():
                 p_n = self._to_formula(formula, p, cache)
                 s_n = self._to_formula(formula, s, cache)
                 c_n = formula.add_and((p_n, s_n))
@@ -129,7 +132,7 @@ class SDDManager(DDManager):
         if varcount is None or varcount == 0:
             varcount = 1
         self.__manager = sdd.SddManager(var_count=varcount, auto_gc_and_minimize=auto_gc)
-        self.varcount = varcount
+        self.varcount = varcount  # After 1, this is 1 higher than the sdd.SddManager's
 
     def get_manager(self):
         """Get the underlying sdd manager."""
@@ -137,9 +140,11 @@ class SDDManager(DDManager):
 
     def add_variable(self, label=0):
         if label == 0 or label > self.varcount:
-            self.get_manager().add_var_after_last()
+            if self.varcount != 1:
+                self.get_manager().add_var_after_last()
+            result = self.varcount
             self.varcount += 1
-            return self.varcount
+            return result
         else:
             return label
 
@@ -165,6 +170,15 @@ class SDDManager(DDManager):
         assert a is not None
         assert b is not None
         return self.get_manager().conjoin(a, b)
+
+    def set_auto_gc_and_minimize(self, set_to=True):
+        if set_to:
+            self.__manager.auto_gc_and_minimize_on()
+        else:
+            self.__manager.auto_gc_and_minimize_off()
+
+    def is_auto_gc_and_minimize_on(self):
+        return self.__manager.is_auto_gc_and_minimize_on()
 
     def disjoin2(self, a, b):
         assert a is not None
@@ -194,30 +208,364 @@ class SDDManager(DDManager):
             assert node is not None
             node.deref()
 
-    def write_to_dot(self, node, filename):
-        self.get_manager().save_as_dot(filename.encode(), node)
+    def write_to_dot(self, node, filename, litnamemap=None):
+        if litnamemap is None:
+            self.get_manager().save_as_dot(filename.encode(), node)
+        else:
+            with open(filename, 'w') as file:
+                file.write(node.dot2(litnamemap))  # TODO Test + doc
 
-    def wmc(self, node, weights, semiring, literal=None):
-        logspace = 0
-        if semiring.one() == 0.0:
-            logspace = 1
-        wmc_manager = sdd.WmcManager(node, log_mode=logspace)
+    def wmc(self, node, weights, semiring, literal=None,
+            pr_semiring=True, perform_smoothing=True, smooth_to_root=False, wmc_func=None):
+        """Perform Weighted Model Count on the given node or the given literal.
+
+        Common usage: wmc(node, weights, semiring) and wmc(node, weights, semiring, smooth_to_root=True)
+
+        :param node: node to evaluate Type: SddNode
+        :param weights: weights for the variables in the node. Type: {literal_id : (pos_weight, neg_weight)}
+        :param semiring: use the operations defined by this semiring. Type: Semiring
+        :param literal: When a literal is given, the result of WMC(literal) is returned instead.
+        :param pr_semiring: Whether the given semiring is a (logspace) probability semiring.
+        :param perform_smoothing: Whether to perform smoothing. When pr_semiring is True, smoothing is performed
+            regardless.
+        :param smooth_to_root: Whether to perform smoothing compared to the root. When pr_semiring is True, smoothing
+            compared to the root is not performed regardless of this flag.
+        :param wmc_func: The WMC function to use. If None, a built_in one will be used that depends on the given
+            semiring. Type: function[SddNode, List[Tuple[prime_weight, sub_weight, Set[prime_used_lit],
+            Set[sub_used_lit]]], Set[expected_prime_lit], Set[expected_sub_lit]] -> weight
+        :type weights: dict[int, tuple[Any, Any]]
+        :type pr_semiring: bool
+        :type perform_smoothing: bool
+        :type smooth_to_root: bool
+        :type wmc_func: function
+        :return: weighted model count of node if literal=None, else the weights are propagated up to node but the
+            weighted model count of literal is returned.
+        """
         varcount = self.get_manager().var_count()
-        for n in weights:  # TODO wmc_manager.set_literal_weights_from_array is faster
-            pos, neg = weights[n]
-            if n <= varcount:
-                wmc_manager.set_literal_weight(n, pos)
-                wmc_manager.set_literal_weight(-n, neg)
-        result = wmc_manager.propagate()
-        if literal is not None:
-            result = wmc_manager.literal_pr(literal)
+
+        if pr_semiring and wmc_func is None:  # library built_in (WmcManager)
+            logspace = 0
+            if semiring.one() == 0.0:
+                logspace = 1
+
+            # setup
+            wmc_manager = sdd.WmcManager(node, log_mode=logspace)
+            for n in weights:  # TODO wmc_manager.set_literal_weights_from_array is faster
+                pos, neg = weights[n]
+                if n <= varcount:
+                    wmc_manager.set_literal_weight(n, pos)
+                    wmc_manager.set_literal_weight(-n, neg)
+            # Cover edge case e.g. node=SddNode(True)
+            if varcount == 1 and weights.get(1) is None:
+                wmc_manager.set_literal_weight(1, semiring.one())
+                wmc_manager.set_literal_weight(-1, semiring.zero())
+
+            # Calculate result
+            result = wmc_manager.propagate()
+            if literal is not None:
+                result = wmc_manager.literal_pr(literal)
+        else:  # manual iteration (SddIterator)
+            if wmc_func is None:
+                wmc_func = self._get_wmc_func(weights=weights, semiring=semiring, perform_smoothing=perform_smoothing)
+
+            # Cover edge case e.g. node=SddNode(True)
+            modified_weights = False
+            if varcount == 1 and weights.get(1) is None:
+                modified_weights = True
+                weights[1] = (semiring.one(), semiring.zero())
+
+            # Calculate result
+            query_node = node if literal is None else self.get_manager().literal(literal)
+            sdd_iterator = SddIterator(self.get_manager(), smooth_to_root=smooth_to_root)
+            result = sdd_iterator.depth_first(query_node, wmc_func)
+
+            # Restore edge case modification
+            if modified_weights:
+                weights.pop(1)
+
+        self.get_manager().set_prevent_transformation(prevent=False)
         return result
+
+    @staticmethod
+    def _get_wmc_func(weights, semiring, perform_smoothing=True):
+        """
+        Get the function used to perform weighted model counting with the SddIterator. Smoothing supported.
+
+        :param weights: The weights used during computations.
+        :type weights: dict[int, tuple[Any, Any]]
+        :param semiring: The semiring used for the operations.
+        :param perform_smoothing: Whether smoothing must be performed. If false but semiring.is_nsp() then
+            smoothing is still performed.
+        :return: A WMC function that uses the semiring operations and weights, Performs smoothing if needed.
+        """
+
+        smooth_flag = perform_smoothing or semiring.is_nsp()
+
+        def func_weightedmodelcounting(node, rvalues, expected_prime_vars, expected_sub_vars):
+            """ Method to pass on to SddIterator's ``depth_first`` to perform weighted model counting."""
+            if rvalues is None:
+                # Leaf
+                if node.is_true():
+                    result_weight = semiring.one()
+
+                    # If smoothing, go over literals missed in scope
+                    if smooth_flag:
+                        missing_literals = expected_prime_vars if expected_prime_vars is not None else set()
+                        missing_literals |= expected_sub_vars if expected_sub_vars is not None else set()
+
+                        for missing_literal in missing_literals:
+                            missing_pos_weight, missing_neg_weight = weights[missing_literal]
+                            missing_combined_weight = semiring.plus(missing_pos_weight, missing_neg_weight)
+                            result_weight = semiring.times(result_weight, missing_combined_weight)
+
+                    return result_weight
+
+                elif node.is_false():
+                    return semiring.zero()
+
+                elif node.is_literal():
+                    p_weight, n_weight = weights.get(abs(node.literal))
+                    result_weight = p_weight if node.literal >= 0 else n_weight
+
+                    # If smoothing, go over literals missed in scope
+                    if smooth_flag:
+                        lit_scope = {abs(node.literal)}
+
+                        if expected_prime_vars is not None:
+                            missing_literals = expected_prime_vars.difference(lit_scope)
+                        else:
+                            missing_literals = set()
+                        if expected_sub_vars is not None:
+                            missing_literals |= expected_sub_vars.difference(lit_scope)
+
+                        for missing_literal in missing_literals:
+                            missing_pos_weight, missing_neg_weight = weights[missing_literal]
+                            missing_combined_weight = semiring.plus(missing_pos_weight, missing_neg_weight)
+                            result_weight = semiring.times(result_weight, missing_combined_weight)
+
+                    return result_weight
+
+                else:
+                    raise Exception("Unknown leaf type for node {}".format(node))
+            else:
+                # Decision node
+                if node is not None and not node.is_decision():
+                    raise Exception("Expected a decision node for node {}".format(node))
+
+                result_weight = None
+                for prime_weight, sub_weight, prime_vars, sub_vars in rvalues:
+                    branch_weight = semiring.times(prime_weight, sub_weight)
+
+                    # If smoothing, go over literals missed in scope
+                    if smooth_flag:
+                        missing_literals = expected_prime_vars.difference(prime_vars) \
+                                           | expected_sub_vars.difference(sub_vars)
+                        for missing_literal in missing_literals:
+                            missing_pos_weight, missing_neg_weight = weights[missing_literal]
+                            missing_combined_weight = semiring.plus(missing_pos_weight, missing_neg_weight)
+                            branch_weight = semiring.times(branch_weight, missing_combined_weight)
+
+                    # Add to current intermediate result
+                    if result_weight is not None:
+                        result_weight = semiring.plus(result_weight, branch_weight)
+                    else:
+                        result_weight = branch_weight
+
+                return result_weight
+
+        return func_weightedmodelcounting
 
     def wmc_literal(self, node, weights, semiring, literal):
         return self.wmc(node, weights, semiring, literal)
 
     def wmc_true(self, weights, semiring):
         return self.wmc(self.true(), weights, semiring)
+
+    def __deepcopy__(self, memodict={}):
+        new_mgr = SDDManager(varcount=self.get_manager().var_count(), auto_gc=False)
+        new_mgr.varcount=self.varcount
+        mapping = self._copy_internal_SDD_to(new_mgr=new_mgr, cache=None)
+
+        # Construct node list based on current + mapping
+        new_nodes = [None] * len(self.nodes)
+        for i in range(0, len(self.nodes)):
+            node = self.nodes[i]
+            if node is not None:
+                new_nodes[i] = mapping.get(self.nodes[i].id, None)
+
+        """
+        # Old code which can be more efficient if we find a way to fix the refcounts appropriately.
+        new_nodes = self.nodes.copy()
+        none_indices = []
+        true_node = self.true()
+        for i in range(0,len(new_nodes)):
+            if new_nodes[i] is None:
+                new_nodes[i] = true_node
+                none_indices.append(i)
+
+        if self.constraint_dd is not None:
+            new_nodes.append(self.constraint_dd)
+
+        new_mgr.__manager = self.get_manager().copy(new_nodes)
+
+        if self.constraint_dd is not None:
+            new_mgr.constraint_dd = new_nodes.pop()
+
+        for i in none_indices:
+            new_nodes[i] = None
+
+        new_mgr.nodes = new_nodes
+        """
+
+        new_mgr.nodes = new_nodes
+
+        if self.constraint_dd is not None:
+            new_mgr.constraint_dd = mapping.get(self.constraint_dd.id, None)
+
+        new_mgr.set_auto_gc_and_minimize(set_to=self.is_auto_gc_and_minimize_on())
+        return new_mgr
+
+    def _copy_internal_SDD_to(self, new_mgr, cache=None):
+        """
+        Copy the SDD structure of this manager to the given new_mgr.
+
+        :param new_mgr: The manager to copy this SDD structure to. Note: the var_count must be high enough.
+        :type new_mgr: SDDManager
+        :param cache: The dictionary to use for the end result (mapping). If None, an empty one will be created.
+        :type cache: dict[int, SddNode]
+        :return: A mapping (cache) of {id, SddNode}. More specifically, {x:y} where x is the ID of an SddNode in this
+            manager which corresponds to the newly created SddNode y of the new_mgr.
+        :rtype: dict[int, SddNode]
+        """
+        if cache is None:
+            cache = dict()
+        root_nodes = self.nodes
+
+        for root in root_nodes:
+            if root is not None and root.ref_count() > 0:
+                self._copy_internal_SDD_to_aux(new_mgr, cache, root)
+        return cache
+
+    def _copy_internal_SDD_to_aux(self, new_mgr, nodes_cache, node):
+        """
+        Copy node of the current SDDManager into new_mgr using nodes_cache to map (cache) SDDNode equivalences between
+        the SDDNodes (id) of this manager to the SDDNodes in the new_mgr. This is an auxiliary method for
+        self._copy_internal_SDD_to(...).
+
+        :param new_mgr: The new manager
+        :type new_mgr: SDDManager
+        :param nodes_cache: The cache to use to retrieve corresponding nodes between both managers. Has type
+        {id: SddNode}. Must not be None.
+        :type nodes_cache: dict[int, SddNode]
+        :param node: The SddNode in this manager to copy over to new_mgr.
+        :type node: SddNode
+        :return: The SDDNode in new_mgr corresponding to node in this SDDManager.
+        :rtype: SddNode
+        """
+
+        # cached_node: (SddNode x, SddNode y, int z)
+        # with # x = node to process, y = x processed upto index z)
+        cached_node = nodes_cache.get(node.id, None)
+        if cached_node is not None:
+            return cached_node
+
+        stack = [(node, new_mgr.false(), -1)]
+        while len(stack):
+            process_node, inter_result, inter_index = stack.pop()
+
+            if process_node.is_true():
+                nodes_cache[process_node.id] = new_mgr.true()
+                continue
+            elif process_node.is_false():
+                nodes_cache[process_node.id] = new_mgr.false()
+                continue
+            elif process_node.is_literal():
+                new_node = new_mgr.literal(process_node.literal)
+                nodes_cache[process_node.id] = new_node
+                continue
+            else:
+                index = -1
+                or_node = inter_result
+                completed_for = True
+                for p, s in process_node.elements():
+                    # skip to inter_result
+                    index = index + 1
+                    if index <= inter_index:
+                        continue
+
+                    new_p = nodes_cache.get(p.id, None)
+                    if new_p is None:
+                        stack.append((process_node, or_node, index-1))
+                        stack.append((p, new_mgr.false(), -1))
+                        completed_for = False
+                        break
+
+                    new_s = nodes_cache.get(s.id, None)
+                    if new_s is None:
+                        stack.append((process_node, or_node, index-1))
+                        stack.append((s, new_mgr.false(), -1))
+                        completed_for = False
+                        break
+
+                    conjoined = new_mgr.conjoin(new_p, new_s)
+                    conjoined.ref()
+
+                    or_node_n = new_mgr.disjoin(or_node, conjoined)
+                    or_node_n.ref()
+                    or_node.deref()
+                    conjoined.deref()
+                    or_node = or_node_n
+                if completed_for:
+                    nodes_cache[process_node.id] = or_node
+
+        return nodes_cache[node.id]
+
+    def _copy_internal_SDD_to_aux_rec(self, new_mgr, nodes_cache, node):
+        """
+        Copy node of the current SDDManager into new_mgr using nodes_cache to map (cache) SDDNode equivalences between
+        the SDDNodes (id) of this manager to the SDDNodes in the new_mgr. This is an auxiliary method for
+        self._copy_internal_SDD_to(...) which uses recursion.
+
+        :param new_mgr: The new manager
+        :type new_mgr: SDDManager
+        :param nodes_cache: The cache to use to retrieve corresponding nodes between both managers. Has type
+        {id: SddNode}. Must not be None.
+        :type nodes_cache: dict[int, SddNode]
+        :param node: The SddNode in this manager to copy over to new_mgr.
+        :type node: SddNode
+        :return: The SDDNode in new_mgr corresponding to node in this SDDManager.
+        :rtype: SddNode
+        """
+        cached = nodes_cache.get(node.id, None)
+        if cached is not None:
+            return cached
+
+        if node.is_true():
+            return new_mgr.true()
+        elif node.is_false():
+            return new_mgr.false()
+        elif node.is_literal():
+            new_node = new_mgr.literal(node.literal)
+            nodes_cache[node.id] = new_node
+            return new_node
+        else:
+            or_node = new_mgr.false()
+            for p, s in node.elements():
+                new_p = self._copy_internal_SDD_to_aux(new_mgr, nodes_cache, p)
+                new_s = self._copy_internal_SDD_to_aux(new_mgr, nodes_cache, s)
+
+                conjoined = new_mgr.conjoin(new_p, new_s)
+                conjoined.ref()
+                new_p.deref()
+                new_s.deref()
+
+                or_node_n = new_mgr.disjoin(or_node, conjoined)
+                or_node_n.ref()
+                or_node.deref()
+                conjoined.deref()
+                or_node = or_node_n
+            nodes_cache[node.id] = or_node
+            return or_node
 
     def __del__(self):
         # if sdd is not None and sdd.sdd_manager_free is not None:
@@ -230,7 +578,6 @@ class SDDManager(DDManager):
         vtree.save(tempfile.encode())
         with open(tempfile) as f:
             vtree_data = f.read()
-
 
         nodes = []
         for n in self.nodes:
@@ -271,6 +618,54 @@ class SDDManager(DDManager):
         self.constraint_dd = self.__manager.read_sdd_file(tempfile.encode())
         os.remove(tempfile)
         return
+
+
+class SDDEvaluator(DDEvaluator):
+
+    def __init__(self, formula, semiring, weights=None, **kwargs):
+        DDEvaluator.__init__(self, formula, semiring, weights, **kwargs)
+
+    def evaluate_custom(self, node):
+        # Trivial case: node is deterministically True or False
+        if node == self.formula.TRUE:
+            result = self.semiring.one()
+        elif node is self.formula.FALSE:
+            result = self.semiring.zero()
+        else:
+            query_def_inode = self.formula.get_inode(node)
+            evidence_inode = self.evidence_inode
+            query_sdd = self._get_manager().conjoin(query_def_inode, evidence_inode)
+
+            smooth_to_root = self.semiring.is_nsp()
+            # perform_smoothing=True because of indicator variables
+            result = self._get_manager().wmc(query_sdd, weights=self.weights, semiring=self.semiring,
+                                             pr_semiring=False, perform_smoothing=True,
+                                             smooth_to_root=smooth_to_root)
+
+            self._get_manager().deref(query_sdd)
+
+            # TODO only normalize when there are evidence or constraints.
+            #            result = self.semiring.normalize(result, self.normalization)
+            result = self.semiring.normalize(result, self._evidence_weight)
+        return self.semiring.result(result, self.formula)
+
+    def _evaluate_evidence(self, recompute=False):
+        if self._evidence_weight is None or recompute:
+            constraint_inode = self.formula.get_constraint_inode()
+            evidence_nodes = [self.formula.get_inode(ev) for ev in self.evidence()]
+            self.evidence_inode = self._get_manager().conjoin(constraint_inode, *evidence_nodes)
+
+            pr_semiring = isinstance(self.semiring, (SemiringProbability, SemiringLogProbability))
+            result = self._get_manager().wmc(self.evidence_inode, self.weights, self.semiring,
+                                             pr_semiring=pr_semiring, perform_smoothing=True, smooth_to_root=False)
+            if result == self.semiring.zero():
+                raise InconsistentEvidenceError(context=' during compilation')
+            if self.normalization is None:
+                self._evidence_weight = result
+            else:
+                self._evidence_weight = self.semiring.normalize(result, self.normalization)
+
+        return self._evidence_weight
 
 
 @transform(LogicDAG, SDD)

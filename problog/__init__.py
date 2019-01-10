@@ -49,6 +49,7 @@ from . import ddnnf_formula
 from . import parser
 from . import program
 from . import sdd_formula
+from . import sdd_formula_explicit
 from . import util
 from . import bdd_formula
 from . import forward
@@ -59,6 +60,7 @@ from . import debug
 
 
 _evaluatables = {'sdd': sdd_formula.SDD,
+                 'sddx': sdd_formula_explicit.SDDExplicit,
                  'bdd': bdd_formula.BDD,
                  'nnf': ddnnf_formula.DDNNF,
                  'ddnnf': ddnnf_formula.DDNNF,

@@ -97,11 +97,12 @@ class ConstraintAD(Constraint):
     def is_false(self):
         return False
 
-    def add(self, node, formula):
+    def add(self, node, formula, cr_extra=True):
         """Add a node to the constraint from the given formula.
 
         :param node: node to add
         :param formula: formula from which the node is taken
+        :param cr_extra: Create an extra_node when required (when it is None and this is the second atom of the group).
         :return: value of the node after constraint propagation
         """
 
@@ -152,7 +153,7 @@ class ConstraintAD(Constraint):
         else:
             self.nodes.add(node)
 
-        if len(self.nodes) > 1 and self.extra_node is None:
+        if cr_extra and len(self.nodes) > 1 and self.extra_node is None:
             # If there are two or more choices -> add extra choice node
             self._update_logic(formula)
         return node
@@ -181,7 +182,6 @@ class ConstraintAD(Constraint):
 
     def update_weights(self, weights, semiring):
         if self.is_nontrivial():
-            s = semiring.zero()
             ws = []
             for n in self.nodes:
                 pos, neg = weights.get(n, (semiring.one(), semiring.one()))

@@ -67,8 +67,8 @@ class BaseFormula(ProbLogObject):
 
         self._constraints = []           # Constraints: list of Constraint
 
-        self._names = defaultdict(OrderedDict)  # Node names: dict(label: dict(key, Term))
-
+        #self._names = defaultdict(OrderedDict)  # Node names: dict(label: dict(key, Term))
+        self._names = defaultdict(dict)
         self._atomcount = 0
 
     @property
@@ -164,7 +164,7 @@ class BaseFormula(ProbLogObject):
         :param name: name of the node
         :type name: Term
         :param key: key of the node
-        :type key: int | TRUE | FALSE
+        :type key: int | bool
         :param label: type of label (one of LABEL_*)
         """
         if label is None:
@@ -409,6 +409,7 @@ class LogicFormula(BaseFormula):
         self._nodes = []
         # Lookup index for 'atom' nodes, key is identifier passed to addAtom()
         self._index_atom = {}
+        self._index_next = 0
         # Lookup index for 'and' nodes, key is tuple of sorted children
         self._index_conj = {}
         # Lookup index for 'or' nodes, key is tuple of sorted children
@@ -460,7 +461,7 @@ class LogicFormula(BaseFormula):
                 lname = name
             if not keep_name:
                 if ntype == 'atom':
-                    node = type(node)(*(node[:-2] + (lname, node[-1])))
+                    node = type(node)(*(node[:-2] + (lname, node[-1])))  #TODO Can't we replace with node.name = ..?
                 else:
                     node = type(node)(*(node[:-1] + (lname,)))
                 self._update(abs(key), node)
@@ -482,10 +483,8 @@ class LogicFormula(BaseFormula):
     def _add(self, node, key=None, reuse=True):
         """Adds a new node, or reuses an existing one.
 
-        :param node: node to add
-        :param reuse: (default True) attempt to map the new node onto an existing one based on its \
-         content
-
+        :param node: node to add (namedtuple: atom, conj or disj)
+        :param reuse: (default True) attempt to map the new node onto an existing one based on its content
         """
         if reuse:
             # Determine the node's key and lookup identifier base on node type.
@@ -507,6 +506,9 @@ class LogicFormula(BaseFormula):
                 index = len(self._nodes) + 1
                 # Add the entry to the collection
                 collection[key] = index
+                # If atom, update max index
+                if ntype == 'atom' and type(key) == int and key >= self._index_next:
+                    self._index_next = key + 1
                 # Add entry to the set of nodes
                 self._nodes.append(node)
             else:
@@ -520,6 +522,13 @@ class LogicFormula(BaseFormula):
         # Return the entry
         return index
 
+    def get_next_atom_identifier(self):
+        """
+        Get a unique identifier that can - and has not - been used to add a new atom.
+        :return: A next unique identifier to use when adding new atoms (self.add_atom(identifier=..))
+        """
+        return self._index_next
+
     def _update(self, key, value):
         """Replace the node with the given content.
 
@@ -531,14 +540,21 @@ class LogicFormula(BaseFormula):
         assert(key > 0)
         self._nodes[key - 1] = value
 
-    def _add_constraint_me(self, group, node):
+    def _add_constraint_me(self, group, node, cr_extra=True):
+        """
+
+        :param group:
+        :param node:
+        :param cr_extra: When required, create an additional extra_node atom for the group.
+        :return:
+        """
         if group is None:
             return node
         constraint = self._constraints_me.get(group)
         if constraint is None:
             constraint = ConstraintAD(group)
             self._constraints_me[group] = constraint
-        node = constraint.add(node, self)
+        node = constraint.add(node, self, cr_extra=cr_extra)
         return node
 
     def force_weights(self):
@@ -548,7 +564,7 @@ class LogicFormula(BaseFormula):
                 w = weights.get(i, n.probability)
                 self._nodes[i - 1] = atom(n.identifier, w, n.group, n.name, n.source)
 
-    def add_atom(self, identifier, probability, group=None, name=None, source=None):
+    def add_atom(self, identifier, probability, group=None, name=None, source=None, cr_extra=True):
         """Add an atom to the formula.
 
         :param identifier: a unique identifier for the atom
@@ -556,6 +572,7 @@ class LogicFormula(BaseFormula):
         :param group: a group identifier that identifies mutually exclusive atoms (or None if no \
         constraint)
         :param name: name of the new node
+        :param cr_extra: When required, create an extra_node for the constraint group.
         :returns: the identifiers of the node in the formula (returns self.TRUE for deterministic \
         atoms)
 
@@ -589,7 +606,7 @@ class LogicFormula(BaseFormula):
                 # The node was not reused?
                 self._atomcount += 1
                 # TODO if the next call return 0 or None, the node is still added?
-                node_id = self._add_constraint_me(group, node_id)
+                node_id = self._add_constraint_me(group, node_id, cr_extra=cr_extra)
             return node_id
 
     def add_and(self, components, key=None, name=None, compact=None):
@@ -1512,15 +1529,16 @@ label_all=True)
         return s + '}'
 
     def clone(self, destination):
+        destination._auto_compact = False
         source = self
         # TODO maintain a translation table
         for i, n, t in source:
             if t == 'atom':
-                j = destination.add_atom(n.identifier, n.probability, n.group, source.get_name(i))
+                j = destination.add_atom(n.identifier, n.probability, n.group, name=source.get_name(i))
             elif t == 'conj':
-                j = destination.add_and(n.children, source.get_name(i))
+                j = destination.add_and(n.children, name=n.name)
             elif t == 'disj':
-                j = destination.add_or(n.children, source.get_name(i))
+                j = destination.add_or(n.children, name=n.name)
             else:
                 raise TypeError('Unknown node type')
             assert i == j
