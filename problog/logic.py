@@ -79,7 +79,7 @@ This module contains basic logic constructs.
 """
 from __future__ import print_function
 from __future__ import division  # consistent behaviour of / and // in python 2 and 3
-
+import functools
 import math
 import sys
 import re
@@ -203,6 +203,8 @@ class Term(object):
         self._cache_is_ground = None
         self._cache_list_length = None
         self._cache_variables = None
+        self.repr = None
+        self.reprhash = None
 
     @property
     def functor(self):
@@ -349,6 +351,9 @@ class Term(object):
                     return new_term
 
     def __repr__(self):
+        if self.repr is not None:
+            return self.repr
+
         # Non-recursive version of __repr__
         stack = [deque([self])]
         # current: popleft from stack[-1]
@@ -476,7 +481,9 @@ class Term(object):
                 put(str(current))
             while stack and not stack[-1]:
                 stack.pop(-1)
-        return ''.join(parts)
+        self.repr = ''.join(parts)
+        self.reprhash = hash(self.repr)
+        return self.repr
 
     def __call__(self, *args, **kwdargs):
         """Create a new Term with the same functor and the given arguments.
@@ -600,6 +607,12 @@ class Term(object):
     def __eq__(self, other):
         if not isinstance(other, Term):
             return False
+        if self.reprhash is None:
+            repr(self)
+        if other.reprhash is None:
+            repr(other)
+        return self.reprhash == other.reprhash
+
         # Non-recursive version of equality check.
         l1 = deque([self])
         l2 = deque([other])
