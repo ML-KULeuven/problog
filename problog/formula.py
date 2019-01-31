@@ -67,8 +67,8 @@ class BaseFormula(ProbLogObject):
 
         self._constraints = []           # Constraints: list of Constraint
 
-        self._names = defaultdict(OrderedDict)  # Node names: dict(label: dict(key, Term))
-
+        #self._names = defaultdict(OrderedDict)  # Node names: dict(label: dict(key, Term))
+        self._names = defaultdict(dict)
         self._atomcount = 0
 
     @property
