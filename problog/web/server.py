@@ -81,9 +81,15 @@ FILES_WHITELIST = [
 
 here = os.path.dirname(__file__)
 
-try :
-    logging.config.fileConfig(os.path.join(here,'logging.conf'))
-except IOError:
+use_default_logger = True
+if os.path.exists(os.path.join(here,'logging.conf')):
+    try:
+        logging.config.fileConfig(os.path.join(here,'logging.conf'))
+        use_default_logger = False
+    except IOError:
+        pass
+    
+if use_default_logger:
     logger = logging.getLogger('server')
     ch = logging.StreamHandler(sys.stdout)
     formatter = logging.Formatter('[%(levelname)s] %(message)s')
