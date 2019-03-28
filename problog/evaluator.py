@@ -569,13 +569,13 @@ class FormulaEvaluatorNSP(FormulaEvaluator):
         """Get the weight of the node with the given index.
 
         :param index: integer or formula.TRUE or formula.FALSE
-        :return: weight of the node
+        :return: weight of the node and the set of abs(literals) involved
         """
 
         if index == self.formula.TRUE:
-            return self.semiring.one()
+            return self.semiring.one(), set()
         elif index == self.formula.FALSE:
-            return self.semiring.zero()
+            return self.semiring.zero(), set()
         elif index < 0:
             weight = self._fact_weights.get(-index)
             if weight is None:

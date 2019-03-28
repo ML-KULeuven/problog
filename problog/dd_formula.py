@@ -27,7 +27,7 @@ from __future__ import print_function
 
 from .util import Timer, mktempfile
 from .formula import LogicFormula, atom, LogicNNF
-from .evaluator import EvaluatableDSP, Evaluator, FormulaEvaluatorNSP, FormulaEvaluator, SemiringLogProbability, SemiringProbability
+from .evaluator import EvaluatableDSP, Evaluator, FormulaEvaluatorNSP, SemiringLogProbability, SemiringProbability
 from .errors import InconsistentEvidenceError
 
 
@@ -39,7 +39,7 @@ class DD(LogicFormula, EvaluatableDSP):
 
         self.inode_manager = None
 
-        self.atom2var = {}
+        self.atom2var = {}  # index to node
         self.var2atom = {}
 
         # self._constraint_dd = None
@@ -67,31 +67,29 @@ class DD(LogicFormula, EvaluatableDSP):
         :param index: index of node to retrieve
         :return: internal node corresponding to the given index
         """
-        negate = False
+        mgr = self.get_manager()  # type: DDManager
         if self.is_false(index):
-            return self.get_manager().false()
+            return mgr.false()
         elif self.is_true(index):
-            return self.get_manager().true()
-        elif index < 0:
-            index = -index
-            negate = True
+            return mgr.true()
+
+        negate = index < 0
+        index = abs(index)
         node = self.get_node(index)
+
         if type(node).__name__ == 'atom':
-            result = self.get_manager().literal(self.atom2var[index])
+            result = mgr.literal(self.atom2var[index])
         else:
             # Extend list
-            while len(self.get_manager().nodes) < index:
-                self.get_manager().nodes.append(None)
-            if self.get_manager().nodes[index - 1] is None:
-                self.get_manager().nodes[index - 1] = self._create_inode(node)
-            result = self.get_manager().nodes[index - 1]
-        if negate:
-            new_sdd = self.get_manager().negate(result)
-            return new_sdd
-        else:
-            return result
+            while len(mgr.nodes) < index:
+                mgr.nodes.append(None)
+            result = mgr.nodes[index - 1]
+            if result is None:
+                result = self._create_inode(node)
+                mgr.nodes[index - 1] = result
+        return mgr.negate(result) if negate else result
 
-    def _create_inode(self, node):
+    def _create_inode(self, node):  # TODO: Recursion is slow in python. Change build_dd to not use this and get_inode?
         if type(node).__name__ == 'conj':
             return self.get_manager().conjoin(*[self.get_inode(c) for c in node.children])
         else:
@@ -124,7 +122,7 @@ class DD(LogicFormula, EvaluatableDSP):
     def build_dd(self):
         """Build the internal representation of the formula."""
         required_nodes = set([abs(n) for q, n, l in self.labeled() if self.is_probabilistic(n)])
-        required_nodes |= set([abs(n) for q, n, l in self.labeled() if self.is_probabilistic(n)])
+        required_nodes |= set([abs(n) for q, n, l in self.labeled() if self.is_probabilistic(n)])  # TODO self.evidence_all() ipv self.labeled() ? see forward.py
 
         for n in required_nodes:
             self.get_inode(n)
@@ -163,7 +161,7 @@ class DDManager(object):
     """
 
     def __init__(self):
-        self.nodes = []
+        self.nodes = []  # Stores inodes (only conjoin and disjoin, the remaining atoms are in formula.atom2var)
         self.constraint_dd = None
 
     def set_node(self, index, node):
@@ -415,15 +413,14 @@ class DDEvaluator(Evaluator):
 
         if with_evidence:
             for ev in self.evidence():
-                if ev in self.formula.atom2var:
+                if abs(ev) in self.formula.atom2var:
                     # Only for atoms
-                    self.set_evidence(self.formula.atom2var[ev], ev > 0)
+                    self.set_evidence(self.formula.atom2var[abs(ev)], ev > 0)
 
     def propagate(self):
         self._initialize()
         if isinstance(self.semiring, SemiringLogProbability) or isinstance(self.semiring, SemiringProbability):
             self.normalization = self._get_manager().wmc_true(self.weights, self.semiring)
-
         else:
             self.normalization = None
         self.evaluate_evidence()
@@ -442,7 +439,17 @@ class DDEvaluator(Evaluator):
             else:
                 formula = LogicNNF()
                 i = self.formula._to_formula(formula, self.evidence_inode)
-                self._evidence_weight = formula.evaluate(index=i, semiring=self.semiring)
+                if i is None:  # = Node(False)
+                    # evaluate(index=i=None,..) evaluates the LABEL.QUERY's of formula.
+                    formula.add_name(name='tempFalse', key=None, label=formula.LABEL_QUERY)
+                    result = formula.evaluate(index=i, semiring=self.semiring)
+                    result = result['tempFalse']
+                else:
+                    result = formula.evaluate(index=i, semiring=self.semiring)
+
+                if result == self.semiring.zero():
+                    raise InconsistentEvidenceError(context=' during compilation')
+                self._evidence_weight = result
 
         return self._evidence_weight
 
@@ -488,15 +495,20 @@ class DDEvaluator(Evaluator):
             evidence_inode = self.evidence_inode
             query_sdd = self._get_manager().conjoin(query_def_inode, evidence_inode)
 
-
-
             formula = LogicNNF()
             i = self.formula._to_formula(formula, query_sdd)
-            result = formula.evaluate(index=i, semiring=self.semiring)
+
+            if i is None:  # = SddNode(False)
+                # evaluate(index=i=None,..) evaluates the LABEL.QUERY's of formula.
+                name = self.formula.get_name(node)
+                formula.add_name(name=name, key=None, label=formula.LABEL_QUERY)
+                result = formula.evaluate(index=i, semiring=self.semiring)
+                # index=None such that this if i is None is unnecessary. (same structure at _evaluate_evidence(..))
+                result = result[name]
+            else:
+                result = formula.evaluate(index=i, semiring=self.semiring)
 
             self._get_manager().deref(query_sdd)
-
-
 
             # TODO only normalize when there are evidence or constraints.
 #            result = self.semiring.normalize(result, self.normalization)
@@ -511,9 +523,9 @@ class DDEvaluator(Evaluator):
 
         inode = self.evidence_inode
 
-        result = self.semiring.result(
-            self._get_manager().wmc_literal(
-                inode, self.weights, self.semiring, self.formula.atom2var[node]), self.formula)
+        literal_result = self._get_manager().wmc_literal(inode, self.weights, self.semiring,
+                                                         self.formula.atom2var[node])
+        result = self.semiring.result(literal_result, self.formula)
         return result
 
     def set_evidence(self, index, value):
@@ -531,6 +543,7 @@ class DDEvaluator(Evaluator):
             self.set_weight(index, neg, pos)
 
     def set_weight(self, index, pos, neg):
+        # index = index of atom in weights, so atom2var[key] = index
         self.weights[index] = (pos, neg)
 
     def _deref_node(self, index):
@@ -557,21 +570,18 @@ def build_dd(source, destination, **kwdargs):
         # TODO maintain a translation table
         for i, n, t in source:
             if t == 'atom':
-                j = destination.add_atom(n.identifier, n.probability, n.group, source.get_name(i))
+                j = destination.add_atom(n.identifier, n.probability, n.group, name=source.get_name(i), cr_extra=False)
             elif t == 'conj':
-                j = destination.add_and(n.children, source.get_name(i))
+                j = destination.add_and(n.children, name=n.name)
             elif t == 'disj':
-                j = destination.add_or(n.children, source.get_name(i))
+                j = destination.add_or(n.children, name=n.name)
             else:
                 raise TypeError('Unknown node type')
-            assert i == j
+            # assert i == j  # Does not hold with constraints. See if-comment.
 
         for name, node, label in source.get_names_with_label():
             destination.add_name(name, node, label)
 
-        for c in source.constraints():
-            if c.is_nontrivial():
-                destination.add_constraint(c)
         destination.build_dd()
 
     return destination

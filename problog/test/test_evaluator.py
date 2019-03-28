@@ -17,21 +17,11 @@ limitations under the License.
 """
 import unittest
 
-import glob, os, traceback, sys
-
-from problog import root_path
-from problog import get_evaluatable
-
-from problog.setup import install
-from problog.program import PrologFile, DefaultPrologParser, ExtendedPrologFactory, PrologString
+from problog.program import PrologString
 from problog.formula import LogicFormula
-from problog.ddnnf_formula import DDNNF
-from problog.sdd_formula import SDD
 from problog import get_evaluatable
-from problog.evaluator import SemiringProbability, SemiringLogProbability
+from problog.evaluator import SemiringProbability
 from problog.logic import Term
-from parameterizedtestcase import ParameterizedTestCase
-
 
 # noinspection PyBroadException
 try:
@@ -44,23 +34,22 @@ evaluatables = ["ddnnf"]
 
 if has_sdd:
     evaluatables.append("sdd")
+    evaluatables.append("sddx")
 else:
     print("No SDD support - The evaluator tests are not performed with SDDs.")
 
 
-class TestEvaluator(ParameterizedTestCase):
+class TestEvaluator(unittest.TestCase):
 
-    def setUp(self):
-        try:
-            self.assertSequenceEqual = self.assertItemsEqual
-        except AttributeError:
-            self.assertSequenceEqual = self.assertCountEqual
+    def test_evaluate_custom_weights(self):
+        """
+        Tests evaluate() with custom weights (not the ones from the ProbLog file)
+        """
+        for eval_name in evaluatables:
+            with self.subTest(eval_name=eval_name):
+                self.evaluate_custom_weights(eval_name)
 
-    @ParameterizedTestCase.parameterize(("evaluatable_name",), ((t,) for t in evaluatables), func_name_format='{func_name}_{case_num}')
-    def test_evaluate_custom_weights(self, evaluatable_name=None):
-        """
-        Tests evaluate() with custom weights (not the ones from file)
-        """
+    def evaluate_custom_weights(self, eval_name=None):
         class TestSemiringProbabilityNSP(SemiringProbability):
             def is_nsp(self):
                 return True
@@ -72,7 +61,7 @@ class TestEvaluator(ParameterizedTestCase):
         pl = PrologString(program)
         lf = LogicFormula.create_from(pl, label_all=True, avoid_name_clash=True)
         semiring = TestSemiringProbabilityNSP()
-        kc_class = get_evaluatable(name=evaluatable_name, semiring=semiring)
+        kc_class = get_evaluatable(name=eval_name, semiring=semiring)
         kc = kc_class.create_from(lf)
         a = Term('a')
 
@@ -84,6 +73,7 @@ class TestEvaluator(ParameterizedTestCase):
         weights = {a: 0.1}
         results = kc.evaluate(semiring=semiring, weights=weights)
         self.assertEqual(0.1, results[a])
+
 
 if __name__ == '__main__' :
     suite = unittest.TestLoader().loadTestsFromTestCase(TestEvaluator)

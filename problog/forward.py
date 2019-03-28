@@ -34,8 +34,9 @@ from .dd_formula import build_dd
 import warnings
 import time
 import logging
-
+import copy
 import signal
+
 from .core import transform_create_as
 
 from .util import UHeap
@@ -50,6 +51,7 @@ def timeout_handler(signum, frame):
 
 
 class ForwardInference(DD):
+
     def __init__(self, compile_timeout=None, **kwdargs):
         super(ForwardInference, self).__init__(auto_compact=False, **kwdargs)
 
@@ -453,13 +455,77 @@ class _ForwardSDD(SDD, ForwardInference):
 
     transform_preference = 1000
 
-    def __init__(self, sdd_auto_gc=True, **kwdargs):
+    def __init__(self, sdd_auto_gc=False, **kwdargs):
         SDD.__init__(self, sdd_auto_gc=sdd_auto_gc, **kwdargs)
         ForwardInference.__init__(self, **kwdargs)
 
     @classmethod
     def is_available(cls):
         return SDD.is_available()
+
+    def to_explicit_encoding(self, reuse=False):
+        """
+        Transform the current implicit encoding to an SDD with explicit encoding. The latter will contain indicator
+        variables for inferred literals and contains both the 'true and false' case. For example, while the implicit
+        encoding for c :- a,b will result in c = a * b., the explicit encoding will result in (c * a * b) + (-c * (-a + -b))
+        In the explicit encoding, evidence can be incorporated as changing the weights and a negation can also easily be
+        queried. Furthermore, the explicit encoding implementation can guarantee a circuit with one root instead of
+        multiple.
+
+        :param reuse: Re-use of the existing data structures is more efficient but future changes to the structures are
+        then discouraged.
+        :return: The explicit encoding of this formula.
+        :rtype: SDDExplicit
+        """
+        from .sdd_formula_explicit import build_explicit_from_forwardsdd
+        from .sdd_formula_explicit import SDDExplicit
+        # TODO: invalidate some methods when reuse=True?
+        return build_explicit_from_forwardsdd(source=self, destination=SDDExplicit(), reuse=reuse)
+
+    def copy_to(self, destination, deep=True):
+        """
+        Copy the relevant data structures. When deep=False, be very careful on the use as it can invalidate this
+        instance.
+        :param destination: The DD to copy the data structures' references to.
+        :type destination: DD
+        :param deep: Whether to do a deep copy or reuse the existing data structures.
+        """
+        if not deep:
+            destination.atom2var = self.atom2var
+            destination.var2atom = self.var2atom
+            destination.inode_manager = self.inode_manager
+            destination.inode_manager.nodes = self.inodes
+            destination._atomcount = self._atomcount
+            destination._weights = self._weights
+            destination._constraints = self._constraints
+            destination.evidence_node = self.evidence_node
+            destination._nodes = self._nodes
+            destination._index_atom = self._index_atom
+            destination._index_next = self._index_next
+            destination._index_conj = self._index_conj
+            destination._index_disj = self._index_disj
+            destination._names = self._names
+            destination._constraints_me = self._constraints_me
+        else:
+            destination.atom2var = self.atom2var.copy()
+            destination.var2atom = self.var2atom.copy()
+
+            old = self.inode_manager.nodes
+            self.inode_manager.nodes = self.inodes
+            destination.inode_manager = copy.deepcopy(self.inode_manager)
+            self.inode_manager.nodes = old
+
+            destination._atomcount = self._atomcount
+            destination._weights = self._weights.copy()
+            destination._constraints = self._constraints.copy()
+            destination.evidence_node = self.evidence_node
+            destination._nodes = self._nodes.copy()
+            destination._index_atom = self._index_atom.copy()
+            destination._index_next = self._index_next
+            destination._index_conj = self._index_conj.copy()
+            destination._index_disj = self._index_disj.copy()
+            destination._names = copy.deepcopy(self._names)
+            destination._constraints_me = copy.deepcopy(self._constraints_me)
 
 
 class _ForwardBDD(BDD, ForwardInference):
@@ -563,6 +629,9 @@ class ForwardEvaluator(Evaluator):
             if inode is not None:
                 enode = source.get_manager().conjoin(source.get_evidence_inode(),
                                                      source.get_constraint_inode())
+                if self.fsdd.get_manager().is_false(enode):
+                    raise InconsistentEvidenceError(context=' during compilation')
+
                 qnode = source.get_manager().conjoin(inode, enode)
                 tvalue = source.get_manager().wmc(enode, weights, self.semiring)
                 value = source.get_manager().wmc(qnode, weights, self.semiring)
@@ -661,7 +730,7 @@ class ForwardEvaluator(Evaluator):
                             return 0.0, self.semiring.result(
                                 self.semiring.negate(self._results[-index]), self.formula)
                     else:
-                        return 0.0, 1.0
+                        return 0.0, 1.0  # TODO, this must be semiring independent? -V.
                 else:
                     if index in self._results:
                         if index in self._complete:
