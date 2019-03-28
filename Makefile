@@ -1,16 +1,9 @@
-.PHONY: default test test2 test3 docs deploy_docs
+.PHONY: default test test3 docs deploy_docs
 
 default: test docs
 	
-test: test2 test3
+test: test3
 
-test2:
-	@echo "Running unit tests in python2"
-	@echo "============================="
-	python -m unittest discover -v
-	@echo "======================================================================"
-	@echo ""
-	
 test3:
 	@echo "Running unit tests in python3"
 	@echo "============================="
@@ -64,7 +57,7 @@ update_server:
 # 	git add problog/version.py
 # 	@echo "Next steps: git commit && make deploy"
 
-deploy: test2 test3 incr_version_release
+deploy: test3 incr_version_release
 	@read -r -p "WARNING: This will upload a new public release! Press ENTER to proceed, CTRL-C to cancel."
 	# git checkout master
 	git push
@@ -75,7 +68,7 @@ deploy: test2 test3 incr_version_release
 	# git checkout develop
 	# git merge master
 
-deploy_dev: test2 test3 incr_version_dev
+deploy_dev: test3 incr_version_dev
 	@read -r -p "WARNING: This will upload a new development release! Press ENTER to proceed, CTRL-C to cancel."
 	git push
 	rm -f dist/*
