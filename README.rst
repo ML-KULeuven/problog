@@ -4,7 +4,7 @@ ProbLog v2.2
 1. Prerequisites
 ----------------
 
-ProbLog 2.2 requires Python 3.2+. Python 2.7+ support has been dropped since ProbLog 2.1.
+ProbLog 2.2 requires Python 3.4+. Python 2.7+ support has been dropped since ProbLog 2.1.
 
 
 2. Installation
