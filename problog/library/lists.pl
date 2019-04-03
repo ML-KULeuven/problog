@@ -58,10 +58,10 @@ min_list([X|L],S) :- min_list(L,X,S).
 min_list([],S,S).
 min_list([X|L],M,S) :-
     M < X,
-    min_list(L,X,S).
+    min_list(L,M,S).
 min_list([X|L],M,S) :-
     M >= X,
-    min_list(L,M,S).
+    min_list(L,X,S).
     
 unzip([],[],[]).
 unzip([(X,Y)|T],[X|R],[Y|S]) :-
