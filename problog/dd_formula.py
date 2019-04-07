@@ -436,7 +436,7 @@ class DDEvaluator(Evaluator):
 
             if isinstance(self.semiring, SemiringLogProbability) or isinstance(self.semiring, SemiringProbability):
                 result = self._get_manager().wmc(self.evidence_inode, self.weights, self.semiring)
-                if result == self.semiring.zero():
+                if self.semiring.is_zero(result):
                     raise InconsistentEvidenceError(context=' during compilation')
                 self._evidence_weight = self.semiring.normalize(result, self.normalization)
             else:
