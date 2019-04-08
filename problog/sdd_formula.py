@@ -56,7 +56,7 @@ class SDD(DD):
 
     def __init__(self, sdd_auto_gc=False, **kwdargs):
         if sdd is None:
-            raise InstallError('The SDD library is not available. Please run the installer.')
+            raise InstallError('The SDD library is not available. Please install the PySDD package.')
         self.auto_gc = sdd_auto_gc
         DD.__init__(self, auto_compact=False, **kwdargs)
 

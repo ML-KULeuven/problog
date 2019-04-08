@@ -23,7 +23,8 @@ elif __name__ == '__main__':
 
     class ProbLogInstall(install):
         def run(self):
-            install.run(self)
+            #  install.run(self)  # install.run(self) ignores install_require when there is a cmdclass arg
+            install.do_egg_install(self)  # Workaround for install.run(self)
             before_dir = os.getcwd()
             sys.path.insert(0, self.install_lib)
             from problog import setup as problog_setup
@@ -35,9 +36,9 @@ elif __name__ == '__main__':
 
     package_data = {
         'problog': [
-            'bin/darwin/dsharp', 
-            'bin/darwin/maxsatz', 
-            'bin/linux/dsharp', 
+            'bin/darwin/dsharp',
+            'bin/darwin/maxsatz',
+            'bin/linux/dsharp',
             'bin/linux/maxsatz',
             'bin/source/maxsatz/maxsatz2009.c',
             'bin/windows/dsharp.exe',
@@ -77,8 +78,11 @@ elif __name__ == '__main__':
         ],
         keywords='prolog probabilistic logic',
         packages=find_packages(),
+        install_requires=[
+            'pysdd >= 0.2.3;platform_system!="Windows"'
+        ],
         entry_points={
-            'console_scripts': ['problog=problog.tasks:main']       
+            'console_scripts': ['problog=problog.tasks:main']
         },
         package_data=package_data,
         cmdclass={
