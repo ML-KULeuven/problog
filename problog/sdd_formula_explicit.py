@@ -135,6 +135,7 @@ class SDDExplicitManager(SDDManager):
         return new_mgr
 
 
+    # Error: wrong refcounts. parent.deref() = all descendents.deref()
     #def clean_nodes(self, root_inode):
     #    """
     #    Cleans up all references except root_inode's. This means all other nodes will be dereferenced.
@@ -152,14 +153,6 @@ class SDDExplicitManager(SDDManager):
 class SDDExplicitEvaluator(SDDEvaluator):
 
     def __init__(self, formula, semiring, weights=None, **kwargs):
-        """
-
-        :param formula:
-        :type formula: SDDExplicit
-        :param semiring:
-        :param weights:
-        :param kwargs:
-        """
         SDDEvaluator.__init__(self, formula, semiring, weights, **kwargs)
 
     # TODO NSP ??
@@ -341,14 +334,13 @@ def build_explicit_from_logicdag(source, destination, **kwdargs):
 
 
 @transform(_ForwardSDD, SDDExplicit)
-def build_explicit_from_forwardsdd(source, destination, reuse=False, **kwdargs):
-    """Build an SDD2 from a _forward_sdd.
+def build_explicit_from_forwardsdd(source, destination, **kwdargs):
+    """Build an SDDExplicit from a _ForwardSDD.
 
     :param source: source formula
     :type source: _ForwardSDD
     :param destination: destination formula
     :type destination: SDDExplicit
-    :param reuse: Whether to reuse the existing data structures of source. If true, the source might become invalid.
     :param kwdargs: extra arguments
     :return: destination
     :rtype: SDDExplicit
@@ -361,7 +353,7 @@ def build_explicit_from_forwardsdd(source, destination, reuse=False, **kwdargs):
             if source.is_probabilistic(node):
                 source.get_inode(node)
 
-        source.copy_to(destination, not reuse)
+        source.copy_to_noref(destination)
         destination.inode_manager = SDDExplicitManager.create_from_SDDManager(destination.inode_manager)
 
         root_nodes = []
@@ -400,5 +392,4 @@ def build_explicit_from_forwardsdd(source, destination, reuse=False, **kwdargs):
         # evidence_nodes = destination.evidence()
 
         destination.build_dd(root_key)
-        #destination.cleanup_inodes() #TODO: First fix bug in cleanup_inodes.
     return destination

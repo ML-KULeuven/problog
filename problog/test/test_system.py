@@ -86,11 +86,11 @@ def createSystemTestGeneric(filename, logspace=False) :
             for semiring in semirings:
                 with self.subTest(evaluatable_name=eval_name, semiring=semiring):
                     evaluate(self, evaluatable_name=eval_name, custom_semiring=semirings[semiring])
-        # explicit encoding of forwardSDD
+
+        # explicit encoding from ForwardSDD
         for semiring in semirings:
-            for reuse in [False, True]:
-                with self.subTest(semiring=semiring, reuse=reuse):
-                    evaluate_explicit_fsdd(self, custom_semiring=semirings[semiring], reuse=reuse)
+            with self.subTest(semiring=semiring):
+                evaluate_explicit_from_fsdd(self, custom_semiring=semirings[semiring])
 
     def evaluate(self, evaluatable_name=None, custom_semiring=None) :
         try :
@@ -107,6 +107,7 @@ def createSystemTestGeneric(filename, logspace=False) :
             computed = kc.evaluate(semiring=semiring)
             computed = { str(k) : v for k,v in computed.items() }
         except Exception as err :
+            #print("exception %s" % err)
             e = err
             computed = None
 
@@ -119,12 +120,12 @@ def createSystemTestGeneric(filename, logspace=False) :
             for query in correct :
                 self.assertAlmostEqual(correct[query], computed[query], msg=query)
 
-    def evaluate_explicit_fsdd(self, custom_semiring=None, reuse=False) :
+    def evaluate_explicit_from_fsdd(self, custom_semiring=None) :
         try:
             parser = DefaultPrologParser(ExtendedPrologFactory())
             lf = PrologFile(filename, parser=parser)
             kc = _ForwardSDD.create_from(lf)  # type: _ForwardSDD
-            kc = kc.to_explicit_encoding(reuse=reuse)
+            kc = kc.to_explicit_encoding()
 
             if custom_semiring is not None:
                 semiring = custom_semiring  # forces the custom semiring code.
@@ -136,6 +137,7 @@ def createSystemTestGeneric(filename, logspace=False) :
             computed = kc.evaluate(semiring=semiring)
             computed = { str(k) : v for k,v in computed.items() }
         except Exception as err :
+            #print("exception %s" % err)
             e = err
             computed = None
 

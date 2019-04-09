@@ -463,7 +463,7 @@ class _ForwardSDD(SDD, ForwardInference):
     def is_available(cls):
         return SDD.is_available()
 
-    def to_explicit_encoding(self, reuse=False):
+    def to_explicit_encoding(self):
         """
         Transform the current implicit encoding to an SDD with explicit encoding. The latter will contain indicator
         variables for inferred literals and contains both the 'true and false' case. For example, while the implicit
@@ -472,60 +472,39 @@ class _ForwardSDD(SDD, ForwardInference):
         queried. Furthermore, the explicit encoding implementation can guarantee a circuit with one root instead of
         multiple.
 
-        :param reuse: Re-use of the existing data structures is more efficient but future changes to the structures are
-        then discouraged.
         :return: The explicit encoding of this formula.
         :rtype: SDDExplicit
         """
         from .sdd_formula_explicit import build_explicit_from_forwardsdd
         from .sdd_formula_explicit import SDDExplicit
-        # TODO: invalidate some methods when reuse=True?
-        return build_explicit_from_forwardsdd(source=self, destination=SDDExplicit(), reuse=reuse)
+        return build_explicit_from_forwardsdd(source=self, destination=SDDExplicit())
 
-    def copy_to(self, destination, deep=True):
+    def copy_to_noref(self, destination):
         """
-        Copy the relevant data structures. When deep=False, be very careful on the use as it can invalidate this
-        instance.
+        Copy the relevant data structures without any refcounts to the new inodes.
+        Because of this, the destination should have auto_gc disabled.
         :param destination: The DD to copy the data structures' references to.
         :type destination: DD
-        :param deep: Whether to do a deep copy or reuse the existing data structures.
         """
-        if not deep:
-            destination.atom2var = self.atom2var
-            destination.var2atom = self.var2atom
-            destination.inode_manager = self.inode_manager
-            destination.inode_manager.nodes = self.inodes
-            destination._atomcount = self._atomcount
-            destination._weights = self._weights
-            destination._constraints = self._constraints
-            destination.evidence_node = self.evidence_node
-            destination._nodes = self._nodes
-            destination._index_atom = self._index_atom
-            destination._index_next = self._index_next
-            destination._index_conj = self._index_conj
-            destination._index_disj = self._index_disj
-            destination._names = self._names
-            destination._constraints_me = self._constraints_me
-        else:
-            destination.atom2var = self.atom2var.copy()
-            destination.var2atom = self.var2atom.copy()
+        destination.atom2var = self.atom2var.copy()
+        destination.var2atom = self.var2atom.copy()
 
-            old = self.inode_manager.nodes
-            self.inode_manager.nodes = self.inodes
-            destination.inode_manager = copy.deepcopy(self.inode_manager)
-            self.inode_manager.nodes = old
+        old = self.inode_manager.nodes
+        self.inode_manager.nodes = self.inodes
+        destination.inode_manager = self.inode_manager.get_deepcopy_noref()
+        self.inode_manager.nodes = old
 
-            destination._atomcount = self._atomcount
-            destination._weights = self._weights.copy()
-            destination._constraints = self._constraints.copy()
-            destination.evidence_node = self.evidence_node
-            destination._nodes = self._nodes.copy()
-            destination._index_atom = self._index_atom.copy()
-            destination._index_next = self._index_next
-            destination._index_conj = self._index_conj.copy()
-            destination._index_disj = self._index_disj.copy()
-            destination._names = copy.deepcopy(self._names)
-            destination._constraints_me = copy.deepcopy(self._constraints_me)
+        destination._atomcount = self._atomcount
+        destination._weights = self._weights.copy()
+        destination._constraints = self._constraints.copy()
+        destination.evidence_node = self.evidence_node
+        destination._nodes = self._nodes.copy()
+        destination._index_atom = self._index_atom.copy()
+        destination._index_next = self._index_next
+        destination._index_conj = self._index_conj.copy()
+        destination._index_disj = self._index_disj.copy()
+        destination._names = copy.deepcopy(self._names)
+        destination._constraints_me = copy.deepcopy(self._constraints_me)
 
 
 class _ForwardBDD(BDD, ForwardInference):

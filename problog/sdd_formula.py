@@ -381,10 +381,17 @@ class SDDManager(DDManager):
     def wmc_true(self, weights, semiring):
         return self.wmc(self.true(), weights, semiring)
 
-    def __deepcopy__(self, memodict={}):
+    def get_deepcopy_noref(self):  # TODO might be cleaner to maintain refcounts and deref everything afterwards in SDDExplicit
+        """
+        Get a deep copy of this without reference counts to inodes.
+        Notes: No inode will have a reference count and auto_gc_and_minimize will be disabled.
+        :return: A deep copy of this without any reference counts.
+        """
         new_mgr = SDDManager(varcount=self.get_manager().var_count(), auto_gc=False)
         new_mgr.varcount=self.varcount
-        mapping = self._copy_internal_SDD_to(new_mgr=new_mgr, cache=None)
+
+        # Code that is slower but works (see commented out code)
+        mapping = self._copy_internal_SDD_to_noref(new_mgr=new_mgr, cache=None)
 
         # Construct node list based on current + mapping
         new_nodes = [None] * len(self.nodes)
@@ -393,41 +400,46 @@ class SDDManager(DDManager):
             if node is not None:
                 new_nodes[i] = mapping.get(self.nodes[i].id, None)
 
-        """
-        # Old code which can be more efficient if we find a way to fix the refcounts appropriately.
-        new_nodes = self.nodes.copy()
-        none_indices = []
-        true_node = self.true()
-        for i in range(0,len(new_nodes)):
-            if new_nodes[i] is None:
-                new_nodes[i] = true_node
-                none_indices.append(i)
-
-        if self.constraint_dd is not None:
-            new_nodes.append(self.constraint_dd)
-
-        new_mgr.__manager = self.get_manager().copy(new_nodes)
-
-        if self.constraint_dd is not None:
-            new_mgr.constraint_dd = new_nodes.pop()
-
-        for i in none_indices:
-            new_nodes[i] = None
-
-        new_mgr.nodes = new_nodes
-        """
-
         new_mgr.nodes = new_nodes
 
         if self.constraint_dd is not None:
             new_mgr.constraint_dd = mapping.get(self.constraint_dd.id, None)
 
-        new_mgr.set_auto_gc_and_minimize(set_to=self.is_auto_gc_and_minimize_on())
+        # Old code which can be more efficient if we fix the "OSError Cannot allocate memory"
+        # new_nodes = self.nodes.copy()
+        # # fill in None spots with inode True
+        # none_indices = []
+        # true_node = self.true()
+        # for i in range(0, len(new_nodes)):
+        #     if new_nodes[i] is None:
+        #         new_nodes[i] = true_node
+        #         none_indices.append(i)
+        # # push constraint node
+        # if self.constraint_dd is not None:
+        #     new_nodes.append(self.constraint_dd)
+        #
+        # # copy
+        # new_mgr.__manager = self.get_manager().copy(new_nodes)
+        #
+        # # pop constraint node
+        # if self.constraint_dd is not None:
+        #     new_mgr.constraint_dd = new_nodes.pop()
+        # # put back None
+        # for i in none_indices:
+        #     new_nodes[i] = None
+        #
+        # new_mgr.nodes = new_nodes
+
+        # DEBUG - print before and after ref_counts
+        #print("before %s" % [(node.ref_count() if node is not None else None) for node in self.nodes])
+        #print("after %s" % [(node.ref_count() if node is not None else None) for node in new_mgr.nodes])
+
         return new_mgr
 
-    def _copy_internal_SDD_to(self, new_mgr, cache=None):
+    def _copy_internal_SDD_to_noref(self, new_mgr, cache=None):
         """
-        Copy the SDD structure of this manager to the given new_mgr.
+        Copy the SDD structure of this manager to the given new_mgr. ALl refcounts will be 0 so the auto_gc on the
+        new_mgr should be disabled.
 
         :param new_mgr: The manager to copy this SDD structure to. Note: the var_count must be high enough.
         :type new_mgr: SDDManager
@@ -443,14 +455,14 @@ class SDDManager(DDManager):
 
         for root in root_nodes:
             if root is not None and root.ref_count() > 0:
-                self._copy_internal_SDD_to_aux(new_mgr, cache, root)
+                self._copy_internal_SDD_to_noref_aux(new_mgr, cache, root)
         return cache
 
-    def _copy_internal_SDD_to_aux(self, new_mgr, nodes_cache, node):
+    def _copy_internal_SDD_to_noref_aux(self, new_mgr, nodes_cache, node):
         """
         Copy node of the current SDDManager into new_mgr using nodes_cache to map (cache) SDDNode equivalences between
         the SDDNodes (id) of this manager to the SDDNodes in the new_mgr. This is an auxiliary method for
-        self._copy_internal_SDD_to(...).
+        self._copy_internal_SDD_to_noref(...).
 
         :param new_mgr: The new manager
         :type new_mgr: SDDManager
@@ -508,23 +520,22 @@ class SDDManager(DDManager):
                         break
 
                     conjoined = new_mgr.conjoin(new_p, new_s)
-                    conjoined.ref()
-
                     or_node_n = new_mgr.disjoin(or_node, conjoined)
-                    or_node_n.ref()
-                    or_node.deref()
-                    conjoined.deref()
+                    or_node_n.deref() # ensure refcount = 0
+                    conjoined.deref() # ensure refcount = 0
+                    #conjoined.deref()
+                    #or_node.deref()
                     or_node = or_node_n
                 if completed_for:
                     nodes_cache[process_node.id] = or_node
 
         return nodes_cache[node.id]
 
-    def _copy_internal_SDD_to_aux_rec(self, new_mgr, nodes_cache, node):
+    def _copy_internal_SDD_to_aux_noref_rec(self, new_mgr, nodes_cache, node):
         """
         Copy node of the current SDDManager into new_mgr using nodes_cache to map (cache) SDDNode equivalences between
         the SDDNodes (id) of this manager to the SDDNodes in the new_mgr. This is an auxiliary method for
-        self._copy_internal_SDD_to(...) which uses recursion.
+        self._copy_internal_SDD_to_noref(...) which uses recursion.
 
         :param new_mgr: The new manager
         :type new_mgr: SDDManager
@@ -555,14 +566,11 @@ class SDDManager(DDManager):
                 new_s = self._copy_internal_SDD_to_aux(new_mgr, nodes_cache, s)
 
                 conjoined = new_mgr.conjoin(new_p, new_s)
-                conjoined.ref()
-                new_p.deref()
-                new_s.deref()
-
                 or_node_n = new_mgr.disjoin(or_node, conjoined)
-                or_node_n.ref()
-                or_node.deref()
-                conjoined.deref()
+                or_node_n.deref()  # ensure refcount = 0
+                conjoined.deref()  # ensure refcount = 0
+                #conjoined.deref()
+                #or_node.deref()
                 or_node = or_node_n
             nodes_cache[node.id] = or_node
             return or_node
@@ -658,7 +666,7 @@ class SDDEvaluator(DDEvaluator):
             pr_semiring = isinstance(self.semiring, (SemiringProbability, SemiringLogProbability))
             result = self._get_manager().wmc(self.evidence_inode, self.weights, self.semiring,
                                              pr_semiring=pr_semiring, perform_smoothing=True, smooth_to_root=False)
-            if result == self.semiring.zero():
+            if self.semiring.is_zero(result):
                 raise InconsistentEvidenceError(context=' during compilation')
             if self.normalization is None:
                 self._evidence_weight = result
