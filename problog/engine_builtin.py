@@ -196,6 +196,7 @@ def add_standard_builtins(engine, b=None, s=None, sp=None):
 
     for i in range(1, 10):
         engine.add_builtin('writenl', i, b(_builtin_writenl))
+        engine.add_builtin('writeln', i, b(_builtin_writenl))
 
     for i in range(1, 10):
         engine.add_builtin('error', i, b(_builtin_error))

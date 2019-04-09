@@ -192,7 +192,7 @@ def argparser():
                         choices=get_evaluatables(),
                         default=None, help="Knowledge compilation tool.")
     parser.add_argument('--combine', help="Combine input files into single model.", action='store_true')
-    parser.add_argument('--grounder', choices=['yap', 'default', 'yap_debug'], default=None)
+    #parser.add_argument('--grounder', choices=['yap', 'default', 'yap_debug'], default=None)
 
     # Evaluation semiring
     ls_group = parser.add_mutually_exclusive_group()
