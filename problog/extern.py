@@ -253,7 +253,7 @@ class problog_export_nondet(problog_export):
             bound = check_mode(args, list(self._extract_callmode()), funcname, **kwdargs)
             converted_args = self._convert_inputs(args)
             results = []
-            for result in func(*converted_args):
+            for result in func(*converted_args, **kwdargs):
                 if len(self.output_arguments) == 1:
                     result = [result]
 
