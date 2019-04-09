@@ -50,7 +50,7 @@ update_server:
 	ssh ssh.cs.kuleuven.be ssh -p 2222 problog@adams.cs.kuleuven.be python3 /home/problog/problog2.1/problog-cli.py install
 	@echo "======================================================================"
 
-# prepare_deploy: test2 test3
+# prepare_deploy: test3
 # 	git checkout master
 # 	git merge develop --squash
 # 	python -c 'import setup; setup.increment_version_release()'

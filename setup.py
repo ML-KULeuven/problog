@@ -20,7 +20,6 @@ elif __name__ == '__main__':
     from setuptools import setup, find_packages
     from setuptools.command.install import install
 
-
     class ProbLogInstall(install):
         def run(self):
             #  install.run(self)  # install.run(self) ignores install_require when there is a cmdclass arg
@@ -68,18 +67,15 @@ elif __name__ == '__main__':
             'Development Status :: 4 - Beta',
             'License :: OSI Approved :: Apache Software License',
             'Intended Audience :: Science/Research',
-            'Programming Language :: Python :: 2',
-            'Programming Language :: Python :: 2.7',
             'Programming Language :: Python :: 3',
-            'Programming Language :: Python :: 3.3',
-            'Programming Language :: Python :: 3.4',
+            'Programming Language :: Python :: 3.6',
             'Programming Language :: Prolog',
             'Topic :: Scientific/Engineering :: Artificial Intelligence',
         ],
         keywords='prolog probabilistic logic',
         packages=find_packages(),
         install_requires=[
-            'pysdd >= 0.2.3;platform_system!="Windows"'
+            'pysdd>=0.2.4;platform_system!="Windows"'
         ],
         entry_points={
             'console_scripts': ['problog=problog.tasks:main']

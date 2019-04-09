@@ -2,11 +2,11 @@
 # Only use spaces to indent your .yml configuration.
 # -----
 # You can specify a custom docker image from Dockerhub as your build environment.
-image: python:3.5.1
+image: python:3.6.0
 
 pipelines:
   default:
     - step:
         script: # Modify the commands below to build your repository.
-          - python problog-cli.py install
+          - python setup.py install
           - python -m unittest discover -v

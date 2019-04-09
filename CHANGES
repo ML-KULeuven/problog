@@ -3,11 +3,15 @@ Intermediate bugfixes and speed improvements are not listed.
 
 2019/03/28
 
-    ProbLog2.2 released:
-        - Dropped support for Python 2.7+
+    Dropped support for Python 2.7+
+
+    (NEW) SDDExplicit
         - A new encoding for SDDs equivalent to the encoding used in d-DNNFs (SDDExplicit.py)
-        - Several bugfixes
-        - Interaction with the SDD library has been changed to the use of the PySDD package.
+
+2018/12/20
+
+    SDD
+        - Interaction with the SDD library has been changed to the use of PySDD.
 ...
 
 2015/05/20 
