@@ -69,6 +69,8 @@ elif __name__ == '__main__':
             'Intended Audience :: Science/Research',
             'Programming Language :: Python :: 3',
             'Programming Language :: Python :: 3.6',
+            'Programming Language :: Python :: 3.7',
+            'Programming Language :: Python :: 3.8',
             'Programming Language :: Prolog',
             'Topic :: Scientific/Engineering :: Artificial Intelligence',
         ],
