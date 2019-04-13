@@ -77,7 +77,7 @@ elif __name__ == '__main__':
         keywords='prolog probabilistic logic',
         packages=find_packages(),
         install_requires=[
-            'pysdd>=0.2.4;platform_system!="Windows"'
+            'pysdd>=0.2.6;platform_system!="Windows"'
         ],
         entry_points={
             'console_scripts': ['problog=problog.tasks:main']
