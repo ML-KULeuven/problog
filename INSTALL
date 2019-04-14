@@ -21,6 +21,7 @@ It also supports two other tools:
 
 It is recommended to install one of these alternatives (especially for Mac users).
 For Linux and Mac users, there is a platform specific dependency, PySDD, which makes SDDs available.
+Use "pip install ." to install the package from local source
 
 Linux (64-bit)
 --------------

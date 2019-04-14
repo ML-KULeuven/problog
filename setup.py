@@ -22,8 +22,7 @@ elif __name__ == '__main__':
 
     class ProbLogInstall(install):
         def run(self):
-            #  install.run(self)  # install.run(self) ignores install_require when there is a cmdclass arg
-            install.do_egg_install(self)  # Workaround for install.run(self)
+            install.run(self)
             before_dir = os.getcwd()
             sys.path.insert(0, self.install_lib)
             from problog import setup as problog_setup

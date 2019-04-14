@@ -8,5 +8,5 @@ pipelines:
   default:
     - step:
         script: # Modify the commands below to build your repository.
-          - python3.6 setup.py install
+          - python3.6 -m pip install .
           - python3.6 -m unittest discover -v
