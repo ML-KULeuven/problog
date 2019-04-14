@@ -36,6 +36,7 @@ import os
 try:
     from pysdd import sdd
     from pysdd.iterator import SddIterator
+    from pysdd.util import sdd_to_dot
 except Exception as err:
     sdd = None
 
@@ -70,6 +71,55 @@ class SDD(DD):
     def is_available(cls):
         """Checks whether the SDD library is available."""
         return sdd is not None
+
+    def to_internal_dot(self, node=None):
+        """
+        SDD for the given node, formatted for use with Graphviz dot.
+
+        :param node: The node to get the dot from.
+        :type node: SddNode
+        :return: The dot format of the given node. When node is None, the shared_sdd will be used (contains all active
+        sdd structures).
+        :rtype: str
+        """
+        return self.get_manager().to_internal_dot(node=node)
+
+    def sdd_to_dot(self, node, litnamemap=None, show_id=False, merge_leafs=False):
+        """
+        SDD for the given node, formatted for use with Graphviz dot. This method provides more control over the used
+        symbols than to_internal_dot (see litnamemap). Primes are given by a dotted line, subs by a full line.
+
+        :param node: The node to get the dot from.
+        :type node: SddNode
+        :param litnamemap: A dictionary providing the symbols to use. The following options are available:
+            1. literals, e.g. {1:'A', -1:'-A', ...},
+            2. True/False, e.g. {true':'1', 'false':'0'}
+            3. And/Or e.g. {'mult':'x', 'add':'+'}
+            When litnamemap = True, self.get_litnamemap() will be used.
+        :type litnamemap: dict[(int | str), str] | bool | None
+        :param show_id: Whether to display the ids of each sdd node.
+        :param merge_leafs: Whether to merge the same leaf nodes. True results in less nodes but makes it harder to
+        render without having crossing lines.
+        :return: The dot format of the given node. When node is None, this mgr is used instead.
+        :rtype: str
+        """
+
+        if litnamemap is True:
+            litnamemap = self.get_litnamemap()
+
+        return self.get_manager().sdd_to_dot(node=node, litnamemap=litnamemap, show_id=show_id, merge_leafs=merge_leafs)
+
+    def get_litnamemap(self):
+        """ Get a dictionary mapping literal IDs (inode index) to names. e.g; {1:'x', -1:'-x'}"""
+        litnamemap = dict()
+        var_count = self.get_manager().get_varcount()
+        for (name, index) in self.get_names():
+            inode_index = self.atom2var.get(index, -1)
+            if 0 <= inode_index < var_count:
+                litnamemap[inode_index] = name
+                litnamemap[-inode_index] = "-{}".format(name)
+        return litnamemap
+
 
     def to_formula(self):
         """Extracts a LogicFormula from the SDD."""
@@ -137,6 +187,9 @@ class SDDManager(DDManager):
     def get_manager(self):
         """Get the underlying sdd manager."""
         return self.__manager
+
+    def get_varcount(self):
+        return self.varcount
 
     def add_variable(self, label=0):
         if label == 0 or label > self.varcount:
@@ -213,7 +266,39 @@ class SDDManager(DDManager):
             self.get_manager().save_as_dot(filename.encode(), node)
         else:
             with open(filename, 'w') as file:
-                file.write(node.dot2(litnamemap))  # TODO Test + doc
+                file.write(self.sdd_to_dot(node=node, litnamemap=litnamemap))
+
+    def to_internal_dot(self, node=None):
+        """
+        SDD for the given node, formatted for use with Graphviz dot.
+
+        :param node: The node to get the dot from.
+        :type node: SddNode
+        :return: The dot format of the given node. When node is None, the shared_sdd will be used (contains all active
+        sdd structures).
+        :rtype: str
+        """
+        return self.get_manager().dot(node=node)
+
+    def sdd_to_dot(self, node, litnamemap=None, show_id=False, merge_leafs=False):
+        """
+        SDD for the given node, formatted for use with Graphviz dot. This method provides more control over the used
+        symbols than to_internal_dot (see litnamemap). Primes are given by a dotted line, subs by a full line.
+
+        :param node: The node to get the dot from.
+        :param litnamemap: A dictionary providing the symbols to use. The following options are available:
+            1. literals, e.g. {1:'A', -1:'-A', ...},
+            2. True/False, e.g. {true':'1', 'false':'0'}
+            3. And/Or e.g. {'mult':'x', 'add':'+'}
+        :type litnamemap: dict[(int | str), str] | None
+        :param show_id: Whether to display the ids of each sdd node.
+        :param merge_leafs: Whether to merge the same leaf nodes. True results in less nodes but makes it harder to
+        render without having crossing lines.
+        :return: The dot format of the given node. When node is None, the mgr is used (this behavior can be overriden).
+        :rtype: str
+        """
+        used_node = node if node is not None else self.get_manager()
+        return sdd_to_dot(node=used_node, litnamemap=litnamemap, show_id=show_id, merge_leafs=merge_leafs)
 
     def wmc(self, node, weights, semiring, literal=None,
             pr_semiring=True, perform_smoothing=True, smooth_to_root=False, wmc_func=None):

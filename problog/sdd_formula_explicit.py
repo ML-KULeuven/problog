@@ -103,12 +103,28 @@ class SDDExplicit(SDD):
 
     def to_dot(self, *args, **kwargs):
         if kwargs.get('use_internal'):
-            filename = mktempfile('.dot')
-            self.get_manager().write_to_dot(self.get_root_inode(), filename)
-            with open(filename) as f:
-                return f.read()
+            return self.to_internal_dot(node=self.get_root_inode())
         else:
             return self.to_formula().to_dot(*args, **kwargs)
+
+    def sdd_to_dot(self, node, litnamemap=None, show_id=False, merge_leafs=False):
+        """
+        SDD for the given node, formatted for use with Graphviz dot. This method provides more control over the used
+        symbols than to_internal_dot (see litnamemap). Primes are given by a dotted line, subs by a full line.
+
+        :param node: The node to get the dot from.
+        :param litnamemap: A dictionary providing the symbols to use. The following options are available:
+            1. literals, e.g. {1:'A', -1:'-A', ...},
+            2. True/False, e.g. {true':'1', 'false':'0'}
+            3. And/Or e.g. {'mult':'x', 'add':'+'}
+        :param show_id: Whether to display the ids of each sdd node.
+        :param merge_leafs: Whether to merge the same leaf nodes. True results in less nodes but makes it harder to
+        render without having crossing lines.
+        :return: The dot format of the given node. When node is None, the root node is used.
+        :rtype: str
+        """
+        used_node = node if node is not None else self.get_root_inode()
+        return super().sdd_to_dot(node=used_node, litnamemap=litnamemap, show_id=show_id, merge_leafs=merge_leafs)
 
 
 class SDDExplicitManager(SDDManager):

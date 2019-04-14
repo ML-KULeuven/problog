@@ -142,7 +142,7 @@ class DD(LogicFormula, EvaluatableDSP):
 
     def to_dot(self, *args, **kwargs):
         if kwargs.get('use_internal'):
-            dot_text = ["digraph {\n", "overlap=false\n"]
+            dot_text = ["digraph {\n", "overlap=false\n"]  # TODO Support multiple nodes in write_to_dot
             for qn, qi in self.queries():
                 filename = mktempfile('.dot')
                 self.get_manager().write_to_dot(self.get_inode(qi), filename)
