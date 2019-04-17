@@ -34,6 +34,7 @@ elif __name__ == '__main__':
 
     package_data = {
         'problog': [
+            'bin/darwin/cnf2dDNNF_wine',
             'bin/darwin/dsharp',
             'bin/darwin/maxsatz',
             'bin/linux/dsharp',
