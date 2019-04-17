@@ -77,7 +77,7 @@ elif __name__ == '__main__':
         keywords='prolog probabilistic logic',
         packages=find_packages(),
         extras_require={
-            'sdd': ['pysdd>=0.2.6']
+            'sdd': ['pysdd>=0.2.6', 'cysignals']
         },
         entry_points={
             'console_scripts': ['problog=problog.tasks:main']
