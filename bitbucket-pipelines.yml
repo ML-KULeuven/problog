@@ -8,5 +8,6 @@ pipelines:
   default:
     - step:
         script: # Modify the commands below to build your repository.
+          - python3.6 -m pip install --no-binary :all: pysdd
           - python3.6 -m pip install .[sdd]
           - python3.6 -m unittest discover -v
