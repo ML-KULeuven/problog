@@ -79,9 +79,6 @@ elif __name__ == '__main__':
         extras_require={
             'sdd': ['pysdd>=0.2.6']
         },
-		dependency_links = [
-			'git+https://github.com/wannesm/PySDD.git#egg=PySDD'
-		],
         entry_points={
             'console_scripts': ['problog=problog.tasks:main']
         },
