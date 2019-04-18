@@ -35,6 +35,7 @@ try:
     from pysdd import sdd
     has_sdd = True
 except Exception as err:
+    print("SDD library not available due to error: ", err, file=sys.stderr)
     has_sdd = False
 
 

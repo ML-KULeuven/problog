@@ -34,6 +34,7 @@ elif __name__ == '__main__':
 
     package_data = {
         'problog': [
+            'bin/darwin/cnf2dDNNF_wine',
             'bin/darwin/dsharp',
             'bin/darwin/maxsatz',
             'bin/linux/dsharp',
@@ -75,10 +76,10 @@ elif __name__ == '__main__':
         ],
         keywords='prolog probabilistic logic',
         packages=find_packages(),
-        install_requires=[
-            'pysdd>=0.2.6;platform_system!="Windows"'
-        ],
-        entry_points={
+        extras_require={
+            'sdd': ['pysdd>=0.2.6']
+        },
+		entry_points={
             'console_scripts': ['problog=problog.tasks:main']
         },
         package_data=package_data,

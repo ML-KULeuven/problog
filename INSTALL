@@ -20,8 +20,6 @@ It also supports two other tools:
     * Sentential Decision Diagrams (SDD) [http://reasoning.cs.ucla.edu/sdd/]
 
 It is recommended to install one of these alternatives (especially for Mac users).
-For Linux and Mac users, there is a platform specific dependency, PySDD, which makes SDDs available.
-Use "pip install ." to install the package from local source
 
 Linux (64-bit)
 --------------
@@ -30,7 +28,8 @@ SDD
 +++
 
 To be able to use SDDs, PySDD must be installed (https://github.com/wannesm/PySDD).
-ProbLog will install PySDD as a platform-specific dependency.
+When installing problog with "pip install problog[sdd]", PySDD will be installed.
+When installing from source, use "pip install .[sdd]"
 
 Usage: 
 ProbLog will automatically use SDDs from now on.
