@@ -55,16 +55,18 @@ class SDDExplicit(SDD):
 
     def __init__(self, sdd_auto_gc=False, **kwdargs):
         SDD.__init__(self, sdd_auto_gc=sdd_auto_gc, **kwdargs)
-        self._root = self.get_manager().true()
+        self._root = None
 
     def _create_manager(self):
-        return SDDExplicitManager(auto_gc=self.auto_gc)
+        return SDDExplicitManager(auto_gc=self.auto_gc, var_constraint=self.var_constraint, varcount=self.init_varcount)
 
     def _create_evaluator(self, semiring, weights, **kwargs):
         return SDDExplicitEvaluator(self, semiring, weights, **kwargs)
 
     def get_root_inode(self):
         """ Get the current root inode. This includes the constraints. """
+        if self._root is None:
+            self._root = self.get_manager().true()
         return self._root
 
     def to_formula(self):
@@ -79,7 +81,7 @@ class SDDExplicit(SDD):
 
         return formula
 
-    def build_dd(self, root_key):
+    def build_dd(self, root_key=None):
         """
         Build the SDD structure from the current self.nodes starting at index root_key.
         :param root_key: The key of the root node in self.nodes. None if the root must be True.
@@ -134,15 +136,20 @@ class SDDExplicitManager(SDDManager):
     clean_nodes(self, root_inode).
     """
 
-    def __init__(self, varcount=0, auto_gc=True):
+    def __init__(self, varcount=0, auto_gc=True, var_constraint=None):
         """Create a new SDDExplicitManager.
 
         :param varcount: number of initial variables
         :type varcount: int
         :param auto_gc: use automatic garbage collection and minimization
         :type auto_gc: bool
+        :param var_constraint: The variable constraint stating that in the variable ordering, for each (X,Y) in
+            var_constraint, the list of variables in X must appear before the list of variables in Y. Currently
+            only X-constrained SDDS are supported (1 tuple with only the X being relevant) in var_constraint. The
+            varcount must be set appropriately for this to work.
+        :type var_constraint: list[tuple[list[int],list[int]]]
         """
-        SDDManager.__init__(self, varcount=varcount, auto_gc=auto_gc)
+        SDDManager.__init__(self, varcount=varcount, auto_gc=auto_gc, var_constraint=var_constraint)
 
     @staticmethod
     def create_from_SDDManager(sddmgr):
@@ -257,13 +264,22 @@ def build_explicit_from_logicdag(source, destination, **kwdargs):
     :rtype: SDDExplicit
     """
 
+    # Get init varcount
+    init_varcount = kwdargs.get('init_varcount', -1)
+    if init_varcount == -1:
+        init_varcount = source.atomcount
+        for _, clause, c_type in source:
+            if c_type != 'atom' and clause.name is not None:
+                init_varcount += 1
+    destination.init_varcount = init_varcount
+
+    # build
     with Timer('Compiling %s' % destination.__class__.__name__):
         identifier = 0
         line_map = dict()  # line in source mapped to line in destination {src_line: (negated, positive, combined)}
         line = 1  # current line (line_id)
         node_to_indicator = {}  # {node : indicator_node}
         root_nodes = []
-
         for line_id, clause, c_type in source:
             if c_type == 'atom':
                 result = destination.add_atom(identifier, clause.probability, clause.group, source.get_name(line_id))

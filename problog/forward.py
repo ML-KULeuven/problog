@@ -641,6 +641,8 @@ class ForwardEvaluator(Evaluator):
         self.fsdd.register_update_listener(self)
         self._start_time = time.time()
         if len(self.fsdd) == 0:
+            if self.fsdd.init_varcount == -1:
+                self.fsdd.init_varcount = self.formula.atomcount
             build_dd(self.formula, self.fsdd)
 
         # Update weights with constraints and evidence
@@ -673,7 +675,6 @@ class ForwardEvaluator(Evaluator):
             else:
                 result = self.semiring.zero()
             self._results[node] = result
-
 
     def propagate(self):
         self.initialize()

@@ -597,12 +597,13 @@ class LogicFormula(BaseFormula):
             return self.TRUE
         else:
             atom = self._create_atom(identifier, probability, group, name, source)
+            length_before = len(self._nodes)
             node_id = self._add(atom, key=identifier)
 
             self.get_weights()[node_id] = probability
             if name is not None:
                 self.add_name(name, node_id, self.LABEL_NAMED)
-            if node_id == len(self._nodes):
+            if len(self._nodes) != length_before:
                 # The node was not reused?
                 self._atomcount += 1
                 # TODO if the next call return 0 or None, the node is still added?

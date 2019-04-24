@@ -22,6 +22,7 @@ Interface to Sentential Decision Diagrams (SDD)
     limitations under the License.
 """
 from __future__ import print_function
+from collections import namedtuple
 
 from .formula import LogicDAG, LogicFormula, LogicNNF
 from .core import transform
@@ -37,6 +38,7 @@ try:
     from pysdd import sdd
     from pysdd.iterator import SddIterator
     from pysdd.util import sdd_to_dot
+    from pysdd.sdd import Vtree
 except Exception as err:
     sdd = None
 
@@ -55,14 +57,49 @@ class SDD(DD):
 
     transform_preference = 10
 
-    def __init__(self, sdd_auto_gc=False, **kwdargs):
+    def __init__(self, sdd_auto_gc=True, var_constraint=None, init_varcount=-1, **kwdargs):
+        """
+        Create an SDD
+
+        :param sdd_auto_gc: Auto garbage collection and minimize (during disjoin and conjoin)
+        :param var_constraint: A variable ordering constraint. Currently only x_constrained namedtuple are allowed.
+        :type var_constraint: x_constrained
+        :param init_varcount: The amount of variables to initialize the manager with.
+        :param kwdargs:
+        :raise InstallError: When the SDD library is not available.
+        """
         if sdd is None:
             raise InstallError('The SDD library is not available. Please install the PySDD package.')
         self.auto_gc = sdd_auto_gc
+        self._var_constraint = var_constraint
+        self._init_varcount = init_varcount
         DD.__init__(self, auto_compact=False, **kwdargs)
 
+    @property
+    def var_constraint(self):
+        return self._var_constraint
+
+    @var_constraint.setter
+    def var_constraint(self, var_constraint):
+        """
+        Set the variable constraint
+        :param var_constraint: A variable ordering constraint. Currently only x_constrained namedtuple are allowed.
+        :type var_constraint: x_constrained
+        """
+        self._var_constraint = var_constraint
+
+    @property
+    def init_varcount(self):
+        return self._init_varcount
+
+    @init_varcount.setter
+    def init_varcount(self, value=0):
+        """Set the varcount with which to initialise the manager. Only call before calling the manager """
+        assert self.inode_manager is None
+        self._init_varcount = value
+
     def _create_manager(self):
-        return SDDManager(auto_gc=self.auto_gc)
+        return SDDManager(auto_gc=self.auto_gc, var_constraint=self.var_constraint, varcount=self.init_varcount)
 
     def _create_evaluator(self, semiring, weights, **kwargs):
         return SDDEvaluator(self, semiring, weights, **kwargs)
@@ -103,23 +140,20 @@ class SDD(DD):
         :return: The dot format of the given node. When node is None, this mgr is used instead.
         :rtype: str
         """
-
         if litnamemap is True:
             litnamemap = self.get_litnamemap()
-
         return self.get_manager().sdd_to_dot(node=node, litnamemap=litnamemap, show_id=show_id, merge_leafs=merge_leafs)
 
     def get_litnamemap(self):
         """ Get a dictionary mapping literal IDs (inode index) to names. e.g; {1:'x', -1:'-x'}"""
         litnamemap = dict()
-        var_count = self.get_manager().get_varcount()
+        var_count = self.get_manager().varcount
         for (name, index) in self.get_names():
             inode_index = self.atom2var.get(index, -1)
             if 0 <= inode_index < var_count:
                 litnamemap[inode_index] = name
                 litnamemap[-inode_index] = "-{}".format(name)
         return litnamemap
-
 
     def to_formula(self):
         """Extracts a LogicFormula from the SDD."""
@@ -170,34 +204,62 @@ class SDDManager(DDManager):
     It wraps around the SDD library and offers some additional methods.
     """
 
-    def __init__(self, varcount=0, auto_gc=True):
+    def __init__(self, varcount=0, auto_gc=True, var_constraint=None):
         """Create a new SDD manager.
 
         :param varcount: number of initial variables
         :type varcount: int
         :param auto_gc: use automatic garbage collection and minimization
         :type auto_gc: bool
+        :param var_constraint: A variable ordering constraint. Currently only x_constrained namedtuple are allowed.
+        :type var_constraint: x_constrained
         """
         DDManager.__init__(self)
-        if varcount is None or varcount == 0:
+        if varcount is None or varcount <= 0:
             varcount = 1
-        self.__manager = sdd.SddManager(var_count=varcount, auto_gc_and_minimize=auto_gc)
-        self.varcount = varcount  # After 1, this is 1 higher than the sdd.SddManager's
+        vtree = None
+        if var_constraint is not None and varcount > 1:
+            x_constraint = self._to_x_constrained_list(varcount, var_constraint)
+            vtree = Vtree.new_with_X_constrained(var_count=varcount, is_X_var=x_constraint, vtree_type="balanced")
+
+        self.__manager = sdd.SddManager(var_count=varcount, auto_gc_and_minimize=auto_gc, vtree=vtree)
+        self._assigned_varcount = 0
+
+    def _to_x_constrained_list(self, varcount, var_constraint):
+        """
+        Convert the X-constrained var_constraint into a list of size varcount+1 specifying variables X. For variables i
+        where 1 ≤ i ≤ varcount, if is_X_var[i] is 1 then i is in X, and if it is 0 then i is not in X.
+        :param varcount: The amount of variables the vtree must have. This must be at least as high as the highest
+            number in var_constraint.
+        :param var_constraint: The X-constrained variable constraint
+        :type var_constraint: x_constrained
+        :return: The is_x_var input for the X-constrained vTree
+        """
+        is_x_var = [0] * (varcount + 1)
+        if var_constraint is not None and len(var_constraint) > 0:
+            for x in var_constraint.X:
+                is_x_var[x] = 1
+        return is_x_var
 
     def get_manager(self):
         """Get the underlying sdd manager."""
         return self.__manager
 
-    def get_varcount(self):
-        return self.varcount
+    @property
+    def varcount(self):
+        return self.get_manager().var_count()
+
+    @property
+    def assigned_varcount(self):
+        return self._assigned_varcount
 
     def add_variable(self, label=0):
-        if label == 0 or label > self.varcount:
-            if self.varcount != 1:
+        if label == 0 or label > self.assigned_varcount:
+            self._assigned_varcount += 1
+            if self.assigned_varcount > self.varcount:
                 self.get_manager().add_var_after_last()
-            result = self.varcount
-            self.varcount += 1
-            return result
+
+            return self.assigned_varcount
         else:
             return label
 
@@ -472,8 +534,8 @@ class SDDManager(DDManager):
         Notes: No inode will have a reference count and auto_gc_and_minimize will be disabled.
         :return: A deep copy of this without any reference counts.
         """
-        new_mgr = SDDManager(varcount=self.get_manager().var_count(), auto_gc=False)
-        new_mgr.varcount=self.varcount
+        new_mgr = SDDManager(varcount=self.varcount, auto_gc=False)
+        new_mgr._assigned_varcount = self.assigned_varcount
 
         # Code that is slower but works (see commented out code)
         mapping = self._copy_internal_SDD_to_noref(new_mgr=new_mgr, cache=None)
@@ -647,8 +709,8 @@ class SDDManager(DDManager):
         else:
             or_node = new_mgr.false()
             for p, s in node.elements():
-                new_p = self._copy_internal_SDD_to_aux(new_mgr, nodes_cache, p)
-                new_s = self._copy_internal_SDD_to_aux(new_mgr, nodes_cache, s)
+                new_p = self._copy_internal_SDD_to_aux_noref_rec(new_mgr, nodes_cache, p)
+                new_s = self._copy_internal_SDD_to_aux_noref_rec(new_mgr, nodes_cache, s)
 
                 conjoined = new_mgr.conjoin(new_p, new_s)
                 or_node_n = new_mgr.disjoin(or_node, conjoined)
@@ -687,11 +749,11 @@ class SDDManager(DDManager):
             constraint_dd = f.read()
 
         os.remove(tempfile)
-        return {'varcount': self.varcount, 'nodes': nodes, 'vtree': vtree_data, 'constraint_dd': constraint_dd}
+        return {'varcount': self.assigned_varcount, 'nodes': nodes, 'vtree': vtree_data, 'constraint_dd': constraint_dd}
 
     def __setstate__(self, state):
         self.nodes = []
-        self.varcount = state['varcount']
+        self._assigned_varcount = state['varcount']
         tempfile = mktempfile()
         with open(tempfile, 'w') as f:
             f.write(state['vtree'])
@@ -711,6 +773,9 @@ class SDDManager(DDManager):
         self.constraint_dd = self.__manager.read_sdd_file(tempfile.encode())
         os.remove(tempfile)
         return
+
+
+x_constrained = namedtuple('x_constrained', 'X')  # X = list of literalIDs that have to appear before the rest
 
 
 class SDDEvaluator(DDEvaluator):
@@ -766,8 +831,12 @@ def build_sdd(source, destination, **kwdargs):
     """Build an SDD from another formula.
 
     :param source: source formula
+    :type source: LogicDAG
     :param destination: destination formula
+    :type destination: SDD
     :param kwdargs: extra arguments
     :return: destination
     """
+    init_varcount = kwdargs.get('init_varcount', -1)
+    destination.init_varcount = init_varcount if init_varcount != -1 else source.atomcount
     return build_dd(source, destination, **kwdargs)

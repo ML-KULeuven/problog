@@ -564,7 +564,6 @@ def build_dd(source, destination, **kwdargs):
     :param kwdargs: extra arguments
     :return: destination
     """
-
     with Timer('Compiling %s' % destination.__class__.__name__):
 
         # TODO maintain a translation table
