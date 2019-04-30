@@ -57,7 +57,7 @@ class SDD(DD):
 
     transform_preference = 10
 
-    def __init__(self, sdd_auto_gc=True, var_constraint=None, init_varcount=-1, **kwdargs):
+    def __init__(self, sdd_auto_gc=False, var_constraint=None, init_varcount=-1, **kwdargs):
         """
         Create an SDD
 
@@ -204,7 +204,7 @@ class SDDManager(DDManager):
     It wraps around the SDD library and offers some additional methods.
     """
 
-    def __init__(self, varcount=0, auto_gc=True, var_constraint=None):
+    def __init__(self, varcount=0, auto_gc=False, var_constraint=None):
         """Create a new SDD manager.
 
         :param varcount: number of initial variables

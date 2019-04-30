@@ -136,7 +136,7 @@ class SDDExplicitManager(SDDManager):
     clean_nodes(self, root_inode).
     """
 
-    def __init__(self, varcount=0, auto_gc=True, var_constraint=None):
+    def __init__(self, varcount=0, auto_gc=False, var_constraint=None):
         """Create a new SDDExplicitManager.
 
         :param varcount: number of initial variables
