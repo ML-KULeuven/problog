@@ -143,11 +143,8 @@ class SDDExplicitManager(SDDManager):
         :type varcount: int
         :param auto_gc: use automatic garbage collection and minimization
         :type auto_gc: bool
-        :param var_constraint: The variable constraint stating that in the variable ordering, for each (X,Y) in
-            var_constraint, the list of variables in X must appear before the list of variables in Y. Currently
-            only X-constrained SDDS are supported (1 tuple with only the X being relevant) in var_constraint. The
-            varcount must be set appropriately for this to work.
-        :type var_constraint: list[tuple[list[int],list[int]]]
+        :param var_constraint: A variable ordering constraint. Currently only x_constrained namedtuple are allowed.
+        :type var_constraint: x_constrained
         """
         SDDManager.__init__(self, varcount=varcount, auto_gc=auto_gc, var_constraint=var_constraint)
 
