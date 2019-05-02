@@ -5,7 +5,7 @@ Prerequisites
 -------------
 
 ProbLog is built on Python.
-ProbLog is compatible with Python 2 and 3.
+ProbLog is compatible with Python 3.
 
 Python is included in most installations of Linux and Mac OSX.
 Windows users can find instructions on how to install it in the
@@ -43,3 +43,9 @@ To install the latest ProbLog development version.
 .. code-block:: bash
 
    pip install problog --pre --upgrade
+
+To install ProbLog with support for Sentential Decision Diagrams (currently not supported on Windows).
+
+.. code-block:: bash
+
+   pip install problog[sdd]

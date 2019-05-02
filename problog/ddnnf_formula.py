@@ -199,11 +199,9 @@ class SimpleDDNNFEvaluator(Evaluator):
                 p = self.semiring.zero()
                 for c in childprobs:
                     p = self.semiring.plus(p, c)
-                    #if p == 2.0:
-                    #    return 1.0
-
                     #if p > 1:
-                    #    print("printing children of %s: %s" % (str(node), node.children))
+                    #    print("Operation > 1.0: %s" % str(node))
+                    #    return 1.0
                 return p
             else:
                 raise TypeError("Unexpected node type: '%s'." % ntype)

@@ -54,7 +54,6 @@ SDD
 +++
 
 To be able to use SDDs, PySDD must be installed (https://github.com/wannesm/PySDD).
-ProbLog will install PySDD as a platform-specific dependency.
 
 Usage: 
 ProbLog will automatically use SDDs from now on.

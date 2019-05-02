@@ -1,7 +1,7 @@
 
 var problog = {
-  //hostname: 'https://adams.cs.kuleuven.be/problog/api/',
-  hostname: 'https://adams.cs.kuleuven.be/problog/api/',
+  //hostname: 'https://verne.cs.kuleuven.be/problog/api/',
+  hostname: 'https://verne.cs.kuleuven.be/problog/api/',
   main_editor_url: 'https://dtai.cs.kuleuven.be/problog/editor.html',
   editors: [],
   selector: '.problog-editor',

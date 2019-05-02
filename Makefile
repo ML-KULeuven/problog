@@ -38,16 +38,16 @@ package: docs
 update_server_js:
 	@echo "Updating javascript"
 	@echo "==================="
-	rsync -avzr --exclude '*.DS_Store' --exclude '*.swp' --exclude '*~' --rsh='ssh ssh.cs.kuleuven.be ssh -p 2222' --chmod=u=rwx,g=rx,o=rx --exclude '*~' ./problog/web/js/ problog@adams.cs.kuleuven.be:/home/problog/public_html/js
+	rsync -avzr --exclude '*.DS_Store' --exclude '*.swp' --exclude '*~' --rsh='ssh ssh.cs.kuleuven.be ssh -p 2222' --chmod=u=rwx,g=rx,o=rx --exclude '*~' ./problog/web/js/ problog@verne.cs.kuleuven.be:/home/problog/public_html/js
 	rsync -avzr --chmod=u=rwx,g=rx,o=rx ./problog/web/editor.html ssh.cs.kuleuven.be:/cw/vwww1/dtai_static/public_html/problog/
 	@echo "======================================================================"
 
 update_server: 
 	@echo "Updating server"
 	@echo "==============="
-	git archive develop --format tar | tar -t | rsync -avz --no-dirs --rsh='ssh ssh.cs.kuleuven.be ssh -p 2222' --chmod=u=rwx,g=rx,o=rx --files-from=- ./ problog@adams.cs.kuleuven.be:/home/problog/problog2.1
-	ssh ssh.cs.kuleuven.be ssh -p 2222 problog@adams.cs.kuleuven.be python /home/problog/problog2.1/problog-cli.py install
-	ssh ssh.cs.kuleuven.be ssh -p 2222 problog@adams.cs.kuleuven.be python3 /home/problog/problog2.1/problog-cli.py install
+	git archive develop --format tar | tar -t | rsync -avz --no-dirs --rsh='ssh ssh.cs.kuleuven.be ssh -p 2222' --chmod=u=rwx,g=rx,o=rx --files-from=- ./ problog@verne.cs.kuleuven.be:/home/problog/problog2.1
+	ssh ssh.cs.kuleuven.be ssh -p 2222 problog@verne.cs.kuleuven.be python /home/problog/problog2.1/problog-cli.py install
+	ssh ssh.cs.kuleuven.be ssh -p 2222 problog@verne.cs.kuleuven.be python3.6 -m pip install /home/problog/problog2.1/[sdd]
 	@echo "======================================================================"
 
 # prepare_deploy: test3
