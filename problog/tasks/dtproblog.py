@@ -146,7 +146,7 @@ def evaluate(formula, decisions, utilities, verbose=0):
         score += vpos * float(utilities.get(r, 0.0))
         score += vneg * float(utilities.get(-r, 0.0))
 
-    if verbose >= 3:
+    if verbose is not None and verbose >= 3:
         print ('---------------')
         print ('Decisions:')
         print (format_dictionary(decisions))
