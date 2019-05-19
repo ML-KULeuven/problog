@@ -113,42 +113,68 @@ class BaseFormula(ProbLogObject):
         else:
             return semiring.pos_value(self._weights[key], key)
 
+
     def extract_weights(self, semiring, weights=None):
         """Extracts the positive and negative weights for all atoms in the data structure.
 
+        * Atoms with weight set to neutral will get weight ``(semiring.one(), semiring.one())``.
+        * If the weights argument is given, it completely replaces the formula's weights.
+        * All constraints are applied to the weights.
+        * The namedtuple formula.pn_weight can be used to pass both a positive and negative weight.
+
         :param semiring: semiring that determines the interpretation of the weights
-        :param weights: dictionary of { node name : weight } that overrides the builtin weights
-        :returns: dictionary { key: (positive weight, negative weight) }
+        :param weights: dictionary of { node name : weight } that overrides the builtin weights, the given weights must
+            be in external representation.
+        :returns: dictionary { key: (positive weight, negative weight) } where the weights are in internal
+            representation.
         :rtype: dict[int, tuple[any]]
-
-        Atoms with weight set to neutral will get weight ``(semiring.one(), semiring.one())``.
-
-        If the weights argument is given, it completely replaces the formula's weights.
-
-        All constraints are applied to the weights.
         """
-
-        if weights is None:
-            weights = self.get_weights()
-        else:
-            oweights = dict(self.get_weights().items())
-            oweights.update({self.get_node_by_name(n): v for n, v in weights.items()})
-            weights = oweights
-
         result = {}
-        for n, w in weights.items():
-            if hasattr(self, 'get_name'):
-                name = self.get_name(n)
-            else:
-                name = n
-            if w == self.WEIGHT_NEUTRAL and type(self.WEIGHT_NEUTRAL) == type(w):
-                result[n] = semiring.one(), semiring.one()
-            elif w == False:
-                result[n] = semiring.false(name)
-            elif w is None:
-                result[n] = semiring.true(name)
-            else:
-                result[n] = semiring.pos_value(w, name), semiring.neg_value(w, name)
+        # Set given weights, has priority over program weights.
+        if weights is not None:
+            for name, w in weights.items():
+                key = self.get_node_by_name(name)
+                if key >= 0:
+                    if w == self.WEIGHT_NEUTRAL and type(self.WEIGHT_NEUTRAL) == type(w):
+                        result[key] = semiring.one(), semiring.one()
+                    elif w == False:
+                        result[key] = semiring.false(name)
+                    elif w is None:
+                        result[key] = semiring.true(name)
+                    elif isinstance(w, pn_weight):
+                        result[key] = semiring.value(w.p_weight), semiring.value(w.n_weight)
+                    else:
+                        result[key] = semiring.pos_value(w, name), semiring.neg_value(w, name)
+                else:
+                    # If key < 0 we have to reverse weight order (p,n) to (n,p)
+                    if w == self.WEIGHT_NEUTRAL and type(self.WEIGHT_NEUTRAL) == type(w):
+                        result[abs(key)] = semiring.one(), semiring.one()
+                    elif w == False:
+                        result[abs(key)] = semiring.true(name)
+                    elif w is None:
+                        result[abs(key)] = semiring.false(name)
+                    elif isinstance(w, pn_weight):
+                        result[abs(key)] = semiring.value(w.n_weight), semiring.value(w.p_weight)
+                    else:
+                        result[abs(key)] = semiring.neg_value(w, name), semiring.pos_value(w, name)
+
+        # Set remaining program weights
+        for key, w in self.get_weights().items():
+            if result.get(key) is None:
+                if hasattr(self, 'get_name'):
+                    name = self.get_name(key)
+                else:
+                    name = key
+                if w == self.WEIGHT_NEUTRAL and type(self.WEIGHT_NEUTRAL) == type(w):
+                    result[key] = semiring.one(), semiring.one()
+                elif w == False:
+                    result[key] = semiring.false(name)
+                elif w is None:
+                    result[key] = semiring.true(name)
+                elif isinstance(w, pn_weight):
+                    result[key] = semiring.value(w.p_weight), semiring.value(w.n_weight)
+                else:
+                    result[key] = semiring.pos_value(w, name), semiring.neg_value(w, name)
 
         for c in self.constraints():
             c.update_weights(result, semiring)
@@ -366,6 +392,9 @@ class BaseFormula(ProbLogObject):
 atom = namedtuple('atom', ('identifier', 'probability', 'group', 'name', 'source'))
 conj = namedtuple('conj', ('children', 'name'))
 disj = namedtuple('disj', ('children', 'name'))
+
+# tuple containing the positive and negative weight of a node.
+pn_weight = namedtuple('pos_neg_weight', 'p_weight, n_weight')
 
 
 class LogicFormula(BaseFormula):
