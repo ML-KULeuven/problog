@@ -872,9 +872,11 @@ class Clause(Term):
 
     def __repr__(self):
         if self.head.functor == '_directive':
-            return ":- %s" % self.body
+            self.repr = ":- %s" % self.body
         else:
-            return "%s :- %s" % (self.head, self.body)
+            self.repr = "%s :- %s" % (self.head, self.body)
+        self.reprhash = hash(self.repr)
+        return self.repr
 
     @property
     def predicates(self):
@@ -891,9 +893,11 @@ class AnnotatedDisjunction(Term):
 
     def __repr__(self):
         if self.body is None:
-            return "%s" % ('; '.join(map(str, self.heads)))
+            self.repr = "%s" % ('; '.join(map(str, self.heads)))
         else:
-            return "%s :- %s" % ('; '.join(map(str, self.heads)), self.body)
+            self.repr = "%s :- %s" % ('; '.join(map(str, self.heads)), self.body)
+        self.reprhash = hash(self.repr)
+        return self.repr
 
     @property
     def predicates(self):
@@ -947,7 +951,9 @@ class Or(Term):
     def __repr__(self):
         lhs = term2str(self.op1)
         rhs = term2str(self.op2)
-        return "%s; %s" % (lhs, rhs)
+        self.repr = "%s; %s" % (lhs, rhs)
+        self.reprhash = hash(self.repr)
+        return self.repr
 
     def with_args(self, *args):
         return self.__class__(*args, location=self.location)
@@ -1009,7 +1015,9 @@ class And(Term):
         if isinstance(self.op1, Or):
             lhs = '(%s)' % lhs
 
-        return "%s, %s" % (lhs, rhs)
+        self.repr = "%s, %s" % (lhs, rhs)
+        self.reprhash = hash(self.repr)
+        return self.repr
 
     def with_args(self, *args):
         return self.__class__(*args, location=self.location)
@@ -1027,9 +1035,11 @@ class Not(Term):
         if isinstance(self.child, And) or isinstance(self.child, Or):
             c = '(%s)' % c
         if self.functor == 'not':
-            return 'not %s' % c
+            self.repr = 'not %s' % c
         else:
-            return '%s%s' % (self.functor, c)
+            self.repr = '%s%s' % (self.functor, c)
+        self.reprhash = hash(self.repr)
+        return self.repr
 
     def is_negated(self):
         return True
