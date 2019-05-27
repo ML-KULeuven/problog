@@ -27,14 +27,12 @@ jobs:
 
       - save_cache:
           paths:
-            - ./venv
           key: v1-dependencies-{{ checksum "requirements.txt" }}
 
       # run tests!
       - run:
           name: run tests
           command: |
-            . venv/bin/activate
             pytest --cov=problog problog/test/
 
       - store_artifacts:
