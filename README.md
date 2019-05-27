@@ -44,6 +44,26 @@ ProbLog 2.1 requires Python 3.6+.
 
 You can try out ProbLog without installing it with our [online editor](https://dtai.cs.kuleuven.be/problog/editor.html).
 
+For example, enter the following ProbLog program for calculating the probability that at least one of two coins
+(one of which is a bend/biased coin) is head.
+
+```
+% Probabilistic facts:
+0.5::heads1.
+0.6::heads2.
+
+% Rules:
+someHeads :- heads1.
+someHeads :- heads2.
+
+% Queries:
+query(someHeads).
+```
+
+When you press evaluate, this will result in **0.8**,
+because *P(someHeads) = 1 - (1-P(heads1)) (1-P(heads2)) = 1 - (1-0.5) (1-0.6) = 0.8*.
+ 
+
 
 ## Get Started with ProbLog
 
