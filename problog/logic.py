@@ -79,9 +79,11 @@ This module contains basic logic constructs.
 """
 from __future__ import print_function
 from __future__ import division  # consistent behaviour of / and // in python 2 and 3
-
+import functools
 import math
 import sys
+import re
+
 
 from .util import OrderedSet
 from .errors import GroundingError
@@ -116,13 +118,14 @@ def list2term(lst):
     :return: Term representing a Prolog list
     :rtype: Term
     """
+    from .pypl import py2pl
     tail = Term('[]')
     for e in reversed(lst):
-        tail = Term('.', e, tail)
+        tail = Term('.', py2pl(e), tail)
     return tail
 
 
-def term2list(term):
+def term2list(term, deep=True):
     """Transform a Prolog list to a Python list of terms.
 
     :param term: term representing a fixed length Prolog list
@@ -131,9 +134,13 @@ def term2list(term):
     :return: Python list containing the elements from the Prolog list
     :rtype: list of Term
     """
+    from .pypl import pl2py
     result = []
-    while term.functor == '.' and term.arity == 2:
-        result.append(term.args[0])
+    while not is_variable(term) and term.functor == '.' and term.arity == 2:
+        if deep:
+            result.append(pl2py(term.args[0]))
+        else:
+            result.append(term.args[0])
         term = term.args[1]
     if not term == Term('[]'):
         raise ValueError('Expected fixed list.')
@@ -160,7 +167,7 @@ def is_variable(term):
     :param term: term to check
     :return: True if the expression is a variable
     """
-    return term is None or type(term) == int
+    return term is None or type(term) == int or term.is_var()
 
 
 def is_list(term):
@@ -178,7 +185,7 @@ class Term(object):
     :param functor: the functor of the term ('p' in the example)
     :type functor: str
     :param args: the arguments of the Term ('X' and 'Y' in the example)
-    :type args: tuple of (Term | None | int)
+    :type args: Term | None | int
     :param kwdargs: additional arguments; currently 'p' (probability) and 'location' \
     (character position in input)
     """
@@ -196,6 +203,8 @@ class Term(object):
         self._cache_is_ground = None
         self._cache_list_length = None
         self._cache_variables = None
+        self.repr = None
+        self.reprhash = None
 
     @property
     def functor(self):
@@ -226,6 +235,10 @@ class Term(object):
     def value(self):
         """Value of the Term obtained by computing the function is represents"""
         return self.compute_value()
+
+    @property
+    def predicates(self):
+        return [self.signature]
 
     def compute_value(self, functions=None):
         """Compute value of the Term by computing the function it represents.
@@ -293,7 +306,54 @@ class Term(object):
                 else:
                     return new_term
 
+    def apply_term(self, subst):
+        """Apply the given substitution to all (sub)terms in the term.
+
+        :param subst: A mapping from variable names to something else
+        :type subst: an object with a __getitem__ method
+        :raises: whatever subst.__getitem__ raises
+        :returns: a new Term with all variables replaced by their values from the given substitution
+        :rtype: :class:`Term`
+
+        """
+
+        old_stack = [deque([self])]
+        new_stack = []
+        term_stack = []
+        while old_stack:
+            current = old_stack[-1].popleft()
+            if current in subst:
+                if new_stack:
+                    new_stack[-1].append(subst[current])
+                else:
+                    return subst[current]
+            elif current is None or type(current) == int:
+                new_stack[-1].append(current)
+            else:
+                # Add arguments to stack
+                term_stack.append(current)
+                q = deque(current.args)
+                if current.probability is not None:
+                    q.append(current.probability)
+                old_stack.append(q)
+                new_stack.append([])
+            while old_stack and not old_stack[-1]:
+                old_stack.pop(-1)
+                new_args = new_stack.pop(-1)
+                term = term_stack.pop(-1)
+                if term.probability is not None:
+                    new_term = term.with_args(*new_args[:-1], p=new_args[-1])
+                else:
+                    new_term = term.with_args(*new_args)
+                if new_stack:
+                    new_stack[-1].append(new_term)
+                else:
+                    return new_term
+
     def __repr__(self):
+        if self.repr is not None:
+            return self.repr
+
         # Non-recursive version of __repr__
         stack = [deque([self])]
         # current: popleft from stack[-1]
@@ -367,7 +427,11 @@ class Term(object):
             elif isinstance(current, Term) and current.op_spec is not None:
                 # Is a binary or unary operator.
                 if len(current.op_spec) == 2:  # unary operator
-                    put(str(current.functor).strip("'"))
+                    cf = str(current.functor).strip("'")
+                    if 'a' <= cf[0] <= 'z':
+                        put(' ' + cf + ' ')
+                    else:
+                        put(cf)
                     q = deque()
                     q.append(current.args[0])
                     stack.append(q)
@@ -384,11 +448,11 @@ class Term(object):
                         q.append('(')
                         q.append(a)
                         q.append(')')
-                    op = str(current.functor)
+                    op = str(current.functor).strip("'")
                     if 'a' <= op[0] <= 'z':
-                        q.append(' %s ' % str(current.functor).strip("'"))
+                        q.append(' %s ' % op)
                     else:
-                        q.append('%s' % str(current.functor).strip("'"))
+                        q.append('%s' % op)
                     if not isinstance(b, Term) or \
                             b.op_priority is None or b.op_priority < current.op_priority or \
                             (b.op_priority == current.op_priority and current.op_spec == 'xfy'):
@@ -417,7 +481,9 @@ class Term(object):
                 put(str(current))
             while stack and not stack[-1]:
                 stack.pop(-1)
-        return ''.join(parts)
+        self.repr = ''.join(parts)
+        self.reprhash = hash(self.repr)
+        return self.repr
 
     def __call__(self, *args, **kwdargs):
         """Create a new Term with the same functor and the given arguments.
@@ -454,7 +520,10 @@ class Term(object):
         if p is not None:
             return self.__class__(self.functor, *args, p=p, location=self.location, priority=self.op_priority, opspec=self.op_spec)
         else:
-            return self.__class__(self.functor, *args, location=self.location, priority=self.op_priority, opspec=self.op_spec)
+            if self.__class__ in (Clause, AnnotatedDisjunction, And, Or):
+                return self.__class__(*args, location=self.location, priority=self.op_priority, opspec=self.op_spec)
+            else:
+                return self.__class__(self.functor, *args, location=self.location, priority=self.op_priority, opspec=self.op_spec)
 
     def with_probability(self, p=None):
         """Creates a new Term with the same functor and arguments but with a different probability.
@@ -538,6 +607,12 @@ class Term(object):
     def __eq__(self, other):
         if not isinstance(other, Term):
             return False
+        if self.reprhash is None:
+            repr(self)
+        if other.reprhash is None:
+            repr(other)
+        return self.reprhash == other.reprhash
+
         # Non-recursive version of equality check.
         l1 = deque([self])
         l2 = deque([other])
@@ -625,6 +700,29 @@ class Term(object):
     def __abs__(self):
         return self
 
+    @classmethod
+    def from_string(cls, str, factory=None, parser=None):
+        if factory is None:
+            from .program import ExtendedPrologFactory
+            factory = ExtendedPrologFactory()
+        if parser is None:
+            from .parser import PrologParser
+            parser = PrologParser(factory)
+
+        if not str.strip().endswith("."):
+            str += "."
+
+        parsed = parser.parseString(str)
+        if len(parsed) != 1:
+            raise ValueError("Invalid term: '" + str + "'")
+        else:
+            return parsed[0]
+
+
+class AggTerm(Term):
+
+    def __init__(self, *args, **kwargs):
+        Term.__init__(self, *args, **kwargs)
 
 class Var(Term):
     """A Term representing a variable.
@@ -634,8 +732,8 @@ class Var(Term):
 
     """
 
-    def __init__(self, name, location=None):
-        Term.__init__(self, name, location=location)
+    def __init__(self, name, location=None, **kwdargs):
+        Term.__init__(self, name, location=location, **kwdargs)
 
     @property
     def name(self):
@@ -666,8 +764,12 @@ class Constant(Term):
 
     """
 
-    def __init__(self, value, location=None):
-        Term.__init__(self, value, location=location)
+    FLOAT_PRECISION = 15
+
+    def __init__(self, value, location=None, **kwdargs):
+        if self.FLOAT_PRECISION is not None and type(value) == float:
+            value = round(value, self.FLOAT_PRECISION)
+        Term.__init__(self, value, location=location, **kwdargs)
 
     def compute_value(self, functions=None):
         return self.functor
@@ -709,35 +811,104 @@ class Constant(Term):
         return str(self) == str(other)
 
 
+class Object(Term):
+    """A wrapped object.
+
+        :param value: the wrapped object
+
+    """
+
+    def __init__(self, value, location=None, **kwdargs):
+        Term.__init__(self, value, location=location, **kwdargs)
+
+    def compute_value(self, functions=None):
+        return float(self.functor)
+        return self.functor
+
+    def is_constant(self):
+        return True
+
+    def __hash__(self):
+        return hash(id(self.functor))
+
+    def __str__(self):
+        return str(self.functor)
+
+    def is_string(self):
+        """Check whether this constant is a string.
+
+            :returns: true if the value represents a string
+            :rtype: :class:`bool`
+        """
+        return False
+
+    def is_float(self):
+        """Check whether this constant is a float.
+
+            :returns: true if the value represents a float
+            :rtype: :class:`bool`
+        """
+        return False
+
+    def is_integer(self):
+        """Check whether this constant is an integer.
+
+            :returns: true if the value represents an integer
+            :rtype: :class:`bool`
+        """
+        return False
+
+    def __eq__(self, other):
+        return id(self) == id(other)
+
+
 class Clause(Term):
     """A clause."""
 
-    def __init__(self, head, body, location=None):
-        Term.__init__(self, ':-', head, body, location=location)
+    def __init__(self, head, body, **kwdargs):
+        Term.__init__(self, ':-', head, body, **kwdargs)
         self.head = head
         self.body = body
 
     def __repr__(self):
-        return "%s :- %s" % (self.head, self.body)
+        if self.head.functor == '_directive':
+            self.repr = ":- %s" % self.body
+        else:
+            self.repr = "%s :- %s" % (self.head, self.body)
+        self.reprhash = hash(self.repr)
+        return self.repr
+
+    @property
+    def predicates(self):
+        return [self.head.signature]
 
 
 class AnnotatedDisjunction(Term):
     """An annotated disjunction."""
 
-    def __init__(self, heads, body, location=None):
-        Term.__init__(self, ':-', heads, body, location=location)
+    def __init__(self, heads, body, **kwdargs):
+        Term.__init__(self, ':-', heads, body, **kwdargs)
         self.heads = heads
         self.body = body
 
     def __repr__(self):
-        return "%s :- %s" % ('; '.join(map(str, self.heads)), self.body)
+        if self.body is None:
+            self.repr = "%s" % ('; '.join(map(str, self.heads)))
+        else:
+            self.repr = "%s :- %s" % ('; '.join(map(str, self.heads)), self.body)
+        self.reprhash = hash(self.repr)
+        return self.repr
+
+    @property
+    def predicates(self):
+        return [x.signature for x in self.heads]
 
 
 class Or(Term):
     """Or"""
 
-    def __init__(self, op1, op2, location=None):
-        Term.__init__(self, ';', op1, op2, location=location)
+    def __init__(self, op1, op2, **kwdargs):
+        Term.__init__(self, ';', op1, op2, **kwdargs)
         self.op1 = op1
         self.op2 = op2
 
@@ -780,17 +951,23 @@ class Or(Term):
     def __repr__(self):
         lhs = term2str(self.op1)
         rhs = term2str(self.op2)
-        return "%s; %s" % (lhs, rhs)
+        self.repr = "%s; %s" % (lhs, rhs)
+        self.reprhash = hash(self.repr)
+        return self.repr
 
     def with_args(self, *args):
         return self.__class__(*args, location=self.location)
+
+    @property
+    def predicates(self):
+        return [self.op1.signature] + self.op2.predicates
 
 
 class And(Term):
     """And"""
 
-    def __init__(self, op1, op2, location=None):
-        Term.__init__(self, ',', op1, op2, location=location)
+    def __init__(self, op1, op2, location=None, **kwdargs):
+        Term.__init__(self, ',', op1, op2, location=location, **kwdargs)
         self.op1 = op1
         self.op2 = op2
 
@@ -838,7 +1015,9 @@ class And(Term):
         if isinstance(self.op1, Or):
             lhs = '(%s)' % lhs
 
-        return "%s, %s" % (lhs, rhs)
+        self.repr = "%s, %s" % (lhs, rhs)
+        self.reprhash = hash(self.repr)
+        return self.repr
 
     def with_args(self, *args):
         return self.__class__(*args, location=self.location)
@@ -856,9 +1035,11 @@ class Not(Term):
         if isinstance(self.child, And) or isinstance(self.child, Or):
             c = '(%s)' % c
         if self.functor == 'not':
-            return 'not %s' % c
+            self.repr = 'not %s' % c
         else:
-            return '%s%s' % (self.functor, c)
+            self.repr = '%s%s' % (self.functor, c)
+        self.reprhash = hash(self.repr)
+        return self.repr
 
     def is_negated(self):
         return True
@@ -922,9 +1103,11 @@ _from_math_1 = ['exp', 'log', 'log10', 'sqrt', 'sin', 'cos', 'tan', 'asin', 'aco
 for _f in _from_math_1:
     _arithmetic_functions[(_f, 1)] = getattr(math, _f)
 
-_from_math_0 = ['pi', 'e']
-for _f in _from_math_0:
-    _arithmetic_functions[(_f, 0)] = lambda: getattr(math, _f)
+# _from_math_0 = ['pi', 'e']
+# for _f in _from_math_0:
+#     _x = getattr(math, _f)
+_arithmetic_functions[('pi', 0)] = lambda: math.pi
+_arithmetic_functions[('e', 0)] = lambda: math.e
 
 
 def unquote(s):
@@ -934,6 +1117,18 @@ def unquote(s):
     :return: string with quotes removed
     """
     return s.strip("'")
+
+
+safe_expr = re.compile('[a-z]+(\w)*$')
+def is_safe(t):
+    return safe_expr.match(t) is not None
+
+
+def make_safe(t):
+    if not is_safe(t):
+        return "'%s'" % t
+    else:
+        return t
 
 
 def compute_function(func, args, extra_functions=None):
@@ -962,6 +1157,8 @@ def compute_function(func, args, extra_functions=None):
             return None
         else:
             return function(*values)
+    except ValueError as err:
+        raise ArithmeticError(err.message)
     except ZeroDivisionError:
         raise ArithmeticError("Division by zero.")
 

@@ -24,7 +24,8 @@ Provides tools for loading logic programs.
 from __future__ import print_function
 
 from .errors import GroundingError
-from .logic import Term, Var, Constant, AnnotatedDisjunction, Clause, And, Or, Not
+from .logic import Term, Var, Constant, AnnotatedDisjunction, Clause, And, Or, Not, AggTerm, list2term
+from .core import transform, ProbLogObject
 
 from .parser import DefaultPrologParser, Factory
 from .core import ProbLogError
@@ -33,10 +34,10 @@ import os
 import sys
 
 
-class LogicProgram(object):
+class LogicProgram(ProbLogObject):
     """LogicProgram"""
 
-    def __init__(self, source_root='.', source_files=None, line_info=None):
+    def __init__(self, source_root='.', source_files=None, line_info=None, **extra_info):
         if source_files is None:
             source_files = [None]
         if line_info is None:
@@ -44,6 +45,7 @@ class LogicProgram(object):
         self.source_root = source_root
         self.source_files = source_files
         self.source_parent = [None]
+        self.extra_info = extra_info
         # line_info should be array, corresponding to 'source_files'.
         self.line_info = line_info
 
@@ -51,14 +53,14 @@ class LogicProgram(object):
         """Iterator for the clauses in the program."""
         raise NotImplementedError("LogicProgram.__iter__ is an abstract method.")
 
-    def add_clause(self, clause):
+    def add_clause(self, clause, scope=None):
         """Add a clause to the logic program.
 
         :param clause: add a clause
         """
         raise NotImplementedError("LogicProgram.addClause is an abstract method.")
 
-    def add_fact(self, fact):
+    def add_fact(self, fact, scope=None):
         """Add a fact to the logic program.
 
         :param fact: add a fact
@@ -67,6 +69,10 @@ class LogicProgram(object):
 
     def __iadd__(self, clausefact):
         """Add clause or fact using the ``+=`` operator."""
+        self.add_statement(clausefact)
+        return self
+
+    def add_statement(self, clausefact, scope=None):
         if isinstance(clausefact, Or):
             heads = clausefact.to_list()
             # TODO move this to parser code
@@ -76,17 +82,16 @@ class LogicProgram(object):
                     raise GroundingError("Unexpected fact '%s'" % head)
                 elif len(heads) > 1 and head.probability is None:
                     raise GroundingError("Non-probabilistic head in multi-head clause '%s'" % head)
-            self.add_clause(AnnotatedDisjunction(heads, Term('true')))
+            self.add_clause(AnnotatedDisjunction(heads, Term('true')), scope=scope)
         elif isinstance(clausefact, AnnotatedDisjunction):
-            self.add_clause(clausefact)
+            self.add_clause(clausefact, scope=scope)
         elif isinstance(clausefact, Clause):
-            self.add_clause(clausefact)
+            self.add_clause(clausefact, scope=scope)
         elif type(clausefact) == Term:
-            self.add_fact(clausefact)
+            self.add_fact(clausefact, scope=scope)
         else:
             raise GroundingError("Unexpected fact '%s'" % clausefact,
                                  self.lineno(clausefact.location))
-        return self
 
     @classmethod
     def create_from(cls, src, force_copy=False, **extra):
@@ -127,14 +132,16 @@ class LogicProgram(object):
             return src
         else:
             obj = cls(**extra)
-            if hasattr(src, 'source_root') and hasattr(src, 'source_files'):
+            if hasattr(src, 'extra_info'):
+                obj.extra_info.update(src.extra_info)
+            if hasattr(src, 'source_root'):
                 obj.source_root = src.source_root
+            if hasattr(src, 'source_files'):
                 obj.source_files = src.source_files[:]
                 obj.source_parent = src.source_parent[:]
             if hasattr(src, 'line_info'):
                 obj.line_info = src.line_info[:]
-            for clause in src:
-                obj += clause
+            obj.add_all(src)
             return obj
 
     def lineno(self, char, force_filename=False):
@@ -164,6 +171,12 @@ class LogicProgram(object):
                 filename = self.source_files[fn]
             return filename, lineno, charno
 
+    def to_prolog(self):
+        s = ''
+        for statement in self:
+            s += '%s.\n' % statement
+        return s
+
 
 class SimpleProgram(LogicProgram):
     """LogicProgram implementation as a list of clauses."""
@@ -172,7 +185,7 @@ class SimpleProgram(LogicProgram):
         LogicProgram.__init__(self)
         self.__clauses = []
 
-    def add_clause(self, clause):
+    def add_clause(self, clause, scope=None):
         """Add a clause to the logic program.
 
         :param clause: add a clause
@@ -183,7 +196,7 @@ class SimpleProgram(LogicProgram):
         else:
             self.__clauses.append(clause)
 
-    def add_fact(self, fact):
+    def add_fact(self, fact, scope=None):
         """Add a fact to the logic program.
 
         :param fact: add a fact
@@ -203,14 +216,17 @@ class PrologString(LogicProgram):
         self.__program = None
         self.__identifier = identifier
         lines = [self._find_lines(string)]
-        LogicProgram.__init__(self, source_root=source_root, source_files=source_files,
-                              line_info=lines)
         if parser is None:
             if factory is None:
                 factory = DefaultPrologFactory(identifier=identifier)
+            else:
+                factory = factory.__class__(identifier=identifier)
             self.parser = DefaultPrologParser(factory)
         else:
             self.parser = parser
+
+        LogicProgram.__init__(self, source_root=source_root, source_files=source_files,
+                              line_info=lines, factory=factory, parser=parser)
 
     def _program(self):
         """Parsed program"""
@@ -236,14 +252,14 @@ class PrologString(LogicProgram):
         program = self._program()
         return program[sl]
 
-    def add_clause(self, clause):
+    def add_clause(self, clause, scope=None):
         """Add a clause to the logic program.
 
         :param clause: add a clause
         """
         raise AttributeError('not supported')
 
-    def add_fact(self, fact):
+    def add_fact(self, fact, scope=None):
         """Add a fact to the logic program.
 
         :param fact: add a fact
@@ -277,14 +293,14 @@ class PrologFile(PrologString):
                               source_root=source_root, source_files=source_files,
                               identifier=identifier)
 
-    def add_clause(self, clause):
+    def add_clause(self, clause, scope=None):
         """Add a clause to the logic program.
 
         :param clause: add a clause
         """
         raise AttributeError('not supported')
 
-    def add_fact(self, fact):
+    def add_fact(self, fact, scope=None):
         """Add a fact to the logic program.
 
         :param fact: add a fact
@@ -303,6 +319,9 @@ class PrologFactory(Factory):
 
     def build_function(self, functor, arguments, location=None, **extra):
         return Term(functor, *arguments, location=(self.loc_id, location), **extra)
+
+    def build_aggregate(self, functor, arguments, location=None, **extra):
+        return AggTerm(functor, *arguments, location=(self.loc_id, location), **extra)
 
     def build_variable(self, name, location=None):
         return Var(name, location=(self.loc_id, location))
@@ -346,12 +365,31 @@ class PrologFactory(Factory):
             if not type(head) == Term:
                 # TODO compute correct location
                 raise GroundingError("Unexpected clause head '%s'" % head)
-            elif len(heads) > 1 and head.probability is None:
-                raise GroundingError("Non-probabilistic head in multi-head clause '%s'" % head)
+            # elif len(heads) > 1 and head.probability is None:
+            #     raise GroundingError("Non-probabilistic head in multi-head clause '%s'" % head)
         if len(heads) > 1:
             return AnnotatedDisjunction(heads, operand2, location=(self.loc_id, location))
         else:
-            return Clause(operand1[0], operand2, location=(self.loc_id, location))
+            has_agg = False
+            # TODO add tests and errors
+            for arg in operand1[0].args:
+                if isinstance(arg, AggTerm):
+                    has_agg = True
+                    break
+            if has_agg:
+                groupvars = list2term(operand1[0].args[:-1])
+                body = operand2
+
+                aggfunc = operand1[0].args[-1]()
+                aggvar = operand1[0].args[-1].args[0]
+                result = Var('R_VAR')
+                body = Term('aggregate', aggfunc, aggvar, groupvars, body, Term(',', groupvars, result))
+                headargs = operand1[0].args[:-1] + (result,)
+                head = operand1[0](*headargs)
+                # aggregate(avg_list, Salary, [Dept], (person(X), salary(X, Salary), dept(X, Dept)), ([Dept], AvgSalary)).
+                return Clause(head, body, location=(self.loc_id, location))
+            else:
+                return Clause(operand1[0], operand2, location=(self.loc_id, location))
 
     # noinspection PyUnusedLocal
     def build_disjunction(self, functor, operand1, operand2, location=None, **extra):
@@ -396,6 +434,7 @@ class ExtendedPrologFactory(PrologFactory):
     def _update_functors(self, t):
         """Adapt functors that appear as a negative literal to be f_p and f_n
         where f appears in the head.
+        TODO: Should be implemented using a more general visitor pattern
         """
         if type(t) is Clause:
             self._update_functors(t.head)
@@ -430,7 +469,7 @@ class ExtendedPrologFactory(PrologFactory):
         # literal such that:
         # f :- f_p, \+f_n.
         for k, v in self.neg_head_lits.items():
-            cur_vars = [Var("v{}".format(i)) for i in range(v['c'])]
+            cur_vars = [Var("V{}".format(i)) for i in range(v['c'])]
             new_clause = Clause(Term(v['f'], *cur_vars),
                                 And(Term(v['p'], *cur_vars), Not('\+', Term(v['n'], *cur_vars))))
             clauses.append(new_clause)
@@ -486,3 +525,8 @@ class ExtendedPrologFactory(PrologFactory):
         return super(ExtendedPrologFactory, self).build_clause(functor, new_heads, operand2, location, **extra)
 
 DefaultPrologFactory = ExtendedPrologFactory
+
+
+@transform(str, LogicProgram)
+def _string_to_program(source, target=None, **kwargs):
+    return PrologString(source)

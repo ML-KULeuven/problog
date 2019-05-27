@@ -43,9 +43,9 @@ from __future__ import print_function
 import sys
 
 from problog.program import PrologFile
-from problog.logic import Term, Constant, ArithmeticError
-from problog.engine import DefaultEngine, UnknownClause
-from problog.engine_builtin import check_mode
+from problog.logic import Term, Constant, ArithmeticError, term2list, list2term
+from problog.engine import DefaultEngine, UnknownClause, UnknownClauseInternal
+from problog.engine_builtin import check_mode, builtin_simple
 from problog.formula import LogicFormula
 from problog.errors import process_error, GroundingError
 from problog.util import start_timer, stop_timer, format_dictionary, init_logger
@@ -57,13 +57,20 @@ import time
 import traceback
 import logging
 
+try:
+    from tqdm import tqdm
+except ImportError:
+
+    class tqdm(object):
+        def update(self, x):
+            pass
 
 try:
 
     import numpy.random
 
     def sample_poisson(l):
-        l = list(l)
+        l = [l]
         return numpy.random.poisson(l)[0]
 
 except ImportError:
@@ -100,46 +107,7 @@ except ImportError:
             return k - 1
 
 
-def sample_value(term):
-    """
-    Sample a value from the distribution described by the term.
-   :param term: term describing a distribution
-   :type term: Term
-   :return: value of the term, probability of the choice
-   :rtype: Constant
-    """
-    # TODO add discrete distribution
-    if term.functor == 'normal' or term.functor == 'gaussian':
-        a, b = map(float, term.args)
-        return Constant(random.normalvariate(a, b)), 0.0
-    elif term.functor == 'poisson':
-        a = map(float, term.args)
-        return Constant(sample_poisson(a)), 0.0
-    elif term.functor == 'exponential':
-        a = map(float, term.args), 0.0
-        return Constant(random.expovariate(a)), 0.0
-    elif term.functor == 'beta':
-        a, b = map(float, term.args)
-        return Constant(random.betavariate(a, b)), 0.0
-    elif term.functor == 'gamma':
-        a, b = map(float, term.args)
-        return Constant(random.gammavariate(a, b)), 0.0
-    elif term.functor == 'uniform':
-        a, b = map(float, term.args)
-        return Constant(random.uniform(a, b)), 0.0
-    elif term.functor == 'triangular':
-        a, b, c = map(float, term.args)
-        return Constant(random.triangular(a, b, c)), 0.0
-    elif term.functor == 'vonmises':
-        a, b = map(float, term.args)
-        return Constant(random.vonmisesvariate(a, b)), 0.0
-    elif term.functor == 'weibull':
-        a, b = map(float, term.args)
-        return Constant(random.weibullvariate(a, b)), 0.0
-    elif term.functor == 'fixed':
-        return term.args[0], 1.0
-    else:
-        raise ValueError("Unknown distribution: '%s'" % term.functor)
+
 
 
 class FunctionStore(object):
@@ -174,12 +142,43 @@ class FunctionStore(object):
 
 class SampledFormula(LogicFormula):
 
-    def __init__(self):
-        LogicFormula.__init__(self)
+    def __init__(self, **kwargs):
+        LogicFormula.__init__(self, **kwargs)
         self.facts = {}
         self.groups = {}
         self.probability = 1.0  # Try to compute
         self.values = []
+
+        self.distributions = {
+            'normal': random.normalvariate,
+            'gaussian': random.normalvariate,
+            'poisson': sample_poisson,
+            'exponential': random.expovariate,
+            'beta': random.betavariate,
+            'gamma': random.gammavariate,
+            'uniform': random.uniform,
+            'triangular': random.triangular,
+            'vonmises': random.vonmisesvariate,
+            'weibull': random.weibullvariate,
+            'in_range': random.randint
+        }
+
+    def sample_value(self, term):
+        """
+        Sample a value from the distribution described by the term.
+       :param term: term describing a distribution
+       :type term: Term
+       :return: value of the term, probability of the choice
+       :rtype: Constant
+        """
+        if term.functor == 'fixed':
+            return term.args[0], 1.0
+        elif term.functor in self.distributions:
+            args = map(float, term.args)
+            value = self.distributions[term.functor](*args)
+            return Constant(value), 0.0
+        else:
+            raise ValueError("Unknown distribution: '%s'" % term.functor)
 
     def _is_simple_probability(self, term):
         try:
@@ -214,7 +213,7 @@ class SampledFormula(LogicFormula):
                         result_node = self.FALSE
                         self.probability *= (1 - prob)
                 else:
-                    value, prob = sample_value(probability)
+                    value, prob = self.sample_value(probability)
                     self.probability *= prob
                     result_node = self.add_value(value)
                 self.facts[identifier] = result_node
@@ -247,7 +246,7 @@ class SampledFormula(LogicFormula):
                     else:
                         result_node = self.FALSE
                 else:
-                    value, prob = sample_value(probability)
+                    value, prob = self.sample_value(probability)
                     self.probability *= prob
                     result_node = self.add_value(value)
                 self.facts[identifier] = result_node
@@ -293,7 +292,7 @@ class SampledFormula(LogicFormula):
 
     # noinspection PyUnusedLocal
     def to_string(self, db, with_facts=False, with_probability=False, oneline=False,
-                  as_evidence=False, **extra):
+                  as_evidence=False, strip_tag=False, **extra):
         self.compute_probability()
 
         if as_evidence:
@@ -305,6 +304,8 @@ class SampledFormula(LogicFormula):
         for k, v in self.queries():
             if k.functor.startswith('hidden_'):
                 continue
+            if strip_tag:
+                k = k.args[0]
             if v is not None:
                 val = self.get_value(v)
                 if val is None:
@@ -339,6 +340,8 @@ class SampledFormula(LogicFormula):
                     result[k] = True
                 else:
                     result[k] = val
+            else:
+                result[k] = False
         return result
 
 
@@ -352,19 +355,30 @@ def translate(db, atom_id):
 
 
 def builtin_sample(term, result, target=None, engine=None, callback=None, **kwdargs):
-    # TODO wrong error message when call argument is wrong
     check_mode((term, result), ['cv'], functor='sample')
     # Find the define node for the given query term.
     term_call = term.with_args(*term.args)
-    results = engine.call(term_call, subcall=True, target=target, **kwdargs)
-    actions = []
-    n = len(term.args)
-    for res, node in results:
-        res1 = res[:n]
-        res_pass = (term.with_args(*res1), target.get_value(node))
-        actions += callback.notifyResult(res_pass, 0, False)
-    actions += callback.notifyComplete()
-    return True, actions
+    try:
+        results = engine.call(term_call, subcall=True, target=target, **kwdargs)
+        actions = []
+        n = len(term.args)
+        for res, node in results:
+            res1 = res[:n]
+            res_pass = (term.with_args(*res1), target.get_value(node))
+            actions += callback.notifyResult(res_pass, 0, False)
+        actions += callback.notifyComplete()
+        return True, actions
+    except UnknownClauseInternal:
+        raise UnknownClause(term.signature, term.location)
+
+
+def builtin_shuffle(lst_in, lst_out, **kwargs):
+    check_mode((lst_in, lst_out), ['Lv'], **kwargs)
+    # TODO keep correct probability?
+    lst_in1 = term2list(lst_in)
+    random.shuffle(lst_in1)
+    lst_out = term2list(lst_out)
+    return [(lst_in, lst_out)]
 
 
 def builtin_previous(term, default, engine=None, target=None, callback=None, **kwdargs):
@@ -417,6 +431,7 @@ def ground(engine, db, target):
             raise GroundingError('Invalid evidence')   # TODO can we add a location?
 
     # Ground queries
+    queries = [(target.LABEL_QUERY, q) for q in queries]
     engine.ground_queries(db, target, queries)
     return target
 
@@ -458,28 +473,58 @@ def init_db(engine, model, propagate_evidence=False):
     return db, evidence_facts, ev_target
 
 
-def sample(model, n=1, format='str', propagate_evidence=False, **kwdargs):
+class RateCounter(object):
+
+    def __init__(self):
+        self.last_tick = None
+        self.last_count = 0
+        self.counts = []
+        self.rate = tqdm()
+
+    def update(self):
+        t = time.time()
+        if t != self.last_tick:
+            if self.last_tick is not None:
+                self.counts.append((self.last_tick, self.last_count))
+                self.last_count = 0
+                self.last_tick = t
+        self.last_count += 1
+        self.rate.update(1)
+
+
+def sample(model, n=1, format='str', propagate_evidence=False, distributions=None, progress=False, **kwdargs):
     engine = init_engine(**kwdargs)
     db, evidence, ev_target = init_db(engine, model, propagate_evidence)
     i = 0
     r = 0
 
-    while i < n:
-        target = SampledFormula()
-        for ev_fact in evidence:
-            target.add_atom(*ev_fact)
+    if progress:
+        rate = RateCounter()
 
-        engine.functions = FunctionStore(target=target, database=db, engine=engine)
-        result = ground(engine, db, target=target)
-        if verify_evidence(engine, db, ev_target, target):
-            if format == 'str':
-                yield result.to_string(db, **kwdargs)
+    try:
+        while i < n or n == 0:
+            target = SampledFormula()
+            if distributions is not None:
+                target.distributions.update(distributions)
+
+            for ev_fact in evidence:
+                target.add_atom(*ev_fact)
+
+            engine.functions = FunctionStore(target=target, database=db, engine=engine)
+            result = ground(engine, db, target=target)
+            if verify_evidence(engine, db, ev_target, target):
+                if format == 'str':
+                    yield result.to_string(db, **kwdargs)
+                else:
+                    yield result.to_dict()
+                i += 1
             else:
-                yield result.to_dict()
-            i += 1
-        else:
-            r += 1
-        engine.previous_result = result
+                r += 1
+            engine.previous_result = result
+            if progress:
+                rate.update()
+    except KeyboardInterrupt:
+        pass
     if r:
         logging.getLogger('problog_sample').info('Rejected samples: %s' % r)
 
@@ -655,14 +700,19 @@ def main(args, result_handler=None):
     parser = argparse.ArgumentParser()
 
     parser.add_argument('filename')
-    parser.add_argument('-N', type=int, dest='n', default=argparse.SUPPRESS,
+    parser.add_argument('-N', '-n', type=int, dest='n', default=argparse.SUPPRESS,
                         help="Number of samples.")
     parser.add_argument('--with-facts', action='store_true',
                         help="Also output choice facts (default: just queries).")
     parser.add_argument('--with-probability', action='store_true', help="Show probability.")
     parser.add_argument('--as-evidence', action='store_true', help="Output as evidence.")
     parser.add_argument('--propagate-evidence', dest='propagate_evidence',
+                        default=False,
                         action='store_true', help="Enable evidence propagation")
+    parser.add_argument('--dont-propagate-evidence', action='store_false',
+                        dest='propagate_evidence',
+                        default=False,
+                        help="Disable evidence propagation")
     parser.add_argument('--oneline', action='store_true', help="Format samples on one line.")
     parser.add_argument('--estimate', action='store_true',
                         help='Estimate probability of queries from samples.')
@@ -673,6 +723,11 @@ def main(args, result_handler=None):
     parser.add_argument('--verbose', '-v', action='count', help='Verbose output')
     parser.add_argument('--seed', '-s', type=float, help='Random seed', default=None)
     parser.add_argument('--full-trace', action='store_true')
+    parser.add_argument('--strip-tag', action='store_true', help='Strip outermost tag from output.')
+    parser.add_argument('-a', '--arg', dest='args', action='append',
+                        help='Pass additional arguments to the cmd_args builtin.')
+    parser.add_argument('--progress', help='show progress', action='store_true')
+
 
     args = parser.parse_args(args)
 

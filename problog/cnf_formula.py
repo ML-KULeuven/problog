@@ -42,12 +42,16 @@ class CNF(BaseFormula):
         self._clausecount = 0     # Number of actual clauses (not incl. comment)
 
     # noinspection PyUnusedLocal
-    def add_atom(self, atom):
+    def add_atom(self, atom, force=False):
         """Add an atom to the CNF.
 
         :param atom: name of the atom
+        :param force: add a clause for each atom to force it's existence in the final CNF
         """
         self._atomcount += 1
+        if force:
+            self._clauses.append([atom, -atom])
+            self._clausecount += 1
 
     def add_comment(self, comment):
         """Add a comment clause.
@@ -85,12 +89,14 @@ class CNF(BaseFormula):
             else:
                 return ' '.join(map(str, clause[1:])) + ' 0'
 
-    def to_dimacs(self, partial=False, weighted=False, semiring=None, smart_constraints=False):
+    def to_dimacs(self, partial=False, weighted=False, semiring=None, smart_constraints=False, names=False,
+                  invert_weights=False):
         """Transform to a string in DIMACS format.
 
         :param partial: split variables if possibly true / certainly true
         :param weighted: created a weighted (False, :class:`int`, :class:`float`)
         :param semiring: semiring for weight transformation (if weighted)
+        :param names: Print names in comments
         :return: string in DIMACS format
         """
         if weighted:
@@ -98,10 +104,14 @@ class CNF(BaseFormula):
         else:
             t = 'cnf'
 
-        header, content = self._contents(partial=partial, weighted=weighted,
-                                         semiring=semiring, smart_constraints=smart_constraints)
+        header, content = self._contents(partial=partial, weighted=weighted, semiring=semiring,
+                                         smart_constraints=smart_constraints, invert_weights=invert_weights)
 
         result = 'p %s %s\n' % (t, ' '.join(map(str, header)))
+        if names:
+            tpl = 'c {{:<{}}} {{}}\n'.format(len(str(self._atomcount)) + 1)
+            for n, i, l in self.get_names_with_label():
+                result += tpl.format(i, n)
         result += '\n'.join(map(lambda cl: ' '.join(map(str, cl)) + ' 0', content))
         return result
 
@@ -161,7 +171,7 @@ class CNF(BaseFormula):
         result += 'end\n'
         return result
 
-    def _contents(self, partial=False, weighted=False, semiring=None, smart_constraints=False):
+    def _contents(self, partial=False, weighted=False, semiring=None, smart_constraints=False, invert_weights=False):
         # Helper function to determine the certainly true / possibly true names (for partial)
 
         ct = lambda i: 2 * i
@@ -174,17 +184,20 @@ class CNF(BaseFormula):
         if weighted == int:
             w_mult = 10000
             w_min = -10000
-            wt = lambda w: int(max(w_min, w) * w_mult)
+            wt1 = lambda w: int(max(w_min, w) * w_mult)
         elif weighted == float:
             w_mult = 1
             w_min = -10000
-            wt = lambda w: w
+            wt1 = lambda w: w
         elif weighted:
             w_min = -10000
             w_mult = 10000
-            wt = lambda w: int(max(w_min, w) * w_mult)
-
+            wt1 = lambda w: int(max(w_min, w) * w_mult)
         if weighted:
+            if invert_weights:
+                wt = lambda w: wt1(-w)
+            else:
+                wt = wt1
             if semiring is None:
                 semiring = SemiringLogProbability()
             weights = self.extract_weights(semiring)
@@ -302,7 +315,7 @@ class CNF(BaseFormula):
 
 # noinspection PyUnusedLocal
 @transform(LogicDAG, CNF)
-def clarks_completion(source, destination, **kwdargs):
+def clarks_completion(source, destination, force_atoms=False, **kwdargs):
     """Transform an acyclic propositional program to a CNF using Clark's completion.
 
     :param source: acyclic program to transform
@@ -319,7 +332,7 @@ def clarks_completion(source, destination, **kwdargs):
 
         # Add atoms.
         for i in range(0, num_atoms):
-            destination.add_atom(i+1)
+            destination.add_atom(i+1, force=force_atoms)
 
         # Complete other nodes
         # Note: assumes negation is encoded as negative number.

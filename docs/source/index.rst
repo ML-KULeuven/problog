@@ -6,6 +6,8 @@
 ProbLog
 =======
 
+Welcome to the ProbLog 2.1 documentation.
+
 Contents:
 
 .. toctree::
@@ -18,6 +20,7 @@ Contents:
    modeling_basic
    modeling_advanced
    prolog
+   faq
    api
 .. notes
 ..   engine   

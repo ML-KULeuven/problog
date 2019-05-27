@@ -26,13 +26,13 @@ from __future__ import print_function
 import math
 
 from .core import ProbLogObject, transform_allow_subclass
-from .errors import InconsistentEvidenceError, InvalidValue
+from .errors import InconsistentEvidenceError, InvalidValue, ProbLogError
 
 
-class OperationNotSupported(Exception):
+class OperationNotSupported(ProbLogError):
 
     def __init__(self):
-        Exception.__init__(self, 'This operation is not supported by this semiring.')
+        ProbLogError.__init__(self, 'This operation is not supported by this semiring')
 
 
 class Semiring(object):
@@ -133,6 +133,20 @@ class Semiring(object):
         """Checks whether the given (internal) value is valid."""
         return True
 
+    def ad_complement(self, ws, key=None):
+        s = self.zero()
+        for w in ws:
+            s = self.plus(s, w)
+        return self.negate(s)
+
+    def true(self, key=None):
+        """Handle weight for deterministically true."""
+        return self.one(), self.zero()
+
+    def false(self, key=None):
+        """Handle weight for deterministically false."""
+        return self.zero(), self.one()
+
 
 class SemiringProbability(Semiring):
     """Implementation of the semiring interface for probabilities."""
@@ -207,6 +221,8 @@ class SemiringLogProbability(SemiringProbability):
         return a + b
 
     def negate(self, a):
+        if not self.in_domain(a):
+            raise InvalidValue("Not a valid value for this semiring: '%s'" % a)
         if a > -1e-10:
             return self.zero()
         return math.log1p(-math.exp(a))
@@ -285,10 +301,7 @@ class SemiringSymbolic(Semiring):
         return True
 
 
-
-@transform_allow_subclass
 class Evaluatable(ProbLogObject):
-    """Interface for evaluatable formulae."""
 
     def evidence_all(self):
         raise NotImplementedError()
@@ -303,7 +316,7 @@ class Evaluatable(ProbLogObject):
         """
         raise NotImplementedError('Evaluatable._create_evaluator is an abstract method')
 
-    def get_evaluator(self, semiring=None, evidence=None, weights=None, **kwargs):
+    def get_evaluator(self, semiring=None, evidence=None, weights=None, keep_evidence=False, **kwargs):
         """Get an evaluator for computing queries on this formula.
         It creates an new evaluator and initializes it with the given or predefined evidence.
 
@@ -324,20 +337,23 @@ class Evaluatable(ProbLogObject):
             elif ev_index is None and ev_value < 0:
                 pass  # false evidence is deterministically false
             elif ev_index == 0 and ev_value < 0:
-                raise InconsistentEvidenceError()  # true evidence is false
+                raise InconsistentEvidenceError(source='evidence('+str(ev_name)+',false)')  # true evidence is false
             elif ev_index is None and ev_value > 0:
-                raise InconsistentEvidenceError()  # false evidence is true
+                raise InconsistentEvidenceError(source='evidence('+str(ev_name)+',true)')  # false evidence is true
             elif evidence is None and ev_value != 0:
                 evaluator.add_evidence(ev_value * ev_index)
-            else:
+            elif evidence is not None:
                 try:
                     value = evidence[ev_name]
-                    if value:
+                    if value is None:
+                        pass
+                    elif value:
                         evaluator.add_evidence(ev_index)
                     else:
                         evaluator.add_evidence(-ev_index)
                 except KeyError:
-                    pass
+                    if keep_evidence:
+                        evaluator.add_evidence(ev_value * ev_index)
 
         evaluator.propagate()
         return evaluator
@@ -359,12 +375,20 @@ class Evaluatable(ProbLogObject):
             # Probability of query given evidence
 
             # interrupted = False
-            for name, node in evaluator.formula.queries():
+            for name, node, label in evaluator.formula.labeled():
                 w = evaluator.evaluate(node)
                 result[name] = w
             return result
         else:
             return evaluator.evaluate(index)
+
+
+@transform_allow_subclass
+class EvaluatableDSP(Evaluatable):
+    """Interface for evaluatable formulae."""
+
+    def __init__(self):
+        Evaluatable.__init__(self)
 
 
 class Evaluator(object):
@@ -441,11 +465,13 @@ class Evaluator(object):
 class FormulaEvaluator(object):
     """Standard evaluator for boolean formula."""
 
-    def __init__(self, formula, semiring):
+    def __init__(self, formula, semiring, weights=None):
         self._computed_weights = {}
         self._semiring = semiring
         self._formula = formula
         self._fact_weights = {}
+        if weights is not None:
+            self.set_weights(weights)
 
     @property
     def semiring(self):
@@ -476,7 +502,7 @@ class FormulaEvaluator(object):
         elif index == self.formula.FALSE:
             return self.semiring.zero()
         elif index < 0:
-            weight = self._fact_weights.get(index)
+            weight = self._fact_weights.get(abs(index))
             if weight is None:
                 # This will only work if the semiring support negation!
                 nw = self.get_weight(-index)
@@ -493,6 +519,9 @@ class FormulaEvaluator(object):
                 return weight
             else:
                 return weight[0]
+
+    def propagate(self):
+        self._fact_weights = self.formula.extract_weights(self.semiring, self._fact_weights)
 
     def evaluate(self, index):
         return self.semiring.result(self.get_weight(index), self.formula)
@@ -533,20 +562,20 @@ class FormulaEvaluator(object):
 class FormulaEvaluatorNSP(FormulaEvaluator):
     """Evaluator for boolean formula that addresses the Neutral Sum Problem."""
 
-    def __init__(self, formula, semiring):
-        FormulaEvaluator.__init__(self, formula, semiring)
+    def __init__(self, formula, semiring, weights=None):
+        FormulaEvaluator.__init__(self, formula, semiring, weights)
 
     def get_weight(self, index):
         """Get the weight of the node with the given index.
 
         :param index: integer or formula.TRUE or formula.FALSE
-        :return: weight of the node
+        :return: weight of the node and the set of abs(literals) involved
         """
 
         if index == self.formula.TRUE:
-            return self.semiring.one()
+            return self.semiring.one(), set()
         elif index == self.formula.FALSE:
-            return self.semiring.zero()
+            return self.semiring.zero(), set()
         elif index < 0:
             weight = self._fact_weights.get(-index)
             if weight is None:

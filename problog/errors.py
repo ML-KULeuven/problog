@@ -26,6 +26,8 @@ class ProbLogError(Exception):
         if self.location is None:
             return ''
         if type(self.location) == tuple:
+            if len(self.location) != 3:
+                return ''
             fn, ln, cn = self.location
             if fn is None:
                 return ' at %s:%s' % (ln, cn)
@@ -48,7 +50,6 @@ class ParseError(ProbLogError):
 
 class GroundingError(ProbLogError):
     """Represents an error that occurred during grounding."""
-
     pass
 
 
@@ -70,14 +71,28 @@ class UserError(ProbLogError):
     pass
 
 
+class NonGroundQuery(ProbLogError):
+
+    def __init__(self, query, location):
+        super(NonGroundQuery, self).__init__("Query term still contains variables after grounding for query %s" % query, location)
+
+
 class InconsistentEvidenceError(ProbLogError):
     """Error when evidence is inconsistent"""
 
-    def __init__(self, source=None):
+    def __init__(self, source=None, context=''):
+        """
+
+        :param source: evidence term that causes the problem
+        :param context: extra message describing the context (e.g. example number in lfi)
+        :return:
+        """
+        self.source = source
+        self.context = context
         if source is None:
-            ProbLogError.__init__(self, "Inconsistent evidence detected")
+            ProbLogError.__init__(self, "Inconsistent evidence detected%s" % context)
         else:
-            ProbLogError.__init__(self, "Inconsistent evidence detected: '%s'" % source)
+            ProbLogError.__init__(self, "Inconsistent evidence detected%s: '%s'" % (context, source))
 
 
 def process_error(err, debug=False):
@@ -92,6 +107,10 @@ def process_error(err, debug=False):
 
     if isinstance(err, ProbLogError):
         return '%s: %s' % (err.__class__.__name__, err)
+    elif 'Timeout' in str(err) or 'timeout' in str(err):
+        return 'Timeout exceeded'
+    elif isinstance(err, KeyboardInterrupt):
+        return 'Interrupted by user'
     else:
         if not debug and hasattr(err, 'trace'):
             print(err.trace, file=sys.stderr)

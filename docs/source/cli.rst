@@ -2,7 +2,7 @@ Using ProbLog as a standalone tool
 ==================================
 
 The command line interface (CLI) gives access to the basic functionality of ProbLog 2.1.
-It is accessible through the script ``problog-cli.py`` or ``problog`` if installed through pip.
+It is accessible through the script ``problog`` (or ``problog-cli.py`` in the repository version).
 
 The CLI has different modes of operation. These can be accessed by adding a keyword as the first \
 argument.
@@ -14,8 +14,10 @@ Currently, the following modes are supported
   * ``mpe``: most probable explanation
   * ``lfi``: learning from interpretations
   * ``dt``: decision-theoretic problog
+  * ``map``: MAP inference
   * ``explain``: evaluate using mutually exclusive proofs
   * ``ground``: generate a ground program
+  * ``bn``: export a Bayesian network
   * ``shell``: interactive shell
   * ``install``: run the installer
   * ``unittest``: run the testsuite
@@ -43,7 +45,7 @@ We can do
 
 .. code-block:: prolog
 
-    $ ./problog-cli.py some_heads.pl
+    $ problog some_heads.pl
     someHeads : 0.8
 
 ProbLog supports supports several alternative knowledge compilation tools.
@@ -85,7 +87,7 @@ For example,
 
 .. code-block:: prolog
 
-    $ ./problog-cli.py sample some_heads.pl -N 3
+    $ problog sample some_heads.pl -N 3
     ====================
     % Probability: 0.2
     ====================
@@ -106,7 +108,7 @@ separate line. The previous output would then be formatted as:
 
 .. code-block:: prolog
 
-    $ ./problog-cli.py sample some_heads.pl -N 3 --oneline
+    $ problog sample some_heads.pl -N 3 --oneline
     % Probability: 0.2
     someHeads. % Probability: 0.2
     someHeads. % Probability: 0.3
@@ -117,7 +119,7 @@ The result above would then become
 
 .. code-block:: prolog
 
-    $ ./problog-cli.py sample some_heads.pl -N 3 --oneline --with-facts
+    $ problog sample some_heads.pl -N 3 --oneline --with-facts
     % Probability: 0.2
     heads1. someHeads. % Probability: 0.2
     heads2. someHeads. % Probability: 0.3
@@ -146,7 +148,7 @@ The number of samples used for estimation can be determined in three ways:
 
 .. code-block:: prolog
 
-    $ ./problog-cli.py sample some_heads.pl  --estimate -t 5
+    $ problog sample some_heads.pl  --estimate -t 5
     % Probability estimate after 7865 samples:
     someHeads : 0.79249841
 
@@ -161,10 +163,143 @@ References:
 Most Probable Explanation (``mpe``)
 -----------------------------------
 
+In MPE mode, ProbLog computes the possible world with the highest probability in which all queries
+and evidence is true.
+
+For example, consider the following program.
+
+.. code-block:: prolog
+
+    0.6::edge(1,2).
+    0.1::edge(1,3).
+    0.4::edge(2,5).
+    0.3::edge(2,6).
+    0.3::edge(3,4).
+    0.8::edge(4,5).
+    0.2::edge(5,6).
+
+    path(X,Y) :- edge(X,Y).
+    path(X,Y) :- edge(X,Z),
+                 Y \== Z,
+                 path(Z,Y).
+
+    evidence(path(1,5)).
+    evidence(path(1,6)).
+
+This program describes a probabilistic graph.
+
+.. digraph:: probabilistic_graph
+
+    rankdir=LR;
+    1 -> 3 [label="0.1"];
+    1 -> 2 [label="0.6"];
+    2 -> 5 [label="0.4"];
+    2 -> 6 [label="0.3"];
+    3 -> 4 [label="0.3"];
+    4 -> 5 [label="0.8"];
+    5 -> 6 [label="0.2"];
+
+The command ``problog mpe pgraph.pl`` produces the most probable graph in which there are paths
+from node 1 to node 5 and from node 1 to node 6.
+
+The result is
+
+.. code-block:: prolog
+
+    edge(4,5)
+    edge(1,2)
+    edge(2,5)
+    edge(2,6)
+    \+edge(1,3)
+    \+edge(3,4)
+    \+edge(5,6)
+    % Probability: 0.0290304
+
+Note that the first edge is not necessary for the paths to exist, but it is included because it is
+more likely to exist.
+
+.. code-block:: prolog
+
+    \+edge(3,4)
+    edge(4,5)
+    \+edge(1,3)
+    edge(1,2)
+    edge(2,5)
+    \+edge(5,6)
+    edge(2,6)
+
+
+In order to compute the result, ProbLog uses a Max-Sat solver (``maxsatz``) which is included in
+the distribution.
 
 
 Learning from interpretations (``lfi``)
 ---------------------------------------
+
+Learning expects a program with a number of unknown probabilities expressed as ``t(_)``.
+If you want to start learning from a given initialisation, say 0.2, you can use ``t(0.2)``.
+
+Given a program ``some_heads.pl`` with unknown probabilities:
+
+.. code-block:: prolog
+
+    t(_)::heads1.
+    t(_)::heads2.
+    someHeads :- heads1.
+    someHeads :- heads2.
+
+And an evidence file ``some_heads_ev.pl`` (sampled using probabilities 0.5 and 0.6, \
+no evidence on ``heads2``):
+
+.. code-block:: prolog
+
+    evidence(someHeads,false).
+    evidence(heads1,false).
+    ----------------
+    evidence(someHeads,true).
+    evidence(heads1,true).
+    ----------------
+    evidence(someHeads,true).
+    evidence(heads1,true).
+    ----------------
+    evidence(someHeads,false).
+    evidence(heads1,false).
+    ----------------
+    evidence(someHeads,true).
+    evidence(heads1,true).
+    ----------------
+    evidence(someHeads,true).
+    evidence(heads1,false).
+    ----------------
+    evidence(someHeads,true).
+    evidence(heads1,false).
+    ----------------
+    evidence(someHeads,true).
+    evidence(heads1,true).
+    ----------------
+    evidence(someHeads,true).
+    evidence(heads1,false).
+    ----------------
+    evidence(someHeads,true).
+    evidence(heads1,false).
+
+We can now learn the missing probabilities using:
+
+.. code-block:: shell
+
+    $ problog lfi some_heads.pl some_heads_ev.pl -O some_heads_learned.pl
+    -6.88403875238 [0.4, 0.66666619] [t(_)::heads1, t(_)::heads2] 14
+
+The learned program is saved in ``some_heads_learned.pl``.
+
+.. code-block:: shell
+
+    $ cat some_heads_learned.pl
+    0.4::heads1.
+    0.666666192095::heads2.
+    someHeads :- heads1.
+    someHeads :- heads2.
+
 
 
 
@@ -204,6 +339,33 @@ References:
     https://lirias.kuleuven.be/handle/123456789/270066
 
 
+MAP inference (``map``)
+-----------------------
+
+MAP inference is implemented on top of DT-ProbLog.
+MAP inference is similar to MPE inference, except that only facts that occur as explicit queries are assigned and all other probabilistic facts are marginalized over.
+
+.. code-block:: prolog
+
+    0.6::edge(1,2).
+    0.1::edge(1,3).
+    0.4::edge(2,5).
+    0.3::edge(2,6).
+    0.3::edge(3,4).
+    0.8::edge(4,5).
+    0.2::edge(5,6).
+
+    path(X,Y) :- edge(X,Y).
+    path(X,Y) :- edge(X,Z),
+                 Y \== Z,
+                 path(Z,Y).
+
+    query(edge(1,2)).
+    query(edge(1,3)).
+
+    evidence(path(1,6)).
+
+
 
 Explanation mode (``explain``)
 ------------------------------
@@ -211,11 +373,9 @@ Explanation mode (``explain``)
 The ``explain`` mode offers insight in how probabilities can be computed for a ProbLog program.
 Given a model, the output consists of three parts:
 
-  * a reformulation of the model in which annotated disjunctions and probabilistic clauses are \
-   rewritten
+  * a reformulation of the model in which annotated disjunctions and probabilistic clauses are rewritten
   * for each query, a list of mutually exclusive proofs with their probability
-  * for each query, the success probability determined by taking the sum of the probabilities of \
-   the individual proofs
+  * for each query, the success probability determined by taking the sum of the probabilities of the individual proofs
 
 This mode currently does not support evidence.
 
@@ -286,11 +446,32 @@ Evidence can be specified using a pipe (``|``):
 Type ``help.`` for more information.
 
 
+Bayesian network (``bn``)
+-------------------------
+
+ProbLog can export a program to a Bayesian network for comparison and
+verification purposes. The grounded program that is exported is defined by the
+query statements present in the program. The resulting network is not guaranteed
+to be the most efficient representation and includes additional latent variables
+to be able to express concepts such as annotated disjunctions. Decision nodes
+are not supported.
+
+.. code-block:: prolog
+
+    $ ./problog-cli.py bn some_heads.pl --format=xdsl -o some_heads.xdsl
+
+The resulting file can be read by tools such as
+`GeNIe and SMILE <https://dslpitt.org>`_,
+`BayesiaLab <http://www.bayesialab.com>`_,
+`Hugin <http://www.hugin.com>`_ or
+`SamIam <http://reasoning.cs.ucla.edu/samiam/>`_
+(depending on the chosen output format).
+
+
 Installation (``install``)
 --------------------------
 
-Run the installer.
-This installs the SDD library.
+Run the installer.  This installs the SDD library.
 This currently only has effect on Mac OSX and Linux.
 
 
@@ -307,3 +488,4 @@ Testing (``unittest``)
 ----------------------
 
 Run the unittests.
+

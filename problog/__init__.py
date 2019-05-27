@@ -32,6 +32,9 @@ def root_path(*args):
     return os.path.abspath(os.path.join(os.path.dirname(__file__), '..', *args))
 
 
+library_paths = [root_path('problog', 'library')]
+
+
 # Load all submodules. This has two reasons:
 #   - initializes all transformations (@transform)
 #   - makes it possible to just import 'problog' and then use
@@ -42,22 +45,25 @@ from . import engine
 from . import evaluator
 from . import formula
 from . import logic
-from . import nnf_formula
+from . import ddnnf_formula
 from . import parser
 from . import program
 from . import sdd_formula
+from . import sdd_formula_explicit
 from . import util
 from . import bdd_formula
 from . import forward
 from . import cycles
 from . import kbest
 from . import tasks
+from . import debug
 
 
 _evaluatables = {'sdd': sdd_formula.SDD,
+                 'sddx': sdd_formula_explicit.SDDExplicit,
                  'bdd': bdd_formula.BDD,
-                 'nnf': nnf_formula.NNF,
-                 'ddnnf': nnf_formula.NNF,
+                 'nnf': ddnnf_formula.DDNNF,
+                 'ddnnf': ddnnf_formula.DDNNF,
                  'kbest': kbest.KBestFormula,
                  'fsdd': forward.ForwardSDD,
                  'fbdd': forward.ForwardBDD}
@@ -67,9 +73,12 @@ def get_evaluatables():
     return _evaluatables.keys()
 
 
-def get_evaluatable(name=None):
+def get_evaluatable(name=None, semiring=None):
     if name is None:
-        return evaluator.Evaluatable
+        if semiring is None or semiring.is_dsp():
+            return evaluator.EvaluatableDSP
+        else:
+            return formula.LogicNNF
     else:
         return _evaluatables[name]
 

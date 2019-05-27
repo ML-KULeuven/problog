@@ -33,7 +33,7 @@ class Constraint(object):
 
     def get_nodes(self):
         """Get all nodes involved in this constraint."""
-        return NotImplemented('abstract method')
+        raise NotImplementedError('abstract method')
 
     def update_weights(self, weights, semiring):
         """Update the weights in the given dictionary according to the constraints.
@@ -62,7 +62,7 @@ class Constraint(object):
         :return: list of clauses where each clause is represent as a list of node keys
         :rtype: list[list[int]]
         """
-        return NotImplemented('abstract method')
+        raise NotImplementedError('abstract method')
 
     def copy(self, rename=None):
         """Copy this constraint while applying the given node renaming.
@@ -70,7 +70,7 @@ class Constraint(object):
         :param rename: node rename map (or None if no rename is required)
         :return: copy of the current constraint
         """
-        return NotImplemented('abstract method')
+        raise NotImplementedError('abstract method')
 
 
 class ConstraintAD(Constraint):
@@ -80,6 +80,7 @@ class ConstraintAD(Constraint):
         self.nodes = set()
         self.group = group
         self.extra_node = None
+        self.location = None
 
     def __str__(self):
         return 'annotated_disjunction(%s, %s)' % (list(self.nodes), self.extra_node)
@@ -96,17 +97,28 @@ class ConstraintAD(Constraint):
     def is_false(self):
         return False
 
-    def add(self, node, formula):
+    def add(self, node, formula, cr_extra=True):
         """Add a node to the constraint from the given formula.
 
         :param node: node to add
         :param formula: formula from which the node is taken
+        :param cr_extra: Create an extra_node when required (when it is None and this is the second atom of the group).
         :return: value of the node after constraint propagation
         """
+
         if node in self.nodes:
             return node
 
-        if formula.has_evidence_values():
+        is_extra = formula.get_node(node).probability == formula.WEIGHT_NEUTRAL
+
+        try:
+            if not self.location and formula.get_node(node).name and formula.get_node(node).name.args:
+                if formula.database:
+                    self.location = formula.database.lineno(formula.get_node(node).name.args[-1].location)
+        except AttributeError:
+            pass
+
+        if formula.has_evidence_values() and not is_extra:
             # Propagate constraint: if one of the other nodes is True: this one is false
             for n in self.nodes:
                 if formula.get_evidence_value(n) == formula.TRUE:
@@ -136,8 +148,12 @@ class ConstraintAD(Constraint):
                     if unknown is not None:
                         formula.set_evidence_value(unknown, formula.TRUE)
 
-        self.nodes.add(node)
-        if len(self.nodes) > 1 and self.extra_node is None:
+        if is_extra:
+            self.extra_node = node
+        else:
+            self.nodes.add(node)
+
+        if cr_extra and len(self.nodes) > 1 and self.extra_node is None:
             # If there are two or more choices -> add extra choice node
             self._update_logic(formula)
         return node
@@ -161,21 +177,25 @@ class ConstraintAD(Constraint):
         """
         if self.is_nontrivial():
             name = Term('choice', Constant(self.group[0]), Term('e'), Term('null'), *self.group[1])
-            self.extra_node = formula.add_atom(('%s_extra' % (self.group,)), True, name=name)
+            self.extra_node = formula.add_atom(('%s_extra' % (self.group,)), True, name=name, group=self.group)
             # formula.addConstraintOnNode(self, self.extra_node)
 
     def update_weights(self, weights, semiring):
         if self.is_nontrivial():
-            s = semiring.zero()
+            ws = []
             for n in self.nodes:
                 pos, neg = weights.get(n, (semiring.one(), semiring.one()))
                 weights[n] = (pos, semiring.one())
-                s = semiring.plus(s, pos)
-            if not semiring.in_domain(s):
-                raise InvalidValue('Sum of annotated disjunction weigths exceed acceptable value')
-                # TODO add location
+                ws.append(pos)
 
-            complement = semiring.negate(s)
+            name = Term('choice', Constant(self.group[0]), Term('e'), Term('null'), *self.group[1])
+            try:
+                complement = semiring.ad_complement(ws, key=name)
+                if not semiring.in_domain(complement):
+                    raise InvalidValue('Sum of annotated disjunction weigths exceeds acceptable value', location=self.location)
+            except InvalidValue:
+                raise InvalidValue('Sum of annotated disjunction weigths exceeds acceptable value', location=self.location)
+                # TODO add location
             weights[self.extra_node] = (complement, semiring.one())
 
     def copy(self, rename=None):
@@ -197,8 +217,47 @@ class ConstraintAD(Constraint):
         elif self.is_false():
             return False
         else:
-            actual = [values.get(i) for i in self.nodes if values.get(i) is not None]
+            actual = [values.get(i) for i in self.get_nodes() if values.get(i) is not None]
             return sum(actual) == 1
+
+    def propagate(self, values, weights, node=None):
+        """Returns
+            - True: constraint satisfied
+            - False: constraint violated
+            - None: unknown
+        """
+
+        if node is not None and node not in self.get_nodes():
+            return
+
+        if self.is_true():
+            return True
+        elif self.is_false():
+            return False
+        else:
+            #print ([(i, values[i]) for i in self.get_nodes() if values.get(i) is not None], self.get_nodes())
+            # If there is a true value: set all the others to false
+            true_values = [i for i in self.get_nodes() if values.get(i) == 1.0]
+            if len(true_values) == 1:
+                v = true_values[0]
+                for i in self.get_nodes():
+                    if i != v:
+                        values[i] = 0.0
+           #     print ('a', values)
+                return True
+            elif len(true_values) > 1:
+         #       print('b', values)
+                return False
+            else:
+                false_values = set([i for i in self.get_nodes() if values.get(i) == 0.0])
+                remain = 1.0 - sum(weights[v] for v in false_values)
+                # if len(false_values) == len(self.get_nodes()) - 1:
+                for i in self.get_nodes():
+                    if not i in false_values:
+                        values[i] = weights[i] / remain
+          #      print ('c', values)
+                return True
+        #print ('d', values)
 
 
 class ClauseConstraint(Constraint):
@@ -224,6 +283,9 @@ class TrueConstraint(Constraint):
 
     def __init__(self, node):
         self.node = node
+
+    def get_nodes(self):
+        return [self.node]
 
     def as_clauses(self):
         return [[self.node]]

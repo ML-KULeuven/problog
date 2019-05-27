@@ -81,9 +81,15 @@ FILES_WHITELIST = [
 
 here = os.path.dirname(__file__)
 
-try :
-    logging.config.fileConfig(os.path.join(here,'logging.conf'))
-except IOError:
+use_default_logger = True
+if os.path.exists(os.path.join(here,'logging.conf')):
+    try:
+        logging.config.fileConfig(os.path.join(here,'logging.conf'))
+        use_default_logger = False
+    except IOError:
+        pass
+    
+if use_default_logger:
     logger = logging.getLogger('server')
     ch = logging.StreamHandler(sys.stdout)
     formatter = logging.Formatter('[%(levelname)s] %(message)s')
@@ -229,7 +235,7 @@ def run_problog_task(task, model, callback=None, data=None, options=None):
     except subprocess.CalledProcessError as err:
         logger.error('ProbLog didn\'t finish correctly: %s' % err)
         result = {'SUCCESS': False, 'url': url,
-                  'err': 'ProbLog learning exceeded time or memory limit'}
+                  'err': 'ProbLog exceeded time or memory limit'}
         return 200, 'application/json', wrap_callback(callback, json.dumps(result))
 
 
@@ -257,6 +263,11 @@ def run_mpe_jsonp(model, callback):
     return run_problog_task('mpe', model[0], callback[0], options=['--full'])
 
 
+@handle_url(api_root + 'map')
+def run_map_jsonp(model, callback):
+    return run_problog_task('map', model[0], callback[0], options=[])
+
+
 @handle_url(api_root + 'sample')
 def run_sample_jsonp(model, callback):
     return run_problog_task('sample', model[0], callback[0])
@@ -280,6 +291,39 @@ def run_lfi_jsonp(model, examples, callback):
 @handle_url(api_root + 'ground')
 def run_lfi_jsonp(model, callback):
     return run_problog_task('ground', model[0], callback[0], options=['--format', 'svg'])
+
+
+@handle_url(api_root + 'english')
+def run_natlang_jsonp(model, is_text, callback):
+    retcode, result, stderr = call_extract(model[0], is_text[0])
+    if retcode == 0:
+        result['SUCCESS'] = True
+    else:
+        result['SUCCESS'] = False
+        result['message'] = 'An error has occurred.'
+    retval = wrap_callback(callback[0], json.dumps(result))
+    return 200, 'application/json', retval
+
+
+def call_extract(text, is_text):
+    # script = root_path('..', '..', '..', '..', 'nlp_challenge', 'code', 'extract', 'extract.py')
+    script = root_path('..', '..', '..', 'nlp4plp', 'extract', 'extract.py')
+    cmd = ['python', script, '--stdin', '--json', '--nosvg']
+    if not is_text == 'true':
+        cmd += ['-m']
+    try:
+        command = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        stdout, stderr = command.communicate(text)
+        retcode = command.returncode
+        try:
+            out = json.loads(stdout)
+        except:
+            out = {'out': stdout}
+    except Exception as err:
+        retcode = 1
+        out = {}
+        stderr = str(err)
+    return retcode, out, stderr
 
 
 def store_hash(data, datatype):
@@ -341,6 +385,19 @@ def get_editor():
     data = data.replace('problog.init()', 'problog.init(\'\');')
     data = make_local(data)
     return 200, 'text/html', data
+
+
+@handle_url(api_root + 'update')
+def update_problog():
+
+    workingdir = os.path.abspath(os.path.dirname(__file__))
+    try:
+        out = subprocess.check_output(['git', 'pull'], cwd=workingdir, stderr=subprocess.STDOUT).decode()
+        result = {'success': True, 'output': out}
+    except subprocess.CalledProcessError as err:
+        result = {'success': False, 'error': str(err.output)}
+
+    return 200, 'application/json', json.dumps(result)
 
 
 def make_local(html):

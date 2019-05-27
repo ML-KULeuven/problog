@@ -21,7 +21,7 @@ from __future__ import print_function
 import os
 import sys
 
-from problog.formula import LogicDAG, LogicFormula
+from problog.formula import LogicDAG, LogicFormula, LogicNNF
 from problog.evaluator import SemiringLogProbability
 from problog.parser import DefaultPrologParser
 from problog.program import ExtendedPrologFactory, PrologFile
@@ -37,8 +37,10 @@ def main(argv, result_handler=None):
     parser.add_argument('--format', choices=('dot', 'pl', 'cnf', 'svg', 'internal'), default=None,
                         help='output format')
     parser.add_argument('--break-cycles', action='store_true', help='perform cycle breaking')
+    parser.add_argument('--transform-nnf', action='store_true', help='transform to NNF')
     parser.add_argument('--keep-all', action='store_true', help='also output deterministic nodes')
     parser.add_argument('--keep-duplicates', action='store_true', help='don\'t eliminate duplicate literals')
+    parser.add_argument('--any-order', action='store_true', help='allow reordering nodes')
     parser.add_argument('--hide-builtins', action='store_true', help='hide deterministic part based on builtins')
     parser.add_argument('--propagate-evidence', action='store_true', help='propagate evidence')
     parser.add_argument('--propagate-weights', action='store_true', help='propagate evidence')
@@ -46,7 +48,11 @@ def main(argv, result_handler=None):
                         help='allow compact model (may remove some predicates)')
     parser.add_argument('--noninterpretable', action='store_true')
     parser.add_argument('--web', action='store_true', help=argparse.SUPPRESS)
+    parser.add_argument('--verbose', '-v', action='count', default=0, help='Verbose output')
     parser.add_argument('-o', '--output', type=str, help='output file', default=None)
+    parser.add_argument('-a', '--arg', dest='args', action='append',
+                        help='Pass additional arguments to the cmd_args builtin.')
+
     args = parser.parse_args(argv)
 
     outformat = args.format
@@ -60,7 +66,9 @@ def main(argv, result_handler=None):
         print('Warning: CNF output requires cycle-breaking; cycle breaking enabled.',
               file=sys.stderr)
 
-    if args.break_cycles or outformat == 'cnf':
+    if args.transform_nnf:
+        target = LogicNNF
+    elif args.break_cycles or outformat == 'cnf':
         target = LogicDAG
     else:
         target = LogicFormula
@@ -78,10 +86,11 @@ def main(argv, result_handler=None):
     try:
         gp = target.createFrom(
             PrologFile(args.filename, parser=DefaultPrologParser(ExtendedPrologFactory())),
-            label_all=not args.noninterpretable, avoid_name_clash=not args.compact, keep_order=True,
+            label_all=not args.noninterpretable, avoid_name_clash=not args.compact,
+            keep_order=not args.any_order,
             keep_all=args.keep_all, keep_duplicates=args.keep_duplicates,
             hide_builtins=args.hide_builtins,
-            propagate_evidence=args.propagate_evidence, propagate_weights=semiring)
+            propagate_evidence=args.propagate_evidence, propagate_weights=semiring, args=args.args)
 
         if outformat == 'pl':
             rc = print_result((True, gp.to_prolog()), output=outfile)
@@ -95,7 +104,10 @@ def main(argv, result_handler=None):
             svg = subprocess_check_output(['dot', tmpfile, '-Tsvg'])
             rc = print_result((True, svg), output=outfile)
         elif outformat == 'cnf':
-            rc = print_result((True, CNF.createFrom(gp).to_dimacs()), output=outfile)
+            cnfnames = False
+            if args.verbose > 0:
+                cnfnames = True
+            rc = print_result((True, CNF.createFrom(gp).to_dimacs(names=cnfnames)), output=outfile)
         elif outformat == 'internal':
             rc = print_result((True, str(gp)), output=outfile)
         else:

@@ -36,7 +36,22 @@ import imp
 import collections
 
 
-def init_logger(verbose=None, name='problog'):
+class ProbLogLogFormatter(logging.Formatter):
+
+    def __init__(self):
+        logging.Formatter.__init__(self)
+
+    def format(self, message):
+        msg = str(message.msg) % message.args
+        lines = msg.split('\n')
+        if message.levelno < 10:
+            linestart = '[LVL%s] ' % message.levelno
+        else:
+            linestart = '[%s] ' % message.levelname
+        return linestart + ('\n' + linestart).join(lines)
+
+
+def init_logger(verbose=None, name='problog', out=None):
     """Initialize default logger.
 
     :param verbose: verbosity level (0: WARNING, 1: INFO, 2: DEBUG)
@@ -46,9 +61,13 @@ def init_logger(verbose=None, name='problog'):
     :return: result of ``logging.getLogger(name)``
     :rtype: logging.Logger
     """
+    if out is None:
+        out = sys.stdout
+
     logger = logging.getLogger(name)
-    ch = logging.StreamHandler(sys.stdout)
-    formatter = logging.Formatter('[%(levelname)s] %(message)s')
+    ch = logging.StreamHandler(out)
+    # formatter = logging.Formatter('[%(levelname)s] %(message)s')
+    formatter = ProbLogLogFormatter()
     ch.setFormatter(formatter)
     logger.addHandler(ch)
     if not verbose:
@@ -56,9 +75,13 @@ def init_logger(verbose=None, name='problog'):
     elif verbose == 1:
         logger.setLevel(logging.INFO)
         logger.info('Output level: INFO')
-    else:
+    elif verbose == 2:
         logger.setLevel(logging.DEBUG)
         logger.debug('Output level: DEBUG')
+    else:
+        level = max(1, 12 - verbose)   # between 9 and 1
+        logger.setLevel(level)
+        logger.log(level, 'Output level: %s' % level)
     return logger
 
 
@@ -125,16 +148,20 @@ def subprocess_check_output(*popenargs, **kwargs):
     :param kwargs: keyword arguments of subprocess.call
     :return: result of subprocess.call
     """
+
+    if 'stderr' not in kwargs:
+        kwargs['stderr'] = subprocess.PIPE
+
     popenargs = _find_process(*popenargs)
     process = subprocess.Popen(stdout=subprocess.PIPE, *popenargs, **kwargs)
     try:
-        output, unused_err = process.communicate()
+        output, err = process.communicate()
         retcode = process.poll()
         if retcode:
             cmd = kwargs.get("args")
             if cmd is None:
                 cmd = popenargs[0]
-            raise subprocess.CalledProcessError(retcode, cmd, output=output)
+            raise subprocess.CalledProcessError(retcode, cmd, output=err)
         return output.decode()
     except KeyboardInterrupt:
         kill_proc_tree(process)
@@ -355,6 +382,8 @@ def format_value(data, precision=8):
     """
     if isinstance(data, float):
         data = ('%.' + str(precision) + 'g') % data
+    else:
+        data = str(data)
     return ('{:<' + str(precision + 2) + '}').format(data)
 
 

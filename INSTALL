@@ -1,7 +1,7 @@
 Installation instructions
 =========================
 
-ProbLog 2.1 should work out of the box on most systems with Python installed.
+ProbLog 2.1 requires Python 3.6+ since 2.1.0.36
 
 Mac OSX and most Linux installations have Python pre-installed.
 If Python is not yet installed on your system you can obtain it from 
@@ -12,15 +12,13 @@ For better performance you can also run ProbLog with PyPy:
 
     http://pypy.org/download.html
 
-ProbLog is compatible with Python 2.7+ and 3.2+.
-
 ProbLog's evaluation is based on knowledge compilation tools.
 By default it uses dsharp [https://bitbucket.org/haz/dsharp].
 
 It also supports two other tools:
     * C2D Compiler (NNF) [http://reasoning.cs.ucla.edu/c2d/]
     * Sentential Decision Diagrams (SDD) [http://reasoning.cs.ucla.edu/sdd/]
-    
+
 It is recommended to install one of these alternatives (especially for Mac users).
 
 Linux (64-bit)
@@ -29,14 +27,13 @@ Linux (64-bit)
 SDD
 +++
 
-1. Run `python problog-cli.py install`
-
-Note: this installation requires 'python-dev' (i.e. Python.h)
+To be able to use SDDs, PySDD must be installed (https://github.com/wannesm/PySDD).
+When installing problog with "pip install problog[sdd]", PySDD will be installed.
+When installing from source, use "pip install .[sdd]"
 
 Usage: 
 ProbLog will automatically use SDDs from now on.
-If you want to use d-DNNFs you can use add the command line options -k nnf. 
-
+If you want to use d-DNNFs you can use add the command line options -k nnf.
 
 C2D
 +++
@@ -56,7 +53,7 @@ Mac OSX
 SDD
 +++
 
-1. Run `python problog-cli.py install`
+To be able to use SDDs, PySDD must be installed (https://github.com/wannesm/PySDD).
 
 Usage: 
 ProbLog will automatically use SDDs from now on.

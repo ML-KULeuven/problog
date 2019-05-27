@@ -36,7 +36,7 @@ import logging
 
 # noinspection PyUnusedLocal
 @transform(LogicFormula, LogicDAG)
-def break_cycles(source, target, **kwdargs):
+def break_cycles(source, target, translation=None, **kwdargs):
     """Break cycles in the source logic formula.
 
     :param source: logic formula with cycles
@@ -44,18 +44,22 @@ def break_cycles(source, target, **kwdargs):
     :param kwdargs: additional arguments (ignored)
     :return: target
     """
+
     logger = logging.getLogger('problog')
     with Timer('Cycle breaking'):
         cycles_broken = set()
         content = set()
-        translation = defaultdict(list)
+        if translation is None:
+            translation = defaultdict(list)
 
-        for q, n in source.queries():
+        for q, n, l in source.labeled():
             if source.is_probabilistic(n):
                 newnode = _break_cycles(source, target, n, [], cycles_broken, content, translation)
             else:
                 newnode = n
-            target.add_name(q, newnode, target.LABEL_QUERY)
+            target.add_name(q, newnode, l)
+
+        # TODO copy constraints
 
         translation = defaultdict(list)
         for q, n, v in source.evidence_all():
@@ -83,7 +87,11 @@ def _break_cycles(source, target, nodeid, ancestors, cycles_broken, content, tra
     nodeid = abs(nodeid)
 
     if not is_evidence and not source.is_probabilistic(source.get_evidence_value(nodeid)):
-        return source.get_evidence_value(nodeid)
+        ev = source.get_evidence_value(nodeid)
+        if negative_node:
+            return target.negate(ev)
+        else:
+            return ev
     elif nodeid in ancestors:
         cycles_broken.add(nodeid)
         return None     # cyclic node: node is False

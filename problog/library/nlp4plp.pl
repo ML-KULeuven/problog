@@ -1,0 +1,1 @@
+:- consult('nlp4plp.d/meta_prob.pl').

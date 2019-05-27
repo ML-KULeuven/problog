@@ -16,7 +16,7 @@ from ..util import format_dictionary
 from ..core import ProbLogError
 from ..logic import Term, Clause, term2str
 from ..formula import LogicFormula
-
+from ..version import version
 
 def show(txt):
     print (txt)
@@ -76,8 +76,46 @@ usage = """
         ---------------
 
     Note that variables are not shared between query and evidence.
+    
+    You can set shell options with the predicate 
+    
+        option(Option, Value)
+        
+    The following options are supported:
+    
+        show_zero  no/yes   show query results with probability 0.0
+        
+    You can check the currently set value by passing a variable as the second argument.
 
     """
+
+
+class Option(object):
+
+    pass
+
+
+class BooleanOption(Option):
+
+    def __init__(self, default=True):
+        self.value = default
+
+    def set(self, value):
+        if value.is_var():
+            if value.name[0] != '_':
+                return '%s = %s' % (value, self.get())
+            else:
+                return None
+        elif value.signature == 'yes/0':
+            self.value = True
+        elif value.signature == 'no/0':
+            self.value = False
+
+    def get(self):
+        return 'yes' if self.value else 'no'
+
+    def __nonzero__(self):
+        return self.value
 
 
 def main(argv, **kwdargs):
@@ -90,7 +128,7 @@ def main(argv, **kwdargs):
             pass
         atexit.register(readline.write_history_file, histfile)
 
-    show('% Welcome to ProbLog 2.1')
+    show('%% Welcome to ProbLog 2.1 (version %s)' % version)
     show('% Type \'help.\' for more information.')
 
     # engine = DefaultEngine()
@@ -98,6 +136,8 @@ def main(argv, **kwdargs):
     knowledge = get_evaluatable()
 
     nonprob = ['consult/1', 'use_module/1']
+
+    options = {Term('show_zero'): BooleanOption(False)}
 
     while True:
         try:
@@ -110,6 +150,13 @@ def main(argv, **kwdargs):
                     print ('\n'.join(map(str, db)))
                 elif c.signature == 'help/0':
                     print (usage)
+                elif c.signature == 'option/2':
+                    try:
+                        result = options[c.args[0]].set(c.args[1])
+                        if result is not None:
+                            print (result)
+                    except KeyError:
+                        raise ProbLogError("Unknown option '%s'" % c.args[0])
                 elif c.signature in nonprob:
                     DefaultEngine().query(db, c)
                     # show('%% Consulted file %s' % c.args[0])
@@ -148,7 +195,8 @@ def main(argv, **kwdargs):
 
                     results = knowledge.create_from(gp).evaluate()
                     for n, p in results.items():
-                        print ('%sp: %s;\n---------------' % (n, p))
+                        if p > 0 or options[Term('show_zero')]:
+                            print ('%sp: %s;\n---------------' % (n, p))
 
                     # dbq = db.extend()
                     # query_head = Term('_q', *([None] * len(varnames)))

@@ -5,12 +5,14 @@ __pycache__
 .coveragerc
 .idea/
 .ipynb_checkpoints
-
+/dist/
 
 build/
 trash/
 
 /problog/bin/darwin/cnf2dDNNF
+/problog/bin/darwin/maxsatz
+/problog/bin/java/
 
 sandbox/
 data/

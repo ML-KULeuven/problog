@@ -1,0 +1,11 @@
+"p1","p2","prob"
+"ann"  ,"bob" ,0.2
+"ann"  ,"carl",0.5
+"bob"  ,"dan" ,0.1
+"bob"  ,"emma",0.9
+"bob"  ,"ann" ,1
+"carl" ,"ann" ,0.2
+"dan"  ,"bob" ,0.1
+"emma" ,"bob" ,0.8
+"frank","bob" ,0.7
+

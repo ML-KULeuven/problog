@@ -31,7 +31,10 @@ from .errors import InconsistentEvidenceError
 from .util import OrderedSet
 from .logic import Term, Or, Clause, And, is_ground
 
+from .evaluator import Evaluatable, FormulaEvaluator, FormulaEvaluatorNSP
+
 from .constraint import ConstraintAD
+from .core import transform
 
 
 class BaseFormula(ProbLogObject):
@@ -64,8 +67,8 @@ class BaseFormula(ProbLogObject):
 
         self._constraints = []           # Constraints: list of Constraint
 
-        self._names = defaultdict(OrderedDict)  # Node names: dict(label: dict(key, Term))
-
+        #self._names = defaultdict(OrderedDict)  # Node names: dict(label: dict(key, Term))
+        self._names = defaultdict(dict)
         self._atomcount = 0
 
     @property
@@ -134,10 +137,18 @@ class BaseFormula(ProbLogObject):
 
         result = {}
         for n, w in weights.items():
+            if hasattr(self, 'get_name'):
+                name = self.get_name(n)
+            else:
+                name = n
             if w == self.WEIGHT_NEUTRAL and type(self.WEIGHT_NEUTRAL) == type(w):
                 result[n] = semiring.one(), semiring.one()
+            elif w == False:
+                result[n] = semiring.false(name)
+            elif w is None:
+                result[n] = semiring.true(name)
             else:
-                result[n] = semiring.pos_value(w, n), semiring.neg_value(w, n)
+                result[n] = semiring.pos_value(w, name), semiring.neg_value(w, name)
 
         for c in self.constraints():
             c.update_weights(result, semiring)
@@ -147,13 +158,13 @@ class BaseFormula(ProbLogObject):
     # ==========                           NODE NAMES                            =========== #
     # ====================================================================================== #
 
-    def add_name(self, name, key, label=None):
+    def add_name(self, name, key, label=None, keep_name=False):
         """Add a name to the given node.
 
         :param name: name of the node
         :type name: Term
         :param key: key of the node
-        :type key: int | TRUE | FALSE
+        :type key: int | bool
         :param label: type of label (one of LABEL_*)
         """
         if label is None:
@@ -173,7 +184,11 @@ class BaseFormula(ProbLogObject):
                 return res
         raise KeyError(name)
 
-    def add_query(self, name, key):
+    # def get_name(self, key):
+    #     names = self.get_names()
+    #     print (names)
+
+    def add_query(self, name, key, keep_name=False):
         """Add a query name.
 
         Same as ``add_name(name, key, self.LABEL_QUERY)``.
@@ -181,9 +196,9 @@ class BaseFormula(ProbLogObject):
         :param name: name of the query
         :param key: key of the query node
         """
-        self.add_name(name, key, self.LABEL_QUERY)
+        self.add_name(name, key, self.LABEL_QUERY, keep_name=keep_name)
 
-    def add_evidence(self, name, key, value):
+    def add_evidence(self, name, key, value, keep_name=False):
         """Add an evidence name.
 
         Same as ``add_name(name, key, self.LABEL_EVIDENCE_???)``.
@@ -193,11 +208,25 @@ class BaseFormula(ProbLogObject):
         :param value: value of the evidence (True, False or None)
         """
         if value is None:
-            self.add_name(name, key, self.LABEL_EVIDENCE_MAYBE)
+            self.add_name(name, key, self.LABEL_EVIDENCE_MAYBE, keep_name=keep_name)
         elif value:
-            self.add_name(name, key, self.LABEL_EVIDENCE_POS)
+            self.add_name(name, key, self.LABEL_EVIDENCE_POS, keep_name=keep_name)
         else:
-            self.add_name(name, key, self.LABEL_EVIDENCE_NEG)
+            self.add_name(name, key, self.LABEL_EVIDENCE_NEG, keep_name=keep_name)
+
+    def clear_evidence(self):
+        """Remove all evidence."""
+        self._names[self.LABEL_EVIDENCE_MAYBE] = {}
+        self._names[self.LABEL_EVIDENCE_POS] = {}
+        self._names[self.LABEL_EVIDENCE_NEG] = {}
+
+    def clear_queries(self):
+        """Remove all evidence."""
+        self._names[self.LABEL_QUERY] = {}
+
+    def clear_labeled(self, label):
+        """Remove all evidence."""
+        self._names[label] = {}
 
     def get_names(self, label=None):
         """Get a list of all node names in the formula.
@@ -231,6 +260,17 @@ class BaseFormula(ProbLogObject):
         :return: ``get_names(LABEL_QUERY)``
         """
         return self.get_names(self.LABEL_QUERY)
+
+    def labeled(self):
+        """Get a list of all query-like labels.
+
+        :return:
+        """
+        result = []
+        for name, node, label in self.get_names_with_label():
+            if label not in (self.LABEL_NAMED, self.LABEL_EVIDENCE_POS, self.LABEL_EVIDENCE_NEG, self.LABEL_EVIDENCE_MAYBE):
+                result.append((name, node, label))
+        return result
 
     def evidence(self):
         """Get a list of all determined evidence.
@@ -323,6 +363,11 @@ class BaseFormula(ProbLogObject):
         return hasattr(self, flag) and getattr(self, flag)
 
 
+atom = namedtuple('atom', ('identifier', 'probability', 'group', 'name', 'source'))
+conj = namedtuple('conj', ('children', 'name'))
+disj = namedtuple('disj', ('children', 'name'))
+
+
 class LogicFormula(BaseFormula):
     """A logic formula is a data structure that is used to represent generic And-Or graphs.
     It can typically contain three types of nodes:
@@ -342,24 +387,21 @@ class LogicFormula(BaseFormula):
     by simplifying nodes or by reusing existing nodes.
     """
 
-    _atom = namedtuple('atom', ('identifier', 'probability', 'group', 'name', 'source'))
-    _conj = namedtuple('conj', ('children', 'name'))
-    _disj = namedtuple('disj', ('children', 'name'))
     # negation is encoded by using a negative number for the key
 
     def _create_atom(self, identifier, probability, group, name=None, source=None):
-        return self._atom(identifier, probability, group, name, source)
+        return atom(identifier, probability, group, name, source)
 
     def _create_conj(self, children, name=None):
-        return self._conj(children, name)
+        return conj(children, name)
 
     def _create_disj(self, children, name=None):
-        return self._disj(children, name)
+        return disj(children, name)
 
     # noinspection PyUnusedLocal
     def __init__(self, auto_compact=True, avoid_name_clash=False, keep_order=False,
                  use_string_names=False, keep_all=False, propagate_weights=None,
-                 max_arity=0, keep_duplicates=False, keep_builtins=False, hide_builtins=False,
+                 max_arity=0, keep_duplicates=False, keep_builtins=False, hide_builtins=False, database=None,
                  **kwdargs):
         BaseFormula.__init__(self)
 
@@ -367,6 +409,7 @@ class LogicFormula(BaseFormula):
         self._nodes = []
         # Lookup index for 'atom' nodes, key is identifier passed to addAtom()
         self._index_atom = {}
+        self._index_next = 0
         # Lookup index for 'and' nodes, key is tuple of sorted children
         self._index_conj = {}
         # Lookup index for 'or' nodes, key is tuple of sorted children
@@ -377,7 +420,7 @@ class LogicFormula(BaseFormula):
         self._auto_compact = auto_compact
         self._avoid_name_clash = avoid_name_clash
         self._keep_order = keep_order
-        self._keep_all = keep_all
+        self.keep_all = keep_all
         self._keep_builtins = (keep_all or keep_builtins) and not hide_builtins
         self._keep_duplicates = keep_duplicates
 
@@ -388,17 +431,23 @@ class LogicFormula(BaseFormula):
         self.semiring = propagate_weights
 
         self._use_string_names = use_string_names
+        self._database = database
+
+    @property
+    def database(self):
+        return self._database
 
     # ====================================================================================== #
     # ==========                         MANAGE LABELS                           =========== #
     # ====================================================================================== #
 
-    def add_name(self, name, key, label=None):
+    def add_name(self, name, key, label=None, keep_name=False):
         """Associates a name to the given node identifier.
 
             :param name: name of the node
             :param key: id of the node
             :param label: type of node (see LogicFormula.LABEL_*)
+            :param keep_name: keep name of node if it exists
         """
         if self._use_string_names:
             name = str(name)
@@ -410,11 +459,12 @@ class LogicFormula(BaseFormula):
                 lname = -name
             else:
                 lname = name
-            if ntype == 'atom':
-                node = type(node)(*(node[:-2] + (lname, node[-1])))
-            else:
-                node = type(node)(*(node[:-1] + (lname,)))
-            self._update(abs(key), node)
+            if not keep_name:
+                if ntype == 'atom':
+                    node = type(node)(*(node[:-2] + (lname, node[-1])))  #TODO Can't we replace with node.name = ..?
+                else:
+                    node = type(node)(*(node[:-1] + (lname,)))
+                self._update(abs(key), node)
 
         BaseFormula.add_name(self, name, key, label)
 
@@ -433,10 +483,8 @@ class LogicFormula(BaseFormula):
     def _add(self, node, key=None, reuse=True):
         """Adds a new node, or reuses an existing one.
 
-        :param node: node to add
-        :param reuse: (default True) attempt to map the new node onto an existing one based on its \
-         content
-
+        :param node: node to add (namedtuple: atom, conj or disj)
+        :param reuse: (default True) attempt to map the new node onto an existing one based on its content
         """
         if reuse:
             # Determine the node's key and lookup identifier base on node type.
@@ -458,6 +506,9 @@ class LogicFormula(BaseFormula):
                 index = len(self._nodes) + 1
                 # Add the entry to the collection
                 collection[key] = index
+                # If atom, update max index
+                if ntype == 'atom' and type(key) == int and key >= self._index_next:
+                    self._index_next = key + 1
                 # Add entry to the set of nodes
                 self._nodes.append(node)
             else:
@@ -471,6 +522,13 @@ class LogicFormula(BaseFormula):
         # Return the entry
         return index
 
+    def get_next_atom_identifier(self):
+        """
+        Get a unique identifier that can - and has not - been used to add a new atom.
+        :return: A next unique identifier to use when adding new atoms (self.add_atom(identifier=..))
+        """
+        return self._index_next
+
     def _update(self, key, value):
         """Replace the node with the given content.
 
@@ -482,17 +540,31 @@ class LogicFormula(BaseFormula):
         assert(key > 0)
         self._nodes[key - 1] = value
 
-    def _add_constraint_me(self, group, node):
+    def _add_constraint_me(self, group, node, cr_extra=True):
+        """
+
+        :param group:
+        :param node:
+        :param cr_extra: When required, create an additional extra_node atom for the group.
+        :return:
+        """
         if group is None:
             return node
         constraint = self._constraints_me.get(group)
         if constraint is None:
             constraint = ConstraintAD(group)
             self._constraints_me[group] = constraint
-        node = constraint.add(node, self)
+        node = constraint.add(node, self, cr_extra=cr_extra)
         return node
 
-    def add_atom(self, identifier, probability, group=None, name=None, source=None):
+    def force_weights(self):
+        weights = self.get_weights()
+        for i, n, t in self:
+            if t == 'atom':
+                w = weights.get(i, n.probability)
+                self._nodes[i - 1] = atom(n.identifier, w, n.group, n.name, n.source)
+
+    def add_atom(self, identifier, probability, group=None, name=None, source=None, cr_extra=True):
         """Add an atom to the formula.
 
         :param identifier: a unique identifier for the atom
@@ -500,6 +572,7 @@ class LogicFormula(BaseFormula):
         :param group: a group identifier that identifies mutually exclusive atoms (or None if no \
         constraint)
         :param name: name of the new node
+        :param cr_extra: When required, create an extra_node for the constraint group.
         :returns: the identifiers of the node in the formula (returns self.TRUE for deterministic \
         atoms)
 
@@ -512,8 +585,10 @@ class LogicFormula(BaseFormula):
          same group.
         * To add an explicitly present deterministic node you can set the probability to ``True``.
         """
-        if probability is None and not self._keep_all:
+        if probability is None and not self.keep_all:
             return self.TRUE
+        elif probability is False and not self.keep_all:
+            return self.FALSE
         elif probability != self.WEIGHT_NEUTRAL and self.semiring and \
                 self.semiring.is_zero(self.semiring.value(probability)):
             return self.FALSE
@@ -522,19 +597,20 @@ class LogicFormula(BaseFormula):
             return self.TRUE
         else:
             atom = self._create_atom(identifier, probability, group, name, source)
+            length_before = len(self._nodes)
             node_id = self._add(atom, key=identifier)
 
             self.get_weights()[node_id] = probability
             if name is not None:
                 self.add_name(name, node_id, self.LABEL_NAMED)
-            if node_id == len(self._nodes):
+            if len(self._nodes) != length_before:
                 # The node was not reused?
                 self._atomcount += 1
                 # TODO if the next call return 0 or None, the node is still added?
-                node_id = self._add_constraint_me(group, node_id)
+                node_id = self._add_constraint_me(group, node_id, cr_extra=cr_extra)
             return node_id
 
-    def add_and(self, components, key=None, name=None):
+    def add_and(self, components, key=None, name=None, compact=None):
         """Add a conjunction to the logic formula.
 
         :param components: a list of node identifiers that already exist in the logic formula.
@@ -542,9 +618,9 @@ class LogicFormula(BaseFormula):
         :param name: name of the node
         :returns: the key of the node in the formula (returns 0 for deterministic atoms)
         """
-        return self._add_compound('conj', components, self.FALSE, self.TRUE, key=key, name=name)
+        return self._add_compound('conj', components, self.FALSE, self.TRUE, key=key, name=name, compact=compact)
 
-    def add_or(self, components, key=None, readonly=True, name=None):
+    def add_or(self, components, key=None, readonly=True, name=None, placeholder=False, compact=None):
         """Add a disjunction to the logic formula.
 
         :param components: a list of node identifiers that already exist in the logic formula.
@@ -566,7 +642,8 @@ class LogicFormula(BaseFormula):
         This may cause the data structure to contain superfluous nodes.
         """
         return self._add_compound('disj', components, self.TRUE, self.FALSE, key=key,
-                                  readonly=readonly, name=name)
+                                  readonly=readonly and not placeholder, name=name,
+                                  placeholder=placeholder, compact=compact)
 
     def add_disjunct(self, key, component):
         """Add a component to the node with the given key.
@@ -592,6 +669,8 @@ class LogicFormula(BaseFormula):
                 pass
             elif component == 0:
                 return self._update(key, self._create_disj((0,), name=node.name))
+            elif component in node.children and not self._keep_duplicates:
+                pass    # already there
             else:
                 if 0 < self._max_arity == len(node.children):
                     child = self.add_or(node.children)
@@ -621,12 +700,13 @@ class LogicFormula(BaseFormula):
 
     # noinspection PyUnusedLocal
     def _add_compound(self, nodetype, content, t, f, key=None,
-                      readonly=True, update=None, name=None):
+                      readonly=True, update=None, name=None, placeholder=False, compact=None):
         """Add a compound term (AND or OR)."""
-        assert content   # Content should not be empty
+        if not placeholder:
+            assert content   # Content should not be empty
 
         name_clash = False
-        if self._auto_compact:
+        if compact or self._auto_compact and compact is None:
             # If there is a t node, (true for OR, false for AND)
             if t in content:
                 return t
@@ -637,11 +717,14 @@ class LogicFormula(BaseFormula):
             # Put into fixed order and eliminate duplicate nodes
             if self._keep_duplicates:
                 content = tuple(content)
-            else:
+            elif self._keep_order:
                 content = tuple(OrderedSet(content))
+            else:  # any_order
+                # can also merge (a, b) and (b, a)
+                content = tuple(set(content))
 
             # Empty OR node fails, AND node is true
-            if not content:
+            if not content and not placeholder:
                 return f
 
             # Contains opposites: return 'TRUE' for or, 'FALSE' for and
@@ -671,7 +754,7 @@ class LogicFormula(BaseFormula):
 
         if nodetype == 'conj':
             node = self._create_conj(content, name)
-            return self._add(node, reuse=self._auto_compact and not self._keep_all)
+            return self._add(node, reuse=self._auto_compact and not self.keep_all)
         elif nodetype == 'disj':
             node = self._create_disj(content, name)
             if update is not None:
@@ -679,7 +762,7 @@ class LogicFormula(BaseFormula):
                 return self._update(update, node)
             elif readonly:
                 # If the node is readonly, we can try to reuse an existing node.
-                new_node = self._add(node, reuse=self._auto_compact and not name_clash and not self._keep_all)
+                new_node = self._add(node, reuse=self._auto_compact and not name_clash and not self.keep_all)
                 return new_node
             else:
                 # If node is modifiable, we shouldn't reuse an existing node.
@@ -750,8 +833,7 @@ class LogicFormula(BaseFormula):
             self.get_evidence_values()[key] = value
 
     def propagate(self, nodeids, current=None):
-        """Propagate the value of the given node
-          (true if node is positive, false if node is negative)
+        """Propagate the value of the given node (true if node is positive, false if node is negative)
         The propagation algorithm is not complete.
 
         :param nodeids: evidence nodes to set (> 0 means true, < 0 means false)
@@ -812,10 +894,10 @@ class LogicFormula(BaseFormula):
                 # Handle trivial cases:
                 # Node should be true, but is a conjunction with a false child
                 if t == 'conj' and self.FALSE in children and nid > 0:
-                    raise InconsistentEvidenceError()
+                    raise InconsistentEvidenceError(context=" during evidence propagation")
                 # Node should be false, but is a disjunction with a true child
                 elif t == 'disj' and self.TRUE in children and nid < 0:
-                    raise InconsistentEvidenceError()
+                    raise InconsistentEvidenceError(context=" during evidence propagation")
                 # Node should be false, and is a conjunction with a false child
                 elif t == 'conj' and self.FALSE in children and nid < 0:
                     # Already satisfied, nothing else to do
@@ -921,11 +1003,11 @@ class LogicFormula(BaseFormula):
     def __str__(self):
         s = '\n'.join('%s: %s' % (i, n) for i, n, t in self)
         f = True
-        for q in self.queries():
+        for q in self.labeled():
             if f:
                 f = False
                 s += '\nQueries : '
-            s += '\n* %s : %s' % q
+            s += '\n* %s : %s [%s]' % q
 
         f = True
         for q in self.evidence():
@@ -965,15 +1047,33 @@ label_all=True)
 
         for qn, qi in self.queries():
             if is_ground(qn):
-                if qi == self.TRUE:
-                    lines.append('%s.' % qn)
-                elif qi == self.FALSE:
-                    lines.append('%s :- fail.' % qn)
+                if self.is_true(qi):
+                    if qn.is_negated():
+                        lines.append('%s :- fail.' % -qn)
+                    else:
+                        lines.append('%s.' % qn)
+                elif self.is_false(qi):
+                    if qn.is_negated():
+                        lines.append('%s.' % -qn)
+                    else:
+                        lines.append('%s :- fail.' % qn)
                 lines.append('query(%s).' % qn)
 
         for qn, qi in self.evidence():
-            if qi < 0:
-                lines.append('evidence(%s).' % -qn)
+            if self.is_true(qi):
+                if qn.is_negated():
+                    lines.append('%s :- fail.' % -qn)
+                else:
+                    lines.append('%s.' % qn)
+                lines.append('evidence(%s).' % qn)
+            elif self.is_false(qi):
+                if qn.is_negated():
+                    lines.append('%s.' % -qn)
+                else:
+                    lines.append('%s :- fail.' % qn)
+                lines.append('evidence(%s).' % qn)
+            elif qi < 0:
+                lines.append('evidence(\+%s).' % qn)
             else:
                 lines.append('evidence(%s).' % qn)
 
@@ -1124,7 +1224,6 @@ label_all=True)
 
         for group, choices in choice_by_group.items():
             # Construct head
-
             head = Or.from_list([choice_name[c].with_probability(choice_prob[c]) for c in choices])
 
             # Construct body
@@ -1138,7 +1237,7 @@ label_all=True)
     def _is_valid_name(self, name):
         return name is not None and \
             not name.functor.startswith('_problog_') and \
-            not name.functor == 'choice' and not name.functor == 'body'
+            not name.functor == 'choice' and not name.functor.startswith('body_')
 
     def get_body(self, index, processed=None, parent_name=None):
         if index == self.TRUE:
@@ -1192,20 +1291,25 @@ label_all=True)
                     if n.name is not None and n.source not in ('builtin', 'negation'):
                         yield n.name.with_probability(n.probability)
                 elif t == 'disj':
-                    for c in n.children:
-                        if not processed[abs(c)] or self._is_valid_name(self.get_node(abs(c)).name):
-                            b = self.get_body(c, parent_name=n.name)
-                            if str(n.name) != str(b):   # TODO bit of a hack?
-                                yield Clause(n.name, b)
+                    if len(n.children) == 1 and not self._is_valid_name(n.name):
+                        # Match case in get_body that also skips these nodes,
+                        # which means that these clauses would never be used anyway.
+                        pass
+                    else:
+                        for c in n.children:
+                            if not processed[abs(c)] or self._is_valid_name(self.get_node(abs(c)).name):
+                                b = self.get_body(c, parent_name=n.name)
+                                if str(n.name) != str(b):   # TODO bit of a hack?
+                                    yield Clause(n.name, b)
                 elif t == 'conj' and n.name is None:
                     pass
                 else:
                     yield Clause(n.name, self.get_body(i, parent_name=n.name))
 
-    def extract_relevant(self):
+    def extract_relevant(self, roots=None):
         relevant = [False] * (len(self)+1)
-        roots = set(abs(n) for q, n in self.queries() if self.is_probabilistic(n))
-        roots |= set(abs(n) for q, n in self.evidence() if self.is_probabilistic(n))
+        if roots is None:
+            roots = {abs(r) for r in self.get_roots()}
         while roots:
             root = roots.pop()
             if not relevant[root]:
@@ -1217,6 +1321,81 @@ label_all=True)
                         if not relevant[abs(c)]:
                             roots.add(abs(c))
         return relevant
+
+    def get_roots(self):
+        roots = set(n for q, n in self.queries() if self.is_probabilistic(n))
+        roots |= set(n for q, n in self.evidence() if self.is_probabilistic(n))
+        return roots
+
+    def get_node_multiplicity(self, index):
+        if self.is_true(index):
+            return 1
+        elif self.is_false(index):
+            return 0
+        else:
+            node = self.get_node(abs(index))
+            ntype = type(node).__name__
+            if ntype == 'atom':
+                return 1
+            elif index < 0:
+                # TODO verify this is correct: negative node has multiplicity 1
+                return 1
+            else:
+                child_multiplicities = [self.get_node_multiplicity(c) for c in node.children]
+                if ntype == 'disj':
+                    return sum(child_multiplicities)
+                else:
+                    r = 1
+                    for cm in child_multiplicities:
+                        r *= cm
+                    return r
+
+    def enumerate_branches(self, index, anc=()):
+        if index in anc:
+            yield 0, []
+        elif self.is_true(index):
+            yield 0, [self.TRUE]
+        elif self.is_false(index):
+            yield 0, []
+        elif index < 0:
+            yield index, [index]
+        else:
+            node = self.get_node(index)
+            ntype = type(node).__name__
+            if ntype == 'atom':
+                yield index, [index]
+            elif ntype == 'conj':
+                from itertools import product, chain
+                for b in product(*(self.enumerate_branches(c, anc=anc + (index,)) for c in node.children)):
+                    c_max, c_br = zip(*b)
+                    mx = max(c_max)
+                    yield max(index, mx), list(chain(*c_br))
+            else:
+                for c in node.children:
+                    for mx, b in self.enumerate_branches(c, anc=anc + (index,)):
+                        yield mx, b
+
+    def copy_node(self, target, index):
+        if self.is_true(index):
+            return target.TRUE
+        elif self.is_false(index):
+            return target.FALSE
+        else:
+            node = self.get_node(abs(index))
+            ntype = type(node).__name__
+            sign = 1 if index > 0 else -1
+            if ntype == 'atom':
+                at = target.add_atom(*node)
+            elif ntype == 'conj':
+                children = [self.copy_node(target, c) for c in node.children]
+                at = target.add_and(children)
+            elif ntype == 'disj':
+                children = [self.copy_node(target, c) for c in node.children]
+                at = target.add_or(children)
+            if sign < 0:
+                return target.negate(at)
+            else:
+                return at
 
     def _unroll_conj(self, node):
         assert type(node).__name__ == 'conj'
@@ -1240,12 +1419,15 @@ label_all=True)
             children = node.children
         return children
 
-    def to_dot(self, not_as_node=True):
+    def to_dot(self, not_as_node=True, nodeprops=None):
         """Write out in GraphViz (dot) format.
 
         :param not_as_node: represent negation as a node
+        :param nodeprops: additional properties for nodes
         :return: string containing dot representation
         """
+        if nodeprops is None:
+            nodeprops = {}
 
         not_as_edge = not not_as_node
 
@@ -1262,9 +1444,11 @@ label_all=True)
 
         s = 'digraph GP {\n'
         for index, node, nodetype in self:
-
+            prop = nodeprops.get(index, '')
+            if prop:
+                prop = ',' + prop
             if nodetype == 'conj':
-                s += '%s [label="AND", shape="box", style="filled", fillcolor="white"];\n' % index
+                s += '%s [label="AND", shape="box", style="filled", fillcolor="white"%s];\n' % (index, prop)
                 for c in node.children:
                     opt = ''
                     if c < 0 and c not in negative and not_as_node:
@@ -1278,8 +1462,8 @@ label_all=True)
                     if c != 0:
                         s += '%s -> %s%s;\n' % (index, c, opt)
             elif nodetype == 'disj':
-                s += '%s [label="OR", shape="diamond", style="filled", fillcolor="white"];\n' \
-                     % index
+                s += '%s [label="OR", shape="diamond", style="filled", fillcolor="white"%s];\n ' \
+                     % (index, prop)
                 for c in node.children:
                     opt = ''
                     if c < 0 and c not in negative and not_as_node:
@@ -1295,8 +1479,8 @@ label_all=True)
                 if node.probability == self.WEIGHT_NEUTRAL:
                     pass
                 elif node.group is None:
-                    s += '%s [label="%s", shape="ellipse", style="filled", fillcolor="white"];\n' \
-                         % (index, node.probability)
+                    s += '%s [label="%s", shape="ellipse", style="filled", fillcolor="white"%s];\n' \
+                         % (index, node.probability, prop)
                 else:
                     clusters[node.group].append('%s [ shape="ellipse", label="%s", '
                                                 'style="filled", fillcolor="white" ];\n'
@@ -1346,15 +1530,16 @@ label_all=True)
         return s + '}'
 
     def clone(self, destination):
+        destination._auto_compact = False
         source = self
         # TODO maintain a translation table
         for i, n, t in source:
             if t == 'atom':
-                j = destination.add_atom(n.identifier, n.probability, n.group, source.get_name(i))
+                j = destination.add_atom(n.identifier, n.probability, n.group, name=source.get_name(i))
             elif t == 'conj':
-                j = destination.add_and(n.children, source.get_name(i))
+                j = destination.add_and(n.children, name=n.name)
             elif t == 'disj':
-                j = destination.add_or(n.children, source.get_name(i))
+                j = destination.add_or(n.children, name=n.name)
             else:
                 raise TypeError('Unknown node type')
             assert i == j
@@ -1376,6 +1561,58 @@ class LogicDAG(LogicFormula):
         LogicFormula.__init__(self, auto_compact, **kwdargs)
 
 
+class LogicNNF(LogicDAG, Evaluatable):
+    """A propositional formula in NNF form (i.e. only negation on facts)."""
+
+    def __init__(self, auto_compact=True, **kwdargs):
+        LogicDAG.__init__(self, auto_compact, **kwdargs)
+
+    def _create_evaluator(self, semiring, weights, **kwargs):
+        if semiring.is_nsp():
+            return FormulaEvaluatorNSP(self, semiring, weights)
+        else:
+            return FormulaEvaluator(self, semiring, weights)
+
+    def copy_node_from(self, source, index, translate=None):
+        """Copy a node with transformation to Negation Normal Form (only negation on facts)."""
+        if translate is None:
+            translate = {}
+        if index in translate:
+            return translate[index]
+        elif source.is_true(index):
+            return self.TRUE
+        elif source.is_false(index):
+            return self.FALSE
+        else:
+            node = source.get_node(abs(index))
+            ntype = type(node).__name__
+            sign = 1 if index > 0 else -1
+            not_name = None
+            if node.name:
+                not_name = -node.name
+
+            if ntype == 'atom':
+                at = self.add_atom(*node)
+                if sign < 0:
+                    at = self.negate(at)
+            elif ntype == 'conj':
+                if sign > 0:
+                    children = [self.copy_node_from(source, c, translate) for c in node.children]
+                    at = self.add_and(children, name=node.name)
+                else:
+                    children = [self.copy_node_from(source, source.negate(c), translate) for c in node.children]
+                    at = self.add_or(children, name=not_name)
+            elif ntype == 'disj':
+                if sign > 0:
+                    children = [self.copy_node_from(source, c, translate) for c in node.children]
+                    at = self.add_or(children, name=node.name)
+                else:
+                    children = [self.copy_node_from(source, source.negate(c), translate) for c in node.children]
+                    at = self.add_and(children, name=not_name)
+            translate[index] = at
+            return at
+
+
 class DeterministicLogicFormula(LogicFormula):
     """A deterministic logic formula."""
 
@@ -1386,514 +1623,25 @@ class DeterministicLogicFormula(LogicFormula):
         return self.TRUE
 
 
-#
-#
-# class StringKeyLogicFormula(LogicFormula) :
-#     """A propositional logic formula consisting of and, or, not and atoms."""
-#
-#     TRUE = 'true'
-#     FALSE = 'false'
-#
-#     def __init__(self) :
-#         LogicFormula.__init__(self)
-#
-#         self.__nodes = defaultdict(list)
-#
-#         self.__constraints_me = {}
-#         self.__constraints = []
-#
-#     def _add( self, node, key=None, reuse=True ) :
-#         """Adds a new node, or reuses an existing one.
-#
-#         :param node: node to add
-#         :param reuse: (default True) attempt to map the new node onto an existing one \
-#         based on its content
-#
-#         """
-#         self.__nodes[key].append(node)
-#         return key
-#
-#     def _update( self, key, value ) :
-#         """Replace the node with the given node."""
-#         self.__nodes[ key ] = [value]
-#
-#     def add_not( self, component ) :
-#         """Returns the key to the negation of the node."""
-#         if self.isTrue(component) :
-#             return self.FALSE
-#         elif self.isFalse(component) :
-#             return self.TRUE
-#         elif component.startswith('-') :
-#             return component[1:]
-#         else :
-#             return '-' + component
-#
-#     def _addCompound(self, nodetype, content, t, f, key=None, readonly=True, update=None) :
-#         """Add a compound term (AND or OR)."""
-#         assert( content )   # Content should not be empty
-#
-#         # #If there is a t node, (true for OR, false for AND)
-#         # if t in content : return t
-#         #
-#         # # Eliminate unneeded node nodes (false for OR, true for AND)
-#         # content = filter( lambda x : x != f, content )
-#         #
-#         # # Put into fixed order and eliminate duplicate nodes
-#         # content = tuple(sorted(set(content)))
-#         #
-#         # # Empty OR node fails, AND node is true
-#         # if not content : return f
-#
-#         # # Contains opposites: return 'TRUE' for or, 'FALSE' for and
-#         # if len(set(content)) > len(set(map(abs,content))) : return t
-#
-#         # If node has only one child, just return the child.
-#         # Don't do this for modifiable nodes, we need to keep a separate node.
-#         if len(content) == 1 : return self._add(content[0], key=key)
-#
-#         content = tuple(content)
-#
-#         if nodetype == 'conj' :
-#             node = self._create_conj( content )
-#             return self._add( node, key=key )
-#         elif nodetype == 'disj' :
-#             node = self._create_disj( content )
-#             if update != None :
-#                 # If an update key is set, update that node
-#                 return self._update( update, node )
-#             elif readonly :
-#                 # If the node is readonly, we can try to reuse an existing node.
-#                 return self._add( node, key=key )
-#             else :
-#                 # If node is modifiable, we shouldn't reuse an existing node.
-#                 return self._add( node, key=key, reuse=False )
-#         else :
-#             raise TypeError("Unexpected node type: '%s'." % nodetype)
-#
-#     def _resolve(self, key) :
-#         if type(key) == str :
-#             return key
-#
-#         res = self.__nodes.get(key,key)
-#         if type(res) == list :
-#             assert(len(res) == 1)
-#             return res[0]
-#         else :
-#             return res
-#
-#     def _deref(self, x) :
-#         c = x
-#         neg = 0
-#         while type(c) == str :
-#             if c[0] == '-' :
-#                 c = c[1:]
-#                 neg += 1
-#             x = c
-#             if not c in self.__nodes : break
-#             nn = self.__nodes[c]
-#             if len(nn) == 1 :
-#                 c = nn[0]
-#             else :
-#                 break
-#         if neg % 2 == 0 :
-#             return x
-#         else :
-#             return '-' + x
-#
-#     def __iter__(self) :
-#         for k in self.__nodes :
-#             n = self.__nodes[k]
-#             child_names = []
-#             children = []
-#             for x in n :
-#                 if type(x) == str :
-#                     x = self._deref(x)
-#                     child_names.append(x)
-#                 else :
-#                     key = '%s_%s' % (k,len(child_names) )
-#                     child_names.append( key )
-#                     if type(x).__name__ != 'atom' :
-#                         x_children = [self._deref(y) for y in x.children]
-#                         children.append( (key, self._create_conj(x_children) ) )
-#                     else :
-#                         children.append( (key, x ))
-#             if len(child_names) > 1 :
-#                 yield (k, self._create_disj(child_names), 'disj')
-#                 for i,c in children :
-#                     yield (i, c, type(c).__name__)
-#             else :
-#                 for i,c in children :
-#                     yield (k, c, type(c).__name__)
-#
-#     def __len__(self) :
-#         return len(self.__nodes)
-#
-#     ##################################################################################
-#     ####                            OUTPUT GENERATION                             ####
-#     ##################################################################################
-#
-#     def toLogicFormula(self) :
-#         target = LogicFormula(auto_compact=False)
-#         translate = {}
-#         i = 0
-#         for k,n,t in self :
-#             i += 1
-#             translate[k] = i
-#             translate['-' + str(k) ] = -i
-#         for k,n,t in self :
-#             if t == 'atom' :
-#                 i = target.add_atom( n.identifier, n.probability, n.group )
-#             elif t == 'disj' :
-#                 i = target.add_or( [ translate[x] for x in n.children ] )
-#             elif t == 'conj' :
-#                 i = target.add_and( [ translate[x] for x in n.children ] )
-#             assert(i == translate[k])
-#
-#         for name, key, label in self.get_names_with_label():
-#             key = self._deref(key)
-#             target.add_name(name, translate[key], label)
-#
-#         return target
-#
-#     @classmethod
-#     def loadFrom(cls, lp) :
-#         interm = StringKeyLogicFormula()
-#         for c in lp :
-#             if type(c).__name__ == 'Clause' :
-#                 key = str(c.head)
-#                 body = []
-#                 current = c.body
-#                 while type(current).__name__ == 'And' :
-#                     if type(current.op1).__name__ == 'Not' :
-#                         body.append('-' + str(current.op1.child))
-#                     else :
-#                         body.append(str(current.op1))
-#                     current = current.op2
-#                 if type(current).__name__ == 'Not' :
-#                     body.append('-' + str(current.child))
-#                 else :
-#                     body.append(str(current))
-#                 interm.add_and( body, key=key )
-#                 interm.add_name(key, key, interm.LABEL_NAMED)
-#             elif type(c).__name__ == 'Term' :
-#                 key = str(c.with_probability())
-#                 interm.add_atom( key, c.probability, None )
-#                 interm.add_name(key, key, interm.LABEL_NAMED)
-#             else :
-#                 raise Exception("Unexpected type: '%s'" % type(c).__name__)
-#         return interm
-#
+@transform(LogicDAG, LogicNNF)
+def dag_to_nnf(source, target=None, **kwargs):
+    if target is None:
+        target = LogicNNF()
 
+    # Keep a translation table.
+    translate = {}
 
-# Alternative cycle breaking below: loop formula's
-#   ASSAT: Computing Answer Sets of A Logic Program By SAT Solvers
-#   Fangzhen Lin and Yuting Zhao
-#   AAAI'02
-# Not in use:
-#   - does not work with SDD
-#   - added constraints can become extremely large
+    # Translate all labeled nodes (query, evidence, ...)
+    for q, n, l in source.get_names_with_label():
+        nn = target.copy_node_from(source, n, translate)
+        target.add_name(q, nn, l)
 
-# #@transform(LogicFormula, LogicDAG)
-# def breakCyclesConstraint(source, target) :
-#     relevant = [False] * (len(source)+1)
-#     cycles = {}
-#     for name, node, label in source.getNamesWithLabel() :
-#         if label != interm.LABEL_NAMED :
-#             for c_in in findCycles( source, node, [], relevant) :
-#                 c_in = tuple(sorted(c_in))
-#                 if c_in in cycles :
-#                     pass
-#                 else :
-#                     cycles[c_in] = splitCycle(source, c_in)
-#
-#     for c_in, c_out in cycles.items() :
-#         source.addConstraint(ConstraintLoop(c_in, c_out))
-#     return source
-#
-# def splitCycle(src, loop) :
-#     cycle_free = []
-#     for n in loop :
-#         n = src.get_node(n)
-#         t = type(n).__name__
-#         if t == 'disj' :
-#             cycle_free += [ c for c in n.children if not c in loop ]
-#         elif t == 'conj' :
-#             pass
-#         else :
-#             raise Exception('?')
-#     return cycle_free
-#
-# def findCycles( src, a, path, relevant=None ) :
-#     n = src.get_node(a)
-#     t = type(n).__name__
-#     if relevant != None : relevant[a] = True
-#     try :
-#         s = path.index(a)
-#         yield path[s:]
-#     except ValueError :
-#         if t == 'atom' :
-#             pass
-#         else :
-#             for c in n.children :
-#                 for p in findCycles( src, c, path + [a], relevant ) :
-#                     yield p
-#
-#
-# class ConstraintLoop(Constraint) :
-#     """Loop breaking constraint."""
-#
-#     def __init__(self, cycle_nodes, noncycle_nodes) :
-#         self.in_loop = cycle_nodes
-#         self.ex_loop = noncycle_nodes
-#         self.in_node = None
-#
-#     def __str__(self) :
-#         return 'loop_break(%s, %s)' % (list(self.in_loop), list(self.ex_loop))
-#
-#     def isTrue(self) :
-#         return False
-#
-#     def isFalse(self) :
-#         return False
-#
-#     def is_nontrivial(self) :
-#         return True
-#
-#     def as_clauses(self) :
-#         if self.is_nontrivial() :
-#             ex_loop = tuple(self.ex_loop)
-#             lines = []
-#             for m in self.in_loop :
-#                 lines.append( ex_loop + (-m,) )
-#             return lines
-#         else :
-#             return []
-#
-#     def updateWeights(self, weights, semiring) :
-#         """Update the weights of the logic formula accordingly."""
-#         pass
-#
-#     def copy( self, rename={} ) :
-#         cycle_nodes = set(rename.get(x,x) for x in self.in_loop)
-#         noncycle_nodes = set(rename.get(x,x) for x in self.ex_loop)
-#         result = ConstraintLoop( cycle_nodes, noncycle_nodes )
-#         return result
+    # Copy constraints
+    for c in source.constraints():
+        # Ensure that all nodes used in constraint are in NNF form.
+        for n in c.get_nodes():
+            target.copy_node_from(source, n, translate)
+        target.add_constraint(c.copy(translate))
 
-#
-# def copyFormula(source, target) :
-#     for i, n, t in source :
-#         if t == 'atom' :
-#             target.add_atom( n.identifier, n.probability, n.group )
-#         elif t == 'conj' :
-#             target.add_and( n.children )
-#         elif t == 'disj' :
-#             target.add_or( n.children )
-#         else :
-#             raise TypeError("Unknown node type '%s'" % t)
-#
-#     for name, node, label in source.get_names_with_label():
-#         target.add_name(name, node, label)
-#
-# def breakCycles_lp(source, target=None) :
-#
-#     if target != None :
-#         copyFormula(source,target)
-#     else :
-#         target = source
-#
-#     tmp_file = tempfile.mkstemp('.lp')[1]
-#     with open(tmp_file, 'w') as f :
-#         lf_to_smodels(target, f)
-#     output = subprocess.check_output(['lp2acyc', tmp_file])
-#     smodels_to_lf( target, output )
-#
-#     try :
-#         os.remove(tmp_file)
-#     except OSError :
-#         pass
-#
-#     return target
-#
-#
-#
-# def expand_node( formula, node_id ) :
-#     """Expand conjunctions by their body until a disjunction or atom is encountered.
-#     This method assumes that all cycles go through a disjunctive node.
-#     """
-#     node = formula.get_node(abs(node_id))
-#     nodetype = type(node).__name__
-#     conjuncts = []
-#     if nodetype == 'disj' :
-#         return [node_id]
-#     elif nodetype == 'atom' :
-#         return [node_id]
-#     elif node_id < 0 :
-#         return [node_id]
-#     else : # conj
-#         for c in node.children :
-#             conjuncts += expand_node(formula,c)
-#         return conjuncts
-#
-# def lf_to_smodels( formula, out ) :
-#
-#     # '1' is an internal atom => false
-#
-#     #print (formula)
-#     # Write rules
-#     # Basic rule:
-#     #   1 head #lits #neglits [ body literals with negative first ]
-#     for i,n,t in formula :
-#         if t == 'disj' :
-#             for c in n.children :
-#                 body = expand_node(formula, c)
-#                 l = len(body)
-#                 nl = len([ b for b in body if b < 0 ])
-#                 body = [ abs(b)+1 for b in sorted(body) ]
-#                 print('1 %s %s %s %s' % (i+1, l, nl, ' '.join(map(str,sorted(body))) ), file=out)
-#     print (0, file=out)
-#
-#     for i,n,t in formula :
-#         if t == 'atom' or t == 'disj' :
-#             print (i+1, i, file=out)
-#
-#     # Symbol table => must contain all (otherwise hidden in output)
-#     # Facts and disjunctions
-#     #   2 a
-#     #   3 b
-#
-#     print (0, file=out)
-#     print ('B+', file=out)
-#     # B+  positive evidence?
-#
-#     print (0, file=out)
-#     print ('B-', file=out)
-#     # B-  negative evidence?
-#
-#     print (0, file=out)
-#
-#     # Number of models
-#     print (1, file=out)
-#
-# def smodels_to_lf( formula, acyclic ) :
-#
-#     section = 0
-#     rules = defaultdict(list)
-#     data = [[]]
-#     for line in acyclic.split('\n') :
-#         if line == '0' :
-#             section += 1
-#             data.append([])
-#         else :
-#             data[-1].append( line )
-#
-#     acyc_nodes = frozenset([ int(x.split()[0]) for x in data[1] if '_acyc_' in x ])
-#     given_nodes = frozenset([ int(x.split()[0]) for x in data[1] if not '_acyc_' in x ])
-#     if len(data[3]) > 1 :
-#         root_node = int(data[3][1])
-#     else :
-#         root_node = None
-#
-#     for line in data[0] :
-#         line = line.split()
-#         line_head = int(line[1])
-#         line_neg = int(line[3])
-#         line_body_neg = frozenset(map(int,line[4:4+line_neg]))
-#         line_body_pos = frozenset(map(int,line[4+line_neg:]))
-#
-#         # acyc_nodes are true
-#         if acyc_nodes & line_body_neg : continue
-#         # part of original program
-#         if line_head in given_nodes : continue
-#         # acyc_nodes are true
-#         line_body_pos -= acyc_nodes
-#         body = sorted([ -a for a in line_body_neg ] + list(line_body_pos))
-#         rules[line_head].append(body)
-#
-#     translate = {}
-#     for head in rules :
-#         acyc_insert(formula, rules, head, given_nodes, translate)
-#
-#     if root_node != None :
-#         formula.addConstraint(TrueConstraint(translate[root_node]))
-#
-#     #print (formula)
-#     # print (translate[root_node])
-#
-# def acyc_insert( formula, rules, head, given, translate ) :
-#     if head < 0 :
-#         f = -1
-#     else :
-#         f = 1
-#
-#     if abs(head) in translate :
-#         return f * translate[abs(head)]
-#     elif abs(head) in given :
-#         return f * (abs(head)-1)
-#     else :
-#         disjuncts = []
-#         for body in rules[abs(head)] :
-#             new_body = [ acyc_insert(formula, rules, x, given, translate ) for x in body ]
-#             disjuncts.append(formula.add_and( new_body ))
-#         new_node = formula.add_or( disjuncts )
-#         translate[abs(head)] = new_node
-#         return f*new_node
-#
-# import collections
-#
-# class OrderedSet(collections.MutableSet):
-#
-#     def __init__(self, iterable=None):
-#         self.end = end = []
-#         end += [None, end, end]         # sentinel node for doubly linked list
-#         self.map = {}                   # key --> [key, prev, next]
-#         if iterable is not None:
-#             self |= iterable
-#
-#     def __len__(self):
-#         return len(self.map)
-#
-#     def __contains__(self, key):
-#         return key in self.map
-#
-#     def add(self, key):
-#         if key not in self.map:
-#             end = self.end
-#             curr = end[1]
-#             curr[2] = end[1] = self.map[key] = [key, curr, end]
-#
-#     def discard(self, key):
-#         if key in self.map:
-#             key, prev, next = self.map.pop(key)
-#             prev[2] = next
-#             next[1] = prev
-#
-#     def __iter__(self):
-#         end = self.end
-#         curr = end[2]
-#         while curr is not end:
-#             yield curr[0]
-#             curr = curr[2]
-#
-#     def __reversed__(self):
-#         end = self.end
-#         curr = end[1]
-#         while curr is not end:
-#             yield curr[0]
-#             curr = curr[1]
-#
-#     def pop(self, last=True):
-#         if not self:
-#             raise KeyError('set is empty')
-#         key = self.end[1][0] if last else self.end[2][0]
-#         self.discard(key)
-#         return key
-#
-#     def __repr__(self):
-#         if not self:
-#             return '%s()' % (self.__class__.__name__,)
-#         return '%s(%r)' % (self.__class__.__name__, list(self))
-#
-#     def __eq__(self, other):
-#         if isinstance(other, OrderedSet):
-#             return len(self) == len(other) and list(self) == list(other)
-#         return set(self) == set(other)
+    return target
+

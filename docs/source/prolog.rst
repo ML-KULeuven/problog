@@ -1,12 +1,17 @@
-Relation to Prolog
-==================
+Builtins and Libraries
+======================
 
 ProbLog supports a subset of the Prolog language for expressing models in probabilistic logic.
-The main difference between ProbLog's language and Prolog is that Prolog is a complete logic programming language, 
+The main difference between ProbLog's language and Prolog is that Prolog is a complete logic programming language,
 whereas ProbLog is a logic representation language.
 This means that most of the functionality of Prolog that is related to the programming part (such as control constructs and input/output) are not supported in ProbLog.
 
+Supported Prolog builtins
+-------------------------
+
 The list of supported builtins is based on Yap Prolog. See section 6 of the Yap manual for an explanation of these predicates.
+
+In addition: ProbLog supports ``consult/1`` and ``use_module/1``.
 
 Control predicates
 ++++++++++++++++++
@@ -22,20 +27,24 @@ Control predicates
  * ``not/1``
  * ``call/1``
  * ``call/N`` (for N up to 9)
- 
+ * ``P`` (alternative to call/1)
+ * ``forall/2``
+
+
+**Special:**
+
+ * ``once/1``: In ProbLog ``once/1`` is an alias for ``call/1``.
+
 **Not supported:**
- 
+
  * ``!/0``
  * ``P -> Q``
  * ``P *-> Q``
  * ``repeat``
  * ``incore/1`` (use ``call/1``)
  * ``call_with_args/N`` (use ``call/N``)
- * ``P`` (use ``call/1``)
  * ``if(A,B,C)`` (use ``(A,B);(\+A,C)``)
- * ``once/1``
- * ``forall(A,B)`` (use ``\+(A,\+B)``)
- * ``ignore/1`` 
+ * ``ignore/1``
  * ``abort/0``
  * ``break/0``
  * ``halt/0``
@@ -48,18 +57,17 @@ Control predicates
  * ``nogc/0``
  * ``grow_heap/1``
  * ``grow_stack/1``
- 
-**To be added:** 
 
- * ``forall/2``
- * ``if/3``
- 
+
 Handling Undefined Procedures
 +++++++++++++++++++++++++++++
- 
+
+**Alternative:**
+
+ * ``unknown(fail)`` can be used
+
 **Not supported:** all
 
-**To be added:** ``unknown/2``
 
 Message Handling
 ++++++++++++++++
@@ -86,13 +94,13 @@ Predicates on Terms
  * ``callable/1``
  * ``ground/1``
  * ``arg/3``
- * ``functor/3`` 
+ * ``functor/3``
  * ``T =.. L``
- * ``X = Y`` (not supported for two variables)
- * ``X \= Y`` (not supported for two variables)
+ * ``X = Y``
+ * ``X \= Y``
  * ``is_list/1``
- *
- 
+ * ``subsumes_term/2``
+
 **Not supported:**
 
  * ``numbervars/3``
@@ -100,9 +108,8 @@ Predicates on Terms
  * ``copy_term/2``
  * ``duplicate_term/2``
  * ``T1 =@= T2``
- * ``subsumes_term/2``
  * ``acyclic_term/1``
- 
+
 Predicates on Atoms
 +++++++++++++++++++
 
@@ -123,26 +130,26 @@ Comparing Terms
 **Supported:**
 
  * ``compare/3``
- * ``X == Y`` (not supported for two variables)
- * ``X \== Y`` (not supported for two variables)
+ * ``X == Y``
+ * ``X \== Y``
  * ``X @< Y``
- * ``X @=< Y`` (all variables are considered equal)
+ * ``X @=< Y``
  * ``X @< Y``
  * ``X @> Y``
- * ``X @>= Y`` (all variables are considered equal)
- * ``sort/2`` (all variables are considered equal, e.g. ``sort([X,Y,Y],S)`` returns ``S=[_]`` where Prolog would return ``S=[X,Y]`` or ``S=[Y,X]``).
+ * ``X @>= Y``
+ * ``sort/2``
  * ``length/2`` (both arguments unbound not allowed)
- 
+
 **Not supported:**
 
  * ``keysort/2``
  * ``predsort/2``
- 
+
 Arithmetic
 ++++++++++
 
 **Supported:**
- 
+
  * ``X``
  * ``-X``
  * ``X+Y``
@@ -211,9 +218,9 @@ Arithmetic
  * ``between/3``
  * ``succ/2``
  * ``plus/3``
- 
+
 **Not supported:**
- 
+
  * ``random/1``
  * ``rational/1``
  * ``rationalize/1``
@@ -228,10 +235,188 @@ Arithmetic
  * ``global/0``
  * ``random/0``
  * ``srandom/1``
- 
+
 Remaining sections
 ++++++++++++++++++
 
 **Not supported:** all
 
 
+
+ProbLog-specific builtins
+-------------------------
+
+ * ``try_call/N``: same as ``call/N`` but silently fail if the called predicate is undefined
+ * ``subquery(+Goal, ?Probability)``: evaluate the Goal and return its probability
+ * ``subquery(+Goal, +ListOfEvidence, ?Probability)``: evaluate the Goal, given the evidence, and return its Probability
+ * ``debugprint/N``: print messages to stderr
+ * ``write/N``: print messages to stdout
+ * ``writenl/N``: print messages and newline to stdout
+ * ``nl/0``: print newline to stdout
+ * ``error/N``: raise a UserError with some message
+ * ``cmd_args/1``: read the list of command line arguments passed to ProbLog with the '-a' arguments
+ * ``atom_number/2``: transfrom an atom into a number
+ * ``nocache(Functor, Arity)``: disable caching for the predicate Functor/Arity
+ * ``numbervars/2``:
+ * ``numbervars/3``
+ * ``varnumbers/2``
+ * ``subsumes_term/2``
+ * ``subsumes_chk/2``
+ * ``possible/1``: Perform a deterministic query on the given term.
+ * ``clause/2``
+ * ``clause/3``
+
+ * ``create_scope/2``
+ * ``subquery_in_scope/3``
+ * ``subquery_in_scope/4``
+ * ``call_in_scope/N``
+ * ``find_scope/2``
+ * ``set_state/1``
+ * ``reset_state/0``
+ * ``check_state/1``
+ * ``print_state/0``
+ * ``seq/1``: Unify the variable with a sequential number.  Each call generates a new sequential number.
+
+
+
+
+
+
+Available libraries
+-------------------
+
+Lists
++++++
+
+.. _`SWI-Prolog lists library`: http://www.swi-prolog.org/pldoc/man?section=lists
+
+The ProbLog lists module implements all predicates from the `SWI-Prolog lists library`_: ``memberchk/2``, ``member/2``, ``append/3``, ``append/2``, ``prefix/2``, ``select/3``, ``selectchk/3``, ``select/4``, ``selectchk/4``, ``nextto/3``, ``delete/3``, ``nth0/3``, ``nth1/3``, ``nth0/4``, ``nth1/4``, ``last/2``, ``proper_length/2``, ``same_length/2``, ``reverse/2``, ``permutation/2``, ``flatten/2``, ``max_member/2``, ``min_member/2``, ``sum_list/2``, ``max_list/2``, ``min_list/2``, ``numlist/3``, ``is_set/1``, ``list_to_set/2``, ``intersection/3``, ``union/3``, ``subset/2``, ``subtract/3``.
+
+In addition to these, the ProbLog library provides the following:
+
+``select_uniform(+ID, +Values, ?Value, ?Rest)``
+    ...
+
+``select_weighted(+ID, +Weights, +Values, ?Value, ?Rest)``
+    ...
+
+``groupby(?List, ?Groups)``
+    ...
+
+``sub_list(?List, ?Before, ?Length, ?After, ?SubList)``
+    ...
+
+``enum_groups(+Groups, +Values, -Group, -GroupedValues)``
+    ...
+
+``enum_groups(+GroupValues, -Group, -GroupedValues)``
+    ...
+
+``unzip(ListAB,ListA,ListB)``
+    ...
+
+``zip(ListA,ListB,ListAB)``
+    ...
+
+``make_list(Len,Elem,List)``
+    ...
+
+
+Apply
++++++
+
+.. _`SWI-Prolog apply library`: http://www.swi-prolog.org/pldoc/man?section=apply
+
+The ProbLog lists module implements all predicates from the `SWI-Prolog apply library`_: ``include/3``, ``exclude/3``, ``partition/4``, ``partition/5``, ``maplist/2``, ``maplist/3``, ``maplist/4``, ``maplist/5``, ``convlist/3``, ``foldl/4``, ``foldl/5``, ``foldl/6``, ``foldl/7``, ``scanl/4``, ``scanl/5``, ``scanl/6``, ``scanl/7``.
+
+
+Cut
++++
+
+ProbLog does not support cuts (``!``).
+However, it does provide the cut library to help with the modeling of ordered rulesets.
+
+This library implements a soft cut.
+
+1. Define a set of indexed-clauses (index is first argument)
+
+.. code-block:: prolog
+
+    r(1, a, b).
+    r(2, a, c).
+    r(3, b, c).
+
+2. Call the rule using cut where you should remove the first argument
+
+.. code-block:: prolog
+
+    cut(r(A, B))
+
+
+This will evaluate the rules in order of their index (note: NOT order in the file)
+and only ONE rule will match (the first one that succeeds).
+   e.g.:
+
+.. code-block:: prolog
+
+    cut(r(A, B)) => A = a, B = b
+    cut(r(a, X)) => X = b
+    cut(r(X, c)) => X = a
+    cut(r(b, X)) => X = c
+
+The predicate cut/2 unifies the second argument with the Index of the matching rule.
+
+
+Assert
+++++++
+
+The assert module allows assert and retracting facts dynamically from the internal database.
+
+It provides the predicates ``assertz/1``, ``retract/1``, ``retractall/1``.
+
+Record
+++++++
+
+The record module allows access to non-backtrackable storage in the internal database.
+
+It provides the predicates ``current_key/1``, ``recorda/2``, ``recorda/3``, ``recordz/2``, ``recordz/3``, ``erase/1``, ``recorded/2``, ``recorded/3``, ``instance/2``.
+
+
+Collect
++++++++
+
+
+Aggregate
++++++++++
+
+
+DB
+++
+
+The ``db`` library provides access to data stored in an SQLite database or a CSV-file.
+It provides two predicates:
+
+``sqlite_load(+Filename)``
+    This creates virtual predicates for each table in the database.
+
+``sqlite_csv(+Filename, +Predicate)``
+    This creates a new predicate for the data in the CSV file.
+
+For a demonstration on how to use these, see `this tutorial article <https://dtai.cs.kuleuven.be/problog/tutorial/advanced/02_knowledgebases.html>`_.
+
+
+Scope
++++++
+
+
+String
+++++++
+
+The ``string`` library provides predicates for string manipulation.
+
+
+NLP4PLP
++++++++
+
+A library for representing and solving probability questions.
+See `the NLP4PLP webpage <https://dtai.cs.kuleuven.be/problog/natural_language>`_ for more information.

@@ -2,13 +2,18 @@
 # Only use spaces to indent your .yml configuration.
 # -----
 # You can specify a custom docker image from Dockerhub as your build environment.
-image: python:3.5.1
+image: python:3.6.8 # 3.6.0, pysdd install fails due to need of c99 flag for gcc
 
 pipelines:
   default:
     - step:
         script: # Modify the commands below to build your repository.
-          - pip install -U tox
-          - pip --version
-          - tox --version
-          - python -m unittest discover -v
+
+          - python3.6 -m pip install --no-binary pysdd .[sdd]
+          - python3.6 -m unittest discover -v
+
+#          - pip install -U tox
+#          - pip --version
+#          - tox --version
+#          - python -m unittest discover -v
+

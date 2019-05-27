@@ -23,8 +23,16 @@ Interface to MaxSAT solvers.
 """
 from __future__ import print_function
 
-from .util import mktempfile, subprocess_check_output
+from .util import mktempfile, subprocess_check_output, Timer
 from . import root_path
+from .errors import ProbLogError
+
+
+class UnsatisfiableError(ProbLogError):
+
+    def __init__(self):
+        ProbLogError.__init__(self, 'No solution exists that satisfies the constraints.')
+
 
 
 class MaxSATSolver(object):
@@ -43,7 +51,7 @@ class MaxSATSolver(object):
         for line in output.split('\n'):
             if line.startswith('v '):
                 return list(map(int, line.split()[1:-1]))
-        return None
+        raise UnsatisfiableError()
 
     def call_process(self, inputf):
         filename = mktempfile('.' + self.extension)
@@ -52,9 +60,12 @@ class MaxSATSolver(object):
         return subprocess_check_output(self.command + [filename])
 
     def evaluate(self, formula, **kwargs):
-        inputf = self.prepare_input(formula, **kwargs)
-        output = self.call_process(inputf)
-        result = self.process_output(output)
+        with Timer('Transform input'):
+            inputf = self.prepare_input(formula, **kwargs)
+        with Timer('Solver call'):
+            output = self.call_process(inputf)
+        with Timer('Transform output'):
+            result = self.process_output(output)
         return result
 
 
@@ -77,17 +88,18 @@ class SCIPSolver(MIPMaxSATSolver):
         MaxSATSolver.__init__(self, ['scip', '-f'])
 
     def process_output(self, output):
-            facts = set()
-            in_the_zone = False
-            for line in output.split('\n'):
-                line = line.strip()
-                if line.startswith('objective value'):
-                    in_the_zone = True
-                elif in_the_zone:
-                    if not line:
-                        return list(facts)
-                    else:
-                        facts.add(int(line.split()[0][1:]))
+        facts = set()
+        in_the_zone = False
+        for line in output.split('\n'):
+            line = line.strip()
+            if line.startswith('objective value'):
+                in_the_zone = True
+            elif in_the_zone:
+                if not line:
+                    return list(facts)
+                else:
+                    facts.add(int(line.split()[0][1:]))
+        raise UnsatisfiableError()
 
 
 def get_solver(prefer=None):

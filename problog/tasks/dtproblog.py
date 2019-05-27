@@ -112,14 +112,19 @@ def dtproblog(model, search=None, koption=None, locations=False, web=False, **kw
                 if set(c.get_nodes()) & decision_nodes:
                     constraints.append(c)
 
-        with Timer('Compile', logger='dtproblog'):
-            knowledge = get_evaluatable(koption).create_from(gp)
+        if decision_nodes:
+            with Timer('Compile', logger='dtproblog'):
+                knowledge = get_evaluatable(koption).create_from(gp)
 
-        with Timer('Optimize', logger='dtproblog'):
-            if search == 'local':
-                result = search_local(knowledge, decisions, utilities, constraints, **kwargs)
-            else:
-                result = search_exhaustive(knowledge, decisions, utilities, constraints, **kwargs)
+            with Timer('Optimize', logger='dtproblog'):
+                if search == 'local':
+                    result = search_local(knowledge, decisions, utilities, constraints, **kwargs)
+                else:
+                    result = search_exhaustive(knowledge, decisions, utilities, constraints, **kwargs)
+        else:
+            logging.getLogger('dtproblog').warn('no decisions found')
+            # no decisions to be made
+            result = {}, 0.0, {'eval': 0}
 
         if web or locations:
             for k, v in result[0].items():
@@ -131,12 +136,22 @@ def dtproblog(model, search=None, koption=None, locations=False, web=False, **kw
     return result
 
 
-def evaluate(formula, decisions, utilities):
+def evaluate(formula, decisions, utilities, verbose=0):
     result = formula.evaluate(weights=decisions)
-
     score = 0.0
     for r in result:
-        score += result[r] * float(utilities[r])
+        vpos = result[r]
+        vneg = 1.0 - result[r]
+
+        score += vpos * float(utilities.get(r, 0.0))
+        score += vneg * float(utilities.get(-r, 0.0))
+
+    if verbose is not None and verbose >= 3:
+        print ('---------------')
+        print ('Decisions:')
+        print (format_dictionary(decisions))
+        print ('Scores:')
+        print (format_dictionary(result))
     return score
 
 
@@ -160,7 +175,7 @@ def search_exhaustive(formula, decisions, utilities, constraints, verbose=0, **k
         if not constraints_ok:
             continue
 
-        score = evaluate(formula, evidence, utilities)
+        score = evaluate(formula, evidence, utilities, verbose)
         stats['eval'] += 1
         if best_score is None or score > best_score:
             best_score = score
