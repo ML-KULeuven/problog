@@ -34,7 +34,6 @@ jobs:
       - run:
           name: run tests
           command: |
-            . venv/bin/activate
             pytest --cov=problog problog/test/
 
       - store_artifacts:
