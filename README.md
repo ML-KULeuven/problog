@@ -1,3 +1,7 @@
+*master:* [![CircleCI](https://circleci.com/gh/ML-KULeuven/problog/tree/master.svg?style=svg)](https://circleci.com/gh/ML-KULeuven/problog/tree/master)
+*develop:* [![CircleCI](https://circleci.com/gh/ML-KULeuven/problog/tree/develop.svg?style=svg)](https://circleci.com/gh/ML-KULeuven/problog/tree/develop)
+[![codecov](https://codecov.io/gh/TechnionYP5777/project-name/branch/master/graph/badge.svg)](https://codecov.io/gh/TechnionYP5777/project-name)
+
 # ProbLog v2.1
 
 ## Prerequisites
@@ -16,6 +20,9 @@ See the file INSTALL for detailed installation instructions.
 ## Usage
 
 See [documentation](http://problog.readthedocs.org/en/latest/cli.html).
+
+
+
 
 ## License
 
