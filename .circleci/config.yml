@@ -35,6 +35,7 @@ jobs:
           name: run tests
           command: |
             pytest --cov=problog problog/test/
+            codecov --token=$CODECOV_TOKEN
 
       - store_artifacts:
           path: test-reports
