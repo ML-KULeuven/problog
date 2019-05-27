@@ -44,7 +44,7 @@ ProbLog 2.1 requires Python 3.6+.
 
 You can try out ProbLog without installing it with our [online editor](https://dtai.cs.kuleuven.be/problog/editor.html).
 
-For example, enter the following ProbLog program for calculating the probability that at least one of two coins
+For example, enter the following [ProbLog program](https://dtai.cs.kuleuven.be/problog/editor.html#task=prob&hash=f8cdb15e6accf62ecaf706c230197ce1) for calculating the probability that at least one of two coins
 (one of which is a bend/biased coin) is head.
 
 ```
