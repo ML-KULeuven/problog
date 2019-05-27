@@ -27,7 +27,7 @@ jobs:
             . venv/bin/activate
             pip install pytest
             pip install pytest-cov
-            pip install git+https://github.com/wannesm/PySDD.git#egg=PySDD
+            pip install PySDD
             pip install -r requirements.txt
 
       - save_cache:
