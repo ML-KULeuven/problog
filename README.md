@@ -86,7 +86,7 @@ You can consult the following paper to get an introduction to ProbLog:
 
 [ProbLog: A probabilistic Prolog and its application in link discovery](https://lirias.kuleuven.be/bitstream/123456789/146072/1/ijca), L. De Raedt, A. Kimmig, and H. Toivonen, Proceedings of the 20th International Joint Conference on Artificial Intelligence (IJCAI-07), Hyderabad, India, pages 2462-2467, 2007. 
 
-
+Many other papers and information about ProbLog can be found in [our ProbLog publication list](https://dtai.cs.kuleuven.be/problog/publications.html).
 
 
 ## License
