@@ -26,7 +26,7 @@ tested on *Mac OSX*, *Linux* and *Windows*.
 
 
 ProbLog supports optional components which can be installed separately.
-See the file INSTALL for detailed installation instructions.
+See the file [INSTALL](https://github.com/ML-KULeuven/problog/blob/develop/INSTALL) for detailed installation instructions.
 
 ### Python
 
@@ -70,8 +70,21 @@ because *P(someHeads) = 1 - (1-P(heads1)) (1-P(heads2)) = 1 - (1-0.5) (1-0.6) = 
 ### Tutorial
 To get started with ProbLog, follow the [ProbLog Tutorial](https://dtai.cs.kuleuven.be/problog/tutorial.html).
 
+### Homepage
+
+Visit the [ProbLog Homepage](https://dtai.cs.kuleuven.be/problog/).
+
 ### Documentation
-[Problog documentation](http://problog.readthedocs.org/en/latest/cli.html)
+Extensive documentation about ProbLog can be found on our 
+[ProbLog documentation](http://problog.readthedocs.org/en/latest/cli.html) on ReadTheDocs.
+
+### Papers
+
+You can consult the following paper to get an introduction to ProbLog:
+
+[Inference and learning in probabilistic logic programs using weighted Boolean formulas](https://lirias.kuleuven.be/bitstream/123456789/392821/3/plp2cnf.pdf), Daan Fierens, Guy Van den Broeck, Joris Renkens, Dimitar Shterionov, Bernd Gutmann, Ingo Thon, Gerda Janssens, and Luc De Raedt. Theory and Practice of Logic Programming, 2015. 
+
+[ProbLog: A probabilistic Prolog and its application in link discovery](https://lirias.kuleuven.be/bitstream/123456789/146072/1/ijca), L. De Raedt, A. Kimmig, and H. Toivonen, Proceedings of the 20th International Joint Conference on Artificial Intelligence (IJCAI-07), Hyderabad, India, pages 2462-2467, 2007. 
 
 
 
