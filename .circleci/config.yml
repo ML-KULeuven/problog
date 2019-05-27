@@ -6,7 +6,7 @@ version: 2
 jobs:
   build:
     docker:
-      - image: circleci/python:3.6.1
+      - image: rmanhaeve/problog:problog-req
 
     working_directory: ~/problog
 
@@ -23,11 +23,6 @@ jobs:
       - run:
           name: install dependencies
           command: |
-            python3 -m venv venv
-            . venv/bin/activate
-            pip install pytest
-            pip install pytest-cov
-            pip install PySDD
             pip install -r requirements.txt
 
       - save_cache:
