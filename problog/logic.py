@@ -893,6 +893,11 @@ class AnnotatedDisjunction(Term):
         self.reprhash = hash(self.repr)
         return self.repr
 
+    def __eq__(self, other):
+        if type(self) != type(other):
+            return False
+        return self.heads == other.heads and self.body == other.body
+
     @property
     def predicates(self):
         return [x.signature for x in self.heads]

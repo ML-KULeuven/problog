@@ -1,7 +1,7 @@
 import unittest
 
 import problog
-from problog.logic import And, AnnotatedDisjunction, Or, Clause, Not, Term, Var
+from problog.logic import list2term, And, AnnotatedDisjunction, Or, Clause, Not, Term, Var
 
 
 class TestLogic(unittest.TestCase):
@@ -126,10 +126,10 @@ class TestLogic(unittest.TestCase):
         c1 = AnnotatedDisjunction([Term('a')], None)
         c2 = AnnotatedDisjunction([Term('a')], None)
         c3 = AnnotatedDisjunction([Term('b')], None)
-        c4 = AnnotatedDisjunction([Term('a'), Term('b')], [Term('c')])
-        c5 = AnnotatedDisjunction([Term('a'), Term('b')], [Term('c')])
-        c6 = AnnotatedDisjunction([Term('a'), Term('b')], [Term('d')])
-        c7 = AnnotatedDisjunction([Term('a'), Term('b')], [None])
+        c4 = AnnotatedDisjunction([Term('a'), Term('b')], Term('c'))
+        c5 = AnnotatedDisjunction([Term('a'), Term('b')], Term('c'))
+        c6 = AnnotatedDisjunction([Term('a'), Term('b')], Term('d'))
+        c7 = AnnotatedDisjunction([Term('a'), Term('b')], None)
         self.assertTrue(c1 == c2)
         self.assertFalse(c1 == c3)
         self.assertTrue(c4 == c5)
