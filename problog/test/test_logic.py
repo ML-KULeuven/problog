@@ -51,7 +51,9 @@ class TestLogic(unittest.TestCase):
     def test_not(self):
         c1 = Not('\+', Term('a'))
         c2 = ~Term('a')
+        c3 = Not('not', Term('a'))
         self.assertTrue(c1 == c2)
+        self.assertTrue(c1 == c3)
 
     def test_lshift(self):
         c1 = Clause(Term('a'), Term('b'))
