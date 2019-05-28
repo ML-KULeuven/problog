@@ -19,8 +19,8 @@ class TestLogic(unittest.TestCase):
         self.assertFalse(c1 == c4)
         self.assertFalse(c2 == c4)
         self.assertTrue(c5 == c6)
-        self.assertTrue(c5 == c7)
-        self.assertTrue(c6 == c7)
+        self.assertFalse(c5 == c7)
+        self.assertFalse(c6 == c7)
 
     def test_or(self):
         c1 = Or(Term('a'), Term('b'))
@@ -35,8 +35,8 @@ class TestLogic(unittest.TestCase):
         self.assertFalse(c1 == c4)
         self.assertFalse(c2 == c4)
         self.assertTrue(c5 == c6)
-        self.assertTrue(c5 == c7)
-        self.assertTrue(c6 == c7)
+        self.assertFalse(c5 == c7)
+        self.assertFalse(c6 == c7)
 
     def test_and_or(self):
         c1 = Term('a') & Term('b') | Term('c')

@@ -1049,6 +1049,9 @@ class Not(Term):
     def __abs__(self):
         return -self
 
+    def __eq__(self, other):
+        return type(self) == type(other) and self.child == other.child
+
 
 _arithmetic_functions = {
     ("+", 2): (lambda a, b: a + b),
