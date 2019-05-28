@@ -87,18 +87,20 @@ class StackBasedEngine(ClauseDBEngine):
             return self.skip(node_id, **kwdargs)
 
         if node_id < 0:
-            node_type = 'builtin'
+            # Builtin node
             node = self.get_builtin(node_id)
+            exec_func = self.eval_builtin
         else:
             node = database.get_node(node_id)
-            node_type = type(node).__name__  # TODO idea: subclassing?
+            node_type = type(node).__name__
+            exec_func = self.create_node_type(node_type)
 
-        exec_func = self.create_node_type(node_type)
-        if exec_func is None:
-            if self.unknown == self.UNKNOWN_FAIL:
-                return [complete(kwdargs['parent'], kwdargs.get('identifier'))]
-            else:
-                raise UnknownClauseInternal()
+            if exec_func is None:
+                if self.unknown == self.UNKNOWN_FAIL:
+                    return self.skip(node_id, **kwdargs)
+                else:
+                    raise UnknownClauseInternal()
+
         return exec_func(node_id=node_id, node=node, **kwdargs)
 
     def should_skip_node(self, node_id, **kwdargs):
