@@ -1,7 +1,7 @@
 import unittest
 
 import problog
-from problog.logic import And, AnnotatedDisjunction, Or, Clause, Not, Term, Var
+from problog.logic import list2term, And, AnnotatedDisjunction, Or, Clause, Not, Term, Var
 
 
 class TestLogic(unittest.TestCase):
@@ -19,8 +19,8 @@ class TestLogic(unittest.TestCase):
         self.assertFalse(c1 == c4)
         self.assertFalse(c2 == c4)
         self.assertTrue(c5 == c6)
-        self.assertTrue(c5 == c7)
-        self.assertTrue(c6 == c7)
+        self.assertFalse(c5 == c7)
+        self.assertFalse(c6 == c7)
 
     def test_or(self):
         c1 = Or(Term('a'), Term('b'))
@@ -35,8 +35,8 @@ class TestLogic(unittest.TestCase):
         self.assertFalse(c1 == c4)
         self.assertFalse(c2 == c4)
         self.assertTrue(c5 == c6)
-        self.assertTrue(c5 == c7)
-        self.assertTrue(c6 == c7)
+        self.assertFalse(c5 == c7)
+        self.assertFalse(c6 == c7)
 
     def test_and_or(self):
         c1 = Term('a') & Term('b') | Term('c')
@@ -51,7 +51,9 @@ class TestLogic(unittest.TestCase):
     def test_not(self):
         c1 = Not('\+', Term('a'))
         c2 = ~Term('a')
+        c3 = Not('not', Term('a'))
         self.assertTrue(c1 == c2)
+        self.assertTrue(c1 == c3)
 
     def test_lshift(self):
         c1 = Clause(Term('a'), Term('b'))
@@ -71,10 +73,22 @@ class TestLogic(unittest.TestCase):
         c5 = Clause(Term('a', None), Term('b', None))
         c6 = Clause(Term('c', None), Term('b', None))
         c7 = Clause(Term('a', Var('_')), Term('b', None))
+        c8 = Clause(Term('a', Var('X1')), Term('b', Var('X1')))
+        c9 = Clause(Term('a', Var('X2')), Term('b', Var('X2')))
+        c10 = Clause(Term('a', -1), Term('b', -1))
+        c11 = Clause(Term('a', -2), Term('b', -2))
+        c12 = Clause(Term('a', -1), Term('b', -2))
         self.assertTrue(c1 == c2)
         self.assertTrue(c3 == c4)
         self.assertFalse(c5 == c6)
-        self.assertTrue(c7 == c1)
+        self.assertFalse(c7 == c1)
+        self.assertFalse(c8 == c9)
+        self.assertFalse(c1 == c10)
+        self.assertFalse(c8 == c10)
+        self.assertFalse(c1 == c11)
+        self.assertFalse(c1 == c12)
+        self.assertFalse(c10 == c11)
+        self.assertFalse(c10 == c12)
 
     def test_from_string(self):
         c1 = Term.from_string("a.")
@@ -124,10 +138,10 @@ class TestLogic(unittest.TestCase):
         c1 = AnnotatedDisjunction([Term('a')], None)
         c2 = AnnotatedDisjunction([Term('a')], None)
         c3 = AnnotatedDisjunction([Term('b')], None)
-        c4 = AnnotatedDisjunction([Term('a'), Term('b')], [Term('c')])
-        c5 = AnnotatedDisjunction([Term('a'), Term('b')], [Term('c')])
-        c6 = AnnotatedDisjunction([Term('a'), Term('b')], [Term('d')])
-        c7 = AnnotatedDisjunction([Term('a'), Term('b')], [None])
+        c4 = AnnotatedDisjunction([Term('a'), Term('b')], Term('c'))
+        c5 = AnnotatedDisjunction([Term('a'), Term('b')], Term('c'))
+        c6 = AnnotatedDisjunction([Term('a'), Term('b')], Term('d'))
+        c7 = AnnotatedDisjunction([Term('a'), Term('b')], None)
         self.assertTrue(c1 == c2)
         self.assertFalse(c1 == c3)
         self.assertTrue(c4 == c5)

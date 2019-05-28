@@ -607,12 +607,6 @@ class Term(object):
     def __eq__(self, other):
         if not isinstance(other, Term):
             return False
-        if self.reprhash is None:
-            repr(self)
-        if other.reprhash is None:
-            repr(other)
-        return self.reprhash == other.reprhash
-
         # Non-recursive version of equality check.
         l1 = deque([self])
         l2 = deque([other])
@@ -899,6 +893,11 @@ class AnnotatedDisjunction(Term):
         self.reprhash = hash(self.repr)
         return self.repr
 
+    def __eq__(self, other):
+        if type(self) != type(other):
+            return False
+        return self.heads == other.heads and self.body == other.body
+
     @property
     def predicates(self):
         return [x.signature for x in self.heads]
@@ -1049,6 +1048,9 @@ class Not(Term):
 
     def __abs__(self):
         return -self
+
+    def __eq__(self, other):
+        return type(self) == type(other) and self.child == other.child
 
 
 _arithmetic_functions = {
