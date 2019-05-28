@@ -893,10 +893,11 @@ class AnnotatedDisjunction(Term):
         self.reprhash = hash(self.repr)
         return self.repr
 
+    def __hash__(self):
+        return super().__hash__()
+
     def __eq__(self, other):
-        if type(self) != type(other):
-            return False
-        return self.heads == other.heads and self.body == other.body
+        return type(self) == type(other) and self.heads == other.heads and self.body == other.body
 
     @property
     def predicates(self):
@@ -1048,6 +1049,9 @@ class Not(Term):
 
     def __abs__(self):
         return -self
+
+    def __hash__(self):
+        return super().__hash__()
 
     def __eq__(self, other):
         return type(self) == type(other) and self.child == other.child
