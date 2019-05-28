@@ -176,7 +176,7 @@ class LogicFormulaHAL(LogicFormula):
             assert False
 
 
-    def add_atom(self, identifier, probability, group=None, name=None, source=None):
+    def add_atom(self, identifier, probability, group=None, name=None, source=None, cr_extra=True, is_extra=False):
         if probability is None and not self.keep_all:
             return self.TRUE
         elif isinstance(probability, SymbolicConstant) and probability.functor is None and not self.keep_all:
@@ -195,19 +195,23 @@ class LogicFormulaHAL(LogicFormula):
             symbolic_expr = self.create_ast_representation(probability)
             is_density = False
             if symbolic_expr.functor in pdfs and not isinstance(symbolic_expr, ValueExpr):
-                atom = self._create_atom(identifier, symbolic_expr, group, name, source)
+                atom = self._create_atom(identifier, symbolic_expr, group=group, name=name, source=source, is_extra=is_extra)
                 is_density=True
             else:
-                atom = self._create_atom(identifier, symbolic_expr, group, name, source)
+                atom = self._create_atom(identifier, symbolic_expr, group=group, name=name, source=source, is_extra=is_extra)
+
+            length_before = len(self._nodes)
             node_id = self._add(atom, key=identifier)
+
             self.get_weights()[node_id] = symbolic_expr
             if name is not None:
                 self.add_name(name, node_id, self.LABEL_NAMED)
-            if node_id == len(self._nodes):
+
+            if len(self._nodes) != length_before:
                 # The node was not reused?
                 self._atomcount += 1
                 # TODO if the next call return 0 or None, the node is still added?
-                node_id = self._add_constraint_me(group, node_id)
+                node_id = self._add_constraint_me(group, node_id, cr_extra=cr_extra)
 
             if is_density:
                 self.bookkeep_density_node(atom, node_id)

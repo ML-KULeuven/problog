@@ -15,13 +15,6 @@ class SDDHAL(SDD):
         SDD.__init__(self, **kwdargs)
         self.density_values = {}
 
-    def _create_atom(self, identifier, probability, group, name=None, source=None):
-        index = len(self) + 1
-        var = self.get_manager().add_variable()
-        self.atom2var[index] = var
-        self.var2atom[var] = index
-        return atom(identifier, probability, group, name, source)
-
     def _create_evaluator(self, semiring, weights, **kwargs):
         return DDEvaluatorHAL(self, semiring, weights, **kwargs)
 
@@ -61,9 +54,11 @@ class SDDHAL(SDD):
             at = self.var2atom[abs(lit)]
             node = self.get_node(at)
             if lit < 0:
-                retval = -formula.add_atom(-lit, probability=node.probability, name=node.name, group=node.group)
+                retval = -formula.add_atom(-lit, probability=node.probability, \
+                name=node.name, group=node.group, cr_extra=False, is_extra=node.is_extra)
             else:
-                retval = formula.add_atom(lit, probability=node.probability, name=node.name, group=node.group)
+                retval = formula.add_atom(lit, probability=node.probability,\
+                name=node.name, group=node.group, cr_extra=False, is_extra=node.is_extra)
         else:  # is decision
             elements = list(current_node.elements())
             primes = [prime for (prime, sub) in elements]

@@ -100,8 +100,6 @@ class InferenceSolver(object):
         g.render(diagram_name, view=False)
 
 
-    # from .utils import profile
-    # @profile("tottime")
     def probability(self, program, **kwdargs):
         lf_hal, density_queries, density_values, free_variables = self.ground(program, queries=None, **kwdargs)
         lf = break_cycles(lf_hal, LogicFormulaHAL(**kwdargs))

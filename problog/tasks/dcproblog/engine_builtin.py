@@ -221,7 +221,10 @@ def _builtin_ge(arg1, arg2, engine=None, **kwdargs):
 #
 
 def _builtin_observation(value, observation, engine=None, **kwdargs):
-    check_mode((value, observation), ['gg'], functor='observation', **kwdargs)
+    print(type(value))
+    print(type(observation))
+    # print(functor)
+    check_mode((value, observation), ['gg'], functor='obs', **kwdargs)
     assert isinstance(value.functor, ValueDimConstant)
 
     v_value = value.compute_value(engine.functions)

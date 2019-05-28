@@ -43,9 +43,8 @@ def main(args):
     args = parser.parse_args(args)
     args = vars(args)
     program = PrologFile(args['file_name'])
-    # print(program)
 
     solver = InferenceSolver(**args)
     probabilities = solver.probability(program, **args)
     # print("time: {final}".format(final=time.time()-start))
-    # solver.print_result(probabilities)
+    solver.print_result(probabilities)

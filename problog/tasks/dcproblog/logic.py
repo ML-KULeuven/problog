@@ -24,7 +24,6 @@ class SymbolicConstant(Term):
     def __init__(self, value, args=(), cvariables=set()):
         Term.__init__(self, value, *args)
         self.__cvariables = cvariables
-        self.__dx_count = dc_count
 
     @property
     def cvariables(self):

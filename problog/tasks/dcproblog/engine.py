@@ -42,7 +42,7 @@ class EngineHAL(DefaultEngineHAL):
         # self.add_builtin('=:=', 2, b(_builtin_val_eq))
         # self.add_builtin('is', 2, s(_builtin_is))
 
-        self.add_builtin('observation', 2, _builtin_observation)
+        self.add_builtin('obs', 2, _builtin_observation)
 
 
     def prepare(self, db, target=None):
