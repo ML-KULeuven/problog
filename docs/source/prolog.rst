@@ -381,13 +381,12 @@ The record module allows access to non-backtrackable storage in the internal dat
 
 It provides the predicates ``current_key/1``, ``recorda/2``, ``recorda/3``, ``recordz/2``, ``recordz/3``, ``erase/1``, ``recorded/2``, ``recorded/3``, ``instance/2``.
 
+Aggregate
++++++++++
+
 
 Collect
 +++++++
-
-
-Aggregate
-+++++++++
 
 
 DB
