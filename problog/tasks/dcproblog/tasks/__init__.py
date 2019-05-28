@@ -3,6 +3,8 @@ import sys
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
 
+print(sys.path)
+
 dcproblog_tasks = {}
 dcproblog_tasks['inference'] = 'dcproblog.tasks.inference'
 

@@ -1,7 +1,7 @@
 import argparse
 
 from problog.program import PrologFile
-# from ..solver import InferenceSolver
+from ..solver import InferenceSolver
 
 
 
@@ -37,17 +37,15 @@ def argparser(args):
 
 
 def main(args):
-    print(1)
-    print(args)
     import time
     start = time.time()
     parser = argparser(args)
     args = parser.parse_args(args)
     args = vars(args)
-    # program = PrologFile(args['file_name'])
-    #
-    #
-    # solver = InferenceSolver(**args)
-    # probabilities = solver.probability(program, **args)
+    program = PrologFile(args['file_name'])
+    # print(program)
+
+    solver = InferenceSolver(**args)
+    probabilities = solver.probability(program, **args)
     # print("time: {final}".format(final=time.time()-start))
     # solver.print_result(probabilities)
