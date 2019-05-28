@@ -115,6 +115,7 @@ class StackBasedEngine(ClauseDBEngine):
     def __init__(self, label_all=False, **kwdargs):
         ClauseDBEngine.__init__(self, **kwdargs)
 
+        # TODO idea: Subclass this?
         self.node_types = {}
         self.node_types['fact'] = self.eval_fact
         self.node_types['conj'] = self.eval_conj
@@ -154,9 +155,11 @@ class StackBasedEngine(ClauseDBEngine):
         include_ids = kwdargs.get('include')
         exclude_ids = kwdargs.get('exclude')
 
+        # If we are only looking at certain 'included' ids, check if it is included
         if include_ids is not None and node_id not in include_ids:
             return [complete(kwdargs['parent'], kwdargs.get('identifier'))]
         elif exclude_ids is not None and node_id in exclude_ids:
+            # If we are excluding certain ids, check if it is in the excluded id list.
             return [complete(kwdargs['parent'], kwdargs.get('identifier'))]
 
         if kwdargs.get('parent') in self.ignoring:
@@ -168,7 +171,7 @@ class StackBasedEngine(ClauseDBEngine):
             node = self.get_builtin(node_id)
         else:
             node = database.get_node(node_id)
-            node_type = type(node).__name__
+            node_type = type(node).__name__  # TODO idea: subclassing?
 
         exec_func = self.create_node_type(node_type)
         if exec_func is None:
