@@ -381,14 +381,133 @@ The record module allows access to non-backtrackable storage in the internal dat
 
 It provides the predicates ``current_key/1``, ``recorda/2``, ``recorda/3``, ``recordz/2``, ``recordz/3``, ``erase/1``, ``recorded/2``, ``recorded/3``, ``instance/2``.
 
+Aggregate
++++++++++
+
+The ``aggregate`` library LDL++ style of aggregation.
+
+This functionality requires the 'aggregate' library.
+
+.. code-block:: prolog
+
+    :- use_module(library(aggregate)).
+
+An aggregating clause is a clause of the form:
+
+.. code-block:: prolog
+
+    FUNCTOR(*GroupArgs, AggFunc<AggVar>) :- BODY.
+
+with
+
+- FUNCTOR: The predicate name.
+- GroupArgs: (optional) list of arguments that will be used as a "group by".  That is, the clause will produce a result for each distinct set
+- AggFunc: An aggregation function. This can be any binary predicate that maps a list onto a term.
+- AggVar: The variable over which the aggregation is computed.
+- BODY: The body of the clause.
+
+The library provides 'sum', 'avg', 'min' and 'max', but also user-defined predicates can be used.
+
+User defined predicates have to be /2, with a list as input and some result as output.
+For example, the predicate proper_length/2 in lists fits this definition and can be used natively as an aggregation.
+
+Examples
+
+.. code-block:: prolog
+
+    :- use_module(library(aggregate)).
+
+    person(a).
+    person(b).
+    person(c).
+    person(d).
+    person(e).
+
+    salary(a, 1000).
+    salary(b, 1200).
+    salary(c, 800).
+    salary(d, 1100).
+    salary(e, 1400).
+
+    dept(a, dept_a).
+    dept(b, dept_a).
+    dept(c, dept_b).
+    dept(d, dept_b).
+    dept(e, dept_a).
+
+    % Average salary per department.
+    dept_salary(Dept, avg<Salary>) :- person(X), salary(X, Salary), dept(X, Dept).
+    query(dept_salary(Dept, Salary)).
+    % dept_salary(dept_a,1200.0) 1
+    % dept_salary(dept_b,950.0) 1
+
+    % Max salary per department.
+    dept_max_salary(Dept, max<Salary>) :- person(X), salary(X, Salary), dept(X, Dept).
+    query(dept_max_salary(Dept, Salary)).
+    % dept_max_salary(dept_a,1400) 1
+    % dept_max_salary(dept_b,1100) 1
+
+    % Average salary company-wide.
+    all_salary(avg<Salary>) :- person(X), salary(X, Salary), dept(X, Dept).
+    query(all_salary(Salary)).
+    % all_salary(1100.0) 1
+
+These aggregates also support probabilistic data.
+
 
 Collect
 +++++++
 
+The ``collect`` library provides the ``=>`` operator generalizing the operator ``all/3``.
 
-Aggregate
-+++++++++
+The general syntax of this operator is:
 
+.. code-block:: prolog
+
+ ( CODEBLOCK ) => GroupBy / AggFunc(Arg1, Arg2, ..., ArgK)
+
+with
+
+- CODEBLOCK: A block of code parseable by Prolog
+- AggFunc: An aggregation function to apply on the result of evaluating CODEBLOCK.
+- Arg1, ..., ArgK: An arbitrary number of arguments to the aggregation function.
+- GroupBy: An optional expression over the aggregation function should be grouped.
+
+In order to implement the aggregation operator, the user should define a predicate
+
+.. code-block:: prolog
+
+ collect_AggFunc(CodeBlock, GroupBy, Arg1, Arg2, ..., ArgK, Result)
+
+Where standard aggregation function (e.g., the functions provided by the ``aggregate`` library)
+can be collected using the operator ``aggregate/5`` from the ``aggregate`` library
+through
+
+.. code-block:: prolog
+
+ collect_AggFunc(CodeBlock, GroupBy, AggVar, AggRes) :-
+     aggregate(AggFunc, AggVar, GroupBy, CodeBlock, (GroupBy, AggRes)).
+
+Considering predicates ``cell(Row, Column, Value)`` and
+``cell_type(Row, Column, Type)`` we could use ``=>`` to get the average per column
+of cell values representing an integer.
+
+e.g.:
+
+.. code-block:: prolog
+
+ column_average(Column, Avg) :- (
+    cell(Row, Column, Value),
+    type(cell(Row, Column, 'int')
+ ) => Column / avg(Value, Avg).
+
+Where ``collect_avg`` can be defined using the operator ``avg/2`` from the ``aggregate``
+library
+
+.. code-block:: prolog
+
+ collect_avg(CodeBlock, GroupBy, AggVar, AggRes) :-
+    aggregate(avg, AggVar, GroupBy, CodeBlock, (GroupBy, AggRes)).
 
 DB
 ++
@@ -408,6 +527,73 @@ For a demonstration on how to use these, see `this tutorial article <https://dta
 Scope
 +++++
 
+
+In order to manage several Problog theories in one model,
+theories can be defined through the scope operator ``:/2``.
+The left member of the scope is the scope name and its right member the predicate in the scope.
+
+e.g.:
+
+.. code-block:: prolog
+
+ scope(1):knowledge(1).
+
+
+Scopes can me manipulated as set of predicates.
+
+e.g., the union of scopes can be generated through the ``;/2`` operator
+and a whole scope can be queried through the unification of its predicates:
+
+.. code-block:: prolog
+
+ scope(1):a.
+ scope(2):b.
+ scope(3):X :- scope(1):X; scope(2):X.
+ query(scope(3):_).
+
+ result:
+  scope(3):a:   1
+  scope(3):b:   1
+
+The ``scope`` library provides additional behaviours in scopes.
+
+Conjunction reasoning
+
+e.g.:
+
+.. code-block:: prolog
+
+ scope(1):a.
+ scope(1):b.
+ query(scope(1):(a,b)).
+
+ result:
+  scope(1):(a, b):  1
+
+Temporary union through list
+
+e.g.:
+
+.. code-block:: prolog
+
+ scope(1):a.
+ scope(2):b.
+ query([scope(1),scope(2)]:b).
+
+ result:
+  [scope(1), scope(2)]:b:   1
+
+All predicates outside any scope are considered in all scopes.
+
+e.g:
+
+.. code-block:: prolog
+
+ a.
+ query(scope(1):a).
+
+ result:
+  scope(1):a:   1
 
 String
 ++++++
