@@ -433,8 +433,8 @@ and a whole scope can be queried through the unification of its predicates:
  query(scope(3):_).
 
  result:
-  scope(3):a.
-  scope(3):b.
+  scope(3):a:   1
+  scope(3):b:   1
 
 The ``scope`` library provides additional behaviours in scopes.
 
