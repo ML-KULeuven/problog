@@ -388,6 +388,56 @@ Aggregate
 Collect
 +++++++
 
+The ``collect`` library provides the ``=>`` operator generalizing the operator ``all/3``.
+
+The general syntax of this operator is:
+
+.. code-block:: prolog
+
+ ( CODEBLOCK ) => GroupBy / AggFunc(Arg1, Arg2, ..., ArgK)
+
+with
+
+- CODEBLOCK: A block of code parseable by Prolog
+- AggFunc: An aggregation function to apply on the result of evaluating CODEBLOCK.
+- Arg1, ..., ArgK: An arbitrary number of arguments to the aggregation function.
+- GroupBy: An optional expression over the aggregation function should be grouped.
+
+In order to implement the aggregation operator, the user should define a predicate
+
+.. code-block:: prolog
+
+ collect_AggFunc(CodeBlock, GroupBy, Arg1, Arg2, ..., ArgK, Result)
+
+Where standard aggregation function (e.g., the functions provided by the ``aggregate`` library)
+can be collected using the operator ``aggregate/5`` from the ``aggregate`` library
+through
+
+.. code-block:: prolog
+
+ collect_AggFunc(CodeBlock, GroupBy, AggVar, AggRes) :-
+     aggregate(AggFunc, AggVar, GroupBy, CodeBlock, (GroupBy, AggRes)).
+
+For example, considering predicates ``cell(Row, Column, Value)`` and
+``cell_type(Row, Column, Type)`` we could use ``=>`` to get the average per column
+of cell values representing an integer.
+
+e.g.:
+
+.. code-block:: prolog
+
+ column_average(Column, Avg) :- (
+    cell(Row, Column, Value),
+    type(cell(Row, Column, 'int')
+ ) => Column / avg(Value, Avg).
+
+Where ``collect_avg`` can be defined using the operator ``avg/2`` from the ``aggregate``
+library
+
+.. code-block:: prolog
+
+ collect_avg(CodeBlock, GroupBy, AggVar, AggRes) :-
+    aggregate(avg, AggVar, GroupBy, CodeBlock, (GroupBy, AggRes)).
 
 DB
 ++
