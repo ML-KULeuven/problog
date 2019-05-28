@@ -607,12 +607,6 @@ class Term(object):
     def __eq__(self, other):
         if not isinstance(other, Term):
             return False
-        if self.reprhash is None:
-            repr(self)
-        if other.reprhash is None:
-            repr(other)
-        return self.reprhash == other.reprhash
-
         # Non-recursive version of equality check.
         l1 = deque([self])
         l2 = deque([other])
