@@ -409,6 +409,73 @@ Scope
 +++++
 
 
+In order to manage several Problog theories in one model,
+theories can be defined through the scope operator ``:/2``.
+The left member of the scope is the scope name and its right member the predicate in the scope.
+
+e.g.:
+
+.. code-block:: prolog
+
+ scope(1):knowledge(1).
+
+
+Scopes can me manipulated as set of predicates.
+
+e.g., the union of scopes can be generated through the ``;/2`` operator
+and a whole scope can be queried through the unification of its predicates:
+
+.. code-block:: prolog
+
+ scope(1):a.
+ scope(2):b.
+ scope(3):X :- scope(1):X; scope(2):X.
+ query(scope(3):_).
+
+ result:
+  scope(3):a.
+  scope(3):b.
+
+The ``scope`` library provides additional behaviours in scopes.
+
+Conjunction reasoning
+
+e.g.:
+
+.. code-block:: prolog
+
+ scope(1):a.
+ scope(1):b.
+ query(scope(1):(a,b)).
+
+ result:
+  scope(1):(a, b):  1
+
+Temporary union through list
+
+e.g.:
+
+.. code-block:: prolog
+
+ scope(1):a.
+ scope(2):b.
+ query([scope(1),scope(2)]:b).
+
+ result:
+  [scope(1), scope(2)]:b:   1
+
+All predicates outside any scope are considered in all scopes.
+
+e.g:
+
+.. code-block:: prolog
+
+ a.
+ query(scope(1):a).
+
+ result:
+  scope(1):a:   1
+
 String
 ++++++
 
