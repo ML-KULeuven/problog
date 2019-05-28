@@ -208,6 +208,57 @@ def compress(formula, atoms):
     return out
 
 
+def create_sdd(solution, formula, verbose):
+    if verbose:
+        debug('Compressing...')
+    new_formula = compress(formula, solution)
+
+    if verbose:
+        debug('Compiling...')
+    current_sdd = SDD.create_from(new_formula)
+
+    if verbose:
+        debug('Evaluating...')
+    return current_sdd
+
+
+def enumerate_sdd(solution, formula, sdd, verbose):
+    # target.lookup_evidence = {}
+    weights = sdd.get_weights()
+    # ev_nodes = []
+    for k, v in solution.items():
+        sddvar = formula.get_node(k).identifier
+        sddatom = sdd.var2atom[sddvar]
+        sddname = sdd.get_name(sddatom)
+        weights[sddatom] = v
+    return sdd
+
+
+def enumerate_solutions(sols, verbose, formula, sdd=None):
+    has_solution = False
+    for i, res in enumerate(sols):
+        if verbose:
+            debug('Evaluating solution %s/%s...' % (i + 1, len(sols)))
+
+        if sdd is not None:
+            current_sdd = enumerate_sdd(res, formula, sdd, verbose)
+        else:
+            current_sdd = create_sdd(res, formula, verbose)
+
+        for k, v in current_sdd.evaluate().items():
+            if v > 0.0:
+                print(k, v)
+        print('----------')
+        has_solution = True
+    return has_solution
+
+
+def check_prob_constraint(constraints):
+    for name, index in constraints:
+        if index is not None and name.args[1].functor == 'ensure_prob':
+            return True
+
+
 def main(argv, handle_output=None):
     args = argparser().parse_args(argv)
 
@@ -230,83 +281,38 @@ def main(argv, handle_output=None):
 
     if verbose > 1: print(target, file=sys.stderr)
 
-    has_prob_constraint = False
-    for name, index in target.get_names(label='constraint'):
-        if index is not None:
-            if name.args[1].functor == 'ensure_prob':
-                has_prob_constraint = True
+    has_prob_constraint = check_prob_constraint(target.get_names(label='constraint'))
 
     # Compile and turn into CP-problem
+    sdd = None
     if has_prob_constraint:
-        if verbose: debug('Probabilistic constraints detected.')
-
-        if verbose: debug('Compiling...')
+        if verbose:
+            debug('Probabilistic constraints detected.')
+            debug('Compiling...')
         sdd = SDD.create_from(target)
         formula = sdd.to_formula()
-        # Convert to flatzinc
-        if verbose: debug('Converting...')
-        fzn = formula_to_flatzinc_float(formula)
-        sdd.clear_labeled('constraint')
-
-        if verbose > 1: print(fzn, file=sys.stderr)
-
-        # Solve the flatzinc model
-        if verbose: debug('Solving...')
-        sols = list(solve(fzn))
-
-        has_solution = False
-        for i, res in enumerate(sols):
-            if verbose: debug('Evaluating solution %s/%s...' % (i + 1, len(sols)))
-            # target.lookup_evidence = {}
-            weights = sdd.get_weights()
-            # ev_nodes = []
-            for k, v in res.items():
-                sddvar = formula.get_node(k).identifier
-                sddatom = sdd.var2atom[sddvar]
-                sddname = sdd.get_name(sddatom)
-                weights[sddatom] = v
-            for k, v in sdd.evaluate().items():
-                if v > 0.0:
-                    print(k, v)
-            print('----------')
-            has_solution = True
-        if has_solution:
-            print('==========')
-        else:
-            print('=== UNSATISFIABLE ===')
-
     else:
         formula = LogicDAG()
         break_cycles(target, formula)
 
-        if verbose: debug('Converting...')
+    if verbose:
+        debug('Converting...')
+    if sdd:
+        fzn = formula_to_flatzinc_float(formula)
+        sdd.clear_labeled('constraint')
+    else:
         fzn = formula_to_flatzinc_bool(formula)
 
-        if verbose > 1: print(fzn, file=sys.stderr)
+    if verbose > 1:
+        print(fzn, file=sys.stderr)
+    if verbose:
+        debug('Solving...')
+    sols = list(solve(fzn))
 
-        if verbose: debug('Solving...')
-        sols = list(solve(fzn))
-
-        has_solution = False
-        for i, res in enumerate(sols):
-            if verbose: debug('Evaluating solution %s/%s...' % (i + 1, len(sols)))
-
-            if verbose: debug('Compressing...')
-            new_formula = compress(formula, res)
-
-            if verbose: debug('Compiling...')
-            sdd = SDD.create_from(new_formula)
-
-            if verbose: debug('Evaluating...')
-            for k, v in sdd.evaluate().items():
-                if v > 0.0:
-                    print(k, v)
-            print('----------')
-            has_solution = True
-        if has_solution:
-            print('==========')
-        else:
-            print('=== UNSATISFIABLE ===')
+    if enumerate_solutions(sols, verbose, formula, sdd):
+        print('==========')
+    else:
+        print('=== UNSATISFIABLE ===')
 
 
 def argparser():
