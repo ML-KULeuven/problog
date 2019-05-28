@@ -1,3 +1,7 @@
+"""
+problog.eval_nodes - Evaluation node classes for the engine_stack
+---------------------------------------------------------------------
+"""
 from problog.engine_builtin import IndirectCallCycleError
 from problog.engine_unify import substitute_call_args
 from problog.errors import GroundingError
