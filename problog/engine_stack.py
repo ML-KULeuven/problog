@@ -30,7 +30,6 @@ from .engine import ClauseDBEngine, substitute_simple
 from .engine import NonGroundProbabilisticClause
 from .engine import is_variable
 from .engine_builtin import add_standard_builtins
-
 from .eval_nodes import *
 
 
@@ -87,11 +86,11 @@ class StackBasedEngine(ClauseDBEngine):
         if node_id < 0:
             # Builtin node
             node = self.get_builtin(node_id)
-            exec_func = self.eval_builtin
+            exec_func = EvalBuiltIn
         else:
             node = database.get_node(node_id)
             node_type = type(node).__name__
-            exec_func = self.create_node_type(node_type)
+            exec_func = self.node_types.get(node_type)
 
             if exec_func is None:
                 if self.unknown == self.UNKNOWN_FAIL:
@@ -99,7 +98,7 @@ class StackBasedEngine(ClauseDBEngine):
                 else:
                     raise UnknownClauseInternal()
 
-        return exec_func(engine=self, node_id=node_id, node=node, **kwdargs)
+        return exec_func.eval(engine=self, node_id=node_id, node=node, **kwdargs)
 
     def should_skip_node(self, node_id, **kwdargs):
         include_ids = kwdargs.get('include')
@@ -113,9 +112,6 @@ class StackBasedEngine(ClauseDBEngine):
 
     def skip(self, node_id, **kwdargs):
         return [complete(kwdargs['parent'], kwdargs.get('identifier'))]
-
-    def create_node_type(self, node_type):
-        return self.node_types.get(node_type).eval
 
     def load_builtins(self):
         addBuiltIns(self)
@@ -1264,7 +1260,6 @@ class DefineCache(object):
         return '%s\n%s' % (self.__non_ground, self.__ground)
 
 
-
 class BooleanBuiltIn(object):
     """Simple builtin that consist of a check without unification. \
       (e.g. var(X), integer(X), ... )."""
@@ -1288,7 +1283,6 @@ class BooleanBuiltIn(object):
 
     def __str__(self):  # pragma: no cover
         return str(self.base_function)
-
 
 
 class SimpleProbabilisticBuiltIn(object):
