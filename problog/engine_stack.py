@@ -81,34 +81,37 @@ class StackBasedEngine(ClauseDBEngine):
     def eval(self, node_id, **kwdargs):
         # print (kwdargs.get('parent'))
         database = kwdargs['database']
-        include_ids = kwdargs.get('include')
-        exclude_ids = kwdargs.get('exclude')
 
-        # If we are only looking at certain 'included' ids, check if it is included
-        if include_ids is not None and node_id not in include_ids:
-            return [complete(kwdargs['parent'], kwdargs.get('identifier'))]
-        elif exclude_ids is not None and node_id in exclude_ids:
-            # If we are excluding certain ids, check if it is in the excluded id list.
-            return [complete(kwdargs['parent'], kwdargs.get('identifier'))]
-
-        if kwdargs.get('parent') in self.ignoring:
-            # The parent node is ignoring new results, so there is no point in generating them.
-            return [complete(kwdargs['parent'], kwdargs.get('identifier'))]
+        # Skip not included or excluded nodes, or if parent is ignoring new results
+        if self.should_skip_node(node_id, **kwdargs):
+            return self.skip(node_id, **kwdargs)
 
         if node_id < 0:
-            node_type = 'builtin'
+            # Builtin node
             node = self.get_builtin(node_id)
+            exec_func = self.eval_builtin
         else:
             node = database.get_node(node_id)
-            node_type = type(node).__name__  # TODO idea: subclassing?
+            node_type = type(node).__name__
+            exec_func = self.create_node_type(node_type)
 
-        exec_func = self.create_node_type(node_type)
-        if exec_func is None:
-            if self.unknown == self.UNKNOWN_FAIL:
-                return [complete(kwdargs['parent'], kwdargs.get('identifier'))]
-            else:
-                raise UnknownClauseInternal()
+            if exec_func is None:
+                if self.unknown == self.UNKNOWN_FAIL:
+                    return self.skip(node_id, **kwdargs)
+                else:
+                    raise UnknownClauseInternal()
+
         return exec_func(node_id=node_id, node=node, **kwdargs)
+
+    def should_skip_node(self, node_id, **kwdargs):
+        include_ids = kwdargs.get('include')
+        exclude_ids = kwdargs.get('exclude')
+        # If we are only looking at certain 'included' ids, check if it is included
+        # OR If we are excluding certain ids, check if it is in the excluded id list.
+        # OR The parent node is ignoring new results, so there is no point in generating them.
+        return include_ids is not None and node_id not in include_ids \
+               or exclude_ids is not None and node_id in exclude_ids \
+               or kwdargs.get('parent') in self.ignoring
 
     def skip(self, node_id, **kwdargs):
         return [complete(kwdargs['parent'], kwdargs.get('identifier'))]
