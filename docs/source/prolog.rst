@@ -488,7 +488,7 @@ through
  collect_AggFunc(CodeBlock, GroupBy, AggVar, AggRes) :-
      aggregate(AggFunc, AggVar, GroupBy, CodeBlock, (GroupBy, AggRes)).
 
-For example, considering predicates ``cell(Row, Column, Value)`` and
+Considering predicates ``cell(Row, Column, Value)`` and
 ``cell_type(Row, Column, Type)`` we could use ``=>`` to get the average per column
 of cell values representing an integer.
 
