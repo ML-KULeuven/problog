@@ -3,7 +3,6 @@ problog.eval_nodes - Evaluation node classes for the engine_stack
 ---------------------------------------------------------------------
 """
 from problog.engine_builtin import IndirectCallCycleError
-from problog.engine_stack import Transformations, SimpleBuiltIn
 from problog.engine_unify import substitute_call_args
 from problog.errors import GroundingError
 from problog.logic import Term, is_ground, ArithmeticError
@@ -890,7 +889,7 @@ class EvalDefine(EvalNode):
                 else:
                     # Children to evaluate, so start evaluation node.
                     evalnode = EvalDefine(to_complete=to_complete, pointer=engine.pointer,
-                                          engine=self, node=node, context=context, target=target,
+                                          engine=engine, node=node, context=context, target=target,
                                           identifier=identifier, transform=transform, parent=parent,
                                           no_cache=no_cache,
                                           **kwdargs)
@@ -1052,3 +1051,62 @@ class EvalBuiltIn(EvalNode):
     @staticmethod
     def eval(engine, node_id, node, parent=None, context=None, target=None, identifier=None, *args, **kwdargs):
         return engine.eval_default(EvalBuiltIn, **kwdargs)
+
+
+class Transformations(object):
+    def __init__(self):
+        self.functions = []
+        self.constant = None
+
+    def addConstant(self, constant):
+        pass
+        # if self.constant is None :
+        #     self.constant = self(constant)
+        #     self.functions = []
+
+    def addFunction(self, function):
+        # print ('add', function, self.constant)
+        # if self.constant is None :
+        self.functions.append(function)
+
+    def __call__(self, result):
+        # if self.constant != None :
+        #     return self.constant
+        # else :
+        for f in reversed(self.functions):
+            if result is None:
+                return None
+            result = f(result)
+        return result
+
+
+class SimpleBuiltIn(object):
+    """Simple builtin that does cannot be involved in a cycle or require engine information \
+    and has 0 or more results."""
+
+    def __init__(self, base_function):
+        self.base_function = base_function
+
+    def __call__(self, *args, **kwdargs):
+        callback = kwdargs.get('callback')
+        results = self.base_function(*args, **kwdargs)
+        output = []
+        if results:
+            for i, result in enumerate(results):
+                result = kwdargs['engine'].create_context(result, parent=kwdargs['context'])
+
+                if kwdargs['target'].flag('keep_builtins'):
+                    # kwdargs['target'].add_node()
+                    # print (kwdargs.keys(), args)
+                    call = kwdargs['call_origin'][0].split('/')[0]
+                    name = Term(call, *result)
+                    node = kwdargs['target'].add_atom(name, None, None, name=name, source='builtin')
+                    output += callback.notifyResult(result, node, i == len(results) - 1)
+                else:
+                    output += callback.notifyResult(result, NODE_TRUE, i == len(results) - 1)
+            return True, output
+        else:
+            return True, callback.notifyComplete()
+
+    def __str__(self):  # pragma: no cover
+        return str(self.base_function)

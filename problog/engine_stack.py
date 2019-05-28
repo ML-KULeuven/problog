@@ -26,14 +26,12 @@ from __future__ import print_function
 import random
 import sys
 
-from problog.eval_nodes import new_result, complete, results_to_actions, EvalOr, EvalDefine, EvalNot, EvalAnd, \
-    EvalBuiltIn, NegativeCycle, NODE_TRUE, NODE_FALSE
-from .engine import ClauseDBEngine, substitute_head_args, substitute_call_args, unify_call_head, \
-    unify_call_return, OccursCheck, substitute_simple
+from .engine import ClauseDBEngine, substitute_simple
 from .engine import NonGroundProbabilisticClause
-from .engine import UnifyError, instantiate, UnknownClause, UnknownClauseInternal, is_variable
-from .engine_builtin import add_standard_builtins, IndirectCallCycleError
-from .logic import Term, is_ground
+from .engine import is_variable
+from .engine_builtin import add_standard_builtins
+
+from .eval_nodes import *
 
 
 class InvalidEngineState(Exception):
@@ -46,16 +44,16 @@ class StackBasedEngine(ClauseDBEngine):
 
         # TODO idea: Subclass this?
         self.node_types = {}
-        self.node_types['fact'] = self.eval_fact
-        self.node_types['conj'] = self.eval_conj
-        self.node_types['disj'] = self.eval_disj
-        self.node_types['neg'] = self.eval_neg
-        self.node_types['define'] = self.eval_define
-        self.node_types['call'] = self.eval_call
-        self.node_types['clause'] = self.eval_clause
-        self.node_types['choice'] = self.eval_choice
-        self.node_types['builtin'] = self.eval_builtin
-        self.node_types['extern'] = self.eval_extern
+        self.node_types['fact'] = EvalFact
+        self.node_types['conj'] = EvalAnd
+        self.node_types['disj'] = EvalOr
+        self.node_types['neg'] = EvalNot
+        self.node_types['define'] = EvalDefine
+        self.node_types['call'] = EvalCall
+        self.node_types['clause'] = EvalClause
+        self.node_types['choice'] = EvalChoice
+        self.node_types['builtin'] = EvalBuiltIn
+        self.node_types['extern'] = EvalExtern
 
         self.cycle_root = None
         self.pointer = 0
@@ -101,7 +99,7 @@ class StackBasedEngine(ClauseDBEngine):
                 else:
                     raise UnknownClauseInternal()
 
-        return exec_func(node_id=node_id, node=node, **kwdargs)
+        return exec_func(engine=self, node_id=node_id, node=node, **kwdargs)
 
     def should_skip_node(self, node_id, **kwdargs):
         include_ids = kwdargs.get('include')
@@ -117,7 +115,7 @@ class StackBasedEngine(ClauseDBEngine):
         return [complete(kwdargs['parent'], kwdargs.get('identifier'))]
 
     def create_node_type(self, node_type):
-        return self.node_types.get(node_type)
+        return self.node_types.get(node_type).eval
 
     def load_builtins(self):
         addBuiltIns(self)
@@ -1266,32 +1264,6 @@ class DefineCache(object):
         return '%s\n%s' % (self.__non_ground, self.__ground)
 
 
-class Transformations(object):
-    def __init__(self):
-        self.functions = []
-        self.constant = None
-
-    def addConstant(self, constant):
-        pass
-        # if self.constant is None :
-        #     self.constant = self(constant)
-        #     self.functions = []
-
-    def addFunction(self, function):
-        # print ('add', function, self.constant)
-        # if self.constant is None :
-        self.functions.append(function)
-
-    def __call__(self, result):
-        # if self.constant != None :
-        #     return self.constant
-        # else :
-        for f in reversed(self.functions):
-            if result is None:
-                return None
-            result = f(result)
-        return result
-
 
 class BooleanBuiltIn(object):
     """Simple builtin that consist of a check without unification. \
@@ -1317,37 +1289,6 @@ class BooleanBuiltIn(object):
     def __str__(self):  # pragma: no cover
         return str(self.base_function)
 
-
-class SimpleBuiltIn(object):
-    """Simple builtin that does cannot be involved in a cycle or require engine information \
-    and has 0 or more results."""
-
-    def __init__(self, base_function):
-        self.base_function = base_function
-
-    def __call__(self, *args, **kwdargs):
-        callback = kwdargs.get('callback')
-        results = self.base_function(*args, **kwdargs)
-        output = []
-        if results:
-            for i, result in enumerate(results):
-                result = kwdargs['engine'].create_context(result, parent=kwdargs['context'])
-
-                if kwdargs['target'].flag('keep_builtins'):
-                    # kwdargs['target'].add_node()
-                    # print (kwdargs.keys(), args)
-                    call = kwdargs['call_origin'][0].split('/')[0]
-                    name = Term(call, *result)
-                    node = kwdargs['target'].add_atom(name, None, None, name=name, source='builtin')
-                    output += callback.notifyResult(result, node, i == len(results) - 1)
-                else:
-                    output += callback.notifyResult(result, NODE_TRUE, i == len(results) - 1)
-            return True, output
-        else:
-            return True, callback.notifyComplete()
-
-    def __str__(self):  # pragma: no cover
-        return str(self.base_function)
 
 
 class SimpleProbabilisticBuiltIn(object):
