@@ -400,7 +400,11 @@ class SemiringDensity(Semiring):
         # return DensityValue.wrap(value).is_zero()
 
     def is_one(self, value):
-        return DensityValue.wrap(value).is_one()
+        if isinstance(value, DensityValue):
+            #return value.is_one()
+            return DensityValue.wrap(value).is_one()
+        else:
+            return 1.0 - 1e-12 < value < 1.0 + 1e-12
 
     def negate(self, a):
         return self.one() - a

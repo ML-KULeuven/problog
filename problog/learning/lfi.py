@@ -761,10 +761,16 @@ class LFIProblem(LogicProgram):
 
                 # 2) Replacement atom
                 replacement = lfi_fact.with_probability(lfi_prob)
-                if body is None:
-                    new_body = Term('true')
+                if self._use_parents:
+                    if body is None:
+                        new_body = Term('true')
+                    else:
+                        new_body = body
                 else:
-                    new_body = body
+                    if body is None:
+                        new_body = lfi_fact
+                    else:
+                        new_body = body & lfi_fact
 
                 # 3) Create redirection clause
                 if self._use_parents:
@@ -964,6 +970,15 @@ class LFIProblem(LogicProgram):
         else:
             evaluator = ExampleEvaluator(self._weights, eps=self._eps, use_parents=self._use_parents)
 
+
+        res1 = []
+        for example in self._compiled_examples:
+            res = evaluator(example)
+            res1.append(res)
+
+        print(res1)
+
+
         return list(chain.from_iterable(map(evaluator, self._compiled_examples)))
 
     def _update(self, results):
@@ -1074,7 +1089,7 @@ class LFIProblem(LogicProgram):
                 w = sum(self._get_weight(i, key, strict=False) for i in idx)
                 n = available_prob / w  # Some part of probability might be taken by non-learnable weights in AD.
                 for i in idx:
-                    print('normalize {}, {}: {} * {}'.format(i, key, self._get_weight(i, key, strict=False) * n))
+                    print('normalize {}, {}: {} * {}'.format(i, key, self._get_weight(i, key, strict=False) * n, n))
                     self._set_weight(i, key, self._get_weight(i, key, strict=False) * n)
 
     def step(self):
