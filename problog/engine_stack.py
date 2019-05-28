@@ -320,11 +320,7 @@ class StackBasedEngine(ClauseDBEngine):
         # return actions
 
     def is_real_cycle(self, child, parent):
-        cycle = self.find_cycle(child, parent)
-        if cycle:
-            return True
-        else:
-            return False
+        return bool(self.find_cycle(child, parent))
 
     def execute_init(self, node_id, target=None, database=None, is_root=None, **kwargs):
 
