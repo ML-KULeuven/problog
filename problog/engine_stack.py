@@ -23,17 +23,16 @@ Default implementation of the ProbLog grounding engine.
 """
 from __future__ import print_function
 
-import sys
 import random
+import sys
 
-from .logic import Term, ArithmeticError, is_ground, list2term
-from .engine import UnifyError, instantiate, UnknownClause, UnknownClauseInternal, is_variable
-from .engine import NonGroundProbabilisticClause
-from .errors import GroundingError
 from .engine import ClauseDBEngine, substitute_head_args, substitute_call_args, unify_call_head, \
     unify_call_return, OccursCheck, substitute_simple
+from .engine import NonGroundProbabilisticClause
+from .engine import UnifyError, instantiate, UnknownClause, UnknownClauseInternal, is_variable
 from .engine_builtin import add_standard_builtins, IndirectCallCycleError
-from collections import defaultdict
+from .errors import GroundingError
+from .logic import Term, ArithmeticError, is_ground
 
 
 class NegativeCycle(GroundingError):
@@ -64,7 +63,7 @@ def complete(obj, source):
 
 
 def results_to_actions(resultlist, engine, node, context, target, parent, identifier,
-                        transform, is_root, database, **kwdargs):
+                       transform, is_root, database, **kwdargs):
     """Translates a list of results to actions.
 
     :param results:
@@ -407,7 +406,7 @@ class StackBasedEngine(ClauseDBEngine):
                     elif act == 'c':
                         # Indicates completion of the execution.
                         return actions
-#                        return True, solutions
+                    #                        return True, solutions
                     else:
                         # ERROR: unknown message
                         raise InvalidEngineState('Unknown message!')
@@ -518,7 +517,7 @@ class StackBasedEngine(ClauseDBEngine):
         # kwdargs['parent'] = parent
 
         initial_actions = self.eval(node_id, parent=None, database=database, target=target,
-                            is_root=is_root, **kwdargs)
+                                    is_root=is_root, **kwdargs)
 
         # Initialize the action stack.
         actions = self.init_message_stack()
@@ -529,7 +528,7 @@ class StackBasedEngine(ClauseDBEngine):
         while actions:
             if self.full_trace:
                 self.printStack()
-                print (actions)
+                print(actions)
             # Pop the next action.
             # An action consists of 4 parts:
             #   - act: the type of action (r, c, e)
@@ -539,7 +538,7 @@ class StackBasedEngine(ClauseDBEngine):
 
             if self.cycle_root is not None and actions.cycle_exhausted():
                 if self.full_trace:
-                    print ('CLOSING CYCLE')
+                    print('CLOSING CYCLE')
                     sys.stdin.readline()
                 # for message in actions:   # TODO cache
                 #     parent = actions._msg_parent(message)
@@ -639,7 +638,7 @@ class StackBasedEngine(ClauseDBEngine):
 
                     if not actions and not next_actions and self.cycle_root is not None:
                         if self.full_trace:
-                            print ('CLOSE CYCLE')
+                            print('CLOSE CYCLE')
                             sys.stdin.readline()
                         # If there are no more actions and we have an active cycle, we should close the cycle.
                         next_actions = self.cycle_root.closeCycle(True)
@@ -670,7 +669,7 @@ class StackBasedEngine(ClauseDBEngine):
         else:
             # This should never happen.
             self.printStack()  # pragma: no cover
-            print ('Actions:', actions)
+            print('Actions:', actions)
             print('Collected results:', solutions)  # pragma: no cover
             raise InvalidEngineState('Engine did not complete correctly!')  # pragma: no cover
 
@@ -697,7 +696,7 @@ class StackBasedEngine(ClauseDBEngine):
                 raise UnknownClause(query.signature, database.lineno(query.location))
 
         return self.execute(node_id, database=database, target=target,
-                        context=self.create_context(query.args, parent=context), **kwdargs)
+                            context=self.create_context(query.args, parent=context), **kwdargs)
 
     def call_intern(self, query, parent_context=None, **kwdargs):
         if query.is_negated():
@@ -758,7 +757,7 @@ class StackBasedEngine(ClauseDBEngine):
             target_node = target.add_atom(node_id, node.probability, name=name)
             if target_node is not None:
                 return [new_result(parent, self.create_context(node.args, parent=context), target_node, identifier,
-                                  True)]
+                                   True)]
             else:
                 return [complete(parent, identifier)]
         except UnifyError:
@@ -778,7 +777,6 @@ class StackBasedEngine(ClauseDBEngine):
                     return resultnode
         else:
             return resultnode
-
 
     def eval_define(self, node, context, target, parent, identifier=None, transform=None,
                     is_root=False, no_cache=False, **kwdargs):
@@ -802,7 +800,8 @@ class StackBasedEngine(ClauseDBEngine):
         if results is not None:
             # We have results for this goal, i.e. it has been fully evaluated before.
             # Transform the results to actions and return.
-            return results_to_actions(results, self, node, context, target, parent, identifier, transform, is_root, **kwdargs)
+            return results_to_actions(results, self, node, context, target, parent, identifier, transform, is_root,
+                                      **kwdargs)
         else:
             # Look up the results in the currently active nodes.
             active_node = target._cache.getEvalNode(goal)
@@ -812,7 +811,8 @@ class StackBasedEngine(ClauseDBEngine):
                     # If the node is ground, we can simply return the current result node.
                     active_node.flushBuffer(True)
                     active_node.is_cycle_parent = True  # Notify it that it's buffer was flushed
-                    queue = results_to_actions(active_node.results, self, node, context, target, parent, identifier, transform, is_root, **kwdargs)
+                    queue = results_to_actions(active_node.results, self, node, context, target, parent, identifier,
+                                               transform, is_root, **kwdargs)
                     assert (len(queue) == 1)
                     self.checkCycle(parent, active_node.pointer)
                     return queue
@@ -1202,7 +1202,7 @@ class MessageFIFO(MessageQueue):
         else:
             last_message = self.peek()
             return last_message[0] == 'e' and \
-                last_message[3]['parent'] < self.engine.cycle_root.pointer
+                   last_message[3]['parent'] < self.engine.cycle_root.pointer
 
     def __nonzero__(self):
         return bool(self.messages)
@@ -1233,7 +1233,7 @@ class MessageAnyOrder(MessageQueue):
         if self.engine.cycle_root is None:
             return False
         else:
-            for message in self:   # TODO cache
+            for message in self:  # TODO cache
                 parent = self._msg_parent(message)
                 if self.engine.in_cycle(parent):
                     return False
@@ -1720,7 +1720,7 @@ class EvalDefine(EvalNode):
         self.is_cycle_root = False
         self.is_cycle_child = False
         self.is_cycle_parent = False
-        self.siblings = []      # These are nodes that have is_cycle_child set
+        self.siblings = []  # These are nodes that have is_cycle_child set
 
         self.call = (self.node.functor, self.context)
         self.to_complete = to_complete
@@ -1784,14 +1784,16 @@ class EvalDefine(EvalNode):
                         result_node = stored_result[0][1]
 
                         if not self.is_root:
-                            result_node = self.engine.propagate_evidence(self.database, self.target, self.node.functor, res, result_node)
+                            result_node = self.engine.propagate_evidence(self.database, self.target, self.node.functor,
+                                                                         res, result_node)
                     else:
                         if self.engine.label_all:
                             name = Term(self.node.functor, *res)
                         else:
                             name = None
                             if not self.is_root:
-                                node = self.engine.propagate_evidence(self.database, self.target, self.node.functor, res, node)
+                                node = self.engine.propagate_evidence(self.database, self.target, self.node.functor,
+                                                                      res, node)
                         result_node = self.target.add_or((node,), readonly=False, name=name)
                     self.results[res] = result_node
                     if not self.no_cache and is_ground(*res) and is_ground(*self.call[1]):
@@ -1800,7 +1802,6 @@ class EvalDefine(EvalNode):
                     # Send results to cycle
                     if not self.is_buffered() and result_node is not NODE_FALSE:
                         actions += self.notifyResult(res, result_node)
-
 
                     # TODO what if result_node is NONE?
                     actions += self.notifyResultChildren(res, result_node, is_last=False)
@@ -1827,7 +1828,7 @@ class EvalDefine(EvalNode):
 
     def complete(self, source=None):
         if self.is_cycle_child:
-            assert(not self.siblings)
+            assert (not self.siblings)
             return True, self.notifyComplete()
         else:
             self.to_complete -= 1
@@ -1861,7 +1862,7 @@ class EvalDefine(EvalNode):
     def flushBuffer(self, cycle=False):
         def func(res, nodes):
             cache_key = self.call
-#            cache_key = (self.node.functor, res)
+            #            cache_key = (self.node.functor, res)
             if not self.no_cache and cache_key in self.target._cache:
                 stored_result = self.target._cache[cache_key]
                 if len(stored_result) == 1:
@@ -1892,6 +1893,7 @@ class EvalDefine(EvalNode):
                     self.target._cache[cache_key] = {res: node}
 
             return node
+
         self.results.collapse(func)
 
     def is_buffered(self):
@@ -1940,7 +1942,7 @@ class EvalDefine(EvalNode):
                 queue += cycle_root.createCycle()
                 queue += self.engine.notify_cycle(cycle)
                 # queue += self.engine.notifyCycle(cycle_root)
-                    # cycle_root)  # Notify old cycle root up to new cycle root
+                # cycle_root)  # Notify old cycle root up to new cycle root
                 cycle_root = None
             if cycle_root is None:  # No active cycle
                 # Register cycle root with engine
@@ -2289,11 +2291,11 @@ class MessageOrder1(MessageAnyOrder):
     def pop(self):
         if self.messages_rc:
             msg = self.messages_rc.pop(-1)
-            #print ('M', msg)
+            # print ('M', msg)
             return msg
         else:
-            i = random.randint(0, len(self.messages_e)-1)
-            #print ('MESSAGE', [m[0:2] + (m[3]['context'],) for m in self.messages_e], self.messages_e[i][0:3])
+            i = random.randint(0, len(self.messages_e) - 1)
+            # print ('MESSAGE', [m[0:2] + (m[3]['context'],) for m in self.messages_e], self.messages_e[i][0:3])
             res = self.messages_e.pop(i)
             return res
 
