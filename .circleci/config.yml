@@ -19,10 +19,12 @@ jobs:
           - v1-dependencies-{{ checksum "requirements.txt" }}
           # fallback to using the latest cache if no exact match is found
           - v1-dependencies-
+          -
 
       - run:
           name: install dependencies
           command: |
+            pip3 install codecov
             pip3 install -r requirements.txt
 
       - save_cache:
@@ -35,6 +37,7 @@ jobs:
           name: run tests
           command: |
             pytest --cov=problog problog/test/
+            codecov --token=$CODECOV_TOKEN
 
       - store_artifacts:
           path: test-reports
