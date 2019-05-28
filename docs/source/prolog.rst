@@ -384,6 +384,76 @@ It provides the predicates ``current_key/1``, ``recorda/2``, ``recorda/3``, ``re
 Aggregate
 +++++++++
 
+The ``aggregate`` library LDL++ style of aggregation.
+
+This functionality requires the 'aggregate' library.
+
+.. code-block:: prolog
+
+    :- use_module(library(aggregate)).
+
+An aggregating clause is a clause of the form:
+
+.. code-block:: prolog
+
+    FUNCTOR(*GroupArgs, AggFunc<AggVar>) :- BODY.
+
+with
+
+- FUNCTOR: The predicate name.
+- GroupArgs: (optional) list of arguments that will be used as a "group by".  That is, the clause will produce a result for each distinct set
+- AggFunc: An aggregation function. This can be any binary predicate that maps a list onto a term.
+- AggVar: The variable over which the aggregation is computed.
+- BODY: The body of the clause.
+
+The library provides 'sum', 'avg', 'min' and 'max', but also user-defined predicates can be used.
+
+User defined predicates have to be /2, with a list as input and some result as output.
+For example, the predicate proper_length/2 in lists fits this definition and can be used natively as an aggregation.
+
+Examples
+
+.. code-block:: prolog
+
+    :- use_module(library(aggregate)).
+
+    person(a).
+    person(b).
+    person(c).
+    person(d).
+    person(e).
+
+    salary(a, 1000).
+    salary(b, 1200).
+    salary(c, 800).
+    salary(d, 1100).
+    salary(e, 1400).
+
+    dept(a, dept_a).
+    dept(b, dept_a).
+    dept(c, dept_b).
+    dept(d, dept_b).
+    dept(e, dept_a).
+
+    % Average salary per department.
+    dept_salary(Dept, avg<Salary>) :- person(X), salary(X, Salary), dept(X, Dept).
+    query(dept_salary(Dept, Salary)).
+    % dept_salary(dept_a,1200.0) 1
+    % dept_salary(dept_b,950.0) 1
+
+    % Max salary per department.
+    dept_max_salary(Dept, max<Salary>) :- person(X), salary(X, Salary), dept(X, Dept).
+    query(dept_max_salary(Dept, Salary)).
+    % dept_max_salary(dept_a,1400) 1
+    % dept_max_salary(dept_b,1100) 1
+
+    % Average salary company-wide.
+    all_salary(avg<Salary>) :- person(X), salary(X, Salary), dept(X, Dept).
+    query(all_salary(Salary)).
+    % all_salary(1100.0) 1
+
+These aggregates also support probabilistic data.
+
 
 Collect
 +++++++
