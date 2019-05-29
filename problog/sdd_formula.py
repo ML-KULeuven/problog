@@ -180,10 +180,10 @@ class SDD(DD):
             node = self.get_node(at)
             if lit < 0:
                 retval = -formula.add_atom(-lit, probability=node.probability, name=node.name, group=node.group,
-                                           cr_extra=False)
+                                           cr_extra=False, is_extra=node.is_extra)
             else:
                 retval = formula.add_atom(lit, probability=node.probability, name=node.name, group=node.group,
-                                          cr_extra=False)
+                                          cr_extra=False, is_extra=node.is_extra)
         else:  # is decision
             # Formula: (p1^s1) v (p2^s2) v ...
             children = []
