@@ -26,7 +26,7 @@ from __future__ import print_function
 import sys
 
 from problog.context import State, Context, FixedContext, get_state
-from problog.messages import MessageFIFO, MessageOrderD, MessageOrderDrc
+from problog.engine_messages import MessageFIFO, MessageOrderD, MessageOrderDrc
 from .engine import ClauseDBEngine, substitute_simple
 from .engine import NonGroundProbabilisticClause
 from .engine import is_variable
@@ -807,5 +807,3 @@ class SimpleProbabilisticBuiltIn(object):
 
 def add_built_ins(engine):
     add_standard_builtins(engine, BooleanBuiltIn, SimpleBuiltIn, SimpleProbabilisticBuiltIn)
-
-
