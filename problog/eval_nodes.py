@@ -161,7 +161,7 @@ class EvalNode(object):
         self.exclude = exclude
         self.no_cache = no_cache
 
-    def notifyResult(self, arguments, node=0, is_last=False, parent=None):
+    def notify_result(self, arguments, node=0, is_last=False, parent=None):
         if parent is None:
             parent = self.parent
         if self.transform:
@@ -429,7 +429,7 @@ class EvalOr(EvalNode):
             else:
                 result_node = self.target.add_or((node,), readonly=False, name=None)
                 self.results[res] = result_node
-                actions = self.notifyResult(res, result_node)
+                actions = self.notify_result(res, result_node)
                 if is_last:
                     a, act = self.complete(source)
                     actions += act
@@ -452,7 +452,7 @@ class EvalOr(EvalNode):
             actions = []
             if self.is_buffered():
                 for result, node in self.results:
-                    actions += self.notifyResult(result, node)
+                    actions += self.notify_result(result, node)
             actions += self.notifyComplete()
             return True, actions
         else:
@@ -464,7 +464,7 @@ class EvalOr(EvalNode):
             self.flushBuffer(True)
             actions = []
             for result, node in self.results:
-                actions += self.notifyResult(result, node)
+                actions += self.notify_result(result, node)
             return actions
         else:
             self.on_cycle = True
@@ -512,21 +512,21 @@ class EvalDefine(EvalNode):
         if not self.is_buffered():
             self.flushBuffer(True)
 
-    def notifyResult(self, arguments, node=0, is_last=False, parent=None):
+    def notify_result(self, arguments, node=0, is_last=False, parent=None):
         if not self.is_root:
             node = self.engine.propagate_evidence(self.database, self.target, self.node.functor,
                                                   arguments, node)
-        return super(EvalDefine, self).notifyResult(arguments, node, is_last, parent)
+        return super(EvalDefine, self).notify_result(arguments, node, is_last, parent)
 
-    def notifyResultMe(self, arguments, node=0, is_last=False):
+    def notify_result_me(self, arguments, node=0, is_last=False):
         parent = self.pointer
         return [new_result(parent, arguments, node, self.identifier, is_last)]
 
-    def notifyResultSiblings(self, arguments, node=0, is_last=False):
+    def notify_result_siblings(self, arguments, node=0, is_last=False):
         parents = self.siblings
         return [new_result(parent, arguments, node, self.identifier, is_last) for parent in parents]
 
-    def notifyResultChildren(self, arguments, node=0, is_last=False):
+    def notify_result_children(self, arguments, node=0, is_last=False):
         parents = self.cycle_children
         return [new_result(parent, arguments, node, self.identifier, is_last) for parent in parents]
 
@@ -539,9 +539,9 @@ class EvalDefine(EvalNode):
         if self.is_cycle_child:
             assert not self.siblings
             if is_last:
-                return True, self.notifyResult(result, node, is_last=is_last)
+                return True, self.notify_result(result, node, is_last=is_last)
             else:
-                return False, self.notifyResult(result, node, is_last=is_last)
+                return False, self.notify_result(result, node, is_last=is_last)
         else:
             if not self.is_buffered() or self.isCycleParent():
                 assert self.results.collapsed
@@ -582,13 +582,13 @@ class EvalDefine(EvalNode):
                     actions = []
                     # Send results to cycle
                     if not self.is_buffered() and result_node is not NODE_FALSE:
-                        actions += self.notifyResult(res, result_node)
+                        actions += self.notify_result(res, result_node)
 
                     # TODO what if result_node is NONE?
-                    actions += self.notifyResultChildren(res, result_node, is_last=False)
-                    actions += self.notifyResultSiblings(res, result_node, is_last=False)
+                    actions += self.notify_result_children(res, result_node, is_last=False)
+                    actions += self.notify_result_siblings(res, result_node, is_last=False)
                     # TODO the following optimization doesn't always work, see test/some_cycles.pl
-                    # actions += self.notifyResultChildren(res, result_node, is_last=self.is_ground)
+                    # actions += self.notify_result_children(res, result_node, is_last=self.is_ground)
                     # if self.is_ground :
                     #     self.engine.cycle_root.cycle_close -= set(self.cycle_children)
 
@@ -696,8 +696,8 @@ class EvalDefine(EvalNode):
             for result, node in cycle_parent.results:
                 if type(node) == list:
                     raise IndirectCallCycleError()
-                queue += self.notifyResultMe(result, node)
-                queue += self.notifyResultMe(result, node)
+                queue += self.notify_result_me(result, node)
+                queue += self.notify_result_me(result, node)
         else:
             # goal = (self.node.functor, self.context)
             # Get the top node of this cycle.
@@ -709,7 +709,7 @@ class EvalDefine(EvalNode):
 
             cycle_parent.flushBuffer(True)
             for result, node in cycle_parent.results:
-                queue += self.notifyResultMe(result, node)
+                queue += self.notify_result_me(result, node)
 
             if cycle_root is not None and cycle_parent.pointer < cycle_root.pointer:
                 # New parent is earlier in call stack as current cycle root
@@ -772,9 +772,9 @@ class EvalDefine(EvalNode):
             self.flushBuffer(True)
             actions = []
             for result, node in self.results:
-                actions += self.notifyResult(result, node)
+                actions += self.notify_result(result, node)
                 for s in self.siblings:
-                    actions += self.notifyResultSiblings(result, node)
+                    actions += self.notify_result_siblings(result, node)
             return actions
         else:
             self.on_cycle = True
@@ -901,7 +901,7 @@ class EvalNot(EvalNode):
         if self.nodes:
             or_node = self.target.add_not(self.target.add_or(self.nodes, name=None))
             if or_node != NODE_FALSE:
-                actions += self.notifyResult(self.context, or_node)
+                actions += self.notify_result(self.context, or_node)
         else:
             if self.target.flag('keep_all'):
                 src_node = self.database.get_node(self.node.child)
@@ -915,7 +915,7 @@ class EvalNot(EvalNode):
             else:
                 node = NODE_TRUE
 
-            actions += self.notifyResult(self.context, node)
+            actions += self.notify_result(self.context, node)
         actions += self.notifyComplete()
         return True, actions
 
@@ -970,9 +970,9 @@ class EvalAnd(EvalNode):
             else:
                 all_complete, complete_actions = False, []
             if all_complete:
-                return True, self.notifyResult(result, target_node, is_last=True)
+                return True, self.notify_result(result, target_node, is_last=True)
             else:
-                return False, self.notifyResult(result, target_node, is_last=False)
+                return False, self.notify_result(result, target_node, is_last=False)
 
     def complete(self, source=None):
         self.to_complete -= 1
@@ -1072,9 +1072,9 @@ class SimpleBuiltIn(object):
                     call = kwargs['call_origin'][0].split('/')[0]
                     name = Term(call, *result)
                     node = kwargs['target'].add_atom(name, None, None, name=name, source='builtin')
-                    output += callback.notifyResult(result, node, i == len(results) - 1)
+                    output += callback.notify_result(result, node, i == len(results) - 1)
                 else:
-                    output += callback.notifyResult(result, NODE_TRUE, i == len(results) - 1)
+                    output += callback.notify_result(result, NODE_TRUE, i == len(results) - 1)
             return True, output
         else:
             return True, callback.notifyComplete()

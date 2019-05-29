@@ -763,9 +763,9 @@ class BooleanBuiltIn(object):
                 call = kwdargs['call_origin'][0].split('/')[0]
                 name = Term(call, *args)
                 node = kwdargs['target'].add_atom(name, None, None, name=name, source='builtin')
-                return True, callback.notifyResult(args, node, True)
+                return True, callback.notify_result(args, node, True)
             else:
-                return True, callback.notifyResult(args, NODE_TRUE, True)
+                return True, callback.notify_result(args, NODE_TRUE, True)
         else:
             return True, callback.notifyComplete()
 
@@ -785,7 +785,7 @@ class SimpleProbabilisticBuiltIn(object):
         output = []
         if results:
             for i, result in enumerate(results):
-                output += callback.notifyResult(kwdargs['engine'].create_context(result[0], parent=result[0]),
+                output += callback.notify_result(kwdargs['engine'].create_context(result[0], parent=result[0]),
                                                 result[1], i == len(results) - 1)
             return True, output
         else:
