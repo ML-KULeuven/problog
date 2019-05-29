@@ -235,7 +235,7 @@ def enumerate_sdd(solution, formula, sdd, verbose):
 
 
 def enumerate_solutions(sols, verbose, formula, sdd=None):
-    has_solution = False
+    solutions = []
     for i, res in enumerate(sols):
         if verbose:
             debug('Evaluating solution %s/%s...' % (i + 1, len(sols)))
@@ -245,12 +245,8 @@ def enumerate_solutions(sols, verbose, formula, sdd=None):
         else:
             current_sdd = create_sdd(res, formula, verbose)
 
-        for k, v in current_sdd.evaluate().items():
-            if v > 0.0:
-                print(k, v)
-        print('----------')
-        has_solution = True
-    return has_solution
+        solutions.append(current_sdd.evaluate().items())
+    return solutions
 
 
 def check_prob_constraint(constraints):
@@ -264,7 +260,22 @@ def main(argv, handle_output=None):
 
     verbose = args.verbose
     filename = args.filename
+    solutions = run(filename, verbose)
 
+    for solution in solutions:
+        for k, v in solution:
+            if v > 0.0:
+                print(k, v)
+
+        print('----------')
+
+    if solutions:
+        print('==========')
+    else:
+        print('=== UNSATISFIABLE ===')
+
+
+def run(filename, verbose=None):
     if verbose:
         debug('Loading...')
     problog_model = PrologFile(filename, factory=ConstraintFactory())
@@ -312,10 +323,7 @@ def main(argv, handle_output=None):
         debug('Solving...')
     sols = list(solve(fzn))
 
-    if enumerate_solutions(sols, verbose, formula, sdd):
-        print('==========')
-    else:
-        print('=== UNSATISFIABLE ===')
+    return enumerate_solutions(sols, verbose, formula, sdd)
 
 
 def argparser():
