@@ -265,21 +265,24 @@ def main(argv, handle_output=None):
     verbose = args.verbose
     filename = args.filename
 
-    if verbose: debug('Loading...')
+    if verbose:
+        debug('Loading...')
     problog_model = PrologFile(filename, factory=ConstraintFactory())
 
     engine = DefaultEngine()
     database = engine.prepare(problog_model)
 
     # Ground the constraints
-    if verbose: debug('Grounding...')
+    if verbose:
+        debug('Grounding...')
     target = engine.ground(database, Term('constraint', None, None), label='constraint')
 
     queries = [q[0] for q in engine.query(database, Term('query', None))]
     for query in queries:
         target = engine.ground(database, query, label='query', target=target)
 
-    if verbose > 1: print(target, file=sys.stderr)
+    if verbose is not None and verbose > 1:
+        print(target, file=sys.stderr)
 
     has_prob_constraint = check_prob_constraint(target.get_names(label='constraint'))
 
@@ -303,7 +306,7 @@ def main(argv, handle_output=None):
     else:
         fzn = formula_to_flatzinc_bool(formula)
 
-    if verbose > 1:
+    if verbose is not None and verbose > 1:
         print(fzn, file=sys.stderr)
     if verbose:
         debug('Solving...')
