@@ -666,7 +666,8 @@ class DefineCache(object):
         self.__non_ground = NestedDict()
         self.__ground = NestedDict()
 
-    def _reindex_vars(self, goal):
+    @staticmethod
+    def _reindex_vars(goal):
         ri = VarReindex()
         return goal[0], [substitute_simple(g, ri) for g in goal[1]]
 
