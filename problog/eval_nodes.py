@@ -227,10 +227,8 @@ class EvalNode(object):
 
 class EvalFact(EvalNode):
 
-    def __init__(self, engine, database, target, node_id, node, context, parent, pointer, identifier=None,
-                 transform=None, call=None, current_clause=None, include=None, exclude=None, no_cache=False, **kwargs):
-        super().__init__(engine, database, target, node_id, node, context, parent, pointer, identifier, transform, call,
-                         current_clause, include, exclude, no_cache, **kwargs)
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
 
     @staticmethod
     def eval(engine, node_id, node, parent=None, context=None, target=None, identifier=None, **kwargs):
@@ -255,10 +253,8 @@ class EvalFact(EvalNode):
 
 class EvalCall(EvalNode):
 
-    def __init__(self, engine, database, target, node_id, node, context, parent, pointer, identifier=None,
-                 transform=None, call=None, current_clause=None, include=None, exclude=None, no_cache=False, **kwargs):
-        super().__init__(engine, database, target, node_id, node, context, parent, pointer, identifier, transform, call,
-                         current_clause, include, exclude, no_cache, **kwargs)
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
 
     @staticmethod
     def eval(engine, node_id, node, parent=None, context=None, transform=None, *args,
@@ -310,10 +306,8 @@ class EvalCall(EvalNode):
 
 
 class EvalChoice(EvalNode):
-    def __init__(self, engine, database, target, node_id, node, context, parent, pointer, identifier=None,
-                 transform=None, call=None, current_clause=None, include=None, exclude=None, no_cache=False, **kwargs):
-        super().__init__(engine, database, target, node_id, node, context, parent, pointer, identifier, transform, call,
-                         current_clause, include, exclude, no_cache, **kwargs)
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
 
     @staticmethod
     def eval(engine, node_id, node, parent=None, context=None, target=None, identifier=None, **kwargs):
@@ -347,10 +341,8 @@ class EvalChoice(EvalNode):
 
 
 class EvalExtern(EvalNode):
-    def __init__(self, engine, database, target, node_id, node, context, parent, pointer, identifier=None,
-                 transform=None, call=None, current_clause=None, include=None, exclude=None, no_cache=False, **kwargs):
-        super().__init__(engine, database, target, node_id, node, context, parent, pointer, identifier, transform, call,
-                         current_clause, include, exclude, no_cache, **kwargs)
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
 
     @staticmethod
     def eval(node, **kwargs):
@@ -359,10 +351,8 @@ class EvalExtern(EvalNode):
 
 class EvalClause(EvalNode):
 
-    def __init__(self, engine, database, target, node_id, node, context, parent, pointer, identifier=None,
-                 transform=None, call=None, current_clause=None, include=None, exclude=None, no_cache=False, **kwargs):
-        super().__init__(engine, database, target, node_id, node, context, parent, pointer, identifier, transform, call,
-                         current_clause, include, exclude, no_cache, **kwargs)
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
 
     @staticmethod
     def eval(engine, node_id, node, parent=None, context=None, transform=None, identifier=None, current_clause=None,
