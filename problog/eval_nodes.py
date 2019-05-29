@@ -213,7 +213,7 @@ class EvalNode(object):
             self.parent, node_type, self.node_str(), pos[0], pos[1], self.context)
 
     @staticmethod
-    def eval(engine, node_id, node, parent=None, context=None, target=None, identifier=None, *args, **kwdargs):
+    def eval(engine, node_id, node, parent=None, context=None, target=None, identifier=None, **kwdargs):
         raise NotImplementedError("Eval not implemented for this node")
 
 
@@ -225,7 +225,7 @@ class EvalFact(EvalNode):
                          current_clause, include, exclude, no_cache, **extra)
 
     @staticmethod
-    def eval(engine, node_id, node, parent=None, context=None, target=None, identifier=None, *args, **kwdargs):
+    def eval(engine, node_id, node, parent=None, context=None, target=None, identifier=None, **kwdargs):
         try:
             # Verify that fact arguments unify with call arguments.
             unify_call_head(context, node.args, context)
@@ -347,7 +347,7 @@ class EvalExtern(EvalNode):
                          current_clause, include, exclude, no_cache, **extra)
 
     @staticmethod
-    def eval(engine, node_id, node, parent=None, context=None, target=None, identifier=None, *args, **kwdargs):
+    def eval(engine, node_id, node, parent=None, context=None, target=None, identifier=None, **kwdargs):
         return EvalBuiltIn.eval(engine=engine, node_id=node_id, node=SimpleBuiltIn(node.function), parent=parent,
                                 context=context, target=target, identifier=identifier, **kwdargs)
 
@@ -504,7 +504,7 @@ class EvalOr(EvalNode):
         return EvalNode.__str__(self) + ' tc: ' + str(self.to_complete)
 
     @staticmethod
-    def eval(engine, node_id, node, parent=None, context=None, target=None, identifier=None, *args, **kwdargs):
+    def eval(engine, node_id, node, parent=None, context=None, target=None, identifier=None, **kwdargs):
         if len(node.children) == 0:
             # No children, so complete immediately.
             return [complete(parent, None)]
@@ -834,7 +834,7 @@ class EvalDefine(EvalNode):
 
     @staticmethod
     def eval(engine, node_id, node, parent=None, context=None, target=None, identifier=None, transform=None,
-             is_root=False, no_cache=False, *args, **kwdargs):
+             is_root=False, no_cache=False, **kwdargs):
 
         # This function evaluates the 'define' nodes in the database.
         # This is basically the same as evaluating a goal in Prolog.
@@ -956,7 +956,7 @@ class EvalNot(EvalNode):
         return ''
 
     @staticmethod
-    def eval(engine, node_id, node, parent=None, context=None, target=None, identifier=None, *args, **kwdargs):
+    def eval(engine, node_id, node, parent=None, context=None, target=None, identifier=None, **kwdargs):
         return EvalDefault.eval(engine=engine, node_id=node_id, node=node, target=target, context=context,
                                 identifier=identifier, parent=parent, eval_type=EvalNot, **kwdargs)
 
@@ -1021,7 +1021,7 @@ class EvalAnd(EvalNode):
         return EvalNode.__str__(self) + ' tc: %s' % self.to_complete
 
     @staticmethod
-    def eval(engine, node_id, node, parent=None, context=None, target=None, identifier=None, *args, **kwdargs):
+    def eval(engine, node_id, node, parent=None, context=None, target=None, identifier=None, **kwdargs):
         return EvalDefault.eval(engine=engine, node_id=node_id, node=node, parent=parent, context=context,
                                 target=target, identifier=identifier, eval_type=EvalAnd, **kwdargs)
 
@@ -1054,7 +1054,7 @@ class EvalBuiltIn(EvalNode):
                 raise err
 
     @staticmethod
-    def eval(engine, node_id, node, parent=None, context=None, target=None, identifier=None, *args, **kwdargs):
+    def eval(engine, node_id, node, parent=None, context=None, target=None, identifier=None, **kwdargs):
         return EvalDefault.eval(engine=engine, node_id=node_id, node=node, parent=parent, context=context,
                                 target=target, identifier=identifier, eval_type=EvalBuiltIn, **kwdargs)
 
