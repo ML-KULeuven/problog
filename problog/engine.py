@@ -24,17 +24,19 @@ Grounding engine to transform a ProbLog program into a propositional formula.
 from __future__ import print_function
 
 import logging
+
 from collections import defaultdict
-from subprocess import CalledProcessError
+
+from .program import LogicProgram
+from .logic import *
+from .formula import LogicFormula
+from .engine_unify import *
 
 from .core import transform
-from .engine_unify import *
 from .errors import GroundingError, NonGroundQuery
-from .formula import LogicFormula
-from .logic import *
-from .program import LogicProgram
 from .util import Timer
 
+from subprocess import CalledProcessError
 
 @transform(LogicProgram, LogicFormula)
 def ground(model, target=None, grounder=None, **kwdargs):
@@ -54,7 +56,7 @@ def ground(model, target=None, grounder=None, **kwdargs):
 
 @transform(LogicProgram, LogicFormula)
 def ground_default(model, target=None, queries=None, evidence=None, propagate_evidence=False,
-                   labels=None, engine=None, **kwdargs):
+           labels=None, engine=None, **kwdargs):
     """Ground a given model.
 
     :param model: logic program to ground
@@ -69,7 +71,7 @@ def ground_default(model, target=None, queries=None, evidence=None, propagate_ev
     if engine is None:
         engine = DefaultEngine(**kwdargs)
     return engine.ground_all(model, target, queries=queries, evidence=evidence,
-                             propagate_evidence=propagate_evidence, labels=labels)
+                                               propagate_evidence=propagate_evidence, labels=labels)
 
 
 class GenericEngine(object):  # pragma: no cover
@@ -213,9 +215,6 @@ class ClauseDBEngine(GenericEngine):
     def create_context(self, content, define=None, parent=None):
         """Create a variable context."""
         return content
-
-    def _clone_context(self, context):
-        return list(context)
 
     def query(self, db, term, backend=None, **kwdargs):
         """
@@ -464,7 +463,7 @@ class ClauseDBEngine(GenericEngine):
                 queries = [q[0] for q in self.query(db, Term('query', None))]
             for query in queries:
                 if not isinstance(query, Term):
-                    raise GroundingError('Invalid query')  # TODO can we add a location?
+                    raise GroundingError('Invalid query')   # TODO can we add a location?
             # Load evidence: use argument if available, otherwise load from database.
             if evidence is None:
                 evidence = self.query(db, Term('evidence', None, None))
@@ -476,7 +475,7 @@ class ClauseDBEngine(GenericEngine):
 
             for ev in evidence:
                 if not isinstance(ev[0], Term):
-                    raise GroundingError('Invalid evidence')  # TODO can we add a location?
+                    raise GroundingError('Invalid evidence')   # TODO can we add a location?
             # Ground queries
             if propagate_evidence:
                 self.ground_evidence(db, target, evidence, propagate_evidence=propagate_evidence)

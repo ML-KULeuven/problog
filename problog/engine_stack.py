@@ -25,7 +25,7 @@ from __future__ import print_function
 
 import sys
 
-from problog.engine_context import State, Context, FixedContext, get_state
+from problog.engine_context import State
 from problog.engine_messages import MessageFIFO, MessageOrderD, MessageOrderDrc
 from .engine import ClauseDBEngine, substitute_simple
 from .engine import NonGroundProbabilisticClause
@@ -264,7 +264,7 @@ class StackBasedEngine(ClauseDBEngine):
     #     initial_actions = self.eval(node_id, parent=None, database=database, target=target,
     #                                 is_root=is_root, **kwargs)
 
-        # return initial_actions
+    # return initial_actions
 
     def execute(self, node_id, target=None, database=None, subcall=False,
                 is_root=False, name=None, **kwdargs):
@@ -560,9 +560,6 @@ class StackBasedEngine(ClauseDBEngine):
             con.state = State()
         return con
 
-    def _fix_context(self, context):
-        return FixedContext(context)
-
 
 class NestedDict(object):
     def __init__(self):
@@ -796,4 +793,3 @@ class SimpleProbabilisticBuiltIn(object):
 
     def __str__(self):  # pragma: no cover
         return str(self.base_function)
-

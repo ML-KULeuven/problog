@@ -3,7 +3,7 @@ problog.eval_nodes - Evaluation node classes for the engine_stack
 ---------------------------------------------------------------------
 """
 from problog.engine_builtin import IndirectCallCycleError
-from problog.engine_context import Context, get_state
+from problog.engine_context import Context, get_state, FixedContext
 from problog.engine_unify import substitute_call_args
 from problog.errors import GroundingError
 from problog.logic import Term, is_ground, ArithmeticError
@@ -308,7 +308,7 @@ class EvalChoice(EvalNode):
 
     @staticmethod
     def eval(engine, node_id, node, parent=None, context=None, target=None, identifier=None, **kwargs):
-        result = engine._fix_context(context)
+        result = _fix_context(context)
 
         for i, r in enumerate(result):
             if i not in node.locvars and not is_ground(r):
@@ -418,7 +418,7 @@ class EvalOr(EvalNode):
 
     def new_result(self, result, node=NODE_TRUE, source=None, is_last=False):
         if not self.is_buffered():
-            res = self.engine._fix_context(result)
+            res = _fix_context(result)
             assert self.results.collapsed
             if res in self.results:
                 res_node = self.results[res]
@@ -439,7 +439,7 @@ class EvalOr(EvalNode):
                 return a, actions
         else:
             assert (not self.results.collapsed)
-            res = self.engine._fix_context(result)
+            res = _fix_context(result)
             self.results[res] = node
             if is_last:
                 return self.complete(source)
@@ -547,7 +547,7 @@ class EvalDefine(EvalNode):
         else:
             if not self.is_buffered() or self.isCycleParent():
                 assert self.results.collapsed
-                res = self.engine._fix_context(result)
+                res = _fix_context(result)
                 res_node = self.results.get(res)
                 if res_node is not None:
                     self.target.add_disjunct(res_node, node)
@@ -602,7 +602,7 @@ class EvalDefine(EvalNode):
                     return a, actions
             else:
                 assert (not self.results.collapsed)
-                res = self.engine._fix_context(result)
+                res = _fix_context(result)
                 self.results[res] = node
                 if is_last:
                     return self.complete(source)
@@ -1088,11 +1088,12 @@ class SimpleBuiltIn(object):
         return str(self.base_function)
 
 
-# def _clone_context(self, context):
-#     return list(context)
-
 def _clone_context(context, parent=None, state=None):
     con = Context(context, state=state)
     if not con.state:
         con.state = get_state(parent)
     return con
+
+
+def _fix_context(context):
+    return FixedContext(context)
