@@ -205,6 +205,7 @@ class Term(object):
         self._cache_variables = None
         self.repr = None
         self.reprhash = None
+        self.cache_eq = {}
 
     @property
     def functor(self):
@@ -604,9 +605,22 @@ class Term(object):
             current = current.args[1]
         return elements, current
 
+    def _cache_equality(self, other, value):
+        self.cache_eq[id(other)] = value
+        return value
+
+    def _get_cached_eq(self, other):
+        other_id = id(other)
+        if other_id in self.cache_eq:
+            return self.cache_eq[other_id]
+        return None
+
     def __eq__(self, other):
         if not isinstance(other, Term):
             return False
+        cache_eq = self._get_cached_eq(other)
+        if cache_eq is not None:
+            return cache_eq
         # Non-recursive version of equality check.
         l1 = deque([self])
         l2 = deque([other])
@@ -614,30 +628,30 @@ class Term(object):
             t1 = l1.popleft()
             t2 = l2.popleft()
             if len(l1) != len(l2):
-                return False
+                return self._cache_equality(other, False)
             elif id(t1) == id(t2):
                 pass
             elif type(t1) != type(t2):
-                return False
+                return self._cache_equality(other, False)
             elif type(t1) == int:
                 if t1 != t2:
-                    return False
+                    return self._cache_equality(other, False)
             elif t1 is None:
                 if t2 is not None:
-                    return False
+                    return self._cache_equality(other, False)
             elif isinstance(t1, Constant):  # t2 too
                 if type(t1.functor) != type(t2.functor):
-                    return False
+                    return self._cache_equality(other, False)
                 elif t1.functor != t2.functor:
-                    return False
+                    return self._cache_equality(other, False)
             else:  # t1 and t2 are Terms
                 if t1.__functor != t2.__functor:
-                    return False
+                    return self._cache_equality(other, False)
                 if t1.__arity != t2.__arity:
-                    return False
+                    return self._cache_equality(other, False)
                 l1.extend(t1.__args)
                 l2.extend(t2.__args)
-        return l1 == l2  # Should both be empty.
+        return self._cache_equality(other, l1 == l2)  # Should both be empty.
 
     def _eq__list(self, other):
         """Custom equivalence test for lists.
