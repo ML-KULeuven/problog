@@ -36,6 +36,7 @@ from .eval_nodes import *
 class InvalidEngineState(Exception):
     pass
 
+
 # Define mapping from strings to the EvalNode classes, to map node_type strings to factory functions
 node_types = {}
 node_types['fact'] = EvalFact
@@ -544,73 +545,8 @@ class StackBasedEngine(ClauseDBEngine):
                     min_var = min(min_var, min(variables))
         return min_var
 
-    def eval_clause(self, context, node, node_id, parent, transform=None, identifier=None,
-                    current_clause=None, **kwdargs):
-        new_context = self.create_context([None] * node.varcount, parent=context)
-
-        try:
-            try:
-                unify_call_head(context, node.args, new_context)
-            except OccursCheck as err:
-                raise OccursCheck(location=kwdargs['database'].lineno(node.location))
-
-            # Note: new_context should not contain None values.
-            # We should replace these with negative numbers.
-            # 1. Find lowest negative number in new_context.
-            #   TODO better option is to store this in context somewhere
-            min_var = self.context_min_var(new_context)
-            # 2. Replace None in new_context with negative values
-            cc = min_var
-            for i, c in enumerate(new_context):
-                if c is None:
-                    cc -= 1
-                    new_context[i] = cc
-            if transform is None:
-                transform = Transformations()
-
-            def result_transform(result):
-                output = substitute_head_args(node.args, result)
-                return self.create_context(output, parent=result)
-
-            transform.addFunction(result_transform)
-            return self.eval(node.child, context=new_context, parent=parent, transform=transform,
-                             current_clause=node_id, identifier=identifier, **kwdargs)
-        except UnifyError:
-            # Call and clause head are not unifiable, just fail (complete without results).
-            return [complete(parent, identifier)]
-
     def handle_nonground(self, location=None, database=None, node=None, **kwdargs):
         raise NonGroundProbabilisticClause(location=database.lineno(node.location))
-
-    def eval_choice(self, parent, node_id, node, context, target, database, identifier, **kwdargs):
-        result = self._fix_context(context)
-
-        for i, r in enumerate(result):
-            if i not in node.locvars and not is_ground(r):
-                result = self.handle_nonground(result=result, node=node, target=target,
-                                               database=database,
-                                               context=context, parent=parent, node_id=node_id,
-                                               identifier=identifier, **kwdargs)
-
-        probability = instantiate(node.probability, result)
-        # Create a new atom in ground program.
-
-        if True or self.label_all:
-            if isinstance(node.functor, Term):
-                name = node.functor.with_args(*(node.functor.apply(result).args + result))
-            else:
-                name = Term(node.functor, *result)
-        else:
-            name = None
-
-        origin = (node.group, result)
-        ground_node = target.add_atom(origin + (node.choice,), probability, group=origin, name=name)
-        # Notify parent.
-
-        if ground_node is not None:
-            return [new_result(parent, result, ground_node, identifier, True)]
-        else:
-            return [complete(parent, identifier)]
 
     def create_context(self, content, define=None, parent=None, state=None):
         """Create a variable context."""
