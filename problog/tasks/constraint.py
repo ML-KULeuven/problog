@@ -125,6 +125,14 @@ def debug(*args):
     print(*args, file=sys.stderr)
 
 
+def find_solver():
+    import subprocess
+    try:
+        subprocess.check_output(['fzn-gecode'])
+    except FileNotFoundError:
+        raise ImportError("Please install 'fzn-gecode' to use the constraint task: 'apt install flatzinc'.")
+
+
 def solve(fzn):
     """Call FlatZinc solver (Gecode) and process output."""
     import subprocess
@@ -276,6 +284,7 @@ def main(argv, handle_output=None):
 
 
 def run(filename, verbose=None):
+    find_solver()
     if verbose:
         debug('Loading...')
     problog_model = PrologFile(filename, factory=ConstraintFactory())
