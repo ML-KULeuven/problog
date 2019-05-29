@@ -10,7 +10,7 @@ from PyQt4.QtGui import *
 from PyQt4.QtCore import *
 from threading import Condition, Thread
 
-import problog.messages
+import problog.engine_messages
 from problog.formula import LogicFormula
 from problog.program import PrologFile
 from problog.logic import Term
@@ -151,10 +151,10 @@ w.setWindowTitle("Interactive Grounder")
 
 sysout = sys.stdout
 
-class MessageOrderInteractive(problog.messages.MessageOrder1):
+class MessageOrderInteractive(problog.engine_messages.MessageOrder1):
 
     def __init__(self, engine):
-        problog.messages.MessageOrder1.__init__(self, engine)
+        problog.engine_messages.MessageOrder1.__init__(self, engine)
         self.cv = Condition()
         self.choice = None
 
