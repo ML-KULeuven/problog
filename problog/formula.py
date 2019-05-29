@@ -389,7 +389,8 @@ class BaseFormula(ProbLogObject):
         return hasattr(self, flag) and getattr(self, flag)
 
 
-atom = namedtuple('atom', ('identifier', 'probability', 'group', 'name', 'source'))
+atom = namedtuple('atom', ('identifier', 'probability', 'group', 'name', 'source', 'is_extra'))
+atom.__new__.__defaults__ = (False,) * len(atom._fields)
 conj = namedtuple('conj', ('children', 'name'))
 disj = namedtuple('disj', ('children', 'name'))
 
@@ -418,8 +419,8 @@ class LogicFormula(BaseFormula):
 
     # negation is encoded by using a negative number for the key
 
-    def _create_atom(self, identifier, probability, group, name=None, source=None):
-        return atom(identifier, probability, group, name, source)
+    def _create_atom(self, identifier, probability, group, name=None, source=None, is_extra=False):
+        return atom(identifier, probability, group, name, source, is_extra)
 
     def _create_conj(self, children, name=None):
         return conj(children, name)
@@ -593,7 +594,7 @@ class LogicFormula(BaseFormula):
                 w = weights.get(i, n.probability)
                 self._nodes[i - 1] = atom(n.identifier, w, n.group, n.name, n.source)
 
-    def add_atom(self, identifier, probability, group=None, name=None, source=None, cr_extra=True):
+    def add_atom(self, identifier, probability, group=None, name=None, source=None, cr_extra=True, is_extra=False):
         """Add an atom to the formula.
 
         :param identifier: a unique identifier for the atom
@@ -625,7 +626,7 @@ class LogicFormula(BaseFormula):
                 self.semiring.is_one(self.semiring.value(probability)):
             return self.TRUE
         else:
-            atom = self._create_atom(identifier, probability, group, name, source)
+            atom = self._create_atom(identifier, probability, group=group, name=name, source=source, is_extra=is_extra)
             length_before = len(self._nodes)
             node_id = self._add(atom, key=identifier)
 
@@ -1565,6 +1566,8 @@ label_all=True)
         # TODO maintain a translation table
         for i, n, t in source:
             if t == 'atom':
+                #TODO test this
+                # j = destination.add_atom(n.identifier, n.probability, n.group, name=source.get_name(i), cr_extra=False, is_extra=n.is_extra)
                 j = destination.add_atom(n.identifier, n.probability, n.group, name=source.get_name(i))
             elif t == 'conj':
                 j = destination.add_and(n.children, name=n.name)
@@ -1674,4 +1677,3 @@ def dag_to_nnf(source, target=None, **kwargs):
         target.add_constraint(c.copy(translate))
 
     return target
-

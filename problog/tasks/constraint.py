@@ -125,6 +125,14 @@ def debug(*args):
     print(*args, file=sys.stderr)
 
 
+def find_solver():
+    import subprocess
+    try:
+        subprocess.check_output(['fzn-gecode', '-help'])
+    except FileNotFoundError:
+        raise ImportError("Please install 'fzn-gecode' to use the constraint task: 'apt install flatzinc'.")
+
+
 def solve(fzn):
     """Call FlatZinc solver (Gecode) and process output."""
     import subprocess
@@ -208,105 +216,123 @@ def compress(formula, atoms):
     return out
 
 
+def create_sdd(solution, formula, verbose):
+    if verbose:
+        debug('Compressing...')
+    new_formula = compress(formula, solution)
+
+    if verbose:
+        debug('Compiling...')
+    current_sdd = SDD.create_from(new_formula)
+
+    if verbose:
+        debug('Evaluating...')
+    return current_sdd
+
+
+def enumerate_sdd(solution, formula, sdd, verbose):
+    # target.lookup_evidence = {}
+    weights = sdd.get_weights()
+    # ev_nodes = []
+    for k, v in solution.items():
+        sddvar = formula.get_node(k).identifier
+        sddatom = sdd.var2atom[sddvar]
+        sddname = sdd.get_name(sddatom)
+        weights[sddatom] = v
+    return sdd
+
+
+def enumerate_solutions(sols, verbose, formula, sdd=None):
+    solutions = []
+    for i, res in enumerate(sols):
+        if verbose:
+            debug('Evaluating solution %s/%s...' % (i + 1, len(sols)))
+
+        if sdd is not None:
+            current_sdd = enumerate_sdd(res, formula, sdd, verbose)
+        else:
+            current_sdd = create_sdd(res, formula, verbose)
+
+        solutions.append(current_sdd.evaluate().items())
+    return solutions
+
+
+def check_prob_constraint(constraints):
+    for name, index in constraints:
+        if index is not None and name.args[1].functor == 'ensure_prob':
+            return True
+
+
 def main(argv, handle_output=None):
     args = argparser().parse_args(argv)
 
     verbose = args.verbose
     filename = args.filename
+    solutions = run(filename, verbose)
 
-    if verbose: debug('Loading...')
+    for solution in solutions:
+        for k, v in solution:
+            if v > 0.0:
+                print(k, v)
+
+        print('----------')
+
+    if solutions:
+        print('==========')
+    else:
+        print('=== UNSATISFIABLE ===')
+
+
+def run(filename, verbose=None):
+    find_solver()
+    if verbose:
+        debug('Loading...')
     problog_model = PrologFile(filename, factory=ConstraintFactory())
 
     engine = DefaultEngine()
     database = engine.prepare(problog_model)
 
     # Ground the constraints
-    if verbose: debug('Grounding...')
+    if verbose:
+        debug('Grounding...')
     target = engine.ground(database, Term('constraint', None, None), label='constraint')
 
     queries = [q[0] for q in engine.query(database, Term('query', None))]
     for query in queries:
         target = engine.ground(database, query, label='query', target=target)
 
-    if verbose > 1: print(target, file=sys.stderr)
+    if verbose is not None and verbose > 1:
+        print(target, file=sys.stderr)
 
-    has_prob_constraint = False
-    for name, index in target.get_names(label='constraint'):
-        if index is not None:
-            if name.args[1].functor == 'ensure_prob':
-                has_prob_constraint = True
+    has_prob_constraint = check_prob_constraint(target.get_names(label='constraint'))
 
     # Compile and turn into CP-problem
+    sdd = None
     if has_prob_constraint:
-        if verbose: debug('Probabilistic constraints detected.')
-
-        if verbose: debug('Compiling...')
+        if verbose:
+            debug('Probabilistic constraints detected.')
+            debug('Compiling...')
         sdd = SDD.create_from(target)
         formula = sdd.to_formula()
-        # Convert to flatzinc
-        if verbose: debug('Converting...')
-        fzn = formula_to_flatzinc_float(formula)
-        sdd.clear_labeled('constraint')
-
-        if verbose > 1: print(fzn, file=sys.stderr)
-
-        # Solve the flatzinc model
-        if verbose: debug('Solving...')
-        sols = list(solve(fzn))
-
-        has_solution = False
-        for i, res in enumerate(sols):
-            if verbose: debug('Evaluating solution %s/%s...' % (i + 1, len(sols)))
-            # target.lookup_evidence = {}
-            weights = sdd.get_weights()
-            # ev_nodes = []
-            for k, v in res.items():
-                sddvar = formula.get_node(k).identifier
-                sddatom = sdd.var2atom[sddvar]
-                sddname = sdd.get_name(sddatom)
-                weights[sddatom] = v
-            for k, v in sdd.evaluate().items():
-                if v > 0.0:
-                    print(k, v)
-            print('----------')
-            has_solution = True
-        if has_solution:
-            print('==========')
-        else:
-            print('=== UNSATISFIABLE ===')
-
     else:
         formula = LogicDAG()
         break_cycles(target, formula)
 
-        if verbose: debug('Converting...')
+    if verbose:
+        debug('Converting...')
+    if sdd:
+        fzn = formula_to_flatzinc_float(formula)
+        sdd.clear_labeled('constraint')
+    else:
         fzn = formula_to_flatzinc_bool(formula)
 
-        if verbose > 1: print(fzn, file=sys.stderr)
+    if verbose is not None and verbose > 1:
+        print(fzn, file=sys.stderr)
+    if verbose:
+        debug('Solving...')
+    sols = list(solve(fzn))
 
-        if verbose: debug('Solving...')
-        sols = list(solve(fzn))
-
-        has_solution = False
-        for i, res in enumerate(sols):
-            if verbose: debug('Evaluating solution %s/%s...' % (i + 1, len(sols)))
-
-            if verbose: debug('Compressing...')
-            new_formula = compress(formula, res)
-
-            if verbose: debug('Compiling...')
-            sdd = SDD.create_from(new_formula)
-
-            if verbose: debug('Evaluating...')
-            for k, v in sdd.evaluate().items():
-                if v > 0.0:
-                    print(k, v)
-            print('----------')
-            has_solution = True
-        if has_solution:
-            print('==========')
-        else:
-            print('=== UNSATISFIABLE ===')
+    return enumerate_solutions(sols, verbose, formula, sdd)
 
 
 def argparser():

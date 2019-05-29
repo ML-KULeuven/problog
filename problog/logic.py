@@ -83,6 +83,7 @@ import functools
 import math
 import sys
 import re
+import dill
 
 
 from .util import OrderedSet
@@ -190,7 +191,11 @@ class Term(object):
     (character position in input)
     """
 
+    max_id = 0
+
     def __init__(self, functor, *args, **kwdargs):
+        self.id = Term.max_id
+        Term.max_id += 1
         self.__functor = functor
         self.__args = args
         self.__arity = len(self.__args)
@@ -205,6 +210,7 @@ class Term(object):
         self._cache_variables = None
         self.repr = None
         self.reprhash = None
+        self.cache_eq = {}
 
     @property
     def functor(self):
@@ -220,6 +226,7 @@ class Term(object):
         self.__functor = value
         self.__signature = None
         self.__hash = None
+        self.cache_eq = {}
 
     @property
     def args(self):
@@ -604,15 +611,23 @@ class Term(object):
             current = current.args[1]
         return elements, current
 
+    def _cache_equality(self, other, value):
+        if isinstance(other, Term):
+            self.cache_eq[other.id] = value
+        return value
+
+    def _get_cached_eq(self, other):
+        if isinstance(other, Term):
+            if other.id in self.cache_eq:
+                return self.cache_eq[other.id]
+        return None
+
     def __eq__(self, other):
         if not isinstance(other, Term):
             return False
-        if self.reprhash is None:
-            repr(self)
-        if other.reprhash is None:
-            repr(other)
-        return self.reprhash == other.reprhash
-
+        cache_eq = self._get_cached_eq(other)
+        if cache_eq is not None:
+            return cache_eq
         # Non-recursive version of equality check.
         l1 = deque([self])
         l2 = deque([other])
@@ -620,30 +635,30 @@ class Term(object):
             t1 = l1.popleft()
             t2 = l2.popleft()
             if len(l1) != len(l2):
-                return False
+                return self._cache_equality(other, False)
             elif id(t1) == id(t2):
                 pass
             elif type(t1) != type(t2):
-                return False
+                return self._cache_equality(other, False)
             elif type(t1) == int:
                 if t1 != t2:
-                    return False
+                    return self._cache_equality(other, False)
             elif t1 is None:
                 if t2 is not None:
-                    return False
+                    return self._cache_equality(other, False)
             elif isinstance(t1, Constant):  # t2 too
                 if type(t1.functor) != type(t2.functor):
-                    return False
+                    return self._cache_equality(other, False)
                 elif t1.functor != t2.functor:
-                    return False
+                    return self._cache_equality(other, False)
             else:  # t1 and t2 are Terms
                 if t1.__functor != t2.__functor:
-                    return False
+                    return self._cache_equality(other, False)
                 if t1.__arity != t2.__arity:
-                    return False
+                    return self._cache_equality(other, False)
                 l1.extend(t1.__args)
                 l2.extend(t2.__args)
-        return l1 == l2  # Should both be empty.
+        return self._cache_equality(other, l1 == l2)  # Should both be empty.
 
     def _eq__list(self, other):
         """Custom equivalence test for lists.
@@ -899,6 +914,12 @@ class AnnotatedDisjunction(Term):
         self.reprhash = hash(self.repr)
         return self.repr
 
+    def __hash__(self):
+        return super().__hash__()
+
+    def __eq__(self, other):
+        return type(self) == type(other) and self.heads == other.heads and self.body == other.body
+
     @property
     def predicates(self):
         return [x.signature for x in self.heads]
@@ -1049,6 +1070,12 @@ class Not(Term):
 
     def __abs__(self):
         return -self
+
+    def __hash__(self):
+        return super().__hash__()
+
+    def __eq__(self, other):
+        return type(self) == type(other) and self.child == other.child
 
 
 _arithmetic_functions = {
