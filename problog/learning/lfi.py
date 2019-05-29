@@ -752,12 +752,15 @@ class LFIProblem(LogicProgram):
                 prob_args = atom.probability.args[1:]
 
                 # 1) Introduce a new fact
-                lfi_fact = Term('lfi_fact', Constant(self.count),      Term('t', *prob_args), *atom1.args)
-                lfi_body = Term('lfi_body', Constant(self.count),      Term('t', *prob_args), *atom1.args)
+                # lfi_fact = Term('lfi_fact', Constant(self.count),      Term('t', *prob_args), *atom1.args)
+                # lfi_body = Term('lfi_body', Constant(self.count),      Term('t', *prob_args), *atom1.args)
+                lfi_fact = Term('lfi_fact', Constant(self.count), Term('t', *prob_args, *atom1.args))
+                lfi_body = Term('lfi_body', Constant(self.count), Term('t', *prob_args, *atom1.args))
                 # lfi_par  = Term('lfi_par',  Constant(self.count_ad()), Term('t', *prob_args), *atom1.args)
-                #TODO: lfi_par should be unique for rule, not per disjunct
-                lfi_par = Term('lfi_par',   Constant(self.count),      Term('t', *prob_args), *atom1.args)
-                lfi_prob = Term('lfi',      Constant(self.count),      Term('t', *prob_args))
+                # TODO: lfi_par should be unique for rule, not per disjunct
+                # lfi_par = Term('lfi_par',   Constant(self.count),      Term('t', *prob_args), *atom1.args)
+                lfi_par = Term('lfi_par', Constant(self.count), Term('t', *prob_args, *atom1.args))
+                lfi_prob = Term('lfi', Constant(self.count), Term('t', *prob_args))
 
                 # 2) Replacement atom
                 replacement = lfi_fact.with_probability(lfi_prob)
@@ -969,14 +972,6 @@ class LFIProblem(LogicProgram):
             evaluator = ExampleEvaluatorLog(self._weights, eps=self._eps, use_parents=self._use_parents)
         else:
             evaluator = ExampleEvaluator(self._weights, eps=self._eps, use_parents=self._use_parents)
-
-
-        res1 = []
-        for example in self._compiled_examples:
-            res = evaluator(example)
-            res1.append(res)
-
-        print(res1)
 
 
         return list(chain.from_iterable(map(evaluator, self._compiled_examples)))
