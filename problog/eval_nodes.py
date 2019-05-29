@@ -372,8 +372,7 @@ class EvalClause(EvalNode):
                          current_clause, include, exclude, no_cache, **extra)
 
     @staticmethod
-    def eval(engine, node_id, node, parent=None, context=None, target=None, transform=None, identifier=None,
-             current_clause=None, *args,
+    def eval(engine, node_id, node, parent=None, context=None, transform=None, identifier=None, current_clause=None,
              **kwdargs):
         new_context = engine.create_context([None] * node.varcount, parent=context)
 
@@ -403,7 +402,7 @@ class EvalClause(EvalNode):
 
             transform.addFunction(result_transform)
             return engine.eval(node.child, context=new_context, parent=parent, transform=transform,
-                               current_clause=node_id, identifier=identifier, target=target, **kwdargs)
+                               current_clause=node_id, identifier=identifier, **kwdargs)
         except UnifyError:
             # Call and clause head are not unifiable, just fail (complete without results).
             return [complete(parent, identifier)]
@@ -499,14 +498,13 @@ class EvalOr(EvalNode):
         return EvalNode.__str__(self) + ' tc: ' + str(self.to_complete)
 
     @staticmethod
-    def eval(engine, node_id, node, parent=None, context=None, target=None, identifier=None, **kwdargs):
+    def eval(engine, node, parent=None, target=None, **kwdargs):
         if len(node.children) == 0:
             # No children, so complete immediately.
             return [complete(parent, None)]
         else:
-            evalnode = EvalOr(engine=engine, node_id=node_id, node=node, pointer=engine.pointer, parent=parent,
-                              target=target, context=context,
-                              **kwdargs)
+            evalnode = EvalOr(engine=engine, node=node, pointer=engine.pointer, parent=parent,
+                              target=target, **kwdargs)
             engine.add_record(evalnode)
             return [evalnode.createCall(child) for child in node.children]
 
@@ -828,7 +826,7 @@ class EvalDefine(EvalNode):
         return EvalNode.__str__(self) + ' ' + ' '.join(extra)
 
     @staticmethod
-    def eval(engine, node_id, node, parent=None, context=None, target=None, identifier=None, transform=None,
+    def eval(engine, node, parent=None, context=None, target=None, identifier=None, transform=None,
              is_root=False, no_cache=False, **kwdargs):
 
         # This function evaluates the 'define' nodes in the database.
@@ -868,7 +866,7 @@ class EvalDefine(EvalNode):
                     return queue
                 else:
                     # If the node in non-ground, we need to create an evaluation node.
-                    evalnode = EvalDefine(pointer=engine.pointer, engine=engine, node=node, node_id=node_id,
+                    evalnode = EvalDefine(pointer=engine.pointer, engine=engine, node=node,
                                           context=context, target=target, identifier=identifier,
                                           parent=parent, transform=transform, is_root=is_root,
                                           no_cache=no_cache,
@@ -886,7 +884,7 @@ class EvalDefine(EvalNode):
                     return [complete(parent, identifier)]
                 else:
                     # Children to evaluate, so start evaluation node.
-                    evalnode = EvalDefine(node_id=node_id, to_complete=to_complete, pointer=engine.pointer,
+                    evalnode = EvalDefine(to_complete=to_complete, pointer=engine.pointer,
                                           engine=engine, node=node, context=context, target=target,
                                           identifier=identifier, transform=transform, parent=parent,
                                           no_cache=no_cache,
@@ -951,9 +949,8 @@ class EvalNot(EvalNode):
         return ''
 
     @staticmethod
-    def eval(engine, node_id, node, parent=None, context=None, target=None, identifier=None, **kwdargs):
-        return EvalDefault.eval(engine=engine, node_id=node_id, node=node, target=target, context=context,
-                                identifier=identifier, parent=parent, eval_type=EvalNot, **kwdargs)
+    def eval(**kwdargs):
+        return EvalDefault.eval( eval_type=EvalNot, **kwdargs)
 
 
 class EvalAnd(EvalNode):
@@ -1016,9 +1013,8 @@ class EvalAnd(EvalNode):
         return EvalNode.__str__(self) + ' tc: %s' % self.to_complete
 
     @staticmethod
-    def eval(engine, node_id, node, parent=None, context=None, target=None, identifier=None, **kwdargs):
-        return EvalDefault.eval(engine=engine, node_id=node_id, node=node, parent=parent, context=context,
-                                target=target, identifier=identifier, eval_type=EvalAnd, **kwdargs)
+    def eval(**kwdargs):
+        return EvalDefault.eval(eval_type=EvalAnd, **kwdargs)
 
 
 class EvalBuiltIn(EvalNode):
@@ -1049,9 +1045,8 @@ class EvalBuiltIn(EvalNode):
                 raise err
 
     @staticmethod
-    def eval(engine, node_id, node, parent=None, context=None, target=None, identifier=None, **kwdargs):
-        return EvalDefault.eval(engine=engine, node_id=node_id, node=node, parent=parent, context=context,
-                                target=target, identifier=identifier, eval_type=EvalBuiltIn, **kwdargs)
+    def eval(**kwdargs):
+        return EvalDefault.eval( eval_type=EvalBuiltIn, **kwdargs)
 
 
 class Transformations(object):
