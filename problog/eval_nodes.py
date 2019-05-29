@@ -179,18 +179,17 @@ class EvalNode(object):
         return [complete(parent, self.identifier)]
 
     def createCall(self, node_id, *args, **kwargs):
-        base_args = {}
-        base_args['database'] = self.database
-        base_args['target'] = self.target
-        base_args['context'] = self.context
-        base_args['parent'] = self.pointer
-        base_args['identifier'] = self.identifier
-        base_args['transform'] = None
-        base_args['call'] = self.call
-        base_args['current_clause'] = self.current_clause
-        base_args['no_cache'] = self.no_cache
-        base_args['include'] = self.include
-        base_args['exclude'] = self.exclude
+        base_args = {'database': self.database,
+                     'target': self.target,
+                     'context': self.context,
+                     'parent': self.pointer,
+                     'identifier': self.identifier,
+                     'transform': None,
+                     'call': self.call,
+                     'current_clause': self.current_clause,
+                     'no_cache': self.no_cache,
+                     'include': self.include,
+                     'exclude': self.exclude}
         base_args.update(kwargs)
         return call(node_id, args, base_args)
 

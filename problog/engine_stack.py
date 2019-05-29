@@ -39,17 +39,16 @@ class InvalidEngineState(Exception):
 
 
 # Define mapping from strings to the EvalNode classes, to map node_type strings to factory functions
-node_types = {}
-node_types['fact'] = EvalFact
-node_types['conj'] = EvalAnd
-node_types['disj'] = EvalOr
-node_types['neg'] = EvalNot
-node_types['define'] = EvalDefine
-node_types['call'] = EvalCall
-node_types['clause'] = EvalClause
-node_types['choice'] = EvalChoice
-node_types['builtin'] = EvalBuiltIn
-node_types['extern'] = EvalExtern
+node_types = {'fact': EvalFact,
+              'conj': EvalAnd,
+              'disj': EvalOr,
+              'neg': EvalNot,
+              'define': EvalDefine,
+              'call': EvalCall,
+              'clause': EvalClause,
+              'choice': EvalChoice,
+              'builtin': EvalBuiltIn,
+              'extern': EvalExtern}
 
 
 class StackBasedEngine(ClauseDBEngine):
