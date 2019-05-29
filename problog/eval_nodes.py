@@ -213,7 +213,7 @@ class EvalNode(object):
             self.parent, node_type, self.node_str(), pos[0], pos[1], self.context)
 
     @staticmethod
-    def eval(engine, node_id, node, parent=None, context=None, target=None, identifier=None, **kwdargs):
+    def eval(**kwdargs):
         raise NotImplementedError("Eval not implemented for this node")
 
 
@@ -253,7 +253,7 @@ class EvalCall(EvalNode):
                          current_clause, include, exclude, no_cache, **extra)
 
     @staticmethod
-    def eval(engine, node_id, node, parent=None, context=None, target=None, identifier=None, transform=None, *args,
+    def eval(engine, node_id, node, parent=None, context=None, transform=None, *args,
              **kwdargs):
         min_var = engine.context_min_var(context)
         call_args, var_translate = substitute_call_args(node.args, context, min_var)
@@ -295,7 +295,7 @@ class EvalCall(EvalNode):
         kwdargs['transform'] = transform
 
         try:
-            return engine.eval(node.defnode, parent=parent, identifier=identifier, target=target, **kwdargs)
+            return engine.eval(node.defnode, parent=parent, **kwdargs)
         except UnknownClauseInternal:
             loc = kwdargs['database'].lineno(node.location)
             raise UnknownClause(origin, location=loc)
@@ -308,14 +308,12 @@ class EvalChoice(EvalNode):
                          current_clause, include, exclude, no_cache, **extra)
 
     @staticmethod
-    def eval(engine, node_id, node, parent=None, context=None, target=None, identifier=None, database=None, *args,
-             **kwdargs):
+    def eval(engine, node_id, node, parent=None, context=None, target=None, identifier=None, **kwdargs):
         result = engine._fix_context(context)
 
         for i, r in enumerate(result):
             if i not in node.locvars and not is_ground(r):
                 result = engine.handle_nonground(result=result, node=node, target=target,
-                                                 database=database,
                                                  context=context, parent=parent, node_id=node_id,
                                                  identifier=identifier, **kwdargs)
 
@@ -347,9 +345,8 @@ class EvalExtern(EvalNode):
                          current_clause, include, exclude, no_cache, **extra)
 
     @staticmethod
-    def eval(engine, node_id, node, parent=None, context=None, target=None, identifier=None, **kwdargs):
-        return EvalBuiltIn.eval(engine=engine, node_id=node_id, node=SimpleBuiltIn(node.function), parent=parent,
-                                context=context, target=target, identifier=identifier, **kwdargs)
+    def eval(node, **kwdargs):
+        return EvalBuiltIn.eval(node=SimpleBuiltIn(node.function), **kwdargs)
 
 
 class EvalDefault(EvalNode):
@@ -359,10 +356,8 @@ class EvalDefault(EvalNode):
                          current_clause, include, exclude, no_cache, **extra)
 
     @staticmethod
-    def eval(engine, node_id, node, parent=None, context=None, target=None, identifier=None, eval_type=None, *args,
-             **kwdargs):
-        node = eval_type(engine=engine, node_id=node_id, node=node, parent=parent, context=context, target=target,
-                         identifier=identifier, pointer=engine.pointer, **kwdargs)
+    def eval(engine, node, eval_type=None, **kwdargs):
+        node = eval_type(engine=engine, node=node, pointer=engine.pointer, **kwdargs)
         cleanup, actions = node()  # Evaluate the node
         if not cleanup:
             engine.add_record(node)
