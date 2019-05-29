@@ -10,13 +10,60 @@ from .formula import atom, LogicFormulaHAL
 from .dd_formula import DDEvaluatorHAL
 
 
-class SDDHAL(SDD):
+class SDDHAL(SDD, LogicFormulaHAL):
     def __init__(self, **kwdargs):
         SDD.__init__(self, **kwdargs)
+        LogicFormulaHAL.__init__(self, **kwdargs)
         self.density_values = {}
 
     def _create_evaluator(self, semiring, weights, **kwargs):
         return DDEvaluatorHAL(self, semiring, weights, **kwargs)
+
+    def get_evaluator(self, semiring=None, evidence=None, weights=None, keep_evidence=False, **kwargs):
+        """Get an evaluator for computing queries on this formula.
+        It creates an new evaluator and initializes it with the given or predefined evidence.
+
+        :param semiring: semiring to use
+        :param evidence: evidence values (override values defined in formula)
+        :type evidence: dict(Term, bool)
+        :param weights: weights to use
+        :return: evaluator for this formula
+        """
+        if semiring is None:
+            semiring = SemiringLogProbability()
+
+        evaluator = self._create_evaluator(semiring, weights, **kwargs)
+
+        for ev_name, ev_index, ev_value in self.evidence_all():
+            if ev_index == 0 and ev_value > 0:
+                pass  # true evidence is deterministically true
+            elif ev_index is None and ev_value < 0:
+                pass  # false evidence is deterministically false
+            elif ev_index == 0 and ev_value < 0:
+                raise InconsistentEvidenceError(source='evidence('+str(ev_name)+',false)')  # true evidence is false
+            elif ev_index is None and ev_value > 0:
+                raise InconsistentEvidenceError(source='evidence('+str(ev_name)+',true)')  # false evidence is true
+            elif evidence is None and ev_value != 0:
+                evaluator.add_evidence(ev_value * ev_index)
+            elif evidence is not None:
+                try:
+                    value = evidence[ev_name]
+                    if value is None:
+                        pass
+                    elif value:
+                        evaluator.add_evidence(ev_index)
+                    else:
+                        evaluator.add_evidence(-ev_index)
+                except KeyError:
+                    if keep_evidence:
+                        evaluator.add_evidence(ev_value * ev_index)
+
+        for ob_name, ob_index, ob_value in self.observation_all():
+            evaluator.add_observation(ob_index)
+
+        evaluator.propagate()
+        return evaluator
+
 
     def to_formula(self, sdds):
         """Extracts a LogicFormula from the SDD."""
@@ -75,6 +122,10 @@ class SDDHAL(SDD):
         if cache is not None:
             cache[current_node.id] = retval
         return retval
+
+
+
+
 
 @transform(LogicFormula, SDDHAL)
 def build_sdd(source, destination, **kwdargs):

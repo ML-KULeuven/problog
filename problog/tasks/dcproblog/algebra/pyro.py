@@ -28,6 +28,7 @@ class S(BaseS):
     def __pow__(self, other):
         return S(self.value**other.value,variables = self.variables | other.variables)
 
+
     def exp(self):
         if isinstance(self, (int, float)):
             return math.exp(self)
@@ -39,6 +40,8 @@ class S(BaseS):
         else:
             return S(torch.sigmoid(self.value), variables=self.variables)
 
+
+    #TODO rewrite this with >= instead of max stuff?
     @staticmethod
     def gtz(a):
         if isinstance(a, (int,float)):
@@ -74,10 +77,12 @@ class S(BaseS):
         raise NotImplementedError()
 
     def obs(self,other):
-        raise NotImplementedError()
-
-        value = self.value-other.value
+        print(type(self.value))
+        value = other.value
         s = S(value,variables = self.variables | other.variables)
+
+        import sys
+        sys.exit()
         return s
 
 class Pyro(Algebra):
@@ -153,3 +158,19 @@ class Pyro(Algebra):
     def construct_negated_algebraic_expression(self, symbol):
         n_symbol = 1.0-symbol.value
         return self.symbolize(n_symbol, symbol.variables)
+
+    def make_observation(self, var, obs):
+        #TODO make sure that observations are always treated before comparisons!
+        #otherwise you will get [sample(x)>0]*[x=2], where you set the second factor to the density image at that point
+        #other option is to make a circuit redection step where you check for redundancies, then is won't happen
+        #can probably do thies in FormulaEvaluatorHAL
+        density_name = var.density_name
+        dimension = var.dimension
+
+        self.construct_algebraic_expression(var)
+        obs = self.construct_algebraic_expression(obs)
+        density = self.densities[density_name]
+        observation_weight = torch.exp(density.log_prob(torch.tensor(obs.value)))
+        self.random_values[density_name][dimension] = obs.value #this is the line that relates to the comment above
+
+        return observation_weight

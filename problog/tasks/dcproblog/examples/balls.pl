@@ -15,11 +15,5 @@ beta(4,2)~size(N):-material(N,wood).
 dl(Urn,L):- n(N), findall(M, between(1,N,M), L).
 drawn(Urn,X):- dl(Urn,L), select_uniform((Urn,L), L, X, _).
 
-% a:- drawn(1,A), drawn(2,A).
-% query(a).
-
-% query(drawn(1,A)).
-
-evidence(material(1,wood)).
-observation(size(1),4/10).
-query(material(1,wood)).
+a:- drawn(1,A), drawn(2,A).
+query(a).

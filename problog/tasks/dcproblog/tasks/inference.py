@@ -56,7 +56,7 @@ def main(args):
             raise InstallError('Pyro is not available.')
     elif args["abe_name"]=="psi":
         try:
-            import psi
+            import psipy
         except:
             raise InstallError('pypsi is not available.')
 

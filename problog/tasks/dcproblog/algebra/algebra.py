@@ -45,7 +45,6 @@ def neS(a,b):
 
 def obsS(a,b):
     r = a.obs(b)
-    print(r)
     return r
 str2algebra = {
     "<" : ltS,
@@ -66,7 +65,7 @@ str2algebra = {
     "exp" : expS,
     "sigmoid" : sigmoidS,
 
-    "obs" : obsS
+    "observation" : obsS
 }
 
 
@@ -134,20 +133,10 @@ class Algebra(object):
             return self.construct_algebraic_expression(expression.functor)
         else:
             assert isinstance(expression, SymbolicConstant)
-            if expression.functor=="obs":
-                v = expression.args[0]
-                density_name = v.density_name
-                dimension = v.dimension
-                self.construct_algebraic_expression(v)
-                obs = self.construct_algebraic_expression(expression.args[1])
-
-                self.random_values[density_name][dimension] = obs.value
-                print(self.random_values[density_name][dimension])
-                print(v)
-                print(obs)
-                print(v)
-
-                return obs
+            if expression.functor=="observation":
+                #TODO handle multivariate case, loop over dimensions!!
+                observation_weight = self.make_observation(*expression.args)
+                return self.symbolize(observation_weight, variables=expression.args[0].cvariables)
 
             elif isinstance(expression, ValueDimConstant):
                 density_name = expression.density_name

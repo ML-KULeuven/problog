@@ -94,6 +94,8 @@ class LogicNNFHAL(LogicNNF):
 
 
 class LogicFormulaHAL(LogicFormula):
+    LABEL_OBSERVATION = "observation"
+
     def __init__(self, **kwargs):
         LogicFormula.__init__(self, **kwargs)
         self.density_nodes = {}
@@ -106,6 +108,52 @@ class LogicFormulaHAL(LogicFormula):
         self.density_queries = {}
 
 
+    def add_observation(self, name, key, value, keep_name=False):
+        """Add an observation name.
+
+        Same as ``add_name(name, key, self.OBSERVATION)``.
+
+        :param name: name of the query
+        :param key: key of the query node
+        :param value: value of the observation
+        """
+        if value is None:
+            self.add_name(name, key, self.LABEL_OBSERVATION, keep_name=keep_name)
+
+
+    def clear_observation(self):
+        """Remove all evidence."""
+        self._names[self.LABEL_OBSERVATION] = {}
+
+
+    def observation_all(self):
+        """Get a list of all observation (including undetermined).
+
+        :return: list of tuples (name, key, value) where value can be 1
+        """
+        observation = [x + (1,) for x in self.get_names(self.LABEL_OBSERVATION)]
+
+        return observation
+
+    def observation(self):
+        """Get a list of all determined observations.
+
+        :return: list of tuples (name, key) for obsveration
+        """
+        observation = self.get_names(self.LABEL_OBSERVATION)
+        return list(observation)
+
+
+    def labeled(self):
+        """Get a list of all query-like labels.
+
+        :return:
+        """
+        result = []
+        for name, node, label in self.get_names_with_label():
+            if label not in (self.LABEL_NAMED, self.LABEL_EVIDENCE_POS, self.LABEL_EVIDENCE_NEG, self.LABEL_EVIDENCE_MAYBE, self.LABEL_OBSERVATION):
+                result.append((name, node, label))
+        return result
 
 
     def is_density(self, index):
@@ -217,6 +265,41 @@ class LogicFormulaHAL(LogicFormula):
                 self.bookkeep_density_node(atom, node_id)
             return node_id
 
+
+
+    def __str__(self):
+        s = '\n'.join('%s: %s' % (i, n) for i, n, t in self)
+        f = True
+        print(self._names)
+        for q in self.labeled():
+            if f:
+                f = False
+                s += '\nQueries : '
+            s += '\n* %s : %s [%s]' % q
+
+        f = True
+        for q in self.evidence():
+            if f:
+                f = False
+                s += '\nEvidence : '
+            s += '\n* %s : %s' % q
+
+        f = True
+        for o in self.observation():
+            if f:
+                f = False
+                s += '\nObservation : '
+            s += '\n* ' +  "{}={} : {}".format(o[0].args[0],o[0].args[1],o[1])
+        f = True
+        for c in self.constraints():
+            if c.is_nontrivial():
+                if f:
+                    f = False
+                    s += '\nConstraints : '
+                s += '\n* ' + str(c)
+
+
+        return s + '\n'
 
 
     def functions_to_dot(self, not_as_node=True, nodeprops=None):

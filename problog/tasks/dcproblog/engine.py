@@ -42,7 +42,7 @@ class EngineHAL(DefaultEngineHAL):
         # self.add_builtin('=:=', 2, b(_builtin_val_eq))
         # self.add_builtin('is', 2, s(_builtin_is))
 
-        self.add_builtin('obs', 2, _builtin_observation)
+        self.add_builtin('obs_builtin', 2, _builtin_observation)
 
 
     def prepare(self, db, target=None):
@@ -103,6 +103,21 @@ class EngineHAL(DefaultEngineHAL):
         else:
             return [x for x, y in result]
 
+    def ground_observation(self, db, target, observation, propagate_evidence=False):
+        logger = logging.getLogger('problog')
+        # Ground evidence
+        for query in observation:
+            logger.debug("Grounding observation({},{})".format(query[0], query[1]))
+            target = self.ground(db, Term('observation_builtin', query[0], query[1]), target, label=target.LABEL_OBSERVATION, is_root=True)
+            logger.debug("Ground program size: %s", len(target))
+
+        if propagate_evidence:
+            with Timer('Propagating observation'):
+                target.lookup_observation = {}
+                obs_nodes = [node for name, node in target.observation() if node != 0 and node is not None]
+                target.propagate(obs_nodes, target.lookup_observation)
+
+
     def ground_all(self, db, target=None, queries=None, evidence=None, observation=None, propagate_evidence=False, labels=None):
         if labels is None:
             labels = []
@@ -123,12 +138,11 @@ class EngineHAL(DefaultEngineHAL):
             if evidence is None:
                 #ALSO here: need to pass on target
                 evidence = self.query(db, Term('evidence', None, None), gp=target)
-                # print(evidence)
                 evidence += self.query(db, Term('evidence', None), gp=target)
             if observation is None:
-                observation = self.query(db, Term('observation',None,None), gp=target)
-                # print(observation)
-                pass
+                observation = self.query(db, Term('observation', None, None))
+                observation += self.query(db, Term('observation', None))
+
 
             queries = [(target.LABEL_QUERY, q) for q in queries]
             for label, arity in labels:
@@ -138,16 +152,23 @@ class EngineHAL(DefaultEngineHAL):
             for ev in evidence:
                 if not isinstance(ev[0], Term):
                     raise GroundingError('Invalid evidence')   # TODO can we add a location?
+            for ob in observation:
+                if not isinstance(ob[0], Term):
+                    raise GroundingError('Invalid evidence')   # TODO can we add a location?
+
             # Ground queries
             if propagate_evidence:
                 self.ground_evidence(db, target, evidence, propagate_evidence=propagate_evidence)
                 # self.ground_evidence(db, target, evidence, propagate_evidence=False)
+                self.ground_observation(db, target, observation, propagate_evidence=propagate_evidence)
                 self.ground_queries(db, target, queries)
                 if hasattr(target, 'lookup_evidence'):
                     logger.debug('Propagated evidence: %s' % list(target.lookup_evidence))
             else:
                 self.ground_evidence(db, target, evidence)
+                self.ground_observation(db, target, observation)
                 self.ground_queries(db, target, queries)
+
         return target
 
 

@@ -2,8 +2,8 @@ import os
 from collections import OrderedDict
 
 from problog.formula import LogicFormula
-from problog.cycles import break_cycles
 
+from .cycles import break_cycles
 from .engine import init_engine, init_model
 from .formula import LogicFormulaHAL
 from .sdd_formula import SDDHAL
@@ -109,13 +109,12 @@ class InferenceSolver(object):
     def probability(self, program, **kwdargs):
         lf_hal, density_queries, density_values, free_variables = self.ground(program, queries=None, **kwdargs)
         lf = break_cycles(lf_hal, LogicFormulaHAL(**kwdargs))
-
         semiring = SemiringHAL(self.operator.get_neutral(), self.abstract_abe, density_values, density_queries, free_variables)
         diagram = self.compile_formula(lf, **kwdargs)
 
-
         dde = diagram.get_evaluator(semiring=semiring, **kwdargs)
         dde.formula.density_values = density_values
+
         sdds = dde.get_sdds()
         if self.draw_diagram:
             assert not dde.evidence_inode==None

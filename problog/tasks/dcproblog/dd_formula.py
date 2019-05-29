@@ -8,6 +8,20 @@ from .formula import LogicNNFHAL
 class DDEvaluatorHAL(DDEvaluator):
     def __init__(self, formula, semiring,  weights=None, **kwargs):
         DDEvaluator.__init__(self, formula, semiring, weights, **kwargs)
+        self.__observation = []
+
+    def observation(self):
+        """Iterate over observation."""
+        return iter(self.__observation)
+
+    def add_observation(self, node):
+        """Add observation"""
+        self.__observation.append(node)
+
+    def has_observation(self):
+        """Checks whether there is active observation."""
+        return self.__observation != []
+
 
     def propagate(self):
         self._initialize()
@@ -34,7 +48,10 @@ class DDEvaluatorHAL(DDEvaluator):
         result = {}
         constraint_inode = self.formula.get_constraint_inode()
         evidence_nodes = [self.formula.get_inode(ev) for ev in self.evidence()]
-        self.evidence_inode = self._get_manager().conjoin(constraint_inode, *(evidence_nodes))
+        observation_nodes = [self.formula.get_inode(ob) for ob in self.observation()]
+
+        print(observation_nodes)
+        self.evidence_inode = self._get_manager().conjoin(constraint_inode, *(observation_nodes), *(evidence_nodes))
         result["e"] = self.evidence_inode
         result["qe"] = OrderedDict()
         for query, node in self.formula.queries():

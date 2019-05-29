@@ -113,12 +113,15 @@ def conditionCallback(functor, arg1, arg2, **kwdargs):
     arg1 = target.create_ast_representation(arg1)
     arg2 = target.create_ast_representation(arg2)
     args = (arg1,arg2)
+
     cvariables = set()
     for a in args:
         cvariables = cvariables.union(a.cvariables)
     symbolic_condition = SymbolicConstant(functor, args=args, cvariables=cvariables)
+
     hashed_symbolic = hash(str(symbolic_condition))
     con_node = target.add_atom(identifier=hashed_symbolic, probability=symbolic_condition, source=None)
+
     args = kwdargs['engine'].create_context((arg1,arg2), parent=kwdargs['context'])
     actions += callback.notifyResult(args, node=con_node, is_last=True, parent=None)
     return True, actions
@@ -221,14 +224,14 @@ def _builtin_ge(arg1, arg2, engine=None, **kwdargs):
 #
 
 def _builtin_observation(value, observation, engine=None, **kwdargs):
-    print(type(value))
-    print(type(observation))
-    # print(functor)
-    check_mode((value, observation), ['gg'], functor='obs', **kwdargs)
+    check_mode((value, observation), ['gg'], functor='obs_builtin', **kwdargs)
     assert isinstance(value.functor, ValueDimConstant)
 
-    v_value = value.compute_value(engine.functions)
+    if isinstance(observation, tuple):
+        assert len(value)==len(observation)
+    v_value = value
     o_value = observation.compute_value(engine.functions)
+
     if v_value is None or o_value is None:
         return False
     else:
