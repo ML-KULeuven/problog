@@ -83,7 +83,6 @@ import functools
 import math
 import sys
 import re
-import dill
 
 
 from .util import OrderedSet
