@@ -128,7 +128,7 @@ def debug(*args):
 def find_solver():
     import subprocess
     try:
-        subprocess.check_output(['fzn-gecode'])
+        subprocess.check_output(['fzn-gecode', '-help'])
     except FileNotFoundError:
         raise ImportError("Please install 'fzn-gecode' to use the constraint task: 'apt install flatzinc'.")
 
