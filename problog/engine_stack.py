@@ -502,10 +502,10 @@ class StackBasedEngine(ClauseDBEngine):
 
             kwdargs['transform'].addFunction(func)
 
-            return self.eval_neg(node_id=None, node=call_term,
+            return EvalNot.eval(engine=self, node_id=None, node=call_term,
                                  context=self.create_context(query.args, parent=parent_context), **kwdargs)
         else:
-            return self.eval_call(None, call_term,
+            return EvalCall.eval(engine=self, node_id=None, node=call_term,
                                   context=self.create_context(query.args, parent=parent_context), **kwdargs)
 
     def printStack(self, pointer=None):  # pragma: no cover
