@@ -25,7 +25,7 @@ from __future__ import print_function
 
 import sys
 
-from problog.context import State, Context, FixedContext, get_state
+from problog.engine_context import State, Context, FixedContext, get_state
 from problog.engine_messages import MessageFIFO, MessageOrderD, MessageOrderDrc
 from .engine import ClauseDBEngine, substitute_simple
 from .engine import NonGroundProbabilisticClause
@@ -115,7 +115,7 @@ class StackBasedEngine(ClauseDBEngine):
         return [complete(kwdargs['parent'], kwdargs.get('identifier'))]
 
     def load_builtins(self):
-        add_built_ins(self)
+        add_standard_builtins(self, BooleanBuiltIn, SimpleBuiltIn, SimpleProbabilisticBuiltIn)
 
     def add_simple_builtin(self, predicate, arity, function):
         return self.add_builtin(predicate, arity, SimpleBuiltIn(function))
@@ -803,6 +803,3 @@ class SimpleProbabilisticBuiltIn(object):
     def __str__(self):  # pragma: no cover
         return str(self.base_function)
 
-
-def add_built_ins(engine):
-    add_standard_builtins(engine, BooleanBuiltIn, SimpleBuiltIn, SimpleProbabilisticBuiltIn)

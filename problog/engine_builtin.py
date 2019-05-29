@@ -1652,7 +1652,7 @@ def _builtin_call(term, args=(), engine=None, callback=None, transform=None, con
     # Find the define node for the given query term.
     term_call = term.with_args(*(term.args + args))
 
-    from problog.context import get_state
+    from problog.engine_context import get_state
     try:
         if transform is None:
             from .engine_stack import Transformations

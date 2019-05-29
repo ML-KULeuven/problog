@@ -197,9 +197,6 @@ class EvalNode(object):
         self.on_cycle = True
         return []
 
-    def node_str(self):  # pragma: no cover
-        return str(self.node)
-
     def __str__(self):  # pragma: no cover
         if hasattr(self.node, 'location'):
             pos = self.database.lineno(self.node.location)
@@ -209,7 +206,7 @@ class EvalNode(object):
             pos = '??'
         node_type = self.__class__.__name__[4:]
         return '%s %s %s [at %s:%s] | Context: %s' % (
-            self.parent, node_type, self.node_str(), pos[0], pos[1], self.context)
+            self.parent, node_type, str(self.node), pos[0], pos[1], self.context)
 
     @staticmethod
     def eval_default(engine, node, eval_type=None, **kwargs):
