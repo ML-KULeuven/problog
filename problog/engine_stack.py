@@ -60,7 +60,7 @@ class StackBasedEngine(ClauseDBEngine):
         self.stack_size = 128
         self.stack = [None] * self.stack_size
 
-        self.stats = [0] * 10
+        # self.stats = [0] * 10
 
         self.debug = False
         self.trace = False

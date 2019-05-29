@@ -404,7 +404,6 @@ class EvalOr(EvalNode):
         if not self.is_buffered():
             self.flushBuffer(True)
         self.to_complete = len(self.node.children)
-        self.engine.stats[0] += 1
 
     def is_buffered(self):
         return not (self.on_cycle or self.engine.unbuffered)
@@ -509,7 +508,6 @@ class EvalDefine(EvalNode):
         self.to_complete = to_complete
         self.is_ground = is_ground(*self.context)
         self.is_root = is_root
-        self.engine.stats[1] += 1
 
         if not self.is_buffered():
             self.flushBuffer(True)
@@ -886,7 +884,6 @@ class EvalNot(EvalNode):
     def __init__(self, **parent_args):
         EvalNode.__init__(self, **parent_args)
         self.nodes = set()  # Store ground nodes
-        self.engine.stats[2] += 1
 
     def __call__(self):
         return False, [self.createCall(self.node.child)]
@@ -937,7 +934,6 @@ class EvalAnd(EvalNode):
     def __init__(self, **parent_args):
         EvalNode.__init__(self, **parent_args)
         self.to_complete = 1
-        self.engine.stats[3] += 1
 
     def __call__(self):
         return False, [self.createCall(self.node.children[0], identifier=None)]
@@ -1005,7 +1001,6 @@ class EvalBuiltIn(EvalNode):
         else:
             self.location = None
         self.call_origin = call_origin
-        self.engine.stats[4] += 1
 
     def __call__(self):
         try:
