@@ -954,7 +954,7 @@ class EvalNot(EvalNode):
 
     @staticmethod
     def eval(engine, node_id, node, parent=None, context=None, target=None, identifier=None, *args, **kwdargs):
-        return engine.eval_default(EvalNot, **kwdargs)
+        return EvalDefault.eval(EvalNot, **kwdargs)
 
 
 class EvalAnd(EvalNode):
@@ -1018,7 +1018,7 @@ class EvalAnd(EvalNode):
 
     @staticmethod
     def eval(engine, node_id, node, parent=None, context=None, target=None, identifier=None, *args, **kwdargs):
-        return engine.eval_default(EvalAnd, **kwdargs)
+        return EvalDefault.eval(EvalAnd, **kwdargs)
 
 
 class EvalBuiltIn(EvalNode):
@@ -1050,7 +1050,7 @@ class EvalBuiltIn(EvalNode):
 
     @staticmethod
     def eval(engine, node_id, node, parent=None, context=None, target=None, identifier=None, *args, **kwdargs):
-        return engine.eval_default(EvalBuiltIn, **kwdargs)
+        return EvalDefault.eval(EvalBuiltIn, node_id=node_id, node=node, parent=parent, context=context,
 
 
 class Transformations(object):
