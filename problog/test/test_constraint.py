@@ -1,5 +1,6 @@
 import unittest
 import glob
+import sys
 from copy import deepcopy
 from problog import root_path
 from problog import tasks
@@ -41,6 +42,7 @@ class TestConstraints(unittest.TestCase):
             try:
                 solutions = tasks.load_task('constraint').run(filename)
             except ImportError:
+                sys.stderr.write("No flatzinc support - The constraint tests are not performed.\n")
                 return True
 
             solutions = [
