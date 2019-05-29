@@ -835,7 +835,7 @@ class EvalDefine(EvalNode):
                                       **kwargs)
         else:
             # Look up the results in the currently active nodes.
-            active_node = target._cache.getEvalNode(goal)
+            active_node = target._cache.get_eval_node(goal)
             if active_node is not None:
                 # There is an active node.
                 if active_node.is_ground and active_node.results:
@@ -845,7 +845,7 @@ class EvalDefine(EvalNode):
                     queue = results_to_actions(active_node.results, engine, node, context, target, parent, identifier,
                                                transform, is_root, **kwargs)
                     assert (len(queue) == 1)
-                    engine.checkCycle(parent, active_node.pointer)
+                    engine.check_cycle(parent, active_node.pointer)
                     return queue
                 else:
                     # If the node in non-ground, we need to create an evaluation node.

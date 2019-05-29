@@ -116,7 +116,7 @@ class StackBasedEngine(ClauseDBEngine):
         return [complete(kwdargs['parent'], kwdargs.get('identifier'))]
 
     def load_builtins(self):
-        addBuiltIns(self)
+        add_built_ins(self)
 
     def add_simple_builtin(self, predicate, arity, function):
         return self.add_builtin(predicate, arity, SimpleBuiltIn(function))
@@ -125,7 +125,7 @@ class StackBasedEngine(ClauseDBEngine):
         self.stack += [None] * self.stack_size
         self.stack_size *= 2
 
-    def shrink_stack(self):
+    def reset_stack(self):
         self.stack_size = 128
         self.stack = [None] * self.stack_size
 
@@ -135,7 +135,7 @@ class StackBasedEngine(ClauseDBEngine):
         self.stack[self.pointer] = record
         self.pointer += 1
 
-    def notifyCycle(self, childnode):
+    def notify_cycle(self, childnode):
         # Optimization: we can usually stop when we reach a node on_cycle.
         #   However, when we swap the cycle root we need to also notify the old cycle root
         #    up to the new cycle root.
@@ -156,7 +156,7 @@ class StackBasedEngine(ClauseDBEngine):
             current = exec_node.parent
         return actions
 
-    def checkCycle(self, child, parent):
+    def check_cycle(self, child, parent):
         current = child
         while current > parent:
             exec_node = self.stack[current]
@@ -348,7 +348,7 @@ class StackBasedEngine(ClauseDBEngine):
                                 raise InvalidEngineState('Stack not empty at end of execution!')
                             if not subcall:
                                 # Clean up the stack to save memory.
-                                self.shrink_stack()
+                                self.reset_stack()
                             return solutions
                     elif act == 'c':
                         # Indicates completion of the execution.
@@ -689,7 +689,7 @@ class DefineCache(object):
     def deactivate(self, goal):
         del self.__active[self._reindex_vars(goal)]
 
-    def getEvalNode(self, goal):
+    def get_eval_node(self, goal):
         return self.__active.get(self._reindex_vars(goal))
 
     def __setitem__(self, goal, results):
@@ -805,7 +805,7 @@ class SimpleProbabilisticBuiltIn(object):
         return str(self.base_function)
 
 
-def addBuiltIns(engine):
+def add_built_ins(engine):
     add_standard_builtins(engine, BooleanBuiltIn, SimpleBuiltIn, SimpleProbabilisticBuiltIn)
 
 
