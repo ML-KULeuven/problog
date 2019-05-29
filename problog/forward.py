@@ -72,8 +72,8 @@ class ForwardInference(DD):
     def register_update_listener(self, obj):
         self._update_listeners.append(obj)
 
-    def _create_atom(self, identifier, probability, group, name=None, source=None):
-        return atom(identifier, probability, group, name, source)
+    def _create_atom(self, identifier, probability, group, name=None, source=None, is_extra=False):
+        return atom(identifier, probability, group, name, source, is_extra)
 
     def is_complete(self, node):
         node = abs(node)
@@ -327,7 +327,7 @@ class ForwardInference(DD):
             if inode is not None:
                 inode = int(inode)
             if t == 'atom':
-                j = destination.add_atom(n.identifier, n.probability, n.group, name=inode)
+                j = destination.add_atom(n.identifier, n.probability, n.group, name=inode, is_extra=n.is_extra)
             elif t == 'conj':
                 children = [c for c in n.children if self.get_inode(c) is not None]
                 j = destination.add_and(children, name=inode)

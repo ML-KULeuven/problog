@@ -54,12 +54,12 @@ class DD(LogicFormula, EvaluatableDSP):
             self.inode_manager = self._create_manager()
         return self.inode_manager
 
-    def _create_atom(self, identifier, probability, group, name=None, source=None):
+    def _create_atom(self, identifier, probability, group, name=None, source=None, is_extra=False):
         index = len(self) + 1
         var = self.get_manager().add_variable()
         self.atom2var[index] = var
         self.var2atom[var] = index
-        return atom(identifier, probability, group, name, source)
+        return atom(identifier, probability, group, name, source, is_extra)
 
     def get_inode(self, index):
         """Get the internal node corresponding to the entry at the given index.
@@ -569,7 +569,7 @@ def build_dd(source, destination, **kwdargs):
         # TODO maintain a translation table
         for i, n, t in source:
             if t == 'atom':
-                j = destination.add_atom(n.identifier, n.probability, n.group, name=source.get_name(i), cr_extra=False)
+                j = destination.add_atom(n.identifier, n.probability, group=n.group, name=source.get_name(i), cr_extra=False, is_extra=n.is_extra)
             elif t == 'conj':
                 j = destination.add_and(n.children, name=n.name)
             elif t == 'disj':

@@ -118,7 +118,7 @@ def _break_cycles(source, target, nodeid, ancestors, cycles_broken, content, tra
     node = source.get_node(nodeid)
     nodetype = type(node).__name__
     if nodetype == 'atom':
-        newnode = target.add_atom(node.identifier, node.probability, node.group, node.name)
+        newnode = target.add_atom(node.identifier, node.probability, group=node.group, name=node.name, is_extra=node.is_extra)
     else:
         children = [_break_cycles(source, target, child, ancestors + [nodeid], child_cycles_broken,
                                   child_content, translation, is_evidence)
