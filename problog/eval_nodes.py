@@ -213,8 +213,16 @@ class EvalNode(object):
             self.parent, node_type, self.node_str(), pos[0], pos[1], self.context)
 
     @staticmethod
+    def eval_default(engine, node, eval_type=None, **kwargs):
+        node = eval_type(engine=engine, node=node, pointer=engine.pointer, **kwargs)
+        cleanup, actions = node()  # Evaluate the node
+        if not cleanup:
+            engine.add_record(node)
+        return actions
+
+    @staticmethod
     def eval(**kwargs):
-        raise NotImplementedError("Eval not implemented for this node")
+        return EvalNode.eval_default(**kwargs)
 
 
 class EvalFact(EvalNode):
@@ -347,21 +355,6 @@ class EvalExtern(EvalNode):
     @staticmethod
     def eval(node, **kwargs):
         return EvalBuiltIn.eval(node=SimpleBuiltIn(node.function), **kwargs)
-
-
-class EvalDefault(EvalNode):
-    def __init__(self, engine, database, target, node_id, node, context, parent, pointer, identifier=None,
-                 transform=None, call=None, current_clause=None, include=None, exclude=None, no_cache=False, **kwargs):
-        super().__init__(engine, database, target, node_id, node, context, parent, pointer, identifier, transform, call,
-                         current_clause, include, exclude, no_cache, **kwargs)
-
-    @staticmethod
-    def eval(engine, node, eval_type=None, **kwargs):
-        node = eval_type(engine=engine, node=node, pointer=engine.pointer, **kwargs)
-        cleanup, actions = node()  # Evaluate the node
-        if not cleanup:
-            engine.add_record(node)
-        return actions
 
 
 class EvalClause(EvalNode):
@@ -950,7 +943,7 @@ class EvalNot(EvalNode):
 
     @staticmethod
     def eval(**kwargs):
-        return EvalDefault.eval( eval_type=EvalNot, **kwargs)
+        return EvalNode.eval(eval_type=EvalNot, **kwargs)
 
 
 class EvalAnd(EvalNode):
@@ -1014,7 +1007,7 @@ class EvalAnd(EvalNode):
 
     @staticmethod
     def eval(**kwargs):
-        return EvalDefault.eval(eval_type=EvalAnd, **kwargs)
+        return EvalNode.eval(eval_type=EvalAnd, **kwargs)
 
 
 class EvalBuiltIn(EvalNode):
@@ -1046,7 +1039,7 @@ class EvalBuiltIn(EvalNode):
 
     @staticmethod
     def eval(**kwargs):
-        return EvalDefault.eval( eval_type=EvalBuiltIn, **kwargs)
+        return EvalNode.eval(eval_type=EvalBuiltIn, **kwargs)
 
 
 class Transformations(object):
