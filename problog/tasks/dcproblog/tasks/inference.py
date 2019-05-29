@@ -1,6 +1,10 @@
+from problog.errors import InstallError
+
 import argparse
 
 from problog.program import PrologFile
+from problog.logic import Term
+from problog import library_paths, root_path
 from ..solver import InferenceSolver
 
 
@@ -37,12 +41,27 @@ def argparser(args):
 
 
 def main(args):
+    library_paths.append(root_path('problog', 'tasks', 'dcproblog', 'library'))
+
     import time
     start = time.time()
     parser = argparser(args)
     args = parser.parse_args(args)
     args = vars(args)
+
+    if args["abe_name"]=="pyro":
+        try:
+            import pyro
+        except:
+            raise InstallError('Pyro is not available.')
+    elif args["abe_name"]=="psi":
+        try:
+            import psi
+        except:
+            raise InstallError('pypsi is not available.')
+
     program = PrologFile(args['file_name'])
+
 
     solver = InferenceSolver(**args)
     probabilities = solver.probability(program, **args)
