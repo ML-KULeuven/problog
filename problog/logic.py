@@ -83,6 +83,7 @@ import functools
 import math
 import sys
 import re
+import dill
 
 
 from .util import OrderedSet
@@ -190,7 +191,11 @@ class Term(object):
     (character position in input)
     """
 
+    max_id = 0
+
     def __init__(self, functor, *args, **kwdargs):
+        self.id = Term.max_id
+        Term.max_id += 1
         self.__functor = functor
         self.__args = args
         self.__arity = len(self.__args)
@@ -221,6 +226,7 @@ class Term(object):
         self.__functor = value
         self.__signature = None
         self.__hash = None
+        self.cache_eq = {}
 
     @property
     def args(self):
@@ -606,13 +612,14 @@ class Term(object):
         return elements, current
 
     def _cache_equality(self, other, value):
-        self.cache_eq[id(other)] = value
+        if isinstance(other, Term):
+            self.cache_eq[other.id] = value
         return value
 
     def _get_cached_eq(self, other):
-        other_id = id(other)
-        if other_id in self.cache_eq:
-            return self.cache_eq[other_id]
+        if isinstance(other, Term):
+            if other.id in self.cache_eq:
+                return self.cache_eq[other.id]
         return None
 
     def __eq__(self, other):
