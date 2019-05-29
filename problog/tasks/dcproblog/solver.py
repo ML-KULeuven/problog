@@ -1,7 +1,5 @@
 import os
 from collections import OrderedDict
-from graphviz import Source
-from hashlib import md5
 
 from problog.formula import LogicFormula
 from problog.cycles import break_cycles
@@ -86,18 +84,26 @@ class InferenceSolver(object):
         # evidence_inode = dde.evidence_inode
         # dot  = dde.formula.sdd_functions_to_dot(evidence_inode=dde.evidence_inode)
         dot  = dde.formula.sdd_functions_to_dot(sdds=sdds["qe"])
-        g = Source(dot)
         if self.file_name:
             file_name = os.path.basename(os.path.normpath(self.file_name)).strip(".pl")
         else:
             file_name = graph
         if not self.dpath:
-            filepath=os.getcwd()
+            # filepath=os.getcwd()
+            filepath="."
+
         else:
             filepath = os.path.dirname(__file__)
 
         diagram_name = os.path.join(filepath,'diagrams/{}.gv').format(file_name)
-        g.render(diagram_name, view=False)
+
+        try:
+            from graphviz import Source
+            g = Source(dot)
+            g.render(diagram_name, view=False)
+        except:
+            pass
+
 
 
     def probability(self, program, **kwdargs):
