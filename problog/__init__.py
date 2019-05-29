@@ -80,4 +80,3 @@ def get_evaluatable(name=None, semiring=None):
             return formula.LogicNNF
     else:
         return _evaluatables[name]
-

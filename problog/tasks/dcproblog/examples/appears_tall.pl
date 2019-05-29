@@ -1,5 +1,3 @@
-:-use_module(library(hal)).
-
 2/5::male;3/5::female.
 
 normal(160,8)~height(1):-female.

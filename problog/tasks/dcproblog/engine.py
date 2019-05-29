@@ -57,13 +57,17 @@ class EngineHAL(DefaultEngineHAL):
         """
         result = ClauseDB.createFrom(db, builtins=self.get_builtins())
         result.engine = self
+
         self._process_directives(result, target=target)
         return result
 
     def _process_directives(self, db, target=None):
         """Process directives present in the database."""
         term = Term('_directive')
+        hal_library_directive = Term.from_string(":-use_module(library(hal)).")
+        db.add_clause(hal_library_directive)
         directive_node = db.find(term)
+
         if directive_node is None:
             return True    # no directives
         directives = db.get_node(directive_node).children
