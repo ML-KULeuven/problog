@@ -29,6 +29,8 @@ from problog import root_path
 from problog.program import PrologFile, DefaultPrologParser, ExtendedPrologFactory
 from problog import get_evaluatable
 from problog.evaluator import SemiringProbability, SemiringLogProbability, Semiring
+from problog.formula import LogicFormula
+from problog.ddnnf_formula import DDNNF
 
 # noinspection PyBroadException
 try:
@@ -37,6 +39,47 @@ try:
 except Exception as err:
     print("SDD library not available due to error: ", err, file=sys.stderr)
     has_sdd = False
+
+
+class TestSystemSpecific(unittest.TestCase):
+
+    def setUp(self) :
+        try :
+            self.assertSequenceEqual = self.assertItemsEqual
+        except AttributeError :
+            self.assertSequenceEqual = self.assertCountEqual
+
+    def test_keep_order(self):
+        """
+
+        :return:
+        """
+        filename = root_path('test/specific/', 'bug_keep_order.pl')
+        correct = read_result(filename)
+        pl = PrologFile(filename)
+        for avoid_name_clash in [True, False]:
+            for keep_order in [True, False]:
+                for label_all in [True, False]:
+                    with self.subTest(avoid_name_clash=avoid_name_clash, keep_order=keep_order, label_all=label_all):
+                        try:
+                            lf = LogicFormula.create_from(pl, avoid_name_clash=avoid_name_clash, keep_order=keep_order, label_all=label_all)
+                            ddnnf = DDNNF.create_from(lf)
+
+                            computed = ddnnf.evaluate()
+                            computed = {str(k): v for k, v in computed.items()}
+                        except Exception as err:
+                            print(err)
+                            e = err
+                            computed = None
+
+                        if computed is None:
+                            self.assertEqual(correct, type(e).__name__)
+                        else:
+                            self.assertIsInstance(correct, dict)
+                            self.assertSequenceEqual(correct, computed)
+
+                            for query in correct:
+                                self.assertAlmostEqual(correct[query], computed[query], msg=query)
 
 
 class TestDummy(unittest.TestCase):
@@ -223,4 +266,6 @@ for testfile in filenames:
 
 if __name__ == '__main__' :
     suite = unittest.TestLoader().loadTestsFromTestCase(TestSystemGeneric)
+    unittest.TextTestRunner(verbosity=2).run(suite)
+    suite = unittest.TestLoader().loadTestsFromTestCase(TestSystemSpecific)
     unittest.TextTestRunner(verbosity=2).run(suite)
