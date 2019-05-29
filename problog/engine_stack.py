@@ -319,7 +319,7 @@ class StackBasedEngine(ClauseDBEngine):
                 # for message in actions:   # TODO cache
                 #     parent = actions._msg_parent(message)
                 #     print (parent, self.in_cycle(parent))
-                next_actions = self.cycle_root.closeCycle(True)
+                next_actions = self.cycle_root.close_cycle(True)
                 actions += reversed(next_actions)
             else:
                 act, obj, args, context = actions.pop()
@@ -417,7 +417,7 @@ class StackBasedEngine(ClauseDBEngine):
                             print('CLOSE CYCLE')
                             sys.stdin.readline()
                         # If there are no more actions and we have an active cycle, we should close the cycle.
-                        next_actions = self.cycle_root.closeCycle(True)
+                        next_actions = self.cycle_root.close_cycle(True)
                     # Update the list of actions.
                     actions += list(reversed(next_actions))
 

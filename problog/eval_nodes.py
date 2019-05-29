@@ -402,7 +402,7 @@ class EvalOr(EvalNode):
         EvalNode.__init__(self, **parent_args)
         self.results = ResultSet()
         if not self.is_buffered():
-            self.flushBuffer(True)
+            self.flush_buffer(True)
         self.to_complete = len(self.node.children)
 
     def is_buffered(self):
@@ -411,7 +411,7 @@ class EvalOr(EvalNode):
     def isOnCycle(self):
         return self.on_cycle
 
-    def flushBuffer(self, cycle=False):
+    def flush_buffer(self, cycle=False):
         func = lambda result, nodes: self.target.add_or(nodes, readonly=(not cycle), name=None)
         self.results.collapse(func)
 
@@ -448,7 +448,7 @@ class EvalOr(EvalNode):
     def complete(self, source=None):
         self.to_complete -= 1
         if self.to_complete == 0:
-            self.flushBuffer()
+            self.flush_buffer()
             actions = []
             if self.is_buffered():
                 for result, node in self.results:
@@ -461,7 +461,7 @@ class EvalOr(EvalNode):
     def create_cycle(self):
         if self.is_buffered():
             self.on_cycle = True
-            self.flushBuffer(True)
+            self.flush_buffer(True)
             actions = []
             for result, node in self.results:
                 actions += self.notify_result(result, node)
@@ -510,7 +510,7 @@ class EvalDefine(EvalNode):
         self.is_root = is_root
 
         if not self.is_buffered():
-            self.flushBuffer(True)
+            self.flush_buffer(True)
 
     def notify_result(self, arguments, node=0, is_last=False, parent=None):
         if not self.is_root:
@@ -543,7 +543,7 @@ class EvalDefine(EvalNode):
             else:
                 return False, self.notify_result(result, node, is_last=is_last)
         else:
-            if not self.is_buffered() or self.isCycleParent():
+            if not self.is_buffered() or self.is_cycle_parent_or_children():
                 assert self.results.collapsed
                 res = _fix_context(result)
                 res_node = self.results.get(res)
@@ -617,7 +617,7 @@ class EvalDefine(EvalNode):
                 cache_key = self.call
                 # cache_key = (self.node.functor, self.context)
                 # assert (not cache_key in self.target._cache)
-                self.flushBuffer()
+                self.flush_buffer()
                 self.target._cache[cache_key] = self.results
                 self.target._cache.deactivate(cache_key)
                 actions = []
@@ -640,7 +640,7 @@ class EvalDefine(EvalNode):
             else:
                 return False, []
 
-    def flushBuffer(self, cycle=False):
+    def flush_buffer(self, cycle=False):
         def func(res, nodes):
             cache_key = self.call
             #            cache_key = (self.node.functor, res)
@@ -680,15 +680,15 @@ class EvalDefine(EvalNode):
     def is_buffered(self):
         return not (self.on_cycle or self.engine.unbuffered)
 
-    def isOnCycle(self):
+    def is_on_cycle(self):
         return self.on_cycle
 
-    def isCycleParent(self):
+    def is_cycle_parent_or_children(self):
         return bool(self.cycle_children) or self.is_cycle_parent
 
-    def cycleDetected(self, cycle_parent):
+    def cycle_detected(self, cycle_parent):
         queue = []
-        cycle = self.engine.find_cycle(self.pointer, cycle_parent.pointer, cycle_parent.isCycleParent())
+        cycle = self.engine.find_cycle(self.pointer, cycle_parent.pointer, cycle_parent.is_cycle_parent_or_children())
 
         if not cycle:
             cycle_parent.siblings.append(self.pointer)
@@ -707,7 +707,7 @@ class EvalDefine(EvalNode):
             # Register this node as a cycle child of cycle_parent
             cycle_parent.cycle_children.append(self.pointer)
 
-            cycle_parent.flushBuffer(True)
+            cycle_parent.flush_buffer(True)
             for result, node in cycle_parent.results:
                 queue += self.notify_result_me(result, node)
 
@@ -750,7 +750,7 @@ class EvalDefine(EvalNode):
                     queue += self.engine.notify_cycle(to_cycle_root)
         return queue
 
-    def closeCycle(self, toplevel):
+    def close_cycle(self, toplevel):
         if self.is_cycle_root and toplevel:
             self.engine.cycle_root = None
             actions = []
@@ -769,7 +769,7 @@ class EvalDefine(EvalNode):
         elif self.is_buffered():
             # Define node
             self.on_cycle = True
-            self.flushBuffer(True)
+            self.flush_buffer(True)
             actions = []
             for result, node in self.results:
                 actions += self.notify_result(result, node)
@@ -789,7 +789,7 @@ class EvalDefine(EvalNode):
             extra.append('CC')
         if self.is_cycle_root:
             extra.append('CR')
-        if self.isCycleParent():
+        if self.is_cycle_parent_or_children():
             extra.append('CP')
         if self.on_cycle:
             extra.append('*')
@@ -835,7 +835,7 @@ class EvalDefine(EvalNode):
                 # There is an active node.
                 if active_node.is_ground and active_node.results:
                     # If the node is ground, we can simply return the current result node.
-                    active_node.flushBuffer(True)
+                    active_node.flush_buffer(True)
                     active_node.is_cycle_parent = True  # Notify it that it's buffer was flushed
                     queue = results_to_actions(active_node.results, engine, node, context, target, parent, identifier,
                                                transform, is_root, **kwargs)
@@ -850,7 +850,7 @@ class EvalDefine(EvalNode):
                                           no_cache=no_cache,
                                           **kwargs)
                     engine.add_record(evalnode)
-                    return evalnode.cycleDetected(active_node)
+                    return evalnode.cycle_detected(active_node)
             else:
                 # The node has not been seen before.
                 # Get the children that may fit the context (can contain false positives).
