@@ -249,22 +249,22 @@ class StackBasedEngine(ClauseDBEngine):
     def is_real_cycle(self, child, parent):
         return bool(self.find_cycle(child, parent))
 
-    def execute_init(self, node_id, target=None, database=None, is_root=None, **kwargs):
+    # def execute_init(self, node_id, target=None, database=None, is_root=None, **kwargs):
+    #
+    #     # Initialize the cache/table.
+    #     # This is stored in the target ground program because
+    #     # node ids are only valid in that context.
+    #     if not hasattr(target, '_cache'):
+    #         target._cache = DefineCache(database.dont_cache)
+    #
+    #     # Retrieve the list of actions needed to evaluate the top-level node.
+    #     # parent = kwdargs.get('parent')
+    #     # kwdargs['parent'] = parent
+    #
+    #     initial_actions = self.eval(node_id, parent=None, database=database, target=target,
+    #                                 is_root=is_root, **kwargs)
 
-        # Initialize the cache/table.
-        # This is stored in the target ground program because
-        # node ids are only valid in that context.
-        if not hasattr(target, '_cache'):
-            target._cache = DefineCache(database.dont_cache)
-
-        # Retrieve the list of actions needed to evaluate the top-level node.
-        # parent = kwdargs.get('parent')
-        # kwdargs['parent'] = parent
-
-        initial_actions = self.eval(node_id, parent=None, database=database, target=target,
-                                    is_root=is_root, **kwargs)
-
-        return initial_actions
+        # return initial_actions
 
     def execute(self, node_id, target=None, database=None, subcall=False,
                 is_root=False, name=None, **kwdargs):
