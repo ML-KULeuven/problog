@@ -36,23 +36,23 @@ from .eval_nodes import *
 class InvalidEngineState(Exception):
     pass
 
+# Define mapping from strings to the EvalNode classes, to map node_type strings to factory functions
+node_types = {}
+node_types['fact'] = EvalFact
+node_types['conj'] = EvalAnd
+node_types['disj'] = EvalOr
+node_types['neg'] = EvalNot
+node_types['define'] = EvalDefine
+node_types['call'] = EvalCall
+node_types['clause'] = EvalClause
+node_types['choice'] = EvalChoice
+node_types['builtin'] = EvalBuiltIn
+node_types['extern'] = EvalExtern
+
 
 class StackBasedEngine(ClauseDBEngine):
     def __init__(self, label_all=False, **kwdargs):
         ClauseDBEngine.__init__(self, **kwdargs)
-
-        # TODO idea: Subclass this?
-        self.node_types = {}
-        self.node_types['fact'] = EvalFact
-        self.node_types['conj'] = EvalAnd
-        self.node_types['disj'] = EvalOr
-        self.node_types['neg'] = EvalNot
-        self.node_types['define'] = EvalDefine
-        self.node_types['call'] = EvalCall
-        self.node_types['clause'] = EvalClause
-        self.node_types['choice'] = EvalChoice
-        self.node_types['builtin'] = EvalBuiltIn
-        self.node_types['extern'] = EvalExtern
 
         self.cycle_root = None
         self.pointer = 0
@@ -90,7 +90,7 @@ class StackBasedEngine(ClauseDBEngine):
         else:
             node = database.get_node(node_id)
             node_type = type(node).__name__
-            exec_func = self.node_types.get(node_type)
+            exec_func = node_types.get(node_type)
 
             if exec_func is None:
                 if self.unknown == self.UNKNOWN_FAIL:
