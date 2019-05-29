@@ -503,10 +503,10 @@ class StackBasedEngine(ClauseDBEngine):
             kwdargs['transform'].addFunction(func)
 
             return EvalNot.eval(engine=self, node_id=None, node=call_term,
-                                 context=self.create_context(query.args, parent=parent_context), **kwdargs)
+                                context=self.create_context(query.args, parent=parent_context), **kwdargs)
         else:
             return EvalCall.eval(engine=self, node_id=None, node=call_term,
-                                  context=self.create_context(query.args, parent=parent_context), **kwdargs)
+                                 context=self.create_context(query.args, parent=parent_context), **kwdargs)
 
     def printStack(self, pointer=None):  # pragma: no cover
         print('===========================')
@@ -518,27 +518,6 @@ class StackBasedEngine(ClauseDBEngine):
                     print('ccc %s: %s' % (i, x))
                 else:
                     print('    %s: %s' % (i, x))
-
-    # def eval_fact(self, parent, node_id, node, context, target, identifier, **kwdargs):
-    #     try:
-    #         # Verify that fact arguments unify with call arguments.
-    #         unify_call_head(context, node.args, context)
-    #
-    #         if True or self.label_all:
-    #             name = Term(node.functor, *node.args)
-    #         else:
-    #             name = None
-    #         # Successful unification: notify parent callback.
-    #         target_node = target.add_atom(node_id, node.probability, name=name)
-    #         if target_node is not None:
-    #             return [new_result(parent, self.create_context(node.args, parent=context), target_node, identifier,
-    #                                True)]
-    #         else:
-    #             return [complete(parent, identifier)]
-    #     except UnifyError:
-    #         # Failed unification: don't send result.
-    #         # Send complete message.
-    #         return [complete(parent, identifier)]
 
     def propagate_evidence(self, db, target, functor, args, resultnode):
         if hasattr(target, 'lookup_evidence'):
@@ -552,136 +531,6 @@ class StackBasedEngine(ClauseDBEngine):
                     return resultnode
         else:
             return resultnode
-
-    # def eval_define(self, node, context, target, parent, identifier=None, transform=None,
-    #                 is_root=False, no_cache=False, **kwdargs):
-    #
-    #     # This function evaluates the 'define' nodes in the database.
-    #     # This is basically the same as evaluating a goal in Prolog.
-    #     # There are three possible situations:
-    #     #   - the goal has been evaluated before (it is in cache)
-    #     #   - the goal is currently being evaluated (i.e. we have a cycle)
-    #     #        we make a distinction between ground goals and non-ground goals
-    #     #   - we have not seen this goal before
-    #
-    #     # Extract a descriptor for the current goal being evaluated.
-    #     functor = node.functor
-    #     goal = (functor, context)
-    #     # Look up the results in the cache.
-    #     if no_cache:
-    #         results = None
-    #     else:
-    #         results = target._cache.get(goal)
-    #     if results is not None:
-    #         # We have results for this goal, i.e. it has been fully evaluated before.
-    #         # Transform the results to actions and return.
-    #         return results_to_actions(results, self, node, context, target, parent, identifier, transform, is_root,
-    #                                   **kwdargs)
-    #     else:
-    #         # Look up the results in the currently active nodes.
-    #         active_node = target._cache.getEvalNode(goal)
-    #         if active_node is not None:
-    #             # There is an active node.
-    #             if active_node.is_ground and active_node.results:
-    #                 # If the node is ground, we can simply return the current result node.
-    #                 active_node.flushBuffer(True)
-    #                 active_node.is_cycle_parent = True  # Notify it that it's buffer was flushed
-    #                 queue = results_to_actions(active_node.results, self, node, context, target, parent, identifier,
-    #                                            transform, is_root, **kwdargs)
-    #                 assert (len(queue) == 1)
-    #                 self.checkCycle(parent, active_node.pointer)
-    #                 return queue
-    #             else:
-    #                 # If the node in non-ground, we need to create an evaluation node.
-    #                 evalnode = EvalDefine(pointer=self.pointer, engine=self, node=node,
-    #                                       context=context, target=target, identifier=identifier,
-    #                                       parent=parent, transform=transform, is_root=is_root,
-    #                                       no_cache=no_cache,
-    #                                       **kwdargs)
-    #                 self.add_record(evalnode)
-    #                 return evalnode.cycleDetected(active_node)
-    #         else:
-    #             # The node has not been seen before.
-    #             # Get the children that may fit the context (can contain false positives).
-    #             children = node.children.find(context)
-    #             to_complete = len(children)
-    #
-    #             if to_complete == 0:
-    #                 # No children, so complete immediately.
-    #                 return [complete(parent, identifier)]
-    #             else:
-    #                 # Children to evaluate, so start evaluation node.
-    #                 evalnode = EvalDefine(to_complete=to_complete, pointer=self.pointer,
-    #                                       engine=self, node=node, context=context, target=target,
-    #                                       identifier=identifier, transform=transform, parent=parent,
-    #                                       no_cache=no_cache,
-    #                                       **kwdargs)
-    #                 self.add_record(evalnode)
-    #                 target._cache.activate(goal, evalnode)
-    #                 actions = [evalnode.createCall(child) for child in children]
-    #                 return actions
-    #
-    # def eval_conj(self, **kwdargs):
-    #     return self.eval_default(EvalAnd, **kwdargs)
-    #
-    # def eval_disj(self, parent, node, **kwdargs):
-    #     if len(node.children) == 0:
-    #         # No children, so complete immediately.
-    #         return [complete(parent, None)]
-    #     else:
-    #         evalnode = EvalOr(pointer=self.pointer, engine=self, parent=parent, node=node,
-    #                           **kwdargs)
-    #         self.add_record(evalnode)
-    #         return [evalnode.createCall(child) for child in node.children]
-    #
-    # def eval_neg(self, **kwdargs):
-    #     return self.eval_default(EvalNot, **kwdargs)
-    #
-    # def eval_call(self, node_id, node, context, parent, transform=None, identifier=None, **kwdargs):
-    #     min_var = self.context_min_var(context)
-    #     call_args, var_translate = substitute_call_args(node.args, context, min_var)
-    #
-    #     if self.debugger and node.functor != 'call':
-    #         # 'call(X)' is virtual so result and return can not be detected => don't register it.
-    #         location = kwdargs['database'].lineno(node.location)
-    #         self.debugger.call_create(node_id, node.functor, call_args, parent, location)
-    #
-    #     ground_mask = [not is_ground(c) for c in call_args]
-    #
-    #     def result_transform(result):
-    #         if hasattr(result, 'state'):
-    #             state1 = result.state
-    #         else:
-    #             state1 = None
-    #
-    #         output1 = self._clone_context(context, state=state1)
-    #         try:
-    #             assert (len(result) == len(node.args))
-    #             output = unify_call_return(result, call_args, output1, var_translate, min_var,
-    #                                        mask=ground_mask)
-    #             output = self.create_context(output, parent=output1)
-    #             if self.debugger:
-    #                 location = kwdargs['database'].lineno(node.location)
-    #                 self.debugger.call_result(node_id, node.functor, call_args, result, location)
-    #             return output
-    #         except UnifyError:
-    #             pass
-    #
-    #     if transform is None:
-    #         transform = Transformations()
-    #
-    #     transform.addFunction(result_transform)
-    #
-    #     origin = '%s/%s' % (node.functor, len(node.args))
-    #     kwdargs['call_origin'] = (origin, node.location)
-    #     kwdargs['context'] = self.create_context(call_args, parent=context)
-    #     kwdargs['transform'] = transform
-    #
-    #     try:
-    #         return self.eval(node.defnode, parent=parent, identifier=identifier, **kwdargs)
-    #     except UnknownClauseInternal:
-    #         loc = kwdargs['database'].lineno(node.location)
-    #         raise UnknownClause(origin, location=loc)
 
     def context_min_var(self, context):
         min_var = 0
