@@ -1,3 +1,5 @@
+from problog.errors import InstallError
+
 import argparse
 
 from problog.program import PrologFile
@@ -42,6 +44,18 @@ def main(args):
     parser = argparser(args)
     args = parser.parse_args(args)
     args = vars(args)
+
+    if args["abe_name"]=="pyro":
+        try:
+            import pyro
+        except:
+            raise InstallError('Pyro is not available.')
+    elif args["abe_name"]=="psi":
+        try:
+            import psi
+        except:
+            raise InstallError('pypsi is not available.')
+
     program = PrologFile(args['file_name'])
 
     solver = InferenceSolver(**args)
