@@ -563,6 +563,7 @@ class LFIProblem(LogicProgram):
                     result = self._process_atom_cont(atom, body)
         if result is None:
             result = self._process_atom_discr(atom, body)
+        print(str(atom) + " got processed to " + str(result))
         return result
 
     def _process_atom_cont(self, atom, body):
@@ -760,7 +761,7 @@ class LFIProblem(LogicProgram):
                 # TODO: lfi_par should be unique for rule, not per disjunct
                 # lfi_par = Term('lfi_par',   Constant(self.count),      Term('t', *prob_args), *atom1.args)
                 lfi_par = Term('lfi_par', Constant(self.count), Term('t', *prob_args, *atom1.args))
-                lfi_prob = Term('lfi', Constant(self.count), Term('t', *prob_args))
+                lfi_prob = Term('lfi', Constant(self.count), Term('t', *prob_args, *atom1.args))
 
                 # 2) Replacement atom
                 replacement = lfi_fact.with_probability(lfi_prob)
@@ -1168,11 +1169,14 @@ class Example(object):
         print('...')
         print(ground_program)
         print(self.atoms)
+
+
         ground_program = ground(baseprogram, ground_program,
-                                evidence=list(zip(self.atoms, self.values)),
-                                propagate_evidence=lfi.propagate_evidence)
+                              evidence=list(zip(self.atoms, self.values)),
+                              propagate_evidence=lfi.propagate_evidence)
         print('...')
         print(ground_program)
+
         lfi_queries = []
         for i, node, t in ground_program:
             if t == 'atom' and isinstance(node.probability, Term) and node.probability.functor == 'lfi':
@@ -1197,12 +1201,13 @@ class Example(object):
                 #       lfi continuous probs are associated with lfi/2
                 pass
 
+
         if self._use_parents:
             ground_program = ground(baseprogram, ground_program,
                                     evidence=list(zip(self.atoms, self.values)),
                                     propagate_evidence=lfi.propagate_evidence,
                                     queries=lfi_queries)
-            print('extra ground_program')
+            print('New ground_program')
             print(ground_program)
 
         self.compiled = lfi.knowledge.create_from(ground_program)

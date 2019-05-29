@@ -1,1 +1,3 @@
-evidence(a).
+evidence(a(1)).
+---
+evidence(a(2)).
