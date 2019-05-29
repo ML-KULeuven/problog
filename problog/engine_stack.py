@@ -560,12 +560,6 @@ class StackBasedEngine(ClauseDBEngine):
             con.state = State()
         return con
 
-    def _clone_context(self, context, parent=None, state=None):
-        con = Context(context, state=state)
-        if not con.state:
-            con.state = get_state(parent)
-        return con
-
     def _fix_context(self, context):
         return FixedContext(context)
 

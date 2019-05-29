@@ -3,6 +3,7 @@ problog.eval_nodes - Evaluation node classes for the engine_stack
 ---------------------------------------------------------------------
 """
 from problog.engine_builtin import IndirectCallCycleError
+from problog.engine_context import Context, get_state
 from problog.engine_unify import substitute_call_args
 from problog.errors import GroundingError
 from problog.logic import Term, is_ground, ArithmeticError
@@ -271,7 +272,7 @@ class EvalCall(EvalNode):
             else:
                 state1 = None
 
-            output1 = engine._clone_context(context, state=state1)
+            output1 = _clone_context(context, state=state1)
             try:
                 assert (len(result) == len(node.args))
                 output = unify_call_return(result, call_args, output1, var_translate, min_var,
@@ -1085,3 +1086,13 @@ class SimpleBuiltIn(object):
 
     def __str__(self):  # pragma: no cover
         return str(self.base_function)
+
+
+# def _clone_context(self, context):
+#     return list(context)
+
+def _clone_context(context, parent=None, state=None):
+    con = Context(context, state=state)
+    if not con.state:
+        con.state = get_state(parent)
+    return con
