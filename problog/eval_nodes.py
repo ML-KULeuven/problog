@@ -193,7 +193,7 @@ class EvalNode(object):
         base_args.update(kwargs)
         return call(node_id, args, base_args)
 
-    def createCycle(self):
+    def create_cycle(self):
         self.on_cycle = True
         return []
 
@@ -287,7 +287,7 @@ class EvalCall(EvalNode):
         if transform is None:
             transform = Transformations()
 
-        transform.addFunction(result_transform)
+        transform.add_function(result_transform)
 
         origin = '%s/%s' % (node.functor, len(node.args))
         kwargs['call_origin'] = (origin, node.location)
@@ -379,7 +379,7 @@ class EvalClause(EvalNode):
                 output = substitute_head_args(node.args, result)
                 return engine.create_context(output, parent=result)
 
-            transform.addFunction(result_transform)
+            transform.add_function(result_transform)
             return engine.eval(node.child, context=new_context, parent=parent, transform=transform,
                                current_clause=node_id, identifier=identifier, **kwargs)
         except UnifyError:
@@ -458,7 +458,7 @@ class EvalOr(EvalNode):
         else:
             return False, []
 
-    def createCycle(self):
+    def create_cycle(self):
         if self.is_buffered():
             self.on_cycle = True
             self.flushBuffer(True)
@@ -721,7 +721,7 @@ class EvalDefine(EvalNode):
                 cycle_parent.cycle_close = cycle_root.cycle_close
                 cycle_root.cycle_close = set()
                 self.engine.cycle_root = cycle_parent
-                queue += cycle_root.createCycle()
+                queue += cycle_root.create_cycle()
                 queue += self.engine.notify_cycle(cycle)
                 # queue += self.engine.notifyCycle(cycle_root)
                 # cycle_root)  # Notify old cycle root up to new cycle root
@@ -747,7 +747,7 @@ class EvalDefine(EvalNode):
                     to_cycle_root = self.engine.find_cycle(cycle_parent.pointer, self.engine.cycle_root.pointer)
                     if to_cycle_root is None:
                         raise IndirectCallCycleError(self.database.lineno(self.node.location))
-                    queue += cycle_parent.createCycle()
+                    queue += cycle_parent.create_cycle()
                     queue += self.engine.notify_cycle(to_cycle_root)
         return queue
 
@@ -761,7 +761,7 @@ class EvalDefine(EvalNode):
         else:
             return []
 
-    def createCycle(self):
+    def create_cycle(self):
         if self.on_cycle:  # Already on cycle
             # Pass message to parent
             return []
@@ -921,7 +921,7 @@ class EvalNot(EvalNode):
         actions += self.notifyComplete()
         return True, actions
 
-    def createCycle(self):
+    def create_cycle(self):
         raise NegativeCycle(location=self.database.lineno(self.node.location))
 
     def node_str(self):  # pragma: no cover
@@ -1033,13 +1033,13 @@ class Transformations(object):
         self.functions = []
         self.constant = None
 
-    def addConstant(self, constant):
+    def add_constant(self, constant):
         pass
         # if self.constant is None :
         #     self.constant = self(constant)
         #     self.functions = []
 
-    def addFunction(self, function):
+    def add_function(self, function):
         # print ('add', function, self.constant)
         # if self.constant is None :
         self.functions.append(function)

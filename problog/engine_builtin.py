@@ -1663,7 +1663,7 @@ def _builtin_call(term, args=(), engine=None, callback=None, transform=None, con
             res1 = result[:n]
             res2 = result[n:]
             return engine.create_context([term.with_args(*res1)] + list(res2), state=get_state(result))
-        transform.addFunction(_trans)
+        transform.add_function(_trans)
 
         actions = engine.call_intern(term_call, transform=transform, parent_context=context, **kwdargs)
     except UnknownClauseInternal:
@@ -1802,7 +1802,7 @@ def _builtin_call_in_scope(scope, term, args=(), engine=None, callback=None, tra
             res1 = result[:n]
             res2 = result[n:]
             return [scope, term.with_args(*res1)] + list(res2)
-        transform.addFunction(_trans)
+        transform.add_function(_trans)
 
         actions = engine.call_intern(term_call, transform=transform, dont_cache=True, no_cache=True, include=scopel, parent_context=context, **kwdargs)
     except UnknownClauseInternal:

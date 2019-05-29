@@ -150,7 +150,7 @@ class StackBasedEngine(ClauseDBEngine):
             exec_node = self.stack[current]
             if exec_node.on_cycle:
                 break
-            new_actions = exec_node.createCycle()
+            new_actions = exec_node.create_cycle()
             actions += new_actions
             current = exec_node.parent
         return actions
@@ -225,7 +225,7 @@ class StackBasedEngine(ClauseDBEngine):
         actions = []
         for current in cycle[1:]:
             exec_node = self.stack[current]
-            actions += exec_node.createCycle()
+            actions += exec_node.create_cycle()
         return actions
         #
         #
@@ -241,7 +241,7 @@ class StackBasedEngine(ClauseDBEngine):
         #     exec_node = self.stack[current]
         #     if exec_node.on_cycle:
         #         break
-        #     new_actions = exec_node.createCycle()
+        #     new_actions = exec_node.create_cycle()
         #     actions += new_actions
         #     current = exec_node.parent
         # return actions
@@ -501,7 +501,7 @@ class StackBasedEngine(ClauseDBEngine):
             def func(result):
                 return Term(neg_func, Term(call_term.functor, *result)),
 
-            kwdargs['transform'].addFunction(func)
+            kwdargs['transform'].add_function(func)
 
             return EvalNot.eval(engine=self, node_id=None, node=call_term,
                                 context=self.create_context(query.args, parent=parent_context), **kwdargs)
