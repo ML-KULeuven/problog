@@ -116,7 +116,7 @@ class TreeDraw(QWidget):
         print ('clicked', event.x(), event.y())
 
         print ('############## ENGINE STATE ##################')
-        message_order.engine.printStack()
+        message_order.engine.print_stack()
         print (message_order)
         print ('##############################################')
 
@@ -172,7 +172,7 @@ class MessageOrderInteractive(problog.engine_messages.MessageOrder1):
         print ('##############################################')
 
         print ('############## ENGINE STATE ##################')
-        self.engine.printStack()
+        self.engine.print_stack()
         print (self)
         print ('##############################################')
 

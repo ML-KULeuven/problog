@@ -303,7 +303,7 @@ class StackBasedEngine(ClauseDBEngine):
         # Main loop: process actions until there are no more.
         while actions:
             if self.full_trace:
-                self.printStack()
+                self.print_stack()
                 print(actions)
             # Pop the next action.
             # An action consists of 4 parts:
@@ -343,7 +343,7 @@ class StackBasedEngine(ClauseDBEngine):
                             # Last result received
                             if not subcall and self.pointer != 0:  # pragma: no cover
                                 # ERROR: the engine stack should be empty.
-                                self.printStack()
+                                self.print_stack()
                                 raise InvalidEngineState('Stack not empty at end of execution!')
                             if not subcall:
                                 # Clean up the stack to save memory.
@@ -396,11 +396,11 @@ class StackBasedEngine(ClauseDBEngine):
                             # Retrieve the execution node from the stack.
                             exec_node = self.stack[obj]
                         except IndexError:  # pragma: no cover
-                            self.printStack()
+                            self.print_stack()
                             raise InvalidEngineState('Non-existing pointer: %s' % obj)
                         if exec_node is None:  # pragma: no cover
                             print(act, obj, args)
-                            self.printStack()
+                            self.print_stack()
                             raise InvalidEngineState('Invalid node at given pointer: %s' % obj)
 
                         if act == 'r':
@@ -423,7 +423,7 @@ class StackBasedEngine(ClauseDBEngine):
 
                     # Do debugging.
                     if self.debug:  # pragma: no cover
-                        self.printStack(obj)
+                        self.print_stack(obj)
                         if act in 'rco':
                             print(obj, act, args)
                         print([(a, o, x) for a, o, x, t in actions[-10:]])
@@ -444,7 +444,7 @@ class StackBasedEngine(ClauseDBEngine):
             raise IndirectCallCycleError()
         else:
             # This should never happen.
-            self.printStack()  # pragma: no cover
+            self.print_stack()  # pragma: no cover
             print('Actions:', actions)
             print('Collected results:', solutions)  # pragma: no cover
             raise InvalidEngineState('Engine did not complete correctly!')  # pragma: no cover
@@ -509,7 +509,7 @@ class StackBasedEngine(ClauseDBEngine):
             return EvalCall.eval(engine=self, node_id=None, node=call_term,
                                  context=self.create_context(query.args, parent=parent_context), **kwdargs)
 
-    def printStack(self, pointer=None):  # pragma: no cover
+    def print_stack(self, pointer=None):  # pragma: no cover
         print('===========================')
         for i, x in enumerate(self.stack):
             if (pointer is None or pointer - 20 < i < pointer + 20) and x is not None:
