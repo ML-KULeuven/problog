@@ -613,19 +613,6 @@ class StackBasedEngine(ClauseDBEngine):
         else:
             return [complete(parent, identifier)]
 
-    def eval_extern(self, node=None, **kwdargs):
-        return self.eval_builtin(node=SimpleBuiltIn(node.function), **kwdargs)
-
-    def eval_builtin(self, **kwdargs):
-        return self.eval_default(EvalBuiltIn, **kwdargs)
-
-    def eval_default(self, eval_type, **kwdargs):
-        node = eval_type(pointer=self.pointer, engine=self, **kwdargs)
-        cleanup, actions = node()  # Evaluate the node
-        if not cleanup:
-            self.add_record(node)
-        return actions
-
     def create_context(self, content, define=None, parent=None, state=None):
         """Create a variable context."""
 
