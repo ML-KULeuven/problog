@@ -1,5 +1,6 @@
 from problog.logic import Term
 
+
 pdfs = {
     'real' : 'real',
 
@@ -19,6 +20,8 @@ cdfs = {
 
 infix_functors = ["/"]
 comparison_functors = ["<", ">", "<=", ">="]
+
+
 
 class SymbolicConstant(Term):
     def __init__(self, value, args=(), cvariables=set()):

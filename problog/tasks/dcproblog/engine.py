@@ -7,8 +7,11 @@ from problog.core import transform
 from problog.program import LogicProgram
 from problog.logic import Term, is_ground
 from problog.formula import LogicFormula
+from problog.engine_stack import SimpleProbabilisticBuiltIn, SimpleBuiltIn
 
 from .engine_stack import StackBasedEngineHAL as DefaultEngineHAL
+
+
 from .formula import LogicFormulaHAL
 from .engine_builtin import \
     _builtin_density, \
@@ -16,9 +19,9 @@ from .engine_builtin import \
     _builtin_as, \
     _builtin_gt, _builtin_lt, _builtin_le, _builtin_ge, \
     _builtin_observation \
+    # _builtin_is \
 
     # , _builtin_val_eq, _builtin_val_neq
-    # _builtin_is, \
 
 
 class EngineHAL(DefaultEngineHAL):
@@ -40,7 +43,7 @@ class EngineHAL(DefaultEngineHAL):
         self.add_builtin('>=', 2, _builtin_ge)
         # self.add_builtin('=\=', 2, b(_builtin_val_neq))
         # self.add_builtin('=:=', 2, b(_builtin_val_eq))
-        # self.add_builtin('is', 2, s(_builtin_is))
+        # self.add_builtin('is', 2, SimpleBuiltIn(_builtin_is))
 
         self.add_builtin('obs_builtin', 2, _builtin_observation)
 

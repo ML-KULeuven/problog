@@ -50,7 +50,6 @@ class DDEvaluatorHAL(DDEvaluator):
         evidence_nodes = [self.formula.get_inode(ev) for ev in self.evidence()]
         observation_nodes = [self.formula.get_inode(ob) for ob in self.observation()]
 
-        print(observation_nodes)
         self.evidence_inode = self._get_manager().conjoin(constraint_inode, *(observation_nodes), *(evidence_nodes))
         result["e"] = self.evidence_inode
         result["qe"] = OrderedDict()

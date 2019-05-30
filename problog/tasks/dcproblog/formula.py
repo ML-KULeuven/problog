@@ -270,7 +270,6 @@ class LogicFormulaHAL(LogicFormula):
     def __str__(self):
         s = '\n'.join('%s: %s' % (i, n) for i, n, t in self)
         f = True
-        print(self._names)
         for q in self.labeled():
             if f:
                 f = False

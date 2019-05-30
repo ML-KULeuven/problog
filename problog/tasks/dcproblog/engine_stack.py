@@ -1,8 +1,8 @@
-from problog.engine_stack import StackBasedEngine, EvalNode
+from problog.engine_stack import StackBasedEngine, EvalAnd
 
-class EvalAnd(EvalNode):
+class EvalAndHAL(EvalAnd):
     def __init__(self, **parent_args):
-        EvalNode.__init__(self, **parent_args)
+        EvalAnd.__init__(self, **parent_args)
         self.to_complete = 1
         self.engine.stats[3] += 1
 
@@ -53,25 +53,10 @@ class EvalAnd(EvalNode):
             else:
                 return False, self.notifyResult(result, target_node, is_last=False)
 
-    def complete(self, source=None):
-        self.to_complete -= 1
-        if self.to_complete == 0:
-            return True, self.notifyComplete()
-        else:
-            assert (self.to_complete > 0)
-            return False, []
-
-    def node_str(self):  # pragma: no cover
-        return ''
-
-    def __str__(self):  # pragma: no cover
-        return EvalNode.__str__(self) + ' tc: %s' % self.to_complete
-
-
 
 class StackBasedEngineHAL(StackBasedEngine):
     def __init__(self, label_all=False, **kwdargs):
         StackBasedEngine.__init__(self, label_all=label_all, **kwdargs)
 
     def eval_conj(self, **kwdargs):
-        return self.eval_default(EvalAnd, **kwdargs)
+        return self.eval_default(EvalAndHAL, **kwdargs)
