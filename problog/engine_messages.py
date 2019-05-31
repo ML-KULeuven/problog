@@ -48,19 +48,11 @@ class MessageQueue(object):
     def __len__(self):
         raise NotImplementedError('Abstract method')
 
-    def repr_message(self, msg):
-        if msg.is_complete_message():
-            return 'c(%s)' % msg[1]
-        elif msg.is_result_message():
-            return 'r(%s, %s)' % (msg[1], msg[2])
-        elif msg.is_eval_message():
-            return 'e(%s, %s, %s, %s)' % (msg[1], msg[3].get('call'), msg[3].get('context'), msg[3].get('parent'))
-
     def __iter__(self):
         raise NotImplementedError('Abstract method')
 
     def __repr__(self):
-        return '[%s]' % ', '.join(map(self.repr_message, self))
+        return '[%s]' % ', '.join(map(str, self))
 
 
 class MessageFIFO(MessageQueue):

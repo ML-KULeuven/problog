@@ -101,6 +101,10 @@ class EvalMessage(AbstractMessage):
     def is_eval_message(self):
         return True
 
+    def __str__(self):
+        return 'e(%s, %s, %s, %s)' % (
+            self.lst[1], self.lst[3].get('call'), self.lst[3].get('context'), self.lst[3].get('parent'))
+
 
 class ResultMessage(AbstractMessage):
     def __init__(self, lst):
@@ -112,6 +116,9 @@ class ResultMessage(AbstractMessage):
     def is_result_message(self):
         return True
 
+    def __str__(self):
+        return 'r(%s, %s)' % (self.lst[1], self.lst[2])
+
 
 class CompleteMessage(AbstractMessage):
     def __init__(self, lst):
@@ -122,6 +129,9 @@ class CompleteMessage(AbstractMessage):
 
     def is_complete_message(self):
         return True
+
+    def __str__(self):
+        return 'c(%s)' % self.lst[1]
 
 
 def call(obj, args, kwargs):
