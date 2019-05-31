@@ -66,7 +66,7 @@ class MessageFIFO(MessageQueue):
         self.messages.append(message)
         # Inform the debugger.
         if self.engine.debugger:
-            self.engine.debugger.process_message(*message)
+            self.engine.debugger.process_message(message)
 
     def pop(self):
         return self.messages.pop(-1)

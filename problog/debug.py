@@ -71,16 +71,16 @@ class EngineTracer(object):
             elif a.strip() == 'l':
                 self.interactive = False
 
-    def process_message(self, msgtype, msgtarget, msgargs, context):
-        if msgtarget is None and msgtype == 'r' and msgtarget in self.call_redirect:
-            self.call_result(*(self.call_redirect[msgtarget] + (msgargs[0],)))
+    def process_message(self, message):
+        if message.target is None and message.is_result_message() and message.target in self.call_redirect:
+            self.call_result(*(self.call_redirect[message.target] + (message.arguments[0],)))
 
-        if msgtype == 'r' and msgargs[3] and msgtarget in self.call_redirect:
-            self.call_return(*self.call_redirect[msgtarget])
-            del self.call_redirect[msgtarget]
-        elif msgtype == 'c' and msgtarget in self.call_redirect:
-            self.call_return(*self.call_redirect[msgtarget])
-            del self.call_redirect[msgtarget]
+        if message.is_result_message() and message.arguments[3] and message.target in self.call_redirect:
+            self.call_return(*self.call_redirect[message.target])
+            del self.call_redirect[message.target]
+        elif message.is_complete_message() and message.target in self.call_redirect:
+            self.call_return(*self.call_redirect[message.target])
+            del self.call_redirect[message.target]
 
     def call_create(self, node_id, functor, context, parent, location=None):
         if self.time_start_global is None:
