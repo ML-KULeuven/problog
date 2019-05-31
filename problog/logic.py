@@ -652,7 +652,7 @@ class Term(object):
                 elif t1.functor != t2.functor:
                     return self._cache_equality(other, False)
             else:  # t1 and t2 are Terms
-                if t1.__functor != t2.__functor:
+                if not isinstance(t1, Not) and t1.__functor != t2.__functor:
                     return self._cache_equality(other, False)
                 if t1.__arity != t2.__arity:
                     return self._cache_equality(other, False)
@@ -1070,12 +1070,6 @@ class Not(Term):
 
     def __abs__(self):
         return -self
-
-    def __hash__(self):
-        return super().__hash__()
-
-    def __eq__(self, other):
-        return type(self) == type(other) and self.child == other.child
 
 
 _arithmetic_functions = {
