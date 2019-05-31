@@ -74,7 +74,10 @@ class StackBasedEngine(ClauseDBEngine):
 
         self.ignoring = set()
 
-    def eval(self, node_id, include_ids=None, exclude_ids=None, database=None, parent=None, identifier=None, **kwargs):
+    def eval(self, node_id, database=None,
+             parent=None, context=None, target=None, identifier=None, transform=None,
+             current_clause=None, is_root=False, no_cache=False,
+             include_ids=None, exclude_ids=None, **kwargs):
         # print (kwargs.get('parent'))
 
         # Skip not included or excluded nodes, or if parent is ignoring new results
@@ -97,7 +100,10 @@ class StackBasedEngine(ClauseDBEngine):
                     raise UnknownClauseInternal()
 
         return exec_func.eval(engine=self, node_id=node_id, node=node,
-                              database=database, parent=parent, identifier=identifier, **kwargs)
+                              parent=parent, context=context, target=target,
+                              identifier=identifier, transform=transform, database=database,
+                              current_clause=current_clause, is_root=is_root, no_cache=no_cache,
+                              **kwargs)
 
     def should_skip_node(self, node_id, include_ids=None, exclude_ids=None, parent=None):
         # If we are only looking at certain 'included' ids, check if it is included
