@@ -61,8 +61,6 @@ def createTestLFI(filename, useparents = False):
         with open(out_model, "r") as f:
             outlines = f.readlines()
         outlines = [line.strip() for line in outlines]
-        print(expected)
-        print(outlines)
         assert(expected == outlines)
     return test
 
@@ -70,10 +68,17 @@ def createTestLFI(filename, useparents = False):
 if __name__ == '__main__':
     filenames = sys.argv[1:]
 else:
-    filenames = glob.glob(root_path('test', 'lfi', '*.pl'))
+    ADfilenames = glob.glob(root_path('test', 'lfi', 'AD_positive', '*.pl'))
+    simple_filenames = glob.glob(root_path('test', 'lfi', 'simple', '*.pl'))
 
-for testfile in filenames :
-    testname = 'test_system_' + os.path.splitext(os.path.basename(testfile))[0]
+# tests for simple cases (non-ADs)
+for testfile in simple_filenames :
+    testname = 'test_lfi_simple_' + os.path.splitext(os.path.basename(testfile))[0]
+    setattr( TestLFI, testname, createTestLFI(testfile, True))
+
+# tests for ADs
+for testfile in ADfilenames :
+    testname = 'test_lfi_AD_' + os.path.splitext(os.path.basename(testfile))[0]
     setattr( TestLFI, testname, createTestLFI(testfile, True))
 
 if __name__ == '__main__':

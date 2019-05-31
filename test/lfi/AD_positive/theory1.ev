@@ -4,7 +4,4 @@ evidence(b).
 ---
 evidence(a).
 ---
-evidence(a, false).
-evidence(b).
----
 evidence(a).

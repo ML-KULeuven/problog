@@ -707,7 +707,7 @@ class LFIProblem(LogicProgram):
         random_weights = [r * norm_factor for r in random_weights]
 
         # First argument is probability available for learnable weights in the AD.
-        self.add_ad(1.0 - fixed_probability, [])
+        self.add_ad(1.0 - fixed_probability, []) # TODO : this adds extra ad
 
         for atom in atoms:
             if atom.probability and atom.probability.functor == 't':
@@ -1048,7 +1048,15 @@ class LFIProblem(LogicProgram):
                     if float(fact_body[index]) == 0.0:
                         prob = 0.0
                     else:
-                        prob = float(fact_body[index]) / float(fact_par[index])
+                        print(fact_par[index])
+                        temp = dict()
+                        ids, vars = zip(*list(fact_par.keys()))
+                        for id in set(ids):
+                            temp[id] = 0
+                            for var in set(vars):
+                                temp[id] += fact_par[(id, var)]
+                        prob = float(fact_body[index]) / float(temp[index[0]])
+                        #prob = float(fact_body[index]) / float(fact_par[index])
                     logger.debug('Update probabilistic fact {}: {} / {} = {}'
                                  .format(index, fact_body[index], fact_par[index], prob))
                     self._set_weight(index[0], index[1], prob)
@@ -1081,12 +1089,22 @@ class LFIProblem(LogicProgram):
                     keys.remove(Term('t'))
                 except KeyError:
                     pass
-            for key in keys:
-                w = sum(self._get_weight(i, key, strict=False) for i in idx)
+
+            keys = list(keys)
+            if len(keys) > 1:
+                w = 0.0
+                for key in keys:
+                    w += sum(self._get_weight(i, key, strict=False) for i in idx)
+                n = available_prob / w  # Some part of probability might be taken by non-learnable weights in AD.
+
+                for i in idx:
+                    self._set_weight(i, list(self._weights[i].keys())[0],
+                                     self._get_weight(i, list(self._weights[i].keys())[0], strict=False) * n)
+            else:
+                w = sum(self._get_weight(i, keys[0], strict=False) for i in idx)
                 n = available_prob / w  # Some part of probability might be taken by non-learnable weights in AD.
                 for i in idx:
-                    print('normalize {}, {}: {} * {}'.format(i, key, self._get_weight(i, key, strict=False) * n, n))
-                    self._set_weight(i, key, self._get_weight(i, key, strict=False) * n)
+                    self._set_weight(i, keys[0], self._get_weight(i, keys[0], strict=False) * n)
 
     def step(self):
         self.iteration += 1
@@ -1188,8 +1206,12 @@ class Example(object):
                 print('Adding query: ', fact, i)
                 ground_program.add_query(fact, i)
                 if self._use_parents:
-                    lfi_queries.append(Term('lfi_body', node.probability.args[0], node.probability.args[1], *factargs))
-                    lfi_queries.append(Term('lfi_par', node.probability.args[0], node.probability.args[1], *factargs))
+                    tmp_body = Term('lfi_body', node.probability.args[0], node.probability.args[1], *factargs)
+                    lfi_queries.append(tmp_body)
+                    print('Adding query: ', tmp_body, i)
+                    tmp_par = Term('lfi_par', node.probability.args[0], node.probability.args[1], *factargs)
+                    lfi_queries.append(tmp_par)
+                    print('Adding query: ', tmp_par, i)
             elif t == 'atom' and isinstance(node.probability, Term) and node.probability.functor == 'clfi':
                 factargs = ()
                 if type(node.identifier) == tuple:
@@ -1328,7 +1350,7 @@ class ExampleEvaluator(SemiringDensity):
         for idx, node, ty in comp:
             if ty == 'atom':
                 name = node.name
-                if name.functor == 'clfi_fact':  # TODO: when is this wrapped in 'choice'? Before compilation?
+                if name is not None and name.functor == 'clfi_fact':  # TODO: when is this wrapped in 'choice'? Before compilation?
                     clfi = node.probability
                     ev_atom = clfi.args[2]
                     value = self._cevidence.get(ev_atom)
