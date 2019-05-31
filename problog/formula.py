@@ -113,42 +113,68 @@ class BaseFormula(ProbLogObject):
         else:
             return semiring.pos_value(self._weights[key], key)
 
+
     def extract_weights(self, semiring, weights=None):
         """Extracts the positive and negative weights for all atoms in the data structure.
 
+        * Atoms with weight set to neutral will get weight ``(semiring.one(), semiring.one())``.
+        * If the weights argument is given, it completely replaces the formula's weights.
+        * All constraints are applied to the weights.
+        * The namedtuple formula.pn_weight can be used to pass both a positive and negative weight.
+
         :param semiring: semiring that determines the interpretation of the weights
-        :param weights: dictionary of { node name : weight } that overrides the builtin weights
-        :returns: dictionary { key: (positive weight, negative weight) }
+        :param weights: dictionary of { node name : weight } that overrides the builtin weights, the given weights must
+            be in external representation.
+        :returns: dictionary { key: (positive weight, negative weight) } where the weights are in internal
+            representation.
         :rtype: dict[int, tuple[any]]
-
-        Atoms with weight set to neutral will get weight ``(semiring.one(), semiring.one())``.
-
-        If the weights argument is given, it completely replaces the formula's weights.
-
-        All constraints are applied to the weights.
         """
-
-        if weights is None:
-            weights = self.get_weights()
-        else:
-            oweights = dict(self.get_weights().items())
-            oweights.update({self.get_node_by_name(n): v for n, v in weights.items()})
-            weights = oweights
-
         result = {}
-        for n, w in weights.items():
-            if hasattr(self, 'get_name'):
-                name = self.get_name(n)
-            else:
-                name = n
-            if w == self.WEIGHT_NEUTRAL and type(self.WEIGHT_NEUTRAL) == type(w):
-                result[n] = semiring.one(), semiring.one()
-            elif w == False:
-                result[n] = semiring.false(name)
-            elif w is None:
-                result[n] = semiring.true(name)
-            else:
-                result[n] = semiring.pos_value(w, name), semiring.neg_value(w, name)
+        # Set given weights, has priority over program weights.
+        if weights is not None:
+            for name, w in weights.items():
+                key = self.get_node_by_name(name)
+                if key >= 0:
+                    if w == self.WEIGHT_NEUTRAL and type(self.WEIGHT_NEUTRAL) == type(w):
+                        result[key] = semiring.one(), semiring.one()
+                    elif w == False:
+                        result[key] = semiring.false(name)
+                    elif w is None:
+                        result[key] = semiring.true(name)
+                    elif isinstance(w, pn_weight):
+                        result[key] = semiring.value(w.p_weight), semiring.value(w.n_weight)
+                    else:
+                        result[key] = semiring.pos_value(w, name), semiring.neg_value(w, name)
+                else:
+                    # If key < 0 we have to reverse weight order (p,n) to (n,p)
+                    if w == self.WEIGHT_NEUTRAL and type(self.WEIGHT_NEUTRAL) == type(w):
+                        result[abs(key)] = semiring.one(), semiring.one()
+                    elif w == False:
+                        result[abs(key)] = semiring.true(name)
+                    elif w is None:
+                        result[abs(key)] = semiring.false(name)
+                    elif isinstance(w, pn_weight):
+                        result[abs(key)] = semiring.value(w.n_weight), semiring.value(w.p_weight)
+                    else:
+                        result[abs(key)] = semiring.neg_value(w, name), semiring.pos_value(w, name)
+
+        # Set remaining program weights
+        for key, w in self.get_weights().items():
+            if result.get(key) is None:
+                if hasattr(self, 'get_name'):
+                    name = self.get_name(key)
+                else:
+                    name = key
+                if w == self.WEIGHT_NEUTRAL and type(self.WEIGHT_NEUTRAL) == type(w):
+                    result[key] = semiring.one(), semiring.one()
+                elif w == False:
+                    result[key] = semiring.false(name)
+                elif w is None:
+                    result[key] = semiring.true(name)
+                elif isinstance(w, pn_weight):
+                    result[key] = semiring.value(w.p_weight), semiring.value(w.n_weight)
+                else:
+                    result[key] = semiring.pos_value(w, name), semiring.neg_value(w, name)
 
         for c in self.constraints():
             c.update_weights(result, semiring)
@@ -363,9 +389,13 @@ class BaseFormula(ProbLogObject):
         return hasattr(self, flag) and getattr(self, flag)
 
 
-atom = namedtuple('atom', ('identifier', 'probability', 'group', 'name', 'source'))
+atom = namedtuple('atom', ('identifier', 'probability', 'group', 'name', 'source', 'is_extra'))
+atom.__new__.__defaults__ = (False,) * len(atom._fields)
 conj = namedtuple('conj', ('children', 'name'))
 disj = namedtuple('disj', ('children', 'name'))
+
+# tuple containing the positive and negative weight of a node.
+pn_weight = namedtuple('pos_neg_weight', 'p_weight, n_weight')
 
 
 class LogicFormula(BaseFormula):
@@ -389,8 +419,8 @@ class LogicFormula(BaseFormula):
 
     # negation is encoded by using a negative number for the key
 
-    def _create_atom(self, identifier, probability, group, name=None, source=None):
-        return atom(identifier, probability, group, name, source)
+    def _create_atom(self, identifier, probability, group, name=None, source=None, is_extra=False):
+        return atom(identifier, probability, group, name, source, is_extra)
 
     def _create_conj(self, children, name=None):
         return conj(children, name)
@@ -564,7 +594,7 @@ class LogicFormula(BaseFormula):
                 w = weights.get(i, n.probability)
                 self._nodes[i - 1] = atom(n.identifier, w, n.group, n.name, n.source)
 
-    def add_atom(self, identifier, probability, group=None, name=None, source=None, cr_extra=True):
+    def add_atom(self, identifier, probability, group=None, name=None, source=None, cr_extra=True, is_extra=False):
         """Add an atom to the formula.
 
         :param identifier: a unique identifier for the atom
@@ -596,7 +626,7 @@ class LogicFormula(BaseFormula):
                 self.semiring.is_one(self.semiring.value(probability)):
             return self.TRUE
         else:
-            atom = self._create_atom(identifier, probability, group, name, source)
+            atom = self._create_atom(identifier, probability, group=group, name=name, source=source, is_extra=is_extra)
             length_before = len(self._nodes)
             node_id = self._add(atom, key=identifier)
 
@@ -721,7 +751,8 @@ class LogicFormula(BaseFormula):
                 content = tuple(OrderedSet(content))
             else:  # any_order
                 # can also merge (a, b) and (b, a)
-                content = tuple(set(content))
+                content = tuple(OrderedSet(
+                    content))  # TODO: PATCH: Something somewhere relies on this being ordered instead of a regular set
 
             # Empty OR node fails, AND node is true
             if not content and not placeholder:
@@ -1535,6 +1566,8 @@ label_all=True)
         # TODO maintain a translation table
         for i, n, t in source:
             if t == 'atom':
+                #TODO test this
+                # j = destination.add_atom(n.identifier, n.probability, n.group, name=source.get_name(i), cr_extra=False, is_extra=n.is_extra)
                 j = destination.add_atom(n.identifier, n.probability, n.group, name=source.get_name(i))
             elif t == 'conj':
                 j = destination.add_and(n.children, name=n.name)
@@ -1644,4 +1677,3 @@ def dag_to_nnf(source, target=None, **kwargs):
         target.add_constraint(c.copy(translate))
 
     return target
-

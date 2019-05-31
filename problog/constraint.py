@@ -97,6 +97,7 @@ class ConstraintAD(Constraint):
     def is_false(self):
         return False
 
+
     def add(self, node, formula, cr_extra=True):
         """Add a node to the constraint from the given formula.
 
@@ -109,7 +110,7 @@ class ConstraintAD(Constraint):
         if node in self.nodes:
             return node
 
-        is_extra = formula.get_node(node).probability == formula.WEIGHT_NEUTRAL
+        is_extra = formula.get_node(node).is_extra
 
         try:
             if not self.location and formula.get_node(node).name and formula.get_node(node).name.args:
@@ -177,7 +178,7 @@ class ConstraintAD(Constraint):
         """
         if self.is_nontrivial():
             name = Term('choice', Constant(self.group[0]), Term('e'), Term('null'), *self.group[1])
-            self.extra_node = formula.add_atom(('%s_extra' % (self.group,)), True, name=name, group=self.group)
+            self.extra_node = formula.add_atom(('%s_extra' % (self.group,)), True, name=name, group=self.group, is_extra=True)
             # formula.addConstraintOnNode(self, self.extra_node)
 
     def update_weights(self, weights, semiring):

@@ -279,7 +279,7 @@ def build_explicit_from_logicdag(source, destination, **kwdargs):
         root_nodes = []
         for line_id, clause, c_type in source:
             if c_type == 'atom':
-                result = destination.add_atom(identifier, clause.probability, clause.group, source.get_name(line_id))
+                result = destination.add_atom(identifier, clause.probability, clause.group, source.get_name(line_id), is_extra=clause.is_extra)
                 identifier += 1
 
                 line_map[line_id] = (-result, result, result)
@@ -295,7 +295,7 @@ def build_explicit_from_logicdag(source, destination, **kwdargs):
                     line += 2
                 else:
                     # head
-                    head = destination.add_atom(identifier=identifier, probability=True, group=None, name=clause.name)
+                    head = destination.add_atom(identifier=identifier, probability=True, group=None, name=clause.name, is_extra=False)
                     identifier += 1
                     # body
                     body = destination.add_and(and_nodes)  # source.get_name(i))

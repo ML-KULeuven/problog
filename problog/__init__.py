@@ -58,7 +58,6 @@ from . import kbest
 from . import tasks
 from . import debug
 
-
 _evaluatables = {'sdd': sdd_formula.SDD,
                  'sddx': sdd_formula_explicit.SDDExplicit,
                  'bdd': bdd_formula.BDD,
@@ -81,4 +80,3 @@ def get_evaluatable(name=None, semiring=None):
             return formula.LogicNNF
     else:
         return _evaluatables[name]
-

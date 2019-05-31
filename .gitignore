@@ -9,6 +9,8 @@ __pycache__
 
 build/
 trash/
+problog.egg-info/
+
 
 /problog/bin/darwin/cnf2dDNNF
 /problog/bin/darwin/maxsatz

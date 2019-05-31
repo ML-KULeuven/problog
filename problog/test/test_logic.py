@@ -55,6 +55,10 @@ class TestLogic(unittest.TestCase):
         self.assertTrue(c1 == c2)
         self.assertTrue(c1 == c3)
 
+        c4 = And(Term('a'), Not('not', Term('b')))
+        c5 = And(Term('a'), Not('\+', Term('b')))
+        self.assertTrue(c4 == c5)
+
     def test_lshift(self):
         c1 = Clause(Term('a'), Term('b'))
         c2 = Term('a') << Term('b')
