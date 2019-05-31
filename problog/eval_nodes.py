@@ -1072,20 +1072,20 @@ class SimpleBuiltIn(object):
     def __init__(self, base_function):
         self.base_function = base_function
 
-    def __call__(self, *args, **kwargs):
-        callback = kwargs.get('callback')
-        results = self.base_function(*args, **kwargs)
+    def __call__(self, *args, engine=None, context=None, target=None, call_origin=None, callback=None, **kwargs):
+        results = self.base_function(*args, engine=engine, context=context, target=target, call_origin=call_origin,
+                                     callback=callback, **kwargs)
         output = []
         if results:
             for i, result in enumerate(results):
-                result = kwargs['engine'].create_context(result, parent=kwargs['context'])
+                result = engine.create_context(result, parent=context)
 
-                if kwargs['target'].flag('keep_builtins'):
+                if target.flag('keep_builtins'):
                     # kwargs['target'].add_node()
                     # print (kwargs.keys(), args)
-                    call = kwargs['call_origin'][0].split('/')[0]
+                    call = call_origin[0].split('/')[0]
                     name = Term(call, *result)
-                    node = kwargs['target'].add_atom(name, None, None, name=name, source='builtin')
+                    node = target.add_atom(name, None, None, name=name, source='builtin')
                     output += callback.notify_result(result, node, i == len(results) - 1)
                 else:
                     output += callback.notify_result(result, NODE_TRUE, i == len(results) - 1)
