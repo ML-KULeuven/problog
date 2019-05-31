@@ -110,8 +110,8 @@ class StackBasedEngine(ClauseDBEngine):
                or kwdargs.get('parent') in self.ignoring
 
     @staticmethod
-    def skip(node_id, **kwdargs):
-        return [complete(kwdargs['parent'], kwdargs.get('identifier'))]
+    def skip(node_id, parent=None, identifier=None,**kwdargs):
+        return [complete(parent, identifier)]
 
     def load_builtins(self):
         add_standard_builtins(self, BooleanBuiltIn, SimpleBuiltIn, SimpleProbabilisticBuiltIn)
