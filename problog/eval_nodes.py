@@ -1025,6 +1025,7 @@ class EvalBuiltIn(EvalNode):
 
 
 class Transformations(object):
+    """ Allows for storing several functions that can later be applied by calling the object """
     def __init__(self):
         self.functions = []
         # self.constant = None
