@@ -2,9 +2,9 @@
 problog.eval_nodes - Evaluation node classes for the engine_stack
 ---------------------------------------------------------------------
 """
-from problog.engine_message_types import EvalMessage, ResultMessage, CompleteMessage
 from problog.engine_builtin import IndirectCallCycleError
 from problog.engine_context import Context, get_state, FixedContext
+from problog.engine_message_types import EvalMessage, ResultMessage, CompleteMessage
 from problog.engine_unify import substitute_call_args
 from problog.errors import GroundingError
 from problog.logic import Term, is_ground, ArithmeticError
@@ -212,16 +212,23 @@ class EvalNode(object):
             self.parent, node_type, str(self.node), pos[0], pos[1], self.context)
 
     @staticmethod
-    def eval_default(engine, node, eval_type=None, **kwargs):
-        node = eval_type(engine=engine, node=node, pointer=engine.pointer, **kwargs)
+    def eval_default(eval_type, engine, node_id, node, parent=None, context=None, target=None, identifier=None,
+                     transform=None, database=None, current_clause=None, is_root=False, no_cache=False, **kwargs):
+        node = eval_type(pointer=engine.pointer,
+                         engine=engine, node_id=node_id, node=node,
+                         parent=parent, context=context, target=target,
+                         identifier=identifier, transform=transform, database=database,
+                         current_clause=current_clause, is_root=is_root, no_cache=no_cache,
+                         **kwargs)
         cleanup, actions = node()  # Evaluate the node
         if not cleanup:
             engine.add_record(node)
         return actions
 
     @staticmethod
-    def eval(**kwargs):
-        return EvalNode.eval_default(**kwargs)
+    def eval(eval_type, engine, node_id, node, parent=None, context=None, target=None, identifier=None,
+             transform=None, database=None, current_clause=None, is_root=False, no_cache=False, **kwargs):
+        raise NotImplementedError('Abstract method')
 
 
 class EvalFact(EvalNode):
@@ -932,7 +939,7 @@ class EvalNot(EvalNode):
 
     @staticmethod
     def eval(**kwargs):
-        return EvalNode.eval(eval_type=EvalNot, **kwargs)
+        return EvalNode.eval_default(eval_type=EvalNot, **kwargs)
 
 
 class EvalAnd(EvalNode):
@@ -995,7 +1002,7 @@ class EvalAnd(EvalNode):
 
     @staticmethod
     def eval(**kwargs):
-        return EvalNode.eval(eval_type=EvalAnd, **kwargs)
+        return EvalNode.eval_default(eval_type=EvalAnd, **kwargs)
 
 
 class EvalBuiltIn(EvalNode):
@@ -1026,7 +1033,7 @@ class EvalBuiltIn(EvalNode):
 
     @staticmethod
     def eval(**kwargs):
-        return EvalNode.eval(eval_type=EvalBuiltIn, **kwargs)
+        return EvalNode.eval_default(eval_type=EvalBuiltIn, **kwargs)
 
 
 class Transformations(object):
