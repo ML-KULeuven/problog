@@ -72,13 +72,13 @@ class EngineTracer(object):
                 self.interactive = False
 
     def process_message(self, message):
-        if message.target is None and message.is_result_message() and message.target in self.call_redirect:
+        if message.target is None and message.is_result_message and message.target in self.call_redirect:
             self.call_result(*(self.call_redirect[message.target] + (message.arguments[0],)))
 
-        if message.is_result_message() and message.arguments[3] and message.target in self.call_redirect:
+        if message.is_result_message and message.arguments[3] and message.target in self.call_redirect:
             self.call_return(*self.call_redirect[message.target])
             del self.call_redirect[message.target]
-        elif message.is_complete_message() and message.target in self.call_redirect:
+        elif message.is_complete_message and message.target in self.call_redirect:
             self.call_return(*self.call_redirect[message.target])
             del self.call_redirect[message.target]
 

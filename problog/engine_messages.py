@@ -79,7 +79,7 @@ class MessageFIFO(MessageQueue):
             return False
         else:
             last_message = self.peek()
-            return last_message.is_eval_message() and \
+            return last_message.is_eval_message and \
                    last_message[3]['parent'] < self.engine.cycle_root.pointer
 
     def __nonzero__(self):
@@ -102,7 +102,7 @@ class MessageAnyOrder(MessageQueue):
         self.engine = engine
 
     def _msg_parent(self, message):
-        if message.is_eval_message():
+        if message.is_eval_message:
             return message[3]['parent']
         else:
             return message[1]
@@ -150,7 +150,7 @@ class MessageOrderDrc(MessageAnyOrder):
         self.messages_e = []
 
     def append(self, message):
-        if message.is_eval_message():
+        if message.is_eval_message:
             self.messages_e.append(message)
         else:
             self.messages_rc.append(message)
@@ -184,7 +184,7 @@ class MessageOrder1(MessageAnyOrder):
         self.messages_e = []
 
     def append(self, message):
-        if message.is_eval_message():
+        if message.is_eval_message:
             self.messages_e.append(message)
         else:
             self.messages_rc.append(message)

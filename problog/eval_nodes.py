@@ -98,12 +98,15 @@ class AbstractMessage(object):
     def context(self):
         return self._context
 
+    @property
     def is_eval_message(self):
         return False
 
+    @property
     def is_complete_message(self):
         return False
 
+    @property
     def is_result_message(self):
         return False
 
@@ -116,6 +119,7 @@ class EvalMessage(AbstractMessage):
     def __getitem__(self, item):
         return self.lst[item]
 
+    @property
     def is_eval_message(self):
         return True
 
@@ -132,6 +136,7 @@ class ResultMessage(AbstractMessage):
     def __getitem__(self, item):
         return self.lst[item]
 
+    @property
     def is_result_message(self):
         return True
 
@@ -147,6 +152,7 @@ class CompleteMessage(AbstractMessage):
     def __getitem__(self, item):
         return self.lst[item]
 
+    @property
     def is_complete_message(self):
         return True
 
