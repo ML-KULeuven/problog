@@ -168,18 +168,18 @@ class EvalNode(object):
             arguments = self.transform(arguments)
         if arguments is None:
             if is_last:
-                return self.notifyComplete()
+                return self.notify_complete()
             else:
                 return []
         else:
             return [new_result(parent, arguments, node, self.identifier, is_last)]
 
-    def notifyComplete(self, parent=None):
+    def notify_complete(self, parent=None):
         if parent is None:
             parent = self.parent
         return [complete(parent, self.identifier)]
 
-    def createCall(self, node_id, *args, **kwargs):
+    def create_call(self, node_id, *args, **kwargs):
         base_args = {'database': self.database,
                      'target': self.target,
                      'context': self.context,
@@ -453,7 +453,7 @@ class EvalOr(EvalNode):
             if self.is_buffered():
                 for result, node in self.results:
                     actions += self.notify_result(result, node)
-            actions += self.notifyComplete()
+            actions += self.notify_complete()
             return True, actions
         else:
             return False, []
@@ -485,7 +485,7 @@ class EvalOr(EvalNode):
             evalnode = EvalOr(engine=engine, node=node, pointer=engine.pointer, parent=parent,
                               target=target, **kwargs)
             engine.add_record(evalnode)
-            return [evalnode.createCall(child) for child in node.children]
+            return [evalnode.create_call(child) for child in node.children]
 
 
 class EvalDefine(EvalNode):
@@ -610,7 +610,7 @@ class EvalDefine(EvalNode):
     def complete(self, source=None):
         if self.is_cycle_child:
             assert (not self.siblings)
-            return True, self.notifyComplete()
+            return True, self.notify_complete()
         else:
             self.to_complete -= 1
             if self.to_complete == 0:
@@ -633,9 +633,9 @@ class EvalDefine(EvalNode):
                         else:
                             actions += [complete(s, self.identifier)]
                 else:
-                    actions += self.notifyComplete()
+                    actions += self.notify_complete()
                     for s in self.siblings:
-                        actions += self.notifyComplete(parent=s)
+                        actions += self.notify_complete(parent=s)
                 return True, actions
             else:
                 return False, []
@@ -755,7 +755,7 @@ class EvalDefine(EvalNode):
             self.engine.cycle_root = None
             actions = []
             for cc in self.cycle_close:
-                actions += self.notifyComplete(parent=cc)
+                actions += self.notify_complete(parent=cc)
             return actions
         else:
             return []
@@ -869,7 +869,7 @@ class EvalDefine(EvalNode):
                                           **kwargs)
                     engine.add_record(evalnode)
                     target._cache.activate(goal, evalnode)
-                    actions = [evalnode.createCall(child) for child in children]
+                    actions = [evalnode.create_call(child) for child in children]
                     return actions
 
 
@@ -886,7 +886,7 @@ class EvalNot(EvalNode):
         self.nodes = set()  # Store ground nodes
 
     def __call__(self):
-        return False, [self.createCall(self.node.child)]
+        return False, [self.create_call(self.node.child)]
 
     def new_result(self, result, node=NODE_TRUE, source=None, is_last=False):
         if node != NODE_FALSE:
@@ -916,7 +916,7 @@ class EvalNot(EvalNode):
                 node = NODE_TRUE
 
             actions += self.notify_result(self.context, node)
-        actions += self.notifyComplete()
+        actions += self.notify_complete()
         return True, actions
 
     def create_cycle(self):
@@ -936,7 +936,7 @@ class EvalAnd(EvalNode):
         self.to_complete = 1
 
     def __call__(self):
-        return False, [self.createCall(self.node.children[0], identifier=None)]
+        return False, [self.create_call(self.node.children[0], identifier=None)]
 
     def new_result(self, result, node=0, source=None, is_last=False):
         if source is None:  # Result from the first conjunct.
@@ -956,11 +956,11 @@ class EvalAnd(EvalNode):
                 # [ self.createCall( self.node.children[1], context=result, parent=self.parent ) ]
                 # else :
                 return False, [
-                    self.createCall(self.node.children[1], context=result, identifier=node)]
+                    self.create_call(self.node.children[1], context=result, identifier=node)]
             else:
                 # Not the last result: default behaviour
                 return False, [
-                    self.createCall(self.node.children[1], context=result, identifier=node)]
+                    self.create_call(self.node.children[1], context=result, identifier=node)]
         else:  # Result from the second node
             # Make a ground node
             target_node = self.target.add_and((source, node), name=None)
@@ -977,7 +977,7 @@ class EvalAnd(EvalNode):
     def complete(self, source=None):
         self.to_complete -= 1
         if self.to_complete == 0:
-            return True, self.notifyComplete()
+            return True, self.notify_complete()
         else:
             assert (self.to_complete > 0)
             return False, []
@@ -1077,7 +1077,7 @@ class SimpleBuiltIn(object):
                     output += callback.notify_result(result, NODE_TRUE, i == len(results) - 1)
             return True, output
         else:
-            return True, callback.notifyComplete()
+            return True, callback.notify_complete()
 
     def __str__(self):  # pragma: no cover
         return str(self.base_function)

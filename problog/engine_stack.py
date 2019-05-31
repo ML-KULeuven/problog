@@ -768,7 +768,7 @@ class BooleanBuiltIn(object):
             else:
                 return True, callback.notify_result(args, NODE_TRUE, True)
         else:
-            return True, callback.notifyComplete()
+            return True, callback.notify_complete()
 
     def __str__(self):  # pragma: no cover
         return str(self.base_function)
@@ -790,7 +790,7 @@ class SimpleProbabilisticBuiltIn(object):
                                                 result[1], i == len(results) - 1)
             return True, output
         else:
-            return True, callback.notifyComplete()
+            return True, callback.notify_complete()
 
     def __str__(self):  # pragma: no cover
         return str(self.base_function)

@@ -1643,9 +1643,9 @@ def _builtin_try_call(term, **kwdargs):
     try:
         return _builtin_call(term, **kwdargs)
     except UnknownClause:
-        return True, kwdargs['callback'].notifyComplete()
+        return True, kwdargs['callback'].notify_complete()
     except:
-        return True, kwdargs['callback'].notifyComplete()
+        return True, kwdargs['callback'].notify_complete()
 
 def _builtin_call(term, args=(), engine=None, callback=None, transform=None, context=None, **kwdargs):
     check_mode((term,), ['c'], functor='call')

@@ -366,7 +366,7 @@ def builtin_sample(term, result, target=None, engine=None, callback=None, **kwda
             res1 = res[:n]
             res_pass = (term.with_args(*res1), target.get_value(node))
             actions += callback.notifyResult(res_pass, 0, False)
-        actions += callback.notifyComplete()
+        actions += callback.notify_complete()
         return True, actions
     except UnknownClauseInternal:
         raise UnknownClause(term.signature, term.location)
@@ -395,7 +395,7 @@ def builtin_previous(term, default, engine=None, target=None, callback=None, **k
                 actions += callback.notifyResult((result_term, result_default), node, False)
             except UnifyError:
                 pass
-        actions += callback.notifyComplete()
+        actions += callback.notify_complete()
 
     else:
         actions = []
@@ -411,7 +411,7 @@ def builtin_previous(term, default, engine=None, target=None, callback=None, **k
                 actions += callback.notifyResult((result_term, result_default), v, False)
             except UnifyError:
                 pass
-        actions += callback.notifyComplete()
+        actions += callback.notify_complete()
     return True, actions
 
 
