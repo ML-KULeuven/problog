@@ -1,0 +1,18 @@
+Solved cases:
+
+*Annotated Disjunction:
+  *The given evidence needs to be positive. Consider an AD with 3 heads.
+  A positive evidence negates the 2 other other heads of the AD, but 2
+  negative heads in the evidence does not make the other head positive.
+
+  *Each AD is considered separately. Using a fact in an AD and a rule
+  can mess things up. (see useParents/AD.pl)
+
+  *First Order cases with variables doesn't work properly.
+  (see AD_positive/AD_unification.pl)
+
+  *TODO AD_positive/AD_unification.pl should work
+
+
+
+
