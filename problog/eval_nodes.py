@@ -2,7 +2,7 @@
 problog.eval_nodes - Evaluation node classes for the engine_stack
 ---------------------------------------------------------------------
 """
-from engine_message_types import EvalMessage, ResultMessage, CompleteMessage
+from problog.engine_message_types import EvalMessage, ResultMessage, CompleteMessage
 from problog.engine_builtin import IndirectCallCycleError
 from problog.engine_context import Context, get_state, FixedContext
 from problog.engine_unify import substitute_call_args
