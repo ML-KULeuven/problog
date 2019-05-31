@@ -99,7 +99,7 @@ class StackBasedEngine(ClauseDBEngine):
 
         return exec_func.eval(engine=self, node_id=node_id, node=node, **kwargs)
 
-    def should_skip_node(self, node_id, include_ids=None, exclude_ids=None, parent=None,**kwargs):
+    def should_skip_node(self, node_id, include_ids=None, exclude_ids=None, parent=None, **kwargs):
         # If we are only looking at certain 'included' ids, check if it is included
         # OR If we are excluding certain ids, check if it is in the excluded id list.
         # OR The parent node is ignoring new results, so there is no point in generating them.
@@ -108,7 +108,7 @@ class StackBasedEngine(ClauseDBEngine):
                or parent in self.ignoring
 
     @staticmethod
-    def skip(node_id, parent=None, identifier=None,**kwargs):
+    def skip(node_id, parent=None, identifier=None, **kwargs):
         return [complete(parent, identifier)]
 
     def load_builtins(self):
@@ -162,12 +162,12 @@ class StackBasedEngine(ClauseDBEngine):
                 raise NegativeCycle(location=exec_node.database.lineno(exec_node.node.location))
             current = exec_node.parent
 
-    @staticmethod
-    def _transform_act(action):
-        if action[0] in 'rc':
-            return action
-        else:
-            return action[:2] + (action[3]['parent'], action[3]['context'], action[3]['identifier'])
+    # @staticmethod
+    # def _transform_act(action):
+    #     if action[0] in 'rc':
+    #         return action
+    #     else:
+    #         return action[:2] + (action[3]['parent'], action[3]['context'], action[3]['identifier'])
 
     def init_message_stack(self):
         if self.unbuffered:
