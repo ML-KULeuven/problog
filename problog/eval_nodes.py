@@ -81,6 +81,23 @@ class ResultSet(object):
 
 
 class AbstractMessage(object):
+    def __init__(self, target, args, context):
+        self._target = target
+        self._args = args
+        self._context = context
+
+    @property
+    def target(self):
+        return self._target
+
+    @property
+    def args(self):
+        return self._args
+
+    @property
+    def context(self):
+        return self._context
+
     def is_eval_message(self):
         return False
 
@@ -93,6 +110,7 @@ class AbstractMessage(object):
 
 class EvalMessage(AbstractMessage):
     def __init__(self, lst):
+        super().__init__(lst[1], lst[2], lst[3])
         self.lst = lst
 
     def __getitem__(self, item):
@@ -108,6 +126,7 @@ class EvalMessage(AbstractMessage):
 
 class ResultMessage(AbstractMessage):
     def __init__(self, lst):
+        super().__init__(lst[1], lst[2], lst[3])
         self.lst = lst
 
     def __getitem__(self, item):
@@ -122,6 +141,7 @@ class ResultMessage(AbstractMessage):
 
 class CompleteMessage(AbstractMessage):
     def __init__(self, lst):
+        super().__init__(lst[1], lst[2], lst[3])
         self.lst = lst
 
     def __getitem__(self, item):
@@ -135,6 +155,7 @@ class CompleteMessage(AbstractMessage):
 
 
 def call(obj, args, kwargs):
+    """ msgtype, msgtarget, msgargs, context """
     return EvalMessage(('e', obj, args, kwargs))
 
 
