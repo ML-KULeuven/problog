@@ -74,13 +74,12 @@ class StackBasedEngine(ClauseDBEngine):
 
         self.ignoring = set()
 
-    def eval(self, node_id, **kwargs):
+    def eval(self, node_id, include_ids=None, exclude_ids=None, database=None, parent=None, identifier=None, **kwargs):
         # print (kwargs.get('parent'))
-        database = kwargs['database']
 
         # Skip not included or excluded nodes, or if parent is ignoring new results
-        if self.should_skip_node(node_id, **kwargs):
-            return self.skip(node_id, **kwargs)
+        if self.should_skip_node(node_id, include_ids, exclude_ids, parent):
+            return self.skip(parent, identifier)
 
         if node_id < 0:
             # Builtin node
@@ -93,13 +92,14 @@ class StackBasedEngine(ClauseDBEngine):
 
             if exec_func is None:
                 if self.unknown == self.UNKNOWN_FAIL:
-                    return self.skip(node_id, **kwargs)
+                    return self.skip(parent, identifier)
                 else:
                     raise UnknownClauseInternal()
 
-        return exec_func.eval(engine=self, node_id=node_id, node=node, **kwargs)
+        return exec_func.eval(engine=self, node_id=node_id, node=node,
+                              database=database, parent=parent, identifier=identifier, **kwargs)
 
-    def should_skip_node(self, node_id, include_ids=None, exclude_ids=None, parent=None, **kwargs):
+    def should_skip_node(self, node_id, include_ids=None, exclude_ids=None, parent=None):
         # If we are only looking at certain 'included' ids, check if it is included
         # OR If we are excluding certain ids, check if it is in the excluded id list.
         # OR The parent node is ignoring new results, so there is no point in generating them.
@@ -108,7 +108,7 @@ class StackBasedEngine(ClauseDBEngine):
                or parent in self.ignoring
 
     @staticmethod
-    def skip(node_id, parent=None, identifier=None, **kwargs):
+    def skip(parent=None, identifier=None):
         return [complete(parent, identifier)]
 
     def load_builtins(self):
