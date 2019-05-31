@@ -1,0 +1,15 @@
+evidence(a(1)).
+---
+evidence(a(2)).
+---
+evidence(a(1)).
+---
+evidence(a(3)).
+---
+evidence(a(3)).
+---
+evidence(a(3)).
+---
+evidence(a(3)).
+---
+evidence(a(3)).
