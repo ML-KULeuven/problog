@@ -92,7 +92,9 @@ class SDDHAL(SDD, LogicFormulaHAL):
     def _to_formula(self, formula, current_node, cache=None):
         if cache is not None and current_node.id in cache:
             return cache[current_node.id]
-        if self.get_manager().is_true(current_node):
+        if current_node is None:
+            retval = formula.FALSE
+        elif self.get_manager().is_true(current_node):
             retval = formula.TRUE
         elif self.get_manager().is_false(current_node):
             retval = formula.FALSE

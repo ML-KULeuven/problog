@@ -4,7 +4,6 @@ import argparse
 
 from problog.program import PrologFile
 from problog.logic import Term
-from problog import library_paths, root_path
 from ..solver import InferenceSolver
 
 
@@ -41,8 +40,6 @@ def argparser(args):
 
 
 def main(args):
-    library_paths.append(root_path('problog', 'tasks', 'dcproblog', 'library'))
-
     import time
     start = time.time()
     parser = argparser(args)

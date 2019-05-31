@@ -30,22 +30,20 @@ class EngineHAL(DefaultEngineHAL):
 
     def load_builtins(self):
         DefaultEngineHAL.load_builtins(self)
-        self.add_builtin('density_builtin', 1, _builtin_density)
+        # self.add_builtin('density_builtin', 1, _builtin_density)
 
         self.add_builtin('free', 1, _builtin_free)
         self.add_builtin('free_list', 1, _builtin_free_list)
 
-        self.add_builtin('as_builtin', 2, _builtin_as)
-
-        self.add_builtin('>', 2, _builtin_gt)
+        self.add_builtin('>', 2, SimpleProbabilisticBuiltIn(_builtin_gt))
         self.add_builtin('<', 2, SimpleProbabilisticBuiltIn(_builtin_lt))
-        self.add_builtin('=<', 2, _builtin_le)
-        self.add_builtin('>=', 2, _builtin_ge)
+        self.add_builtin('=<', 2, SimpleProbabilisticBuiltIn(_builtin_le))
+        self.add_builtin('>=', 2, SimpleProbabilisticBuiltIn(_builtin_ge))
         # self.add_builtin('=\=', 2, b(_builtin_val_neq))
         # self.add_builtin('=:=', 2, b(_builtin_val_eq))
         self.add_builtin('is', 2, SimpleProbabilisticBuiltIn(_builtin_is))
 
-        self.add_builtin('obs_builtin', 2, _builtin_observation)
+        self.add_builtin('observation_builtin', 2, SimpleProbabilisticBuiltIn(_builtin_observation))
 
 
     def prepare(self, db, target=None):
@@ -67,8 +65,6 @@ class EngineHAL(DefaultEngineHAL):
     def _process_directives(self, db, target=None):
         """Process directives present in the database."""
         term = Term('_directive')
-        hal_library_directive = Term.from_string(":-use_module(library(hal)).")
-        db.add_clause(hal_library_directive)
         directive_node = db.find(term)
 
         if directive_node is None:

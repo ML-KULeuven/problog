@@ -49,6 +49,65 @@ def _builtin_free_list(free_variables, args=(), target=None, engine=None, callba
     actions += callback.notifyComplete()
     return True, actions
 
+def _builtin_observation(term, observation, engine=None, **kwdargs):
+    check_mode((term, observation), ['gg'], functor='observation_builtin', **kwdargs)
+    functor="observation"
+    result = _builtin_possible(term, engine=engine, **kwdargs)
+
+    observations = []
+    print(result)
+    for r in result:
+        for d in get_distributions(r[0], engine=engine, **kwdargs):
+            observations.append((d,(observation,0)))
+        # b_values.append( (get_distributions(r[0], engine=engine, **kwdargs),(observation,0)) )
+    print(observations)
+    result = make_comparison(functor, observations, engine=engine, **kwdargs)
+    return result
+
+def _builtin_is(a, b, engine=None, **k):
+    check_mode((a, b), ['*g'], functor='is', **k)
+    try:
+        b_values = evaluate_arithemtics(b, engine=engine, **k)
+        results =  []
+        for b_value in b_values:
+            if b_value[0] is None:
+                continue
+            else:
+                if isinstance(b_value[0],(int,float)):
+                    constant_val = Constant(b_value[0])
+                else:
+                    constant_val = b_value[0]
+                results.append(((constant_val, b), b_value[1]))
+        return results
+    except UnifyError:
+        return []
+
+def _builtin_lt(arg1, arg2, engine=None, target=None, **kwdargs):
+    check_mode((arg1, arg2), ['gg'], functor='<', **kwdargs)
+    functor = "<"
+    ab_values = make_comparison_args(arg1, arg2, engine=engine, target=target, **kwdargs)
+    result = make_comparison(functor, ab_values, engine=engine, target=target, **kwdargs)
+    return result
+def _builtin_gt(arg1, arg2, engine=None, target=None, **kwdargs):
+    check_mode((arg1, arg2), ['gg'], functor='>', **kwdargs)
+    functor = ">"
+    ab_values = make_comparison_args(arg1, arg2, engine=engine, target=target, **kwdargs)
+    result = make_comparison(functor, ab_values, engine=engine, target=target, **kwdargs)
+    return result
+def _builtin_le(arg1, arg2, engine=None, target=None, **kwdargs):
+    check_mode((arg1, arg2), ['gg'], functor='=<', **kwdargs)
+    functor = "<="
+    ab_values = make_comparison_args(arg1, arg2, engine=engine, target=target, **kwdargs)
+    result = make_comparison(functor, ab_values, engine=engine, target=target, **kwdargs)
+    return result
+def _builtin_ge(arg1, arg2, engine=None, target=None, **kwdargs):
+    check_mode((arg1, arg2), ['gg'], functor='>=', **kwdargs)
+    functor = ">="
+    ab_values = make_comparison_args(arg1, arg2, engine=engine, target=target, **kwdargs)
+    result = make_comparison(functor, ab_values, engine=engine, target=target, **kwdargs)
+    return result
+
+
 def get_value_type(value):
     if isinstance(value, int):
         return "point"
@@ -75,134 +134,29 @@ def get_value_terms(value, value_type):
         value_terms = list2term(value_terms)
     return value_terms
 
-def _builtin_as(value, term, args=(), target=None, engine=None, callback=None, transform=None, **kwdargs):
-    check_mode( (value,term), ['*g'], functor='as')
-    #TODO make this function dependent on term
-    value_type = get_value_type(value)
-    try:
-        node_ids = target.density_nodes[term]
-    except:
-        raise ValueError("The value of a discrete random variable ({}) is not defined.".format(term))
-    actions = []
-    for nid in node_ids:
-        node = target.get_node(nid)
-        value_name =  target.get_density_name(term, nid)
-        if value_name in target.density_values:
-            value = target.density_values[value_name]
-            #?is this doing anything here?
-        else:
-            probability = node.probability
-            value_functor = probability.functor
-            value_args = [target.create_ast_representation(a) for a in probability.args]
 
-            value = create_value(value, value_functor, value_args, value_name, value_type)
-            target.density_values[value_name] = value
-
-        value_terms = get_value_terms(value, value_type)
-        term_pass = (Constant(value_terms), term)
-        if nid in target.density_node_body:
-            pass_node = target.density_node_body[nid]
-        else:
-            pass_node = 0
-        actions += callback.notifyResult(term_pass, node=pass_node, is_last=False)
-    actions += callback.notifyComplete()
-    return True, actions
-
-def conditionCallback(functor, arg1, arg2, **kwdargs):
-    actions = []
-    target = kwdargs["target"]
-    callback = kwdargs["callback"]
-    arg1 = target.create_ast_representation(arg1)
-    arg2 = target.create_ast_representation(arg2)
-    args = (arg1,arg2)
-
-    cvariables = set()
-    for a in args:
-        cvariables = cvariables.union(a.cvariables)
-    symbolic_condition = SymbolicConstant(functor, args=args, cvariables=cvariables)
-
-    hashed_symbolic = hash(str(symbolic_condition))
-    con_node = target.add_atom(identifier=hashed_symbolic, probability=symbolic_condition, source=None)
-
-    args = kwdargs['engine'].create_context((arg1,arg2), parent=kwdargs['context'])
-    actions += callback.notifyResult(args, node=con_node, is_last=True, parent=None)
-    return True, actions
-
-def booleanCallback(test, call, arg0, arg1, **kwdargs):
-    callback = kwdargs['callback']
-    if test:
-        args = kwdargs['engine'].create_context((arg0,arg1), parent=kwdargs['context'])
-        if kwdargs['target'].flag('keep_builtins'):
-            call = functor
-            name = Term(call, *args)
-            node = kwdargs['target'].add_atom(name, None, None, name=name, source='builtin')
-            return True, callback.notifyResult(args, node, True)
-        else:
-            return True, callback.notifyResult(args, NODE_TRUE, True)
-    else:
-        return True, callback.notifyComplete()
-
-def _builtin_gt(arg1, arg2, engine=None, **kwdargs):
-    """``A > B``
-        A and B are ground
-    """
-    check_mode((arg1, arg2), ['gg'], functor='>', **kwdargs)
-    a_value = arg1.compute_value(engine.functions)
-    b_value = arg2.compute_value(engine.functions)
-    if a_value is None or b_value is None:
-        return False
-    elif isinstance(a_value, (int, float)) and isinstance(b_value, (int, float)):
-        return booleanCallback(a_value>b_value, '>', a_value, b_value, engine=engine, **kwdargs)
-    else:
-        return conditionCallback(">", a_value, b_value, engine=engine, **kwdargs)
-
-
-
-
-
-def conditionCallback(functor, arg1, arg2, **kwdargs):
-    actions = []
-    target = kwdargs["target"]
-    callback = kwdargs["callback"]
-    arg1 = target.create_ast_representation(arg1)
-    arg2 = target.create_ast_representation(arg2)
-    args = (arg1,arg2)
-
-    cvariables = set()
-    for a in args:
-        cvariables = cvariables.union(a.cvariables)
-    symbolic_condition = SymbolicConstant(functor, args=args, cvariables=cvariables)
-
-    hashed_symbolic = hash(str(symbolic_condition))
-    con_node = target.add_atom(identifier=hashed_symbolic, probability=symbolic_condition, source=None)
-
-    args = kwdargs['engine'].create_context((arg1,arg2), parent=kwdargs['context'])
-    actions += callback.notifyResult(args, node=con_node, is_last=True, parent=None)
-    return True, actions
-
-
-def make_comparison_args(arg1, arg2, engine=None, **kwdargs):
-    a_values = evaluate_arithemtics(arg1, engine=engine, **kwdargs)
-    b_values = evaluate_arithemtics(arg2, engine=engine, **kwdargs)
-    ab_values = list(itertools.product(a_values, b_values))
-    return ab_values
-
-def _builtin_lt(arg1, arg2, engine=None, target=None, **kwdargs):
-    check_mode((arg1, arg2), ['gg'], functor='<', **kwdargs)
-    functor = "<"
-
-
-    ab_values = make_comparison_args(arg1, arg2, engine=engine, target=target, **kwdargs)
-
+def make_comparison(functor, ab_values, engine=None, target=None, **kwdargs):
     result = []
     for args in ab_values:
-        if isinstance(args[0], (int,float)) and isinstance(args[1], (int,float)):
-
-            if args[0]<args[1]:
-                result.append((NODE_TRUE,0))
+        if isinstance(args[0][0], (int,float)) and isinstance(args[1][0], (int,float)):
+            test = None
+            a_value = args[0][0]
+            b_value = args[1][0]
+            if functor=="<":
+                test = a_value<b_value
+            elif functor==">":
+                test = a_value>b_value
+            elif functor=="<=":
+                test = a_value<=b_value
+            elif functor==">=":
+                test = a_value>=b_value
             else:
-                result.append((NODE_FALSE,0))
-
+                #TODO add other cases
+                assert False
+            if test:
+                result.append(((a_value,b_value),NODE_TRUE))
+            else:
+                result.append(((a_value,b_value),NODE_FALSE))
         elif args[0] is None or args[1] is None:
             result.append((NODE_FALSE,0))
         else:
@@ -216,9 +170,7 @@ def _builtin_lt(arg1, arg2, engine=None, target=None, **kwdargs):
                 body_node = body_node1
             else:
                 body_node = body_node2
-
             sym_args = (arg1,arg2)
-
             cvariables = set()
             for a in sym_args:
                 cvariables = cvariables.union(a.cvariables)
@@ -231,100 +183,16 @@ def _builtin_lt(arg1, arg2, engine=None, target=None, **kwdargs):
             else:
                 pass_node = con_node
             result.append((sym_args,pass_node))
-
     return result
 
-# def _builtin_le(arg1, arg2, engine=None, **kwdargs):
-#     """``A =< B``
-#         A and B are ground
-#     """
-#     print(arg1)
-#     print(arg2)
-#     check_mode((arg1, arg2), ['gg'], functor='=<', **kwdargs)
-#     a_value = _evaluate_arithemtics(arg1, engine, **kwdargs)
-#     b_value = _evaluate_arithemtics(arg2, engine, **kwdargs)
-#
-#     a_value = (a_value[0])[0]
-#     b_value = (b_value[0])[0]
-#
-#     print(a_value)
-#     print(b_value)
-#     if a_value is None or b_value is None:
-#         return False
-#     elif isinstance(a_value, (int, float)) and isinstance(b_value, (int, float)):
-#         return booleanCallback(a_value<=b_value, '=<', a_value, b_value, engine=engine, **kwdargs)
-#     else:
-#         return conditionCallback("<=", a_value, b_value, engine=engine, **kwdargs)
-
-def _builtin_le(arg1, arg2, engine=None, **kwdargs):
-    """``A =< B``
-        A and B are ground
-    """
-    check_mode((arg1, arg2), ['gg'], functor='=<', **kwdargs)
-    a_value = compute_function(arg1, engine.functions)
-    b_value = compute_function(arg2, engine.functions)
-    if a_value is None or b_value is None:
-        return False
-    elif isinstance(a_value, (int, float)) and isinstance(b_value, (int, float)):
-        return booleanCallback(a_value<=b_value, '=<', a_value, b_value, engine=engine, **kwdargs)
-    else:
-        return conditionCallback("<=", a_value, b_value, engine=engine, **kwdargs)
+def make_comparison_args(arg1, arg2, engine=None, **kwdargs):
+    a_values = evaluate_arithemtics(arg1, engine=engine, **kwdargs)
+    b_values = evaluate_arithemtics(arg2, engine=engine, **kwdargs)
+    ab_values = list(itertools.product(a_values, b_values))
+    return ab_values
 
 
-def _builtin_ge(arg1, arg2, engine=None, **kwdargs):
-    """``A >= B``
-        A and B are ground
-    """
-    check_mode((arg1, arg2), ['gg'], functor='>=', **kwdargs)
-    a_value = arg1.compute_value(engine.functions)
-    b_value = arg2.compute_value(engine.functions)
-    if a_value is None or b_value is None:
-        return False
-    elif isinstance(a_value, (int, float)) and isinstance(b_value, (int, float)):
-        return booleanCallback(a_value>=b_value, '>=', a_value, b_value, engine=engine, **kwdargs)
-    else:
-        return conditionCallback(">=", a_value, b_value, engine=engine, **kwdargs)
-#
-#
-# def _builtin_val_neq(a, b, engine=None, **k):
-#     """``A =\= B``
-#         A and B are ground
-#     """
-#     check_mode((a, b), ['gg'], functor='=\=', **k)
-#     a_value = a.compute_value(engine.functions)
-#     b_value = b.compute_value(engine.functions)
-#     if a_value is None or b_value is None:
-#         return False
-#     else:
-#         return a_value != b_value
-#
-#
-# def _builtin_val_eq(a, b, engine=None, **k):
-#     """``A =:= B``
-#         A and B are ground
-#     """
-#     check_mode((a, b), ['gg'], functor='=:=', **k)
-#     a_value = a.compute_value(engine.functions)
-#     b_value = b.compute_value(engine.functions)
-#     if a_value is None or b_value is None:
-#         return False
-#     else:
-#         return a_value == b_value
-#
 
-def _builtin_observation(value, observation, engine=None, **kwdargs):
-    check_mode((value, observation), ['gg'], functor='obs_builtin', **kwdargs)
-    assert isinstance(value.functor, ValueDimConstant)
-
-    if isinstance(observation, tuple):
-        assert len(value)==len(observation)
-    v_value = value
-    o_value = observation.compute_value(engine.functions)
-
-    if v_value is None or o_value is None:
-        return False
-    else:
-        return conditionCallback("observation", v_value, o_value, engine=engine, **kwdargs)
 
 
 
@@ -428,21 +296,3 @@ def evaluate_arithemtics(term_expression , engine=None, **k):
         for r in result:
             b_values += get_distributions(r[0], engine=engine, **k)
     return b_values
-
-def _builtin_is(a, b, engine=None, **k):
-    check_mode((a, b), ['*g'], functor='is', **k)
-    try:
-        b_values = evaluate_arithemtics(b, engine=engine, **k)
-        results =  []
-        for b_value in b_values:
-            if b_value[0] is None:
-                continue
-            else:
-                if isinstance(b_value[0],(int,float)):
-                    constant_val = Constant(b_value[0])
-                else:
-                    constant_val = b_value[0]
-                results.append(((constant_val, b), b_value[1]))
-        return results
-    except UnifyError:
-        return []
