@@ -16,7 +16,6 @@ from .formula import LogicFormulaHAL
 from .engine_builtin import \
     _builtin_density, \
     _builtin_free_list, _builtin_free, \
-    _builtin_as, \
     _builtin_gt, _builtin_lt, _builtin_le, _builtin_ge, \
     _builtin_observation, \
     _builtin_is \

@@ -49,20 +49,63 @@ def _builtin_free_list(free_variables, args=(), target=None, engine=None, callba
     actions += callback.notifyComplete()
     return True, actions
 
-def _builtin_observation(term, observation, engine=None, **kwdargs):
-    check_mode((term, observation), ['gg'], functor='observation_builtin', **kwdargs)
+def _builtin_observation(term, observation, engine=None, target=None, **kwdargs):
+    check_mode((term, observation), ['gg'], functor='observation_builtin', target=target, **kwdargs)
     functor="observation"
-    result = _builtin_possible(term, engine=engine, **kwdargs)
+    result = _builtin_possible(term, engine=engine, target=target, **kwdargs)
+    assert False
+    #FINISHI this next time
 
-    observations = []
-    print(result)
-    for r in result:
-        for d in get_distributions(r[0], engine=engine, **kwdargs):
-            observations.append((d,(observation,0)))
-        # b_values.append( (get_distributions(r[0], engine=engine, **kwdargs),(observation,0)) )
-    print(observations)
-    result = make_comparison(functor, observations, engine=engine, **kwdargs)
-    return result
+    
+    # print(observation)
+    # observations = []
+    # print(result)
+    # for r in result:
+    #     print(r)
+    #     obs_node = 0
+    #     for d in get_distributions(r[0], engine=engine, target=target, **kwdargs):
+    #         print(d)
+    #         d_value = d[0]
+    #         d_body_node = d[1]
+    #         if obs_node and d_body_node:
+    #             obs_node = target.add_or((obs_node,d_body_node))
+    #         elif d_body_node:
+    #             obs_node = d_body_node
+    #         symbolic_condition = SymbolicConstant(functor, args=sym_args, cvariables=cvariables)
+    #
+    #     observations.append(((term,observation),obs_node))
+    #     # b_values.append( (get_distributions(r[0], engine=engine, **kwdargs),(observation,0)) )
+    # print(observation)
+    # print(observations)
+    # result = make_comparison(functor, observations, engine=engine, target=target, **kwdargs)
+    #
+    #
+    #         if body_node1 and body_node2:
+    #             body_node = target.add_and((body_node1,body_node2))
+    #         elif body_node1:
+    #             body_node = body_node1
+    #         else:
+    #             body_node = body_node2
+    #         sym_args = (arg1,arg2)
+    #         cvariables = set()
+    #         for a in sym_args:
+    #             cvariables = cvariables.union(a.cvariables)
+    #         symbolic_condition = SymbolicConstant(functor, args=sym_args, cvariables=cvariables)
+    #
+    #         hashed_symbolic = hash(str(symbolic_condition))
+    #         con_node = target.add_atom(identifier=hashed_symbolic, probability=symbolic_condition, source=None)
+    #         if body_node:
+    #             pass_node = target.add_and((body_node, con_node))
+    #         else:
+    #             pass_node = con_node
+    #         result.append((sym_args,pass_node))
+    #
+    #
+    #
+    #
+    #
+    #
+    # return result
 
 def _builtin_is(a, b, engine=None, **k):
     check_mode((a, b), ['*g'], functor='is', **k)
@@ -190,14 +233,6 @@ def make_comparison_args(arg1, arg2, engine=None, **kwdargs):
     b_values = evaluate_arithemtics(arg2, engine=engine, **kwdargs)
     ab_values = list(itertools.product(a_values, b_values))
     return ab_values
-
-
-
-
-
-
-
-
 
 
 def compute_function(term, database=None, target=None, engine=None, **k):
