@@ -326,8 +326,6 @@ class StackBasedEngine(ClauseDBEngine):
                 # act, obj, args, context = actions.pop()
                 message = actions.pop()
 
-                act, obj, args, context = message
-                
                 if debugger:
                     debugger.process_message(message)
 
@@ -335,16 +333,16 @@ class StackBasedEngine(ClauseDBEngine):
                     # We have reached the top-level.
                     if message.is_result_message:
                         # A new result is available
-                        solutions.append((args[0], args[1]))
+                        solutions.append((message.args[0], message.args[1]))
                         if name is not None:
                             negated, term, label = name
-                            term_store = term.with_args(*args[0])
+                            term_store = term.with_args(*message.args[0])
                             if negated:
-                                target.add_name(-term_store, -args[1], label)
+                                target.add_name(-term_store, -message.args[1], label)
                             else:
-                                target.add_name(term_store, args[1], label)
+                                target.add_name(term_store, message.args[1], label)
 
-                        if args[3]:
+                        if message.args[3]:
                             # Last result received
                             if not subcall and self.pointer != 0:  # pragma: no cover
                                 # ERROR: the engine stack should be empty.
@@ -383,12 +381,12 @@ class StackBasedEngine(ClauseDBEngine):
                             #     next_actions = self.skip(obj, **context)
                             #     obj = self.pointer
                             # else:
-                            next_actions = self.eval(message.target, **context)
+                            next_actions = self.eval(message.target, **message.context)
                             message.set_new_target(self.pointer)
                         except UnknownClauseInternal:
                             # An unknown clause was encountered.
                             # TODO why is this handled here?
-                            call_origin = context.get('call_origin')
+                            call_origin = message.context.get('call_origin')
                             if call_origin is None:
                                 sig = 'unknown'
                                 raise UnknownClause(sig, location=None)
@@ -404,16 +402,16 @@ class StackBasedEngine(ClauseDBEngine):
                             self.print_stack()
                             raise InvalidEngineState('Non-existing pointer: %s' % message.target)
                         if exec_node is None:  # pragma: no cover
-                            print(act, message.target, args)
+                            print(act, message.target, message.args)
                             self.print_stack()
                             raise InvalidEngineState('Invalid node at given pointer: %s' % message.target)
 
                         if message.is_result_message:
                             # A new result was received.
-                            cleanup, next_actions = exec_node.new_result(*args, **context)
+                            cleanup, next_actions = exec_node.new_result(*message.args, **message.context)
                         elif message.is_complete_message:
                             # A completion message was received.
-                            cleanup, next_actions = exec_node.complete(*args, **context)
+                            cleanup, next_actions = exec_node.complete(*message.args, **message.context)
                         else:  # pragma: no cover
                             raise InvalidEngineState('Unknown message')
 
@@ -431,7 +429,7 @@ class StackBasedEngine(ClauseDBEngine):
                         self.print_stack(message.target)
                         # if act in 'rco':
                         if message.is_result_message or message.is_complete_message:
-                            print(message.target, act, args)
+                            print(message.target, act, message.args)
                         print([(a, o, x) for a, o, x, t in actions[-10:]])
                         if self.trace:
                             a = sys.stdin.readline()
