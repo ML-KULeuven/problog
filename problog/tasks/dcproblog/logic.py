@@ -1,4 +1,4 @@
-from problog.logic import Term
+from problog.logic import Constant, Term, unquote, ArithmeticError, _arithmetic_functions
 
 
 pdfs = {
@@ -20,7 +20,6 @@ cdfs = {
 
 infix_functors = ["/"]
 comparison_functors = ["<", ">", "<=", ">="]
-
 
 
 class SymbolicConstant(Term):

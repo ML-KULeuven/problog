@@ -18,8 +18,8 @@ from .engine_builtin import \
     _builtin_free_list, _builtin_free, \
     _builtin_as, \
     _builtin_gt, _builtin_lt, _builtin_le, _builtin_ge, \
-    _builtin_observation \
-    # _builtin_is \
+    _builtin_observation, \
+    _builtin_is \
 
     # , _builtin_val_eq, _builtin_val_neq
 
@@ -38,12 +38,12 @@ class EngineHAL(DefaultEngineHAL):
         self.add_builtin('as_builtin', 2, _builtin_as)
 
         self.add_builtin('>', 2, _builtin_gt)
-        self.add_builtin('<', 2, _builtin_lt)
+        self.add_builtin('<', 2, SimpleProbabilisticBuiltIn(_builtin_lt))
         self.add_builtin('=<', 2, _builtin_le)
         self.add_builtin('>=', 2, _builtin_ge)
         # self.add_builtin('=\=', 2, b(_builtin_val_neq))
         # self.add_builtin('=:=', 2, b(_builtin_val_eq))
-        # self.add_builtin('is', 2, SimpleBuiltIn(_builtin_is))
+        self.add_builtin('is', 2, SimpleProbabilisticBuiltIn(_builtin_is))
 
         self.add_builtin('obs_builtin', 2, _builtin_observation)
 
