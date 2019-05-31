@@ -414,8 +414,9 @@ class EvalOr(EvalNode):
     #     return self.on_cycle
 
     def flush_buffer(self, cycle=False):
-        func = lambda result, nodes: self.target.add_or(nodes, readonly=(not cycle), name=None)
-        self.results.collapse(func)
+        def add_or(result, nodes):
+            return self.target.add_or(nodes, readonly=(not cycle), name=None)
+        self.results.collapse(add_or)
 
     def new_result(self, result, node=NODE_TRUE, source=None, is_last=False):
         if not self.is_buffered():
