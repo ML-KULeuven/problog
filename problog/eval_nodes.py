@@ -90,6 +90,9 @@ class AbstractMessage(object):
     def target(self):
         return self._target
 
+    def set_new_target(self, new_target):
+        self._target = new_target
+
     @property
     def args(self):
         return self._args

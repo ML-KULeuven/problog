@@ -322,13 +322,18 @@ class StackBasedEngine(ClauseDBEngine):
                 next_actions = self.cycle_root.close_cycle(True)
                 actions += reversed(next_actions)
             else:
-                act, obj, args, context = actions.pop()
-                if debugger:
-                    debugger.process_message(act, obj, args, context)
 
-                if obj is None:
+                # act, obj, args, context = actions.pop()
+                message = actions.pop()
+
+                act, obj, args, context = message
+                
+                if debugger:
+                    debugger.process_message(message)
+
+                if message.target is None:
                     # We have reached the top-level.
-                    if act == 'r':
+                    if message.is_result_message:
                         # A new result is available
                         solutions.append((args[0], args[1]))
                         if name is not None:
@@ -349,7 +354,7 @@ class StackBasedEngine(ClauseDBEngine):
                                 # Clean up the stack to save memory.
                                 self.reset_stack()
                             return solutions
-                    elif act == 'c':
+                    elif message.is_complete_message:
                         # Indicates completion of the execution.
                         return solutions
                     else:
@@ -357,8 +362,8 @@ class StackBasedEngine(ClauseDBEngine):
                         raise InvalidEngineState('Unknown message!')
                 else:
                     # We are not at the top-level.
-                    if act == 'e':
-                        # Never clean up in this case because 'obj' doesn't contain a pointer.
+                    if message.is_eval_message:
+                        # Never clean up in this case because 'message.target' doesn't contain a pointer.
                         cleanup = False
                         # We need to execute another node.
                         # if self.cycle_root is not None and context['parent'] < self.cycle_root.pointer:
@@ -378,8 +383,8 @@ class StackBasedEngine(ClauseDBEngine):
                             #     next_actions = self.skip(obj, **context)
                             #     obj = self.pointer
                             # else:
-                            next_actions = self.eval(obj, **context)
-                            obj = self.pointer
+                            next_actions = self.eval(message.target, **context)
+                            message.set_new_target(self.pointer)
                         except UnknownClauseInternal:
                             # An unknown clause was encountered.
                             # TODO why is this handled here?
@@ -391,22 +396,22 @@ class StackBasedEngine(ClauseDBEngine):
                                 loc = database.lineno(call_origin[1])
                                 raise UnknownClause(call_origin[0], location=loc)
                     else:
-                        # The message is 'r' or 'c'. This means 'obj' should be a valid pointer.
+                        # The message is 'r' or 'c'. This means 'message.target' should be a valid pointer.
                         try:
                             # Retrieve the execution node from the stack.
-                            exec_node = self.stack[obj]
+                            exec_node = self.stack[message.target]
                         except IndexError:  # pragma: no cover
                             self.print_stack()
-                            raise InvalidEngineState('Non-existing pointer: %s' % obj)
+                            raise InvalidEngineState('Non-existing pointer: %s' % message.target)
                         if exec_node is None:  # pragma: no cover
-                            print(act, obj, args)
+                            print(act, message.target, args)
                             self.print_stack()
-                            raise InvalidEngineState('Invalid node at given pointer: %s' % obj)
+                            raise InvalidEngineState('Invalid node at given pointer: %s' % message.target)
 
-                        if act == 'r':
+                        if message.is_result_message:
                             # A new result was received.
                             cleanup, next_actions = exec_node.new_result(*args, **context)
-                        elif act == 'c':
+                        elif message.is_complete_message:
                             # A completion message was received.
                             cleanup, next_actions = exec_node.complete(*args, **context)
                         else:  # pragma: no cover
@@ -423,9 +428,10 @@ class StackBasedEngine(ClauseDBEngine):
 
                     # Do debugging.
                     if self.debug:  # pragma: no cover
-                        self.print_stack(obj)
-                        if act in 'rco':
-                            print(obj, act, args)
+                        self.print_stack(message.target)
+                        # if act in 'rco':
+                        if message.is_result_message or message.is_complete_message:
+                            print(message.target, act, args)
                         print([(a, o, x) for a, o, x, t in actions[-10:]])
                         if self.trace:
                             a = sys.stdin.readline()
@@ -435,7 +441,7 @@ class StackBasedEngine(ClauseDBEngine):
                                 self.trace = False
                                 self.debug = False
                     if cleanup:
-                        self.cleanup(obj)
+                        self.cleanup(message.target)
 
         if subcall:
             call_origin = kwdargs.get('call_origin')
