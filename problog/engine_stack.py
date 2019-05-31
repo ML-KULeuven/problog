@@ -50,8 +50,8 @@ node_types = {'fact': EvalFact,
 
 
 class StackBasedEngine(ClauseDBEngine):
-    def __init__(self, label_all=False, **kwdargs):
-        ClauseDBEngine.__init__(self, **kwdargs)
+    def __init__(self, label_all=False, **kwargs):
+        ClauseDBEngine.__init__(self, **kwargs)
 
         self.cycle_root = None
         self.pointer = 0
@@ -65,22 +65,22 @@ class StackBasedEngine(ClauseDBEngine):
 
         self.label_all = label_all
 
-        self.debugger = kwdargs.get('debugger')
+        self.debugger = kwargs.get('debugger')
 
-        self.unbuffered = kwdargs.get('unbuffered')
-        self.rc_first = kwdargs.get('rc_first', False)
+        self.unbuffered = kwargs.get('unbuffered')
+        self.rc_first = kwargs.get('rc_first', False)
 
-        self.full_trace = kwdargs.get('full_trace')
+        self.full_trace = kwargs.get('full_trace')
 
         self.ignoring = set()
 
-    def eval(self, node_id, **kwdargs):
-        # print (kwdargs.get('parent'))
-        database = kwdargs['database']
+    def eval(self, node_id, **kwargs):
+        # print (kwargs.get('parent'))
+        database = kwargs['database']
 
         # Skip not included or excluded nodes, or if parent is ignoring new results
-        if self.should_skip_node(node_id, **kwdargs):
-            return self.skip(node_id, **kwdargs)
+        if self.should_skip_node(node_id, **kwargs):
+            return self.skip(node_id, **kwargs)
 
         if node_id < 0:
             # Builtin node
@@ -93,24 +93,22 @@ class StackBasedEngine(ClauseDBEngine):
 
             if exec_func is None:
                 if self.unknown == self.UNKNOWN_FAIL:
-                    return self.skip(node_id, **kwdargs)
+                    return self.skip(node_id, **kwargs)
                 else:
                     raise UnknownClauseInternal()
 
-        return exec_func.eval(engine=self, node_id=node_id, node=node, **kwdargs)
+        return exec_func.eval(engine=self, node_id=node_id, node=node, **kwargs)
 
-    def should_skip_node(self, node_id, **kwdargs):
-        include_ids = kwdargs.get('include')
-        exclude_ids = kwdargs.get('exclude')
+    def should_skip_node(self, node_id, include_ids=None, exclude_ids=None, parent=None,**kwargs):
         # If we are only looking at certain 'included' ids, check if it is included
         # OR If we are excluding certain ids, check if it is in the excluded id list.
         # OR The parent node is ignoring new results, so there is no point in generating them.
         return include_ids is not None and node_id not in include_ids \
                or exclude_ids is not None and node_id in exclude_ids \
-               or kwdargs.get('parent') in self.ignoring
+               or parent in self.ignoring
 
     @staticmethod
-    def skip(node_id, parent=None, identifier=None,**kwdargs):
+    def skip(node_id, parent=None, identifier=None,**kwargs):
         return [complete(parent, identifier)]
 
     def load_builtins(self):
@@ -258,8 +256,8 @@ class StackBasedEngine(ClauseDBEngine):
     #         target._cache = DefineCache(database.dont_cache)
     #
     #     # Retrieve the list of actions needed to evaluate the top-level node.
-    #     # parent = kwdargs.get('parent')
-    #     # kwdargs['parent'] = parent
+    #     # parent = kwargs.get('parent')
+    #     # kwargs['parent'] = parent
     #
     #     initial_actions = self.eval(node_id, parent=None, database=database, target=target,
     #                                 is_root=is_root, **kwargs)
@@ -267,19 +265,19 @@ class StackBasedEngine(ClauseDBEngine):
     # return initial_actions
 
     def execute(self, node_id, target=None, database=None, subcall=False,
-                is_root=False, name=None, **kwdargs):
+                is_root=False, name=None, **kwargs):
         """
         Execute the given node.
         :param node_id: pointer of the node in the database
         :param subcall: indicates whether this is a toplevel call or a subcall
         :param target: target datastructure for storing the ground program
         :param database: database containing the logic program to ground
-        :param kwdargs: additional arguments
+        :param kwargs: additional arguments
         :return: results of the execution
         """
         # Find out debugging mode.
-        self.trace = kwdargs.get('trace')
-        self.debug = kwdargs.get('debug') or self.trace
+        self.trace = kwargs.get('trace')
+        self.debug = kwargs.get('debug') or self.trace
         debugger = self.debugger
 
         # Initialize the cache/table.
@@ -289,11 +287,11 @@ class StackBasedEngine(ClauseDBEngine):
             target._cache = DefineCache(database.dont_cache)
 
         # Retrieve the list of actions needed to evaluate the top-level node.
-        # parent = kwdargs.get('parent')
-        # kwdargs['parent'] = parent
+        # parent = kwargs.get('parent')
+        # kwargs['parent'] = parent
 
         initial_actions = self.eval(node_id, parent=None, database=database, target=target,
-                                    is_root=is_root, **kwdargs)
+                                    is_root=is_root, **kwargs)
 
         # Initialize the action stack.
         actions = self.init_message_stack()
@@ -442,7 +440,7 @@ class StackBasedEngine(ClauseDBEngine):
                         self.cleanup(message.target)
 
         if subcall:
-            call_origin = kwdargs.get('call_origin')
+            call_origin = kwargs.get('call_origin')
             if call_origin is not None:
                 call_origin = database.lineno(call_origin[1])
             raise IndirectCallCycleError()
@@ -468,7 +466,7 @@ class StackBasedEngine(ClauseDBEngine):
         while self.pointer > 0 and self.stack[self.pointer - 1] is None:
             self.pointer -= 1
 
-    def call(self, query, database, target, transform=None, parent=None, context=None, **kwdargs):
+    def call(self, query, database, target, transform=None, parent=None, context=None, **kwargs):
         node_id = database.find(query)
         if node_id is None:
             node_id = database.get_builtin(query.signature)
@@ -476,9 +474,9 @@ class StackBasedEngine(ClauseDBEngine):
                 raise UnknownClause(query.signature, database.lineno(query.location))
 
         return self.execute(node_id, database=database, target=target,
-                            context=self.create_context(query.args, parent=context), **kwdargs)
+                            context=self.create_context(query.args, parent=context), **kwargs)
 
-    def call_intern(self, query, parent_context=None, **kwdargs):
+    def call_intern(self, query, parent_context=None, **kwargs):
         if query.is_negated():
             negated = True
             neg_func = query.functor
@@ -489,7 +487,7 @@ class StackBasedEngine(ClauseDBEngine):
             query = query.args[0]
         else:
             negated = False
-        database = kwdargs.get('database')
+        database = kwargs.get('database')
         node_id = database.find(query)
         if node_id is None:
             node_id = database.get_builtin(query.signature)
@@ -505,13 +503,13 @@ class StackBasedEngine(ClauseDBEngine):
             def func(result):
                 return Term(neg_func, Term(call_term.functor, *result)),
 
-            kwdargs['transform'].add_function(func)
+            kwargs['transform'].add_function(func)
 
             return EvalNot.eval(engine=self, node_id=None, node=call_term,
-                                context=self.create_context(query.args, parent=parent_context), **kwdargs)
+                                context=self.create_context(query.args, parent=parent_context), **kwargs)
         else:
             return EvalCall.eval(engine=self, node_id=None, node=call_term,
-                                 context=self.create_context(query.args, parent=parent_context), **kwdargs)
+                                 context=self.create_context(query.args, parent=parent_context), **kwargs)
 
     def print_stack(self, pointer=None):  # pragma: no cover
         print('===========================')
@@ -760,14 +758,14 @@ class BooleanBuiltIn(object):
     def __init__(self, base_function):
         self.base_function = base_function
 
-    def __call__(self, *args, **kwdargs):
-        callback = kwdargs.get('callback')
-        if self.base_function(*args, **kwdargs):
-            args = kwdargs['engine'].create_context(args, parent=kwdargs['context'])
-            if kwdargs['target'].flag('keep_builtins'):
-                call = kwdargs['call_origin'][0].split('/')[0]
+    def __call__(self, *args, **kwargs):
+        callback = kwargs.get('callback')
+        if self.base_function(*args, **kwargs):
+            args = kwargs['engine'].create_context(args, parent=kwargs['context'])
+            if kwargs['target'].flag('keep_builtins'):
+                call = kwargs['call_origin'][0].split('/')[0]
                 name = Term(call, *args)
-                node = kwdargs['target'].add_atom(name, None, None, name=name, source='builtin')
+                node = kwargs['target'].add_atom(name, None, None, name=name, source='builtin')
                 return True, callback.notify_result(args, node, True)
             else:
                 return True, callback.notify_result(args, NODE_TRUE, True)
@@ -784,13 +782,13 @@ class SimpleProbabilisticBuiltIn(object):
     def __init__(self, base_function):
         self.base_function = base_function
 
-    def __call__(self, *args, **kwdargs):
-        callback = kwdargs.get('callback')
-        results = self.base_function(*args, **kwdargs)
+    def __call__(self, *args, **kwargs):
+        callback = kwargs.get('callback')
+        results = self.base_function(*args, **kwargs)
         output = []
         if results:
             for i, result in enumerate(results):
-                output += callback.notify_result(kwdargs['engine'].create_context(result[0], parent=result[0]),
+                output += callback.notify_result(kwargs['engine'].create_context(result[0], parent=result[0]),
                                                  result[1], i == len(results) - 1)
             return True, output
         else:
