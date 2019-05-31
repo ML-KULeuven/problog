@@ -119,8 +119,8 @@ class EvalMessage(AbstractMessage):
         super().__init__(lst[1], lst[2], lst[3])
         self.lst = lst
 
-    def __getitem__(self, item):
-        return self.lst[item]
+    # def __getitem__(self, item):
+    #     return self.lst[item]
 
     @property
     def is_eval_message(self):
@@ -136,8 +136,8 @@ class ResultMessage(AbstractMessage):
         super().__init__(lst[1], lst[2], lst[3])
         self.lst = lst
 
-    def __getitem__(self, item):
-        return self.lst[item]
+    # def __getitem__(self, item):
+    #     return self.lst[item]
 
     @property
     def is_result_message(self):
@@ -152,8 +152,8 @@ class CompleteMessage(AbstractMessage):
         super().__init__(lst[1], lst[2], lst[3])
         self.lst = lst
 
-    def __getitem__(self, item):
-        return self.lst[item]
+    # def __getitem__(self, item):
+    #     return self.lst[item]
 
     @property
     def is_complete_message(self):

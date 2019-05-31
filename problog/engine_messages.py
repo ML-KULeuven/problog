@@ -80,7 +80,7 @@ class MessageFIFO(MessageQueue):
         else:
             last_message = self.peek()
             return last_message.is_eval_message and \
-                   last_message[3]['parent'] < self.engine.cycle_root.pointer
+                   last_message.context['parent'] < self.engine.cycle_root.pointer
 
     def __nonzero__(self):
         return bool(self.messages)
@@ -103,9 +103,9 @@ class MessageAnyOrder(MessageQueue):
 
     def _msg_parent(self, message):
         if message.is_eval_message:
-            return message[3]['parent']
+            return message.context['parent']
         else:
-            return message[1]
+            return message.target
 
     def cycle_exhausted(self):
         if self.engine.cycle_root is None:
