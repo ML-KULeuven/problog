@@ -1027,10 +1027,10 @@ class EvalBuiltIn(EvalNode):
 class Transformations(object):
     def __init__(self):
         self.functions = []
-        self.constant = None
+        # self.constant = None
 
-    def add_constant(self, constant):
-        pass
+    # def add_constant(self, constant):
+    #     pass
         # if self.constant is None :
         #     self.constant = self(constant)
         #     self.functions = []
