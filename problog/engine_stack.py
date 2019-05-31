@@ -333,16 +333,16 @@ class StackBasedEngine(ClauseDBEngine):
                     # We have reached the top-level.
                     if message.is_result_message:
                         # A new result is available
-                        solutions.append((message.args[0], message.args[1]))
+                        solutions.append((message.args_result, message.args_ground_node))
                         if name is not None:
                             negated, term, label = name
-                            term_store = term.with_args(*message.args[0])
+                            term_store = term.with_args(*message.args_result)
                             if negated:
-                                target.add_name(-term_store, -message.args[1], label)
+                                target.add_name(-term_store, -message.args_ground_node, label)
                             else:
-                                target.add_name(term_store, message.args[1], label)
+                                target.add_name(term_store, message.args_ground_node, label)
 
-                        if message.args[3]:
+                        if message.args_is_last:
                             # Last result received
                             if not subcall and self.pointer != 0:  # pragma: no cover
                                 # ERROR: the engine stack should be empty.
@@ -402,7 +402,7 @@ class StackBasedEngine(ClauseDBEngine):
                             self.print_stack()
                             raise InvalidEngineState('Non-existing pointer: %s' % message.target)
                         if exec_node is None:  # pragma: no cover
-                            print(act, message.target, message.args)
+                            print(str(message), message.target, message.args)
                             self.print_stack()
                             raise InvalidEngineState('Invalid node at given pointer: %s' % message.target)
 

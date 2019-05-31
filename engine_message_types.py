@@ -1,4 +1,3 @@
-
 class AbstractMessage(object):
     def __init__(self, target, args, context):
         self._target = target
@@ -48,11 +47,33 @@ class EvalMessage(AbstractMessage):
 
 class ResultMessage(AbstractMessage):
     def __init__(self, target, args, context):
+        """
+
+        :param target: The target database containing the grounded program so far
+        :param args: (result, ground_node, source, is_last)
+        :param context:
+        """
         super().__init__(target, args, context)
 
     @property
     def is_result_message(self):
         return True
+
+    @property
+    def args_result(self):
+        return self.args[0]
+
+    @property
+    def args_ground_node(self):
+        return self.args[1]
+
+    @property
+    def args_source(self):
+        return self.args[2]
+
+    @property
+    def args_is_last(self):
+        return self.args[3]
 
     def __str__(self):
         return 'r(%s, %s)' % (self.target, self.args)
