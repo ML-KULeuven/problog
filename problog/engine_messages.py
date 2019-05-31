@@ -49,11 +49,11 @@ class MessageQueue(object):
         raise NotImplementedError('Abstract method')
 
     def repr_message(self, msg):
-        if msg[0] == 'c':
+        if msg.is_complete_message():
             return 'c(%s)' % msg[1]
-        elif msg[0] == 'r':
+        elif msg.is_result_message():
             return 'r(%s, %s)' % (msg[1], msg[2])
-        elif msg[0] == 'e':
+        elif msg.is_eval_message():
             return 'e(%s, %s, %s, %s)' % (msg[1], msg[3].get('call'), msg[3].get('context'), msg[3].get('parent'))
 
     def __iter__(self):
@@ -87,7 +87,7 @@ class MessageFIFO(MessageQueue):
             return False
         else:
             last_message = self.peek()
-            return last_message[0] == 'e' and \
+            return last_message.is_eval_message() and \
                    last_message[3]['parent'] < self.engine.cycle_root.pointer
 
     def __nonzero__(self):
@@ -110,7 +110,7 @@ class MessageAnyOrder(MessageQueue):
         self.engine = engine
 
     def _msg_parent(self, message):
-        if message[0] == 'e':
+        if message.is_eval_message():
             return message[3]['parent']
         else:
             return message[1]
@@ -158,7 +158,7 @@ class MessageOrderDrc(MessageAnyOrder):
         self.messages_e = []
 
     def append(self, message):
-        if message[0] == 'e':
+        if message.is_eval_message():
             self.messages_e.append(message)
         else:
             self.messages_rc.append(message)
@@ -192,7 +192,7 @@ class MessageOrder1(MessageAnyOrder):
         self.messages_e = []
 
     def append(self, message):
-        if message[0] == 'e':
+        if message.is_eval_message():
             self.messages_e.append(message)
         else:
             self.messages_rc.append(message)
