@@ -115,12 +115,8 @@ class AbstractMessage(object):
 
 
 class EvalMessage(AbstractMessage):
-    def __init__(self, lst):
-        super().__init__(lst[1], lst[2], lst[3])
-        self.lst = lst
-
-    # def __getitem__(self, item):
-    #     return self.lst[item]
+    def __init__(self, target, args, context):
+        super().__init__(target, args, context)
 
     @property
     def is_eval_message(self):
@@ -128,59 +124,50 @@ class EvalMessage(AbstractMessage):
 
     def __str__(self):
         return 'e(%s, %s, %s, %s)' % (
-            self.lst[1], self.lst[3].get('call'), self.lst[3].get('context'), self.lst[3].get('parent'))
+            self.target, self.context.get('call'), self.context.get('context'), self.context.get('parent'))
 
 
 class ResultMessage(AbstractMessage):
-    def __init__(self, lst):
-        super().__init__(lst[1], lst[2], lst[3])
-        self.lst = lst
-
-    # def __getitem__(self, item):
-    #     return self.lst[item]
+    def __init__(self, target, args, context):
+        super().__init__(target, args, context)
 
     @property
     def is_result_message(self):
         return True
 
     def __str__(self):
-        return 'r(%s, %s)' % (self.lst[1], self.lst[2])
+        return 'r(%s, %s)' % (self.target, self.args)
 
 
 class CompleteMessage(AbstractMessage):
-    def __init__(self, lst):
-        super().__init__(lst[1], lst[2], lst[3])
-        self.lst = lst
-
-    # def __getitem__(self, item):
-    #     return self.lst[item]
+    def __init__(self, target, args, context):
+        super().__init__(target, args, context)
 
     @property
     def is_complete_message(self):
         return True
 
     def __str__(self):
-        return 'c(%s)' % self.lst[1]
+        return 'c(%s)' % self.target
 
 
-def call(obj, args, kwargs):
-    """ msgtype, msgtarget, msgargs, context """
-    return EvalMessage(('e', obj, args, kwargs))
+def call(target, args, context):
+    return EvalMessage(target, args, context)
 
 
-def new_result(obj, result, ground_node, source, is_last):
-    return ResultMessage(('r', obj, (result, ground_node, source, is_last), {}))
+def new_result(target, result, ground_node, source, is_last):
+    return ResultMessage(target, (result, ground_node, source, is_last), {})
 
 
-def complete(obj, source):
-    return CompleteMessage(('c', obj, (source,), {}))
+def complete(target, source):
+    return CompleteMessage(target, (source,), {})
 
 
 def results_to_actions(resultlist, engine, node, context, target, parent, identifier,
                        transform, is_root, database, **kwargs):
     """Translates a list of results to actions.
 
-    :param results:
+    :param resultlist:
     :param node:
     :param context:
     :param target:
