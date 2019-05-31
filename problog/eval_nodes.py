@@ -80,16 +80,60 @@ class ResultSet(object):
         return str(self.results)
 
 
+class AbstractMessage(object):
+    def is_eval_message(self):
+        return False
+
+    def is_complete_message(self):
+        return False
+
+    def is_result_message(self):
+        return False
+
+
+class EvalMessage(AbstractMessage):
+    def __init__(self, lst):
+        self.lst = lst
+
+    def __getitem__(self, item):
+        return self.lst[item]
+
+    def is_eval_message(self):
+        return True
+
+
+class ResultMessage(AbstractMessage):
+    def __init__(self, lst):
+        self.lst = lst
+
+    def __getitem__(self, item):
+        return self.lst[item]
+
+    def is_result_message(self):
+        return True
+
+
+class CompleteMessage(AbstractMessage):
+    def __init__(self, lst):
+        self.lst = lst
+
+    def __getitem__(self, item):
+        return self.lst[item]
+
+    def is_complete_message(self):
+        return True
+
+
 def call(obj, args, kwargs):
-    return 'e', obj, args, kwargs
+    return EvalMessage(('e', obj, args, kwargs))
 
 
 def new_result(obj, result, ground_node, source, is_last):
-    return 'r', obj, (result, ground_node, source, is_last), {}
+    return ResultMessage(('r', obj, (result, ground_node, source, is_last), {}))
 
 
 def complete(obj, source):
-    return 'c', obj, (source,), {}
+    return CompleteMessage(('c', obj, (source,), {}))
 
 
 def results_to_actions(resultlist, engine, node, context, target, parent, identifier,
@@ -416,6 +460,7 @@ class EvalOr(EvalNode):
     def flush_buffer(self, cycle=False):
         def add_or(result, nodes):
             return self.target.add_or(nodes, readonly=(not cycle), name=None)
+
         self.results.collapse(add_or)
 
     def new_result(self, result, node=NODE_TRUE, source=None, is_last=False):
@@ -1029,15 +1074,16 @@ class EvalBuiltIn(EvalNode):
 
 class Transformations(object):
     """ Allows for storing several functions that can later be applied by calling the object """
+
     def __init__(self):
         self.functions = []
         # self.constant = None
 
     # def add_constant(self, constant):
     #     pass
-        # if self.constant is None :
-        #     self.constant = self(constant)
-        #     self.functions = []
+    # if self.constant is None :
+    #     self.constant = self(constant)
+    #     self.functions = []
 
     def add_function(self, function):
         # print ('add', function, self.constant)
