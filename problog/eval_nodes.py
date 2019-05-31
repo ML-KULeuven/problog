@@ -256,14 +256,14 @@ class EvalCall(EvalNode):
         super().__init__(**kwargs)
 
     @staticmethod
-    def eval(engine, node_id, node, parent=None, context=None, transform=None, *args,
+    def eval(engine, node_id, node, parent=None, context=None, transform=None, database=None,
              **kwargs):
         min_var = engine.context_min_var(context)
         call_args, var_translate = substitute_call_args(node.args, context, min_var)
 
         if engine.debugger and node.functor != 'call':
             # 'call(X)' is virtual so result and return can not be detected => don't register it.
-            location = kwargs['database'].lineno(node.location)
+            location = database.lineno(node.location)
             engine.debugger.call_create(node_id, node.functor, call_args, parent, location)
 
         ground_mask = [not is_ground(c) for c in call_args]
@@ -281,7 +281,7 @@ class EvalCall(EvalNode):
                                            mask=ground_mask)
                 output = engine.create_context(output, parent=output1)
                 if engine.debugger:
-                    location = kwargs['database'].lineno(node.location)
+                    location = database.lineno(node.location)
                     engine.debugger.call_result(node_id, node.functor, call_args, result, location)
                 return output
             except UnifyError:
@@ -294,13 +294,13 @@ class EvalCall(EvalNode):
 
         origin = '%s/%s' % (node.functor, len(node.args))
         kwargs['call_origin'] = (origin, node.location)
-        kwargs['context'] = engine.create_context(call_args, parent=context)
-        kwargs['transform'] = transform
 
         try:
-            return engine.eval(node.defnode, parent=parent, **kwargs)
+            return engine.eval(node.defnode, parent=parent, database=database, transform=transform,
+                               context=engine.create_context(call_args, parent=context),
+                               **kwargs)
         except UnknownClauseInternal:
-            loc = kwargs['database'].lineno(node.location)
+            loc = database.lineno(node.location)
             raise UnknownClause(origin, location=loc)
 
 
