@@ -212,7 +212,8 @@ class ClauseDBEngine(GenericEngine):
         return True
 
     # noinspection PyUnusedLocal
-    def create_context(self, content, define=None, parent=None):
+    @staticmethod
+    def create_context(content, define=None, parent=None):
         """Create a variable context."""
         return content
 

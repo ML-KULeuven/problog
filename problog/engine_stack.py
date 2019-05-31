@@ -109,7 +109,8 @@ class StackBasedEngine(ClauseDBEngine):
                or exclude_ids is not None and node_id in exclude_ids \
                or kwdargs.get('parent') in self.ignoring
 
-    def skip(self, node_id, **kwdargs):
+    @staticmethod
+    def skip(node_id, **kwdargs):
         return [complete(kwdargs['parent'], kwdargs.get('identifier'))]
 
     def load_builtins(self):
@@ -132,26 +133,26 @@ class StackBasedEngine(ClauseDBEngine):
         self.stack[self.pointer] = record
         self.pointer += 1
 
-    def notify_cycle(self, childnode):
-        # Optimization: we can usually stop when we reach a node on_cycle.
-        #   However, when we swap the cycle root we need to also notify the old cycle root
-        #    up to the new cycle root.
-        assert self.cycle_root is not None
-        root = self.cycle_root.pointer
-        # childnode = self.stack[child]
-        current = childnode.parent
-        actions = []
-        while current != root:
-            if current is None:
-                raise IndirectCallCycleError(
-                    location=childnode.database.lineno(childnode.node.location))
-            exec_node = self.stack[current]
-            if exec_node.on_cycle:
-                break
-            new_actions = exec_node.create_cycle()
-            actions += new_actions
-            current = exec_node.parent
-        return actions
+    # def notify_cycle(self, childnode):
+    #     # Optimization: we can usually stop when we reach a node on_cycle.
+    #     #   However, when we swap the cycle root we need to also notify the old cycle root
+    #     #    up to the new cycle root.
+    #     assert self.cycle_root is not None
+    #     root = self.cycle_root.pointer
+    #     # childnode = self.stack[child]
+    #     current = childnode.parent
+    #     actions = []
+    #     while current != root:
+    #         if current is None:
+    #             raise IndirectCallCycleError(
+    #                 location=childnode.database.lineno(childnode.node.location))
+    #         exec_node = self.stack[current]
+    #         if exec_node.on_cycle:
+    #             break
+    #         new_actions = exec_node.create_cycle()
+    #         actions += new_actions
+    #         current = exec_node.parent
+    #     return actions
 
     def check_cycle(self, child, parent):
         current = child
@@ -163,7 +164,8 @@ class StackBasedEngine(ClauseDBEngine):
                 raise NegativeCycle(location=exec_node.database.lineno(exec_node.node.location))
             current = exec_node.parent
 
-    def _transform_act(self, action):
+    @staticmethod
+    def _transform_act(action):
         if action[0] in 'rc':
             return action
         else:
@@ -518,7 +520,8 @@ class StackBasedEngine(ClauseDBEngine):
                 else:
                     print('    %s: %s' % (i, x))
 
-    def propagate_evidence(self, db, target, functor, args, resultnode):
+    @staticmethod
+    def propagate_evidence(db, target, functor, args, resultnode):
         if hasattr(target, 'lookup_evidence'):
             if resultnode in target.lookup_evidence:
                 return target.lookup_evidence[resultnode]
@@ -531,7 +534,8 @@ class StackBasedEngine(ClauseDBEngine):
         else:
             return resultnode
 
-    def context_min_var(self, context):
+    @staticmethod
+    def context_min_var(context):
         min_var = 0
         for c in context:
             if is_variable(c):
@@ -543,8 +547,8 @@ class StackBasedEngine(ClauseDBEngine):
                     min_var = min(min_var, min(variables))
         return min_var
 
-
-    def create_context(self, content, define=None, parent=None, state=None):
+    @staticmethod
+    def create_context(content, define=None, parent=None, state=None):
         """Create a variable context."""
 
         con = Context(content)
@@ -783,7 +787,7 @@ class SimpleProbabilisticBuiltIn(object):
         if results:
             for i, result in enumerate(results):
                 output += callback.notify_result(kwdargs['engine'].create_context(result[0], parent=result[0]),
-                                                result[1], i == len(results) - 1)
+                                                 result[1], i == len(results) - 1)
             return True, output
         else:
             return True, callback.notify_complete()
