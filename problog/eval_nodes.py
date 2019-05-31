@@ -7,7 +7,8 @@ from problog.engine_context import Context, get_state, FixedContext
 from problog.engine_unify import substitute_call_args
 from problog.errors import GroundingError
 from problog.logic import Term, is_ground, ArithmeticError
-from .engine import UnknownClauseInternal, UnknownClause, substitute_head_args, OccursCheck, instantiate
+from .engine import UnknownClauseInternal, UnknownClause, substitute_head_args, OccursCheck, instantiate, \
+    NonGroundProbabilisticClause
 from .engine_unify import unify_call_head, UnifyError, unify_call_return
 
 
@@ -307,14 +308,15 @@ class EvalChoice(EvalNode):
         super().__init__(**kwargs)
 
     @staticmethod
-    def eval(engine, node_id, node, parent=None, context=None, target=None, identifier=None, **kwargs):
+    def eval(engine, node_id, node, parent=None, context=None, target=None, identifier=None, database=None, **kwargs):
         result = _fix_context(context)
 
         for i, r in enumerate(result):
             if i not in node.locvars and not is_ground(r):
-                result = engine.handle_nonground(result=result, node=node, target=target,
-                                                 context=context, parent=parent, node_id=node_id,
-                                                 identifier=identifier, **kwargs)
+                raise NonGroundProbabilisticClause(location=database.lineno(node.location))
+                # result = engine.handle_nonground(result=result, node=node, target=target,
+                #                                  context=context, parent=parent, node_id=node_id,
+                #                                  identifier=identifier, **kwargs)
 
         probability = instantiate(node.probability, result)
         # Create a new atom in ground program.

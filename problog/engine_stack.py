@@ -27,9 +27,7 @@ import sys
 
 from problog.engine_context import State
 from problog.engine_messages import MessageFIFO, MessageOrderD, MessageOrderDrc
-from .engine import ClauseDBEngine, substitute_simple
-from .engine import NonGroundProbabilisticClause
-from .engine import is_variable
+from .engine import ClauseDBEngine, substitute_simple, is_variable
 from .engine_builtin import add_standard_builtins
 from .eval_nodes import *
 
@@ -545,8 +543,6 @@ class StackBasedEngine(ClauseDBEngine):
                     min_var = min(min_var, min(variables))
         return min_var
 
-    def handle_nonground(self, location=None, database=None, node=None, **kwdargs):
-        raise NonGroundProbabilisticClause(location=database.lineno(node.location))
 
     def create_context(self, content, define=None, parent=None, state=None):
         """Create a variable context."""
