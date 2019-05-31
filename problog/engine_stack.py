@@ -290,7 +290,7 @@ class StackBasedEngine(ClauseDBEngine):
         # parent = kwargs.get('parent')
         # kwargs['parent'] = parent
 
-        initial_actions = self.eval(node_id, parent=None, database=database, target=target,
+        initial_actions = self.eval(node_id=node_id, parent=None, database=database, target=target,
                                     is_root=is_root, **kwargs)
 
         # Initialize the action stack.
@@ -379,7 +379,7 @@ class StackBasedEngine(ClauseDBEngine):
                             #     next_actions = self.skip(obj, **context)
                             #     obj = self.pointer
                             # else:
-                            next_actions = self.eval(message.target, **message.context)
+                            next_actions = self.eval(node_id=message.target, **message.context)
                             message.set_new_target(self.pointer)
                         except UnknownClauseInternal:
                             # An unknown clause was encountered.

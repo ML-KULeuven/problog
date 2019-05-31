@@ -296,7 +296,7 @@ class EvalCall(EvalNode):
         kwargs['call_origin'] = (origin, node.location)
 
         try:
-            return engine.eval(node.defnode, parent=parent, database=database, transform=transform,
+            return engine.eval(node_id=node.defnode, parent=parent, database=database, transform=transform,
                                context=engine.create_context(call_args, parent=context),
                                **kwargs)
         except UnknownClauseInternal:
@@ -384,7 +384,7 @@ class EvalClause(EvalNode):
                 return engine.create_context(output, parent=result)
 
             transform.add_function(result_transform)
-            return engine.eval(node.child, context=new_context, parent=parent, transform=transform,
+            return engine.eval(node_id=node.child, context=new_context, parent=parent, transform=transform,
                                current_clause=node_id, identifier=identifier, **kwargs)
         except UnifyError:
             # Call and clause head are not unifiable, just fail (complete without results).
