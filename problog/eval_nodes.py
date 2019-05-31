@@ -410,8 +410,8 @@ class EvalOr(EvalNode):
     def is_buffered(self):
         return not (self.on_cycle or self.engine.unbuffered)
 
-    def isOnCycle(self):
-        return self.on_cycle
+    # def is_on_cycle(self):
+    #     return self.on_cycle
 
     def flush_buffer(self, cycle=False):
         func = lambda result, nodes: self.target.add_or(nodes, readonly=(not cycle), name=None)
@@ -682,8 +682,8 @@ class EvalDefine(EvalNode):
     def is_buffered(self):
         return not (self.on_cycle or self.engine.unbuffered)
 
-    def is_on_cycle(self):
-        return self.on_cycle
+    # def is_on_cycle(self):
+    #     return self.on_cycle
 
     def is_cycle_parent_or_children(self):
         return bool(self.cycle_children) or self.is_cycle_parent
