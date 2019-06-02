@@ -5,6 +5,7 @@ import argparse
 from problog.program import PrologFile
 from problog.logic import Term
 from ..solver import InferenceSolver
+from ..parser import DCParser
 
 
 
@@ -57,7 +58,7 @@ def main(args):
         except:
             raise InstallError('pypsi is not available.')
 
-    program = PrologFile(args['file_name'])
+    program = PrologFile(args['file_name'], parser=DCParser())
 
 
     solver = InferenceSolver(**args)

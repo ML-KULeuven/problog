@@ -98,9 +98,6 @@ class LogicFormulaHAL(LogicFormula):
 
     def __init__(self, **kwargs):
         LogicFormula.__init__(self, **kwargs)
-        self.density_nodes = {}
-        self.density_indices = set()
-        self.density_node_body = {}
         self.density_names = {}
         self.density_values = {}
 
@@ -155,20 +152,6 @@ class LogicFormulaHAL(LogicFormula):
                 result.append((name, node, label))
         return result
 
-
-    def is_density(self, index):
-        if index in self.density_indices:
-            return True
-        else:
-            return False
-
-    def get_term(self, atom):
-        if atom.name.functor=="choice":
-            term = atom.name.args[2]
-        else:
-            term = atom.name
-        return term
-
     def get_density_name(self, term, nid):
         if not term in self.density_names:
             self.density_names[term] = [nid]
@@ -178,14 +161,6 @@ class LogicFormulaHAL(LogicFormula):
         else:
             self.density_names[term].append(nid)
             return (term, len(self.density_names[term])-1)
-
-    def bookkeep_density_node(self, atom, node_id):
-        self.density_indices.add(node_id)
-        term = self.get_term(atom)
-        if term in self.density_nodes:
-            self.density_nodes[term] += (node_id,)
-        else:
-            self.density_nodes[term] = (node_id,)
 
     def create_ast_representation(self, expression):
         #Create abstract syntax tree (AST) of algebraic expression
@@ -241,12 +216,7 @@ class LogicFormulaHAL(LogicFormula):
         #     return self.TRUE
         else:
             symbolic_expr = self.create_ast_representation(probability)
-            is_density = False
-            if symbolic_expr.functor in pdfs and not isinstance(symbolic_expr, ValueExpr):
-                atom = self._create_atom(identifier, symbolic_expr, group=group, name=name, source=source, is_extra=is_extra)
-                is_density=True
-            else:
-                atom = self._create_atom(identifier, symbolic_expr, group=group, name=name, source=source, is_extra=is_extra)
+            atom = self._create_atom(identifier, symbolic_expr, group=group, name=name, source=source, is_extra=is_extra)
 
             length_before = len(self._nodes)
             node_id = self._add(atom, key=identifier)
@@ -254,17 +224,13 @@ class LogicFormulaHAL(LogicFormula):
             self.get_weights()[node_id] = symbolic_expr
             if name is not None:
                 self.add_name(name, node_id, self.LABEL_NAMED)
-
             if len(self._nodes) != length_before:
                 # The node was not reused?
                 self._atomcount += 1
                 # TODO if the next call return 0 or None, the node is still added?
                 node_id = self._add_constraint_me(group, node_id, cr_extra=cr_extra)
 
-            if is_density:
-                self.bookkeep_density_node(atom, node_id)
             return node_id
-
 
 
     def __str__(self):
@@ -312,7 +278,6 @@ class LogicFormulaHAL(LogicFormula):
         return s
 
     def functions_to_dot(self, not_as_node=True, nodeprops=None):
-        density_nodes = []
 
         if nodeprops is None:
             nodeprops = {}
