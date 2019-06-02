@@ -1,9 +1,10 @@
 import itertools
 
+from problog.engine import _ReplaceVar, substitute_call_args
 from problog.engine_builtin import check_mode, _builtin_possible
 from problog.engine_unify import UnifyError, unify_value
 from problog.engine_stack import NODE_TRUE, NODE_FALSE
-from problog.logic import Term, Constant, term2list, list2term, _arithmetic_functions, unquote
+from problog.logic import Term, Constant, Var, term2list, list2term, _arithmetic_functions, unquote, is_ground
 
 from .formula import LogicFormulaHAL
 from .logic import SymbolicConstant, ValueDimConstant, ValueExpr, DensityConstant
@@ -11,43 +12,86 @@ from .logic import SymbolicConstant, ValueDimConstant, ValueExpr, DensityConstan
 
 
 
-def _builtin_density(term, args=(), target=None, engine=None, callback=None, transform=None, **kwdargs):
-    check_mode( (term,), ['c'], functor='density_builtin')
-    actions = []
+def _builtin_is(a, b, engine=None, **kwdargs):
+    check_mode((a, b), ['*g'], functor='is', **kwdargs)
     try:
-        node_ids = target.density_nodes[term]
-    except:
-        raise ValueError("Cannot query density of discrete random variable ({}).".format(term))
-    target.density_queries[term] = set()
-    for nid in node_ids:
-        if nid in target.density_node_body:
-            body_node = target.density_node_body[nid]
-        else:
-            body_node = target.TRUE
-        density_name =  target.get_density_name(term, nid)
-        density = DensityConstant(density_name)
-        target.add_name(density, body_node, target.LABEL_QUERY)
-        target.density_queries[term].add(density)
-    actions += callback.notifyComplete()
-    return False, actions
+        b_values = evaluate_arithemtics(b, engine=engine, **kwdargs)
+        results =  []
+        for b_value in b_values:
+            if b_value[0] is None:
+                continue
+            else:
+                if isinstance(b_value[0],(int,float)):
+                    constant_val = Constant(b_value[0])
+                else:
+                    constant_val = b_value[0]
+                results.append(((constant_val, b), b_value[1]))
+        return results
+    except UnifyError:
+        return []
 
-def _builtin_free(free_variable, args=(), target=None, engine=None, callback=None, transform=None, **kwdargs):
-    check_mode( (free_variable,), ['c'], functor='free')
-    actions = []
-    target.free_variables.add(free_variable)
-    actions += callback.notifyResult((free_variable,), is_last=False)
-    actions += callback.notifyComplete()
-    return True, actions
+def _builtin_lt(arg1, arg2, engine=None, target=None, **kwdargs):
+    check_mode((arg1, arg2), ['gg'], functor='<', **kwdargs)
+    functor = "<"
+    ab_values = make_comparison_args(arg1, arg2, engine=engine, target=target, **kwdargs)
+    result = make_comparison(functor, ab_values, engine=engine, target=target, **kwdargs)
+    return result
+def _builtin_gt(arg1, arg2, engine=None, target=None, **kwdargs):
+    check_mode((arg1, arg2), ['gg'], functor='>', **kwdargs)
+    functor = ">"
+    ab_values = make_comparison_args(arg1, arg2, engine=engine, target=target, **kwdargs)
+    result = make_comparison(functor, ab_values, engine=engine, target=target, **kwdargs)
+    return result
+def _builtin_le(arg1, arg2, engine=None, target=None, **kwdargs):
+    check_mode((arg1, arg2), ['gg'], functor='=<', **kwdargs)
+    functor = "<="
+    ab_values = make_comparison_args(arg1, arg2, engine=engine, target=target, **kwdargs)
+    result = make_comparison(functor, ab_values, engine=engine, target=target, **kwdargs)
+    return result
+def _builtin_ge(arg1, arg2, engine=None, target=None, **kwdargs):
+    check_mode((arg1, arg2), ['gg'], functor='>=', **kwdargs)
+    functor = ">="
+    ab_values = make_comparison_args(arg1, arg2, engine=engine, target=target, **kwdargs)
+    result = make_comparison(functor, ab_values, engine=engine, target=target, **kwdargs)
+    return result
 
-def _builtin_free_list(free_variables, args=(), target=None, engine=None, callback=None, transform=None, **kwdargs):
-    check_mode( (free_variables,), ['l'], functor='free_list')
-    free_variables = term2list(free_variables)
-    actions = []
-    for v in free_variables:
-        target.free_variables.add(v)
-    actions += callback.notifyResult((free_variables,), is_last=False)
-    actions += callback.notifyComplete()
-    return True, actions
+# def _builtin_density(term, args=(), target=None, engine=None, callback=None, transform=None, **kwdargs):
+#     check_mode( (term,), ['c'], functor='density_builtin')
+#     actions = []
+#     try:
+#         node_ids = target.density_nodes[term]
+#     except:
+#         raise ValueError("Cannot query density of discrete random variable ({}).".format(term))
+#     target.density_queries[term] = set()
+#     for nid in node_ids:
+#         if nid in target.density_node_body:
+#             body_node = target.density_node_body[nid]
+#         else:
+#             body_node = target.TRUE
+#         density_name =  target.get_density_name(term, nid)
+#         density = DensityConstant(density_name)
+#         target.add_name(density, body_node, target.LABEL_QUERY)
+#         target.density_queries[term].add(density)
+#     actions += callback.notifyComplete()
+#     return False, actions
+#
+# def _builtin_free(free_variable, args=(), target=None, engine=None, callback=None, transform=None, **kwdargs):
+#     check_mode( (free_variable,), ['c'], functor='free')
+#     actions = []
+#     target.free_variables.add(free_variable)
+#     actions += callback.notifyResult((free_variable,), is_last=False)
+#     actions += callback.notifyComplete()
+#     return True, actions
+#
+# def _builtin_free_list(free_variables, args=(), target=None, engine=None, callback=None, transform=None, **kwdargs):
+#     check_mode( (free_variables,), ['l'], functor='free_list')
+#     free_variables = term2list(free_variables)
+#     actions = []
+#     for v in free_variables:
+#         target.free_variables.add(v)
+#     actions += callback.notifyResult((free_variables,), is_last=False)
+#     actions += callback.notifyComplete()
+#     return True, actions
 
 def _builtin_observation(term, observation, engine=None, target=None, **kwdargs):
     check_mode((term, observation), ['gg'], functor='observation_builtin', target=target, **kwdargs)
@@ -56,7 +100,7 @@ def _builtin_observation(term, observation, engine=None, target=None, **kwdargs)
     assert False
     #FINISHI this next time
 
-    
+
     # print(observation)
     # observations = []
     # print(result)
@@ -107,48 +151,7 @@ def _builtin_observation(term, observation, engine=None, target=None, **kwdargs)
     #
     # return result
 
-def _builtin_is(a, b, engine=None, **k):
-    check_mode((a, b), ['*g'], functor='is', **k)
-    try:
-        b_values = evaluate_arithemtics(b, engine=engine, **k)
-        results =  []
-        for b_value in b_values:
-            if b_value[0] is None:
-                continue
-            else:
-                if isinstance(b_value[0],(int,float)):
-                    constant_val = Constant(b_value[0])
-                else:
-                    constant_val = b_value[0]
-                results.append(((constant_val, b), b_value[1]))
-        return results
-    except UnifyError:
-        return []
 
-def _builtin_lt(arg1, arg2, engine=None, target=None, **kwdargs):
-    check_mode((arg1, arg2), ['gg'], functor='<', **kwdargs)
-    functor = "<"
-    ab_values = make_comparison_args(arg1, arg2, engine=engine, target=target, **kwdargs)
-    result = make_comparison(functor, ab_values, engine=engine, target=target, **kwdargs)
-    return result
-def _builtin_gt(arg1, arg2, engine=None, target=None, **kwdargs):
-    check_mode((arg1, arg2), ['gg'], functor='>', **kwdargs)
-    functor = ">"
-    ab_values = make_comparison_args(arg1, arg2, engine=engine, target=target, **kwdargs)
-    result = make_comparison(functor, ab_values, engine=engine, target=target, **kwdargs)
-    return result
-def _builtin_le(arg1, arg2, engine=None, target=None, **kwdargs):
-    check_mode((arg1, arg2), ['gg'], functor='=<', **kwdargs)
-    functor = "<="
-    ab_values = make_comparison_args(arg1, arg2, engine=engine, target=target, **kwdargs)
-    result = make_comparison(functor, ab_values, engine=engine, target=target, **kwdargs)
-    return result
-def _builtin_ge(arg1, arg2, engine=None, target=None, **kwdargs):
-    check_mode((arg1, arg2), ['gg'], functor='>=', **kwdargs)
-    functor = ">="
-    ab_values = make_comparison_args(arg1, arg2, engine=engine, target=target, **kwdargs)
-    result = make_comparison(functor, ab_values, engine=engine, target=target, **kwdargs)
-    return result
 
 
 def get_value_type(value):
@@ -235,7 +238,7 @@ def make_comparison_args(arg1, arg2, engine=None, **kwdargs):
     return ab_values
 
 
-def compute_function(term, database=None, target=None, engine=None, **k):
+def compute_function(term, database=None, target=None, engine=None, **kwdargs):
     """
     this function was originally in problog.logic.py
     """
@@ -250,7 +253,7 @@ def compute_function(term, database=None, target=None, engine=None, **k):
     try:
         value_lists = []
         for arg in args:
-            value_lists.append(evaluate_arithemtics(arg, database=database, target=target, engine=engine, **k))
+            value_lists.append(evaluate_arithemtics(arg, database=database, target=target, engine=engine, **kwdargs))
         args_list = list(itertools.product(*value_lists))
         coinjoined_args_list = []
         for args in args_list:
@@ -283,39 +286,32 @@ def create_value2(value_functor, value_args, value_name, value_type):
         return ValueExpr(value_functor, value_args, value_name, dimensions)
 
 
-def get_distributions(term, args=(), target=None, engine=None, callback=None, transform=None, **kwdargs):
+def get_distribution(distribution_node, target=None, engine=None, callback=None, transform=None, **kwdargs):
     value_type="point"
-    try:
-        node_ids = target.density_nodes[term]
-    except:
-        raise ValueError("The value of a discrete random variable ({}) is not defined.".format(term))
-    result = []
-    for nid in node_ids:
-        node = target.get_node(nid)
-        value_name =  target.get_density_name(term, nid)
-        if value_name in target.density_values:
-            value = target.density_values[value_name]
-            # ?is this doing anything here?
-        else:
-            probability = node.probability
-            value_functor = probability.functor
-            value_args = [target.create_ast_representation(a) for a in probability.args]
 
-            value = create_value2(value_functor, value_args, value_name, value_type)
-            target.density_values[value_name] = value
+    rv = distribution_node[0][0]
+    distribution = distribution_node[0][1]
+    node_id = distribution_node[1]
 
-        value_terms = get_value_terms(value, value_type)
-        if nid in target.density_node_body:
-            pass_node = target.density_node_body[nid]
-        else:
-            pass_node = 0
+    value_name =  target.get_density_name(rv, node_id)
+    if value_name in target.density_values:
+        value = target.density_values[value_name]
+        # ?is this doing anything here?
+    else:
+        value_functor = distribution.functor
+        value_args = [target.create_ast_representation(a) for a in distribution.args]
 
-        result.append((value_terms, pass_node))
+        value = create_value2(value_functor, value_args, value_name, value_type)
+        target.density_values[value_name] = value
+    value_terms = get_value_terms(value, value_type)
+
+
+    result = (value_terms, node_id)
 
     return result
 
 
-def evaluate_arithemtics(term_expression , engine=None, **k):
+def evaluate_arithemtics(term_expression , engine=None, database=None, target=None, **kwdargs):
     b = term_expression
     b_values = []
     if isinstance(b, Constant):
@@ -323,11 +319,13 @@ def evaluate_arithemtics(term_expression , engine=None, **k):
     elif isinstance(term_expression, SymbolicConstant):
         b_values.append((term_expression,0))
     elif isinstance(b, Term) and (unquote(b.functor), b.arity) in _arithmetic_functions:
-        b_values = compute_function(b, engine=engine, **k)
-
+        b_values = compute_function(b, engine=engine, database=database, target=target, **kwdargs)
     else:
-        result = _builtin_possible(b, engine=engine, **k)
-        b_values = []
-        for r in result:
-            b_values += get_distributions(r[0], engine=engine, **k)
+        term = Term("~", b, Var("Distribution"))
+        assert is_ground(b)
+        term = term.apply(_ReplaceVar())  # replace Var(_) by integers
+        target, results = engine._ground(database, term, target,  subcall=True)
+
+        for r in results:
+            b_values.append(get_distribution(r, engine=engine, database=database, target=target, **kwdargs))
     return b_values

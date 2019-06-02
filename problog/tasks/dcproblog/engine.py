@@ -1,46 +1,47 @@
 import logging
 
 from problog.util import Timer
-from problog.engine import ground, ClauseDB
-
+from problog.engine import DefaultEngine, ground, ClauseDB
 from problog.core import transform
 from problog.program import LogicProgram
 from problog.logic import Term, is_ground
 from problog.formula import LogicFormula
 from problog.engine_stack import SimpleProbabilisticBuiltIn, SimpleBuiltIn
 
-from .engine_stack import StackBasedEngineHAL as DefaultEngineHAL
 
 
 from .formula import LogicFormulaHAL
 from .engine_builtin import \
-    _builtin_density, \
-    _builtin_free_list, _builtin_free, \
+    _builtin_is, \
     _builtin_gt, _builtin_lt, _builtin_le, _builtin_ge, \
-    _builtin_observation, \
-    _builtin_is \
+    _builtin_observation \
+
+    # _builtin_density, \
+    # _builtin_free_list, _builtin_free, \
 
     # , _builtin_val_eq, _builtin_val_neq
 
 
-class EngineHAL(DefaultEngineHAL):
+class EngineHAL(DefaultEngine):
     def __init__(self,**kwargs):
-        DefaultEngineHAL.__init__(self,**kwargs)
+        DefaultEngine.__init__(self,**kwargs)
 
     def load_builtins(self):
-        DefaultEngineHAL.load_builtins(self)
-        # self.add_builtin('density_builtin', 1, _builtin_density)
-
-        self.add_builtin('free', 1, _builtin_free)
-        self.add_builtin('free_list', 1, _builtin_free_list)
-
+        DefaultEngine.load_builtins(self)
+        self.add_builtin('is', 2, SimpleProbabilisticBuiltIn(_builtin_is))
         self.add_builtin('>', 2, SimpleProbabilisticBuiltIn(_builtin_gt))
         self.add_builtin('<', 2, SimpleProbabilisticBuiltIn(_builtin_lt))
         self.add_builtin('=<', 2, SimpleProbabilisticBuiltIn(_builtin_le))
         self.add_builtin('>=', 2, SimpleProbabilisticBuiltIn(_builtin_ge))
+
+        # self.add_builtin('density_builtin', 1, _builtin_density)
+
+        # self.add_builtin('free', 1, _builtin_free)
+        # self.add_builtin('free_list', 1, _builtin_free_list)
+
+
         # self.add_builtin('=\=', 2, b(_builtin_val_neq))
         # self.add_builtin('=:=', 2, b(_builtin_val_eq))
-        self.add_builtin('is', 2, SimpleProbabilisticBuiltIn(_builtin_is))
 
         self.add_builtin('observation_builtin', 2, SimpleProbabilisticBuiltIn(_builtin_observation))
 
