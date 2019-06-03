@@ -10,8 +10,6 @@ from .formula import LogicFormulaHAL
 from .logic import SymbolicConstant, ValueDimConstant, ValueExpr, DensityConstant
 
 
-
-
 def _builtin_is(a, b, engine=None, **kwdargs):
     check_mode((a, b), ['*g'], functor='is', **kwdargs)
     try:
@@ -55,6 +53,39 @@ def _builtin_ge(arg1, arg2, engine=None, target=None, **kwdargs):
     result = make_comparison(functor, ab_values, engine=engine, target=target, **kwdargs)
     return result
 
+def _builtin_observation(term, observation, engine=None, target=None, database=None, **kwdargs):
+    check_mode((term, observation), ['gg'], functor='observation_builtin', target=target, **kwdargs)
+    functor="observation"
+
+    target, d_nodes = engine._ground(database, Term('~', term, Var('Distribution')), target)
+    observation_node = 0
+    for d_node in d_nodes:
+        distribution = get_distribution(d_node, engine=engine, database=database, target=target, **kwdargs)
+        identifier = "observation_of({})".format(target.get_density_name(term,distribution[1]))
+        arg1 = target.create_ast_representation(distribution[0])
+        arg2 = target.create_ast_representation(observation)
+        cvariables = set()
+        for a in (arg1,arg2):
+            cvariables = cvariables.union(a.cvariables)
+        probability = SymbolicConstant(functor, args=(arg1,arg2), cvariables=cvariables)
+
+        o_node = target.add_atom(identifier, probability)
+        if distribution[1] is None:
+            o_node = None
+        elif distribution[1]:
+            o_node = target.add_and((o_node,distribution[1]))
+
+
+        if not observation_node:
+            observation_node = o_node
+        else:
+            observation_node = target.add_or((observation_node,o_node))
+
+    result =  [((term,observation), observation_node)]
+    return result
+
+
+
 # def _builtin_density(term, args=(), target=None, engine=None, callback=None, transform=None, **kwdargs):
 #     check_mode( (term,), ['c'], functor='density_builtin')
 #     actions = []
@@ -93,63 +124,7 @@ def _builtin_ge(arg1, arg2, engine=None, target=None, **kwdargs):
 #     actions += callback.notifyComplete()
 #     return True, actions
 
-def _builtin_observation(term, observation, engine=None, target=None, **kwdargs):
-    check_mode((term, observation), ['gg'], functor='observation_builtin', target=target, **kwdargs)
-    functor="observation"
-    result = _builtin_possible(term, engine=engine, target=target, **kwdargs)
-    assert False
-    #FINISHI this next time
 
-
-    # print(observation)
-    # observations = []
-    # print(result)
-    # for r in result:
-    #     print(r)
-    #     obs_node = 0
-    #     for d in get_distributions(r[0], engine=engine, target=target, **kwdargs):
-    #         print(d)
-    #         d_value = d[0]
-    #         d_body_node = d[1]
-    #         if obs_node and d_body_node:
-    #             obs_node = target.add_or((obs_node,d_body_node))
-    #         elif d_body_node:
-    #             obs_node = d_body_node
-    #         symbolic_condition = SymbolicConstant(functor, args=sym_args, cvariables=cvariables)
-    #
-    #     observations.append(((term,observation),obs_node))
-    #     # b_values.append( (get_distributions(r[0], engine=engine, **kwdargs),(observation,0)) )
-    # print(observation)
-    # print(observations)
-    # result = make_comparison(functor, observations, engine=engine, target=target, **kwdargs)
-    #
-    #
-    #         if body_node1 and body_node2:
-    #             body_node = target.add_and((body_node1,body_node2))
-    #         elif body_node1:
-    #             body_node = body_node1
-    #         else:
-    #             body_node = body_node2
-    #         sym_args = (arg1,arg2)
-    #         cvariables = set()
-    #         for a in sym_args:
-    #             cvariables = cvariables.union(a.cvariables)
-    #         symbolic_condition = SymbolicConstant(functor, args=sym_args, cvariables=cvariables)
-    #
-    #         hashed_symbolic = hash(str(symbolic_condition))
-    #         con_node = target.add_atom(identifier=hashed_symbolic, probability=symbolic_condition, source=None)
-    #         if body_node:
-    #             pass_node = target.add_and((body_node, con_node))
-    #         else:
-    #             pass_node = con_node
-    #         result.append((sym_args,pass_node))
-    #
-    #
-    #
-    #
-    #
-    #
-    # return result
 
 
 

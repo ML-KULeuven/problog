@@ -250,6 +250,7 @@ class LogicFormulaHAL(LogicFormula):
             s += '\n* %s : %s' % q
 
         f = True
+        print(self.observation())
         for o in self.observation():
             if f:
                 f = False

@@ -4,7 +4,7 @@ from problog.util import Timer
 from problog.engine import DefaultEngine, ground, ClauseDB
 from problog.core import transform
 from problog.program import LogicProgram
-from problog.logic import Term, is_ground
+from problog.logic import Term, Var, is_ground
 from problog.formula import LogicFormula
 from problog.engine_stack import SimpleProbabilisticBuiltIn, SimpleBuiltIn
 
@@ -34,6 +34,9 @@ class EngineHAL(DefaultEngine):
         self.add_builtin('=<', 2, SimpleProbabilisticBuiltIn(_builtin_le))
         self.add_builtin('>=', 2, SimpleProbabilisticBuiltIn(_builtin_ge))
 
+        self.add_builtin('observation_builtin', 2, SimpleBuiltIn(_builtin_observation))
+
+
         # self.add_builtin('density_builtin', 1, _builtin_density)
 
         # self.add_builtin('free', 1, _builtin_free)
@@ -43,7 +46,6 @@ class EngineHAL(DefaultEngine):
         # self.add_builtin('=\=', 2, b(_builtin_val_neq))
         # self.add_builtin('=:=', 2, b(_builtin_val_eq))
 
-        self.add_builtin('observation_builtin', 2, SimpleProbabilisticBuiltIn(_builtin_observation))
 
 
     def prepare(self, db, target=None):
@@ -107,7 +109,10 @@ class EngineHAL(DefaultEngine):
         # Ground evidence
         for query in observation:
             logger.debug("Grounding observation({},{})".format(query[0], query[1]))
-            target = self.ground(db, Term('observation_builtin', query[0], query[1]), target, label=target.LABEL_OBSERVATION, is_root=True)
+            target, observation_node = self._ground(db, Term('observation_builtin', query[0], query[1]), target)
+            observation_node = observation_node[0][0]
+            print(observation_node)
+            target.add_name(observation_node[0], observation_node[1], target.LABEL_OBSERVATION)
             logger.debug("Ground program size: %s", len(target))
 
         if propagate_evidence:
