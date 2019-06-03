@@ -111,7 +111,6 @@ class InferenceSolver(object):
         lf = break_cycles(lf_hal, LogicFormulaHAL(**kwdargs))
         semiring = SemiringHAL(self.operator.get_neutral(), self.abstract_abe, density_values, density_queries, free_variables)
         diagram = self.compile_formula(lf, **kwdargs)
-
         dde = diagram.get_evaluator(semiring=semiring, **kwdargs)
         dde.formula.density_values = density_values
 

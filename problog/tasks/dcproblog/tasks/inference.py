@@ -4,8 +4,8 @@ import argparse
 
 from problog.program import PrologFile
 from problog.logic import Term
-from problog import library_paths, root_path
 from ..solver import InferenceSolver
+from ..parser import DCParser
 
 
 
@@ -41,8 +41,6 @@ def argparser(args):
 
 
 def main(args):
-    library_paths.append(root_path('problog', 'tasks', 'dcproblog', 'library'))
-
     import time
     start = time.time()
     parser = argparser(args)
@@ -60,7 +58,7 @@ def main(args):
         except:
             raise InstallError('pypsi is not available.')
 
-    program = PrologFile(args['file_name'])
+    program = PrologFile(args['file_name'], parser=DCParser())
 
 
     solver = InferenceSolver(**args)

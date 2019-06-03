@@ -1,51 +1,51 @@
 import logging
 
 from problog.util import Timer
-from problog.engine import ground, ClauseDB
-
+from problog.engine import DefaultEngine, ground, ClauseDB
 from problog.core import transform
 from problog.program import LogicProgram
-from problog.logic import Term, is_ground
+from problog.logic import Term, Var, is_ground
 from problog.formula import LogicFormula
 from problog.engine_stack import SimpleProbabilisticBuiltIn, SimpleBuiltIn
 
-from .engine_stack import StackBasedEngineHAL as DefaultEngineHAL
 
 
 from .formula import LogicFormulaHAL
 from .engine_builtin import \
-    _builtin_density, \
-    _builtin_free_list, _builtin_free, \
-    _builtin_as, \
+    _builtin_is, \
     _builtin_gt, _builtin_lt, _builtin_le, _builtin_ge, \
     _builtin_observation \
-    # _builtin_is \
+
+    # _builtin_density, \
+    # _builtin_free_list, _builtin_free, \
 
     # , _builtin_val_eq, _builtin_val_neq
 
 
-class EngineHAL(DefaultEngineHAL):
+class EngineHAL(DefaultEngine):
     def __init__(self,**kwargs):
-        DefaultEngineHAL.__init__(self,**kwargs)
+        DefaultEngine.__init__(self,**kwargs)
 
     def load_builtins(self):
-        DefaultEngineHAL.load_builtins(self)
-        self.add_builtin('density_builtin', 1, _builtin_density)
+        DefaultEngine.load_builtins(self)
+        self.add_builtin('is', 2, SimpleProbabilisticBuiltIn(_builtin_is))
+        self.add_builtin('>', 2, SimpleProbabilisticBuiltIn(_builtin_gt))
+        self.add_builtin('<', 2, SimpleProbabilisticBuiltIn(_builtin_lt))
+        self.add_builtin('=<', 2, SimpleProbabilisticBuiltIn(_builtin_le))
+        self.add_builtin('>=', 2, SimpleProbabilisticBuiltIn(_builtin_ge))
 
-        self.add_builtin('free', 1, _builtin_free)
-        self.add_builtin('free_list', 1, _builtin_free_list)
+        self.add_builtin('observation_builtin', 2, SimpleBuiltIn(_builtin_observation))
 
-        self.add_builtin('as_builtin', 2, _builtin_as)
 
-        self.add_builtin('>', 2, _builtin_gt)
-        self.add_builtin('<', 2, _builtin_lt)
-        self.add_builtin('=<', 2, _builtin_le)
-        self.add_builtin('>=', 2, _builtin_ge)
+        # self.add_builtin('density_builtin', 1, _builtin_density)
+
+        # self.add_builtin('free', 1, _builtin_free)
+        # self.add_builtin('free_list', 1, _builtin_free_list)
+
+
         # self.add_builtin('=\=', 2, b(_builtin_val_neq))
         # self.add_builtin('=:=', 2, b(_builtin_val_eq))
-        # self.add_builtin('is', 2, SimpleBuiltIn(_builtin_is))
 
-        self.add_builtin('obs_builtin', 2, _builtin_observation)
 
 
     def prepare(self, db, target=None):
@@ -67,8 +67,6 @@ class EngineHAL(DefaultEngineHAL):
     def _process_directives(self, db, target=None):
         """Process directives present in the database."""
         term = Term('_directive')
-        hal_library_directive = Term.from_string(":-use_module(library(hal)).")
-        db.add_clause(hal_library_directive)
         directive_node = db.find(term)
 
         if directive_node is None:
@@ -111,7 +109,10 @@ class EngineHAL(DefaultEngineHAL):
         # Ground evidence
         for query in observation:
             logger.debug("Grounding observation({},{})".format(query[0], query[1]))
-            target = self.ground(db, Term('observation_builtin', query[0], query[1]), target, label=target.LABEL_OBSERVATION, is_root=True)
+            target, observation_node = self._ground(db, Term('observation_builtin', query[0], query[1]), target)
+            observation_node = observation_node[0][0]
+            print(observation_node)
+            target.add_name(observation_node[0], observation_node[1], target.LABEL_OBSERVATION)
             logger.debug("Ground program size: %s", len(target))
 
         if propagate_evidence:
