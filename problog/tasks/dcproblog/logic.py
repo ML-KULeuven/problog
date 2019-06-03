@@ -1,4 +1,4 @@
-from problog.logic import Constant, Term, unquote, ArithmeticError, _arithmetic_functions
+from problog.logic import Constant, Term
 
 
 pdfs = {
