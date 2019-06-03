@@ -111,7 +111,6 @@ class EngineHAL(DefaultEngine):
             logger.debug("Grounding observation({},{})".format(query[0], query[1]))
             target, observation_node = self._ground(db, Term('observation_builtin', query[0], query[1]), target)
             observation_node = observation_node[0][0]
-            print(observation_node)
             target.add_name(observation_node[0], observation_node[1], target.LABEL_OBSERVATION)
             logger.debug("Ground program size: %s", len(target))
 
