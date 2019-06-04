@@ -372,20 +372,23 @@ class PrologFactory(Factory):
         else:
             has_agg = False
             # TODO add tests and errors
-            for arg in operand1[0].args:
+            is_scope = operand1[0].functor == "':'"
+            term = operand1[0] if not is_scope else operand1[0].args[1]
+            for arg in term.args:
                 if isinstance(arg, AggTerm):
                     has_agg = True
                     break
             if has_agg:
-                groupvars = list2term(operand1[0].args[:-1])
+                groupvars = list2term(term.args[:-1])
                 body = operand2
 
-                aggfunc = operand1[0].args[-1]()
-                aggvar = operand1[0].args[-1].args[0]
+                aggfunc = term.args[-1]()
+                aggvar = term.args[-1].args[0]
                 result = Var('R_VAR')
                 body = Term('aggregate', aggfunc, aggvar, groupvars, body, Term(',', groupvars, result))
-                headargs = operand1[0].args[:-1] + (result,)
-                head = operand1[0](*headargs)
+                headargs = term.args[:-1] + (result,)
+                head = operand1[0](*headargs) \
+                    if not is_scope else operand1[0](operand1[0].args[0], operand1[0].args[1](*headargs))
                 # aggregate(avg_list, Salary, [Dept], (person(X), salary(X, Salary), dept(X, Dept)), ([Dept], AvgSalary)).
                 return Clause(head, body, location=(self.loc_id, location))
             else:
