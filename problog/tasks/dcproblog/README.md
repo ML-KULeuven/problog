@@ -28,7 +28,7 @@ problog dc example.pl
 
 Use:
 ```
-hal_problog --help
+problog dc --help
 ```
 to find out which flags you can use to run a program
 

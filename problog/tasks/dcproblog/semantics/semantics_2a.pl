@@ -1,7 +1,7 @@
-normal(B,1)~a :- c, b~=B.
-normal(A,1)~b :- \+c, a~=A.
-normal(0,1)~a :- \+c.
-normal(0,1)~b :- c.
+a~normal(B,1) :- c, B is b.
+b~normal(A,1) :- \+c, A is a.
+a~normal(0,1) :- \+c.
+b~normal(0,1) :- c.
 0.5::c.
-test:- a~=A, conS(A>0).
+test:- a>0.
 query(test).
