@@ -9,8 +9,8 @@ n(X):- l(L), select_uniform(nballs, L, X, _).
 1/2::color(N,black);1/2::color(N,brown):- material(N,wood).
 
 
-beta(2,3)~size(N):-material(N,metal).
-beta(4,2)~size(N):-material(N,wood).
+size(N)~beta(2,3):-material(N,metal).
+size(N)~beta(4,2):-material(N,wood).
 
 dl(Urn,L):- n(N), findall(M, between(1,N,M), L).
 drawn(Urn,X):- dl(Urn,L), select_uniform((Urn,L), L, X, _).

@@ -9,7 +9,7 @@ from problog.formula import LogicFormula
 from problog.engine_stack import SimpleProbabilisticBuiltIn, SimpleBuiltIn
 
 
-
+from .engine_stack import SimpleProbabilisticBuiltIn
 from .formula import LogicFormulaHAL
 from .engine_builtin import \
     _builtin_is, \
@@ -33,7 +33,7 @@ class EngineHAL(DefaultEngine):
         self.add_builtin('<', 2, SimpleProbabilisticBuiltIn(_builtin_lt))
         self.add_builtin('=<', 2, SimpleProbabilisticBuiltIn(_builtin_le))
         self.add_builtin('>=', 2, SimpleProbabilisticBuiltIn(_builtin_ge))
-
+        #
         self.add_builtin('observation_builtin', 2, SimpleBuiltIn(_builtin_observation))
 
 
