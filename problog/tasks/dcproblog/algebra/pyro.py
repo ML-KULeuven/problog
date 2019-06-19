@@ -86,12 +86,11 @@ class S(BaseS):
         return s
 
 class Pyro(Algebra):
-    def __init__(self, values, free_variables, n_samples, ttype, device):
-        Algebra.__init__(self, values, free_variables)
+    def __init__(self, values, n_samples, ttype, device):
+        Algebra.__init__(self, values)
         self.Tensor = self.setup_tensor(ttype, device)
         torch.set_default_tensor_type(self.Tensor)
 
-        self.free_variables = free_variables
         self.n_samples = n_samples
         self.device = torch.device(device)
 
@@ -145,12 +144,12 @@ class Pyro(Algebra):
         # elif functor in (torch.normalInd_pdf,):
         #     return functor(*args)
 
-    def make_values(self, name, dimension_values, functor, args):
+    def make_values(self, name, components, functor, args):
         if name in self.random_values:
             pass
         else:
             functor = str2distribution[functor]
-            density = self.construct_density(name, len(dimension_values), functor, args)
+            density = self.construct_density(name, len(components), functor, args)
             samples = pyro.sample(name, density)
             self.densities[name] = density
             self.random_values[name] = samples

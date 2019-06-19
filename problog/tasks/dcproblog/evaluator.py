@@ -5,11 +5,10 @@ from .algebra.algebra import get_algebra
 
 
 class SemiringHAL(Semiring):
-    def __init__(self, neutral, abe, density_values, density_queries, free_variables):
+    def __init__(self, neutral, abe, density_values):
         Semiring.__init__(self)
         self.neutral = neutral
-        self.density_queries = density_queries
-        self.algebra = get_algebra(abe, density_values, free_variables)
+        self.algebra = get_algebra(abe, density_values)
         self.pos_values = {}
         self.neg_values = {}
 

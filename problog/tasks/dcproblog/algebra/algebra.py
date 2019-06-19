@@ -1,19 +1,19 @@
 from problog.logic import Constant
 
 
-from ..logic import pdfs, SymbolicConstant, ValueDimConstant, ValueExpr
+from ..logic import pdfs, SymbolicConstant, RandomVariableComponentConstant, RandomVariableConstant
 
 
 SUB = str.maketrans("0123456789-", "₀₁₂₃₄₅₆₇₈₉₋")
 M_SUB = "-".translate(SUB)
 
-def get_algebra(abstract_abe, values, free_variables, **kwdargs):
+def get_algebra(abstract_abe, values, **kwdargs):
     if abstract_abe.name=="psi":
         from .psi import PSI
-        return PSI(values, free_variables)
+        return PSI(values)
     elif abstract_abe.name=="pyro":
         from .pyro import Pyro
-        return Pyro(values, free_variables, abstract_abe.n_samples, abstract_abe.ttype, abstract_abe.device)
+        return Pyro(values, abstract_abe.n_samples, abstract_abe.ttype, abstract_abe.device)
 
 def addS(a,b):
     return a+b
@@ -85,9 +85,8 @@ class Algebra(object):
     densities = {}
     normalization = False #TODO move this to argument of integration functions
 
-    def __init__(self, values, free_variables):
+    def __init__(self, values):
         self.density_values = values
-        self.free_variables = free_variables
 
     @staticmethod
     def name2str(name):
@@ -96,11 +95,11 @@ class Algebra(object):
             name = name.replace(c, rc)
         return name
 
-    def is_free(self, v):
-        for fv in self.free_variables:
-            if fv == v[0]:
-                return True
-        return False
+    # def is_free(self, v):
+    #     for fv in self.free_variables:
+    #         if fv == v[0]:
+    #             return True
+    #     return False
 
     def one(self):
         return self.symbolize(1)
@@ -124,8 +123,9 @@ class Algebra(object):
     def get_values(self, density_name, dimension):
         if not density_name in self.random_values:
             density = self.density_values[density_name]
-            args = [self.construct_algebraic_expression(a) for a in density.args]
-            self.make_values(density.name, density.dimension_values, density.functor, args)
+            args = [self.construct_algebraic_expression(a) for a in density.distribution_args]
+            assert density_name==density.name
+            self.make_values(density.name, density.components, density.distribution_functor, args)
         return self.random_values[density_name][dimension]
 
     def construct_algebraic_expression(self, expression):
@@ -133,12 +133,12 @@ class Algebra(object):
             return self.construct_algebraic_expression(expression.functor)
         else:
             assert isinstance(expression, SymbolicConstant)
+
             if expression.functor=="observation":
                 #TODO handle multivariate case, loop over dimensions!!
                 observation_weight = self.make_observation(*expression.args)
                 return self.symbolize(observation_weight, variables=expression.args[0].cvariables)
-
-            elif isinstance(expression, ValueDimConstant):
+            elif isinstance(expression, RandomVariableComponentConstant):
                 density_name = expression.density_name
                 dimension = expression.dimension
                 values =  self.get_values(density_name, dimension)

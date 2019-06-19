@@ -1,5 +1,19 @@
 from problog.logic import Constant, Term
+from problog.pypl import py2pl
 
+
+distributions = {
+    'real' : 'real',
+
+    'delta' : 'delta,',
+    'normal' : 'normal',
+    'normalMV' : 'normalMV',
+    'normalInd' : 'normalInd',
+    'beta' : 'beta',
+    'poisson' : 'poisson',
+    'uniform' : 'uniform',
+    'catuni' : 'catuni'
+}
 
 pdfs = {
     'real' : 'real',
@@ -20,6 +34,65 @@ cdfs = {
 
 infix_functors = ["/"]
 comparison_functors = ["<", ">", "<=", ">="]
+
+class LogicVectorConstant(Term):
+    def __init__(self, components):
+        assert isinstance(components, list)
+        Term.__init__(self, "logicvector", *components)
+        self.components = components
+
+    def __add__(self,other):
+        operation = "__add__"
+        return self._perform_operation(operation, other)
+    def __add__(self,other):
+        operation = "__radd__"
+        return self._perform_operation(operation, other)
+    def __sub__(self,other):
+        operation = "__sub__"
+    def __rsub__(self,other):
+        operation = "__rsub__"
+    def __mul__(self,other):
+        operation = "__mul__"
+        return self._perform_operation(operation, other)
+    def __rmul__(self,other):
+        operation = "__rmul__"
+        oepration = self.__mul__
+        return self._perform_operation(operation, other)
+    def __truediv__(self,other):
+        operation = "__truediv__"
+        oepration = self.__mul__
+        return self._perform_operation(operation, other)
+    def __rtruediv__(self,other):
+        operation = "__rtruediv__"
+        oepration = self.__mul__
+        return self._perform_operation(operation, other)
+    def __pow__(self,other):
+        operation = "__rtruediv__"
+        oepration = self.__pow__
+        return self._perform_operation(operation, other)
+    def __rpow__(self,other):
+        operation = "__rtruediv__"
+        oepration = self.__rpow__
+        return self._perform_operation(operation, other)
+
+    def _perform_operation(self, operation, other):
+        components = []
+        if isinstance(other, (int, float, SymbolicConstant)):
+            for c in self.components:
+                op = getattr(c,operation)
+                components.append(op(other))
+        else:
+            assert len(self.components)==len(other.components)
+            for c1,c2 in zip(self.components,other.components):
+                op = getattr(c1,operation)
+                components.append(op(c2))
+        return LogicVectorConstant(components)
+
+
+    def __str__(self):
+        return "[" + ",".join(map(str,self.components)) + "]"
+    def __repr__(self):
+        return str(self)
 
 
 class SymbolicConstant(Term):
@@ -125,7 +198,7 @@ class SymbolicConstant(Term):
 
 
 
-class ValueDimConstant(SymbolicConstant):
+class RandomVariableComponentConstant(SymbolicConstant):
     def __init__(self, value, cvariables):
         SymbolicConstant.__init__(self, value, args=(), cvariables=cvariables)
 
@@ -146,34 +219,34 @@ class ValueDimConstant(SymbolicConstant):
 
 
 
-class ValueExpr(object):
+class RandomVariableConstant(LogicVectorConstant):
     def __init__(self, functor, args, name, dimensions):
-        self.functor = functor
-        self.args = args
         self.name = name
-        self.dimensions = dimensions
-        self.dimension_values = self.make_dim_values(self.dimensions)
+        self.distribution_functor = functor
+        self.distribution_args = args
 
-    def make_dim_values(self, dimensions):
-        dimension_values = []
+        components = self.make_components(dimensions)
+        LogicVectorConstant.__init__(self, components)
+
+    def make_components(self, dimensions):
+        components = []
         for d in range(0,dimensions):
             dim_name = self.name+(d,)
-            dimension_values.append(ValueDimConstant(dim_name, (dim_name,)))
-            #probably also bug here
-        return dimension_values
+            components.append(RandomVariableComponentConstant(dim_name, (dim_name,)))
+        return components
 
 
 
-    def __str__(self):
-        return "({},{})".format(self.name[0], self.name[1])
+class Distribution(Term):
+    def __init__(self, distribution, *arguments):
+        Term.__init__(self, distribution, *arguments)
+        self.dimensions = self.infer_dimensions()
 
-    def __repr__(self):
-        return str(self)
+    def infer_dimensions(self):
+        return 1
 
 
-class DensityConstant(Term):
-    def __init__(self, density):
-        Term.__init__(self, density, args=())
+
     def __str__(self):
         return str(self.functor)
     def __repr__(self):

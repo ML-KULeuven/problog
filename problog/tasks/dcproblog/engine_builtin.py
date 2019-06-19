@@ -5,9 +5,10 @@ from problog.engine_builtin import check_mode, _builtin_possible
 from problog.engine_unify import UnifyError, unify_value
 from problog.engine_stack import NODE_TRUE, NODE_FALSE
 from problog.logic import Term, Constant, Var, term2list, list2term, _arithmetic_functions, unquote, is_ground
+from problog.errors import ProbLogError
 
 from .formula import LogicFormulaHAL
-from .logic import SymbolicConstant, ValueDimConstant, ValueExpr, DensityConstant
+from .logic import Distribution, LogicVectorConstant, RandomVariableConstant, RandomVariableComponentConstant, SymbolicConstant
 
 
 def _builtin_is(a, b, engine=None, **kwdargs):
@@ -23,6 +24,15 @@ def _builtin_is(a, b, engine=None, **kwdargs):
                     constant_val = Constant(b_value[0])
                 else:
                     constant_val = b_value[0]
+                    if not isinstance(a,int):
+                        unification_len = len(term2list(a))
+                        try:
+                            assert unification_len==len(b_value[0].components)
+                            constant_val = list2term(b_value[0].components)
+                        except:
+                            raise ProbLogError("Vector lengths do not match (lhs: {}, rhs: {})".format(unification_len, 1))
+
+
                 results.append(((constant_val, b), b_value[1]))
         return results
     except UnifyError:
@@ -129,32 +139,6 @@ def _builtin_observation(term, observation, engine=None, target=None, database=N
 
 
 
-def get_value_type(value):
-    if isinstance(value, int):
-        return "point"
-    else:
-        return "vector"
-
-def create_value(value, value_functor, value_args, value_name, value_type):
-    if value_type=="point":
-        dimensions = 1
-        return ValueExpr(value_functor, value_args, value_name, dimensions)
-    else:
-        value_list  = term2list(value)
-        dimensions = len(value_list)
-        return ValueExpr(value_functor, value_args, value_name, dimensions)
-
-def get_value_terms(value, value_type):
-    value_terms = []
-    for dv in value.dimension_values:
-        value_terms.append(dv)
-    if value_type=="point":
-        value_terms = value_terms[0]
-    else:
-        value_terms = [vt for vt in value_terms]
-        value_terms = list2term(value_terms)
-    return value_terms
-
 
 def make_comparison(functor, ab_values, engine=None, target=None, **kwdargs):
     result = []
@@ -183,6 +167,15 @@ def make_comparison(functor, ab_values, engine=None, target=None, **kwdargs):
         else:
             arg1 = target.create_ast_representation(args[0][0])
             arg2 = target.create_ast_representation(args[1][0])
+
+            #Enforce that indicator functions (Iverson brackets have to be 1-dimensional)
+            #Could change this to multidimensional dirac delta by allowing more dimensions
+            if isinstance(arg1, LogicVectorConstant):
+                assert len(arg1.components)==1
+                arg1  = arg1.components[0]
+            if isinstance(arg2, LogicVectorConstant):
+                assert len(arg2.components)==1
+                arg2  = arg2.components[0]
             body_node1 = args[0][1]
             body_node2 = args[1][1]
             if body_node1 and body_node2:
@@ -254,47 +247,47 @@ def compute_function(term, database=None, target=None, engine=None, **kwdargs):
     except ZeroDivisionError:
         raise ArithmeticError("Division by zero.")
 
-#FIXME
-def create_value2(value_functor, value_args, value_name, value_type):
-    if value_type=="point":
-        dimensions = 1
-        return ValueExpr(value_functor, value_args, value_name, dimensions)
+
 
 
 def get_distribution(distribution_node, target=None, engine=None, callback=None, transform=None, **kwdargs):
-    value_type="point"
-
     rv = distribution_node[0][0]
     distribution = distribution_node[0][1]
     node_id = distribution_node[1]
 
-    value_name =  target.get_density_name(rv, node_id)
+    assert isinstance(distribution, Distribution)
+
+    value_name = target.get_density_name(rv, node_id)
     if value_name in target.density_values:
         value = target.density_values[value_name]
-        # ?is this doing anything here?
     else:
         value_functor = distribution.functor
         value_args = [target.create_ast_representation(a) for a in distribution.args]
-
-        value = create_value2(value_functor, value_args, value_name, value_type)
+        value = RandomVariableConstant(value_functor, value_args, value_name, distribution.dimensions)
         target.density_values[value_name] = value
-    value_terms = get_value_terms(value, value_type)
 
-
-    result = (value_terms, node_id)
-
+    result = (value, node_id)
     return result
+
+
+
+
 
 
 def evaluate_arithemtics(term_expression , engine=None, database=None, target=None, **kwdargs):
     b = term_expression
     b_values = []
+
     if isinstance(b, Constant):
         b_values.append((b.functor,0))
     elif isinstance(term_expression, SymbolicConstant):
         b_values.append((term_expression,0))
     elif isinstance(b, Term) and (unquote(b.functor), b.arity) in _arithmetic_functions:
         b_values = compute_function(b, engine=engine, database=database, target=target, **kwdargs)
+    elif isinstance(term_expression, RandomVariableConstant):
+        b_values.append((term_expression,0))
+    elif isinstance(term_expression, LogicVectorConstant):
+        b_values.append((term_expression,0))
     else:
         term = Term("~", b, Var("Distribution"))
         assert is_ground(b)
