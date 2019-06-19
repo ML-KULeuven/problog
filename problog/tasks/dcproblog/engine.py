@@ -6,8 +6,10 @@ from problog.core import transform
 from problog.program import LogicProgram
 from problog.logic import Term, Var, is_ground
 from problog.formula import LogicFormula
-from problog.engine_stack import SimpleProbabilisticBuiltIn, SimpleBuiltIn
+from problog.engine_stack import SimpleBuiltIn
 
+
+from .engine_stack import SimpleProbabilisticBuiltIn
 from .formula import LogicFormulaHAL
 from .engine_builtin import \
     _builtin_is, \
