@@ -180,7 +180,9 @@ def make_comparison(functor, ab_values, engine=None, target=None, **kwdargs):
                 cvariables = cvariables.union(a.cvariables)
             symbolic_condition = SymbolicConstant(functor, args=sym_args, cvariables=cvariables)
 
+            print(symbolic_condition)
             hashed_symbolic = hash(str(symbolic_condition))
+            print(hashed_symbolic)
             con_node = target.add_atom(identifier=hashed_symbolic, probability=symbolic_condition, source=None)
             if body_node:
                 pass_node = target.add_and((body_node, con_node))

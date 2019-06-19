@@ -12,7 +12,6 @@ class DCPrologFactory(DefaultPrologFactory):
         if functor=="'~'":
             #Maybe add arithmetic for distributional head here
             rv, distribution = arguments
-            print(distribution.functor)
             assert distribution.functor in distributions
             distribution = Distribution(distribution.functor, *distribution.args)
             return Term(functor, rv, distribution, location=(self.loc_id, location), **extra)

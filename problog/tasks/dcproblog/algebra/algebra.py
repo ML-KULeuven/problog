@@ -138,10 +138,6 @@ class Algebra(object):
                 #TODO handle multivariate case, loop over dimensions!!
                 observation_weight = self.make_observation(*expression.args)
                 return self.symbolize(observation_weight, variables=expression.args[0].cvariables)
-            elif isinstance(expression, RandomVariableConstant):
-                print(expression)
-                import sys
-                sys.exit()
             elif isinstance(expression, RandomVariableComponentConstant):
                 density_name = expression.density_name
                 dimension = expression.dimension
