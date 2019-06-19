@@ -3,7 +3,7 @@ from collections import namedtuple, defaultdict
 from problog.formula import LogicFormula, LogicNNF, atom
 from problog.logic import Constant, Term, term2list
 
-from .logic import pdfs, cdfs, SymbolicConstant, ValueDimConstant, ValueExpr, comparison_functors
+from .logic import pdfs, cdfs, LogicVectorConstant, SymbolicConstant, RandomVariableConstant, RandomVariableComponentConstant, comparison_functors
 from .evaluator import FormulaEvaluatorHAL
 from .algebra.algebra import Algebra
 
@@ -96,13 +96,11 @@ class LogicNNFHAL(LogicNNF):
 class LogicFormulaHAL(LogicFormula):
     LABEL_OBSERVATION = "observation"
 
-    def __init__(self, **kwargs):
+    def __init__(self, density_values={}, density_names={}, **kwargs):
         LogicFormula.__init__(self, **kwargs)
-        self.density_names = {}
-        self.density_values = {}
+        self.density_names = density_names
+        self.density_values = density_values
 
-        self.free_variables = set()
-        self.density_queries = {}
 
 
     def add_observation(self, name, key, value, keep_name=False):
@@ -168,12 +166,14 @@ class LogicFormulaHAL(LogicFormula):
             return self.create_ast_representation(expression.functor)
         elif isinstance(expression, (int,float)):
             return SymbolicConstant(expression, args=(), cvariables=set())
-        elif isinstance(expression, SymbolicConstant):
-            return expression
-        elif isinstance(expression, ValueDimConstant):
-            return expression
         elif isinstance(expression, bool):
             return SymbolicConstant(int(expression), args=(), cvariables=set())
+        elif isinstance(expression, RandomVariableComponentConstant):
+            return expression
+        elif isinstance(expression, LogicVectorConstant):
+            return expression
+        elif isinstance(expression, SymbolicConstant):
+            return expression
         elif expression==None:
             return SymbolicConstant(None,args=(),cvariables=set())
         elif expression.functor==".":
@@ -184,8 +184,7 @@ class LogicFormulaHAL(LogicFormula):
                 symbolic_args.append(symbolic_a)
             return SymbolicConstant("list", args=symbolic_args, cvariables=set())
 
-        elif isinstance(expression, Constant):
-            return self.create_ast_representation(expression.functor)
+
         elif isinstance(expression, Term):
             functor = expression.functor.strip("'")
             symbolic_args = []
@@ -250,7 +249,6 @@ class LogicFormulaHAL(LogicFormula):
             s += '\n* %s : %s' % q
 
         f = True
-        print(self.observation())
         for o in self.observation():
             if f:
                 f = False

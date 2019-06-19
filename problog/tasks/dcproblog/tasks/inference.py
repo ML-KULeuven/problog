@@ -1,11 +1,11 @@
-from problog.errors import InstallError
-
 import argparse
 
+from problog.errors import InstallError
 from problog.program import PrologFile
-from problog.logic import Term
+
 from ..solver import InferenceSolver
 from ..parser import DCParser
+from ..program import DCPrologFactory
 
 
 
@@ -59,7 +59,6 @@ def main(args):
             raise InstallError('pypsi is not available.')
 
     program = PrologFile(args['file_name'], parser=DCParser())
-
 
     solver = InferenceSolver(**args)
     probabilities = solver.probability(program, **args)

@@ -8,8 +8,6 @@ from problog.logic import Term, Var, is_ground
 from problog.formula import LogicFormula
 from problog.engine_stack import SimpleProbabilisticBuiltIn, SimpleBuiltIn
 
-
-
 from .formula import LogicFormulaHAL
 from .engine_builtin import \
     _builtin_is, \
@@ -36,7 +34,6 @@ class EngineHAL(DefaultEngine):
 
         self.add_builtin('observation_builtin', 2, SimpleBuiltIn(_builtin_observation))
 
-
         # self.add_builtin('density_builtin', 1, _builtin_density)
 
         # self.add_builtin('free', 1, _builtin_free)
@@ -48,37 +45,24 @@ class EngineHAL(DefaultEngine):
 
 
 
-    def prepare(self, db, target=None):
-        """Convert given logic program to suitable format for this engine.
-        Calling this method is optional, but it allows to perform multiple operations on the same \
-        database.
-        This also executes any directives in the input model.
 
-        :param db: logic program to prepare for evaluation
-        :return: logic program in a suitable format for this engine
-        :rtype: ClauseDB
-        """
-        result = ClauseDB.createFrom(db, builtins=self.get_builtins())
-        result.engine = self
 
-        self._process_directives(result, target=target)
-        return result
 
-    def _process_directives(self, db, target=None):
-        """Process directives present in the database."""
-        term = Term('_directive')
-        directive_node = db.find(term)
-
-        if directive_node is None:
-            return True    # no directives
-        directives = db.get_node(directive_node).children
-        if target==None:
-            target = LogicFormulaHAL()
-
-        while directives:
-            current = directives.pop(0)
-            self.execute(current, database=db, target=target, context=self.create_context((), define=None))
-        return True
+    # def _process_directives(self, db, target=None):
+    #     """Process directives present in the database."""
+    #     term = Term('_directive')
+    #     directive_node = db.find(term)
+    #
+    #     if directive_node is None:
+    #         return True    # no directives
+    #     directives = db.get_node(directive_node).children
+    #     if target==None:
+    #         target = LogicFormulaHAL()
+    #
+    #     while directives:
+    #         current = directives.pop(0)
+    #         self.execute(current, database=db, target=target, context=self.create_context((), define=None))
+    #     return True
 
     def query(self, db, term, gp=None, **kwdargs):
         """
@@ -127,7 +111,7 @@ class EngineHAL(DefaultEngine):
         # Initialize target if not given.
         if target is None:
             target = LogicFormula()
-        db = self.prepare(db, target=target)
+        db = self.prepare(db)
         logger = logging.getLogger('problog')
         with Timer('Grounding'):
             # Load queries: use argument if available, otherwise load from database.
@@ -174,12 +158,6 @@ class EngineHAL(DefaultEngine):
 
         return target
 
-
-def init_model(engine, model, target=None, **kwdargs):
-    model = engine.prepare(model, target=target)
-    evidence_facts = []
-    ev_target = LogicFormulaHAL(**kwdargs)
-    return model, evidence_facts, ev_target
 
 def init_engine(**kwdargs):
     engine = EngineHAL(**kwdargs)

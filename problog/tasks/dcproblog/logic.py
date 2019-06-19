@@ -1,5 +1,19 @@
 from problog.logic import Constant, Term
+from problog.pypl import py2pl
 
+
+distributions = {
+    'real' : 'real',
+
+    'delta' : 'delta,',
+    'normal' : 'normal',
+    'normalMV' : 'normalMV',
+    'normalInd' : 'normalInd',
+    'beta' : 'beta',
+    'poisson' : 'poisson',
+    'uniform' : 'uniform',
+    'catuni' : 'catuni'
+}
 
 pdfs = {
     'real' : 'real',
@@ -20,6 +34,30 @@ cdfs = {
 
 infix_functors = ["/"]
 comparison_functors = ["<", ">", "<=", ">="]
+
+class LogicVectorConstant(Term):
+    def __init__(self, components):
+        assert isinstance(components, list)
+        Term.__init__(self, ".", *components)
+        self.components = components
+
+    def __add__(self,other):
+        if isinstance(other, (int, float)):
+            components = []
+            for c in self.components:
+                components.append(c+other)
+            return LogicVectorConstant(components)
+    def __mul__(self,other):
+        if isinstance(other, (int, float)):
+            components = []
+            for c in self.components:
+                components.append(c*other)
+            return LogicVectorConstant(components)
+
+    def __str__(self):
+        return "[" + ",".join(map(str,self.components)) + "]"
+    def __repr__(self):
+        return str(self)
 
 
 class SymbolicConstant(Term):
@@ -125,7 +163,7 @@ class SymbolicConstant(Term):
 
 
 
-class ValueDimConstant(SymbolicConstant):
+class RandomVariableComponentConstant(SymbolicConstant):
     def __init__(self, value, cvariables):
         SymbolicConstant.__init__(self, value, args=(), cvariables=cvariables)
 
@@ -146,23 +184,21 @@ class ValueDimConstant(SymbolicConstant):
 
 
 
-class ValueExpr(object):
+class RandomVariableConstant(LogicVectorConstant):
     def __init__(self, functor, args, name, dimensions):
-        self.functor = functor
-        self.args = args
         self.name = name
-        self.dimensions = dimensions
-        self.dimension_values = self.make_dim_values(self.dimensions)
+        self.distribution_functor = functor
+        self.distribution_args = args
 
-    def make_dim_values(self, dimensions):
-        dimension_values = []
+        components = self.make_components(dimensions)
+        LogicVectorConstant.__init__(self, components)
+
+    def make_components(self, dimensions):
+        components = []
         for d in range(0,dimensions):
             dim_name = self.name+(d,)
-            dimension_values.append(ValueDimConstant(dim_name, (dim_name,)))
-            #probably also bug here
-        return dimension_values
-
-
+            components.append(RandomVariableComponentConstant(dim_name, (dim_name,)))
+        return components
 
     def __str__(self):
         return "({},{})".format(self.name[0], self.name[1])
@@ -171,9 +207,16 @@ class ValueExpr(object):
         return str(self)
 
 
-class DensityConstant(Term):
-    def __init__(self, density):
-        Term.__init__(self, density, args=())
+class Distribution(Term):
+    def __init__(self, distribution, *arguments):
+        Term.__init__(self, distribution, *arguments)
+        self.dimensions = self.infer_dimensions()
+
+    def infer_dimensions(self):
+        return 1
+
+
+
     def __str__(self):
         return str(self.functor)
     def __repr__(self):

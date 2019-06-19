@@ -4,7 +4,7 @@ from collections import OrderedDict
 from problog.formula import LogicFormula
 
 from .cycles import break_cycles
-from .engine import init_engine, init_model
+from .engine import init_engine
 from .formula import LogicFormulaHAL
 from .sdd_formula import SDDHAL
 from .evaluator import SemiringHAL
@@ -54,14 +54,10 @@ class InferenceSolver(object):
     def ground(self, model, queries=None, **kwdargs):
         engine = init_engine(**kwdargs)
         lf_hal = LogicFormulaHAL(db=model)
-        model, evidence, ev_target = init_model(engine, model, target=lf_hal)
-        free_variables = lf_hal.free_variables
+        model = engine.prepare(model)
         lf_hal = LogicFormulaHAL.create_from(model, label_all=True, \
             propagate_evidence=True, engine=engine, queries=queries)
-        density_queries = self.get_density_queries(lf_hal)
-        density_values = lf_hal.density_values
-
-        return lf_hal, density_queries, density_values, free_variables
+        return lf_hal
 
     def compile_formula(self, lf,  **kwdargs):
         sdd_hal = SDDHAL(**kwdargs)
@@ -107,12 +103,15 @@ class InferenceSolver(object):
 
 
     def probability(self, program, **kwdargs):
-        lf_hal, density_queries, density_values, free_variables = self.ground(program, queries=None, **kwdargs)
-        lf = break_cycles(lf_hal, LogicFormulaHAL(**kwdargs))
-        semiring = SemiringHAL(self.operator.get_neutral(), self.abstract_abe, density_values, density_queries, free_variables)
-        diagram = self.compile_formula(lf, **kwdargs)
+        lf_hal = self.ground(program, queries=None, **kwdargs)
+        lf_hal = break_cycles(lf_hal, LogicFormulaHAL(density_values=lf_hal.density_values, \
+            density_names=lf_hal.density_names, **kwdargs))
+        semiring = SemiringHAL(self.operator.get_neutral(), self.abstract_abe, lf_hal.density_values)
+        diagram = self.compile_formula(lf_hal, **kwdargs)
         dde = diagram.get_evaluator(semiring=semiring, **kwdargs)
-        dde.formula.density_values = density_values
+        dde.formula.density_values = lf_hal.density_values
+
+
 
         sdds = dde.get_sdds()
         if self.draw_diagram:
