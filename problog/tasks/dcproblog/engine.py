@@ -33,7 +33,7 @@ class EngineHAL(DefaultEngine):
         self.add_builtin('<', 2, SimpleProbabilisticBuiltIn(_builtin_lt))
         self.add_builtin('=<', 2, SimpleProbabilisticBuiltIn(_builtin_le))
         self.add_builtin('>=', 2, SimpleProbabilisticBuiltIn(_builtin_ge))
-
+        #
         self.add_builtin('observation_builtin', 2, SimpleBuiltIn(_builtin_observation))
 
         # self.add_builtin('density_builtin', 1, _builtin_density)
