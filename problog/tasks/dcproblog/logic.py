@@ -42,17 +42,52 @@ class LogicVectorConstant(Term):
         self.components = components
 
     def __add__(self,other):
-        if isinstance(other, (int, float)):
-            components = []
-            for c in self.components:
-                components.append(c+other)
-            return LogicVectorConstant(components)
+        operation = "__add__"
+        return self._perform_operation(operation, other)
+    def __add__(self,other):
+        operation = "__radd__"
+        return self._perform_operation(operation, other)
+    def __sub__(self,other):
+        operation = "__sub__"
+    def __rsub__(self,other):
+        operation = "__rsub__"
     def __mul__(self,other):
-        if isinstance(other, (int, float)):
-            components = []
+        operation = "__mul__"
+        return self._perform_operation(operation, other)
+    def __rmul__(self,other):
+        operation = "__rmul__"
+        oepration = self.__mul__
+        return self._perform_operation(operation, other)
+    def __truediv__(self,other):
+        operation = "__truediv__"
+        oepration = self.__mul__
+        return self._perform_operation(operation, other)
+    def __rtruediv__(self,other):
+        operation = "__rtruediv__"
+        oepration = self.__mul__
+        return self._perform_operation(operation, other)
+    def __pow__(self,other):
+        operation = "__rtruediv__"
+        oepration = self.__pow__
+        return self._perform_operation(operation, other)
+    def __rpow__(self,other):
+        operation = "__rtruediv__"
+        oepration = self.__rpow__
+        return self._perform_operation(operation, other)
+
+    def _perform_operation(self, operation, other):
+        components = []
+        if isinstance(other, (int, float, SymbolicConstant)):
             for c in self.components:
-                components.append(c*other)
-            return LogicVectorConstant(components)
+                op = getattr(c,operation)
+                components.append(op(other))
+        else:
+            assert len(self.components)==len(other.components)
+            for c1,c2 in zip(self.components,other.components):
+                op = getattr(c1,operation)
+                components.append(op(c2))
+        return LogicVectorConstant(components)
+
 
     def __str__(self):
         return "[" + ",".join(map(str,self.components)) + "]"

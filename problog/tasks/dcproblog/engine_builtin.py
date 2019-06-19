@@ -5,6 +5,7 @@ from problog.engine_builtin import check_mode, _builtin_possible
 from problog.engine_unify import UnifyError, unify_value
 from problog.engine_stack import NODE_TRUE, NODE_FALSE
 from problog.logic import Term, Constant, Var, term2list, list2term, _arithmetic_functions, unquote, is_ground
+from problog.errors import ProbLogError
 
 from .formula import LogicFormulaHAL
 from .logic import Distribution, LogicVectorConstant, RandomVariableConstant, RandomVariableComponentConstant, SymbolicConstant
@@ -23,6 +24,15 @@ def _builtin_is(a, b, engine=None, **kwdargs):
                     constant_val = Constant(b_value[0])
                 else:
                     constant_val = b_value[0]
+                    if not isinstance(a,int):
+                        unification_len = len(term2list(a))
+                        try:
+                            assert unification_len==len(b_value[0].components)
+                            constant_val = list2term(b_value[0].components)
+                        except:
+                            raise ProbLogError("Vector lengths do not match (lhs: {}, rhs: {})".format(unification_len, 1))
+
+
                 results.append(((constant_val, b), b_value[1]))
         return results
     except UnifyError:
