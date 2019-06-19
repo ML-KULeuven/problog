@@ -180,9 +180,7 @@ def make_comparison(functor, ab_values, engine=None, target=None, **kwdargs):
                 cvariables = cvariables.union(a.cvariables)
             symbolic_condition = SymbolicConstant(functor, args=sym_args, cvariables=cvariables)
 
-            print(symbolic_condition)
             hashed_symbolic = hash(str(symbolic_condition))
-            print(hashed_symbolic)
             con_node = target.add_atom(identifier=hashed_symbolic, probability=symbolic_condition, source=None)
             if body_node:
                 pass_node = target.add_and((body_node, con_node))
@@ -269,12 +267,17 @@ def get_distribution(distribution_node, target=None, engine=None, callback=None,
 def evaluate_arithemtics(term_expression , engine=None, database=None, target=None, **kwdargs):
     b = term_expression
     b_values = []
+
     if isinstance(b, Constant):
         b_values.append((b.functor,0))
     elif isinstance(term_expression, SymbolicConstant):
         b_values.append((term_expression,0))
     elif isinstance(b, Term) and (unquote(b.functor), b.arity) in _arithmetic_functions:
         b_values = compute_function(b, engine=engine, database=database, target=target, **kwdargs)
+    elif isinstance(term_expression, RandomVariableConstant):
+        b_values.append((term_expression,0))
+    elif isinstance(term_expression, LogicVectorConstant):
+        b_values.append((term_expression,0))
     else:
         term = Term("~", b, Var("Distribution"))
         assert is_ground(b)

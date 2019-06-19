@@ -38,7 +38,7 @@ comparison_functors = ["<", ">", "<=", ">="]
 class LogicVectorConstant(Term):
     def __init__(self, components):
         assert isinstance(components, list)
-        Term.__init__(self, ".", *components)
+        Term.__init__(self, "logicvector", *components)
         self.components = components
 
     def __add__(self,other):
@@ -200,11 +200,6 @@ class RandomVariableConstant(LogicVectorConstant):
             components.append(RandomVariableComponentConstant(dim_name, (dim_name,)))
         return components
 
-    def __str__(self):
-        return "({},{})".format(self.name[0], self.name[1])
-
-    def __repr__(self):
-        return str(self)
 
 
 class Distribution(Term):
