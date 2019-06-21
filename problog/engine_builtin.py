@@ -1679,17 +1679,16 @@ def _builtin_subquery(term, prob, evidence=None, engine=None, database=None, **k
     else:
         check_mode((term, prob), ['cv'], functor='subquery')
 
-    from .sdd_formula import SDD
-
     eng = engine.__class__()
-
     target = eng.ground(database, term, label='query')
 
     if evidence:
         for ev in term2list(evidence):
             target = eng.ground(database, ev, target=target, label=target.LABEL_EVIDENCE_POS)
 
-    results = SDD.create_from(target).evaluate()
+    from problog import get_evaluatable
+    kc = get_evaluatable(name=None) # TODO somehow pass evaluatable preference (name, -k)
+    results = kc.create_from(target).evaluate()
     if evidence:
         return [(t, Constant(p), evidence) for t, p in results.items()]
     else:
