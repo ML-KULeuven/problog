@@ -1686,7 +1686,7 @@ def _builtin_subquery(term, prob, evidence=None, engine=None, database=None, **k
         for ev in term2list(evidence):
             target = eng.ground(database, ev, target=target, label=target.LABEL_EVIDENCE_POS)
 
-    from problog import get_evaluatable
+    from . import get_evaluatable
     kc = get_evaluatable(name=None) # TODO somehow pass evaluatable preference (name, -k)
     results = kc.create_from(target).evaluate()
     if evidence:
