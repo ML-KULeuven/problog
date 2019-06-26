@@ -45,7 +45,7 @@ update_server_js:
 update_server: 
 	@echo "Updating server"
 	@echo "==============="
-	git archive develop --format tar | tar -t | rsync -avz --no-dirs --rsh='ssh ssh.cs.kuleuven.be ssh -p 2222' --chmod=u=rwx,g=rx,o=rx --files-from=- ./ problog@verne.cs.kuleuven.be:/home/problog/problog2.1
+	git archive master --format tar | tar -t | rsync -avz --no-dirs --rsh='ssh ssh.cs.kuleuven.be ssh -p 2222' --chmod=u=rwx,g=rx,o=rx --files-from=- ./ problog@verne.cs.kuleuven.be:/home/problog/problog2.1
 	ssh ssh.cs.kuleuven.be ssh -p 2222 problog@verne.cs.kuleuven.be python3 /home/problog/problog2.1/problog-cli.py install
 	ssh ssh.cs.kuleuven.be ssh -p 2222 problog@verne.cs.kuleuven.be python3 -m pip install /home/problog/problog2.1/[sdd]
 	@echo "======================================================================"
