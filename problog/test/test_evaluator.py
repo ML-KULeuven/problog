@@ -35,6 +35,7 @@ evaluatables = ["ddnnf"]
 if has_sdd:
     evaluatables.append("sdd")
     evaluatables.append("sddx")
+    evaluatables.append("fsdd")
 else:
     print("No SDD support - The evaluator tests are not performed with SDDs.")
 
