@@ -169,6 +169,7 @@ class BaseFormula(ProbLogObject):
         """
         if label is None:
             label = self.LABEL_NAMED
+        # CG: name is a Term, not a string! --> many Term __eq__ calls
         self._names[label][name] = key
 
     def get_node_by_name(self, name):

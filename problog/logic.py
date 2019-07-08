@@ -537,6 +537,10 @@ class Term(object):
         """Checks whether this Term represents a variable."""
         return False
 
+    def is_scope_term(self):
+        """Checks whether the current term is actually a term inside a scope"""
+        return self.functor.strip("'") == ':'
+
     def is_constant(self):
         """Checks whether this Term represents a constant."""
         return False
@@ -547,7 +551,9 @@ class Term(object):
             queue = deque([self])
             while queue:
                 term = queue.popleft()
-                if term is None or type(term) == int or term.is_var():
+                if type(term) == list:
+                    queue.extend(term)
+                elif term is None or type(term) == int or term.is_var():
                     self._cache_is_ground = False
                     return False
                 elif isinstance(term, Term):
@@ -670,10 +676,25 @@ class Term(object):
     def __hash__(self):
         if self.__hash is None:
             firstarg = None
+
             if len(self.__args) > 0:
                 firstarg = self.__args[0]
 
-            self.__hash = hash((self.__functor, self.__arity, firstarg, self._list_length()))
+            # CG
+            list_hash = [self.__functor, self.__arity, self._list_length()]
+            # We only consider small number of arguments, because arbitrary numbers lead to RecursionError
+
+            if self._list_length() < 10:
+                for a in self.__args:
+                    if type(a) == list:
+                        list_hash.extend(a)
+                    else:
+                        list_hash.append(a)
+                #list_hash.extend(self.__args)
+
+            self.__hash = hash(tuple(list_hash))
+
+            #self.__hash = hash((self.__functor, self.__arity, firstarg, self._list_length()))
         return self.__hash
 
     def __lshift__(self, body):

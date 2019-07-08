@@ -88,7 +88,20 @@ class LogicProgram(ProbLogObject):
         elif isinstance(clausefact, Clause):
             self.add_clause(clausefact, scope=scope)
         elif type(clausefact) == Term:
-            self.add_fact(clausefact, scope=scope)
+            if clausefact.is_scope_term():
+                scope_name = clausefact.args[0]
+                # TODO: Warning: I will have to think about Variable, Constant cases as well...
+                # If the  first in-scope Term is a Term (not a clause, AD, ...), we pass on the probability, otherwise not
+                if type(clausefact.args[1]) == Term:
+                    self.add_statement(clausefact.args[1].with_probability(p=clausefact.probability), scope=scope_name)
+                # If the first in-scope Term is not a Term (it is a clause, AD, ...), we store it to manipulate it
+                else:
+                    self.add_statement(clausefact.args[1], scope=scope_name)
+                    self.add_fact(clausefact, scope=scope)
+            # Default behavior (no scopes)
+            else:
+                self.add_fact(clausefact, scope=scope)
+
         else:
             raise GroundingError("Unexpected fact '%s'" % clausefact,
                                  self.lineno(clausefact.location))
