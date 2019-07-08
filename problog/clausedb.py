@@ -155,8 +155,10 @@ class ClauseDB(LogicProgram):
         if term.functor == '_directive':
             scope = None
         if scope is not None:
-            term.functor = '_%s_%s' % (scope, term.functor)
-            return term
+            #term.functor = '_%s_%s' % (scope, term.functor) #_scope_functor --> scope:functor
+            ## CG MODIFS
+            new_term = Term('\':\'', scope, term.with_probability(None), p=term.probability)
+            return new_term
         else:
             return term
 
