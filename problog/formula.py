@@ -1255,6 +1255,11 @@ label_all=True)
                         choice_name[p] = n.name
 
         for group, choices in choice_by_group.items():
+            # Check for single atom AD.
+            if len(choices) == 1 and choice_name.get(choices[0]) is None:
+                processed[choices[0]] = False  # Revert to not yet processed.
+                continue
+
             # Construct head
             head = Or.from_list([choice_name[c].with_probability(choice_prob[c]) for c in choices])
 
