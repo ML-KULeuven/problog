@@ -135,7 +135,8 @@ class EngineTracer(object):
         if aggregate == 0:
             s += '%50s\t %7s \t %4s \t %4s \t %s \n' % ("call", "time", "#sol", "#call", "location")
             s += '-' * 100 + '\n'
-            for tm, key in sorted((t, k) for k, t in self.timestats.items()):
+            for tm, key in sorted(((t, k) for k, t in self.timestats.items()), key=lambda x:x[0]):
+            
                 term, location = key
                 nb = self.resultstats[key]
                 cl = self.callstats[key]
