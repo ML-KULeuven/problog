@@ -1325,7 +1325,7 @@ label_all=True)
         for i, n, t in self:
             if relevant[i] and not processed[i]:
                 if t == 'atom':
-                    if n.name is not None and n.source not in ('builtin', 'negation'):
+                    if n.name is not None and n.source not in ('builtin', 'negation'): # TODO: Can n.source be a str?
                         yield n.name.with_probability(n.probability)
                 elif t == 'disj':
                     if len(n.children) == 1 and not self._is_valid_name(n.name):
