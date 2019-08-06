@@ -16,6 +16,7 @@ d(X) :- X is 2-1.
         db = engine.prepare(program)
         translate_program = translate_clasusedb(db)
         print(translate_program)
+        print(translate_program.get_proofs('a(X)'))
 
 
 if __name__ == '__main__':

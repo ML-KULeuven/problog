@@ -1,6 +1,8 @@
 from problog.core import transform, ProbLogObject
 from problog.clausedb import ClauseDB
 from collections import defaultdict
+from pyswip import Prolog
+from pathlib import Path
 
 def handle_prob(prob):
     if prob is None:
@@ -27,6 +29,22 @@ def handle_functor(func, args=None):
                 return 'true'
     else:
         return str(func)
+
+def process_proof(proof):
+    expanded = []
+    to_expand = [proof]
+    while len(to_expand) > 0:
+        l = to_expand[0]
+        del(to_expand[0])
+        if type(l) is list:
+            to_expand = l + to_expand
+        else:
+            expanded.append(l)
+    proof = []
+    for t in expanded:
+        proof.append(str(t))
+    return proof
+
 
 class TranslatedProgram(ProbLogObject):
 
@@ -56,11 +74,28 @@ class TranslatedProgram(ProbLogObject):
     def add_choice(self, node):
         self.ad_heads[node.group].append((handle_prob(node.probability), handle_functor(node.functor, node.args)))
 
-    def __str__(self):
-        lines = ['ad([p({},{})],[{}]).'.format(*c) for c in self.clauses]
+    def get_lines(self):
+        lines = ['ad([p({},{})],[{}])'.format(*c) for c in self.clauses]
         for ad in self.ad_heads:
-            lines.append('ad(['+','.join('p({},{})'.format(*head) for head in self.ad_heads[ad])+'],[]).')
-        return '\n'.join(lines)
+            lines.append('ad([' + ','.join('p({},{})'.format(*head) for head in self.ad_heads[ad]) + '],[])')
+        return lines
+
+    def __str__(self):
+        return '\n'.join(l+'.' for l in self.get_lines())
+
+
+
+    def get_proofs(self, query):
+        prolog = Prolog()
+        path = str(Path(__file__).parent/'engine.pl')
+        prolog.consult(path)
+        for l in self.get_lines():
+            prolog.assertz(l)
+        result = list(prolog.query('prove([{}],Proof)'.format(query)))
+        proofs = []
+        for r in result:
+            proofs.append(process_proof(r['Proof']))
+        return proofs
 
 @transform(ClauseDB, TranslatedProgram)
 def translate_clasusedb(db):
