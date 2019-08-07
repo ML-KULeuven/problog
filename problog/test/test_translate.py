@@ -18,7 +18,7 @@ d(0).
         translate_program = translate_clasusedb(db)
         print(translate_program)
         print(translate_program.get_proofs('a(X)'))
-        formula2 = translate_program.to_logic_formula('a(X)')
+        formula2 = translate_program.ground_all('a(X)')
         sdd = SDD(formula2)
         print(sdd.evaluate())
 

@@ -8,6 +8,7 @@ from problog.core import transform, ProbLogObject
 from problog.formula import LogicFormula
 from problog.program import ExtendedPrologFactory
 from problog.parser import PrologParser
+from problog.logic import Var, Term, Constant
 
 parser = PrologParser(ExtendedPrologFactory())
 
@@ -112,25 +113,28 @@ class TranslatedProgram(ProbLogObject):
             prolog.assertz(l)
         result = list(prolog.query('prove([{}],Proof)'.format(query)))
         proofs = []
+        query = parse(query)
         for r in result:
-            proofs.append(process_proof(r['Proof']))
+            new_vars = {Var(v): Constant(r[v]) for v in r}
+            nq = query.apply_term(new_vars)
+            proofs.append((nq, process_proof(r['Proof'])))
         return proofs
 
-    def to_logic_formula(self, query, target=None):
+    def ground_all(self, query, target=None):
         if target is None:
             target = LogicFormula()
         proofs = self.get_proofs(query)
-        proof_keys = []
-        for i, proof in enumerate(proofs):
+        proof_keys = defaultdict(list)
+        for i, (q, proof) in enumerate(proofs):
             proof_atoms = []
             for p, a, n in proof:
                 p = None if p > 1.0 - 1e-8 else p
-                key = target.add_atom(a, p)
+                key = target.add_atom(a, p, name=a)
                 proof_atoms.append(-key if n else key)
-            proof_keys.append(target.add_and(proof_atoms))
-        key = target.add_or(proof_keys)
-        query = parse(query)
-        target.add_name(query, key, label=target.LABEL_QUERY)
+            proof_keys[q].append(target.add_and(proof_atoms))
+        for q in proof_keys:
+            key = target.add_or(proof_keys[q])
+            target.add_name(q, key, label=target.LABEL_QUERY)
         return target
 
 
