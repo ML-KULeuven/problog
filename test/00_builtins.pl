@@ -79,7 +79,7 @@ is_list_001 :- is_list([a,b|e]).
 query(is_list_001).	% outcome: 0
 
 is_list_002 :- is_list([a,b|E]).
-query(is_list_002). % outcome: 1
+%query(is_list_002). % outcome: 1
 
 sort_001 :- sort([a,c,b],[a,b,c]).
 query(sort_001). % outcome: 1
@@ -92,10 +92,10 @@ cmp_002 :- b @< a.
 query(cmp_001).	% outcome: 1
 query(cmp_002). % outcome: 0
 
-%Expected outcome:
+%%Expected outcome:
 % cmp_003('<') 1  
 cmp_003(X) :- compare(X,a,b).
 cmp_004 :- compare('<',a,b).
-query(cmp_003(X)).
+%query(cmp_003(X)).
 query(cmp_004). % outcome: 1
 
