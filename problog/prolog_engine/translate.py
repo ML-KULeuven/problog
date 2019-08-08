@@ -3,12 +3,10 @@ from pathlib import Path
 
 from pyswip import Prolog
 
-from problog.clausedb import ClauseDB
-from problog.core import transform, ProbLogObject
+from problog.core import  ProbLogObject
 from problog.formula import LogicFormula
 from problog.program import ExtendedPrologFactory
 from problog.parser import PrologParser
-from problog.logic import Var, Term, Constant
 
 parser = PrologParser(ExtendedPrologFactory())
 
@@ -41,7 +39,7 @@ def handle_functor(func, args=None):
             if func == 'true':
                 return 'true'
     else:
-        return str(func)
+        return str(func.with_args(*func.args, *args))
 
 
 def process_proof(proof):
@@ -93,6 +91,7 @@ class TranslatedProgram(ProbLogObject):
             (handle_prob(prob), handle_functor(node.functor, node.args), self.to_str(self.db.get_node(node.child))))
 
     def add_choice(self, node):
+
         self.ad_heads[node.group].append((handle_prob(node.probability), handle_functor(node.functor, node.args)))
 
     def get_lines(self):
@@ -111,16 +110,17 @@ class TranslatedProgram(ProbLogObject):
         prolog.consult(path)
         for l in self.get_lines():
             prolog.assertz(l)
-        result = list(prolog.query('prove([{}],Proof)'.format(query)))
+        result = list(prolog.query('prove({},Q,Proof)'.format(query)))
         proofs = []
-        query = parse(query)
+        # query = parse(query)
         for r in result:
-            new_vars = {Var(v): Constant(r[v]) for v in r}
-            nq = query.apply_term(new_vars)
+            # new_vars = {Var(v): Constant(r[v]) for v in r}
+            # nq = query.apply_term(new_vars)
+            nq = parse(str(r['Q']))
             proofs.append((nq, process_proof(r['Proof'])))
         return proofs
 
-    def ground_all(self, query, target=None):
+    def ground(self, query, target=None):
         if target is None:
             target = LogicFormula()
         proofs = self.get_proofs(query)
@@ -129,7 +129,10 @@ class TranslatedProgram(ProbLogObject):
             proof_atoms = []
             for p, a, n in proof:
                 p = None if p > 1.0 - 1e-8 else p
-                key = target.add_atom(a, p, name=a)
+                group = None
+                if a.functor == 'choice':
+                    group = a.args[0], a.args[3:]
+                key = target.add_atom(a, p, name=a, group=group)
                 proof_atoms.append(-key if n else key)
             proof_keys[q].append(target.add_and(proof_atoms))
         for q in proof_keys:
@@ -138,8 +141,7 @@ class TranslatedProgram(ProbLogObject):
         return target
 
 
-@transform(ClauseDB, TranslatedProgram)
-def translate_clasusedb(db):
+def translate_clausedb(db):
     program = TranslatedProgram(db)
 
     for n in db.iter_nodes():

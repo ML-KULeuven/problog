@@ -1,4 +1,3 @@
-
 add_to_proof(X,[],Proof,[X|Proof]).
 
 add_to_proof(_,[_|_],Proof,Proof).
@@ -33,3 +32,5 @@ prove([H|T], Proof) :-
     prove(T,Proof2),
     append(Proof1,Proof2,Proof3),
     add_to_proof(p(P,H), B, Proof3, Proof).
+
+prove(X,X,Proof) :- prove([X],Proof).
