@@ -1,23 +1,25 @@
 import unittest
-from problog.program import PrologString
+from problog.program import PrologString, PrologFile
 from problog.sdd_formula import SDD
 from problog.prolog_engine.engine_prolog import EngineProlog
 from problog.logic import Term, Var
 from problog.formula import LogicFormula
 
 file = '''
-a(0) :- b(X,2), c(X,2).
-a(1) :- b(X,2).
-0.5::b(X,2);0.5::c(X,2) :- d(X,Y), e(a).
-d(0,3).
-d(1,3).
-e(a).
-query(a(X)).
+0.5::heads1.
+0.6::heads2.
+
+twoHeads :- heads1, heads2.
+
+query(heads1).
+query(heads2).
+query(twoHeads).
         '''
 
 class Test(unittest.TestCase):
     def test_engine(self):
-        program = PrologString(file)
+        # program = PrologString(file)
+        program = PrologFile('/home/robinm/phd/problog/test/00_trivial_not_and.pl')
         engine = EngineProlog()
         db = engine.prepare(program)
         ground = engine.ground_all(db, target=LogicFormula(keep_all=True))

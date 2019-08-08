@@ -12,7 +12,6 @@ class EngineProlog(GenericEngine):
         result.engine = self
         return result
 
-
     def query(self, db, term):
         def_node = db.get_node(db.find(term))
         nodes = [db.get_node(c)for c in def_node.children]

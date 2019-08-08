@@ -31,7 +31,8 @@ from problog import get_evaluatable
 from problog.evaluator import SemiringProbability, SemiringLogProbability, Semiring
 from problog.formula import LogicFormula
 from problog.ddnnf_formula import DDNNF
-
+from problog.engine import DefaultEngine
+from problog.prolog_engine.engine_prolog import EngineProlog
 # noinspection PyBroadException
 try:
     from pysdd import sdd
@@ -125,11 +126,15 @@ def createSystemTestGeneric(filename, logspace=False) :
     correct = read_result(filename)
 
     def test(self):
-        semirings = {"Default": None, "Custom": SemiringProbabilityCopy(), "CustomNSP": SemiringProbabilityNSPCopy()}
+        semirings = {"Default": None}
+        # semirings = {"Default": None, "Custom": SemiringProbabilityCopy(), "CustomNSP": SemiringProbabilityNSPCopy()}
+        #engines = {'Default': DefaultEngine}
+        engines = {'EngineProlog': EngineProlog}
         for eval_name in evaluatables:
             for semiring in semirings:
-                with self.subTest(evaluatable_name=eval_name, semiring=semiring):
-                    evaluate(self, evaluatable_name=eval_name, custom_semiring=semirings[semiring])
+                for engine in engines:
+                    with self.subTest(evaluatable_name=eval_name, semiring=semiring, engine=engine):
+                        evaluate(self, evaluatable_name=eval_name, custom_semiring=semirings[semiring], engine=engines[engine])
 
         # explicit encoding from ForwardSDD
         if has_sdd:
@@ -137,10 +142,14 @@ def createSystemTestGeneric(filename, logspace=False) :
                 with self.subTest(semiring=semiring):
                     evaluate_explicit_from_fsdd(self, custom_semiring=semirings[semiring])
 
-    def evaluate(self, evaluatable_name=None, custom_semiring=None) :
+    def evaluate(self, evaluatable_name=None, custom_semiring=None, engine=None):
         try :
             parser = DefaultPrologParser(ExtendedPrologFactory())
-            kc = get_evaluatable(name=evaluatable_name).create_from(PrologFile(filename, parser=parser))
+            program = PrologFile(filename, parser=parser)
+            engine = engine()
+            program = engine.prepare(program)
+            ground = engine.ground_all(program)
+            kc = get_evaluatable(name=evaluatable_name).create_from(ground)
 
             if custom_semiring is not None:
                 semiring = custom_semiring  # forces the custom semiring code.
@@ -151,6 +160,9 @@ def createSystemTestGeneric(filename, logspace=False) :
 
             computed = kc.evaluate(semiring=semiring)
             computed = { str(k) : v for k,v in computed.items() }
+            print(computed)
+            print('--'*10)
+            print(correct)
         except Exception as err :
             #print("exception %s" % err)
             e = err
@@ -249,13 +261,14 @@ else :
     filenames = glob.glob( root_path('test', '*.pl' ) )
 
 
-evaluatables = ["ddnnf"]
+# evaluatables = ["ddnnf"]
+evaluatables = []
 
 if has_sdd:
     evaluatables.append("sdd")
-    evaluatables.append("sddx")
-    evaluatables.append("fsdd")
-else:
+#     evaluatables.append("sddx")
+#     evaluatables.append("fsdd")
+# else:
     print("No SDD support - The system tests are not performed with SDDs.")
 
 

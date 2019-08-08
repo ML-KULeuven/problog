@@ -1,36 +1,25 @@
-add_to_proof(X,[],Proof,[X|Proof]).
+ad([p(1.0,a(A1),1)],[neg(b(A1))]).
+ad([p(1.0,b(A1),2)],[c(A1),d(A1)]).
+ad([p(0.5,c(0),3)],[]).
+ad([p(0.5,d(0),4)],[]).
+%ad([p(1.0,a(A1),5)],[e(A1)]).
+%ad([p(1.0,e(1),6)],[]).
+%ad([p(1.0,e(2),7)],[]).
 
-add_to_proof(_,[_|_],Proof,Proof).
-
-prove([],[]).
-
-prove([neg(H)|T], Proof) :-
-    predicate_property(H,built_in),!,
-    \+H,
-    prove(T,Proof).
-
-prove([neg(H)|T], Proof) :-
-    ad(L,B),
-    member(p(P,H),L),
-    prove(B, Proof1),
-    prove(T,Proof2),
-    append(Proof1,Proof2,Proof3),
-    add_to_proof(neg(p(P,H)), B, Proof3, Proof).
-
+prove(Q, Proofs) :-
+    findall(and(p(P,Q,I),Proof), (ad(Heads, Body), member(p(P,Q,I),Heads), and(Body, Proof), Proofs)).
     
-
-prove([H|T], Proof) :-
-    predicate_property(H,built_in),
-    H,
-    prove(T,Proof).
+or(neg(Q), neg(Proofs)) :-
+    findall(P, or(Q, P), Proofs).
     
+or(Q,and(p(P,Q,I), Proof)) :-
+    ad(Heads, Body), 
+    member(p(P,Q,I),Heads), 
+    and(Body, Proof).
 
-prove([H|T], Proof) :-
-    ad(L,B),
-    member(p(P,H),L),
-    prove(B, Proof1),
-    prove(T,Proof2),
-    append(Proof1,Proof2,Proof3),
-    add_to_proof(p(P,H), B, Proof3, Proof).
+and([],[]).
 
-prove(X,X,Proof) :- prove([X],Proof).
+and([H|T],[H2|T2]) :-
+    or(H,H2),
+    and(T,T2).
+

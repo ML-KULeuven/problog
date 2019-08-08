@@ -7,7 +7,7 @@ from problog.core import  ProbLogObject
 from problog.formula import LogicFormula
 from problog.program import ExtendedPrologFactory
 from problog.parser import PrologParser
-
+from problog.logic import unquote
 parser = PrologParser(ExtendedPrologFactory())
 
 def parse(to_parse):
@@ -34,16 +34,14 @@ def handle_var(a):
 def handle_functor(func, args=None):
     if type(func) is str:
         if args is not None and len(args) > 0:
-            return '{}({})'.format(func, ','.join(handle_var(a) for a in args))
+            return '{}({})'.format(unquote(func), ','.join(handle_var(a) for a in args))
         else:
-            if func == 'true':
-                return 'true'
+            return unquote(func)
     else:
         return str(func.with_args(*func.args, *args))
 
 
 def process_proof(proof):
-
     expanded = []
     to_expand = [proof]
     while len(to_expand) > 0:
@@ -59,9 +57,10 @@ def process_proof(proof):
         if t.name.value == 'neg':
             neg = True
             t = t.args[0]
-        p, f = t.args
+        p, f, i = t.args
         f = parse(f)
-        proof.append((p, f, neg))
+        i = int(i)
+        proof.append((p, f, i, neg))
     return proof
 
 
@@ -71,7 +70,7 @@ class TranslatedProgram(ProbLogObject):
         self.clauses = []
         self.db = db
         self.ad_heads = defaultdict(list)
-
+        self.i = 0
     def to_str(self, node):
         ntype = type(node).__name__
         if ntype == 'conj':
@@ -83,21 +82,23 @@ class TranslatedProgram(ProbLogObject):
         return ntype + '_unhandled'
 
     def add_fact(self, node):
-        self.clauses.append((handle_prob(node.probability), handle_functor(node.functor, node.args), ''))
+        self.i += 1
+        self.clauses.append((handle_prob(node.probability), handle_functor(node.functor, node.args), self.i, ''))
 
     def add_clause(self, node):
+        self.i += 1
         prob = node.probability if node.group is None else None
         self.clauses.append(
-            (handle_prob(prob), handle_functor(node.functor, node.args), self.to_str(self.db.get_node(node.child))))
+            (handle_prob(prob), handle_functor(node.functor, node.args), self.i, self.to_str(self.db.get_node(node.child))))
 
     def add_choice(self, node):
-
-        self.ad_heads[node.group].append((handle_prob(node.probability), handle_functor(node.functor, node.args)))
+        self.i += 1
+        self.ad_heads[node.group].append((handle_prob(node.probability), handle_functor(node.functor, node.args), self.i))
 
     def get_lines(self):
-        lines = ['ad([p({},{})],[{}])'.format(*c) for c in self.clauses]
+        lines = ['ad([p({},{},{})],[{}])'.format(*c) for c in self.clauses]
         for ad in self.ad_heads:
-            lines.append('ad([' + ','.join('p({},{})'.format(*head) for head in self.ad_heads[ad]) + '],[])')
+            lines.append('ad([' + ','.join('p({},{},{})'.format(*head) for head in self.ad_heads[ad]) + '],[])')
         return lines
 
     def __str__(self):
@@ -120,21 +121,26 @@ class TranslatedProgram(ProbLogObject):
             proofs.append((nq, process_proof(r['Proof'])))
         return proofs
 
-    def ground(self, query, target=None):
-        if target is None:
-            target = LogicFormula()
+    def ground(self, query, target):
+
         proofs = self.get_proofs(query)
         proof_keys = defaultdict(list)
-        for i, (q, proof) in enumerate(proofs):
-            proof_atoms = []
-            for p, a, n in proof:
-                p = None if p > 1.0 - 1e-8 else p
-                group = None
-                if a.functor == 'choice':
-                    group = a.args[0], a.args[3:]
-                key = target.add_atom(a, p, name=a, group=group)
-                proof_atoms.append(-key if n else key)
-            proof_keys[q].append(target.add_and(proof_atoms))
+        query = parse(query)
+        if len(proofs) == 0: #query is determinstically false, add trivial
+            target.add_name(query,target.FALSE, label=target.LABEL_QUERY)
+        for q, proof in proofs:
+            if len(proof) == 0: #query is deterministically true
+                target.add_name(q, target.TRUE, label=target.LABEL_QUERY)
+            else:
+                proof_atoms = []
+                for p, a, i, n in proof:
+                    p = None if p > 1.0 - 1e-8 else p
+                    group = None
+                    if a.functor == 'choice':
+                        group = a.args[0], a.args[3:]
+                    key = target.add_atom(i, p, name=a, group=group)
+                    proof_atoms.append(-key if n else key)
+                proof_keys[q].append(target.add_and(proof_atoms))
         for q in proof_keys:
             key = target.add_or(proof_keys[q])
             target.add_name(q, key, label=target.LABEL_QUERY)
