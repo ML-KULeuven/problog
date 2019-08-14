@@ -137,10 +137,10 @@ def createSystemTestGeneric(filename, logspace=False) :
                         evaluate(self, evaluatable_name=eval_name, custom_semiring=semirings[semiring], engine=engines[engine])
 
         # explicit encoding from ForwardSDD
-        if has_sdd:
-            for semiring in semirings:
-                with self.subTest(semiring=semiring):
-                    evaluate_explicit_from_fsdd(self, custom_semiring=semirings[semiring])
+        # if has_sdd:
+        #     for semiring in semirings:
+        #         with self.subTest(semiring=semiring):
+        #             evaluate_explicit_from_fsdd(self, custom_semiring=semirings[semiring])
 
     def evaluate(self, evaluatable_name=None, custom_semiring=None, engine=None):
         try :
