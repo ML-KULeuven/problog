@@ -15,7 +15,8 @@ program='''
 smokes(X) :- stress(X).
 smokes(X) :- influences(Y, X), smokes(Y).
 
-query(smokes(1)).'''
+query(smokes(1)).
+query(smokes(2)).'''
 
 program = PrologString(program)
 engine = EngineProlog()
@@ -25,5 +26,5 @@ db = engine.prepare(program)
 print(SWIProgram(db))
 
 ground = engine.ground_all(db, target=LogicFormula(keep_all=False), k=3)
-# ac = SDD.create_from(ground)
-# print(ac.evaluate())
+ac = SDD.create_from(ground)
+print(ac.evaluate())

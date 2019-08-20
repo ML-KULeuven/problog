@@ -113,7 +113,7 @@ class SWIProgram(ProbLogObject):
         #     if 'unknown_clause' in str(e):
         #         raise UnknownClause(str(e), 0)
 
-    def build_formula(self, proof, target, label=None):
+    def build_formula(self, proof, target):
         type = proof.functor
         if type == 'fact':
             p, name, i = proof.args
@@ -126,7 +126,7 @@ class SWIProgram(ProbLogObject):
                 i = str(name)
                 group = name.args[0], name.args[1].args[3:]
             key = target.add_atom(i, p, name=name, group=group)
-            target.add_name(name, key, label=label)
+            target.add_name(name, key)
             return key
         elif type == 'and':
             name, body = proof.args
@@ -135,7 +135,7 @@ class SWIProgram(ProbLogObject):
                 key = target.get_node_by_name(name)
             except KeyError:
                 key = target.add_or([], placeholder=True, readonly=False)
-                target.add_name(name, key, label=label)
+                target.add_name(name, key)
             target.add_disjunct(key, target.add_and([self.build_formula(b, target) for b in body]))
             return key
         elif type == 'cycle':
@@ -175,8 +175,6 @@ class SWIProgram(ProbLogObject):
             # if len(proof) == 0:  # query is deterministically true
             #     target.add_name(q, target.TRUE, label=target.LABEL_QUERY)
 
-            proof_keys[q].append(self.build_formula(proof, target, label=target.LABEL_QUERY))
-        # for q in proof_keys:
-        #     key = target.add_or(proof_keys[q])
-        #     target.add_name(q, key, label=target.LABEL_QUERY)
+            key= self.build_formula(proof, target)
+            target.add_name(q, key, label=target.LABEL_QUERY)
         return target
