@@ -2,7 +2,7 @@ from problog.clausedb import ClauseDB
 from problog.engine import GenericEngine
 from problog.formula import LogicFormula
 from problog.logic import Term, Var
-from problog.prolog_engine.translate import translate_clausedb
+from problog.prolog_engine.swi_program import SWIProgram
 
 
 class EngineProlog(GenericEngine):
@@ -17,18 +17,18 @@ class EngineProlog(GenericEngine):
         nodes = [db.get_node(c)for c in def_node.children]
         return [Term(n.functor, *n.args) for n in nodes]
 
-    def ground(self, db, term, target=None, label=None):
+    def ground(self, db, term, target=None, label=None, k=None):
         if target is None:
             target = LogicFormula()
-        translate_program = translate_clausedb(db)
-        return translate_program.ground(str(term), target=target)
+        translate_program = SWIProgram(db)
+        return translate_program.ground(str(term), target=target, k=k)
 
-    def ground_all(self, db, target=None, queries=None, evidence=None):
+    def ground_all(self, db, target=None, queries=None, evidence=None, k=None):
         if target is None:
             target = LogicFormula()
         if queries is None:
             # queries = [q.args[0] for q in self.query(db, Term('query', None))]
             queries = [q[0].args[0] for q in self.ground(db, Term('query',Var('X'))).queries()]
         for q in queries:
-            self.ground(db, q, target)
+            self.ground(db, q, target, k=k)
         return target
