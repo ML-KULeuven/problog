@@ -279,6 +279,7 @@ class Term(object):
         old_stack = [deque([self])]
         new_stack = []
         term_stack = []
+
         while old_stack:
             current = old_stack[-1].popleft()
             if current is None or type(current) == int:
@@ -286,6 +287,12 @@ class Term(object):
                     new_stack[-1].append(subst[current])
                 else:
                     return subst[current]
+            elif type(current) == list:
+                # If the current element is a list (an AD for example), we apply substitutions on elements of the list
+                new_current = []
+                for a in current:
+                    new_current.append(a.apply(subst))
+                new_stack[-1].append(new_current)
             elif current.is_var():
                 if new_stack:
                     new_stack[-1].append(subst[current.name])
