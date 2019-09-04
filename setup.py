@@ -4,7 +4,6 @@ from __future__ import print_function
 import sys
 import os
 
-
 version_file = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'problog/version.py')
 
 version = {}
@@ -16,9 +15,9 @@ if __name__ == '__main__' and len(sys.argv) == 1:
     from problog import setup as problog_setup
     problog_setup.install()
 elif __name__ == '__main__':
-
     from setuptools import setup, find_packages
     from setuptools.command.install import install
+    from Cython.Build import cythonize
 
     class ProbLogInstall(install):
         def run(self):
@@ -54,7 +53,6 @@ elif __name__ == '__main__':
         ]
     }
 
-
     setup(
         name='problog',
         version=version,
@@ -85,7 +83,8 @@ elif __name__ == '__main__':
         package_data=package_data,
         cmdclass={
             'install': ProbLogInstall
-        }
+        },
+        ext_modules=cythonize("problog/*.pyx")
     )
 
 

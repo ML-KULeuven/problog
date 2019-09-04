@@ -1116,14 +1116,20 @@ class NestedDict(object):
         s_key = list(s_key) + [get_state(s_key)]
         if s_key:
             elem = self.__base.get(p_key)
+            new_path = False
             if elem is None:
                 elem = {}
                 self.__base[p_key] = elem
+                new_path = True
             for s in s_key[:-1]:
-                elemN = elem.get(s)
-                if elemN is None:
+                if not new_path:
+                    elemN = elem.get(s)
+                    if elemN is None:
+                        new_path = True
+                if new_path:
                     elemN = {}
                     elem[s] = elemN
+                    new_path = True
                 elem = elemN
             elem[s_key[-1]] = value
         else:
