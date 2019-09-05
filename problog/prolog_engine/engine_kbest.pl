@@ -1,25 +1,41 @@
-prove(Q,Q,Proof,P) :- or(Q,Proof,P,[]).
+prove(Q,Q,Proof,P) :- or(Q,Proof,1.0,P,[]).
 
-or(Q,cycle(Q),1.0,Context) :- ground(Q), member(Q,Context), !.
 
-or(Q,and(Q, Proof),P,Context) :-
+or(Q,builtin(Q),P,P,_) :-
+    predicate_property(Q, built_in),
+    Q,!.
+
+%or(Q,foreign(Q),P,P,_) :-
+%    predicate_property(Q, foreign),
+%    Q.
+
+or(Q,cycle(Q),P,P,Context) :- ground(Q), member(Q,Context),!,fail ,!. % No cycles for now
+
+or(Q,and(Q, Proof),Pprev,P,Context) :-
     rule(Q, Body),
-    and(Body,Proof,P,[Q|Context]).
+    and(Body,Proof,Pprev,P,[Q|Context]).
 
-or(Q,fact(P,Q,I),P,_) :-
-    fact(P,Q,I),
+or(Q,neural_fact(P,Q,I,Net,Vars),Pprev,P,_) :-
+    fact(nn(Net,Vars),Q,I),
+    apply(Net,[Pnet|Vars]),
+    nonvar(Pnet),
+    P is Pnet*Pprev,
+    get_flag(pmin,Pmin),
+    P > Pmin.
+
+or(Q,fact(P,Q,I),Pprev,P,_) :-
+    fact(Pfact,Q,I),
+    number(Pfact),
+    P is Pfact*Pprev,
     get_flag(pmin,Pmin),
     P > Pmin.
     
     
-and([],[],1.0,_).
+and([],[],P,P,_).
 
-and([H|T],[H2|T2],P,Context) :-
-    or(H,H2,P1,Context),
-    and(T,T2,P2,Context),
-    P is P1*P2,
-    get_flag(pmin,Pmin),
-    P > Pmin.   
+and([H|T],[H2|T2],Pprev,P,Context) :-
+    or(H,H2,Pprev,P1,Context),
+    and(T,T2,P1,P,Context).
 
 
 k_best(K,Q,X,Y, Goal, K_Best) :-
@@ -34,7 +50,7 @@ k_best(K,Q,X,Y, Goal, K_Best) :-
    ;  arg(1, State, K_Best)
    ).
 
-kbest_add(K,List_Of_Proofs, New_Proof, New_List_Of_Proofs, Pmin) :-
+kbest_add(K,List_Of_Proofs, New_Proof, New_List_Of_Proofs, Pmin) :-% writeln(New_Proof),
     ( length(List_Of_Proofs, L), L < K
     -> New_List_Of_Proofs = [New_Proof | List_Of_Proofs], Pmin = 0.0
     ;  select_k_best(K, [New_Proof | List_Of_Proofs], New_List_Of_Proofs, Pmin)
@@ -46,4 +62,4 @@ select_k_best(K, Prob_Proofs, K_Best_Proofs, Pmin) :-
     append(_, K_Best_Proofs, Prob_Proofs_Asc),
     K_Best_Proofs = [Pmin-_|_].
     
-top(K,Query) :- k_best(K,Q,X,Y,prove(Query,Q,X,Y), Xs),pairs_keys_values(Xs,_,Proofs), writeln(Proofs).
+top(K,Query,Proofs) :- k_best(K,Q,X,Y,prove(Query,Q,X,Y), Xs),pairs_keys_values(Xs,_,Proofs).%, writeln(Proofs).

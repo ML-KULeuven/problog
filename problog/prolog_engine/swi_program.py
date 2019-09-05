@@ -1,19 +1,11 @@
 from collections import defaultdict
 from pathlib import Path
-
 from problog.core import ProbLogObject
-from problog.logic import unquote, term2list
-from problog.parser import PrologParser
-from problog.program import ExtendedPrologFactory
-from problog.prolog_engine.swip import run_string
+from problog.logic import unquote, term2list, ArithmeticError, Term, Constant
+from problog.prolog_engine.swip import query, parse
 
-parser = PrologParser(ExtendedPrologFactory())
-with open(Path(__file__).parent / 'engine_kbest.pl') as f:
-    k_engine = f.read()
-
-
-def parse(to_parse):
-    return parser.parseString(str(to_parse) + '.')[0]
+# with open(Path(__file__).parent / 'engine_kbest.pl') as f:
+#     k_engine = f.read()
 
 
 def handle_prob(prob):
@@ -21,7 +13,11 @@ def handle_prob(prob):
         return 1.0
     elif type(prob) is int:
         return handle_var(prob)
-    return float(prob)
+    try:
+        prob = float(prob)
+        return prob
+    except ArithmeticError:
+        return str(prob)
 
 
 def handle_var(a):
@@ -91,27 +87,24 @@ class SWIProgram(ProbLogObject):
         lines = ['rule({},[{}])'.format(*c) for c in self.clauses]
         lines += ['fact({},{},{})'.format(*c) for c in self.facts]
         for ad in self.ad_heads:
-            lines.append('ad([' + ','.join('p({},{},{})'.format(*head) for head in self.ad_heads[ad]) + '])')
+            if len(self.ad_heads[ad]) == 1:
+                lines.append('fact({},{},{})'.format(*self.ad_heads[ad][0]))
+            else:
+                lines.append('ad([' + ','.join('p({},{},{})'.format(*head) for head in self.ad_heads[ad]) + '])')
         return lines
 
     def __str__(self):
         return '\n'.join(l + '.' for l in self.get_lines())
 
-    def get_proofs(self, query, k):
+    def get_proofs(self, q, k):
         if k is None:
             k = 100  # TODO FIX!
-        file = str(self) + '\n' + k_engine
-        res = run_string(file, 'top({},{})'.format(k, query))
-        res = parse(res)
-        res = term2list(parse(res), deep=False)
+        res = query(Path(__file__).parent / 'engine_kbest.pl', 'top({},{}, Proofs)'.format(k, q), asserts=self.get_lines())
 
         proofs = []
         for r in res:
             proofs.append(r.args)
         return proofs
-        # except PrologError as e:
-        #     if 'unknown_clause' in str(e):
-        #         raise UnknownClause(str(e), 0)
 
     def build_formula(self, proof, target):
         type = proof.functor
@@ -124,7 +117,7 @@ class SWIProgram(ProbLogObject):
             group = None
             if name.functor == 'choice':
                 i = str(name)
-                group = name.args[0], name.args[1].args[3:]
+                group = name.args[0], name.args[3:]
             key = target.add_atom(i, p, name=name, group=group)
             target.add_name(name, key)
             return key
@@ -141,33 +134,26 @@ class SWIProgram(ProbLogObject):
         elif type == 'cycle':
             name, = proof.args
             return target.get_node_by_name(name)
+        # elif type == 'foreign':
+        #     name, = proof.args
+        #     return target.add_atom(1000, None, name=name)
+        elif type == 'builtin':
+            return target.TRUE
+        elif type == 'neural_fact':
+            p, name, i, net, args = proof.args
+            i = str(i)
+            # p = float(p)
+            # if p > 1.0 - 1e-8:
+            #     p = None
+            p = Term('nn', Term(net), args, Constant(p))
+            key = target.add_atom(target.get_next_atom_identifier(), p, name=name)
+            target.add_name(name, key)
+            return key
         else:
-            raise Exception('Unhandled node type '+str(proof))
-        # name, body = proof.args
-        # body = term2list(body, False)
-        # if type == 'and':
-        #     if len(body) == 0:
-        #         if name.functor == 'p':
-        #             p = float(name.args[0])
-        #             if p > 1.0 - 1e-8:
-        #                 p = None
-        #             id = str(name)
-        #             group = None
-        #             if name.args[1].functor == 'choice':
-        #                 id = str(name.args[1])
-        #                 group = name.args[1].args[0], name.args[1].args[3:]
-        #             return target.add_atom(id, p, name=name, group=group)
-        #         else:
-        #             return target.get_node(str(name))
-        #     else:
-        #         return target.add_and([self.build_formula(b, target) for b in body])  # %, name=name)
-        # elif type == 'neg':
-        #     return - target.add_and([self.build_formula(b, target) for b in body])  # , name=name)
+            raise Exception('Unhandled node type ' + str(proof))
 
     def ground(self, query, target, k=None):
-
         proofs = self.get_proofs(query, k)
-        proof_keys = defaultdict(list)
         query = parse(query)
         if len(proofs) == 0:  # query is determinstically false, add trivial
             target.add_name(query, target.FALSE, label=target.LABEL_QUERY)
@@ -175,6 +161,6 @@ class SWIProgram(ProbLogObject):
             # if len(proof) == 0:  # query is deterministically true
             #     target.add_name(q, target.TRUE, label=target.LABEL_QUERY)
 
-            key= self.build_formula(proof, target)
+            key = self.build_formula(proof, target)
             target.add_name(q, key, label=target.LABEL_QUERY)
         return target
