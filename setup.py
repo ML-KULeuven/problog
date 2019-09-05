@@ -84,7 +84,7 @@ elif __name__ == '__main__':
         cmdclass={
             'install': ProbLogInstall
         },
-        ext_modules=cythonize("problog/*.pyx")
+        ext_modules=cythonize("problog/*.pyx", language="c++", compiler_directives={'language_level' : "3"})
     )
 
 

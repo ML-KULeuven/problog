@@ -89,7 +89,7 @@ from .util import OrderedSet
 from .errors import GroundingError
 
 from collections import deque
-
+from libcpp cimport bool
 
 def term2str(term):
     """Convert a term argument to string.
@@ -178,8 +178,8 @@ def is_list(term):
     """
     return not is_variable(term) and term.functor == '.' and term.arity == 2
 
-
-class Term(object):
+cdef int __term_max_id = 0
+cdef class Term(object):
     """
     A first order term, for example 'p(X,Y)'.
     :param functor: the functor of the term ('p' in the example)
@@ -190,11 +190,18 @@ class Term(object):
     (character position in input)
     """
 
-    max_id = 0
+    cdef public int id
+    cdef public object probability, location, op_priority, op_spec
+    cdef public int __arity
+    cdef str repr, __signature
+    cdef dict __dict__
+    cdef public object __functor, __args, __hash, _cache_is_ground
+    cdef public object _cache_list_length, _cache_variables, reprhash, cache_eq
 
     def __init__(self, functor, *args, **kwdargs):
-        self.id = Term.max_id
-        Term.max_id += 1
+        global __term_max_id
+        self.id = __term_max_id
+        __term_max_id += 1
         self.__functor = functor
         self.__args = args
         self.__arity = len(self.__args)
@@ -364,6 +371,9 @@ class Term(object):
                     return new_term
 
     def __repr__(self):
+        return self.crepr()
+
+    cdef str crepr(self):
         if self.repr is not None:
             return self.repr
 
@@ -570,7 +580,7 @@ class Term(object):
                     self._cache_is_ground = False
                     return False
                 elif isinstance(term, Term):
-                    if not term._cache_is_ground:
+                    if term._cache_is_ground is None:
                         queue.extend(term.args)
             self._cache_is_ground = True
             return True
@@ -603,9 +613,9 @@ class Term(object):
             self._cache_variables = variables
         return self._cache_variables
 
-    def _list_length(self):
+    cdef long _list_length(self):
+        cdef long l = 0
         if self._cache_list_length is None:
-            l = 0
             current = self
             while not is_variable(current) and current.functor == '.' and current.arity == 2:
                 if current._cache_list_length is not None:
@@ -761,12 +771,12 @@ class Term(object):
             return parsed[0]
 
 
-class AggTerm(Term):
+cdef class AggTerm(Term):
 
     def __init__(self, *args, **kwargs):
         Term.__init__(self, *args, **kwargs)
 
-class Var(Term):
+cdef class Var(Term):
     """A Term representing a variable.
 
     :param name: name of the variable
@@ -798,7 +808,7 @@ class Var(Term):
         return str(other) == str(self)
 
 
-class Constant(Term):
+cdef class Constant(Term):
     """A constant.
 
         :param value: the value of the constant
@@ -853,7 +863,7 @@ class Constant(Term):
         return str(self) == str(other)
 
 
-class Object(Term):
+cdef class Object(Term):
     """A wrapped object.
 
         :param value: the wrapped object
@@ -904,8 +914,10 @@ class Object(Term):
         return id(self) == id(other)
 
 
-class Clause(Term):
+cdef class Clause(Term):
     """A clause."""
+
+    cdef public object head, body
 
     def __init__(self, head, body, **kwdargs):
         Term.__init__(self, ':-', head, body, **kwdargs)
@@ -925,8 +937,10 @@ class Clause(Term):
         return [self.head.signature]
 
 
-class AnnotatedDisjunction(Term):
+cdef class AnnotatedDisjunction(Term):
     """An annotated disjunction."""
+
+    cdef public object heads, body
 
     def __init__(self, heads, body, **kwdargs):
         Term.__init__(self, ':-', heads, body, **kwdargs)
@@ -952,8 +966,10 @@ class AnnotatedDisjunction(Term):
         return [x.signature for x in self.heads]
 
 
-class Or(Term):
+cdef class Or(Term):
     """Or"""
+
+    cdef public object op1, op2
 
     def __init__(self, op1, op2, **kwdargs):
         Term.__init__(self, ';', op1, op2, **kwdargs)
@@ -1011,8 +1027,10 @@ class Or(Term):
         return [self.op1.signature] + self.op2.predicates
 
 
-class And(Term):
+cdef class And(Term):
     """And"""
+
+    cdef public object op1, op2
 
     def __init__(self, op1, op2, location=None, **kwdargs):
         Term.__init__(self, ',', op1, op2, location=location, **kwdargs)
@@ -1071,8 +1089,10 @@ class And(Term):
         return self.__class__(*args, location=self.location)
 
 
-class Not(Term):
+cdef class Not(Term):
     """Not"""
+
+    cdef public object child
 
     def __init__(self, functor, child, location=None, **kwdargs):
         Term.__init__(self, functor, child, location=location)

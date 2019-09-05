@@ -1771,11 +1771,13 @@ def _builtin_subquery_in_scope(scope, term, prob, evidence=None, engine=None, da
 
     eng = engine.__class__()
 
-    target = eng.ground(database, term, label='query', include=scopel)
+    # removed include=scopel
+    target = eng.ground(database, term, label='query')
 
     if evidence:
         for ev in term2list(evidence):
-            target = eng.ground(database, ev, target=target, label=target.LABEL_EVIDENCE_POS, include=scopel)
+            # removed include=scopel
+            target = eng.ground(database, ev, target=target, label=target.LABEL_EVIDENCE_POS)
 
     results = SDD.create_from(target).evaluate()
     if evidence:
@@ -1803,7 +1805,8 @@ def _builtin_call_in_scope(scope, term, args=(), engine=None, callback=None, tra
             return [scope, term.with_args(*res1)] + list(res2)
         transform.addFunction(_trans)
 
-        actions = engine.call_intern(term_call, transform=transform, dont_cache=True, no_cache=True, include=scopel, parent_context=context, **kwdargs)
+        # removed include=scopel
+        actions = engine.call_intern(term_call, transform=transform, dont_cache=True, no_cache=True, parent_context=context, **kwdargs)
     except UnknownClauseInternal:
         raise UnknownClause(term_call.signature, kwdargs['database'].lineno(kwdargs['location']))
     return True, actions
