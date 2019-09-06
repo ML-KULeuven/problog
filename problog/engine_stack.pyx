@@ -104,7 +104,7 @@ class StackBasedEngine(ClauseDBEngine):
         return exec_func(node_id=node_id, node=node, **kwdargs)
 
     def should_skip_node(self, node_id, **kwdargs):
-        include_ids = kwdargs.get('include')
+        include_ids = kwdargs.get('node_include')
         exclude_ids = kwdargs.get('exclude')
         # If we are only looking at certain 'included' ids, check if it is included
         # OR If we are excluding certain ids, check if it is in the excluded id list.

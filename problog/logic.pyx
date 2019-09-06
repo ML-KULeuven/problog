@@ -192,11 +192,12 @@ cdef class Term(object):
 
     cdef public int id
     cdef public object probability, location, op_priority, op_spec
-    cdef public int __arity
+    cdef public int __arity, __hash, reprhash
     cdef str repr, __signature
     cdef dict __dict__
-    cdef public object __functor, __args, __hash, _cache_is_ground
-    cdef public object _cache_list_length, _cache_variables, reprhash, cache_eq
+    cdef bint _cached_hash
+    cdef public object __functor, __args, _cache_is_ground
+    cdef public object _cache_list_length, _cache_variables, cache_eq
 
     def __init__(self, functor, *args, **kwdargs):
         global __term_max_id
@@ -210,12 +211,11 @@ cdef class Term(object):
         self.op_priority = kwdargs.get('priority')
         self.op_spec = kwdargs.get('opspec')
         self.__signature = None
-        self.__hash = None
+        self._cached_hash = 0
         self._cache_is_ground = None
         self._cache_list_length = None
         self._cache_variables = None
         self.repr = None
-        self.reprhash = None
         self.cache_eq = {}
 
     @property
@@ -231,7 +231,7 @@ cdef class Term(object):
         """
         self.__functor = value
         self.__signature = None
-        self.__hash = None
+        self._cached_hash = 0
         self.cache_eq = {}
 
     @property
@@ -705,7 +705,7 @@ cdef class Term(object):
         return True
 
     def __hash__(self):
-        if self.__hash is None:
+        if self._cached_hash == 0:
             firstarg = None
 
             if len(self.__args) > 0:
@@ -724,7 +724,7 @@ cdef class Term(object):
                 #list_hash.extend(self.__args)
 
             self.__hash = hash(tuple(list_hash))
-
+            self._cached_hash = 1
             #self.__hash = hash((self.__functor, self.__arity, firstarg, self._list_length()))
         return self.__hash
 

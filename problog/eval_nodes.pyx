@@ -136,10 +136,10 @@ def results_to_actions(resultlist, engine, node, context, target, parent, identi
         actions += [complete(parent, identifier)]
     return actions
 
-
+# rename include into node_include for cython
 class EvalNode(object):
     def __init__(self, engine, database, target, node_id, node, context, parent, pointer,
-                 identifier=None, transform=None, call=None, current_clause=None, include=None,
+                 identifier=None, transform=None, call=None, current_clause=None, node_include=None,
                  exclude=None, no_cache=False, **extra):
         self.engine = engine
         self.database = database
@@ -154,7 +154,7 @@ class EvalNode(object):
         self.call = call
         self.on_cycle = False
         self.current_clause = current_clause
-        self.include = include
+        self.node_include = node_include
         self.exclude = exclude
         self.no_cache = no_cache
 
@@ -187,7 +187,7 @@ class EvalNode(object):
         base_args['call'] = self.call
         base_args['current_clause'] = self.current_clause
         base_args['no_cache'] = self.no_cache
-        base_args['include'] = self.include
+        base_args['node_include'] = self.node_include
         base_args['exclude'] = self.exclude
         base_args.update(kwdargs)
         return call(node_id, args, base_args)
