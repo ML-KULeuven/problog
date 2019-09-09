@@ -156,8 +156,8 @@ import re
 RE_FLOAT = re.compile(r'(0x[0-9a-fA-F]+)|([-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?)')
 
 
-def skip_to(s, pos, char):
-    end = s.find(char, pos)
+def skip_to(s, pos, character):
+    end = s.find(character, pos)
     if end == -1:
         return len(s)
     else:
@@ -500,8 +500,8 @@ class PrologParser(object):
         else:
             return Token(token, pos, special=SPECIAL_INTEGER), pos + len(token)
 
-    def _token_action(self, char):
-        c = ord(char)
+    def _token_action(self, character):
+        c = ord(character)
         if c < 33:
             return self._skip  # whitespace
         elif c < 48:

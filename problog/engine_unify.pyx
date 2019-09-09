@@ -24,6 +24,7 @@ Implementation of unification for the grounding engine.
 from __future__ import print_function
 from .errors import GroundingError
 from .logic import is_variable
+from .logic cimport Term
 
 
 class UnifyError(Exception):
@@ -60,7 +61,7 @@ def substitute_all(terms, subst, wrapped=False):
     return result
 
 
-def instantiate(term, context):
+def instantiate(Term term, context):
     """Replace variables in Term by values based on context lookup table.
 
     :param term:

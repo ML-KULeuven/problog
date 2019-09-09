@@ -24,8 +24,9 @@ Implementation of Prolog / ProbLog builtins.
 
 from __future__ import print_function
 
-from .logic import term2str, Term, Clause, Constant, term2list, list2term, \
+from .logic import term2str, Clause, Constant, term2list, list2term, \
     is_ground, is_variable, Var, AnnotatedDisjunction, Object
+from .logic cimport Term
 from .program import PrologFile
 from .errors import GroundingError, UserError
 from .engine_unify import unify_value, UnifyError, substitute_simple
@@ -360,8 +361,8 @@ def _builtin_debugprint(*args, **kwd):
     return True
 
 
-def term2str_noquote(term):
-    res = term2str(term)
+def term2str_noquote(Term term):
+    cdef str res = term2str(term)
     if res[0] == res[-1] == "'":
         res = res[1:-1]
     return res

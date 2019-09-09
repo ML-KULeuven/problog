@@ -28,7 +28,8 @@ import logging
 from collections import defaultdict
 
 from .program import LogicProgram
-from .logic import *
+from .logic import is_ground
+from .logic cimport Term
 from .formula import LogicFormula
 from .engine_unify import *
 
@@ -96,7 +97,7 @@ class GenericEngine(object):  # pragma: no cover
         """
         raise NotImplementedError('GenericEngine.query is an abstract method.')
 
-    def ground(self, db, term, target=None, label=None):
+    def ground(self, db, Term term, target=None, label=None):
         """Ground a given query term and store the result in the given ground program.
 
        :param db: logic program
@@ -159,7 +160,7 @@ class ClauseDBEngine(GenericEngine):
         :param arity: arity of builtin predicate
         :param function: function to execute builtin
         """
-        sig = '%s/%s' % (predicate, arity)
+        cdef str sig = '%s/%s' % (predicate, arity)
         self.__builtin_index[sig] = -(len(self.__builtins) + 1)
         self.__builtins.append(function)
 
@@ -222,7 +223,7 @@ class ClauseDBEngine(GenericEngine):
     def _clone_context(self, context):
         return list(context)
 
-    def query(self, db, term, backend=None, **kwdargs):
+    def query(self, db, Term term, backend=None, **kwdargs):
         """
 
         :param db:
@@ -230,7 +231,7 @@ class ClauseDBEngine(GenericEngine):
         :param kwdargs:
         :return:
         """
-
+        cdef str termstr
         if backend in ('swipl', 'yap'):
             from .util import mktempfile, subprocess_check_output
 
@@ -274,7 +275,7 @@ class ClauseDBEngine(GenericEngine):
             else:
                 return [x for x, y in result]
 
-    def ground(self, db, term, target=None, label=None, **kwdargs):
+    def ground(self, db, Term term, target=None, label=None, **kwdargs):
         """Ground a query on the given database.
 
        :param db: logic program
@@ -289,6 +290,7 @@ class ClauseDBEngine(GenericEngine):
        :return: ground program containing the query
        :rtype: LogicFormula
         """
+        cdef Term term_store
         if term.is_negated():
             negated = True
             term = -term
@@ -324,7 +326,7 @@ class ClauseDBEngine(GenericEngine):
 
         return target
 
-    def ground_step(self, db, term, gp=None, silent_fail=True, assume_prepared=False, **kwdargs):
+    def ground_step(self, db, Term term, gp=None, silent_fail=True, assume_prepared=False, **kwdargs):
         """
 
         :param db:
@@ -368,7 +370,7 @@ class ClauseDBEngine(GenericEngine):
                 raise UnknownClause(term.signature, location=db.lineno(term.location))
         return actions
 
-    def _ground(self, db, term, gp=None, silent_fail=True, assume_prepared=False, **kwdargs):
+    def _ground(self, db, Term term, gp=None, silent_fail=True, assume_prepared=False, **kwdargs):
         """
 
         :param db:
