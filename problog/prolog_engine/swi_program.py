@@ -98,8 +98,9 @@ class SWIProgram(ProbLogObject):
 
     def get_proofs(self, q, k):
         if k is None:
-            k = 100  # TODO FIX!
-        res = query(Path(__file__).parent / 'engine_kbest.pl', 'top({},{}, Proofs)'.format(k, q), asserts=self.get_lines())
+            res = query(Path(__file__).parent / 'engine_kbest.pl', 'top({}, Proofs)'.format(q), asserts=self.get_lines())
+        else:
+            res = query(Path(__file__).parent / 'engine_kbest.pl', 'top({},{}, Proofs)'.format(k, q), asserts=self.get_lines())
 
         proofs = []
         for r in res:
@@ -118,8 +119,14 @@ class SWIProgram(ProbLogObject):
             if name.functor == 'choice':
                 i = str(name)
                 group = name.args[0], name.args[3:]
-            key = target.add_atom(i, p, name=name, group=group)
-            target.add_name(name, key)
+            # key = target.add_atom(i, p, name=name, group=group)
+            try:
+                key = target.get_node_by_name(name)
+            except KeyError:
+                key = target.add_or([], placeholder=True, readonly=False)
+                target.add_name(name, key)
+            target.add_disjunct(key, target.add_atom(i, p, group=group))
+            # target.add_name(name, key)
             return key
         elif type == 'and':
             name, body = proof.args
@@ -131,6 +138,8 @@ class SWIProgram(ProbLogObject):
                 target.add_name(name, key)
             target.add_disjunct(key, target.add_and([self.build_formula(b, target) for b in body]))
             return key
+        elif type == 'neg':
+            return -self.build_formula(proof.args[0], target)
         elif type == 'cycle':
             name, = proof.args
             return target.get_node_by_name(name)
@@ -154,6 +163,7 @@ class SWIProgram(ProbLogObject):
 
     def ground(self, query, target, k=None):
         proofs = self.get_proofs(query, k)
+        # print('{} proofs found'.format(len(proofs)))
         query = parse(query)
         if len(proofs) == 0:  # query is determinstically false, add trivial
             target.add_name(query, target.FALSE, label=target.LABEL_QUERY)

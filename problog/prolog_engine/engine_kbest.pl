@@ -5,17 +5,20 @@ or(Q,builtin(Q),P,P,_) :-
     predicate_property(Q, built_in),
     Q,!.
 
+%or(neg(Q), neg(and(Q,Proofs)), P, P, Context) :-
+%    findall(X,or(Q,X,P,P2, Context), Proofs).
+
 %or(Q,foreign(Q),P,P,_) :-
 %    predicate_property(Q, foreign),
 %    Q.
 
-or(Q,cycle(Q),P,P,Context) :- ground(Q), member(Q,Context),!,fail ,!. % No cycles for now
+or(Q,cycle(Q),P,P,Context) :- ground(Q), member(Q,Context),fail. % No cycles for now
 
 or(Q,and(Q, Proof),Pprev,P,Context) :-
     rule(Q, Body),
     and(Body,Proof,Pprev,P,[Q|Context]).
 
-or(Q,neural_fact(P,Q,I,Net,Vars),Pprev,P,_) :-
+or(Q,neural_fact(Pnet,Q,I,Net,Vars),Pprev,P,_) :-
     fact(nn(Net,Vars),Q,I),
     apply(Net,[Pnet|Vars]),
     nonvar(Pnet),
@@ -23,7 +26,7 @@ or(Q,neural_fact(P,Q,I,Net,Vars),Pprev,P,_) :-
     get_flag(pmin,Pmin),
     P > Pmin.
 
-or(Q,fact(P,Q,I),Pprev,P,_) :-
+or(Q,fact(Pfact,Q,I),Pprev,P,_) :-
     fact(Pfact,Q,I),
     number(Pfact),
     P is Pfact*Pprev,
@@ -63,3 +66,4 @@ select_k_best(K, Prob_Proofs, K_Best_Proofs, Pmin) :-
     K_Best_Proofs = [Pmin-_|_].
     
 top(K,Query,Proofs) :- k_best(K,Q,X,Y,prove(Query,Q,X,Y), Xs),pairs_keys_values(Xs,_,Proofs).%, writeln(Proofs).
+top(Query,Proofs) :- findall(proof(Q,Proof), prove(Query, Q,Proof,_), Proofs).
