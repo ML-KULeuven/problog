@@ -1,0 +1,95 @@
+The Sentential Decision Diagram Package
+sdd version 2.0, January 8, 2018
+http://reasoning.cs.ucla.edu/sdd
+
+The SDD Package is a system for constructing, manipulating and
+optimizing Sentential Decision Diagrams (SDDs).
+
+Source code is provided for the SDD library, and separately, for the
+FNF-to-SDD compiler for compiling CNFs and DNFs to SDD.  Dynamic
+vtree search is implemented in the SDD library.  All source code
+provided is in the C programming language (and in particular, C99).
+License terms are provided in the file described below.
+
+FILES
+
+  bin/       This directory contains pre-compiled binaries for the 
+             FNF-to-SDD compiler.
+  build/     This directory contains the release build
+             (run "make")
+  cnf/       This directory includes some sample .cnf files.
+  debug/     This directory contains the debug build
+             (run "make debug")
+  doc/       This directory includes the Advanced-User manual and 
+             Beginning-User manual.
+  examples/  This directory includes a selection of example CNFs,
+             which can be compiled using the FNF-to-SDD compiler,
+             using default options.
+  include/   This directory includes header files for the compiler 
+             and for the SDD API.
+  lib/       This directory includes the SDD library.
+  src/       This directory includes the source for the FNF-to-SDD
+             compiler.
+  CHANGELOG  This file contains a log of changes over different 
+             versions of the SDD Package.
+  LICENSE    This file includes the license for the SDD Package.
+  Makefile   This is the Makefile used for compiling the FNF-to-SDD
+             compiler.
+  README     This file.
+
+COMPILATION
+
+A simple Makefile is provided for compiling the FNF-to-SDD compiler,
+which can be compiled by simply running the "make" command.  A debug
+build can be compiled by running the "make debug" command.  The
+compiled files can be found in the "build" and "debug" directories,
+respectively.
+
+NOTES
+
+The FNF-to-SDD compiler and dynamic vtree search algorithm were
+originally based on those reported in the paper:
+
+  "Dynamic Minimization of Sentential Decision Diagrams"
+  by Arthur Choi and Adnan Darwiche
+  In Proceedings of the 27th Conference on Artificial Intelligence, 2013. 
+  http://reasoning.cs.ucla.edu/fetch.php?id=128&type=pdf
+
+The dynamic vtree search algorithm included in this distribution is an
+updated version of the one described in the above paper.  Hence, the
+results may differ (usually only slightly) from those reported in the
+paper above.
+
+FNF stands for Flat Negation Normal Form, which includes CNF and DNF.
+The FNF-to-SDD compiler supports the compilation of CNFs and DNFs into
+SDD.
+
+To compile one of the included example CNFs into an SDD, we can use
+one of the pre-compiled binaries, and execute the following on the
+command line:
+
+  bin/sdd-linux -c cnf/s208.1.scan.cnf -s output.sdd
+
+where the flag -c is used to specify the filename of the input CNF,
+and -s is used to specify the filename of the output SDD.
+
+To see a list of all command line options, run the command:
+
+  bin/sdd-linux -h
+
+The default settings correspond to using (1) a balanced initial vtree,
+(see option -t), (2) automatic garbage-collection and minimization
+(see option -r).
+
+AUTHORS
+
+The SDD Package was developed by Arthur Choi and Adnan Darwiche, of
+the Automated Reasoning Group at the University of California, Los
+Angeles.
+
+  http://reasoning.cs.ucla.edu
+
+Feedback, bug reports, and questions can be sent to the email address
+
+  sdd@cs.ucla.edu
+

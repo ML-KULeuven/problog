@@ -1,0 +1,36 @@
+import itertools
+import os.path
+import datetime
+
+name = 'sdd'
+version = '2.0'
+# lookup "Month Day, Year"
+timestamp = datetime.date.today().strftime('%B\\ %d,\\ %Y')
+
+# map from directory to source files
+src_map = {
+    ''                  : 'util.c verify.c',
+    'basic'             : 'computed.c count_and_size.c gc.c hash.c memory.c multiply.c nodes.c partitions.c references.c replace.c shadows.c sort.c',
+    'manager'           : 'copy.c manager.c interface.c stats.c variables.c',
+    'sdds'              : 'io.c apply.c bits.c cardinality.c copy.c count.c condition.c essential_vars.c exists_multiple.c exists_multiple_static.c exists.c forall.c rename_vars.c model_count.c size.c wmc.c',
+    'vtrees'            : 'vtree.c compare.c edit.c io.c maps.c moves.c static.c',
+    'fnf'               : 'io.c',
+    'vtree_fragments'   : 'construction.c moves.c operations.c',
+    'vtree_operations'  : 'cartesian_product.c dissect.c limits.c op_left_rotate.c op_right_rotate.c op_swap.c rollback.c split.c',
+    'vtree_search'      : 'auto.c search.c state.c'
+    }
+
+# construct list of source files
+for key,value in src_map.items():
+    src_map[key] = [os.path.join(key,src) for src in Split(value)]
+src = src_map.values()
+src = list(itertools.chain(*src))
+
+Import('env')
+env_version = env.Clone()
+ver_flags = '-DSDD_VERSION=\\"%s\\" -DSDD_DATE=\\"%s\\" ' % (version,timestamp)
+env_version.Append(CCFLAGS=ver_flags)
+obj = env_version.Object('version.c')
+sobj = env_version.SharedObject('version.c')
+env.Library(name,src+[obj])
+env.SharedLibrary(name,src+[sobj])
