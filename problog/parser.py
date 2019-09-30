@@ -175,11 +175,11 @@ def skip_comment_line(s, pos):
 
 
 def is_lower(c):
-    return 'a' <= c <= 'z'
+    return c.islower() #'a' <= c <= 'z'
 
 
 def is_upper(c):
-    return 'A' <= c <= 'Z'
+    return c.isupper() #'A' <= c <= 'Z'
 
 
 def is_digit(c):
@@ -515,6 +515,10 @@ class PrologParser(object):
             return self._token_lower
         elif c < 127:
             return self._token_act4[c - 123]
+        elif char.isalpha() and char.islower():
+            return self._token_lower
+        elif char.isalpha() and char.isupper():
+            return self._token_upper
         else:
             return None
 
