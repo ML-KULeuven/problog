@@ -162,8 +162,8 @@ class BaseFormula(ProbLogObject):
         :return: A dictionary equivalent to weights where each non-integer key n is converted to int (self.get_node_by_name(n))
         :rtype dict[int, Object]
         """
-        node_to_weight_dict = {n: v for n, v in weights.items() if isinstance(n, int)}
-        node_to_weight_dict.update({self.get_node_by_name(n): v for n, v in weights.items() if not isinstance(n, int)})
+        node_to_weight_dict = {self.get_node_by_name(n): v for n, v in weights.items() if not isinstance(n, int)}
+        node_to_weight_dict.update({n: v for n, v in weights.items() if isinstance(n, int)})
         return node_to_weight_dict
 
     # ====================================================================================== #
