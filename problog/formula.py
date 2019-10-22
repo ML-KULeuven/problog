@@ -132,7 +132,7 @@ class BaseFormula(ProbLogObject):
             weights = self.get_weights()
         else:
             oweights = dict(self.get_weights().items())
-            oweights.update({self.get_node_by_name(n): v for n, v in weights.items()})
+            oweights.update(self._get_node_to_weight_dict(weights))
             weights = oweights
 
         result = {}
@@ -153,6 +153,18 @@ class BaseFormula(ProbLogObject):
         for c in self.constraints():
             c.update_weights(result, semiring)
         return result
+
+    def _get_node_to_weight_dict(self, weights):
+        """
+        Convert all Term keys in weights to their corresponding node id (int).
+        :param weights: A dictionary mapping Terms or node ids to a weight.
+        :type weights: dict[(Term | int), Object]
+        :return: A dictionary equivalent to weights where each non-integer key n is converted to int (self.get_node_by_name(n))
+        :rtype dict[int, Object]
+        """
+        node_to_weight_dict = {n: v for n, v in weights.items() if isinstance(n, int)}
+        node_to_weight_dict.update({self.get_node_by_name(n): v for n, v in weights.items() if not isinstance(n, int)})
+        return node_to_weight_dict
 
     # ====================================================================================== #
     # ==========                           NODE NAMES                            =========== #
