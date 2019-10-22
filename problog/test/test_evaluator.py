@@ -75,6 +75,11 @@ class TestEvaluator(unittest.TestCase):
         results = kc.evaluate(semiring=semiring, weights=weights)
         self.assertEqual(0.1, results[a])
 
+        # with custom weights based on index
+        weights = {kc.get_node_by_name(a) : 0.2}
+        results = kc.evaluate(semiring=semiring, weights=weights)
+        self.assertEqual(0.2, results[a])
+
 
 if __name__ == '__main__' :
     suite = unittest.TestLoader().loadTestsFromTestCase(TestEvaluator)
