@@ -22,7 +22,7 @@ Forward compilation using TP-operator.
     limitations under the License.
 """
 from __future__ import print_function
-from .formula import LogicFormula, OrderedSet, atom
+from .formula import LogicFormula, OrderedSet, atom, pn_weight
 from .dd_formula import DD
 from .sdd_formula import SDD
 from .bdd_formula import BDD
@@ -662,6 +662,8 @@ class ForwardEvaluator(Evaluator):
             av = self.fsdd.atom2var.get(atom)
             if av is not None:
                 weights[av] = weight
+            elif atom == 0:
+                weights[0] = weight
 
         for name, node, label in self.fsdd.labeled():
             if self.fsdd.is_probabilistic(node):
@@ -687,7 +689,15 @@ class ForwardEvaluator(Evaluator):
         if index is None:
             return 0.0
         elif index == 0:
-            return 1.0
+            if not self.semiring.is_nsp():
+                return self.semiring.result(self.semiring.one(), self.formula)
+            else:
+                # We need the full theory to calculate WMC(Theory & True) so resort to XSDD
+                from problog.sdd_formula_explicit import SDDExplicit
+                xsdd = SDDExplicit.create_from(self.formula)
+                result = xsdd.evaluate(index=0, semiring=self.semiring, weights={k: pn_weight(v[0], v[1]) for k, v in
+                                                                                 self.weights.items()})
+                return self.semiring.result(result, self.formula)
         else:
             n = self.formula.get_node(abs(index))
             nt = type(n).__name__
@@ -704,21 +714,23 @@ class ForwardEvaluator(Evaluator):
                 if index < 0:
                     if -index in self._results:
                         if -index in self._complete:
-                            return self.semiring.result(self.semiring.negate(self._results[-index]),
-                                                        self.formula)
+                            return self.semiring.result(self.semiring.negate(self._results[-index]), self.formula)
                         else:
-                            return 0.0, self.semiring.result(
-                                self.semiring.negate(self._results[-index]), self.formula)
+                            return self.semiring.result(self.semiring.zero()), \
+                                   self.semiring.result(self.semiring.negate(self._results[-index]), self.formula)
                     else:
-                        return 0.0, 1.0  # TODO, this must be semiring independent? -V.
+                        return self.semiring.result(self.semiring.zero()), \
+                               self.semiring.result(self.semiring.one())
                 else:
                     if index in self._results:
                         if index in self._complete:
                             return self.semiring.result(self._results[index], self.formula)
                         else:
-                            return self.semiring.result(self._results[index], self.formula), 1.0
+                            return self.semiring.result(self._results[index], self.formula), \
+                                   self.semiring.result(self.semiring.one())
                     else:
-                        return 0.0, 1.0
+                        return self.semiring.result(self.semiring.zero()), \
+                               self.semiring.result(self.semiring.one())
 
     def evaluate_evidence(self):
         raise NotImplementedError('Evaluator.evaluate_evidence is an abstract method.')
