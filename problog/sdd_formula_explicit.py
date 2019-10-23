@@ -1,14 +1,14 @@
 """
-problog.sdd_formula - Sentential Decision Diagrams
+problog.sdd_formula_explicit - Sentential Decision Diagrams
 --------------------------------------------------
 
-Interface to Sentential Decision Diagrams (SDD) using encoding2 (similar to d-DNNF encoding except that it is not
-converted into cnf first).
+Interface to Sentential Decision Diagrams (SDD) using the explicit encoding representing all models
+(similar to d-DNNF encoding except that it is not converted into cnf first).
 
 ..
     Part of the ProbLog distribution.
 
-    Copyright 2015 KU Leuven, DTAI Research Group
+    Copyright 2018 KU Leuven, DTAI Research Group
 
     Licensed under the Apache License, Version 2.0 (the "License");
     you may not use this file except in compliance with the License.
@@ -23,13 +23,14 @@ converted into cnf first).
     limitations under the License.
 """
 from __future__ import print_function
+from collections import namedtuple
 
 from .formula import LogicDAG, LogicFormula
 from .core import transform
 from .errors import InconsistentEvidenceError
 from .util import Timer
 from .evaluator import SemiringProbability, SemiringLogProbability
-from .sdd_formula import SDDEvaluator, SDD
+from .sdd_formula import SDDEvaluator, SDD, x_constrained
 from .forward import _ForwardSDD, ForwardInference
 from .sdd_formula import SDDManager
 
@@ -175,8 +176,6 @@ class SDDExplicitEvaluator(SDDEvaluator):
     def __init__(self, formula, semiring, weights=None, **kwargs):
         SDDEvaluator.__init__(self, formula, semiring, weights, **kwargs)
 
-    # TODO NSP ??
-
     def propagate(self):
         self._initialize()
         self.evaluate_evidence()
@@ -185,17 +184,27 @@ class SDDExplicitEvaluator(SDDEvaluator):
     def _evaluate_evidence(self, recompute=False):
         if self._evidence_weight is None or recompute:
             self._evidence_weight = self._evaluate_root()
-            if self._evidence_weight == self.semiring.zero():
+            if self.semiring.is_zero(self._evidence_weight):
                 raise InconsistentEvidenceError(context=' during compilation')
         return self._evidence_weight
 
     def evaluate_fact(self, node):
         return self.evaluate(node)
 
+    def evaluate_custom(self, node):
+        return self.evaluate(self, node)
+
     def evaluate(self, node, normalize=True):
         # Trivial case: node is deterministically True or False
         if node == self.formula.TRUE:
-            result = self.semiring.one()
+            if not self.semiring.is_nsp():
+                result = self.semiring.one()
+            else:
+                # calculates weight of root node.
+                result = self._evaluate_root()
+                if normalize:
+                    result = self.semiring.normalize(result, self._get_z())
+
         elif node is self.formula.FALSE:
             result = self.semiring.zero()
         else:
@@ -213,6 +222,7 @@ class SDDExplicitEvaluator(SDDEvaluator):
 
             # print("result: %s" % result)
             # print("normalization: %s" % self._get_z())
+            # print("normalizing %s with %s and result before %s" % (normalize, self._get_z(), result))
             if normalize:
                 result = self.semiring.normalize(result, self._get_z())
             # print("normalized result: %s" % result)
@@ -248,6 +258,9 @@ class SDDExplicitEvaluator(SDDEvaluator):
             self.set_weight(index, self.semiring.zero(), neg)
 
 
+x_constrained_named = namedtuple('x_constrained', 'X_named')  # X_named = list of literal names that have to appear before the rest
+
+
 @transform(LogicDAG, SDDExplicit)
 def build_explicit_from_logicdag(source, destination, **kwdargs):
     """Build an SDD2 from a LogicDAG.
@@ -263,6 +276,19 @@ def build_explicit_from_logicdag(source, destination, **kwdargs):
 
     # Get init varcount
     init_varcount = kwdargs.get('init_varcount', -1)
+    var_constraint_named = kwdargs.get('var_constraint', None)
+
+    if var_constraint_named is not None and isinstance(var_constraint_named, x_constrained_named):
+        var_names = {var: True for var in var_constraint_named.X_named}
+        var_ids = []
+        atomcount = 1
+        for _, clause, c_type in source:
+            if clause.name is not None:
+                if var_names.get(clause.name, False):
+                    var_ids.append(atomcount)
+                atomcount += 1
+        destination.var_constraint = x_constrained(X=var_ids)
+
     if init_varcount == -1:
         init_varcount = source.atomcount
         for _, clause, c_type in source:
@@ -341,7 +367,7 @@ def build_explicit_from_logicdag(source, destination, **kwdargs):
 
         for name, node, label in source.get_names_with_label():
             if label == destination.LABEL_QUERY or label == destination.LABEL_EVIDENCE_MAYBE or \
-                    label == destination.LABEL_EVIDENCE_NEG or label == destination.LABEL_EVIDENCE_POS: # TODO required?
+                    label == destination.LABEL_EVIDENCE_NEG or label == destination.LABEL_EVIDENCE_POS:  # TODO required?
                 if node is None or node == 0:
                     destination.add_name(name, node, label)
                 else:

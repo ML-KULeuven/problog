@@ -386,7 +386,6 @@ class DDEvaluator(Evaluator):
     :param semiring:
     :param weights:
     :return:
-
     """
 
     def __init__(self, formula, semiring, weights=None, **kwargs):
@@ -410,6 +409,8 @@ class DDEvaluator(Evaluator):
             av = self.formula.atom2var.get(atom)
             if av is not None:
                 self.weights[av] = weight
+            elif atom == 0:
+                self.weights[0] = weight
 
         if with_evidence:
             for ev in self.evidence():
@@ -447,7 +448,7 @@ class DDEvaluator(Evaluator):
                 else:
                     result = formula.evaluate(index=i, semiring=self.semiring)
 
-                if result == self.semiring.zero():
+                if self.semiring.is_zero(result):
                     raise InconsistentEvidenceError(context=' during compilation')
                 self._evidence_weight = result
 
@@ -466,7 +467,7 @@ class DDEvaluator(Evaluator):
         # Trivial case: node is deterministically True or False
         if node == self.formula.TRUE:
             result = self.semiring.one()
-        elif node is self.formula.FALSE:
+        elif node == self.formula.FALSE:
             result = self.semiring.zero()
         else:
             query_def_inode = self.formula.get_inode(node)
@@ -529,18 +530,14 @@ class DDEvaluator(Evaluator):
         return result
 
     def set_evidence(self, index, value):
-        pos = self.semiring.one()
-        neg = self.semiring.zero()
+        curr_pos_weight, curr_neg_weight = self.weights.get(index)
+        pos, neg = self.semiring.to_evidence(curr_pos_weight, curr_neg_weight, sign=value)
 
-        current_weight = self.weights.get(index)
-        if value:
-            if current_weight and self.semiring.is_zero(current_weight[0]):
-                raise InconsistentEvidenceError(self._deref_node(index))
-            self.set_weight(index, pos, neg)
-        else:
-            if current_weight and self.semiring.is_one(current_weight[0]):
-                raise InconsistentEvidenceError(self._deref_node(index))
-            self.set_weight(index, neg, pos)
+        if (value and self.semiring.is_zero(curr_pos_weight)) or \
+                (not value and self.semiring.is_zero(curr_neg_weight)):
+            raise InconsistentEvidenceError(self._deref_node(index))
+
+        self.set_weight(index, pos, neg)
 
     def set_weight(self, index, pos, neg):
         # index = index of atom in weights, so atom2var[key] = index

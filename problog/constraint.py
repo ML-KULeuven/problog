@@ -185,7 +185,7 @@ class ConstraintAD(Constraint):
             ws = []
             for n in self.nodes:
                 pos, neg = weights.get(n, (semiring.one(), semiring.one()))
-                weights[n] = (pos, semiring.one())
+                weights[n] = (pos, semiring.ad_negate(pos, neg))
                 ws.append(pos)
 
             name = Term('choice', Constant(self.group[0]), Term('e'), Term('null'), *self.group[1])
@@ -196,7 +196,7 @@ class ConstraintAD(Constraint):
             except InvalidValue:
                 raise InvalidValue('Sum of annotated disjunction weigths exceeds acceptable value', location=self.location)
                 # TODO add location
-            weights[self.extra_node] = (complement, semiring.one())
+            weights[self.extra_node] = (complement, semiring.ad_negate(complement, semiring.one()))
 
     def copy(self, rename=None):
         if rename is None:

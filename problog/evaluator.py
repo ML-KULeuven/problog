@@ -147,6 +147,32 @@ class Semiring(object):
         """Handle weight for deterministically false."""
         return self.zero(), self.one()
 
+    def to_evidence(self, pos_weight, neg_weight, sign):
+        """
+        Converts the pos. and neg. weight (internal repr.) of a literal into the case where the literal is evidence.
+        Note that the literal can be a negative atom regardless of the given sign.
+
+        :param pos_weight: The current positive weight of the literal.
+        :param neg_weight: The current negative weight of the literal.
+        :param sign: Denotes whether the literal or its negation is evidence. sign > 0 denotes the literal is evidence,
+            otherwise its negation is evidence. Note: The literal itself can also still be a negative atom.
+        :returns: A tuple of the positive and negative weight as if the literal was evidence.
+            For example, for probability, returns (self.one(), self.zero()) if sign else (self.zero(), self.one())
+        """
+        return (self.one(), self.zero()) if sign > 0 else (self.zero(), self.one())
+
+    def ad_negate(self, pos_weight, neg_weight):
+        """
+        Negation in the context of an annotated disjunction. e.g. in a probabilistic context for 0.2::a ; 0.8::b,
+        the negative label for both a and b is 1.0 such that model {a,-b} = 0.2 * 1.0 and {-a,b} = 1.0 * 0.8.
+        For a, pos_weight would be 0.2 and neg_weight could be 0.8. The returned value is 1.0.
+        :param pos_weight: The current positive weight of the literal (e.g. 0.2 or 0.8). Internal representation.
+        :param neg_weight: The current negative weight of the literal (e.g. 0.8 or 0.2). Internal representation.
+        :return: neg_weight corrected based on the given pos_weight, given the ad context (e.g. 1.0). Internal
+        representation.
+        """
+        return self.one()
+
 
 class SemiringProbability(Semiring):
     """Implementation of the semiring interface for probabilities."""
@@ -440,7 +466,7 @@ class Evaluator(object):
         """Set value for evidence node.
 
         :param index: index of evidence node
-        :param value: value of evidence
+        :param value: value of evidence. True if the evidence is positive, False otherwise.
         """
         raise NotImplementedError('abstract method')
 
