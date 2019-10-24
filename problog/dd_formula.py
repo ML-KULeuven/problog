@@ -424,7 +424,7 @@ class DDEvaluator(Evaluator):
             self.normalization = self._get_manager().wmc_true(self.weights, self.semiring)
         else:
             self.normalization = None
-        self.evaluate_evidence()
+        self.evaluate_evidence(recompute=True)
 
     def _evaluate_evidence(self, recompute=False):
         if self._evidence_weight is None or recompute:

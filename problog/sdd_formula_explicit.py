@@ -178,7 +178,7 @@ class SDDExplicitEvaluator(SDDEvaluator):
 
     def propagate(self):
         self._initialize()
-        self.evaluate_evidence()
+        self.evaluate_evidence(recompute=True)
         self.normalization = self._evidence_weight
 
     def _evaluate_evidence(self, recompute=False):
