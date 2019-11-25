@@ -123,17 +123,26 @@ class BaseFormula(ProbLogObject):
         * The namedtuple formula.pn_weight can be used to pass both a positive and negative weight.
 
         :param semiring: semiring that determines the interpretation of the weights
-        :param weights: dictionary of { node name : weight } that overrides the builtin weights, the given weights must
-            be in external representation.
+        :param weights: dictionary of { node name : weight } or { node id : weight} that overrides the builtin weights,
+            the given weights must be in external representation.
+        :type weights: dict[(Term | int), any]
         :returns: dictionary { key: (positive weight, negative weight) } where the weights are in internal
             representation.
-        :rtype: dict[int, tuple[any]]
+        :rtype: dict[int, tuple[any,any]]
         """
         result = {}
         # Set given weights, has priority over program weights.
         if weights is not None:
-            for name, w in weights.items():
-                key = self.get_node_by_name(name)
+            for n, w in weights.items():
+                key = n if isinstance(n, int) else self.get_node_by_name(n)
+
+                if hasattr(self, 'get_name'):
+                    name = self.get_name(key)
+                elif not isinstance(n, int):
+                    name = n
+                else:
+                    name = key
+
                 if key >= 0:
                     if w == self.WEIGHT_NEUTRAL and type(self.WEIGHT_NEUTRAL) == type(w):
                         result[key] = semiring.one(), semiring.one()
@@ -160,14 +169,14 @@ class BaseFormula(ProbLogObject):
 
         # Set remaining program weights
         for key, w in self.get_weights().items():
-            if result.get(key) is None:
+            if result.get(abs(key)) is None:
                 if hasattr(self, 'get_name'):
                     name = self.get_name(key)
                 else:
                     name = key
                 if w == self.WEIGHT_NEUTRAL and type(self.WEIGHT_NEUTRAL) == type(w):
                     result[key] = semiring.one(), semiring.one()
-                elif w == False:
+                elif w is False:
                     result[key] = semiring.false(name)
                 elif w is None:
                     result[key] = semiring.true(name)
@@ -752,8 +761,7 @@ class LogicFormula(BaseFormula):
                 content = tuple(OrderedSet(content))
             else:  # any_order
                 # can also merge (a, b) and (b, a)
-                content = tuple(OrderedSet(
-                    content))  # TODO: PATCH: Something somewhere relies on this being ordered instead of a regular set
+                content = tuple(set(content))
 
             # Empty OR node fails, AND node is true
             if not content and not placeholder:
@@ -765,7 +773,7 @@ class LogicFormula(BaseFormula):
 
             # If node has only one child, just return the child.
             # Don't do this for modifiable nodes, we need to keep a separate node.
-            if (readonly and update is None) and len(content) == 1:
+            if readonly and update is None and len(content) == 1:
                 if self._avoid_name_clash:
                     name_old = self.get_node(abs(content[0])).name
                     if name is None or name_old is None or name == name_old:
@@ -809,6 +817,14 @@ class LogicFormula(BaseFormula):
         :returns: iterator over tuples ( key, node, type )
         """
         for i, n in enumerate(self._nodes):
+            yield (i + 1, n, type(n).__name__)
+
+    def __reversed__(self):
+        """Iterate over the nodes in the formula in the opposite direction.
+
+        :returns: iterator over tuples ( key, node, type )
+        """
+        for i, n in reversed(self._nodes):
             yield (i + 1, n, type(n).__name__)
 
     def __len__(self):
@@ -1067,7 +1083,7 @@ class LogicFormula(BaseFormula):
         .. code-block:: python
 
             pl = problog.program.PrologFile(input_file)
-            problog.formula.LogicFormula.create_from(avoid_name_clash=True, keep_order=True, \
+            problog.formula.LogicFormula.create_from(pl, avoid_name_clash=True, keep_order=True, \
 label_all=True)
             prologfile = gp.to_prolog()
 
@@ -1325,7 +1341,7 @@ label_all=True)
         for i, n, t in self:
             if relevant[i] and not processed[i]:
                 if t == 'atom':
-                    if n.name is not None and n.source not in ('builtin', 'negation'): # TODO: Can n.source be a str?
+                    if n.name is not None and n.source not in ('builtin', 'negation'):
                         yield n.name.with_probability(n.probability)
                 elif t == 'disj':
                     if len(n.children) == 1 and not self._is_valid_name(n.name):
