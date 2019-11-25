@@ -247,7 +247,7 @@ def kill_proc_tree(process, including_parent=True):
         process.kill()
 
 
-class OrderedSet(collections.MutableSet):
+class OrderedSet(collections.abc.MutableSet):
     """Provides an ordered version of a set which keeps elements in the order they are added.
 
     :param iterable: add elements from this iterable (default: None)
