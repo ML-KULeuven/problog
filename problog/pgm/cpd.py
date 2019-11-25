@@ -484,9 +484,9 @@ class Variable(object):
                     # This is the negation of one value
                     new_value, = frozenset(self.values) - value
                     if value_as_term:
-                        return '\+' + self.clean() + '("' + str(new_value) + '")'
+                        return '\\+' + self.clean() + '("' + str(new_value) + '")'
                     else:
-                        return '\+' + self.clean() + '_' + self.clean(str(new_value))
+                        return '\\+' + self.clean() + '_' + self.clean(str(new_value))
                 else:
                     if value_as_term:
                         return '(' + '; '.join(
@@ -504,7 +504,7 @@ class Variable(object):
             if self.values[self.boolean_true] == value:
                 return self.clean()
             elif self.values[1 - self.boolean_true] == value:
-                return '\+' + self.clean()
+                return '\\+' + self.clean()
             else:
                 raise Exception('Unknown value: {} = {}'.format(self.name, value))
 
@@ -820,7 +820,7 @@ class Factor(object):
         if ad_is_function and var.boolean_true is None:
             head_lits = [var.to_problog_value(value, value_as_term) for value in var.values]
             # lines.append('false_constraints :- '+', '.join(['\+'+l for l in head_lits])+'.')
-            lines.append('constraint([' + ', '.join(['\+' + l for l in head_lits]) + '], false).')
+            lines.append('constraint([' + ', '.join(['\\+' + l for l in head_lits]) + '], false).')
             for lit1, lit2 in itertools.combinations(head_lits, 2):
                 # lines.append('false_constraints :- {}, {}.'.format(lit1, lit2))
                 lines.append('constraint([{}, {}], false).'.format(lit1, lit2))

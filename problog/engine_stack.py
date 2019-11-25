@@ -484,7 +484,7 @@ class StackBasedEngine(ClauseDBEngine):
             negated = True
             neg_func = query.functor
             query = -query
-        elif query.functor in ('not', '\+') and query.arity == 1:
+        elif query.functor in ('not', '\\+') and query.arity == 1:
             negated = True
             neg_func = query.functor
             query = query.args[0]

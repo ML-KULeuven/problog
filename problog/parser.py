@@ -341,8 +341,8 @@ class PrologParser(object):
         elif s[pos:pos + 3] == '=:=':
             return Token('=:=', pos, binop=(700, 'xfx', self.factory.build_binop),
                          functor=self._next_paren_open(s, pos)), pos + 3
-        elif s[pos:pos + 3] == '=\=':
-            return Token('=\=', pos, binop=(700, 'xfx', self.factory.build_binop),
+        elif s[pos:pos + 3] == '=\\=':
+            return Token('=\\=', pos, binop=(700, 'xfx', self.factory.build_binop),
                          functor=self._next_paren_open(s, pos)), pos + 3
         elif s[pos:pos + 3] == '=@=':
             return Token('=@=', pos, binop=(700, 'xfx', self.factory.build_binop),

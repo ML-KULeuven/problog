@@ -292,7 +292,7 @@ class ClauseDBEngine(GenericEngine):
         if term.is_negated():
             negated = True
             term = -term
-        elif term.functor in ('not', '\+') and term.arity == 1:
+        elif term.functor in ('not', '\\+') and term.arity == 1:
             negated = True
             term = term.args[0]
         else:

@@ -113,14 +113,14 @@ def add_standard_builtins(engine, b=None, s=None, sp=None):
     engine.add_builtin('false', 0, b(_builtin_fail))  # -3
 
     engine.add_builtin('=', 2, s(_builtin_eq))  # -4
-    engine.add_builtin('\=', 2, b(_builtin_neq))  # -5
+    engine.add_builtin('\\=', 2, b(_builtin_neq))  # -5
 
     engine.add_builtin('findall', 3, sp(_builtin_findall))  # -6
     engine.add_builtin('all', 3, sp(_builtin_all))  # -7
     engine.add_builtin('all_or_none', 3, sp(_builtin_all_or_none))  # -8
 
     engine.add_builtin('==', 2, b(_builtin_same))
-    engine.add_builtin('\==', 2, b(_builtin_notsame))
+    engine.add_builtin('\\==', 2, b(_builtin_notsame))
 
     engine.add_builtin('is', 2, s(_builtin_is))
 
@@ -128,7 +128,7 @@ def add_standard_builtins(engine, b=None, s=None, sp=None):
     engine.add_builtin('<', 2, b(_builtin_lt))
     engine.add_builtin('=<', 2, b(_builtin_le))
     engine.add_builtin('>=', 2, b(_builtin_ge))
-    engine.add_builtin('=\=', 2, b(_builtin_val_neq))
+    engine.add_builtin('=\\=', 2, b(_builtin_val_neq))
     engine.add_builtin('=:=', 2, b(_builtin_val_eq))
 
     engine.add_builtin('var', 1, b(_builtin_var))
@@ -748,7 +748,7 @@ def _builtin_eq(arg1, arg2, **kwdargs):
 
 # noinspection PyUnusedLocal
 def _builtin_neq(arg1, arg2, **kwdargs):
-    """``A \= B``
+    """``A \\= B``
         A and B not both variables
     """
     try:
@@ -760,7 +760,7 @@ def _builtin_neq(arg1, arg2, **kwdargs):
 
 # noinspection PyUnusedLocal
 def _builtin_notsame(arg1, arg2, **kwdargs):
-    """``A \== B``"""
+    """``A \\== B``"""
     return not arg1 == arg2
 
 
@@ -823,10 +823,10 @@ def _builtin_ge(arg1, arg2, engine=None, **k):
 
 
 def _builtin_val_neq(a, b, engine=None, **k):
-    """``A =\= B``
+    """``A =\\= B``
         A and B are ground
     """
-    check_mode((a, b), ['gg'], functor='=\=', **k)
+    check_mode((a, b), ['gg'], functor='=\\=', **k)
     a_value = a.compute_value(engine.functions)
     b_value = b.compute_value(engine.functions)
     if a_value is None or b_value is None:
@@ -1542,7 +1542,7 @@ def _builtin_sample_uniform(key, lst, result, database=None, target=None, **kwda
     The first argument is used as an identifier such that calls with the same key enforce mutual \
     exclusivity on the results, that is, the probability of
 
-        sample_uniform(K,L,R1), sample_uniform(K,L,R2), R1 \== R2
+        sample_uniform(K,L,R1), sample_uniform(K,L,R2), R1 \\== R2
 
     is 0.
 

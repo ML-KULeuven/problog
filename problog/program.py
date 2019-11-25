@@ -93,7 +93,8 @@ class LogicProgram(ProbLogObject):
                 # TODO: Warning: I will have to think about Variable, Constant cases as well...
                 # If the  first in-scope Term is a Term (not a clause, AD, ...), we pass on the probability, otherwise not
                 if type(clausefact.args[1]) == Term:
-                    self.add_statement(clausefact.args[1].with_probability(p=clausefact.probability), scope=scope_name, is_problog_scope=True)
+                    self.add_statement(clausefact.args[1].with_probability(p=clausefact.probability), scope=scope_name,
+                                       is_problog_scope=True)
                 # If the first in-scope Term is not a Term (it is a clause, AD, ...), we store it to manipulate it
                 else:
                     self.add_statement(clausefact.args[1], scope=scope_name, is_problog_scope=True)
@@ -440,7 +441,7 @@ class ExtendedPrologFactory(PrologFactory):
     """Prolog with some extra syntactic sugar.
 
     Non-standard syntax:
-    - Negative head literals [Meert and Vennekens, PGM 2014]: 0.5::\+a :- b.
+    - Negative head literals [Meert and Vennekens, PGM 2014]: 0.5:: \\+a :- b.
     """
 
     def __init__(self, identifier=0):
@@ -487,7 +488,7 @@ class ExtendedPrologFactory(PrologFactory):
         for k, v in self.neg_head_lits.items():
             cur_vars = [Var("V{}".format(i)) for i in range(v['c'])]
             new_clause = Clause(Term(v['f'], *cur_vars),
-                                And(Term(v['p'], *cur_vars), Not('\+', Term(v['n'], *cur_vars))))
+                                And(Term(v['p'], *cur_vars), Not('\\+', Term(v['n'], *cur_vars))))
             clauses.append(new_clause)
         return clauses
 
@@ -539,6 +540,7 @@ class ExtendedPrologFactory(PrologFactory):
             else:
                 new_heads.append(head)
         return super(ExtendedPrologFactory, self).build_clause(functor, new_heads, operand2, location, **extra)
+
 
 DefaultPrologFactory = ExtendedPrologFactory
 

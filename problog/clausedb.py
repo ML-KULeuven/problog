@@ -473,7 +473,7 @@ class ClauseDB(LogicProgram):
             a, b = node.children
             return Or(self._extract(a), self._extract(b))
         elif nodetype == 'neg':
-            return Not('\+', self._extract(node.child))
+            return Not('\\+', self._extract(node.child))
         else:
             raise ValueError("Unknown node type: '%s'" % nodetype)
 

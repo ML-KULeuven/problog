@@ -26,7 +26,7 @@ This module contains basic logic constructs.
        ``:-``          ``<<``      clause
        ``,``           ``&``       and
        ``;``           ``|``       or
-       ``\+``          ``~``       not
+       ``\\+``          ``~``       not
       =========== =========== ============
 
     .. warning::
@@ -728,7 +728,7 @@ class Term(object):
         return Or(self, rhs)
 
     def __invert__(self):
-        return Not('\+', self)
+        return Not('\\+', self)
 
     def __float__(self):
         return float(self.value)
@@ -737,7 +737,7 @@ class Term(object):
         return int(self.value)
 
     def __neg__(self):
-        return Not('\+', self)
+        return Not('\\+', self)
 
     def __abs__(self):
         return self
@@ -1167,7 +1167,7 @@ def unquote(s):
     return s.strip("'")
 
 
-safe_expr = re.compile('[a-z]+(\w)*$')
+safe_expr = re.compile('[a-z]+(\\w)*$')
 def is_safe(t):
     return safe_expr.match(t) is not None
 
