@@ -149,10 +149,11 @@ SPECIAL_STRING = 10
 SPECIAL_ARGLIST = 11
 SPECIAL_SHARP_OPEN = 12
 SPECIAL_SHARP_CLOSE = 13
+SPECIAL_HEX_INTEGER = 14
 
 import re
 
-RE_FLOAT = re.compile(r'[-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?')
+RE_FLOAT = re.compile(r'(0x[0-9a-fA-F]+)|([-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?)')
 
 
 def skip_to(s, pos, char):
@@ -492,7 +493,9 @@ class PrologParser(object):
 
     def _token_number(self, s, pos):
         token = RE_FLOAT.match(s, pos).group(0)
-        if token.find('.') >= 0 or token.find('e') >= 0 or token.find('E') >= 0:
+        if token.startswith('0x'):
+            return Token(token, pos, special=SPECIAL_HEX_INTEGER), pos + len(token)
+        elif token.find('.') >= 0 or token.find('e') >= 0 or token.find('E') >= 0:
             return Token(token, pos, special=SPECIAL_FLOAT), pos + len(token)
         else:
             return Token(token, pos, special=SPECIAL_INTEGER), pos + len(token)
@@ -631,6 +634,8 @@ class PrologParser(object):
                 return self.factory.build_variable(token.string, location=token.location)
             elif token.is_special(SPECIAL_INTEGER):
                 return self.factory.build_constant(int(token.string), location=token.location)
+            elif token.is_special(SPECIAL_HEX_INTEGER):
+                return self.factory.build_constant(int(token.string, 16), location=token.location)
             elif token.is_special(SPECIAL_FLOAT):
                 return self.factory.build_constant(float(token.string), location=token.location)
             elif token.is_special(SPECIAL_STRING):
