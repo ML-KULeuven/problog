@@ -761,7 +761,8 @@ class LFIProblem(LogicProgram):
                 # TODO: lfi_par should be unique for rule, not per disjunct
                 # lfi_par = Term('lfi_par',   Constant(self.count),      Term('t', *prob_args), *atom1.args)
                 lfi_par = Term('lfi_par', Constant(self.count), Term('t', *prob_args, *atom1.args))
-                lfi_prob = Term('lfi', Constant(self.count), Term('t', *prob_args, *atom1.args))
+                # lfi_prob = Term('lfi', Constant(self.count), Term('t', *prob_args, *atom1.args))
+                lfi_prob = Term('lfi', Constant(self.count), Term('t'))
 
                 # 2) Replacement atom
                 replacement = lfi_fact.with_probability(lfi_prob)
@@ -1183,6 +1184,7 @@ class Example(object):
     def compile(self, lfi, baseprogram):
         ground_program = None  # Let the grounder decide
         print('compile grounding:')
+        print(baseprogram.to_prolog())
         print(baseprogram)
         print('...')
         print(ground_program)
@@ -1193,6 +1195,7 @@ class Example(object):
                               evidence=list(zip(self.atoms, self.values)),
                               propagate_evidence=lfi.propagate_evidence)
         print('...')
+        print(ground_program.to_prolog())
         print(ground_program)
 
         lfi_queries = []
@@ -1202,21 +1205,29 @@ class Example(object):
                 print('node.identifier', node.identifier)
                 if type(node.identifier) == tuple:
                     factargs = node.identifier[1]
-                fact = Term('lfi_fact', node.probability.args[0], node.probability.args[1], *factargs)
+                # fact = Term('lfi_fact', node.probability.args[0], node.probability.args[1], *factargs)
+                # fact = Term('lfi_fact', node.probability.args[0], node.probability.args[1])
+                fact = Term('lfi_fact', node.probability.args[0], Term('t', *factargs))
                 print('Adding query: ', fact, i)
                 ground_program.add_query(fact, i)
                 if self._use_parents:
-                    tmp_body = Term('lfi_body', node.probability.args[0], node.probability.args[1], *factargs)
+                    # tmp_body = Term('lfi_body', node.probability.args[0], node.probability.args[1], *factargs)
+                    # tmp_body = Term('lfi_body', node.probability.args[0], node.probability.args[1])
+                    tmp_body = Term('lfi_body', node.probability.args[0], Term('t', *factargs))
                     lfi_queries.append(tmp_body)
                     print('Adding query: ', tmp_body, i)
-                    tmp_par = Term('lfi_par', node.probability.args[0], node.probability.args[1], *factargs)
+                    # tmp_par = Term('lfi_par', node.probability.args[0], node.probability.args[1], *factargs)
+                    # tmp_par = Term('lfi_par', node.probability.args[0], node.probability.args[1])
+                    tmp_par = Term('lfi_par', node.probability.args[0], Term('t', *factargs))
                     lfi_queries.append(tmp_par)
                     print('Adding query: ', tmp_par, i)
             elif t == 'atom' and isinstance(node.probability, Term) and node.probability.functor == 'clfi':
                 factargs = ()
                 if type(node.identifier) == tuple:
                     factargs = node.identifier[1]
-                fact = Term('clfi_fact', node.probability.args[0], node.probability.args[1], *factargs)
+                # fact = Term('clfi_fact', node.probability.args[0], node.probability.args[1], *factargs)
+                # fact = Term('clfi_fact', node.probability.args[0], node.probability.args[1])
+                fact = Term('clfi_fact', node.probability.args[0], Term('t', *factargs))
                 ground_program.add_query(fact, i)
             elif t == 'atom':
                 # TODO: check if non-lfi and continuous and save locations to replace later
