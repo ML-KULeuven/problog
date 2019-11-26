@@ -38,6 +38,20 @@ except Exception as err:
     print("SDD library not available due to error: ", err, file=sys.stderr)
     has_sdd = False
 
+try:
+    import pyro
+    has_pyro = True
+except Exception as err:
+    print("Pyro library not available due to error: ", err, file=sys.stderr)
+    has_pyro = False
+
+try:
+    import psipy
+    has_psi = True
+except Exception as err:
+    print("PyTorch library not available due to error: ", err, file=sys.stderr)
+    has_psi = False
+
 
 class TestDummy(unittest.TestCase):
 
@@ -153,14 +167,19 @@ if has_sdd:
 else:
     print("No SDD support - The DC tests are not performed with SDDs.")
 
+if has_pyro:
+    for testfile in pyro_filenames:
+        testname = 'test_dc_pyro_' + os.path.splitext(os.path.basename(testfile))[0]
+        setattr( TestDCPyroGeneric, testname, createDCPyroTestGeneric(testfile, True) )
+else:
+    print("No Pyro support - The DC tests are not performed with Pyro.")
 
-for testfile in pyro_filenames:
-    testname = 'test_dc_pyro_' + os.path.splitext(os.path.basename(testfile))[0]
-    setattr( TestDCPyroGeneric, testname, createDCPyroTestGeneric(testfile, True) )
-for testfile in psi_filenames:
-    testname = 'test_dc_psi_' + os.path.splitext(os.path.basename(testfile))[0]
-    setattr( TestDCPsiGeneric, testname, createDCPsiTestGeneric(testfile, True) )
-
+if has_psi:
+    for testfile in psi_filenames:
+        testname = 'test_dc_psi_' + os.path.splitext(os.path.basename(testfile))[0]
+        setattr( TestDCPsiGeneric, testname, createDCPsiTestGeneric(testfile, True) )
+else:
+    print("No PSI support - The DC tests are not performed with PSI.")
 
 if __name__ == '__main__' :
     suite = unittest.TestLoader().loadTestsFromTestCase(TestDCPyroGeneric)
