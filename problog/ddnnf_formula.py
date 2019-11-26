@@ -71,9 +71,7 @@ class SimpleDDNNFEvaluator(Evaluator):
         self.weights.clear()
 
         model_weights = self.formula.extract_weights(self.semiring, self.given_weights)
-        for n, p in model_weights.items():
-            self.weights[n] = p[0]
-            self.weights[-n] = p[1]
+        self.weights = model_weights.copy()
 
         if with_evidence:
             for ev in self.evidence():
@@ -86,7 +84,7 @@ class SimpleDDNNFEvaluator(Evaluator):
         self._initialize()
 
     def _get_z(self):
-        result = self._get_weight(len(self.formula))
+        result = self.get_root_weight()
         return result
 
     def evaluate_evidence(self, recompute=False):
@@ -98,7 +96,7 @@ class SimpleDDNNFEvaluator(Evaluator):
         for ev in self.evidence():
             self._set_value(abs(ev), ev > 0)
 
-        result = self._get_weight(len(self.formula))
+        result = self.get_root_weight()
         return result
 
     def evaluate_fact(self, node):
@@ -106,21 +104,34 @@ class SimpleDDNNFEvaluator(Evaluator):
 
     def evaluate(self, node):
         if node == 0:
-            result = self.semiring.one()
+            if not self.semiring.is_nsp():
+                result = self.semiring.one()
+            else:
+                result = self.get_root_weight()
+                result = self.semiring.normalize(result, self._get_z())
         elif node is None:
             result = self.semiring.zero()
         else:
             p = self._get_weight(abs(node))
             n = self._get_weight(-abs(node))
             self._set_value(abs(node), (node > 0))
-            result = self._get_weight(len(self.formula))
+            result = self.get_root_weight()
             self._reset_value(abs(node), p, n)
-            if self.has_evidence():
+            if self.has_evidence() or self.semiring.is_nsp():
                 result = self.semiring.normalize(result, self._get_z())
         return self.semiring.result(result, self.formula)
 
     def _reset_value(self, index, pos, neg):
         self.set_weight(index, pos, neg)
+
+    def get_root_weight(self):
+        """
+        Get the WMC of the root of this formula.
+        :return: The WMC of the root of this formula (WMC of node len(self.formula)), multiplied with weight of True
+        (self.weights.get(0)).
+        """
+        result = self._get_weight(len(self.formula))
+        return self.semiring.times(result, self.weights.get(0)[0]) if self.weights.get(0) is not None else result
 
     def _get_weight(self, index):
         if index == 0:
@@ -128,33 +139,26 @@ class SimpleDDNNFEvaluator(Evaluator):
         elif index is None:
             return self.semiring.zero()
         else:
-            w = self.weights.get(index)
+            w = self.weights.get(abs(index))
             if w is None:
                 w = self._calculate_weight(index)
                 return w
             else:
-                return w
+                return w[index < 0]
 
     def set_weight(self, index, pos, neg):
-        self.weights[index] = pos
-        self.weights[-index] = neg
+        # index = index of atom in weights, so atom2var[key] = index
+        self.weights[index] = (pos, neg)
 
     def set_evidence(self, index, value):
-        pos = self.semiring.one()
-        neg = self.semiring.zero()
+        curr_pos_weight, curr_neg_weight = self.weights.get(index)
+        pos, neg = self.semiring.to_evidence(curr_pos_weight, curr_neg_weight, sign=value)
 
-        current_weight = self.weights.get(index)
-        neg_weight = self.weights.get(-index)
+        if (value and self.semiring.is_zero(curr_pos_weight)) or \
+                (not value and self.semiring.is_zero(curr_neg_weight)):
+            raise InconsistentEvidenceError(self._deref_node(index))
 
-        if value:
-            if current_weight is not None and self.semiring.is_zero(current_weight):
-                raise InconsistentEvidenceError(self._deref_node(index))
-            self.set_weight(index, pos, neg)
-        else:
-            if current_weight is not None and self.semiring.is_one(current_weight) \
-                    and not self.semiring.is_one(neg_weight):
-                raise InconsistentEvidenceError(self._deref_node(index))
-            self.set_weight(index, neg, pos)
+        self.set_weight(index, pos, neg)
 
     def _deref_node(self, index):
         return self.formula.get_node(index).name
@@ -189,19 +193,11 @@ class SimpleDDNNFEvaluator(Evaluator):
                 p = self.semiring.one()
                 for c in childprobs:
                     p = self.semiring.times(p, c)
-                    #if p == 2.0:
-                    #    return 1.0
-
-                    #if p > 1:
-                    #    print("printing children of %s: %s" % (str(node), node.children))
                 return p
             elif ntype == 'disj':
                 p = self.semiring.zero()
                 for c in childprobs:
                     p = self.semiring.plus(p, c)
-                    #if p > 1:
-                    #    print("Operation > 1.0: %s" % str(node))
-                    #    return 1.0
                 return p
             else:
                 raise TypeError("Unexpected node type: '%s'." % ntype)

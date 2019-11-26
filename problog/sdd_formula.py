@@ -24,7 +24,7 @@ Interface to Sentential Decision Diagrams (SDD)
 from __future__ import print_function
 from collections import namedtuple
 
-from .formula import LogicDAG, LogicFormula, LogicNNF
+from .formula import LogicDAG, LogicFormula, LogicNNF, pn_weight
 from .core import transform
 from .errors import InstallError, InconsistentEvidenceError
 from .dd_formula import DD, build_dd, DDManager, DDEvaluator
@@ -381,6 +381,7 @@ class SDDManager(DDManager):
             semiring. Type: function[SddNode, List[Tuple[prime_weight, sub_weight, Set[prime_used_lit],
             Set[sub_used_lit]]], Set[expected_prime_lit], Set[expected_sub_lit]] -> weight
         :type weights: dict[int, tuple[Any, Any]]
+        :type semiring: Semiring
         :type pr_semiring: bool
         :type perform_smoothing: bool
         :type smooth_to_root: bool
@@ -411,6 +412,8 @@ class SDDManager(DDManager):
             result = wmc_manager.propagate()
             if literal is not None:
                 result = wmc_manager.literal_pr(literal)
+            if weights.get(0) is not None:  # Times the weight of True
+                result = result * weights[0][0]
         else:  # manual iteration (SddIterator)
             if wmc_func is None:
                 wmc_func = self._get_wmc_func(weights=weights, semiring=semiring, perform_smoothing=perform_smoothing)
@@ -419,12 +422,15 @@ class SDDManager(DDManager):
             modified_weights = False
             if varcount == 1 and weights.get(1) is None:
                 modified_weights = True
-                weights[1] = (semiring.one(), semiring.zero())
+                weights[1] = (semiring.one(), semiring.zero())  # because 1 + 0 = 1 and 1 * x = x
 
             # Calculate result
             query_node = node if literal is None else self.get_manager().literal(literal)
             sdd_iterator = SddIterator(self.get_manager(), smooth_to_root=smooth_to_root)
             result = sdd_iterator.depth_first(query_node, wmc_func)
+
+            if weights.get(0) is not None:  # Times the weight of True
+                result = semiring.times(result, weights[0][0])
 
             # Restore edge case modification
             if modified_weights:
@@ -786,7 +792,14 @@ class SDDEvaluator(DDEvaluator):
     def evaluate_custom(self, node):
         # Trivial case: node is deterministically True or False
         if node == self.formula.TRUE:
-            result = self.semiring.one()
+            if not self.semiring.is_nsp():
+                result = self.semiring.one()
+            else:
+                # We need the full theory to calculate WMC(Theory & True) so resort to XSDD
+                from problog.sdd_formula_explicit import SDDExplicit
+                xsdd = SDDExplicit.create_from(self.formula, var_constraint=self.formula.var_constraint)
+                result = xsdd.evaluate(index=0, semiring=self.semiring, weights={k: pn_weight(v[0], v[1]) for k, v in
+                                                                                 self.weights.items()})
         elif node is self.formula.FALSE:
             result = self.semiring.zero()
         else:
@@ -795,7 +808,7 @@ class SDDEvaluator(DDEvaluator):
             query_sdd = self._get_manager().conjoin(query_def_inode, evidence_inode)
 
             smooth_to_root = self.semiring.is_nsp()
-            # perform_smoothing=True because of indicator variables
+            # perform_smoothing=True because of indicator variables # TODO There are no indicator variables in SDDs.
             result = self._get_manager().wmc(query_sdd, weights=self.weights, semiring=self.semiring,
                                              pr_semiring=False, perform_smoothing=True,
                                              smooth_to_root=smooth_to_root)

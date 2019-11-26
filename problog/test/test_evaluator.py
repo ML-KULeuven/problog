@@ -18,12 +18,14 @@ limitations under the License.
 import unittest
 
 from problog.program import PrologString
-from problog.formula import LogicFormula
+from problog.formula import LogicFormula, pn_weight
 from problog import get_evaluatable
 from problog.evaluator import SemiringProbability
 from problog.logic import Term
 
 # noinspection PyBroadException
+from problog.test.test_system import SemiringProbabilityNSPCopy
+
 try:
     from pysdd import sdd
     has_sdd = True
@@ -74,6 +76,30 @@ class TestEvaluator(unittest.TestCase):
         weights = {a: 0.1}
         results = kc.evaluate(semiring=semiring, weights=weights)
         self.assertEqual(0.1, results[a])
+
+        # with custom weights
+        weights = {a: pn_weight(0.1, 0.1)}
+        results = kc.evaluate(semiring=semiring, weights=weights)
+        self.assertEqual(0.5, results[a])
+
+        # with custom weights based on index
+        weights = {kc.get_node_by_name(a) : 0.2}
+        results = kc.evaluate(semiring=semiring, weights=weights)
+        self.assertEqual(0.2, results[a])
+
+        # Testing with weight on node 0 (True)
+        weights = {0: 0.3, a: pn_weight(0.1, 0.1)}
+        results = kc.evaluate(semiring=semiring, weights=weights)
+        self.assertEqual(0.5, results[a])
+
+        # Testing query on node 0 (True)
+        class TestSemiringProbabilityIgnoreNormalize(SemiringProbabilityNSPCopy):
+            def normalize(self, a, z):
+                return a
+
+        weights = {0: pn_weight(0.3, 0.7), a: pn_weight(0.1, 0.1)}
+        results = kc.evaluate(index=0, semiring=TestSemiringProbabilityIgnoreNormalize(), weights=weights)
+        self.assertEqual(0.06, results)
 
 
 if __name__ == '__main__' :

@@ -637,9 +637,15 @@ class Term(object):
     def __eq__(self, other):
         if not isinstance(other, Term):
             return False
-        cache_eq = self._get_cached_eq(other)
-        if cache_eq is not None:
-            return cache_eq
+
+        # TODO Determine whether to remove cache_eq code that is relying on id( )
+        # What we need is a hash function such that hash(1) != hash(2): return false else perform normal __eq__ procedure.
+        # The difficulty being that maybe some functions which are not equal objects we want to consider as equal. e.g. not(..) vs \+...
+        # We need to discuss this first.
+        #cache_eq = self._get_cached_eq(other) #TODO object.id is not reliable? Objects can have the same id (non-overlapping lifetime)
+        #if cache_eq is not None:
+        #    return cache_eq
+
         # Non-recursive version of equality check.
         l1 = deque([self])
         l2 = deque([other])
