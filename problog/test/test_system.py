@@ -20,20 +20,18 @@ import os
 import sys
 import unittest
 
+from problog import get_evaluatable
+from problog import root_path
+from problog.ddnnf_formula import DDNNF
+from problog.evaluator import SemiringProbability, SemiringLogProbability, Semiring
+from problog.formula import LogicFormula
 from problog.forward import _ForwardSDD
+from problog.program import PrologFile, DefaultPrologParser, ExtendedPrologFactory
 
 if __name__ == "__main__":
     sys.path.insert(
         0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../"))
     )
-
-from problog import root_path
-
-from problog.program import PrologFile, DefaultPrologParser, ExtendedPrologFactory
-from problog import get_evaluatable
-from problog.evaluator import SemiringProbability, SemiringLogProbability, Semiring
-from problog.formula import LogicFormula
-from problog.ddnnf_formula import DDNNF
 
 # noinspection PyBroadException
 try:
