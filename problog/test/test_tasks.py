@@ -1,6 +1,7 @@
-import os
+import os.path
 import sys
 import unittest
+from os import path
 
 from problog.logic import Term, Constant
 from problog.tasks import dtproblog
@@ -14,13 +15,16 @@ if __name__ == "__main__":
 class TestTasks(unittest.TestCase):
     def dt_problog_check_if_output_equals(self, dt_file, expected_choices, expected_score):
         real_file_name = "./../../test/dtproblog/" + dt_file
-        result = dtproblog.main([real_file_name])
-        if result[0]:
-            choices, score, stats = result[1]
-            self.assertEqual(expected_choices, choices)
-            self.assertAlmostEqual(expected_score, score, delta=1e-6)
-        else:
-            self.fail("An error occured was returned when executing " + dt_file + "\nError " + str(result[1]))
+        file_exists = path.exists(real_file_name)
+        self.assertTrue(file_exists, msg="File " + real_file_name + " was not found. Maybe this is a pathing issue?")
+        if file_exists:
+            result = dtproblog.main([real_file_name])
+            if result[0]:
+                choices, score, stats = result[1]
+                self.assertEqual(expected_choices, choices)
+                self.assertAlmostEqual(expected_score, score, delta=1e-6)
+            else:
+                self.fail("An error occured was returned when executing " + dt_file + "\nError " + str(result[1]))
 
     def test_simple_dt_problog(self):
         self.dt_problog_check_if_output_equals(
