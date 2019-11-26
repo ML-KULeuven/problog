@@ -67,16 +67,18 @@ def createTestLFI(filename, useparents = False):
 
 if __name__ == '__main__':
     filenames = sys.argv[1:]
+
 else:
-    ADfilenames = glob.glob(root_path('test', 'lfi', 'AD_positive', '*.pl'))
-    simple_filenames = glob.glob(root_path('test', 'lfi', 'simple', '*.pl'))
-    useParents_filenames = glob.glob(root_path('test', 'lfi', 'useParents', '*.pl'))
+    #ADfilenames = glob.glob(root_path('test', 'lfi', 'AD_positive', '*.pl'))
+    #simple_filenames = glob.glob(root_path('test', 'lfi', 'simple', '*.pl'))
+    #useParents_filenames = glob.glob(root_path('test', 'lfi', 'useParents', '*.pl'))
     unit_test_filenames = glob.glob(root_path('test', 'lfi', 'unit_tests', '*.pl'))
 
-# # tests for simple cases (non-ADs)
-# for testfile in simple_filenames :
-#     testname = 'test_lfi_simple_' + os.path.splitext(os.path.basename(testfile))[0]
-#     setattr( TestLFI, testname, createTestLFI(testfile, True))
+
+# tests for simple cases (non-ADs)
+#for testfile in simple_filenames :
+#    testname = 'test_lfi_simple_' + os.path.splitext(os.path.basename(testfile))[0]
+#    setattr( TestLFI, testname, createTestLFI(testfile, True))
 #
 # # tests for ADs
 # for testfile in ADfilenames :
@@ -90,7 +92,7 @@ else:
 
 # tests for unit tests
 for testfile in unit_test_filenames :
-    testname = 'unit_test_' + os.path.splitext(os.path.basename(testfile))[0]
+    testname = 'test_lfi_unit_test_' + os.path.splitext(os.path.basename(testfile))[0]
     setattr( TestLFI, testname, createTestLFI(testfile, True))
 
 if __name__ == '__main__':
