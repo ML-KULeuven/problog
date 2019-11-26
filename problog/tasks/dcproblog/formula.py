@@ -73,11 +73,16 @@ class LogicNNFHAL(LogicNNF):
             weights = oweights
 
         result = {}
+        observation_weight_nodes = [w for w  in weights if weights[w].functor=="observation"]
+        for on in observation_weight_nodes:
+            name = self._get_name(on)
+            result[on] = semiring.pos_value(weights[on], name, index=on), semiring.neg_value(weights[on], name, index=on)
+
+
         for n, w in weights.items():
-            if hasattr(self, 'get_name'):
-                name = self.get_name(n)
-            else:
-                name = n
+            if n in observation_weight_nodes:
+                continue
+            name = self._get_name(n)
             if w == self.WEIGHT_NEUTRAL and type(self.WEIGHT_NEUTRAL) == type(w):
                 result[n] = semiring.one(), semiring.one()
             elif w == False:
@@ -91,6 +96,13 @@ class LogicNNFHAL(LogicNNF):
             c.update_weights(result, semiring)
 
         return result
+
+    def _get_name(self, n):
+        if hasattr(self, 'get_name'):
+            name = self.get_name(n)
+        else:
+            name = n
+        return name
 
 
 class LogicFormulaHAL(LogicFormula):
@@ -253,7 +265,7 @@ class LogicFormulaHAL(LogicFormula):
             if f:
                 f = False
                 s += '\nObservation : '
-            s += '\n* ' +  "{}={} : {}".format(o[0].args[0],o[0].args[1],o[1])
+            s += '\n* ' +  "{}={} : {}".format(o[0][0],o[0][1],o[1])
         f = True
         for c in self.constraints():
             if c.is_nontrivial():
@@ -398,9 +410,9 @@ class LogicFormulaHAL(LogicFormula):
                 links += l
 
             return links, s
-        elif isinstance(expression, ValueExpr) and str(expression.functor)=="real":
+        elif isinstance(expression, SymbolicConstant) and str(expression.functor)=="real":
             return (), s
-        elif isinstance(expression, ValueExpr):
+        elif isinstance(expression, SymbolicConstant):
             if expression in s.value_links:
                 return (s.value_links[expression],), s
             else:
@@ -410,7 +422,7 @@ class LogicFormulaHAL(LogicFormula):
                     links += l
 
                 # node_name = Algebra.name2str(expression.name)
-                node_name = hash(expression.name)
+                node_name = hash(str(expression))
                 str_density_args = ",".join(list(map(str,expression.args)))
                 str_density_functor = str(expression.functor)
                 str_density = "{}({})".format(str_density_functor, str_density_args)

@@ -1,0 +1,67 @@
+digraph GP {
+2 [label="[t1>20]", shape="ellipse", style="filled", fillcolor="white"];
+4 [label="[t1>30]", shape="ellipse", style="filled", fillcolor="white"];
+5 [label="AND", shape="box", style="filled", fillcolor="white"];
+-3 [label="NOT"];
+-3 -> 3;
+5 -> -3;
+5 -> 4;
+6 [label="OR", shape="diamond", style="filled", fillcolor="white"];
+ 6 -> 5;
+6 -> 3;
+7 [label="AND", shape="box", style="filled", fillcolor="white"];
+7 -> 2;
+7 -> 6;
+8 [label="AND", shape="box", style="filled", fillcolor="white"];
+-2 [label="NOT"];
+-2 -> 2;
+8 -> -2;
+8 -> 4;
+9 [label="OR", shape="diamond", style="filled", fillcolor="white"];
+ 9 -> 7;
+9 -> 8;
+10 [label="AND", shape="box", style="filled", fillcolor="white"];
+-1 [label="NOT"];
+-1 -> 1;
+10 -> -1;
+10 -> 9;
+12 [label="[t2>30]", shape="ellipse", style="filled", fillcolor="white"];
+
+11 [label="[t2>20]", shape="ellipse", style="filled", fillcolor="white"];
+
+13 [label="AND", shape="box", style="filled", fillcolor="white"];
+-11 [label="NOT"];
+-11 -> 11;
+13 -> -11;
+13 -> 12;
+14 [label="OR", shape="diamond", style="filled", fillcolor="white"];
+ 14 -> 13;
+14 -> 11;
+15 [label="AND", shape="box", style="filled", fillcolor="white"];
+15 -> 14;
+16 [label="AND", shape="box", style="filled", fillcolor="white"];
+16 -> 12;
+17 [label="OR", shape="diamond", style="filled", fillcolor="white"];
+17 -> 16;
+
+17 -> 15;
+18 [label="AND", shape="box", style="filled", fillcolor="white"];
+18 -> 1;
+18 -> 17;
+19 [label="OR", shape="diamond", style="filled", fillcolor="white"];
+ 19 -> 10;
+19 -> 18;
+q_0 [ label="broken", shape="plaintext" ];
+q_0 -> 19 [style="dotted" ];
+
+q_3 [ label="no_cool", shape="plaintext" ];
+q_3 -> 3 [style="dotted" ];
+
+q_6 [ label="hot", shape="plaintext" ];
+q_6 -> 1 [style="dotted" ];
+1 [label="0.2", shape="ellipse", style="filled", fillcolor="white"];
+3 [label="0.01", shape="ellipse", style="filled", fillcolor="white"];
+16 -> -3;
+15 -> 3;
+
+}

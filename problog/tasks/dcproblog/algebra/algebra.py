@@ -135,7 +135,6 @@ class Algebra(object):
             assert isinstance(expression, SymbolicConstant)
 
             if expression.functor=="observation":
-                #TODO handle multivariate case, loop over dimensions!!
                 observation_weight = self.make_observation(*expression.args)
                 return self.symbolize(observation_weight, variables=expression.args[0].cvariables)
             elif isinstance(expression, RandomVariableComponentConstant):

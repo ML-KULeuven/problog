@@ -74,10 +74,12 @@ def _builtin_observation(term, observation, engine=None, target=None, database=N
         identifier = "observation_of({})".format(target.get_density_name(term,distribution[1]))
         arg1 = target.create_ast_representation(distribution[0])
         arg2 = target.create_ast_representation(observation)
-        cvariables = set()
-        for a in (arg1,arg2):
-            cvariables = cvariables.union(a.cvariables)
+        assert isinstance(arg1, RandomVariableConstant)
+        assert isinstance(arg2, SymbolicConstant)
+        cvariables = arg1.cvariables
+
         probability = SymbolicConstant(functor, args=(arg1,arg2), cvariables=cvariables)
+
 
         o_node = target.add_atom(identifier, probability)
         if distribution[1] is None:

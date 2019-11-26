@@ -162,14 +162,18 @@ class Pyro(Algebra):
         #TODO make sure that observations are always treated before comparisons!
         #otherwise you will get [sample(x)>0]*[x=2], where you set the second factor to the density image at that point
         #other option is to make a circuit redection step where you check for redundancies, then is won't happen
-        #can probably do thies in FormulaEvaluatorHAL
-        density_name = var.density_name
-        dimension = var.dimension
+        #can probably do this in FormulaEvaluatorHAL
+        density_name = var.name
+        dimensions = var.dimensions
+        assert dimensions == 1 #TODO allow for multivariate observations
 
-        self.construct_algebraic_expression(var)
+        for c in var.components:
+            self.construct_algebraic_expression(c)
         obs = self.construct_algebraic_expression(obs)
         density = self.densities[density_name]
         observation_weight = torch.exp(density.log_prob(torch.tensor(obs.value)))
-        self.random_values[density_name][dimension] = obs.value #this is the line that relates to the comment above
+
+        self.random_values[density_name][dimensions-1] = obs.value
+        #this is the line that relates to the comment above
 
         return observation_weight

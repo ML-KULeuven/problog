@@ -41,6 +41,19 @@ class LogicVectorConstant(Term):
         Term.__init__(self, "logicvector", *components)
         self.components = components
 
+    @property
+    def cvariables(self):
+        cvariables = set()
+        for c in self.components:
+            cvariables |= set(c.cvariables)
+        return tuple(cvariables)
+
+    @property
+    def dimensions(self):
+        return len(self.components)
+
+
+
     def __add__(self,other):
         operation = "__add__"
         return self._perform_operation(operation, other)
@@ -240,6 +253,8 @@ class RandomVariableConstant(LogicVectorConstant):
 class Distribution(Term):
     def __init__(self, distribution, *arguments):
         Term.__init__(self, distribution, *arguments)
+        #has to be done probably during grounding and not during program creation
+        #because the grounding might affect the number of parameters which might change the dimensionality?
         self.dimensions = self.infer_dimensions()
 
     def infer_dimensions(self):
