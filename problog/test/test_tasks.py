@@ -1,5 +1,4 @@
 import unittest
-from collections import OrderedDict
 
 from problog.logic import Term, Constant
 from problog.tasks import dtproblog
@@ -9,10 +8,12 @@ class TestTasks(unittest.TestCase):
     def dt_problog_check_if_output_equals(self, dt_file, expected_choices, expected_score):
         real_file_name = "./../../test/dtproblog/" + dt_file
         result = dtproblog.main([real_file_name])
-        print("RESULT", dt_file, result)
-        choices, score, stats = result[1]
-        self.assertEqual(expected_choices, choices)
-        self.assertAlmostEqual(expected_score, score, delta=1e-6)
+        if result[0]:
+            choices, score, stats = result[1]
+            self.assertEqual(expected_choices, choices)
+            self.assertAlmostEqual(expected_score, score, delta=1e-6)
+        else:
+            self.fail("An error occured was returned when executing " + dt_file + "\nError " + str(result[1]))
 
     def test_simple_dt_problog(self):
         self.dt_problog_check_if_output_equals(
@@ -69,6 +70,15 @@ class TestTasks(unittest.TestCase):
                 Term("umbrella", Term("rainy")): 1
             },
             77
+        )
+        self.dt_problog_check_if_output_equals(
+            "var_util.pl",
+            {
+                Term("bet", Term("w1"), Constant(5)): 1,
+                Term("bet", Term("w2"), Constant(7)): 0,
+                Term("bet", Term("w3"), Constant(10)): 0,
+            },
+            4
         )
 
     if __name__ == "__main__":
