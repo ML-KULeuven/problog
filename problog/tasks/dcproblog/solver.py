@@ -12,10 +12,13 @@ class Operator(object):
     def __init__(self, neutral_element, name):
         self.neutral_element = neutral_element
         self.name = name
+
     def get_neutral(self):
         return self.neutral_element
+
     def __str__(self):
         return self.name
+
 
 class SumOperator(Operator):
     def __init__(self):
@@ -29,8 +32,10 @@ class AbstractABE(object):
         self.ttype = ttype
         self.device = device
 
+
 class InferenceSolver(object):
-    def __init__(self, abe_name, draw_diagram=False, dpath=None,  file_name=None, n_samples=None, ttype=None, device=None):
+    def __init__(self, abe_name, draw_diagram=False, dpath=None, file_name=None, n_samples=None, ttype=None,
+                 device=None):
         self.operator = SumOperator()
 
         self.abstract_abe = AbstractABE(abe_name, n_samples=n_samples, ttype=ttype, device=device)
@@ -41,11 +46,11 @@ class InferenceSolver(object):
     def get_density_queries(self, lf_hal):
         density_queries = lf_hal.density_queries
         _new_query_names = {}
-        for k,v in lf_hal._names[lf_hal.LABEL_QUERY].items():
-            if isinstance(k,tuple):
-                _new_query_names[k] =v
-            elif not k.functor=="density":
-                _new_query_names[k] =v
+        for k, v in lf_hal._names[lf_hal.LABEL_QUERY].items():
+            if isinstance(k, tuple):
+                _new_query_names[k] = v
+            elif not k.functor == "density":
+                _new_query_names[k] = v
 
         lf_hal._names[lf_hal.LABEL_QUERY] = _new_query_names
         return density_queries
@@ -56,24 +61,23 @@ class InferenceSolver(object):
         model, evidence, ev_target = init_model(engine, model, target=lf_hal)
         free_variables = lf_hal.free_variables
         lf_hal = LogicFormulaHAL.create_from(model, label_all=True, \
-            propagate_evidence=True, engine=engine, queries=queries)
+                                             propagate_evidence=True, engine=engine, queries=queries)
         density_queries = self.get_density_queries(lf_hal)
         density_values = lf_hal.density_values
 
         return lf_hal, density_queries, density_values, free_variables
 
-    def compile_formula(self, lf,  **kwdargs):
+    def compile_formula(self, lf, **kwdargs):
         sdd_hal = SDDHAL(**kwdargs)
         diagram = sdd_hal.create_from(lf, label_all=True, **kwdargs)
         diagram.build_dd()
         return diagram
 
-
     def calculate_probabilities(self, sdds, semiring, dde, **kwdargs):
         probabilities = OrderedDict()
         e_evaluated = dde.evaluate_sdd(sdds["e"], semiring, normalization=True, evaluation_last=False)
         for q, qe_sdd in sdds["qe"].items():
-            #if evalutation last true then sdd deref but produces error
+            # if evalutation last true then sdd deref but produces error
             qe_evaluated = dde.evaluate_sdd(qe_sdd, semiring, evaluation_last=False)
             q_probability = semiring.algebra.probability(qe_evaluated, e_evaluated)
             probabilities[q] = q_probability
@@ -82,19 +86,19 @@ class InferenceSolver(object):
     def make_diagram(self, dde, sdds):
         # evidence_inode = dde.evidence_inode
         # dot  = dde.formula.sdd_functions_to_dot(evidence_inode=dde.evidence_inode)
-        dot  = dde.formula.sdd_functions_to_dot(sdds=sdds["qe"])
+        dot = dde.formula.sdd_functions_to_dot(sdds=sdds["qe"])
         if self.file_name:
             file_name = os.path.basename(os.path.normpath(self.file_name)).strip(".pl")
         else:
             file_name = graph
         if not self.dpath:
             # filepath=os.getcwd()
-            filepath="."
+            filepath = "."
 
         else:
             filepath = os.path.dirname(__file__)
 
-        diagram_name = os.path.join(filepath,'diagrams/{}.gv').format(file_name)
+        diagram_name = os.path.join(filepath, 'diagrams/{}.gv').format(file_name)
 
         try:
             from graphviz import Source
@@ -103,21 +107,19 @@ class InferenceSolver(object):
         except:
             pass
 
-
-
     def probability(self, program, **kwdargs):
         lf_hal, density_queries, density_values, free_variables = self.ground(program, queries=None, **kwdargs)
         lf = break_cycles(lf_hal, LogicFormulaHAL(**kwdargs))
 
-        semiring = SemiringHAL(self.operator.get_neutral(), self.abstract_abe, density_values, density_queries, free_variables)
+        semiring = SemiringHAL(self.operator.get_neutral(), self.abstract_abe, density_values, density_queries,
+                               free_variables)
         diagram = self.compile_formula(lf, **kwdargs)
-
 
         dde = diagram.get_evaluator(semiring=semiring, **kwdargs)
         dde.formula.density_values = density_values
         sdds = dde.get_sdds()
         if self.draw_diagram:
-            assert not dde.evidence_inode==None
+            assert not dde.evidence_inode == None
             self.make_diagram(dde, sdds)
 
         probabilities = self.calculate_probabilities(sdds, semiring, dde, **kwdargs)

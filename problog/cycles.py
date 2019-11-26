@@ -22,7 +22,6 @@ Cycle breaking in propositional formulae.
     limitations under the License.
 """
 
-
 import logging
 from collections import defaultdict
 
@@ -92,7 +91,7 @@ def _break_cycles(source, target, nodeid, ancestors, cycles_broken, content, tra
             return ev
     elif nodeid in ancestors:
         cycles_broken.add(nodeid)
-        return None     # cyclic node: node is False
+        return None  # cyclic node: node is False
     elif nodeid in translation:
         ancset = frozenset(ancestors + [nodeid])
         for newnode, cb, cn in translation[nodeid]:
@@ -116,7 +115,8 @@ def _break_cycles(source, target, nodeid, ancestors, cycles_broken, content, tra
     node = source.get_node(nodeid)
     nodetype = type(node).__name__
     if nodetype == 'atom':
-        newnode = target.add_atom(node.identifier, node.probability, group=node.group, name=node.name, is_extra=node.is_extra)
+        newnode = target.add_atom(node.identifier, node.probability, group=node.group, name=node.name,
+                                  is_extra=node.is_extra)
     else:
         children = [_break_cycles(source, target, child, ancestors + [nodeid], child_cycles_broken,
                                   child_content, translation, is_evidence)

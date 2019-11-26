@@ -172,7 +172,6 @@ def read_grounding(lines, target, queries, evidence):
 
 
 def statement_to_yap(statement):
-
     if isinstance(statement, Clause) and statement.head.functor == '_directive':
         if statement.body.functor in ('consult', 'use_module'):
             return ''
@@ -189,7 +188,3 @@ def statement_to_yap(statement):
         return '%s.' % head
     else:
         return '%s.' % statement
-
-
-
-

@@ -33,7 +33,7 @@ class LL(object):
         return entry
 
     def erase(self, item):
-        if item.prv is None and item.nxt is None:   # only element in list
+        if item.prv is None and item.nxt is None:  # only element in list
             self.first = None
             self.last = None
         elif item.prv is None:  # first element
@@ -57,7 +57,6 @@ class LL(object):
 
 
 class LLEntry(object):
-
     __slots__ = ('lst', 'val', 'prv', 'nxt')
 
     def __init__(self, lst, val, prv, nxt):
@@ -143,7 +142,6 @@ def recorded(key):
 def instance(ref):
     return ref.functor.val
 
-
 # @problog_export_nondet('-term', '-term', '-term')
 # def recorded():
 #     db = problog_export.database.get_data(recdb_key)
@@ -153,5 +151,3 @@ def instance(ref):
 #             return ()
 #         else:
 #             return [(key, x.val, Constant(x)) for x in lst]
-
-

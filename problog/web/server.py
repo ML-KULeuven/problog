@@ -79,13 +79,13 @@ FILES_WHITELIST = [
 here = os.path.dirname(__file__)
 
 use_default_logger = True
-if os.path.exists(os.path.join(here,'logging.conf')):
+if os.path.exists(os.path.join(here, 'logging.conf')):
     try:
-        logging.config.fileConfig(os.path.join(here,'logging.conf'))
+        logging.config.fileConfig(os.path.join(here, 'logging.conf'))
         use_default_logger = False
     except IOError:
         pass
-    
+
 if use_default_logger:
     logger = logging.getLogger('server')
     ch = logging.StreamHandler(sys.stdout)
@@ -98,15 +98,21 @@ logger = logging.getLogger('server')
 # Load Python standard web-related modules (based on Python version)
 import json
 import mimetypes
+
 if sys.version_info.major == 2:
     import BaseHTTPServer
     import urlparse
 
+
     def to_bytes(string):
         return bytes(string)
+
+
     import urllib
+
     url_decode = urllib.unquote_plus
     import hashlib
+
 
     def compute_hash(model):
         return hashlib.md5(model).hexdigest()  # Python 2
@@ -115,19 +121,23 @@ else:
     import http.server as BaseHTTPServer
     import urllib.parse as urlparse
 
+
     def to_bytes(string):
         return bytes(string, 'UTF-8')
+
+
     url_decode = urlparse.unquote_plus
     import hashlib
 
+
     def compute_hash(model):
-        return hashlib.md5(to_bytes(model)).hexdigest() # Python 3
+        return hashlib.md5(to_bytes(model)).hexdigest()  # Python 3
 
 # Contains special URL paths. Initialize with @handle_url
 PATHS = {}
 
 
-class handle_url(object) :
+class handle_url(object):
     """Decorator for adding a handler for a URL.
 
     Example: to add a handler for GET /hello?name=World
@@ -137,16 +147,17 @@ class handle_url(object) :
         return 200, 'text/plain', 'Hello %s!' % name
     """
 
-    def __init__(self, path) :
+    def __init__(self, path):
         self.path = path
 
-    def __call__(self, f) :
+    def __call__(self, f):
         PATHS[self.path] = f
 
 
 def root_path(*relative_path):
     """Translate URL path to file system path."""
     return os.path.abspath(os.path.join(os.path.dirname(__file__), *relative_path))
+
 
 PROB_EXEC = root_path('..', 'tasks', '__init__.py')
 
@@ -191,7 +202,7 @@ def run_problog_task(task, model, callback=None, data=None, options=None):
         if data is not None:
             datafile = store_hash(data, 'data')
             outfile = os.path.splitext(infile)[0] + '_' + \
-                os.path.splitext(os.path.basename(datafile))[0] + '.out'
+                      os.path.splitext(os.path.basename(datafile))[0] + '.out'
             cmd += [datafile]
         else:
             outfile = os.path.splitext(infile)[0] + '.out'
@@ -386,7 +397,6 @@ def get_editor():
 
 @handle_url(api_root + 'update')
 def update_problog():
-
     workingdir = os.path.abspath(os.path.dirname(__file__))
     try:
         out = subprocess.check_output(['git', 'pull'], cwd=workingdir, stderr=subprocess.STDOUT).decode()
@@ -423,14 +433,14 @@ def make_local(html):
 
 class ProbLogHTTP(BaseHTTPServer.BaseHTTPRequestHandler):
 
-    def do_POST(self) :
+    def do_POST(self):
         numberOfBytes = int(self.headers["Content-Length"])
         data = self.rfile.read(numberOfBytes)
         query = urlparse.parse_qs(data)
 
         self.do_GET(query=query)
 
-    def do_GET(self, query=None) :
+    def do_GET(self, query=None):
         """Handle a GET request.
 
         Looks up the URL path in PATHS and executes the corresponding function.
@@ -438,7 +448,7 @@ class ProbLogHTTP(BaseHTTPServer.BaseHTTPRequestHandler):
         """
 
         try:
-            url = urlparse.urlparse( self.path )
+            url = urlparse.urlparse(self.path)
             path = url.path
             if query is None:
                 query = urlparse.parse_qs(url.query)
@@ -454,7 +464,7 @@ class ProbLogHTTP(BaseHTTPServer.BaseHTTPRequestHandler):
                     self.send_response(404)
                     self.end_headers()
                     self.wfile.write(to_bytes('File not found!'))
-            else :
+            else:
                 code, datatype, data = action(**query)
                 self.send_response(code)
                 self.send_header("Content-type", datatype)
@@ -465,7 +475,7 @@ class ProbLogHTTP(BaseHTTPServer.BaseHTTPRequestHandler):
             import traceback
             logger.error('Uncaught exception: {}\n{}'.format(e, traceback.format_exc()))
 
-    def serveFile(self, filename) :
+    def serveFile(self, filename):
         """Serve a file."""
         if filename == '/':
             filename = '/index.html'
@@ -473,32 +483,32 @@ class ProbLogHTTP(BaseHTTPServer.BaseHTTPRequestHandler):
 
         filetype, encoding = mimetypes.guess_type(filename)
         filename = root_path(filename)
-        try :
+        try:
             with open(filename) as f:
                 data = f.read()
             data = make_local(data)
             self.send_response(200)
             self.send_header("Content-type", filetype)
-            if encoding :
+            if encoding:
                 self.send_header("Content-Encoding", encoding)
             self.end_headers()
             self.wfile.write(to_bytes(data))
-        except :
+        except:
             self.send_response(404)
             self.end_headers()
             self.wfile.write(to_bytes('File not found!'))
 
-    def log_message(self,format, *args) :
-        try :
+    def log_message(self, format, *args):
+        try:
             # Remove arguments from GET request, only keep path
-            if args[0].startswith('GET') :
+            if args[0].startswith('GET'):
                 p = args[0].find('?')
-                if p >= 0 :
+                if p >= 0:
                     args0 = args[0][0:p]
-                else :
+                else:
                     args0 = args[0]
                 args = (args0,) + args[1:]
-        except Exception :
+        except Exception:
             pass
 
         args = (self.client_address[0],) + args
@@ -519,7 +529,8 @@ def main(argv, **extra):
     parser.add_argument('--port', '-p', type=int, default=DEFAULT_PORT, help="Server listening port")
     parser.add_argument('--timeout', '-t', type=int, default=DEFAULT_TIMEOUT, help="Time limit in seconds")
     parser.add_argument('--memout', '-m', type=float, default=DEFAULT_MEMOUT, help="Memory limit in Gb")
-    parser.add_argument('--servefiles', '-F', action='store_true', help="Attempt to serve a file for undefined paths (unsafe?).")
+    parser.add_argument('--servefiles', '-F', action='store_true',
+                        help="Attempt to serve a file for undefined paths (unsafe?).")
     parser.add_argument('--nocaching', action='store_true', help="Disable caching of submitted models")
     parser.add_argument('--browser', '-B', action='store_true', help="Open editor in web browser.")
     parser.add_argument('--local', '-l', action='store_true', help="Use local javascript libraries.")

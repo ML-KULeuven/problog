@@ -6,6 +6,7 @@ a = problog.logic.Term('a')
 b = problog.logic.Term('b')
 c = problog.logic.Term('c')
 
+
 def unify(t1, t2):
     sv = problog.engine_unify._VarTranslateWrapper({}, min(t2.variables()))
     tv = {}
@@ -40,7 +41,6 @@ tests = [
 
 
 def create_test(t1, t2, r):
-
     def f(self):
         if r == 'OccursCheck':
             self.assertRaises(problog.engine_unify.OccursCheck, unify, t1, t2)
@@ -48,7 +48,9 @@ def create_test(t1, t2, r):
             self.assertRaises(problog.engine_unify.UnifyError, unify, t1, t2)
         else:
             self.assertCollectionEqual(unify(t1, t2).items(), r.items())
+
     return f
+
 
 for i, t in enumerate(tests):
     t1, t2, r = t
@@ -62,7 +64,6 @@ for i, t in enumerate(tests):
     f.__doc__ = "%s = %s -> %s" % (t2s(t1), t2s(t2), r)
 
     setattr(TestUnify, 'test_unify_%03d' % i, f)
-
 
 if __name__ == '__main__':
     unittest.main()

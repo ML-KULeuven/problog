@@ -6,7 +6,7 @@ from .formula import LogicNNFHAL
 
 
 class DDEvaluatorHAL(DDEvaluator):
-    def __init__(self, formula, semiring,  weights=None, **kwargs):
+    def __init__(self, formula, semiring, weights=None, **kwargs):
         DDEvaluator.__init__(self, formula, semiring, weights, **kwargs)
 
     def propagate(self):
@@ -29,8 +29,7 @@ class DDEvaluatorHAL(DDEvaluator):
                     # Only for atoms
                     self.set_evidence(self.formula.atom2var[ev], ev > 0)
 
-
-    def get_sdds(self):#node
+    def get_sdds(self):  # node
         result = {}
         constraint_inode = self.formula.get_constraint_inode()
         evidence_nodes = [self.formula.get_inode(ev) for ev in self.evidence()]
@@ -51,7 +50,7 @@ class DDEvaluatorHAL(DDEvaluator):
         formula = LogicNNFHAL()
         i = self.formula._to_formula(formula, sdd)
         semiring.algebra.normalization = normalization
-        result =  formula.evaluate(index=i, semiring=semiring)
+        result = formula.evaluate(index=i, semiring=semiring)
         if evaluation_last:
             self._get_manager().deref(sdd)
 

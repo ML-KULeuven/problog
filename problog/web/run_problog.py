@@ -43,7 +43,7 @@ def print_result_prob(d, output, precision=8):
     else:
         result['SUCCESS'] = False
         result['err'] = process_error(d)
-    print (200, 'application/json', json.dumps(result), file=output)
+    print(200, 'application/json', json.dumps(result), file=output)
     return 0
 
 
@@ -63,7 +63,7 @@ def print_result_mpe(d, output, precision=8):
     else:
         result['SUCCESS'] = False
         result['err'] = process_error(d)
-    print (200, 'application/json', json.dumps(result), file=output)
+    print(200, 'application/json', json.dumps(result), file=output)
     return 0
 
 
@@ -83,7 +83,7 @@ def print_result_sample(d, output, **kwdargs):
     else:
         result['SUCCESS'] = False
         result['err'] = process_error(d)
-    print (200, 'application/json', json.dumps(result), file=output)
+    print(200, 'application/json', json.dumps(result), file=output)
     return 0
 
 

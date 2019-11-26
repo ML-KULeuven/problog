@@ -3,7 +3,7 @@ import os
 import sys
 
 try:
-    import readline     # provides better input
+    import readline  # provides better input
 except:
     readline = None
 
@@ -16,8 +16,9 @@ from ..logic import Term, Clause, term2str
 from ..formula import LogicFormula
 from ..version import version
 
+
 def show(txt):
-    print (txt)
+    print(txt)
 
 
 def prompt(txt='?- '):
@@ -89,7 +90,6 @@ usage = """
 
 
 class Option(object):
-
     pass
 
 
@@ -117,7 +117,6 @@ class BooleanOption(Option):
 
 
 def main(argv, **kwdargs):
-
     if readline:
         histfile = os.path.join(os.path.expanduser('~'), '.probloghistory')
         try:
@@ -145,14 +144,14 @@ def main(argv, **kwdargs):
 
             for c in cmd_pl:
                 if c.signature == 'listing/0':
-                    print ('\n'.join(map(str, db)))
+                    print('\n'.join(map(str, db)))
                 elif c.signature == 'help/0':
-                    print (usage)
+                    print(usage)
                 elif c.signature == 'option/2':
                     try:
                         result = options[c.args[0]].set(c.args[1])
                         if result is not None:
-                            print (result)
+                            print(result)
                     except KeyError:
                         raise ProbLogError("Unknown option '%s'" % c.args[0])
                 elif c.signature in nonprob:
@@ -161,7 +160,7 @@ def main(argv, **kwdargs):
                 elif c.signature == 'query/1':
                     gp = DefaultEngine().ground(db, c.args[0], label='query')
                     result = knowledge.create_from(gp).evaluate()
-                    print (format_dictionary(result))
+                    print(format_dictionary(result))
                 else:
                     gp = LogicFormula()
                     dbq = db.extend()
@@ -194,7 +193,7 @@ def main(argv, **kwdargs):
                     results = knowledge.create_from(gp).evaluate()
                     for n, p in results.items():
                         if p > 0 or options[Term('show_zero')]:
-                            print ('%sp: %s;\n---------------' % (n, p))
+                            print('%sp: %s;\n---------------' % (n, p))
 
                     # dbq = db.extend()
                     # query_head = Term('_q', *([None] * len(varnames)))
@@ -203,7 +202,7 @@ def main(argv, **kwdargs):
 
 
         except EOFError:
-            print ('\nBye!')
+            print('\nBye!')
             sys.exit(0)
         except KeyboardInterrupt:
             show('% CTRL-C was pressed')
@@ -211,7 +210,6 @@ def main(argv, **kwdargs):
             show(str(err))
         # except Exception as err:
         #     show(str(err))
-
 
 
 def argparser():

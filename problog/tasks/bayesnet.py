@@ -140,7 +140,7 @@ def clause_to_cpt(clause, number, pgm):
                 probs_heads.append(head.probability.compute_value())
             else:
                 probs_heads.append(1.0)
-        probs = [1.0-sum(probs_heads)]+probs_heads
+        probs = [1.0 - sum(probs_heads)] + probs_heads
         table_cn = dict()
         for keys in itertools.product([False, True], repeat=len(parents)):
             truth_values = dict(zip(parents, keys))
@@ -148,12 +148,12 @@ def clause_to_cpt(clause, number, pgm):
             if truth_value is None:
                 logger.error('Expected a truth value. Instead god:\n'
                              ' {} -> {}'.format(truth_values, truth_value))
-                table_cn[keys] = [1.0] + [0.0]*len(heads)
+                table_cn[keys] = [1.0] + [0.0] * len(heads)
             elif truth_value:
                 table_cn[keys] = probs
             else:
-                table_cn[keys] = [1.0] + [0.0]*len(heads)
-        pgm.add_var(Variable(rv_cn, list(range(len(heads)+1))))
+                table_cn[keys] = [1.0] + [0.0] * len(heads)
+        pgm.add_var(Variable(rv_cn, list(range(len(heads) + 1))))
         cpd_cn = Factor(pgm, rv_cn, parents_str, table_cn)
         cpd_cn.latent = True
         pgm.add_factor(cpd_cn)
@@ -161,7 +161,7 @@ def clause_to_cpt(clause, number, pgm):
         for idx, head in enumerate(heads):
             rv = str(head.with_probability())
             pgm.add_var(Variable(rv, [0, 1]))
-            pgm.add_factor(OrCPT(pgm, rv, [(rv_cn, idx+1)]))
+            pgm.add_factor(OrCPT(pgm, rv, [(rv_cn, idx + 1)]))
         return
 
     elif isinstance(clause, Or):
@@ -170,8 +170,8 @@ def clause_to_cpt(clause, number, pgm):
         rv_cn = 'c{}'.format(number)
         parents = []
         probs_heads = [head.probability.compute_value() for head in heads]
-        table_cn = [1.0-sum(probs_heads)]+probs_heads
-        pgm.add_var(Variable(rv_cn, list(range(len(heads)+1))))
+        table_cn = [1.0 - sum(probs_heads)] + probs_heads
+        pgm.add_var(Variable(rv_cn, list(range(len(heads) + 1))))
         cpd_cn = Factor(pgm, rv_cn, parents, table_cn)
         cpd_cn.latent = True
         pgm.add_factor(cpd_cn)
@@ -179,7 +179,7 @@ def clause_to_cpt(clause, number, pgm):
         for idx, head in enumerate(heads):
             rv = str(head.with_probability())
             pgm.add_var(Variable(rv, [0, 1]))
-            pgm.add_factor(OrCPT(pgm, rv, [(rv_cn, idx+1)]))
+            pgm.add_factor(OrCPT(pgm, rv, [(rv_cn, idx + 1)]))
         return
 
     elif isinstance(clause, Term):
@@ -187,7 +187,7 @@ def clause_to_cpt(clause, number, pgm):
         rv_cn = 'c{}'.format(number)
         parents = []
         prob = clause.probability.compute_value()
-        table_cn = [1.0-prob, prob]
+        table_cn = [1.0 - prob, prob]
         pgm.add_var(Variable(rv_cn, [0, 1]))
         cpd_cn = Factor(pgm, rv_cn, parents, table_cn)
         cpd_cn.latent = True

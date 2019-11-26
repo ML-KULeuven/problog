@@ -172,11 +172,11 @@ def skip_comment_line(s, pos):
 
 
 def is_lower(c):
-    return c.islower() #'a' <= c <= 'z'
+    return c.islower()  # 'a' <= c <= 'z'
 
 
 def is_upper(c):
-    return c.isupper() #'A' <= c <= 'Z'
+    return c.isupper()  # 'A' <= c <= 'Z'
 
 
 def is_digit(c):
@@ -453,7 +453,8 @@ class PrologParser(object):
             return Token('~>', pos, binop=(700, 'xfx', self.factory.build_binop),
                          functor=self._next_paren_open(s, pos)), pos + 2
         elif s[pos:pos + 2] == '~=':
-            return Token('~=', pos, binop=(700, 'xfx', self.factory.build_binop), unop=(200, 'fy', self.factory.build_unop),
+            return Token('~=', pos, binop=(700, 'xfx', self.factory.build_binop),
+                         unop=(200, 'fy', self.factory.build_unop),
                          functor=self._next_paren_open(s, pos)), pos + 2
         else:
             return Token('~', pos, unop=(900, 'fx', self.factory.build_unop),
@@ -772,8 +773,8 @@ class PrologParser(object):
         for token_i, token in enumerate(tokens):
 
             if token.is_special(SPECIAL_SHARP_OPEN) \
-                    and tokens[token_i+1].is_special(SPECIAL_VARIABLE) \
-                    and len(tokens) > token_i + 2 and tokens[token_i+2].is_special(SPECIAL_SHARP_CLOSE):
+                    and tokens[token_i + 1].is_special(SPECIAL_VARIABLE) \
+                    and len(tokens) > token_i + 2 and tokens[token_i + 2].is_special(SPECIAL_SHARP_CLOSE):
                 expr_stack.append(self._create_paren_expression(string, token, SPECIAL_SHARP_CLOSE))
                 tokens[token_i - 1].aggregate = True
 
@@ -795,7 +796,8 @@ class PrologParser(object):
                             expr_stack[-1].append(current_expr)
                 except IndexError:
                     raise UnmatchedCharacter(string, token.location)
-            elif token.is_special(SPECIAL_SHARP_CLOSE) and expr_stack and expr_stack[-1].close_char == SPECIAL_SHARP_CLOSE and expr_stack[-1].accepts(token):
+            elif token.is_special(SPECIAL_SHARP_CLOSE) and expr_stack and expr_stack[
+                -1].close_char == SPECIAL_SHARP_CLOSE and expr_stack[-1].accepts(token):
                 current_expr = expr_stack.pop(-1)
                 current_expr.append(token)
                 current_expr.parse(self)
@@ -922,7 +924,7 @@ class ListExpression(SubExpression):
     @property
     def is_comma_list(self):
         return not self.max_operators or self.max_operators[0].string == ',' \
-            or self.max_operators[0].priority < 1000
+               or self.max_operators[0].priority < 1000
 
     def accepts(self, token):
         return not token.is_special(SPECIAL_PAREN_CLOSE)
@@ -966,7 +968,7 @@ class ParenExpression(SubExpression):
     @property
     def is_comma_list(self):
         return not self.max_operators or self.max_operators[0].string == ',' \
-            or self.max_operators[0].priority < 1000
+               or self.max_operators[0].priority < 1000
 
     def accepts(self, token):
         return not token.is_special(SPECIAL_BRACK_CLOSE)

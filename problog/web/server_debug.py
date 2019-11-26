@@ -26,7 +26,7 @@ import traceback
 import resource
 
 # Load ProbLog modules
-sys.path.insert(0, os.path.abspath( os.path.join( os.path.dirname(__file__), '..' ) ) )
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from problog.program import PrologString
 from problog.ddnnf_formula import DDNNF
 from problog.formula import LogicFormula
@@ -36,30 +36,40 @@ KNOWLEDGE = DDNNF
 
 DEFAULT_PORT = 8000
 DEFAULT_TIMEOUT = 60
-DEFAULT_MEMOUT = 1.0 # gigabyte
-
+DEFAULT_MEMOUT = 1.0  # gigabyte
 
 # Load Python standard web-related modules (based on Python version)
 import json
 import mimetypes
-if sys.version_info.major == 2 :
+
+if sys.version_info.major == 2:
     import BaseHTTPServer
     import urlparse
-    def toBytes( string ) :
+
+
+    def toBytes(string):
         return bytes(string)
+
+
     import urllib
+
     url_decode = urllib.unquote_plus
-else :
+else:
     import http.server as BaseHTTPServer
     import urllib.parse as urlparse
-    def toBytes( string ) :
+
+
+    def toBytes(string):
         return bytes(string, 'UTF-8')
+
+
     url_decode = urlparse.unquote_plus
 
 # Contains special URL paths. Initialize with @handle_url
 PATHS = {}
 
-class handle_url(object) :
+
+class handle_url(object):
     """Decorator for adding a handler for a URL.
 
     Example: to add a handler for GET /hello?name=World
@@ -69,22 +79,24 @@ class handle_url(object) :
         return 200, 'text/plain', 'Hello %s!' % name
     """
 
-    def __init__(self, path) :
+    def __init__(self, path):
         self.path = path
 
-    def __call__(self, f) :
+    def __call__(self, f):
         PATHS[self.path] = f
 
 
-def root_path(relative_path) :
+def root_path(relative_path):
     """Translate URL path to file system path."""
-    return os.path.abspath( os.path.join(os.path.dirname(__file__), relative_path.lstrip('/') ) )
+    return os.path.abspath(os.path.join(os.path.dirname(__file__), relative_path.lstrip('/')))
 
-def model_path(*args) :
+
+def model_path(*args):
     """Translate model path to file system path."""
-    return os.path.abspath( os.path.join(os.path.dirname(__file__), '../test/', *args ) )
+    return os.path.abspath(os.path.join(os.path.dirname(__file__), '../test/', *args))
 
-def call_process( cmd, timeout, memout ) :
+
+def call_process(cmd, timeout, memout):
     """Call a subprocess with time and memory restrictions.
 
         Note:
@@ -97,7 +109,7 @@ def call_process( cmd, timeout, memout ) :
 
     """
 
-    def setlimits() :
+    def setlimits():
         resource.setrlimit(resource.RLIMIT_CPU, (timeout, timeout))
         resource.setrlimit(resource.RLIMIT_AS, (memout, memout))
 
@@ -105,27 +117,27 @@ def call_process( cmd, timeout, memout ) :
 
 
 @handle_url('/problog')
-def run_problog( model ) :
+def run_problog(model):
     """Evaluate the given model and return the probabilities."""
     model = model[0]
     knowledge = KNOWLEDGE
 
     handle, tmpfile = tempfile.mkstemp('.pl')
-    with open(tmpfile, 'w') as f :
+    with open(tmpfile, 'w') as f:
         f.write(model)
 
     handle, outfile = tempfile.mkstemp('.out')
 
-    cmd = [ 'python', root_path('run_problog.py'), tmpfile, outfile ]
+    cmd = ['python', root_path('run_problog.py'), tmpfile, outfile]
 
-    try :
+    try:
         call_process(cmd, DEFAULT_TIMEOUT, DEFAULT_MEMOUT * (1 << 30))
 
-        with open(outfile) as f :
+        with open(outfile) as f:
             result = f.read()
-        code, datatype, datavalue = result.split(None,2)
+        code, datatype, datavalue = result.split(None, 2)
         return int(code), datatype, datavalue
-    except subprocess.CalledProcessError :
+    except subprocess.CalledProcessError:
         return 500, 'text/plain', 'ProbLog evaluation exceeded time or memory limit'
 
     # try :
@@ -135,124 +147,124 @@ def run_problog( model ) :
     # except Exception as err :
     #     return process_error(err)
 
+
 @handle_url('/ground')
-def run_ground( model ) :
+def run_ground(model):
     """Ground the program given by model and return an SVG of the resulting formula."""
     model = model[0]
     knowledge = LogicFormula
 
-    #from problog.engine import EngineLogger, SimpleEngineLogger
-    #EngineLogger.setClass(SimpleEngineLogger)
+    # from problog.engine import EngineLogger, SimpleEngineLogger
+    # EngineLogger.setClass(SimpleEngineLogger)
 
-    try :
-        formula = knowledge.createFrom( PrologString(model) )
+    try:
+        formula = knowledge.createFrom(PrologString(model))
 
         handle, filename = tempfile.mkstemp('.dot')
-        with open(filename, 'w') as f :
+        with open(filename, 'w') as f:
             f.write(formula.toDot())
-        print (formula)
+        print(formula)
         result = subprocess.check_output(['dot', '-Tsvg', filename]).decode('utf-8')
         content_type = 'application/json'
-        #EngineLogger.setClass(None)
-        return 200, content_type, json.dumps({ 'svg' : result, 'txt' : str(formula) })
-    except Exception as err :
-        #EngineLogger.setClass(None)
+        # EngineLogger.setClass(None)
+        return 200, content_type, json.dumps({'svg': result, 'txt': str(formula)})
+    except Exception as err:
+        # EngineLogger.setClass(None)
         return process_error(err)
 
-def process_error( err ) :
+
+def process_error(err):
     """Take the given error raise by ProbLog and produce a meaningful error message."""
     err_type = type(err).__name__
-    if err_type == 'ParseException' :
-        return 400, 'text/plain', 'Parsing error on %s:%s: %s.\n%s' % (err.lineno, err.col, err.msg, err.line )
-    elif err_type == 'UnknownClause' :
-        return 400, 'text/plain', 'Predicate undefined: \'%s\'.' % (err )
-    elif err_type == 'PrologInstantiationError' :
+    if err_type == 'ParseException':
+        return 400, 'text/plain', 'Parsing error on %s:%s: %s.\n%s' % (err.lineno, err.col, err.msg, err.line)
+    elif err_type == 'UnknownClause':
+        return 400, 'text/plain', 'Predicate undefined: \'%s\'.' % (err)
+    elif err_type == 'PrologInstantiationError':
         return 400, 'text/plain', 'Arithmetic operation on uninstantiated variable.'
-    elif err_type == 'UnboundProgramError' :
+    elif err_type == 'UnboundProgramError':
         return 400, 'text/plain', 'Unbounded program or program too large.'
-    else :
+    else:
         traceback.print_exc()
         return 400, 'text/plain', 'Unknown error: %s' % (err_type)
 
-@handle_url('/models')
-def list_models( ) :
 
-    def extract_name(f) :
+@handle_url('/models')
+def list_models():
+    def extract_name(f):
         return os.path.splitext(os.path.basename(f))[0]
 
-    files = map(extract_name,glob.glob(model_path('*.pl')))
+    files = map(extract_name, glob.glob(model_path('*.pl')))
 
     return 200, 'application/json', json.dumps(files)
 
 
 @handle_url('/model')
-def load_model( name ) :
+def load_model(name):
     name = name[0]
     filename = model_path(name + '.pl')
-    try :
-        with open(filename) as f :
+    try:
+        with open(filename) as f:
             data = f.read()
         return 200, 'text/plain', data
-    except Exception :
+    except Exception:
         return 404, 'text/plain', 'File not found!'
 
 
-class ProbLogHTTP(BaseHTTPServer.BaseHTTPRequestHandler) :
+class ProbLogHTTP(BaseHTTPServer.BaseHTTPRequestHandler):
 
-    def do_POST(self) :
+    def do_POST(self):
 
         numberOfBytes = int(self.headers["Content-Length"])
         data = self.rfile.read(numberOfBytes)
         query = urlparse.parse_qs(data)
         self.do_GET(query=query)
 
-
-    def do_GET(self, query=None) :
+    def do_GET(self, query=None):
         """Handle a GET request.
 
         Looks up the URL path in PATHS and executes the corresponding function.
         If the path does not occur in PATHS, treats the path as a filename and serves the file.
         """
 
-        url = urlparse.urlparse( self.path )
+        url = urlparse.urlparse(self.path)
         path = url.path
-        if query == None :
+        if query == None:
             query = urlparse.parse_qs(url.query)
 
         action = PATHS.get(path)
-        if action == None :
+        if action == None:
             self.serveFile(path)
-        else :
-            code, datatype, data = action( **query )
+        else:
+            code, datatype, data = action(**query)
             self.send_response(code)
             self.send_header("Content-type", datatype)
             self.end_headers()
-            if data :
+            if data:
                 self.wfile.write(toBytes(data))
 
-    def serveFile(self, filename) :
+    def serveFile(self, filename):
         """Serve a file."""
-        if filename == '/' : filename = '/index.html'
+        if filename == '/': filename = '/index.html'
 
         filetype, encoding = mimetypes.guess_type(filename)
         filename = root_path(filename)
-        try :
-            with open(filename) as f :
+        try:
+            with open(filename) as f:
                 data = f.read()
             self.send_response(200)
             self.send_header("Content-type", filetype)
-            if encoding :
+            if encoding:
                 self.send_header("Content-Encoding", encoding)
             self.end_headers()
             self.wfile.write(toBytes(data))
-        except :
+        except:
             self.send_response(404)
             self.end_headers()
             self.wfile.write(toBytes('File not found!'))
 
 
-
-if __name__ == '__main__' :
+if __name__ == '__main__':
     import argparse
 
     parser = argparse.ArgumentParser()
@@ -263,8 +275,8 @@ if __name__ == '__main__' :
 
     DEFAULT_TIMEOUT = args.timeout
     DEFAULT_MEMOUT = args.memout
-    print ('Starting server on port %d (timeout=%d, memout=%dGb)' % (args.port, DEFAULT_TIMEOUT, DEFAULT_MEMOUT ))
+    print('Starting server on port %d (timeout=%d, memout=%dGb)' % (args.port, DEFAULT_TIMEOUT, DEFAULT_MEMOUT))
 
     server_address = ('', args.port)
-    httpd = BaseHTTPServer.HTTPServer( server_address, ProbLogHTTP )
+    httpd = BaseHTTPServer.HTTPServer(server_address, ProbLogHTTP)
     httpd.serve_forever()

@@ -335,7 +335,7 @@ def _builtin_atom_number(atom, number, **kwd):
         try:
             v = float(atom.functor)
         except ValueError:
-            return []   # fail silently
+            return []  # fail silently
             # raise GroundingError('Atom does not represent a number: \'%s\'' % atom)
 
         if round(v) == v:
@@ -379,6 +379,7 @@ def _builtin_error(*args, **kwd):
 def _builtin_writenl(*args, **kwd):
     print(' '.join(map(term2str_noquote, args)))
     return True
+
 
 def _builtin_nl(**kwd):
     print()
@@ -462,7 +463,7 @@ def _is_float_pos(term):
 
 def _is_float_neg(term):
     return _is_term(term) and term.arity == 1 and term.functor == "'-'" and \
-        _is_float_pos(term.args[0])
+           _is_float_pos(term.args[0])
 
 
 def _is_float(term):
@@ -475,7 +476,7 @@ def _is_integer_pos(term):
 
 def _is_integer_neg(term):
     return _is_term(term) and term.arity == 1 and term.functor == "'-'" and \
-        _is_integer_pos(term.args[0])
+           _is_integer_pos(term.args[0])
 
 
 def _is_integer(term):
@@ -1115,9 +1116,11 @@ def _builtin_varnumbers(term, output, engine=None, context=None, **k):
                 self._n -= 1
                 self._table[item] = self._n
                 return self._n
+
     xx = term.apply_term(VarNumbers(start))
     out = unify_value(output, xx, {})
     return [(term, out)]
+
 
 # class UnknownExternal(GroundingError):
 #     """Undefined clause in call."""
@@ -1350,7 +1353,7 @@ def _select_sublist(lst, target):
         # noinspection PyTypeChecker
         sublist_no = tuple([target.negate(lst[i][1]) for i in range(0, ln)
                             if (choice_bits[i] is None and lst[i][1] == target.FALSE) or (
-                            choice_bits[i] is not None and not n & 1 << choice_bits[i])])
+                                    choice_bits[i] is not None and not n & 1 << choice_bits[i])])
         if sublist:
             terms, nodes = zip(*sublist)
         else:
@@ -1620,6 +1623,7 @@ def _use_module(scope, filename, database=None, location=None, **kwdargs):
     database.use_module(filename, None, my_scope=scope, location=location)
     return True
 
+
 @builtin_boolean('_consult', 2)
 def _consult(scope, filename, database=None, engine=None, **kwdargs):
     check_mode((filename,), ['a'], functor='consult', **kwdargs)
@@ -1628,6 +1632,7 @@ def _consult(scope, filename, database=None, engine=None, **kwdargs):
         scope = None
     database.consult(filename, location=kwdargs.get('location'), my_scope=scope)
     return True
+
 
 @builtin_boolean('dbg_printdb', 0)
 def _dbg_printdb(database=None, **kwargs):
@@ -1642,6 +1647,7 @@ def _builtin_try_call(term, **kwdargs):
         return True, kwdargs['callback'].notifyComplete()
     except:
         return True, kwdargs['callback'].notifyComplete()
+
 
 def _builtin_call(term, args=(), engine=None, callback=None, transform=None, context=None, **kwdargs):
     check_mode((term,), ['c'], functor='call')
@@ -1659,6 +1665,7 @@ def _builtin_call(term, args=(), engine=None, callback=None, transform=None, con
             res1 = result[:n]
             res2 = result[n:]
             return engine.create_context([term.with_args(*res1)] + list(res2), state=get_state(result))
+
         transform.addFunction(_trans)
 
         actions = engine.call_intern(term_call, transform=transform, parent_context=context, **kwdargs)
@@ -1685,7 +1692,7 @@ def _builtin_subquery(term, prob, evidence=None, engine=None, database=None, **k
             target = eng.ground(database, ev, target=target, label=target.LABEL_EVIDENCE_POS)
 
     from . import get_evaluatable
-    kc = get_evaluatable(name=None) # TODO somehow pass evaluatable preference (name, -k)
+    kc = get_evaluatable(name=None)  # TODO somehow pass evaluatable preference (name, -k)
     results = kc.create_from(target).evaluate()
     if evidence:
         return [(t, Constant(p), evidence) for t, p in results.items()]
@@ -1695,6 +1702,7 @@ def _builtin_subquery(term, prob, evidence=None, engine=None, database=None, **k
 
 def _builtin_calln(term, *args, **kwdargs):
     return _builtin_call(term, args, **kwdargs)
+
 
 def _builtin_try_calln(term, *args, **kwdargs):
     return _builtin_try_call(term, args, **kwdargs)
@@ -1721,11 +1729,10 @@ class IndirectCallCycleError(GroundingError):
 
 
 def _build_scope(term):
-
     if term.functor == "'&'":
         a = _build_scope(term.args[0])
         b = _build_scope(term.args[1])
-        print (a, b, a & b)
+        print(a, b, a & b)
         return a & b
     elif term.functor == "'|'":
         a = _build_scope(term.args[0])
@@ -1747,7 +1754,7 @@ def _build_scope(term):
 
 
 def _builtin_create_scope(term, scope, **kwargs):
-    mode = check_mode((term, scope), ['Lv','gv'], **kwargs)
+    mode = check_mode((term, scope), ['Lv', 'gv'], **kwargs)
     if mode in (0, 1):
         result = Object(_build_scope(term))
     else:
@@ -1797,9 +1804,11 @@ def _builtin_call_in_scope(scope, term, args=(), engine=None, callback=None, tra
             res1 = result[:n]
             res2 = result[n:]
             return [scope, term.with_args(*res1)] + list(res2)
+
         transform.addFunction(_trans)
 
-        actions = engine.call_intern(term_call, transform=transform, dont_cache=True, no_cache=True, include=scopel, parent_context=context, **kwdargs)
+        actions = engine.call_intern(term_call, transform=transform, dont_cache=True, no_cache=True, include=scopel,
+                                     parent_context=context, **kwdargs)
     except UnknownClauseInternal:
         raise UnknownClause(term_call.signature, kwdargs['database'].lineno(kwdargs['location']))
     return True, actions
@@ -1850,9 +1859,9 @@ def _builtin_check_state(term, context=None, **kwargs):
 @builtin_boolean('print_state', 0)
 def _builtin_print_state(context=None, **kwargs):
     if hasattr(context, 'state') and context.state is not None:
-        print ('State:', context.state)
+        print('State:', context.state)
     else:
-        print ('State not set')
+        print('State not set')
     return True
 
 
@@ -1860,14 +1869,16 @@ def _builtin_print_state(context=None, **kwargs):
 def _builtin_probability(term, context=None, database=None, **kwargs):
     check_mode([term], ['c'], functor='probability')
     database.queries.append((term, context.state.get('conditions', ())))
-    print (database.queries, file=sys.stderr)
+    print(database.queries, file=sys.stderr)
     return True
+
 
 @builtin_simple('condition', 1)
 def _builtin_condition(term, context=None, database=None, **kwargs):
     check_mode([term], ['c'], functor='condition')
     from engine_stack import Context
     return [Context([term], state=context.state | {'conditions': [term]})]
+
 
 @builtin_simple('seq', 1)
 def seq(term, database=None, **kwargs):
@@ -1879,11 +1890,13 @@ def seq(term, database=None, **kwargs):
 
     return [(Constant(s),)]
 
+
 @builtin_boolean('trace', 0)
 def trace(engine=None, **kwargs):
     if engine.debugger:
         engine.debugger.interactive = True
     return True
+
 
 @builtin_boolean('notrace', 0)
 def notrace(engine=None, **kwargs):

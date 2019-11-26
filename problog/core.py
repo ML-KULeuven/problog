@@ -192,6 +192,7 @@ class transform(object):
     :param cls2: target class
     :param func: transformation function (for direct use instead of decorator)
     """
+
     def __init__(self, cls1, cls2, func=None):
         self.cls1 = cls1
         self.cls2 = cls2
@@ -207,10 +208,9 @@ class transform(object):
 
 def list_transformations():
     """Print an overview of available transformations."""
-    print ('Available transformations:')
+    print('Available transformations:')
     for target in ProbLog.transformations:
-        print ('\tcreate %s.%s' % (target.__module__, target.__name__))
+        print('\tcreate %s.%s' % (target.__module__, target.__name__))
         for src, func in ProbLog.transformations[target]:
-            print ('\t\tfrom %s.%s by %s.%s' %
-                   (src.__module__, src.__name__, func.__module__, func.__name__))
-
+            print('\t\tfrom %s.%s by %s.%s' %
+                  (src.__module__, src.__name__, func.__module__, func.__name__))

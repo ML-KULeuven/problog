@@ -526,12 +526,14 @@ class Term(object):
 
         extra = {}
         if p is not None:
-            return self.__class__(self.functor, *args, p=p, location=self.location, priority=self.op_priority, opspec=self.op_spec)
+            return self.__class__(self.functor, *args, p=p, location=self.location, priority=self.op_priority,
+                                  opspec=self.op_spec)
         else:
             if self.__class__ in (Clause, AnnotatedDisjunction, And, Or):
                 return self.__class__(*args, location=self.location, priority=self.op_priority, opspec=self.op_spec)
             else:
-                return self.__class__(self.functor, *args, location=self.location, priority=self.op_priority, opspec=self.op_spec)
+                return self.__class__(self.functor, *args, location=self.location, priority=self.op_priority,
+                                      opspec=self.op_spec)
 
     def with_probability(self, p=None):
         """Creates a new Term with the same functor and arguments but with a different probability.
@@ -539,7 +541,8 @@ class Term(object):
         :param p: new probability (None clears the probability)
         :return: copy of the Term
         """
-        return self.__class__(self.functor, *self.args, p=p, priority=self.op_priority, opspec=self.op_spec, location=self.location)
+        return self.__class__(self.functor, *self.args, p=p, priority=self.op_priority, opspec=self.op_spec,
+                              location=self.location)
 
     def is_var(self):
         """Checks whether this Term represents a variable."""
@@ -637,8 +640,8 @@ class Term(object):
         # What we need is a hash function such that hash(1) != hash(2): return false else perform normal __eq__ procedure.
         # The difficulty being that maybe some functions which are not equal objects we want to consider as equal. e.g. not(..) vs \+...
         # We need to discuss this first.
-        #cache_eq = self._get_cached_eq(other) #TODO object.id is not reliable? Objects can have the same id (non-overlapping lifetime)
-        #if cache_eq is not None:
+        # cache_eq = self._get_cached_eq(other) #TODO object.id is not reliable? Objects can have the same id (non-overlapping lifetime)
+        # if cache_eq is not None:
         #    return cache_eq
 
         # Non-recursive version of equality check.
@@ -712,11 +715,11 @@ class Term(object):
                         list_hash.extend(a)
                     else:
                         list_hash.append(a)
-                #list_hash.extend(self.__args)
+                # list_hash.extend(self.__args)
 
             self.__hash = hash(tuple(list_hash))
 
-            #self.__hash = hash((self.__functor, self.__arity, firstarg, self._list_length()))
+            # self.__hash = hash((self.__functor, self.__arity, firstarg, self._list_length()))
         return self.__hash
 
     def __lshift__(self, body):
@@ -766,6 +769,7 @@ class AggTerm(Term):
 
     def __init__(self, *args, **kwargs):
         Term.__init__(self, *args, **kwargs)
+
 
 class Var(Term):
     """A Term representing a variable.
@@ -1169,6 +1173,8 @@ def unquote(s):
 
 
 safe_expr = re.compile('[a-z]+(\\w)*$')
+
+
 def is_safe(t):
     return safe_expr.match(t) is not None
 

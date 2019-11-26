@@ -76,7 +76,7 @@ def init_logger(verbose=None, name='problog', out=None):
         logger.setLevel(logging.DEBUG)
         logger.debug('Output level: DEBUG')
     else:
-        level = max(1, 12 - verbose)   # between 9 and 1
+        level = max(1, 12 - verbose)  # between 9 and 1
         logger.setLevel(level)
         logger.log(level, 'Output level: %s' % level)
     return logger
@@ -107,7 +107,7 @@ class Timer(object):
             logger = logging.getLogger(self.logger)
             logger.info('%s: %.4fs' % (self.message, time.time() - self.start_time))
         else:
-            print ('%s: %.4fs' % (self.message, time.time() - self.start_time), file=self.output)
+            print('%s: %.4fs' % (self.message, time.time() - self.start_time), file=self.output)
 
 
 # noinspection PyUnusedLocal
@@ -117,7 +117,7 @@ def _raise_timeout(*args):
     :param args: signal information (ignored)
     :raise KeyboardInterrupt:
     """
-    raise KeyboardInterrupt('Timeout')   # Global exception on all threads
+    raise KeyboardInterrupt('Timeout')  # Global exception on all threads
 
 
 def start_timer(timeout=0):
@@ -253,8 +253,8 @@ class OrderedSet(collections.abc.MutableSet):
 
     def __init__(self, iterable=None):
         self.end = end = []
-        end += [None, end, end]         # sentinel node for doubly linked list
-        self.map = {}                   # key --> [key, prev, next]
+        end += [None, end, end]  # sentinel node for doubly linked list
+        self.map = {}  # key --> [key, prev, next]
         if iterable is not None:
             # noinspection PyMethodFirstArgAssignment
             self |= iterable

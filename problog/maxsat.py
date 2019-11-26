@@ -32,7 +32,6 @@ class UnsatisfiableError(ProbLogError):
         ProbLogError.__init__(self, 'No solution exists that satisfies the constraints.')
 
 
-
 class MaxSATSolver(object):
 
     def __init__(self, command):

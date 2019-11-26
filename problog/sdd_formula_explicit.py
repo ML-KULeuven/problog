@@ -93,7 +93,7 @@ class SDDExplicit(SDD):
         constrained_node = self.get_manager().constraint_dd
         self._root = root_node.conjoin(constrained_node)
 
-    #def cleanup_inodes(self):
+    # def cleanup_inodes(self):
     #    """
     #    Dereferences all but the root node and empties self.nodes. ! Do not use self.nodes afterwards !
     #    This is usually called right after the build process, build_dd(root_key).
@@ -151,9 +151,8 @@ class SDDExplicitManager(SDDManager):
         vars(new_mgr).update(vars(sddmgr))
         return new_mgr
 
-
     # Error: wrong refcounts. parent.deref() = all descendents.deref()
-    #def clean_nodes(self, root_inode):
+    # def clean_nodes(self, root_inode):
     #    """
     #    Cleans up all references except root_inode's. This means all other nodes will be dereferenced.
     #    ! Beware, after calling this self.nodes will be empty, do not use it afterwards !
@@ -254,7 +253,8 @@ class SDDExplicitEvaluator(SDDEvaluator):
             self.set_weight(index, self.semiring.zero(), neg)
 
 
-x_constrained_named = namedtuple('x_constrained', 'X_named')  # X_named = list of literal names that have to appear before the rest
+x_constrained_named = namedtuple('x_constrained',
+                                 'X_named')  # X_named = list of literal names that have to appear before the rest
 
 
 @transform(LogicDAG, SDDExplicit)
@@ -301,7 +301,8 @@ def build_explicit_from_logicdag(source, destination, **kwdargs):
         root_nodes = []
         for line_id, clause, c_type in source:
             if c_type == 'atom':
-                result = destination.add_atom(identifier, clause.probability, clause.group, source.get_name(line_id), cr_extra=False, is_extra=clause.is_extra)
+                result = destination.add_atom(identifier, clause.probability, clause.group, source.get_name(line_id),
+                                              cr_extra=False, is_extra=clause.is_extra)
                 identifier += 1
 
                 line_map[line_id] = (-result, result, result)
@@ -317,7 +318,8 @@ def build_explicit_from_logicdag(source, destination, **kwdargs):
                     line += 2
                 else:
                     # head
-                    head = destination.add_atom(identifier=identifier, probability=True, group=None, name=clause.name, is_extra=False)
+                    head = destination.add_atom(identifier=identifier, probability=True, group=None, name=clause.name,
+                                                is_extra=False)
                     identifier += 1
                     # body
                     body = destination.add_and(and_nodes)  # source.get_name(i))
@@ -370,9 +372,9 @@ def build_explicit_from_logicdag(source, destination, **kwdargs):
                     mapped_line = line_map[abs(node)][2]
                     sign = -1 if node < 0 else 1
                     if node_to_indicator.get(mapped_line) is not None:  # Change internal node indicator
-                        destination.add_name(name, sign*node_to_indicator[mapped_line], label)
+                        destination.add_name(name, sign * node_to_indicator[mapped_line], label)
                     else:
-                        destination.add_name(name, sign*mapped_line, label)
+                        destination.add_name(name, sign * mapped_line, label)
 
         if len(root_nodes) > 0:
             root_key = destination.add_and(root_nodes, name=None)
@@ -380,7 +382,7 @@ def build_explicit_from_logicdag(source, destination, **kwdargs):
             root_key = None
 
         destination.build_dd(root_key)
-        #destination.cleanup_inodes()
+        # destination.cleanup_inodes()
     return destination
 
 
@@ -411,18 +413,18 @@ def build_explicit_from_forwardsdd(source, destination, **kwdargs):
         var_to_indicator = dict()
         for line_id, clause, c_type in destination:
             if (c_type == 'conj' or c_type == 'disj') and clause.name is not None:
-                    # head
-                    head = destination.add_atom(identifier=destination.get_next_atom_identifier(), probability=True,
-                                                group=None, name=destination.get_name(line_id))
-                    var_to_indicator[line_id] = head
+                # head
+                head = destination.add_atom(identifier=destination.get_next_atom_identifier(), probability=True,
+                                            group=None, name=destination.get_name(line_id))
+                var_to_indicator[line_id] = head
 
-                    body = line_id
+                body = line_id
 
-                    combined_true = destination.add_and([head, body])
-                    combined_false = destination.add_and([-head, -body])
-                    combined = destination.add_or([combined_false, combined_true])
+                combined_true = destination.add_and([head, body])
+                combined_false = destination.add_and([-head, -body])
+                combined = destination.add_or([combined_false, combined_true])
 
-                    root_nodes.append(combined)
+                root_nodes.append(combined)
 
         if len(root_nodes) > 0:
             root_key = destination.add_and(root_nodes, name=None)
@@ -436,7 +438,6 @@ def build_explicit_from_forwardsdd(source, destination, **kwdargs):
                 if node < 0:
                     new_node = -new_node
             destination.add_name(name, new_node, label)
-
 
         # query_nodes = destination.queries()
         # evidence_nodes_all = destination.evidence_all()

@@ -119,7 +119,8 @@ class DD(LogicFormula, EvaluatableDSP):
     def build_dd(self):
         """Build the internal representation of the formula."""
         required_nodes = set([abs(n) for q, n, l in self.labeled() if self.is_probabilistic(n)])
-        required_nodes |= set([abs(n) for q, n, l in self.labeled() if self.is_probabilistic(n)])  # TODO self.evidence_all() ipv self.labeled() ? see forward.py
+        required_nodes |= set([abs(n) for q, n, l in self.labeled() if self.is_probabilistic(
+            n)])  # TODO self.evidence_all() ipv self.labeled() ? see forward.py
 
         for n in required_nodes:
             self.get_inode(n)
@@ -509,7 +510,7 @@ class DDEvaluator(Evaluator):
             self._get_manager().deref(query_sdd)
 
             # TODO only normalize when there are evidence or constraints.
-#            result = self.semiring.normalize(result, self.normalization)
+            #            result = self.semiring.normalize(result, self.normalization)
             result = self.semiring.normalize(result, self._evidence_weight)
         return self.semiring.result(result, self.formula)
 
@@ -563,7 +564,8 @@ def build_dd(source, destination, **kwdargs):
         # TODO maintain a translation table
         for i, n, t in source:
             if t == 'atom':
-                j = destination.add_atom(n.identifier, n.probability, group=n.group, name=source.get_name(i), cr_extra=False, is_extra=n.is_extra)
+                j = destination.add_atom(n.identifier, n.probability, group=n.group, name=source.get_name(i),
+                                         cr_extra=False, is_extra=n.is_extra)
             elif t == 'conj':
                 j = destination.add_and(n.children, name=n.name)
             elif t == 'disj':

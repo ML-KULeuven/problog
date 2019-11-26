@@ -41,7 +41,6 @@ problog_tasks['time'] = 'problog.tasks.time1'
 problog_tasks['constraint'] = 'problog.tasks.constraint'
 problog_tasks['dc'] = 'problog.tasks.dcproblog.tasks'
 
-
 problog_default_task = 'prob'
 
 
@@ -95,7 +94,7 @@ def main(argv=None):
             unittest.TestLoader().discover(os.path.join(os.path.dirname(__file__), '..')).run(test_results)
             return
         elif argv[0] == '--version':
-            print (version.version)
+            print(version.version)
             return
         else:
             return run_task(argv)

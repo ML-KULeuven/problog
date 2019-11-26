@@ -21,6 +21,7 @@ def load_task(name):
     """
     return load_module(dcproblog_tasks[name])
 
+
 def run_task(argv):
     """Execute a task in DC-ProbLog.
     If the first argument is a known task name, that task is executed.

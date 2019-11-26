@@ -58,11 +58,11 @@ class BaseFormula(ProbLogObject):
     LABEL_NAMED = "named"
 
     def __init__(self):
-        self._weights = {}               # Node weights: dict(key: Term)
+        self._weights = {}  # Node weights: dict(key: Term)
 
-        self._constraints = []           # Constraints: list of Constraint
+        self._constraints = []  # Constraints: list of Constraint
 
-        #self._names = defaultdict(OrderedDict)  # Node names: dict(label: dict(key, Term))
+        # self._names = defaultdict(OrderedDict)  # Node names: dict(label: dict(key, Term))
         self._names = defaultdict(dict)
         self._atomcount = 0
 
@@ -107,7 +107,6 @@ class BaseFormula(ProbLogObject):
             return semiring.neg_value(self._weights[-key], key)
         else:
             return semiring.pos_value(self._weights[key], key)
-
 
     def extract_weights(self, semiring, weights=None):
         """Extracts the positive and negative weights for all atoms in the data structure.
@@ -299,7 +298,8 @@ class BaseFormula(ProbLogObject):
         """
         result = []
         for name, node, label in self.get_names_with_label():
-            if label not in (self.LABEL_NAMED, self.LABEL_EVIDENCE_POS, self.LABEL_EVIDENCE_NEG, self.LABEL_EVIDENCE_MAYBE):
+            if label not in (
+            self.LABEL_NAMED, self.LABEL_EVIDENCE_POS, self.LABEL_EVIDENCE_NEG, self.LABEL_EVIDENCE_MAYBE):
                 result.append((name, node, label))
         return result
 
@@ -563,8 +563,8 @@ class LogicFormula(BaseFormula):
         :type key: int > 0
         :param value: new content of the node
         """
-        assert(self.is_probabilistic(key))
-        assert(key > 0)
+        assert (self.is_probabilistic(key))
+        assert (key > 0)
         self._nodes[key - 1] = value
 
     def _add_constraint_me(self, group, node, cr_extra=True):
@@ -697,7 +697,7 @@ class LogicFormula(BaseFormula):
             elif component == 0:
                 return self._update(key, self._create_disj((0,), name=node.name))
             elif component in node.children and not self._keep_duplicates:
-                pass    # already there
+                pass  # already there
             else:
                 if 0 < self._max_arity == len(node.children):
                     child = self.add_or(node.children)
@@ -730,7 +730,7 @@ class LogicFormula(BaseFormula):
                       readonly=True, update=None, name=None, placeholder=False, compact=None):
         """Add a compound term (AND or OR)."""
         if not placeholder:
-            assert content   # Content should not be empty
+            assert content  # Content should not be empty
 
         name_clash = False
         if compact or self._auto_compact and compact is None:
@@ -749,7 +749,7 @@ class LogicFormula(BaseFormula):
             else:  # any_order
                 # can also merge (a, b) and (b, a)
                 content = tuple(OrderedSet(content))
-                #content = tuple(set(content))
+                # content = tuple(set(content))
 
             # Empty OR node fails, AND node is true
             if not content and not placeholder:
@@ -837,7 +837,7 @@ class LogicFormula(BaseFormula):
 
     def get_evidence_values(self):
         """Retrieves evidence propagation information."""
-        assert(self.has_evidence_values())
+        assert (self.has_evidence_values())
         return getattr(self, 'lookup_evidence')
 
     def get_evidence_value(self, key):
@@ -1195,7 +1195,7 @@ label_all=True)
                 body = self._unroll_conj(n)
                 to_enumerate |= (OrderedSet((map(abs, body))) - enumerated)
                 yield i, body
-            else:   # t == 'disj'
+            else:  # t == 'disj'
                 for c_i in n.children:
                     negc = (c_i < 0)
                     c_n = self.get_node(abs(c_i))
@@ -1277,8 +1277,8 @@ label_all=True)
 
     def _is_valid_name(self, name):
         return name is not None and \
-            not name.functor.startswith('_problog_') and \
-            not name.functor == 'choice' and not name.functor.startswith('body_')
+               not name.functor.startswith('_problog_') and \
+               not name.functor == 'choice' and not name.functor.startswith('body_')
 
     def get_body(self, index, processed=None, parent_name=None):
         if index == self.TRUE:
@@ -1317,8 +1317,8 @@ label_all=True)
                 else:
                     return node.name
             else:
-                print (self)
-                print (index, node)
+                print(self)
+                print(index, node)
                 raise Exception('Unexpected')
 
     def enum_clauses(self):
@@ -1340,7 +1340,7 @@ label_all=True)
                         for c in n.children:
                             if not processed[abs(c)] or self._is_valid_name(self.get_node(abs(c)).name):
                                 b = self.get_body(c, parent_name=n.name)
-                                if str(n.name) != str(b):   # TODO bit of a hack?
+                                if str(n.name) != str(b):  # TODO bit of a hack?
                                     yield Clause(n.name, b)
                 elif t == 'conj' and n.name is None:
                     pass
@@ -1348,7 +1348,7 @@ label_all=True)
                     yield Clause(n.name, self.get_body(i, parent_name=n.name))
 
     def extract_relevant(self, roots=None):
-        relevant = [False] * (len(self)+1)
+        relevant = [False] * (len(self) + 1)
         if roots is None:
             roots = {abs(r) for r in self.get_roots()}
         while roots:
@@ -1576,7 +1576,7 @@ label_all=True)
         # TODO maintain a translation table
         for i, n, t in source:
             if t == 'atom':
-                #TODO test this
+                # TODO test this
                 # j = destination.add_atom(n.identifier, n.probability, n.group, name=source.get_name(i), cr_extra=False, is_extra=n.is_extra)
                 j = destination.add_atom(n.identifier, n.probability, n.group, name=source.get_name(i))
             elif t == 'conj':

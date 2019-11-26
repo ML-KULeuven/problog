@@ -8,6 +8,7 @@ from problog.logic import Term, Constant
 
 logger = logging.getLogger('problog')
 
+
 def db2pl(dbvalue):
     if type(dbvalue) == str:
         return Term("'" + dbvalue + "'")
@@ -32,7 +33,6 @@ def get_colnames(conn, tablename):
 
 @problog_export('+str')
 def sqlite_load(filename):
-
     filename = problog_export.database.resolve_filename(filename)
     if not os.path.exists(filename):
         raise UserError('Can\'t find database \'%s\'' % filename)
@@ -69,16 +69,16 @@ def csv_load(filename, predicate):
     row = next(reader)
     line += 1
     invalid_chars = re.compile(r'''[^a-zA-Z0-9_]''')
-    columns = [invalid_chars.sub('',field) for field in row]
+    columns = [invalid_chars.sub('', field) for field in row]
 
     filepath, ext = os.path.splitext(os.path.basename(filename))
     sql_dir = tempfile.mkdtemp()
-    sql_filename = os.path.join(sql_dir, filepath+'.sqlite')
+    sql_filename = os.path.join(sql_dir, filepath + '.sqlite')
     idx = 1
     while os.path.exists(sql_filename):
-        sql_filename = os.path.join(sql_dir, filepath+'_'+str(idx)+'.sqlite')
+        sql_filename = os.path.join(sql_dir, filepath + '_' + str(idx) + '.sqlite')
         idx += 1
-    logger.debug('CSV->SQLite: '+sql_filename)
+    logger.debug('CSV->SQLite: ' + sql_filename)
     conn = sqlite3.connect(sql_filename)
 
     cursor = conn.cursor()
@@ -105,20 +105,21 @@ def csv_load(filename, predicate):
         column_types_sql.append('TEXT')
         column_types_py.append(str)
 
-    coldefs = [n+" "+t for n,t in zip(columns,column_types_sql)]
-    cursor.execute("CREATE TABLE "+predicate+"("+",".join(coldefs)+");")
+    coldefs = [n + " " + t for n, t in zip(columns, column_types_sql)]
+    cursor.execute("CREATE TABLE " + predicate + "(" + ",".join(coldefs) + ");")
 
     def insert_statement(row):
         values = []
         for value, sqltype, pytype in zip(row, column_types_sql, column_types_py):
             try:
                 if sqltype == 'TEXT':
-                    values.append("'"+pytype(value.strip())+"'")
+                    values.append("'" + pytype(value.strip()) + "'")
                 else:
                     values.append(str(pytype(value)))
             except ValueError:
-                raise InvalidValue('{}:{}. Expected type {}, found value {}'.format(filename, line, pytype.__name__, value))
-        return "INSERT INTO "+predicate+"("+",".join(columns)+") VALUES ("+",".join(values)+");"
+                raise InvalidValue(
+                    '{}:{}. Expected type {}, found value {}'.format(filename, line, pytype.__name__, value))
+        return "INSERT INTO " + predicate + "(" + ",".join(columns) + ") VALUES (" + ",".join(values) + ");"
 
     cursor.execute(insert_statement(row))
     for row in reader:
@@ -162,4 +163,3 @@ class QueryFunc(object):
         res = [tuple(map(db2pl, r)) for r in cur.fetchall()]
         cur.close()
         return res
-

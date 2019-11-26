@@ -24,8 +24,8 @@ from problog.formula import LogicDAG
 from problog.program import PrologFile, DefaultPrologParser, ExtendedPrologFactory
 from problog.tasks.bayesnet import formula_to_bn
 
-if __name__ == '__main__' :
-    sys.path.insert(0,os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')))
+if __name__ == '__main__':
+    sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')))
 
 from problog import root_path
 
@@ -54,13 +54,12 @@ def read_expected_result(filename):
                     return l[len('% error'):].strip()
                 elif l.startswith('%'):
                     result = result + "\n" + l[1:]
-                else :
+                else:
                     reading = False
     return result.strip()
 
 
-def createBNTestGeneric(filename, logspace=False) :
-
+def createBNTestGeneric(filename, logspace=False):
     correct = read_expected_result(filename)
 
     def test(self):
@@ -72,29 +71,28 @@ def createBNTestGeneric(filename, logspace=False) :
                 keep_duplicates=False)
             bn = formula_to_bn(gp)
             computed = str(bn).strip()
-        except Exception as err :
+        except Exception as err:
             e = err
             computed = None
 
-        if computed is None :
+        if computed is None:
             self.assertEqual(correct, type(e).__name__)
-        else :
+        else:
             self.assertIsInstance(computed, str)
             self.assertEqual(correct, computed)
+
     return test
 
 
-if __name__ == '__main__' :
+if __name__ == '__main__':
     filenames = sys.argv[1:]
-else :
-    filenames = glob.glob( root_path('test/bn', '*.pl' ) )
-
+else:
+    filenames = glob.glob(root_path('test/bn', '*.pl'))
 
 for testfile in filenames:
     testname = 'test_bn_' + os.path.splitext(os.path.basename(testfile))[0]
-    setattr( TestBNGeneric, testname, createBNTestGeneric(testfile, True) )
+    setattr(TestBNGeneric, testname, createBNTestGeneric(testfile, True))
 
-
-if __name__ == '__main__' :
+if __name__ == '__main__':
     suite = unittest.TestLoader().loadTestsFromTestCase(TestBNGeneric)
     unittest.TextTestRunner(verbosity=2).run(suite)

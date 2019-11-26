@@ -110,7 +110,7 @@ class LFIProblem(SemiringProbability, LogicProgram):
         self.leakprobatoms = None
         self.propagate_evidence = propagate_evidence
         self._compiled_examples = None
-        
+
         self.max_iter = max_iter
         self.min_improv = min_improv
         self.verbose = verbose
@@ -125,7 +125,7 @@ class LFIProblem(SemiringProbability, LogicProgram):
 
         self._enable_normalize = normalize
         self._adatoms = []
-    
+
     def value(self, a):
         """Overrides from SemiringProbability.
         Replaces a weight of the form ``lfi(i, t(...))`` by its current estimated value.
@@ -141,12 +141,12 @@ class LFIProblem(SemiringProbability, LogicProgram):
             return self._get_weight(*a.args)
         else:
             return float(a)
-         
-    @property 
+
+    @property
     def count(self):
         """Number of parameters to learn."""
         return len(self.names)
-    
+
     def prepare(self):
         """Prepare for learning."""
         self._compile_examples()
@@ -195,7 +195,7 @@ class LFIProblem(SemiringProbability, LogicProgram):
         :return: example groups based on evidence atoms
         :rtype: dict of atoms : values for examples
         """
-    
+
         # value can be True / False / None
         # ( atom ), ( ( value, ... ), ... ) 
 
@@ -214,7 +214,7 @@ class LFIProblem(SemiringProbability, LogicProgram):
                 atoms, values = zip(*example)
                 result.add(index, atoms, values)
             return result
-    
+
     def _compile_examples(self):
         """Compile examples.
     
@@ -332,7 +332,7 @@ class LFIProblem(SemiringProbability, LogicProgram):
             self._adatoms.pop(-1)
 
         if has_lfi_fact:
-            if len(atoms) == 1:     # Simple clause
+            if len(atoms) == 1:  # Simple clause
                 return [atoms_out[0]] + extra_clauses
             else:
                 return [AnnotatedDisjunction(atoms_out, Term('true'))] + extra_clauses
@@ -486,7 +486,7 @@ class LFIProblem(SemiringProbability, LogicProgram):
 
     def _evaluate_examples(self):
         """Evaluate the model with its current estimates for all examples."""
-        
+
         results = []
         i = 0
         logging.getLogger('problog_lfi').debug('Evaluating examples ...')
@@ -494,10 +494,10 @@ class LFIProblem(SemiringProbability, LogicProgram):
         evaluator = ExampleEvaluator(self._weights)
 
         return map(evaluator, self._compiled_examples)
-    
+
     def _update(self, results):
         """Update the current estimates based on the latest evaluation results."""
-        
+
         fact_marg = defaultdict(float)
         fact_count = defaultdict(int)
         score = 0.0
@@ -536,7 +536,7 @@ class LFIProblem(SemiringProbability, LogicProgram):
                 n = p / w
                 for i in idx:
                     self._set_weight(i, key, self._get_weight(i, key, strict=False) * n)
-        
+
     def step(self):
         self.iteration += 1
         results = self._evaluate_examples()
@@ -550,7 +550,7 @@ class LFIProblem(SemiringProbability, LogicProgram):
         lines.append('')
         self.output_mode = False
         return '\n'.join(lines)
-        
+
     def run(self):
         self.prepare()
         logging.getLogger('problog_lfi').info('Weights to learn: %s' % self.names)
@@ -574,7 +574,7 @@ class ExampleSet(object):
     def add(self, index, atoms, values):
         ex = self._examples.get((atoms, values))
         if ex is None:
-            self._examples[(atoms,values)] = Example(index, atoms, values)
+            self._examples[(atoms, values)] = Example(index, atoms, values)
         else:
             ex.add_index(index)
 
@@ -633,7 +633,6 @@ class ExampleEvaluator(SemiringProbability):
                 return weight.get(args, 0.0)
         else:
             return weight
-
 
     def value(self, a):
         """Overrides from SemiringProbability.
@@ -705,10 +704,9 @@ def extract_evidence(pl):
 
 
 def read_examples(*filenames):
-    
     for filename in filenames:
         engine = DefaultEngine()
-        
+
         with open(filename) as f:
             example = ''
             for line in f:
@@ -735,7 +733,7 @@ class DefaultDict(object):
     def __getitem__(self, key):
         return self.base.get(key, Var(key))
 
-    
+
 def run_lfi(program, examples, output_model=None, **kwdargs):
     lfi = LFIProblem(program, examples, **kwdargs)
     score = lfi.run()
@@ -761,8 +759,8 @@ def argparser():
     parser = argparse.ArgumentParser(description="Learning from interpretations with ProbLog")
     parser.add_argument('model')
     parser.add_argument('examples', nargs='+')
-    parser.add_argument('-n', dest='max_iter', default=10000, type=int )
-    parser.add_argument('-d', dest='min_improv', default=1e-10, type=float )
+    parser.add_argument('-n', dest='max_iter', default=10000, type=int)
+    parser.add_argument('-d', dest='min_improv', default=1e-10, type=float)
     parser.add_argument('-O', '--output-model', type=str, default=None,
                         help='write resulting model to given file')
     parser.add_argument('-o', '--output', type=str, default=None,
@@ -790,7 +788,7 @@ def argparser():
 
 def create_logger(name, verbose):
     levels = [logging.WARNING, logging.INFO, logging.DEBUG] + list(range(9, 0, -1))
-    verbose = max(0, min(len(levels)-1, verbose))
+    verbose = max(0, min(len(levels) - 1, verbose))
     logger = logging.getLogger(name)
     ch = logging.StreamHandler(sys.stdout)
     formatter = logging.Formatter('[%(levelname)s] %(message)s')
@@ -851,10 +849,10 @@ def print_result(d, output, precision=8):
     if success:
         score, weights, names, iterations, lfi = d
         weights = list(map(lambda x: round(x, precision), weights))
-        print (score, weights, names, iterations, file=output)
+        print(score, weights, names, iterations, file=output)
         return 0
     else:
-        print (process_error(d), file=output)
+        print(process_error(d), file=output)
         return 1
 
 
@@ -870,10 +868,10 @@ def print_result_json(d, output, precision=8):
                                for n, w in zip(names, weights)],
                    'model': lfi.get_model()
                    }
-        print (json.dumps(results), file=output)
+        print(json.dumps(results), file=output)
     else:
         results = {'SUCCESS': False, 'err': vars(d)}
-        print (json.dumps(results), file=output)
+        print(json.dumps(results), file=output)
     return 0
 
 

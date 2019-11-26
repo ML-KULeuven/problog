@@ -105,6 +105,7 @@ def gather_info():
     system_info['c2d'] = distutils.spawn.find_executable('cnf2dDNNF') is not None
     return system_info
 
+
 def build_maxsatz():
     if get_system() == 'windows':
         return  # We include the binary

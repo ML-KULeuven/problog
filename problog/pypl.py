@@ -88,4 +88,3 @@ def pl2py(d):
         return Var(term2str(d))
 
     raise ValueError("Cannot convert from Prolog to Python: {} ({}).".format(d, type(d)))
-

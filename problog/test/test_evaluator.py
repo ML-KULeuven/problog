@@ -27,6 +27,7 @@ from problog.test.test_system import SemiringProbabilityNSPCopy
 
 try:
     from pysdd import sdd
+
     has_sdd = True
 except Exception as err:
     has_sdd = False
@@ -82,7 +83,7 @@ class TestEvaluator(unittest.TestCase):
         self.assertEqual(0.5, results[a])
 
         # with custom weights based on index
-        weights = {kc.get_node_by_name(a) : 0.2}
+        weights = {kc.get_node_by_name(a): 0.2}
         results = kc.evaluate(semiring=semiring, weights=weights)
         self.assertEqual(0.2, results[a])
 
@@ -101,6 +102,6 @@ class TestEvaluator(unittest.TestCase):
         self.assertEqual(0.06, results)
 
 
-if __name__ == '__main__' :
+if __name__ == '__main__':
     suite = unittest.TestLoader().loadTestsFromTestCase(TestEvaluator)
     unittest.TextTestRunner(verbosity=2).run(suite)

@@ -422,7 +422,6 @@ def unify_call_return(result, call_args, context, var_translate, min_var, mask=N
 
 
 def subsumes(generic, specific):
-
     sv = _VarTranslateWrapper({}, 0)
     tv = {}  # dict: internal mapping in caller
 

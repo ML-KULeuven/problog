@@ -31,7 +31,6 @@ from ..util import init_logger, format_dictionary
 
 
 def main(argv):
-
     parser = argparse.ArgumentParser()
     parser.add_argument('filename')
     parser.add_argument('-v', '--verbose', action='count')
@@ -61,21 +60,21 @@ def main(argv):
             result['program'] = program
             result['proofs'] = explanation
             result['probabilities'] = [(str(k), round(v, 8)) for k, v in results.items()]
-            print (json.dumps(result), file=out)
+            print(json.dumps(result), file=out)
         else:
-            print ('Transformed program', file=out)
-            print ('-------------------', file=out)
-            print ('\n'.join(program), file=out)
-            print (file=out)
+            print('Transformed program', file=out)
+            print('-------------------', file=out)
+            print('\n'.join(program), file=out)
+            print(file=out)
 
-            print ('Proofs', file=out)
-            print ('------', file=out)
-            print ('\n'.join(explanation), file=out)
+            print('Proofs', file=out)
+            print('------', file=out)
+            print('\n'.join(explanation), file=out)
 
-            print (file=out)
-            print ('Probabilities', file=out)
-            print ('-------------', file=out)
-            print (format_dictionary(results), file=out)
+            print(file=out)
+            print('Probabilities', file=out)
+            print('-------------', file=out)
+            print(format_dictionary(results), file=out)
     except Exception as err:
         trace = traceback.format_exc()
         err.trace = trace
@@ -84,9 +83,9 @@ def main(argv):
             result['SUCCESS'] = False
             result['err'] = vars(err)
             result['err']['message'] = process_error(err)
-            print (json.dumps(result), file=out)
+            print(json.dumps(result), file=out)
         else:
-            print (process_error(err), file=out)
+            print(process_error(err), file=out)
 
     if args.output:
         out.close()

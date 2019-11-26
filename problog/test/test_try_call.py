@@ -13,7 +13,7 @@ class TestTryCall(unittest.TestCase):
         """)
 
         res = get_evaluatable().create_from(p).evaluate()
-        self.assertEqual(list(res.values())[0],1)
+        self.assertEqual(list(res.values())[0], 1)
 
     def test_try_call_existing_fact_non_ground(self):
         p = PrologString("""
@@ -23,7 +23,7 @@ class TestTryCall(unittest.TestCase):
         """)
 
         res = get_evaluatable().create_from(p).evaluate()
-        self.assertEqual(list(res.values())[0],1)
+        self.assertEqual(list(res.values())[0], 1)
 
     def test_try_call_existing_fact_non_ground2(self):
         p = PrologString("""
@@ -34,7 +34,7 @@ class TestTryCall(unittest.TestCase):
         """)
 
         res = get_evaluatable().create_from(p).evaluate()
-        self.assertEqual(list(res.values())[0],1)
+        self.assertEqual(list(res.values())[0], 1)
 
     def test_try_call_non_existing_fact_non_ground(self):
         p = PrologString("""
@@ -45,7 +45,7 @@ class TestTryCall(unittest.TestCase):
         """)
 
         res = get_evaluatable().create_from(p).evaluate()
-        self.assertEqual(list(res.values())[0],0)
+        self.assertEqual(list(res.values())[0], 0)
 
     def test_try_call_non_existing_fact_non_ground2(self):
         p = PrologString("""
@@ -55,7 +55,7 @@ class TestTryCall(unittest.TestCase):
         """)
 
         res = get_evaluatable().create_from(p).evaluate()
-        self.assertEqual(list(res.values())[0],0)
+        self.assertEqual(list(res.values())[0], 0)
 
     def test_try_call_wrong_comp(self):
         p = PrologString("""
@@ -64,7 +64,7 @@ class TestTryCall(unittest.TestCase):
         """)
 
         res = get_evaluatable().create_from(p).evaluate()
-        self.assertEqual(list(res.values())[0],0)
+        self.assertEqual(list(res.values())[0], 0)
 
     def test_try_call_right_comp(self):
         p = PrologString("""
@@ -73,7 +73,7 @@ class TestTryCall(unittest.TestCase):
         """)
 
         res = get_evaluatable().create_from(p).evaluate()
-        self.assertEqual(list(res.values())[0],1)
+        self.assertEqual(list(res.values())[0], 1)
 
     def test_try_call_non_existing_comp(self):
         p = PrologString("""
@@ -82,7 +82,7 @@ class TestTryCall(unittest.TestCase):
         """)
 
         res = get_evaluatable().create_from(p).evaluate()
-        self.assertEqual(list(res.values())[0],0)
+        self.assertEqual(list(res.values())[0], 0)
 
     def test_try_call_existing_clause(self):
         p = PrologString("""
@@ -92,7 +92,7 @@ class TestTryCall(unittest.TestCase):
         """)
 
         res = get_evaluatable().create_from(p).evaluate()
-        self.assertEqual(list(res.values())[0],1)
+        self.assertEqual(list(res.values())[0], 1)
 
     def test_try_call_non_existing_clause(self):
         p = PrologString("""
@@ -102,4 +102,4 @@ class TestTryCall(unittest.TestCase):
         """)
 
         res = get_evaluatable().create_from(p).evaluate()
-        self.assertEqual(list(res.values())[0],0)
+        self.assertEqual(list(res.values())[0], 0)

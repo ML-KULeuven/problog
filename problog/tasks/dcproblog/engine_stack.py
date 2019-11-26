@@ -1,5 +1,6 @@
 from problog.engine_stack import StackBasedEngine, EvalNode
 
+
 class EvalAnd(EvalNode):
     def __init__(self, **parent_args):
         EvalNode.__init__(self, **parent_args)
@@ -35,7 +36,7 @@ class EvalAnd(EvalNode):
         else:  # Result from the second node
             # Make a ground node
             # print(source, node)
-            #This has changed to normal problog
+            # This has changed to normal problog
             ############
             if self.target.is_density(node):
                 self.target.density_node_body[node] = source
@@ -66,7 +67,6 @@ class EvalAnd(EvalNode):
 
     def __str__(self):  # pragma: no cover
         return EvalNode.__str__(self) + ' tc: %s' % self.to_complete
-
 
 
 class StackBasedEngineHAL(StackBasedEngine):

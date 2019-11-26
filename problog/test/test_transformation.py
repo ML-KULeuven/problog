@@ -8,6 +8,7 @@ from problog.program import PrologString
 # noinspection PyBroadException
 try:
     from pysdd import sdd
+
     has_sdd = True
 except Exception as err:
     has_sdd = False
@@ -61,4 +62,3 @@ class TestTransformation(unittest.TestCase):
 if __name__ == '__main__':
     suite = unittest.TestLoader().loadTestsFromTestCase(TestTransformation)
     unittest.TextTestRunner(verbosity=2).run(suite)
-

@@ -145,11 +145,11 @@ def evaluate(formula, decisions, utilities, verbose=0):
         score += vneg * float(utilities.get(-r, 0.0))
 
     if verbose is not None and verbose >= 3:
-        print ('---------------')
-        print ('Decisions:')
-        print (format_dictionary(decisions))
-        print ('Scores:')
-        print (format_dictionary(result))
+        print('---------------')
+        print('Decisions:')
+        print(format_dictionary(decisions))
+        print('Scores:')
+        print(format_dictionary(result))
     return score
 
 
@@ -291,7 +291,7 @@ def print_result_json(d, output):
         result['SUCCESS'] = False
         result['err'] = vars(d)
         result['err']['message'] = process_error(result)
-    print (json.dumps(result), file=output)
+    print(json.dumps(result), file=output)
     return 0
 
 

@@ -37,6 +37,7 @@ except Exception:
 
 import dd.autoref as bdd
 
+
 class BDD(DD):
     """A propositional logic formula consisting of and, or, not and atoms represented as an BDD."""
 

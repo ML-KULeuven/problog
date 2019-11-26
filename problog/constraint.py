@@ -95,7 +95,6 @@ class ConstraintAD(Constraint):
     def is_false(self):
         return False
 
-
     def add(self, node, formula, cr_extra=True):
         """Add a node to the constraint from the given formula.
 
@@ -163,8 +162,8 @@ class ConstraintAD(Constraint):
             lines = []
             for i, n in enumerate(nodes):
                 for m in nodes[i + 1:]:
-                    lines.append((-n, -m))    # mutually exclusive
-            lines.append(nodes)   # pick one
+                    lines.append((-n, -m))  # mutually exclusive
+            lines.append(nodes)  # pick one
             return lines
         else:
             return []
@@ -176,7 +175,8 @@ class ConstraintAD(Constraint):
         """
         if self.is_nontrivial():
             name = Term('choice', Constant(self.group[0]), Term('e'), Term('null'), *self.group[1])
-            self.extra_node = formula.add_atom(('%s_extra' % (self.group,)), True, name=name, group=self.group, is_extra=True)
+            self.extra_node = formula.add_atom(('%s_extra' % (self.group,)), True, name=name, group=self.group,
+                                               is_extra=True)
             # formula.addConstraintOnNode(self, self.extra_node)
 
     def update_weights(self, weights, semiring):
@@ -191,9 +191,11 @@ class ConstraintAD(Constraint):
             try:
                 complement = semiring.ad_complement(ws, key=name)
                 if not semiring.in_domain(complement):
-                    raise InvalidValue('Sum of annotated disjunction weigths exceeds acceptable value', location=self.location)
+                    raise InvalidValue('Sum of annotated disjunction weigths exceeds acceptable value',
+                                       location=self.location)
             except InvalidValue:
-                raise InvalidValue('Sum of annotated disjunction weigths exceeds acceptable value', location=self.location)
+                raise InvalidValue('Sum of annotated disjunction weigths exceeds acceptable value',
+                                   location=self.location)
                 # TODO add location
             weights[self.extra_node] = (complement, semiring.ad_negate(complement, semiring.one()))
 
@@ -234,7 +236,7 @@ class ConstraintAD(Constraint):
         elif self.is_false():
             return False
         else:
-            #print ([(i, values[i]) for i in self.get_nodes() if values.get(i) is not None], self.get_nodes())
+            # print ([(i, values[i]) for i in self.get_nodes() if values.get(i) is not None], self.get_nodes())
             # If there is a true value: set all the others to false
             true_values = [i for i in self.get_nodes() if values.get(i) == 1.0]
             if len(true_values) == 1:
@@ -242,10 +244,10 @@ class ConstraintAD(Constraint):
                 for i in self.get_nodes():
                     if i != v:
                         values[i] = 0.0
-           #     print ('a', values)
+                #     print ('a', values)
                 return True
             elif len(true_values) > 1:
-         #       print('b', values)
+                #       print('b', values)
                 return False
             else:
                 false_values = set([i for i in self.get_nodes() if values.get(i) == 0.0])
@@ -254,9 +256,9 @@ class ConstraintAD(Constraint):
                 for i in self.get_nodes():
                     if not i in false_values:
                         values[i] = weights[i] / remain
-          #      print ('c', values)
+                #      print ('c', values)
                 return True
-        #print ('d', values)
+        # print ('d', values)
 
 
 class ClauseConstraint(Constraint):

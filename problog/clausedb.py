@@ -1,7 +1,7 @@
 import os
 from collections import defaultdict, namedtuple
 
-from .errors import GroundingError, InvalidValue
+from .errors import InvalidValue
 from .logic import *
 from .program import LogicProgram, PrologFile
 from .util import OrderedSet
@@ -58,8 +58,8 @@ class ClauseDB(LogicProgram):
 
     def __init__(self, builtins=None, parent=None):
         LogicProgram.__init__(self)
-        self.__nodes = []   # list of nodes
-        self.__heads = {}   # head.sig => node index
+        self.__nodes = []  # list of nodes
+        self.__heads = {}  # head.sig => node index
 
         self.__builtins = builtins
 
@@ -152,7 +152,7 @@ class ClauseDB(LogicProgram):
             scope = None
         if scope is not None:
             if not is_problog_scope:
-                term.functor = '_%s_%s' % (scope, term.functor) #_scope_functor --> scope:functor
+                term.functor = '_%s_%s' % (scope, term.functor)  # _scope_functor --> scope:functor
             else:
                 ## CG MODIFS
                 new_term = Term('\':\'', scope, term.with_probability(None), p=term.probability)
@@ -181,7 +181,7 @@ class ClauseDB(LogicProgram):
 
     def _add_call_node(self, term, scope=None, is_problog_scope=False):
         """Add a *call* node."""
-        #if term.signature in ('query/1', 'evidence/1', 'evidence/2'):
+        # if term.signature in ('query/1', 'evidence/1', 'evidence/2'):
         #    raise AccessError("Can\'t call %s directly." % term.signature)
 
         term = self._scope_term(term, scope, is_problog_scope=is_problog_scope)
@@ -397,7 +397,8 @@ class ClauseDB(LogicProgram):
             return None
         elif isinstance(struct, Clause):
             if struct.head.probability is not None:
-                return self._compile(AnnotatedDisjunction([struct.head], struct.body), scope=scope, is_problog_scope=is_problog_scope)
+                return self._compile(AnnotatedDisjunction([struct.head], struct.body), scope=scope,
+                                     is_problog_scope=is_problog_scope)
             else:
                 new_head = self._scope_term(struct.head.apply(variables), scope, is_problog_scope=is_problog_scope)
                 body_node = self._compile(struct.body, variables, scope=scope, is_problog_scope=is_problog_scope)
@@ -601,7 +602,7 @@ class ClauseDB(LogicProgram):
             self.source_files.append(filename)
             self.source_parent.append(location)
             program = PrologFile(filename, identifier=identifier, factory=self.extra_info.get('factory'),
-                            parser=self.extra_info.get('parser'))
+                                 parser=self.extra_info.get('parser'))
             self.line_info.append(program.line_info[0])
             # engine._process_directives(database)
             return self.add_all(program)
@@ -612,7 +613,8 @@ class ClauseDB(LogicProgram):
         module_name = None
         module_preds = None
         for index, clause in enumerate(program):
-            if clause.functor == ':-' and hasattr(clause.args[0], 'functor') and clause.args[0].functor == '_directive' and clause.args[1].signature == 'module/2':
+            if clause.functor == ':-' and hasattr(clause.args[0], 'functor') and clause.args[
+                0].functor == '_directive' and clause.args[1].signature == 'module/2':
                 if index > 0:
                     raise AccessError("'module' directive should appear at top of module")
                 module_name = str(clause.args[1].args[0])
@@ -657,15 +659,18 @@ class ClauseDB(LogicProgram):
                     if mp in module_predicates:
                         self._create_alias(mp, module_name, rename=rename, my_scope=my_scope)
                     else:
-                        raise GroundingError("Imported predicate %s not defined in module %s" % (mp, module_name), location=location)
+                        raise GroundingError("Imported predicate %s not defined in module %s" % (mp, module_name),
+                                             location=location)
 
     def _create_alias(self, pred, scope, rename=None, my_scope=None, is_problog_scope=False):
         if rename is None:
             rename = pred.args[0]
 
         if scope is not None:
-            root_sign = self._scope_term(Term(rename, *[None] * int(pred.args[1])), my_scope, is_problog_scope=is_problog_scope)
-            scoped_sign = self._scope_term(Term(pred.args[0], *[None] * int(pred.args[1])), scope, is_problog_scope=is_problog_scope)
+            root_sign = self._scope_term(Term(rename, *[None] * int(pred.args[1])), my_scope,
+                                         is_problog_scope=is_problog_scope)
+            scoped_sign = self._scope_term(Term(pred.args[0], *[None] * int(pred.args[1])), scope,
+                                           is_problog_scope=is_problog_scope)
 
             rh = self._add_head(root_sign, create=False)
             sh = self._add_head(scoped_sign, create=False)
@@ -827,7 +832,7 @@ class ClauseIndex(list):
                 if results is None:  # First argument with restriction
                     results = curr
                 else:
-                    results = results & curr       # for some reason &= doesn't work here
+                    results = results & curr  # for some reason &= doesn't work here
             if results is not None and not results:
                 return []
         if results is None:

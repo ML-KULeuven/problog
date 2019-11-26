@@ -34,8 +34,8 @@ class CNF(BaseFormula):
     # noinspection PyUnusedLocal
     def __init__(self, **kwdargs):
         BaseFormula.__init__(self)
-        self._clauses = []        # All clauses in the CNF (incl. comment)
-        self._clausecount = 0     # Number of actual clauses (not incl. comment)
+        self._clauses = []  # All clauses in the CNF (incl. comment)
+        self._clausecount = 0  # Number of actual clauses (not incl. comment)
 
     # noinspection PyUnusedLocal
     def add_atom(self, atom, force=False):
@@ -285,11 +285,11 @@ class CNF(BaseFormula):
         result = []
         for s in atoms:
             if s % 2 == 1 and s < 0:
-                r = (abs(s)+1)//2
+                r = (abs(s) + 1) // 2
                 if r in self.get_weights():
                     result.append(-r)
             elif s % 2 == 0 and s > 0:
-                r = (abs(s)+1)//2
+                r = (abs(s) + 1) // 2
                 if r in self.get_weights():
                     result.append(r)
         return result
@@ -328,7 +328,7 @@ def clarks_completion(source, destination, force_atoms=False, **kwdargs):
 
         # Add atoms.
         for i in range(0, num_atoms):
-            destination.add_atom(i+1, force=force_atoms)
+            destination.add_atom(i + 1, force=force_atoms)
 
         # Complete other nodes
         # Note: assumes negation is encoded as negative number.

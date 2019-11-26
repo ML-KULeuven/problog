@@ -92,4 +92,3 @@ def main(argv, result_handler=None):
 
     if args.output is not None:
         outf.close()
-

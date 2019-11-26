@@ -4,7 +4,6 @@ from problog.extern import problog_export
 
 @problog_export('+term', '+term', '+term', '+term', '+term', '+str', '+str')
 def use_semiring(plus, times, zero, one, neg, is_dsp, is_nsp):
-
     class CustomSemiring(Semiring):
 
         def is_one(self, value):
@@ -27,7 +26,6 @@ def use_semiring(plus, times, zero, one, neg, is_dsp, is_nsp):
 
 @problog_export('+term', '+term', '+term', '+term', '+term', '+term', '+str', '+str')
 def use_semiring(plus, times, zero, one, pos, neg, is_dsp, is_nsp):
-
     class CustomSemiring(Semiring):
 
         def is_one(self, value):
@@ -50,7 +48,6 @@ def use_semiring(plus, times, zero, one, pos, neg, is_dsp, is_nsp):
 
 @problog_export('+term', '+term', '+term', '+term', '+term', '+term', '+term', '+str', '+str')
 def use_semiring(plus, times, zero, one, pos, neg, negate, is_dsp, is_nsp):
-
     class CustomSemiring(Semiring):
 
         def is_one(self, value):

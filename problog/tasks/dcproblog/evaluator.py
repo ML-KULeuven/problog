@@ -3,7 +3,6 @@ from problog.evaluator import Semiring, FormulaEvaluator
 from .algebra.algebra import get_algebra
 
 
-
 class SemiringHAL(Semiring):
     def __init__(self, neutral, abe, density_values, density_queries, free_variables):
         Semiring.__init__(self)
@@ -13,18 +12,22 @@ class SemiringHAL(Semiring):
         self.pos_values = {}
         self.neg_values = {}
 
-
     def zero(self):
         return self.algebra.zero()
+
     def one(self):
         return self.algebra.one()
+
     def plus(self, a, b, index=None):
-        return self.algebra.plus(a,b)
+        return self.algebra.plus(a, b)
+
     def times(self, a, b, index=None):
-        result = self.algebra.times(a,b)
+        result = self.algebra.times(a, b)
         return result
+
     def negate(self, a):
         return self.algebra.negate(a)
+
     def pos_value(self, a, key, index=None):
         if key in self.pos_values:
             return self.pos_values[key]
@@ -32,6 +35,7 @@ class SemiringHAL(Semiring):
             pv = self.value(a)
             self.pos_values[key] = pv
             return pv
+
     def neg_value(self, a, key, index=None):
         if key in self.neg_values:
             return self.neg_values[key]
@@ -39,13 +43,17 @@ class SemiringHAL(Semiring):
             nv = self.pos_values[key]
             nv = self.negate(nv)
             return nv
+
     def value(self, a):
         return self.algebra.value(a)
+
     def result(self, evaluator, index, formula=None, normalization=False):
         a = evaluator.get_weight(index)
         return self.algebra.result(a, formula=formula)
+
     def is_dsp(self):
         return True
+
     def is_nsp(self):
         return False
 
@@ -55,7 +63,7 @@ class FormulaEvaluatorHAL(FormulaEvaluator):
         FormulaEvaluator.__init__(self, formula, semiring, weights=None)
 
     def evaluate(self, index, normalization=False):
-        result =  self.semiring.result(self, index, formula=self.formula)
+        result = self.semiring.result(self, index, formula=self.formula)
         return result
 
     def compute_weight(self, index):

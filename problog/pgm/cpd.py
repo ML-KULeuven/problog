@@ -105,7 +105,7 @@ class PGM(object):
                 queue.extend(self.factors[qvar].parents)
             else:
                 first_roots.add(qvar)
-        delay_roots= root - first_roots
+        delay_roots = root - first_roots
 
         factor_strata = self.factors_topological(keep_strata=True, delay_roots=[delay_roots])
         # for fs_i, fs in enumerate(factor_strata):
@@ -117,7 +117,8 @@ class PGM(object):
         max_strata = max((strata[svar] for svar in split_vars))
 
         def rootvar(var):
-            return var+"_root"
+            return var + "_root"
+
         pgm = self.copy(factors=[])
         for factor in self.factors.values():
             if strata[factor.rv] <= max_strata and any((strata[cvar] > max_strata for cvar in children[factor.rv])):
@@ -145,14 +146,16 @@ class PGM(object):
 
         :param variables: Set of variable names.
         """
+
         def splitvar(var):
-            return var+"_sink"
+            return var + "_sink"
+
         new_vars = [self.vars[var].copy(name=splitvar(var)) for var in variables]
         pgm = self.copy(factors=[], variables=list(self.vars.values()) + new_vars)
         for factor in self.factors.values():
             if factor.rv in variables:
                 nb_values = len(self.vars[factor.rv].values)
-                pgm.add_factor(Factor(pgm, factor.rv, [], [1.0/nb_values]*nb_values))
+                pgm.add_factor(Factor(pgm, factor.rv, [], [1.0 / nb_values] * nb_values))
                 pgm.add_factor(factor.copy(pgm=pgm, rv=splitvar(factor.rv)))
             else:
                 pgm.add_factor(factor.copy(pgm=pgm))
@@ -436,13 +439,13 @@ class Variable(object):
         if (force_boolean or detect_boolean) and len(self.values) == 2:
             for values in boolean_values:
                 if (values[0] == self.values[0] and values[1] == self.values[1]) or \
-                   (type(self.values[0]) == str and type(self.values[1]) == str and
-                   values[0] == self.values[0].lower() and values[1] == self.values[1].lower()):
+                        (type(self.values[0]) == str and type(self.values[1]) == str and
+                         values[0] == self.values[0].lower() and values[1] == self.values[1].lower()):
                     self.boolean_true = 1
                     break
                 elif (values[1] == self.values[0] and values[0] == self.values[1]) or \
-                    (type(self.values[0]) == str and type(self.values[1]) == str and
-                        values[1] == self.values[0].lower() and values[0] == self.values[1].lower()):
+                        (type(self.values[0]) == str and type(self.values[1]) == str and
+                         values[1] == self.values[0].lower() and values[0] == self.values[1].lower()):
                     self.boolean_true = 0
                     break
             if force_boolean and self.boolean_true is None:
@@ -665,13 +668,13 @@ class Factor(object):
         if include_layout:
             lines += ["  position = (100,100);"]
         lines += ["  states = ({});".format(' '.join(['"{}"'.format(v) for v in sorted(rv.values)])),
-                 "}\n"]
+                  "}\n"]
         return '\n'.join(lines)
 
     def to_huginnet_potential(self, include_layout=False):
         rv = self.pgm.vars[self.rv]
         name = rv.clean()
-        value_idxs = sorted((v,i) for i,v in enumerate(rv.values))
+        value_idxs = sorted((v, i) for i, v in enumerate(rv.values))
         if len(self.parents) > 0:
             name += ' | ' + ' '.join([rv.clean(p) for p in self.parents])
         lines = ['potential ({}) {{'.format(name),
@@ -679,7 +682,8 @@ class Factor(object):
                  '  data = (']
         table = sorted(self.table.items())
         for k, probs in table:
-            lines.append('    ' + ' '.join([str(probs[value_idx[1]]) for value_idx in value_idxs]) + ' % ' + ' '.join([str(kk) for kk in k]))
+            lines.append('    ' + ' '.join([str(probs[value_idx[1]]) for value_idx in value_idxs]) + ' % ' + ' '.join(
+                [str(kk) for kk in k]))
         lines += ['  );',
                   '}\n']
         return '\n'.join(lines)
@@ -687,7 +691,7 @@ class Factor(object):
     def to_xdsl_cpt(self):
         rv = self.pgm.vars[self.rv]
         lines = ['    <cpt id="{}">'.format(rv.clean())]
-        value_idxs = sorted((v,i) for i,v in enumerate(rv.values))
+        value_idxs = sorted((v, i) for i, v in enumerate(rv.values))
         for v, _ in value_idxs:
             lines.append('      <state id="{}" />'.format(v))
         if len(self.parents) > 0:
@@ -716,7 +720,7 @@ class Factor(object):
                  '  <FOR>{}</FOR>'.format(rv.name)]
         for parent in self.parents:
             lines.append('  <GIVEN>{}</GIVEN>'.format(parent))
-        value_idxs = sorted((v,i) for i,v in enumerate(rv.values))
+        value_idxs = sorted((v, i) for i, v in enumerate(rv.values))
         table = sorted(self.table.items())
         probs = ' '.join([str(probs[value_idx[1]]) for k, probs in table for value_idx in value_idxs])
         lines.append('  <TABLE>{}</TABLE>'.format(probs))

@@ -72,7 +72,8 @@ class UserError(ProbLogError):
 class NonGroundQuery(ProbLogError):
 
     def __init__(self, query, location):
-        super(NonGroundQuery, self).__init__("Query term still contains variables after grounding for query %s" % query, location)
+        super(NonGroundQuery, self).__init__("Query term still contains variables after grounding for query %s" % query,
+                                             location)
 
 
 class InconsistentEvidenceError(ProbLogError):

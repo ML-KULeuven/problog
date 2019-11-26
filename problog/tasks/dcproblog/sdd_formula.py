@@ -37,7 +37,6 @@ class SDDHAL(SDD):
         else:
             return self.to_formula(sdds).functions_to_dot(*args, **kwargs)
 
-
     def _to_formula(self, formula, current_node, cache=None):
         if cache is not None and current_node.id in cache:
             return cache[current_node.id]
@@ -51,10 +50,10 @@ class SDDHAL(SDD):
             node = self.get_node(at)
             if lit < 0:
                 retval = -formula.add_atom(-lit, probability=node.probability, \
-                name=node.name, group=node.group, cr_extra=False, is_extra=node.is_extra)
+                                           name=node.name, group=node.group, cr_extra=False, is_extra=node.is_extra)
             else:
-                retval = formula.add_atom(lit, probability=node.probability,\
-                name=node.name, group=node.group, cr_extra=False, is_extra=node.is_extra)
+                retval = formula.add_atom(lit, probability=node.probability, \
+                                          name=node.name, group=node.group, cr_extra=False, is_extra=node.is_extra)
         else:  # is decision
             elements = list(current_node.elements())
             primes = [prime for (prime, sub) in elements]
@@ -72,9 +71,11 @@ class SDDHAL(SDD):
             cache[current_node.id] = retval
         return retval
 
+
 @transform(LogicFormula, SDDHAL)
 def build_sdd(source, destination, **kwdargs):
     result = build_dd(source, destination, **kwdargs)
     return result
+
 
 transform_create_as(SDDHAL, LogicFormula)

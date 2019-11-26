@@ -34,7 +34,6 @@ def root_path(*args):
 
 library_paths = [root_path('problog', 'library')]
 
-
 # Load all submodules. This has two reasons:
 #   - initializes all transformations (@transform)
 #   - makes it possible to just import 'problog' and then use

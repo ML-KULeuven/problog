@@ -445,7 +445,6 @@ class ForwardInference(DD):
 
 
 class _ForwardSDD(SDD, ForwardInference):
-
     transform_preference = 1000
 
     def __init__(self, sdd_auto_gc=False, **kwdargs):
@@ -501,7 +500,6 @@ class _ForwardSDD(SDD, ForwardInference):
 
 
 class _ForwardBDD(BDD, ForwardInference):
-
     transform_preference = 1000
 
     def __init__(self, **kwdargs):
@@ -526,7 +524,6 @@ def build_sdd(source, destination, **kwdargs):
 
 
 class ForwardSDD(LogicFormula, EvaluatableDSP):
-
     transform_preference = 30
 
     def __init__(self, **kwargs):
@@ -548,7 +545,6 @@ class ForwardSDD(LogicFormula, EvaluatableDSP):
 
 
 class ForwardBDD(LogicFormula, EvaluatableDSP):
-
     transform_preference = 40
 
     def __init__(self, **kwargs):
@@ -698,7 +694,7 @@ class ForwardEvaluator(Evaluator):
                 wp = self._results[index]
                 # wp, wn = self.weights.get(abs(index))
                 if index < 0:
-                    #wn = self.semiring.negate(wp)
+                    # wn = self.semiring.negate(wp)
                     return self.semiring.result(wp, self.formula)
                 else:
                     return self.semiring.result(wp, self.formula)

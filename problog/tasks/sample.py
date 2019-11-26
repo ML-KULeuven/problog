@@ -67,12 +67,14 @@ try:
 
     import numpy.random
 
+
     def sample_poisson(l):
         l = [l]
         return numpy.random.poisson(l)[0]
 
 except ImportError:
     numpy = None
+
 
     def sample_poisson(l):
         l = list(l)[0]
@@ -105,9 +107,6 @@ except ImportError:
             return k - 1
 
 
-
-
-
 class FunctionStore(object):
 
     def __init__(self, target=None, engine=None, database=None):
@@ -135,6 +134,7 @@ class FunctionStore(object):
             except UnknownClause as err:
                 sig = err.signature
                 raise ArithmeticError("Unknown function %s" % sig)
+
         return _function
 
 
@@ -236,9 +236,9 @@ class SampledFormula(LogicFormula):
                         value = (random.random() <= p / r)
                     if value:
                         self.probability *= p
-                        self.groups[origin] = None   # Other choices in group are not allowed
+                        self.groups[origin] = None  # Other choices in group are not allowed
                     elif r is not None:
-                        self.groups[origin] = r - p   # Adjust remaining probability
+                        self.groups[origin] = r - p  # Adjust remaining probability
                     if value:
                         result_node = self.TRUE
                     else:
@@ -283,7 +283,7 @@ class SampledFormula(LogicFormula):
             return self.TRUE
         else:
             raise ValueError("Can't negate a sampled predicate.")
-        
+
     def is_probabilistic(self, key):
         """Indicates whether the given node is probabilistic."""
         return False
@@ -422,11 +422,11 @@ def ground(engine, db, target):
 
     for query in queries:
         if not isinstance(query, Term):
-            raise GroundingError('Invalid query')   # TODO can we add a location?
+            raise GroundingError('Invalid query')  # TODO can we add a location?
 
     for ev in evidence:
         if not isinstance(ev[0], Term):
-            raise GroundingError('Invalid evidence')   # TODO can we add a location?
+            raise GroundingError('Invalid evidence')  # TODO can we add a location?
 
     # Ground queries
     queries = [(target.LABEL_QUERY, q) for q in queries]
@@ -528,7 +528,6 @@ def sample(model, n=1, format='str', propagate_evidence=False, distributions=Non
 
 
 def verify_evidence(engine, db, ev_target, q_target):
-
     if ev_target is None:
         evidence = engine.query(db, Term('evidence', None, None))
         evidence += engine.query(db, Term('evidence', None))
@@ -646,7 +645,7 @@ def estimate(model, n=0, propagate_evidence=False, **kwdargs):
 
     total_time = time.time() - start_time
     rate = counts / total_time
-    print ('%% Probability estimate after %d samples (%.4f samples/second):' % (counts, rate))
+    print('%% Probability estimate after %d samples (%.4f samples/second):' % (counts, rate))
 
     if r:
         logging.getLogger('problog_sample').info('Rejected samples: %s' % r)
@@ -663,11 +662,11 @@ def print_result(result, output=sys.stdout, oneline=False):
         first = True
         for s in result:
             if not oneline and not first:
-                print ('----------------', file=output)
+                print('----------------', file=output)
             first = False
-            print (s, file=output)
+            print(s, file=output)
     else:
-        print (process_error(result), file=output)
+        print(process_error(result), file=output)
 
 
 def print_result_json(d, output, **kwdargs):
@@ -689,7 +688,7 @@ def print_result_json(d, output, **kwdargs):
         result['test'] = str(type(d))
         result['err'] = process_error(d)
         result['original'] = str(d)
-    print (json.dumps(result), file=output)
+    print(json.dumps(result), file=output)
     return 0
 
 
@@ -725,7 +724,6 @@ def main(args, result_handler=None):
     parser.add_argument('-a', '--arg', dest='args', action='append',
                         help='Pass additional arguments to the cmd_args builtin.')
     parser.add_argument('--progress', help='show progress', action='store_true')
-
 
     args = parser.parse_args(args)
 
@@ -763,7 +761,7 @@ def main(args, result_handler=None):
     try:
         if args.estimate:
             results = estimate(pl, **vars(args))
-            print (format_dictionary(results))
+            print(format_dictionary(results))
         else:
             result_handler((True, sample(pl, format=outformat, **vars(args))),
                            output=outf, oneline=args.oneline)

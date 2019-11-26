@@ -42,7 +42,7 @@ def print_result(d, output, debug=False, precision=8):
         print(format_dictionary(d, precision), file=output)
         return 0
     else:
-        print (process_error(d, debug=debug), file=output)
+        print(process_error(d, debug=debug), file=output)
         return 1
 
 
@@ -75,7 +75,7 @@ def print_result_json(d, output, precision=8):
         result['SUCCESS'] = False
         result['err'] = vars(d)
         result['err']['message'] = str(process_error(d))
-    print (json.dumps(result), file=output)
+    print(json.dumps(result), file=output)
     return 0
 
 
@@ -128,9 +128,9 @@ def execute(filename, knowledge=None, semiring=None, combine=False, profile=Fals
                     n.loc = model.lineno(n.location)
             if profiler is not None:
                 if trace:
-                    print (profiler.show_trace())
+                    print(profiler.show_trace())
                 if profile:
-                    print (profiler.show_profile(kwdargs.get('profile_level', 0)))
+                    print(profiler.show_profile(kwdargs.get('profile_level', 0)))
         return True, result
     except KeyboardInterrupt as err:
         trace = traceback.format_exc()
@@ -189,7 +189,7 @@ def argparser():
                         choices=get_evaluatables(),
                         default=None, help="Knowledge compilation tool.")
     parser.add_argument('--combine', help="Combine input files into single model.", action='store_true')
-    #parser.add_argument('--grounder', choices=['yap', 'default', 'yap_debug'], default=None)
+    # parser.add_argument('--grounder', choices=['yap', 'default', 'yap_debug'], default=None)
 
     # Evaluation semiring
     ls_group = parser.add_mutually_exclusive_group()
@@ -313,7 +313,7 @@ def main(argv, result_handler=None):
     else:
         for filename in args.filenames:
             if len(args.filenames) > 1:
-                print ('Results for %s:' % filename)
+                print('Results for %s:' % filename)
             result = execute(filename, args.koption, semiring, **vars(args))
             retcode = result_handler(result, output)
             if len(args.filenames) == 1:

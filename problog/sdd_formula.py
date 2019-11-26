@@ -532,7 +532,8 @@ class SDDManager(DDManager):
     def wmc_true(self, weights, semiring):
         return self.wmc(self.true(), weights, semiring)
 
-    def get_deepcopy_noref(self):  # TODO might be cleaner to maintain refcounts and deref everything afterwards in SDDExplicit
+    def get_deepcopy_noref(
+            self):  # TODO might be cleaner to maintain refcounts and deref everything afterwards in SDDExplicit
         """
         Get a deep copy of this without reference counts to inodes.
         Notes: No inode will have a reference count and auto_gc_and_minimize will be disabled.
@@ -582,8 +583,8 @@ class SDDManager(DDManager):
         # new_mgr.nodes = new_nodes
 
         # DEBUG - print before and after ref_counts
-        #print("before %s" % [(node.ref_count() if node is not None else None) for node in self.nodes])
-        #print("after %s" % [(node.ref_count() if node is not None else None) for node in new_mgr.nodes])
+        # print("before %s" % [(node.ref_count() if node is not None else None) for node in self.nodes])
+        # print("after %s" % [(node.ref_count() if node is not None else None) for node in new_mgr.nodes])
 
         return new_mgr
 
@@ -658,24 +659,24 @@ class SDDManager(DDManager):
 
                     new_p = nodes_cache.get(p.id, None)
                     if new_p is None:
-                        stack.append((process_node, or_node, index-1))
+                        stack.append((process_node, or_node, index - 1))
                         stack.append((p, new_mgr.false(), -1))
                         completed_for = False
                         break
 
                     new_s = nodes_cache.get(s.id, None)
                     if new_s is None:
-                        stack.append((process_node, or_node, index-1))
+                        stack.append((process_node, or_node, index - 1))
                         stack.append((s, new_mgr.false(), -1))
                         completed_for = False
                         break
 
                     conjoined = new_mgr.conjoin(new_p, new_s)
                     or_node_n = new_mgr.disjoin(or_node, conjoined)
-                    or_node_n.deref() # ensure refcount = 0
-                    conjoined.deref() # ensure refcount = 0
-                    #conjoined.deref()
-                    #or_node.deref()
+                    or_node_n.deref()  # ensure refcount = 0
+                    conjoined.deref()  # ensure refcount = 0
+                    # conjoined.deref()
+                    # or_node.deref()
                     or_node = or_node_n
                 if completed_for:
                     nodes_cache[process_node.id] = or_node
@@ -720,8 +721,8 @@ class SDDManager(DDManager):
                 or_node_n = new_mgr.disjoin(or_node, conjoined)
                 or_node_n.deref()  # ensure refcount = 0
                 conjoined.deref()  # ensure refcount = 0
-                #conjoined.deref()
-                #or_node.deref()
+                # conjoined.deref()
+                # or_node.deref()
                 or_node = or_node_n
             nodes_cache[node.id] = or_node
             return or_node

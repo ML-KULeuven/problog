@@ -37,7 +37,6 @@ from .maxsat import get_solver, UnsatisfiableError
 
 
 class KBestFormula(CNF, Evaluatable):
-
     transform_preference = 40
 
     def __init__(self, **kwargs):
@@ -264,5 +263,3 @@ class Border(object):
 
     def __eq__(self, other):
         return self.improvement == other.improvement
-
-

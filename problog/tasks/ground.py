@@ -125,10 +125,10 @@ def main(argv, result_handler=None):
 def print_result_standard(result, output=sys.stdout):
     success, result = result
     if success:
-        print (result, file=output)
+        print(result, file=output)
         return 0
     else:
-        print (process_error(result), file=output)
+        print(process_error(result), file=output)
         return 1
 
 
@@ -140,5 +140,5 @@ def print_result_json(result, output=sys.stdout):
         out['result'] = str(result)
     else:
         out['err'] = vars(result)
-    print (json.dumps(out), file=output)
+    print(json.dumps(out), file=output)
     return 0

@@ -47,8 +47,8 @@ class EngineTracer(object):
     def __init__(self, keep_trace=True, interactive=False):
         self.call_redirect = {}
         self.call_results = defaultdict(int)
-        self.level = 0    # level of calls (depth of stack)
-        self.stack = []   # stack of calls (approximate?)
+        self.level = 0  # level of calls (depth of stack)
+        self.stack = []  # stack of calls (approximate?)
         self.interactive = interactive
         if keep_trace:
             self.trace = []
@@ -63,7 +63,7 @@ class EngineTracer(object):
 
     def interact(self, record):
         if self.interactive and record:
-            print (self.show_record(record), end='\t?')
+            print(self.show_record(record), end='\t?')
             a = sys.stdin.readline()
             if a.strip() == 'gp':
                 pass
@@ -112,9 +112,9 @@ class EngineTracer(object):
         if self.stack:
             self.stack.pop(-1)
         if self.call_results[(node_id, term)] > 0:
-            record = (self.level, "complete", term, now-self.time_start_global, now-ts)
+            record = (self.level, "complete", term, now - self.time_start_global, now - ts)
         else:
-            record = (self.level, "fail", term, now-self.time_start_global, now-ts)
+            record = (self.level, "fail", term, now - self.time_start_global, now - ts)
         if self.trace is not None:
             self.trace.append(record)
 
@@ -182,7 +182,8 @@ class EngineTracer(object):
             s = "%s %s %s %s {%.5f} [%s]" % (' ' * lvl, msg, term, args, tm_cumul, location_string(term.location))
         else:
             tm_local = record[4]
-            s = "%s %s %s {%.5f} {%.5f} [%s]" % (' ' * lvl, msg, term, tm_cumul, tm_local, location_string(term.location))
+            s = "%s %s %s {%.5f} {%.5f} [%s]" % (
+            ' ' * lvl, msg, term, tm_cumul, tm_local, location_string(term.location))
         return s
 
 

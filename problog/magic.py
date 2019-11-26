@@ -20,8 +20,8 @@ Based on:
 https://gist.github.com/cjdrake/7982333
 """
 
-import sys
 import os
+import sys
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.append(os.path.join(os.path.dirname(__file__), '../examples'))
@@ -49,14 +49,17 @@ from IPython.core.magic_arguments import (
     parse_argstring)
 
 import IPython
+
 if IPython.version_info[0] >= 6:
     import warnings
 
+
     def info(message):
-        warnings.warn('WARNING: '+message)
+        warnings.warn('WARNING: ' + message)
+
 
     def error(message):
-        warnings.warn('ERROR: '+message)
+        warnings.warn('ERROR: ' + message)
 else:
     pass
 

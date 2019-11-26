@@ -96,7 +96,8 @@ def mpe_semiring(lf, verbose=0, solver=None, minpe=False):
                 qs += [qnm, -qnm]
             qs = set(qs)
             if non_atom:
-                print('WARNING: compound queries are not supported in the output: %s' % ', '.join(map(str, non_atom)), file=sys.stderr)
+                print('WARNING: compound queries are not supported in the output: %s' % ', '.join(map(str, non_atom)),
+                      file=sys.stderr)
 
             qn = lf.add_and([lf.add_or((qi, lf.negate(qi)), compact=False) for qi in atom] + [qn])
 
@@ -212,12 +213,12 @@ def print_result(result, output=sys.stdout):
     if success:
         prob, facts = result
         if facts is None:
-            print ('%% The model is not satisfiable.', file=output)
+            print('%% The model is not satisfiable.', file=output)
         else:
             for atom in facts:
                 print(atom, file=output)
             if prob is not None:
-                print ('%% Probability: %.10g' % prob)
+                print('%% Probability: %.10g' % prob)
         return 0
     else:
         print(process_error(result), file=output)
@@ -246,7 +247,7 @@ def print_result_json(d, output):
         result['SUCCESS'] = False
         result['err'] = process_error(d)
         result['original'] = str(d)
-    print (json.dumps(result), file=output)
+    print(json.dumps(result), file=output)
     return 0
 
 
@@ -345,7 +346,6 @@ class SemiringMinPEState(SemiringMPEState):
             return a
         else:
             return a[0], a[1]  # | b[1]   # doesn't matter?
-
 
 
 def argparser():
