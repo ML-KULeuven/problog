@@ -1117,10 +1117,10 @@ class LFIProblem(LogicProgram):
         else:
             update_list = fact_marg
 
-        weight_changed = []
+        indices_set = set()
         for index in update_list:
-            if len(weight_changed) <= float(index[0]):
-                weight_changed.append(False)
+            indices_set.add(index[0])
+        weight_changed = [False] * len(indices_set)
         print(weight_changed)
         for index in update_list:
             k = (index[0], index[1])
@@ -1160,6 +1160,7 @@ class LFIProblem(LogicProgram):
                         index[0], index[1], prob, weight_changed=weight_changed
                     )
                     weight_changed[int(index[0])] = True
+
                 elif fact_count[index] > 0:
                     # TODO: This assumes the estimate for true and false add up to one (not true for AD)
                     prob = float(fact_marg[index]) / float(fact_count[index])
