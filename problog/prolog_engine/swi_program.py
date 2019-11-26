@@ -4,8 +4,10 @@ from time import time
 
 from problog.core import ProbLogObject
 from problog.logic import unquote, term2list, ArithmeticError, Term, Constant
-from problog.prolog_engine.swip import parse
-from problog.prolog_engine.threaded_prolog import ThreadedProlog
+from problog.errors import GroundingError
+from swip import parse
+from threaded_prolog import ThreadedProlog
+from problog.clausedb import ConsultError
 
 
 def handle_prob(prob):
@@ -174,7 +176,8 @@ class SWIProgram(ProbLogObject):
             raise (Exception('Expected exactly one result, got {}'.format(len(result))))
 
     def parse_call(self, node):
-        pass
+        if node.functor == "_use_module":
+            self.db.use_module(filename=node.args[1], predicates=None, location=node.location)
 
     def parse_db(self):
         """
