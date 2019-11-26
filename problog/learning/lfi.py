@@ -572,11 +572,46 @@ class LFIProblem(LogicProgram):
         if self._use_parents:
             use_parents = {"adatomc": self._adatomc}
 
+        atom_list = []
+        for term in self.names:
+            atom_list.append(term.functor)
+        print(atom_list)
+
         if self.propagate_evidence:
             result = ExampleSet()
             for index, example in enumerate(self.examples):
                 atoms, values, cvalues = zip(*example)
-                result.add(index, atoms, values, cvalues, use_parents=use_parents)
+                add_complement_var = False
+                complement_atom_index = None
+                for atom_index, ad_atoms in self._adatomc.items():
+                    # print("AD_atoms:", atom_index, ad_atoms)
+                    if len(ad_atoms) == 1 and ad_atoms[0] < 0:
+                        continue
+                    else:
+                        atom_found = False
+                        for atom, value, cvalue in example:
+                            print("Evidence:", atom, value, cvalue)
+                            if atom.functor == atom_list[atom_index] and value == False:
+                                atom_found = True
+                                break
+                        if atom_found == False:
+                            complement_atom_index = atom_index
+                            add_complement_var = True
+                            break
+
+                if add_complement_var:
+                    result.add(
+                        index,
+                        (Term(atom_list[complement_atom_index]),),
+                        (True,),
+                        (None,),
+                        use_parents=use_parents,
+                    )
+                else:
+                    result.add(index, atoms, values, cvalues, use_parents=use_parents)
+
+            # for example in result:
+            #     print(example)
             return result
         else:
             # smarter: compile-once all examples with same atoms
@@ -589,6 +624,7 @@ class LFIProblem(LogicProgram):
     def _compile_examples(self):
         """Compile examples."""
         baseprogram = DefaultEngine(**self.extra).prepare(self)
+        print(baseprogram.to_prolog())
         examples = self._process_examples()
         for i, example in enumerate(examples):
             print("Compiling example {}/{}".format(i + 1, len(examples)))
@@ -1117,11 +1153,11 @@ class LFIProblem(LogicProgram):
         else:
             update_list = fact_marg
 
-        indices_set = set()
-        for index in update_list:
-            indices_set.add(index[0])
-        weight_changed = [False] * len(indices_set)
-        print(weight_changed)
+        # indices_set = set()
+        # for index in update_list:
+        #     indices_set.add(index[0])
+        weight_changed = [False] * len(self.names)
+        print("Weight_changed List:", weight_changed)
         for index in update_list:
             k = (index[0], index[1])
             if k in fact_values:
@@ -1315,8 +1351,8 @@ class Example(object):
     def compile(self, lfi, baseprogram):
         ground_program = None  # Let the grounder decide
         print("compile grounding:")
-        print(baseprogram.to_prolog())
-        print(baseprogram)
+        # print(baseprogram.to_prolog())
+        # print(baseprogram)
         print("...")
         print(ground_program)
 
@@ -1340,7 +1376,7 @@ class Example(object):
                 and node.probability.functor == "lfi"
             ):
                 factargs = ()
-                print("node.identifier", node.identifier)
+                # print("node.identifier", node.identifier)
                 if type(node.identifier) == tuple:
                     factargs = node.identifier[1]
                 # fact = Term('lfi_fact', node.probability.args[0], node.probability.args[1], *factargs)
