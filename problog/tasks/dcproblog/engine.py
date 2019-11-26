@@ -1,23 +1,24 @@
+ \
 import logging
 
-from problog.util import Timer
-from problog.engine import ground, ClauseDB
-
 from problog.core import transform
-from problog.program import LogicProgram
-from problog.logic import Term, is_ground
+from problog.engine import ground, ClauseDB
 from problog.formula import LogicFormula
-
-from .engine_stack import StackBasedEngineHAL as DefaultEngineHAL
-from .formula import LogicFormulaHAL
+from problog.logic import Term
+from problog.program import LogicProgram
+from problog.util import Timer
 from .engine_builtin import \
     _builtin_density, \
     _builtin_free_list, _builtin_free, \
     _builtin_as, \
     _builtin_gt, _builtin_lt, _builtin_le, _builtin_ge, \
     _builtin_observation \
+ \
+    from .engine_stack import StackBasedEngineHAL as DefaultEngineHAL
+from .formula import LogicFormulaHAL
 
-    # , _builtin_val_eq, _builtin_val_neq
+
+# , _builtin_val_eq, _builtin_val_neq
     # _builtin_is, \
 
 

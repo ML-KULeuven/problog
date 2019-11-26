@@ -1,13 +1,9 @@
-from collections import defaultdict
-
 from problog.core import transform, transform_create_as
 from problog.dd_formula import build_dd
-from problog.sdd_formula import SDD
 from problog.formula import LogicFormula
-
-
-from .formula import atom, LogicFormulaHAL
+from problog.sdd_formula import SDD
 from .dd_formula import DDEvaluatorHAL
+from .formula import LogicFormulaHAL
 
 
 class SDDHAL(SDD):

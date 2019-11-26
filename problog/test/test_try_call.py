@@ -1,8 +1,7 @@
 import unittest
 
-from problog.program import PrologString
-from problog.core import ProbLog
 from problog import get_evaluatable
+from problog.program import PrologString
 
 
 class TestTryCall(unittest.TestCase):

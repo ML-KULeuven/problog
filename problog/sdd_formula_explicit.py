@@ -24,17 +24,14 @@ Interface to Sentential Decision Diagrams (SDD) using the explicit encoding repr
 """
 from collections import namedtuple
 
-from .formula import LogicDAG, LogicFormula
 from .core import transform
 from .errors import InconsistentEvidenceError
-from .util import Timer
 from .evaluator import SemiringProbability, SemiringLogProbability
-from .sdd_formula import SDDEvaluator, SDD, x_constrained
+from .formula import LogicDAG, LogicFormula
 from .forward import _ForwardSDD, ForwardInference
+from .sdd_formula import SDDEvaluator, SDD, x_constrained
 from .sdd_formula import SDDManager
-
-from .util import mktempfile
-
+from .util import Timer
 
 # noinspection PyBroadException
 try:

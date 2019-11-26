@@ -1,11 +1,9 @@
 import os
-
 from collections import defaultdict, namedtuple
 
-from .program import LogicProgram, PrologFile
-from .logic import *
-
 from .errors import GroundingError, InvalidValue
+from .logic import *
+from .program import LogicProgram, PrologFile
 from .util import OrderedSet
 
 

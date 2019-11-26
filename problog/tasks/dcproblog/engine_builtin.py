@@ -1,9 +1,7 @@
 from problog.engine_builtin import check_mode
-from problog.engine_unify import UnifyError, unify_value
-from problog.engine_stack import NODE_TRUE, NODE_FALSE
+from problog.engine_stack import NODE_TRUE
 from problog.logic import Term, Constant, term2list, list2term
 
-from .formula import LogicFormulaHAL
 from .logic import SymbolicConstant, ValueDimConstant, ValueExpr, DensityConstant
 
 

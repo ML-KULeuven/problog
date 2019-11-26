@@ -22,10 +22,10 @@ Common interface to decision diagrams (BDD, SDD).
     limitations under the License.
 """
 
-from .util import Timer, mktempfile
-from .formula import LogicFormula, atom, LogicNNF
-from .evaluator import EvaluatableDSP, Evaluator, FormulaEvaluatorNSP, SemiringLogProbability, SemiringProbability
 from .errors import InconsistentEvidenceError
+from .evaluator import EvaluatableDSP, Evaluator, FormulaEvaluatorNSP, SemiringLogProbability, SemiringProbability
+from .formula import LogicFormula, atom, LogicNNF
+from .util import Timer, mktempfile
 
 
 class DD(LogicFormula, EvaluatableDSP):

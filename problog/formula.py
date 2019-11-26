@@ -21,18 +21,15 @@ Data structures for propositional logic.
     See the License for the specific language governing permissions and
     limitations under the License.
 """
-from collections import namedtuple, defaultdict, OrderedDict
-
-from .core import ProbLogObject
-from .errors import InconsistentEvidenceError
-
-from .util import OrderedSet
-from .logic import Term, Or, Clause, And, is_ground
-
-from .evaluator import Evaluatable, FormulaEvaluator, FormulaEvaluatorNSP
+from collections import namedtuple, defaultdict
 
 from .constraint import ConstraintAD
+from .core import ProbLogObject
 from .core import transform
+from .errors import InconsistentEvidenceError
+from .evaluator import Evaluatable, FormulaEvaluator, FormulaEvaluatorNSP
+from .logic import Term, Or, Clause, And, is_ground
+from .util import OrderedSet
 
 
 class BaseFormula(ProbLogObject):

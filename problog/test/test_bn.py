@@ -15,15 +15,14 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 """
-import unittest
-
 import glob
 import os
 import sys
+import unittest
 
 from problog.formula import LogicDAG
-from problog.tasks.bayesnet import formula_to_bn
 from problog.program import PrologFile, DefaultPrologParser, ExtendedPrologFactory
+from problog.tasks.bayesnet import formula_to_bn
 
 if __name__ == '__main__' :
     sys.path.insert(0,os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')))

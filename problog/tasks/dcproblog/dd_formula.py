@@ -2,8 +2,8 @@ from collections import OrderedDict
 
 from problog.dd_formula import DDEvaluator
 from problog.evaluator import SemiringLogProbability, SemiringProbability
-
 from .formula import LogicNNFHAL
+
 
 class DDEvaluatorHAL(DDEvaluator):
     def __init__(self, formula, semiring,  weights=None, **kwargs):

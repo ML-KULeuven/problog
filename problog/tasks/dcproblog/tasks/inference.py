@@ -1,12 +1,9 @@
-from problog.errors import InstallError
-
 import argparse
 
-from problog.program import PrologFile
-from problog.logic import Term
 from problog import library_paths, root_path
+from problog.errors import InstallError
+from problog.program import PrologFile
 from ..solver import InferenceSolver
-
 
 
 def argparser(args):

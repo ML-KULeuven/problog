@@ -77,16 +77,13 @@ This module contains basic logic constructs.
     limitations under the License.
 
 """
-import functools
 import math
-import sys
 import re
-
-
-from .util import OrderedSet
-from .errors import GroundingError
-
+import sys
 from collections import deque
+
+from .errors import GroundingError
+from .util import OrderedSet
 
 
 def term2str(term):

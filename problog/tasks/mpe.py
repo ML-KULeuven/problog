@@ -21,15 +21,15 @@ limitations under the License.
 import sys
 import traceback
 
-from problog.program import PrologFile, SimpleProgram
-from problog.constraint import TrueConstraint
-from problog.formula import LogicFormula, LogicDAG
-from problog.cnf_formula import CNF
-from problog.maxsat import get_solver, get_available_solvers
-from problog.errors import process_error
 from problog import get_evaluatable
-from problog.evaluator import Semiring, OperationNotSupported, SemiringProbability
+from problog.cnf_formula import CNF
+from problog.constraint import TrueConstraint
+from problog.errors import process_error
+from problog.evaluator import Semiring, SemiringProbability
+from problog.formula import LogicFormula, LogicDAG
 from problog.logic import Term
+from problog.maxsat import get_solver, get_available_solvers
+from problog.program import PrologFile
 from problog.util import init_logger, Timer
 
 

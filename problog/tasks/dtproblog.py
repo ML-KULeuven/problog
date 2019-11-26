@@ -18,15 +18,15 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
-import sys
 import logging
+import sys
 import traceback
 
-from ..program import PrologFile
-from ..engine import DefaultEngine
-from ..logic import Term
-from ..errors import process_error, ProbLogError
 from .. import get_evaluatables, get_evaluatable
+from ..engine import DefaultEngine
+from ..errors import process_error, ProbLogError
+from ..logic import Term
+from ..program import PrologFile
 from ..util import init_logger, Timer, format_dictionary
 
 

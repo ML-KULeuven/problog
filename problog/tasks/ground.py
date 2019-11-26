@@ -19,12 +19,12 @@ limitations under the License.
 import os
 import sys
 
-from problog.formula import LogicDAG, LogicFormula, LogicNNF
-from problog.evaluator import SemiringLogProbability
-from problog.parser import DefaultPrologParser
-from problog.program import ExtendedPrologFactory, PrologFile
 from problog.cnf_formula import CNF
 from problog.errors import process_error
+from problog.evaluator import SemiringLogProbability
+from problog.formula import LogicDAG, LogicFormula, LogicNNF
+from problog.parser import DefaultPrologParser
+from problog.program import ExtendedPrologFactory, PrologFile
 from problog.util import subprocess_check_output, mktempfile
 
 

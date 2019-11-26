@@ -16,18 +16,17 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
-import sys
 import itertools
 import logging
+import sys
 
 from problog.formula import LogicDAG
-from problog.parser import DefaultPrologParser
-from problog.program import ExtendedPrologFactory, PrologFile
 from problog.logic import Term, Or, Clause, And, Not
+from problog.parser import DefaultPrologParser
 from problog.pgm.cpd import Variable, Factor, OrCPT, PGM
-
-from ..util import init_logger
+from problog.program import ExtendedPrologFactory, PrologFile
 from ..errors import process_error
+from ..util import init_logger
 
 
 def print_result_standard(result, output=sys.stdout):

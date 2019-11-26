@@ -1,13 +1,12 @@
 import os
 from collections import OrderedDict
 
-from problog.formula import LogicFormula
 from problog.cycles import break_cycles
-
 from .engine import init_engine, init_model
+from .evaluator import SemiringHAL
 from .formula import LogicFormulaHAL
 from .sdd_formula import SDDHAL
-from .evaluator import SemiringHAL
+
 
 class Operator(object):
     def __init__(self, neutral_element, name):

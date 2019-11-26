@@ -21,15 +21,14 @@ Provides tools for loading logic programs.
     See the License for the specific language governing permissions and
     limitations under the License.
 """
-from .errors import GroundingError
-from .logic import Term, Var, Constant, AnnotatedDisjunction, Clause, And, Or, Not, AggTerm, list2term
-from .core import transform, ProbLogObject
-
-from .parser import DefaultPrologParser, Factory
-from .core import ProbLogError
-
 import os
 import sys
+
+from .core import ProbLogError
+from .core import transform, ProbLogObject
+from .errors import GroundingError
+from .logic import Term, Var, Constant, AnnotatedDisjunction, Clause, And, Or, Not, AggTerm, list2term
+from .parser import DefaultPrologParser, Factory
 
 
 class LogicProgram(ProbLogObject):

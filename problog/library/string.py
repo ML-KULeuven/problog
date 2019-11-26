@@ -1,5 +1,5 @@
-from problog.logic import unquote, make_safe, list2term, Term
-from problog.extern import problog_export, problog_export_raw
+from problog.extern import problog_export
+from problog.logic import unquote, make_safe, Term
 
 
 @problog_export('+list', '-str')

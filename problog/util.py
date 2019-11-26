@@ -21,17 +21,16 @@ Provides useful utilities functions and classes.
     See the License for the specific language governing permissions and
     limitations under the License.
 """
-import logging
-import time
-
-import signal
-import sys
-import os
-import subprocess
-import distutils.spawn
-import tempfile
-import imp
 import collections
+import distutils.spawn
+import imp
+import logging
+import os
+import signal
+import subprocess
+import sys
+import tempfile
+import time
 
 
 class ProbLogLogFormatter(logging.Formatter):

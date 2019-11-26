@@ -1,6 +1,6 @@
-import sys
-import os
 import atexit
+import os
+import sys
 
 try:
     import readline     # provides better input

@@ -1,10 +1,11 @@
 import sys
-from problog.program import PrologFile, ExtendedPrologFactory
+
+from problog.cycles import break_cycles
 from problog.engine import DefaultEngine
 from problog.formula import LogicDAG
 from problog.logic import Constant, Term
+from problog.program import PrologFile, ExtendedPrologFactory
 from problog.sdd_formula import SDD
-from problog.cycles import break_cycles
 
 
 class ConstraintFactory(ExtendedPrologFactory):

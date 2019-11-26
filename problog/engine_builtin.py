@@ -22,15 +22,13 @@ Implementation of Prolog / ProbLog builtins.
     limitations under the License.
 """
 
+import sys
+
+from .engine import UnknownClauseInternal, UnknownClause
+from .engine_unify import unify_value, UnifyError, substitute_simple
+from .errors import GroundingError, UserError
 from .logic import term2str, Term, Clause, Constant, term2list, list2term, \
     is_ground, is_variable, Var, AnnotatedDisjunction, Object
-from .program import PrologFile
-from .errors import GroundingError, UserError
-from .engine_unify import unify_value, UnifyError, substitute_simple
-from .engine import UnknownClauseInternal, UnknownClause
-import inspect
-import os
-import sys
 
 
 class builtin(object):

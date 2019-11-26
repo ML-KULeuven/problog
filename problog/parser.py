@@ -131,8 +131,6 @@ class Token(object):
         return "'%s' {%s}" % (self.string, self.list_options())
 
 
-from collections import namedtuple
-
 SPECIAL_PAREN_OPEN = 0
 SPECIAL_PAREN_CLOSE = 1
 SPECIAL_END = 2

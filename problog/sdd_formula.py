@@ -21,16 +21,15 @@ Interface to Sentential Decision Diagrams (SDD)
     See the License for the specific language governing permissions and
     limitations under the License.
 """
+import os
 from collections import namedtuple
 
-from .formula import LogicDAG, LogicFormula, LogicNNF, pn_weight
 from .core import transform
-from .errors import InstallError, InconsistentEvidenceError
 from .dd_formula import DD, build_dd, DDManager, DDEvaluator
-from .evaluator import FormulaEvaluatorNSP, SemiringLogProbability, SemiringProbability
-
+from .errors import InstallError, InconsistentEvidenceError
+from .evaluator import SemiringLogProbability, SemiringProbability
+from .formula import LogicDAG, LogicFormula, pn_weight
 from .util import mktempfile
-import os
 
 # noinspection PyBroadException
 try:

@@ -21,11 +21,11 @@ Interface for calling Python from ProbLog.
     See the License for the specific language governing permissions and
     limitations under the License.
 """
-from .logic import Constant, term2list, list2term, Term, Object
+import inspect
+
 from .engine_builtin import check_mode, is_variable
 from .engine_unify import UnifyError, unify_value
-import inspect
-import os
+from .logic import Constant, term2list, list2term, Term, Object
 
 
 # noinspection PyPep8Naming

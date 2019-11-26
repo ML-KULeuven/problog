@@ -1,6 +1,7 @@
-import torch
-import pyro
 import math
+
+import pyro
+import torch
 
 from .algebra import Algebra, BaseS
 

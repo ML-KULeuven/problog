@@ -2,15 +2,14 @@
 Maximum A-Posteriori inference for ProbLog (MAP)
 """
 
-from .. import get_evaluatable
-from ..program import PrologFile
-from ..formula import LogicFormula
-from .dtproblog import search_exhaustive, search_local, argparser, print_result, print_result_json
-from ..constraint import TrueConstraint
-
-import math
 import sys
 import traceback
+
+from .dtproblog import search_exhaustive, search_local, argparser, print_result, print_result_json
+from .. import get_evaluatable
+from ..constraint import TrueConstraint
+from ..formula import LogicFormula
+from ..program import PrologFile
 
 
 def main(argv, result_handler=None):

@@ -41,24 +41,21 @@ It uses the following extensions of ProbLog's classes:
 
 """
 
-import sys
-import random
-import math
 import logging
-
+import math
+import random
+import sys
+import traceback
 from collections import defaultdict
 
+from problog import get_evaluatable, get_evaluatables
+from problog.core import ProbLogError
 from problog.engine import DefaultEngine, ground
+from problog.errors import process_error, InconsistentEvidenceError
 from problog.evaluator import SemiringProbability
-from problog.logic import Term, Constant, Clause, AnnotatedDisjunction, Or, Var,\
+from problog.logic import Term, Constant, Clause, AnnotatedDisjunction, Or, Var, \
     InstantiationError, ArithmeticError
 from problog.program import PrologString, PrologFile, LogicProgram
-from problog.core import ProbLogError
-from problog.errors import process_error, InconsistentEvidenceError
-
-
-from problog import get_evaluatable, get_evaluatables
-import traceback
 
 
 def str2bool(s):

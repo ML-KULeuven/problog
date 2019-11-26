@@ -15,10 +15,11 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 """
-from .logic import Term
-from collections import defaultdict
-import time
 import sys
+import time
+from collections import defaultdict
+
+from .logic import Term
 
 
 def printtrace(func):

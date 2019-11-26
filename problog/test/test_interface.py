@@ -2,11 +2,12 @@
 Module name
 """
 
-from problog import root_path
-from problog.util import subprocess_call, subprocess_check_output
-import unittest
 import os
 import sys
+import unittest
+
+from problog import root_path
+from problog.util import subprocess_call, subprocess_check_output
 
 
 class TestInterfaces(unittest.TestCase):

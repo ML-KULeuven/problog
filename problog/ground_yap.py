@@ -1,12 +1,11 @@
-from .util import subprocess_check_output, mktempfile, Timer
-from logging import getLogger
-from .logic import AnnotatedDisjunction, list2term, Term, Clause, Or, Constant
-import sys
 import os
 from collections import defaultdict, deque
 from subprocess import CalledProcessError
+
+from .engine import UnknownClause
 from .errors import GroundingError
-from .engine import UnknownClause, NonGroundProbabilisticClause
+from .logic import AnnotatedDisjunction, list2term, Term, Clause
+from .util import subprocess_check_output, mktempfile, Timer
 
 
 def ground_yap(model, target=None, queries=None, evidence=None, propagate_evidence=False,

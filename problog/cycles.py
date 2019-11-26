@@ -23,13 +23,13 @@ Cycle breaking in propositional formulae.
 """
 
 
-from .logic import Term
-from .core import transform
-from .util import Timer
-from .formula import LogicFormula, LogicDAG
-
-from collections import defaultdict
 import logging
+from collections import defaultdict
+
+from .core import transform
+from .formula import LogicFormula, LogicDAG
+from .logic import Term
+from .util import Timer
 
 
 # noinspection PyUnusedLocal

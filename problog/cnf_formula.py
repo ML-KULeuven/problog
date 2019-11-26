@@ -22,12 +22,10 @@ Provides access to CNF and weighted CNF.
     See the License for the specific language governing permissions and
     limitations under the License.
 """
-from .formula import BaseFormula, LogicDAG
-
 from .core import transform
-from .util import Timer
-
 from .evaluator import SemiringLogProbability
+from .formula import BaseFormula, LogicDAG
+from .util import Timer
 
 
 class CNF(BaseFormula):

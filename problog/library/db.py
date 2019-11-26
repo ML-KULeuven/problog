@@ -1,11 +1,10 @@
-from problog.extern import problog_export, problog_export_nondet, problog_export_raw
-
-from problog.logic import Term, Constant
-from problog.errors import UserError, InvalidValue
-
-import sqlite3
-import os
 import logging
+import os
+import sqlite3
+
+from problog.errors import UserError, InvalidValue
+from problog.extern import problog_export, problog_export_raw
+from problog.logic import Term, Constant
 
 logger = logging.getLogger('problog')
 

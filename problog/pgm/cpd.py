@@ -17,14 +17,13 @@ limitations under the License.
 """
 
 import itertools
-from datetime import datetime
-import re
-from functools import reduce
-import sys
-import math
-from collections import Counter, defaultdict, OrderedDict
 import logging
-
+import math
+import re
+import sys
+from collections import Counter, defaultdict, OrderedDict
+from datetime import datetime
+from functools import reduce
 
 logger = logging.getLogger('be.kuleuven.cs.dtai.problog.cpd')
 

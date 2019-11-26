@@ -2,8 +2,6 @@ import unittest
 
 import problog
 
-
-
 a = problog.logic.Term('a')
 b = problog.logic.Term('b')
 c = problog.logic.Term('c')

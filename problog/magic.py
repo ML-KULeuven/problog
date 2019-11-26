@@ -58,7 +58,7 @@ if IPython.version_info[0] >= 6:
     def error(message):
         warnings.warn('ERROR: '+message)
 else:
-    from IPython.utils.warn import info, error
+    pass
 
 
 def runproblog(s, knowledge=knowledge_default, semiring=None, parser_class=DefaultPrologParser,

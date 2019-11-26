@@ -21,28 +21,22 @@ Forward compilation using TP-operator.
     See the License for the specific language governing permissions and
     limitations under the License.
 """
-from .formula import LogicFormula, OrderedSet, atom, pn_weight
-from .dd_formula import DD
-from .sdd_formula import SDD
+import copy
+import logging
+import random
+import signal
+import time
+from collections import defaultdict
+
 from .bdd_formula import BDD
 from .core import transform
-from .evaluator import Evaluator, EvaluatableDSP, InconsistentEvidenceError
-
-from .dd_formula import build_dd
-
-import warnings
-import time
-import logging
-import copy
-import signal
-
 from .core import transform_create_as
-
+from .dd_formula import DD
+from .dd_formula import build_dd
+from .evaluator import Evaluator, EvaluatableDSP, InconsistentEvidenceError
+from .formula import LogicFormula, OrderedSet, atom, pn_weight
+from .sdd_formula import SDD
 from .util import UHeap
-
-import random
-
-from collections import defaultdict
 
 
 def timeout_handler(signum, frame):

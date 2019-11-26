@@ -1,8 +1,7 @@
 from problog.logic import Constant
 
 
-from ..logic import pdfs, SymbolicConstant, ValueDimConstant, ValueExpr
-
+from ..logic import SymbolicConstant, ValueDimConstant
 
 SUB = str.maketrans("0123456789-", "₀₁₂₃₄₅₆₇₈₉₋")
 M_SUB = "-".translate(SUB)

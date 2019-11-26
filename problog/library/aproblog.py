@@ -1,5 +1,5 @@
-from problog.extern import problog_export
 from problog.evaluator import Semiring
+from problog.extern import problog_export
 
 
 @problog_export('+term', '+term', '+term', '+term', '+term', '+str', '+str')

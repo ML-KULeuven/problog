@@ -1,7 +1,6 @@
 import unittest
 
-import problog
-from problog.logic import list2term, And, AnnotatedDisjunction, Or, Clause, Not, Term, Var
+from problog.logic import And, AnnotatedDisjunction, Or, Clause, Not, Term, Var
 
 
 class TestLogic(unittest.TestCase):

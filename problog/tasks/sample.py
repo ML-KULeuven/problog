@@ -38,22 +38,22 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
-import sys
-
-from problog.program import PrologFile
-from problog.logic import Term, Constant, ArithmeticError, term2list, list2term
-from problog.engine import DefaultEngine, UnknownClause, UnknownClauseInternal
-from problog.engine_builtin import check_mode, builtin_simple
-from problog.formula import LogicFormula
-from problog.errors import process_error, GroundingError
-from problog.util import start_timer, stop_timer, format_dictionary, init_logger
-from problog.engine_unify import UnifyError, unify_value
-import random
+import logging
 import math
+import random
 import signal
+import sys
 import time
 import traceback
-import logging
+
+from problog.engine import DefaultEngine, UnknownClause, UnknownClauseInternal
+from problog.engine_builtin import check_mode
+from problog.engine_unify import UnifyError, unify_value
+from problog.errors import process_error, GroundingError
+from problog.formula import LogicFormula
+from problog.logic import Term, Constant, ArithmeticError, term2list
+from problog.program import PrologFile
+from problog.util import start_timer, stop_timer, format_dictionary, init_logger
 
 try:
     from tqdm import tqdm

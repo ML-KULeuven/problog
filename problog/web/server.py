@@ -39,15 +39,14 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 """
+import logging.config
+import os
+import subprocess
 # Load general Python modules
 import sys
-import os
 import tempfile
-import traceback
-import subprocess
+
 import resource
-import logging
-import logging.config
 
 DEFAULT_PORT = 5100
 DEFAULT_TIMEOUT = 60

@@ -22,19 +22,17 @@ Grounding engine to transform a ProbLog program into a propositional formula.
     limitations under the License.
 """
 import logging
-
 from collections import defaultdict
-
-from .program import LogicProgram
-from .logic import *
-from .formula import LogicFormula
-from .engine_unify import *
+from subprocess import CalledProcessError
 
 from .core import transform
+from .engine_unify import *
 from .errors import GroundingError, NonGroundQuery
+from .formula import LogicFormula
+from .logic import *
+from .program import LogicProgram
 from .util import Timer
 
-from subprocess import CalledProcessError
 
 @transform(LogicProgram, LogicFormula)
 def ground(model, target=None, grounder=None, **kwdargs):

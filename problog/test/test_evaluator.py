@@ -17,12 +17,11 @@ limitations under the License.
 """
 import unittest
 
-from problog.program import PrologString
-from problog.formula import LogicFormula, pn_weight
 from problog import get_evaluatable
 from problog.evaluator import SemiringProbability
+from problog.formula import LogicFormula, pn_weight
 from problog.logic import Term
-
+from problog.program import PrologString
 # noinspection PyBroadException
 from problog.test.test_system import SemiringProbabilityNSPCopy
 

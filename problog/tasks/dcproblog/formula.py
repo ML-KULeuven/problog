@@ -1,11 +1,9 @@
-from collections import namedtuple, defaultdict
+from collections import defaultdict
 
-from problog.formula import LogicFormula, LogicNNF, atom
+from problog.formula import LogicFormula, LogicNNF
 from problog.logic import Constant, Term, term2list
-
-from .logic import pdfs, cdfs, SymbolicConstant, ValueDimConstant, ValueExpr, comparison_functors
 from .evaluator import FormulaEvaluatorHAL
-from .algebra.algebra import Algebra
+from .logic import pdfs, SymbolicConstant, ValueDimConstant, ValueExpr, comparison_functors
 
 
 class DiGraph(object):

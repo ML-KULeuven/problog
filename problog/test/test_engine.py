@@ -15,14 +15,13 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 """
+import random
 import unittest
 
-from problog.program import PrologString
 from problog.engine import DefaultEngine
 from problog.logic import Term, Constant
-from problog.formula import LogicFormula
+from problog.program import PrologString
 
-import glob, os, random
 
 class TestEngine(unittest.TestCase):
 

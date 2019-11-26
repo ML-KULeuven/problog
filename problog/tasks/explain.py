@@ -18,16 +18,16 @@
     limitations under the License.
 """
 
-from ..program import PrologFile
-from ..engine import DefaultEngine
-from ..util import init_logger, format_dictionary
-from ..kbest import KBestFormula
-from ..errors import process_error
-
 import argparse
-import sys
 import json
+import sys
 import traceback
+
+from ..engine import DefaultEngine
+from ..errors import process_error
+from ..kbest import KBestFormula
+from ..program import PrologFile
+from ..util import init_logger, format_dictionary
 
 
 def main(argv):

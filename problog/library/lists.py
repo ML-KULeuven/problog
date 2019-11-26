@@ -1,6 +1,7 @@
-from problog.extern import problog_export_nondet
-from problog.logic import term2list, list2term
 from collections import defaultdict
+
+from problog.extern import problog_export_nondet
+from problog.logic import term2list
 
 
 @problog_export_nondet('+term', '-term', '-list')

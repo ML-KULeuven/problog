@@ -21,9 +21,9 @@ Interface to MaxSAT solvers.
     See the License for the specific language governing permissions and
     limitations under the License.
 """
-from .util import mktempfile, subprocess_check_output, Timer
 from . import root_path
 from .errors import ProbLogError
+from .util import mktempfile, subprocess_check_output, Timer
 
 
 class UnsatisfiableError(ProbLogError):

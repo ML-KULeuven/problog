@@ -16,18 +16,17 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
+import os
 import stat
 import sys
-import os
 import traceback
 
-from ..program import PrologFile, SimpleProgram
-from ..engine import DefaultEngine
-from ..evaluator import SemiringLogProbability, SemiringProbability, SemiringSymbolic
 from .. import get_evaluatable, get_evaluatables, library_paths
-
-from ..util import Timer, start_timer, stop_timer, init_logger, format_dictionary, format_value
+from ..engine import DefaultEngine
 from ..errors import process_error
+from ..evaluator import SemiringLogProbability, SemiringProbability, SemiringSymbolic
+from ..program import PrologFile, SimpleProgram
+from ..util import Timer, start_timer, stop_timer, init_logger, format_dictionary, format_value
 
 
 def print_result(d, output, debug=False, precision=8):

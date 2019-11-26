@@ -1,10 +1,10 @@
 import argparse
 import time
 
-from ..program import SimpleProgram, PrologFile
+from .. import get_evaluatables, get_evaluatable
 from ..engine import DefaultEngine
 from ..formula import LogicFormula, LogicDAG
-from .. import get_evaluatables, get_evaluatable
+from ..program import SimpleProgram, PrologFile
 
 
 def argparser():

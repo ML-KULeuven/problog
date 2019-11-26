@@ -21,18 +21,18 @@ Provides access to d-DNNF formulae.
     See the License for the specific language governing permissions and
     limitations under the License.
 """
-import tempfile
 import os
 import subprocess
+import tempfile
 from collections import defaultdict
 
 from . import system_info
-from .evaluator import Evaluator, EvaluatableDSP
-from .errors import InconsistentEvidenceError
-from .formula import LogicDAG
 from .cnf_formula import CNF
 from .core import transform
 from .errors import CompilationError
+from .errors import InconsistentEvidenceError
+from .evaluator import Evaluator, EvaluatableDSP
+from .formula import LogicDAG
 from .util import Timer, subprocess_check_call
 
 

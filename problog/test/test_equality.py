@@ -1,6 +1,5 @@
 import unittest
 
-import problog
 from problog.logic import Clause, Term
 
 
