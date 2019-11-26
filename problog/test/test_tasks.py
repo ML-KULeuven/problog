@@ -17,7 +17,7 @@ dt_problog_test_folder = Path("./../../test/dtproblog/")
 class TestTasks(unittest.TestCase):
     def dt_problog_check_if_output_equals(self, dt_file, expected_choices, expected_score):
         real_file_name = dt_problog_test_folder / dt_file
-        file_exists = path.exists(str(real_file_name))
+        file_exists = real_file_name.exists()
         self.assertTrue(file_exists, msg="File " + str(real_file_name) + " was not found. Maybe this is a pathing issue?")
         if file_exists:
             result = dtproblog.main([str(real_file_name)])
