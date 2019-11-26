@@ -1,7 +1,14 @@
+import os
+import sys
 import unittest
 
 from problog.logic import Term, Constant
 from problog.tasks import dtproblog
+
+if __name__ == "__main__":
+    sys.path.insert(
+        0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../"))
+    )
 
 
 class TestTasks(unittest.TestCase):
