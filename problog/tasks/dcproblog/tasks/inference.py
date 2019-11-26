@@ -5,8 +5,6 @@ from problog.program import PrologFile
 
 from ..solver import InferenceSolver
 from ..parser import DCParser
-from ..program import DCPrologFactory
-
 
 
 def argparser(args):
