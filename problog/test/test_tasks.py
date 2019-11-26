@@ -13,7 +13,7 @@ if __name__ == "__main__":
 
 class TestTasks(unittest.TestCase):
     def dt_problog_check_if_output_equals(self, dt_file, expected_choices, expected_score):
-        real_file_name = "../../test/dtproblog/" + dt_file
+        real_file_name = "./../../test/dtproblog/" + dt_file
         result = dtproblog.main([real_file_name])
         if result[0]:
             choices, score, stats = result[1]
