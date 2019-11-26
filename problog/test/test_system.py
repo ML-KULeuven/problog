@@ -32,7 +32,7 @@ from problog.evaluator import SemiringProbability, SemiringLogProbability, Semir
 from problog.formula import LogicFormula
 from problog.ddnnf_formula import DDNNF
 from problog.engine import DefaultEngine
-from problog.prolog_engine.engine_prolog import EngineProlog
+from problog.prolog_engine.prolog_engine import EngineProlog
 # noinspection PyBroadException
 try:
     from pysdd import sdd

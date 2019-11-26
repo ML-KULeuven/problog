@@ -11,23 +11,42 @@ class PrologEngine(GenericEngine):
         super().__init__()
 
     def prepare(self, db):
+        '''Create a SWIProgram from the given LogicProgram'''
         db = ClauseDB.createFrom(db, builtins={})
         db.engine = self
         return SWIProgram(db)
 
-    def query(self, sp, term):
-        def_node = sp.db.get_node(sp.db.find(term))
-        nodes = [sp.db.get_node(c) for c in def_node.children]
-        return [Term(n.functor, *n.args) for n in nodes]
+    # def query(self, sp, term):
+    #
+    #     def_node = sp.db.get_node(sp.db.find(term))
+    #     nodes = [sp.db.get_node(c) for c in def_node.children]
+    #     return [Term(n.functor, *n.args) for n in nodes]
 
     def ground(self, sp, term, target=None, label=None, *args, **kwargs):
+        """Ground a given query term and store the result in the given ground program.
+
+       :param sp: SWIprogram
+       :param term: term to ground; variables should be represented as None
+       :param target: target logic formula to store grounding in (a new one is created if none is \
+       given)
+       :param label: optional label (query, evidence, ...)
+       :returns: logic formula (target if given)
+        """
         if target is None:
-            target = LogicFormula(keep_all=True)
-        proofs = self.get_proofs(str(term), sp, *args, **kwargs)
+            target = LogicFormula()
+        proofs = sp.query('prove({},Proofs)'.format(term))['Proofs']
         result = sp.add_proofs(proofs, target=target)
         return result
 
     def ground_all(self, sp, target=None, queries=None, evidence=None, *args, **kwargs):
+        """Ground all queries and evidence found in the the given database.
+
+       :param sp: SWIprogram
+       :param target: logic formula to ground into
+       :param queries: list of queries to evaluate instead of the ones in the logic program
+       :param evidence: list of evidence to evaluate instead of the ones in the logic program
+       :returns: ground program
+        """
         if target is None:
             target = LogicFormula()
         if queries is None:
@@ -35,7 +54,4 @@ class PrologEngine(GenericEngine):
         for q in queries:
             self.ground(sp, q, target, *args, **kwargs)
         return target
-
-    def get_proofs(self, q, program, *args, **kwargs):
-        return program.query('prove({},Proofs)'.format(q))['Proofs']
 
