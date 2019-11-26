@@ -5,7 +5,7 @@ from problog.tasks import dtproblog
 
 
 class TestTasks(unittest.TestCase):
-    def check_if_output_equals(self, dt_file, expected_output):
+    def dt_problog_check_if_output_equals(self, dt_file, expected_output):
         real_file_name = "./../../test/dtproblog/" + dt_file
         result = dtproblog.main([real_file_name])
         print("RESULT", dt_file, result)
