@@ -13,11 +13,11 @@ class TestTasks(unittest.TestCase):
         self.assertEqual(expected_output, result[1])
 
     def test_dt_problog(self):
-        self.check_if_output_equals("ex1.pl", ({Term("b"): 1}, 1.7999999999999998, {"eval": 2}))
-        self.check_if_output_equals("ex2.pl", ({Term("c"): 1}, 1.7999999999999998, {"eval": 2}))
-        self.check_if_output_equals("ex3.pl", ({Term("a"): 1}, 1.7999999999999998, {"eval": 2}))
-        self.check_if_output_equals("ex4.pl", ({Term("b"): 1, Term("c"): 1}, 3, {"eval": 4}))
-        self.check_if_output_equals("ex5.pl", ({Term("a"): 1, Term("c"): 1}, 1.7999999999999998, {"eval": 4}))
+        self.dt_problog_check_if_output_equals("ex1.pl", ({Term("b"): 1}, 1.7999999999999998, {"eval": 2}))
+        self.dt_problog_check_if_output_equals("ex2.pl", ({Term("c"): 1}, 1.7999999999999998, {"eval": 2}))
+        self.dt_problog_check_if_output_equals("ex3.pl", ({Term("a"): 1}, 1.7999999999999998, {"eval": 2}))
+        self.dt_problog_check_if_output_equals("ex4.pl", ({Term("b"): 1, Term("c"): 1}, 3, {"eval": 4}))
+        self.dt_problog_check_if_output_equals("ex5.pl", ({Term("a"): 1, Term("c"): 1}, 1.7999999999999998, {"eval": 4}))
 
 
 if __name__ == '__main__':
