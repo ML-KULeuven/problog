@@ -22,8 +22,6 @@ Implementation of Prolog / ProbLog builtins.
     limitations under the License.
 """
 
-from __future__ import print_function
-
 from .logic import term2str, Term, Clause, Constant, term2list, list2term, \
     is_ground, is_variable, Var, AnnotatedDisjunction, Object
 from .program import PrologFile

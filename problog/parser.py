@@ -21,8 +21,6 @@ Efficient low-level parser for Prolog programs.
     See the License for the specific language governing permissions and
     limitations under the License.
 """
-from __future__ import print_function
-
 from .errors import ParseError as CoreParseError
 
 LINE_COMMENT = '%'

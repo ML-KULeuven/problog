@@ -1,5 +1,3 @@
-from __future__ import print_function
-
 from problog.logic import unquote, make_safe, list2term, Term
 from problog.extern import problog_export, problog_export_raw
 

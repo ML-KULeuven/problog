@@ -1,5 +1,3 @@
-from __future__ import print_function
-
 from .util import subprocess_check_output, mktempfile, Timer
 from logging import getLogger
 from .logic import AnnotatedDisjunction, list2term, Term, Clause, Or, Constant

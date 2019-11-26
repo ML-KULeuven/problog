@@ -2,8 +2,6 @@
 # -*- coding: utf-8 -*-
 #
 
-from __future__ import print_function
-
 import sys
 import igraph
 from PyQt4.QtGui import *

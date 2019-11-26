@@ -22,9 +22,6 @@ Anytime evaluation using best proofs.
     limitations under the License.
 """
 
-from __future__ import print_function
-
-
 from .core import transform
 from .formula import LogicDAG
 from .constraint import TrueConstraint, ClauseConstraint

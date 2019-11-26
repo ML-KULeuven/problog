@@ -21,7 +21,6 @@ Forward compilation using TP-operator.
     See the License for the specific language governing permissions and
     limitations under the License.
 """
-from __future__ import print_function
 from .formula import LogicFormula, OrderedSet, atom, pn_weight
 from .dd_formula import DD
 from .sdd_formula import SDD

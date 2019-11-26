@@ -21,8 +21,6 @@ Grounding engine to transform a ProbLog program into a propositional formula.
     See the License for the specific language governing permissions and
     limitations under the License.
 """
-from __future__ import print_function
-
 import logging
 
 from collections import defaultdict

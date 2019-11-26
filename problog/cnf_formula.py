@@ -22,8 +22,6 @@ Provides access to CNF and weighted CNF.
     See the License for the specific language governing permissions and
     limitations under the License.
 """
-from __future__ import print_function
-
 from .formula import BaseFormula, LogicDAG
 
 from .core import transform

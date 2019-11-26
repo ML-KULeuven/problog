@@ -22,8 +22,6 @@ Data structures for specifying propositional constraints.
     limitations under the License.
 """
 
-from __future__ import print_function
-
 from .errors import InvalidValue
 from .logic import Term, Constant
 

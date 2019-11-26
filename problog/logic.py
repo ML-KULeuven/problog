@@ -77,7 +77,6 @@ This module contains basic logic constructs.
     limitations under the License.
 
 """
-from __future__ import print_function
 from __future__ import division  # consistent behaviour of / and // in python 2 and 3
 import functools
 import math

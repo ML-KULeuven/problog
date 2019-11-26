@@ -23,8 +23,6 @@ Cycle breaking in propositional formulae.
 """
 
 
-from __future__ import print_function
-
 from .logic import Term
 from .core import transform
 from .util import Timer

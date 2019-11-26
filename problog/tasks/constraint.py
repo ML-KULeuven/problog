@@ -1,5 +1,3 @@
-from __future__ import print_function
-
 import sys
 from problog.program import PrologFile, ExtendedPrologFactory
 from problog.engine import DefaultEngine

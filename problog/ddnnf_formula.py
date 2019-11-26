@@ -21,8 +21,6 @@ Provides access to d-DNNF formulae.
     See the License for the specific language governing permissions and
     limitations under the License.
 """
-from __future__ import print_function
-
 import tempfile
 import os
 import subprocess

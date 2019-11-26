@@ -1,5 +1,3 @@
-from __future__ import print_function
-
 from problog.extern import problog_export, problog_export_nondet, problog_export_raw
 
 from problog.logic import Term, Constant

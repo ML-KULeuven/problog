@@ -22,9 +22,6 @@ Common interface to decision diagrams (BDD, SDD).
     limitations under the License.
 """
 
-from __future__ import print_function
-
-
 from .util import Timer, mktempfile
 from .formula import LogicFormula, atom, LogicNNF
 from .evaluator import EvaluatableDSP, Evaluator, FormulaEvaluatorNSP, SemiringLogProbability, SemiringProbability

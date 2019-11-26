@@ -6,8 +6,6 @@ bn2problog.py
 Created by Wannes Meert on 06-03-2017.
 Copyright (c) 2016 KU Leuven. All rights reserved.
 """
-from __future__ import print_function
-
 import sys
 import os
 import argparse

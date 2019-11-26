@@ -21,8 +21,6 @@ Provides common interface for evaluation of weighted logic formulas.
     See the License for the specific language governing permissions and
     limitations under the License.
 """
-from __future__ import print_function
-
 import math
 
 from .core import ProbLogObject, transform_allow_subclass

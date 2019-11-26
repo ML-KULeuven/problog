@@ -1,5 +1,3 @@
-from __future__ import print_function
-
 from problog.extern import problog_export
 from problog.evaluator import Semiring
 

@@ -2,9 +2,6 @@
 Maximum A-Posteriori inference for ProbLog (MAP)
 """
 
-from __future__ import print_function
-
-
 from .. import get_evaluatable
 from ..program import PrologFile
 from ..formula import LogicFormula

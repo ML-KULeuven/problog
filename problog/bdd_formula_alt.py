@@ -22,8 +22,6 @@ Provides access to Binary Decision Diagrams (BDDs).
     limitations under the License.
 """
 
-from __future__ import print_function
-
 from .formula import LogicDAG
 from .core import transform
 from .errors import InstallError

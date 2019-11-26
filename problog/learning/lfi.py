@@ -41,8 +41,6 @@ It uses the following extensions of ProbLog's classes:
 
 """
 
-from __future__ import print_function
-
 import sys
 import random
 import math

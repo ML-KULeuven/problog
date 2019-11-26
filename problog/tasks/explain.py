@@ -18,8 +18,6 @@
     limitations under the License.
 """
 
-from __future__ import print_function
-
 from ..program import PrologFile
 from ..engine import DefaultEngine
 from ..util import init_logger, format_dictionary
