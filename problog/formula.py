@@ -492,19 +492,11 @@ class LogicFormula(BaseFormula):
         if self._use_string_names:
             name = str(name)
 
-        if self.is_probabilistic(key):
+        if not keep_name and self.is_probabilistic(key):
             node = self.get_node(abs(key))
-            ntype = type(node).__name__
-            if key < 0:
-                lname = -name
-            else:
-                lname = name
-            if not keep_name:
-                if ntype == 'atom':
-                    node = type(node)(*(node[:-2] + (lname, node[-1])))  #TODO Can't we replace with node.name = ..?
-                else:
-                    node = type(node)(*(node[:-1] + (lname,)))
-                self._update(abs(key), node)
+            lname = -name if key < 0 else name
+            node = node._replace(name=lname)
+            self._update(abs(key), node)
 
         BaseFormula.add_name(self, name, key, label)
 
