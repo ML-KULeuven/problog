@@ -2,6 +2,7 @@ import os.path
 import sys
 import unittest
 from os import path
+from pathlib import Path
 
 from problog.logic import Term, Constant
 from problog.tasks import dtproblog
@@ -11,14 +12,15 @@ if __name__ == "__main__":
         0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../"))
     )
 
+dt_problog_test_folder = Path("./../../test/dtproblog/")
 
 class TestTasks(unittest.TestCase):
     def dt_problog_check_if_output_equals(self, dt_file, expected_choices, expected_score):
-        real_file_name = "./../../test/dtproblog/" + dt_file
-        file_exists = path.exists(real_file_name)
-        self.assertTrue(file_exists, msg="File " + real_file_name + " was not found. Maybe this is a pathing issue?")
+        real_file_name = dt_problog_test_folder / dt_file
+        file_exists = path.exists(str(real_file_name))
+        self.assertTrue(file_exists, msg="File " + str(real_file_name) + " was not found. Maybe this is a pathing issue?")
         if file_exists:
-            result = dtproblog.main([real_file_name])
+            result = dtproblog.main([str(real_file_name)])
             if result[0]:
                 choices, score, stats = result[1]
                 self.assertEqual(expected_choices, choices)
