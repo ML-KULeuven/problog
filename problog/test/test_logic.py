@@ -47,14 +47,14 @@ class TestLogic(unittest.TestCase):
         self.assertFalse(c3 == c4)  # Different because of unification
 
     def test_not(self):
-        c1 = Not("\+", Term("a"))
+        c1 = Not("\\+", Term("a"))
         c2 = ~Term("a")
         c3 = Not("not", Term("a"))
         self.assertTrue(c1 == c2)
         self.assertTrue(c1 == c3)
 
         c4 = And(Term("a"), Not("not", Term("b")))
-        c5 = And(Term("a"), Not("\+", Term("b")))
+        c5 = And(Term("a"), Not("\\+", Term("b")))
         self.assertTrue(c4 == c5)
 
     def test_lshift(self):
