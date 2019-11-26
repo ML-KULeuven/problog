@@ -753,7 +753,8 @@ class LogicFormula(BaseFormula):
                 content = tuple(OrderedSet(content))
             else:  # any_order
                 # can also merge (a, b) and (b, a)
-                content = tuple(set(content))
+                content = tuple(OrderedSet(content))
+                #content = tuple(set(content))
 
             # Empty OR node fails, AND node is true
             if not content and not placeholder:
