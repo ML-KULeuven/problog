@@ -1201,10 +1201,12 @@ class LFIProblem(LogicProgram):
                 w = 0.0
                 for key in keys:
                     w += sum(self._get_weight(i, key, strict=False) for i in idx)
-                n = (
-                    available_prob / w
-                )  # Some part of probability might be taken by non-learnable weights in AD.
-
+                if w != 0:
+                    n = (
+                        available_prob / w
+                    )  # Some part of probability might be taken by non-learnable weights in AD.
+                else:
+                    n = available_prob
                 for i in idx:
                     self._set_weight(
                         i,
@@ -1216,9 +1218,12 @@ class LFIProblem(LogicProgram):
                     )
             else:
                 w = sum(self._get_weight(i, keys[0], strict=False) for i in idx)
-                n = (
-                    available_prob / w
-                )  # Some part of probability might be taken by non-learnable weights in AD.
+                if w != 0:
+                    n = (
+                        available_prob / w
+                    )  # Some part of probability might be taken by non-learnable weights in AD.
+                else:
+                    n = available_prob
                 for i in idx:
                     self._set_weight(
                         i, keys[0], self._get_weight(i, keys[0], strict=False) * n

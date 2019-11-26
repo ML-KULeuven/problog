@@ -64,7 +64,6 @@ def createTestLFI(filename, useparents = False):
         assert(expected == outlines)
     return test
 
-
 if __name__ == '__main__':
     filenames = sys.argv[1:]
 
