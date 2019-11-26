@@ -4,8 +4,8 @@ from time import time
 
 from problog.core import ProbLogObject
 from problog.logic import unquote, term2list, ArithmeticError, Term, Constant
-from problog.prolog_engine.swip import parse
-from pyswip.ThreadedProlog import ThreadedProlog
+from swip import parse
+from threaded_prolog import ThreadedProlog
 
 
 def handle_prob(prob):
@@ -51,15 +51,7 @@ class SWIProgram(ProbLogObject):
         self.index_dict = dict()
         self.prolog = ThreadedProlog()
         self.prolog.consult(str(Path(__file__).parent / consult))
-        if self.db is not None:
-            for n in self.db.iter_nodes():
-                ntype = type(n).__name__
-                if ntype == 'fact':
-                    self.add_fact(n)
-                elif ntype == 'clause':
-                    self.add_clause(n)
-                elif ntype == 'choice':
-                    raise Exception('choices not implemented')
+        self.parse_db()
 
     def to_str(self, node):
         ntype = type(node).__name__
@@ -92,6 +84,11 @@ class SWIProgram(ProbLogObject):
         self.clauses.append(
             (i, handle_functor(node.functor, node.args), body))
         self.prolog.assertz('cl({},({}), 1.0)'.format(self.clauses[-1][1], self.clauses[-1][2]))
+
+    def add_directive(self, node):
+        print(node)
+        print(vars(node))
+        pass
 
     def get_lines(self):
         lines = ['cl({},({}),1.0)'.format(c[1], c[2]) for c in self.clauses]
@@ -136,8 +133,8 @@ class SWIProgram(ProbLogObject):
         query = str(query)
         if profile > 0:
             start = time()
-        if profile > 1:
-            query = 'profile((between(1,100,_),{},fail);true)'.format(query)
+            if profile > 1:
+                query = 'profile((between(1,100,_),{},fail);true)'.format(query)
         result = list(self.prolog.query(query))
         if profile > 0:
             print('Query: {} answered in {} seconds'.format(query, time() - start))
@@ -154,3 +151,24 @@ class SWIProgram(ProbLogObject):
             return out
         else:
             raise (Exception('Expected exactly one result, got {}'.format(len(result))))
+
+    def parse_call(self, node):
+        pass
+
+    def parse_db(self):
+        """
+        Parse the database (ClauseDB) into a valid SWI-Prolog
+        :return: Nothing (Update the current object)
+        """
+        if self.db is not None:
+            for n in self.db.iter_nodes():
+                ntype = type(n).__name__
+                if ntype == 'fact':
+                    self.add_fact(n)
+                elif ntype == 'call':
+                    self.parse_call(n)
+                elif ntype == 'clause':
+                    if not n.functor == '_directive':
+                        self.add_clause(n)
+                elif ntype == 'choice':
+                    raise Exception('choices not implemented')
