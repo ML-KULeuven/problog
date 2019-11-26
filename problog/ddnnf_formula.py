@@ -40,9 +40,9 @@ class DSharpError(CompilationError):
     """DSharp has crashed."""
 
     def __init__(self):
-        msg = 'DSharp has encountered an error'
-        if system_info['os'] == 'darwin':
-            msg += '. This is a known issue. See KNOWN_ISSUES for details on how to resolve this problem'
+        msg = "DSharp has encountered an error"
+        if system_info["os"] == "darwin":
+            msg += ". This is a known issue. See KNOWN_ISSUES for details on how to resolve this problem"
         CompilationError.__init__(self, msg)
 
 
@@ -86,7 +86,9 @@ class SimpleDDNNFEvaluator(Evaluator):
         return result
 
     def evaluate_evidence(self, recompute=False):
-        return self.semiring.result(self._evaluate_evidence(recompute=recompute), self.formula)
+        return self.semiring.result(
+            self._evaluate_evidence(recompute=recompute), self.formula
+        )
 
     # noinspection PyUnusedLocal
     def _evaluate_evidence(self, recompute=False):
@@ -129,7 +131,11 @@ class SimpleDDNNFEvaluator(Evaluator):
         (self.weights.get(0)).
         """
         result = self._get_weight(len(self.formula))
-        return self.semiring.times(result, self.weights.get(0)[0]) if self.weights.get(0) is not None else result
+        return (
+            self.semiring.times(result, self.weights.get(0)[0])
+            if self.weights.get(0) is not None
+            else result
+        )
 
     def _get_weight(self, index):
         if index == 0:
@@ -150,10 +156,13 @@ class SimpleDDNNFEvaluator(Evaluator):
 
     def set_evidence(self, index, value):
         curr_pos_weight, curr_neg_weight = self.weights.get(index)
-        pos, neg = self.semiring.to_evidence(curr_pos_weight, curr_neg_weight, sign=value)
+        pos, neg = self.semiring.to_evidence(
+            curr_pos_weight, curr_neg_weight, sign=value
+        )
 
-        if (value and self.semiring.is_zero(curr_pos_weight)) or \
-                (not value and self.semiring.is_zero(curr_neg_weight)):
+        if (value and self.semiring.is_zero(curr_pos_weight)) or (
+            not value and self.semiring.is_zero(curr_neg_weight)
+        ):
             raise InconsistentEvidenceError(self._deref_node(index))
 
         self.set_weight(index, pos, neg)
@@ -175,24 +184,24 @@ class SimpleDDNNFEvaluator(Evaluator):
             self.set_weight(index, self.semiring.zero(), neg)
 
     def _calculate_weight(self, key):
-        assert (key != 0)
-        assert (key is not None)
+        assert key != 0
+        assert key is not None
         # assert(key > 0)
 
         node = self.formula.get_node(abs(key))
         ntype = type(node).__name__
 
-        if ntype == 'atom':
+        if ntype == "atom":
             return self.semiring.one()
         else:
             assert key > 0
             childprobs = [self._get_weight(c) for c in node.children]
-            if ntype == 'conj':
+            if ntype == "conj":
                 p = self.semiring.one()
                 for c in childprobs:
                     p = self.semiring.times(p, c)
                 return p
-            elif ntype == 'disj':
+            elif ntype == "disj":
                 p = self.semiring.zero()
                 for c in childprobs:
                     p = self.semiring.plus(p, c)
@@ -203,12 +212,13 @@ class SimpleDDNNFEvaluator(Evaluator):
 
 class Compiler(object):
     """Interface to CNF to d-DNNF compiler tool."""
+
     __compilers = {}
 
     @classmethod
     def get_default(cls):
         """Get default compiler for this system."""
-        if system_info.get('c2d', False):
+        if system_info.get("c2d", False):
             return _compile_with_c2d
         else:
             return _compile_with_dsharp
@@ -235,19 +245,19 @@ class Compiler(object):
         cls.__compilers[name] = func
 
 
-if system_info.get('c2d', False):
+if system_info.get("c2d", False):
     # noinspection PyUnusedLocal
     @transform(CNF, DDNNF)
     def _compile_with_c2d(cnf, nnf=None, smooth=True, **kwdargs):
-        fd, cnf_file = tempfile.mkstemp('.cnf')
+        fd, cnf_file = tempfile.mkstemp(".cnf")
         os.close(fd)
-        nnf_file = cnf_file + '.nnf'
+        nnf_file = cnf_file + ".nnf"
         if smooth:
-            smoothl = ['-smooth_all']
+            smoothl = ["-smooth_all"]
         else:
             smoothl = []
 
-        cmd = ['cnf2dDNNF', '-dt_method', '0'] + smoothl + ['-reduce', '-in', cnf_file]
+        cmd = ["cnf2dDNNF", "-dt_method", "0"] + smoothl + ["-reduce", "-in", cnf_file]
 
         try:
             os.remove(cnf_file)
@@ -260,24 +270,23 @@ if system_info.get('c2d', False):
 
         return _compile(cnf, cmd, cnf_file, nnf_file)
 
-
-    Compiler.add('c2d', _compile_with_c2d)
+    Compiler.add("c2d", _compile_with_c2d)
 
 
 # noinspection PyUnusedLocal
 @transform(CNF, DDNNF)
 def _compile_with_dsharp(cnf, nnf=None, smooth=True, **kwdargs):
     result = None
-    with Timer('DSharp compilation'):
-        fd1, cnf_file = tempfile.mkstemp('.cnf')
-        fd2, nnf_file = tempfile.mkstemp('.nnf')
+    with Timer("DSharp compilation"):
+        fd1, cnf_file = tempfile.mkstemp(".cnf")
+        fd2, nnf_file = tempfile.mkstemp(".nnf")
         os.close(fd1)
         os.close(fd2)
         if smooth:
-            smoothl = ['-smoothNNF']
+            smoothl = ["-smoothNNF"]
         else:
             smoothl = []
-        cmd = ['dsharp', '-Fnnf', nnf_file] + smoothl + ['-disableAllLits', cnf_file]  #
+        cmd = ["dsharp", "-Fnnf", nnf_file] + smoothl + ["-disableAllLits", cnf_file]  #
 
         try:
             result = _compile(cnf, cmd, cnf_file, nnf_file)
@@ -296,7 +305,7 @@ def _compile_with_dsharp(cnf, nnf=None, smooth=True, **kwdargs):
     return result
 
 
-Compiler.add('dsharp', _compile_with_dsharp)
+Compiler.add("dsharp", _compile_with_dsharp)
 
 
 def _compile(cnf, cmd, cnf_file, nnf_file):
@@ -320,14 +329,14 @@ def _compile(cnf, cmd, cnf_file, nnf_file):
 
         return nnf
     else:
-        with open(cnf_file, 'w') as f:
+        with open(cnf_file, "w") as f:
             f.write(cnf.to_dimacs())
 
         attempts_left = 1
         success = False
         while attempts_left and not success:
             try:
-                with open(os.devnull, 'w') as OUT_NULL:
+                with open(os.devnull, "w") as OUT_NULL:
                     subprocess_check_call(cmd, stdout=OUT_NULL)
                 success = True
             except subprocess.CalledProcessError as err:
@@ -352,9 +361,9 @@ def _load_nnf(filename, cnf):
         lnum = 0
         for line in f:
             line = line.strip().split()
-            if line[0] == 'nnf':
+            if line[0] == "nnf":
                 pass
-            elif line[0] == 'L':
+            elif line[0] == "L":
                 name = int(line[1])
                 prob = weights.get(abs(name), True)
                 node = nnf.add_atom(abs(name), prob)
@@ -367,16 +376,16 @@ def _load_nnf(filename, cnf):
                         nnf.add_name(actual_name, node, label)
                     del names_inv[name]
                 lnum += 1
-            elif line[0] == 'A':
+            elif line[0] == "A":
                 children = map(lambda x: line2node[int(x)], line[2:])
                 line2node[lnum] = nnf.add_and(children)
                 lnum += 1
-            elif line[0] == 'O':
+            elif line[0] == "O":
                 children = map(lambda x: line2node[int(x)], line[3:])
                 line2node[lnum] = nnf.add_or(children)
                 lnum += 1
             else:
-                print('Unknown line type')
+                print("Unknown line type")
         for name in names_inv:
             for actual_name, label in names_inv[name]:
                 if name == 0:

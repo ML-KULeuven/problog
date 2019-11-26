@@ -22,6 +22,7 @@ from problog.evaluator import SemiringProbability
 from problog.formula import LogicFormula, pn_weight
 from problog.logic import Term
 from problog.program import PrologString
+
 # noinspection PyBroadException
 from problog.test.test_system import SemiringProbabilityNSPCopy
 
@@ -43,7 +44,6 @@ else:
 
 
 class TestEvaluator(unittest.TestCase):
-
     def test_evaluate_custom_weights(self):
         """
         Tests evaluate() with custom weights (not the ones from the ProbLog file)
@@ -66,7 +66,7 @@ class TestEvaluator(unittest.TestCase):
         semiring = TestSemiringProbabilityNSP()
         kc_class = get_evaluatable(name=eval_name, semiring=semiring)
         kc = kc_class.create_from(lf)
-        a = Term('a')
+        a = Term("a")
 
         # without custom weights
         results = kc.evaluate(semiring=semiring)
@@ -98,10 +98,12 @@ class TestEvaluator(unittest.TestCase):
                 return a
 
         weights = {0: pn_weight(0.3, 0.7), a: pn_weight(0.1, 0.1)}
-        results = kc.evaluate(index=0, semiring=TestSemiringProbabilityIgnoreNormalize(), weights=weights)
+        results = kc.evaluate(
+            index=0, semiring=TestSemiringProbabilityIgnoreNormalize(), weights=weights
+        )
         self.assertEqual(0.06, results)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     suite = unittest.TestLoader().loadTestsFromTestCase(TestEvaluator)
     unittest.TextTestRunner(verbosity=2).run(suite)

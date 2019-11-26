@@ -22,7 +22,7 @@ import sys
 
 sys.setrecursionlimit(10000)
 
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../')))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../")))
 
 from problog.errors import ProbLogError
 
@@ -38,12 +38,14 @@ def print_result_prob(d, output, precision=8):
     result = {}
     success, d = d
     if success:
-        result['SUCCESS'] = True
-        result['probs'] = [[str(n), round(p, precision), n.loc[1], n.loc[2]] for n, p in d.items()]
+        result["SUCCESS"] = True
+        result["probs"] = [
+            [str(n), round(p, precision), n.loc[1], n.loc[2]] for n, p in d.items()
+        ]
     else:
-        result['SUCCESS'] = False
-        result['err'] = process_error(d)
-    print(200, 'application/json', json.dumps(result), file=output)
+        result["SUCCESS"] = False
+        result["err"] = process_error(d)
+    print(200, "application/json", json.dumps(result), file=output)
     return 0
 
 
@@ -58,12 +60,14 @@ def print_result_mpe(d, output, precision=8):
     result = {}
     success, d = d
     if success:
-        result['SUCCESS'] = True
-        result['atoms'] = list(map(lambda n: (str(-n), False) if n.is_negated() else (str(n), True), d))
+        result["SUCCESS"] = True
+        result["atoms"] = list(
+            map(lambda n: (str(-n), False) if n.is_negated() else (str(n), True), d)
+        )
     else:
-        result['SUCCESS'] = False
-        result['err'] = process_error(d)
-    print(200, 'application/json', json.dumps(result), file=output)
+        result["SUCCESS"] = False
+        result["err"] = process_error(d)
+    print(200, "application/json", json.dumps(result), file=output)
     return 0
 
 
@@ -78,12 +82,12 @@ def print_result_sample(d, output, **kwdargs):
     result = {}
     success, d = d
     if success:
-        result['SUCCESS'] = True
-        result['results'] = [[(str(k), str(v)) for k, v in dc.items()] for dc in d]
+        result["SUCCESS"] = True
+        result["results"] = [[(str(k), str(v)) for k, v in dc.items()] for dc in d]
     else:
-        result['SUCCESS'] = False
-        result['err'] = process_error(d)
-    print(200, 'application/json', json.dumps(result), file=output)
+        result["SUCCESS"] = False
+        result["err"] = process_error(d)
+    print(200, "application/json", json.dumps(result), file=output)
     return 0
 
 
@@ -91,17 +95,17 @@ def process_error(err):
     if isinstance(err, ProbLogError):
         return vars(err)
     else:
-        return {'message': 'An unexpected error has occurred (%s).' % err}
+        return {"message": "An unexpected error has occurred (%s)." % err}
 
 
 def main(args):
     task = args[0]
-    args = list(args[:-1]) + ['-o', args[-1]]
+    args = list(args[:-1]) + ["-o", args[-1]]
     from problog.tasks import run_task
 
-    if task == 'mpe':
+    if task == "mpe":
         print_result = print_result_mpe
-    elif task == 'sample':
+    elif task == "sample":
         print_result = print_result_sample
     else:
         print_result = print_result_prob
@@ -109,5 +113,5 @@ def main(args):
     run_task(args, print_result)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main(sys.argv[1:])

@@ -18,6 +18,7 @@ limitations under the License.
 import glob
 import os
 import subprocess
+
 # Load general Python modules
 import sys
 import tempfile
@@ -26,7 +27,7 @@ import traceback
 import resource
 
 # Load ProbLog modules
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from problog.program import PrologString
 from problog.ddnnf_formula import DDNNF
 from problog.formula import LogicFormula
@@ -46,10 +47,8 @@ if sys.version_info.major == 2:
     import BaseHTTPServer
     import urlparse
 
-
     def toBytes(string):
         return bytes(string)
-
 
     import urllib
 
@@ -58,10 +57,8 @@ else:
     import http.server as BaseHTTPServer
     import urllib.parse as urlparse
 
-
     def toBytes(string):
-        return bytes(string, 'UTF-8')
-
+        return bytes(string, "UTF-8")
 
     url_decode = urlparse.unquote_plus
 
@@ -88,12 +85,14 @@ class handle_url(object):
 
 def root_path(relative_path):
     """Translate URL path to file system path."""
-    return os.path.abspath(os.path.join(os.path.dirname(__file__), relative_path.lstrip('/')))
+    return os.path.abspath(
+        os.path.join(os.path.dirname(__file__), relative_path.lstrip("/"))
+    )
 
 
 def model_path(*args):
     """Translate model path to file system path."""
-    return os.path.abspath(os.path.join(os.path.dirname(__file__), '../test/', *args))
+    return os.path.abspath(os.path.join(os.path.dirname(__file__), "../test/", *args))
 
 
 def call_process(cmd, timeout, memout):
@@ -116,19 +115,19 @@ def call_process(cmd, timeout, memout):
     return subprocess.check_output(cmd, preexec_fn=setlimits)
 
 
-@handle_url('/problog')
+@handle_url("/problog")
 def run_problog(model):
     """Evaluate the given model and return the probabilities."""
     model = model[0]
     knowledge = KNOWLEDGE
 
-    handle, tmpfile = tempfile.mkstemp('.pl')
-    with open(tmpfile, 'w') as f:
+    handle, tmpfile = tempfile.mkstemp(".pl")
+    with open(tmpfile, "w") as f:
         f.write(model)
 
-    handle, outfile = tempfile.mkstemp('.out')
+    handle, outfile = tempfile.mkstemp(".out")
 
-    cmd = ['python', root_path('run_problog.py'), tmpfile, outfile]
+    cmd = ["python", root_path("run_problog.py"), tmpfile, outfile]
 
     try:
         call_process(cmd, DEFAULT_TIMEOUT, DEFAULT_MEMOUT * (1 << 30))
@@ -138,7 +137,7 @@ def run_problog(model):
         code, datatype, datavalue = result.split(None, 2)
         return int(code), datatype, datavalue
     except subprocess.CalledProcessError:
-        return 500, 'text/plain', 'ProbLog evaluation exceeded time or memory limit'
+        return 500, "text/plain", "ProbLog evaluation exceeded time or memory limit"
 
     # try :
     #     formula = knowledge.createFrom( PrologString(model) )
@@ -148,7 +147,7 @@ def run_problog(model):
     #     return process_error(err)
 
 
-@handle_url('/ground')
+@handle_url("/ground")
 def run_ground(model):
     """Ground the program given by model and return an SVG of the resulting formula."""
     model = model[0]
@@ -160,14 +159,14 @@ def run_ground(model):
     try:
         formula = knowledge.createFrom(PrologString(model))
 
-        handle, filename = tempfile.mkstemp('.dot')
-        with open(filename, 'w') as f:
+        handle, filename = tempfile.mkstemp(".dot")
+        with open(filename, "w") as f:
             f.write(formula.toDot())
         print(formula)
-        result = subprocess.check_output(['dot', '-Tsvg', filename]).decode('utf-8')
-        content_type = 'application/json'
+        result = subprocess.check_output(["dot", "-Tsvg", filename]).decode("utf-8")
+        content_type = "application/json"
         # EngineLogger.setClass(None)
-        return 200, content_type, json.dumps({'svg': result, 'txt': str(formula)})
+        return 200, content_type, json.dumps({"svg": result, "txt": str(formula)})
     except Exception as err:
         # EngineLogger.setClass(None)
         return process_error(err)
@@ -176,43 +175,47 @@ def run_ground(model):
 def process_error(err):
     """Take the given error raise by ProbLog and produce a meaningful error message."""
     err_type = type(err).__name__
-    if err_type == 'ParseException':
-        return 400, 'text/plain', 'Parsing error on %s:%s: %s.\n%s' % (err.lineno, err.col, err.msg, err.line)
-    elif err_type == 'UnknownClause':
-        return 400, 'text/plain', 'Predicate undefined: \'%s\'.' % (err)
-    elif err_type == 'PrologInstantiationError':
-        return 400, 'text/plain', 'Arithmetic operation on uninstantiated variable.'
-    elif err_type == 'UnboundProgramError':
-        return 400, 'text/plain', 'Unbounded program or program too large.'
+    if err_type == "ParseException":
+        return (
+            400,
+            "text/plain",
+            "Parsing error on %s:%s: %s.\n%s"
+            % (err.lineno, err.col, err.msg, err.line),
+        )
+    elif err_type == "UnknownClause":
+        return 400, "text/plain", "Predicate undefined: '%s'." % (err)
+    elif err_type == "PrologInstantiationError":
+        return 400, "text/plain", "Arithmetic operation on uninstantiated variable."
+    elif err_type == "UnboundProgramError":
+        return 400, "text/plain", "Unbounded program or program too large."
     else:
         traceback.print_exc()
-        return 400, 'text/plain', 'Unknown error: %s' % (err_type)
+        return 400, "text/plain", "Unknown error: %s" % (err_type)
 
 
-@handle_url('/models')
+@handle_url("/models")
 def list_models():
     def extract_name(f):
         return os.path.splitext(os.path.basename(f))[0]
 
-    files = map(extract_name, glob.glob(model_path('*.pl')))
+    files = map(extract_name, glob.glob(model_path("*.pl")))
 
-    return 200, 'application/json', json.dumps(files)
+    return 200, "application/json", json.dumps(files)
 
 
-@handle_url('/model')
+@handle_url("/model")
 def load_model(name):
     name = name[0]
-    filename = model_path(name + '.pl')
+    filename = model_path(name + ".pl")
     try:
         with open(filename) as f:
             data = f.read()
-        return 200, 'text/plain', data
+        return 200, "text/plain", data
     except Exception:
-        return 404, 'text/plain', 'File not found!'
+        return 404, "text/plain", "File not found!"
 
 
 class ProbLogHTTP(BaseHTTPServer.BaseHTTPRequestHandler):
-
     def do_POST(self):
 
         numberOfBytes = int(self.headers["Content-Length"])
@@ -245,7 +248,8 @@ class ProbLogHTTP(BaseHTTPServer.BaseHTTPRequestHandler):
 
     def serveFile(self, filename):
         """Serve a file."""
-        if filename == '/': filename = '/index.html'
+        if filename == "/":
+            filename = "/index.html"
 
         filetype, encoding = mimetypes.guess_type(filename)
         filename = root_path(filename)
@@ -261,22 +265,35 @@ class ProbLogHTTP(BaseHTTPServer.BaseHTTPRequestHandler):
         except:
             self.send_response(404)
             self.end_headers()
-            self.wfile.write(toBytes('File not found!'))
+            self.wfile.write(toBytes("File not found!"))
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('--port', '-p', type=int, default=DEFAULT_PORT, help="Server listening port")
-    parser.add_argument('--timeout', '-t', type=int, default=DEFAULT_TIMEOUT, help="Time limit in seconds")
-    parser.add_argument('--memout', '-m', type=float, default=DEFAULT_MEMOUT, help="Memory limit in Gb")
+    parser.add_argument(
+        "--port", "-p", type=int, default=DEFAULT_PORT, help="Server listening port"
+    )
+    parser.add_argument(
+        "--timeout",
+        "-t",
+        type=int,
+        default=DEFAULT_TIMEOUT,
+        help="Time limit in seconds",
+    )
+    parser.add_argument(
+        "--memout", "-m", type=float, default=DEFAULT_MEMOUT, help="Memory limit in Gb"
+    )
     args = parser.parse_args(sys.argv[1:])
 
     DEFAULT_TIMEOUT = args.timeout
     DEFAULT_MEMOUT = args.memout
-    print('Starting server on port %d (timeout=%d, memout=%dGb)' % (args.port, DEFAULT_TIMEOUT, DEFAULT_MEMOUT))
+    print(
+        "Starting server on port %d (timeout=%d, memout=%dGb)"
+        % (args.port, DEFAULT_TIMEOUT, DEFAULT_MEMOUT)
+    )
 
-    server_address = ('', args.port)
+    server_address = ("", args.port)
     httpd = BaseHTTPServer.HTTPServer(server_address, ProbLogHTTP)
     httpd.serve_forever()

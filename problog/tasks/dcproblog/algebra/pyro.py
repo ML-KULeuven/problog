@@ -11,7 +11,7 @@ str2distribution = {
     "normalMV": pyro.distributions.MultivariateNormal,
     "uniform": pyro.distributions.Uniform,
     "beta": pyro.distributions.Beta,
-    "poisson": pyro.distributions.Poisson
+    "poisson": pyro.distributions.Poisson,
 }
 
 
@@ -139,11 +139,11 @@ class Pyro(Algebra):
     def construct_density(self, name, dim, functor, args):
         args = [a.value for a in args]
         if functor in (
-                pyro.distributions.Delta,
-                pyro.distributions.Normal,
-                pyro.distributions.Uniform,
-                pyro.distributions.Beta,
-                pyro.distributions.Poisson
+            pyro.distributions.Delta,
+            pyro.distributions.Normal,
+            pyro.distributions.Uniform,
+            pyro.distributions.Beta,
+            pyro.distributions.Poisson,
         ):
             # return functor(*args)
             density = functor(*args)

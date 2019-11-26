@@ -27,12 +27,24 @@ class EvalAnd(EvalNode):
                 #     return (self.to_complete==1),
                 # [ self.createCall( self.node.children[1], context=result, parent=self.parent ) ]
                 # else :
-                return False, [
-                    self.createCall(self.node.children[1], context=result, identifier=node)]
+                return (
+                    False,
+                    [
+                        self.createCall(
+                            self.node.children[1], context=result, identifier=node
+                        )
+                    ],
+                )
             else:
                 # Not the last result: default behaviour
-                return False, [
-                    self.createCall(self.node.children[1], context=result, identifier=node)]
+                return (
+                    False,
+                    [
+                        self.createCall(
+                            self.node.children[1], context=result, identifier=node
+                        )
+                    ],
+                )
         else:  # Result from the second node
             # Make a ground node
             # print(source, node)
@@ -59,14 +71,14 @@ class EvalAnd(EvalNode):
         if self.to_complete == 0:
             return True, self.notifyComplete()
         else:
-            assert (self.to_complete > 0)
+            assert self.to_complete > 0
             return False, []
 
     def node_str(self):  # pragma: no cover
-        return ''
+        return ""
 
     def __str__(self):  # pragma: no cover
-        return EvalNode.__str__(self) + ' tc: %s' % self.to_complete
+        return EvalNode.__str__(self) + " tc: %s" % self.to_complete
 
 
 class StackBasedEngineHAL(StackBasedEngine):

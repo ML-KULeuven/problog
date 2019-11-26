@@ -79,15 +79,15 @@ class FormulaEvaluatorHAL(FormulaEvaluator):
         else:
             node = self.formula.get_node(abs(index))
             ntype = type(node).__name__
-            if ntype == 'atom':
+            if ntype == "atom":
                 return self.semiring.one()
             else:
                 childprobs = [self.get_weight(c) for c in node.children]
-                if ntype == 'conj':
+                if ntype == "conj":
                     assert len(childprobs) == 2
                     p = self.semiring.times(*childprobs, index=index)
                     return p
-                elif ntype == 'disj':
+                elif ntype == "disj":
                     assert len(childprobs) >= 2
                     p = childprobs[0]
                     for cp in childprobs[1:]:

@@ -1,12 +1,12 @@
 import os
 import sys
 
-sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
+sys.path.append(os.path.join(os.path.dirname(__file__), "..", ".."))
 
 dcproblog_tasks = {}
-dcproblog_tasks['inference'] = 'dcproblog.tasks.inference'
+dcproblog_tasks["inference"] = "dcproblog.tasks.inference"
 
-dcproblog_default_task = 'inference'
+dcproblog_default_task = "inference"
 
 from problog.util import load_module
 

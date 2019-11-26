@@ -24,8 +24,10 @@ from problog.formula import LogicDAG
 from problog.program import PrologFile, DefaultPrologParser, ExtendedPrologFactory
 from problog.tasks.bayesnet import formula_to_bn
 
-if __name__ == '__main__':
-    sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')))
+if __name__ == "__main__":
+    sys.path.insert(
+        0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../"))
+    )
 
 from problog import root_path
 
@@ -47,12 +49,12 @@ def read_expected_result(filename):
         reading = False
         for l in f:
             l = l.strip()
-            if l.startswith('%Expected outcome:'):
+            if l.startswith("%Expected outcome:"):
                 reading = True
             elif reading:
-                if l.lower().startswith('% error'):
-                    return l[len('% error'):].strip()
-                elif l.startswith('%'):
+                if l.lower().startswith("% error"):
+                    return l[len("% error") :].strip()
+                elif l.startswith("%"):
                     result = result + "\n" + l[1:]
                 else:
                     reading = False
@@ -66,9 +68,14 @@ def createBNTestGeneric(filename, logspace=False):
         try:
             target = LogicDAG  # Break cycles
             gp = target.createFrom(
-                PrologFile(filename, parser=DefaultPrologParser(ExtendedPrologFactory())),
-                label_all=True, avoid_name_clash=False, keep_order=True,  # Necessary for to prolog
-                keep_duplicates=False)
+                PrologFile(
+                    filename, parser=DefaultPrologParser(ExtendedPrologFactory())
+                ),
+                label_all=True,
+                avoid_name_clash=False,
+                keep_order=True,  # Necessary for to prolog
+                keep_duplicates=False,
+            )
             bn = formula_to_bn(gp)
             computed = str(bn).strip()
         except Exception as err:
@@ -84,15 +91,15 @@ def createBNTestGeneric(filename, logspace=False):
     return test
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     filenames = sys.argv[1:]
 else:
-    filenames = glob.glob(root_path('test/bn', '*.pl'))
+    filenames = glob.glob(root_path("test/bn", "*.pl"))
 
 for testfile in filenames:
-    testname = 'test_bn_' + os.path.splitext(os.path.basename(testfile))[0]
+    testname = "test_bn_" + os.path.splitext(os.path.basename(testfile))[0]
     setattr(TestBNGeneric, testname, createBNTestGeneric(testfile, True))
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     suite = unittest.TestLoader().loadTestsFromTestCase(TestBNGeneric)
     unittest.TextTestRunner(verbosity=2).run(suite)

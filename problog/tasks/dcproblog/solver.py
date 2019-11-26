@@ -34,11 +34,21 @@ class AbstractABE(object):
 
 
 class InferenceSolver(object):
-    def __init__(self, abe_name, draw_diagram=False, dpath=None, file_name=None, n_samples=None, ttype=None,
-                 device=None):
+    def __init__(
+        self,
+        abe_name,
+        draw_diagram=False,
+        dpath=None,
+        file_name=None,
+        n_samples=None,
+        ttype=None,
+        device=None,
+    ):
         self.operator = SumOperator()
 
-        self.abstract_abe = AbstractABE(abe_name, n_samples=n_samples, ttype=ttype, device=device)
+        self.abstract_abe = AbstractABE(
+            abe_name, n_samples=n_samples, ttype=ttype, device=device
+        )
         self.draw_diagram = draw_diagram
         self.dpath = dpath
         self.file_name = file_name
@@ -60,8 +70,13 @@ class InferenceSolver(object):
         lf_hal = LogicFormulaHAL(db=model)
         model, evidence, ev_target = init_model(engine, model, target=lf_hal)
         free_variables = lf_hal.free_variables
-        lf_hal = LogicFormulaHAL.create_from(model, label_all=True, \
-                                             propagate_evidence=True, engine=engine, queries=queries)
+        lf_hal = LogicFormulaHAL.create_from(
+            model,
+            label_all=True,
+            propagate_evidence=True,
+            engine=engine,
+            queries=queries,
+        )
         density_queries = self.get_density_queries(lf_hal)
         density_values = lf_hal.density_values
 
@@ -75,7 +90,9 @@ class InferenceSolver(object):
 
     def calculate_probabilities(self, sdds, semiring, dde, **kwdargs):
         probabilities = OrderedDict()
-        e_evaluated = dde.evaluate_sdd(sdds["e"], semiring, normalization=True, evaluation_last=False)
+        e_evaluated = dde.evaluate_sdd(
+            sdds["e"], semiring, normalization=True, evaluation_last=False
+        )
         for q, qe_sdd in sdds["qe"].items():
             # if evalutation last true then sdd deref but produces error
             qe_evaluated = dde.evaluate_sdd(qe_sdd, semiring, evaluation_last=False)
@@ -98,21 +115,29 @@ class InferenceSolver(object):
         else:
             filepath = os.path.dirname(__file__)
 
-        diagram_name = os.path.join(filepath, 'diagrams/{}.gv').format(file_name)
+        diagram_name = os.path.join(filepath, "diagrams/{}.gv").format(file_name)
 
         try:
             from graphviz import Source
+
             g = Source(dot)
             g.render(diagram_name, view=False)
         except:
             pass
 
     def probability(self, program, **kwdargs):
-        lf_hal, density_queries, density_values, free_variables = self.ground(program, queries=None, **kwdargs)
+        lf_hal, density_queries, density_values, free_variables = self.ground(
+            program, queries=None, **kwdargs
+        )
         lf = break_cycles(lf_hal, LogicFormulaHAL(**kwdargs))
 
-        semiring = SemiringHAL(self.operator.get_neutral(), self.abstract_abe, density_values, density_queries,
-                               free_variables)
+        semiring = SemiringHAL(
+            self.operator.get_neutral(),
+            self.abstract_abe,
+            density_values,
+            density_queries,
+            free_variables,
+        )
         diagram = self.compile_formula(lf, **kwdargs)
 
         dde = diagram.get_evaluator(semiring=semiring, **kwdargs)
@@ -128,4 +153,8 @@ class InferenceSolver(object):
     def print_result(self, probabilities):
         for query in probabilities:
             q_str = str(query)
-            print("{query: >20}: {probability}".format(query=q_str, probability=probabilities[query].value))
+            print(
+                "{query: >20}: {probability}".format(
+                    query=q_str, probability=probabilities[query].value
+                )
+            )

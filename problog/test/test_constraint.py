@@ -14,12 +14,12 @@ def read_result(filename):
         reading = False
         for l in f:
             l = l.strip()
-            if l.startswith('%Expected outcome:'):
+            if l.startswith("%Expected outcome:"):
                 reading = True
             elif reading:
-                if l.lower().startswith('% error'):
-                    return l[len('% error'):].strip()
-                elif l.startswith('% '):
+                if l.lower().startswith("% error"):
+                    return l[len("% error") :].strip()
+                elif l.startswith("% "):
                     try:
                         query, prob = l[2:].rsplit(None, 1)
                         result[query.strip()] = float(prob.strip())
@@ -28,10 +28,10 @@ def read_result(filename):
                         result = {}
                 else:
                     reading = False
-            if l.startswith('query(') and l.find('% outcome:') >= 0:
-                pos = l.find('% outcome:')
-                query = l[6:pos].strip().rstrip('.').rstrip()[:-1]
-                prob = l[pos + 10:]
+            if l.startswith("query(") and l.find("% outcome:") >= 0:
+                pos = l.find("% outcome:")
+                query = l[6:pos].strip().rstrip(".").rstrip()[:-1]
+                prob = l[pos + 10 :]
                 result[query.strip()] = float(prob.strip())
         results.append(result)
     return results
@@ -39,16 +39,17 @@ def read_result(filename):
 
 class TestConstraints(unittest.TestCase):
     def test_constraints(self):
-        for filename in glob.glob(root_path('test/constraints', '*.pl')):
+        for filename in glob.glob(root_path("test/constraints", "*.pl")):
             try:
-                solutions = tasks.load_task('constraint').run(filename)
+                solutions = tasks.load_task("constraint").run(filename)
             except ImportError:
-                sys.stderr.write("No flatzinc support - The constraint tests are not performed.\n")
+                sys.stderr.write(
+                    "No flatzinc support - The constraint tests are not performed.\n"
+                )
                 return True
 
             solutions = [
-                {str(k): v for k, v in solution if v > 0.0}
-                for solution in solutions
+                {str(k): v for k, v in solution if v > 0.0} for solution in solutions
             ]
             expected = read_result(filename)
             self.assertTrue(solutions == expected)

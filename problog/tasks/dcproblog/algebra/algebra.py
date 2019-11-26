@@ -9,10 +9,18 @@ M_SUB = "-".translate(SUB)
 def get_algebra(abstract_abe, values, free_variables, **kwdargs):
     if abstract_abe.name == "psi":
         from .psi import PSI
+
         return PSI(values, free_variables)
     elif abstract_abe.name == "pyro":
         from .pyro import Pyro
-        return Pyro(values, free_variables, abstract_abe.n_samples, abstract_abe.ttype, abstract_abe.device)
+
+        return Pyro(
+            values,
+            free_variables,
+            abstract_abe.n_samples,
+            abstract_abe.ttype,
+            abstract_abe.device,
+        )
 
 
 def addS(a, b):
@@ -80,9 +88,7 @@ str2algebra = {
     ">=": geS,
     "=": eqS,
     "\=": neS,
-
     "list": list,
-
     "add": addS,
     "sub": subS,
     "mul": mulS,
@@ -91,8 +97,7 @@ str2algebra = {
     "pow": powS,
     "exp": expS,
     "sigmoid": sigmoidS,
-
-    "obs": obsS
+    "obs": obsS,
 }
 
 
@@ -119,8 +124,12 @@ class Algebra(object):
 
     @staticmethod
     def name2str(name):
-        name = "{term}{no_d}{M_SUB}{no_dim}".format(term=name[0], no_d=str(name[1]).translate(SUB),
-                                                    no_dim=str(name[2]).translate(SUB), M_SUB=M_SUB)
+        name = "{term}{no_d}{M_SUB}{no_dim}".format(
+            term=name[0],
+            no_d=str(name[1]).translate(SUB),
+            no_dim=str(name[2]).translate(SUB),
+            M_SUB=M_SUB,
+        )
         for c, rc in {"(": "__", ")": "", ",": "_"}.items():
             name = name.replace(c, rc)
         return name
@@ -161,7 +170,9 @@ class Algebra(object):
         if not density_name in self.random_values:
             density = self.density_values[density_name]
             args = [self.construct_algebraic_expression(a) for a in density.args]
-            self.make_values(density.name, density.dimension_values, density.functor, args)
+            self.make_values(
+                density.name, density.dimension_values, density.functor, args
+            )
         return self.random_values[density_name][dimension]
 
     def construct_algebraic_expression(self, expression):

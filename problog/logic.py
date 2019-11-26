@@ -95,12 +95,12 @@ def term2str(term):
     :rtype: str
     """
     if term is None:
-        return '_'
+        return "_"
     elif type(term) is int:
         if term >= 0:
-            return 'A%s' % (term + 1)
+            return "A%s" % (term + 1)
         else:
-            return 'X%s' % (-term)
+            return "X%s" % (-term)
     else:
         return str(term)
 
@@ -114,9 +114,10 @@ def list2term(lst):
     :rtype: Term
     """
     from .pypl import py2pl
-    tail = Term('[]')
+
+    tail = Term("[]")
     for e in reversed(lst):
-        tail = Term('.', py2pl(e), tail)
+        tail = Term(".", py2pl(e), tail)
     return tail
 
 
@@ -130,15 +131,16 @@ def term2list(term, deep=True):
     :rtype: list of Term
     """
     from .pypl import pl2py
+
     result = []
-    while not is_variable(term) and term.functor == '.' and term.arity == 2:
+    while not is_variable(term) and term.functor == "." and term.arity == 2:
         if deep:
             result.append(pl2py(term.args[0]))
         else:
             result.append(term.args[0])
         term = term.args[1]
-    if not term == Term('[]'):
-        raise ValueError('Expected fixed list.')
+    if not term == Term("[]"):
+        raise ValueError("Expected fixed list.")
     return result
 
 
@@ -171,7 +173,7 @@ def is_list(term):
     :param term: term to check
     :return: True if the term is a list.
     """
-    return not is_variable(term) and term.functor == '.' and term.arity == 2
+    return not is_variable(term) and term.functor == "." and term.arity == 2
 
 
 class Term(object):
@@ -193,10 +195,10 @@ class Term(object):
         self.__functor = functor
         self.__args = args
         self.__arity = len(self.__args)
-        self.probability = kwdargs.get('p')
-        self.location = kwdargs.get('location')
-        self.op_priority = kwdargs.get('priority')
-        self.op_spec = kwdargs.get('opspec')
+        self.probability = kwdargs.get("p")
+        self.location = kwdargs.get("location")
+        self.op_priority = kwdargs.get("priority")
+        self.op_spec = kwdargs.get("opspec")
         self.__signature = None
         self.__hash = None
         self._cache_is_ground = None
@@ -254,7 +256,7 @@ class Term(object):
         """Term's signature ``functor/arity``"""
         if self.__signature is None:
             functor = str(self.functor)
-            self.__signature = '%s/%s' % (functor.strip("'"), self.arity)
+            self.__signature = "%s/%s" % (functor.strip("'"), self.arity)
         return self.__signature
 
     def apply(self, subst):
@@ -371,73 +373,83 @@ class Term(object):
         while stack:
             current = stack[-1].popleft()
             if current is None:
-                put('_')
+                put("_")
             elif type(current) == str:
                 put(current)
             elif type(current) == int:
                 if current < 0:
-                    put('X%s' % -current)
+                    put("X%s" % -current)
                 else:
-                    put('A%s' % (current + 1))
+                    put("A%s" % (current + 1))
             elif type(current) == And:  # Depends on level
                 q = deque()
-                q.append('(')
+                q.append("(")
                 if type(current.args[0]) == Or:
-                    q.append('(')
+                    q.append("(")
                     q.append(current.args[0])
-                    q.append(')')
+                    q.append(")")
                 else:
                     q.append(current.args[0])
                 tail = current.args[1]
-                while isinstance(tail, Term) and tail.functor == ',' and tail.arity == 2:
-                    q.append(', ')
+                while (
+                    isinstance(tail, Term) and tail.functor == "," and tail.arity == 2
+                ):
+                    q.append(", ")
                     if type(tail.args[0]) == Or:
-                        q.append('(')
+                        q.append("(")
                         q.append(tail.args[0])
-                        q.append(')')
+                        q.append(")")
                     else:
                         q.append(tail.args[0])
                     tail = tail.args[1]
-                q.append(', ')
+                q.append(", ")
                 if type(tail) == Or:
-                    q.append('(')
+                    q.append("(")
                     q.append(tail)
-                    q.append(')')
+                    q.append(")")
                 else:
                     q.append(tail)
-                q.append(')')
+                q.append(")")
                 stack.append(q)
             elif type(current) == Or:
                 q = deque()
                 q.append(current.args[0])
                 tail = current.args[1]
-                while isinstance(tail, Term) and tail.functor == ';' and tail.arity == 2:
-                    q.append('; ')
+                while (
+                    isinstance(tail, Term) and tail.functor == ";" and tail.arity == 2
+                ):
+                    q.append("; ")
                     q.append(tail.args[0])
                     tail = tail.args[1]
-                q.append('; ')
+                q.append("; ")
                 q.append(tail)
                 stack.append(q)
-            elif isinstance(current, Term) and current.functor == '.' and current.arity == 2:
+            elif (
+                isinstance(current, Term)
+                and current.functor == "."
+                and current.arity == 2
+            ):
                 q = deque()
-                q.append('[')
+                q.append("[")
                 q.append(current.args[0])
                 tail = current.args[1]
-                while isinstance(tail, Term) and tail.functor == '.' and tail.arity == 2:
-                    q.append(', ')
+                while (
+                    isinstance(tail, Term) and tail.functor == "." and tail.arity == 2
+                ):
+                    q.append(", ")
                     q.append(tail.args[0])
                     tail = tail.args[1]
-                if not tail == Term('[]'):
-                    q.append(' | ')
+                if not tail == Term("[]"):
+                    q.append(" | ")
                     q.append(tail)
-                q.append(']')
+                q.append("]")
                 stack.append(q)
             elif isinstance(current, Term) and current.op_spec is not None:
                 # Is a binary or unary operator.
                 if len(current.op_spec) == 2:  # unary operator
                     cf = str(current.functor).strip("'")
-                    if 'a' <= cf[0] <= 'z':
-                        put(' ' + cf + ' ')
+                    if "a" <= cf[0] <= "z":
+                        put(" " + cf + " ")
                     else:
                         put(cf)
                     q = deque()
@@ -447,49 +459,61 @@ class Term(object):
                     a = current.args[0]
                     b = current.args[1]
                     q = deque()
-                    if not isinstance(a, Term) or a.op_priority is None or \
-                            a.op_priority < current.op_priority or \
-                            (a.op_priority == current.op_priority and current.op_spec == 'yfx'):
+                    if (
+                        not isinstance(a, Term)
+                        or a.op_priority is None
+                        or a.op_priority < current.op_priority
+                        or (
+                            a.op_priority == current.op_priority
+                            and current.op_spec == "yfx"
+                        )
+                    ):
                         # no parenthesis around a
                         q.append(a)
                     else:
-                        q.append('(')
+                        q.append("(")
                         q.append(a)
-                        q.append(')')
+                        q.append(")")
                     op = str(current.functor).strip("'")
-                    if 'a' <= op[0] <= 'z':
-                        q.append(' %s ' % op)
+                    if "a" <= op[0] <= "z":
+                        q.append(" %s " % op)
                     else:
-                        q.append('%s' % op)
-                    if not isinstance(b, Term) or \
-                            b.op_priority is None or b.op_priority < current.op_priority or \
-                            (b.op_priority == current.op_priority and current.op_spec == 'xfy'):
+                        q.append("%s" % op)
+                    if (
+                        not isinstance(b, Term)
+                        or b.op_priority is None
+                        or b.op_priority < current.op_priority
+                        or (
+                            b.op_priority == current.op_priority
+                            and current.op_spec == "xfy"
+                        )
+                    ):
                         # no parenthesis around b
                         q.append(b)
                     else:
-                        q.append('(')
+                        q.append("(")
                         q.append(b)
-                        q.append(')')
+                        q.append(")")
                     stack.append(q)
             elif isinstance(current, Term):
                 if current.probability is not None:
                     put(str(current.probability))  # This is a recursive call.
-                    put('::')
+                    put("::")
                 put(str(current.functor))
                 if current.args:
                     q = deque()
-                    q.append('(')
+                    q.append("(")
                     q.append(current.args[0])
                     for a in current.args[1:]:
-                        q.append(',')
+                        q.append(",")
                         q.append(a)
-                    q.append(')')
+                    q.append(")")
                     stack.append(q)
             else:
                 put(str(current))
             while stack and not stack[-1]:
                 stack.pop(-1)
-        self.repr = ''.join(parts)
+        self.repr = "".join(parts)
         self.reprhash = hash(self.repr)
         return self.repr
 
@@ -517,8 +541,8 @@ class Term(object):
         if not kwdargs and list(map(id, args)) == list(map(id, self.args)):
             return self
 
-        if 'p' in kwdargs:
-            p = kwdargs['p']
+        if "p" in kwdargs:
+            p = kwdargs["p"]
             if type(p) == float:
                 p = Constant(p)
         else:
@@ -526,14 +550,30 @@ class Term(object):
 
         extra = {}
         if p is not None:
-            return self.__class__(self.functor, *args, p=p, location=self.location, priority=self.op_priority,
-                                  opspec=self.op_spec)
+            return self.__class__(
+                self.functor,
+                *args,
+                p=p,
+                location=self.location,
+                priority=self.op_priority,
+                opspec=self.op_spec
+            )
         else:
             if self.__class__ in (Clause, AnnotatedDisjunction, And, Or):
-                return self.__class__(*args, location=self.location, priority=self.op_priority, opspec=self.op_spec)
+                return self.__class__(
+                    *args,
+                    location=self.location,
+                    priority=self.op_priority,
+                    opspec=self.op_spec
+                )
             else:
-                return self.__class__(self.functor, *args, location=self.location, priority=self.op_priority,
-                                      opspec=self.op_spec)
+                return self.__class__(
+                    self.functor,
+                    *args,
+                    location=self.location,
+                    priority=self.op_priority,
+                    opspec=self.op_spec
+                )
 
     def with_probability(self, p=None):
         """Creates a new Term with the same functor and arguments but with a different probability.
@@ -541,8 +581,14 @@ class Term(object):
         :param p: new probability (None clears the probability)
         :return: copy of the Term
         """
-        return self.__class__(self.functor, *self.args, p=p, priority=self.op_priority, opspec=self.op_spec,
-                              location=self.location)
+        return self.__class__(
+            self.functor,
+            *self.args,
+            p=p,
+            priority=self.op_priority,
+            opspec=self.op_spec,
+            location=self.location
+        )
 
     def is_var(self):
         """Checks whether this Term represents a variable."""
@@ -550,7 +596,7 @@ class Term(object):
 
     def is_scope_term(self):
         """Checks whether the current term is actually a term inside a scope"""
-        return self.functor.strip("'") == ':'
+        return self.functor.strip("'") == ":"
 
     def is_constant(self):
         """Checks whether this Term represents a constant."""
@@ -585,7 +631,7 @@ class Term(object):
         :return: set of variables
         :rtype: :class:`problog.util.OrderedSet`
         """
-        if exclude_local and self.__functor == 'findall' and self.__arity == 3:
+        if exclude_local and self.__functor == "findall" and self.__arity == 3:
             return self.args[2].variables()
         elif self._cache_variables is None:
             variables = OrderedSet()
@@ -605,7 +651,11 @@ class Term(object):
         if self._cache_list_length is None:
             l = 0
             current = self
-            while not is_variable(current) and current.functor == '.' and current.arity == 2:
+            while (
+                not is_variable(current)
+                and current.functor == "."
+                and current.arity == 2
+            ):
                 if current._cache_list_length is not None:
                     return l + current._cache_list_length
                 l += 1
@@ -616,7 +666,9 @@ class Term(object):
     def _list_decompose(self):
         elements = []
         current = self
-        while not is_variable(current) and current.functor == '.' and current.arity == 2:
+        while (
+            not is_variable(current) and current.functor == "." and current.arity == 2
+        ):
             elements.append(current.args[0])
             current = current.args[1]
         return elements, current
@@ -732,7 +784,7 @@ class Term(object):
         return Or(self, rhs)
 
     def __invert__(self):
-        return Not('\\+', self)
+        return Not("\\+", self)
 
     def __float__(self):
         return float(self.value)
@@ -741,7 +793,7 @@ class Term(object):
         return int(self.value)
 
     def __neg__(self):
-        return Not('\\+', self)
+        return Not("\\+", self)
 
     def __abs__(self):
         return self
@@ -750,9 +802,11 @@ class Term(object):
     def from_string(cls, str, factory=None, parser=None):
         if factory is None:
             from .program import ExtendedPrologFactory
+
             factory = ExtendedPrologFactory()
         if parser is None:
             from .parser import PrologParser
+
             parser = PrologParser(factory)
 
         if not str.strip().endswith("."):
@@ -766,7 +820,6 @@ class Term(object):
 
 
 class AggTerm(Term):
-
     def __init__(self, *args, **kwargs):
         Term.__init__(self, *args, **kwargs)
 
@@ -788,7 +841,9 @@ class Var(Term):
         return self.functor
 
     def compute_value(self, functions=None):
-        raise InstantiationError('Variables do not support evaluation: {}.'.format(self.name))
+        raise InstantiationError(
+            "Variables do not support evaluation: {}.".format(self.name)
+        )
 
     def is_var(self):
         return True
@@ -913,12 +968,12 @@ class Clause(Term):
     """A clause."""
 
     def __init__(self, head, body, **kwdargs):
-        Term.__init__(self, ':-', head, body, **kwdargs)
+        Term.__init__(self, ":-", head, body, **kwdargs)
         self.head = head
         self.body = body
 
     def __repr__(self):
-        if self.head.functor == '_directive':
+        if self.head.functor == "_directive":
             self.repr = ":- %s" % self.body
         else:
             self.repr = "%s :- %s" % (self.head, self.body)
@@ -934,15 +989,15 @@ class AnnotatedDisjunction(Term):
     """An annotated disjunction."""
 
     def __init__(self, heads, body, **kwdargs):
-        Term.__init__(self, ':-', heads, body, **kwdargs)
+        Term.__init__(self, ":-", heads, body, **kwdargs)
         self.heads = heads
         self.body = body
 
     def __repr__(self):
         if self.body is None:
-            self.repr = "%s" % ('; '.join(map(str, self.heads)))
+            self.repr = "%s" % ("; ".join(map(str, self.heads)))
         else:
-            self.repr = "%s :- %s" % ('; '.join(map(str, self.heads)), self.body)
+            self.repr = "%s :- %s" % ("; ".join(map(str, self.heads)), self.body)
         self.reprhash = hash(self.repr)
         return self.repr
 
@@ -950,7 +1005,11 @@ class AnnotatedDisjunction(Term):
         return super().__hash__()
 
     def __eq__(self, other):
-        return type(self) == type(other) and self.heads == other.heads and self.body == other.body
+        return (
+            type(self) == type(other)
+            and self.heads == other.heads
+            and self.body == other.body
+        )
 
     @property
     def predicates(self):
@@ -961,7 +1020,7 @@ class Or(Term):
     """Or"""
 
     def __init__(self, op1, op2, **kwdargs):
-        Term.__init__(self, ';', op1, op2, **kwdargs)
+        Term.__init__(self, ";", op1, op2, **kwdargs)
         self.op1 = op1
         self.op2 = op2
 
@@ -980,7 +1039,7 @@ class Or(Term):
                 tail = Or(lst[n], tail)
             return tail
         else:
-            return Term('fail')
+            return Term("fail")
 
     def to_list(self):
         """Extract the terms of the disjunction into the list.
@@ -1020,7 +1079,7 @@ class And(Term):
     """And"""
 
     def __init__(self, op1, op2, location=None, **kwdargs):
-        Term.__init__(self, ',', op1, op2, location=location, **kwdargs)
+        Term.__init__(self, ",", op1, op2, location=location, **kwdargs)
         self.op1 = op1
         self.op2 = op2
 
@@ -1039,7 +1098,7 @@ class And(Term):
                 tail = And(lst[n], tail)
             return tail
         else:
-            return Term('true')
+            return Term("true")
 
     def to_list(self):
         """Extract the terms of the conjunction into the list.
@@ -1064,9 +1123,9 @@ class And(Term):
         lhs = term2str(self.op1)
         rhs = term2str(self.op2)
         if isinstance(self.op2, Or):
-            rhs = '(%s)' % rhs
+            rhs = "(%s)" % rhs
         if isinstance(self.op1, Or):
-            lhs = '(%s)' % lhs
+            lhs = "(%s)" % lhs
 
         self.repr = "%s, %s" % (lhs, rhs)
         self.reprhash = hash(self.repr)
@@ -1086,11 +1145,11 @@ class Not(Term):
     def __repr__(self):
         c = str(self.child)
         if isinstance(self.child, And) or isinstance(self.child, Or):
-            c = '(%s)' % c
-        if self.functor == 'not':
-            self.repr = 'not %s' % c
+            c = "(%s)" % c
+        if self.functor == "not":
+            self.repr = "not %s" % c
         else:
-            self.repr = '%s%s' % (self.functor, c)
+            self.repr = "%s%s" % (self.functor, c)
         self.reprhash = hash(self.repr)
         return self.repr
 
@@ -1144,23 +1203,41 @@ _arithmetic_functions = {
     ("max", 2): max,
     ("exp", 2): math.pow,
     ("epsilon", 0): lambda: sys.float_info.epsilon,
-    ("inf", 0): lambda: float('inf'),
-    ("nan", 0): lambda: float('nan'),
-    ("sign", 1): lambda x: 1 if x > 0 else -1 if x < 0 else 0
-
+    ("inf", 0): lambda: float("inf"),
+    ("nan", 0): lambda: float("nan"),
+    ("sign", 1): lambda x: 1 if x > 0 else -1 if x < 0 else 0,
 }
 
-_from_math_1 = ['exp', 'log', 'log10', 'sqrt', 'sin', 'cos', 'tan', 'asin', 'acos', 'atan',
-                'sinh', 'cosh', 'tanh', 'asinh', 'acosh', 'atanh', 'lgamma', 'gamma', 'erf',
-                'erfc']
+_from_math_1 = [
+    "exp",
+    "log",
+    "log10",
+    "sqrt",
+    "sin",
+    "cos",
+    "tan",
+    "asin",
+    "acos",
+    "atan",
+    "sinh",
+    "cosh",
+    "tanh",
+    "asinh",
+    "acosh",
+    "atanh",
+    "lgamma",
+    "gamma",
+    "erf",
+    "erfc",
+]
 for _f in _from_math_1:
     _arithmetic_functions[(_f, 1)] = getattr(math, _f)
 
 # _from_math_0 = ['pi', 'e']
 # for _f in _from_math_0:
 #     _x = getattr(math, _f)
-_arithmetic_functions[('pi', 0)] = lambda: math.pi
-_arithmetic_functions[('e', 0)] = lambda: math.e
+_arithmetic_functions[("pi", 0)] = lambda: math.pi
+_arithmetic_functions[("e", 0)] = lambda: math.e
 
 
 def unquote(s):
@@ -1172,7 +1249,7 @@ def unquote(s):
     return s.strip("'")
 
 
-safe_expr = re.compile('[a-z]+(\\w)*$')
+safe_expr = re.compile("[a-z]+(\\w)*$")
 
 
 def is_safe(t):
@@ -1220,10 +1297,12 @@ def compute_function(func, args, extra_functions=None):
 
 class InstantiationError(GroundingError):
     """Error used when performing arithmetic with a non-ground term."""
+
     pass
 
 
 # noinspection PyShadowingBuiltins
 class ArithmeticError(GroundingError):
     """Error used when an error occurs during evaluation of an arithmetic expression."""
+
     pass

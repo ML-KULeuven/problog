@@ -32,7 +32,6 @@ from idlelib.WidgetRedirector import WidgetRedirector
 
 
 class ReadOnlyText(Text):
-
     def __init__(self, *args, **kwdargs):
         Text.__init__(self, *args, **kwdargs)
         self.redirector = WidgetRedirector(self)
@@ -58,7 +57,6 @@ class ReadOnlyText(Text):
 
 
 class MainWindow(Frame):
-
     def __init__(self, parent, parser, scriptname, progname=None):
         Frame.__init__(self, parent)
         self.scriptname = scriptname
@@ -91,10 +89,10 @@ class MainWindow(Frame):
         Grid.columnconfigure(self, 0, weight=1)
 
         inputFrame = Frame(self)
-        inputFrame.grid(row=0, column=0, sticky='WE')
+        inputFrame.grid(row=0, column=0, sticky="WE")
 
         outputFrame = Frame(self)
-        outputFrame.grid(row=1, column=0, sticky='WENS')
+        outputFrame.grid(row=1, column=0, sticky="WENS")
 
         self.outputText = ReadOnlyText(outputFrame)
         self.outputText.pack(fill=BOTH, expand=1)
@@ -107,68 +105,84 @@ class MainWindow(Frame):
         Grid.columnconfigure(mainFrame, 1, weight=1)
 
         # Ok button
-        okButton = Button(inputFrame, text='Run', command=self.run, default='active')
+        okButton = Button(inputFrame, text="Run", command=self.run, default="active")
         okButton.pack(side=RIGHT, padx=5, pady=5)
 
         # Cancel button
-        cancelButton = Button(inputFrame, text='Exit', command=self.quit)
+        cancelButton = Button(inputFrame, text="Exit", command=self.quit)
         cancelButton.pack(side=RIGHT)
 
         # Add controls to mainframe for all options
         for index, action in enumerate(parser._actions):
             action_type = type(action).__name__
-            if action_type == '_HelpAction':
+            if action_type == "_HelpAction":
                 pass
             else:
                 self.function.append(lambda v: [v])
                 self.variables.append(None)
                 if action.choices:
-                    self._add_choice(mainFrame, index, action.dest, action.choices, action.default,
-                                     action.option_strings[0])
-                elif action_type == '_StoreTrueAction':
-                    self._add_check(mainFrame, index, action.dest, False, action.option_strings[0])
-                elif action_type == '_CountAction':
-                    self._add_count(mainFrame, index, action.dest, 0, action.option_strings[0])
-                elif action.type and action.type.__name__ == 'inputfile':
-                    self._add_filename(mainFrame, index, action.dest, 'r', action.option_strings)
-                elif action.type and action.type.__name__ == 'outputfile':
-                    self._add_filename(mainFrame, index, action.dest, 'w', action.option_strings)
+                    self._add_choice(
+                        mainFrame,
+                        index,
+                        action.dest,
+                        action.choices,
+                        action.default,
+                        action.option_strings[0],
+                    )
+                elif action_type == "_StoreTrueAction":
+                    self._add_check(
+                        mainFrame, index, action.dest, False, action.option_strings[0]
+                    )
+                elif action_type == "_CountAction":
+                    self._add_count(
+                        mainFrame, index, action.dest, 0, action.option_strings[0]
+                    )
+                elif action.type and action.type.__name__ == "inputfile":
+                    self._add_filename(
+                        mainFrame, index, action.dest, "r", action.option_strings
+                    )
+                elif action.type and action.type.__name__ == "outputfile":
+                    self._add_filename(
+                        mainFrame, index, action.dest, "w", action.option_strings
+                    )
                 else:
                     self._add_field(mainFrame, index, action.dest)
 
     def _add_field(self, frame, index, name):
         self.variables[-1] = StringVar()
         label = Label(frame, text=name)
-        label.grid(row=index, column=0, sticky='W', padx=10)
+        label.grid(row=index, column=0, sticky="W", padx=10)
         field = Entry(frame)
-        field.grid(row=index, column=1, sticky='WE', textvariable=self.variables[-1])
+        field.grid(row=index, column=1, sticky="WE", textvariable=self.variables[-1])
 
     def _add_count(self, frame, index, name, default, option):
         self.function[-1] = lambda v: [option] * int(v)
         self.variables[-1] = StringVar()
         self.variables[-1].set(default)
         label = Label(frame, text=name)
-        label.grid(row=index, column=0, sticky='W', padx=10)
+        label.grid(row=index, column=0, sticky="W", padx=10)
         field = Spinbox(frame, from_=0, to=100, textvariable=self.variables[-1])
-        field.grid(row=index, column=1, sticky='WE')
+        field.grid(row=index, column=1, sticky="WE")
 
     def _add_choice(self, frame, index, name, choices, default, option):
         self.function[-1] = lambda v: [option, v]
         label = Label(frame, text=name)
-        label.grid(row=index, column=0, sticky='W', padx=10)
-        field = Combobox(frame, values=choices, state='readonly')
+        label.grid(row=index, column=0, sticky="W", padx=10)
+        field = Combobox(frame, values=choices, state="readonly")
         field.set(default)
-        field.grid(row=index, column=1, sticky='WE')
+        field.grid(row=index, column=1, sticky="WE")
         self.variables[-1] = field
 
     def _add_check(self, frame, index, name, default, option):
         self.variables[-1] = StringVar()
-        self.variables[-1].set('')
+        self.variables[-1].set("")
 
         label = Label(frame, text=name)
-        label.grid(row=index, column=0, sticky='W', padx=10)
-        field = Checkbutton(frame, variable=self.variables[-1], onvalue=option, offvalue='')
-        field.grid(row=index, column=1, sticky='WE')
+        label.grid(row=index, column=0, sticky="W", padx=10)
+        field = Checkbutton(
+            frame, variable=self.variables[-1], onvalue=option, offvalue=""
+        )
+        field.grid(row=index, column=1, sticky="WE")
 
     def _add_filename(self, frame, index, name, mode, option):
         if option:
@@ -180,24 +194,24 @@ class MainWindow(Frame):
         var = self.variables[-1]
 
         def set_name():
-            if mode == 'r':
-                fn = tkFileDialog.askopenfilename(initialdir='.')
+            if mode == "r":
+                fn = tkFileDialog.askopenfilename(initialdir=".")
             else:
-                fn = tkFileDialog.asksaveasfilename(initialdir='.')
+                fn = tkFileDialog.asksaveasfilename(initialdir=".")
             var.set(fn)
 
         label = Label(frame, text=name)
-        label.grid(row=index, column=0, sticky='W', padx=10)
+        label.grid(row=index, column=0, sticky="W", padx=10)
 
         field_button = Frame(frame)
         Grid.columnconfigure(field_button, 0, weight=1)
 
         field = Entry(field_button, textvariable=var)
-        field.grid(row=0, column=0, sticky='WE')
+        field.grid(row=0, column=0, sticky="WE")
         button = Button(field_button, text="...", command=set_name, width=1, padding=0)
         button.grid(row=0, column=1)
 
-        field_button.grid(row=index, column=1, sticky='WE')
+        field_button.grid(row=index, column=1, sticky="WE")
 
     def run(self):
 
@@ -211,7 +225,7 @@ class MainWindow(Frame):
 
         cmd = [sys.executable, self.scriptname] + args
 
-        result = (subprocess.check_output(cmd))
+        result = subprocess.check_output(cmd)
 
         self.outputText.setText(result)
 
@@ -221,14 +235,15 @@ def show_gui(scriptname, progname=None):
     script = __import__(modulename)
     parser = script.argparser()
 
-    if progname is None: progname = os.path.basename(scriptname)
+    if progname is None:
+        progname = os.path.basename(scriptname)
 
     root = Tk()
     app = MainWindow(root, parser, scriptname, progname)
     root.mainloop()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     scriptname = sys.argv[1]
     if len(sys.argv) > 2:
         progname = sys.argv[2]

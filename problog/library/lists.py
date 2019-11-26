@@ -4,7 +4,7 @@ from problog.extern import problog_export_nondet
 from problog.logic import term2list
 
 
-@problog_export_nondet('+term', '-term', '-list')
+@problog_export_nondet("+term", "-term", "-list")
 def enum_groups(group_values):
     group_values_l = term2list(group_values, False)
 
@@ -15,7 +15,7 @@ def enum_groups(group_values):
     return list(grouped.items())
 
 
-@problog_export_nondet('+term', '+term', '-term', '-list')
+@problog_export_nondet("+term", "+term", "-term", "-list")
 def enum_groups(groups, values):
     groups_l = term2list(groups, False)
     values_l = term2list(values, False)

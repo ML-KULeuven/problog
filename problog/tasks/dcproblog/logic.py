@@ -1,21 +1,18 @@
 from problog.logic import Term
 
 pdfs = {
-    'real': 'real',
-
-    'delta': 'delta,',
-    'normal': 'normal',
-    'normalMV': 'normalMV',
-    'normalInd': 'normalInd',
-    'beta': 'beta',
-    'poisson': 'poisson',
-    'uniform': 'uniform',
-    'catuni': 'catuni'
+    "real": "real",
+    "delta": "delta,",
+    "normal": "normal",
+    "normalMV": "normalMV",
+    "normalInd": "normalInd",
+    "beta": "beta",
+    "poisson": "poisson",
+    "uniform": "uniform",
+    "catuni": "catuni",
 }
 
-cdfs = {
-    'sigmoid': 'sigmoid'
-}
+cdfs = {"sigmoid": "sigmoid"}
 
 infix_functors = ["/"]
 comparison_functors = ["<", ">", "<=", ">="]
@@ -115,7 +112,9 @@ class SymbolicConstant(Term):
         if not args:
             return str(self.functor)
         elif self.functor in infix_functors or self.functor in comparison_functors:
-            return "{arg0}{functor}{arg1}".format(functor=self.functor, arg0=args[0], arg1=args[1])
+            return "{arg0}{functor}{arg1}".format(
+                functor=self.functor, arg0=args[0], arg1=args[1]
+            )
         elif self.functor == "list":
             return "[" + ",".join(map(str, self.args)) + "]"
         else:

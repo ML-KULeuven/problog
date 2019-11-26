@@ -3,11 +3,10 @@ from collections import OrderedDict
 from problog.extern import problog_export, problog_export_nondet
 from problog.logic import Constant
 
-recdb_key = '_rec_db'
+recdb_key = "_rec_db"
 
 
 class LL(object):
-
     def __init__(self):
         self.first = None
         self.last = None
@@ -57,7 +56,7 @@ class LL(object):
 
 
 class LLEntry(object):
-    __slots__ = ('lst', 'val', 'prv', 'nxt')
+    __slots__ = ("lst", "val", "prv", "nxt")
 
     def __init__(self, lst, val, prv, nxt):
         self.lst = lst
@@ -84,41 +83,41 @@ def record_base(key, term, append):
         return lst.push_left(term)
 
 
-@problog_export_nondet('-term')
+@problog_export_nondet("-term")
 def current_key():
     db = problog_export.database.get_data(recdb_key, {})
     return list(db.keys())
 
 
-@problog_export('+term', '+term', '-term')
+@problog_export("+term", "+term", "-term")
 def recorda(key, term):
     return Constant(record_base(key, term, False))
 
 
-@problog_export('+term', '+term')
+@problog_export("+term", "+term")
 def recorda(key, term):
     record_base(key, term, False)
     return ()
 
 
-@problog_export('+term', '+term', '-int')
+@problog_export("+term", "+term", "-int")
 def recordz(key, term):
     return Constant(record_base(key, term, True))
 
 
-@problog_export('+term', '+term')
+@problog_export("+term", "+term")
 def recordz(key, term):
     record_base(key, term, True)
     return ()
 
 
-@problog_export('+term')
+@problog_export("+term")
 def erase(ref):
     ref.functor.erase()
     return ()
 
 
-@problog_export_nondet('+term', '-term')
+@problog_export_nondet("+term", "-term")
 def recorded(key):
     db = problog_export.database.get_data(recdb_key, {})
     lst = db.get(key)
@@ -128,7 +127,7 @@ def recorded(key):
         return [x.val for x in lst]
 
 
-@problog_export_nondet('+term', '-term', '-term')
+@problog_export_nondet("+term", "-term", "-term")
 def recorded(key):
     db = problog_export.database.get_data(recdb_key, {})
     lst = db.get(key)
@@ -138,9 +137,10 @@ def recorded(key):
         return [(x.val, Constant(x)) for x in lst]
 
 
-@problog_export('+term', '-term')
+@problog_export("+term", "-term")
 def instance(ref):
     return ref.functor.val
+
 
 # @problog_export_nondet('-term', '-term', '-term')
 # def recorded():

@@ -12,7 +12,7 @@ class NegativeCycle(GroundingError):
     """The engine does not support negative cycles."""
 
     def __init__(self, location=None):
-        GroundingError.__init__(self, 'Negative cycle detected', location)
+        GroundingError.__init__(self, "Negative cycle detected", location)
 
 
 NODE_TRUE = 0
@@ -35,7 +35,7 @@ class ResultSet(object):
             else:
                 self.results.append((result, [node]))
         else:
-            assert (not self.collapsed)
+            assert not self.collapsed
             self.results[index][1].append(node)
 
     def __getitem__(self, result):
@@ -77,19 +77,30 @@ class ResultSet(object):
 
 
 def call(obj, args, kwdargs):
-    return 'e', obj, args, kwdargs
+    return "e", obj, args, kwdargs
 
 
 def new_result(obj, result, ground_node, source, is_last):
-    return 'r', obj, (result, ground_node, source, is_last), {}
+    return "r", obj, (result, ground_node, source, is_last), {}
 
 
 def complete(obj, source):
-    return 'c', obj, (source,), {}
+    return "c", obj, (source,), {}
 
 
-def results_to_actions(resultlist, engine, node, context, target, parent, identifier,
-                       transform, is_root, database, **kwdargs):
+def results_to_actions(
+    resultlist,
+    engine,
+    node,
+    context,
+    target,
+    parent,
+    identifier,
+    transform,
+    is_root,
+    database,
+    **kwdargs
+):
     """Translates a list of results to actions.
 
     :param results:
@@ -114,8 +125,9 @@ def results_to_actions(resultlist, engine, node, context, target, parent, identi
         for result, target_node in resultlist:
             n -= 1
             if not is_root:
-                target_node = engine.propagate_evidence(database, target,
-                                                        node.functor, result, target_node)
+                target_node = engine.propagate_evidence(
+                    database, target, node.functor, result, target_node
+                )
             if target_node != NODE_FALSE:
                 if transform:
                     result = transform(result)
@@ -123,12 +135,19 @@ def results_to_actions(resultlist, engine, node, context, target, parent, identi
                     if n == 0:
                         actions += [complete(parent, identifier)]
                 else:
-                    if target_node == NODE_TRUE and target.flag('keep_all') \
-                            and not node.functor.startswith('_problog'):
+                    if (
+                        target_node == NODE_TRUE
+                        and target.flag("keep_all")
+                        and not node.functor.startswith("_problog")
+                    ):
                         name = Term(node.functor, *result)
-                        target_node = target.add_atom(name, None, None, name=name, source=None)
+                        target_node = target.add_atom(
+                            name, None, None, name=name, source=None
+                        )
 
-                    actions += [new_result(parent, result, target_node, identifier, n == 0)]
+                    actions += [
+                        new_result(parent, result, target_node, identifier, n == 0)
+                    ]
             elif n == 0:
                 actions += [complete(parent, identifier)]
     else:
@@ -138,9 +157,25 @@ def results_to_actions(resultlist, engine, node, context, target, parent, identi
 
 
 class EvalNode(object):
-    def __init__(self, engine, database, target, node_id, node, context, parent, pointer,
-                 identifier=None, transform=None, call=None, current_clause=None, include=None,
-                 exclude=None, no_cache=False, **extra):
+    def __init__(
+        self,
+        engine,
+        database,
+        target,
+        node_id,
+        node,
+        context,
+        parent,
+        pointer,
+        identifier=None,
+        transform=None,
+        call=None,
+        current_clause=None,
+        include=None,
+        exclude=None,
+        no_cache=False,
+        **extra
+    ):
         self.engine = engine
         self.database = database
         self.target = target
@@ -178,17 +213,17 @@ class EvalNode(object):
 
     def createCall(self, node_id, *args, **kwdargs):
         base_args = {}
-        base_args['database'] = self.database
-        base_args['target'] = self.target
-        base_args['context'] = self.context
-        base_args['parent'] = self.pointer
-        base_args['identifier'] = self.identifier
-        base_args['transform'] = None
-        base_args['call'] = self.call
-        base_args['current_clause'] = self.current_clause
-        base_args['no_cache'] = self.no_cache
-        base_args['include'] = self.include
-        base_args['exclude'] = self.exclude
+        base_args["database"] = self.database
+        base_args["target"] = self.target
+        base_args["context"] = self.context
+        base_args["parent"] = self.pointer
+        base_args["identifier"] = self.identifier
+        base_args["transform"] = None
+        base_args["call"] = self.call
+        base_args["current_clause"] = self.current_clause
+        base_args["no_cache"] = self.no_cache
+        base_args["include"] = self.include
+        base_args["exclude"] = self.exclude
         base_args.update(kwdargs)
         return call(node_id, args, base_args)
 
@@ -200,15 +235,21 @@ class EvalNode(object):
         return str(self.node)
 
     def __str__(self):  # pragma: no cover
-        if hasattr(self.node, 'location'):
+        if hasattr(self.node, "location"):
             pos = self.database.lineno(self.node.location)
         else:
             pos = None
         if pos is None:
-            pos = '??'
+            pos = "??"
         node_type = self.__class__.__name__[4:]
-        return '%s %s %s [at %s:%s] | Context: %s' % (
-            self.parent, node_type, self.node_str(), pos[0], pos[1], self.context)
+        return "%s %s %s [at %s:%s] | Context: %s" % (
+            self.parent,
+            node_type,
+            self.node_str(),
+            pos[0],
+            pos[1],
+            self.context,
+        )
 
 
 class EvalOr(EvalNode):
@@ -236,7 +277,9 @@ class EvalOr(EvalNode):
         return self.on_cycle
 
     def flushBuffer(self, cycle=False):
-        func = lambda result, nodes: self.target.add_or(nodes, readonly=(not cycle), name=None)
+        func = lambda result, nodes: self.target.add_or(
+            nodes, readonly=(not cycle), name=None
+        )
         self.results.collapse(func)
 
     def new_result(self, result, node=NODE_TRUE, source=None, is_last=False):
@@ -261,7 +304,7 @@ class EvalOr(EvalNode):
                     a = False
                 return a, actions
         else:
-            assert (not self.results.collapsed)
+            assert not self.results.collapsed
             res = self.engine._fix_context(result)
             self.results[res] = node
             if is_last:
@@ -295,10 +338,10 @@ class EvalOr(EvalNode):
             return []
 
     def node_str(self):  # pragma: no cover
-        return ''
+        return ""
 
     def __str__(self):  # pragma: no cover
-        return EvalNode.__str__(self) + ' tc: ' + str(self.to_complete)
+        return EvalNode.__str__(self) + " tc: " + str(self.to_complete)
 
 
 class EvalDefine(EvalNode):
@@ -328,8 +371,9 @@ class EvalDefine(EvalNode):
 
     def notifyResult(self, arguments, node=0, is_last=False, parent=None):
         if not self.is_root:
-            node = self.engine.propagate_evidence(self.database, self.target, self.node.functor,
-                                                  arguments, node)
+            node = self.engine.propagate_evidence(
+                self.database, self.target, self.node.functor, arguments, node
+            )
         return super(EvalDefine, self).notifyResult(arguments, node, is_last, parent)
 
     def notifyResultMe(self, arguments, node=0, is_last=False):
@@ -338,14 +382,20 @@ class EvalDefine(EvalNode):
 
     def notifyResultSiblings(self, arguments, node=0, is_last=False):
         parents = self.siblings
-        return [new_result(parent, arguments, node, self.identifier, is_last) for parent in parents]
+        return [
+            new_result(parent, arguments, node, self.identifier, is_last)
+            for parent in parents
+        ]
 
     def notifyResultChildren(self, arguments, node=0, is_last=False):
         parents = self.cycle_children
-        return [new_result(parent, arguments, node, self.identifier, is_last) for parent in parents]
+        return [
+            new_result(parent, arguments, node, self.identifier, is_last)
+            for parent in parents
+        ]
 
     def new_result(self, result, node=NODE_TRUE, source=None, is_last=False):
-        if self.is_ground and node == NODE_TRUE and not self.target.flag('keep_all'):
+        if self.is_ground and node == NODE_TRUE and not self.target.flag("keep_all"):
             # We have a ground node with a deterministically true proof.
             # We can ignore the remaining proofs.
             # self.engine.ignoring.add(self.pointer)
@@ -375,23 +425,39 @@ class EvalDefine(EvalNode):
                     if not self.no_cache and cache_key in self.target._cache:
                         # Get direct
                         stored_result = self.target._cache[cache_key]
-                        assert (len(stored_result) == 1)
+                        assert len(stored_result) == 1
                         result_node = stored_result[0][1]
 
                         if not self.is_root:
-                            result_node = self.engine.propagate_evidence(self.database, self.target, self.node.functor,
-                                                                         res, result_node)
+                            result_node = self.engine.propagate_evidence(
+                                self.database,
+                                self.target,
+                                self.node.functor,
+                                res,
+                                result_node,
+                            )
                     else:
                         if self.engine.label_all:
                             name = Term(self.node.functor, *res)
                         else:
                             name = None
                             if not self.is_root:
-                                node = self.engine.propagate_evidence(self.database, self.target, self.node.functor,
-                                                                      res, node)
-                        result_node = self.target.add_or((node,), readonly=False, name=name)
+                                node = self.engine.propagate_evidence(
+                                    self.database,
+                                    self.target,
+                                    self.node.functor,
+                                    res,
+                                    node,
+                                )
+                        result_node = self.target.add_or(
+                            (node,), readonly=False, name=name
+                        )
                     self.results[res] = result_node
-                    if not self.no_cache and is_ground(*res) and is_ground(*self.call[1]):
+                    if (
+                        not self.no_cache
+                        and is_ground(*res)
+                        and is_ground(*self.call[1])
+                    ):
                         self.target._cache[cache_key] = {res: result_node}
                     actions = []
                     # Send results to cycle
@@ -399,8 +465,12 @@ class EvalDefine(EvalNode):
                         actions += self.notifyResult(res, result_node)
 
                     # TODO what if result_node is NONE?
-                    actions += self.notifyResultChildren(res, result_node, is_last=False)
-                    actions += self.notifyResultSiblings(res, result_node, is_last=False)
+                    actions += self.notifyResultChildren(
+                        res, result_node, is_last=False
+                    )
+                    actions += self.notifyResultSiblings(
+                        res, result_node, is_last=False
+                    )
                     # TODO the following optimization doesn't always work, see test/some_cycles.pl
                     # actions += self.notifyResultChildren(res, result_node, is_last=self.is_ground)
                     # if self.is_ground :
@@ -413,7 +483,7 @@ class EvalDefine(EvalNode):
                         a = False
                     return a, actions
             else:
-                assert (not self.results.collapsed)
+                assert not self.results.collapsed
                 res = self.engine._fix_context(result)
                 self.results[res] = node
                 if is_last:
@@ -423,7 +493,7 @@ class EvalDefine(EvalNode):
 
     def complete(self, source=None):
         if self.is_cycle_child:
-            assert (not self.siblings)
+            assert not self.siblings
             return True, self.notifyComplete()
         else:
             self.to_complete -= 1
@@ -443,7 +513,9 @@ class EvalDefine(EvalNode):
                         if n > 0:
                             for arg, rn in self.results:
                                 n -= 1
-                                actions.append(new_result(s, arg, rn, self.identifier, n == 0))
+                                actions.append(
+                                    new_result(s, arg, rn, self.identifier, n == 0)
+                                )
                         else:
                             actions += [complete(s, self.identifier)]
                 else:
@@ -470,7 +542,9 @@ class EvalDefine(EvalNode):
                     node = self.target.add_or([y for x, y in stored_result], name=name)
                 # assert (len(stored_result) == 1)
                 if not self.is_root:
-                    node = self.engine.propagate_evidence(self.database, self.target, self.node.functor, res, node)
+                    node = self.engine.propagate_evidence(
+                        self.database, self.target, self.node.functor, res, node
+                    )
             else:
                 if self.engine.label_all:
                     name = Term(self.node.functor, *res)
@@ -480,7 +554,9 @@ class EvalDefine(EvalNode):
                 if not self.is_root:
                     new_nodes = []
                     for node in nodes:
-                        node = self.engine.propagate_evidence(self.database, self.target, self.node.functor, res, node)
+                        node = self.engine.propagate_evidence(
+                            self.database, self.target, self.node.functor, res, node
+                        )
                         new_nodes.append(node)
                     nodes = new_nodes
                 node = self.target.add_or(nodes, readonly=(not cycle), name=name)
@@ -502,7 +578,9 @@ class EvalDefine(EvalNode):
 
     def cycleDetected(self, cycle_parent):
         queue = []
-        cycle = self.engine.find_cycle(self.pointer, cycle_parent.pointer, cycle_parent.isCycleParent())
+        cycle = self.engine.find_cycle(
+            self.pointer, cycle_parent.pointer, cycle_parent.isCycleParent()
+        )
 
         if not cycle:
             cycle_parent.siblings.append(self.pointer)
@@ -557,9 +635,13 @@ class EvalDefine(EvalNode):
                 # Queue a create cycle message that will be passed up the call stack.
                 queue += self.engine.notify_cycle(cycle)
                 if cycle_parent.pointer != self.engine.cycle_root.pointer:
-                    to_cycle_root = self.engine.find_cycle(cycle_parent.pointer, self.engine.cycle_root.pointer)
+                    to_cycle_root = self.engine.find_cycle(
+                        cycle_parent.pointer, self.engine.cycle_root.pointer
+                    )
                     if to_cycle_root is None:
-                        raise IndirectCallCycleError(self.database.lineno(self.node.location))
+                        raise IndirectCallCycleError(
+                            self.database.lineno(self.node.location)
+                        )
                     queue += cycle_parent.createCycle()
                     queue += self.engine.notify_cycle(to_cycle_root)
         return queue
@@ -598,24 +680,24 @@ class EvalDefine(EvalNode):
         return str(Term(self.node.functor, *self.context))
 
     def __str__(self):  # pragma: no cover
-        extra = ['tc: %s' % self.to_complete]
+        extra = ["tc: %s" % self.to_complete]
         if self.is_cycle_child:
-            extra.append('CC')
+            extra.append("CC")
         if self.is_cycle_root:
-            extra.append('CR')
+            extra.append("CR")
         if self.isCycleParent():
-            extra.append('CP')
+            extra.append("CP")
         if self.on_cycle:
-            extra.append('*')
+            extra.append("*")
         if self.cycle_children:
-            extra.append('c_ch: %s' % (self.cycle_children,))
+            extra.append("c_ch: %s" % (self.cycle_children,))
         if self.cycle_close:
-            extra.append('c_cl: %s' % (self.cycle_close,))
+            extra.append("c_cl: %s" % (self.cycle_close,))
         if self.siblings:
-            extra.append('sbl: %s' % (self.siblings,))
+            extra.append("sbl: %s" % (self.siblings,))
         if not self.is_buffered():
-            extra.append('U')
-        return EvalNode.__str__(self) + ' ' + ' '.join(extra)
+            extra.append("U")
+        return EvalNode.__str__(self) + " " + " ".join(extra)
 
 
 class EvalNot(EvalNode):
@@ -649,15 +731,19 @@ class EvalNot(EvalNode):
             if or_node != NODE_FALSE:
                 actions += self.notifyResult(self.context, or_node)
         else:
-            if self.target.flag('keep_all'):
+            if self.target.flag("keep_all"):
                 src_node = self.database.get_node(self.node.child)
                 min_var = self.engine.context_min_var(self.context)
-                if type(src_node).__name__ == 'atom':
-                    args, _ = substitute_call_args(src_node.args, self.context, min_var=min_var)
+                if type(src_node).__name__ == "atom":
+                    args, _ = substitute_call_args(
+                        src_node.args, self.context, min_var=min_var
+                    )
                     name = Term(src_node.functor, *args)
                 else:
                     name = None
-                node = -self.target.add_atom(name, False, None, name=name, source='negation')
+                node = -self.target.add_atom(
+                    name, False, None, name=name, source="negation"
+                )
             else:
                 node = NODE_TRUE
 
@@ -669,7 +755,7 @@ class EvalNot(EvalNode):
         raise NegativeCycle(location=self.database.lineno(self.node.location))
 
     def node_str(self):  # pragma: no cover
-        return ''
+        return ""
 
 
 class EvalAnd(EvalNode):
@@ -698,12 +784,24 @@ class EvalAnd(EvalNode):
                 #     return (self.to_complete==1),
                 # [ self.createCall( self.node.children[1], context=result, parent=self.parent ) ]
                 # else :
-                return False, [
-                    self.createCall(self.node.children[1], context=result, identifier=node)]
+                return (
+                    False,
+                    [
+                        self.createCall(
+                            self.node.children[1], context=result, identifier=node
+                        )
+                    ],
+                )
             else:
                 # Not the last result: default behaviour
-                return False, [
-                    self.createCall(self.node.children[1], context=result, identifier=node)]
+                return (
+                    False,
+                    [
+                        self.createCall(
+                            self.node.children[1], context=result, identifier=node
+                        )
+                    ],
+                )
         else:  # Result from the second node
             # Make a ground node
             target_node = self.target.add_and((source, node), name=None)
@@ -722,14 +820,14 @@ class EvalAnd(EvalNode):
         if self.to_complete == 0:
             return True, self.notifyComplete()
         else:
-            assert (self.to_complete > 0)
+            assert self.to_complete > 0
             return False, []
 
     def node_str(self):  # pragma: no cover
-        return ''
+        return ""
 
     def __str__(self):  # pragma: no cover
-        return EvalNode.__str__(self) + ' tc: %s' % self.to_complete
+        return EvalNode.__str__(self) + " tc: %s" % self.to_complete
 
 
 class EvalBuiltIn(EvalNode):
@@ -744,16 +842,28 @@ class EvalBuiltIn(EvalNode):
 
     def __call__(self):
         try:
-            return self.node(*self.context, engine=self.engine, database=self.database,
-                             target=self.target, location=self.location, callback=self,
-                             transform=self.transform, parent=self.parent, context=self.context,
-                             identifier=self.identifier, call_origin=self.call_origin,
-                             current_clause=self.current_clause)
+            return self.node(
+                *self.context,
+                engine=self.engine,
+                database=self.database,
+                target=self.target,
+                location=self.location,
+                callback=self,
+                transform=self.transform,
+                parent=self.parent,
+                context=self.context,
+                identifier=self.identifier,
+                call_origin=self.call_origin,
+                current_clause=self.current_clause
+            )
         except ArithmeticError as err:
             if self.database and self.location:
-                functor = self.call_origin[0].split('/')[0]
+                functor = self.call_origin[0].split("/")[0]
                 callterm = Term(functor, *self.context)
-                base_message = 'Error while evaluating %s: %s' % (callterm, err.base_message)
+                base_message = "Error while evaluating %s: %s" % (
+                    callterm,
+                    err.base_message,
+                )
                 location = self.database.lineno(self.location)
                 raise ArithmeticError(base_message, location)
             else:

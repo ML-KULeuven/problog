@@ -24,7 +24,6 @@ else:
 
 
 class TestTransformation(unittest.TestCase):
-
     def setUp(self):
         try:
             self.assertCollectionEqual = self.assertItemsEqual
@@ -59,6 +58,6 @@ class TestTransformation(unittest.TestCase):
         self.assertEqual(3, kc.atomcount)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     suite = unittest.TestLoader().loadTestsFromTestCase(TestTransformation)
     unittest.TextTestRunner(verbosity=2).run(suite)

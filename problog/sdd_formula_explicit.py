@@ -55,7 +55,11 @@ class SDDExplicit(SDD):
         self._root = None
 
     def _create_manager(self):
-        return SDDExplicitManager(auto_gc=self.auto_gc, var_constraint=self.var_constraint, varcount=self.init_varcount)
+        return SDDExplicitManager(
+            auto_gc=self.auto_gc,
+            var_constraint=self.var_constraint,
+            varcount=self.init_varcount,
+        )
 
     def _create_evaluator(self, semiring, weights, **kwargs):
         return SDDExplicitEvaluator(self, semiring, weights, **kwargs)
@@ -101,7 +105,7 @@ class SDDExplicit(SDD):
     #    self.get_manager().clean_nodes(self.get_root_inode())
 
     def to_dot(self, *args, **kwargs):
-        if kwargs.get('use_internal'):
+        if kwargs.get("use_internal"):
             return self.to_internal_dot(node=self.get_root_inode())
         else:
             return self.to_formula().to_dot(*args, **kwargs)
@@ -123,7 +127,12 @@ class SDDExplicit(SDD):
         :rtype: str
         """
         used_node = node if node is not None else self.get_root_inode()
-        return super().sdd_to_dot(node=used_node, litnamemap=litnamemap, show_id=show_id, merge_leafs=merge_leafs)
+        return super().sdd_to_dot(
+            node=used_node,
+            litnamemap=litnamemap,
+            show_id=show_id,
+            merge_leafs=merge_leafs,
+        )
 
 
 class SDDExplicitManager(SDDManager):
@@ -143,7 +152,9 @@ class SDDExplicitManager(SDDManager):
         :param var_constraint: A variable ordering constraint. Currently only x_constrained namedtuple are allowed.
         :type var_constraint: x_constrained
         """
-        SDDManager.__init__(self, varcount=varcount, auto_gc=auto_gc, var_constraint=var_constraint)
+        SDDManager.__init__(
+            self, varcount=varcount, auto_gc=auto_gc, var_constraint=var_constraint
+        )
 
     @staticmethod
     def create_from_SDDManager(sddmgr):
@@ -167,7 +178,6 @@ class SDDExplicitManager(SDDManager):
 
 
 class SDDExplicitEvaluator(SDDEvaluator):
-
     def __init__(self, formula, semiring, weights=None, **kwargs):
         SDDEvaluator.__init__(self, formula, semiring, weights, **kwargs)
 
@@ -180,7 +190,7 @@ class SDDExplicitEvaluator(SDDEvaluator):
         if self._evidence_weight is None or recompute:
             self._evidence_weight = self._evaluate_root()
             if self.semiring.is_zero(self._evidence_weight):
-                raise InconsistentEvidenceError(context=' during compilation')
+                raise InconsistentEvidenceError(context=" during compilation")
         return self._evidence_weight
 
     def evaluate_fact(self, node):
@@ -230,10 +240,18 @@ class SDDExplicitEvaluator(SDDEvaluator):
         Evaluate the circuit (root node) with the current weights (self.weights)
         :return: The WMC of the circuit with the current weights
         """
-        pr_semiring = isinstance(self.semiring, (SemiringLogProbability, SemiringProbability))
+        pr_semiring = isinstance(
+            self.semiring, (SemiringLogProbability, SemiringProbability)
+        )
         query_def_inode = self.formula.get_root_inode()
-        return self._get_manager().wmc(query_def_inode, self.weights, self.semiring, pr_semiring=pr_semiring,
-                                       perform_smoothing=True, smooth_to_root=True)
+        return self._get_manager().wmc(
+            query_def_inode,
+            self.weights,
+            self.semiring,
+            pr_semiring=pr_semiring,
+            perform_smoothing=True,
+            smooth_to_root=True,
+        )
 
     def _reset_value(self, index, pos, neg):
         self.set_weight(index, pos, neg)
@@ -253,8 +271,9 @@ class SDDExplicitEvaluator(SDDEvaluator):
             self.set_weight(index, self.semiring.zero(), neg)
 
 
-x_constrained_named = namedtuple('x_constrained',
-                                 'X_named')  # X_named = list of literal names that have to appear before the rest
+x_constrained_named = namedtuple(
+    "x_constrained", "X_named"
+)  # X_named = list of literal names that have to appear before the rest
 
 
 @transform(LogicDAG, SDDExplicit)
@@ -271,10 +290,12 @@ def build_explicit_from_logicdag(source, destination, **kwdargs):
     """
 
     # Get init varcount
-    init_varcount = kwdargs.get('init_varcount', -1)
-    var_constraint_named = kwdargs.get('var_constraint', None)
+    init_varcount = kwdargs.get("init_varcount", -1)
+    var_constraint_named = kwdargs.get("var_constraint", None)
 
-    if var_constraint_named is not None and isinstance(var_constraint_named, x_constrained_named):
+    if var_constraint_named is not None and isinstance(
+        var_constraint_named, x_constrained_named
+    ):
         var_names = {var: True for var in var_constraint_named.X_named}
         var_ids = []
         atomcount = 1
@@ -288,38 +309,59 @@ def build_explicit_from_logicdag(source, destination, **kwdargs):
     if init_varcount == -1:
         init_varcount = source.atomcount
         for _, clause, c_type in source:
-            if c_type != 'atom' and clause.name is not None:
+            if c_type != "atom" and clause.name is not None:
                 init_varcount += 1
     destination.init_varcount = init_varcount
 
     # build
-    with Timer('Compiling %s' % destination.__class__.__name__):
+    with Timer("Compiling %s" % destination.__class__.__name__):
         identifier = 0
-        line_map = dict()  # line in source mapped to line in destination {src_line: (negated, positive, combined)}
+        line_map = (
+            dict()
+        )  # line in source mapped to line in destination {src_line: (negated, positive, combined)}
         line = 1  # current line (line_id)
         node_to_indicator = {}  # {node : indicator_node}
         root_nodes = []
         for line_id, clause, c_type in source:
-            if c_type == 'atom':
-                result = destination.add_atom(identifier, clause.probability, clause.group, source.get_name(line_id),
-                                              cr_extra=False, is_extra=clause.is_extra)
+            if c_type == "atom":
+                result = destination.add_atom(
+                    identifier,
+                    clause.probability,
+                    clause.group,
+                    source.get_name(line_id),
+                    cr_extra=False,
+                    is_extra=clause.is_extra,
+                )
                 identifier += 1
 
                 line_map[line_id] = (-result, result, result)
                 line += 1
-            elif c_type == 'conj':
-                and_nodes = [line_map[abs(src_line)][src_line > 0] for src_line in clause.children]
-                negated_and_nodes = [line_map[abs(src_line)][src_line < 0] for src_line in clause.children]
+            elif c_type == "conj":
+                and_nodes = [
+                    line_map[abs(src_line)][src_line > 0]
+                    for src_line in clause.children
+                ]
+                negated_and_nodes = [
+                    line_map[abs(src_line)][src_line < 0]
+                    for src_line in clause.children
+                ]
 
                 if clause.name is None:
                     result = destination.add_and(and_nodes, source.get_name(line_id))
-                    result_neg = destination.add_or(negated_and_nodes, source.get_name(-line_id))
+                    result_neg = destination.add_or(
+                        negated_and_nodes, source.get_name(-line_id)
+                    )
                     line_map[line_id] = (result_neg, result, result)
                     line += 2
                 else:
                     # head
-                    head = destination.add_atom(identifier=identifier, probability=True, group=None, name=clause.name,
-                                                is_extra=False)
+                    head = destination.add_atom(
+                        identifier=identifier,
+                        probability=True,
+                        group=None,
+                        name=clause.name,
+                        is_extra=False,
+                    )
                     identifier += 1
                     # body
                     body = destination.add_and(and_nodes)  # source.get_name(i))
@@ -334,18 +376,31 @@ def build_explicit_from_logicdag(source, destination, **kwdargs):
                     line += 6
                     root_nodes.append(combined)
 
-            elif c_type == 'disj':
-                or_nodes = [line_map[abs(src_line)][src_line > 0] for src_line in clause.children]
-                negated_or_nodes = [line_map[abs(src_line)][src_line < 0] for src_line in clause.children]
+            elif c_type == "disj":
+                or_nodes = [
+                    line_map[abs(src_line)][src_line > 0]
+                    for src_line in clause.children
+                ]
+                negated_or_nodes = [
+                    line_map[abs(src_line)][src_line < 0]
+                    for src_line in clause.children
+                ]
 
                 if clause.name is None:
                     result = destination.add_or(or_nodes, source.get_name(line_id))
-                    result_neg = destination.add_and(negated_or_nodes, source.get_name(-line_id))
+                    result_neg = destination.add_and(
+                        negated_or_nodes, source.get_name(-line_id)
+                    )
                     line_map[line_id] = (result_neg, result, result)
                     line += 2
                 else:
                     # head
-                    head = destination.add_atom(identifier=identifier, probability=True, group=None, name=clause.name)
+                    head = destination.add_atom(
+                        identifier=identifier,
+                        probability=True,
+                        group=None,
+                        name=clause.name,
+                    )
                     identifier += 1
                     # body
                     body = destination.add_or(or_nodes)  # source.get_name(i))
@@ -361,18 +416,26 @@ def build_explicit_from_logicdag(source, destination, **kwdargs):
                     root_nodes.append(combined)
 
             else:
-                raise TypeError('Unknown node type')
+                raise TypeError("Unknown node type")
 
         for name, node, label in source.get_names_with_label():
-            if label == destination.LABEL_QUERY or label == destination.LABEL_EVIDENCE_MAYBE or \
-                    label == destination.LABEL_EVIDENCE_NEG or label == destination.LABEL_EVIDENCE_POS:  # TODO required?
+            if (
+                label == destination.LABEL_QUERY
+                or label == destination.LABEL_EVIDENCE_MAYBE
+                or label == destination.LABEL_EVIDENCE_NEG
+                or label == destination.LABEL_EVIDENCE_POS
+            ):  # TODO required?
                 if node is None or node == 0:
                     destination.add_name(name, node, label)
                 else:
                     mapped_line = line_map[abs(node)][2]
                     sign = -1 if node < 0 else 1
-                    if node_to_indicator.get(mapped_line) is not None:  # Change internal node indicator
-                        destination.add_name(name, sign * node_to_indicator[mapped_line], label)
+                    if (
+                        node_to_indicator.get(mapped_line) is not None
+                    ):  # Change internal node indicator
+                        destination.add_name(
+                            name, sign * node_to_indicator[mapped_line], label
+                        )
                     else:
                         destination.add_name(name, sign * mapped_line, label)
 
@@ -398,7 +461,7 @@ def build_explicit_from_forwardsdd(source, destination, **kwdargs):
     :return: destination
     :rtype: SDDExplicit
     """
-    with Timer('Compiling %s' % destination.__class__.__name__):
+    with Timer("Compiling %s" % destination.__class__.__name__):
         ForwardInference.build_dd(source)
 
         # Make sure all atoms exist in atom2var.
@@ -407,15 +470,21 @@ def build_explicit_from_forwardsdd(source, destination, **kwdargs):
                 source.get_inode(node)
 
         source.copy_to_noref(destination)
-        destination.inode_manager = SDDExplicitManager.create_from_SDDManager(destination.inode_manager)
+        destination.inode_manager = SDDExplicitManager.create_from_SDDManager(
+            destination.inode_manager
+        )
 
         root_nodes = []
         var_to_indicator = dict()
         for line_id, clause, c_type in destination:
-            if (c_type == 'conj' or c_type == 'disj') and clause.name is not None:
+            if (c_type == "conj" or c_type == "disj") and clause.name is not None:
                 # head
-                head = destination.add_atom(identifier=destination.get_next_atom_identifier(), probability=True,
-                                            group=None, name=destination.get_name(line_id))
+                head = destination.add_atom(
+                    identifier=destination.get_next_atom_identifier(),
+                    probability=True,
+                    group=None,
+                    name=destination.get_name(line_id),
+                )
                 var_to_indicator[line_id] = head
 
                 body = line_id

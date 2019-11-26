@@ -53,7 +53,7 @@ def main_mpe_semiring(args):
         result_handler = print_result
 
     if args.output is not None:
-        outf = open(args.output, 'w')
+        outf = open(args.output, "w")
     else:
         outf = sys.stdout
 
@@ -90,22 +90,27 @@ def mpe_semiring(lf, verbose=0, solver=None, minpe=False):
             qs = []
             for qnm, qi in lf.queries():
                 if lf.is_probabilistic(qi):
-                    if type(lf.get_node(qi)).__name__ != 'atom':
+                    if type(lf.get_node(qi)).__name__ != "atom":
                         non_atom.append(qnm)
                 atom.append(qi)
                 qs += [qnm, -qnm]
             qs = set(qs)
             if non_atom:
-                print('WARNING: compound queries are not supported in the output: %s' % ', '.join(map(str, non_atom)),
-                      file=sys.stderr)
+                print(
+                    "WARNING: compound queries are not supported in the output: %s"
+                    % ", ".join(map(str, non_atom)),
+                    file=sys.stderr,
+                )
 
-            qn = lf.add_and([lf.add_or((qi, lf.negate(qi)), compact=False) for qi in atom] + [qn])
+            qn = lf.add_and(
+                [lf.add_or((qi, lf.negate(qi)), compact=False) for qi in atom] + [qn]
+            )
 
         else:
             qs = None
         lf.clear_queries()
 
-        query_name = Term('query')
+        query_name = Term("query")
         lf.add_query(query_name, qn, keep_name=True)
 
         kc = kc_class.create_from(lf)
@@ -129,7 +134,7 @@ def main_mpe_maxsat(args):
         result_handler = print_result
 
     if args.output is not None:
-        outf = open(args.output, 'w')
+        outf = open(args.output, "w")
     else:
         outf = sys.stdout
 
@@ -147,9 +152,13 @@ def main_mpe_maxsat(args):
             # if has_queries:
             #     print('%% WARNING: ignoring queries in file', file=sys.stderr)
 
-            dag = LogicDAG.createFrom(pl, avoid_name_clash=True, label_all=True, labels=[('output', 1)])
+            dag = LogicDAG.createFrom(
+                pl, avoid_name_clash=True, label_all=True, labels=[("output", 1)]
+            )
 
-            prob, output_facts = mpe_maxsat(dag, verbose=args.verbose, solver=args.solver, minpe=args.minpe)
+            prob, output_facts = mpe_maxsat(
+                dag, verbose=args.verbose, solver=args.solver, minpe=args.minpe
+            )
 
             result_handler((True, (prob, output_facts)), outf)
         except Exception as err:
@@ -163,7 +172,7 @@ def main_mpe_maxsat(args):
 
 def mpe_maxsat(dag, verbose=0, solver=None, minpe=False):
     logger = init_logger(verbose)
-    logger.info('Ground program size: %s' % len(dag))
+    logger.info("Ground program size: %s" % len(dag))
 
     cnf = CNF.createFrom(dag, force_atoms=True)
     for qn, qi in cnf.evidence():
@@ -172,12 +181,12 @@ def mpe_maxsat(dag, verbose=0, solver=None, minpe=False):
 
     queries = list(cnf.labeled())
 
-    logger.info('CNF size: %s' % cnf.clausecount)
+    logger.info("CNF size: %s" % cnf.clausecount)
 
     if not cnf.is_trivial():
         solver = get_solver(solver)
 
-        with Timer('Solving'):
+        with Timer("Solving"):
             result = frozenset(solver.evaluate(cnf, invert_weights=minpe))
         weights = cnf.extract_weights(SemiringProbability())
         output_facts = None
@@ -192,7 +201,7 @@ def mpe_maxsat(dag, verbose=0, solver=None, minpe=False):
                     elif -qi in result:
                         output_facts.append(-qn)
             for i, n, t in dag:
-                if t == 'atom':
+                if t == "atom":
                     if i in result:
                         if not queries:
                             output_facts.append(n.name)
@@ -213,12 +222,12 @@ def print_result(result, output=sys.stdout):
     if success:
         prob, facts = result
         if facts is None:
-            print('%% The model is not satisfiable.', file=output)
+            print("%% The model is not satisfiable.", file=output)
         else:
             for atom in facts:
                 print(atom, file=output)
             if prob is not None:
-                print('%% Probability: %.10g' % prob)
+                print("%% Probability: %.10g" % prob)
         return 0
     else:
         print(process_error(result), file=output)
@@ -234,19 +243,25 @@ def print_result_json(d, output):
     :return:
     """
     import json
+
     result = {}
     success, d = d
     if success:
         prob, facts = d
-        result['SUCCESS'] = True
+        result["SUCCESS"] = True
         if facts is not None:
-            result['atoms'] = list(map(lambda n: (str(-n), False) if n.is_negated() else (str(n), True), facts))
+            result["atoms"] = list(
+                map(
+                    lambda n: (str(-n), False) if n.is_negated() else (str(n), True),
+                    facts,
+                )
+            )
         if prob is not None:
-            result['prob'] = round(prob, 10)
+            result["prob"] = round(prob, 10)
     else:
-        result['SUCCESS'] = False
-        result['err'] = process_error(d)
-        result['original'] = str(d)
+        result["SUCCESS"] = False
+        result["err"] = process_error(d)
+        result["original"] = str(d)
     print(json.dumps(result), file=output)
     return 0
 
@@ -262,6 +277,7 @@ def reduce_formula(formula, facts):
             values[-f - 1] = False
 
     from collections import deque
+
     nodes = deque(range(1, len(formula) + 1))
     while nodes:
         index = nodes.popleft()
@@ -269,11 +285,13 @@ def reduce_formula(formula, facts):
         if value is None:
             node = formula.get_node(index)
             nodetype = type(node).__name__
-            if nodetype == 'atom':
+            if nodetype == "atom":
                 pass  # Really shouldn't happen
             else:
-                children = [values[c] if c > 0 else not values[-c] for c in node.children]
-                if nodetype == 'disj':
+                children = [
+                    values[c] if c > 0 else not values[-c] for c in node.children
+                ]
+                if nodetype == "disj":
                     if True in children:
                         values[index - 1] = True
                     elif None in children:
@@ -292,7 +310,6 @@ def reduce_formula(formula, facts):
 
 
 class SemiringMPEState(Semiring):
-
     def __init__(self):
         Semiring.__init__(self)
 
@@ -331,7 +348,6 @@ class SemiringMPEState(Semiring):
 
 
 class SemiringMinPEState(SemiringMPEState):
-
     def __init__(self):
         SemiringMPEState.__init__(self)
 
@@ -352,20 +368,30 @@ def argparser():
     import argparse
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('inputfile')
-    parser.add_argument('--solver', choices=get_available_solvers(),
-                        default=None, help="MaxSAT solver to use")
-    parser.add_argument('--full', dest='output_all', action='store_true',
-                        help='Also show false atoms.')
-    parser.add_argument('-o', '--output', type=str, default=None,
-                        help='Write output to given file (default: write to stdout)')
-    parser.add_argument('--web', action='store_true', help=argparse.SUPPRESS)
-    parser.add_argument('--use-maxsat', action='store_true', help=argparse.SUPPRESS)
-    parser.add_argument('--use-semiring', action='store_true', help=argparse.SUPPRESS)
-    parser.add_argument('--minpe', action='store_true', help=argparse.SUPPRESS)
-    parser.add_argument('-v', '--verbose', action='count', help='Increase verbosity')
+    parser.add_argument("inputfile")
+    parser.add_argument(
+        "--solver",
+        choices=get_available_solvers(),
+        default=None,
+        help="MaxSAT solver to use",
+    )
+    parser.add_argument(
+        "--full", dest="output_all", action="store_true", help="Also show false atoms."
+    )
+    parser.add_argument(
+        "-o",
+        "--output",
+        type=str,
+        default=None,
+        help="Write output to given file (default: write to stdout)",
+    )
+    parser.add_argument("--web", action="store_true", help=argparse.SUPPRESS)
+    parser.add_argument("--use-maxsat", action="store_true", help=argparse.SUPPRESS)
+    parser.add_argument("--use-semiring", action="store_true", help=argparse.SUPPRESS)
+    parser.add_argument("--minpe", action="store_true", help=argparse.SUPPRESS)
+    parser.add_argument("-v", "--verbose", action="count", help="Increase verbosity")
     return parser
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main(sys.argv[1:])

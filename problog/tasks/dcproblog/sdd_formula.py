@@ -28,9 +28,9 @@ class SDDHAL(SDD):
         return formula
 
     def sdd_functions_to_dot(self, *args, sdds=None, **kwargs):
-        if kwargs.get('use_internal'):
+        if kwargs.get("use_internal"):
             for qn, qi in self.queries():
-                filename = mktempfile('.dot')
+                filename = mktempfile(".dot")
                 self.get_manager().write_to_dot(self.get_inode(qi), filename)
                 with open(filename) as f:
                     return f.read()
@@ -49,11 +49,23 @@ class SDDHAL(SDD):
             at = self.var2atom[abs(lit)]
             node = self.get_node(at)
             if lit < 0:
-                retval = -formula.add_atom(-lit, probability=node.probability, \
-                                           name=node.name, group=node.group, cr_extra=False, is_extra=node.is_extra)
+                retval = -formula.add_atom(
+                    -lit,
+                    probability=node.probability,
+                    name=node.name,
+                    group=node.group,
+                    cr_extra=False,
+                    is_extra=node.is_extra,
+                )
             else:
-                retval = formula.add_atom(lit, probability=node.probability, \
-                                          name=node.name, group=node.group, cr_extra=False, is_extra=node.is_extra)
+                retval = formula.add_atom(
+                    lit,
+                    probability=node.probability,
+                    name=node.name,
+                    group=node.group,
+                    cr_extra=False,
+                    is_extra=node.is_extra,
+                )
         else:  # is decision
             elements = list(current_node.elements())
             primes = [prime for (prime, sub) in elements]

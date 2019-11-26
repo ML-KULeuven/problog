@@ -26,7 +26,14 @@ from ..engine import DefaultEngine
 from ..errors import process_error
 from ..evaluator import SemiringLogProbability, SemiringProbability, SemiringSymbolic
 from ..program import PrologFile, SimpleProgram
-from ..util import Timer, start_timer, stop_timer, init_logger, format_dictionary, format_value
+from ..util import (
+    Timer,
+    start_timer,
+    stop_timer,
+    init_logger,
+    format_dictionary,
+    format_value,
+)
 
 
 def print_result(d, output, debug=False, precision=8):
@@ -50,7 +57,7 @@ def print_result_prolog(d, output, debug=False, precision=8):
     success, d = d
     if success:
         for k, v in d.items():
-            print('problog_result(%s, %s).' % (k, v), file=output)
+            print("problog_result(%s, %s)." % (k, v), file=output)
         return 0
     else:
         print(process_error(d, debug=debug), file=output)
@@ -66,20 +73,32 @@ def print_result_json(d, output, precision=8):
     :return:
     """
     import json
+
     result = {}
     success, d = d
     if success:
-        result['SUCCESS'] = True
-        result['probs'] = [[str(n), format_value(p, precision), n.loc[1], n.loc[2]] for n, p in d.items()]
+        result["SUCCESS"] = True
+        result["probs"] = [
+            [str(n), format_value(p, precision), n.loc[1], n.loc[2]]
+            for n, p in d.items()
+        ]
     else:
-        result['SUCCESS'] = False
-        result['err'] = vars(d)
-        result['err']['message'] = str(process_error(d))
+        result["SUCCESS"] = False
+        result["err"] = vars(d)
+        result["err"]["message"] = str(process_error(d))
     print(json.dumps(result), file=output)
     return 0
 
 
-def execute(filename, knowledge=None, semiring=None, combine=False, profile=False, trace=False, **kwdargs):
+def execute(
+    filename,
+    knowledge=None,
+    semiring=None,
+    combine=False,
+    profile=False,
+    trace=False,
+    **kwdargs
+):
     """Run ProbLog.
 
     :param filename: input file
@@ -93,7 +112,7 @@ def execute(filename, knowledge=None, semiring=None, combine=False, profile=Fals
     """
 
     try:
-        with Timer('Total time'):
+        with Timer("Total time"):
             if combine:
                 model = SimpleProgram()
                 for i, fn in enumerate(filename):
@@ -106,14 +125,15 @@ def execute(filename, knowledge=None, semiring=None, combine=False, profile=Fals
                 model = PrologFile(filename)
             if profile or trace:
                 from problog.debug import EngineTracer
+
                 profiler = EngineTracer(keep_trace=trace)
-                kwdargs['debugger'] = profiler
+                kwdargs["debugger"] = profiler
             else:
                 profiler = None
 
             engine = DefaultEngine(**kwdargs)
             db = engine.prepare(model)
-            db_semiring = db.get_data('semiring')
+            db_semiring = db.get_data("semiring")
             if db_semiring is not None:
                 semiring = db_semiring
             if knowledge is None or type(knowledge) == str:
@@ -130,7 +150,7 @@ def execute(filename, knowledge=None, semiring=None, combine=False, profile=Fals
                 if trace:
                     print(profiler.show_trace())
                 if profile:
-                    print(profiler.show_profile(kwdargs.get('profile_level', 0)))
+                    print(profiler.show_profile(kwdargs.get("profile_level", 0)))
         return True, result
     except KeyboardInterrupt as err:
         trace = traceback.format_exc()
@@ -155,10 +175,12 @@ def argparser():
 
     class InputFile(str):
         """Stub class for file input arguments."""
+
         pass
 
     class OutputFile(str):
         """Stub class for file output arguments."""
+
         pass
 
     description = """ProbLog 2.1 command line interface
@@ -181,77 +203,159 @@ def argparser():
     Select a mode by adding one of these keywords as first argument (e.g. problog-cli.py install).
     """
 
-    parser = argparse.ArgumentParser(description=description,
-                                     formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument('filenames', metavar='MODEL', nargs='*', type=InputFile)
-    parser.add_argument('--verbose', '-v', action='count', help='Verbose output')
-    parser.add_argument('--knowledge', '-k', dest='koption',
-                        choices=get_evaluatables(),
-                        default=None, help="Knowledge compilation tool.")
-    parser.add_argument('--combine', help="Combine input files into single model.", action='store_true')
+    parser = argparse.ArgumentParser(
+        description=description, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
+    parser.add_argument("filenames", metavar="MODEL", nargs="*", type=InputFile)
+    parser.add_argument("--verbose", "-v", action="count", help="Verbose output")
+    parser.add_argument(
+        "--knowledge",
+        "-k",
+        dest="koption",
+        choices=get_evaluatables(),
+        default=None,
+        help="Knowledge compilation tool.",
+    )
+    parser.add_argument(
+        "--combine", help="Combine input files into single model.", action="store_true"
+    )
     # parser.add_argument('--grounder', choices=['yap', 'default', 'yap_debug'], default=None)
 
     # Evaluation semiring
     ls_group = parser.add_mutually_exclusive_group()
-    ls_group.add_argument('--logspace', action='store_true',
-                          help="Use log space evaluation (default).", default=True)
-    ls_group.add_argument('--nologspace', dest='logspace', action='store_false',
-                          help="Use normal space evaluation.")
-    ls_group.add_argument('--symbolic', dest='symbolic', action='store_true',
-                          help="Use symbolic computations.")
+    ls_group.add_argument(
+        "--logspace",
+        action="store_true",
+        help="Use log space evaluation (default).",
+        default=True,
+    )
+    ls_group.add_argument(
+        "--nologspace",
+        dest="logspace",
+        action="store_false",
+        help="Use normal space evaluation.",
+    )
+    ls_group.add_argument(
+        "--symbolic",
+        dest="symbolic",
+        action="store_true",
+        help="Use symbolic computations.",
+    )
 
-    parser.add_argument('--output', '-o', help="Output file (default stdout)", type=OutputFile)
-    parser.add_argument('--recursion-limit',
-                        help="Set Python recursion limit. (default: %d)" % sys.getrecursionlimit(),
-                        default=sys.getrecursionlimit(), type=int)
-    parser.add_argument('--timeout', '-t', type=int, default=0,
-                        help="Set timeout (in seconds, default=off).")
-    parser.add_argument('--compile-timeout', type=int, default=0,
-                        help="Set timeout for compilation (in seconds, default=off).")
-    parser.add_argument('--debug', '-d', action='store_true',
-                        help="Enable debug mode (print full errors).")
-    parser.add_argument('--full-trace', '-T', action='store_true',
-                        help="Full tracing.")
-    parser.add_argument('--web', action='store_true', help=argparse.SUPPRESS)
-    parser.add_argument('-a', '--arg', dest='args', action='append',
-                        help='Pass additional arguments to the cmd_args builtin.')
-    parser.add_argument('--profile', action='store_true', help='output runtime profile')
-    parser.add_argument('--trace', action='store_true', help='output runtime trace')
-    parser.add_argument('--profile-level', type=int, default=0)
-    parser.add_argument('--format', choices=['text', 'prolog'])
-    parser.add_argument('-L', '--library', action='append', help='Add to ProbLog library search path')
+    parser.add_argument(
+        "--output", "-o", help="Output file (default stdout)", type=OutputFile
+    )
+    parser.add_argument(
+        "--recursion-limit",
+        help="Set Python recursion limit. (default: %d)" % sys.getrecursionlimit(),
+        default=sys.getrecursionlimit(),
+        type=int,
+    )
+    parser.add_argument(
+        "--timeout",
+        "-t",
+        type=int,
+        default=0,
+        help="Set timeout (in seconds, default=off).",
+    )
+    parser.add_argument(
+        "--compile-timeout",
+        type=int,
+        default=0,
+        help="Set timeout for compilation (in seconds, default=off).",
+    )
+    parser.add_argument(
+        "--debug",
+        "-d",
+        action="store_true",
+        help="Enable debug mode (print full errors).",
+    )
+    parser.add_argument("--full-trace", "-T", action="store_true", help="Full tracing.")
+    parser.add_argument("--web", action="store_true", help=argparse.SUPPRESS)
+    parser.add_argument(
+        "-a",
+        "--arg",
+        dest="args",
+        action="append",
+        help="Pass additional arguments to the cmd_args builtin.",
+    )
+    parser.add_argument("--profile", action="store_true", help="output runtime profile")
+    parser.add_argument("--trace", action="store_true", help="output runtime trace")
+    parser.add_argument("--profile-level", type=int, default=0)
+    parser.add_argument("--format", choices=["text", "prolog"])
+    parser.add_argument(
+        "-L", "--library", action="append", help="Add to ProbLog library search path"
+    )
 
     # Additional arguments (passed through)
-    parser.add_argument('--engine-debug', action='store_true', help=argparse.SUPPRESS)
-    parser.add_argument('--propagate-evidence', action='store_true',
-                        dest='propagate_evidence',
-                        default=True,
-                        help="Enable evidence propagation")
-    parser.add_argument('--dont-propagate-evidence', action='store_false',
-                        dest='propagate_evidence',
-                        default=False,
-                        help="Disable evidence propagation")
-    parser.add_argument('--propagate-weights', action='store_true', default=None,
-                        help="Enable weight propagation")
-    parser.add_argument('--convergence', '-c', type=float, default=argparse.SUPPRESS,
-                        help='stop anytime when bounds are within this range')
-    parser.add_argument('--unbuffered', '-u', action='store_true', default=argparse.SUPPRESS,
-                        help=argparse.SUPPRESS)
+    parser.add_argument("--engine-debug", action="store_true", help=argparse.SUPPRESS)
+    parser.add_argument(
+        "--propagate-evidence",
+        action="store_true",
+        dest="propagate_evidence",
+        default=True,
+        help="Enable evidence propagation",
+    )
+    parser.add_argument(
+        "--dont-propagate-evidence",
+        action="store_false",
+        dest="propagate_evidence",
+        default=False,
+        help="Disable evidence propagation",
+    )
+    parser.add_argument(
+        "--propagate-weights",
+        action="store_true",
+        default=None,
+        help="Enable weight propagation",
+    )
+    parser.add_argument(
+        "--convergence",
+        "-c",
+        type=float,
+        default=argparse.SUPPRESS,
+        help="stop anytime when bounds are within this range",
+    )
+    parser.add_argument(
+        "--unbuffered",
+        "-u",
+        action="store_true",
+        default=argparse.SUPPRESS,
+        help=argparse.SUPPRESS,
+    )
 
     # SDD garbage collection
     sdd_auto_gc_group = parser.add_mutually_exclusive_group()
-    sdd_auto_gc_group.add_argument('--sdd-auto-gc', action='store_true', dest='sdd_auto_gc',
-                                   default=argparse.SUPPRESS, help=argparse.SUPPRESS)
-    sdd_auto_gc_group.add_argument('--sdd-no-auto-gc', action='store_false', dest='sdd_auto_gc',
-                                   default=argparse.SUPPRESS, help=argparse.SUPPRESS)
+    sdd_auto_gc_group.add_argument(
+        "--sdd-auto-gc",
+        action="store_true",
+        dest="sdd_auto_gc",
+        default=argparse.SUPPRESS,
+        help=argparse.SUPPRESS,
+    )
+    sdd_auto_gc_group.add_argument(
+        "--sdd-no-auto-gc",
+        action="store_false",
+        dest="sdd_auto_gc",
+        default=argparse.SUPPRESS,
+        help=argparse.SUPPRESS,
+    )
 
     sdd_fixvars_group = parser.add_mutually_exclusive_group()
-    sdd_fixvars_group.add_argument('--sdd-preset-variables', action='store_true',
-                                   dest='sdd_preset_variables',
-                                   default=argparse.SUPPRESS, help=argparse.SUPPRESS)
-    sdd_fixvars_group.add_argument('--sdd-no-preset-variables', action='store_false',
-                                   dest='sdd_preset_variables',
-                                   default=argparse.SUPPRESS, help=argparse.SUPPRESS)
+    sdd_fixvars_group.add_argument(
+        "--sdd-preset-variables",
+        action="store_true",
+        dest="sdd_preset_variables",
+        default=argparse.SUPPRESS,
+        help=argparse.SUPPRESS,
+    )
+    sdd_fixvars_group.add_argument(
+        "--sdd-no-preset-variables",
+        action="store_false",
+        dest="sdd_preset_variables",
+        default=argparse.SUPPRESS,
+        help=argparse.SUPPRESS,
+    )
 
     return parser
 
@@ -267,7 +371,7 @@ def main(argv, result_handler=None):
     if result_handler is None:
         if args.web:
             result_handler = print_result_json
-        elif args.format == 'prolog':
+        elif args.format == "prolog":
             result_handler = lambda *a: print_result_prolog(*a, debug=args.debug)
         else:
             result_handler = lambda *a: print_result(*a, debug=args.debug)
@@ -277,7 +381,7 @@ def main(argv, result_handler=None):
     if args.output is None:
         output = sys.stdout
     else:
-        output = open(args.output, 'w')
+        output = open(args.output, "w")
 
     if args.timeout:
         start_timer(args.timeout)
@@ -286,11 +390,11 @@ def main(argv, result_handler=None):
         mode = os.fstat(0).st_mode
         if stat.S_ISFIFO(mode) or stat.S_ISREG(mode):
             # stdin is piped or redirected
-            args.filenames = ['-']
+            args.filenames = ["-"]
         else:
             # stdin is terminal
             # No interactive input, exit
-            print('ERROR: Expected a file or stream as input.\n', file=sys.stderr)
+            print("ERROR: Expected a file or stream as input.\n", file=sys.stderr)
             parser.print_help()
             sys.exit(1)
 
@@ -300,7 +404,7 @@ def main(argv, result_handler=None):
         semiring = SemiringProbability()
 
     if args.symbolic:
-        args.koption = 'nnf'
+        args.koption = "nnf"
         semiring = SemiringSymbolic()
 
     if args.propagate_weights:
@@ -313,7 +417,7 @@ def main(argv, result_handler=None):
     else:
         for filename in args.filenames:
             if len(args.filenames) > 1:
-                print('Results for %s:' % filename)
+                print("Results for %s:" % filename)
             result = execute(filename, args.koption, semiring, **vars(args))
             retcode = result_handler(result, output)
             if len(args.filenames) == 1:
@@ -326,5 +430,5 @@ def main(argv, result_handler=None):
         stop_timer()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main(sys.argv[1:])

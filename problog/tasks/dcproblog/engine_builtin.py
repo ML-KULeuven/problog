@@ -5,13 +5,17 @@ from problog.logic import Term, Constant, term2list, list2term
 from .logic import SymbolicConstant, ValueDimConstant, ValueExpr, DensityConstant
 
 
-def _builtin_density(term, args=(), target=None, engine=None, callback=None, transform=None, **kwdargs):
-    check_mode((term,), ['c'], functor='density_builtin')
+def _builtin_density(
+    term, args=(), target=None, engine=None, callback=None, transform=None, **kwdargs
+):
+    check_mode((term,), ["c"], functor="density_builtin")
     actions = []
     try:
         node_ids = target.density_nodes[term]
     except:
-        raise ValueError("Cannot query density of discrete random variable ({}).".format(term))
+        raise ValueError(
+            "Cannot query density of discrete random variable ({}).".format(term)
+        )
     target.density_queries[term] = set()
     for nid in node_ids:
         if nid in target.density_node_body:
@@ -26,8 +30,16 @@ def _builtin_density(term, args=(), target=None, engine=None, callback=None, tra
     return False, actions
 
 
-def _builtin_free(free_variable, args=(), target=None, engine=None, callback=None, transform=None, **kwdargs):
-    check_mode((free_variable,), ['c'], functor='free')
+def _builtin_free(
+    free_variable,
+    args=(),
+    target=None,
+    engine=None,
+    callback=None,
+    transform=None,
+    **kwdargs
+):
+    check_mode((free_variable,), ["c"], functor="free")
     actions = []
     target.free_variables.add(free_variable)
     actions += callback.notifyResult((free_variable,), is_last=False)
@@ -35,8 +47,16 @@ def _builtin_free(free_variable, args=(), target=None, engine=None, callback=Non
     return True, actions
 
 
-def _builtin_free_list(free_variables, args=(), target=None, engine=None, callback=None, transform=None, **kwdargs):
-    check_mode((free_variables,), ['l'], functor='free_list')
+def _builtin_free_list(
+    free_variables,
+    args=(),
+    target=None,
+    engine=None,
+    callback=None,
+    transform=None,
+    **kwdargs
+):
+    check_mode((free_variables,), ["l"], functor="free_list")
     free_variables = term2list(free_variables)
     actions = []
     for v in free_variables:
@@ -75,14 +95,25 @@ def get_value_terms(value, value_type):
     return value_terms
 
 
-def _builtin_as(value, term, args=(), target=None, engine=None, callback=None, transform=None, **kwdargs):
-    check_mode((value, term), ['*g'], functor='as')
+def _builtin_as(
+    value,
+    term,
+    args=(),
+    target=None,
+    engine=None,
+    callback=None,
+    transform=None,
+    **kwdargs
+):
+    check_mode((value, term), ["*g"], functor="as")
     # TODO make this function dependent on term
     value_type = get_value_type(value)
     try:
         node_ids = target.density_nodes[term]
     except:
-        raise ValueError("The value of a discrete random variable ({}) is not defined.".format(term))
+        raise ValueError(
+            "The value of a discrete random variable ({}) is not defined.".format(term)
+        )
     actions = []
     for nid in node_ids:
         node = target.get_node(nid)
@@ -95,7 +126,9 @@ def _builtin_as(value, term, args=(), target=None, engine=None, callback=None, t
             value_functor = probability.functor
             value_args = [target.create_ast_representation(a) for a in probability.args]
 
-            value = create_value(value, value_functor, value_args, value_name, value_type)
+            value = create_value(
+                value, value_functor, value_args, value_name, value_type
+            )
             target.density_values[value_name] = value
 
         value_terms = get_value_terms(value, value_type)
@@ -121,20 +154,24 @@ def conditionCallback(functor, arg1, arg2, **kwdargs):
         cvariables = cvariables.union(a.cvariables)
     symbolic_condition = SymbolicConstant(functor, args=args, cvariables=cvariables)
     hashed_symbolic = hash(str(symbolic_condition))
-    con_node = target.add_atom(identifier=hashed_symbolic, probability=symbolic_condition, source=None)
-    args = kwdargs['engine'].create_context((arg1, arg2), parent=kwdargs['context'])
+    con_node = target.add_atom(
+        identifier=hashed_symbolic, probability=symbolic_condition, source=None
+    )
+    args = kwdargs["engine"].create_context((arg1, arg2), parent=kwdargs["context"])
     actions += callback.notifyResult(args, node=con_node, is_last=True, parent=None)
     return True, actions
 
 
 def booleanCallback(test, call, arg0, arg1, **kwdargs):
-    callback = kwdargs['callback']
+    callback = kwdargs["callback"]
     if test:
-        args = kwdargs['engine'].create_context((arg0, arg1), parent=kwdargs['context'])
-        if kwdargs['target'].flag('keep_builtins'):
+        args = kwdargs["engine"].create_context((arg0, arg1), parent=kwdargs["context"])
+        if kwdargs["target"].flag("keep_builtins"):
             call = functor
             name = Term(call, *args)
-            node = kwdargs['target'].add_atom(name, None, None, name=name, source='builtin')
+            node = kwdargs["target"].add_atom(
+                name, None, None, name=name, source="builtin"
+            )
             return True, callback.notifyResult(args, node, True)
         else:
             return True, callback.notifyResult(args, NODE_TRUE, True)
@@ -146,13 +183,15 @@ def _builtin_gt(arg1, arg2, engine=None, **kwdargs):
     """``A > B``
         A and B are ground
     """
-    check_mode((arg1, arg2), ['gg'], functor='>', **kwdargs)
+    check_mode((arg1, arg2), ["gg"], functor=">", **kwdargs)
     a_value = arg1.compute_value(engine.functions)
     b_value = arg2.compute_value(engine.functions)
     if a_value is None or b_value is None:
         return False
     elif isinstance(a_value, (int, float)) and isinstance(b_value, (int, float)):
-        return booleanCallback(a_value > b_value, '>', a_value, b_value, engine=engine, **kwdargs)
+        return booleanCallback(
+            a_value > b_value, ">", a_value, b_value, engine=engine, **kwdargs
+        )
     else:
         return conditionCallback(">", a_value, b_value, engine=engine, **kwdargs)
 
@@ -161,13 +200,15 @@ def _builtin_lt(arg1, arg2, engine=None, **kwdargs):
     """``A < B``
         A and B are ground
     """
-    check_mode((arg1, arg2), ['gg'], functor='<', **kwdargs)
+    check_mode((arg1, arg2), ["gg"], functor="<", **kwdargs)
     a_value = arg1.compute_value(engine.functions)
     b_value = arg2.compute_value(engine.functions)
     if a_value is None or b_value is None:
         return False
     elif isinstance(a_value, (int, float)) and isinstance(b_value, (int, float)):
-        return booleanCallback(a_value < b_value, '<', a_value, b_value, engine=engine, **kwdargs)
+        return booleanCallback(
+            a_value < b_value, "<", a_value, b_value, engine=engine, **kwdargs
+        )
     else:
         return conditionCallback("<", a_value, b_value, engine=engine, **kwdargs)
 
@@ -176,13 +217,15 @@ def _builtin_le(arg1, arg2, engine=None, **kwdargs):
     """``A =< B``
         A and B are ground
     """
-    check_mode((arg1, arg2), ['gg'], functor='=<', **kwdargs)
+    check_mode((arg1, arg2), ["gg"], functor="=<", **kwdargs)
     a_value = arg1.compute_value(engine.functions)
     b_value = arg2.compute_value(engine.functions)
     if a_value is None or b_value is None:
         return False
     elif isinstance(a_value, (int, float)) and isinstance(b_value, (int, float)):
-        return booleanCallback(a_value <= b_value, '=<', a_value, b_value, engine=engine, **kwdargs)
+        return booleanCallback(
+            a_value <= b_value, "=<", a_value, b_value, engine=engine, **kwdargs
+        )
     else:
         return conditionCallback("<=", a_value, b_value, engine=engine, **kwdargs)
 
@@ -191,13 +234,15 @@ def _builtin_ge(arg1, arg2, engine=None, **kwdargs):
     """``A >= B``
         A and B are ground
     """
-    check_mode((arg1, arg2), ['gg'], functor='>=', **kwdargs)
+    check_mode((arg1, arg2), ["gg"], functor=">=", **kwdargs)
     a_value = arg1.compute_value(engine.functions)
     b_value = arg2.compute_value(engine.functions)
     if a_value is None or b_value is None:
         return False
     elif isinstance(a_value, (int, float)) and isinstance(b_value, (int, float)):
-        return booleanCallback(a_value >= b_value, '>=', a_value, b_value, engine=engine, **kwdargs)
+        return booleanCallback(
+            a_value >= b_value, ">=", a_value, b_value, engine=engine, **kwdargs
+        )
     else:
         return conditionCallback(">=", a_value, b_value, engine=engine, **kwdargs)
 
@@ -230,11 +275,12 @@ def _builtin_ge(arg1, arg2, engine=None, **kwdargs):
 #         return a_value == b_value
 #
 
+
 def _builtin_observation(value, observation, engine=None, **kwdargs):
     print(type(value))
     print(type(observation))
     # print(functor)
-    check_mode((value, observation), ['gg'], functor='obs', **kwdargs)
+    check_mode((value, observation), ["gg"], functor="obs", **kwdargs)
     assert isinstance(value.functor, ValueDimConstant)
 
     v_value = value.compute_value(engine.functions)
@@ -242,7 +288,10 @@ def _builtin_observation(value, observation, engine=None, **kwdargs):
     if v_value is None or o_value is None:
         return False
     else:
-        return conditionCallback("observation", v_value, o_value, engine=engine, **kwdargs)
+        return conditionCallback(
+            "observation", v_value, o_value, engine=engine, **kwdargs
+        )
+
 
 #
 # def _builtin_is(a, b, engine=None, **k):

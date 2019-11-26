@@ -32,15 +32,15 @@ from ..util import init_logger, format_dictionary
 
 def main(argv):
     parser = argparse.ArgumentParser()
-    parser.add_argument('filename')
-    parser.add_argument('-v', '--verbose', action='count')
-    parser.add_argument('--web', action='store_true')
-    parser.add_argument('-o', '--output', type=str, default=None)
+    parser.add_argument("filename")
+    parser.add_argument("-v", "--verbose", action="count")
+    parser.add_argument("--web", action="store_true")
+    parser.add_argument("-o", "--output", type=str, default=None)
     args = parser.parse_args(argv)
 
     init_logger(args.verbose)
     if args.output:
-        out = open(args.output, 'w')
+        out = open(args.output, "w")
     else:
         out = sys.stdout
 
@@ -48,7 +48,7 @@ def main(argv):
         pl = PrologFile(args.filename)
         db = DefaultEngine().prepare(pl)
 
-        program = list(map(lambda s: '%s.' % s, db.iter_raw()))
+        program = list(map(lambda s: "%s." % s, db.iter_raw()))
         cnf = KBestFormula.create_from(db, label_all=True)
 
         explanation = []
@@ -56,33 +56,35 @@ def main(argv):
 
         if args.web:
             result = {}
-            result['SUCCESS'] = True
-            result['program'] = program
-            result['proofs'] = explanation
-            result['probabilities'] = [(str(k), round(v, 8)) for k, v in results.items()]
+            result["SUCCESS"] = True
+            result["program"] = program
+            result["proofs"] = explanation
+            result["probabilities"] = [
+                (str(k), round(v, 8)) for k, v in results.items()
+            ]
             print(json.dumps(result), file=out)
         else:
-            print('Transformed program', file=out)
-            print('-------------------', file=out)
-            print('\n'.join(program), file=out)
+            print("Transformed program", file=out)
+            print("-------------------", file=out)
+            print("\n".join(program), file=out)
             print(file=out)
 
-            print('Proofs', file=out)
-            print('------', file=out)
-            print('\n'.join(explanation), file=out)
+            print("Proofs", file=out)
+            print("------", file=out)
+            print("\n".join(explanation), file=out)
 
             print(file=out)
-            print('Probabilities', file=out)
-            print('-------------', file=out)
+            print("Probabilities", file=out)
+            print("-------------", file=out)
             print(format_dictionary(results), file=out)
     except Exception as err:
         trace = traceback.format_exc()
         err.trace = trace
         if args.web:
             result = {}
-            result['SUCCESS'] = False
-            result['err'] = vars(err)
-            result['err']['message'] = process_error(err)
+            result["SUCCESS"] = False
+            result["err"] = vars(err)
+            result["err"]["message"] = process_error(err)
             print(json.dumps(result), file=out)
         else:
             print(process_error(err), file=out)
@@ -91,16 +93,17 @@ def main(argv):
         out.close()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main(sys.argv[1:])
 
 
 def argparser():
     import argparse
+
     parser = argparse.ArgumentParser()
-    parser.add_argument('inputfile')
+    parser.add_argument("inputfile")
     return parser
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main(**vars(argparser().parse_args()))
