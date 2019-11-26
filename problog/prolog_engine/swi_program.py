@@ -4,11 +4,19 @@ from time import time
 
 from problog.core import ProbLogObject
 from problog.logic import unquote, term2list, ArithmeticError, Term, Constant
-from swip import parse
-from threaded_prolog import ThreadedProlog
+from problog.prolog_engine.swip import parse
+from problog.prolog_engine.threaded_prolog import ThreadedProlog
 
 
 def handle_prob(prob):
+    '''
+    Turns the probability into a canonical form. If probability is none, returns 1.0.
+    If probability is an integer, it returns a variable as returned by handle_var.
+    If the probability can be cast to a float, return the float.
+    Else, cast it to a string and return that.
+    :param prob:
+    :return:
+    '''
     if prob is None:
         return 1.0
     elif type(prob) is int:
@@ -21,6 +29,7 @@ def handle_prob(prob):
 
 
 def handle_var(a):
+    '''Turn the variable into a canonical string format.'''
     if type(a) is int:
         if a < 0:
             return 'X{}'.format(-a)
@@ -31,6 +40,7 @@ def handle_var(a):
 
 
 def handle_functor(func, args=None):
+    '''Turn the functor into a canonical format.'''
     if type(func) is str:
         if args is not None and len(args) > 0:
             return '{}({})'.format(unquote(func), ','.join(handle_var(a) for a in args))
@@ -74,7 +84,7 @@ class SWIProgram(ProbLogObject):
         new_fact = (i, handle_prob(node.probability), handle_functor(node.functor, node.args))
         self.facts.append(new_fact)
         self.index_dict[i] = new_fact
-        self.prolog.assertz('cl({},true,{})'.format(self.facts[-1][2], self.facts[-1][1]))
+        self.prolog.assertz('fa({},{})'.format(self.facts[-1][2], self.facts[-1][1]))
 
     def add_clause(self, node):
         i = self.new_entry()
@@ -83,7 +93,7 @@ class SWIProgram(ProbLogObject):
             body = ''
         self.clauses.append(
             (i, handle_functor(node.functor, node.args), body))
-        self.prolog.assertz('cl({},({}), 1.0)'.format(self.clauses[-1][1], self.clauses[-1][2]))
+        self.prolog.assertz('cl({},({}))'.format(self.clauses[-1][1], self.clauses[-1][2]))
 
     def add_directive(self, node):
         print(node)
@@ -91,8 +101,8 @@ class SWIProgram(ProbLogObject):
         pass
 
     def get_lines(self):
-        lines = ['cl({},({}),1.0)'.format(c[1], c[2]) for c in self.clauses]
-        lines += ['cl({},true,{})'.format(c[2],c[1]) for c in self.facts]
+        lines = ['cl({},({}))'.format(c[1], c[2]) for c in self.clauses]
+        lines += ['fa({},{})'.format(c[2],c[1]) for c in self.facts]
         return lines
 
     def __str__(self):
