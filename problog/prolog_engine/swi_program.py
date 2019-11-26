@@ -84,7 +84,7 @@ class SWIProgram(ProbLogObject):
         new_fact = (i, handle_prob(node.probability), handle_functor(node.functor, node.args))
         self.facts.append(new_fact)
         self.index_dict[i] = new_fact
-        self.prolog.assertz('fa({},{})'.format(self.facts[-1][1], self.facts[-1][2]))
+        self.prolog.assertz('fa({},{},{})'.format(*self.facts[-1]))
 
     def add_clause(self, node):
         i = self.new_entry()
@@ -102,7 +102,7 @@ class SWIProgram(ProbLogObject):
 
     def get_lines(self):
         lines = ['cl({},({}))'.format(c[1], c[2]) for c in self.clauses]
-        lines += ['fa({},{})'.format(c[1], c[2]) for c in self.facts]
+        lines += ['fa({},{},{})'.format(*c) for c in self.facts]
         return lines
 
     def __str__(self):
@@ -119,7 +119,6 @@ class SWIProgram(ProbLogObject):
             return key
         elif t == ',':
             body = proof.args
-           # body = term2list(body, False)
             new = target.add_and([self.build_formula(b, target) for b in body])
             return new
         elif t == ';':
@@ -129,15 +128,13 @@ class SWIProgram(ProbLogObject):
         elif t == 'true':
             return target.TRUE
         elif t == '::':
-            name = proof.args[1]
-            if str(name) not in target.d:
-                p = float(proof.args[0])
-                if p > 1.0 - 1e-5:
-                    key = target.TRUE
-                key = target.add_atom(target.get_next_atom_identifier(), p)
-                target.add_name(name, key)
-                target.d[str(name)] = key
-            return target.d[str(name)]
+            id = int(proof.args[0])
+            name = proof.args[2]
+            if id not in target.d:
+                p = float(proof.args[1])
+                key = target.add_atom(target.get_next_atom_identifier(), p, name=name)
+                target.d[id] = key
+            return target.d[id]
         else:
             raise Exception('Unhandled node type ' + str(proof))
 
