@@ -32,7 +32,7 @@ from problog.evaluator import SemiringProbability, SemiringLogProbability, Semir
 from problog.formula import LogicFormula
 from problog.ddnnf_formula import DDNNF
 from problog.engine import DefaultEngine
-from problog.prolog_engine.prolog_engine import EngineProlog
+from problog.prolog_engine.prolog_engine import PrologEngine
 # noinspection PyBroadException
 try:
     from pysdd import sdd
@@ -129,7 +129,7 @@ def createSystemTestGeneric(filename, logspace=False) :
         semirings = {"Default": None}
         # semirings = {"Default": None, "Custom": SemiringProbabilityCopy(), "CustomNSP": SemiringProbabilityNSPCopy()}
         #engines = {'Default': DefaultEngine}
-        engines = {'EngineProlog': EngineProlog}
+        engines = {'PrologEngine': PrologEngine}
         for eval_name in evaluatables:
             for semiring in semirings:
                 for engine in engines:

@@ -2,8 +2,8 @@ from collections import defaultdict
 from pathlib import Path
 from time import time
 
-from swip import parse
-from threaded_prolog import ThreadedProlog
+from problog.prolog_engine.swip import parse
+from problog.prolog_engine.threaded_prolog import ThreadedProlog
 
 from problog.core import ProbLogObject
 from problog.logic import unquote, term2list, ArithmeticError
@@ -137,7 +137,6 @@ class SWIProgram(ProbLogObject):
         dependencies = defaultdict(list)
         d = dict()
         for p in proofs:
-            print(p)
             if p.functor == '::':
                 nodes[p.args[2]].append(p)
             elif p.functor == ':-':
