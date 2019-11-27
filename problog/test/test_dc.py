@@ -111,32 +111,32 @@ def createDCPyroTestGeneric(filename, logspace=False) :
 
 
 
-    def evaluate(self, evaluatable_name=None) :
-        try:
-            abe = "pyro"
-            args = {"device":"cpu", "ttype":"float64", "n_samples":50000}
-            args["file_name"] = filename
+        def evaluate(self, evaluatable_name=None) :
+            try:
+                abe = "pyro"
+                args = {"device":"cpu", "ttype":"float64", "n_samples":50000}
+                args["file_name"] = filename
 
-            program = PrologFile(args['file_name'], parser=DCParser())
-            solver = InferenceSolver(abe, **args)
-            probabilities = solver.probability(program, **args)
-            computed = {}
-            for k,v in probabilities.items():
-                computed[str(k)] = float(v.value)
+                program = PrologFile(args['file_name'], parser=DCParser())
+                solver = InferenceSolver(abe, **args)
+                probabilities = solver.probability(program, **args)
+                computed = {}
+                for k,v in probabilities.items():
+                    computed[str(k)] = float(v.value)
 
-        except Exception as err :
-            #print("exception %s" % err)
-            e = err
-            computed = None
+            except Exception as err :
+                #print("exception %s" % err)
+                e = err
+                computed = None
 
-        if computed is None :
-            self.assertEqual(correct, type(e).__name__)
-        else :
-            self.assertIsInstance( correct, dict )
-            self.assertSequenceEqual(correct, computed)
+            if computed is None :
+                self.assertEqual(correct, type(e).__name__)
+            else :
+                self.assertIsInstance( correct, dict )
+                self.assertSequenceEqual(correct, computed)
 
-            for query in correct :
-                self.assertAlmostEqual(correct[query], computed[query], places=2, msg=query)
+                for query in correct :
+                    self.assertAlmostEqual(correct[query], computed[query], places=8, msg=query)
 
     return test
 
@@ -158,8 +158,9 @@ if __name__ == '__main__' :
     psi_filenames = [f for f in filenames if "psi" in f]
 else :
     pyro_filenames= glob.glob( root_path('problog', 'tasks', 'dcproblog', 'test', 'pyro', '*.pl' ) )
-    pyro_filenames += glob.glob( root_path('test', '*.pl' ) )
+    # pyro_filenames += glob.glob( root_path('test', '*.pl' ) )
     psi_filenames= glob.glob( root_path('problog', 'tasks', 'dcproblog', 'test', 'psi', '*.pl' ) )
+    print(pyro_filenames)
 
 evaluatables = []
 
