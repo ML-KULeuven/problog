@@ -95,6 +95,7 @@ class SWIProgram(ProbLogObject):
             body = ''
         self.clauses.append(
             (i, handle_functor(node.functor, node.args), body))
+        print('cl({},({}))'.format(self.clauses[-1][1], self.clauses[-1][2]))
         self.prolog.assertz('cl({},({}))'.format(self.clauses[-1][1], self.clauses[-1][2]))
 
     def add_directive(self, node):
