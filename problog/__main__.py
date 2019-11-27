@@ -1,5 +1,6 @@
-from .tasks import main
 import sys
 
-if __name__ == '__main__':
+from .tasks import main
+
+if __name__ == "__main__":
     main(sys.argv[1:])

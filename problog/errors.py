@@ -2,8 +2,6 @@
 Module name
 """
 
-from __future__ import print_function
-
 import sys
 
 
@@ -24,20 +22,20 @@ class ProbLogError(Exception):
 
     def _location_string(self):
         if self.location is None:
-            return ''
+            return ""
         if type(self.location) == tuple:
             if len(self.location) != 3:
-                return ''
+                return ""
             fn, ln, cn = self.location
             if fn is None:
-                return ' at %s:%s' % (ln, cn)
+                return " at %s:%s" % (ln, cn)
             else:
-                return ' at %s:%s in %s' % (ln, cn, fn)
+                return " at %s:%s in %s" % (ln, cn, fn)
         else:
-            return ' at character %s' % self.location
+            return " at character %s" % self.location
 
     def _message(self):
-        return '%s%s.' % (self.base_message, self._location_string())
+        return "%s%s." % (self.base_message, self._location_string())
 
     def __str__(self):
         return self.message
@@ -45,21 +43,25 @@ class ProbLogError(Exception):
 
 class ParseError(ProbLogError):
     """Error during parsing."""
+
     pass
 
 
 class GroundingError(ProbLogError):
     """Represents an error that occurred during grounding."""
+
     pass
 
 
 class CompilationError(ProbLogError):
     """Error during compilation"""
+
     pass
 
 
 class InstallError(ProbLogError):
     """Error during installation"""
+
     pass
 
 
@@ -72,15 +74,17 @@ class UserError(ProbLogError):
 
 
 class NonGroundQuery(ProbLogError):
-
     def __init__(self, query, location):
-        super(NonGroundQuery, self).__init__("Query term still contains variables after grounding for query %s" % query, location)
+        super(NonGroundQuery, self).__init__(
+            "Query term still contains variables after grounding for query %s" % query,
+            location,
+        )
 
 
 class InconsistentEvidenceError(ProbLogError):
     """Error when evidence is inconsistent"""
 
-    def __init__(self, source=None, context=''):
+    def __init__(self, source=None, context=""):
         """
 
         :param source: evidence term that causes the problem
@@ -92,7 +96,9 @@ class InconsistentEvidenceError(ProbLogError):
         if source is None:
             ProbLogError.__init__(self, "Inconsistent evidence detected%s" % context)
         else:
-            ProbLogError.__init__(self, "Inconsistent evidence detected%s: '%s'" % (context, source))
+            ProbLogError.__init__(
+                self, "Inconsistent evidence detected%s: '%s'" % (context, source)
+            )
 
 
 def process_error(err, debug=False):
@@ -102,16 +108,16 @@ def process_error(err, debug=False):
     :param debug: if True, also print original stack trace
     :return: textual representation of the error
     """
-    if debug and hasattr(err, 'trace'):
+    if debug and hasattr(err, "trace"):
         print(err.trace, file=sys.stderr)
 
     if isinstance(err, ProbLogError):
-        return '%s: %s' % (err.__class__.__name__, err)
-    elif 'Timeout' in str(err) or 'timeout' in str(err):
-        return 'Timeout exceeded'
+        return "%s: %s" % (err.__class__.__name__, err)
+    elif "Timeout" in str(err) or "timeout" in str(err):
+        return "Timeout exceeded"
     elif isinstance(err, KeyboardInterrupt):
-        return 'Interrupted by user'
+        return "Interrupted by user"
     else:
-        if not debug and hasattr(err, 'trace'):
+        if not debug and hasattr(err, "trace"):
             print(err.trace, file=sys.stderr)
-        return 'An unexpected error has occurred.'
+        return "An unexpected error has occurred."

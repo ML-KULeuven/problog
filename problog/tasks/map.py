@@ -2,18 +2,20 @@
 Maximum A-Posteriori inference for ProbLog (MAP)
 """
 
-from __future__ import print_function
-
-
-from .. import get_evaluatable
-from ..program import PrologFile
-from ..formula import LogicFormula
-from .dtproblog import search_exhaustive, search_local, argparser, print_result, print_result_json
-from ..constraint import TrueConstraint
-
-import math
 import sys
 import traceback
+
+from .dtproblog import (
+    search_exhaustive,
+    search_local,
+    argparser,
+    print_result,
+    print_result_json,
+)
+from .. import get_evaluatable
+from ..constraint import TrueConstraint
+from ..formula import LogicFormula
+from ..program import PrologFile
 
 
 def main(argv, result_handler=None):
@@ -26,7 +28,7 @@ def main(argv, result_handler=None):
             result_handler = print_result
 
     if args.output is not None:
-        outf = open(args.output, 'w')
+        outf = open(args.output, "w")
     else:
         outf = sys.stdout
 
@@ -55,7 +57,7 @@ def main(argv, result_handler=None):
         for qn, qi, ql in ground_program.labeled():
             node = ground_program.get_node(qi)
             prob = query_probs[qn]
-            if type(node).__name__ != 'atom':
+            if type(node).__name__ != "atom":
                 raise Exception("Queries should be facts: '%s'" % qn)
             decisions.append((qi, qn))
             decision_nodes.add(qi)
@@ -80,7 +82,7 @@ def main(argv, result_handler=None):
         knowledge = get_evaluatable().create_from(ground_program)
 
         # Use dt-problog search to find the solution
-        if search == 'local':
+        if search == "local":
             result = search_local(knowledge, decisions, utilities, constraints)
         else:
             result = search_exhaustive(knowledge, decisions, utilities, constraints)
@@ -96,4 +98,3 @@ def main(argv, result_handler=None):
 
     if args.output is not None:
         outf.close()
-

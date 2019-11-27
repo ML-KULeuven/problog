@@ -21,56 +21,61 @@ Provides an installer for ProbLog dependencies.
     See the License for the specific language governing permissions and
     limitations under the License.
 """
-from __future__ import print_function
-
+import distutils.ccompiler
+import distutils.spawn
 import os
 import sys
-import distutils.spawn
-import distutils.ccompiler
 
 
 def get_system():
     system = sys.platform
-    if system.lower().startswith('java'):
+    if system.lower().startswith("java"):
         import java.lang.System
-        system = java.lang.System.getProperty('os.name').lower()
-    if system.startswith('linux'):
-        system = 'linux'
-    elif system.startswith('win'):
-        system = 'windows'
-    elif system.startswith('mac'):
-        system = 'darwin'
+
+        system = java.lang.System.getProperty("os.name").lower()
+    if system.startswith("linux"):
+        system = "linux"
+    elif system.startswith("win"):
+        system = "windows"
+    elif system.startswith("mac"):
+        system = "darwin"
     return system
 
 
 def set_environment():
     """Updates local PATH and PYTHONPATH to include additional component directories."""
     # Set PATH environment
-    path = os.environ.get('PATH', [])
+    path = os.environ.get("PATH", [])
     if path:
         path = [path]
     path = os.pathsep.join(path + list(get_binary_paths()))
-    os.environ['PATH'] = path
+    os.environ["PATH"] = path
     # Set PYTHONPATH environment
     sys.path += get_module_paths()
 
 
 def get_binary_paths():
     """Get a list of additional binary search paths."""
-    binary_root = os.path.join(os.path.dirname(__file__), 'bin')
+    binary_root = os.path.join(os.path.dirname(__file__), "bin")
     system = get_system()  # Darwin, Linux, ?
     return list(map(os.path.abspath, [os.path.join(binary_root, system), binary_root]))
 
 
 def get_module_paths():
     """Get a list of additional module search paths."""
-    binary_root = os.path.join(os.path.dirname(__file__), 'lib')
+    binary_root = os.path.join(os.path.dirname(__file__), "lib")
     system = get_system()  # Darwin, Linux, ?
-    python = 'python%s' % sys.version_info[0]
-    return list(map(os.path.abspath,
-                    [os.path.join(binary_root, python, system),
-                     os.path.join(binary_root, python),
-                     binary_root]))
+    python = "python%s" % sys.version_info[0]
+    return list(
+        map(
+            os.path.abspath,
+            [
+                os.path.join(binary_root, python, system),
+                os.path.join(binary_root, python),
+                binary_root,
+            ],
+        )
+    )
 
 
 def gather_info():
@@ -78,17 +83,18 @@ def gather_info():
 
     system_info = {}
 
-    system_info['root_path'] = os.path.join(os.path.dirname(__file__), '..')
+    system_info["root_path"] = os.path.join(os.path.dirname(__file__), "..")
 
-    system_info['os'] = get_system()
+    system_info["os"] = get_system()
     # system_info['arch'] = os.uname()[-1]
 
-    system_info['python_version'] = sys.version_info
+    system_info["python_version"] = sys.version_info
 
     # Module pyparsing
     try:
         import pyparsing
-        system_info['pyparsing'] = pyparsing.__version__
+
+        system_info["pyparsing"] = pyparsing.__version__
     except ImportError:
         pass
 
@@ -96,30 +102,32 @@ def gather_info():
     # noinspection PyBroadException
     try:
         import pysdd
-        system_info['sdd_module'] = True
+
+        system_info["sdd_module"] = True
     except Exception:
         pass
 
     # DSharp
-    system_info['dsharp'] = distutils.spawn.find_executable('dsharp') is not None
+    system_info["dsharp"] = distutils.spawn.find_executable("dsharp") is not None
 
     # c2d
-    system_info['c2d'] = distutils.spawn.find_executable('cnf2dDNNF') is not None
+    system_info["c2d"] = distutils.spawn.find_executable("cnf2dDNNF") is not None
     return system_info
 
+
 def build_maxsatz():
-    if get_system() == 'windows':
+    if get_system() == "windows":
         return  # We include the binary
 
     compiler = distutils.ccompiler.new_compiler()
 
     dest_dir, source_dir = get_binary_paths()
-    source_dir = os.path.join(source_dir, 'source', 'maxsatz')
-    source_file = 'maxsatz2009.c'
+    source_dir = os.path.join(source_dir, "source", "maxsatz")
+    source_file = "maxsatz2009.c"
 
     with WorkingDir(source_dir):
         objfile = compiler.compile([source_file], output_dir=dest_dir)
-        compiler.link_executable(objfile, os.path.join(dest_dir, 'maxsatz'))
+        compiler.link_executable(objfile, os.path.join(dest_dir, "maxsatz"))
         os.remove(objfile[0])
 
 
@@ -133,15 +141,18 @@ def system_info():
     info = gather_info()
 
     ok = True
-    s = 'System information:\n'
-    s += '------------------:\n'
-    s += 'Operating system: %s\n' % info.get('os', 'unknown')
-    s += 'System architecture: %s\n' % info.get('arch', 'unknown')
-    s += 'Python version: %s.%s.%s\n' % (
-        info['python_version'].major, info['python_version'].minor, info['python_version'].micro)
-    s += '\n'
-    s += 'ProbLog components:\n'
-    s += '-------------------\n'
+    s = "System information:\n"
+    s += "------------------:\n"
+    s += "Operating system: %s\n" % info.get("os", "unknown")
+    s += "System architecture: %s\n" % info.get("arch", "unknown")
+    s += "Python version: %s.%s.%s\n" % (
+        info["python_version"].major,
+        info["python_version"].minor,
+        info["python_version"].micro,
+    )
+    s += "\n"
+    s += "ProbLog components:\n"
+    s += "-------------------\n"
 
     # PrologFile, PrologString  => require pyparsing
     # SDD => requires sdd_library
@@ -164,7 +175,6 @@ def system_info():
 
 
 class WorkingDir(object):
-
     def __init__(self, workdir):
         self.workdir = workdir
         self.currentdir = os.path.abspath(os.curdir)
@@ -177,7 +187,7 @@ class WorkingDir(object):
         os.chdir(self.currentdir)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     set_environment()
     info = install()
     print(info)

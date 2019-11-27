@@ -21,22 +21,18 @@ Grounding engine to transform a ProbLog program into a propositional formula.
     See the License for the specific language governing permissions and
     limitations under the License.
 """
-from __future__ import print_function
-
 import logging
-
 from collections import defaultdict
-
-from .program import LogicProgram
-from .logic import *
-from .formula import LogicFormula
-from .engine_unify import *
+from subprocess import CalledProcessError
 
 from .core import transform
-from .errors import GroundingError, NonGroundQuery
+from .engine_unify import *
+from .errors import NonGroundQuery
+from .formula import LogicFormula
+from .logic import *
+from .program import LogicProgram
 from .util import Timer
 
-from subprocess import CalledProcessError
 
 @transform(LogicProgram, LogicFormula)
 def ground(model, target=None, grounder=None, **kwdargs):
@@ -47,16 +43,25 @@ def ground(model, target=None, grounder=None, **kwdargs):
     :return: the ground program
     :rtype: LogicFormula
     """
-    if grounder in ('yap', 'yap_debug'):
+    if grounder in ("yap", "yap_debug"):
         from ground_yap import ground_yap
+
         return ground_yap(model, target, **kwdargs)
     else:
         return ground_default(model, target, **kwdargs)
 
 
 @transform(LogicProgram, LogicFormula)
-def ground_default(model, target=None, queries=None, evidence=None, propagate_evidence=False,
-           labels=None, engine=None, **kwdargs):
+def ground_default(
+    model,
+    target=None,
+    queries=None,
+    evidence=None,
+    propagate_evidence=False,
+    labels=None,
+    engine=None,
+    **kwdargs
+):
     """Ground a given model.
 
     :param model: logic program to ground
@@ -70,8 +75,14 @@ def ground_default(model, target=None, queries=None, evidence=None, propagate_ev
     """
     if engine is None:
         engine = DefaultEngine(**kwdargs)
-    return engine.ground_all(model, target, queries=queries, evidence=evidence,
-                                               propagate_evidence=propagate_evidence, labels=labels)
+    return engine.ground_all(
+        model,
+        target,
+        queries=queries,
+        evidence=evidence,
+        propagate_evidence=propagate_evidence,
+        labels=labels,
+    )
 
 
 class GenericEngine(object):  # pragma: no cover
@@ -85,7 +96,7 @@ class GenericEngine(object):  # pragma: no cover
        :returns: logic program in optimized format where builtins are initialized and directives \
        have been evaluated
         """
-        raise NotImplementedError('GenericEngine.prepare is an abstract method.')
+        raise NotImplementedError("GenericEngine.prepare is an abstract method.")
 
     def query(self, db, term):
         """Evaluate a query without generating a ground program.
@@ -94,7 +105,7 @@ class GenericEngine(object):  # pragma: no cover
        :param term: term to query; variables should be represented as None
        :returns: list of tuples of argument for which the query succeeds.
         """
-        raise NotImplementedError('GenericEngine.query is an abstract method.')
+        raise NotImplementedError("GenericEngine.query is an abstract method.")
 
     def ground(self, db, term, target=None, label=None):
         """Ground a given query term and store the result in the given ground program.
@@ -106,7 +117,7 @@ class GenericEngine(object):  # pragma: no cover
        :param label: optional label (query, evidence, ...)
        :returns: logic formula (target if given)
         """
-        raise NotImplementedError('GenericEngine.ground is an abstract method.')
+        raise NotImplementedError("GenericEngine.ground is an abstract method.")
 
     def ground_all(self, db, target=None, queries=None, evidence=None):
         """Ground all queries and evidence found in the the given database.
@@ -117,7 +128,7 @@ class GenericEngine(object):  # pragma: no cover
        :param evidence: list of evidence to evaluate instead of the ones in the logic program
        :returns: ground program
         """
-        raise NotImplementedError('GenericEngine.ground_all is an abstract method.')
+        raise NotImplementedError("GenericEngine.ground_all is an abstract method.")
 
 
 class ClauseDBEngine(GenericEngine):
@@ -132,17 +143,19 @@ class ClauseDBEngine(GenericEngine):
         self.__externals = {}
 
         self._unique_number = 0
-        self.unknown = kwdargs.get('unknown', self.UNKNOWN_ERROR)
+        self.unknown = kwdargs.get("unknown", self.UNKNOWN_ERROR)
 
         if builtins:
             self.load_builtins()
 
         self.functions = {}
-        self.args = kwdargs.get('args')
+        self.args = kwdargs.get("args")
 
     def load_builtins(self):
         """Load default builtins."""
-        raise NotImplementedError("ClauseDBEngine.loadBuiltIns is an abstract function.")
+        raise NotImplementedError(
+            "ClauseDBEngine.loadBuiltIns is an abstract function."
+        )
 
     def get_builtin(self, index):
         """Get builtin's evaluation function based on its identifier.
@@ -159,7 +172,7 @@ class ClauseDBEngine(GenericEngine):
         :param arity: arity of builtin predicate
         :param function: function to execute builtin
         """
-        sig = '%s/%s' % (predicate, arity)
+        sig = "%s/%s" % (predicate, arity)
         self.__builtin_index[sig] = -(len(self.__builtins) + 1)
         self.__builtins.append(function)
 
@@ -195,11 +208,11 @@ class ClauseDBEngine(GenericEngine):
         :rtype: basestring
         """
         self._unique_number += 1
-        return '_nocache_%s' % self._unique_number
+        return "_nocache_%s" % self._unique_number
 
     def _process_directives(self, db):
         """Process directives present in the database."""
-        term = Term('_directive')
+        term = Term("_directive")
         directive_node = db.find(term)
         if directive_node is not None:
             directives = db.get_node(directive_node).children
@@ -207,8 +220,12 @@ class ClauseDBEngine(GenericEngine):
             gp = LogicFormula()
             while directives:
                 current = directives.pop(0)
-                self.execute(current, database=db, context=self.create_context((), define=None),
-                             target=gp)
+                self.execute(
+                    current,
+                    database=db,
+                    context=self.create_context((), define=None),
+                    target=gp,
+                )
         return True
 
     # noinspection PyUnusedLocal
@@ -231,33 +248,46 @@ class ClauseDBEngine(GenericEngine):
         :return:
         """
 
-        if backend in ('swipl', 'yap'):
+        if backend in ("swipl", "yap"):
             from .util import mktempfile, subprocess_check_output
 
-            tmpfn = mktempfile('.pl')
-            with open(tmpfn, 'w') as tmpf:
+            tmpfn = mktempfile(".pl")
+            with open(tmpfn, "w") as tmpf:
                 print(db.to_prolog(), file=tmpf)
 
             from problog.logic import term2str
+
             termstr = term2str(term)
-            cmd = ['swipl', '-l', tmpfn, '-g', '%s, writeln(%s), fail; halt' % (termstr, termstr)]
+            cmd = [
+                "swipl",
+                "-l",
+                tmpfn,
+                "-g",
+                "%s, writeln(%s), fail; halt" % (termstr, termstr),
+            ]
 
             try:
                 output = subprocess_check_output(cmd)
             except CalledProcessError as err:
                 in_error = True
                 error_message = []
-                for line in err.output.split('\n'):
-                    if line.startswith('Warning:'):
+                for line in err.output.split("\n"):
+                    if line.startswith("Warning:"):
                         in_error = False
-                    elif line.startswith('ERROR:'):
+                    elif line.startswith("ERROR:"):
                         in_error = True
                     if in_error:
                         error_message.append(line)
-                error_message = 'SWI-Prolog returned some errors:\n' + '\n'.join(error_message)
+                error_message = "SWI-Prolog returned some errors:\n" + "\n".join(
+                    error_message
+                )
                 raise GroundingError(error_message)
 
-            return [Term.from_string(line).args for line in output.split('\n') if line.strip()]
+            return [
+                Term.from_string(line).args
+                for line in output.split("\n")
+                if line.strip()
+            ]
         else:
             gp = LogicFormula()
             if term.is_negated():
@@ -292,7 +322,7 @@ class ClauseDBEngine(GenericEngine):
         if term.is_negated():
             negated = True
             term = -term
-        elif term.functor in ('not', '\+') and term.arity == 1:
+        elif term.functor in ("not", "\\+") and term.arity == 1:
             negated = True
             term = term.args[0]
         else:
@@ -324,7 +354,9 @@ class ClauseDBEngine(GenericEngine):
 
         return target
 
-    def ground_step(self, db, term, gp=None, silent_fail=True, assume_prepared=False, **kwdargs):
+    def ground_step(
+        self, db, term, gp=None, silent_fail=True, assume_prepared=False, **kwdargs
+    ):
         """
 
         :param db:
@@ -359,8 +391,9 @@ class ClauseDBEngine(GenericEngine):
 
             context = self.create_context(term.args)
             context, xxx = substitute_call_args(context, context, 0)
-            actions = self.execute_init(clause_node, database=db, target=gp, context=context,
-                                        **kwdargs)
+            actions = self.execute_init(
+                clause_node, database=db, target=gp, context=context, **kwdargs
+            )
         except UnknownClauseInternal:
             if silent_fail or self.unknown == self.UNKNOWN_FAIL:
                 return []
@@ -368,7 +401,9 @@ class ClauseDBEngine(GenericEngine):
                 raise UnknownClause(term.signature, location=db.lineno(term.location))
         return actions
 
-    def _ground(self, db, term, gp=None, silent_fail=True, assume_prepared=False, **kwdargs):
+    def _ground(
+        self, db, term, gp=None, silent_fail=True, assume_prepared=False, **kwdargs
+    ):
         """
 
         :param db:
@@ -405,8 +440,12 @@ class ClauseDBEngine(GenericEngine):
             context, xxx = substitute_call_args(context, context, 0)
             if self.debugger:
                 location = db.lineno(term.location)
-                self.debugger.call_create(clause_node, term.functor, context, None, location)
-            results = self.execute(clause_node, database=db, target=gp, context=context, **kwdargs)
+                self.debugger.call_create(
+                    clause_node, term.functor, context, None, location
+                )
+            results = self.execute(
+                clause_node, database=db, target=gp, context=context, **kwdargs
+            )
         except UnknownClauseInternal:
             if silent_fail or self.unknown == self.UNKNOWN_FAIL:
                 return gp, []
@@ -415,45 +454,87 @@ class ClauseDBEngine(GenericEngine):
         return gp, results
 
     def ground_evidence(self, db, target, evidence, propagate_evidence=False):
-        logger = logging.getLogger('problog')
+        logger = logging.getLogger("problog")
         # Ground evidence
         for query in evidence:
             if len(query) == 1:  # evidence/1
                 if query[0].is_negated():
                     logger.debug("Grounding evidence '%s'", query[0])
-                    target = self.ground(db, -query[0], target, label=target.LABEL_EVIDENCE_NEG, is_root=True)
+                    target = self.ground(
+                        db,
+                        -query[0],
+                        target,
+                        label=target.LABEL_EVIDENCE_NEG,
+                        is_root=True,
+                    )
                     logger.debug("Ground program size: %s", len(target))
                 else:
                     logger.debug("Grounding evidence '%s'", query[0])
-                    target = self.ground(db, query[0], target, label=target.LABEL_EVIDENCE_POS, is_root=True)
+                    target = self.ground(
+                        db,
+                        query[0],
+                        target,
+                        label=target.LABEL_EVIDENCE_POS,
+                        is_root=True,
+                    )
                     logger.debug("Ground program size: %s", len(target))
             else:  # evidence/2
-                if str(query[1]) == 'true' or query[1] == True:
+                if str(query[1]) == "true" or query[1] == True:
                     logger.debug("Grounding evidence '%s'", query[0])
-                    target = self.ground(db, query[0], target, label=target.LABEL_EVIDENCE_POS, is_root=True)
+                    target = self.ground(
+                        db,
+                        query[0],
+                        target,
+                        label=target.LABEL_EVIDENCE_POS,
+                        is_root=True,
+                    )
                     logger.debug("Ground program size: %s", len(target))
-                elif str(query[1]) == 'false' or query[1] == False:
+                elif str(query[1]) == "false" or query[1] == False:
                     logger.debug("Grounding evidence '%s'", query[0])
-                    target = self.ground(db, query[0], target, label=target.LABEL_EVIDENCE_NEG, is_root=True)
+                    target = self.ground(
+                        db,
+                        query[0],
+                        target,
+                        label=target.LABEL_EVIDENCE_NEG,
+                        is_root=True,
+                    )
                     logger.debug("Ground program size: %s", len(target))
                 else:
                     logger.debug("Grounding evidence '%s'", query[0])
-                    target = self.ground(db, query[0], target, label=target.LABEL_EVIDENCE_MAYBE, is_root=True)
+                    target = self.ground(
+                        db,
+                        query[0],
+                        target,
+                        label=target.LABEL_EVIDENCE_MAYBE,
+                        is_root=True,
+                    )
                     logger.debug("Ground program size: %s", len(target))
         if propagate_evidence:
-            with Timer('Propagating evidence'):
+            with Timer("Propagating evidence"):
                 target.lookup_evidence = {}
-                ev_nodes = [node for name, node in target.evidence() if node != 0 and node is not None]
+                ev_nodes = [
+                    node
+                    for name, node in target.evidence()
+                    if node != 0 and node is not None
+                ]
                 target.propagate(ev_nodes, target.lookup_evidence)
 
     def ground_queries(self, db, target, queries):
-        logger = logging.getLogger('problog')
+        logger = logging.getLogger("problog")
         for label, query in queries:
             logger.debug("Grounding query '%s'", query)
             target = self.ground(db, query, target, label=label)
             logger.debug("Ground program size: %s", len(target))
 
-    def ground_all(self, db, target=None, queries=None, evidence=None, propagate_evidence=False, labels=None):
+    def ground_all(
+        self,
+        db,
+        target=None,
+        queries=None,
+        evidence=None,
+        propagate_evidence=False,
+        labels=None,
+    ):
         if labels is None:
             labels = []
         # Initialize target if not given.
@@ -462,32 +543,41 @@ class ClauseDBEngine(GenericEngine):
 
         db = self.prepare(db)
 
-        logger = logging.getLogger('problog')
-        with Timer('Grounding'):
+        logger = logging.getLogger("problog")
+        with Timer("Grounding"):
             # Load queries: use argument if available, otherwise load from database.
             if queries is None:
-                queries = [q[0] for q in self.query(db, Term('query', None))]
+                queries = [q[0] for q in self.query(db, Term("query", None))]
             for query in queries:
                 if not isinstance(query, Term):
-                    raise GroundingError('Invalid query')   # TODO can we add a location?
+                    raise GroundingError("Invalid query")  # TODO can we add a location?
             # Load evidence: use argument if available, otherwise load from database.
             if evidence is None:
-                evidence = self.query(db, Term('evidence', None, None))
-                evidence += self.query(db, Term('evidence', None))
+                evidence = self.query(db, Term("evidence", None, None))
+                evidence += self.query(db, Term("evidence", None))
 
             queries = [(target.LABEL_QUERY, q) for q in queries]
             for label, arity in labels:
-                queries += [(label, q[0]) for q in self.query(db, Term(label, *([None] * arity)))]
+                queries += [
+                    (label, q[0])
+                    for q in self.query(db, Term(label, *([None] * arity)))
+                ]
 
             for ev in evidence:
                 if not isinstance(ev[0], Term):
-                    raise GroundingError('Invalid evidence')   # TODO can we add a location?
+                    raise GroundingError(
+                        "Invalid evidence"
+                    )  # TODO can we add a location?
             # Ground queries
             if propagate_evidence:
-                self.ground_evidence(db, target, evidence, propagate_evidence=propagate_evidence)
+                self.ground_evidence(
+                    db, target, evidence, propagate_evidence=propagate_evidence
+                )
                 self.ground_queries(db, target, queries)
-                if hasattr(target, 'lookup_evidence'):
-                    logger.debug('Propagated evidence: %s' % list(target.lookup_evidence))
+                if hasattr(target, "lookup_evidence"):
+                    logger.debug(
+                        "Propagated evidence: %s" % list(target.lookup_evidence)
+                    )
             else:
                 self.ground_queries(db, target, queries)
                 self.ground_evidence(db, target, evidence)
@@ -503,7 +593,6 @@ class ClauseDBEngine(GenericEngine):
 
 
 class _ReplaceVar(object):
-
     def __init__(self):
         self.translate = {}
 
@@ -521,6 +610,7 @@ class _ReplaceVar(object):
 
 class UnknownClauseInternal(Exception):
     """Undefined clause in call used internally."""
+
     pass
 
 
@@ -528,7 +618,9 @@ class NonGroundProbabilisticClause(GroundingError):
     """Encountered a non-ground probabilistic clause."""
 
     def __init__(self, location):
-        GroundingError.__init__(self, 'Encountered a non-ground probabilistic clause', location)
+        GroundingError.__init__(
+            self, "Encountered a non-ground probabilistic clause", location
+        )
 
 
 class UnknownClause(GroundingError):

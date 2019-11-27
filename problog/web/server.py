@@ -39,17 +39,15 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 """
-from __future__ import print_function
+import logging.config
+import os
+import subprocess
 
 # Load general Python modules
 import sys
-import os
 import tempfile
-import traceback
-import subprocess
+
 import resource
-import logging
-import logging.config
 
 DEFAULT_PORT = 5100
 DEFAULT_TIMEOUT = 60
@@ -64,73 +62,79 @@ RUN_LOCAL = False
 # PYTHON_EXEC = 'python'    # Python 2
 PYTHON_EXEC = sys.executable  # Match with server
 
-api_root = '/'
+api_root = "/"
 
 FILES_WHITELIST = [
-    api_root + 'js/problog_editor_advanced.js',
-    api_root + 'js/lib/ace.js',
-    api_root + 'js/lib/bootstrap-theme.min.css',
-    api_root + 'js/lib/bootstrap.min.css',
-    api_root + 'js/lib/bootstrap.min.js',
-    api_root + 'js/lib/jquery-2.1.0.min.js',
-    api_root + 'js/lib/jquery-ui.min.js',
-    api_root + 'js/lib/mode-prolog.js',
-    api_root + 'tutorial.html',
-    api_root + 'sidebar.css'
+    api_root + "js/problog_editor_advanced.js",
+    api_root + "js/lib/ace.js",
+    api_root + "js/lib/bootstrap-theme.min.css",
+    api_root + "js/lib/bootstrap.min.css",
+    api_root + "js/lib/bootstrap.min.js",
+    api_root + "js/lib/jquery-2.1.0.min.js",
+    api_root + "js/lib/jquery-ui.min.js",
+    api_root + "js/lib/mode-prolog.js",
+    api_root + "tutorial.html",
+    api_root + "sidebar.css",
 ]
 
 here = os.path.dirname(__file__)
 
 use_default_logger = True
-if os.path.exists(os.path.join(here,'logging.conf')):
+if os.path.exists(os.path.join(here, "logging.conf")):
     try:
-        logging.config.fileConfig(os.path.join(here,'logging.conf'))
+        logging.config.fileConfig(os.path.join(here, "logging.conf"))
         use_default_logger = False
     except IOError:
         pass
-    
+
 if use_default_logger:
-    logger = logging.getLogger('server')
+    logger = logging.getLogger("server")
     ch = logging.StreamHandler(sys.stdout)
-    formatter = logging.Formatter('[%(levelname)s] %(message)s')
+    formatter = logging.Formatter("[%(levelname)s] %(message)s")
     ch.setFormatter(formatter)
     logger.addHandler(ch)
     logger.setLevel(logging.DEBUG)
-logger = logging.getLogger('server')
+logger = logging.getLogger("server")
 
 # Load Python standard web-related modules (based on Python version)
 import json
 import mimetypes
+
 if sys.version_info.major == 2:
     import BaseHTTPServer
     import urlparse
 
     def to_bytes(string):
         return bytes(string)
+
     import urllib
+
     url_decode = urllib.unquote_plus
     import hashlib
 
     def compute_hash(model):
         return hashlib.md5(model).hexdigest()  # Python 2
 
+
 else:
     import http.server as BaseHTTPServer
     import urllib.parse as urlparse
 
     def to_bytes(string):
-        return bytes(string, 'UTF-8')
+        return bytes(string, "UTF-8")
+
     url_decode = urlparse.unquote_plus
     import hashlib
 
     def compute_hash(model):
-        return hashlib.md5(to_bytes(model)).hexdigest() # Python 3
+        return hashlib.md5(to_bytes(model)).hexdigest()  # Python 3
+
 
 # Contains special URL paths. Initialize with @handle_url
 PATHS = {}
 
 
-class handle_url(object) :
+class handle_url(object):
     """Decorator for adding a handler for a URL.
 
     Example: to add a handler for GET /hello?name=World
@@ -140,10 +144,10 @@ class handle_url(object) :
         return 200, 'text/plain', 'Hello %s!' % name
     """
 
-    def __init__(self, path) :
+    def __init__(self, path):
         self.path = path
 
-    def __call__(self, f) :
+    def __call__(self, f):
         PATHS[self.path] = f
 
 
@@ -151,7 +155,8 @@ def root_path(*relative_path):
     """Translate URL path to file system path."""
     return os.path.abspath(os.path.join(os.path.dirname(__file__), *relative_path))
 
-PROB_EXEC = root_path('..', 'tasks', '__init__.py')
+
+PROB_EXEC = root_path("..", "tasks", "__init__.py")
 
 
 def call_process(cmd, timeout, memout):
@@ -175,7 +180,7 @@ def call_process(cmd, timeout, memout):
 
 
 def wrap_callback(callback, jsonstr):
-    return '{}({});'.format(callback, jsonstr)
+    return "{}({});".format(callback, jsonstr)
 
 
 def run_problog_task(task, model, callback=None, data=None, options=None):
@@ -184,7 +189,7 @@ def run_problog_task(task, model, callback=None, data=None, options=None):
 
     try:
         # Write the model to a temporary or cached file.
-        infile = store_hash(model, 'pl')
+        infile = store_hash(model, "pl")
 
         # Construct the basic command
         cmd = [PYTHON_EXEC, PROB_EXEC, task, infile]
@@ -192,27 +197,34 @@ def run_problog_task(task, model, callback=None, data=None, options=None):
         # Write the data to a temporary or cached file (if given)
         datafile = None
         if data is not None:
-            datafile = store_hash(data, 'data')
-            outfile = os.path.splitext(infile)[0] + '_' + \
-                os.path.splitext(os.path.basename(datafile))[0] + '.out'
+            datafile = store_hash(data, "data")
+            outfile = (
+                os.path.splitext(infile)[0]
+                + "_"
+                + os.path.splitext(os.path.basename(datafile))[0]
+                + ".out"
+            )
             cmd += [datafile]
         else:
-            outfile = os.path.splitext(infile)[0] + '.out'
-        logger.info('Output file: {}'.format(outfile))
+            outfile = os.path.splitext(infile)[0] + ".out"
+        logger.info("Output file: {}".format(outfile))
 
         # Add default and given options to the command.
-        cmd += ['-o', outfile, '--web'] + options
+        cmd += ["-o", outfile, "--web"] + options
 
     except UnicodeDecodeError as err:
-        logger.error('Unicode error catched: {}'.format(err))
-        result = {'SUCCESS': False, 'err': 'Cannot decode character in program: {}'.format(err)}
-        return 200, 'application/json', wrap_callback(callback, json.dumps(result))
+        logger.error("Unicode error catched: {}".format(err))
+        result = {
+            "SUCCESS": False,
+            "err": "Cannot decode character in program: {}".format(err),
+        }
+        return 200, "application/json", wrap_callback(callback, json.dumps(result))
 
     if CACHE_MODELS:
-        url = 'task=%s' % task
-        url += '&hash=%s' % os.path.splitext(os.path.basename(infile))[0]
+        url = "task=%s" % task
+        url += "&hash=%s" % os.path.splitext(os.path.basename(infile))[0]
         if data is not None:
-            url += '&ehash=%s' % os.path.splitext(os.path.basename(datafile))[0]
+            url += "&ehash=%s" % os.path.splitext(os.path.basename(datafile))[0]
     else:
         url = None
 
@@ -226,99 +238,106 @@ def run_problog_task(task, model, callback=None, data=None, options=None):
 
         if url is not None:
             result = json.loads(result)
-            result['url'] = url
+            result["url"] = url
             result = json.dumps(result)
 
         # Wrap the output in a JSON wrapper.
         datavalue = wrap_callback(callback, result)
-        return 200, 'application/json', datavalue
+        return 200, "application/json", datavalue
     except subprocess.CalledProcessError as err:
-        logger.error('ProbLog didn\'t finish correctly: %s' % err)
-        result = {'SUCCESS': False, 'url': url,
-                  'err': 'ProbLog exceeded time or memory limit'}
-        return 200, 'application/json', wrap_callback(callback, json.dumps(result))
+        logger.error("ProbLog didn't finish correctly: %s" % err)
+        result = {
+            "SUCCESS": False,
+            "url": url,
+            "err": "ProbLog exceeded time or memory limit",
+        }
+        return 200, "application/json", wrap_callback(callback, json.dumps(result))
 
 
-@handle_url(api_root + 'inference')
+@handle_url(api_root + "inference")
 def run_problog_jsonp(model, callback):
-    return run_problog_task('prob', model[0], callback[0])
+    return run_problog_task("prob", model[0], callback[0])
 
 
-@handle_url(api_root + 'prob')
+@handle_url(api_root + "prob")
 def run_problog_jsonp(model, callback):
-    return run_problog_task('prob', model[0], callback[0])
+    return run_problog_task("prob", model[0], callback[0])
 
 
-@handle_url(api_root + 'dt')
+@handle_url(api_root + "dt")
 def run_problog_jsonp(model, callback, solve=None):
-    if solve is not None and solve[0] == 'local':
-        options = ['--search', 'local']
+    if solve is not None and solve[0] == "local":
+        options = ["--search", "local"]
     else:
         options = []
-    return run_problog_task('dt', model[0], callback[0], options=options)
+    return run_problog_task("dt", model[0], callback[0], options=options)
 
 
-@handle_url(api_root + 'mpe')
+@handle_url(api_root + "mpe")
 def run_mpe_jsonp(model, callback):
-    return run_problog_task('mpe', model[0], callback[0], options=['--full'])
+    return run_problog_task("mpe", model[0], callback[0], options=["--full"])
 
 
-@handle_url(api_root + 'map')
+@handle_url(api_root + "map")
 def run_map_jsonp(model, callback):
-    return run_problog_task('map', model[0], callback[0], options=[])
+    return run_problog_task("map", model[0], callback[0], options=[])
 
 
-@handle_url(api_root + 'sample')
+@handle_url(api_root + "sample")
 def run_sample_jsonp(model, callback):
-    return run_problog_task('sample', model[0], callback[0])
+    return run_problog_task("sample", model[0], callback[0])
 
 
-@handle_url(api_root + 'explain')
+@handle_url(api_root + "explain")
 def run_sample_jsonp(model, callback):
-    return run_problog_task('explain', model[0], callback[0])
+    return run_problog_task("explain", model[0], callback[0])
 
 
-@handle_url(api_root + 'lfi')
+@handle_url(api_root + "lfi")
 def run_lfi_jsonp(model, examples, callback):
-    return run_problog_task('lfi', model[0], callback[0], data=examples[0])
+    return run_problog_task("lfi", model[0], callback[0], data=examples[0])
 
 
-@handle_url(api_root + 'learning')
+@handle_url(api_root + "learning")
 def run_lfi_jsonp(model, examples, callback):
-    return run_problog_task('lfi', model[0], callback[0], data=examples[0])
+    return run_problog_task("lfi", model[0], callback[0], data=examples[0])
 
 
-@handle_url(api_root + 'ground')
+@handle_url(api_root + "ground")
 def run_lfi_jsonp(model, callback):
-    return run_problog_task('ground', model[0], callback[0], options=['--format', 'svg'])
+    return run_problog_task(
+        "ground", model[0], callback[0], options=["--format", "svg"]
+    )
 
 
-@handle_url(api_root + 'english')
+@handle_url(api_root + "english")
 def run_natlang_jsonp(model, is_text, callback):
     retcode, result, stderr = call_extract(model[0], is_text[0])
     if retcode == 0:
-        result['SUCCESS'] = True
+        result["SUCCESS"] = True
     else:
-        result['SUCCESS'] = False
-        result['message'] = 'An error has occurred.'
+        result["SUCCESS"] = False
+        result["message"] = "An error has occurred."
     retval = wrap_callback(callback[0], json.dumps(result))
-    return 200, 'application/json', retval
+    return 200, "application/json", retval
 
 
 def call_extract(text, is_text):
     # script = root_path('..', '..', '..', '..', 'nlp_challenge', 'code', 'extract', 'extract.py')
-    script = root_path('..', '..', '..', 'nlp4plp', 'extract', 'extract.py')
-    cmd = ['python', script, '--stdin', '--json', '--nosvg']
-    if not is_text == 'true':
-        cmd += ['-m']
+    script = root_path("..", "..", "..", "nlp4plp", "extract", "extract.py")
+    cmd = ["python", script, "--stdin", "--json", "--nosvg"]
+    if not is_text == "true":
+        cmd += ["-m"]
     try:
-        command = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        command = subprocess.Popen(
+            cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE
+        )
         stdout, stderr = command.communicate(text)
         retcode = command.returncode
         try:
             out = json.loads(stdout)
         except:
-            out = {'out': stdout}
+            out = {"out": stdout}
     except Exception as err:
         retcode = 1
         out = {}
@@ -332,79 +351,90 @@ def store_hash(data, datatype):
         datahash = compute_hash(data)
         if not os.path.exists(CACHE_DIR):
             os.mkdir(CACHE_DIR)
-        datafile = os.path.join(CACHE_DIR, datahash + '.' + datatype)
-        logger.info('Saved file: {}'.format(datafile))
+        datafile = os.path.join(CACHE_DIR, datahash + "." + datatype)
+        logger.info("Saved file: {}".format(datafile))
     else:
-        _, datafile = tempfile.mkstemp('.' + datatype)
+        _, datafile = tempfile.mkstemp("." + datatype)
 
-    with open(datafile, 'w') as f:
+    with open(datafile, "w") as f:
         f.write(data)
 
     return datafile
 
 
 def get_hash(hashcode, datatype):
-    datafile = os.path.join(CACHE_DIR, hashcode + '.' + datatype)
+    datafile = os.path.join(CACHE_DIR, hashcode + "." + datatype)
     if not CACHE_MODELS or not os.path.exists(datafile):
         return None
     else:
-        with open(datafile, 'r') as f:
+        with open(datafile, "r") as f:
             data = f.read()
         return data
 
 
-@handle_url(api_root + 'model')
+@handle_url(api_root + "model")
 def get_model_from_hash_jsonp(hash, callback):
-    data = get_hash(hash[0], 'pl')
+    data = get_hash(hash[0], "pl")
     if data is None:
-        result = {'SUCCESS': False, 'err': 'Model hash not available: {}'.format(hash[0])}
+        result = {
+            "SUCCESS": False,
+            "err": "Model hash not available: {}".format(hash[0]),
+        }
     else:
-        result = {'SUCCESS': True, 'model': data}
-    return 200, 'application/json', wrap_callback(callback[0], json.dumps(result))
+        result = {"SUCCESS": True, "model": data}
+    return 200, "application/json", wrap_callback(callback[0], json.dumps(result))
 
 
-@handle_url(api_root + 'examples')
+@handle_url(api_root + "examples")
 def get_data_from_hash_jsonp(hash, callback):
-    data = get_hash(hash[0], 'data')
+    data = get_hash(hash[0], "data")
     if data is None:
-        result = {'SUCCESS': False, 'err': 'Model hash not available: {}'.format(hash[0])}
+        result = {
+            "SUCCESS": False,
+            "err": "Model hash not available: {}".format(hash[0]),
+        }
     else:
-        result = {'SUCCESS': True, 'examples': data}
-    return 200, 'application/json', wrap_callback(callback[0], json.dumps(result))
+        result = {"SUCCESS": True, "examples": data}
+    return 200, "application/json", wrap_callback(callback[0], json.dumps(result))
 
 
-@handle_url(api_root + 'models')
+@handle_url(api_root + "models")
 def get_example_models(callback):
     return
 
 
 @handle_url(api_root)
 def get_editor():
-    with open(root_path('editor_adv.html')) as f:
+    with open(root_path("editor_adv.html")) as f:
         data = f.read()
-    data = data.replace('problog.init()', 'problog.init(\'\');')
+    data = data.replace("problog.init()", "problog.init('');")
     data = make_local(data)
-    return 200, 'text/html', data
+    return 200, "text/html", data
 
 
-@handle_url(api_root + 'update')
+@handle_url(api_root + "update")
 def update_problog():
-
     workingdir = os.path.abspath(os.path.dirname(__file__))
     try:
-        out = subprocess.check_output(['git', 'pull'], cwd=workingdir, stderr=subprocess.STDOUT).decode()
-        result = {'success': True, 'output': out}
+        out = subprocess.check_output(
+            ["git", "pull"], cwd=workingdir, stderr=subprocess.STDOUT
+        ).decode()
+        result = {"success": True, "output": out}
     except subprocess.CalledProcessError as err:
-        result = {'success': False, 'error': str(err.output)}
+        result = {"success": False, "error": str(err.output)}
 
-    return 200, 'application/json', json.dumps(result)
+    return 200, "application/json", json.dumps(result)
 
 
 def make_local(html):
     import re
 
     if RUN_LOCAL:
-        html = re.sub('<link rel="stylesheet" href="(http([^/"]*/)+)', '<link rel="stylesheet" href="js/lib/', html)
+        html = re.sub(
+            '<link rel="stylesheet" href="(http([^/"]*/)+)',
+            '<link rel="stylesheet" href="js/lib/',
+            html,
+        )
         html = re.sub('<script src="(http([^/"]*/)+)', '<script src="js/lib/', html)
         return html
     else:
@@ -424,16 +454,16 @@ def make_local(html):
 #         data = f.read()
 #     return 200, 'application/javascript', data
 
-class ProbLogHTTP(BaseHTTPServer.BaseHTTPRequestHandler):
 
-    def do_POST(self) :
+class ProbLogHTTP(BaseHTTPServer.BaseHTTPRequestHandler):
+    def do_POST(self):
         numberOfBytes = int(self.headers["Content-Length"])
         data = self.rfile.read(numberOfBytes)
         query = urlparse.parse_qs(data)
 
         self.do_GET(query=query)
 
-    def do_GET(self, query=None) :
+    def do_GET(self, query=None):
         """Handle a GET request.
 
         Looks up the URL path in PATHS and executes the corresponding function.
@@ -441,13 +471,13 @@ class ProbLogHTTP(BaseHTTPServer.BaseHTTPRequestHandler):
         """
 
         try:
-            url = urlparse.urlparse( self.path )
+            url = urlparse.urlparse(self.path)
             path = url.path
             if query is None:
                 query = urlparse.parse_qs(url.query)
-            if '_' in query:
+            if "_" in query:
                 # Used by jquery to avoid caching
-                del query['_']
+                del query["_"]
 
             action = PATHS.get(path)
             if action is None:
@@ -456,8 +486,8 @@ class ProbLogHTTP(BaseHTTPServer.BaseHTTPRequestHandler):
                 else:
                     self.send_response(404)
                     self.end_headers()
-                    self.wfile.write(to_bytes('File not found!'))
-            else :
+                    self.wfile.write(to_bytes("File not found!"))
+            else:
                 code, datatype, data = action(**query)
                 self.send_response(code)
                 self.send_header("Content-type", datatype)
@@ -466,46 +496,47 @@ class ProbLogHTTP(BaseHTTPServer.BaseHTTPRequestHandler):
                     self.wfile.write(to_bytes(data))
         except Exception as e:
             import traceback
-            logger.error('Uncaught exception: {}\n{}'.format(e, traceback.format_exc()))
 
-    def serveFile(self, filename) :
+            logger.error("Uncaught exception: {}\n{}".format(e, traceback.format_exc()))
+
+    def serveFile(self, filename):
         """Serve a file."""
-        if filename == '/':
-            filename = '/index.html'
-        filename = filename.lstrip('/')
+        if filename == "/":
+            filename = "/index.html"
+        filename = filename.lstrip("/")
 
         filetype, encoding = mimetypes.guess_type(filename)
         filename = root_path(filename)
-        try :
+        try:
             with open(filename) as f:
                 data = f.read()
             data = make_local(data)
             self.send_response(200)
             self.send_header("Content-type", filetype)
-            if encoding :
+            if encoding:
                 self.send_header("Content-Encoding", encoding)
             self.end_headers()
             self.wfile.write(to_bytes(data))
-        except :
+        except:
             self.send_response(404)
             self.end_headers()
-            self.wfile.write(to_bytes('File not found!'))
+            self.wfile.write(to_bytes("File not found!"))
 
-    def log_message(self,format, *args) :
-        try :
+    def log_message(self, format, *args):
+        try:
             # Remove arguments from GET request, only keep path
-            if args[0].startswith('GET') :
-                p = args[0].find('?')
-                if p >= 0 :
+            if args[0].startswith("GET"):
+                p = args[0].find("?")
+                if p >= 0:
                     args0 = args[0][0:p]
-                else :
+                else:
                     args0 = args[0]
                 args = (args0,) + args[1:]
-        except Exception :
+        except Exception:
             pass
 
         args = (self.client_address[0],) + args
-        format = '[%s] ' + format
+        format = "[%s] " + format
         logger.info(format % args)
 
 
@@ -519,13 +550,34 @@ def main(argv, **extra):
     import argparse
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('--port', '-p', type=int, default=DEFAULT_PORT, help="Server listening port")
-    parser.add_argument('--timeout', '-t', type=int, default=DEFAULT_TIMEOUT, help="Time limit in seconds")
-    parser.add_argument('--memout', '-m', type=float, default=DEFAULT_MEMOUT, help="Memory limit in Gb")
-    parser.add_argument('--servefiles', '-F', action='store_true', help="Attempt to serve a file for undefined paths (unsafe?).")
-    parser.add_argument('--nocaching', action='store_true', help="Disable caching of submitted models")
-    parser.add_argument('--browser', '-B', action='store_true', help="Open editor in web browser.")
-    parser.add_argument('--local', '-l', action='store_true', help="Use local javascript libraries.")
+    parser.add_argument(
+        "--port", "-p", type=int, default=DEFAULT_PORT, help="Server listening port"
+    )
+    parser.add_argument(
+        "--timeout",
+        "-t",
+        type=int,
+        default=DEFAULT_TIMEOUT,
+        help="Time limit in seconds",
+    )
+    parser.add_argument(
+        "--memout", "-m", type=float, default=DEFAULT_MEMOUT, help="Memory limit in Gb"
+    )
+    parser.add_argument(
+        "--servefiles",
+        "-F",
+        action="store_true",
+        help="Attempt to serve a file for undefined paths (unsafe?).",
+    )
+    parser.add_argument(
+        "--nocaching", action="store_true", help="Disable caching of submitted models"
+    )
+    parser.add_argument(
+        "--browser", "-B", action="store_true", help="Open editor in web browser."
+    )
+    parser.add_argument(
+        "--local", "-l", action="store_true", help="Use local javascript libraries."
+    )
     args = parser.parse_args(argv)
 
     RUN_LOCAL = args.local
@@ -536,15 +588,19 @@ def main(argv, **extra):
     DEFAULT_MEMOUT = args.memout
     SERVE_FILES = args.servefiles
     CACHE_MODELS = not args.nocaching
-    logger.info('Starting server on port %d (timeout=%d, memout=%dGb)' % (args.port, DEFAULT_TIMEOUT, DEFAULT_MEMOUT))
+    logger.info(
+        "Starting server on port %d (timeout=%d, memout=%dGb)"
+        % (args.port, DEFAULT_TIMEOUT, DEFAULT_MEMOUT)
+    )
 
-    server_address = ('', args.port)
+    server_address = ("", args.port)
     httpd = BaseHTTPServer.HTTPServer(server_address, ProbLogHTTP)
     if args.browser:
         import webbrowser
-        webbrowser.open('http://localhost:%s/' % args.port, new=2, autoraise=True)
+
+        webbrowser.open("http://localhost:%s/" % args.port, new=2, autoraise=True)
     httpd.serve_forever()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main(sys.argv[1:])

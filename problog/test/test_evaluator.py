@@ -17,15 +17,18 @@ limitations under the License.
 """
 import unittest
 
-from problog.program import PrologString
-from problog.formula import LogicFormula
 from problog import get_evaluatable
 from problog.evaluator import SemiringProbability
+from problog.formula import LogicFormula, pn_weight
 from problog.logic import Term
+from problog.program import PrologString
 
 # noinspection PyBroadException
+from problog.test.test_system import SemiringProbabilityNSPCopy
+
 try:
     from pysdd import sdd
+
     has_sdd = True
 except Exception as err:
     has_sdd = False
@@ -35,12 +38,12 @@ evaluatables = ["ddnnf"]
 if has_sdd:
     evaluatables.append("sdd")
     evaluatables.append("sddx")
+    evaluatables.append("fsdd")
 else:
     print("No SDD support - The evaluator tests are not performed with SDDs.")
 
 
 class TestEvaluator(unittest.TestCase):
-
     def test_evaluate_custom_weights(self):
         """
         Tests evaluate() with custom weights (not the ones from the ProbLog file)
@@ -63,7 +66,7 @@ class TestEvaluator(unittest.TestCase):
         semiring = TestSemiringProbabilityNSP()
         kc_class = get_evaluatable(name=eval_name, semiring=semiring)
         kc = kc_class.create_from(lf)
-        a = Term('a')
+        a = Term("a")
 
         # without custom weights
         results = kc.evaluate(semiring=semiring)
@@ -74,7 +77,33 @@ class TestEvaluator(unittest.TestCase):
         results = kc.evaluate(semiring=semiring, weights=weights)
         self.assertEqual(0.1, results[a])
 
+        # with custom weights
+        weights = {a: pn_weight(0.1, 0.1)}
+        results = kc.evaluate(semiring=semiring, weights=weights)
+        self.assertEqual(0.5, results[a])
 
-if __name__ == '__main__' :
+        # with custom weights based on index
+        weights = {kc.get_node_by_name(a): 0.2}
+        results = kc.evaluate(semiring=semiring, weights=weights)
+        self.assertEqual(0.2, results[a])
+
+        # Testing with weight on node 0 (True)
+        weights = {0: 0.3, a: pn_weight(0.1, 0.1)}
+        results = kc.evaluate(semiring=semiring, weights=weights)
+        self.assertEqual(0.5, results[a])
+
+        # Testing query on node 0 (True)
+        class TestSemiringProbabilityIgnoreNormalize(SemiringProbabilityNSPCopy):
+            def normalize(self, a, z):
+                return a
+
+        weights = {0: pn_weight(0.3, 0.7), a: pn_weight(0.1, 0.1)}
+        results = kc.evaluate(
+            index=0, semiring=TestSemiringProbabilityIgnoreNormalize(), weights=weights
+        )
+        self.assertEqual(0.06, results)
+
+
+if __name__ == "__main__":
     suite = unittest.TestLoader().loadTestsFromTestCase(TestEvaluator)
     unittest.TextTestRunner(verbosity=2).run(suite)

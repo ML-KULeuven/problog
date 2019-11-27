@@ -1,14 +1,10 @@
-from __future__ import print_function
-
-from problog.extern import problog_export
 from problog.evaluator import Semiring
+from problog.extern import problog_export
 
 
-@problog_export('+term', '+term', '+term', '+term', '+term', '+str', '+str')
+@problog_export("+term", "+term", "+term", "+term", "+term", "+str", "+str")
 def use_semiring(plus, times, zero, one, neg, is_dsp, is_nsp):
-
     class CustomSemiring(Semiring):
-
         def is_one(self, value):
             return value == self.one()
 
@@ -18,20 +14,18 @@ def use_semiring(plus, times, zero, one, neg, is_dsp, is_nsp):
     CustomSemiring.times = problog_export.database.create_function(times, 3)
     CustomSemiring.pos_value = lambda s, x, k: x
     CustomSemiring.neg_value = problog_export.database.create_function(neg, 2)
-    CustomSemiring.is_dsp = lambda s: is_dsp == 'true'
-    CustomSemiring.is_nsp = lambda s: is_nsp == 'true'
+    CustomSemiring.is_dsp = lambda s: is_dsp == "true"
+    CustomSemiring.is_nsp = lambda s: is_nsp == "true"
 
     semiring = CustomSemiring()
-    problog_export.database.set_data('semiring', semiring)
+    problog_export.database.set_data("semiring", semiring)
 
     return ()
 
 
-@problog_export('+term', '+term', '+term', '+term', '+term', '+term', '+str', '+str')
+@problog_export("+term", "+term", "+term", "+term", "+term", "+term", "+str", "+str")
 def use_semiring(plus, times, zero, one, pos, neg, is_dsp, is_nsp):
-
     class CustomSemiring(Semiring):
-
         def is_one(self, value):
             return value == self.one()
 
@@ -41,20 +35,20 @@ def use_semiring(plus, times, zero, one, pos, neg, is_dsp, is_nsp):
     CustomSemiring.times = problog_export.database.create_function(times, 3)
     CustomSemiring.pos_value = problog_export.database.create_function(pos, 3)
     CustomSemiring.neg_value = problog_export.database.create_function(neg, 3)
-    CustomSemiring.is_dsp = lambda s: is_dsp == 'true'
-    CustomSemiring.is_nsp = lambda s: is_nsp == 'true'
+    CustomSemiring.is_dsp = lambda s: is_dsp == "true"
+    CustomSemiring.is_nsp = lambda s: is_nsp == "true"
 
     semiring = CustomSemiring()
-    problog_export.database.set_data('semiring', semiring)
+    problog_export.database.set_data("semiring", semiring)
 
     return ()
 
 
-@problog_export('+term', '+term', '+term', '+term', '+term', '+term', '+term', '+str', '+str')
+@problog_export(
+    "+term", "+term", "+term", "+term", "+term", "+term", "+term", "+str", "+str"
+)
 def use_semiring(plus, times, zero, one, pos, neg, negate, is_dsp, is_nsp):
-
     class CustomSemiring(Semiring):
-
         def is_one(self, value):
             return value == self.one()
 
@@ -64,11 +58,11 @@ def use_semiring(plus, times, zero, one, pos, neg, negate, is_dsp, is_nsp):
     CustomSemiring.times = problog_export.database.create_function(times, 3)
     CustomSemiring.pos_value = problog_export.database.create_function(pos, 3)
     CustomSemiring.neg_value = problog_export.database.create_function(neg, 3)
-    CustomSemiring.is_dsp = lambda s: is_dsp == 'true'
-    CustomSemiring.is_nsp = lambda s: is_nsp == 'true'
+    CustomSemiring.is_dsp = lambda s: is_dsp == "true"
+    CustomSemiring.is_nsp = lambda s: is_nsp == "true"
     CustomSemiring.negate = problog_export.database.create_function(negate, 2)
 
     semiring = CustomSemiring()
-    problog_export.database.set_data('semiring', semiring)
+    problog_export.database.set_data("semiring", semiring)
 
     return ()

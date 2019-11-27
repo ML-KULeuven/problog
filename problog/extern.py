@@ -21,11 +21,11 @@ Interface for calling Python from ProbLog.
     See the License for the specific language governing permissions and
     limitations under the License.
 """
-from .logic import Constant, term2list, list2term, Term, Object
+import inspect
+
 from .engine_builtin import check_mode, is_variable
 from .engine_unify import UnifyError, unify_value
-import inspect
-import os
+from .logic import Constant, term2list, list2term, Term, Object
 
 
 # noinspection PyPep8Naming
@@ -35,49 +35,51 @@ class problog_export(object):
     @classmethod
     def add_function(cls, name, in_args, out_args, func, module_name):
         if problog_export.database is not None:
-            problog_export.database.add_extern(name, in_args + out_args, func, scope=module_name)
+            problog_export.database.add_extern(
+                name, in_args + out_args, func, scope=module_name
+            )
 
     # noinspection PyUnusedLocal
     def __init__(self, *args, **kwdargs):
         # TODO check if arguments are in order: input first, output last
-        self.input_arguments = [a[1:] for a in args if a[0] == '+']
-        self.output_arguments = [a[1:] for a in args if a[0] == '-']
-        self.functor = kwdargs.get('functor')
+        self.input_arguments = [a[1:] for a in args if a[0] == "+"]
+        self.output_arguments = [a[1:] for a in args if a[0] == "-"]
+        self.functor = kwdargs.get("functor")
 
     def _convert_input(self, a, t):
-        if t == 'str':
+        if t == "str":
             return str(a)
-        elif t == 'int':
+        elif t == "int":
             return int(a)
-        elif t == 'float':
+        elif t == "float":
             return float(a)
-        elif t == 'list':
+        elif t == "list":
             return term2list(a)
-        elif t == 'term':
+        elif t == "term":
             return a
-        elif t == 'obj':
+        elif t == "obj":
             return a.functor
         else:
             raise ValueError("Unknown type specifier '%s'!" % t)
 
     def _type_to_callmode(self, t):
-        if t == 'str':
-            return 'a'
-        elif t == 'int':
-            return 'i'
-        elif t == 'float':
-            return 'f'
-        elif t == 'list':
-            return 'L'
-        elif t == 'term':
-            return '*'
-        elif t == 'obj':
-            return 'o'
+        if t == "str":
+            return "a"
+        elif t == "int":
+            return "i"
+        elif t == "float":
+            return "f"
+        elif t == "list":
+            return "L"
+        elif t == "term":
+            return "*"
+        elif t == "obj":
+            return "o"
         else:
             raise ValueError("Unknown type specifier '%s'!" % t)
 
     def _extract_callmode(self):
-        callmode_in = ''
+        callmode_in = ""
         for t in self.input_arguments:
             callmode_in += self._type_to_callmode(t)
 
@@ -94,24 +96,24 @@ class problog_export(object):
                 if i & (1 << (n - j - 1)):
                     callmode += self._type_to_callmode(t)
                 else:
-                    callmode += 'v'
+                    callmode += "v"
             yield callmode
 
     def _convert_output(self, a, t):
-        if t == 'str':
+        if t == "str":
             return Term(a)
-        elif t == 'int':
+        elif t == "int":
             return Constant(a)
-        elif t == 'float':
+        elif t == "float":
             return Constant(a)
-        elif t == 'list':
+        elif t == "list":
             return list2term(a)
-        elif t == 'term':
+        elif t == "term":
             if not isinstance(a, Term):
                 return Term(a)
                 # raise ValueError("Expected term output, got '%s' instead." % type(a))
             return a
-        elif t == 'obj':
+        elif t == "obj":
             if not isinstance(a, Object):
                 return Object(a)
             else:
@@ -125,17 +127,19 @@ class problog_export(object):
     def _convert_outputs(self, args):
         return [self._convert_output(a, t) for a, t in zip(args, self.output_arguments)]
 
-    def __call__(self, func, funcname=None, modname='#auto#'):
+    def __call__(self, func, funcname=None, modname="#auto#"):
         if funcname is None:
             if self.functor is None:
                 funcname = func.__name__
             else:
                 funcname = self.functor
-        if modname == '#auto#':
+        if modname == "#auto#":
             modname = func.__module__
 
         def _wrapped_function(*args, **kwdargs):
-            bound = check_mode(args, list(self._extract_callmode()), funcname, **kwdargs)
+            bound = check_mode(
+                args, list(self._extract_callmode()), funcname, **kwdargs
+            )
             converted_args = self._convert_inputs(args)
 
             argspec = inspect.getargspec(func)
@@ -153,13 +157,18 @@ class problog_export(object):
                     if bound & (1 << (len(self.output_arguments) - i - 1)):
                         r = unify_value(r, args[len(self.input_arguments) + i], {})
                     transformed.append(r)
-                result = args[:len(self.input_arguments)] + tuple(transformed)
+                result = args[: len(self.input_arguments)] + tuple(transformed)
                 return [result]
             except UnifyError:
                 return []
 
-        problog_export.add_function(funcname, len(self.input_arguments),
-                                    len(self.output_arguments), _wrapped_function, module_name=modname)
+        problog_export.add_function(
+            funcname,
+            len(self.input_arguments),
+            len(self.output_arguments),
+            _wrapped_function,
+            module_name=modname,
+        )
         return func
 
 
@@ -178,7 +187,7 @@ class problog_export_raw(problog_export):
             return problog_export._convert_input(self, a, t)
 
     def _extract_callmode(self):
-        callmode_in = ''
+        callmode_in = ""
 
         # multiple call modes: index = binary encoding on whether the output is bound
         # 0 -> all unbound
@@ -193,28 +202,30 @@ class problog_export_raw(problog_export):
                 if i & (1 << (n - j - 1)):
                     callmode += self._type_to_callmode(t)
                 else:
-                    callmode += 'v'
+                    callmode += "v"
             yield callmode
 
-    def __call__(self, func, funcname=None, modname='#auto#'):
+    def __call__(self, func, funcname=None, modname="#auto#"):
         if funcname is None:
             if self.functor is None:
                 funcname = func.__name__
             else:
                 funcname = self.functor
 
-        if modname == '#auto#':
+        if modname == "#auto#":
             modname = func.__module__
 
         def _wrapped_function(*args, **kwdargs):
-            bound = check_mode(args, list(self._extract_callmode()), funcname, **kwdargs)
+            bound = check_mode(
+                args, list(self._extract_callmode()), funcname, **kwdargs
+            )
             converted_args = self._convert_inputs(args)
             results = []
             for result in func(*converted_args, **kwdargs):
                 if len(result) == 2 and type(result[0]) == tuple:
                     # Probabilistic
                     result, p = result
-                    raise Exception('We don\'t support probabilistic yet!')
+                    raise Exception("We don't support probabilistic yet!")
                 else:
                     p = None
 
@@ -227,30 +238,38 @@ class problog_export_raw(problog_export):
                             r = unify_value(r, args[i], {})
                         transformed.append(r)
                     from .engine_stack import Context, get_state
+
                     result = Context(tuple(transformed), state=get_state(result))
                     results.append(result)
                 except UnifyError:
                     pass
             return results
 
-        problog_export.add_function(funcname, len(self.input_arguments),
-                                    0, _wrapped_function, module_name=modname)
+        problog_export.add_function(
+            funcname,
+            len(self.input_arguments),
+            0,
+            _wrapped_function,
+            module_name=modname,
+        )
         return func
 
 
 # noinspection PyPep8Naming
 class problog_export_nondet(problog_export):
-    def __call__(self, func, funcname=None, modname='#auto#'):
+    def __call__(self, func, funcname=None, modname="#auto#"):
         if funcname is None:
             if self.functor is None:
                 funcname = func.__name__
             else:
                 funcname = self.functor
-        if modname == '#auto#':
+        if modname == "#auto#":
             modname = func.__module__
 
         def _wrapped_function(*args, **kwdargs):
-            bound = check_mode(args, list(self._extract_callmode()), funcname, **kwdargs)
+            bound = check_mode(
+                args, list(self._extract_callmode()), funcname, **kwdargs
+            )
             converted_args = self._convert_inputs(args)
             results = []
             argspec = inspect.getargspec(func)
@@ -269,41 +288,48 @@ class problog_export_nondet(problog_export):
                         if bound & (1 << (len(self.output_arguments) - i - 1)):
                             r = unify_value(r, args[len(self.input_arguments) + i], {})
                         transformed.append(r)
-                    result = args[:len(self.input_arguments)] + tuple(transformed)
+                    result = args[: len(self.input_arguments)] + tuple(transformed)
                     results.append(result)
                 except UnifyError:
                     pass
             return results
 
-        problog_export.add_function(funcname, len(self.input_arguments),
-                                    len(self.output_arguments), _wrapped_function, module_name=modname)
+        problog_export.add_function(
+            funcname,
+            len(self.input_arguments),
+            len(self.output_arguments),
+            _wrapped_function,
+            module_name=modname,
+        )
         return func
 
 
 def problog_export_class(cls):
     prefix = cls.__name__.lower()
     for k, v in cls.__dict__.items():
-        if k == '__init__':
+        if k == "__init__":
             arguments = []
             for an, av in v.__annotations__.items():
-                if an != 'return':
-                    arguments.append('+%s' % av.__name__)
-            arguments.append('-term')
+                if an != "return":
+                    arguments.append("+%s" % av.__name__)
+            arguments.append("-term")
 
             def wrap(*args):
                 return Constant(cls(*args))
 
-            problog_export(*arguments)(wrap, funcname='%s_init' % (prefix))
+            problog_export(*arguments)(wrap, funcname="%s_init" % (prefix))
         else:
-            if type(v).__name__ == 'function':
-                arguments = ['+term']
+            if type(v).__name__ == "function":
+                arguments = ["+term"]
                 for an, av in v.__annotations__.items():
-                    if an == 'return':
-                        arguments.append('-%s' % av.__name__)
+                    if an == "return":
+                        arguments.append("-%s" % av.__name__)
                     else:
-                        arguments.append('+%s' % av.__name__)
+                        arguments.append("+%s" % av.__name__)
 
-                problog_export(*arguments)(_call_func(v), funcname='%s_%s' % (prefix, k))
+                problog_export(*arguments)(
+                    _call_func(v), funcname="%s_%s" % (prefix, k)
+                )
 
 
 def _call_func(func):

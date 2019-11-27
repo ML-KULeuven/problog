@@ -2,17 +2,21 @@ from collections import OrderedDict
 
 from problog.dd_formula import DDEvaluator
 from problog.evaluator import SemiringLogProbability, SemiringProbability
-
 from .formula import LogicNNFHAL
 
+
 class DDEvaluatorHAL(DDEvaluator):
-    def __init__(self, formula, semiring,  weights=None, **kwargs):
+    def __init__(self, formula, semiring, weights=None, **kwargs):
         DDEvaluator.__init__(self, formula, semiring, weights, **kwargs)
 
     def propagate(self):
         self._initialize()
-        if isinstance(self.semiring, SemiringLogProbability) or isinstance(self.semiring, SemiringProbability):
-            self.normalization = self._get_manager().wmc_true(self.weights, self.semiring)
+        if isinstance(self.semiring, SemiringLogProbability) or isinstance(
+            self.semiring, SemiringProbability
+        ):
+            self.normalization = self._get_manager().wmc_true(
+                self.weights, self.semiring
+            )
         else:
             self.normalization = None
 
@@ -29,12 +33,13 @@ class DDEvaluatorHAL(DDEvaluator):
                     # Only for atoms
                     self.set_evidence(self.formula.atom2var[ev], ev > 0)
 
-
-    def get_sdds(self):#node
+    def get_sdds(self):  # node
         result = {}
         constraint_inode = self.formula.get_constraint_inode()
         evidence_nodes = [self.formula.get_inode(ev) for ev in self.evidence()]
-        self.evidence_inode = self._get_manager().conjoin(constraint_inode, *(evidence_nodes))
+        self.evidence_inode = self._get_manager().conjoin(
+            constraint_inode, *(evidence_nodes)
+        )
         result["e"] = self.evidence_inode
         result["qe"] = OrderedDict()
         for query, node in self.formula.queries():
@@ -51,7 +56,7 @@ class DDEvaluatorHAL(DDEvaluator):
         formula = LogicNNFHAL()
         i = self.formula._to_formula(formula, sdd)
         semiring.algebra.normalization = normalization
-        result =  formula.evaluate(index=i, semiring=semiring)
+        result = formula.evaluate(index=i, semiring=semiring)
         if evaluation_last:
             self._get_manager().deref(sdd)
 

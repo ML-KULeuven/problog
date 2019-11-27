@@ -22,12 +22,10 @@ Provides access to Binary Decision Diagrams (BDDs).
     limitations under the License.
 """
 
-from __future__ import print_function
-
-from .formula import LogicDAG
 from .core import transform
-from .errors import InstallError
 from .dd_formula import DD, build_dd, DDManager
+from .errors import InstallError
+from .formula import LogicDAG
 
 # noinspection PyBroadException
 # noinspection PyUnresolvedReferences
@@ -39,12 +37,13 @@ except Exception:
 
 import dd.autoref as bdd
 
+
 class BDD(DD):
     """A propositional logic formula consisting of and, or, not and atoms represented as an BDD."""
 
     def __init__(self, **kwdargs):
         if bdd is None:
-            raise InstallError('The BDD library is not available.')
+            raise InstallError("The BDD library is not available.")
 
         DD.__init__(self, auto_compact=False, **kwdargs)
 
@@ -92,7 +91,7 @@ class BDDManager(DDManager):
             res = self.varcount
         else:
             res = label
-        self.base.declare('v' + str(res))
+        self.base.declare("v" + str(res))
         return res
 
     def get_variable(self, node):
@@ -105,7 +104,7 @@ class BDDManager(DDManager):
         return self.base.var(node)
 
     def literal(self, label):
-        return self.base.var('v' + str(self.add_variable(label)))
+        return self.base.var("v" + str(self.add_variable(label)))
 
     def is_true(self, node):
         return node.is_one()
@@ -139,7 +138,7 @@ class BDDManager(DDManager):
         pass
 
     def write_to_dot(self, node, filename):
-        with open(filename, 'w') as f:
+        with open(filename, "w") as f:
             print(node.to_dot(), file=f)
 
     def _parse_expr(self, expr):
@@ -147,39 +146,39 @@ class BDDManager(DDManager):
         # ITE := "ite" "(" VAR "," EXPR "," EXPR ")"
         # VAR := expression
         lexpr = len(expr)
-        if expr.startswith('TRUE'):
-            res = 'TRUE'
+        if expr.startswith("TRUE"):
+            res = "TRUE"
             pos = 4
-        elif expr.startswith('FALSE'):
-            res = 'FALSE'
+        elif expr.startswith("FALSE"):
+            res = "FALSE"
             pos = 5
-        elif expr.startswith('ite('):
+        elif expr.startswith("ite("):
             pos = 4
-            var, rst = expr[pos:].split(', ', 1)
+            var, rst = expr[pos:].split(", ", 1)
             ift, pos1 = self._parse_expr(rst)
             iff, pos2 = self._parse_expr(rst[pos1:])
             res = (var, ift, iff)
             pos += pos1 + pos2 + len(var)
-        elif expr.startswith('(~ '):
+        elif expr.startswith("(~ "):
             pos = 3
             sub, pos1 = self._parse_expr(expr[pos:])
             pos = pos + pos1 + 1
-            res = ('~', sub)
+            res = ("~", sub)
         else:
             pos = 0
-            while pos < lexpr and expr[pos] not in ' ,)':
+            while pos < lexpr and expr[pos] not in " ,)":
                 pos += 1
             res = expr[:pos]
-        while pos < lexpr and expr[pos] in ' ,)':
+        while pos < lexpr and expr[pos] in " ,)":
             pos += 1
 
         return res, pos
 
     def _enum_paths(self, expr, weights, semiring, negated=False):
-        if expr == 'TRUE':
+        if expr == "TRUE":
             if not negated:
                 yield semiring.one()
-        elif expr == 'FALSE':
+        elif expr == "FALSE":
             if negated:
                 yield semiring.one()
         elif type(expr) == str:
@@ -233,7 +232,7 @@ class BDDManager(DDManager):
         return pall
 
     def wmc_literal(self, node, weights, semiring, literal):
-        raise NotImplementedError('not supported')
+        raise NotImplementedError("not supported")
 
     def wmc_true(self, weights, semiring):
         return semiring.one()

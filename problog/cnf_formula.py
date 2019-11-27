@@ -22,14 +22,10 @@ Provides access to CNF and weighted CNF.
     See the License for the specific language governing permissions and
     limitations under the License.
 """
-from __future__ import print_function
-
-from .formula import BaseFormula, LogicDAG
-
 from .core import transform
-from .util import Timer
-
 from .evaluator import SemiringLogProbability
+from .formula import BaseFormula, LogicDAG
+from .util import Timer
 
 
 class CNF(BaseFormula):
@@ -38,8 +34,8 @@ class CNF(BaseFormula):
     # noinspection PyUnusedLocal
     def __init__(self, **kwdargs):
         BaseFormula.__init__(self)
-        self._clauses = []        # All clauses in the CNF (incl. comment)
-        self._clausecount = 0     # Number of actual clauses (not incl. comment)
+        self._clauses = []  # All clauses in the CNF (incl. comment)
+        self._clausecount = 0  # Number of actual clauses (not incl. comment)
 
     # noinspection PyUnusedLocal
     def add_atom(self, atom, force=False):
@@ -58,7 +54,7 @@ class CNF(BaseFormula):
 
         :param comment: text of the comment
         """
-        self._clauses.append(['c', comment])
+        self._clauses.append(["c", comment])
 
     def add_clause(self, head, body):
         """Add a clause to the CNF.
@@ -85,12 +81,19 @@ class CNF(BaseFormula):
             raise NotImplementedError()
         else:
             if clause[1] is None:
-                return ' '.join(map(str, clause[2:])) + ' 0'
+                return " ".join(map(str, clause[2:])) + " 0"
             else:
-                return ' '.join(map(str, clause[1:])) + ' 0'
+                return " ".join(map(str, clause[1:])) + " 0"
 
-    def to_dimacs(self, partial=False, weighted=False, semiring=None, smart_constraints=False, names=False,
-                  invert_weights=False):
+    def to_dimacs(
+        self,
+        partial=False,
+        weighted=False,
+        semiring=None,
+        smart_constraints=False,
+        names=False,
+        invert_weights=False,
+    ):
         """Transform to a string in DIMACS format.
 
         :param partial: split variables if possibly true / certainly true
@@ -100,19 +103,24 @@ class CNF(BaseFormula):
         :return: string in DIMACS format
         """
         if weighted:
-            t = 'wcnf'
+            t = "wcnf"
         else:
-            t = 'cnf'
+            t = "cnf"
 
-        header, content = self._contents(partial=partial, weighted=weighted, semiring=semiring,
-                                         smart_constraints=smart_constraints, invert_weights=invert_weights)
+        header, content = self._contents(
+            partial=partial,
+            weighted=weighted,
+            semiring=semiring,
+            smart_constraints=smart_constraints,
+            invert_weights=invert_weights,
+        )
 
-        result = 'p %s %s\n' % (t, ' '.join(map(str, header)))
+        result = "p %s %s\n" % (t, " ".join(map(str, header)))
         if names:
-            tpl = 'c {{:<{}}} {{}}\n'.format(len(str(self._atomcount)) + 1)
+            tpl = "c {{:<{}}} {{}}\n".format(len(str(self._atomcount)) + 1)
             for n, i, l in self.get_names_with_label():
                 result += tpl.format(i, n)
-        result += '\n'.join(map(lambda cl: ' '.join(map(str, cl)) + ' 0', content))
+        result += "\n".join(map(lambda cl: " ".join(map(str, cl)) + " 0", content))
         return result
 
     def to_lp(self, partial=False, semiring=None, smart_constraints=False):
@@ -124,13 +132,17 @@ class CNF(BaseFormula):
         :param smart_constraints: only enforce constraints when variables are set
         :return: string in LP format
         """
-        header, content = self._contents(partial=partial, weighted=False,
-                                         semiring=semiring, smart_constraints=smart_constraints)
+        header, content = self._contents(
+            partial=partial,
+            weighted=False,
+            semiring=semiring,
+            smart_constraints=smart_constraints,
+        )
 
         if semiring is None:
             semiring = SemiringLogProbability()
 
-        var2str = lambda var: 'x%s' % var if var > 0 else '-x%s' % -var
+        var2str = lambda var: "x%s" % var if var > 0 else "-x%s" % -var
 
         if partial:
             ct = lambda it: 2 * it
@@ -142,11 +154,11 @@ class CNF(BaseFormula):
                 w_pos, w_neg = weights.get(v, (semiring.one(), semiring.one()))
                 if not semiring.is_one(w_pos):
                     w_ct = w_pos
-                    objective.append('%s x%s' % (w_ct, ct(v)))
+                    objective.append("%s x%s" % (w_ct, ct(v)))
                 if not semiring.is_one(w_neg):
                     w_pt = -w_neg
-                    objective.append('%s x%s' % (w_pt, pt(v)))
-            objective = ' + '.join(objective)
+                    objective.append("%s x%s" % (w_pt, pt(v)))
+            objective = " + ".join(objective)
 
         else:
             weights = {}
@@ -155,23 +167,41 @@ class CNF(BaseFormula):
                 if w != 0:
                     weights[i] = str(w)
 
-            objective = ' + '.join(['%s x%s' % (weights[i], i)
-                                    for i in range(0, self.atomcount + 1) if i in weights])
-        result = 'maximize\n'
-        result += '    obj:' + objective + '\n'
-        result += 'subject to\n'
+            objective = " + ".join(
+                [
+                    "%s x%s" % (weights[i], i)
+                    for i in range(0, self.atomcount + 1)
+                    if i in weights
+                ]
+            )
+        result = "maximize\n"
+        result += "    obj:" + objective + "\n"
+        result += "subject to\n"
         for clause in content:
             n_neg = len([c for c in clause if c < 0])
-            result += '    ' + ' + '.join(map(var2str, clause)) + ' >= ' + str(1 - n_neg) + '\n'
-        result += 'bounds\n'
+            result += (
+                "    "
+                + " + ".join(map(var2str, clause))
+                + " >= "
+                + str(1 - n_neg)
+                + "\n"
+            )
+        result += "bounds\n"
         for i in range(1, self.atomcount + 1):
-            result += '    0 <= x%s <= 1\n' % i
-        result += 'binary\n'
-        result += '    ' + ' '.join(map(var2str, range(1, self.atomcount + 1))) + '\n'
-        result += 'end\n'
+            result += "    0 <= x%s <= 1\n" % i
+        result += "binary\n"
+        result += "    " + " ".join(map(var2str, range(1, self.atomcount + 1))) + "\n"
+        result += "end\n"
         return result
 
-    def _contents(self, partial=False, weighted=False, semiring=None, smart_constraints=False, invert_weights=False):
+    def _contents(
+        self,
+        partial=False,
+        weighted=False,
+        semiring=None,
+        smart_constraints=False,
+        invert_weights=False,
+    ):
         # Helper function to determine the certainly true / possibly true names (for partial)
 
         ct = lambda i: 2 * i
@@ -233,7 +263,7 @@ class CNF(BaseFormula):
                 head, body = c[0], c[1:]
                 if type(head) != bool:
                     # Clause does not represent a constraint.
-                    head_neg = (head < 0)
+                    head_neg = head < 0
                     head = abs(head)
                     head1, head2 = ct(head), pt(head)
                     if head_neg:
@@ -289,11 +319,11 @@ class CNF(BaseFormula):
         result = []
         for s in atoms:
             if s % 2 == 1 and s < 0:
-                r = (abs(s)+1)//2
+                r = (abs(s) + 1) // 2
                 if r in self.get_weights():
                     result.append(-r)
             elif s % 2 == 0 and s > 0:
-                r = (abs(s)+1)//2
+                r = (abs(s) + 1) // 2
                 if r in self.get_weights():
                     result.append(r)
         return result
@@ -323,7 +353,7 @@ def clarks_completion(source, destination, force_atoms=False, **kwdargs):
     :param kwdargs: additional options (ignored)
     :return: destination
     """
-    with Timer('Clark\'s completion'):
+    with Timer("Clark's completion"):
         # Each rule in the source formula will correspond to an atom.
         num_atoms = len(source)
 
@@ -332,20 +362,20 @@ def clarks_completion(source, destination, force_atoms=False, **kwdargs):
 
         # Add atoms.
         for i in range(0, num_atoms):
-            destination.add_atom(i+1, force=force_atoms)
+            destination.add_atom(i + 1, force=force_atoms)
 
         # Complete other nodes
         # Note: assumes negation is encoded as negative number.
         for index, node, nodetype in source:
-            if nodetype == 'conj':
+            if nodetype == "conj":
                 destination.add_clause(index, list(map(lambda x: -x, node.children)))
                 for c in node.children:
                     destination.add_clause(-index, [c])
-            elif nodetype == 'disj':
+            elif nodetype == "disj":
                 destination.add_clause(-index, node.children)
                 for c in node.children:
                     destination.add_clause(index, [-c])
-            elif nodetype == 'atom':
+            elif nodetype == "atom":
                 pass
             else:
                 raise ValueError("Unexpected node type: '%s'" % nodetype)

@@ -1,5 +1,6 @@
 from problog.engine_stack import StackBasedEngine, EvalNode
 
+
 class EvalAnd(EvalNode):
     def __init__(self, **parent_args):
         EvalNode.__init__(self, **parent_args)
@@ -26,16 +27,28 @@ class EvalAnd(EvalNode):
                 #     return (self.to_complete==1),
                 # [ self.createCall( self.node.children[1], context=result, parent=self.parent ) ]
                 # else :
-                return False, [
-                    self.createCall(self.node.children[1], context=result, identifier=node)]
+                return (
+                    False,
+                    [
+                        self.createCall(
+                            self.node.children[1], context=result, identifier=node
+                        )
+                    ],
+                )
             else:
                 # Not the last result: default behaviour
-                return False, [
-                    self.createCall(self.node.children[1], context=result, identifier=node)]
+                return (
+                    False,
+                    [
+                        self.createCall(
+                            self.node.children[1], context=result, identifier=node
+                        )
+                    ],
+                )
         else:  # Result from the second node
             # Make a ground node
             # print(source, node)
-            #This has changed to normal problog
+            # This has changed to normal problog
             ############
             if self.target.is_density(node):
                 self.target.density_node_body[node] = source
@@ -58,15 +71,14 @@ class EvalAnd(EvalNode):
         if self.to_complete == 0:
             return True, self.notifyComplete()
         else:
-            assert (self.to_complete > 0)
+            assert self.to_complete > 0
             return False, []
 
     def node_str(self):  # pragma: no cover
-        return ''
+        return ""
 
     def __str__(self):  # pragma: no cover
-        return EvalNode.__str__(self) + ' tc: %s' % self.to_complete
-
+        return EvalNode.__str__(self) + " tc: %s" % self.to_complete
 
 
 class StackBasedEngineHAL(StackBasedEngine):

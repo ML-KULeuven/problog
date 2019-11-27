@@ -21,8 +21,6 @@ Provides core functionality of ProbLog.
     See the License for the specific language governing permissions and
     limitations under the License.
 """
-from __future__ import print_function
-
 from collections import defaultdict
 
 from .errors import ProbLogError
@@ -79,13 +77,16 @@ class ProbLog(object):
         if isinstance(src, target):
             yield (target,)
         else:
-            targets = [(0, target, target)] + [(0, target, d) for d in cls.create_as[target]]
+            targets = [(0, target, target)] + [
+                (0, target, d) for d in cls.create_as[target]
+            ]
             if target in cls.allow_subclass:
                 for d in set(list(cls.transformations) + list(cls.create_as)):
-                    if issubclass(d, target) and \
-                            (not hasattr(d, 'is_available') or getattr(d, 'is_available')()):
-                        if hasattr(d, 'transform_preference'):
-                            w = getattr(d, 'transform_preference')
+                    if issubclass(d, target) and (
+                        not hasattr(d, "is_available") or getattr(d, "is_available")()
+                    ):
+                        if hasattr(d, "transform_preference"):
+                            w = getattr(d, "transform_preference")
                         else:
                             w = 1000
                         targets.append((w, d, d))
@@ -119,20 +120,25 @@ class ProbLog(object):
                     if path[1] is not None:
                         next_obj = path[0](current_obj, path[1](**kwdargs), **kwdargs)
                     else:
-                        next_obj = path[1].create_from_default_action(current_obj, **kwdargs)
+                        next_obj = path[1].create_from_default_action(
+                            current_obj, **kwdargs
+                        )
                     path = path[2:]
                     current_obj = next_obj
                 return current_obj
             except TransformationUnavailable:
                 # The current transformation strategy didn't work for some reason. Try another one.
                 pass
-        raise ProbLogError("No conversion strategy found from an object of "
-                           "class '%s' to an object of class '%s'"
-                           % (type(src).__name__, getattr(target, '__name__')))
+        raise ProbLogError(
+            "No conversion strategy found from an object of "
+            "class '%s' to an object of class '%s'"
+            % (type(src).__name__, getattr(target, "__name__"))
+        )
 
 
 class TransformationUnavailable(Exception):
     """Exception thrown when no valid transformation between two ProbLogObjects can be found."""
+
     pass
 
 
@@ -194,6 +200,7 @@ class transform(object):
     :param cls2: target class
     :param func: transformation function (for direct use instead of decorator)
     """
+
     def __init__(self, cls1, cls2, func=None):
         self.cls1 = cls1
         self.cls2 = cls2
@@ -209,10 +216,11 @@ class transform(object):
 
 def list_transformations():
     """Print an overview of available transformations."""
-    print ('Available transformations:')
+    print("Available transformations:")
     for target in ProbLog.transformations:
-        print ('\tcreate %s.%s' % (target.__module__, target.__name__))
+        print("\tcreate %s.%s" % (target.__module__, target.__name__))
         for src, func in ProbLog.transformations[target]:
-            print ('\t\tfrom %s.%s by %s.%s' %
-                   (src.__module__, src.__name__, func.__module__, func.__name__))
-
+            print(
+                "\t\tfrom %s.%s by %s.%s"
+                % (src.__module__, src.__name__, func.__module__, func.__name__)
+            )

@@ -1,11 +1,15 @@
-from collections import namedtuple, defaultdict
+from collections import defaultdict
 
-from problog.formula import LogicFormula, LogicNNF, atom
+from problog.formula import LogicFormula, LogicNNF
 from problog.logic import Constant, Term, term2list
-
-from .logic import pdfs, cdfs, SymbolicConstant, ValueDimConstant, ValueExpr, comparison_functors
 from .evaluator import FormulaEvaluatorHAL
-from .algebra.algebra import Algebra
+from .logic import (
+    pdfs,
+    SymbolicConstant,
+    ValueDimConstant,
+    ValueExpr,
+    comparison_functors,
+)
 
 
 class DiGraph(object):
@@ -16,14 +20,17 @@ class DiGraph(object):
 
 class LogicNNFHAL(LogicNNF):
     """A propositional formula in NNF form (i.e. only negation on facts)."""
+
     def __init__(self, auto_compact=True, **kwdargs):
         LogicNNF.__init__(self, auto_compact=True, **kwdargs)
         self._str2name = {}
 
     def _create_evaluator(self, semiring, weights, **kwargs):
-            return FormulaEvaluatorHAL(self, semiring, weights)
+        return FormulaEvaluatorHAL(self, semiring, weights)
 
-    def evaluate(self, index=None, semiring=None, evidence=None, weights=None, **kwargs):
+    def evaluate(
+        self, index=None, semiring=None, evidence=None, weights=None, **kwargs
+    ):
         """Evaluate a set of nodes.
 
         :param index: node to evaluate (default: all queries)
@@ -49,7 +56,6 @@ class LogicNNFHAL(LogicNNF):
 
         return result
 
-
     def extract_weights(self, semiring, weights=None):
         """Extracts the positive and negative weights for all atoms in the data structure.
 
@@ -74,7 +80,7 @@ class LogicNNFHAL(LogicNNF):
 
         result = {}
         for n, w in weights.items():
-            if hasattr(self, 'get_name'):
+            if hasattr(self, "get_name"):
                 name = self.get_name(n)
             else:
                 name = n
@@ -85,7 +91,10 @@ class LogicNNFHAL(LogicNNF):
             elif w is None:
                 result[n] = semiring.true(name)
             else:
-                result[n] = semiring.pos_value(w, name, index=n), semiring.neg_value(w, name, index=n)
+                result[n] = (
+                    semiring.pos_value(w, name, index=n),
+                    semiring.neg_value(w, name, index=n),
+                )
 
         for c in self.constraints():
             c.update_weights(result, semiring)
@@ -105,9 +114,6 @@ class LogicFormulaHAL(LogicFormula):
         self.free_variables = set()
         self.density_queries = {}
 
-
-
-
     def is_density(self, index):
         if index in self.density_indices:
             return True
@@ -115,7 +121,7 @@ class LogicFormulaHAL(LogicFormula):
             return False
 
     def get_term(self, atom):
-        if atom.name.functor=="choice":
+        if atom.name.functor == "choice":
             term = atom.name.args[2]
         else:
             term = atom.name
@@ -124,12 +130,12 @@ class LogicFormulaHAL(LogicFormula):
     def get_density_name(self, term, nid):
         if not term in self.density_names:
             self.density_names[term] = [nid]
-            return (term,0)
+            return (term, 0)
         elif nid in self.density_names[term]:
             return (term, self.density_names[term].index(nid))
         else:
             self.density_names[term].append(nid)
-            return (term, len(self.density_names[term])-1)
+            return (term, len(self.density_names[term]) - 1)
 
     def bookkeep_density_node(self, atom, node_id):
         self.density_indices.add(node_id)
@@ -140,10 +146,10 @@ class LogicFormulaHAL(LogicFormula):
             self.density_nodes[term] = (node_id,)
 
     def create_ast_representation(self, expression):
-        #Create abstract syntax tree (AST) of algebraic expression
+        # Create abstract syntax tree (AST) of algebraic expression
         if isinstance(expression, Constant):
             return self.create_ast_representation(expression.functor)
-        elif isinstance(expression, (int,float)):
+        elif isinstance(expression, (int, float)):
             return SymbolicConstant(expression, args=(), cvariables=set())
         elif isinstance(expression, SymbolicConstant):
             return expression
@@ -151,9 +157,9 @@ class LogicFormulaHAL(LogicFormula):
             return expression
         elif isinstance(expression, bool):
             return SymbolicConstant(int(expression), args=(), cvariables=set())
-        elif expression==None:
-            return SymbolicConstant(None,args=(),cvariables=set())
-        elif expression.functor==".":
+        elif expression == None:
+            return SymbolicConstant(None, args=(), cvariables=set())
+        elif expression.functor == ".":
             expression = term2list(expression)
             symbolic_args = []
             for a in expression:
@@ -175,15 +181,31 @@ class LogicFormulaHAL(LogicFormula):
         else:
             assert False
 
-
-    def add_atom(self, identifier, probability, group=None, name=None, source=None, cr_extra=True, is_extra=False):
+    def add_atom(
+        self,
+        identifier,
+        probability,
+        group=None,
+        name=None,
+        source=None,
+        cr_extra=True,
+        is_extra=False,
+    ):
         if probability is None and not self.keep_all:
             return self.TRUE
-        elif isinstance(probability, SymbolicConstant) and probability.functor is None and not self.keep_all:
+        elif (
+            isinstance(probability, SymbolicConstant)
+            and probability.functor is None
+            and not self.keep_all
+        ):
             return self.TRUE
         elif probability is False and not self.keep_all:
             return self.FALSE
-        elif isinstance(probability, SymbolicConstant) and probability.functor is False and not self.keep_all:
+        elif (
+            isinstance(probability, SymbolicConstant)
+            and probability.functor is False
+            and not self.keep_all
+        ):
             return self.FALSE
         # elif probability != self.WEIGHT_NEUTRAL and self.semiring and \
         #         self.semiring.is_zero(self.semiring.value(probability)):
@@ -194,11 +216,27 @@ class LogicFormulaHAL(LogicFormula):
         else:
             symbolic_expr = self.create_ast_representation(probability)
             is_density = False
-            if symbolic_expr.functor in pdfs and not isinstance(symbolic_expr, ValueExpr):
-                atom = self._create_atom(identifier, symbolic_expr, group=group, name=name, source=source, is_extra=is_extra)
-                is_density=True
+            if symbolic_expr.functor in pdfs and not isinstance(
+                symbolic_expr, ValueExpr
+            ):
+                atom = self._create_atom(
+                    identifier,
+                    symbolic_expr,
+                    group=group,
+                    name=name,
+                    source=source,
+                    is_extra=is_extra,
+                )
+                is_density = True
             else:
-                atom = self._create_atom(identifier, symbolic_expr, group=group, name=name, source=source, is_extra=is_extra)
+                atom = self._create_atom(
+                    identifier,
+                    symbolic_expr,
+                    group=group,
+                    name=name,
+                    source=source,
+                    is_extra=is_extra,
+                )
 
             length_before = len(self._nodes)
             node_id = self._add(atom, key=identifier)
@@ -216,8 +254,6 @@ class LogicFormulaHAL(LogicFormula):
             if is_density:
                 self.bookkeep_density_node(atom, node_id)
             return node_id
-
-
 
     def functions_to_dot(self, not_as_node=True, nodeprops=None):
         """Write out in GraphViz (dot) format.
@@ -240,7 +276,9 @@ class LogicFormulaHAL(LogicFormula):
         # Keep track of mutually disjunctive nodes.
         clusters = defaultdict(list)
 
-        queries = set([(name, node) for name, node, label in self.get_names_with_label()])
+        queries = set(
+            [(name, node) for name, node, label in self.get_names_with_label()]
+        )
         for i, n, t in self:
             if n.name is not None:
                 queries.add((n.name, i))
@@ -248,59 +286,76 @@ class LogicFormulaHAL(LogicFormula):
         # Keep a list of introduced not nodes to prevent duplicates.
         negative = set([])
         s = DiGraph()
-        s.s += 'digraph GP {\n'
+        s.s += "digraph GP {\n"
         for index, node, nodetype in self:
-            prop = nodeprops.get(index, '')
+            prop = nodeprops.get(index, "")
             if prop:
-                prop = ',' + prop
-            if nodetype == 'conj':
-                s.s += '{index} [label="AND", shape="box", style="filled", fillcolor="white"{prop}];\n'.format(index=index, prop=prop)
+                prop = "," + prop
+            if nodetype == "conj":
+                s.s += '{index} [label="AND", shape="box", style="filled", fillcolor="white"{prop}];\n'.format(
+                    index=index, prop=prop
+                )
                 for c in node.children:
-                    opt = ''
+                    opt = ""
                     if c < 0 and c not in negative and not_as_node:
                         s.s += '{c} [label="NOT"];\n'.format(c=c)
-                        s.s += '{cp} -> {cn};\n'.format(cp=c, cn=-c)
+                        s.s += "{cp} -> {cn};\n".format(cp=c, cn=-c)
                         negative.add(c)
 
                     if c < 0 and not_as_edge:
                         opt = '[arrowhead="odotnormal"]'
                         c = -c
                     if c != 0:
-                        s.s += '{index} -> {c}{opt};\n'.format(index=index, c=c, opt=opt)
-            elif nodetype == 'disj':
-                s.s += '{index} [label="OR", shape="diamond", style="filled", fillcolor="white"{prop}];\n '.format(index=index, prop=prop)
+                        s.s += "{index} -> {c}{opt};\n".format(
+                            index=index, c=c, opt=opt
+                        )
+            elif nodetype == "disj":
+                s.s += '{index} [label="OR", shape="diamond", style="filled", fillcolor="white"{prop}];\n '.format(
+                    index=index, prop=prop
+                )
                 for c in node.children:
-                    opt = ''
+                    opt = ""
                     if c < 0 and c not in negative and not_as_node:
                         s.s += '{c} [label="NOT"];\n'.format(c=c)
-                        s.s += '{cp} -> {cn};\n'.format(cp=c, cn=-c)
+                        s.s += "{cp} -> {cn};\n".format(cp=c, cn=-c)
                         negative.add(c)
                     if c < 0 and not_as_edge:
                         opt = '[arrowhead="odotnormal"]'
                         c = -c
                     if c != 0:
-                        s.s += '{index} -> {c}{opt};\n'.format(index=index, c=c, opt=opt)
-            elif nodetype == 'atom':
+                        s.s += "{index} -> {c}{opt};\n".format(
+                            index=index, c=c, opt=opt
+                        )
+            elif nodetype == "atom":
 
                 if node.probability == self.WEIGHT_NEUTRAL:
                     pass
                 elif node.group is None:
-                    s.s += '{index} [label="{probability}", shape="ellipse", style="filled", fillcolor="white"{prop}];\n'\
-                        .format(index=index, probability=node.probability, prop=prop)
+                    s.s += '{index} [label="{probability}", shape="ellipse", style="filled", fillcolor="white"{prop}];\n'.format(
+                        index=index, probability=node.probability, prop=prop
+                    )
                 else:
-                    clusters[node.group].append('{index} [ shape="ellipse", label="{probability}", '
-                        'style="filled", fillcolor="white" ];\n'.format(index=index, probability=node.probability))
+                    clusters[node.group].append(
+                        '{index} [ shape="ellipse", label="{probability}", '
+                        'style="filled", fillcolor="white" ];\n'.format(
+                            index=index, probability=node.probability
+                        )
+                    )
 
                 links, s = self.function_to_dot(s, node.probability)
                 for l in links:
-                    s.s += '{index} -> {density_node} [style="dotted"];\n'.format(index=index, density_node=l)
+                    s.s += '{index} -> {density_node} [style="dotted"];\n'.format(
+                        index=index, density_node=l
+                    )
             else:
                 raise TypeError("Unexpected node type: '{}'".format(nodetype))
 
         c = 0
         for cluster, text in clusters.items():
             if len(text) > 1:
-                s.s += 'subgraph cluster_{c} {{ style="dotted"; color="red"; \n\t{join_text}\n }}\n'.format(c=c, join_text='\n\t'.join(text))
+                s.s += 'subgraph cluster_{c} {{ style="dotted"; color="red"; \n\t{join_text}\n }}\n'.format(
+                    c=c, join_text="\n\t".join(text)
+                )
             else:
                 s.s += text[0]
             c += 1
@@ -309,13 +364,13 @@ class LogicFormulaHAL(LogicFormula):
         for name, index in set(queries):
             if name.is_negated():
                 pos_name = -name
-                name = Term(pos_name.functor + '_aux', *pos_name.args)
-            opt = ''
+                name = Term(pos_name.functor + "_aux", *pos_name.args)
+            opt = ""
             if index is None:
-                index = 'false'
+                index = "false"
                 if not_as_node:
                     s.s += '{} [label="NOT"];\n'.format(index)
-                    s.s += '{} -> {};\n' % (index, 0)
+                    s.s += "{} -> {};\n" % (index, 0)
                 elif not_as_edge:
                     opt = ', arrowhead="odotnormal"'
                 if 0 not in negative:
@@ -324,7 +379,7 @@ class LogicFormulaHAL(LogicFormula):
             elif index < 0:  # and not index in negative :
                 if not_as_node:
                     s.s += '{} [label="NOT"];\n'.format(index)
-                    s.s += '{pindex} -> {nindex};\n'.format(pindex=index, nindex=-index)
+                    s.s += "{pindex} -> {nindex};\n".format(pindex=index, nindex=-index)
                     negative.add(index)
                 elif not_as_edge:
                     index = -index
@@ -332,27 +387,32 @@ class LogicFormulaHAL(LogicFormula):
             elif index == 0 and index not in negative:
                 s.s += '{} [label="true"];\n'.format(index)
                 negative.add(0)
-            s.s += 'q_{q} [ label="{name}", shape="plaintext" ];\n'.format(q=q, name=name)
-            s.s += 'q_{q} -> {index} [style="dotted" {opt}];\n'.format(q=q, index=index, opt=opt)
+            s.s += 'q_{q} [ label="{name}", shape="plaintext" ];\n'.format(
+                q=q, name=name
+            )
+            s.s += 'q_{q} -> {index} [style="dotted" {opt}];\n'.format(
+                q=q, index=index, opt=opt
+            )
             q += 1
-        return s.s + '}'
-
+        return s.s + "}"
 
     def function_to_dot(self, s, expression):
         if isinstance(expression, (int, float)):
             return (), s
-        elif isinstance(expression,SymbolicConstant) and isinstance(expression.functor, (int, float)):
+        elif isinstance(expression, SymbolicConstant) and isinstance(
+            expression.functor, (int, float)
+        ):
             return (), s
-        elif isinstance(expression, SymbolicConstant) and expression.functor=="/":
+        elif isinstance(expression, SymbolicConstant) and expression.functor == "/":
             return (), s
-        elif isinstance(expression, SymbolicConstant) and expression.functor=="list":
+        elif isinstance(expression, SymbolicConstant) and expression.functor == "list":
             links = ()
             for a in expression.args:
                 l, s = self.function_to_dot(s, a)
                 links += l
 
             return links, s
-        elif isinstance(expression, ValueExpr) and str(expression.functor)=="real":
+        elif isinstance(expression, ValueExpr) and str(expression.functor) == "real":
             return (), s
         elif isinstance(expression, ValueExpr):
             if expression in s.value_links:
@@ -365,25 +425,30 @@ class LogicFormulaHAL(LogicFormula):
 
                 # node_name = Algebra.name2str(expression.name)
                 node_name = hash(expression.name)
-                str_density_args = ",".join(list(map(str,expression.args)))
+                str_density_args = ",".join(list(map(str, expression.args)))
                 str_density_functor = str(expression.functor)
                 str_density = "{}({})".format(str_density_functor, str_density_args)
-                graph = '{name} [label="{function}", shape="ellipse", style="filled", fillcolor="white"];\n'\
-                    .format(name=node_name, function=str_density)
+                graph = '{name} [label="{function}", shape="ellipse", style="filled", fillcolor="white"];\n'.format(
+                    name=node_name, function=str_density
+                )
                 s.s += graph
                 for l in links:
-                    s.s += '{index} -> {density_node} [style="dotted"];\n'.format(index=node_name, density_node=l)
+                    s.s += '{index} -> {density_node} [style="dotted"];\n'.format(
+                        index=node_name, density_node=l
+                    )
 
                 s.value_links[expression] = node_name
                 return (node_name,), s
         elif expression.functor in comparison_functors:
             lhs_links, s = self.function_to_dot(s, expression.args[0])
             rhs_links, s = self.function_to_dot(s, expression.args[1])
-            links = lhs_links+rhs_links
+            links = lhs_links + rhs_links
             return links, s
         elif isinstance(expression, ValueDimConstant):
             density_value = self.density_values[expression.functor[:-1]]
-            links, s = self.function_to_dot(s, self.density_values[expression.functor[:-1]])
+            links, s = self.function_to_dot(
+                s, self.density_values[expression.functor[:-1]]
+            )
             # for l in links:
             #     s.s += '{index} -> {density_node} [style="dotted"];\n'.format(index=hash(str_expression), density_node=l)
             return links, s
@@ -392,12 +457,17 @@ class LogicFormulaHAL(LogicFormula):
             for a in expression.args:
                 l, s = self.function_to_dot(s, a)
                 links += l
-            str_expression_args = ",".join(list(map(str,expression.args)))
+            str_expression_args = ",".join(list(map(str, expression.args)))
             str_expression_functor = str(expression.functor)
-            str_expression = "{}({})".format(str_expression_functor, str_expression_args)
-            graph = '{name} [label="{expression}", shape="ellipse", style="filled", fillcolor="white"];\n'\
-                .format(name=hash(str_expression), expression=str_expression)
+            str_expression = "{}({})".format(
+                str_expression_functor, str_expression_args
+            )
+            graph = '{name} [label="{expression}", shape="ellipse", style="filled", fillcolor="white"];\n'.format(
+                name=hash(str_expression), expression=str_expression
+            )
             s.s += graph
             for l in links:
-                s.s += '{index} -> {density_node} [style="dotted"];\n'.format(index=hash(str_expression), density_node=l)
+                s.s += '{index} -> {density_node} [style="dotted"];\n'.format(
+                    index=hash(str_expression), density_node=l
+                )
             return (hash(str_expression),), s

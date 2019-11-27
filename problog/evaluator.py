@@ -21,8 +21,6 @@ Provides common interface for evaluation of weighted logic formulas.
     See the License for the specific language governing permissions and
     limitations under the License.
 """
-from __future__ import print_function
-
 import math
 
 from .core import ProbLogObject, transform_allow_subclass
@@ -30,9 +28,8 @@ from .errors import InconsistentEvidenceError, InvalidValue, ProbLogError
 
 
 class OperationNotSupported(ProbLogError):
-
     def __init__(self):
-        ProbLogError.__init__(self, 'This operation is not supported by this semiring')
+        ProbLogError.__init__(self, "This operation is not supported by this semiring")
 
 
 class Semiring(object):
@@ -147,6 +144,32 @@ class Semiring(object):
         """Handle weight for deterministically false."""
         return self.zero(), self.one()
 
+    def to_evidence(self, pos_weight, neg_weight, sign):
+        """
+        Converts the pos. and neg. weight (internal repr.) of a literal into the case where the literal is evidence.
+        Note that the literal can be a negative atom regardless of the given sign.
+
+        :param pos_weight: The current positive weight of the literal.
+        :param neg_weight: The current negative weight of the literal.
+        :param sign: Denotes whether the literal or its negation is evidence. sign > 0 denotes the literal is evidence,
+            otherwise its negation is evidence. Note: The literal itself can also still be a negative atom.
+        :returns: A tuple of the positive and negative weight as if the literal was evidence.
+            For example, for probability, returns (self.one(), self.zero()) if sign else (self.zero(), self.one())
+        """
+        return (self.one(), self.zero()) if sign > 0 else (self.zero(), self.one())
+
+    def ad_negate(self, pos_weight, neg_weight):
+        """
+        Negation in the context of an annotated disjunction. e.g. in a probabilistic context for 0.2::a ; 0.8::b,
+        the negative label for both a and b is 1.0 such that model {a,-b} = 0.2 * 1.0 and {-a,b} = 1.0 * 0.8.
+        For a, pos_weight would be 0.2 and neg_weight could be 0.8. The returned value is 1.0.
+        :param pos_weight: The current positive weight of the literal (e.g. 0.2 or 0.8). Internal representation.
+        :param neg_weight: The current negative weight of the literal (e.g. 0.8 or 0.2). Internal representation.
+        :return: neg_weight corrected based on the given pos_weight, given the ad context (e.g. 1.0). Internal
+        representation.
+        """
+        return self.one()
+
 
 class SemiringProbability(Semiring):
     """Implementation of the semiring interface for probabilities."""
@@ -180,7 +203,9 @@ class SemiringProbability(Semiring):
         if 0.0 - 1e-9 <= v <= 1.0 + 1e-9:
             return v
         else:
-            raise InvalidValue("Not a valid value for this semiring: '%s'" % a, location=a.location)
+            raise InvalidValue(
+                "Not a valid value for this semiring: '%s'" % a, location=a.location
+            )
 
     def is_dsp(self):
         """Indicates whether this semiring requires solving a disjoint sum problem."""
@@ -235,7 +260,9 @@ class SemiringLogProbability(SemiringProbability):
             if 0.0 - 1e-9 <= v <= 1.0 + 1e-9:
                 return math.log(v)
             else:
-                raise InvalidValue("Not a valid value for this semiring: '%s'" % a, location=a.location)
+                raise InvalidValue(
+                    "Not a valid value for this semiring: '%s'" % a, location=a.location
+                )
 
     def result(self, a, formula=None):
         return math.exp(a)
@@ -302,7 +329,6 @@ class SemiringSymbolic(Semiring):
 
 
 class Evaluatable(ProbLogObject):
-
     def evidence_all(self):
         raise NotImplementedError()
 
@@ -314,9 +340,11 @@ class Evaluatable(ProbLogObject):
         :return: evaluator
         :rtype: Evaluator
         """
-        raise NotImplementedError('Evaluatable._create_evaluator is an abstract method')
+        raise NotImplementedError("Evaluatable._create_evaluator is an abstract method")
 
-    def get_evaluator(self, semiring=None, evidence=None, weights=None, keep_evidence=False, **kwargs):
+    def get_evaluator(
+        self, semiring=None, evidence=None, weights=None, keep_evidence=False, **kwargs
+    ):
         """Get an evaluator for computing queries on this formula.
         It creates an new evaluator and initializes it with the given or predefined evidence.
 
@@ -337,9 +365,13 @@ class Evaluatable(ProbLogObject):
             elif ev_index is None and ev_value < 0:
                 pass  # false evidence is deterministically false
             elif ev_index == 0 and ev_value < 0:
-                raise InconsistentEvidenceError(source='evidence('+str(ev_name)+',false)')  # true evidence is false
+                raise InconsistentEvidenceError(
+                    source="evidence(" + str(ev_name) + ",false)"
+                )  # true evidence is false
             elif ev_index is None and ev_value > 0:
-                raise InconsistentEvidenceError(source='evidence('+str(ev_name)+',true)')  # false evidence is true
+                raise InconsistentEvidenceError(
+                    source="evidence(" + str(ev_name) + ",true)"
+                )  # false evidence is true
             elif evidence is None and ev_value != 0:
                 evaluator.add_evidence(ev_value * ev_index)
             elif evidence is not None:
@@ -358,7 +390,9 @@ class Evaluatable(ProbLogObject):
         evaluator.propagate()
         return evaluator
 
-    def evaluate(self, index=None, semiring=None, evidence=None, weights=None, **kwargs):
+    def evaluate(
+        self, index=None, semiring=None, evidence=None, weights=None, **kwargs
+    ):
         """Evaluate a set of nodes.
 
         :param index: node to evaluate (default: all queries)
@@ -411,14 +445,14 @@ class Evaluator(object):
 
     def propagate(self):
         """Propagate changes in weight or evidence values."""
-        raise NotImplementedError('Evaluator.propagate() is an abstract method.')
+        raise NotImplementedError("Evaluator.propagate() is an abstract method.")
 
     def evaluate(self, index):
         """Compute the value of the given node."""
-        raise NotImplementedError('abstract method')
+        raise NotImplementedError("abstract method")
 
     def evaluate_evidence(self):
-        raise NotImplementedError('abstract method')
+        raise NotImplementedError("abstract method")
 
     def evaluate_fact(self, node):
         """Evaluate fact.
@@ -426,7 +460,7 @@ class Evaluator(object):
         :param node: fact to evaluate
         :return: weight of the fact (as semiring result value)
         """
-        raise NotImplementedError('abstract method')
+        raise NotImplementedError("abstract method")
 
     def add_evidence(self, node):
         """Add evidence"""
@@ -440,9 +474,9 @@ class Evaluator(object):
         """Set value for evidence node.
 
         :param index: index of evidence node
-        :param value: value of evidence
+        :param value: value of evidence. True if the evidence is positive, False otherwise.
         """
-        raise NotImplementedError('abstract method')
+        raise NotImplementedError("abstract method")
 
     def set_weight(self, index, pos, neg):
         """Set weight of a node.
@@ -451,7 +485,7 @@ class Evaluator(object):
         :param pos: positive weight (as semiring internal value)
         :param neg: negative weight (as semiring internal value)
         """
-        raise NotImplementedError('abstract method')
+        raise NotImplementedError("abstract method")
 
     def clear_evidence(self):
         """Clear all evidence."""
@@ -521,7 +555,9 @@ class FormulaEvaluator(object):
                 return weight[0]
 
     def propagate(self):
-        self._fact_weights = self.formula.extract_weights(self.semiring, self._fact_weights)
+        self._fact_weights = self.formula.extract_weights(
+            self.semiring, self._fact_weights
+        )
 
     def evaluate(self, index):
         return self.semiring.result(self.get_weight(index), self.formula)
@@ -541,16 +577,16 @@ class FormulaEvaluator(object):
             node = self.formula.get_node(abs(index))
             ntype = type(node).__name__
 
-            if ntype == 'atom':
+            if ntype == "atom":
                 return self.semiring.one()
             else:
                 childprobs = [self.get_weight(c) for c in node.children]
-                if ntype == 'conj':
+                if ntype == "conj":
                     p = self.semiring.one()
                     for c in childprobs:
                         p = self.semiring.times(p, c)
                     return p
-                elif ntype == 'disj':
+                elif ntype == "disj":
                     p = self.semiring.zero()
                     for c in childprobs:
                         p = self.semiring.plus(p, c)
@@ -617,18 +653,18 @@ class FormulaEvaluatorNSP(FormulaEvaluator):
         node = self.formula.get_node(index)
         ntype = type(node).__name__
 
-        if ntype == 'atom':
+        if ntype == "atom":
             return self.semiring.one(), {index}
         else:
             childprobs = [self.get_weight(c) for c in node.children]
-            if ntype == 'conj':
+            if ntype == "conj":
                 p = self.semiring.one()
                 all_used = set()
                 for cp, cu in childprobs:
                     all_used |= cu
                     p = self.semiring.times(p, cp)
                 return p, all_used
-            elif ntype == 'disj':
+            elif ntype == "disj":
                 p = self.semiring.zero()
                 all_used = set()
                 for cp, cu in childprobs:

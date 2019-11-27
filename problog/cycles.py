@@ -22,16 +22,13 @@ Cycle breaking in propositional formulae.
     limitations under the License.
 """
 
-
-from __future__ import print_function
-
-from .logic import Term
-from .core import transform
-from .util import Timer
-from .formula import LogicFormula, LogicDAG
-
-from collections import defaultdict
 import logging
+from collections import defaultdict
+
+from .core import transform
+from .formula import LogicFormula, LogicDAG
+from .logic import Term
+from .util import Timer
 
 
 # noinspection PyUnusedLocal
@@ -45,8 +42,8 @@ def break_cycles(source, target, translation=None, **kwdargs):
     :return: target
     """
 
-    logger = logging.getLogger('problog')
-    with Timer('Cycle breaking'):
+    logger = logging.getLogger("problog")
+    with Timer("Cycle breaking"):
         cycles_broken = set()
         content = set()
         if translation is None:
@@ -54,7 +51,9 @@ def break_cycles(source, target, translation=None, **kwdargs):
 
         for q, n, l in source.labeled():
             if source.is_probabilistic(n):
-                newnode = _break_cycles(source, target, n, [], cycles_broken, content, translation)
+                newnode = _break_cycles(
+                    source, target, n, [], cycles_broken, content, translation
+                )
             else:
                 newnode = n
             target.add_name(q, newnode, l)
@@ -64,8 +63,16 @@ def break_cycles(source, target, translation=None, **kwdargs):
         translation = defaultdict(list)
         for q, n, v in source.evidence_all():
             if source.is_probabilistic(n):
-                newnode = _break_cycles(source, target, abs(n), [], cycles_broken,
-                                        content, translation, is_evidence=True)
+                newnode = _break_cycles(
+                    source,
+                    target,
+                    abs(n),
+                    [],
+                    cycles_broken,
+                    content,
+                    translation,
+                    is_evidence=True,
+                )
             else:
                 newnode = n
             if n is not None and n < 0:
@@ -81,12 +88,22 @@ def break_cycles(source, target, translation=None, **kwdargs):
         return target
 
 
-def _break_cycles(source, target, nodeid, ancestors, cycles_broken, content, translation,
-                  is_evidence=False):
+def _break_cycles(
+    source,
+    target,
+    nodeid,
+    ancestors,
+    cycles_broken,
+    content,
+    translation,
+    is_evidence=False,
+):
     negative_node = nodeid < 0
     nodeid = abs(nodeid)
 
-    if not is_evidence and not source.is_probabilistic(source.get_evidence_value(nodeid)):
+    if not is_evidence and not source.is_probabilistic(
+        source.get_evidence_value(nodeid)
+    ):
         ev = source.get_evidence_value(nodeid)
         if negative_node:
             return target.negate(ev)
@@ -94,7 +111,7 @@ def _break_cycles(source, target, nodeid, ancestors, cycles_broken, content, tra
             return ev
     elif nodeid in ancestors:
         cycles_broken.add(nodeid)
-        return None     # cyclic node: node is False
+        return None  # cyclic node: node is False
     elif nodeid in translation:
         ancset = frozenset(ancestors + [nodeid])
         for newnode, cb, cn in translation[nodeid]:
@@ -117,17 +134,35 @@ def _break_cycles(source, target, nodeid, ancestors, cycles_broken, content, tra
 
     node = source.get_node(nodeid)
     nodetype = type(node).__name__
-    if nodetype == 'atom':
-        newnode = target.add_atom(node.identifier, node.probability, group=node.group, name=node.name, is_extra=node.is_extra)
+    if nodetype == "atom":
+        newnode = target.add_atom(
+            node.identifier,
+            node.probability,
+            group=node.group,
+            name=node.name,
+            is_extra=node.is_extra,
+        )
     else:
-        children = [_break_cycles(source, target, child, ancestors + [nodeid], child_cycles_broken,
-                                  child_content, translation, is_evidence)
-                    for child in node.children]
+        children = [
+            _break_cycles(
+                source,
+                target,
+                child,
+                ancestors + [nodeid],
+                child_cycles_broken,
+                child_content,
+                translation,
+                is_evidence,
+            )
+            for child in node.children
+        ]
         newname = node.name
         if newname is not None and child_cycles_broken:
-            newfunc = '_problog_' + newname.functor + '_cb_' + str(len(translation[nodeid]))
+            newfunc = (
+                "_problog_" + newname.functor + "_cb_" + str(len(translation[nodeid]))
+            )
             newname = Term(newfunc, *newname.args)
-        if nodetype == 'conj':
+        if nodetype == "conj":
             newnode = target.add_and(children, name=newname)
         else:
             newnode = target.add_or(children, name=newname)
@@ -137,7 +172,9 @@ def _break_cycles(source, target, nodeid, ancestors, cycles_broken, content, tra
             # Also: don't add atoms (they can't be involved in cycles)
             content.add(nodeid)
 
-    translation[nodeid].append((newnode, child_cycles_broken, child_content - child_cycles_broken))
+    translation[nodeid].append(
+        (newnode, child_cycles_broken, child_content - child_cycles_broken)
+    )
     content |= child_content
     cycles_broken |= child_cycles_broken
 

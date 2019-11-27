@@ -22,3 +22,17 @@ There are two possible solutions:
         When c2d is found, it will be used automatically instead of DSharp.
         
 For most cases option 1 is sufficient.
+
+
+Issue 2: DSharp OSError: [Errno 8] Exec format error:
+----------------------------------------------
+
+This is caused by using the 64-bit binary on a 32-bit system.
+
+There are two possible solutions:
+
+    - Use a different knowledge compiler that does not have this issue (c2d or SDD).
+    
+    - Compile a dSharp 32-bit version (dSharp source: https://bitbucket.org/haz/dsharp/src/default/) 
+    and replace the original dSharp file with it. The path can be found in the OSError message.
+    Alternatively, use the 32-bit version in this zip: https://github.com/ML-KULeuven/problog/files/3448011/dsharp.zip

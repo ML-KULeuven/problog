@@ -22,18 +22,17 @@ Provides access to Binary Decision Diagrams (BDDs).
     limitations under the License.
 """
 
-from __future__ import print_function
-
-from .formula import LogicDAG
 from .core import transform
-from .errors import InstallError
 from .dd_formula import DD, build_dd, DDManager
+from .errors import InstallError
+from .formula import LogicDAG
 
 # noinspection PyBroadException
 # noinspection PyUnresolvedReferences
 try:
     # noinspection PyPackageRequirements
     import pyeda.boolalg.bdd as bdd
+
     # noinspection PyPackageRequirements
     import pyeda.boolalg.expr as bdd_expr
 except Exception:
@@ -45,7 +44,7 @@ class BDD(DD):
 
     def __init__(self, **kwdargs):
         if bdd is None:
-            raise InstallError('The BDD library is not available.')
+            raise InstallError("The BDD library is not available.")
 
         DD.__init__(self, auto_compact=False, **kwdargs)
 
@@ -83,8 +82,8 @@ class BDDManager(DDManager):
         """
         DDManager.__init__(self)
         self.varcount = 1
-        self.ZERO = bdd.expr2bdd(bdd_expr.expr('0'))
-        self.ONE = bdd.expr2bdd(bdd_expr.expr('1'))
+        self.ZERO = bdd.expr2bdd(bdd_expr.expr("0"))
+        self.ONE = bdd.expr2bdd(bdd_expr.expr("1"))
 
     def add_variable(self, label=0):
         if label == 0 or label > self.varcount:
@@ -103,7 +102,7 @@ class BDDManager(DDManager):
         return int(bdd._VARS[node.root].name[1:])
 
     def literal(self, label):
-        return bdd.bddvar('v' + str(self.add_variable(label)))
+        return bdd.bddvar("v" + str(self.add_variable(label)))
 
     def is_true(self, node):
         return node.is_one()
@@ -137,7 +136,7 @@ class BDDManager(DDManager):
         pass
 
     def write_to_dot(self, node, filename):
-        with open(filename, 'w') as f:
+        with open(filename, "w") as f:
             print(node.to_dot(), file=f)
 
     def wmc(self, node, weights, semiring):
@@ -156,7 +155,7 @@ class BDDManager(DDManager):
         return pall
 
     def wmc_literal(self, node, weights, semiring, literal):
-        raise NotImplementedError('not supported')
+        raise NotImplementedError("not supported")
 
     def wmc_true(self, weights, semiring):
         return semiring.one()

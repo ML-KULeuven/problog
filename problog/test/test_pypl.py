@@ -1,8 +1,7 @@
 import unittest
 
-import problog
-from problog.pypl import py2pl, pl2py
 from problog.logic import Term
+from problog.pypl import py2pl, pl2py
 
 
 class TestPypl(unittest.TestCase):
@@ -27,6 +26,6 @@ class TestPypl(unittest.TestCase):
         self.assertEqual(test_tuple, res_tuple)
 
     def test_unsupported_types(self):
-        test_dict = {"a":1}
+        test_dict = {"a": 1}
         with self.assertRaises(ValueError):
             py2pl(test_dict)

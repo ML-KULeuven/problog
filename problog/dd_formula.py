@@ -22,13 +22,16 @@ Common interface to decision diagrams (BDD, SDD).
     limitations under the License.
 """
 
-from __future__ import print_function
-
-
-from .util import Timer, mktempfile
-from .formula import LogicFormula, atom, LogicNNF
-from .evaluator import EvaluatableDSP, Evaluator, FormulaEvaluatorNSP, SemiringLogProbability, SemiringProbability
 from .errors import InconsistentEvidenceError
+from .evaluator import (
+    EvaluatableDSP,
+    Evaluator,
+    FormulaEvaluatorNSP,
+    SemiringLogProbability,
+    SemiringProbability,
+)
+from .formula import LogicFormula, atom, LogicNNF
+from .util import Timer, mktempfile
 
 
 class DD(LogicFormula, EvaluatableDSP):
@@ -46,7 +49,7 @@ class DD(LogicFormula, EvaluatableDSP):
 
     def _create_manager(self):
         """Create and return a new underlying manager."""
-        raise NotImplementedError('Abstract method.')
+        raise NotImplementedError("Abstract method.")
 
     def get_manager(self):
         """Get the underlying manager"""
@@ -54,7 +57,9 @@ class DD(LogicFormula, EvaluatableDSP):
             self.inode_manager = self._create_manager()
         return self.inode_manager
 
-    def _create_atom(self, identifier, probability, group, name=None, source=None, is_extra=False):
+    def _create_atom(
+        self, identifier, probability, group, name=None, source=None, is_extra=False
+    ):
         index = len(self) + 1
         var = self.get_manager().add_variable()
         self.atom2var[index] = var
@@ -77,7 +82,7 @@ class DD(LogicFormula, EvaluatableDSP):
         index = abs(index)
         node = self.get_node(index)
 
-        if type(node).__name__ == 'atom':
+        if type(node).__name__ == "atom":
             result = mgr.literal(self.atom2var[index])
         else:
             # Extend list
@@ -89,11 +94,17 @@ class DD(LogicFormula, EvaluatableDSP):
                 mgr.nodes[index - 1] = result
         return mgr.negate(result) if negate else result
 
-    def _create_inode(self, node):  # TODO: Recursion is slow in python. Change build_dd to not use this and get_inode?
-        if type(node).__name__ == 'conj':
-            return self.get_manager().conjoin(*[self.get_inode(c) for c in node.children])
+    def _create_inode(
+        self, node
+    ):  # TODO: Recursion is slow in python. Change build_dd to not use this and get_inode?
+        if type(node).__name__ == "conj":
+            return self.get_manager().conjoin(
+                *[self.get_inode(c) for c in node.children]
+            )
         else:
-            return self.get_manager().disjoin(*[self.get_inode(c) for c in node.children])
+            return self.get_manager().disjoin(
+                *[self.get_inode(c) for c in node.children]
+            )
 
     def set_inode(self, index, node):
         """Set the internal node for the given index.
@@ -121,8 +132,12 @@ class DD(LogicFormula, EvaluatableDSP):
 
     def build_dd(self):
         """Build the internal representation of the formula."""
-        required_nodes = set([abs(n) for q, n, l in self.labeled() if self.is_probabilistic(n)])
-        required_nodes |= set([abs(n) for q, n, l in self.labeled() if self.is_probabilistic(n)])  # TODO self.evidence_all() ipv self.labeled() ? see forward.py
+        required_nodes = set(
+            [abs(n) for q, n, l in self.labeled() if self.is_probabilistic(n)]
+        )
+        required_nodes |= set(
+            [abs(n) for q, n, l in self.labeled() if self.is_probabilistic(n)]
+        )  # TODO self.evidence_all() ipv self.labeled() ? see forward.py
 
         for n in required_nodes:
             self.get_inode(n)
@@ -134,17 +149,24 @@ class DD(LogicFormula, EvaluatableDSP):
         self.get_manager().constraint_dd = self.get_manager().true()
         for c in self.constraints():
             for rule in c.as_clauses():
-                rule_sdd = self.get_manager().disjoin(*[self.get_inode(r) for r in rule])
-                new_constraint_dd = self.get_manager().conjoin(self.get_manager().constraint_dd, rule_sdd)
+                rule_sdd = self.get_manager().disjoin(
+                    *[self.get_inode(r) for r in rule]
+                )
+                new_constraint_dd = self.get_manager().conjoin(
+                    self.get_manager().constraint_dd, rule_sdd
+                )
                 self.get_manager().deref(self.get_manager().constraint_dd)
                 self.get_manager().deref(rule_sdd)
                 self.get_manager().constraint_dd = new_constraint_dd
 
     def to_dot(self, *args, **kwargs):
-        if kwargs.get('use_internal'):
-            dot_text = ["digraph {\n", "overlap=false\n"]  # TODO Support multiple nodes in write_to_dot
+        if kwargs.get("use_internal"):
+            dot_text = [
+                "digraph {\n",
+                "overlap=false\n",
+            ]  # TODO Support multiple nodes in write_to_dot
             for qn, qi in self.queries():
-                filename = mktempfile('.dot')
+                filename = mktempfile(".dot")
                 self.get_manager().write_to_dot(self.get_inode(qi), filename)
                 with open(filename) as f:
                     dot_text += f.readlines()[4:-1]
@@ -161,7 +183,9 @@ class DDManager(object):
     """
 
     def __init__(self):
-        self.nodes = []  # Stores inodes (only conjoin and disjoin, the remaining atoms are in formula.atom2var)
+        self.nodes = (
+            []
+        )  # Stores inodes (only conjoin and disjoin, the remaining atoms are in formula.atom2var)
         self.constraint_dd = None
 
     def set_node(self, index, node):
@@ -181,7 +205,7 @@ class DDManager(object):
         :return: label of the new variable
         :rtype: int
         """
-        raise NotImplementedError('abstract method')
+        raise NotImplementedError("abstract method")
 
     def literal(self, label):
         """Return an SDD node representing a literal.
@@ -190,7 +214,7 @@ class DDManager(object):
         :type label: int
         :return: internal node representing the literal
         """
-        raise NotImplementedError('abstract method')
+        raise NotImplementedError("abstract method")
 
     def is_true(self, node):
         """Checks whether the SDD node represents True.
@@ -199,14 +223,14 @@ class DDManager(object):
         :return: True if the node represents True
         :rtype: bool
         """
-        raise NotImplementedError('abstract method')
+        raise NotImplementedError("abstract method")
 
     def true(self):
         """Return an internal node representing True.
 
         :return:
         """
-        raise NotImplementedError('abstract method')
+        raise NotImplementedError("abstract method")
 
     def is_false(self, node):
         """Checks whether the internal node represents False
@@ -216,11 +240,11 @@ class DDManager(object):
         :return: False if the node represents False
         :rtype: bool
         """
-        raise NotImplementedError('abstract method')
+        raise NotImplementedError("abstract method")
 
     def false(self):
         """Return an internal node representing False."""
-        raise NotImplementedError('abstract method')
+        raise NotImplementedError("abstract method")
 
     def conjoin2(self, a, b):
         """Base method for conjoining two internal nodes.
@@ -229,7 +253,7 @@ class DDManager(object):
         :param b: second internal node
         :return: conjunction of given nodes
         """
-        raise NotImplementedError('abstract method')
+        raise NotImplementedError("abstract method")
 
     def disjoin2(self, a, b):
         """Base method for disjoining two internal nodes.
@@ -238,7 +262,7 @@ class DDManager(object):
         :param b: second internal node
         :return: disjunction of given nodes
         """
-        raise NotImplementedError('abstract method')
+        raise NotImplementedError("abstract method")
 
     def conjoin(self, *nodes):
         """Create the conjunction of the given nodes.
@@ -303,7 +327,7 @@ class DDManager(object):
         :param node: negation of the given node
         :return: negation of the given node
         """
-        raise NotImplementedError('abstract method')
+        raise NotImplementedError("abstract method")
 
     def same(self, node1, node2):
         """Checks whether two SDD nodes are equivalent.
@@ -314,7 +338,7 @@ class DDManager(object):
         :rtype: bool
         """
         # Assumes SDD library always reuses equivalent nodes.
-        raise NotImplementedError('abstract method')
+        raise NotImplementedError("abstract method")
 
     def ref(self, *nodes):
         """Increase the reference count for the given nodes.
@@ -322,7 +346,7 @@ class DDManager(object):
         :param nodes: nodes to increase count on
         :type nodes: tuple of SDDNode
         """
-        raise NotImplementedError('abstract method')
+        raise NotImplementedError("abstract method")
 
     def deref(self, *nodes):
         """Decrease the reference count for the given nodes.
@@ -330,7 +354,7 @@ class DDManager(object):
         :param nodes: nodes to decrease count on
         :type nodes: tuple of SDDNode
         """
-        raise NotImplementedError('abstract method')
+        raise NotImplementedError("abstract method")
 
     def write_to_dot(self, node, filename):
         """Write SDD node to a DOT file.
@@ -340,7 +364,7 @@ class DDManager(object):
         :param filename: filename to write to
         :type filename: basestring
         """
-        raise NotImplementedError('abstract method')
+        raise NotImplementedError("abstract method")
 
     def wmc(self, node, weights, semiring):
         """Perform Weighted Model Count on the given node.
@@ -350,7 +374,7 @@ class DDManager(object):
         :param semiring: use the operations defined by this semiring
         :return: weighted model count
         """
-        raise NotImplementedError('abstract method')
+        raise NotImplementedError("abstract method")
 
     def wmc_literal(self, node, weights, semiring, literal):
         """Evaluate a literal in the decision diagram.
@@ -361,7 +385,7 @@ class DDManager(object):
         :param literal: literal to evaluate
         :return: weighted model count
         """
-        raise NotImplementedError('abstract method')
+        raise NotImplementedError("abstract method")
 
     def wmc_true(self, weights, semiring):
         """Perform weighted model count on a true node.
@@ -371,11 +395,11 @@ class DDManager(object):
         :param semiring: use the operations defined by this semiring
         :return: weighted model count
         """
-        raise NotImplementedError('abstract method')
+        raise NotImplementedError("abstract method")
 
     def __del__(self):
         """Clean up the internal structure."""
-        raise NotImplementedError('abstract method')
+        raise NotImplementedError("abstract method")
 
 
 class DDEvaluator(Evaluator):
@@ -386,7 +410,6 @@ class DDEvaluator(Evaluator):
     :param semiring:
     :param weights:
     :return:
-
     """
 
     def __init__(self, formula, semiring, weights=None, **kwargs):
@@ -410,6 +433,8 @@ class DDEvaluator(Evaluator):
             av = self.formula.atom2var.get(atom)
             if av is not None:
                 self.weights[av] = weight
+            elif atom == 0:
+                self.weights[0] = weight
 
         if with_evidence:
             for ev in self.evidence():
@@ -419,45 +444,63 @@ class DDEvaluator(Evaluator):
 
     def propagate(self):
         self._initialize()
-        if isinstance(self.semiring, SemiringLogProbability) or isinstance(self.semiring, SemiringProbability):
-            self.normalization = self._get_manager().wmc_true(self.weights, self.semiring)
+        if isinstance(self.semiring, SemiringLogProbability) or isinstance(
+            self.semiring, SemiringProbability
+        ):
+            self.normalization = self._get_manager().wmc_true(
+                self.weights, self.semiring
+            )
         else:
             self.normalization = None
-        self.evaluate_evidence()
+        self.evaluate_evidence(recompute=True)
 
     def _evaluate_evidence(self, recompute=False):
         if self._evidence_weight is None or recompute:
             constraint_inode = self.formula.get_constraint_inode()
             evidence_nodes = [self.formula.get_inode(ev) for ev in self.evidence()]
-            self.evidence_inode = self._get_manager().conjoin(constraint_inode, *evidence_nodes)
+            self.evidence_inode = self._get_manager().conjoin(
+                constraint_inode, *evidence_nodes
+            )
 
-            if isinstance(self.semiring, SemiringLogProbability) or isinstance(self.semiring, SemiringProbability):
-                result = self._get_manager().wmc(self.evidence_inode, self.weights, self.semiring)
+            if isinstance(self.semiring, SemiringLogProbability) or isinstance(
+                self.semiring, SemiringProbability
+            ):
+                result = self._get_manager().wmc(
+                    self.evidence_inode, self.weights, self.semiring
+                )
                 if self.semiring.is_zero(result):
-                    raise InconsistentEvidenceError(context=' during compilation')
-                self._evidence_weight = self.semiring.normalize(result, self.normalization)
+                    raise InconsistentEvidenceError(context=" during compilation")
+                self._evidence_weight = self.semiring.normalize(
+                    result, self.normalization
+                )
             else:
                 formula = LogicNNF()
                 i = self.formula._to_formula(formula, self.evidence_inode)
                 if i is None:  # = Node(False)
                     # evaluate(index=i=None,..) evaluates the LABEL.QUERY's of formula.
-                    formula.add_name(name='tempFalse', key=None, label=formula.LABEL_QUERY)
+                    formula.add_name(
+                        name="tempFalse", key=None, label=formula.LABEL_QUERY
+                    )
                     result = formula.evaluate(index=i, semiring=self.semiring)
-                    result = result['tempFalse']
+                    result = result["tempFalse"]
                 else:
                     result = formula.evaluate(index=i, semiring=self.semiring)
 
-                if result == self.semiring.zero():
-                    raise InconsistentEvidenceError(context=' during compilation')
+                if self.semiring.is_zero(result):
+                    raise InconsistentEvidenceError(context=" during compilation")
                 self._evidence_weight = result
 
         return self._evidence_weight
 
     def evaluate_evidence(self, recompute=False):
-        return self.semiring.result(self._evaluate_evidence(recompute=recompute), self.formula)
+        return self.semiring.result(
+            self._evaluate_evidence(recompute=recompute), self.formula
+        )
 
     def evaluate(self, node):
-        if isinstance(self.semiring, SemiringLogProbability) or isinstance(self.semiring, SemiringProbability):
+        if isinstance(self.semiring, SemiringLogProbability) or isinstance(
+            self.semiring, SemiringProbability
+        ):
             return self.evaluate_standard(node)
         else:
             return self.evaluate_custom(node)
@@ -466,7 +509,7 @@ class DDEvaluator(Evaluator):
         # Trivial case: node is deterministically True or False
         if node == self.formula.TRUE:
             result = self.semiring.one()
-        elif node is self.formula.FALSE:
+        elif node == self.formula.FALSE:
             result = self.semiring.zero()
         else:
             query_def_inode = self.formula.get_inode(node)
@@ -511,7 +554,7 @@ class DDEvaluator(Evaluator):
             self._get_manager().deref(query_sdd)
 
             # TODO only normalize when there are evidence or constraints.
-#            result = self.semiring.normalize(result, self.normalization)
+            #            result = self.semiring.normalize(result, self.normalization)
             result = self.semiring.normalize(result, self._evidence_weight)
         return self.semiring.result(result, self.formula)
 
@@ -523,24 +566,24 @@ class DDEvaluator(Evaluator):
 
         inode = self.evidence_inode
 
-        literal_result = self._get_manager().wmc_literal(inode, self.weights, self.semiring,
-                                                         self.formula.atom2var[node])
+        literal_result = self._get_manager().wmc_literal(
+            inode, self.weights, self.semiring, self.formula.atom2var[node]
+        )
         result = self.semiring.result(literal_result, self.formula)
         return result
 
     def set_evidence(self, index, value):
-        pos = self.semiring.one()
-        neg = self.semiring.zero()
+        curr_pos_weight, curr_neg_weight = self.weights.get(index)
+        pos, neg = self.semiring.to_evidence(
+            curr_pos_weight, curr_neg_weight, sign=value
+        )
 
-        current_weight = self.weights.get(index)
-        if value:
-            if current_weight and self.semiring.is_zero(current_weight[0]):
-                raise InconsistentEvidenceError(self._deref_node(index))
-            self.set_weight(index, pos, neg)
-        else:
-            if current_weight and self.semiring.is_one(current_weight[0]):
-                raise InconsistentEvidenceError(self._deref_node(index))
-            self.set_weight(index, neg, pos)
+        if (value and self.semiring.is_zero(curr_pos_weight)) or (
+            not value and self.semiring.is_zero(curr_neg_weight)
+        ):
+            raise InconsistentEvidenceError(self._deref_node(index))
+
+        self.set_weight(index, pos, neg)
 
     def set_weight(self, index, pos, neg):
         # index = index of atom in weights, so atom2var[key] = index
@@ -564,18 +607,25 @@ def build_dd(source, destination, **kwdargs):
     :param kwdargs: extra arguments
     :return: destination
     """
-    with Timer('Compiling %s' % destination.__class__.__name__):
+    with Timer("Compiling %s" % destination.__class__.__name__):
 
         # TODO maintain a translation table
         for i, n, t in source:
-            if t == 'atom':
-                j = destination.add_atom(n.identifier, n.probability, group=n.group, name=source.get_name(i), cr_extra=False, is_extra=n.is_extra)
-            elif t == 'conj':
+            if t == "atom":
+                j = destination.add_atom(
+                    n.identifier,
+                    n.probability,
+                    group=n.group,
+                    name=source.get_name(i),
+                    cr_extra=False,
+                    is_extra=n.is_extra,
+                )
+            elif t == "conj":
                 j = destination.add_and(n.children, name=n.name)
-            elif t == 'disj':
+            elif t == "disj":
                 j = destination.add_or(n.children, name=n.name)
             else:
-                raise TypeError('Unknown node type')
+                raise TypeError("Unknown node type")
             # assert i == j  # Does not hold with constraints. See if-comment.
 
         for name, node, label in source.get_names_with_label():
