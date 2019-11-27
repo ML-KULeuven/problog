@@ -551,7 +551,7 @@ class LFIProblem(LogicProgram):
             # TODO: Shouldn't all weights be perturbed to avoid identical updates?
             # self._weights[index] = {args: weight}
             self._weights[index] = {Term(args.functor): weight}
-        print(self._weights)
+        # print(self._weights)
 
     def _add_weight(self, weight):
         self._weights.append(weight)
@@ -572,43 +572,104 @@ class LFIProblem(LogicProgram):
         if self._use_parents:
             use_parents = {"adatomc": self._adatomc}
 
+        # ad_groups is a dictionary of lists, each list contains an AD
+        # the key
+        ad_groups = list()
+        for ad in self._adatoms:
+            # if it's an AD group AND the total probability is 1.0
+            if len(ad[1]) > 1 and ad[0] == 1.0:
+                ad_groups.append(tuple(ad[1]))
+        print(ad_groups)
+
+
+        # d is a dictionary of variables in AD : evidence in values
+        def multiple_true(d):
+            count = 0
+            for b in d.values():
+                if b:
+                    count += 1
+            return (count > 1)
+
+        def all_false(d):
+            result = True
+            for b in d.values():
+                if b is not False:
+                    result = False
+                    break
+                # result = result or b
+            return result
+
+        def all_false_except_one(d):
+            count = 0
+            for b in d.values():
+                if b is False:
+                    count += 1
+            return (count == len(d) - 1)
+
+
+
+        # mapping from variables to indices
         atom_list = []
         for term in self.names:
-            atom_list.append(term.functor)
+            atom_list.append(term.signature)
         print(atom_list)
 
         if self.propagate_evidence:
             result = ExampleSet()
+            # iterate over all examples given in .ev
             for index, example in enumerate(self.examples):
-                atoms, values, cvalues = zip(*example)
-                add_complement_var = False
-                complement_atom_index = None
-                for atom_index, ad_atoms in self._adatomc.items():
-                    # print("AD_atoms:", atom_index, ad_atoms)
-                    if len(ad_atoms) == 1 and ad_atoms[0] < 0:
-                        continue
-                    else:
-                        atom_found = False
-                        for atom, value, cvalue in example:
-                            print("Evidence:", atom, value, cvalue)
-                            if atom.functor == atom_list[atom_index] and value == False:
-                                atom_found = True
-                                break
-                        if atom_found == False:
-                            complement_atom_index = atom_index
-                            add_complement_var = True
-                            break
+                # create a dictionary to memorize what evidence is given in AD
+                ad_groups_evidence = []
+                for key in ad_groups:
+                    d = dict()
+                    for var in key:
+                        d[var] = None
+                    ad_groups_evidence.append(d)
 
-                if add_complement_var:
-                    result.add(
-                        index,
-                        (Term(atom_list[complement_atom_index]),),
-                        (True,),
-                        (None,),
-                        use_parents=use_parents,
-                    )
-                else:
-                    result.add(index, atoms, values, cvalues, use_parents=use_parents)
+                print(ad_groups_evidence)
+                # add all evidence in the example to ad_groups_evidence
+                for atom, value, cvalue in example:
+                    print(atom, value, cvalue)
+                    index = atom_list.index(atom.signature)
+                    for d in ad_groups_evidence:
+                        if index in d:
+                            d[index] = value
+
+
+                inconsistent1 = False
+                inconsistent2 = False
+                add_compliment = False
+                for i, d in enumerate(ad_groups_evidence):
+                    inconsistent1 = multiple_true(d)
+                    inconsistent2 = all_false(d)
+                    add_compliment = all_false_except_one(d)
+
+                    if inconsistent1 or inconsistent2:
+                        print("inconsistent evidence detected")
+                        continue
+                    elif add_compliment:
+                        for key, value in d.items():
+                            if value is None:
+                                ad_groups_evidence[i][key] = True
+                print(ad_groups_evidence)
+
+                if not inconsistent1 and not inconsistent2:
+                    # atoms, values, cvalues = zip(*example)
+                    atoms = []
+                    values = []
+                    cvalues = []
+                    for d in ad_groups_evidence:
+                        for key, value in d.items():
+                            if value is not None:
+                                atoms.append(Term(self.names[key].functor, *self.names[key].args))
+                                values.append(value)
+                                cvalues.append(None)
+                    print(atoms)
+                    print(values)
+                    print(cvalues)
+                    print()
+
+                    result.add(index, tuple(atoms), tuple(values), tuple(cvalues), use_parents=use_parents)
 
             # for example in result:
             #     print(example)
