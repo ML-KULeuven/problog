@@ -11,7 +11,7 @@ test_folder = Path(dirname, "./../../test/")
 
 class TestTasks(unittest.TestCase):
     def test_map(self):
-        file_name = test_folder / "map_probabilistic_graph.pl"
+        file_name = test_folder / "tasks" / "map_probabilistic_graph.pl"
         result = map.main([str(file_name)])
         success = result[0]
         if not success:
