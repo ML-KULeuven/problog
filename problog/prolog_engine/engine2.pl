@@ -3,6 +3,9 @@
 solve(true) :- !.
 solve((A,B)) :- !, solve(A), solve(B).
 %solve(A,A:-builtin) :- predicate_property(A, builtin), !, A.
+solve(A) :- predicate_property(A, builtin), !, A, recordz(proof,A:-builtin(A)).
+solve(A) :- predicate_property(A, foreign), !, A, recordz(proof,A:-foreign(A)).
+
 solve(call(A)) :- solve(A),recordz(proof,call(A):-A).
 solve(A) :- cl(A,B),solve(B),recordz(proof,A:-B).
 solve(A) :- fa(I,P,A),recordz(proof,::(I,P,A)).
