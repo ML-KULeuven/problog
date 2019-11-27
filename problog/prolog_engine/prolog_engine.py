@@ -34,8 +34,8 @@ class PrologEngine(GenericEngine):
         """
         if target is None:
             target = LogicFormula()
-        proofs = sp.query('prove({},Proofs)'.format(term))['Proofs']
-        result = sp.add_proofs(proofs, target=target)
+        query_result = sp.query('prove({},Proofs,GroundQueries)'.format(term))
+        result = sp.add_proofs(query_result['Proofs'],query_result['GroundQueries'], target=target)
         return result
 
     def ground_all(self, sp, target=None, queries=None, evidence=None, *args, **kwargs):

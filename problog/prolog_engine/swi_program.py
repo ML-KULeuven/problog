@@ -52,7 +52,7 @@ def handle_functor(func, args=None):
 
 class SWIProgram(ProbLogObject):
 
-    def __init__(self, db, consult='engine.pl'):
+    def __init__(self, db, consult='engine2.pl'):
         self.facts = []
         self.clauses = []
         self.db = db
@@ -114,37 +114,50 @@ class SWIProgram(ProbLogObject):
         t = proof.functor
         if t == ':-':
             name, body = proof.args
-            key = self.build_formula(body, target)
-            target.add_name(name, key)
+            key = self.build_formula(name, target)
+            # if str(body) not in target.d:
+            if True:
+                body_key = self.build_formula(body, target)
+                target.add_disjunct(key, body_key)
+                target.d[str(body)] = body_key
             return key
         elif t == ',':
             body = proof.args
             new = target.add_and([self.build_formula(b, target) for b in body])
             return new
-        elif t == ';':
-            body = proof.args
-            new = target.add_or([self.build_formula(b, target) for b in body])
-            return new
+        # elif t == ';':
+        #     body = proof.args
+        #     new = target.add_or([self.build_formula(b, target) for b in body])
+        #     return new
         elif t == 'true':
             return target.TRUE
         elif t == '::':
-            id = int(proof.args[0])
-            name = proof.args[2]
+            id, p, name = proof.args
+            key = self.build_formula(name, target)
             if id not in target.d:
                 p = float(proof.args[1])
-                key = target.add_atom(target.get_next_atom_identifier(), p, name=name)
-                target.d[id] = key
-            return target.d[id]
+                fact_key = target.add_atom(target.get_next_atom_identifier(), p, name=name)
+                target.add_disjunct(key, fact_key)
+                target.d[id] = fact_key
+            return key
         else:
-            raise Exception('Unhandled node type ' + str(proof))
+            try:
+                return target.d[str(proof)]
+            except KeyError:
+                key = target.add_or([], placeholder=True, readonly=False, name=proof)
+                target.d[str(proof)] = key
+                return key
 
-    def add_proofs(self, proofs, target):
+
+    def add_proofs(self, proofs,ground_queries, target):
         target.names = dict()
         for proof in proofs:
-            query, proof = proof.args
-            key = self.build_formula(proof, target)
-            if not target.is_trivial():
-                target.add_name(query, key, label=target.LABEL_QUERY)
+            self.build_formula(proof, target)
+        for q in ground_queries:
+            key = target.d[str(q)]
+            target.add_name(q, key, label=target.LABEL_QUERY)
+            # if not target.is_trivial():
+            #     target.add_name(query, key, label=target.LABEL_QUERY)
         return target
 
     def query(self, query, profile=0):
@@ -161,11 +174,9 @@ class SWIProgram(ProbLogObject):
             for k in result[0]:
                 v = result[0][k]
                 if type(v) is list:
-                    print([p for p in term2list(parse(result[0][k]))])
                     out[k] = [p for p in term2list(parse(result[0][k]))]
                 else:
                     out[k] = parse(v)
-            print(out)
             return out
         else:
             raise (Exception('Expected exactly one result, got {}'.format(len(result))))
