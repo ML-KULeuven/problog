@@ -631,9 +631,13 @@ class LFIProblem(LogicProgram):
                     # print(atom, value, cvalue)
                     if atom.signature in atom_list:
                         idx = atom_list.index(atom.signature)
+                        atom_found = False
                         for d in ad_groups_evidence:
                             if idx in d:
                                 d[idx] = value
+                                atom_found = True
+                        if not atom_found:
+                            non_ad_evidence[atom] = value
                     else:
                         non_ad_evidence[atom] = value
 
@@ -680,7 +684,7 @@ class LFIProblem(LogicProgram):
                         # print(values)
                         # print(cvalues)
                         # print()
-
+                        print("Adding", index, tuple(atoms), tuple(values))
                         result.add(
                             index,
                             tuple(atoms),
@@ -692,6 +696,7 @@ class LFIProblem(LogicProgram):
                     else:
                         # No AD case
                         atoms, values, cvalues = zip(*example)
+                        print("Adding", index, atoms, values)
                         result.add(
                             index, atoms, values, cvalues, use_parents=use_parents
                         )
