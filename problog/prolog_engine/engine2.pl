@@ -1,4 +1,6 @@
 :- table solve/1.
+:- dynamic cl/2.
+:- dynamic fa/2.
 
 solve(true) :- !.
 solve((A,B)) :- !, solve(A), solve(B).
