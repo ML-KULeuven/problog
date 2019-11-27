@@ -70,5 +70,30 @@ class TestTasks(unittest.TestCase):
                 self.assertAlmostEqual(expected[query], computed[query], places=2, msg=query)
 
 
+    # def test_psi_examples(self):
+    #     pass
+
+    # def test_problog_system(self):
+    #     path2files = root_path("test")
+    #     testfiles = [os.path.join(path2files,f) for f in os.listdir(path2files) if os.path.isfile(os.path.join(path2files, f))]
+    #
+    #     abe = "pyro"
+    #     args = {"device":"cpu", "ttype":"float64", "n_samples":1000}
+    #
+    #     for tf in testfiles:
+    #         expected = get_expected(tf)
+    #
+    #         args["file_name"] = tf
+    #         program = PrologFile(args['file_name'], parser=DCParser())
+    #         solver = InferenceSolver(abe, **args)
+    #         probabilities = solver.probability(program, **args)
+    #         computed = {}
+    #         for k,v in probabilities.items():
+    #             computed[str(k)] = float(v.value)
+    #
+    #         for query in expected :
+    #             self.assertAlmostEqual(expected[query], computed[query], places=5, msg=query)
+
+
 if __name__ == "__main__":
     unittest.main()
