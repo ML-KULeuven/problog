@@ -4,7 +4,6 @@
 
 solve(true) :- !.
 solve((A,B)) :- !, solve(A), solve(B).
-%solve(A,A:-builtin) :- predicate_property(A, builtin), !, A.
 solve(A) :- predicate_property(A, builtin), !, A, recordz(proof,A:-builtin(A)).
 solve(A) :- predicate_property(A, foreign), !, A, recordz(proof,A:-foreign(A)).
 

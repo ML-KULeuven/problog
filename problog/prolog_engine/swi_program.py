@@ -68,8 +68,11 @@ class SWIProgram(ProbLogObject):
         ntype = type(node).__name__
         if ntype == 'conj':
             children = [self.to_str(self.db.get_node(c)) for c in node.children]
-            children = [c for c in children if c != 'true']
-            return ','.join(children)
+            children = [c for c in children]
+            if len(children) > 1:
+                return '({})'.format(','.join(children))
+            else:
+                return str(children[0])
         elif ntype == 'call':
             return handle_functor(node.functor, node.args)
         elif ntype == 'neg':
@@ -92,8 +95,7 @@ class SWIProgram(ProbLogObject):
         body = self.to_str(self.db.get_node(node.child))
         self.clauses.append(
             (i, handle_functor(node.functor, node.args), body))
-        print('cl({},({}))'.format(self.clauses[-1][1], self.clauses[-1][2]))
-        self.prolog.assertz('cl({},({}))'.format(self.clauses[-1][1], self.clauses[-1][2]))
+        self.prolog.assertz('cl({},{})'.format(self.clauses[-1][1], self.clauses[-1][2]))
 
     def add_directive(self, node):
         print(node)
@@ -101,7 +103,7 @@ class SWIProgram(ProbLogObject):
         pass
 
     def get_lines(self):
-        lines = ['cl({},({}))'.format(c[1], c[2]) for c in self.clauses]
+        lines = ['cl({},{})'.format(c[1], c[2]) for c in self.clauses]
         lines += ['fa({},{},{})'.format(*c) for c in self.facts]
         return lines
 
@@ -109,7 +111,6 @@ class SWIProgram(ProbLogObject):
         return '\n'.join(l + '.' for l in self.get_lines())
 
     def construct_node(self, node, target, d):
-        print(node)
         if type(node) is list:
             if len(node) > 1:
                 return target.add_or([self.construct_node(c, target, d) for c in node])
@@ -123,6 +124,8 @@ class SWIProgram(ProbLogObject):
             return target.negate(self.construct_node(node.args[0], target, d))
         elif node.functor == ',':
             return target.add_and([self.construct_node(c, target, d) for c in node.args])
+        elif node.functor == 'true':
+            return target.TRUE
         else:
             try:
                 return d[node]
@@ -134,6 +137,7 @@ class SWIProgram(ProbLogObject):
         dependencies = defaultdict(list)
         d = dict()
         for p in proofs:
+            print(p)
             if p.functor == '::':
                 nodes[p.args[2]].append(p)
             elif p.functor == ':-':
@@ -162,7 +166,6 @@ class SWIProgram(ProbLogObject):
                     del (nodes[k])
                     del (dependencies[k])
             if not new_sol:  # No nodes without undefined children, so we have a cycle!
-
                 break
         return d
 
@@ -215,8 +218,6 @@ class SWIProgram(ProbLogObject):
         for q in ground_queries:
             key = d[q]
             target.add_name(q, key, label=target.LABEL_QUERY)
-            # if not target.is_trivial():
-            #     target.add_name(query, key, label=target.LABEL_QUERY)
         return target
 
     def query(self, query, profile=0):
