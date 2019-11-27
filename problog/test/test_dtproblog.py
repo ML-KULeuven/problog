@@ -6,21 +6,28 @@ from problog.logic import Term, Constant
 from problog.tasks import dtproblog
 
 dirname = os.path.dirname(__file__)
-dt_problog_test_folder = Path(dirname, './../../test/dtproblog/')
+dt_problog_test_folder = Path(dirname, "./../../test/dtproblog/")
 
 
 class TestDTProblog(unittest.TestCase):
     def dt_problog_check_if_output_equals(
-            self, dt_file, expected_choices, expected_score
+        self, dt_file, expected_choices, expected_score, local=False
     ):
         real_file_name = dt_problog_test_folder / dt_file
         file_exists = real_file_name.exists()
         if not file_exists:
-            self.fail("File "
-                      + str(real_file_name)
-                      + " was not found. Maybe this is a pathing issue?")
+            self.fail(
+                "File "
+                + str(real_file_name)
+                + " was not found. Maybe this is a pathing issue?"
+            )
         else:
-            result = dtproblog.main([str(real_file_name)])
+            arguments = [str(real_file_name)]
+            if local:
+                arguments.append("-s")
+                arguments.append("local")
+
+            result = dtproblog.main(arguments)
             if result[0]:
                 choices, score, stats = result[1]
                 self.assertEqual(expected_choices, choices)
@@ -43,6 +50,21 @@ class TestDTProblog(unittest.TestCase):
         self.dt_problog_check_if_output_equals(
             "ex5.pl", {Term("a"): 1, Term("c"): 1}, 1.8
         )
+
+    def test_dt_problog_local(self):
+        self.dt_problog_check_if_output_equals(
+            "ex5.pl", {Term("a"): 0, Term("c"): 0}, 0, local=True
+        )
+        # Takes too long:
+        # self.dt_problog_check_if_output_equals(
+        #     "umbrella_poole.pl",
+        #     {
+        #         Term("umbrella", Term("sunny")): 0,
+        #         Term("umbrella", Term("cloudy")): 0,
+        #         Term("umbrella", Term("rainy")): 1,
+        #     },
+        #     77, local=True
+        # )
 
     def test_dtproblog_mutex(self):
         self.dt_problog_check_if_output_equals(
@@ -81,6 +103,25 @@ class TestDTProblog(unittest.TestCase):
             77,
         )
 
+    # Takes too long:
+
+    # def test_dtproblog_long_test(self):
+    #     self.dt_problog_check_if_output_equals(
+    #         "viralmarketing.pl",
+    #         {
+    #             Term("marketed", Term("angelika")): 0,
+    #             Term("marketed", Term("bernd")): 0,
+    #             Term("marketed", Term("guy")): 1,
+    #             Term("marketed", Term("ingo")): 1,
+    #             Term("marketed", Term("kurt")): 0,
+    #             Term("marketed", Term("laura")): 0,
+    #             Term("marketed", Term("martijn")): 1,
+    #             Term("marketed", Term("theo")): 1,
+    #         },
+    #         3.210966333135799,
+    #         local=True
+    #     )
+
     def test_dtproblog_other(self):
         self.dt_problog_check_if_output_equals(
             "var_util.pl",
@@ -100,16 +141,7 @@ class TestDTProblog(unittest.TestCase):
             },
             77,
         )
-        self.dt_problog_check_if_output_equals(
-            "winning.pl",
-            {},
-            0,
-        )
-        self.dt_problog_check_if_output_equals(
-            "viralmarketing.pl",
-            {},
-            0,
-        )
+        self.dt_problog_check_if_output_equals("winning.pl", {}, 0)
 
     if __name__ == "__main__":
         unittest.main()

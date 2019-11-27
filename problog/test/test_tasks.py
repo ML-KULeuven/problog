@@ -6,7 +6,7 @@ from problog.logic import Constant, Term
 from problog.tasks import map
 
 dirname = os.path.dirname(__file__)
-test_folder = Path(dirname, './../../test/')
+test_folder = Path(dirname, "./../../test/")
 
 
 class TestTasks(unittest.TestCase):
@@ -18,8 +18,11 @@ class TestTasks(unittest.TestCase):
             self.fail("Failed executing MAP on " + str(file_name))
         else:
             choices, score, stats = result[1]
-            self.assertEqual({
-                Term("edge", Constant(1), Constant(2)): 1,
-                Term("edge", Constant(1), Constant(3)): 0,
-            }, choices)
+            self.assertEqual(
+                {
+                    Term("edge", Constant(1), Constant(2)): 1,
+                    Term("edge", Constant(1), Constant(3)): 0,
+                },
+                choices,
+            )
             self.assertAlmostEqual(1.878144, score, places=5)
