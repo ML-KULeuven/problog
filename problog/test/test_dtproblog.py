@@ -9,7 +9,7 @@ dirname = os.path.dirname(__file__)
 dt_problog_test_folder = Path(dirname, './../../test/dtproblog/')
 
 
-class TestTasks(unittest.TestCase):
+class TestDTProblog(unittest.TestCase):
     def dt_problog_check_if_output_equals(
             self, dt_file, expected_choices, expected_score
     ):
