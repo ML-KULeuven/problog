@@ -551,7 +551,7 @@ class LFIProblem(LogicProgram):
             # TODO: Shouldn't all weights be perturbed to avoid identical updates?
             # self._weights[index] = {args: weight}
             self._weights[index] = {Term(args.functor): weight}
-        # print(self._weights)
+        print("Weights", self._weights)
 
     def _add_weight(self, weight):
         self._weights.append(weight)
@@ -579,8 +579,7 @@ class LFIProblem(LogicProgram):
             # if it's an AD group AND the total probability is 1.0
             if len(ad[1]) > 1 and ad[0] == 1.0:
                 ad_groups.append(tuple(ad[1]))
-        print(ad_groups)
-
+        # print(ad_groups)
 
         # d is a dictionary of variables in AD : evidence in values
         def multiple_true(d):
@@ -588,7 +587,7 @@ class LFIProblem(LogicProgram):
             for b in d.values():
                 if b:
                     count += 1
-            return (count > 1)
+            return count > 1
 
         def all_false(d):
             result = True
@@ -604,36 +603,39 @@ class LFIProblem(LogicProgram):
             for b in d.values():
                 if b is False:
                     count += 1
-            return (count == len(d) - 1)
-
-
+            return count == len(d) - 1
 
         # mapping from variables to indices
         atom_list = []
         for term in self.names:
             atom_list.append(term.signature)
-        print(atom_list)
+        # print(atom_list)
 
         if self.propagate_evidence:
             result = ExampleSet()
+            inconsistent = False
             # iterate over all examples given in .ev
             for index, example in enumerate(self.examples):
                 # create a dictionary to memorize what evidence is given in AD
                 ad_groups_evidence = []
+                non_ad_evidence = {}
                 for key in ad_groups:
                     d = dict()
                     for var in key:
                         d[var] = None
                     ad_groups_evidence.append(d)
 
-                print(ad_groups_evidence)
+                # print(ad_groups_evidence)
                 # add all evidence in the example to ad_groups_evidence
                 for atom, value, cvalue in example:
-                    print(atom, value, cvalue)
-                    index = atom_list.index(atom.signature)
-                    for d in ad_groups_evidence:
-                        if index in d:
-                            d[index] = value
+                    # print(atom, value, cvalue)
+                    if atom.signature in atom_list:
+                        idx = atom_list.index(atom.signature)
+                        for d in ad_groups_evidence:
+                            if idx in d:
+                                d[idx] = value
+                    else:
+                        non_ad_evidence[atom] = value
 
                 inconsistent = False
                 for i, d in enumerate(ad_groups_evidence):
@@ -650,26 +652,49 @@ class LFIProblem(LogicProgram):
                         for key, value in d.items():
                             if value is None:
                                 ad_groups_evidence[i][key] = True
-                print(ad_groups_evidence)
+                # print(ad_groups_evidence)
 
                 if not inconsistent:
-                    # atoms, values, cvalues = zip(*example)
-                    atoms = []
-                    values = []
-                    cvalues = []
-                    for d in ad_groups_evidence:
-                        for key, value in d.items():
-                            if value is not None:
-                                atoms.append(Term(self.names[key].functor, *self.names[key].args))
-                                values.append(value)
-                                cvalues.append(None)
-                    print(atoms)
-                    print(values)
-                    print(cvalues)
-                    print()
+                    if len(ad_groups_evidence) > 0:
+                        # There are (fully tunable) ADs in the program
+                        atoms = []
+                        values = []
+                        cvalues = []
+                        for d in ad_groups_evidence:
+                            for key, value in d.items():
+                                if value is not None:
+                                    atoms.append(
+                                        Term(
+                                            self.names[key].functor,
+                                            *self.names[key].args
+                                        )
+                                    )
+                                    values.append(value)
+                                    cvalues.append(None)
 
-                    result.add(index, tuple(atoms), tuple(values), tuple(cvalues), use_parents=use_parents)
+                        for key, value in non_ad_evidence.items():
+                            atoms.append(key)
+                            values.append(value)
 
+                        # print(atoms)
+                        # print(values)
+                        # print(cvalues)
+                        # print()
+
+                        result.add(
+                            index,
+                            tuple(atoms),
+                            tuple(values),
+                            tuple(cvalues),
+                            use_parents=use_parents,
+                        )
+
+                    else:
+                        # No AD case
+                        atoms, values, cvalues = zip(*example)
+                        result.add(
+                            index, atoms, values, cvalues, use_parents=use_parents
+                        )
             # for example in result:
             #     print(example)
             return result
