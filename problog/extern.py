@@ -142,7 +142,7 @@ class problog_export(object):
             )
             converted_args = self._convert_inputs(args)
 
-            argspec = inspect.getargspec(func)
+            argspec = inspect.getfullargspec(func)
             if argspec.keywords is not None:
                 result = func(*converted_args, **kwdargs)
             else:
@@ -272,7 +272,7 @@ class problog_export_nondet(problog_export):
             )
             converted_args = self._convert_inputs(args)
             results = []
-            argspec = inspect.getargspec(func)
+            argspec = inspect.getfullargspec(func)
             if argspec.keywords is not None:
                 func_result = func(*converted_args, **kwdargs)
             else:

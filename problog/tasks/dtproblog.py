@@ -129,7 +129,7 @@ def dtproblog(model, search=None, koption=None, locations=False, web=False, **kw
                         knowledge, decisions, utilities, constraints, **kwargs
                     )
         else:
-            logging.getLogger("dtproblog").warn("no decisions found")
+            logging.getLogger("dtproblog").warning("no decisions found")
             # no decisions to be made
             result = {}, 0.0, {"eval": 0}
 
