@@ -593,6 +593,13 @@ class ClauseDB(LogicProgram):
         for n in self.__nodes:
             yield n
 
+    def iter_externs(self):
+        if self.__parent:
+            for n in self.__parent.iter_externs():
+                yield n
+        for n in self.__extern:
+            yield n
+
     def consult(self, filename, location=None, my_scope=None):
         filename = self.resolve_filename(filename)
         if filename is None:
