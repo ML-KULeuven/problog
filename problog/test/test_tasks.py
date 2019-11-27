@@ -11,7 +11,7 @@ if __name__ == "__main__":
         0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../"))
     )
 
-dt_problog_test_folder = Path("./../../test/dtproblog/")
+dt_problog_test_folder = Path("./test/dtproblog/")
 
 
 class TestTasks(unittest.TestCase):
