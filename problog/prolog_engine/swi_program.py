@@ -60,7 +60,11 @@ class SWIProgram(ProbLogObject):
         self.ad_heads = defaultdict(list)
         self.i = 0
         self.index_dict = dict()
+
+        # Warning: Has to be evaluated before the creation of the Prolog engine
+        self.parse_directives()
         self.prolog = ThreadedProlog()
+
         self.prolog.consult(str(Path(__file__).parent / consult))
         self.parse_db()
 
@@ -240,9 +244,27 @@ class SWIProgram(ProbLogObject):
         else:
             raise (Exception('Expected exactly one result, got {}'.format(len(result))))
 
-    def parse_call(self, node):
-        if node.functor == "_use_module":
-            self.db.use_module(filename=node.args[1], predicates=None, location=node.location)
+    def parse_directives(self):
+        """
+        Parse the directives (before the creation of the Prolog engine)
+        :return:
+        """
+        if self.db is not None:
+            for n in self.db.iter_nodes():
+                ntype = type(n).__name__
+                if ntype == 'call':
+                    self.parse_call(n)
+
+    def parse_call(self, node, directives=True):
+        """
+        Parse a call node
+        :param node: The node to parse
+        :param directives: Is True if the directives have to be parsed
+        :return:
+        """
+        if directives and node.functor == "_use_module":
+            filename = node.args[1]
+            self.db.use_module(filename=filename, predicates=None, location=node.location)
 
     def parse_db(self):
         """
@@ -255,7 +277,7 @@ class SWIProgram(ProbLogObject):
                 if ntype == 'fact':
                     self.add_fact(n)
                 elif ntype == 'call':
-                    self.parse_call(n)
+                    self.parse_call(n, directives=False)
                 elif ntype == 'clause':
                     if not n.functor == '_directive':
                         self.add_clause(n)
