@@ -1,8 +1,13 @@
 :- table solve/1.
+:- dynamic cl/2.
+:- dynamic fa/2.
 
 solve(true) :- !.
 solve((A,B)) :- !, solve(A), solve(B).
 %solve(A,A:-builtin) :- predicate_property(A, builtin), !, A.
+solve(A) :- predicate_property(A, builtin), !, A, recordz(proof,A:-builtin(A)).
+solve(A) :- predicate_property(A, foreign), !, A, recordz(proof,A:-foreign(A)).
+
 solve(call(A)) :- solve(A),recordz(proof,call(A):-A).
 solve(neg(A)) :- \+solve(A).
 solve(A) :- cl(A,B),solve(B),recordz(proof,A:-B).
