@@ -7,8 +7,7 @@ from problog.logic import Term, Constant
 from problog.tasks import dtproblog
 
 dirname = os.path.dirname(__file__)
-dt_problog_test_folder = Path(os.path.join(dirname, './../../test/dtproblog/'))
-# dt_problog_test_folder = Path("./test/dtproblog/")
+dt_problog_test_folder = Path(dirname, './../../test/dtproblog/')
 
 
 class TestTasks(unittest.TestCase):
