@@ -578,8 +578,11 @@ class LFIProblem(LogicProgram):
         for ad in self._adatoms:
             # if it's an AD group AND the total probability is 1.0
             if len(ad[1]) > 1 and ad[0] == 1.0:
-                ad_groups.append(tuple(ad[1]))
-        # print(ad_groups)
+                ad_list = []
+                for var in ad[1]:
+                    ad_list.append(Term(self.names[var].functor, *self.names[var].args))
+                ad_groups.append(tuple(ad_list))
+        print(ad_groups)
 
         # d is a dictionary of variables in AD : evidence in values
         def multiple_true(d):
@@ -625,19 +628,38 @@ class LFIProblem(LogicProgram):
                         d[var] = None
                     ad_groups_evidence.append(d)
 
+                fo_ad_groups_evidence = []
+
                 # print(ad_groups_evidence)
                 # add all evidence in the example to ad_groups_evidence
                 for atom, value, cvalue in example:
                     # print(atom, value, cvalue)
                     if atom.signature in atom_list:
-                        idx = atom_list.index(atom.signature)
-                        atom_found = False
-                        for d in ad_groups_evidence:
-                            if idx in d:
-                                d[idx] = value
-                                atom_found = True
-                        if not atom_found:
+                        # idx = atom_list.index(atom.signature)
+                        if len(atom.args) == 0:
+                            # Propositional Case
+                            atom_found = False
+                            for d in ad_groups_evidence:
+                                if atom in d:
+                                    d[atom] = value
+                                    atom_found = True
+                            if not atom_found:
+                                non_ad_evidence[atom] = value
+                        else:
                             non_ad_evidence[atom] = value
+                            # First Order Case
+                            # for d in ad_groups_evidence:
+                            #     dict_found = None
+                            #     for key, value in d.items():
+                            #         if key.signature == atom.signature:
+                            #             dict_found = d
+                            #             break
+                            #     if dict_found is not None:
+                            #         break
+                            # print(dict_found)
+                            #
+                            # a = 1
+
                     else:
                         non_ad_evidence[atom] = value
 
@@ -667,12 +689,12 @@ class LFIProblem(LogicProgram):
                         for d in ad_groups_evidence:
                             for key, value in d.items():
                                 if value is not None:
-                                    atoms.append(
-                                        Term(
-                                            self.names[key].functor,
-                                            *self.names[key].args
-                                        )
-                                    )
+                                    # functor = self.names[key].functor
+                                    # args = self.names[key].args
+                                    # if len(args) > 0:
+                                    #
+                                    # atoms.append(Term(functor, *args))
+                                    atoms.append(key)
                                     values.append(value)
                                     cvalues.append(None)
 
@@ -684,6 +706,7 @@ class LFIProblem(LogicProgram):
                         # print(values)
                         # print(cvalues)
                         # print()
+                        atoms1, values1, cvalues1 = zip(*example)
                         print("Adding", index, tuple(atoms), tuple(values))
                         result.add(
                             index,
