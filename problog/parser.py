@@ -149,6 +149,8 @@ SPECIAL_STRING = 10
 SPECIAL_ARGLIST = 11
 SPECIAL_SHARP_OPEN = 12
 SPECIAL_SHARP_CLOSE = 13
+SPECIAL_BRACE_OPEN = 14
+SPECIAL_BRACE_CLOSE = 15
 
 import re
 
@@ -574,9 +576,9 @@ class PrologParser(object):
             self._token_notsupported,  # 96 `
         ]
         self._token_act4 = [
-            self._token_notsupported,  # 123 {
+            self._token_brace_open,  # 123 {
             self._token_pipe,  # 124 |
-            self._token_notsupported,  # 125 }
+            self._token_brace_close,  # 125 }
             self._token_tilde,  # 126 ~
         ]
 
@@ -776,7 +778,9 @@ class PrologParser(object):
                 expr_stack.append(self._create_paren_expression(string, token))
             elif token.is_special(SPECIAL_BRACK_OPEN):  # Open a list expression
                 expr_stack.append(self._create_list_expression(string, token))
-            elif token.is_special(SPECIAL_PAREN_CLOSE) or token.is_special(SPECIAL_BRACK_CLOSE):
+            elif token.is_special(SPECIAL_BRACE_OPEN):  # Open a linear algebra expression
+                expr_stack.append(self._create_linalg_expression(string, token))
+            elif token.is_special(SPECIAL_PAREN_CLOSE) or token.is_special(SPECIAL_BRACK_CLOSE) or token.is_special(SPECIAL_BRACE_CLOSE):
                 try:
                     current_expr = expr_stack.pop(-1)  # Close a parenthesis expression
                     if not current_expr.accepts(token):
@@ -815,6 +819,8 @@ class PrologParser(object):
     def _create_list_expression(self, string, token, close_char=SPECIAL_BRACK_CLOSE):
         return ListExpression(string, token, close_char)
 
+    def _create_linalg_expression(self, string, token, close_char=SPECIAL_BRACE_CLOSE):
+        return ListExpression(string, token, close_char)
 
 def mapl(f, l):
     return list(map(f, l))
@@ -971,6 +977,11 @@ class ParenExpression(SubExpression):
 
     def enum_tokens(self):
         return self.tokens
+
+class LinAlgExpression(SubExpression):
+    def __init__(self, string, tokens, close_char=SPECIAL_BRACE_CLOSE):
+        SubExpression.__init__(self, string, tokens)
+        self.close_char = close_char
 
 
 class Factory(object):

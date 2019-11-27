@@ -17,4 +17,5 @@ class DCPrologFactory(DefaultPrologFactory):
             distribution = Distribution(distribution.functor, *distribution.args)
             return Term(functor, rv, distribution, location=(self.loc_id, location), **extra)
         else:
+            print(functor)
             return Term(functor, *arguments, location=(self.loc_id, location), **extra)
