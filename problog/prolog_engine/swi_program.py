@@ -2,12 +2,11 @@ from collections import defaultdict
 from pathlib import Path
 from time import time
 
-from problog.core import ProbLogObject
-from problog.logic import unquote, term2list, ArithmeticError, Term, Constant
-from problog.errors import GroundingError
 from swip import parse
 from threaded_prolog import ThreadedProlog
-from problog.clausedb import ConsultError
+
+from problog.core import ProbLogObject
+from problog.logic import unquote, term2list, ArithmeticError
 
 
 def handle_prob(prob):
@@ -91,8 +90,6 @@ class SWIProgram(ProbLogObject):
     def add_clause(self, node):
         i = self.new_entry()
         body = self.to_str(self.db.get_node(node.child))
-        if body == 'true':
-            body = ''
         self.clauses.append(
             (i, handle_functor(node.functor, node.args), body))
         print('cl({},({}))'.format(self.clauses[-1][1], self.clauses[-1][2]))
@@ -111,53 +108,112 @@ class SWIProgram(ProbLogObject):
     def __str__(self):
         return '\n'.join(l + '.' for l in self.get_lines())
 
-    def build_formula(self, proof, target):
-        if not hasattr(target, 'd'):
-            target.d = dict()
-        t = proof.functor
-        if t == ':-':
-            name, body = proof.args
-            key = self.build_formula(name, target)
-            # if str(body) not in target.d:
-            if True:
-                body_key = self.build_formula(body, target)
-                target.add_disjunct(key, body_key)
-                target.d[str(body)] = body_key
-            return key
-        elif t == ',':
-            body = proof.args
-            new = target.add_and([self.build_formula(b, target) for b in body])
-            return new
-        # elif t == ';':
-        #     body = proof.args
-        #     new = target.add_or([self.build_formula(b, target) for b in body])
-        #     return new
-        elif t == 'true':
-            return target.TRUE
-        elif t == '::':
-            id, p, name = proof.args
-            key = self.build_formula(name, target)
-            if id not in target.d:
-                p = float(proof.args[1])
-                fact_key = target.add_atom(target.get_next_atom_identifier(), p, name=name)
-                target.add_disjunct(key, fact_key)
-                target.d[id] = fact_key
-            return key
+    def construct_node(self, node, target, d):
+        print(node)
+        if type(node) is list:
+            if len(node) > 1:
+                return target.add_or([self.construct_node(c, target, d) for c in node])
+            node = node[0]
+        if node.functor == '::':
+            p = float(node.args[1])
+            return target.add_atom(target.get_next_atom_identifier(), p, name=node.args[2])
+        elif node.functor == ':-':
+            return self.construct_node(node.args[1], target, d)
+        elif node.functor == 'neg':
+            return target.negate(self.construct_node(node.args[0], target, d))
+        elif node.functor == ',':
+            return target.add_and([self.construct_node(c, target, d) for c in node.args])
         else:
             try:
-                return target.d[str(proof)]
+                return d[node]
             except KeyError:
-                key = target.add_or([], placeholder=True, readonly=False, name=proof)
-                target.d[str(proof)] = key
-                return key
+                return target.FALSE
 
+    def build_formula(self, proofs, target):
+        nodes = defaultdict(list)
+        dependencies = defaultdict(list)
+        d = dict()
+        for p in proofs:
+            if p.functor == '::':
+                nodes[p.args[2]].append(p)
+            elif p.functor == ':-':
+                children = []
+                for b in p.args[1].args:
+                    if b.functor == 'neg':
+                        children.append(b.args[0])
+                    else:
+                        children.append(b)
+                nodes[p.args[0]].append(p)
+                dependencies[p.args[0]] += children
+        for k in dependencies:
+            dependencies[k] = [n for n in dependencies[k] if n in nodes]
+        while nodes:  # While nodes is not empty
+            new_sol = False
+            keys = list(nodes)
+            for k in keys:
+                if len(dependencies[k]) == 0:  # If the node has no more undefined children
+                    d[k] = self.construct_node(nodes[k], target, d)  # Construct the node
+                    for k2 in dependencies:  # Remove the node from undefined dependency from all nodes
+                        try:
+                            dependencies[k2].remove(k)
+                        except ValueError:
+                            pass
+                    new_sol = True
+                    del (nodes[k])
+                    del (dependencies[k])
+            if not new_sol:  # No nodes without undefined children, so we have a cycle!
 
-    def add_proofs(self, proofs,ground_queries, target):
+                break
+        return d
+
+    # def build_formula(self, proof, target):
+    #     if not hasattr(target, 'd'):
+    #         target.d = dict()
+    #     t = proof.functor
+    #     if t == ':-':
+    #         name, body = proof.args
+    #         key = self.build_formula(name, target)
+    #         # if str(body) not in target.d:
+    #         if True:
+    #             body_key = self.build_formula(body, target)
+    #             target.add_disjunct(key, body_key)
+    #             target.d[str(body)] = body_key
+    #         return key
+    #     elif t == ',':
+    #         body = proof.args
+    #         new = target.add_and([self.build_formula(b, target) for b in body])
+    #         return new
+    #     elif t == 'neg':
+    #         negated = proof.args[0]
+    #         return -self.build_formula(negated, target)
+    #     # elif t == ';':
+    #     #     body = proof.args
+    #     #     new = target.add_or([self.build_formula(b, target) for b in body])
+    #     #     return new
+    #     elif t == 'true':
+    #         return target.TRUE
+    #     elif t == '::':
+    #         id, p, name = proof.args
+    #         key = self.build_formula(name, target)
+    #         if id not in target.d:
+    #             p = float(proof.args[1])
+    #             fact_key = target.add_atom(target.get_next_atom_identifier(), p, name=name)
+    #             target.add_disjunct(key, fact_key)
+    #             target.d[id] = fact_key
+    #         return key
+    #     else:
+    #         try:
+    #             return target.d[str(proof)]
+    #         except KeyError:
+    #             key = target.add_or([], placeholder=True, readonly=False, name=proof)
+    #             target.d[str(proof)] = key
+    #             return key
+
+    def add_proofs(self, proofs, ground_queries, target):
         target.names = dict()
-        for proof in proofs:
-            self.build_formula(proof, target)
+        d = self.build_formula(proofs, target)
         for q in ground_queries:
-            key = target.d[str(q)]
+            key = d[q]
             target.add_name(q, key, label=target.LABEL_QUERY)
             # if not target.is_trivial():
             #     target.add_name(query, key, label=target.LABEL_QUERY)
