@@ -114,7 +114,7 @@ def createDCPyroTestGeneric(filename, logspace=False) :
     def evaluate(self, evaluatable_name=None) :
         try:
             abe = "pyro"
-            args = {"device":"cpu", "ttype":"float32", "n_samples":10000}
+            args = {"device":"cpu", "ttype":"float64", "n_samples":50000}
             args["file_name"] = filename
 
             program = PrologFile(args['file_name'], parser=DCParser())
@@ -136,7 +136,7 @@ def createDCPyroTestGeneric(filename, logspace=False) :
             self.assertSequenceEqual(correct, computed)
 
             for query in correct :
-                self.assertAlmostEqual(correct[query], computed[query], places=4, msg=query)
+                self.assertAlmostEqual(correct[query], computed[query], places=2, msg=query)
 
     return test
 
