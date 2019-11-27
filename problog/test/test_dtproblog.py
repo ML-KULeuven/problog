@@ -1,5 +1,4 @@
 import os
-import sys
 import unittest
 from pathlib import Path
 
@@ -16,13 +15,11 @@ class TestTasks(unittest.TestCase):
     ):
         real_file_name = dt_problog_test_folder / dt_file
         file_exists = real_file_name.exists()
-        self.assertTrue(
-            file_exists,
-            msg="File "
-                + str(real_file_name)
-                + " was not found. Maybe this is a pathing issue?",
-        )
-        if file_exists:
+        if not file_exists:
+            self.fail("File "
+                      + str(real_file_name)
+                      + " was not found. Maybe this is a pathing issue?")
+        else:
             result = dtproblog.main([str(real_file_name)])
             if result[0]:
                 choices, score, stats = result[1]
@@ -36,7 +33,7 @@ class TestTasks(unittest.TestCase):
                     + str(result[1])
                 )
 
-    def test_simple_dt_problog(self):
+    def test_dt_problog_simple(self):
         self.dt_problog_check_if_output_equals("ex1.pl", {Term("b"): 1}, 1.8)
         self.dt_problog_check_if_output_equals("ex2.pl", {Term("c"): 1}, 1.8)
         self.dt_problog_check_if_output_equals("ex3.pl", {Term("a"): 1}, 1.8)
@@ -47,7 +44,7 @@ class TestTasks(unittest.TestCase):
             "ex5.pl", {Term("a"): 1, Term("c"): 1}, 1.8
         )
 
-    def test_harder_dtproblog(self):
+    def test_dtproblog_mutex(self):
         self.dt_problog_check_if_output_equals(
             "mut_exl.pl",
             {
@@ -69,6 +66,8 @@ class TestTasks(unittest.TestCase):
             },
             0,
         )
+
+    def test_dtproblog_umbrella(self):
         self.dt_problog_check_if_output_equals(
             "umbrella.pl", {Term("umbrella"): 1, Term("raincoat"): 0}, 43
         )
@@ -81,6 +80,8 @@ class TestTasks(unittest.TestCase):
             },
             77,
         )
+
+    def test_dtproblog_other(self):
         self.dt_problog_check_if_output_equals(
             "var_util.pl",
             {
@@ -90,9 +91,25 @@ class TestTasks(unittest.TestCase):
             },
             4,
         )
+        self.dt_problog_check_if_output_equals(
+            "weather_poole_alt.pl",
+            {
+                Term("decide_u", Term("rainy")): 1,
+                Term("decide_u", Term("cloudy")): 0,
+                Term("decide_u", Term("sunny")): 0,
+            },
+            77,
+        )
+        self.dt_problog_check_if_output_equals(
+            "winning.pl",
+            {},
+            0,
+        )
+        self.dt_problog_check_if_output_equals(
+            "viralmarketing.pl",
+            {},
+            0,
+        )
 
     if __name__ == "__main__":
-        sys.path.insert(
-            0, os.path.abspath(os.path.join(os.path.dirname(__file__), "./../../"))
-        )
         unittest.main()
