@@ -2,7 +2,7 @@ from problog.clausedb import ClauseDB
 from problog.engine import GenericEngine
 from problog.formula import LogicFormula
 from problog.logic import Term, Var
-from problog.prolog_engine.swi_program import SWIProgram
+from swi_program import SWIProgram
 
 
 class PrologEngine(GenericEngine):
