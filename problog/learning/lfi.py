@@ -635,17 +635,16 @@ class LFIProblem(LogicProgram):
                         if index in d:
                             d[index] = value
 
-
-                inconsistent1 = False
-                inconsistent2 = False
-                add_compliment = False
+                inconsistent = False
                 for i, d in enumerate(ad_groups_evidence):
+
                     inconsistent1 = multiple_true(d)
                     inconsistent2 = all_false(d)
                     add_compliment = all_false_except_one(d)
 
                     if inconsistent1 or inconsistent2:
                         print("inconsistent evidence detected")
+                        inconsistent = True
                         continue
                     elif add_compliment:
                         for key, value in d.items():
@@ -653,7 +652,7 @@ class LFIProblem(LogicProgram):
                                 ad_groups_evidence[i][key] = True
                 print(ad_groups_evidence)
 
-                if not inconsistent1 and not inconsistent2:
+                if not inconsistent:
                     # atoms, values, cvalues = zip(*example)
                     atoms = []
                     values = []

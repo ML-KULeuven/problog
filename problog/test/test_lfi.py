@@ -61,7 +61,10 @@ def createTestLFI(filename, useparents = False):
         with open(out_model, "r") as f:
             outlines = f.readlines()
         outlines = [line.strip() for line in outlines]
+        print(expected)
+        print(outlines)
         assert(expected == outlines)
+
     return test
 
 if __name__ == '__main__':
@@ -71,6 +74,11 @@ else:
     #ADfilenames = glob.glob(root_path('test', 'lfi', 'AD_positive', '*.pl'))
     #simple_filenames = glob.glob(root_path('test', 'lfi', 'simple', '*.pl'))
     #useParents_filenames = glob.glob(root_path('test', 'lfi', 'useParents', '*.pl'))
+    dir_name = "../../test/lfi/unit_tests/"
+    test = os.listdir(dir_name)
+    for item in test:
+        if item.endswith(".l_pl"):
+            os.remove(os.path.join(dir_name, item))
     unit_test_filenames = glob.glob(root_path('test', 'lfi', 'unit_tests', '*.pl'))
 
 
@@ -91,6 +99,7 @@ else:
 
 # tests for unit tests
 for testfile in unit_test_filenames :
+
     testname = 'test_lfi_unit_test_' + os.path.splitext(os.path.basename(testfile))[0]
     setattr( TestLFI, testname, createTestLFI(testfile, True))
 
