@@ -158,6 +158,7 @@ if __name__ == '__main__' :
     psi_filenames = [f for f in filenames if "psi" in f]
 else :
     pyro_filenames= glob.glob( root_path('problog', 'tasks', 'dcproblog', 'test', 'pyro', '*.pl' ) )
+    pyro_filenames += glob.glob( root_path('test', '*.pl' ) )
     psi_filenames= glob.glob( root_path('problog', 'tasks', 'dcproblog', 'test', 'psi', '*.pl' ) )
 
 evaluatables = []
