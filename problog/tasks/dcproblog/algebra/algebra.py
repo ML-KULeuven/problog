@@ -9,7 +9,7 @@ M_SUB = "-".translate(SUB)
 
 def get_algebra(abstract_abe, values, **kwdargs):
     if abstract_abe.name=="psi":
-        from .psi.psi import PSI
+        from .psi import PSI
         return PSI(values, **kwdargs)
     elif abstract_abe.name=="pyro":
         from .pyro import Pyro
@@ -121,7 +121,6 @@ class Algebra(object):
         return a/z
 
     def get_values(self, density_name, dimension):
-        print(self.random_values)
         if not density_name in self.random_values:
             density = self.density_values[density_name]
             args = [self.construct_algebraic_expression(a) for a in density.distribution_args]

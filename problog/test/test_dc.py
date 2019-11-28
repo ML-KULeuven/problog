@@ -14,7 +14,8 @@ if __name__ == "__main__":
 
 
 
-
+from problog import root_path
+test_base = root_path('problog', 'tasks', 'dcproblog', 'test')
 
 
 def get_expected(filename) :
@@ -43,14 +44,13 @@ def get_expected(filename) :
 
 
 def get_filenames(*args):
-    from problog import root_path
-    test_base = root_path('problog', 'tasks', 'dcproblog', 'test')
     path2files = os.path.join(test_base, *args)
     testfiles = [os.path.join(path2files,f) for f in os.listdir(path2files) if os.path.isfile(os.path.join(path2files, f))]
     return testfiles
 
 
 class TestTasks(unittest.TestCase):
+
     def test_pyro_examples(self):
         testfiles = get_filenames("pyro", "examples")
         abe = "pyro"
@@ -100,26 +100,90 @@ class TestTasks(unittest.TestCase):
 
 
 
-    # def test_problog_system(self):
-    #     path2files = root_path("test")
-    #     testfiles = [os.path.join(path2files,f) for f in os.listdir(path2files) if os.path.isfile(os.path.join(path2files, f))]
-    #
-    #     abe = "pyro"
-    #     args = {"device":"cpu", "ttype":"float64", "n_samples":1000}
-    #
-    #     for tf in testfiles:
-    #         expected = get_expected(tf)
-    #
-    #         args["file_name"] = tf
-    #         program = PrologFile(args['file_name'], parser=DCParser())
-    #         solver = InferenceSolver(abe, **args)
-    #         probabilities = solver.probability(program, **args)
-    #         computed = {}
-    #         for k,v in probabilities.items():
-    #             computed[str(k)] = float(v.value)
-    #
-    #         for query in expected :
-    #             self.assertAlmostEqual(expected[query], computed[query], places=5, msg=query)
+    def test_problog_system(self):
+        path2files = root_path("test")
+        testfiles = [os.path.join(path2files,f) for f in os.listdir(path2files) if os.path.isfile(os.path.join(path2files, f))]
+        print(len(testfiles))
+
+        long = [
+            "12_holidays.pl",
+            "6_hmm_weather.pl"
+        ]
+        fail = [
+            "00_trivial_duplicate.pl",
+            "findall_duplicates.pl",
+            "smokers_person.csv",
+            "extern_lib.py",
+            "00_trivial_undefined.pl",
+            "negative_cycle2.pl",
+            "negative_query.pl",
+            "11_ads_numerical.pl",
+            "findall_check.pl",
+            "consult_nested.pl",
+            "smokers_csv.pl",
+            "some_cycles.pl",
+            "advars_smokers.pl",
+            "bug_nonground_error.pl",
+            "00_trivial_not.pl",
+            "list_sample_multi.pl",
+            "findall4.pl",
+            "list_sample.pl",
+            "4_bayesian_net.pl",
+            "findall2.pl",
+            "swap.pl",
+            "call_notfound.pl",
+            "negation.pl",
+            "smokers.sqlite",
+            "01_inconsistent.pl",
+            "smokers_friend_of.csv"
+        ]
+
+
+
+        abe = "pyro"
+        args = {"device":"cpu", "ttype":"float64", "n_samples":100}
+
+        count = 0
+        for tf in testfiles:
+
+            count +=1
+            print(tf, count)
+
+            if tf.split("/")[-1] in fail:
+                print(tf, count, "FAIL")
+                continue
+            elif tf.split("/")[-1] in long:
+                print(tf, count, "LONG")
+                continue
+            else:
+                print(tf, count)
+
+            expected = get_expected(tf)
+            args["file_name"] = tf
+
+
+            try:
+                program = PrologFile(args['file_name'], parser=DCParser())
+                solver = InferenceSolver(abe, **args)
+                probabilities = solver.probability(program, **args)
+                computed = {}
+                for k,v in probabilities.items():
+                    computed[str(k)] = float(v.value)
+            except Exception as err :
+                #print("exception %s" % err)
+                e = err
+                computed = None
+
+            if computed is None :
+                self.assertEqual(expected, type(e).__name__)
+            else :
+                self.assertIsInstance( expected, dict )
+                self.assertCountEqual(expected, computed)
+
+                for query in expected:
+                    self.assertAlmostEqual(float(expected[query]), computed[query], msg=query)
+
+        print("failed tests: {}".format(len(fail)))
 
 
 if __name__ == "__main__":

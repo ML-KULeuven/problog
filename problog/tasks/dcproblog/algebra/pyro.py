@@ -87,7 +87,6 @@ class S(BaseS):
 class Pyro(Algebra):
     def __init__(self, values, n_samples, ttype, device):
         Algebra.__init__(self, values)
-        print(self.random_values)
         self.Tensor = self.setup_tensor(ttype, device)
         torch.set_default_tensor_type(self.Tensor)
 
