@@ -134,7 +134,8 @@ class SWIProgram(ProbLogObject):
                 name = node.args[2]
                 group = None
                 if name.functor == 'choice':
-                    group = name.args[0], name.args[:3]
+                    group = name.args[0], name.args[3:]
+                    print('group=',group)
                 p = float(node.args[1])  # Get its probability
                 # add an atom to the formula
                 k = target.add_atom(target.get_next_atom_identifier(), p, name=name, group=group)
