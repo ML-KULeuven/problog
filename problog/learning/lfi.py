@@ -712,8 +712,8 @@ class LFIProblem(LogicProgram):
                                 delete_templates.append((i, a))
 
                 print(index, "Deleted Atoms\t:", delete_templates)
-                for i, a in delete_templates:
-                    del ad_evidences[i][a]
+                # for i, a in delete_templates:
+                #     del ad_evidences[i][a]
                 print(index, "AD Evidences\t:", ad_evidences)
 
                 # Split different instantiations of first order AD to separate dictionaries
@@ -723,13 +723,13 @@ class LFIProblem(LogicProgram):
                         continue
 
                     # Check if the dictionary 'd' only contains propositional atoms
-                    propositonal_dict = False
-                    for a in d.keys():
-                        if len(a.args) == 0:
-                            propositonal_dict = True
+                    non_grounded_case = False
+                    for a, v in d.items():
+                        if len(a.args) > 0 and v == "Template":
+                            non_grounded_case = True
                             break
 
-                    if propositonal_dict:
+                    if not non_grounded_case:
                         grounded_ad_evidences.append(d)
                     else:
                         # Create a dictionary of all the groundings of 'd'
@@ -742,8 +742,13 @@ class LFIProblem(LogicProgram):
                             grounded_ad_evidences.append(v)
                 print(index, "Grounded ADs\t:", grounded_ad_evidences)
 
+                for i, a in delete_templates:
+                    del grounded_ad_evidences[i][a]
                 inconsistent = False
                 for i, d in enumerate(grounded_ad_evidences):
+                    if len(d) == 0:
+                        continue
+
                     inconsistent1 = multiple_true(d)
                     inconsistent2 = all_false(d)
                     add_compliment = all_false_except_one(d)
@@ -1564,7 +1569,14 @@ class Example(object):
             ):
                 factargs = ()
                 # print("node.identifier", node.identifier)
-                if type(node.identifier) == tuple:
+                if node.name.functor != "choice":
+                    if node.name.functor == "lfi_fact":
+                        for arg in node.name.args:
+                            if str(arg.functor) == "t":
+                                factargs = arg.args
+                    else:
+                        factargs = node.name.args
+                elif type(node.identifier) == tuple:
                     factargs = node.identifier[1]
                 # fact = Term('lfi_fact', node.probability.args[0], node.probability.args[1], *factargs)
                 # fact = Term('lfi_fact', node.probability.args[0], node.probability.args[1])
