@@ -584,56 +584,58 @@ class LFIProblem(LogicProgram):
                 ad_groups.append(tuple(ad_list))
         print("AD Groups\t\t:", ad_groups)
 
-        # d is a dictionary of variables in AD : evidence in values
         def multiple_true(d):
-            count = 0
-            for b in d.values():
-                if b:
-                    count += 1
-            return count > 1
+            """
+            This function recognizes inconsistent evidence s.t. more than one term is True in AD.
+            :param d: dictionary of ADs in form {term: value}
+                    value can be True, False, None, "Template"
+            :return: whether more than one value is True
+            """
+            true_count = sum(v is True for v in d.values())
+            return true_count > 1
 
         def all_false(d):
-            result = True
-            for b in d.values():
-                if b is not False:
-                    result = False
-                    break
-                # result = result or b
-            return result
+            """
+            This function recognizes inconsistent evidence s.t. all values are False in AD.
+            :param d: dictionary of ADs in form {term: value}
+                    value can be True, False, None, "Template"
+            :return: whether all values are False
+            """
+            # false_count should be the same as the length of d
+            false_count = sum(v is False for v in d.values())
+            return false_count == len(d)
 
         def all_false_except_one(d):
-            count = 0
-            for b in d.values():
-                if b is False:
-                    count += 1
-            return count == len(d) - 1
+            """
+            This function recognizes incomplete evidence s.t.
+            the non-False value in ADneeds to be set to True.
+            :param d: dictionary of ADs in form {term: value}
+                    value can be True, False, None, "Template"
+            :return: whether all values except one are False
+            """
+            false_count = sum(v is False for v in d.values())
+            return false_count == len(d) - 1
 
         def getADtemplate(d, atom):
-            # get all pairs with value="Template"
-            temp_dict = {}
-            for k, v in d.items():
-                if v == "Template":
-                    temp_dict[k] = v
-            for key in temp_dict.keys():
-                if atom.signature == key.signature:
-                    del temp_dict[key]
-                    break
+            """
+            This function gets atom's complement AD template.
+            This should only be used when the AD contains non-ground terms.
+            :param d: dictionary of ADs in form {term: value}
+                    value can be True, False, None, "Template"
+            :param atom: an evidence
+            :return: atom's complement AD template
+            """
+            temp_dict = {k:v for k, v in d.items() if v == "Template" and atom.signature != k.signature}
             return temp_dict
-
-        # mapping from variables to indices
-        atom_list = []
-        for term in self.names:
-            atom_list.append(term.signature)
-        # print(atom_list)
 
         if self.propagate_evidence:
             result = ExampleSet()
             inconsistent = False
             # iterate over all examples given in .ev
             for index, example in enumerate(self.examples):
-                # create a dictionary to memorize what evidence is given in AD
                 ad_evidences = []
                 non_ad_evidence = {}
+                # create a dictionary to memorize what evidence is given in AD
                 for key in ad_groups:
                     d = dict()
                     for var in key:
@@ -653,7 +655,8 @@ class LFIProblem(LogicProgram):
                 # add all evidence in the example to ad_evidences
                 for atom, value, cvalue in example:
                     # print(atom, value, cvalue)
-                    if atom.signature in atom_list:
+                    #if atom.signature in atom_list:
+                    if any([atom.signature == name.signature for name in self.names]):
                         # idx = atom_list.index(atom.signature)
                         if len(atom.args) == 0:
                             # Propositional Case
@@ -773,11 +776,6 @@ class LFIProblem(LogicProgram):
                         for d in grounded_ad_evidences:
                             for key, value in d.items():
                                 if value is not None:
-                                    # functor = self.names[key].functor
-                                    # args = self.names[key].args
-                                    # if len(args) > 0:
-                                    #
-                                    # atoms.append(Term(functor, *args))
                                     atoms.append(key)
                                     values.append(value)
                                     cvalues.append(None)
