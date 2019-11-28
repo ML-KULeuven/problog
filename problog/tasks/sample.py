@@ -721,7 +721,7 @@ def print_result_json(d, output, **kwdargs):
     return 0
 
 
-def main(args, result_handler=None):
+def get_argument_parser():
     import argparse
 
     parser = argparse.ArgumentParser()
@@ -793,7 +793,11 @@ def main(args, result_handler=None):
         help="Pass additional arguments to the cmd_args builtin.",
     )
     parser.add_argument("--progress", help="show progress", action="store_true")
+    return parser
 
+
+def main(args, result_handler=None):
+    parser = get_argument_parser()
     args = parser.parse_args(args)
 
     init_logger(args.verbose, "problog_sample")
