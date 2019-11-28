@@ -136,10 +136,10 @@ class SWIProgram(ProbLogObject):
             return target.TRUE
         elif node.functor == 'builtin':
             # return target.add_atom(target.get_next_atom_identifier(), True, name=
-            return True
+            return target.TRUE
         elif node.functor == 'foreign':
             # return target.add_atom(target.get_next_atom_identifier(), True, name=
-            return True
+            return target.TRUE
         elif node.functor == 'call':
             return self.construct_node(node.args[0],target,d)
         else:
@@ -238,7 +238,9 @@ class SWIProgram(ProbLogObject):
         target.names = dict()
         d = self.build_formula(proofs, target)
         for q in ground_queries:
+            print(q)
             key = d[q]
+            print(d)
             target.add_name(q, key, label=target.LABEL_QUERY)
         return target
 
