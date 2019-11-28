@@ -16,11 +16,14 @@ class TestSampleTask(unittest.TestCase):
     def setUp(self) -> None:
         random.seed(12345)
 
-    def get_samples(self, file_name, num_samples=1, **kwargs):
+    def get_samples(self, file_name, num_samples=1, propagate_evidence=False):
         file_name = test_folder / file_name
         model = PrologString(file_name.read_text())
-        sample_generator = sample.sample(model, n=num_samples, format="dict", **kwargs)
+        sample_generator = sample.sample(
+            model, n=num_samples, format="dict", propagate_evidence=propagate_evidence
+        )
         result_list = list(sample_generator)
+        print("RESULT LIST", result_list)
         self.assertEqual(
             num_samples,
             len(result_list),
@@ -38,7 +41,7 @@ class TestSampleTask(unittest.TestCase):
             ]
         )
 
-    def test_task_some_heads(self):
+    def test_some_heads_task(self):
         file_name = test_folder / "some_heads.pl"
         result = sample.main([str(file_name), "-n", str(1)])
         success, data = result
@@ -55,3 +58,17 @@ class TestSampleTask(unittest.TestCase):
         samples = self.get_samples("some_heads_evidence.pl", num_samples=1000)
         number_of_some_heads = self.count_number_of_atoms(samples, Term("someHeads"))
         self.assertAlmostEqual(600, number_of_some_heads, delta=50)
+
+    def test_some_heads_propagate_evidence(self):
+        samples = self.get_samples(
+            "some_heads_evidence.pl", num_samples=1000, propagate_evidence=True
+        )
+        number_of_some_heads = self.count_number_of_atoms(samples, Term("someHeads"))
+        self.assertAlmostEqual(600, number_of_some_heads, delta=50)
+
+    def test_some_heads_task_propagate_evidence(self):
+        file_name = test_folder / "some_heads_evidence.pl"
+        result = sample.main([str(file_name), "-n", str(10), "--propagate-evidence"])
+        success, data = result
+        if not success:
+            self.fail("Could not successfully sample" + str(file_name))
