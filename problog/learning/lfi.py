@@ -582,7 +582,7 @@ class LFIProblem(LogicProgram):
                 for var in ad[1]:
                     ad_list.append(Term(self.names[var].functor, *self.names[var].args))
                 ad_groups.append(tuple(ad_list))
-        print("AD Groups", ad_groups)
+        print("AD Groups\t\t:", ad_groups)
 
         # d is a dictionary of variables in AD : evidence in values
         def multiple_true(d):
@@ -607,7 +607,6 @@ class LFIProblem(LogicProgram):
                 if b is False:
                     count += 1
             return count == len(d) - 1
-
 
         def getADtemplate(d, atom):
             # get all pairs with value="Template"
@@ -649,7 +648,7 @@ class LFIProblem(LogicProgram):
                         else:
                             d[var] = None
                     ad_evidences.append(d)
-                print("AD Evidences", ad_evidences)
+                print(index, "AD Evidences\t:", ad_evidences)
 
                 # add all evidence in the example to ad_evidences
                 for atom, value, cvalue in example:
@@ -684,19 +683,22 @@ class LFIProblem(LogicProgram):
                                 dict_found[atom] = value
                                 # also add other AD parts in the dictionary with value==None
                                 other_ADs = getADtemplate(dict_found, atom)
-                                print("Other ADs", other_ADs)
+                                print(index, "Other ADs\t\t:", other_ADs)
                                 for var in other_ADs.keys():
-                                    var._Term__args = atom.args
-                                    dict_found[var] = None
-                        print("Dict Found", dict_found)
-                        print("AD_evidence: ", ad_evidences)
+                                    # var._Term__args = atom.args
+                                    if Term(var.functor, *atom.args) not in dict_found:
+                                        dict_found[Term(var.functor, *atom.args)] = None
+                            else:
+                                non_ad_evidence[atom] = value
+                            print(index, "Dict Found\t:", dict_found)
+                        print(index, "AD_evidences\t:", ad_evidences, "\n")
 
                     else:
                         non_ad_evidence[atom] = value
 
                 # Delete all the non grounded atoms from ad_evidences
                 # Delete Evidence list contains pairs of (dictionary index, atoms)
-                print("AD Evidences", ad_evidences)
+                print(index, "AD Evidences\t:", ad_evidences)
                 delete_templates = []
                 for i, d in enumerate(ad_evidences):
                     for a in d.keys():
@@ -709,10 +711,10 @@ class LFIProblem(LogicProgram):
                             if non_grounded_atom:
                                 delete_templates.append((i, a))
 
-                print("Delete Templates", delete_templates)
+                print(index, "Deleted Atoms\t:", delete_templates)
                 for i, a in delete_templates:
                     del ad_evidences[i][a]
-                print("AD Evidences", ad_evidences)
+                print(index, "AD Evidences\t:", ad_evidences)
 
                 # Split different instantiations of first order AD to separate dictionaries
                 grounded_ad_evidences = []
@@ -738,7 +740,7 @@ class LFIProblem(LogicProgram):
                             grounded_dicts[a.args][a] = v
                         for v in grounded_dicts.values():
                             grounded_ad_evidences.append(v)
-                print("Grounded AD Evidences", grounded_ad_evidences)
+                print(index, "Grounded ADs\t:", grounded_ad_evidences)
 
                 inconsistent = False
                 for i, d in enumerate(grounded_ad_evidences):
@@ -748,7 +750,7 @@ class LFIProblem(LogicProgram):
 
                     if inconsistent1 or inconsistent2:
                         print(
-                            "*** Warning: Inconsistent Evidence Detected! Ignoring this datapoint. ***"
+                            "*** Warning: Inconsistent Evidence Detected! Ignoring this datapoint. ***\n"
                         )
                         inconsistent = True
                         continue
@@ -779,11 +781,9 @@ class LFIProblem(LogicProgram):
                             atoms.append(key)
                             values.append(value)
 
-                        print(atoms)
-                        print(values)
-                        print(cvalues)
-                        print("Adding", index, tuple(atoms), tuple(values))
-                        print()
+                        print(
+                            index, "Push evidence\t:", tuple(atoms), tuple(values), "\n"
+                        )
                         result.add(
                             index,
                             tuple(atoms),
@@ -795,7 +795,7 @@ class LFIProblem(LogicProgram):
                     else:
                         # No AD case
                         atoms, values, cvalues = zip(*example)
-                        print("Adding", index, atoms, values)
+                        print(index, "Push evidence\t:", atoms, values, "\n")
                         result.add(
                             index, atoms, values, cvalues, use_parents=use_parents
                         )
@@ -813,8 +813,8 @@ class LFIProblem(LogicProgram):
     def _compile_examples(self):
         """Compile examples."""
         baseprogram = DefaultEngine(**self.extra).prepare(self)
-        print("\nBase Program:")
-        print("\t" + baseprogram.to_prolog().replace("\n", "\n\t") + "\n")
+        print("\nBase Program\t:")
+        print("\t" + baseprogram.to_prolog().replace("\n", "\n\t"))
         examples = self._process_examples()
         print()
         for i, example in enumerate(examples):
