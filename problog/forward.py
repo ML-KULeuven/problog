@@ -34,7 +34,7 @@ from .core import transform_create_as
 from .dd_formula import DD
 from .dd_formula import build_dd
 from .evaluator import Evaluator, EvaluatableDSP, InconsistentEvidenceError
-from .formula import LogicFormula, OrderedSet, atom, pn_weight
+from .formula import LogicFormula, OrderedSet, atom
 from .sdd_formula import SDD
 from .util import UHeap
 
@@ -712,15 +712,18 @@ class ForwardEvaluator(Evaluator):
             if not self.semiring.is_nsp():
                 return self.semiring.result(self.semiring.one(), self.formula)
             else:
-                # We need the full theory to calculate WMC(Theory & True) so resort to XSDD
-                from problog.sdd_formula_explicit import SDDExplicit
-
-                xsdd = SDDExplicit.create_from(self.formula)
-                result = xsdd.evaluate(
-                    index=0,
-                    semiring=self.semiring,
-                    weights={k: pn_weight(v[0], v[1]) for k, v in self.weights.items()},
+                weights = {}
+                for atom, weight in self.weights.items():
+                    av = self.fsdd.atom2var.get(atom)
+                    if av is not None:
+                        weights[av] = weight
+                    elif atom == 0:
+                        weights[0] = weight
+                enode = self.fsdd.get_manager().conjoin(
+                    self.fsdd.get_evidence_inode(), self.fsdd.get_constraint_inode()
                 )
+                tvalue = self.fsdd.get_manager().wmc(enode, weights, self.semiring)
+                result = self.semiring.normalize(tvalue, tvalue)
                 return self.semiring.result(result, self.formula)
         else:
             n = self.formula.get_node(abs(index))

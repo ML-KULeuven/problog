@@ -19,7 +19,7 @@ import unittest
 
 from problog import get_evaluatable
 from problog.evaluator import SemiringProbability
-from problog.formula import LogicFormula, pn_weight
+from problog.formula import LogicFormula
 from problog.logic import Term
 from problog.program import PrologString
 
@@ -56,7 +56,16 @@ class TestEvaluator(unittest.TestCase):
         class TestSemiringProbabilityNSP(SemiringProbability):
             def is_nsp(self):
                 return True
-
+            def pos_value(self, a, key):
+                if isinstance(a, tuple):
+                    return float(a[0])
+                else:
+                    return float(a)
+            def neg_value(self, a, key):
+                if isinstance(a, tuple):
+                    return float(a[1])
+                else:
+                    return 1-float(a)
         program = """
                     0.25::a.
                     query(a).
@@ -78,7 +87,7 @@ class TestEvaluator(unittest.TestCase):
         self.assertEqual(0.1, results[a])
 
         # with custom weights
-        weights = {a: pn_weight(0.1, 0.1)}
+        weights = {a: (0.1, 0.1)}
         results = kc.evaluate(semiring=semiring, weights=weights)
         self.assertEqual(0.5, results[a])
 
@@ -88,7 +97,7 @@ class TestEvaluator(unittest.TestCase):
         self.assertEqual(0.2, results[a])
 
         # Testing with weight on node 0 (True)
-        weights = {0: 0.3, a: pn_weight(0.1, 0.1)}
+        weights = {0: 0.3, a: (0.1, 0.1)}
         results = kc.evaluate(semiring=semiring, weights=weights)
         self.assertEqual(0.5, results[a])
 
@@ -97,7 +106,7 @@ class TestEvaluator(unittest.TestCase):
             def normalize(self, a, z):
                 return a
 
-        weights = {0: pn_weight(0.3, 0.7), a: pn_weight(0.1, 0.1)}
+        weights = {0: (0.3, 0.7), a: (0.1, 0.1)}
         results = kc.evaluate(
             index=0, semiring=TestSemiringProbabilityIgnoreNormalize(), weights=weights
         )
