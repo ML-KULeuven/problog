@@ -1,3 +1,4 @@
+import re
 from collections import defaultdict
 from pathlib import Path
 from time import time
@@ -59,11 +60,11 @@ class SWIProgram(ProbLogObject):
         self.ad_heads = defaultdict(list)
         self.i = 0
         self.index_dict = dict()
-
+        self.groups = dict()
         # Warning: Has to be evaluated before the creation of the Prolog engine
         self.parse_directives()
         self.prolog = ThreadedProlog()
-
+        self.d = dict()
         self.prolog.consult(str(Path(__file__).parent / consult))
         self.parse_db()
 
@@ -92,6 +93,7 @@ class SWIProgram(ProbLogObject):
         self.facts.append(new_fact)
         self.index_dict[i] = new_fact
         self.prolog.assertz('fa({},{},{})'.format(*self.facts[-1]))
+        print('fa({},{},{})'.format(*self.facts[-1]))
 
     def add_clause(self, node):
         i = self.new_entry()
@@ -99,6 +101,10 @@ class SWIProgram(ProbLogObject):
         self.clauses.append(
             (i, handle_functor(node.functor, node.args), body))
         self.prolog.assertz('cl({},{})'.format(self.clauses[-1][1], self.clauses[-1][2]))
+        print('cl({},{})'.format(self.clauses[-1][1], self.clauses[-1][2]))
+
+    def add_choice(self, node):
+        self.add_fact(node)
 
     def add_directive(self, node):
         print(node)
@@ -113,43 +119,50 @@ class SWIProgram(ProbLogObject):
     def __str__(self):
         return '\n'.join(l + '.' for l in self.get_lines())
 
-    def construct_node(self, node, target, d, neg=False):
-        if type(node) is list:  #The node is a list if there's several proofs for the node
+    def construct_node(self, node, target, neg=False):
+        if type(node) is list:  # The node is a list if there's several proofs for the node
             if neg:
                 # If the definition is for a negated node, the list represents and and of nots
-                return target.add_and([target.negate(self.construct_node(c, target, d)) for c in node])
+                return target.add_and([target.negate(self.construct_node(c, target)) for c in node])
             else:
                 # If the definition is not negated, it represents an or
-                return target.add_or([self.construct_node(c, target, d) for c in node])
-        if node.functor == '::':    # If the definition is a fact
-            p = float(node.args[1]) # Get its probability
-            return target.add_atom(target.get_next_atom_identifier(), p, name=node.args[2]) # add an atom to the formula
-        elif node.functor == ':-':  # If the definition is a clause
-            return self.construct_node(node.args[1], target, d)  # Recursivelt construct a node for the body
-        elif node.functor == 'neg':
-            try:
-                # If there's a definition for the negated node (i.e. not the negation of an atom)
-                # Lookup the node in the logical formula
-                return d[node]
-            except KeyError:
-                # Else, its the negation of an atom. Construct it recursively
-                return target.negate(self.construct_node(node.args[0], target, d))
-        elif node.functor == ',':   # The definition is an and
-            return target.add_and([self.construct_node(c, target, d) for c in node.args])
-        elif node.functor == 'true':  # Determinstically true
-            return target.TRUE
-        elif node.functor == 'builtin':  # Proven with a builtin
-            # return target.add_atom(target.get_next_atom_identifier(), True, name=
-            return target.TRUE
-        elif node.functor == 'foreign':  # Proven through a foreign predicate
-            # return target.add_atom(target.get_next_atom_identifier(), True, name=
-            return target.TRUE
-        elif node.functor == 'call':  # Proven through a meta call, construct it recursively for the node that is called
-            return self.construct_node(node.args[0], target, d)
-        else:  # Otherwise, the definition itself is a previously defined node, or not present in the graph
-            try:
-                return d[node]  # Look up the previously defined node
-            except KeyError:
+                return target.add_or([self.construct_node(c, target) for c in node])
+        try:
+            return self.d[node]
+        except KeyError:
+            if node.functor == '::':  # If the definition is a fact
+                name = node.args[2]
+                group = None
+                if name.functor == 'choice':
+                    group = name.args[0], name.args[:3]
+                p = float(node.args[1])  # Get its probability
+                # add an atom to the formula
+                k = target.add_atom(target.get_next_atom_identifier(), p, name=name, group=group)
+                self.d[node] = k
+                return k
+            elif node.functor == ':-':  # If the definition is a clause
+                return self.construct_node(node.args[1], target)  # Recursively construct a node for the body
+            elif node.functor == 'neg':
+                # try:
+                #     # If there's a definition for the negated node (i.e. not the negation of an atom)
+                #     # Lookup the node in the logical formula
+                #     return d[node]
+                # except KeyError:
+                #     # Else, its the negation of an atom. Construct it recursively
+                return target.negate(self.construct_node(node.args[0], target))
+            elif node.functor == ',':  # The definition is an and
+                return target.add_and([self.construct_node(c, target) for c in node.args])
+            elif node.functor == 'true':  # Determinstically true
+                return target.TRUE
+            elif node.functor == 'builtin':  # Proven with a builtin
+                # return target.add_atom(target.get_next_atom_identifier(), True, name=
+                return target.TRUE
+            elif node.functor == 'foreign':  # Proven through a foreign predicate
+                # return target.add_atom(target.get_next_atom_identifier(), True, name=
+                return target.TRUE
+            elif node.functor == 'call':  # Proven through a meta call, construct it recursively for the node that is called
+                return self.construct_node(node.args[0], target)
+            else:
                 return target.FALSE  # Node is not present in the graph, so deterministically false
 
     def get_children(self, term):
@@ -169,7 +182,6 @@ class SWIProgram(ProbLogObject):
         # Keys are nodes, and the value is a list of all nodes that this node depends on directly
         dependencies = defaultdict(list)
         # Keys are nodes, and the values area the keys of the nodes in the ground logic formula
-        d = dict()
         for p in proofs:  # Loop over all elements of the proof
             if p.functor == '::':  # If it's a fact
                 nodes[p.args[2]].append(p)  # Add it to the definitions
@@ -187,8 +199,8 @@ class SWIProgram(ProbLogObject):
             keys = list(nodes)  # List of keys of the dictionary
             for k in keys:
                 if len(dependencies[k]) == 0:  # If the node has no more undefined children
-                    neg = k.functor == 'neg'    # Check whether the current node is negated
-                    d[k] = self.construct_node(nodes[k], target, d, neg=neg)  # Construct the node
+                    neg = k.functor == 'neg'  # Check whether the current node is negated
+                    self.d[k] = self.construct_node(nodes[k], target, neg=neg)  # Construct the node
                     for k2 in dependencies:  # Remove the node from undefined dependency from all nodes
                         try:
                             dependencies[k2].remove(k)
@@ -201,20 +213,28 @@ class SWIProgram(ProbLogObject):
             if not new_sol:
                 # No node could be added in this iteration. So all nodes have unfulfilled dependencies
                 raise NotImplemented('Cycles are not yet supported in build_formula')
-        return d
+        return self.d
 
     def add_proofs(self, proofs, ground_queries, target):
         target.names = dict()
         d = self.build_formula(proofs, target)
+        print(d)
         for q in ground_queries:
-            print(q)
             key = d[q]
-            print(d)
             target.add_name(q, key, label=target.LABEL_QUERY)
         return target
 
     def query(self, query, profile=0):
         query = str(query)
+
+        # TODO: replace this, a bit hacky
+        # Replaces $VAR(X) with actual variables
+        # Needed when specified queries are non ground
+        print('query=', query)
+        query = re.sub(r'\$VAR\((.*?)\)', r'X\1', query)
+        print('query=', query)
+        #
+
         if profile > 0:
             start = time()
             if profile > 1:
@@ -272,4 +292,4 @@ class SWIProgram(ProbLogObject):
                     if not n.functor == '_directive':
                         self.add_clause(n)
                 elif ntype == 'choice':
-                    raise Exception('choices not implemented')
+                    self.add_choice(n)
