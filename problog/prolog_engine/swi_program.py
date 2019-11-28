@@ -135,7 +135,6 @@ class SWIProgram(ProbLogObject):
                 group = None
                 if name.functor == 'choice':
                     group = name.args[0], name.args[3:]
-                    print('group=',group)
                 p = float(node.args[1])  # Get its probability
                 # add an atom to the formula
                 k = target.add_atom(target.get_next_atom_identifier(), p, name=name, group=group)
@@ -203,26 +202,28 @@ class SWIProgram(ProbLogObject):
                     neg = k.functor == 'neg'  # Check whether the current node is negated
                     self.d[k] = self.construct_node(nodes[k], target, neg=neg)  # Construct the node
                     for k2 in dependencies:  # Remove the node from undefined dependency from all nodes
-                        try:
-                            dependencies[k2].remove(k)
-                        except ValueError:
-                            pass
+                        dependencies[k2] = [n for n in dependencies[k2] if n != k]
                     new_sol = True  # A node was added
                     # Remove the node from the dict as it's fully processed
                     del (nodes[k])
                     del (dependencies[k])
             if not new_sol:
                 # No node could be added in this iteration. So all nodes have unfulfilled dependencies
-                raise NotImplemented('Cycles are not yet supported in build_formula')
+                print('Nodes: ')
+                for n in nodes:
+                    print(n)
+                    print('\t', nodes[n])
+                    print('\t', dependencies[n])
+                raise NotImplementedError('Cycles are not yet supported in build_formula')
         return self.d
 
-    def add_proofs(self, proofs, ground_queries, target):
+    def add_proofs(self, proofs, ground_queries, target, label=None):
         target.names = dict()
         d = self.build_formula(proofs, target)
-        print(d)
-        for q in ground_queries:
-            key = d[q]
-            target.add_name(q, key, label=target.LABEL_QUERY)
+        if label is not None:
+            for q in ground_queries:
+                key = d[q]
+                target.add_name(q, key, label=label)
         return target
 
     def query(self, query, profile=0):
@@ -231,9 +232,7 @@ class SWIProgram(ProbLogObject):
         # TODO: replace this, a bit hacky
         # Replaces $VAR(X) with actual variables
         # Needed when specified queries are non ground
-        print('query=', query)
         query = re.sub(r'\$VAR\((.*?)\)', r'X\1', query)
-        print('query=', query)
         #
 
         if profile > 0:

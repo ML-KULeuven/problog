@@ -35,7 +35,7 @@ class PrologEngine(GenericEngine):
         if target is None:
             target = LogicFormula()
         query_result = sp.query('prove({},Proofs,GroundQueries)'.format(term))
-        result = sp.add_proofs(query_result['Proofs'], query_result['GroundQueries'], target=target)
+        result = sp.add_proofs(query_result['Proofs'], query_result['GroundQueries'], target=target, label=label)
         return result
 
     def ground_all(self, sp, target=None, queries=None, evidence=None, *args, **kwargs):
@@ -50,8 +50,19 @@ class PrologEngine(GenericEngine):
         if target is None:
             target = LogicFormula()
         if queries is None:
-            queries = [q[0].args[0] for q in self.ground(sp, Term('query', Var('X')), *args, **kwargs).queries()]
+            queries = [q[0].args[0] for q in self.ground(sp, Term('query', Var('X')), label=target.LABEL_QUERY, *args, **kwargs).queries()]
+        if evidence is None:
+            evidence = [e[0].args for e in self.ground(sp, Term('evidence', Var('X'), Var('Y')),  label=target.LABEL_QUERY).queries()]
         for q in queries:
-            self.ground(sp, q, target, *args, **kwargs)
+            self.ground(sp, q, target, label=target.LABEL_QUERY, *args, **kwargs)
+        for e in evidence:
+            if e[1] == Term('true'):
+                self.ground(sp, e[0], target, label=target.LABEL_EVIDENCE_POS)
+            elif e[1] == Term('false'):
+                self.ground(sp, e[0], target, label=target.LABEL_EVIDENCE_NEG)
+            else:
+                print(e[1], ' evidence interpreted as maybe')
+                self.ground(sp, e[0], target, label=target.LABEL_EVIDENCE_MAYBE)
+
         return target
 

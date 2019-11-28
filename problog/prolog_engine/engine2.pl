@@ -14,7 +14,10 @@ solve(A) :- cl(A,B),solve(B),recordz(proof,A:-B).
 
 builtin(>).
 builtin(is).
-
+builtin(between).
+builtin(member).
+builtin(<).
+builtin(succ).
 
 prove(Q,Proofs,GroundQueries) :-
     abolish_all_tables,
