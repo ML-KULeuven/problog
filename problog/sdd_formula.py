@@ -28,7 +28,7 @@ from .core import transform
 from .dd_formula import DD, build_dd, DDManager, DDEvaluator
 from .errors import InstallError, InconsistentEvidenceError
 from .evaluator import SemiringLogProbability, SemiringProbability
-from .formula import LogicDAG, LogicFormula, pn_weight
+from .formula import LogicDAG, LogicFormula
 from .util import mktempfile
 
 # noinspection PyBroadException
