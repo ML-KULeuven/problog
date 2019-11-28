@@ -608,6 +608,19 @@ class LFIProblem(LogicProgram):
                     count += 1
             return count == len(d) - 1
 
+
+        def getADtemplate(d, atom):
+            # get all pairs with value="Template"
+            temp_dict = {}
+            for k, v in d.items():
+                if v == "Template":
+                    temp_dict[k] = v
+            for key in temp_dict.keys():
+                if atom.signature == key.signature:
+                    del temp_dict[key]
+                    break
+            return temp_dict
+
         # mapping from variables to indices
         atom_list = []
         for term in self.names:
@@ -625,12 +638,19 @@ class LFIProblem(LogicProgram):
                 for key in ad_groups:
                     d = dict()
                     for var in key:
-                        d[var] = None
+                        non_grounded_atom = False
+                        if len(var.args) > 0:
+                            for var_arg in var.args:
+                                if isinstance(var_arg, Var):
+                                    non_grounded_atom = True
+                                    break
+                        if non_grounded_atom:
+                            d[var] = "Template"
+                        else:
+                            d[var] = None
                     ad_evidences.append(d)
+                print("AD Evidences", ad_evidences)
 
-                fo_ad_groups_evidence = []
-
-                # print(ad_evidences)
                 # add all evidence in the example to ad_evidences
                 for atom, value, cvalue in example:
                     # print(atom, value, cvalue)
@@ -662,6 +682,14 @@ class LFIProblem(LogicProgram):
                             # if the instantiation is new, add it as a key to the dictionary
                             if dict_found and dict_found.get(atom) is None:
                                 dict_found[atom] = value
+                                # also add other AD parts in the dictionary with value==None
+                                other_ADs = getADtemplate(dict_found, atom)
+                                print("Other ADs", other_ADs)
+                                for var in other_ADs.keys():
+                                    var._Term__args = atom.args
+                                    dict_found[var] = None
+                        print("Dict Found", dict_found)
+                        print("AD_evidence: ", ad_evidences)
 
                     else:
                         non_ad_evidence[atom] = value
