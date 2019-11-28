@@ -141,7 +141,10 @@ class TestDTProblog(unittest.TestCase):
             },
             77,
         )
-        self.dt_problog_check_if_output_equals("winning.pl", {}, 0)
+        # self.dt_problog_check_if_output_equals("winning.pl", {}, 0)
+        self.dt_problog_check_if_output_equals(
+            "winning_undecided.pl", {Term("play1"): 1, Term("play2"): 1}, 34.5
+        )
 
     if __name__ == "__main__":
         unittest.main()
