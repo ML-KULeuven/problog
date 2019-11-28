@@ -582,7 +582,7 @@ class LFIProblem(LogicProgram):
                 for var in ad[1]:
                     ad_list.append(Term(self.names[var].functor, *self.names[var].args))
                 ad_groups.append(tuple(ad_list))
-        print(ad_groups)
+        print("AD Groups", ad_groups)
 
         # d is a dictionary of variables in AD : evidence in values
         def multiple_true(d):
@@ -620,18 +620,18 @@ class LFIProblem(LogicProgram):
             # iterate over all examples given in .ev
             for index, example in enumerate(self.examples):
                 # create a dictionary to memorize what evidence is given in AD
-                ad_groups_evidence = []
+                ad_evidences = []
                 non_ad_evidence = {}
                 for key in ad_groups:
                     d = dict()
                     for var in key:
                         d[var] = None
-                    ad_groups_evidence.append(d)
+                    ad_evidences.append(d)
 
                 fo_ad_groups_evidence = []
 
-                # print(ad_groups_evidence)
-                # add all evidence in the example to ad_groups_evidence
+                # print(ad_evidences)
+                # add all evidence in the example to ad_evidences
                 for atom, value, cvalue in example:
                     # print(atom, value, cvalue)
                     if atom.signature in atom_list:
@@ -639,54 +639,103 @@ class LFIProblem(LogicProgram):
                         if len(atom.args) == 0:
                             # Propositional Case
                             atom_found = False
-                            for d in ad_groups_evidence:
+                            for d in ad_evidences:
                                 if atom in d:
                                     d[atom] = value
                                     atom_found = True
                             if not atom_found:
                                 non_ad_evidence[atom] = value
                         else:
-                            non_ad_evidence[atom] = value
                             # First Order Case
-                            # for d in ad_groups_evidence:
-                            #     dict_found = None
-                            #     for key, value in d.items():
-                            #         if key.signature == atom.signature:
-                            #             dict_found = d
-                            #             break
-                            #     if dict_found is not None:
-                            #         break
+                            # non_ad_evidence[atom] = value
+                            # find the right AD dictionary : dict_found
+                            dict_found = None
+                            for d in ad_evidences:
+                                dict_found = None
+                                for k, v in d.items():
+                                    if k.signature == atom.signature:
+                                        dict_found = d
+                                        break
+                                if dict_found is not None:
+                                    break
                             # print(dict_found)
-                            #
-                            # a = 1
+                            # if the instantiation is new, add it as a key to the dictionary
+                            if dict_found and dict_found.get(atom) is None:
+                                dict_found[atom] = value
 
                     else:
                         non_ad_evidence[atom] = value
 
-                inconsistent = False
-                for i, d in enumerate(ad_groups_evidence):
+                # Delete all the non grounded atoms from ad_evidences
+                # Delete Evidence list contains pairs of (dictionary index, atoms)
+                print("AD Evidences", ad_evidences)
+                delete_templates = []
+                for i, d in enumerate(ad_evidences):
+                    for a in d.keys():
+                        if len(a.args) > 0:
+                            non_grounded_atom = False
+                            for atom_arg in a.args:
+                                if isinstance(atom_arg, Var):
+                                    non_grounded_atom = True
+                                    break
+                            if non_grounded_atom:
+                                delete_templates.append((i, a))
 
+                print("Delete Templates", delete_templates)
+                for i, a in delete_templates:
+                    del ad_evidences[i][a]
+                print("AD Evidences", ad_evidences)
+
+                # Split different instantiations of first order AD to separate dictionaries
+                grounded_ad_evidences = []
+                for i, d in enumerate(ad_evidences):
+                    if len(d) == 0:
+                        continue
+
+                    # Check if the dictionary 'd' only contains propositional atoms
+                    propositonal_dict = False
+                    for a in d.keys():
+                        if len(a.args) == 0:
+                            propositonal_dict = True
+                            break
+
+                    if propositonal_dict:
+                        grounded_ad_evidences.append(d)
+                    else:
+                        # Create a dictionary of all the groundings of 'd'
+                        grounded_dicts = {}
+                        for a, v in d.items():
+                            if a.args not in grounded_dicts:
+                                grounded_dicts[a.args] = dict()
+                            grounded_dicts[a.args][a] = v
+                        for v in grounded_dicts.values():
+                            grounded_ad_evidences.append(v)
+                print("Grounded AD Evidences", grounded_ad_evidences)
+
+                inconsistent = False
+                for i, d in enumerate(grounded_ad_evidences):
                     inconsistent1 = multiple_true(d)
                     inconsistent2 = all_false(d)
                     add_compliment = all_false_except_one(d)
 
                     if inconsistent1 or inconsistent2:
-                        print("inconsistent evidence detected")
+                        print(
+                            "*** Warning: Inconsistent Evidence Detected! Ignoring this datapoint. ***"
+                        )
                         inconsistent = True
                         continue
                     elif add_compliment:
                         for key, value in d.items():
                             if value is None:
-                                ad_groups_evidence[i][key] = True
-                # print(ad_groups_evidence)
+                                grounded_ad_evidences[i][key] = True
 
                 if not inconsistent:
-                    if len(ad_groups_evidence) > 0:
+                    if len(grounded_ad_evidences) > 0:
                         # There are (fully tunable) ADs in the program
                         atoms = []
                         values = []
                         cvalues = []
-                        for d in ad_groups_evidence:
+                        for d in grounded_ad_evidences:
                             for key, value in d.items():
                                 if value is not None:
                                     # functor = self.names[key].functor
@@ -702,12 +751,11 @@ class LFIProblem(LogicProgram):
                             atoms.append(key)
                             values.append(value)
 
-                        # print(atoms)
-                        # print(values)
-                        # print(cvalues)
-                        # print()
-                        atoms1, values1, cvalues1 = zip(*example)
+                        print(atoms)
+                        print(values)
+                        print(cvalues)
                         print("Adding", index, tuple(atoms), tuple(values))
+                        print()
                         result.add(
                             index,
                             tuple(atoms),
@@ -737,8 +785,10 @@ class LFIProblem(LogicProgram):
     def _compile_examples(self):
         """Compile examples."""
         baseprogram = DefaultEngine(**self.extra).prepare(self)
-        print(baseprogram.to_prolog())
+        print("\nBase Program:")
+        print("\t" + baseprogram.to_prolog().replace("\n", "\n\t") + "\n")
         examples = self._process_examples()
+        print()
         for i, example in enumerate(examples):
             print("Compiling example {}/{}".format(i + 1, len(examples)))
             example.compile(self, baseprogram)
@@ -1154,12 +1204,12 @@ class LFIProblem(LogicProgram):
                     continue
                 extra_clauses = process_atom(clause.head, clause.body)
                 for extra in extra_clauses:
-                    print("rule", extra)
+                    print("RULE >>", extra)
                     yield extra
             elif isinstance(clause, AnnotatedDisjunction):
                 extra_clauses = process_atom(Or.from_list(clause.heads), clause.body)
                 for extra in extra_clauses:
-                    print("rule", extra)
+                    print("RULE >>", extra)
                     yield extra
             else:
                 if clause.functor == "query" and clause.arity == 1:
@@ -1167,7 +1217,7 @@ class LFIProblem(LogicProgram):
                 # Fact
                 extra_clauses = process_atom(clause, None)
                 for extra in extra_clauses:
-                    print("rule", extra)
+                    print("RULE >>", extra)
                     yield extra
 
         if self.leakprob is not None:
@@ -1464,12 +1514,8 @@ class Example(object):
     def compile(self, lfi, baseprogram):
         ground_program = None  # Let the grounder decide
         print("compile grounding:")
-        # print(baseprogram.to_prolog())
-        # print(baseprogram)
         print("...")
-        print(ground_program)
-
-        print(self.atoms)
+        print("Grounded Atoms", self.atoms)
 
         ground_program = ground(
             baseprogram,
@@ -1541,8 +1587,8 @@ class Example(object):
             print(ground_program)
 
         self.compiled = lfi.knowledge.create_from(ground_program)
-        print("Compiled program")
-        print(self.compiled)
+        print("Compiled program:")
+        print("\t" + self.compiled.to_prolog().replace("\n", "\n\t"))
 
     def add_index(self, index, cvalues):
         k = tuple(cvalues)
