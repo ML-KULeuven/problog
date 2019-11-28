@@ -23,13 +23,20 @@ class TestSampleTask(unittest.TestCase):
             model, n=num_samples, format="dict", propagate_evidence=propagate_evidence
         )
         result_list = list(sample_generator)
-        print("RESULT LIST", result_list)
         self.assertEqual(
             num_samples,
             len(result_list),
             "Was not able to sample the right number of samples from " + str(file_name),
         )
         return result_list
+
+    @staticmethod
+    def estimate(file_name, num_samples=1, propagate_evidence=False):
+        file_name = test_folder / file_name
+        model = PrologString(file_name.read_text())
+        return sample.estimate(
+            model, n=num_samples, format="dict", propagate_evidence=propagate_evidence
+        )
 
     @staticmethod
     def count_number_of_atoms(sample_list, term):
@@ -47,7 +54,7 @@ class TestSampleTask(unittest.TestCase):
             800, self.count_number_of_atoms(samples, Term("someHeads")), delta=50
         )
 
-    def test_some_heads_evidence_distribution(self):
+    def test_some_heads_evidence(self):
         samples = self.get_samples("some_heads_evidence.pl", num_samples=1000)
         number_of_some_heads = self.count_number_of_atoms(samples, Term("someHeads"))
         self.assertAlmostEqual(600, number_of_some_heads, delta=50)
@@ -58,6 +65,16 @@ class TestSampleTask(unittest.TestCase):
         )
         number_of_some_heads = self.count_number_of_atoms(samples, Term("someHeads"))
         self.assertAlmostEqual(600, number_of_some_heads, delta=50)
+
+    def test_some_heads_estimate(self):
+        with_propagation = self.estimate(
+            "some_heads.pl", num_samples=1000, propagate_evidence=False
+        )
+        self.assertAlmostEqual(0.8, with_propagation[Term("someHeads")], delta=0.05)
+        without_propagation = self.estimate(
+            "some_heads.pl", num_samples=1000, propagate_evidence=True
+        )
+        self.assertAlmostEqual(0.8, without_propagation[Term("someHeads")], delta=0.05)
 
     # Tasks stuff
 
