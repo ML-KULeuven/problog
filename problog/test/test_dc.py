@@ -74,7 +74,12 @@ class TestTasks(unittest.TestCase):
                 self.assertAlmostEqual(float(expected[query]), computed[query], places=2, msg=query)
 
 
+
     def test_psi_examples(self):
+        try:
+            import psipy
+        except ImportError:
+            return
         testfiles = get_filenames("psi", "examples")
         abe = "psi"
         args = {}
@@ -92,6 +97,8 @@ class TestTasks(unittest.TestCase):
 
             for query in expected :
                 self.assertEqual(expected[query], computed[query], msg=query)
+
+
 
     # def test_problog_system(self):
     #     path2files = root_path("test")
