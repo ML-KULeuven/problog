@@ -114,38 +114,43 @@ class SWIProgram(ProbLogObject):
         return '\n'.join(l + '.' for l in self.get_lines())
 
     def construct_node(self, node, target, d, neg=False):
-        if type(node) is list:
+        if type(node) is list:  #The node is a list if there's several proofs for the node
             if neg:
+                # If the definition is for a negated node, the list represents and and of nots
                 return target.add_and([target.negate(self.construct_node(c, target, d)) for c in node])
             else:
+                # If the definition is not negated, it represents an or
                 return target.add_or([self.construct_node(c, target, d) for c in node])
-        if node.functor == '::':
-            p = float(node.args[1])
-            return target.add_atom(target.get_next_atom_identifier(), p, name=node.args[2])
-        elif node.functor == ':-':
-            return self.construct_node(node.args[1], target, d)
+        if node.functor == '::':    # If the definition is a fact
+            p = float(node.args[1]) # Get its probability
+            return target.add_atom(target.get_next_atom_identifier(), p, name=node.args[2]) # add an atom to the formula
+        elif node.functor == ':-':  # If the definition is a clause
+            return self.construct_node(node.args[1], target, d)  # Recursivelt construct a node for the body
         elif node.functor == 'neg':
             try:
+                # If there's a definition for the negated node (i.e. not the negation of an atom)
+                # Lookup the node in the logical formula
                 return d[node]
             except KeyError:
+                # Else, its the negation of an atom. Construct it recursively
                 return target.negate(self.construct_node(node.args[0], target, d))
-        elif node.functor == ',':
+        elif node.functor == ',':   # The definition is an and
             return target.add_and([self.construct_node(c, target, d) for c in node.args])
-        elif node.functor == 'true':
+        elif node.functor == 'true':  # Determinstically true
             return target.TRUE
-        elif node.functor == 'builtin':
+        elif node.functor == 'builtin':  # Proven with a builtin
             # return target.add_atom(target.get_next_atom_identifier(), True, name=
             return target.TRUE
-        elif node.functor == 'foreign':
+        elif node.functor == 'foreign':  # Proven through a foreign predicate
             # return target.add_atom(target.get_next_atom_identifier(), True, name=
             return target.TRUE
-        elif node.functor == 'call':
+        elif node.functor == 'call':  # Proven through a meta call, construct it recursively for the node that is called
             return self.construct_node(node.args[0], target, d)
-        else:
+        else:  # Otherwise, the definition itself is a previously defined node, or not present in the graph
             try:
-                return d[node]
+                return d[node]  # Look up the previously defined node
             except KeyError:
-                return target.FALSE
+                return target.FALSE  # Node is not present in the graph, so deterministically false
 
     def get_children(self, term):
         if term.functor == ',':
