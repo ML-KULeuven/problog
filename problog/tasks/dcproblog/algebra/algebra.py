@@ -9,10 +9,10 @@ M_SUB = "-".translate(SUB)
 
 def get_algebra(abstract_abe, values, **kwdargs):
     if abstract_abe.name=="psi":
-        from .psi import PSI
+        from . import PSI
         return PSI(values)
     elif abstract_abe.name=="pyro":
-        from .pyro import Pyro
+        from . import Pyro
         return Pyro(values, abstract_abe.n_samples, abstract_abe.ttype, abstract_abe.device)
 
 def addS(a,b):

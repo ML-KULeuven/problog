@@ -1,6 +1,6 @@
 import psipy
 
-from .algebra import Algebra, BaseS
+from ..algebra import Algebra, BaseS
 
 str2distribution = {
     "delta" : psipy.delta_pdf,
