@@ -1,4 +1,16 @@
-from .lib import psipy
+import platform
+platform = platform.system()
+
+
+if platform == "Linux":
+    from .lib.linux import psipy
+elif platform == "Darwin":
+    from lib.darwin import psipy
+else:
+    raise ImportError("don't use windows.")
+
+
+
 
 from ..algebra import Algebra, BaseS
 
@@ -89,8 +101,9 @@ class S(BaseS):
         return s
 
 class PSI(Algebra):
-    def __init__(self, values, free_variables):
-        Algebra.__init__(self, values, free_variables)
+    def __init__(self, values, free_variables=set()):
+        Algebra.__init__(self, values)
+        self.free_variables = free_variables
 
     def symbolize(self, expression, variables=set()):
         if isinstance(expression, (int, float)):
@@ -111,6 +124,9 @@ class PSI(Algebra):
             else:
                 vs.add(rv)
         return S(integrant, vs)
+
+    def is_free(self, variable):
+        return variable in self.free_variables
 
     def construct_density(self, name, functor, args):
         args = [a.value for a in args]

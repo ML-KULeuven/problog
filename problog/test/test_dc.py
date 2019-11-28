@@ -13,8 +13,7 @@ if __name__ == "__main__":
     )
 
 
-from problog import root_path
-test_base = root_path('problog', 'tasks', 'dcproblog', 'test')
+
 
 
 
@@ -31,7 +30,7 @@ def get_expected(filename) :
                     return l[len('% error'):].strip()
                 elif l.startswith('% ') :
                     query, prob = l[2:].rsplit(None,1)
-                    results[query.strip()] = float(prob.strip())
+                    results[query.strip()] = prob.strip()
                 else :
                     reading = False
             if l.startswith('query(') and l.find('% outcome:') >= 0 :
@@ -44,6 +43,8 @@ def get_expected(filename) :
 
 
 def get_filenames(*args):
+    from problog import root_path
+    test_base = root_path('problog', 'tasks', 'dcproblog', 'test')
     path2files = os.path.join(test_base, *args)
     testfiles = [os.path.join(path2files,f) for f in os.listdir(path2files) if os.path.isfile(os.path.join(path2files, f))]
     return testfiles
@@ -54,8 +55,39 @@ class TestTasks(unittest.TestCase):
         testfiles = get_filenames("pyro", "examples")
         abe = "pyro"
         args = {"device":"cpu", "ttype":"float64", "n_samples":50000}
-
         for tf in testfiles:
+            expected = {}
+            expected = get_expected(tf)
+
+            args["file_name"] = tf
+            program = PrologFile(args['file_name'], parser=DCParser())
+            solver = InferenceSolver(abe, **args)
+
+            probability = {}
+            print(tf)
+            probabilities = solver.probability(program, **args)
+            print(probabilities)
+            print(expected)
+            computed = {}
+            for k,v in probabilities.items():
+
+                computed[str(k)] = float(v.value)
+
+
+            print(expected)
+            print(computed)
+            for query in expected :
+                self.assertAlmostEqual(float(expected[query]), computed[query], places=2, msg=query)
+
+            print("here")
+
+
+    def test_psi_examples(self):
+        testfiles = get_filenames("psi", "examples")
+        abe = "psi"
+        args = {}
+        for tf in testfiles:
+            expected = {}
             expected = get_expected(tf)
 
             args["file_name"] = tf
@@ -64,14 +96,10 @@ class TestTasks(unittest.TestCase):
             probabilities = solver.probability(program, **args)
             computed = {}
             for k,v in probabilities.items():
-                computed[str(k)] = float(v.value)
+                computed[str(k)] = str(v.value)
 
             for query in expected :
-                self.assertAlmostEqual(expected[query], computed[query], places=2, msg=query)
-
-
-    # def test_psi_examples(self):
-    #     pass
+                self.assertEqual(expected[query], computed[query], msg=query)
 
     # def test_problog_system(self):
     #     path2files = root_path("test")

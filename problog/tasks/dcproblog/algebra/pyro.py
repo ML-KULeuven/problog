@@ -77,7 +77,6 @@ class S(BaseS):
         raise NotImplementedError()
 
     def obs(self,other):
-        print(type(self.value))
         value = other.value
         s = S(value,variables = self.variables | other.variables)
 
@@ -159,10 +158,6 @@ class Pyro(Algebra):
         return self.symbolize(n_symbol, symbol.variables)
 
     def make_observation(self, var, obs):
-        #TODO make sure that observations are always treated before comparisons!
-        #otherwise you will get [sample(x)>0]*[x=2], where you set the second factor to the density image at that point
-        #other option is to make a circuit redection step where you check for redundancies, then is won't happen
-        #can probably do this in FormulaEvaluatorHAL
         density_name = var.name
         dimensions = var.dimensions
         assert dimensions == 1 #TODO allow for multivariate observations

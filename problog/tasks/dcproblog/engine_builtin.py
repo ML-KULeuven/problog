@@ -80,7 +80,6 @@ def _builtin_observation(term, observation, engine=None, target=None, database=N
 
         probability = SymbolicConstant(functor, args=(arg1,arg2), cvariables=cvariables)
 
-
         o_node = target.add_atom(identifier, probability)
         if distribution[1] is None:
             o_node = None
@@ -96,28 +95,6 @@ def _builtin_observation(term, observation, engine=None, target=None, database=N
     result =  [((term,observation), observation_node)]
     return result
 
-
-
-# def _builtin_density(term, args=(), target=None, engine=None, callback=None, transform=None, **kwdargs):
-#     check_mode( (term,), ['c'], functor='density_builtin')
-#     actions = []
-#     try:
-#         node_ids = target.density_nodes[term]
-#     except:
-#         raise ValueError("Cannot query density of discrete random variable ({}).".format(term))
-#     target.density_queries[term] = set()
-#     for nid in node_ids:
-#         if nid in target.density_node_body:
-#             body_node = target.density_node_body[nid]
-#         else:
-#             body_node = target.TRUE
-#         density_name =  target.get_density_name(term, nid)
-#         density = DensityConstant(density_name)
-#         target.add_name(density, body_node, target.LABEL_QUERY)
-#         target.density_queries[term].add(density)
-#     actions += callback.notifyComplete()
-#     return False, actions
-#
 # def _builtin_free(free_variable, args=(), target=None, engine=None, callback=None, transform=None, **kwdargs):
 #     check_mode( (free_variable,), ['c'], functor='free')
 #     actions = []
@@ -136,8 +113,30 @@ def _builtin_observation(term, observation, engine=None, target=None, database=N
 #     actions += callback.notifyComplete()
 #     return True, actions
 
+# def _builtin_density(term, args=(), target=None, engine=None, callback=None, transform=None, **kwdargs):
+#     check_mode( (term,), ['c'], functor='density_builtin')
+#     actions = []
+#     print(target.density_nodes)
+#     try:
+#         target, node_ids = engine._ground(database, Term('~', term, Var('Distribution')), target)
+#         target.density_nodes[term] = node_ids
+#     except:
+#         raise ValueError("Cannot query density of discrete random variable ({}).".format(term))
 
 
+    print(target)
+    target.density_queries[term] = set()
+    for nid in node_ids:
+        if nid in target.density_node_body:
+            body_node = target.density_node_body[nid]
+        else:
+            body_node = target.TRUE
+        density_name =  target.get_density_name(term, nid)
+        density = DensityConstant(density_name)
+        target.add_name(density, body_node, target.LABEL_QUERY)
+        target.density_queries[term].add(density)
+    actions += callback.notifyComplete()
+    return False, actions
 
 
 

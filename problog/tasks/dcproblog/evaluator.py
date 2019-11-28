@@ -1,6 +1,5 @@
 from problog.evaluator import Semiring, FormulaEvaluator
 
-from .algebra.algebra import get_algebra
 
 
 
@@ -8,6 +7,7 @@ class SemiringHAL(Semiring):
     def __init__(self, neutral, abe, density_values):
         Semiring.__init__(self)
         self.neutral = neutral
+        from .algebra.algebra import get_algebra
         self.algebra = get_algebra(abe, density_values)
         self.pos_values = {}
         self.neg_values = {}

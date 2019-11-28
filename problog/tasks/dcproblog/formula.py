@@ -112,6 +112,7 @@ class LogicFormulaHAL(LogicFormula):
         LogicFormula.__init__(self, **kwargs)
         self.density_names = density_names
         self.density_values = density_values
+        self.free_variables = free_variables=set()
 
 
 

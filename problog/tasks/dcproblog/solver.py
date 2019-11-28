@@ -39,17 +39,17 @@ class InferenceSolver(object):
         self.dpath = dpath
         self.file_name = file_name
 
-    def get_density_queries(self, lf_hal):
-        density_queries = lf_hal.density_queries
-        _new_query_names = {}
-        for k,v in lf_hal._names[lf_hal.LABEL_QUERY].items():
-            if isinstance(k,tuple):
-                _new_query_names[k] =v
-            elif not k.functor=="density":
-                _new_query_names[k] =v
-
-        lf_hal._names[lf_hal.LABEL_QUERY] = _new_query_names
-        return density_queries
+    # def get_density_queries(self, lf_hal):
+    #     density_queries = lf_hal.density_queries
+    #     _new_query_names = {}
+    #     for k,v in lf_hal._names[lf_hal.LABEL_QUERY].items():
+    #         if isinstance(k,tuple):
+    #             _new_query_names[k] =v
+    #         elif not k.functor=="density":
+    #             _new_query_names[k] =v
+    #
+    #     lf_hal._names[lf_hal.LABEL_QUERY] = _new_query_names
+    #     return density_queries
 
     def ground(self, model, queries=None, **kwdargs):
         engine = init_engine(**kwdargs)

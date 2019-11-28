@@ -1,10 +1,10 @@
-beta(10,30)~p1.
-beta(10,2)~p2.
-beta(4,7)~p3.
+p1~beta(10,30).
+p2~beta(10,2).
+p3~beta(4,7).
 
-P::fire:- p1~=P.
-P::alarm:- fire, p2~=P.
-P::alarm:- \+fire, p3~=P.
+P::fire:- P is p1.
+P::alarm:- fire, P is p2.
+P::alarm:- \+fire, P is p3.
 
 evidence(alarm).
 

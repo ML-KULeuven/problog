@@ -15,9 +15,8 @@ from .engine_builtin import \
     _builtin_is, \
     _builtin_gt, _builtin_lt, _builtin_le, _builtin_ge, \
     _builtin_observation \
-
-    # _builtin_density, \
-    # _builtin_free_list, _builtin_free, \
+    # _builtin_free_list, _builtin_free \
+    # _builtin_density \
 
     # , _builtin_val_eq, _builtin_val_neq
 
@@ -36,10 +35,10 @@ class EngineHAL(DefaultEngine):
         #
         self.add_builtin('observation_builtin', 2, SimpleBuiltIn(_builtin_observation))
 
-        # self.add_builtin('density_builtin', 1, _builtin_density)
-
         # self.add_builtin('free', 1, _builtin_free)
         # self.add_builtin('free_list', 1, _builtin_free_list)
+
+        # self.add_builtin('density', 1, _builtin_density)
 
 
         # self.add_builtin('=\=', 2, b(_builtin_val_neq))
@@ -50,21 +49,21 @@ class EngineHAL(DefaultEngine):
 
 
 
-    # def _process_directives(self, db, target=None):
-    #     """Process directives present in the database."""
-    #     term = Term('_directive')
-    #     directive_node = db.find(term)
-    #
-    #     if directive_node is None:
-    #         return True    # no directives
-    #     directives = db.get_node(directive_node).children
-    #     if target==None:
-    #         target = LogicFormulaHAL()
-    #
-    #     while directives:
-    #         current = directives.pop(0)
-    #         self.execute(current, database=db, target=target, context=self.create_context((), define=None))
-    #     return True
+    def _process_directives(self, db, target=None):
+        """Process directives present in the database."""
+        term = Term('_directive')
+        directive_node = db.find(term)
+
+        if directive_node is None:
+            return True    # no directives
+        directives = db.get_node(directive_node).children
+        if target==None:
+            target = LogicFormulaHAL()
+
+        while directives:
+            current = directives.pop(0)
+            self.execute(current, database=db, target=target, context=self.create_context((), define=None))
+        return True
 
     def query(self, db, term, gp=None, **kwdargs):
         """
