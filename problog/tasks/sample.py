@@ -321,13 +321,13 @@ class SampledFormula(LogicFormula):
                     if not as_evidence:
                         lines.append("%s = %s." % (str(k), val))
             elif as_evidence:
-                lines.append(base % ("\+" + str(k)))
+                lines.append(base % ("\\+" + str(k)))
         if with_facts:
             for k, v in self.facts.items():
                 if v == 0:
                     lines.append(base % str(translate(db, k)))
                 elif v is None:
-                    lines.append(base % ("\+" + str(translate(db, k))))
+                    lines.append(base % ("\\+" + str(translate(db, k))))
 
         if oneline:
             sep = " "
