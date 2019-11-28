@@ -400,6 +400,7 @@ def builtin_shuffle(lst_in, lst_out, **kwargs):
 
 def builtin_previous(term, default, engine=None, target=None, callback=None, **kwdargs):
     # retrieve term from previous sample, default action if no previous sample
+    # See "A. Dries, Declarative data generation with ProbLog, 2015" for more info
 
     if engine.previous_result is None:
         results = engine.call(default, subcall=True, target=target, **kwdargs)
