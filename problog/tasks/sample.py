@@ -831,26 +831,28 @@ def main(args, result_handler=None):
     else:
         outformat = "str"
         result_handler = print_result
+
+    final_result = None
     try:
         if args.estimate:
             results = estimate(pl, **vars(args))
             print(format_dictionary(results))
         else:
-            result_handler(
-                (True, sample(pl, format=outformat, **vars(args))),
-                output=outf,
-                oneline=args.oneline,
-            )
+            final_result = (True, sample(pl, format=outformat, **vars(args)))
+            result_handler(final_result, output=outf, oneline=args.oneline)
     except Exception as err:
         trace = traceback.format_exc()
         err.trace = trace
-        result_handler((False, err), output=outf)
+        final_result = (False, err)
+        result_handler(final_result, output=outf)
 
     if args.timeout:
         stop_timer()
 
     if args.output is not None:
         outf.close()
+
+    return final_result
 
 
 if __name__ == "__main__":
