@@ -2,11 +2,10 @@ from collections import defaultdict
 from pathlib import Path
 from time import time
 
+from problog.core import ProbLogObject
+from problog.logic import unquote, term2list, ArithmeticError
 from problog.prolog_engine.swip import parse
 from problog.prolog_engine.threaded_prolog import ThreadedProlog
-
-from problog.core import ProbLogObject
-from problog.logic import unquote, term2list, ArithmeticError, Term
 
 
 def handle_prob(prob):
@@ -137,7 +136,7 @@ class SWIProgram(ProbLogObject):
             # return target.add_atom(target.get_next_atom_identifier(), True, name=
             return True
         elif node.functor == 'call':
-            return self.construct_node(node.args[0],target,d)
+            return self.construct_node(node.args[0], target, d)
         else:
             try:
                 return d[node]
@@ -156,79 +155,44 @@ class SWIProgram(ProbLogObject):
             return [term]
 
     def build_formula(self, proofs, target):
+        # Keys are nodes, and the value is a list of all definitions of that node
         nodes = defaultdict(list)
+        # Keys are nodes, and the value is a list of all nodes that this node depends on directly
         dependencies = defaultdict(list)
+        # Keys are nodes, and the values area the keys of the nodes in the ground logic formula
         d = dict()
-        for p in proofs:
-            if p.functor == '::':
-                nodes[p.args[2]].append(p)
-            elif p.functor == ':-':
-                children = self.get_children(p.args[1])
-                nodes[p.args[0]].append(p)
-                dependencies[p.args[0]] += children
+        for p in proofs:  # Loop over all elements of the proof
+            if p.functor == '::':  # If it's a fact
+                nodes[p.args[2]].append(p)  # Add it to the definitions
+            elif p.functor == ':-':  # If it's a clause
+                children = self.get_children(p.args[1])  # Recursively determine its children
+                dependencies[p.args[0]] += children  # Add these to its dependencies
+                nodes[p.args[0]].append(p)  # Add it to the definition
+
         for k in dependencies:
+            # Only keep the dependencies for which there is a definition. If a dependency has no dependency,
+            # it means there's no proof for it and thus deterministically false
             dependencies[k] = [n for n in dependencies[k] if n in nodes]
         while nodes:  # While nodes is not empty
-            new_sol = False
-            keys = list(nodes)
+            new_sol = False  # Keeps track if a new node has been added to the ground formula
+            keys = list(nodes)  # List of keys of the dictionary
             for k in keys:
                 if len(dependencies[k]) == 0:  # If the node has no more undefined children
-                    neg = k.functor == 'neg'
+                    neg = k.functor == 'neg'    # Check whether the current node is negated
                     d[k] = self.construct_node(nodes[k], target, d, neg=neg)  # Construct the node
                     for k2 in dependencies:  # Remove the node from undefined dependency from all nodes
                         try:
                             dependencies[k2].remove(k)
                         except ValueError:
                             pass
-                    new_sol = True
+                    new_sol = True  # A node was added
+                    # Remove the node from the dict as it's fully processed
                     del (nodes[k])
                     del (dependencies[k])
-            if not new_sol:  # No nodes without undefined children, so we have a cycle!
-                break
+            if not new_sol:
+                # No node could be added in this iteration. So all nodes have unfulfilled dependencies
+                raise NotImplemented('Cycles are not yet supported in build_formula')
         return d
-
-    # def build_formula(self, proof, target):
-    #     if not hasattr(target, 'd'):
-    #         target.d = dict()
-    #     t = proof.functor
-    #     if t == ':-':
-    #         name, body = proof.args
-    #         key = self.build_formula(name, target)
-    #         # if str(body) not in target.d:
-    #         if True:
-    #             body_key = self.build_formula(body, target)
-    #             target.add_disjunct(key, body_key)
-    #             target.d[str(body)] = body_key
-    #         return key
-    #     elif t == ',':
-    #         body = proof.args
-    #         new = target.add_and([self.build_formula(b, target) for b in body])
-    #         return new
-    #     elif t == 'neg':
-    #         negated = proof.args[0]
-    #         return -self.build_formula(negated, target)
-    #     # elif t == ';':
-    #     #     body = proof.args
-    #     #     new = target.add_or([self.build_formula(b, target) for b in body])
-    #     #     return new
-    #     elif t == 'true':
-    #         return target.TRUE
-    #     elif t == '::':
-    #         id, p, name = proof.args
-    #         key = self.build_formula(name, target)
-    #         if id not in target.d:
-    #             p = float(proof.args[1])
-    #             fact_key = target.add_atom(target.get_next_atom_identifier(), p, name=name)
-    #             target.add_disjunct(key, fact_key)
-    #             target.d[id] = fact_key
-    #         return key
-    #     else:
-    #         try:
-    #             return target.d[str(proof)]
-    #         except KeyError:
-    #             key = target.add_or([], placeholder=True, readonly=False, name=proof)
-    #             target.d[str(proof)] = key
-    #             return key
 
     def add_proofs(self, proofs, ground_queries, target):
         target.names = dict()
