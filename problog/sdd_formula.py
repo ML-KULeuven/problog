@@ -615,7 +615,7 @@ class SDDManager(DDManager):
         return self.wmc(self.true(), weights, semiring)
 
     def get_deepcopy_noref(
-        self
+        self,
     ):  # TODO might be cleaner to maintain refcounts and deref everything afterwards in SDDExplicit
         """
         Get a deep copy of this without reference counts to inodes.
@@ -887,16 +887,9 @@ class SDDEvaluator(DDEvaluator):
             if not self.semiring.is_nsp():
                 result = self.semiring.one()
             else:
-                # We need the full theory to calculate WMC(Theory & True) so resort to XSDD
-                from problog.sdd_formula_explicit import SDDExplicit
-
-                xsdd = SDDExplicit.create_from(
-                    self.formula, var_constraint=self.formula.var_constraint
-                )
-                result = xsdd.evaluate(
-                    index=0,
-                    semiring=self.semiring,
-                    weights={k: pn_weight(v[0], v[1]) for k, v in self.weights.items()},
+                # WMC(Theory & True & Evidence) / same. The constraints are already included in the evidence node.
+                result = self.semiring.normalize(
+                    self._evidence_weight, self._evidence_weight
                 )
         elif node is self.formula.FALSE:
             result = self.semiring.zero()
