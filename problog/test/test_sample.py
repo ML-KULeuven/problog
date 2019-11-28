@@ -55,9 +55,9 @@ class TestSampleTask(unittest.TestCase):
         )
 
     def test_some_heads_evidence(self):
-        samples = self.get_samples("some_heads_evidence.pl", num_samples=1000)
+        samples = self.get_samples("some_heads_evidence.pl", num_samples=100)
         number_of_some_heads = self.count_number_of_atoms(samples, Term("someHeads"))
-        self.assertAlmostEqual(600, number_of_some_heads, delta=50)
+        self.assertAlmostEqual(60, number_of_some_heads, delta=10)
 
     def test_some_heads_propagate_evidence(self):
         samples = self.get_samples(
@@ -87,7 +87,15 @@ class TestSampleTask(unittest.TestCase):
             )
             previous = s[Term("someHeads")]
 
-    # Tasks stuff
+    def test_maze_generator(self):
+        samples = self.get_samples("maze.pl", num_samples=1)
+        self.assertEqual(1, len(samples))
+        connected_predicates = [
+            p for p in samples[0].keys() if "connected" in p.functor
+        ]
+        self.assertTrue(30 < len(connected_predicates))
+
+    # Tasks
 
     def test_some_heads_task(self):
         file_name = test_folder / "some_heads.pl"
