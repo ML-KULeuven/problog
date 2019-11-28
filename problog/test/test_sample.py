@@ -41,13 +41,6 @@ class TestSampleTask(unittest.TestCase):
             ]
         )
 
-    def test_some_heads_task(self):
-        file_name = test_folder / "some_heads.pl"
-        result = sample.main([str(file_name), "-n", str(1)])
-        success, data = result
-        if not success:
-            self.fail("Could not successfully sample" + str(file_name))
-
     def test_some_heads_distribution(self):
         samples = self.get_samples("some_heads.pl", num_samples=1000)
         self.assertAlmostEqual(
@@ -65,6 +58,19 @@ class TestSampleTask(unittest.TestCase):
         )
         number_of_some_heads = self.count_number_of_atoms(samples, Term("someHeads"))
         self.assertAlmostEqual(600, number_of_some_heads, delta=50)
+
+    # Tasks stuff
+
+    def test_some_heads_task(self):
+        file_name = test_folder / "some_heads.pl"
+        result = sample.main([str(file_name), "-n", str(1)])
+        success, data = result
+        if not success:
+            self.fail("Could not successfully sample" + str(file_name))
+
+    def test_some_heads_task_estimate(self):
+        file_name = test_folder / "some_heads.pl"
+        sample.main([str(file_name), "-n", str(100), "--estimate"])
 
     def test_some_heads_task_propagate_evidence(self):
         file_name = test_folder / "some_heads_evidence.pl"
