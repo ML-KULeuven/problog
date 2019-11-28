@@ -137,6 +137,9 @@ class SWIProgram(ProbLogObject):
         elif node.functor == 'builtin':
             # return target.add_atom(target.get_next_atom_identifier(), True, name=
             return True
+        elif node.functor == 'foreign':
+            # return target.add_atom(target.get_next_atom_identifier(), True, name=
+            return True
         elif node.functor == 'call':
             return self.construct_node(node.args[0],target,d)
         else:
