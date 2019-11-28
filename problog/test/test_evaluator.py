@@ -57,7 +57,7 @@ class TestEvaluator(unittest.TestCase):
             def is_nsp(self):
                 return True
             def pos_value(self, a, key):
-                if isinstance(a, tuple)
+                if isinstance(a, tuple):
                     return a[0]
                 else:
                     return a
