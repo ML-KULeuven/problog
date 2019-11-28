@@ -58,14 +58,14 @@ class TestEvaluator(unittest.TestCase):
                 return True
             def pos_value(self, a, key):
                 if isinstance(a, tuple):
-                    return a[0]
+                    return float(a[0])
                 else:
-                    return a
+                    return float(a)
             def neg_value(self, a, key):
                 if isinstance(a, tuple):
-                    return a[1]
+                    return float(a[1])
                 else:
-                    return 1-a
+                    return 1-float(a)
         program = """
                     0.25::a.
                     query(a).
