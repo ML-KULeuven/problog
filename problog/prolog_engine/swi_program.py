@@ -237,7 +237,6 @@ class SWIProgram(ProbLogObject):
     def add_proofs(self, proofs, ground_queries, target):
         target.names = dict()
         d = self.build_formula(proofs, target)
-        ground_queries = [Term('d')]
         for q in ground_queries:
             key = d[q]
             target.add_name(q, key, label=target.LABEL_QUERY)
