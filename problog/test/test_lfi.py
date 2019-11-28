@@ -59,16 +59,12 @@ def createTestLFI(filename, useparents=False):
         if useparents:
             out = subprocess_check_output(
                 [
-                    sys.executable,
-                    problogcli,
+                    sys.executable, problogcli,
                     "lfi",
                     "-n",
                     "10",
                     "-O",
-                    model.replace(".pl", ".l_pl"),
-                    model,
-                    examples,
-                    "--useparents",
+                    model.replace(".pl", ".l_pl"), model, examples, "--useparents",
                 ]
             )
 
@@ -94,7 +90,7 @@ else:
     for item in test:
         if item.endswith(".l_pl"):
             os.remove(os.path.join(dir_name, item))
-    unit_test_filenames = glob.glob(root_path("test", "lfi", "unit_tests", "*.pl"))
+    unit_test_filenames = glob.glob(root_path("test", "lfi", "unit_tests", "test_*.pl"))
 
 
 # tests for simple cases (non-ADs)
