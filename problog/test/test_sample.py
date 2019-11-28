@@ -16,10 +16,10 @@ class TestSampleTask(unittest.TestCase):
     def setUp(self) -> None:
         random.seed(12345)
 
-    def get_samples(self, file_name, num_samples=1):
+    def get_samples(self, file_name, num_samples=1, **kwargs):
         file_name = test_folder / file_name
         model = PrologString(file_name.read_text())
-        sample_generator = sample.sample(model, n=num_samples, format="dict")
+        sample_generator = sample.sample(model, n=num_samples, format="dict", **kwargs)
         result_list = list(sample_generator)
         self.assertEqual(
             num_samples,
@@ -50,3 +50,8 @@ class TestSampleTask(unittest.TestCase):
         self.assertAlmostEqual(
             800, self.count_number_of_atoms(samples, Term("someHeads")), delta=50
         )
+
+    def test_some_heads_evidence_distribution(self):
+        samples = self.get_samples("some_heads_evidence.pl", num_samples=1000)
+        number_of_some_heads = self.count_number_of_atoms(samples, Term("someHeads"))
+        self.assertAlmostEqual(600, number_of_some_heads, delta=50)
