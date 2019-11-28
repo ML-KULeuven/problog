@@ -73,8 +73,6 @@ class TestTasks(unittest.TestCase):
             for query in expected :
                 self.assertAlmostEqual(float(expected[query]), computed[query], places=2, msg=query)
 
-            print("here")
-
 
     def test_psi_examples(self):
         testfiles = get_filenames("psi", "examples")
