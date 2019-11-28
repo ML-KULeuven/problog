@@ -64,18 +64,12 @@ class TestTasks(unittest.TestCase):
             solver = InferenceSolver(abe, **args)
 
             probability = {}
-            print(tf)
             probabilities = solver.probability(program, **args)
-            print(probabilities)
-            print(expected)
             computed = {}
             for k,v in probabilities.items():
 
                 computed[str(k)] = float(v.value)
 
-
-            print(expected)
-            print(computed)
             for query in expected :
                 self.assertAlmostEqual(float(expected[query]), computed[query], places=2, msg=query)
 

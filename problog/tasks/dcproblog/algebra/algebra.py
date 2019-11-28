@@ -81,12 +81,12 @@ class BaseS(object):
 
 
 class Algebra(object):
-    random_values = {}
-    densities = {}
-    normalization = False #TODO move this to argument of integration functions
-
     def __init__(self, values):
         self.density_values = values
+        self.random_values = {}
+        self.densities = {}
+        self.normalization = False #TODO move this to argument of integration functions
+
 
     @staticmethod
     def name2str(name):
@@ -121,6 +121,7 @@ class Algebra(object):
         return a/z
 
     def get_values(self, density_name, dimension):
+        print(self.random_values)
         if not density_name in self.random_values:
             density = self.density_values[density_name]
             args = [self.construct_algebraic_expression(a) for a in density.distribution_args]
