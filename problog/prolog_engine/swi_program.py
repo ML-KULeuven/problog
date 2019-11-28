@@ -6,7 +6,7 @@ from problog.prolog_engine.swip import parse
 from problog.prolog_engine.threaded_prolog import ThreadedProlog
 
 from problog.core import ProbLogObject
-from problog.logic import unquote, term2list, ArithmeticError
+from problog.logic import unquote, term2list, ArithmeticError, Term
 
 
 def handle_prob(prob):
@@ -114,27 +114,47 @@ class SWIProgram(ProbLogObject):
     def __str__(self):
         return '\n'.join(l + '.' for l in self.get_lines())
 
-    def construct_node(self, node, target, d):
+    def construct_node(self, node, target, d, neg=False):
         if type(node) is list:
-            if len(node) > 1:
+            if neg:
+                return target.add_and([target.negate(self.construct_node(c, target, d)) for c in node])
+            else:
                 return target.add_or([self.construct_node(c, target, d) for c in node])
-            node = node[0]
         if node.functor == '::':
             p = float(node.args[1])
             return target.add_atom(target.get_next_atom_identifier(), p, name=node.args[2])
         elif node.functor == ':-':
             return self.construct_node(node.args[1], target, d)
         elif node.functor == 'neg':
-            return target.negate(self.construct_node(node.args[0], target, d))
+            try:
+                return d[node]
+            except KeyError:
+                return target.negate(self.construct_node(node.args[0], target, d))
         elif node.functor == ',':
             return target.add_and([self.construct_node(c, target, d) for c in node.args])
         elif node.functor == 'true':
             return target.TRUE
+        elif node.functor == 'builtin':
+            # return target.add_atom(target.get_next_atom_identifier(), True, name=
+            return True
+        elif node.functor == 'call':
+            return self.construct_node(node.args[0],target,d)
         else:
             try:
                 return d[node]
             except KeyError:
                 return target.FALSE
+
+    def get_children(self, term):
+        if term.functor == ',':
+            children = []
+            for c in term.args:
+                children += self.get_children(c)
+            return children
+        elif term.functor == 'neg':
+            return self.get_children(term.args[0])
+        else:
+            return [term]
 
     def build_formula(self, proofs, target):
         nodes = defaultdict(list)
@@ -144,12 +164,7 @@ class SWIProgram(ProbLogObject):
             if p.functor == '::':
                 nodes[p.args[2]].append(p)
             elif p.functor == ':-':
-                children = []
-                for b in p.args[1].args:
-                    if b.functor == 'neg':
-                        children.append(b.args[0])
-                    else:
-                        children.append(b)
+                children = self.get_children(p.args[1])
                 nodes[p.args[0]].append(p)
                 dependencies[p.args[0]] += children
         for k in dependencies:
@@ -159,7 +174,8 @@ class SWIProgram(ProbLogObject):
             keys = list(nodes)
             for k in keys:
                 if len(dependencies[k]) == 0:  # If the node has no more undefined children
-                    d[k] = self.construct_node(nodes[k], target, d)  # Construct the node
+                    neg = k.functor == 'neg'
+                    d[k] = self.construct_node(nodes[k], target, d, neg=neg)  # Construct the node
                     for k2 in dependencies:  # Remove the node from undefined dependency from all nodes
                         try:
                             dependencies[k2].remove(k)
@@ -218,6 +234,7 @@ class SWIProgram(ProbLogObject):
     def add_proofs(self, proofs, ground_queries, target):
         target.names = dict()
         d = self.build_formula(proofs, target)
+        ground_queries = [Term('d')]
         for q in ground_queries:
             key = d[q]
             target.add_name(q, key, label=target.LABEL_QUERY)
