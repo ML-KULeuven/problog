@@ -76,6 +76,17 @@ class TestSampleTask(unittest.TestCase):
         )
         self.assertAlmostEqual(0.8, without_propagation[Term("someHeads")], delta=0.05)
 
+    def test_some_heads_previous(self):
+        samples = self.get_samples(
+            "some_heads_previous.pl", num_samples=100, propagate_evidence=True
+        )
+        previous = False
+        for s in samples:
+            self.assertEqual(
+                s[Term("previous", Term("someHeads"), Term("false"))], previous
+            )
+            previous = s[Term("someHeads")]
+
     # Tasks stuff
 
     def test_some_heads_task(self):
