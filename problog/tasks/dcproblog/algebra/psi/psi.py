@@ -1,4 +1,4 @@
-import psipy
+from .lib import psipy
 
 from ..algebra import Algebra, BaseS
 
