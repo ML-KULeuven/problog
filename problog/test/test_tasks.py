@@ -3,8 +3,8 @@ import unittest
 import pytest
 from pathlib import Path
 
-from problog.logic import Constant, Term
-from problog.tasks import map, constraint, explain, time1, shell, bayesnet
+from problog.logic import Constant, Term, Not
+from problog.tasks import map, constraint, explain, time1, shell, bayesnet, mpe
 
 dirname = os.path.dirname(__file__)
 test_folder = Path(dirname, "./../../test/")
@@ -27,6 +27,39 @@ class TestTasks(unittest.TestCase):
                 choices,
             )
             self.assertAlmostEqual(1.878144, score, places=5)
+
+    # def test_mpe_semiring_some_heads(self):
+    #     file_name = test_folder / "tasks" / "some_heads.pl"
+    #     result = mpe.main([str(file_name), "--use-semiring"])
+    #     self.assertTrue(result[0])
+    #     self.assertEqual(0.3, result[1][0])
+    #     self.assertEqual([Term("someHeads")], result[1][1])
+
+    def test_mpe_maxsat_some_heads(self):
+        file_name = test_folder / "tasks" / "some_heads.pl"
+        result = mpe.main([str(file_name), "--use-maxsat"])
+        self.assertTrue(result[0])
+        self.assertAlmostEqual(0.3, result[1][0], places=6)
+        self.assertEqual([Term("someHeads")], result[1][1])
+
+    def test_mpe_maxsat_pgraph(self):
+        file_name = test_folder / "tasks" / "pgraph.pl"
+        result = mpe.main([str(file_name), "--use-maxsat"])
+        self.assertTrue(result[0])
+        print("result", result)
+        self.assertAlmostEqual(0.3, result[1][0], delta=1e6)
+        self.assertEqual(
+            {
+                Term("edge", Constant(1), Constant(2)),
+                Term("edge", Constant(2), Constant(5)),
+                Not("\\+", Term("edge", Constant(1), Constant(3))),
+                Not("\\+", Term("edge", Constant(3), Constant(4))),
+                Term("edge", Constant(4), Constant(5)),
+                Term("edge", Constant(2), Constant(6)),
+                Not("\\+", Term("edge", Constant(5), Constant(6))),
+            },
+            set(result[1][1]),
+        )
 
     def test_explain_trivial(self):
         file_name = test_folder / "tasks" / "map_probabilistic_graph.pl"
