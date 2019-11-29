@@ -3,7 +3,7 @@ import unittest
 from pathlib import Path
 
 from problog.logic import Constant, Term
-from problog.tasks import map, constraint, explain
+from problog.tasks import map, constraint, explain, time1
 
 dirname = os.path.dirname(__file__)
 test_folder = Path(dirname, "./../../test/")
@@ -55,3 +55,8 @@ class TestTasks(unittest.TestCase):
         # Test result
         results = result["results"]
         self.assertAlmostEqual(0.8, results[Term("someHeads")], delta=1e6)
+
+    def test_time(self):
+        file_name = test_folder / "tasks" / "explain_some_heads.pl"
+        result = time1.main([str(file_name)])
+        self.assertEquals(6, len(result))
