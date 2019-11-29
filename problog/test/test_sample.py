@@ -95,6 +95,15 @@ class TestSampleTask(unittest.TestCase):
         ]
         self.assertTrue(30 < len(connected_predicates))
 
+    def test_heights(self):
+        samples = self.get_samples("heights.pl", num_samples=10)
+        self.assertEquals(10, len(samples))
+        for s in samples:
+            self.assertAlmostEqual(
+                360, float(s[Term("twice_height", Term("harry"))]), delta=60
+            )
+        print(samples)
+
     # Tasks
 
     def test_some_heads_task(self):
