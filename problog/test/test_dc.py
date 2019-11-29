@@ -100,7 +100,7 @@ class TestTasks(unittest.TestCase):
 
 
 
-    def test_problog_system(self):
+    def test_pyro_problog_system(self):
         path2files = root_path("test")
         testfiles = [os.path.join(path2files,f) for f in os.listdir(path2files) if os.path.isfile(os.path.join(path2files, f)) and f.endswith(".pl")]
 
@@ -130,6 +130,46 @@ class TestTasks(unittest.TestCase):
                 for query in expected:
                     self.assertAlmostEqual(float(expected[query]), computed[query], msg=query)
 
+
+    def test_psi_problog_system(self):
+        try:
+            import psipy
+        except ImportError:
+            return
+        path2files = root_path("test")
+        testfiles = [os.path.join(path2files,f) for f in os.listdir(path2files) if os.path.isfile(os.path.join(path2files, f)) and f.endswith(".pl")]
+
+        abe = "psi"
+        args = {}
+        for tf in testfiles:
+            expected = get_expected(tf)
+            args["file_name"] = tf
+            try:
+                program = PrologFile(args['file_name'], parser=DCParser())
+                solver = InferenceSolver(abe, **args)
+                probabilities = solver.probability(program, **args)
+                computed = {}
+                for k,v in probabilities.items():
+                    v = str(v.value)
+
+                    if "/" in v:
+                        v = float(v.split("/")[0])/float(v.split("/")[1])
+                    else:
+                        v = float(v)
+                    computed[str(k)] = v
+            except Exception as err :
+                #print("exception %s" % err)
+                e = err
+                computed = None
+
+            if computed is None :
+                self.assertEqual(expected, type(e).__name__)
+            else :
+                self.assertIsInstance( expected, dict )
+                self.assertCountEqual(expected, computed)
+
+                for query in expected:
+                    self.assertAlmostEqual(float(expected[query]), computed[query], msg=query)
 
 if __name__ == "__main__":
     unittest.main()
