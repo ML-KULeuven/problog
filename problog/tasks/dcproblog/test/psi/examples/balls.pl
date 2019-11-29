@@ -1,5 +1,5 @@
 %Expected outcome:
-% a 0.33973214285714293
+% a 3.3973214285714293e-01
 :-use_module(library(lists)).
 
 l(L):- L = [1,2,3,4,5,6,7,8].

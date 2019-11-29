@@ -29,8 +29,7 @@ class SDDHAL(SDD, LogicFormulaHAL):
         :param weights: weights to use
         :return: evaluator for this formula
         """
-        if semiring is None:
-            semiring = SemiringLogProbability()
+        assert semiring
 
         evaluator = self._create_evaluator(semiring, weights, **kwargs)
 
