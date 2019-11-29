@@ -616,7 +616,7 @@ class LFIProblem(LogicProgram):
             false_count = sum(v is False for v in d.values())
             return false_count == len(d) - 1
 
-        def getADtemplate(d, atom):
+        def getADtemplate(d, atom=None):
             """
             This function gets atom's complement AD template.
             This should only be used when the AD contains non-ground terms.
@@ -625,12 +625,42 @@ class LFIProblem(LogicProgram):
             :param atom: an evidence
             :return: atom's complement AD template
             """
-            temp_dict = {
-                k: v
-                for k, v in d.items()
-                if v == "Template" and atom.signature != k.signature
-            }
-            return temp_dict
+            if atom is not None:
+                temp_dict = {
+                    k: v
+                    for k, v in d.items()
+                    if v == "Template" and atom.signature != k.signature
+                }
+                return temp_dict
+            else:
+                temp_dict = {
+                    k: v
+                    for k, v in d.items()
+                    if v == "Template"
+                }
+                return temp_dict
+
+        def add_to_ad_evidence(pair, l, ADtemplate):
+            """
+            :param pair: a new pair of (atom, value)
+            :param l: a list of dictionaries, all dictionaries need to have the same format
+            :return:
+            """
+            (k, v) = pair
+            # if entry k exists, update the value with k
+            for d in l:
+                if k in d:
+                    d[k] = v
+                    return
+            # if entry k does not exist, create a new dictionary from template
+            # and instantiate it with k
+            new_d = dict()
+            for temp_k in ADtemplate.keys():
+                new_key = Term(temp_k.functor, *k.args)
+                new_d[new_key] = None
+            # put v in there
+            new_d[k] = v
+            l.append(new_d)
 
         if self.propagate_evidence:
             result = ExampleSet()
@@ -684,59 +714,30 @@ class LFIProblem(LogicProgram):
                     else:
                         non_ad_evidence[atom] = value
 
-                # Delete all the non grounded atoms (templates) from ad_evidences
-                # Delete Evidence list contains pairs of (dictionary index, atoms)
-                print(index, "AD Evidences\t:", ad_evidences)
-                delete_templates = []
-                for i, d in enumerate(ad_evidences):
-                    for a in d.keys():
-                        if len(a.args) > 0:
-                            non_grounded_atom = False
-                            for atom_arg in a.args:
-                                if isinstance(atom_arg, Var):
-                                    non_grounded_atom = True
-                                    break
-                            if non_grounded_atom:
-                                delete_templates.append((i, a))
-
-                print(index, "Deleted Atoms\t:", delete_templates)
-                # for i, a in delete_templates:
-                #     del ad_evidences[i][a]
-                print(index, "AD Evidences\t:", ad_evidences)
-
-                # Split different instantiations of first order AD to separate dictionaries
+                # grounded_ad_evidences contains all usable evidence (gound, not template)
                 grounded_ad_evidences = []
-                for i, d in enumerate(ad_evidences):
-                    if len(d) == 0:
-                        continue
-
-                    # Check if the dictionary 'd' only contains propositional atoms
-                    non_grounded_case = False
-                    for a, v in d.items():
-                        if len(a.args) > 0 and v == "Template":
-                            non_grounded_case = True
-                            break
-
-                    if not non_grounded_case:
-                        grounded_ad_evidences.append(d)
+                for d in ad_evidences:
+                    # for first order evidence dictionaries
+                    if "Template" in d.values():
+                        # new_ad_evidence is a list of dictionaries
+                        # each dictionary is a group of the AD template instantiation
+                        new_ad_evidence = list()
+                        # get template AD evidence
+                        ADtemplate = getADtemplate(d)
+                        # group all pairs according to ADtemplate
+                        for k, v in d.items():
+                            if v is not "Template":
+                                add_to_ad_evidence((k, v), new_ad_evidence, ADtemplate)
+                        grounded_ad_evidences += new_ad_evidence
+                    # for propositional evidence dictionaries
                     else:
-                        # Create a dictionary of all the groundings of 'd'
-                        grounded_dicts = {}
-                        for a, v in d.items():
-                            if a.args not in grounded_dicts:
-                                grounded_dicts[a.args] = dict()
-                            grounded_dicts[a.args][a] = v
-                        for v in grounded_dicts.values():
-                            grounded_ad_evidences.append(v)
-                print(index, "Grounded ADs\t:", grounded_ad_evidences)
+                        # simply us them
+                        grounded_ad_evidences.append(d)
 
-                for i, a in delete_templates:
-                    del grounded_ad_evidences[i][a]
-                inconsistent = False
+                print(grounded_ad_evidences)
+
+                inconsistent_example = False
                 for i, d in enumerate(grounded_ad_evidences):
-                    if len(d) == 0:
-                        continue
-
                     inconsistent1 = multiple_true(d)
                     inconsistent2 = all_false(d)
                     add_compliment = all_false_except_one(d)
@@ -745,14 +746,14 @@ class LFIProblem(LogicProgram):
                         print(
                             "*** Warning: Inconsistent Evidence Detected! Ignoring this datapoint. ***\n"
                         )
-                        inconsistent = True
+                        inconsistent_example = True
                         continue
                     elif add_compliment:
                         for key, value in d.items():
                             if value is None:
                                 grounded_ad_evidences[i][key] = True
 
-                if not inconsistent:
+                if not inconsistent_example:
                     if len(grounded_ad_evidences) > 0:
                         # There are (fully tunable) ADs in the program
                         atoms = []
