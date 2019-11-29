@@ -147,6 +147,8 @@ class SWIProgram(ProbLogObject):
                     group = name.args[0], name.args[3:]
                 p = float(node.args[1])  # Get its probability
                 # add an atom to the formula
+                if p > 1.0 - 1e-6:
+                    p = None
                 k = target.add_atom(target.get_next_atom_identifier(), p, name=name, group=group)
                 self.d[node] = k
                 return k
