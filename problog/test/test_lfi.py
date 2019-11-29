@@ -124,8 +124,8 @@ if __name__ == "__main__":
     filenames = sys.argv[1:]
 
 else:
-    ignore_previous_output("../../test/lfi/AD_positive/")
-    ADfilenames = glob.glob(root_path("test", "lfi", "AD_positive", "*.pl"))
+    ignore_previous_output("../../test/lfi/AD/")
+    ADfilenames = glob.glob(root_path("test", "lfi", "AD", "*.pl"))
     ignore_previous_output("../../test/lfi/simple/")
     simple_filenames = glob.glob(root_path("test", "lfi", "simple", "*.pl"))
     ignore_previous_output("../../test/lfi/useParents/")
