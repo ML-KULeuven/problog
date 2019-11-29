@@ -27,10 +27,14 @@ import re
 import sys
 from collections import defaultdict
 
+
 def builtin_annotate(annotation, *terms, **kwdargs):
     return builtin_annotate_help(annotation, terms, **kwdargs)
 
-def builtin_annotate_help(annotation, terms, target=None, database=None, engine=None, **kwdargs):
+
+def builtin_annotate_help(
+    annotation, terms, target=None, database=None, engine=None, **kwdargs
+):
     body = And.from_list(terms)
     body_vars = body.variables()
 
@@ -39,7 +43,9 @@ def builtin_annotate_help(annotation, terms, target=None, database=None, engine=
     subdb = database.extend()
     subdb += clause
 
-    results = engine.call(clause_head, subcall=True, database=subdb, target=target, **kwdargs)
+    results = engine.call(
+        clause_head, subcall=True, database=subdb, target=target, **kwdargs
+    )
     results = [(res, n) for res, n in results]
 
     output = []
@@ -48,6 +54,7 @@ def builtin_annotate_help(annotation, terms, target=None, database=None, engine=
         output.append(([annotation] + [term.apply(varvalues) for term in terms], node))
         target.annotations[node].append(annotation)
     return output
+
 
 def main(filename=None):
 
@@ -58,23 +65,22 @@ def main(filename=None):
         with open(filename) as f:
             data = f.read()
 
-    data, count = re.subn('@([^(]+)[(]', r'annotate(\1, ', data)
+    data, count = re.subn("@([^(]+)[(]", r"annotate(\1, ", data)
     model = PrologString(data)
-
 
     engine = DefaultEngine(label_all=True)
     for i in range(2, 10):
-        engine.add_builtin('annotate', i, SimpleProbabilisticBuiltIn(builtin_annotate))
+        engine.add_builtin("annotate", i, SimpleProbabilisticBuiltIn(builtin_annotate))
     db = engine.prepare(model)
 
     gp = LogicFormula(keep_all=True)
     gp.annotations = defaultdict(list)
 
     gp = engine.ground_all(db, target=gp)
-    print (gp)
-    print (gp.annotations)
+    print(gp)
+    print(gp.annotations)
     pass
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main(*sys.argv[1:])

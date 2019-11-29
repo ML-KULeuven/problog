@@ -21,11 +21,11 @@ from bn2problog import BNParser
 try:
     from problog.pgm.cpd import Variable, Factor, PGM
 except ImportError:
-    sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+    sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
     from problog.pgm.cpd import Variable, Factor, PGM
 
 
-logger = logging.getLogger('be.kuleuven.cs.dtai.problog.bn2problog')
+logger = logging.getLogger("be.kuleuven.cs.dtai.problog.bn2problog")
 
 
 class XMLBIFParser(BNParser):
@@ -42,7 +42,7 @@ class XMLBIFParser(BNParser):
         root = tree.getroot()
 
         self.check_version(root)
-        networks = root.findall('NETWORK')
+        networks = root.findall("NETWORK")
         if len(networks) == 0:
             logger.error("No <NETWORK> tag found.", halt=True)
         if len(networks) > 1:
@@ -51,53 +51,67 @@ class XMLBIFParser(BNParser):
         self.parse_name(network)
         self.parse_properties(network)
         self.parse_domains(network)
-        for cpt in network.findall('DEFINITION'):
+        for cpt in network.findall("DEFINITION"):
             self.parse_cpt(cpt)
         return self.pgm
 
     def check_version(self, root):
-        version = float(root.get('VERSION'))
+        version = float(root.get("VERSION"))
         if version < 0.3:
-            logger.error("Outdated version ({}), expects at least 0.3".format(version), halt=True)
+            logger.error(
+                "Outdated version ({}), expects at least 0.3".format(version), halt=True
+            )
 
     def parse_name(self, root):
         try:
-            name = root.find('NAME').text
+            name = root.find("NAME").text
             self.pgm.name = name
         except Exception:
             pass
 
     def parse_properties(self, root):
         try:
-            props = root.findall('PROPERTY')
+            props = root.findall("PROPERTY")
             for prop in props:
                 self.pgm.comments.append(prop.text)
         except Exception:
             pass
 
     def parse_domains(self, root):
-        for cpt in root.findall('VARIABLE'):
-            rv = cpt.find('NAME').text
+        for cpt in root.findall("VARIABLE"):
+            rv = cpt.find("NAME").text
             node_type = cpt.get("TYPE")
             if node_type != "nature":
-                logger.error("Only probabilistic variables are supported. Found type {} for variable {}".format(node_type, name), halt=True)
-            states = cpt.findall('OUTCOME')
+                logger.error(
+                    "Only probabilistic variables are supported. Found type {} for variable {}".format(
+                        node_type, name
+                    ),
+                    halt=True,
+                )
+            states = cpt.findall("OUTCOME")
             values = [state.text for state in states]
             self.domains[rv] = values
-            self.pgm.add_var(Variable(rv, values, detect_boolean=self.detect_bool, force_boolean=self.force_bool))
+            self.pgm.add_var(
+                Variable(
+                    rv,
+                    values,
+                    detect_boolean=self.detect_bool,
+                    force_boolean=self.force_bool,
+                )
+            )
 
     def parse_cpt(self, cpt):
-        rv = cpt.find('FOR').text
+        rv = cpt.find("FOR").text
         if rv not in self.domains:
-            logger.error('Domain for {} not defined.'.format(rv), halt=True)
+            logger.error("Domain for {} not defined.".format(rv), halt=True)
             sys.exit(1)
         values = self.domains[rv]
-        parents = cpt.findall('GIVEN')
+        parents = cpt.findall("GIVEN")
         if parents is None:
             parents = []
         else:
             parents = [parent.text for parent in parents]
-        parameters = [float(p) for p in cpt.find('TABLE').text.strip().split()]
+        parameters = [float(p) for p in cpt.find("TABLE").text.strip().split()]
         if len(parents) == 0:
             table = parameters
             self.pgm.add_factor(Factor(self.pgm, rv, parents, table))
@@ -109,15 +123,19 @@ class XMLBIFParser(BNParser):
         table = {}
         idx = 0
         for val_assignment in itertools.product(*parent_domains):
-            table[val_assignment] = parameters[idx:idx + dom_size]
+            table[val_assignment] = parameters[idx : idx + dom_size]
             idx += dom_size
         self.pgm.add_factor(Factor(self.pgm, rv, parents, table))
 
 
 def main(argv=None):
-    parser = argparse.ArgumentParser(description='Translate Bayesian net in XMLBIF format format to ProbLog')
-    parser.add_argument('--verbose', '-v', action='count', default=0, help='Verbose output')
-    parser.add_argument('--quiet', '-q', action='count', default=0, help='Quiet output')
+    parser = argparse.ArgumentParser(
+        description="Translate Bayesian net in XMLBIF format format to ProbLog"
+    )
+    parser.add_argument(
+        "--verbose", "-v", action="count", default=0, help="Verbose output"
+    )
+    parser.add_argument("--quiet", "-q", action="count", default=0, help="Quiet output")
     XMLBIFParser.add_parser_arguments(parser)
     args = parser.parse_args(argv)
 

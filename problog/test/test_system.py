@@ -264,6 +264,18 @@ class SemiringProbabilityNSPCopy(SemiringProbabilityCopy):
     def is_nsp(self):
         return True
 
+    def pos_value(self, a, key):
+        if isinstance(a, tuple):
+            return float(a[0])
+        else:
+            return float(a)
+
+    def neg_value(self, a, key):
+        if isinstance(a, tuple):
+            return float(a[1])
+        else:
+            return 1 - float(a)
+
 
 if __name__ == "__main__":
     filenames = sys.argv[1:]
