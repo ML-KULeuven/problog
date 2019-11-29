@@ -56,16 +56,19 @@ class TestEvaluator(unittest.TestCase):
         class TestSemiringProbabilityNSP(SemiringProbability):
             def is_nsp(self):
                 return True
+
             def pos_value(self, a, key):
                 if isinstance(a, tuple):
                     return float(a[0])
                 else:
                     return float(a)
+
             def neg_value(self, a, key):
                 if isinstance(a, tuple):
                     return float(a[1])
                 else:
-                    return 1-float(a)
+                    return 1 - float(a)
+
         program = """
                     0.25::a.
                     query(a).
