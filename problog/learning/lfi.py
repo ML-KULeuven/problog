@@ -730,7 +730,7 @@ class LFIProblem(LogicProgram):
                         # simply us them
                         grounded_ad_evidences.append(d)
 
-                print(grounded_ad_evidences)
+                # print(grounded_ad_evidences)
 
                 inconsistent_example = False
                 for i, d in enumerate(grounded_ad_evidences):
@@ -742,14 +742,14 @@ class LFIProblem(LogicProgram):
                         print(
                             "*** Warning: Inconsistent Evidence Detected! Ignoring this datapoint. ***\n"
                         )
-                        inconsistent = True
+                        inconsistent_example = True
                         continue
                     elif add_compliment:
                         for key, value in d.items():
                             if value is None:
                                 grounded_ad_evidences[i][key] = True
 
-                if not inconsistent and len(grounded_ad_evidences) > 0:
+                if not inconsistent_example and len(grounded_ad_evidences) > 0:
                     # There are (fully tunable) ADs in the program
                     evidence_set = set()
                     for d in grounded_ad_evidences:
@@ -788,10 +788,7 @@ class LFIProblem(LogicProgram):
         print()
         for i, example in enumerate(examples):
             print("Compiling example {}/{}".format(i + 1, len(examples)))
-            try:
-                example.compile(self, baseprogram)
-            except InconsistentEvidenceError:
-                print("Ignoring example {}/{}".format(i + 1, len(examples)))
+            example.compile(self, baseprogram)
         self._compiled_examples = examples
 
     def _process_atom(self, atom, body):
@@ -1250,7 +1247,21 @@ class LFIProblem(LogicProgram):
                 self._weights, eps=self._eps, use_parents=self._use_parents
             )
 
-        return list(chain.from_iterable(map(evaluator, self._compiled_examples)))
+        results = []
+        for i, example in enumerate(self._compiled_examples):
+            try:
+                results.append(evaluator(example))
+            except InconsistentEvidenceError:
+                print(
+                    "Ignoring example {}/{}".format(i + 1, len(self._compiled_examples))
+                )
+
+        # for result in results:
+        #     print(result)
+
+        return list(chain.from_iterable(results))
+
+        # return list(chain.from_iterable(map(evaluator, self._compiled_examples)))
 
     def _update(self, results):
         """Update the current estimates based on the latest evaluation results."""
