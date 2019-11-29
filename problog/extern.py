@@ -136,7 +136,7 @@ class problog_export(object):
 
         def _wrapped_function(*args, **kwdargs):
             bound = check_mode(args, list(self._extract_callmode()), funcname, **kwdargs)
-            converted_args = self._convert_inputs(args)
+            converted_args = self.t_convert_inputs(args)
 
             argspec = inspect.getargspec(func)
             if argspec.keywords is not None:
