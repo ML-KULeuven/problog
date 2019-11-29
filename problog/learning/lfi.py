@@ -625,7 +625,11 @@ class LFIProblem(LogicProgram):
             :param atom: an evidence
             :return: atom's complement AD template
             """
-            temp_dict = {k:v for k, v in d.items() if v == "Template" and atom.signature != k.signature}
+            temp_dict = {
+                k: v
+                for k, v in d.items()
+                if v == "Template" and atom.signature != k.signature
+            }
             return temp_dict
 
         if self.propagate_evidence:
@@ -644,7 +648,7 @@ class LFIProblem(LogicProgram):
                         if var.is_ground():
                             d[var] = None  # for ground unknown evidence
                         else:
-                            d[var] = "Template" # for unground unknown evidence
+                            d[var] = "Template"  # for unground unknown evidence
                     ad_evidences.append(d)
 
                 # add all evidence in the example to ad_evidences

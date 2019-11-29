@@ -59,12 +59,16 @@ def createTestLFI(filename, useparents=False):
         if useparents:
             out = subprocess_check_output(
                 [
-                    sys.executable, problogcli,
+                    sys.executable,
+                    problogcli,
                     "lfi",
                     "-n",
                     "10",
                     "-O",
-                    model.replace(".pl", ".l_pl"), model, examples, "--useparents",
+                    model.replace(".pl", ".l_pl"),
+                    model,
+                    examples,
+                    "--useparents",
                 ]
             )
 
