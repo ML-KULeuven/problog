@@ -62,3 +62,23 @@ class TestTasks(unittest.TestCase):
         result = time1.main([str(file_name)])
         self.assertEquals(6, len(result))
 
+    def test_bn(self):
+        file_name = test_folder / "tasks" / "some_heads.pl"
+        result = bayesnet.main([str(file_name)])
+        print("result", result)
+        self.assertTrue(result[0])
+        self.assertEqual(
+            "Factor (c0) = 0, 1\n(): [0.5, 0.5]"
+            "\n\nOrCPT heads1 [0,1] -- c0"
+            "\n('c0', 1)"
+            "\n\nFactor (c1) = 0, 1"
+            "\n(): [0.4, 0.6]"
+            "\n\nOrCPT heads2 [0,1] -- c1"
+            "\n('c1', 1)"
+            "\n\nFactor (c2 | heads1) = 0, 1"
+            "\n(False,): [1.0, 0.0]\n(True,): [0.0, 1.0]"
+            "\n\nOrCPT someHeads [0,1] -- c2,c3\n('c2', 1)\n('c3', 1)"
+            "\n\nFactor (c3 | heads2) = 0, 1"
+            "\n(False,): [1.0, 0.0]\n(True,): [0.0, 1.0]\n",
+            result[1],
+        )
