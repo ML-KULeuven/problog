@@ -666,6 +666,7 @@ class LFIProblem(LogicProgram):
                         # First Order evidence
                         else:
                             # find the right AD dictionary : AD_dict
+                            AD_dict = None
                             for d in ad_evidences:
                                 if any([atom.signature == k.signature for k in d]):
                                     AD_dict = d
@@ -675,15 +676,15 @@ class LFIProblem(LogicProgram):
                                 AD_dict[atom] = value
                                 # also add other AD parts in the dictionary with value==None
                                 other_ADs = getADtemplate(AD_dict, atom)
-                                for var in other_ADs.keys():
-                                    new_key = Term(var.functor, *atom.args)
+                                for otherAD in other_ADs.keys():
+                                    new_key = Term(otherAD.functor, *atom.args)
                                     AD_dict[new_key] = AD_dict.get(new_key, None)
                             else:
                                 non_ad_evidence[atom] = value
                     else:
                         non_ad_evidence[atom] = value
 
-                # Delete all the non grounded atoms from ad_evidences
+                # Delete all the non grounded atoms (templates) from ad_evidences
                 # Delete Evidence list contains pairs of (dictionary index, atoms)
                 print(index, "AD Evidences\t:", ad_evidences)
                 delete_templates = []
