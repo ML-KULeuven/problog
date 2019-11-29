@@ -633,11 +633,7 @@ class LFIProblem(LogicProgram):
                 }
                 return temp_dict
             else:
-                temp_dict = {
-                    k: v
-                    for k, v in d.items()
-                    if v == "Template"
-                }
+                temp_dict = {k: v for k, v in d.items() if v == "Template"}
                 return temp_dict
 
         def add_to_ad_evidence(pair, l, ADtemplate):
@@ -792,7 +788,10 @@ class LFIProblem(LogicProgram):
         print()
         for i, example in enumerate(examples):
             print("Compiling example {}/{}".format(i + 1, len(examples)))
-            example.compile(self, baseprogram)
+            try:
+                example.compile(self, baseprogram)
+            except InconsistentEvidenceError:
+                print("Ignoring example {}/{}".format(i + 1, len(examples)))
         self._compiled_examples = examples
 
     def _process_atom(self, atom, body):
