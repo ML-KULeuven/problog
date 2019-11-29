@@ -100,13 +100,13 @@ class PSI(Algebra):
         else:
             return S(expression, variables=set(variables))
 
-    def integrate(self, weight):
+    def integrate(self, weight, normalization=False):
         integrant = weight.value
         vs = set()
         for rv in weight.variables:
             integrant = psipy.mul(integrant, self.densities[rv[:-1]])
         for rv in weight.variables:
-            if self.normalization or not self.is_free(rv[:-1]):
+            if normalization or not self.is_free(rv[:-1]):
                 integrant = psipy.integrate(self.random_values[rv[:-1]], integrant)
             else:
                 vs.add(rv)

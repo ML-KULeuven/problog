@@ -1,10 +1,9 @@
-from collections import namedtuple, defaultdict
+from collections import defaultdict
 
-from problog.formula import LogicFormula, LogicNNF, atom
+from problog.formula import LogicFormula, atom
 from problog.logic import Constant, Term, term2list
 
-from .logic import pdfs, cdfs, LogicVectorConstant, SymbolicConstant, RandomVariableConstant, RandomVariableComponentConstant, comparison_functors
-from .evaluator import FormulaEvaluatorHAL
+from .logic import LogicVectorConstant, SymbolicConstant, RandomVariableConstant, RandomVariableComponentConstant, comparison_functors
 from .algebra.algebra import Algebra
 
 
@@ -14,95 +13,6 @@ class DiGraph(object):
         self.value_links = {}
 
 
-class LogicNNFHAL(LogicNNF):
-    """A propositional formula in NNF form (i.e. only negation on facts)."""
-    def __init__(self, auto_compact=True, **kwdargs):
-        LogicNNF.__init__(self, auto_compact=True, **kwdargs)
-        self._str2name = {}
-
-    def _create_evaluator(self, semiring, weights, **kwargs):
-            return FormulaEvaluatorHAL(self, semiring, weights)
-
-    def evaluate(self, index=None, semiring=None, evidence=None, weights=None, **kwargs):
-        """Evaluate a set of nodes.
-
-        :param index: node to evaluate (default: all queries)
-        :param semiring: use the given semiring
-        :param evidence: use the given evidence values (overrides formula)
-        :param weights: use the given weights (overrides formula)
-        :return: The result of the evaluation expressed as an external value of the semiring. \
-         If index is ``None`` (all queries) then the result is a dictionary of name to value.
-        """
-
-        evaluator = self.get_evaluator(semiring, evidence, weights, **kwargs)
-        # evaluator._fact_weights = {}
-        if index is None:
-            result = {}
-            # Probability of query given evidence
-
-            # interrupted = False
-            for name, node, label in evaluator.formula.labeled():
-                w = evaluator.evaluate(node)
-                result[name] = w
-        else:
-            result = evaluator.evaluate(index)
-
-        return result
-
-
-    def extract_weights(self, semiring, weights=None):
-        """Extracts the positive and negative weights for all atoms in the data structure.
-
-        :param semiring: semiring that determines the interpretation of the weights
-        :param weights: dictionary of { node name : weight } that overrides the builtin weights
-        :returns: dictionary { key: (positive weight, negative weight) }
-        :rtype: dict[int, tuple[any]]
-
-        Atoms with weight set to neutral will get weight ``(semiring.one(), semiring.one())``.
-
-        If the weights argument is given, it completely replaces the formula's weights.
-
-        All constraints are applied to the weights.
-        """
-
-        if weights is None:
-            weights = self.get_weights()
-        else:
-            oweights = dict(self.get_weights().items())
-            oweights.update({self.get_node_by_name(n): v for n, v in weights.items()})
-            weights = oweights
-
-        result = {}
-        observation_weight_nodes = [w for w  in weights if weights[w].functor=="observation"]
-        for on in observation_weight_nodes:
-            name = self._get_name(on)
-            result[on] = semiring.pos_value(weights[on], name, index=on), semiring.neg_value(weights[on], name, index=on)
-
-
-        for n, w in weights.items():
-            if n in observation_weight_nodes:
-                continue
-            name = self._get_name(n)
-            if w == self.WEIGHT_NEUTRAL and type(self.WEIGHT_NEUTRAL) == type(w):
-                result[n] = semiring.one(), semiring.one()
-            elif w == False:
-                result[n] = semiring.false(name)
-            elif w is None:
-                result[n] = semiring.true(name)
-            else:
-                result[n] = semiring.pos_value(w, name, index=n), semiring.neg_value(w, name, index=n)
-
-        for c in self.constraints():
-            c.update_weights(result, semiring)
-
-        return result
-
-    def _get_name(self, n):
-        if hasattr(self, 'get_name'):
-            name = self.get_name(n)
-        else:
-            name = n
-        return name
 
 
 class LogicFormulaHAL(LogicFormula):

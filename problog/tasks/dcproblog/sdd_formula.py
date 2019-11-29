@@ -1,13 +1,13 @@
-from collections import defaultdict
+from collections import OrderedDict
 
 from problog.core import transform, transform_create_as
 from problog.dd_formula import build_dd
-from problog.sdd_formula import SDD
+from problog.sdd_formula import SDD, SDDEvaluator
 from problog.formula import LogicFormula
 
 
 from .formula import atom, LogicFormulaHAL
-from .dd_formula import DDEvaluatorHAL
+
 
 
 class SDDHAL(SDD, LogicFormulaHAL):
@@ -17,7 +17,7 @@ class SDDHAL(SDD, LogicFormulaHAL):
         self.density_values = {}
 
     def _create_evaluator(self, semiring, weights, **kwargs):
-        return DDEvaluatorHAL(self, semiring, weights, **kwargs)
+        return SDDEvaluatorHAL(self, semiring, weights, **kwargs)
 
     def get_evaluator(self, semiring=None, evidence=None, weights=None, keep_evidence=False, **kwargs):
         """Get an evaluator for computing queries on this formula.
@@ -126,7 +126,139 @@ class SDDHAL(SDD, LogicFormulaHAL):
         return retval
 
 
+    def extract_weights(self, semiring, weights=None):
+        """Extracts the positive and negative weights for all atoms in the data structure.
 
+        :param semiring: semiring that determines the interpretation of the weights
+        :param weights: dictionary of { node name : weight } that overrides the builtin weights
+        :returns: dictionary { key: (positive weight, negative weight) }
+        :rtype: dict[int, tuple[any]]
+
+        Atoms with weight set to neutral will get weight ``(semiring.one(), semiring.one())``.
+
+        If the weights argument is given, it completely replaces the formula's weights.
+
+        All constraints are applied to the weights.
+        """
+
+        if weights is None:
+            weights = self.get_weights()
+        else:
+            oweights = dict(self.get_weights().items())
+            oweights.update({self.get_node_by_name(n): v for n, v in weights.items()})
+            weights = oweights
+
+        result = {}
+        observation_weight_nodes = [w for w  in weights if weights[w].functor=="observation"]
+        for on in observation_weight_nodes:
+            name = self._get_name(on)
+            result[on] = semiring.pos_value(weights[on], name, on), semiring.neg_value(weights[on], name, on)
+
+
+        for n, w in weights.items():
+            if n in observation_weight_nodes:
+                continue
+            name = self._get_name(n)
+            if w == self.WEIGHT_NEUTRAL and type(self.WEIGHT_NEUTRAL) == type(w):
+                result[n] = semiring.one(), semiring.one()
+            elif w == False:
+                result[n] = semiring.false(name)
+            elif w is None:
+                result[n] = semiring.true(name)
+            else:
+                result[n] = semiring.pos_value(w, name, index=n), semiring.neg_value(w, name, index=n)
+
+        for c in self.constraints():
+            c.update_weights(result, semiring)
+
+        return result
+
+    def _get_name(self, n):
+        if hasattr(self, 'get_name'):
+            name = self.get_name(n)
+        else:
+            name = n
+        return name
+
+
+
+
+
+class SDDEvaluatorHAL(SDDEvaluator):
+    def __init__(self, formula, semiring,  weights=None, **kwargs):
+        SDDEvaluator.__init__(self, formula, semiring, weights, **kwargs)
+        self.__observation = []
+
+    def observation(self):
+        """Iterate over observation."""
+        return iter(self.__observation)
+
+    def add_observation(self, node):
+        """Add observation"""
+        self.__observation.append(node)
+
+    def has_observation(self):
+        """Checks whether there is active observation."""
+        return self.__observation != []
+
+
+    def propagate(self):
+        self._initialize()
+        self.normalization = None
+
+    def _initialize(self, with_evidence=True):
+        self.weights.clear()
+        weights = self.formula.extract_weights(self.semiring, self.given_weights)
+        for atom, weight in weights.items():
+            av = self.formula.atom2var.get(atom)
+            if av is not None:
+                self.weights[av] = weight
+        if with_evidence:
+            for ev in self.evidence():
+                if ev in self.formula.atom2var:
+                    # Only for atoms
+                    self.set_evidence(self.formula.atom2var[ev], ev > 0)
+
+
+    def get_sdds(self):#node
+        result = {}
+        constraint_inode = self.formula.get_constraint_inode()
+        evidence_nodes = [self.formula.get_inode(ev) for ev in self.evidence()]
+        observation_nodes = [self.formula.get_inode(ob) for ob in self.observation()]
+
+        self.evidence_inode = self._get_manager().conjoin(constraint_inode, *(observation_nodes), *(evidence_nodes))
+        result["e"] = self.evidence_inode
+        result["qe"] = OrderedDict()
+        for query, node in self.formula.queries():
+            if node is self.formula.FALSE:
+                result["qe"][query] = self.formula.FALSE
+            else:
+                query_def_inode = self.formula.get_inode(node)
+                evidence_inode = self.evidence_inode
+                query_sdd = self._get_manager().conjoin(query_def_inode, evidence_inode)
+                result["qe"][query] = query_sdd
+        return result
+
+    def evaluate_sdd(self, sdd, normalization=False, evaluation_last=False):
+        if sdd is None:
+            result = self.semiring.zero()
+        elif sdd.is_true():
+            if not self.semiring.is_nsp():
+                result = self.semiring.one()
+            else:
+                result = self._evidence_weight
+        elif sdd.is_false():
+            result = self.semiring.zero()
+        else:
+            smooth_to_root = self.semiring.is_nsp()
+            result = self._get_manager().wmc(sdd, weights=self.weights, semiring=self.semiring,
+                                                 pr_semiring=False, perform_smoothing=True,
+                                                 smooth_to_root=smooth_to_root)
+            result = self.semiring.result(result, normalization=normalization)
+            if evaluation_last:
+                self._get_manager().deref(sdd)
+
+        return result
 
 
 @transform(LogicFormula, SDDHAL)

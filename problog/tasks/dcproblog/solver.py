@@ -2,6 +2,7 @@ import os
 from collections import OrderedDict
 
 from problog.formula import LogicFormula
+from problog.errors import InconsistentEvidenceError
 
 from .cycles import break_cycles
 from .engine import init_engine
@@ -66,13 +67,15 @@ class InferenceSolver(object):
         return diagram
 
 
-    def calculate_probabilities(self, sdds, semiring, dde, **kwdargs):
+    def calculate_probabilities(self, sdds, dde, **kwdargs):
         probabilities = OrderedDict()
-        e_evaluated = dde.evaluate_sdd(sdds["e"], semiring, normalization=True, evaluation_last=False)
+        e_evaluated = dde.evaluate_sdd(sdds["e"], normalization=True, evaluation_last=False)
+        if e_evaluated.value == dde.semiring.zero().value:
+            raise InconsistentEvidenceError(context=': after evaluating evidence')
         for q, qe_sdd in sdds["qe"].items():
             #if evalutation last true then sdd deref but produces error
-            qe_evaluated = dde.evaluate_sdd(qe_sdd, semiring, evaluation_last=False)
-            q_probability = semiring.algebra.probability(qe_evaluated, e_evaluated)
+            qe_evaluated = dde.evaluate_sdd(qe_sdd, evaluation_last=False)
+            q_probability = dde.semiring.algebra.probability(qe_evaluated, e_evaluated)
             probabilities[q] = q_probability
         return probabilities
 
@@ -106,6 +109,7 @@ class InferenceSolver(object):
         lf_hal = self.ground(program, queries=None, **kwdargs)
         lf_hal = break_cycles(lf_hal, LogicFormulaHAL(density_values=lf_hal.density_values, \
             density_names=lf_hal.density_names, **kwdargs))
+
         semiring = SemiringHAL(self.operator.get_neutral(), self.abstract_abe, lf_hal.density_values)
         diagram = self.compile_formula(lf_hal, **kwdargs)
         dde = diagram.get_evaluator(semiring=semiring, **kwdargs)
@@ -118,7 +122,7 @@ class InferenceSolver(object):
             assert not dde.evidence_inode==None
             self.make_diagram(dde, sdds)
 
-        probabilities = self.calculate_probabilities(sdds, semiring, dde, **kwdargs)
+        probabilities = self.calculate_probabilities(sdds, dde, **kwdargs)
         return probabilities
 
     def print_result(self, probabilities):

@@ -85,7 +85,6 @@ class Algebra(object):
         self.density_values = values
         self.random_values = {}
         self.densities = {}
-        self.normalization = False #TODO move this to argument of integration functions
 
 
     @staticmethod
@@ -113,7 +112,7 @@ class Algebra(object):
         return self.construct_algebraic_expression(expression)
     def negate(self,a):
         return self.construct_negated_algebraic_expression(a)
-    def result(self, a, formula=None):
+    def result(self, a, normalization=False):
         return self.integrate(a)
     def probability(self, a, z):
         if not a:

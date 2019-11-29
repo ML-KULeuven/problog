@@ -110,13 +110,13 @@ class Pyro(Algebra):
         else:
             return S(expression, variables=set(variables))
 
-    def integrate(self, weight):
+    def integrate(self, weight, normalization=False):
         if isinstance(weight.value, (int,float)):
-            return S(weight.value*self.n_samples)
-        elif self.normalization:
-            return S(torch.sum(weight.value))
+            return S(weight.value)
+        elif normalization:
+            return S(torch.mean(weight.value))
         else:
-            return S(torch.sum(weight.value))
+            return S(torch.mean(weight.value))
 
 
     @staticmethod
