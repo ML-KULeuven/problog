@@ -752,33 +752,27 @@ class LFIProblem(LogicProgram):
                             if value is None:
                                 grounded_ad_evidences[i][key] = True
 
-                if not inconsistent:
-                    if len(grounded_ad_evidences) > 0:
-                        # There are (fully tunable) ADs in the program
-                        evidence_set = set()
-                        for d in grounded_ad_evidences:
-                            for key, value in d.items():
-                                if value is not None:
-                                    evidence_set.add((key, value, None))
+                if not inconsistent and len(grounded_ad_evidences) > 0:
+                    # There are (fully tunable) ADs in the program
+                    evidence_set = set()
+                    for d in grounded_ad_evidences:
+                        for key, value in d.items():
+                            if value is not None:
+                                evidence_set.add((key, value, None))
 
-                        for key, value in non_ad_evidence.items():
-                            evidence_set.add((key, value, None))
+                    for key, value in non_ad_evidence.items():
+                        evidence_set.add((key, value, None))
 
-                        atoms, values, cvalues = zip(*evidence_set)
-                        print(index, "Push evidence\t:", atoms, values, cvalues, "\n")
-                        result.add(
-                            index, atoms, values, cvalues, use_parents=use_parents
-                        )
+                    atoms, values, cvalues = zip(*evidence_set)
+                    print(index, "Push evidence\t:", atoms, values, cvalues, "\n")
+                    result.add(index, atoms, values, cvalues, use_parents=use_parents)
 
-                    else:
-                        # No AD case
-                        atoms, values, cvalues = zip(*example)
-                        print(index, "Push evidence\t:", atoms, values, "\n")
-                        result.add(
-                            index, atoms, values, cvalues, use_parents=use_parents
-                        )
-            # for example in result:
-            #     print(example)
+                else:
+                    # (No AD case) or (Inconsistent Evidence Case)
+                    atoms, values, cvalues = zip(*example)
+                    print(index, "Push evidence\t:", atoms, values, "\n")
+                    result.add(index, atoms, values, cvalues, use_parents=use_parents)
+
             return result
         else:
             # smarter: compile-once all examples with same atoms
