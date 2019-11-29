@@ -755,29 +755,19 @@ class LFIProblem(LogicProgram):
                 if not inconsistent:
                     if len(grounded_ad_evidences) > 0:
                         # There are (fully tunable) ADs in the program
-                        atoms = []
-                        values = []
-                        cvalues = []
+                        evidence_set = set()
                         for d in grounded_ad_evidences:
                             for key, value in d.items():
                                 if value is not None:
-                                    atoms.append(key)
-                                    values.append(value)
-                                    cvalues.append(None)
+                                    evidence_set.add((key, value, None))
 
                         for key, value in non_ad_evidence.items():
-                            atoms.append(key)
-                            values.append(value)
+                            evidence_set.add((key, value, None))
 
-                        print(
-                            index, "Push evidence\t:", tuple(atoms), tuple(values), "\n"
-                        )
+                        atoms, values, cvalues = zip(*evidence_set)
+                        print(index, "Push evidence\t:", atoms, values, cvalues, "\n")
                         result.add(
-                            index,
-                            tuple(atoms),
-                            tuple(values),
-                            tuple(cvalues),
-                            use_parents=use_parents,
+                            index, atoms, values, cvalues, use_parents=use_parents
                         )
 
                     else:
@@ -1529,9 +1519,9 @@ class Example(object):
 
     def compile(self, lfi, baseprogram):
         ground_program = None  # Let the grounder decide
-        print("compile grounding:")
-        print("...")
-        print("Grounded Atoms", self.atoms)
+        # print("compile grounding\t:")
+        # print("...")
+        print("Grounded Atoms\t:", list(zip(self.atoms, self.values)))
 
         ground_program = ground(
             baseprogram,
@@ -1539,7 +1529,7 @@ class Example(object):
             evidence=list(zip(self.atoms, self.values)),
             propagate_evidence=lfi.propagate_evidence,
         )
-        print("...")
+        # print("...")
         # print(ground_program.to_prolog())
         print(ground_program)
 
