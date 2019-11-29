@@ -14,9 +14,8 @@ from .formula import LogicFormulaHAL
 from .engine_builtin import \
     _builtin_is, \
     _builtin_gt, _builtin_lt, _builtin_le, _builtin_ge, \
-    _builtin_observation \
-    # _builtin_free_list, _builtin_free \
-    # _builtin_density \
+    _builtin_observation, \
+    _builtin_query_density1, _builtin_query_density2 \
 
     # , _builtin_val_eq, _builtin_val_neq
 
@@ -32,13 +31,11 @@ class EngineHAL(DefaultEngine):
         self.add_builtin('<', 2, SimpleProbabilisticBuiltIn(_builtin_lt))
         self.add_builtin('=<', 2, SimpleProbabilisticBuiltIn(_builtin_le))
         self.add_builtin('>=', 2, SimpleProbabilisticBuiltIn(_builtin_ge))
-        #
+
         self.add_builtin('observation_builtin', 2, SimpleBuiltIn(_builtin_observation))
+        self.add_builtin('query_density_builtin1', 1, SimpleBuiltIn(_builtin_query_density1))
+        self.add_builtin('query_density_builtin2', 2, SimpleBuiltIn(_builtin_query_density2))
 
-        # self.add_builtin('free', 1, _builtin_free)
-        # self.add_builtin('free_list', 1, _builtin_free_list)
-
-        # self.add_builtin('density', 1, _builtin_density)
 
 
         # self.add_builtin('=\=', 2, b(_builtin_val_neq))
@@ -46,28 +43,8 @@ class EngineHAL(DefaultEngine):
 
 
 
-
-
-
-    def _process_directives(self, db, target=None):
-        """Process directives present in the database."""
-        term = Term('_directive')
-        directive_node = db.find(term)
-
-        if directive_node is None:
-            return True    # no directives
-        directives = db.get_node(directive_node).children
-        if target==None:
-            target = LogicFormulaHAL()
-
-        while directives:
-            current = directives.pop(0)
-            self.execute(current, database=db, target=target, context=self.create_context((), define=None))
-        return True
-
     def query(self, db, term, gp=None, **kwdargs):
         """
-
        :param db:
        :param term:
        :param kwdargs:
@@ -89,6 +66,19 @@ class EngineHAL(DefaultEngine):
         else:
             return [x for x, y in result]
 
+    def ground_dqueries(self, db, target, dqueries):
+        logger = logging.getLogger('problog')
+        for label, dquery in dqueries:
+            logger.debug("Grounding query '%s'", dquery)
+            if len(dquery)==1:
+                target, density_node = self._ground(db, Term('query_density_builtin1', dquery[0]), target)
+            elif len(dquery)==2:
+                target, density_node = self._ground(db, Term('query_density_builtin2', dquery[0], dquery[1]), target)
+
+            density_node = density_node[0][0]
+            target.add_name(density_node[0], density_node[1], target.LABEL_DQUERY)
+            logger.debug("Ground program size: %s", len(target))
+
     def ground_observation(self, db, target, observation, propagate_evidence=False):
         logger = logging.getLogger('problog')
         # Ground evidence
@@ -106,7 +96,7 @@ class EngineHAL(DefaultEngine):
                 target.propagate(obs_nodes, target.lookup_observation)
 
 
-    def ground_all(self, db, target=None, queries=None, evidence=None, observation=None, propagate_evidence=False, labels=None):
+    def ground_all(self, db, target=None, queries=None, dqueries=None, evidence=None, observation=None, propagate_evidence=False, labels=None, **kwdargs):
         if labels is None:
             labels = []
         # Initialize target if not given.
@@ -122,6 +112,12 @@ class EngineHAL(DefaultEngine):
             for query in queries:
                 if not isinstance(query, Term):
                     raise GroundingError('Invalid query')   # TODO can we add a location?
+            if dqueries == None:
+                dqueries = [(dq[0],) for dq in self.query(db, Term('query_density', None), gp=target)]
+                dqueries += [(dq[0],dq[1]) for dq in self.query(db, Term('query_density', None, None), gp=target)]
+            for dquery in dqueries:
+                if not isinstance(dquery[0], Term):
+                    raise GroundingError('Invalid query')
             # Load evidence: use argument if available, otherwise load from database.
             if evidence is None:
                 #ALSO here: need to pass on target
@@ -137,6 +133,11 @@ class EngineHAL(DefaultEngine):
                  #ALSO here: need to pass on target
                 queries += [(label, q[0]) for q in self.query(db, Term(label, *([None] * arity)), gp=target)]
 
+            dqueries = [(target.LABEL_DQUERY, dq) for dq in dqueries]
+            for label, arity in labels:
+                 #ALSO here: need to pass on target
+                dqueries += [(label, dq[0]) for dq in self.query(db, Term(label, *([None] * arity)), gp=target)]
+
             for ev in evidence:
                 if not isinstance(ev[0], Term):
                     raise GroundingError('Invalid evidence')   # TODO can we add a location?
@@ -147,15 +148,16 @@ class EngineHAL(DefaultEngine):
             # Ground queries
             if propagate_evidence:
                 self.ground_evidence(db, target, evidence, propagate_evidence=propagate_evidence)
-                # self.ground_evidence(db, target, evidence, propagate_evidence=False)
                 self.ground_observation(db, target, observation, propagate_evidence=propagate_evidence)
                 self.ground_queries(db, target, queries)
+                self.ground_dqueries(db, target, dqueries)
                 if hasattr(target, 'lookup_evidence'):
                     logger.debug('Propagated evidence: %s' % list(target.lookup_evidence))
             else:
                 self.ground_evidence(db, target, evidence)
                 self.ground_observation(db, target, observation)
                 self.ground_queries(db, target, queries)
+                self.ground_dqueries(db, target, dqueries)
 
         return target
 
@@ -165,5 +167,6 @@ def init_engine(**kwdargs):
     return engine
 
 @transform(LogicProgram, LogicFormulaHAL)
-def groundHAL(model, target=None, **kwdargs):
-    return ground(model, target=target, **kwdargs)
+def groundHAL(model, target=None, engine=None, **kwdargs):
+    #change grounder here to swipl once ready
+    return engine.ground_all(model, target=target, **kwdargs)

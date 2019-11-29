@@ -3,7 +3,7 @@ from collections import defaultdict
 from problog.formula import LogicFormula, atom
 from problog.logic import Constant, Term, term2list
 
-from .logic import LogicVectorConstant, SymbolicConstant, RandomVariableConstant, RandomVariableComponentConstant, comparison_functors
+from .logic import Distribution, LogicVectorConstant, SymbolicConstant, RandomVariableConstant, RandomVariableComponentConstant, comparison_functors
 from .algebra.algebra import Algebra
 
 
@@ -12,17 +12,16 @@ class DiGraph(object):
         self.s = ""
         self.value_links = {}
 
-
-
-
 class LogicFormulaHAL(LogicFormula):
     LABEL_OBSERVATION = "observation"
+    LABEL_DQUERY = "density query"
 
-    def __init__(self, density_values={}, density_names={}, **kwargs):
+    def __init__(self, density_values={}, density_names={}, free_variables={}, **kwargs):
         LogicFormula.__init__(self, **kwargs)
         self.density_names = density_names
         self.density_values = density_values
-        self.free_variables = free_variables=set()
+        self.free_query_variables = {}
+        self.density_nodes = {}
 
 
 
@@ -60,6 +59,30 @@ class LogicFormulaHAL(LogicFormula):
         """
         observation = self.get_names(self.LABEL_OBSERVATION)
         return list(observation)
+
+    def add_dquery(self, name, key, keep_name=False):
+        """Add a query name.
+
+        Same as ``add_name(name, key, self.LABEL_DQUERY)``.
+
+        :param name: name of the query
+        :param key: key of the query node
+        """
+        self.add_name(name, key, self.LABEL_DQUERY, keep_name=keep_name)
+
+
+    def clear_queries(self):
+        """Remove all evidence."""
+        self._names[self.LABEL_DQUERY] = {}
+
+
+    def dqueries(self):
+        """Get a list of all queries.
+
+        :return: ``get_names(LABEL_DQUERY)``
+        """
+        return self.get_names(self.LABEL_DQUERY)
+
 
 
     def labeled(self):
@@ -99,6 +122,8 @@ class LogicFormulaHAL(LogicFormula):
             return expression
         elif expression==None:
             return SymbolicConstant(None,args=(),cvariables=set())
+        elif isinstance(expression, Distribution):
+            return expression
         elif expression.functor==".":
             expression = term2list(expression)
             symbolic_args = []
@@ -106,8 +131,6 @@ class LogicFormulaHAL(LogicFormula):
                 symbolic_a = self.create_ast_representation(a)
                 symbolic_args.append(symbolic_a)
             return SymbolicConstant("list", args=symbolic_args, cvariables=set())
-
-
         elif isinstance(expression, Term):
             functor = expression.functor.strip("'")
             symbolic_args = []
@@ -130,12 +153,12 @@ class LogicFormulaHAL(LogicFormula):
             return self.FALSE
         elif isinstance(probability, SymbolicConstant) and probability.functor is False and not self.keep_all:
             return self.FALSE
-        # elif probability != self.WEIGHT_NEUTRAL and self.semiring and \
-        #         self.semiring.is_zero(self.semiring.value(probability)):
-        #     return self.FALSE
-        # elif probability != self.WEIGHT_NEUTRAL and self.semiring and \
-        #         self.semiring.is_one(self.semiring.value(probability)):
-        #     return self.TRUE
+        elif probability != self.WEIGHT_NEUTRAL and self.semiring and \
+                self.semiring.is_zero(self.semiring.value(probability)):
+            return self.FALSE
+        elif probability != self.WEIGHT_NEUTRAL and self.semiring and \
+                self.semiring.is_one(self.semiring.value(probability)):
+            return self.TRUE
         else:
             symbolic_expr = self.create_ast_representation(probability)
             atom = self._create_atom(identifier, symbolic_expr, group=group, name=name, source=source, is_extra=is_extra)
@@ -158,19 +181,24 @@ class LogicFormulaHAL(LogicFormula):
     def __str__(self):
         s = '\n'.join('%s: %s' % (i, n) for i, n, t in self)
         f = True
-        for q in self.labeled():
+        for q in self.queries():
             if f:
                 f = False
                 s += '\nQueries : '
-            s += '\n* %s : %s [%s]' % q
-
+            s += '\n* ' +  "{} : {} [{}]".format(q[0],q[1], self.LABEL_QUERY)
+        f = True
+        for q in self.dqueries():
+            print(q)
+            if f:
+                f = False
+                s += '\nDensity Queries : '
+            s += '\n* ' +  "{} : {} [{}]".format(q[0],q[1], self.LABEL_DQUERY)
         f = True
         for q in self.evidence():
             if f:
                 f = False
                 s += '\nEvidence : '
             s += '\n* %s : %s' % q
-
         f = True
         for o in self.observation():
             if f:

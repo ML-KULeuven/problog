@@ -166,7 +166,7 @@ class SDDHAL(SDD, LogicFormulaHAL):
             elif w is None:
                 result[n] = semiring.true(name)
             else:
-                result[n] = semiring.pos_value(w, name, index=n), semiring.neg_value(w, name, index=n)
+                result[n] = semiring.pos_value(w, name, n), semiring.neg_value(w, name, n)
 
         for c in self.constraints():
             c.update_weights(result, semiring)
