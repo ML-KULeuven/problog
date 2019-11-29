@@ -1,0 +1,3 @@
+torch==1
+numpy==1.16
+pyro-ppl==0.3
