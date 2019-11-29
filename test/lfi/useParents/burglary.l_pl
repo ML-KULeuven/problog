@@ -1,8 +1,8 @@
 0.333333333333333::burglary.
 0.2::earthquake.
-0.171647701154991::p_alarm1.
-1.0::p_alarm2.
-0.0::p_alarm3.
+0.397727094981077::p_alarm1.
+0.999217835819286::p_alarm2.
+0.117595001014544::p_alarm3.
 alarm :- burglary, earthquake, p_alarm1.
 alarm :- burglary, \+earthquake, p_alarm2.
 alarm :- \+burglary, earthquake, p_alarm3.
