@@ -1,10 +1,9 @@
 import os
 import unittest
-import pytest
 from pathlib import Path
 
 from problog.logic import Constant, Term, Not
-from problog.tasks import map, constraint, explain, time1, shell, bayesnet, mpe
+from problog.tasks import map, explain, time1, bayesnet, mpe
 
 dirname = os.path.dirname(__file__)
 test_folder = Path(dirname, "./../../test/")
@@ -97,7 +96,6 @@ class TestTasks(unittest.TestCase):
     def test_bn(self):
         file_name = test_folder / "tasks" / "some_heads.pl"
         result = bayesnet.main([str(file_name)])
-        print("result", result)
         self.assertTrue(result[0])
         self.assertEqual(
             "Factor (c0) = 0, 1\n(): [0.5, 0.5]"
@@ -112,5 +110,56 @@ class TestTasks(unittest.TestCase):
             "\n\nOrCPT someHeads [0,1] -- c2,c3\n('c2', 1)\n('c3', 1)"
             "\n\nFactor (c3 | heads2) = 0, 1"
             "\n(False,): [1.0, 0.0]\n(True,): [0.0, 1.0]\n",
+            result[1],
+        )
+
+    def test_bn_pgraph(self):
+        file_name = test_folder / "tasks" / "pgraph.pl"
+        result = bayesnet.main([str(file_name)])
+        print("result", result)
+        self.assertTrue(result[0])
+        self.assertEqual(
+            "Factor (c0) = 0, 1"
+            "\n(): [0.4, 0.6]"
+            "\n\nOrCPT edge(1,2) [0,1] -- c0"
+            "\n('c0', 1)"
+            "\n\nFactor (c1) = 0, 1"
+            "\n(): [0.6, 0.4]"
+            "\n\nOrCPT edge(2,5) [0,1] -- c1"
+            "\n('c1', 1)"
+            "\n\nFactor (c2) = 0, 1"
+            "\n(): [0.9, 0.1]"
+            "\n\nOrCPT edge(1,3) [0,1] -- c2"
+            "\n('c2', 1)\n\nFactor (c3) = 0, 1"
+            "\n(): [0.7, 0.3]"
+            "\n\nOrCPT edge(3,4) [0,1] -- c3\n('c3', 1)"
+            "\n\nFactor (c4) = 0, 1\n(): [0.19999999999999996, 0.8]"
+            "\n\nOrCPT edge(4,5) [0,1] -- c4\n('c4', 1)"
+            "\n\nFactor (c5 | edge(3,4), edge(4,5)) = 0, 1\n(False, False): [1.0, 0.0]"
+            "\n(False, True): [1.0, 0.0]\n(True, False): [1.0, 0.0]\n(True, True): [0.0, 1.0]"
+            "\n\nOrCPT path(3,5) [0,1] -- c5\n('c5', 1)\n\nFactor (c6 | edge(1,2), edge(2,5)) = 0, 1"
+            "\n(False, False): [1.0, 0.0]\n(False, True): [1.0, 0.0]\n(True, False): [1.0, 0.0]"
+            "\n(True, True): [0.0, 1.0]\n\nOrCPT path(1,5) [0,1] -- c6,c7\n('c6', 1)\n('c7', 1)"
+            "\n\nFactor (c7 | edge(1,3), path(3,5)) = 0, 1\n(False, False): [1.0, 0.0]\n(False, True): [1.0, 0.0]"
+            "\n(True, False): [1.0, 0.0]\n(True, True): [0.0, 1.0]\n\nFactor (c8) = 0, 1\n(): [0.7, 0.3]"
+            "\n\nOrCPT edge(2,6) [0,1] -- c8\n('c8', 1)\n\nFactor (c9) = 0, 1\n(): [0.8, 0.2]"
+            "\n\nOrCPT edge(5,6) [0,1] -- c9\n('c9', 1)"
+            "\n\nFactor (c10 | edge(2,6)) = 0, 1\n(False,): [1.0, 0.0]\n(True,): [0.0, 1.0]"
+            "\n\nOrCPT path(2,6) [0,1] -- c10,c11\n('c10', 1)\n('c11', 1)"
+            "\n\nFactor (c11 | edge(2,5), edge(5,6)) = 0, 1\n(False, False): [1.0, 0.0]"
+            "\n(False, True): [1.0, 0.0]\n(True, False): [1.0, 0.0]\n(True, True): [0.0, 1.0]"
+            "\n\nFactor (c12 | edge(4,5), edge(5,6)) = 0, 1"
+            "\n(False, False): [1.0, 0.0]\n(False, True): [1.0, 0.0]"
+            "\n(True, False): [1.0, 0.0]\n(True, True): [0.0, 1.0]"
+            "\n\nOrCPT path(4,6) [0,1] -- c12\n('c12', 1)"
+            "\n\nFactor (c13 | edge(3,4), path(4,6)) = 0, 1\n(False, False): [1.0, 0.0]"
+            "\n(False, True): [1.0, 0.0]\n(True, False): [1.0, 0.0]\n(True, True): [0.0, 1.0]"
+            "\n\nOrCPT path(3,6) [0,1] -- c13\n('c13', 1)"
+            "\n\nFactor (c14 | edge(1,2), path(2,6)) = 0, 1"
+            "\n(False, False): [1.0, 0.0]\n(False, True): [1.0, 0.0]"
+            "\n(True, False): [1.0, 0.0]\n(True, True): [0.0, 1.0]"
+            "\n\nOrCPT path(1,6) [0,1] -- c14,c15\n('c14', 1)\n('c15', 1)"
+            "\n\nFactor (c15 | edge(1,3), path(3,6)) = 0, 1\n(False, False): [1.0, 0.0]"
+            "\n(False, True): [1.0, 0.0]\n(True, False): [1.0, 0.0]\n(True, True): [0.0, 1.0]\n",
             result[1],
         )
