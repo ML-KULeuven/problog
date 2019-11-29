@@ -46,7 +46,6 @@ class TestTasks(unittest.TestCase):
         file_name = test_folder / "tasks" / "pgraph.pl"
         result = mpe.main([str(file_name), "--use-maxsat"])
         self.assertTrue(result[0])
-        print("result", result)
         self.assertAlmostEqual(0.3, result[1][0], delta=1e6)
         self.assertEqual(
             {
