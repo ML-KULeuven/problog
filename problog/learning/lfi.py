@@ -635,67 +635,47 @@ class LFIProblem(LogicProgram):
             for index, example in enumerate(self.examples):
                 ad_evidences = []
                 non_ad_evidence = {}
-                # create a dictionary to memorize what evidence is given in AD
-                for key in ad_groups:
+                for ad_group in ad_groups:
+                    # create a dictionary to memorize what evidence is given in AD
                     d = dict()
-                    for var in key:
-                        non_grounded_atom = False
-                        if len(var.args) > 0:
-                            for var_arg in var.args:
-                                if isinstance(var_arg, Var):
-                                    non_grounded_atom = True
-                                    break
-                        if non_grounded_atom:
-                            d[var] = "Template"
+                    # TODO: what if the AD contains both ground and non-ground????
+                    # e.g. t(_)::a; t(_)::b(X)
+                    for var in ad_group:
+                        if var.is_ground():
+                            d[var] = None  # for ground unknown evidence
                         else:
-                            d[var] = None
+                            d[var] = "Template" # for unground unknown evidence
                     ad_evidences.append(d)
-                print(index, "AD Evidences\t:", ad_evidences)
 
                 # add all evidence in the example to ad_evidences
                 for atom, value, cvalue in example:
-                    # print(atom, value, cvalue)
-                    #if atom.signature in atom_list:
+                    # if atom has a tunable probability to learn
                     if any([atom.signature == name.signature for name in self.names]):
-                        # idx = atom_list.index(atom.signature)
+                        # Propositional evidence
                         if len(atom.args) == 0:
-                            # Propositional Case
-                            atom_found = False
+                            # insert evidence
                             for d in ad_evidences:
                                 if atom in d:
                                     d[atom] = value
-                                    atom_found = True
-                            if not atom_found:
-                                non_ad_evidence[atom] = value
-                        else:
-                            # First Order Case
-                            # non_ad_evidence[atom] = value
-                            # find the right AD dictionary : dict_found
-                            dict_found = None
-                            for d in ad_evidences:
-                                dict_found = None
-                                for k, v in d.items():
-                                    if k.signature == atom.signature:
-                                        dict_found = d
-                                        break
-                                if dict_found is not None:
                                     break
-                            # print(dict_found)
+                            non_ad_evidence[atom] = value
+                        # First Order evidence
+                        else:
+                            # find the right AD dictionary : AD_dict
+                            for d in ad_evidences:
+                                if any([atom.signature == k.signature for k in d]):
+                                    AD_dict = d
+                                    break
                             # if the instantiation is new, add it as a key to the dictionary
-                            if dict_found and dict_found.get(atom) is None:
-                                dict_found[atom] = value
+                            if AD_dict and AD_dict.get(atom) is None:
+                                AD_dict[atom] = value
                                 # also add other AD parts in the dictionary with value==None
-                                other_ADs = getADtemplate(dict_found, atom)
-                                print(index, "Other ADs\t\t:", other_ADs)
+                                other_ADs = getADtemplate(AD_dict, atom)
                                 for var in other_ADs.keys():
-                                    # var._Term__args = atom.args
-                                    if Term(var.functor, *atom.args) not in dict_found:
-                                        dict_found[Term(var.functor, *atom.args)] = None
+                                    new_key = Term(var.functor, *atom.args)
+                                    AD_dict[new_key] = AD_dict.get(new_key, None)
                             else:
                                 non_ad_evidence[atom] = value
-                            print(index, "Dict Found\t:", dict_found)
-                        print(index, "AD_evidences\t:", ad_evidences, "\n")
-
                     else:
                         non_ad_evidence[atom] = value
 
