@@ -1,7 +1,7 @@
 %Expected outcome:
 % 0.333333333333333::burglary.
 % 0.2::earthquake.
-% 0.363605753263826::p_alarm1.
+% 0.8::p_alarm1.
 % 1.0::p_alarm2.
 % 0.0::p_alarm3.
 % alarm :- burglary, earthquake, p_alarm1.

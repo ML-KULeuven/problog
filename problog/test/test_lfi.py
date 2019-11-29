@@ -62,8 +62,10 @@ def createTestLFI(filename, useparents=False):
                     sys.executable,
                     problogcli,
                     "lfi",
+                    # "-k",
+                    # "ddnnf",
                     "-n",
-                    "10",
+                    "500",
                     "-O",
                     model.replace(".pl", ".l_pl"),
                     model,
@@ -74,47 +76,81 @@ def createTestLFI(filename, useparents=False):
 
         with open(out_model, "r") as f:
             outlines = f.readlines()
-        outlines = [line.strip() for line in outlines]
+        # outlines = [line.strip() for line in outlines]
+        rounded_outlines = []
+        for line in outlines:
+            line = line.strip()
+            if "::" in line:
+                if ";" not in line:
+                    prob = float(line.split("::")[0])
+                    rounded_prob = round(prob, 3)
+                    if abs(prob - rounded_prob) < 0.000001:
+                        line = str(rounded_prob) + "::" + line.split("::")[1]
+                    else:
+                        line = str(prob) + "::" + line.split("::")[1]
+                else:
+                    ad_lines = line.split(";")
+                    rounded_ad_lines = []
+                    for ad_line in ad_lines:
+                        ad_line = ad_line.strip()
+                        ad_prob = float(ad_line.split("::")[0])
+                        rounded_ad_prob = round(ad_prob, 3)
+                        if abs(ad_prob - rounded_ad_prob) < 0.000001:
+                            ad_line = (
+                                str(rounded_ad_prob) + "::" + ad_line.split("::")[1]
+                            )
+                        else:
+                            ad_line = str(ad_prob) + "::" + ad_line.split("::")[1]
+                        rounded_ad_lines.append(ad_line)
+                    line = "; ".join(rounded_ad_lines)
+            rounded_outlines.append(line)
         print(expected)
         print(outlines)
-        assert expected == outlines
+        print(rounded_outlines)
+        assert expected == rounded_outlines
 
     return test
+
+
+def ignore_previous_output(path):
+    # dir_name = "../../test/lfi/unit_tests/"
+    test = os.listdir(path)
+    for item in test:
+        if item.endswith(".l_pl"):
+            os.remove(os.path.join(path, item))
 
 
 if __name__ == "__main__":
     filenames = sys.argv[1:]
 
 else:
-    # ADfilenames = glob.glob(root_path('test', 'lfi', 'AD_positive', '*.pl'))
-    # simple_filenames = glob.glob(root_path('test', 'lfi', 'simple', '*.pl'))
-    # useParents_filenames = glob.glob(root_path('test', 'lfi', 'useParents', '*.pl'))
-    dir_name = "../../test/lfi/unit_tests/"
-    test = os.listdir(dir_name)
-    for item in test:
-        if item.endswith(".l_pl"):
-            os.remove(os.path.join(dir_name, item))
+    ignore_previous_output("../../test/lfi/AD_positive/")
+    ADfilenames = glob.glob(root_path("test", "lfi", "AD_positive", "*.pl"))
+    ignore_previous_output("../../test/lfi/simple/")
+    simple_filenames = glob.glob(root_path("test", "lfi", "simple", "*.pl"))
+    ignore_previous_output("../../test/lfi/useParents/")
+    useParents_filenames = glob.glob(root_path("test", "lfi", "useParents", "*.pl"))
+    ignore_previous_output("../../test/lfi/unit_tests/")
     unit_test_filenames = glob.glob(root_path("test", "lfi", "unit_tests", "test_*.pl"))
 
 
 # tests for simple cases (non-ADs)
-# for testfile in simple_filenames :
-#    testname = 'test_lfi_simple_' + os.path.splitext(os.path.basename(testfile))[0]
-#    setattr( TestLFI, testname, createTestLFI(testfile, True))
-#
-# # tests for ADs
-# for testfile in ADfilenames :
-#     testname = 'test_lfi_AD_' + os.path.splitext(os.path.basename(testfile))[0]
-#     setattr( TestLFI, testname, createTestLFI(testfile, True))
-#
-# # tests for useParents
-# for testfile in useParents_filenames :
-#     testname = 'test_lfi_parents_' + os.path.splitext(os.path.basename(testfile))[0]
-#     setattr( TestLFI, testname, createTestLFI(testfile, True))
+for testfile in simple_filenames:
+    testname = "test_lfi_simple_" + os.path.splitext(os.path.basename(testfile))[0]
+    setattr(TestLFI, testname, createTestLFI(testfile, True))
+
+# tests for ADs
+for testfile in ADfilenames:
+    testname = "test_lfi_AD_" + os.path.splitext(os.path.basename(testfile))[0]
+    setattr(TestLFI, testname, createTestLFI(testfile, True))
+
+# tests for useParents
+for testfile in useParents_filenames:
+    testname = "test_lfi_parents_" + os.path.splitext(os.path.basename(testfile))[0]
+    setattr(TestLFI, testname, createTestLFI(testfile, True))
 
 # tests for unit tests
 for testfile in unit_test_filenames:
-
     testname = "test_lfi_unit_test_" + os.path.splitext(os.path.basename(testfile))[0]
     setattr(TestLFI, testname, createTestLFI(testfile, True))
 
