@@ -1,7 +1,7 @@
 :-use_module(library(lists)).
 
 % Define maze size
-maze(4,4).
+maze(4,3).
 
 
 %%% RULES OF ANY MAZE %%%

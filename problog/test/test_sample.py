@@ -93,7 +93,7 @@ class TestSampleTask(unittest.TestCase):
         connected_predicates = [
             p for p in samples[0].keys() if "connected" in p.functor
         ]
-        self.assertTrue(30 < len(connected_predicates))
+        self.assertTrue(25 < len(connected_predicates))
 
     def test_heights(self):
         samples = self.get_samples("heights.pl", num_samples=10)
