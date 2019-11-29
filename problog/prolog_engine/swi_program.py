@@ -81,6 +81,13 @@ class SWIProgram(ProbLogObject):
             return handle_functor(node.functor, node.args)
         elif ntype == 'neg':
             return 'neg({})'.format(self.to_str(self.db.get_node(node.child)))
+        elif ntype == 'disj':
+            children = [self.to_str(self.db.get_node(c)) for c in node.children]
+            children = [c for c in children]
+            if len(children) > 1:
+                return '({})'.format(';'.join(children))
+            else:
+                return str(children[0])
         return ntype + '_unhandled'
 
     def new_entry(self):
@@ -155,6 +162,8 @@ class SWIProgram(ProbLogObject):
                 return target.negate(self.construct_node(node.args[0], target))
             elif node.functor == ',':  # The definition is an and
                 return target.add_and([self.construct_node(c, target) for c in node.args])
+            elif node.functor == ';':  # The definition is an or
+                return target.add_or([self.construct_node(c, target) for c in node.args])
             elif node.functor == 'true':  # Determinstically true
                 return target.TRUE
             elif node.functor == 'builtin':  # Proven with a builtin
@@ -191,6 +200,7 @@ class SWIProgram(ProbLogObject):
         placeholder = set()
         # Keys are nodes, and the values area the keys of the nodes in the ground logic formula
         for p in proofs:  # Loop over all elements of the proof
+            print(p)
             if p.functor == '::':  # If it's a fact
                 nodes[p.args[2]].append(p)  # Add it to the definitions
             elif p.functor == ':-':  # If it's a clause

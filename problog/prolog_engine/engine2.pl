@@ -5,6 +5,7 @@
 
 solve(true).% :- !.
 solve((A,B)) :- solve(A), solve(B).
+solve((A;B)) :- solve(A); solve(B).
 solve(call(A)) :-  solve(A),recordz(proof,call(A):-A).
 solve(neg(A)) :- copy_term(A,A2), forall(solve(A),recordz(proof,neg(A2):-A)).
 solve(A) :- functor(A,F,_),builtin(F),A, recordz(proof,A:-builtin(A)).
