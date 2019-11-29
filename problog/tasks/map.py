@@ -98,7 +98,7 @@ def main(argv, result_handler=None):
         final_result = (False, err)
 
     result_handler(final_result, outf)
-    
+
     if args.output is not None:
         outf.close()
 

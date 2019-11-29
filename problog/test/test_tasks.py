@@ -1,9 +1,10 @@
 import os
 import unittest
+import pytest
 from pathlib import Path
 
 from problog.logic import Constant, Term
-from problog.tasks import map, constraint, explain, time1
+from problog.tasks import map, constraint, explain, time1, shell, bayesnet
 
 dirname = os.path.dirname(__file__)
 test_folder = Path(dirname, "./../../test/")
@@ -41,7 +42,7 @@ class TestTasks(unittest.TestCase):
         )
 
     def test_explain_some_heads(self):
-        file_name = test_folder / "tasks" / "explain_some_heads.pl"
+        file_name = test_folder / "tasks" / "some_heads.pl"
         result = explain.main([str(file_name)])
 
         # Check if successful
@@ -57,6 +58,7 @@ class TestTasks(unittest.TestCase):
         self.assertAlmostEqual(0.8, results[Term("someHeads")], delta=1e6)
 
     def test_time(self):
-        file_name = test_folder / "tasks" / "explain_some_heads.pl"
+        file_name = test_folder / "tasks" / "some_heads.pl"
         result = time1.main([str(file_name)])
         self.assertEquals(6, len(result))
+
