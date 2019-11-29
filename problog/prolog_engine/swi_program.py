@@ -119,7 +119,10 @@ class SWIProgram(ProbLogObject):
     def __str__(self):
         return '\n'.join(l + '.' for l in self.get_lines())
 
-    def construct_node(self, node, target, neg=False):
+    def construct_node(self, node, target, neg=False, placeholder=None):
+        if placeholder is not None:
+            for n in node:
+                target.add_disjunct(placeholder, self.construct_node(n, target))
         if type(node) is list:  # The node is a list if there's several proofs for the node
             if neg:
                 # If the definition is for a negated node, the list represents and and of nots
@@ -176,11 +179,16 @@ class SWIProgram(ProbLogObject):
         else:
             return [term]
 
+    def get_best_dependency(self, dependencies):
+        smallest = min(dependencies, key=lambda x: len(dependencies[x]))
+        return dependencies[smallest][0]
+
     def build_formula(self, proofs, target):
         # Keys are nodes, and the value is a list of all definitions of that node
         nodes = defaultdict(list)
         # Keys are nodes, and the value is a list of all nodes that this node depends on directly
         dependencies = defaultdict(list)
+        placeholder = set()
         # Keys are nodes, and the values area the keys of the nodes in the ground logic formula
         for p in proofs:  # Loop over all elements of the proof
             if p.functor == '::':  # If it's a fact
@@ -193,14 +201,15 @@ class SWIProgram(ProbLogObject):
         for k in dependencies:
             # Only keep the dependencies for which there is a definition. If a dependency has no dependency,
             # it means there's no proof for it and thus deterministically false
-            dependencies[k] = [n for n in dependencies[k] if n in nodes]
+            dependencies[k] = [n for n in dependencies[k] if n in nodes and n not in self.d]
         while nodes:  # While nodes is not empty
             new_sol = False  # Keeps track if a new node has been added to the ground formula
             keys = list(nodes)  # List of keys of the dictionary
             for k in keys:
                 if len(dependencies[k]) == 0:  # If the node has no more undefined children
                     neg = k.functor == 'neg'  # Check whether the current node is negated
-                    self.d[k] = self.construct_node(nodes[k], target, neg=neg)  # Construct the node
+                    self.d[k] = self.construct_node(nodes[k], target, neg=neg,
+                                                    placeholder=self.d[k] if k in placeholder else None)
                     for k2 in dependencies:  # Remove the node from undefined dependency from all nodes
                         dependencies[k2] = [n for n in dependencies[k2] if n != k]
                     new_sol = True  # A node was added
@@ -208,13 +217,14 @@ class SWIProgram(ProbLogObject):
                     del (nodes[k])
                     del (dependencies[k])
             if not new_sol:
+
                 # No node could be added in this iteration. So all nodes have unfulfilled dependencies
-                print('Nodes: ')
-                for n in nodes:
-                    print(n)
-                    print('\t', nodes[n])
-                    print('\t', dependencies[n])
-                raise NotImplementedError('Cycles are not yet supported in build_formula')
+                node = self.get_best_dependency(dependencies)  # Select the first node
+                k = target.add_or([], readonly=False, placeholder=True)  # Add placeholder
+                self.d[node] = k
+                placeholder.add(node)
+                for k2 in dependencies:  # Remove the node from undefined dependency from all nodes
+                    dependencies[k2] = [n for n in dependencies[k2] if n != node]
         return self.d
 
     def add_proofs(self, proofs, ground_queries, target, label=None):
