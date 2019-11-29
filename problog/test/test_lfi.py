@@ -62,6 +62,8 @@ def createTestLFI(filename, useparents=False):
                     sys.executable,
                     problogcli,
                     "lfi",
+                    # "-k",
+                    # "ddnnf",
                     "-n",
                     "10",
                     "-O",
