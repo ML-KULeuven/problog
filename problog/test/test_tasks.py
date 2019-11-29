@@ -3,7 +3,7 @@ import unittest
 from pathlib import Path
 
 from problog.logic import Constant, Term
-from problog.tasks import map
+from problog.tasks import map, constraint, explain
 
 dirname = os.path.dirname(__file__)
 test_folder = Path(dirname, "./../../test/")
@@ -26,3 +26,32 @@ class TestTasks(unittest.TestCase):
                 choices,
             )
             self.assertAlmostEqual(1.878144, score, places=5)
+
+    def test_explain_trivial(self):
+        file_name = test_folder / "tasks" / "map_probabilistic_graph.pl"
+        result = explain.main([str(file_name)])
+
+        self.assertTrue(result["SUCCESS"])
+        results = result["results"]
+        self.assertAlmostEqual(
+            0.6, results[Term("edge", Constant(1), Constant(2))], delta=1e6
+        )
+        self.assertAlmostEqual(
+            0.1, results[Term("edge", Constant(1), Constant(3))], delta=1e6
+        )
+
+    def test_explain_some_heads(self):
+        file_name = test_folder / "tasks" / "explain_some_heads.pl"
+        result = explain.main([str(file_name)])
+
+        # Check if successful
+        self.assertTrue(result["SUCCESS"])
+
+        # Test proofs
+        proofs = result["proofs"]
+        self.assertEqual("someHeads :- heads2.  % P=0.6", proofs[0])
+        self.assertEqual("someHeads :- heads1, \\+heads2.  % P=0.2", proofs[1])
+
+        # Test result
+        results = result["results"]
+        self.assertAlmostEqual(0.8, results[Term("someHeads")], delta=1e6)
