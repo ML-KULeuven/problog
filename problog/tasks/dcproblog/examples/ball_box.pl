@@ -1,6 +1,6 @@
-beta(2,2)~b.
+b~beta(2,2).
 
-P::p:- P as b.
+P::p:- P is b.
 
 box(1):-p.
 box(2):- \+p.

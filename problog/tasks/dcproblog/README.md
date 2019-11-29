@@ -2,7 +2,7 @@
 
 
 ### Installation ###
-DC-ProbLog installs automatically toghether with ProbLog. However, you will need to install to further libraries that DC-ProbLog depends on additionally.
+DC-ProbLog installs automatically together with ProbLog. However, you will need to install to further libraries that DC-ProbLog depends on additionally.
 
 That is
 1. [pytorch](https://pytorch.org/)
@@ -28,7 +28,7 @@ problog dc example.pl
 
 Use:
 ```
-hal_problog --help
+problog dc --help
 ```
 to find out which flags you can use to run a program
 
