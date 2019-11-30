@@ -14,7 +14,7 @@ class TestTryCall(unittest.TestCase):
         """
         )
 
-        res = get_evaluatable().create_from(p).evaluate()
+        res = get_evaluatable(semiring=SemiringLogProbability()).create_from(p).evaluate()
         self.assertEqual(list(res.values())[0], 1)
 
     def test_try_call_existing_fact_non_ground(self):
@@ -26,7 +26,7 @@ class TestTryCall(unittest.TestCase):
         """
         )
 
-        res = get_evaluatable().create_from(p).evaluate()
+        res = get_evaluatable(semiring=SemiringLogProbability()).create_from(p).evaluate()
         self.assertEqual(list(res.values())[0], 1)
 
     def test_try_call_existing_fact_non_ground2(self):
@@ -39,7 +39,7 @@ class TestTryCall(unittest.TestCase):
         """
         )
 
-        res = get_evaluatable().create_from(p).evaluate()
+        res = get_evaluatable(semiring=SemiringLogProbability()).create_from(p).evaluate()
         self.assertEqual(list(res.values())[0], 1)
 
     def test_try_call_non_existing_fact_non_ground(self):
@@ -52,7 +52,7 @@ class TestTryCall(unittest.TestCase):
         """
         )
 
-        res = get_evaluatable().create_from(p).evaluate()
+        res = get_evaluatable(semiring=SemiringLogProbability()).create_from(p).evaluate()
         self.assertEqual(list(res.values())[0], 0)
 
     def test_try_call_non_existing_fact_non_ground2(self):
@@ -64,7 +64,7 @@ class TestTryCall(unittest.TestCase):
         """
         )
 
-        res = get_evaluatable().create_from(p).evaluate()
+        res = get_evaluatable(semiring=SemiringLogProbability()).create_from(p).evaluate()
         self.assertEqual(list(res.values())[0], 0)
 
     def test_try_call_wrong_comp(self):
@@ -75,7 +75,7 @@ class TestTryCall(unittest.TestCase):
         """
         )
 
-        res = get_evaluatable().create_from(p).evaluate()
+        res = get_evaluatable(semiring=SemiringLogProbability()).create_from(p).evaluate()
         self.assertEqual(list(res.values())[0], 0)
 
     def test_try_call_right_comp(self):
@@ -86,7 +86,7 @@ class TestTryCall(unittest.TestCase):
         """
         )
 
-        res = get_evaluatable().create_from(p).evaluate()
+        res = get_evaluatable(semiring=SemiringLogProbability()).create_from(p).evaluate()
         self.assertEqual(list(res.values())[0], 1)
 
     def test_try_call_non_existing_comp(self):
@@ -97,7 +97,7 @@ class TestTryCall(unittest.TestCase):
         """
         )
 
-        res = get_evaluatable().create_from(p).evaluate()
+        res = get_evaluatable(semiring=SemiringLogProbability()).create_from(p).evaluate()
         self.assertEqual(list(res.values())[0], 0)
 
     def test_try_call_existing_clause(self):
@@ -109,7 +109,7 @@ class TestTryCall(unittest.TestCase):
         """
         )
 
-        res = get_evaluatable().create_from(p).evaluate()
+        res = get_evaluatable(semiring=SemiringLogProbability()).create_from(p).evaluate()
         self.assertEqual(list(res.values())[0], 1)
 
     def test_try_call_non_existing_clause(self):
@@ -121,5 +121,5 @@ class TestTryCall(unittest.TestCase):
         """
         )
 
-        res = get_evaluatable().create_from(p).evaluate()
+        res = get_evaluatable(semiring=SemiringLogProbability()).create_from(p).evaluate()
         self.assertEqual(list(res.values())[0], 0)

@@ -30,9 +30,12 @@ class SDDHAL(SDD, LogicFormulaHAL):
         :param weights: weights to use
         :return: evaluator for this formula
         """
-        if semiring is None:
-            # TODO change this to hal semiring
-            semiring = SemiringLogProbability()
+        # if semiring is None:
+        #     # TODO change this to hal semiring
+        #     # if no semiring is given here test_try_call.py fails? for some reason?
+        #     semiring = SemiringLogProbability()
+        # assert semiring
+
 
         evaluator = self._create_evaluator(semiring, weights, **kwargs)
 
