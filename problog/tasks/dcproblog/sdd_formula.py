@@ -4,7 +4,7 @@ from problog.core import transform, transform_create_as
 from problog.dd_formula import build_dd
 from problog.sdd_formula import SDD, SDDEvaluator
 from problog.formula import LogicFormula
-from problog.evaluator improt SemiringLogProbability
+from problog.evaluator import SemiringLogProbability
 
 from .logic import Mixture
 from .formula import atom, LogicFormulaHAL
