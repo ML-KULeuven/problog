@@ -2,6 +2,7 @@ import unittest
 
 from problog import get_evaluatable
 from problog.program import PrologString
+from problog.evaluator import SemiringLogProbability
 
 
 class TestTryCall(unittest.TestCase):

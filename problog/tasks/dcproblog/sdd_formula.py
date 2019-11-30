@@ -35,6 +35,7 @@ class SDDHAL(SDD, LogicFormulaHAL):
         #     # if no semiring is given here test_try_call.py fails? for some reason?
         #     semiring = SemiringLogProbability()
         # assert semiring
+        assert semiring
 
 
         evaluator = self._create_evaluator(semiring, weights, **kwargs)
