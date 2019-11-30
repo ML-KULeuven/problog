@@ -8,5 +8,5 @@ P::alarm:- \+fire, P is p3.
 
 evidence(alarm).
 
-:-free(p2).
-query(density(p1)).
+query_density(p1).
+query_density(p2).

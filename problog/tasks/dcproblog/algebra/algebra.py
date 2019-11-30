@@ -112,8 +112,8 @@ class Algebra(object):
         return self.construct_algebraic_expression(expression)
     def negate(self,a):
         return self.construct_negated_algebraic_expression(a)
-    def result(self, a, normalization=False):
-        return self.integrate(a)
+    def result(self, a, free_variables=set(), normalization=False):
+        return self.integrate(a, free_variables=free_variables, normalization=normalization)
     def probability(self, a, z):
         if not a:
             return self.symbolize(0)
@@ -130,6 +130,12 @@ class Algebra(object):
     def construct_algebraic_expression(self, expression):
         if isinstance(expression, Constant):
             return self.construct_algebraic_expression(expression.functor)
+        # elif isinstance(expression, RandomVariableConstant) and expression.functor=="beta":
+        elif isinstance(expression, RandomVariableConstant) and (expression.distribution_functor in ("beta",)):
+            component = self.construct_algebraic_expression(expression.components[0])
+            return component
+        elif isinstance(expression, RandomVariableConstant):
+            raise NotImplementedError
         else:
             assert isinstance(expression, SymbolicConstant)
 

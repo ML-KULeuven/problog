@@ -8,7 +8,7 @@ from problog.logic import Term, Constant, Var, term2list, list2term, _arithmetic
 from problog.errors import ProbLogError
 
 from .formula import LogicFormulaHAL
-from .logic import Distribution, LogicVectorConstant, RandomVariableConstant, RandomVariableComponentConstant, SymbolicConstant
+from .logic import Distribution, LogicVectorConstant, RandomVariableConstant, RandomVariableComponentConstant, SymbolicConstant, Mixture
 
 
 def _builtin_is(a, b, engine=None, **kwdargs):
@@ -93,104 +93,21 @@ def _builtin_observation(term, observation, engine=None, target=None, database=N
     result =  [((term,observation), observation_node)]
     return result
 
-def _builtin_query_density1(term, engine=None, target=None, database=None, **kwdargs):
+def _builtin_query_density(term, engine=None, target=None, database=None, **kwdargs):
     check_mode((term,), ['g'], functor='query_density_builtin1', target=target, **kwdargs)
-    density_node = _query_density(term, set(), engine, target, database, **kwdargs)
-    return [((term,), density_node)]
+    mixture = _query_density(term, engine, target, database, **kwdargs)
+    return mixture
 
-def _builtin_query_density2(term, free_variables, engine=None, target=None, database=None, **kwdargs):
-    check_mode((term,free_variables), ['gg'], functor='query_density_builtin2', target=target, **kwdargs)
-    density_node = _query_density(term, set(free_variables.args), engine, target, database, **kwdargs)
-    return [((term,free_variables), density_node)]
 
-def _query_density(term, free_variables, engine, target, database, **kwdargs):
+def _query_density(term, engine, target, database, **kwdargs):
     functor="density_query"
-    print(term)
     target, d_nodes = engine._ground(database, Term('~', term,  None), target)
-    distribution_node = 0
-
+    components = []
     for d_node in d_nodes:
         distribution = get_distribution(d_node, engine=engine, database=database, target=target, **kwdargs)
-        identifier = "density_of({})".format(target.get_density_name(term,distribution[1]))
-
-        print(distribution)
-
-    print(d_nodes)
-    print(target)
-    import sys
-    sys.exit()
-        # body_node = target.TRUE
-        # density_name =  target.get_density_name(term, d_node)
-        # density = Distribution(density_name)
-        # probability = density
-        #
-        #
-        # print(distribution)
-        # print(probability)
-        # dist_node = target.add_atom(identifier, probability)
-        # if distribution[1] is None:
-        #     dist_node = None
-        # elif distribution[1]:
-        #     dist_node = target.add_and((dist_node, distribution[1]))
-        #
-        # if not density_node:
-        #     density_node = dist_node
-        # else:
-        #     density_node = target.add_or((density_node,dist_node))
-
-    return density_node
-
-
-
-
-
-# def _builtin_density(term, args=(), target=None, engine=None, callback=None, transform=None, **kwdargs):
-#     check_mode( (term,), ['c'], functor='density_builtin')
-#     actions = []
-#     print(target.density_nodes)
-#     try:
-#         target, node_ids = engine._ground(database, Term('~', term, Var('Distribution')), target)
-#         target.density_nodes[term] = node_ids
-#     except:
-#         raise ValueError("Cannot query density of discrete random variable ({}).".format(term))
-#
-#
-#     print(target)
-#     target.density_queries[term] = set()
-#     for nid in node_ids:
-#         if nid in target.density_node_body:
-#             body_node = target.density_node_body[nid]
-#         else:
-#             body_node = target.TRUE
-#         density_name =  target.get_density_name(term, nid)
-#         density = DensityConstant(density_name)
-#         target.add_name(density, body_node, target.LABEL_QUERY)
-#         target.density_queries[term].add(density)
-#     actions += callback.notifyComplete()
-#     return False, actions
-
-
-
-
-# def _builtin_free(free_variable, args=(), target=None, engine=None, callback=None, transform=None, **kwdargs):
-#     check_mode( (free_variable,), ['c'], functor='free')
-#     actions = []
-#     target.free_variables.add(free_variable)
-#     actions += callback.notifyResult((free_variable,), is_last=False)
-#     actions += callback.notifyComplete()
-#     return True, actions
-#
-# def _builtin_free_list(free_variables, args=(), target=None, engine=None, callback=None, transform=None, **kwdargs):
-#     check_mode( (free_variables,), ['l'], functor='free_list')
-#     free_variables = term2list(free_variables)
-#     actions = []
-#     for v in free_variables:
-#         target.free_variables.add(v)
-#     actions += callback.notifyResult((free_variables,), is_last=False)
-#     actions += callback.notifyComplete()
-#     return True, actions
-
-
+        components.append(distribution)
+    mixture = Mixture(*components)
+    return [(mixture,0)]
 
 def make_comparison(functor, ab_values, engine=None, target=None, **kwdargs):
     result = []

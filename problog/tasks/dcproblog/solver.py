@@ -9,6 +9,7 @@ from .engine import init_engine
 from .formula import LogicFormulaHAL
 from .sdd_formula import SDDHAL
 from .evaluator import SemiringHAL
+from .logic import Mixture
 
 class Operator(object):
     def __init__(self, neutral_element, name):
@@ -40,18 +41,6 @@ class InferenceSolver(object):
         self.dpath = dpath
         self.file_name = file_name
 
-    # def get_density_queries(self, lf_hal):
-    #     density_queries = lf_hal.density_queries
-    #     _new_query_names = {}
-    #     for k,v in lf_hal._names[lf_hal.LABEL_QUERY].items():
-    #         if isinstance(k,tuple):
-    #             _new_query_names[k] =v
-    #         elif not k.functor=="density":
-    #             _new_query_names[k] =v
-    #
-    #     lf_hal._names[lf_hal.LABEL_QUERY] = _new_query_names
-    #     return density_queries
-
     def ground(self, model, queries=None, **kwdargs):
         engine = init_engine(**kwdargs)
         lf_hal = LogicFormulaHAL(db=model)
@@ -66,17 +55,25 @@ class InferenceSolver(object):
         diagram.build_dd()
         return diagram
 
-
     def calculate_probabilities(self, sdds, dde, **kwdargs):
         probabilities = OrderedDict()
         e_evaluated = dde.evaluate_sdd(sdds["e"], normalization=True, evaluation_last=False)
         if e_evaluated.value == dde.semiring.zero().value:
             raise InconsistentEvidenceError(context=': after evaluating evidence')
+        probabilities["q"] = OrderedDict()
         for q, qe_sdd in sdds["qe"].items():
             #if evalutation last true then sdd deref but produces error
             qe_evaluated = dde.evaluate_sdd(qe_sdd, evaluation_last=False)
             q_probability = dde.semiring.algebra.probability(qe_evaluated, e_evaluated)
-            probabilities[q] = q_probability
+            probabilities["q"][q] = q_probability
+        probabilities["dq"] = OrderedDict()
+        for dq, dqe_sdds in sdds["dqe"].items():
+            r = []
+            for c in dqe_sdds.args:
+                free_variables = set((c[0].name,))
+                dqe_evaluated = dde.evaluate_sdd(c[1], free_variables=free_variables, evaluation_last=False)
+                r.append(dqe_evaluated)
+            probabilities["dq"][dq] = Mixture(*r)
         return probabilities
 
     def make_diagram(self, dde, sdds):
@@ -103,18 +100,13 @@ class InferenceSolver(object):
         except:
             pass
 
-
-
     def probability(self, program, **kwdargs):
         lf_hal = self.ground(program, queries=None, **kwdargs)
         lf_hal = break_cycles(lf_hal, LogicFormulaHAL(density_values=lf_hal.density_values, \
             density_names=lf_hal.density_names, **kwdargs))
-
         semiring = SemiringHAL(self.operator.get_neutral(), self.abstract_abe, lf_hal.density_values)
         diagram = self.compile_formula(lf_hal, **kwdargs)
         dde = diagram.get_evaluator(semiring=semiring, **kwdargs)
-        dde.formula.density_values = lf_hal.density_values
-
 
 
         sdds = dde.get_sdds()
@@ -126,6 +118,9 @@ class InferenceSolver(object):
         return probabilities
 
     def print_result(self, probabilities):
-        for query in probabilities:
+        for query in probabilities["q"]:
             q_str = str(query)
-            print("{query: >20}: {probability}".format(query=q_str, probability=probabilities[query].value))
+            print("{query: >20}: {probability}".format(query=q_str, probability=probabilities["q"][query].value))
+        for dquery in probabilities["dq"]:
+            q_str = str(dquery)
+            print("{query: >20}: {probability}".format(query=q_str, probability=probabilities["dq"][dquery]))

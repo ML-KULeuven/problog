@@ -249,20 +249,20 @@ class RandomVariableConstant(LogicVectorConstant):
         return components
 
 
-
 class Distribution(Term):
     def __init__(self, distribution, *arguments):
         Term.__init__(self, distribution, *arguments)
         #has to be done probably during grounding and not during program creation
         #because the grounding might affect the number of parameters which might change the dimensionality?
         self.dimensions = self.infer_dimensions()
-
     def infer_dimensions(self):
         return 1
-
-
-
     def __str__(self):
         return str(self.functor)
     def __repr__(self):
         return str(self)
+
+
+class Mixture(Term):
+    def __init__(self, *components):
+        Term.__init__(self, "Mixture", *components)

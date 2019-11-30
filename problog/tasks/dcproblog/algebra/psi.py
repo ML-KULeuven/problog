@@ -90,7 +90,6 @@ class S(BaseS):
 class PSI(Algebra):
     def __init__(self, values, free_variables=set()):
         Algebra.__init__(self, values)
-        self.free_variables = free_variables
 
     def symbolize(self, expression, variables=set()):
         if isinstance(expression, (int, float)):
@@ -100,13 +99,14 @@ class PSI(Algebra):
         else:
             return S(expression, variables=set(variables))
 
-    def integrate(self, weight, normalization=False):
+    def integrate(self, weight, free_variables=set(), normalization=False):
         integrant = weight.value
         vs = set()
+        #this can be optimized!
         for rv in weight.variables:
             integrant = psipy.mul(integrant, self.densities[rv[:-1]])
         for rv in weight.variables:
-            if normalization or not self.is_free(rv[:-1]):
+            if normalization or not rv[:-1] in free_variables:
                 integrant = psipy.integrate(self.random_values[rv[:-1]], integrant)
             else:
                 vs.add(rv)

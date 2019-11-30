@@ -15,7 +15,7 @@ from .engine_builtin import \
     _builtin_is, \
     _builtin_gt, _builtin_lt, _builtin_le, _builtin_ge, \
     _builtin_observation, \
-    _builtin_query_density1, _builtin_query_density2 \
+    _builtin_query_density
 
     # , _builtin_val_eq, _builtin_val_neq
 
@@ -33,8 +33,7 @@ class EngineHAL(DefaultEngine):
         self.add_builtin('>=', 2, SimpleProbabilisticBuiltIn(_builtin_ge))
 
         self.add_builtin('observation_builtin', 2, SimpleBuiltIn(_builtin_observation))
-        self.add_builtin('query_density_builtin1', 1, SimpleBuiltIn(_builtin_query_density1))
-        self.add_builtin('query_density_builtin2', 2, SimpleBuiltIn(_builtin_query_density2))
+        self.add_builtin('query_density_builtin', 1, SimpleBuiltIn(_builtin_query_density))
 
 
 
@@ -70,14 +69,13 @@ class EngineHAL(DefaultEngine):
         logger = logging.getLogger('problog')
         for label, dquery in dqueries:
             logger.debug("Grounding query '%s'", dquery)
-            if len(dquery)==1:
-                target, density_node = self._ground(db, Term('query_density_builtin1', dquery[0]), target)
-            elif len(dquery)==2:
-                target, density_node = self._ground(db, Term('query_density_builtin2', dquery[0], dquery[1]), target)
+            target, mixture = self._ground(db, Term('query_density_builtin', dquery[0]), target)
 
-            density_node = density_node[0][0]
-            target.add_name(density_node[0], density_node[1], target.LABEL_DQUERY)
+            mixture = mixture[0][0][0]
+
+            target.add_name((dquery[0], mixture), 0, target.LABEL_DQUERY)
             logger.debug("Ground program size: %s", len(target))
+
 
     def ground_observation(self, db, target, observation, propagate_evidence=False):
         logger = logging.getLogger('problog')

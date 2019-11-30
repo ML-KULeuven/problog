@@ -1,6 +1,5 @@
-from __future__ import print_function
-
 from .formula import LogicFormulaHAL
+from .logic import Mixture
 
 from problog.formula import LogicDAG
 from problog.logic import Term
@@ -31,11 +30,27 @@ def break_cycles(source, target, translation=None, **kwdargs):
             translation = defaultdict(list)
 
         for q, n, l in source.labeled():
-            if source.is_probabilistic(n):
-                newnode = _break_cycles(source, target, n, [], cycles_broken, content, translation)
-            else:
-                newnode = n
-            target.add_name(q, newnode, l)
+            if l==target.LABEL_QUERY:
+                if source.is_probabilistic(n):
+                    newnode = _break_cycles(source, target, n, [], cycles_broken, content, translation)
+                else:
+                    newnode = n
+                target.add_name(q, newnode, l)
+
+        for q, n, l in source.labeled():
+            if l==source.LABEL_DQUERY:
+                translation = defaultdict(list)
+                components = q[1].args
+                new_components = []
+                for c in components:
+                    if source.is_probabilistic(c[1]):
+                        newnode = _break_cycles(source, target, c[1], [], cycles_broken, content, translation)
+                    else:
+                        newnode = c[1]
+                    new_components.append((c[0],c[1]))
+                mixture = Mixture(*new_components)
+                target.add_name( (q[0],mixture), 0, l)
+
 
         # TODO copy constraints
 

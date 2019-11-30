@@ -5,7 +5,7 @@ from problog.dd_formula import build_dd
 from problog.sdd_formula import SDD, SDDEvaluator
 from problog.formula import LogicFormula
 
-
+from .logic import Mixture
 from .formula import atom, LogicFormulaHAL
 
 
@@ -219,7 +219,7 @@ class SDDEvaluatorHAL(SDDEvaluator):
                     self.set_evidence(self.formula.atom2var[ev], ev > 0)
 
 
-    def get_sdds(self):#node
+    def get_sdds(self):
         result = {}
         constraint_inode = self.formula.get_constraint_inode()
         evidence_nodes = [self.formula.get_inode(ev) for ev in self.evidence()]
@@ -236,9 +236,21 @@ class SDDEvaluatorHAL(SDDEvaluator):
                 evidence_inode = self.evidence_inode
                 query_sdd = self._get_manager().conjoin(query_def_inode, evidence_inode)
                 result["qe"][query] = query_sdd
+        result["dqe"] = OrderedDict()
+        for dquery, _ in self.formula.dqueries():
+            dq = dquery[0]
+            components_sdd = []
+            for c in dquery[1].args:
+                dquery_def_inode = self.formula.get_inode(c[1])
+                evidence_inode = self.evidence_inode
+                dquery_sdd = self._get_manager().conjoin(dquery_def_inode, evidence_inode)
+                components_sdd.append((c[0], dquery_sdd))
+
+            mixture = Mixture(*components_sdd)
+            result["dqe"][dq] = mixture
         return result
 
-    def evaluate_sdd(self, sdd, normalization=False, evaluation_last=False):
+    def evaluate_sdd(self, sdd, normalization=False, free_variables=set(), evaluation_last=False):
         if sdd is None:
             result = self.semiring.zero()
         elif sdd.is_true():
@@ -253,7 +265,7 @@ class SDDEvaluatorHAL(SDDEvaluator):
             result = self._get_manager().wmc(sdd, weights=self.weights, semiring=self.semiring,
                                                  pr_semiring=False, perform_smoothing=True,
                                                  smooth_to_root=smooth_to_root)
-            result = self.semiring.result(result, normalization=normalization)
+            result = self.semiring.result(result, free_variables=free_variables, normalization=normalization)
             if evaluation_last:
                 self._get_manager().deref(sdd)
 

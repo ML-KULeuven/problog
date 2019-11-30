@@ -20,8 +20,6 @@ class LogicFormulaHAL(LogicFormula):
         LogicFormula.__init__(self, **kwargs)
         self.density_names = density_names
         self.density_values = density_values
-        self.free_query_variables = {}
-        self.density_nodes = {}
 
 
 
@@ -122,8 +120,6 @@ class LogicFormulaHAL(LogicFormula):
             return expression
         elif expression==None:
             return SymbolicConstant(None,args=(),cvariables=set())
-        elif isinstance(expression, Distribution):
-            return expression
         elif expression.functor==".":
             expression = term2list(expression)
             symbolic_args = []
@@ -188,11 +184,10 @@ class LogicFormulaHAL(LogicFormula):
             s += '\n* ' +  "{} : {} [{}]".format(q[0],q[1], self.LABEL_QUERY)
         f = True
         for q in self.dqueries():
-            print(q)
             if f:
                 f = False
                 s += '\nDensity Queries : '
-            s += '\n* ' +  "{} : {} [{}]".format(q[0],q[1], self.LABEL_DQUERY)
+            s += '\n* ' +  "{} : {} ".format(q[0][0],q[0][1])
         f = True
         for q in self.evidence():
             if f:

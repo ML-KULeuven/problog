@@ -110,7 +110,7 @@ class Pyro(Algebra):
         else:
             return S(expression, variables=set(variables))
 
-    def integrate(self, weight, normalization=False):
+    def integrate(self, weight, free_variables=set(), normalization=False):
         if isinstance(weight.value, (int,float)):
             return S(weight.value)
         elif normalization:

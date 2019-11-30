@@ -40,9 +40,14 @@ class SemiringHAL(Semiring):
             return nv
     def value(self, a):
         return self.algebra.value(a)
-    def result(self, a, normalization=False):
-        return self.algebra.result(a, normalization=normalization)
+    def result(self, a, free_variables=set(), normalization=False):
+        return self.algebra.result(a, free_variables=free_variables, normalization=normalization)
     def is_dsp(self):
         return True
     def is_nsp(self):
         return False
+
+    def to_evidence(self, pos_weight, neg_weight, sign):
+        # Not sure what this function actually is good for?
+        return (pos_weight, neg_weight) if sign > 0 else (neg_weight, pos_weight)
+        # return (self.one(), self.zero()) if sign > 0 else (self.zero(), self.one())

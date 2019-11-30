@@ -64,7 +64,9 @@ class TestTasks(unittest.TestCase):
             solver = InferenceSolver(abe, **args)
 
             probability = {}
-            probabilities = solver.probability(program, **args)
+            results = solver.probability(program, **args)
+            probabilities = results["q"]
+
             computed = {}
             for k,v in probabilities.items():
 
@@ -90,7 +92,8 @@ class TestTasks(unittest.TestCase):
             args["file_name"] = tf
             program = PrologFile(args['file_name'], parser=DCParser())
             solver = InferenceSolver(abe, **args)
-            probabilities = solver.probability(program, **args)
+            results = solver.probability(program, **args)
+            probabilities = results["q"]
             computed = {}
             for k,v in probabilities.items():
                 computed[str(k)] = str(v.value)
@@ -120,7 +123,8 @@ class TestTasks(unittest.TestCase):
             try:
                 program = PrologFile(args['file_name'], parser=DCParser())
                 solver = InferenceSolver(abe, **args)
-                probabilities = solver.probability(program, **args)
+                results = solver.probability(program, **args)
+                probabilities = results["q"]
                 computed = {}
                 for k,v in probabilities.items():
                     computed[str(k)] = float(v.value)
@@ -164,7 +168,8 @@ class TestTasks(unittest.TestCase):
             try:
                 program = PrologFile(args['file_name'], parser=DCParser())
                 solver = InferenceSolver(abe, **args)
-                probabilities = solver.probability(program, **args)
+                results = solver.probability(program, **args)
+                probabilities = results["q"]
                 computed = {}
                 for k,v in probabilities.items():
                     v = str(v.value)
