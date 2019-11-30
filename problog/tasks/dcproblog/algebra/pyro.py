@@ -2,7 +2,7 @@ import torch
 import pyro
 import math
 
-from .algebra import Algebra, BaseS
+from .algebra import Algebra, BaseS, SUB
 
 str2distribution = {
     "delta" : pyro.distributions.Delta,
@@ -12,6 +12,20 @@ str2distribution = {
     "beta" : pyro.distributions.Beta,
     "poisson" : pyro.distributions.Poisson
 }
+
+
+class MixtureComponent(object):
+    # Maybe index components?
+    def __init__(self, samples, weights, component_index):
+        self.samples = samples
+        self.weights = weights
+        self.component_index = component_index
+
+    def __truediv__(self, other):
+        return MixtureComponent(self.samples, self.weights/other, self.component_index)
+
+    def __str__(self):
+        return "MixComp{}".format(str(self.component_index).translate(SUB))
 
 class S(BaseS):
     def __init__(self, tensor, variables=set()):
@@ -111,21 +125,15 @@ class Pyro(Algebra):
             return S(expression, variables=set(variables))
 
     def integrate(self, weight, free_variable=None, normalization=False):
-        # fv = list(free_variables)[0]
-        # print(fv)
-        # # density = self.densities[free_variables]
-        # # w = torch.exp(density.log_prob(torch.tensor(obs.value)
-        #
-        # for rv in weight.variables:
-        #     print(type(self.densities[rv[:-1]]))
-        #     print(self.random_values)
-        #     print(rv)
-        if isinstance(weight.value, (int,float)):
-            return S(weight.value)
-        elif normalization:
-            return S(torch.mean(weight.value))
+        if free_variable:
+            values = self.random_values[free_variable]
+            # TODO pass on variables
+            return S(MixtureComponent(values, weight.value, free_variable[1]))
         else:
-            return S(torch.mean(weight.value))
+            if isinstance(weight.value, (int,float)):
+                return S(weight.value)
+            else:
+                return S(torch.mean(weight.value))
 
 
     @staticmethod
