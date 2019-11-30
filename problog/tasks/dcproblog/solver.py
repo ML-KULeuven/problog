@@ -70,9 +70,10 @@ class InferenceSolver(object):
         for dq, dqe_sdds in sdds["dqe"].items():
             r = []
             for c in dqe_sdds.args:
-                free_variables = set((c[0].name,))
-                dqe_evaluated = dde.evaluate_sdd(c[1], free_variables=free_variables, evaluation_last=False)
-                r.append(dqe_evaluated)
+                free_variable = c[0].name
+                dqe_evaluated = dde.evaluate_sdd(c[1], free_variable=free_variable, evaluation_last=False)
+                dq_evaluated = dde.semiring.algebra.probability(dqe_evaluated, e_evaluated)
+                r.append(dq_evaluated)
             probabilities["dq"][dq] = Mixture(*r)
         return probabilities
 

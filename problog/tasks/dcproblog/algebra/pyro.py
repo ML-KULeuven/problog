@@ -110,7 +110,16 @@ class Pyro(Algebra):
         else:
             return S(expression, variables=set(variables))
 
-    def integrate(self, weight, free_variables=set(), normalization=False):
+    def integrate(self, weight, free_variable=None, normalization=False):
+        # fv = list(free_variables)[0]
+        # print(fv)
+        # # density = self.densities[free_variables]
+        # # w = torch.exp(density.log_prob(torch.tensor(obs.value)
+        #
+        # for rv in weight.variables:
+        #     print(type(self.densities[rv[:-1]]))
+        #     print(self.random_values)
+        #     print(rv)
         if isinstance(weight.value, (int,float)):
             return S(weight.value)
         elif normalization:

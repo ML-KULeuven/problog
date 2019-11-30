@@ -250,7 +250,7 @@ class SDDEvaluatorHAL(SDDEvaluator):
             result["dqe"][dq] = mixture
         return result
 
-    def evaluate_sdd(self, sdd, normalization=False, free_variables=set(), evaluation_last=False):
+    def evaluate_sdd(self, sdd, normalization=False, free_variable=None, evaluation_last=False):
         if sdd is None:
             result = self.semiring.zero()
         elif sdd.is_true():
@@ -265,7 +265,7 @@ class SDDEvaluatorHAL(SDDEvaluator):
             result = self._get_manager().wmc(sdd, weights=self.weights, semiring=self.semiring,
                                                  pr_semiring=False, perform_smoothing=True,
                                                  smooth_to_root=smooth_to_root)
-            result = self.semiring.result(result, free_variables=free_variables, normalization=normalization)
+            result = self.semiring.result(result, free_variable=free_variable, normalization=normalization)
             if evaluation_last:
                 self._get_manager().deref(sdd)
 

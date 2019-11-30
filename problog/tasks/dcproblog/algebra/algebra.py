@@ -112,8 +112,8 @@ class Algebra(object):
         return self.construct_algebraic_expression(expression)
     def negate(self,a):
         return self.construct_negated_algebraic_expression(a)
-    def result(self, a, free_variables=set(), normalization=False):
-        return self.integrate(a, free_variables=free_variables, normalization=normalization)
+    def result(self, a, free_variable=None, normalization=False):
+        return self.integrate(a, free_variable=free_variable, normalization=normalization)
     def probability(self, a, z):
         if not a:
             return self.symbolize(0)

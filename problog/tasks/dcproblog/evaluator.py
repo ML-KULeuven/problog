@@ -40,8 +40,8 @@ class SemiringHAL(Semiring):
             return nv
     def value(self, a):
         return self.algebra.value(a)
-    def result(self, a, free_variables=set(), normalization=False):
-        return self.algebra.result(a, free_variables=free_variables, normalization=normalization)
+    def result(self, a, free_variable=None, normalization=False):
+        return self.algebra.result(a, free_variable=free_variable, normalization=normalization)
     def is_dsp(self):
         return True
     def is_nsp(self):
