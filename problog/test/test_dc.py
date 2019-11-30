@@ -109,13 +109,13 @@ class TestTasks(unittest.TestCase):
 
         abe = "pyro"
         args = {"device":"cpu", "ttype":"float64", "n_samples":100}
-        fail =[
+        NOTSUPPORTED =[
         "subquery.pl",
         ]
         print(len(testfiles))
         for tf in testfiles:
             # print(tf)
-            if tf.split("/")[-1] in fail:
+            if tf.split("/")[-1] in NOTSUPPORTED:
                 continue
 
             expected = get_expected(tf)
@@ -151,13 +151,13 @@ class TestTasks(unittest.TestCase):
         path2files = root_path("test")
         testfiles = [os.path.join(path2files,f) for f in os.listdir(path2files) if os.path.isfile(os.path.join(path2files, f)) and f.endswith(".pl")]
 
-        fail =[
+        NOTSUPPORTED =[
         "subquery.pl",
         ]
         print(len(testfiles))
         for tf in testfiles:
             print(tf)
-            if tf.split("/")[-1] in fail:
+            if tf.split("/")[-1] in NOTSUPPORTED:
                 continue
 
         abe = "psi"
