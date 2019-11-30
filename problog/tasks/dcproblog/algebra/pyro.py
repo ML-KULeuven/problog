@@ -15,7 +15,6 @@ str2distribution = {
 
 
 class MixtureComponent(object):
-    # Maybe index components?
     def __init__(self, samples, weights, component_index):
         self.samples = samples
         self.weights = weights

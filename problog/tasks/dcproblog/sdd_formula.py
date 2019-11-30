@@ -4,6 +4,7 @@ from problog.core import transform, transform_create_as
 from problog.dd_formula import build_dd
 from problog.sdd_formula import SDD, SDDEvaluator
 from problog.formula import LogicFormula
+from problog.evaluator improt SemiringLogProbability
 
 from .logic import Mixture
 from .formula import atom, LogicFormulaHAL
@@ -29,7 +30,9 @@ class SDDHAL(SDD, LogicFormulaHAL):
         :param weights: weights to use
         :return: evaluator for this formula
         """
-        assert semiring
+        if semiring is None:
+            # TODO change this to hal semiring
+            semiring = SemiringLogProbability()
 
         evaluator = self._create_evaluator(semiring, weights, **kwargs)
 
