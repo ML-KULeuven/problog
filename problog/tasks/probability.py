@@ -429,6 +429,8 @@ def main(argv, result_handler=None):
     if args.timeout:
         stop_timer()
 
+    return result
+
 
 if __name__ == "__main__":
     main(sys.argv[1:])
