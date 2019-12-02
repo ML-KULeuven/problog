@@ -102,7 +102,7 @@ class TestTasks(unittest.TestCase):
 
     @staticmethod
     def normalise_bn_output(bn_string):
-        return bn_string.strip().replace("\n", "").replace(" ", "")
+        return bn_string.strip().replace("\n\n", "\n").replace(" ", "")
 
     def equal_bn_result(self, expected, actual):
         return self.assertEqual(
@@ -145,14 +145,14 @@ class TestTasks(unittest.TestCase):
             "\n\nOrCPT heads1 [0,1] -- c0\n('c0', 1)"
             "\n\nFactor (c1) = 0, 1\n(): [0.4, 0.6]"
             "\n\nOrCPT heads2 [0,1] -- c1\n('c1', 1)"
-            "\n\nFactor (c2 | heads1) = 0\n(False,): [1.0]\n(True,): [1.0]"
-            "\n\nFactor (c3 | heads2) = 0\n(False,): [1.0]\n(True,): [1.0]"
-            "\n\nFactor (c4 | heads2) = 0\n(False,): [1.0]\n(True,): [1.0]"
-            "\n\nFactor (c5 | heads1) = 0\n(False,): [1.0]\n(True,): [1.0]"
-            "\n\nFactor (c6 | heads1, heads2) = 0, 1"
-            "\n(False, False): [1.0, 0.0]\n(False, True): [1.0, 0.0]"
-            "\n(True, False): [1.0, 0.0]\n(True, True): [0.0, 1.0]"
-            "\n\nOrCPT someHeads [0,1] -- c6\n('c6', 1)\n",
+            "\n\nFactor (c2 | heads2) = 0\n(False,): [1.0]\n(True,): [1.0]"
+            "\n\nFactor (c3 | \\+heads1, \\+heads2) = 0\n(False,): [1.0]\n(True,): [1.0]"
+            "\n\nFactor (c4 | heads1) = 0\n(False,): [1.0]\n(True,): [1.0]"
+            "\n\nFactor (c5 | heads2) = 0\n(False,): [1.0]\n(True,): [1.0]"
+            "\n\nFactor (c6 | heads1) = 0\n(False,): [1.0]\n(True,): [1.0]"
+            "\n\nFactor (c7 | heads1, heads2) = 0, 1\n(False, False): [1.0, 0.0]"
+            "\n(False, True): [1.0, 0.0]\n(True, False): [1.0, 0.0]\n(True, True): [0.0, 1.0]"
+            "\n\nOrCPT someHeads [0,1] -- c7\n('c7', 1)\n",
         )
 
     def test_bn_pgraph(self):

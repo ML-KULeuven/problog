@@ -1411,11 +1411,12 @@ label_all=True)
                 else:
                     return node.name
             elif ntype == "conj":
+                children = self._unroll_conj(node)
+                result = And.from_list(list(map(self.get_name, children)))
                 if index < 0:
-                    return -node.name
+                    return -result
                 else:
-                    children = self._unroll_conj(node)
-                    return And.from_list(list(map(self.get_name, children)))
+                    return result
             elif (
                 ntype == "disj"
                 and len(node.children) == 1
