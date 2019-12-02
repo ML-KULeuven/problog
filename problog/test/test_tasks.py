@@ -157,7 +157,7 @@ class TestTasks(unittest.TestCase):
     def test_time(self):
         file_name = test_folder / "tasks" / "some_heads.pl"
         result = time1.main([str(file_name)])
-        self.assertEquals(6, len(result))
+        self.assertEqual(6, len(result))
 
     # BN
     def check_bn(self, file_name, expected):
