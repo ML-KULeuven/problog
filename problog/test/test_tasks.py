@@ -3,7 +3,7 @@ import unittest
 from pathlib import Path
 
 from problog.logic import Constant, Term, Not
-from problog.tasks import map, explain, time1, bayesnet, mpe
+from problog.tasks import map, explain, time1, bayesnet, mpe, ground
 
 dirname = os.path.dirname(__file__)
 test_folder = Path(dirname, "./../../test/")
@@ -87,6 +87,72 @@ class TestTasks(unittest.TestCase):
         # Test result
         results = result["results"]
         self.assertAlmostEqual(0.8, results[Term("someHeads")], delta=1e6)
+
+    def check_ground_result(self, expected, result):
+        self.assertTrue(result[0])
+        print("result", result)
+        self.assertEqual(expected, result[1])
+
+    def test_ground(self):
+        file_name = test_folder / "tasks" / "pgraph.pl"
+        grounded_pgraph = (
+            "0.6::edge(1,2)."
+            "\n0.1::edge(1,3)."
+            "\n0.4::edge(2,5)."
+            "\n0.3::edge(2,6)."
+            "\npath(2,5) :- edge(2,5)."
+            "\n0.3::edge(3,4)."
+            "\n0.8::edge(4,5)."
+            "\npath(4,5) :- edge(4,5)."
+            "\npath(3,5) :- edge(3,4), path(4,5)."
+            "\npath(1,5) :- edge(1,2), path(2,5)."
+            "\npath(1,5) :- edge(1,3), path(3,5)."
+            "\n0.2::edge(5,6)."
+            "\npath(5,6) :- edge(5,6)."
+            "\npath(2,6) :- edge(2,6)."
+            "\npath(2,6) :- edge(2,5), path(5,6)."
+            "\npath(4,6) :- edge(4,5), path(5,6)."
+            "\npath(3,6) :- edge(3,4), path(4,6)."
+            "\npath(1,6) :- edge(1,2), path(2,6)."
+            "\npath(1,6) :- edge(1,3), path(3,6)."
+            "\nevidence(path(1,5))."
+            "\nevidence(path(1,6))."
+        )
+        self.check_ground_result(grounded_pgraph, ground.main([str(file_name)]))
+        self.check_ground_result(
+            grounded_pgraph, ground.main([str(file_name), "--propagate-evidence"])
+        )
+        self.check_ground_result(
+            grounded_pgraph, ground.main([str(file_name), "--propagate-weights"])
+        )
+        self.check_ground_result(
+            grounded_pgraph, ground.main([str(file_name), "--hide-builtins"])
+        )
+        self.check_ground_result(
+            "0.6::edge(1,2).\n0.1::edge(1,3).\n0.4::edge(2,5).\n0.3::edge(2,6).\n0.3::edge(3,4).\n0.8::edge(4,"
+            "5).\npath(3,5) :- edge(3,4), edge(4,5).\npath(1,5) :- edge(1,2), edge(2,5).\npath(1,5) :- edge(1,3), "
+            "path(3,5).\n0.2::edge(5,6).\npath(2,6) :- edge(2,6).\npath(2,6) :- edge(2,5), edge(5,6).\npath(4,"
+            "6) :- edge(4,5), edge(5,6).\npath(3,6) :- edge(3,4), path(4,6).\npath(1,6) :- edge(1,2), path(2,"
+            "6).\npath(1,6) :- edge(1,3), path(3,6).\nevidence(path(1,5)).\nevidence(path(1,6)).",
+            ground.main([str(file_name), "--compact"]),
+        )
+        self.check_ground_result(
+            "0.6::edge(1,2).\n0.1::edge(1,3).\n0.4::edge(2,5).\n0.3::edge(2,6).\n0.3::edge(3,4).\n0.8::edge(4,"
+            "5).\npath(1,5) :- edge(1,2), edge(2,5).\npath(1,5) :- edge(1,3), edge(3,4), edge(4,5).\n0.2::edge(5,"
+            "6).\nNone :- edge(2,6).\nNone :- edge(2,5), edge(5,6).\npath(1,6) :- edge(1,2), edge(2,6).\npath(1,"
+            "6) :- edge(1,3), edge(3,4), edge(4,5), edge(5,6).\nevidence(path(1,5)).\nevidence(path(1,6)).",
+            ground.main([str(file_name), "--noninterpretable"]),
+        )
+
+    def test_ground_formats_no_error(self):
+        file_name = test_folder / "tasks" / "pgraph.pl"
+
+        result = ground.main([str(file_name), "--format", "pl"])
+        result = ground.main([str(file_name), "--format", "dot"])
+        result = ground.main([str(file_name), "--format", "svg"])
+        result = ground.main([str(file_name), "--format", "cnf"])
+        result = ground.main([str(file_name), "--format", "internal"])
+        result = ground.main([str(file_name), "--web"])
 
     def test_time(self):
         file_name = test_folder / "tasks" / "some_heads.pl"
