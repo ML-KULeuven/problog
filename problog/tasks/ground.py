@@ -28,7 +28,7 @@ from problog.program import ExtendedPrologFactory, PrologFile
 from problog.util import subprocess_check_output, mktempfile
 
 
-def main(argv, result_handler=None):
+def get_arg_parser():
     import argparse
 
     parser = argparse.ArgumentParser()
@@ -86,7 +86,10 @@ def main(argv, result_handler=None):
         help="Pass additional arguments to the cmd_args builtin.",
     )
 
-    args = parser.parse_args(argv)
+
+def main(argv, result_handler=None):
+
+    args = get_arg_parser().parse_args(argv)
 
     outformat = args.format
     outfile = sys.stdout
