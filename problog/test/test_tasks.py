@@ -198,7 +198,7 @@ class TestTasks(unittest.TestCase):
 
         result = ground.main([str(file_name), "--format", "pl"])
         # result = ground.main([str(file_name), "--format", "dot"]) # Broken
-        result = ground.main([str(file_name), "--format", "svg"])
+        # result = ground.main([str(file_name), "--format", "svg"])
         result = ground.main([str(file_name), "--format", "cnf"])
         result = ground.main([str(file_name), "--format", "internal"])
         result = ground.main([str(file_name), "--web"])
