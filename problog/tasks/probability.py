@@ -410,18 +410,19 @@ def main(argv, result_handler=None):
     if args.propagate_weights:
         args.propagate_weights = semiring
 
+    result = None
     if args.combine:
         result = execute(args.filenames, args.koption, semiring, **vars(args))
         retcode = result_handler(result, output)
-        sys.exit(retcode)
+        # sys.exit(retcode)
     else:
         for filename in args.filenames:
             if len(args.filenames) > 1:
                 print("Results for %s:" % filename)
             result = execute(filename, args.koption, semiring, **vars(args))
             retcode = result_handler(result, output)
-            if len(args.filenames) == 1:
-                sys.exit(retcode)
+            # if len(args.filenames) == 1:
+            #     sys.exit(retcode)
 
     if args.output is not None:
         output.close()

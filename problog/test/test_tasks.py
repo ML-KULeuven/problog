@@ -3,7 +3,7 @@ import unittest
 from pathlib import Path
 
 from problog.logic import Constant, Term, Not
-from problog.tasks import map, explain, time1, bayesnet, mpe, ground
+from problog.tasks import map, explain, time1, bayesnet, mpe, ground, probability
 
 dirname = os.path.dirname(__file__)
 test_folder = Path(dirname, "./../../test/")
@@ -88,6 +88,55 @@ class TestTasks(unittest.TestCase):
         results = result["results"]
         self.assertAlmostEqual(0.8, results[Term("someHeads")], delta=1e6)
 
+    def check_probability(self, expected, result):
+        self.assertTrue(result[0])
+        self.assertEqual(expected, result[1])
+
+    def test_probability_some_heads(self):
+        file_name = test_folder / "tasks" / "some_heads.pl"
+        result = probability.main([str(file_name)])
+        self.check_probability({Term("someHeads"): 0.8}, result)
+
+    def check_probability_probabilistic_graph(self, result):
+        self.assertTrue(result[0])
+        self.assertAlmostEqual(
+            0.11299610205528002,
+            result[1][Term("edge", Constant(1), Constant(3))],
+            delta=1e6,
+        )
+        self.assertAlmostEqual(
+            0.9911410347271441,
+            result[1][Term("edge", Constant(1), Constant(2))],
+            delta=1e6,
+        )
+
+    def test_probability_pgraph(self):
+        file_name = test_folder / "tasks" / "map_probabilistic_graph.pl"
+        self.check_probability_probabilistic_graph(probability.main([str(file_name)]))
+        self.check_probability_probabilistic_graph(
+            probability.main([str(file_name), "--combine"])
+        )
+        self.check_probability_probabilistic_graph(
+            probability.main([str(file_name), "--nologspace"])
+        )
+        self.check_probability_probabilistic_graph(
+            probability.main([str(file_name), "--propagate-evidence"])
+        )
+        self.check_probability_probabilistic_graph(
+            probability.main([str(file_name), "--propagate-weights"])
+        )
+        self.check_probability_probabilistic_graph(
+            probability.main(
+                [str(file_name), "--propagate-evidence", "--propagate-weights"]
+            )
+        )
+        self.check_probability_probabilistic_graph(
+            probability.main([str(file_name), "--unbuffered"])
+        )
+        self.check_probability_probabilistic_graph(
+            probability.main([str(file_name), "--convergence", str(0.00000001)])
+        )
+
     def check_ground_result(self, expected, result):
         self.assertTrue(result[0])
         print("result", result)
@@ -162,7 +211,6 @@ class TestTasks(unittest.TestCase):
     # BN
     def check_bn(self, file_name, expected):
         result = bayesnet.main([str(file_name)])
-        print("result", result)
         self.assertTrue(result[0])
         self.equal_bn_result(expected, result[1])
 
