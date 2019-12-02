@@ -214,6 +214,9 @@ def formula_to_bn(formula):
     clauses = []
     bn = PGM()
     for idx, clause in enumerate(formula.enum_clauses()):
+        type_clause = type(clause)
+        print("type:", type_clause)
+        string_clause = str(clause)
         logger.debug("clause: {}".format(clause))
         clauses.append(clause)
         clause_to_cpt(clause, idx, bn)
