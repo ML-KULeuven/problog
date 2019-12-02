@@ -136,6 +136,12 @@ class TestTasks(unittest.TestCase):
         self.check_probability_probabilistic_graph(
             probability.main([str(file_name), "--convergence", str(0.00000001)])
         )
+        self.check_probability_probabilistic_graph(
+            probability.main([str(file_name), "--format", "prolog"])
+        )
+        self.check_probability_probabilistic_graph(
+            probability.main([str(file_name), "--web"])
+        )
 
     def check_ground_result(self, expected, result):
         self.assertTrue(result[0])
