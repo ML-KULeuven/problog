@@ -55,10 +55,11 @@ def main(argv):
         explanation = []
         results = cnf.evaluate(explain=explanation)
 
+        result["SUCCESS"] = True
+        result["program"] = program
+        result["proofs"] = explanation
+        result["results"] = results
         if args.web:
-            result["SUCCESS"] = True
-            result["program"] = program
-            result["proofs"] = explanation
             result["probabilities"] = [
                 (str(k), round(v, 8)) for k, v in results.items()
             ]
@@ -77,10 +78,6 @@ def main(argv):
             print("Probabilities", file=out)
             print("-------------", file=out)
             print(format_dictionary(results), file=out)
-            result["SUCCESS"] = True
-            result["program"] = program
-            result["proofs"] = explanation
-            result["results"] = results
 
     except Exception as err:
         trace = traceback.format_exc()
