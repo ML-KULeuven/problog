@@ -608,13 +608,14 @@ class LFIProblem(LogicProgram):
         def all_false_except_one(d):
             """
             This function recognizes incomplete evidence s.t.
-            the non-False value in ADneeds to be set to True.
+            the non-False value in AD needs to be set to True.
             :param d: dictionary of ADs in form {term: value}
                     value can be True, False, None, "Template"
             :return: whether all values except one are False
             """
             false_count = sum(v is False for v in d.values())
-            return false_count == len(d) - 1
+            the_left_is_none = bool(sum(v is None for v in d.values()))
+            return (false_count == len(d) - 1) and the_left_is_none
 
         def getADtemplate(d, atom=None):
             """
@@ -687,8 +688,7 @@ class LFIProblem(LogicProgram):
                             for d in ad_evidences:
                                 if atom in d:
                                     d[atom] = value
-                                    break
-                            non_ad_evidence[atom] = value
+                            non_ad_evidence[atom] = value # TODO: what does this capture?
                         # First Order evidence
                         else:
                             # find the right AD dictionary : AD_dict
@@ -696,7 +696,6 @@ class LFIProblem(LogicProgram):
                             for d in ad_evidences:
                                 if any([atom.signature == k.signature for k in d]):
                                     AD_dict = d
-                                    break
                             # if the instantiation is new, add it as a key to the dictionary
                             if AD_dict and AD_dict.get(atom) is None:
                                 AD_dict[atom] = value
@@ -734,11 +733,11 @@ class LFIProblem(LogicProgram):
 
                 inconsistent_example = False
                 for i, d in enumerate(grounded_ad_evidences):
-                    inconsistent1 = multiple_true(d)
+                    # inconsistent1 = multiple_true(d)
                     inconsistent2 = all_false(d)
                     add_compliment = all_false_except_one(d)
 
-                    if inconsistent1 or inconsistent2:
+                    if inconsistent2:
                         print(
                             "*** Warning: Inconsistent Evidence Detected! Ignoring this datapoint. ***\n"
                         )
