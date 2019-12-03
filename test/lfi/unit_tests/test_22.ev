@@ -1,8 +1,8 @@
 evidence(a(1),false).
 evidence(b(1)).
----
-evidence(a(2)).
-evidence(b(2)).
+%---
+%evidence(a(2)).
+%evidence(b(2)).
 ---
 evidence(b(1),false).
 ---
