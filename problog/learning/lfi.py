@@ -732,6 +732,7 @@ class LFIProblem(LogicProgram):
                 # print(grounded_ad_evidences)
 
                 inconsistent_example = False
+                # TODO if this for loop is commented out, test_10.pl will not pass
                 for i, d in enumerate(grounded_ad_evidences):
                     # inconsistent1 = multiple_true(d)
                     inconsistent2 = all_false(d)
@@ -781,10 +782,10 @@ class LFIProblem(LogicProgram):
     def _compile_examples(self):
         """Compile examples."""
         baseprogram = DefaultEngine(**self.extra).prepare(self)
-        print("\nBase Program\t:")
-        print("\t" + baseprogram.to_prolog().replace("\n", "\n\t"))
+        # print("\nBase Program\t:")
+        # print("\t" + baseprogram.to_prolog().replace("\n", "\n\t"))
         examples = self._process_examples()
-        print()
+        print("examples: ", examples)
         for i, example in enumerate(examples):
             print("Compiling example {}/{}".format(i + 1, len(examples)))
             example.compile(self, baseprogram)
