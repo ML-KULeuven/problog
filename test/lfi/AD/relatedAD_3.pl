@@ -1,3 +1,4 @@
+% This test fails.
 %Expected outcome:
 % 0.5::a(X); 0.5::b(Y) :- X \== Y.
 
