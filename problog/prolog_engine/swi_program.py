@@ -3,10 +3,10 @@ from collections import defaultdict
 from pathlib import Path
 from time import time
 
+from problog.clausedb import ConsultError
 from problog.core import ProbLogObject
-from problog.logic import unquote, term2list, ArithmeticError
-from problog.prolog_engine.swip import parse
-from problog.prolog_engine.threaded_prolog import ThreadedProlog
+from problog.logic import unquote, term2list, ArithmeticError, Term
+from problog.prolog_engine.threaded_prolog import DirtyProlog
 
 
 def handle_prob(prob):
@@ -53,7 +53,7 @@ def handle_functor(func, args=None):
 
 class SWIProgram(ProbLogObject):
 
-    def __init__(self, db, consult='engine2.pl'):
+    def __init__(self, db, consult='engine2.pl', sub_query=False):
         self.facts = []
         self.clauses = []
         self.db = db
@@ -62,11 +62,11 @@ class SWIProgram(ProbLogObject):
         self.index_dict = dict()
         self.groups = dict()
         # Warning: Has to be evaluated before the creation of the Prolog engine
-        self.parse_directives()
-        self.prolog = ThreadedProlog()
+        self.prolog = DirtyProlog()
+        self.parse_directives(self.prolog)
         self.d = dict()
         self.prolog.consult(str(Path(__file__).parent / consult))
-        self.parse_db()
+        self.parse_db(self.prolog)
 
     def to_str(self, node):
         ntype = type(node).__name__
@@ -100,7 +100,7 @@ class SWIProgram(ProbLogObject):
         self.facts.append(new_fact)
         self.index_dict[i] = new_fact
         self.prolog.assertz('fa({},{},{})'.format(*self.facts[-1]))
-        print('fa({},{},{})'.format(*self.facts[-1]))
+        # print('fa({},{},{})'.format(*self.facts[-1]))
 
     def add_clause(self, node):
         i = self.new_entry()
@@ -108,15 +108,10 @@ class SWIProgram(ProbLogObject):
         self.clauses.append(
             (i, handle_functor(node.functor, node.args), body))
         self.prolog.assertz('cl({},{})'.format(self.clauses[-1][1], self.clauses[-1][2]))
-        print('cl({},{})'.format(self.clauses[-1][1], self.clauses[-1][2]))
+        # print('cl({},{})'.format(self.clauses[-1][1], self.clauses[-1][2]))
 
     def add_choice(self, node):
         self.add_fact(node)
-
-    def add_directive(self, node):
-        print(node)
-        print(vars(node))
-        pass
 
     def get_lines(self):
         lines = ['cl({},{})'.format(c[1], c[2]) for c in self.clauses]
@@ -202,7 +197,7 @@ class SWIProgram(ProbLogObject):
         placeholder = set()
         # Keys are nodes, and the values area the keys of the nodes in the ground logic formula
         for p in proofs:  # Loop over all elements of the proof
-            print(p)
+            # print(p)
             if p.functor == '::':  # If it's a fact
                 nodes[p.args[2]].append(p)  # Add it to the definitions
             elif p.functor == ':-':  # If it's a clause
@@ -261,22 +256,18 @@ class SWIProgram(ProbLogObject):
             start = time()
             if profile > 1:
                 query = 'profile((between(1,100,_),{},fail);true)'.format(query)
-        result = list(self.prolog.query(query))
+        result = self.prolog.query(query, final=True)
         if profile > 0:
             print('Query: {} answered in {} seconds'.format(query, time() - start))
-        if len(result) == 1:
-            out = {}
-            for k in result[0]:
-                v = result[0][k]
-                if type(v) is list:
-                    out[k] = [p for p in term2list(parse(result[0][k]))]
-                else:
-                    out[k] = parse(v)
-            return out
+        if len(result) == 2:
+            if result[1] == 1:
+                return result[0]
+            else:
+                raise (Exception('Expected exactly one result, got {}'.format(len(result))))
         else:
-            raise (Exception('Expected exactly one result, got {}'.format(len(result))))
+            raise (Exception('Bad result format, a tuple of two elements was expected'))
 
-    def parse_directives(self):
+    def parse_directives(self, prolog):
         """
         Parse the directives (before the creation of the Prolog engine)
         :return:
@@ -285,9 +276,9 @@ class SWIProgram(ProbLogObject):
             for n in self.db.iter_nodes():
                 ntype = type(n).__name__
                 if ntype == 'call':
-                    self.parse_call(n)
+                    self.parse_call(n, prolog)
 
-    def parse_call(self, node, directives=True):
+    def parse_call(self, node, prolog, directives=True):
         """
         Parse a call node
         :param node: The node to parse
@@ -296,9 +287,9 @@ class SWIProgram(ProbLogObject):
         """
         if directives and node.functor == "_use_module":
             filename = node.args[1]
-            self.db.use_module(filename=filename, predicates=None, location=node.location)
+            self.use_module(filename=filename, location=node.location)
 
-    def parse_db(self):
+    def parse_db(self, prolog):
         """
         Parse the database (ClauseDB) into a valid SWI-Prolog
         :return: Nothing (Update the current object)
@@ -309,9 +300,25 @@ class SWIProgram(ProbLogObject):
                 if ntype == 'fact':
                     self.add_fact(n)
                 elif ntype == 'call':
-                    self.parse_call(n, directives=False)
+                    self.parse_call(n, prolog, directives=False)
                 elif ntype == 'clause':
                     if not n.functor == '_directive':
                         self.add_clause(n)
                 elif ntype == 'choice':
                     self.add_choice(n)
+
+    def load_external_module(self, filename):
+        self.prolog.load(filename, database=self.db)
+
+    def use_module(self, filename, location=None):
+        filename = self.db.resolve_filename(filename)
+        if filename is None:
+            raise ConsultError('Unknown library location', self.db.lineno(location))
+        elif filename is not None and filename[-3:] == '.py':
+            try:
+                self.load_external_module(filename)
+            except IOError as err:
+                raise ConsultError('Error while reading external library: %s' % str(err),
+                                   self.db.lineno(location))
+        else:
+            self.db.consult(Term(filename), location=location)

@@ -1,7 +1,7 @@
 from problog.logic import Term, Constant, list2term, term2list, Var, is_list
 from problog.parser import PrologParser
 from problog.program import ExtendedPrologFactory
-from pyswip import Prolog, Functor, Atom, registerForeign, PL_FA_NONDETERMINISTIC, Variable
+from my_pyswip import Prolog, Functor, Atom, registerForeign, PL_FA_NONDETERMINISTIC, Variable, Term as SWITerm
 from time import time
 
 
@@ -21,14 +21,37 @@ def pyswip_to_term(pyswip_obj):
         raise Exception('Unhandled type {} from object {}'.format(type(pyswip_obj), pyswip_obj))
 
 
-def term_to_pyswip(term):
+def pyswip_to_number(pyswip_obj, number_type):
+    if type(pyswip_obj) is number_type:
+        return pyswip_obj
+    raise Exception('Unable to cast type {} of object {} into {}'.format(type(pyswip_obj), pyswip_obj, number_type))
+
+
+def bind_functor(functor):
+    a = functor.swipl.PL_new_term_refs(len(functor.args))
+    for i, arg in enumerate(functor.args):
+        functor.swipl.PL_put_term(a + i, arg.handle)
+
+    t = functor.swipl.PL_new_term_ref()
+    functor.swipl.PL_cons_functor_v(t, functor.handle, a)
+
+    return SWITerm(functor.swipl, t)
+
+
+def term_to_pyswip(term, swipl):
     if type(term) is Term:
-        args = [term_to_pyswip(arg) for arg in term.args]
-        if not args:
-            return Atom(term.functor)
-        elif is_list(term):
-            return args
-        return Functor(term.functor, arity=term.arity, args=args)
+        if is_list(term):
+            arglist = [term_to_pyswip(term.args[0], swipl)]
+            temp = term.args[1]
+            while len(temp.args) == 2:
+                arglist.append(term_to_pyswip(temp.args[0], swipl))
+                temp = temp.args[1]
+            return arglist
+        elif not term.args:
+            return Atom(term.functor, swipl)
+        else:
+            args = [term_to_pyswip(arg, swipl) for arg in term.args]
+        return Functor(term.functor, swipl, arity=term.arity, args=args)
     elif type(term) is Constant:
         return term.functor
     elif type(term) is Var:
@@ -44,3 +67,14 @@ def parse(to_parse):
     if type(to_parse) is str:
         return parser.parseString(str(to_parse) + '.')[0]
     return pyswip_to_term(to_parse)
+
+
+def parse_result(result):
+    out = {}
+    for k in result[0]:
+        v = result[0][k]
+        if type(v) is list:
+            out[k] = [p for p in term2list(parse(result[0][k]))]
+        else:
+            out[k] = parse(v)
+    return out
