@@ -99,7 +99,7 @@ class SWIProgram(ProbLogObject):
         new_fact = (i, handle_prob(node.probability), handle_functor(node.functor, node.args))
         self.facts.append(new_fact)
         self.index_dict[i] = new_fact
-        self.prolog.assertz('fa({},{},{})'.format(*self.facts[-1]))
+        self.prolog.assertz('fa({},{},{})'.format(*self.facts[-1]).replace("'", '"'))
         # print('fa({},{},{})'.format(*self.facts[-1]))
 
     def add_clause(self, node):

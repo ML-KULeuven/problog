@@ -304,6 +304,10 @@ class SWIPl:
         self.PL_unify_functor.argtypes = [term_t, functor_t]
         self.PL_unify_functor.restype = c_int
 
+        self.PL_unify_string_chars = self._lib.PL_unify_string_chars
+        self.PL_unify_string_chars.argtypes = [term_t, c_char_p]
+        self.PL_unify_string_chars.restype = c_int
+
         # Verify types
 
         self.PL_term_type = self._lib.PL_term_type

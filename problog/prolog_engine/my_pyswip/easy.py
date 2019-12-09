@@ -174,7 +174,7 @@ class Variable(object):
 
     def _unifier(self, t, value):
         if type(value) == str:
-            self.swipl.PL_unify_atom_chars(t, value)
+            self._unify_string(t, value)
         elif type(value) == int:
             self.swipl.PL_unify_integer(t, value)
         elif type(value) == bool:
@@ -206,6 +206,9 @@ class Variable(object):
             self.swipl.PL_unify_list(t, a, t)
             self._unifier(a, arg)
         self.swipl.PL_unify_nil(t)
+
+    def _unify_string(self, t, value):
+        self.swipl.PL_unify_string_chars(t, value.encode('utf-8'))
 
     def __str__(self):
         if self.chars is not None:
@@ -411,6 +414,8 @@ def getString(t, swipl):
     slen = c_int()
     s = c_char_p()
     if swipl.PL_get_string_chars(t, byref(s), byref(slen)):
+        if type(s.value) is bytes:
+            return s.value.decode('utf-8')
         return s.value
     else:
         raise InvalidTypeError("string")

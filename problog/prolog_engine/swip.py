@@ -1,4 +1,4 @@
-from problog.logic import Term, Constant, list2term, term2list, Var, is_list
+from problog.logic import Term, Constant, list2term, term2list, Var, is_list, make_safe, unquote
 from problog.parser import PrologParser
 from problog.program import ExtendedPrologFactory
 from my_pyswip import Prolog, Functor, Atom, registerForeign, PL_FA_NONDETERMINISTIC, Variable, Term as SWITerm
@@ -11,8 +11,10 @@ def pyswip_to_term(pyswip_obj):
         return Term(pyswip_obj.name.get_value(), *args)
     elif type(pyswip_obj) is Atom:
         return Term(pyswip_obj.get_value())
-    elif type(pyswip_obj) is int or type(pyswip_obj) is float:
+    elif type(pyswip_obj) in (int, float):
         return Constant(pyswip_obj)
+    elif type(pyswip_obj) is str:
+        return Constant(make_safe(pyswip_obj))
     elif type(pyswip_obj) is list:
         return list2term([pyswip_to_term(o) for o in pyswip_obj])
     elif type(pyswip_obj) is Variable:
@@ -55,7 +57,10 @@ def term_to_pyswip(term, swipl):
             args = [term_to_pyswip(arg, swipl) for arg in term.args]
         return Functor(term.functor, swipl, arity=term.arity, args=args)
     elif type(term) is Constant:
-        return term.functor
+        f = term.functor
+        if type(f) is str:
+            f = unquote(f)
+        return f
     elif type(term) is Var:
         return Variable(name=term.name)
     else:
