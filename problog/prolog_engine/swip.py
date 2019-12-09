@@ -39,6 +39,8 @@ def bind_functor(functor):
 
 
 def term_to_pyswip(term, swipl):
+    if type(term) is list:
+        return [term_to_pyswip(arg, swipl) for arg in term]
     if type(term) is Term:
         if is_list(term):
             arglist = [term_to_pyswip(term.args[0], swipl)]

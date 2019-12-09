@@ -31,7 +31,7 @@ def export_between(lower_bound, upper_bound, **kwargs):
 @swi_problog_export("+term", "-list")
 def findall(template, **kwargs):
     result = run_subquery(template, **kwargs)
-    return list2term(list(result)),
+    return list(result),
 
 
 @swi_problog_export_nondet("?term", "-float")
