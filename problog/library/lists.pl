@@ -1,3 +1,50 @@
+:- module(lists, [
+    memberchk/2,
+    member/2,
+    append/3,
+    append/2,
+    prefix/2,
+    select/3,
+    selectchk/3,
+    select/4,
+    selectchk/4,
+    nextto/3,
+    delete/3,
+    nth0/3,
+    nth1/3,
+    nth0/4,
+    nth1/4,
+    last/2,
+    proper_length/2,
+    same_length/2,
+    reverse/2,
+    permutation/2,
+    flatten/2,
+    max_member/2,
+    min_member/2,
+    sum_list/2,
+    max_list/2,
+    min_list/2,
+    numlist/3,
+    is_set/1,
+    list_to_set/2,
+    intersection/3,
+    union/3,
+    subset/2,
+    subtract/3,
+    enum_groups/3,
+    enum_groups/4,
+    select_uniform/4,
+    select_weighted/5,
+    select_weighted/4
+]).
+
+% member(X,L)
+%  X is an element from list L
+memberchk(X,[X|_]).
+memberchk(X,[Y|T]) :- X \= Y, memberchk(X,T).
+
+
 % member(X,L)
 %  X is an element from list L
 member(X,[X|_]).
@@ -9,7 +56,12 @@ member(X,[_|T]) :- member(X,T).
 select(X,[X|T],T).
 select(X,[Y|T],[Y|S]) :-
     select(X,T,S).
-    
+
+selectchk(X,[X|T],T).
+selectchk(X,[Y|T],[Y|S]) :-
+    X \= Y,
+    selectchk(X,T,S).
+
 % select_uniform(ID,L,X,R)
 %  select a single element probabilistically
 %  
@@ -62,10 +114,35 @@ min_list([X|L],S) :- min_list(L,X,S).
 min_list([],S,S).
 min_list([X|L],M,S) :-
     M < X,
-    min_list(L,X,S).
+    min_list(L,M,S).
 min_list([X|L],M,S) :-
     M >= X,
-    min_list(L,M,S).
+    min_list(L,X,S).
+
+max_member([X|L],S) :- max_member(L,X,S).
+max_member([],S,S).
+max_member([X|L],M,S) :-
+    M @> X,
+    max_member(L,M,S).
+max_member([X|L],M,S) :-
+    M @=< X,
+    max_member(L,X,S).
+
+min_member([X|L],S) :- min_member(L,X,S).
+min_member([],S,S).
+min_member([X|L],M,S) :-
+    M @< X,
+    min_member(L,X,S).
+min_member([X|L],M,S) :-
+    M @>= X,
+    min_member(L,M,S).
+
+numlist(Low, Low, [Low]).
+numlist(Low, High, [Low|Rest]) :-
+    Low < High,
+    Low1 is Low + 1,
+    numlist(Low1, High, Rest).
+
     
 unzip([],[],[]).
 unzip([(X,Y)|T],[X|R],[Y|S]) :-
@@ -96,19 +173,29 @@ prefix(A,B) :- append(A,_,B).
 select(X,[X|_],Y,[Y|_]).
 select(X,[_|XList],Y,[_|YList]) :-
     select(X,XList,Y,YList).
-    
-nth0(0,[X|L],X).
-nth0(I,[_|L],X) :-
+
+selectchk(X,[X|_],Y,[Y|_]).
+selectchk(X,[X1|XList],Y,[Y1|YList]) :-
+    \+ (X1 = X, Y1 = Y),
+    selectchk(X,XList,Y,YList).
+
+
+nth0(0,[X|L],X,L).
+nth0(I,[Y|L],X,[Y|R]) :-
     length(L, Len),
     between(1, Len, I),
     J is I - 1,
-    nth0(J,L,X).
+    nth0(J,L,X,R).
+
+nth0(I, L, X) :- nth0(I, L, X,_).
+nth1(I, L, X) :- nth1(I, L, X,_).
     
-nth1(I,L,X) :- 
+nth1(I,L,X,R) :-
     J is I - 1,
-    nth0(J,L,X).
+    nth0(J,L,X,R).
     
 last(List,Last) :- append(_, [Last], List).
+head([H|_], H).
 
 reverse(L1,L2) :- reverse(L1,[],L2).
 reverse([],L,L).
@@ -131,4 +218,99 @@ flatten([H|T], Acc, List) :-
 flatten(H, Acc, List) :-
     \+ is_list(H),
     append(Acc, [H], List).
+
+is_set(List) :-
+    sort(List, Set),
+    same_length(List, Set).
+
+
+groupby([], []).
+groupby([[G|X]|T], Out) :-
+    groupby(T, G, [X], Out).
+
+% groupby(ListIn, CurEl, CurGroup, Out)
+groupby([], G, S, [[G,S]]).
+
+groupby([[G|X]|T], G, S,  Out) :-
+    groupby(T, G, [X|S], Out).
+
+groupby([[G|X]|T], G1, S,  [[G1,S]|Out]) :-
+    G \= G1,
+    groupby(T, G, [X], Out).
+
+
+sub_list(List, Before, Length, After, SubList) :-
+    sub_list(List, Before, 0, Length, After, SubList).
+
+sub_list([X|List], [X|Before], 0, Length, After, SubList) :-
+    sub_list(List, Before, 0, Length, After, SubList).
+
+sub_list(List, [], Length, Length, List, []).
+
+sub_list([X|List], [], AccLen, Length, After, [X|SubList]) :-
+    TmpLen is AccLen + 1,
+    sub_list(List, [], TmpLen, Length, After, SubList).
+
+proper_length(List, Length) :-
+    is_list(List),
+    length(List, Length).
+
+same_length(List1, List2) :-
+    length(List1, L),
+    length(List2, L).
+
+
+intersection([], _, []).
+intersection([X|T], Set2, [X|R]) :-
+    memberchk(X, Set2),
+    intersection(T, Set2, R).
+intersection([X|T], Set2, R) :-
+    \+ memberchk(X, Set2),
+    intersection(T, Set2, R).
+
+union([], Set2, Set2).
+union([X|T], Set2, R) :-
+    memberchk(X, Set2),
+    union(T, Set2, R).
+union([X|T], Set2, [X|R]) :-
+    \+ memberchk(X, Set2),
+    union(T, Set2, R).
+
+subset([], _).
+subset([X|T], Set) :-
+    memberchk(X, Set),
+    subset(T, Set).
+
+subtract([], _, []).
+subtract([X|T], Delete, R) :-
+    memberchk(X, Delete),
+    subtract(T, Delete, R).
+subtract([X|T], Delete, [X|R]) :-
+    \+memberchk(X, Delete),
+    subtract(T, Delete, R).
+
+delete([], _, []).
+delete([H|T], Elem, [H|R]) :-
+    Elem \= H,
+    delete(T, Elem, R).
+delete([H|T], Elem, R) :-
+    \+ Elem \= H,
+    delete(T, Elem, R).
+
+nextto(X, Y, [X, Y|_]).
+nextto(X, Y, [_|T]) :-
+   nextto(X, Y, T).
+
+:- use_module(library('lists.py')).
+
+list_to_set(List, Set) :-
+    length(List, Len),                % Determine the length of the input list.
+    numlist(1, Len, Index),           % Create a list of numbers 1..length.
+    zip(List, Index, IndexedList),    % Make tuples of (value, index)
+    all((Position, Value), (
+        enum_groups(IndexedList, Value, Positions), % Find positions for same value.
+        min_list(Positions, Position)               % Take minimal position for each value.
+    ), MinList),                      % Create a list of (min position, value) for unique values.
+    sort(MinList, SortedMinList),     % Sort the list such that first occurring values come first.
+    unzip(SortedMinList, _, Set).     % Remove the index information from the list.
 

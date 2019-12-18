@@ -132,6 +132,8 @@ else:
     useParents_filenames = glob.glob(root_path("test", "lfi", "useParents", "*.pl"))
     ignore_previous_output("../../test/lfi/unit_tests/")
     unit_test_filenames = glob.glob(root_path("test", "lfi", "unit_tests", "test_*.pl"))
+    ignore_previous_output("../../test/lfi/test_interface/")
+    test_interface_filenames = glob.glob(root_path("test", "lfi", "test_interface", "*.pl"))
 
 
 # tests for simple cases (non-ADs)
@@ -152,6 +154,11 @@ for testfile in useParents_filenames:
 # tests for unit tests
 for testfile in unit_test_filenames:
     testname = "test_lfi_unit_test_" + os.path.splitext(os.path.basename(testfile))[0]
+    setattr(TestLFI, testname, createTestLFI(testfile, True))
+
+# tests for test_interface
+for testfile in test_interface_filenames:
+    testname = "test_lfi_test_interface_" + os.path.splitext(os.path.basename(testfile))[0]
     setattr(TestLFI, testname, createTestLFI(testfile, True))
 
 if __name__ == "__main__":

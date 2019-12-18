@@ -72,7 +72,7 @@ class BNParser:
         parser.add_argument('--output', '-o',
                             help='Output file')
         parser.add_argument('--output-format', default='problog',
-                            help='Output format (\'problog\', \'uai\', \'hugin\', \'xdsl\')')
+                            help='Output format (\'problog\', \'uai\', \'hugin\', \'xdsl\', \'xmlbif\')')
         parser.add_argument('input',
                             help='Input file')
 
@@ -107,6 +107,8 @@ class BNParser:
                     print(pgm.to_hugin_net(), file=ofile)
                 elif args.output_format in ["smile", "xdsl"]:
                     print(pgm.to_xdsl(), file=ofile)
+                elif args.output_format in ["xml", "xmlbif"]:
+                    print(pgm.to_xmlbif(), file=ofile)
                 elif args.output_format in ["graphiz", "dot"]:
                     print(pgm.to_graphviz(), file=ofile)
                 else:
@@ -123,7 +125,7 @@ def main(argv=None):
     parser = argparse.ArgumentParser(description=description)
     parser.add_argument('--verbose', '-v', action='count', default=0, help='Verbose output')
     parser.add_argument('--quiet', '-q', action='count', default=0, help='Quiet output')
-    parser.add_argument('--input-format', help='Input type (\'smile\', \'hugin\', \'uai\')')
+    parser.add_argument('--input-format', help='Input type (\'smile\', \'hugin\', \'uai\', \'xmlbif\')')
     BNParser.add_parser_arguments(parser)
     args = parser.parse_args(argv)
 
@@ -143,9 +145,11 @@ def main(argv=None):
             input_format = 'hugin'
         elif ext in ['.xdsl']:
             input_format = 'smile'
+        elif ext in ['.xml']:
+            input_format = 'xmlbif'
 
     if input_format is None:
-        logger.error('No file format given or detected (.uai, .net, .xdsl).')
+        logger.error('No file format given or detected (.uai, .net, .xdsl, .xml).')
         sys.exit(1)
 
     if input_format in ['uai', 'uai08']:
@@ -157,6 +161,12 @@ def main(argv=None):
     elif input_format in ['smile', 'xdsl']:
         from smile2problog import SmileParser
         parser = SmileParser(args)
+    elif input_format in ['xml', 'xmlbif']:
+        from xmlbif2problog import XMLBIFParser
+        parser = XMLBIFParser(args)
+    else:
+        logger.error("Unknown input format: {}".format(input_format))
+        sys.exit(1)
 
     if parser:
         parser.run(args)

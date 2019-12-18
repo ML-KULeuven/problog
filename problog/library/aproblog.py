@@ -8,7 +8,9 @@ from problog.evaluator import Semiring
 def use_semiring(plus, times, zero, one, neg, is_dsp, is_nsp):
 
     class CustomSemiring(Semiring):
-        pass
+
+        def is_one(self, value):
+            return value == self.one()
 
     CustomSemiring.zero = problog_export.database.create_function(zero, 1)
     CustomSemiring.one = problog_export.database.create_function(one, 1)
@@ -29,7 +31,9 @@ def use_semiring(plus, times, zero, one, neg, is_dsp, is_nsp):
 def use_semiring(plus, times, zero, one, pos, neg, is_dsp, is_nsp):
 
     class CustomSemiring(Semiring):
-        pass
+
+        def is_one(self, value):
+            return value == self.one()
 
     CustomSemiring.zero = problog_export.database.create_function(zero, 1)
     CustomSemiring.one = problog_export.database.create_function(one, 1)
@@ -46,3 +50,25 @@ def use_semiring(plus, times, zero, one, pos, neg, is_dsp, is_nsp):
     return ()
 
 
+@problog_export('+term', '+term', '+term', '+term', '+term', '+term', '+term', '+str', '+str')
+def use_semiring(plus, times, zero, one, pos, neg, negate, is_dsp, is_nsp):
+
+    class CustomSemiring(Semiring):
+
+        def is_one(self, value):
+            return value == self.one()
+
+    CustomSemiring.zero = problog_export.database.create_function(zero, 1)
+    CustomSemiring.one = problog_export.database.create_function(one, 1)
+    CustomSemiring.plus = problog_export.database.create_function(plus, 3)
+    CustomSemiring.times = problog_export.database.create_function(times, 3)
+    CustomSemiring.pos_value = problog_export.database.create_function(pos, 3)
+    CustomSemiring.neg_value = problog_export.database.create_function(neg, 3)
+    CustomSemiring.is_dsp = lambda s: is_dsp == 'true'
+    CustomSemiring.is_nsp = lambda s: is_nsp == 'true'
+    CustomSemiring.negate = problog_export.database.create_function(negate, 2)
+
+    semiring = CustomSemiring()
+    problog_export.database.set_data('semiring', semiring)
+
+    return ()

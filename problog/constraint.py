@@ -33,7 +33,7 @@ class Constraint(object):
 
     def get_nodes(self):
         """Get all nodes involved in this constraint."""
-        return NotImplementedError('abstract method')
+        raise NotImplementedError('abstract method')
 
     def update_weights(self, weights, semiring):
         """Update the weights in the given dictionary according to the constraints.
@@ -62,7 +62,7 @@ class Constraint(object):
         :return: list of clauses where each clause is represent as a list of node keys
         :rtype: list[list[int]]
         """
-        return NotImplementedError('abstract method')
+        raise NotImplementedError('abstract method')
 
     def copy(self, rename=None):
         """Copy this constraint while applying the given node renaming.
@@ -70,7 +70,7 @@ class Constraint(object):
         :param rename: node rename map (or None if no rename is required)
         :return: copy of the current constraint
         """
-        return NotImplementedError('abstract method')
+        raise NotImplementedError('abstract method')
 
 
 class ConstraintAD(Constraint):
@@ -80,6 +80,7 @@ class ConstraintAD(Constraint):
         self.nodes = set()
         self.group = group
         self.extra_node = None
+        self.location = None
 
     def __str__(self):
         return 'annotated_disjunction(%s, %s)' % (list(self.nodes), self.extra_node)
@@ -96,11 +97,12 @@ class ConstraintAD(Constraint):
     def is_false(self):
         return False
 
-    def add(self, node, formula):
+    def add(self, node, formula, cr_extra=True):
         """Add a node to the constraint from the given formula.
 
         :param node: node to add
         :param formula: formula from which the node is taken
+        :param cr_extra: Create an extra_node when required (when it is None and this is the second atom of the group).
         :return: value of the node after constraint propagation
         """
 
@@ -108,6 +110,13 @@ class ConstraintAD(Constraint):
             return node
 
         is_extra = formula.get_node(node).probability == formula.WEIGHT_NEUTRAL
+
+        try:
+            if not self.location and formula.get_node(node).name and formula.get_node(node).name.args:
+                if formula.database:
+                    self.location = formula.database.lineno(formula.get_node(node).name.args[-1].location)
+        except AttributeError:
+            pass
 
         if formula.has_evidence_values() and not is_extra:
             # Propagate constraint: if one of the other nodes is True: this one is false
@@ -184,9 +193,9 @@ class ConstraintAD(Constraint):
             try:
                 complement = semiring.ad_complement(ws, key=name)
                 if not semiring.in_domain(complement):
-                    raise InvalidValue('Sum of annotated disjunction weigths exceed acceptable value')
+                    raise InvalidValue('Sum of annotated disjunction weigths exceeds acceptable value', location=self.location)
             except InvalidValue:
-                raise InvalidValue('Sum of annotated disjunction weigths exceed acceptable value')
+                raise InvalidValue('Sum of annotated disjunction weigths exceeds acceptable value', location=self.location)
                 # TODO add location
             weights[self.extra_node] = (complement, semiring.one())
 

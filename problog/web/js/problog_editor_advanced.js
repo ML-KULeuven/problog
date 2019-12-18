@@ -1,7 +1,7 @@
 
 var problog = {
-  //hostname: 'https://adams.cs.kuleuven.be/problog/api/',
-  hostname: 'https://adams.cs.kuleuven.be/problog/api/',
+  //hostname: 'https://verne.cs.kuleuven.be/problog/api/',
+  hostname: 'https://verne.cs.kuleuven.be/problog/api/',
   main_editor_url: 'https://dtai.cs.kuleuven.be/problog/editor.html',
   editors: [],
   selector: '.problog-editor',
@@ -153,8 +153,58 @@ var problog = {
                         pbl.dom.results.html(result);
                     }
                 },
-//                {id: 'map', name: "MAP", select: function(pbl){}, deselect: function(pbl){}},
-                                {
+                    {
+                    id: 'map',
+                    name: "MAP",
+                    action: 'Solve',
+                    text: "Compute MAP.",
+                    select: function(pbl){},
+                    deselect: function(pbl){},
+                    collectData: function(pbl){
+                        var model = pbl.editor.getSession().getValue();
+                        if (model) {
+                            result = {'model': model};
+                            if (pbl.solve_choice > 0) {
+                                result['solve'] = pbl.task.choices[pbl.solve_choice].identifier;
+                            }
+                            return result;
+                        } else {
+                            return undefined;
+                        }
+
+                    },
+                    formatResult: function(pbl, data) {
+                        var facts = data.choices;
+
+                        // Create table body
+                        var result = $('<tbody>');
+                        for (var k in facts) {
+                            var n = facts[k][0];
+                            var p = facts[k][1];
+                            result.append($('<tr>')
+                                  .append($('<td>').text(n))
+                                  .append($('<td>').append(problog.makeProgressBar(p))));
+                        }
+                        var result = problog.createTable(result, [['Atom','50%'],['Value','50%']]);
+                        pbl.dom.results.html(result);
+
+                        var meta_str = "<p><strong>Score</strong>: ";
+                        var sep = " ";
+                        meta_str += data.score;
+                        meta_str += "</p>";
+                        $(meta_str).appendTo(pbl.dom.results);
+
+                        var meta_str = "<p><strong>Stats</strong>:";
+                        var sep = " ";
+                        for (var k in data.stats) {
+                            meta_str += sep+k+"="+data.stats[k];
+                            sep = ", ";
+                        }
+                        meta_str += "</p>";
+                        $(meta_str).appendTo(pbl.dom.results);
+                      }
+                    },
+                    {
                     id: 'dt',
                     name: "DTProbLog",
                     action: 'Solve',
@@ -310,7 +360,97 @@ var problog = {
                         pbl.dom.results.html(result);
 
                     }
-                },]
+                },
+                {
+                    id: 'english',
+                    name: "Natural Language",
+                    text: "Solve question in natural language.",
+                    action: 'Solve',
+                    choices: [
+                        // {name:"-exact"},
+                        // {name:"SDD"},
+                        // {name:"d-DNNF"},
+                        // {name:"BDD"},
+                        // {name:"-approximate"},
+                        // {name:"forward"},
+                        // {name:"k-best"},
+                        // {name:"sample"}
+                    ],
+                    select: function(pbl) {
+                      pbl.natlang = false;
+                      $('<h3>').text("Enter your question:").appendTo(pbl.dom.root.preface);
+                      pbl.natlang_text = $('<textarea>', {'rows': 5}).addClass('form-control').appendTo(pbl.dom.root.preface);
+                      var button = $('<button>').addClass("btn btn-primary pull-right")
+                                                            .text('Solve')
+                                                            .click(function() {
+                                                              pbl.natlang = true;
+                                                              pbl.solve();
+                                                              pbl.natlang = false;
+                                                             })
+                                                            .appendTo(pbl.dom.root.preface);
+                      $('<h3>').html('Or, enter your model:').appendTo(pbl.dom.root.preface);
+
+                    },
+                    deselect: function(pbl) {
+                      pbl.dom.root.preface.empty();
+
+
+                    },
+                    collectData: function(pbl) {
+                        if (pbl.natlang) {
+                          var text = $(pbl.natlang_text).val();
+                          if (text) {
+                            return {'model': text, 'is_text': pbl.natlang};
+                          } else {
+                            return undefined;
+                          }
+                        } else {
+                          var model = pbl.editor.getSession().getValue();
+                          if (model) {
+                              return {
+                                'model': model,
+                                'is_text': pbl.natlang
+                                  //'options': solve_choice
+                              };
+                          } else {
+                              return undefined;
+                        }
+                      }
+                    },
+                    formatResult: function(pbl, data) {
+                        console.log(data);
+
+//                        var facts = data.probs
+//                        // Create table body
+//                        var result = $('<tbody>');
+//                        for (var k in facts) {
+//                            var n = facts[k][0];
+//                            var p = facts[k][1];
+//                            var l = facts[k][2];
+//                            var c = facts[k][3];
+//                            if (!isNaN(parseFloat(p))) {
+//                                p = problog.makeProgressBar(p);
+//                            }
+//
+//                            result.append($('<tr>')
+//                                  .append($('<td>').text(n))
+//                                  .append($('<td>').text(l+':'+c))
+//                                  .append($('<td>').append(p)));
+//                        }
+//                        var result = problog.createTable(result, [['Query','50%'],['Location','10%'],['Probability','40%']]);
+                        var result = $('<div>');
+                        result.append($('<span>').append($('<strong>').text('Solution: ')))
+                                .append($('<span>', {'class': 'label label-default'}).text(data.solve_output));
+
+                        pbl.editor.getSession().setValue(data.program);
+
+                        console.log(result);
+                        pbl.dom.results.html(result);
+                    }
+                },
+
+
+                ]
 }
 
 problog.init = function(hostname) {
@@ -529,6 +669,7 @@ problog.init_editor = function(index, object) {
     pbl.dom.taskpane = $('<div>').addClass('problog-taskpane col-md-2 col-xs-12 pull-right')
                                  .appendTo(object);
 
+
     pbl.dom.task_select_grp = $('<div>').addClass("btn-group")
                                         .attr("style","width: 100%")
                                         .appendTo(pbl.dom.taskpane);
@@ -562,6 +703,9 @@ problog.init_editor = function(index, object) {
     }
 
     pbl.dom.editpane = $('<div>').addClass('problog-editpane').appendTo(object);
+
+    pbl.dom.root.preface = $('<div>').appendTo(pbl.dom.editpane);
+
     if (pbl.showtasks) {
         pbl.dom.editpane.addClass('col-md-10 col-xs-12');
     } else {
@@ -573,7 +717,7 @@ problog.init_editor = function(index, object) {
     pbl.editor = ace.edit(pbl.dom.edit_editor[0]);
     pbl.editor.getSession().setMode('ace/mode/problog');
     pbl.editor.getSession().setUseWrapMode(true);
-    pbl.editor.setShowInvisibles(true);
+    pbl.editor.setShowInvisibles(false);
     pbl.editor.setValue(pbl.initial, -1);
     if (pbl.dom.root.data('autosize')) {
         pbl.editor.setOptions({
@@ -759,7 +903,8 @@ problog.createTable = function(body, columns) {
 
 /** Load model from hash in editor **/
 problog.fetchModel = function(pbl) {
-    var task = problog.getTaskFromUrl();
+    var default_task = pbl.dom.root.data('task');
+    var task = problog.getTaskFromUrl(default_task);
 
     pbl.selectTaskByName(task);
 
@@ -804,7 +949,7 @@ problog.fetchModel = function(pbl) {
 
 
 
-problog.getTaskFromUrl = function() {
+problog.getTaskFromUrl = function(default_task) {
   var hash = window.location.hash;
   hashidx = hash.indexOf("task=");
   if (hashidx > 0) {
@@ -817,7 +962,7 @@ problog.getTaskFromUrl = function() {
     if (problog.getExamplesHashFromUrl()) {
         hash = 'lfi';
     } else {
-        hash = 'prob';
+        hash = default_task;
     }
   }
   return hash;

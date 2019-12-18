@@ -25,9 +25,9 @@ Common interface to decision diagrams (BDD, SDD).
 from __future__ import print_function
 
 
-from .util import Timer
+from .util import Timer, mktempfile
 from .formula import LogicFormula, atom, LogicNNF
-from .evaluator import EvaluatableDSP, Evaluator, FormulaEvaluatorNSP, FormulaEvaluator, SemiringLogProbability, SemiringProbability
+from .evaluator import EvaluatableDSP, Evaluator, FormulaEvaluatorNSP, SemiringLogProbability, SemiringProbability
 from .errors import InconsistentEvidenceError
 
 
@@ -39,7 +39,7 @@ class DD(LogicFormula, EvaluatableDSP):
 
         self.inode_manager = None
 
-        self.atom2var = {}
+        self.atom2var = {}  # index to node
         self.var2atom = {}
 
         # self._constraint_dd = None
@@ -91,7 +91,7 @@ class DD(LogicFormula, EvaluatableDSP):
         else:
             return result
 
-    def _create_inode(self, node):
+    def _create_inode(self, node):  # TODO: Recursion is slow in python. Change build_dd to not use this and get_inode?
         if type(node).__name__ == 'conj':
             return self.get_manager().conjoin(*[self.get_inode(c) for c in node.children])
         else:
@@ -124,7 +124,7 @@ class DD(LogicFormula, EvaluatableDSP):
     def build_dd(self):
         """Build the internal representation of the formula."""
         required_nodes = set([abs(n) for q, n, l in self.labeled() if self.is_probabilistic(n)])
-        required_nodes |= set([abs(n) for q, n, l in self.labeled() if self.is_probabilistic(n)])
+        required_nodes |= set([abs(n) for q, n, l in self.labeled() if self.is_probabilistic(n)])  # TODO self.evidence_all() ipv self.labeled() ? see forward.py
 
         for n in required_nodes:
             self.get_inode(n)
@@ -149,7 +149,7 @@ class DDManager(object):
     """
 
     def __init__(self):
-        self.nodes = []
+        self.nodes = []  # Stores inodes (only conjoin and disjoin, the remaining atoms are in formula.atom2var)
         self.constraint_dd = None
 
     def set_node(self, index, node):
@@ -374,7 +374,6 @@ class DDEvaluator(Evaluator):
     :param semiring:
     :param weights:
     :return:
-
     """
 
     def __init__(self, formula, semiring, weights=None, **kwargs):
@@ -457,7 +456,7 @@ class DDEvaluator(Evaluator):
         # Trivial case: node is deterministically True or False
         if node == self.formula.TRUE:
             result = self.semiring.one()
-        elif node is self.formula.FALSE:
+        elif node == self.formula.FALSE:
             result = self.semiring.zero()
         else:
             query_def_inode = self.formula.get_inode(node)
@@ -484,7 +483,6 @@ class DDEvaluator(Evaluator):
         else:
             query_def_inode = self.formula.get_inode(node)
             evidence_inode = self.evidence_inode
-            # TODO: When performing learning, the following steps are done every iteration, should be cached
             query_sdd = self._get_manager().conjoin(query_def_inode, evidence_inode)
 
             formula = LogicNNF()
@@ -501,6 +499,7 @@ class DDEvaluator(Evaluator):
 
             self._get_manager().deref(query_sdd)
 
+            # TODO only normalize when there are evidence or constraints.
 #            result = self.semiring.normalize(result, self.normalization)
             result = self.semiring.normalize(result, self._evidence_weight)
         return self.semiring.result(result, self.formula)
@@ -533,6 +532,7 @@ class DDEvaluator(Evaluator):
             self.set_weight(index, neg, pos)
 
     def set_weight(self, index, pos, neg):
+        # index = index of atom in weights, so atom2var[key] = index
         self.weights[index] = (pos, neg)
 
     def _deref_node(self, index):
@@ -566,7 +566,7 @@ def build_dd(source, destination, **kwdargs):
                 j = destination.add_or(n.children, source.get_name(i))
             else:
                 raise TypeError('Unknown node type')
-            assert i == j
+            # assert i == j  # Does not hold with constraints. See if-comment.
 
         for name, node, label in source.get_names_with_label():
             destination.add_name(name, node, label)

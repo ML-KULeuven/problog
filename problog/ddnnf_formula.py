@@ -123,6 +123,15 @@ class SimpleDDNNFEvaluator(Evaluator):
     def _reset_value(self, index, pos, neg):
         self.set_weight(index, pos, neg)
 
+    def get_root_weight(self):
+        """
+        Get the WMC of the root of this formula.
+        :return: The WMC of the root of this formula (WMC of node len(self.formula)), multiplied with weight of True
+        (self.weights.get(0)).
+        """
+        result = self._get_weight(len(self.formula))
+        return self.semiring.times(result, self.weights.get(0)[0]) if self.weights.get(0) is not None else result
+
     def _get_weight(self, index):
         if index == 0:
             return self.semiring.one()
@@ -182,7 +191,7 @@ class SimpleDDNNFEvaluator(Evaluator):
         ntype = type(node).__name__
 
         if ntype == 'atom':
-            result = self.semiring.one()
+            return self.semiring.one()
         else:
             assert key > 0
             childprobs = [self._get_weight(c) for c in node.children]
@@ -190,16 +199,14 @@ class SimpleDDNNFEvaluator(Evaluator):
                 p = self.semiring.one()
                 for c in childprobs:
                     p = self.semiring.times(p, c)
-                result = p
+                return p
             elif ntype == 'disj':
                 p = self.semiring.zero()
                 for c in childprobs:
                     p = self.semiring.plus(p, c)
-                result = p
+                return p
             else:
                 raise TypeError("Unexpected node type: '%s'." % ntype)
-        print('SimpleDDNFEval._calc_w({}) = {}'.format(key, result))
-        return result
 
 
 class Compiler(object):

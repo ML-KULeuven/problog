@@ -48,6 +48,7 @@ class PGM(object):
         else:
             self.name = 'PGM {}'.format(PGM.__count)
             PGM.__count += 1
+        self.comments = []
         self.directed = directed
         self.factors = OrderedDict()
         self.vars = OrderedDict()
@@ -328,6 +329,21 @@ class PGM(object):
                   '</smile>']
         return '\n'.join(lines)
 
+    def to_xmlbif(self):
+        """Export PGM to the XMLBIF format defined in
+        http://www.cs.cmu.edu/~fgcozman/Research/InterchangeFormat/
+        """
+        assert self.directed
+        cpds = [cpd.to_factor() for cpd in self.factors_topological()]
+        lines = ['<?xml version="1.0" encoding="US-ASCII"?>',
+                 '<BIF VERSION="0.3">',
+                 '<NETWORK>']
+        lines += [cpd.to_xmlbif_node() for cpd in cpds]
+        lines += [cpd.to_xmlbif_cpt() for cpd in cpds]
+        lines += ['</NETWORK>',
+                  '</BIF>']
+        return '\n'.join(lines)
+
     def to_uai08(self):
         """Export PGM to the format used in the UAI 2008 competition.
         http://graphmod.ics.uci.edu/uai08/FileFormat
@@ -357,7 +373,10 @@ class PGM(object):
         """
         factors = [factor.to_factor() for factor in self.factors_topological()]
         lines = ["%% ProbLog program: {}".format(self.name),
-                 "%% Created on {}\n".format(datetime.now())]
+                 "%% Created on {}".format(datetime.now())]
+        if len(self.comments) > 0:
+            lines += ["%% {}".format(comment) for comment in self.comments]
+        lines += [""]
         if self.directed:
             lines += [factor.to_problog(self, drop_zero=drop_zero,
                                         use_neglit=use_neglit,
@@ -648,21 +667,22 @@ class Factor(object):
                  "  label = \"{}\";".format(self.rv)]
         if include_layout:
             lines += ["  position = (100,100);"]
-        lines += ["  states = ({});".format(' '.join(['"{}"'.format(v) for v in rv.values])),
+        lines += ["  states = ({});".format(' '.join(['"{}"'.format(v) for v in sorted(rv.values)])),
                  "}\n"]
         return '\n'.join(lines)
 
     def to_huginnet_potential(self, include_layout=False):
         rv = self.pgm.vars[self.rv]
         name = rv.clean()
+        value_idxs = sorted((v,i) for i,v in enumerate(rv.values))
         if len(self.parents) > 0:
             name += ' | ' + ' '.join([rv.clean(p) for p in self.parents])
         lines = ['potential ({}) {{'.format(name),
-                 '  % ' + ' '.join([str(v) for v in rv.values]),
+                 '  % ' + ' '.join([str(v) for v, _ in value_idxs]),
                  '  data = (']
         table = sorted(self.table.items())
-        for k, v in table:
-            lines.append('    ' + ' '.join([str(vv) for vv in v]) + ' % ' + ' '.join([str(kk) for kk in k]))
+        for k, probs in table:
+            lines.append('    ' + ' '.join([str(probs[value_idx[1]]) for value_idx in value_idxs]) + ' % ' + ' '.join([str(kk) for kk in k]))
         lines += ['  );',
                   '}\n']
         return '\n'.join(lines)
@@ -670,12 +690,13 @@ class Factor(object):
     def to_xdsl_cpt(self):
         rv = self.pgm.vars[self.rv]
         lines = ['    <cpt id="{}">'.format(rv.clean())]
-        for v in rv.values:
+        value_idxs = sorted((v,i) for i,v in enumerate(rv.values))
+        for v, _ in value_idxs:
             lines.append('      <state id="{}" />'.format(v))
         if len(self.parents) > 0:
             lines.append('      <parents>{}</parents>'.format(' '.join([rv.clean(p) for p in self.parents])))
         table = sorted(self.table.items())
-        probs = ' '.join([str(value) for k, values in table for value in values])
+        probs = ' '.join([str(probs[value_idx[1]]) for k, probs in table for value_idx in value_idxs])
         lines.append('      <probabilities>{}</probabilities>'.format(probs))
         lines.append('    </cpt>')
         return '\n'.join(lines)
@@ -690,6 +711,30 @@ class Factor(object):
             '        <font color="000000" name="Arial" size="8" />',
             '        <position>100 100 150 150</position>',
             '      </node>']
+        return '\n'.join(lines)
+
+    def to_xmlbif_cpt(self):
+        rv = self.pgm.vars[self.rv]
+        lines = ['<DEFINITION>',
+                 '  <FOR>{}</FOR>'.format(rv.name)]
+        for parent in self.parents:
+            lines.append('  <GIVEN>{}</GIVEN>'.format(parent))
+        value_idxs = sorted((v,i) for i,v in enumerate(rv.values))
+        table = sorted(self.table.items())
+        probs = ' '.join([str(probs[value_idx[1]]) for k, probs in table for value_idx in value_idxs])
+        lines.append('  <TABLE>{}</TABLE>'.format(probs))
+        lines.append('</DEFINITION>')
+        return '\n'.join(lines)
+
+    def to_xmlbif_node(self):
+        rv = self.pgm.vars[self.rv]
+        lines = [
+            '<VARIABLE TYPE="nature">',
+            '  <NAME>{}</NAME>'.format(rv)
+        ]
+        for v in sorted(rv.values):
+            lines += ['  <OUTCOME>{}</OUTCOME>'.format(v)]
+        lines += ['</VARIABLE>']
         return '\n'.join(lines)
 
     def to_uai08_preamble(self, cpds):
