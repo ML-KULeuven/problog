@@ -235,7 +235,7 @@ def dist_prob(d, x, eps=None, log=False, density=True):
                     result = math.log(result)
                 except ValueError:
                     result = -math.inf
-            # print('dist_prob({}, {}) -> {}'.format(d, x, result))
+            # # print('dist_prob({}, {}) -> {}'.format(d, x, result))
             retval = DensityValue([0, result])
 
         if density:
@@ -307,10 +307,10 @@ def dist_prob_set(d, values, eps=1e-4):
                 mu = np.random.random(ndim)
                 cov = np.diagflat([1000.0] * ndim)
             cov = cov.reshape(-1)
-            # print('Update: {} -> normal({},{})'.format(d, mu, cov))
+            # # print('Update: {} -> normal({},{})'.format(d, mu, cov))
             # values.sort(key=lambda t: t[0])
             # for value, weight, count in values:
-            #     print('({:<4}, {:7.5f}, {:<4})'.format(value, weight, count))
+            #     # print('({:<4}, {:7.5f}, {:<4})'.format(value, weight, count))
             return d.with_args(list2term(mu.tolist()), list2term(cov.tolist()))
         else:  # univariate
             pf = 0.0
@@ -338,10 +338,10 @@ def dist_prob_set(d, values, eps=1e-4):
                 std = math.sqrt(
                     var
                 )  # TODO: should we make this also variance to be consistent with multivariate?
-            # print('Update: {} -> normal({},{})'.format(d, mu, std))
+            # # print('Update: {} -> normal({},{})'.format(d, mu, std))
             # values.sort(key=lambda t: t[0])
             # for value, weight, count in values:
-            #     print('({:<4}, {:7.5f}, {:<4})'.format(value, weight, count))
+            #     # print('({:<4}, {:7.5f}, {:<4})'.format(value, weight, count))
             return d.with_args(Constant(mu), Constant(std))
     raise ValueError("Distribution not supported '%s'" % d.functor)
 
@@ -533,7 +533,7 @@ class LFIProblem(LogicProgram):
             return [(Term("t"), weight)]
 
     def _set_weight(self, index, args, weight, weight_changed=None):
-        # print(self._weights)
+        # # print(self._weights)
         index = int(index)
         if not args:
             assert not isinstance(self._weights[index], dict)
@@ -551,7 +551,7 @@ class LFIProblem(LogicProgram):
             # TODO: Shouldn't all weights be perturbed to avoid identical updates?
             # self._weights[index] = {args: weight}
             self._weights[index] = {Term(args.functor): weight}
-        print("Weights", self._weights)
+        # print("Weights", self._weights)
 
     def _add_weight(self, weight):
         self._weights.append(weight)
@@ -582,7 +582,7 @@ class LFIProblem(LogicProgram):
                 for var in ad[1]:
                     ad_list.append(Term(self.names[var].functor, *self.names[var].args))
                 ad_groups.append(tuple(ad_list))
-        print("AD Groups\t\t:", ad_groups)
+        # print("AD Groups\t\t:", ad_groups)
 
         def multiple_true(d):
             """
@@ -688,7 +688,9 @@ class LFIProblem(LogicProgram):
                             for d in ad_evidences:
                                 if atom in d:
                                     d[atom] = value
-                            non_ad_evidence[atom] = value # TODO: what does this capture?
+                            non_ad_evidence[
+                                atom
+                            ] = value  # TODO: what does this capture?
                         # First Order evidence
                         else:
                             # find the right AD dictionary : AD_dict
@@ -729,7 +731,7 @@ class LFIProblem(LogicProgram):
                         # simply us them
                         grounded_ad_evidences.append(d)
 
-                # print(grounded_ad_evidences)
+                # # print(grounded_ad_evidences)
 
                 inconsistent_example = False
                 for i, d in enumerate(grounded_ad_evidences):
@@ -738,9 +740,7 @@ class LFIProblem(LogicProgram):
                     add_compliment = all_false_except_one(d)
 
                     if inconsistent2:
-                        print(
-                            "*** Warning: Inconsistent Evidence Detected! Ignoring this datapoint. ***\n"
-                        )
+                        # print("*** Warning: Inconsistent Evidence Detected! Ignoring this datapoint. ***\n")
                         inconsistent_example = True
                         continue
                     elif add_compliment:
@@ -760,13 +760,13 @@ class LFIProblem(LogicProgram):
                         evidence_set.add((key, value, None))
 
                     atoms, values, cvalues = zip(*evidence_set)
-                    print(index, "Push evidence\t:", atoms, values, cvalues, "\n")
+                    # print(index, "Push evidence\t:", atoms, values, cvalues, "\n")
                     result.add(index, atoms, values, cvalues, use_parents=use_parents)
 
                 else:
                     # (No AD case) or (Inconsistent Evidence Case)
                     atoms, values, cvalues = zip(*example)
-                    print(index, "Push evidence\t:", atoms, values, "\n")
+                    # print(index, "Push evidence\t:", atoms, values, "\n")
                     result.add(index, atoms, values, cvalues, use_parents=use_parents)
 
             return result
@@ -781,12 +781,12 @@ class LFIProblem(LogicProgram):
     def _compile_examples(self):
         """Compile examples."""
         baseprogram = DefaultEngine(**self.extra).prepare(self)
-        print("\nBase Program\t:")
-        print("\t" + baseprogram.to_prolog().replace("\n", "\n\t"))
+        # print("\nBase Program\t:")
+        # print("\t" + baseprogram.to_prolog().replace("\n", "\n\t"))
         examples = self._process_examples()
-        print()
+        # print()
         for i, example in enumerate(examples):
-            print("Compiling example {}/{}".format(i + 1, len(examples)))
+            # print("Compiling example {}/{}".format(i + 1, len(examples)))
             example.compile(self, baseprogram)
         self._compiled_examples = examples
 
@@ -808,7 +808,7 @@ class LFIProblem(LogicProgram):
                     result = self._process_atom_cont(atom, body)
         if result is None:
             result = self._process_atom_discr(atom, body)
-        print(str(atom) + " got processed to " + str(result))
+        # print(str(atom) + " got processed to " + str(result))
         return result
 
     def _process_atom_cont(self, atom, body):
@@ -851,7 +851,7 @@ class LFIProblem(LogicProgram):
                 start_params = None
 
             # Learnable probability
-            # print('get start_value from {}'.format(cdist))
+            # # print('get start_value from {}'.format(cdist))
 
             # Replace anonymous variables with non-anonymous variables.
             class ReplaceAnon(object):
@@ -1200,12 +1200,12 @@ class LFIProblem(LogicProgram):
                     continue
                 extra_clauses = process_atom(clause.head, clause.body)
                 for extra in extra_clauses:
-                    print("RULE >>", extra)
+                    # print("RULE >>", extra)
                     yield extra
             elif isinstance(clause, AnnotatedDisjunction):
                 extra_clauses = process_atom(Or.from_list(clause.heads), clause.body)
                 for extra in extra_clauses:
-                    print("RULE >>", extra)
+                    # print("RULE >>", extra)
                     yield extra
             else:
                 if clause.functor == "query" and clause.arity == 1:
@@ -1213,7 +1213,7 @@ class LFIProblem(LogicProgram):
                 # Fact
                 extra_clauses = process_atom(clause, None)
                 for extra in extra_clauses:
-                    print("RULE >>", extra)
+                    # print("RULE >>", extra)
                     yield extra
 
         if self.leakprob is not None:
@@ -1251,12 +1251,12 @@ class LFIProblem(LogicProgram):
             try:
                 results.append(evaluator(example))
             except InconsistentEvidenceError:
-                print(
+                # print("Ignoring example {}/{}".format(i + 1, len(self._compiled_examples)))
+                logging.getLogger("problog_lfi").warning(
                     "Ignoring example {}/{}".format(i + 1, len(self._compiled_examples))
                 )
-
         # for result in results:
-        #     print(result)
+        #     # print(result)
 
         return list(chain.from_iterable(results))
 
@@ -1264,7 +1264,7 @@ class LFIProblem(LogicProgram):
 
     def _update(self, results):
         """Update the current estimates based on the latest evaluation results."""
-        print("_update", results)
+        # print("_update", results)
         logger = logging.getLogger("problog_lfi")
         # fact_marg = defaultdict(DensityValue)
         fact_marg = defaultdict(int)
@@ -1276,11 +1276,11 @@ class LFIProblem(LogicProgram):
         for m, pEvidence, result, p_values in results:
             # if not isinstance(pEvidence, DensityValue):
             #     pEvidence = DensityValue.wrap(pEvidence)
-            print("_update.result", result)
+            # print("_update.result", result)
             par_marg = dict()
-            # print('p_values', p_values)
+            # # print('p_values', p_values)
             for fact, value in result.items():
-                print(fact, value)
+                # print(fact, value)
                 index = fact.args[0:2]
                 # if not index in fact_marg:
                 #     fact_marg[index] = polynomial.polynomial.polyzero
@@ -1304,14 +1304,14 @@ class LFIProblem(LogicProgram):
                             par_marg[(o_index, index[1])] = value
                 fact_count[index] += m
                 if fact in p_values:
-                    # print('fact in p_values', fact)
+                    # # print('fact in p_values', fact)
                     k = (index[0], index[1])
                     if k not in fact_values:
                         fact_values[k] = (self._get_weight(index[0], index[1]), list())
                     p_value = p_values[fact]
                     fact_values[k][1].append((p_value, value, m))
             for index, value in par_marg.items():
-                print("value[{}]={} ({})".format(index, value, m))
+                # print("value[{}]={} ({})".format(index, value, m))
                 fact_par[index] += value * m
             try:
                 if isinstance(pEvidence, DensityValue):
@@ -1330,7 +1330,7 @@ class LFIProblem(LogicProgram):
         # for index in update_list:
         #     indices_set.add(index[0])
         weight_changed = [False] * len(self.names)
-        print("Weight_changed List:", weight_changed)
+        # print("Weight_changed List:", weight_changed)
         for index in update_list:
             k = (index[0], index[1])
             if k in fact_values:
@@ -1351,7 +1351,7 @@ class LFIProblem(LogicProgram):
                     if float(fact_body[index]) == 0.0:
                         prob = 0.0
                     else:
-                        print(fact_par[index])
+                        # print(fact_par[index])
                         temp = dict()
                         ids, vars = zip(*list(fact_par.keys()))
                         for id in set(ids):
@@ -1391,7 +1391,7 @@ class LFIProblem(LogicProgram):
     def _normalize_weights(self):
         # TODO: too late here, AD should be taken into account in _update
         # Derivation is sum(all values for var=k) / sum(all values for i sum(all values for var=i))
-        print("_adatoms", self._adatoms)
+        # print("_adatoms", self._adatoms)
 
         for available_prob, idx in self._adatoms:
             if len(idx) == 1:
@@ -1523,9 +1523,9 @@ class Example(object):
 
     def compile(self, lfi, baseprogram):
         ground_program = None  # Let the grounder decide
-        print("compile grounding:")
-        print("...")
-        print("Grounded Atoms", self.atoms)
+        # print("compile grounding:")
+        # print("...")
+        # print("Grounded Atoms", self.atoms)
 
         ground_program = ground(
             baseprogram,
@@ -1533,9 +1533,9 @@ class Example(object):
             evidence=list(zip(self.atoms, self.values)),
             propagate_evidence=lfi.propagate_evidence,
         )
-        print("...")
-        # print(ground_program.to_prolog())
-        print(ground_program)
+        # print("...")
+        # # print(ground_program.to_prolog())
+        # print(ground_program)
 
         lfi_queries = []
         for i, node, t in ground_program:
@@ -1545,7 +1545,7 @@ class Example(object):
                 and node.probability.functor == "lfi"
             ):
                 factargs = ()
-                # print("node.identifier", node.identifier)
+                # # print("node.identifier", node.identifier)
                 if node.name.functor != "choice":
                     if node.name.functor == "lfi_fact":
                         for arg in node.name.args:
@@ -1558,7 +1558,7 @@ class Example(object):
                 # fact = Term('lfi_fact', node.probability.args[0], node.probability.args[1], *factargs)
                 # fact = Term('lfi_fact', node.probability.args[0], node.probability.args[1])
                 fact = Term("lfi_fact", node.probability.args[0], Term("t", *factargs))
-                print("Adding query: ", fact, i)
+                # print("Adding query: ", fact, i)
                 ground_program.add_query(fact, i)
                 if self._use_parents:
                     # tmp_body = Term('lfi_body', node.probability.args[0], node.probability.args[1], *factargs)
@@ -1567,14 +1567,14 @@ class Example(object):
                         "lfi_body", node.probability.args[0], Term("t", *factargs)
                     )
                     lfi_queries.append(tmp_body)
-                    print("Adding query: ", tmp_body, i)
+                    # print("Adding query: ", tmp_body, i)
                     # tmp_par = Term('lfi_par', node.probability.args[0], node.probability.args[1], *factargs)
                     # tmp_par = Term('lfi_par', node.probability.args[0], node.probability.args[1])
                     tmp_par = Term(
                         "lfi_par", node.probability.args[0], Term("t", *factargs)
                     )
                     lfi_queries.append(tmp_par)
-                    print("Adding query: ", tmp_par, i)
+                    # print("Adding query: ", tmp_par, i)
             elif (
                 t == "atom"
                 and isinstance(node.probability, Term)
@@ -1600,12 +1600,12 @@ class Example(object):
                 propagate_evidence=lfi.propagate_evidence,
                 queries=lfi_queries,
             )
-            print("New ground_program")
-            print(ground_program)
+            # print("New ground_program")
+            # print(ground_program)
 
         self.compiled = lfi.knowledge.create_from(ground_program)
-        print("Compiled program:")
-        print("\t" + self.compiled.to_prolog().replace("\n", "\n\t"))
+        # print("Compiled program:")
+        # print("\t" + self.compiled.to_prolog().replace("\n", "\n\t"))
 
     def add_index(self, index, cvalues):
         k = tuple(cvalues)
@@ -1684,24 +1684,24 @@ class ExampleEvaluator(SemiringDensity):
             return float(a)
 
     def __call__(self, example):
-        print("__call__")
+        # print("__call__")
         """Evaluate the model with its current estimates for all examples."""
-        # print('=========>>>')
+        # # print('=========>>>')
         at = example.atoms
         val = example.values
         comp = example.compiled
         results = []
         for cval, n in example.n.items():
             results.append(self._call_internal(at, val, cval, comp, n))
-        # print('<<<=========')
-        print("__call__.results = ", results)
+        # # print('<<<=========')
+        # print("__call__.results = ", results)
         return results
 
     def _call_internal(self, at, val, cval, comp, n):
-        print("__call_internal__")
-        # print('=========')
-        # print('ExampleEvaluator.__call__({},{},{},{})'.format(n, at, val, cval))
-        # print('_weights: ', self._weights)
+        # print("__call_internal__")
+        # # print('=========')
+        # # print('ExampleEvaluator.__call__({},{},{},{})'.format(n, at, val, cval))
+        # # print('_weights: ', self._weights)
         evidence = {}
         self._cevidence = {}
         # p_values = {}
@@ -1762,28 +1762,22 @@ class ExampleEvaluator(SemiringDensity):
         for name, node, label in evaluator.formula.labeled():
             if self._use_parents and name.functor not in ["lfi_body", "lfi_par"]:
                 continue
-            print("evaluate start {}".format(name), node)
+            # print("evaluate start {}".format(name), node)
             w = evaluator.evaluate(node)
-            print("evaluate {}: {} ({})".format(name, w, len(n)))
+            # print("evaluate {}: {} ({})".format(name, w, len(n)))
             # w = evaluator.evaluate_fact(node)
             # print ("WWW", w, w1, w2)
             if isinstance(w, DensityValue):
-                # print("{} => {}".format(w, float(w)))
+                # # print("{} => {}".format(w, float(w)))
                 # w = float(w)
                 p_queries[name] = w
             elif w < 1e-6:  # TODO: too high for multivariate dists?
                 p_queries[name] = 0.0
             else:
                 p_queries[name] = w
-        print("_call_internal.evaluate_evidence")
+        # print("_call_internal.evaluate_evidence")
         p_evidence = evaluator.evaluate_evidence()
-        print(
-            "_call_internal.result",
-            p_evidence,
-            "\n",
-            p_queries,
-            "\n\n ".join([str(v) for v in p_values.items()]),
-        )
+        # print("_call_internal.result", p_evidence, "\n", p_queries, "\n\n ".join([str(v) for v in p_values.items()]),)
 
         return len(n), p_evidence, p_queries, p_values
 
@@ -1855,25 +1849,25 @@ class ExampleEvaluatorLog(SemiringLogProbability):
 
     def __call__(self, example):
         """Evaluate the model with its current estimates for all examples."""
-        # print('=========>>>')
+        # # print('=========>>>')
         at = example.atoms
         val = example.values
         comp = example.compiled
         results = []
         for cval, n in example.n.items():
             results.append(self._call_internal(at, val, cval, comp, n))
-        # print('<<<=========')
+        # # print('<<<=========')
         return results
 
     def _call_internal(self, at, val, cval, comp, n):
-        # print('=========')
-        # print('ExampleEvaluator.__call__({},{},{},{})'.format(n, at, val, cval))
-        # print('_weights: ', self._weights)
+        # # print('=========')
+        # # print('ExampleEvaluator.__call__({},{},{},{})'.format(n, at, val, cval))
+        # # print('_weights: ', self._weights)
         evidence = {}
         self._cevidence = {}
         # p_values = {}
         for a, v, cv in zip(at, val, cval):
-            # print('__call__', a, v, cv)
+            # # print('__call__', a, v, cv)
             if a in evidence:
                 if cv is not None:
                     if self._cevidence[a] != cv:
@@ -1928,13 +1922,13 @@ class ExampleEvaluatorLog(SemiringLogProbability):
         for name, node, label in evaluator.formula.labeled():
             w = evaluator.evaluate_fact(node)
             # if w < 1e-6:  # TODO: too high for multivariate dists
-            #     print('Set w to 0: ', w)
+            #     # print('Set w to 0: ', w)
             #     p_queries[name] = 0.0
             # else:
             p_queries[name] = w
         # TODO: p_evidence becomes too small for many continuous observations
         p_evidence = evaluator.evaluate_evidence()
-        # print('__call__.result', p_evidence, '\n', p_queries, '\n', '\n '.join([str(v) for v in p_values.items()]))
+        # # print('__call__.result', p_evidence, '\n', p_queries, '\n', '\n '.join([str(v) for v in p_values.items()]))
         return len(n), p_evidence, p_queries, p_values
 
 
@@ -2166,10 +2160,10 @@ def print_result(d, output, precision=8):
                 weights_print.append(weight)
             else:
                 weights_print.append(round(float(weight), precision))
-        print(score, weights, names, iterations, file=output)
+        # print(score, weights, names, iterations, file=output)
         return 0
     else:
-        print(process_error(d), file=output)
+        # print(process_error(d), file=output)
         return 1
 
 
@@ -2189,10 +2183,10 @@ def print_result_json(d, output, precision=8):
             ],
             "model": lfi.get_model(),
         }
-        print(json.dumps(results), file=output)
+        # print(json.dumps(results), file=output)
     else:
         results = {"SUCCESS": False, "err": vars(d)}
-        print(json.dumps(results), file=output)
+        # print(json.dumps(results), file=output)
     return 0
 
 
