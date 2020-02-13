@@ -952,7 +952,7 @@ class Clause(Term):
         self.body = body
 
     def __repr__(self):
-        if self.head.functor == "_directive":
+        if self.head and self.head.functor == "_directive":
             self.repr = ":- %s" % self.body
         else:
             self.repr = "%s :- %s" % (self.head, self.body)

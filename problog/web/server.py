@@ -47,7 +47,7 @@ import subprocess
 import sys
 import tempfile
 
-import resource
+# import resource
 
 DEFAULT_PORT = 5100
 DEFAULT_TIMEOUT = 60
@@ -554,6 +554,11 @@ def main(argv, **extra):
         "--port", "-p", type=int, default=DEFAULT_PORT, help="Server listening port"
     )
     parser.add_argument(
+        "--test",
+        action="store_true",
+        help="Don't run server forever, but just test if it starts",
+    )
+    parser.add_argument(
         "--timeout",
         "-t",
         type=int,
@@ -599,7 +604,9 @@ def main(argv, **extra):
         import webbrowser
 
         webbrowser.open("http://localhost:%s/" % args.port, new=2, autoraise=True)
-    httpd.serve_forever()
+
+    if not args.test:
+        httpd.serve_forever()
 
 
 if __name__ == "__main__":

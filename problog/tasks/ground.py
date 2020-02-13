@@ -28,7 +28,7 @@ from problog.program import ExtendedPrologFactory, PrologFile
 from problog.util import subprocess_check_output, mktempfile
 
 
-def main(argv, result_handler=None):
+def get_arg_parser():
     import argparse
 
     parser = argparse.ArgumentParser()
@@ -85,8 +85,12 @@ def main(argv, result_handler=None):
         action="append",
         help="Pass additional arguments to the cmd_args builtin.",
     )
+    return parser
 
-    args = parser.parse_args(argv)
+
+def main(argv, result_handler=None):
+
+    args = get_arg_parser().parse_args(argv)
 
     outformat = args.format
     outfile = sys.stdout
@@ -118,6 +122,7 @@ def main(argv, result_handler=None):
     else:
         print_result = print_result_standard
 
+    final_result = None
     try:
         gp = target.createFrom(
             PrologFile(
@@ -135,38 +140,39 @@ def main(argv, result_handler=None):
         )
 
         if outformat == "pl":
-            rc = print_result((True, gp.to_prolog()), output=outfile)
+            final_result = (True, gp.to_prolog())
         elif outformat == "dot":
-            rc = print_result((True, gp.to_dot()), output=outfile)
+            final_result = (True, gp.to_dot())
         elif outformat == "svg":
             dot = gp.to_dot()
             tmpfile = mktempfile(".dot")
             with open(tmpfile, "w") as f:
                 print(dot, file=f)
             svg = subprocess_check_output(["dot", tmpfile, "-Tsvg"])
-            rc = print_result((True, svg), output=outfile)
+            final_result = (True, gp.to_dot())
         elif outformat == "cnf":
             cnfnames = False
             if args.verbose > 0:
                 cnfnames = True
-            rc = print_result(
-                (True, CNF.createFrom(gp).to_dimacs(names=cnfnames)), output=outfile
-            )
+            final_result = (True, CNF.createFrom(gp).to_dimacs(names=cnfnames))
         elif outformat == "internal":
-            rc = print_result((True, str(gp)), output=outfile)
+            final_result = (True, str(gp))
         else:
-            rc = print_result((True, gp.to_prolog()), output=outfile)
+            final_result = (True, gp.to_prolog())
     except Exception as err:
         import traceback
 
         err.trace = traceback.format_exc()
-        rc = print_result((False, err))
+        final_result = (False, err)
 
+    rc = print_result(final_result, output=outfile)
     if args.output:
         outfile.close()
 
     if rc:
         sys.exit(rc)
+
+    return final_result
 
 
 def print_result_standard(result, output=sys.stdout):

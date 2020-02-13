@@ -38,6 +38,7 @@ def main(argv):
                 print("filename", timers.header, "total", sep=";")
                 first = False
             print(filename, timers, timers.total, sep=";")
+            return timers
 
 
 class Timer(object):

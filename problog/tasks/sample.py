@@ -193,7 +193,17 @@ class SampledFormula(LogicFormula):
             return None
         return self.values[key - 1]
 
-    def add_atom(self, identifier, probability, group=None, name=None, source=None):
+    def add_atom(
+        self,
+        identifier,
+        probability,
+        group=None,
+        name=None,
+        source=None,
+        cr_extra=True,
+        is_extra=False,
+    ):
+        # def add_atom(self, identifier, probability, group=None, name=None, source=None):
         if probability is None:
             return 0
 
@@ -321,13 +331,13 @@ class SampledFormula(LogicFormula):
                     if not as_evidence:
                         lines.append("%s = %s." % (str(k), val))
             elif as_evidence:
-                lines.append(base % ("\+" + str(k)))
+                lines.append(base % ("\\+" + str(k)))
         if with_facts:
             for k, v in self.facts.items():
                 if v == 0:
                     lines.append(base % str(translate(db, k)))
                 elif v is None:
-                    lines.append(base % ("\+" + str(translate(db, k))))
+                    lines.append(base % ("\\+" + str(translate(db, k))))
 
         if oneline:
             sep = " "
@@ -390,6 +400,7 @@ def builtin_shuffle(lst_in, lst_out, **kwargs):
 
 def builtin_previous(term, default, engine=None, target=None, callback=None, **kwdargs):
     # retrieve term from previous sample, default action if no previous sample
+    # See "A. Dries, Declarative data generation with ProbLog, 2015" for more info
 
     if engine.previous_result is None:
         results = engine.call(default, subcall=True, target=target, **kwdargs)
@@ -721,7 +732,7 @@ def print_result_json(d, output, **kwdargs):
     return 0
 
 
-def main(args, result_handler=None):
+def get_argument_parser():
     import argparse
 
     parser = argparse.ArgumentParser()
@@ -793,7 +804,11 @@ def main(args, result_handler=None):
         help="Pass additional arguments to the cmd_args builtin.",
     )
     parser.add_argument("--progress", help="show progress", action="store_true")
+    return parser
 
+
+def main(args, result_handler=None):
+    parser = get_argument_parser()
     args = parser.parse_args(args)
 
     init_logger(args.verbose, "problog_sample")
@@ -827,26 +842,28 @@ def main(args, result_handler=None):
     else:
         outformat = "str"
         result_handler = print_result
+
+    final_result = None
     try:
         if args.estimate:
             results = estimate(pl, **vars(args))
             print(format_dictionary(results))
         else:
-            result_handler(
-                (True, sample(pl, format=outformat, **vars(args))),
-                output=outf,
-                oneline=args.oneline,
-            )
+            final_result = (True, sample(pl, format=outformat, **vars(args)))
+            result_handler(final_result, output=outf, oneline=args.oneline)
     except Exception as err:
         trace = traceback.format_exc()
         err.trace = trace
-        result_handler((False, err), output=outf)
+        final_result = (False, err)
+        result_handler(final_result, output=outf)
 
     if args.timeout:
         stop_timer()
 
     if args.output is not None:
         outf.close()
+
+    return final_result
 
 
 if __name__ == "__main__":
