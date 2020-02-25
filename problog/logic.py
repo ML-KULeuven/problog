@@ -79,9 +79,10 @@ This module contains basic logic constructs.
 """
 from __future__ import print_function
 from __future__ import division  # consistent behaviour of / and // in python 2 and 3
-
+import functools
 import math
 import sys
+import re
 
 
 from .util import OrderedSet
@@ -124,7 +125,7 @@ def list2term(lst):
     return tail
 
 
-def term2list(term):
+def term2list(term, deep=True):
     """Transform a Prolog list to a Python list of terms.
 
     :param term: term representing a fixed length Prolog list
@@ -136,7 +137,10 @@ def term2list(term):
     from .pypl import pl2py
     result = []
     while not is_variable(term) and term.functor == '.' and term.arity == 2:
-        result.append(pl2py(term.args[0]))
+        if deep:
+            result.append(pl2py(term.args[0]))
+        else:
+            result.append(term.args[0])
         term = term.args[1]
     if not term == Term('[]'):
         raise ValueError('Expected fixed list.')
@@ -181,7 +185,7 @@ class Term(object):
     :param functor: the functor of the term ('p' in the example)
     :type functor: str
     :param args: the arguments of the Term ('X' and 'Y' in the example)
-    :type args: tuple of (Term | None | int)
+    :type args: Term | None | int
     :param kwdargs: additional arguments; currently 'p' (probability) and 'location' \
     (character position in input)
     """
@@ -199,6 +203,8 @@ class Term(object):
         self._cache_is_ground = None
         self._cache_list_length = None
         self._cache_variables = None
+        self.repr = None
+        self.reprhash = None
 
     @property
     def functor(self):
@@ -229,6 +235,10 @@ class Term(object):
     def value(self):
         """Value of the Term obtained by computing the function is represents"""
         return self.compute_value()
+
+    @property
+    def predicates(self):
+        return [self.signature]
 
     def compute_value(self, functions=None):
         """Compute value of the Term by computing the function it represents.
@@ -341,6 +351,9 @@ class Term(object):
                     return new_term
 
     def __repr__(self):
+        if self.repr is not None:
+            return self.repr
+
         # Non-recursive version of __repr__
         stack = [deque([self])]
         # current: popleft from stack[-1]
@@ -468,7 +481,9 @@ class Term(object):
                 put(str(current))
             while stack and not stack[-1]:
                 stack.pop(-1)
-        return ''.join(parts)
+        self.repr = ''.join(parts)
+        self.reprhash = hash(self.repr)
+        return self.repr
 
     def __call__(self, *args, **kwdargs):
         """Create a new Term with the same functor and the given arguments.
@@ -698,6 +713,11 @@ class Term(object):
             return parsed[0]
 
 
+class AggTerm(Term):
+
+    def __init__(self, *args, **kwargs):
+        Term.__init__(self, *args, **kwargs)
+
 class Var(Term):
     """A Term representing a variable.
 
@@ -785,6 +805,57 @@ class Constant(Term):
         return str(self) == str(other)
 
 
+class Object(Term):
+    """A wrapped object.
+
+        :param value: the wrapped object
+
+    """
+
+    def __init__(self, value, location=None, **kwdargs):
+        Term.__init__(self, value, location=location, **kwdargs)
+
+    def compute_value(self, functions=None):
+        return float(self.functor)
+        return self.functor
+
+    def is_constant(self):
+        return True
+
+    def __hash__(self):
+        return hash(id(self.functor))
+
+    def __str__(self):
+        return str(self.functor)
+
+    def is_string(self):
+        """Check whether this constant is a string.
+
+            :returns: true if the value represents a string
+            :rtype: :class:`bool`
+        """
+        return False
+
+    def is_float(self):
+        """Check whether this constant is a float.
+
+            :returns: true if the value represents a float
+            :rtype: :class:`bool`
+        """
+        return False
+
+    def is_integer(self):
+        """Check whether this constant is an integer.
+
+            :returns: true if the value represents an integer
+            :rtype: :class:`bool`
+        """
+        return False
+
+    def __eq__(self, other):
+        return id(self) == id(other)
+
+
 class Clause(Term):
     """A clause."""
 
@@ -794,7 +865,16 @@ class Clause(Term):
         self.body = body
 
     def __repr__(self):
-        return "%s :- %s" % (self.head, self.body)
+        if self.head.functor == '_directive':
+            self.repr = ":- %s" % self.body
+        else:
+            self.repr = "%s :- %s" % (self.head, self.body)
+        self.reprhash = hash(self.repr)
+        return self.repr
+
+    @property
+    def predicates(self):
+        return [self.head.signature]
 
 
 class AnnotatedDisjunction(Term):
@@ -807,9 +887,15 @@ class AnnotatedDisjunction(Term):
 
     def __repr__(self):
         if self.body is None:
-            return "%s" % ('; '.join(map(str, self.heads)))
+            self.repr = "%s" % ('; '.join(map(str, self.heads)))
         else:
-            return "%s :- %s" % ('; '.join(map(str, self.heads)), self.body)
+            self.repr = "%s :- %s" % ('; '.join(map(str, self.heads)), self.body)
+        self.reprhash = hash(self.repr)
+        return self.repr
+
+    @property
+    def predicates(self):
+        return [x.signature for x in self.heads]
 
 
 class Or(Term):
@@ -859,10 +945,16 @@ class Or(Term):
     def __repr__(self):
         lhs = term2str(self.op1)
         rhs = term2str(self.op2)
-        return "%s; %s" % (lhs, rhs)
+        self.repr = "%s; %s" % (lhs, rhs)
+        self.reprhash = hash(self.repr)
+        return self.repr
 
     def with_args(self, *args):
         return self.__class__(*args, location=self.location)
+
+    @property
+    def predicates(self):
+        return [self.op1.signature] + self.op2.predicates
 
 
 class And(Term):
@@ -917,7 +1009,9 @@ class And(Term):
         if isinstance(self.op1, Or):
             lhs = '(%s)' % lhs
 
-        return "%s, %s" % (lhs, rhs)
+        self.repr = "%s, %s" % (lhs, rhs)
+        self.reprhash = hash(self.repr)
+        return self.repr
 
     def with_args(self, *args):
         return self.__class__(*args, location=self.location)
@@ -935,9 +1029,11 @@ class Not(Term):
         if isinstance(self.child, And) or isinstance(self.child, Or):
             c = '(%s)' % c
         if self.functor == 'not':
-            return 'not %s' % c
+            self.repr = 'not %s' % c
         else:
-            return '%s%s' % (self.functor, c)
+            self.repr = '%s%s' % (self.functor, c)
+        self.reprhash = hash(self.repr)
+        return self.repr
 
     def is_negated(self):
         return True
@@ -1015,6 +1111,18 @@ def unquote(s):
     :return: string with quotes removed
     """
     return s.strip("'")
+
+
+safe_expr = re.compile('[a-z]+(\w)*$')
+def is_safe(t):
+    return safe_expr.match(t) is not None
+
+
+def make_safe(t):
+    if not is_safe(t):
+        return "'%s'" % t
+    else:
+        return t
 
 
 def compute_function(func, args, extra_functions=None):

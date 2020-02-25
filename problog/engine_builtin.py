@@ -24,13 +24,77 @@ Implementation of Prolog / ProbLog builtins.
 
 from __future__ import print_function
 
-from .logic import term2str, Term, Clause, Constant, term2list, list2term, is_ground, is_variable, Var
+from .logic import term2str, Term, Clause, Constant, term2list, list2term, \
+    is_ground, is_variable, Var, AnnotatedDisjunction, Object
 from .program import PrologFile
 from .errors import GroundingError, UserError
 from .engine_unify import unify_value, UnifyError, substitute_simple
 from .engine import UnknownClauseInternal, UnknownClause
+import inspect
+import os
+import sys
 
-import os, sys
+
+class builtin(object):
+    registry = None
+
+    @classmethod
+    def register(cls, tp, name, arity, func):
+        if cls.registry is None:
+            cls.registry = []
+        cls.registry.append((tp, name, arity, func))
+
+    @classmethod
+    def _add_builtin(cls, engine, bltn, b=None, s=None, sp=None):
+        if bltn[0] == 'bool':
+            engine.add_builtin(bltn[1], bltn[2], b(bltn[3]))
+        elif bltn[0] == 'det':
+            engine.add_builtin(bltn[1], bltn[2], s(bltn[3]))
+        elif bltn[0] == 'prob':
+            engine.add_builtin(bltn[1], bltn[2], sp(bltn[3]))
+        elif bltn[0] == 'raw':
+            engine.add_builtin(bltn[1], bltn[2], bltn[3])
+        else:
+            raise ValueError("Unknown builtin type '%s'." % bltn[0])
+
+    @classmethod
+    def add_builtins(cls, engine, b=None, s=None, sp=None):
+        if cls.registry is not None:
+            for bltn in cls.registry:
+                cls._add_builtin(engine, bltn, b, s, sp)
+
+    def __init__(self, builtin_type, builtin_name, builtin_arity):
+        self.type = builtin_type
+        self.name = builtin_name
+        self.arity = builtin_arity
+
+    def __call__(self, func):
+        builtin.register(self.type, self.name, self.arity, func)
+        return func
+
+
+class builtin_boolean(builtin):
+
+    def __init__(self, *args):
+        builtin.__init__(self, 'bool', *args)
+
+
+class builtin_simple(builtin):
+
+    def __init__(self, *args):
+        builtin.__init__(self, 'det', *args)
+
+
+class builtin_probabilistic(builtin):
+
+    def __init__(self, *args):
+        builtin.__init__(self, 'prob', *args)
+
+
+class builtin_raw(builtin):
+
+    def __init__(self, *args):
+        builtin.__init__(self, 'raw', *args)
 
 
 def add_standard_builtins(engine, b=None, s=None, sp=None):
@@ -43,6 +107,7 @@ def add_standard_builtins(engine, b=None, s=None, sp=None):
     :param sp: wrapper for probabilistic builtins (return probabilistic results)
     """
 
+    # SPECIAL CASES NEED TO BE IN ORDER
     engine.add_builtin('true', 0, b(_builtin_true))  # -1
     engine.add_builtin('fail', 0, b(_builtin_fail))  # -2
     engine.add_builtin('false', 0, b(_builtin_fail))  # -3
@@ -109,11 +174,14 @@ def add_standard_builtins(engine, b=None, s=None, sp=None):
     engine.add_builtin('use_module', 2, b(_builtin_use_module2))
     engine.add_builtin('module', 2, b(_builtin_module))
 
+    engine.add_builtin('once', 1, _builtin_call)
     engine.add_builtin('call', 1, _builtin_call)
     engine.add_builtin('call_nc', 1, _builtin_call_nc)
+    engine.add_builtin('try_call', 1, _builtin_try_call)
     for i in range(2, 10):
         engine.add_builtin('call', i, _builtin_calln)
         engine.add_builtin('call_nc', i, _builtin_calln_nc)
+        engine.add_builtin('try_call', i, _builtin_try_calln)
 
     engine.add_builtin('subquery', 2, s(_builtin_subquery))
     engine.add_builtin('subquery', 3, s(_builtin_subquery))
@@ -128,6 +196,7 @@ def add_standard_builtins(engine, b=None, s=None, sp=None):
 
     for i in range(1, 10):
         engine.add_builtin('writenl', i, b(_builtin_writenl))
+        engine.add_builtin('writeln', i, b(_builtin_writenl))
 
     for i in range(1, 10):
         engine.add_builtin('error', i, b(_builtin_error))
@@ -146,8 +215,23 @@ def add_standard_builtins(engine, b=None, s=None, sp=None):
 
     engine.add_builtin('possible', 1, s(_builtin_possible))
     engine.add_builtin('clause', 2, s(_builtin_clause))
+    engine.add_builtin('clause', 3, s(_builtin_clause3))
+
+    engine.add_builtin('create_scope', 2, s(_builtin_create_scope))
+
+    engine.add_builtin('subquery_in_scope', 3, s(_builtin_subquery_in_scope))
+    engine.add_builtin('subquery_in_scope', 4, s(_builtin_subquery_in_scope))
+
+    engine.add_builtin('call_in_scope', 2, _builtin_call_in_scope)
+    for i in range(2, 10):
+        engine.add_builtin('call_in_scope', i + 1, _builtin_calln_in_scope)
+
+    engine.add_builtin('find_scope', 2, s(_builtin_find_scope))
+
+    builtin.add_builtins(engine, b, s, sp)
 
 
+# @builtin_boolean('nocache', 1)
 def _builtin_nocache(functor, arity, database=None, **kwd):
     check_mode((functor, arity), ['ai'], **kwd)
     database.dont_cache.add((str(functor), int(arity)))
@@ -164,13 +248,16 @@ def _builtin_clause(head, body, database=None, **kwd):
         else:
             clause_ids = database.get_node(clause_def).children
             clauses = [database.to_clause(c) for c in clause_ids]
-    elif mode == 1:
+    else:
         clauses = list(database)
 
     result = []
     for clause in clauses:
         if isinstance(clause, Clause):
             h = clause.head
+            b = clause.body
+        elif isinstance(clause, AnnotatedDisjunction):
+            h = list2term(clause.heads)
             b = clause.body
         else:
             h = clause
@@ -180,6 +267,48 @@ def _builtin_clause(head, body, database=None, **kwd):
             unify_value(head, h, {})
             unify_value(body, b, {})
             result.append((h, b))
+        except UnifyError:
+            pass
+
+    return result
+
+
+def _builtin_clause3(head, body, prob, database=None, **kwd):
+    mode = check_mode((head, body, prob), ['c**', 'v**'], **kwd)
+
+    if mode == 0:
+        clause_def = database.find(head)
+        if clause_def is None:
+            clauses = []
+        else:
+            clause_ids = database.get_node(clause_def).children
+            clauses = [database.to_clause(c) for c in clause_ids]
+    else:
+        clauses = list(database)
+
+    result = []
+    for clause in clauses:
+        if isinstance(clause, Clause):
+            h = clause.head
+            b = clause.body
+            p = clause.head.probability
+        elif isinstance(clause, AnnotatedDisjunction):
+            h = list2term(clause.heads)
+            b = clause.body
+            # p = clause.heads.probability
+            p = list2term([hh.probability for hh in clause.heads])
+        else:
+            h = clause
+            b = Term('true')
+            p = clause.probability
+        if p is None:
+            p = Constant(1.0)
+
+        try:
+            unify_value(head, h, {})
+            unify_value(body, b, {})
+            unify_value(prob, p, {})
+            result.append((h, b, p))
         except UnifyError:
             pass
 
@@ -237,6 +366,7 @@ def term2str_noquote(term):
         res = res[1:-1]
     return res
 
+
 def _builtin_write(*args, **kwd):
     print(' '.join(map(term2str_noquote, args)), end='')
     return True
@@ -257,7 +387,6 @@ def _builtin_writenl(*args, **kwd):
 def _builtin_nl(**kwd):
     print()
     return True
-
 
 
 class CallModeError(GroundingError):
@@ -430,6 +559,10 @@ def _is_compare(term):
     return _is_atom(term) and term.functor in ("'<'", "'='", "'>'")
 
 
+def _is_object(term):
+    return isinstance(term, Object)
+
+
 mode_types = {
     'i': ('integer', _is_integer),
     'I': ('positive_integer', _is_integer_pos),
@@ -442,7 +575,8 @@ mode_types = {
     '<': ('compare', _is_compare),  # < = >
     'g': ('ground', is_ground),
     'a': ('atom', _is_atom),
-    'c': ('callable', _is_term)
+    'c': ('callable', _is_term),
+    'o': ('object', _is_object)
 }
 
 
@@ -574,7 +708,7 @@ def _builtin_functor(term, functor, arity, **kwdargs):
     mode = check_mode((term, functor, arity), ['vaI', 'n**'], functor='functor', **kwdargs)
 
     if mode == 0:
-        kwdargs.get('callback').newResult(Term(functor, *((None,) * int(arity))), functor, arity)
+        return [(Term(functor, *((None,) * int(arity))), functor, arity)]
     else:
         try:
             values = {}
@@ -879,7 +1013,9 @@ def struct_cmp(a, b):
         return res
 
     # 4.2) By functor
-    res = compare(a.functor, b.functor)
+    fa = str(a.functor)
+    fb = str(b.functor)
+    res = compare(fa, fb)
     if res != 0:
         return res
 
@@ -962,8 +1098,8 @@ def _builtin_numbervars(term, start, output, **k):
 
 
 def _builtin_varnumbers(term, output, engine=None, context=None, **k):
-    mode = check_mode((term, output), ['cv', 'cc'], functor='varnumbers', **k)
-    start = engine._context_min_var(context)
+    check_mode((term, output), ['cv', 'cc'], functor='varnumbers', **k)
+    start = engine.context_min_var(context)
 
     class VarNumbers(object):
 
@@ -984,7 +1120,6 @@ def _builtin_varnumbers(term, output, engine=None, context=None, **k):
                 self._table[item] = self._n
                 return self._n
     xx = term.apply_term(VarNumbers(start))
-    print (term, xx, start, output)
     out = unify_value(output, xx, {})
     return [(term, out)]
 
@@ -1031,7 +1166,7 @@ def _builtin_length(l, n, **k):
         if remain < 0:
             raise UnifyError()
         else:
-            min_var = k.get('engine')._context_min_var(k.get('context'))
+            min_var = k.get('engine').context_min_var(k.get('context'))
             extra = list(range(min_var, min_var - remain, -1))  # [None] * remain
         new_l = build_list(elements + extra, Term('[]'))
         return [(new_l, n)]
@@ -1142,13 +1277,6 @@ def _atom_to_filename(atom):
     return atomstr
 
 
-class ConsultError(GroundingError):
-    """Error during consult"""
-
-    def __init__(self, message, location):
-        GroundingError.__init__(self, message, location)
-
-
 def _builtin_consult_as_list(op1, op2, **kwdargs):
     """Implementation of consult/1 using list notation.
 
@@ -1175,32 +1303,8 @@ def _builtin_consult(filename, database=None, engine=None, **kwdargs):
    :param kwdargs: additional arguments
    :return: True
     """
-    root = database.source_root
-    if filename.location:
-        source_root = database.source_files[filename.location[0]]
-        if source_root:
-            root = os.path.dirname(source_root)
     check_mode((filename,), ['a'], functor='consult', **kwdargs)
-    filename = _atom_to_filename(filename)
-    if not os.path.exists(filename):
-        filename = os.path.join(root, filename)
-        if not os.path.exists(filename):
-            filename += '.pl'
-        if not os.path.exists(filename):
-            raise ConsultError(message="Consult: file not found '%s'" % filename,
-                               location=database.lineno(kwdargs.get('location')))
-
-    # Prevent loading the same file twice
-    if filename not in database.source_files:
-        identifier = len(database.source_files)
-        database.source_files.append(filename)
-        database.source_parent.append(kwdargs.get('location'))
-        pl = PrologFile(filename, identifier=identifier, factory=database.extra_info.get('factory'), parser=database.extra_info.get('parser'))
-        database.line_info.append(pl.line_info[0])
-        for clause in pl:
-            database += clause
-        # engine._process_directives(database)
-
+    database.consult(filename, location=kwdargs.get('location'))
     return True
 
 
@@ -1226,13 +1330,13 @@ def _select_sublist(lst, target):
     :type target: LogicFormula
     :return: generator of sublists
     """
-    l = len(lst)
+    ln = len(lst)
 
     # Generate an array that indicates the decision bit for each element in the list.
     # If an element is deterministically true, then no decision bit is needed.
-    choice_bits = [None] * l
+    choice_bits = [None] * ln
     x = 0
-    for i in range(0, l):
+    for i in range(0, ln):
         if lst[i][1] not in (target.TRUE, target.FALSE):
             choice_bits[i] = x
             x += 1
@@ -1243,11 +1347,12 @@ def _select_sublist(lst, target):
     while n >= 0:
         # Generate the list of positive values and node identifiers
         # noinspection PyTypeChecker
-        sublist = [lst[i] for i in range(0, l)
-                   if (choice_bits[i] is None and lst[i][1] == target.TRUE) or (choice_bits[i] is not None and n & 1 << choice_bits[i])]
+        sublist = [lst[i] for i in range(0, ln)
+                   if (choice_bits[i] is None and lst[i][1] == target.TRUE) or
+                   (choice_bits[i] is not None and n & 1 << choice_bits[i])]
         # Generate the list of negative node identifiers
         # noinspection PyTypeChecker
-        sublist_no = tuple([target.negate(lst[i][1]) for i in range(0, l)
+        sublist_no = tuple([target.negate(lst[i][1]) for i in range(0, ln)
                             if (choice_bits[i] is None and lst[i][1] == target.FALSE) or (
                             choice_bits[i] is not None and not n & 1 << choice_bits[i])])
         if sublist:
@@ -1264,7 +1369,7 @@ def _builtin_all_or_none(pattern, goal, result, **kwargs):
 
 
 def _builtin_all(pattern, goal, result, allow_none=False, database=None, target=None,
-                      engine=None, context=None, **kwdargs):
+                 engine=None, context=None, **kwdargs):
     """
     Implementation of all/3 builtin.
    :param pattern: pattern to extract
@@ -1364,8 +1469,8 @@ def _builtin_findall_base(pattern, goal, result, database=None, target=None,
         raise IndirectCallCycleError(database.lineno(kwdargs.get('call_origin', (None, None))[1]))
 
     new_results = []
-    keep_all_restore = target._keep_all
-    target._keep_all = False
+    keep_all_restore = target.keep_all
+    target.keep_all = False
 
     for res, n in results:
         for mx, b in findall_target.enumerate_branches(n):
@@ -1380,7 +1485,7 @@ def _builtin_findall_base(pattern, goal, result, database=None, target=None,
                 new_results.append((mx, res[0], proof_node))
             else:
                 new_results.append((mx, res[0], proof_node))
-    target._keep_all = keep_all_restore
+    target.keep_all = keep_all_restore
     new_results = [(b, c) for a, b, c in sorted(new_results, key=lambda s: s[0])]
 
     output = []
@@ -1421,8 +1526,7 @@ def _builtin_possible(goal, engine=None, **kwdargs):
     except UnifyError:
         return []
     except RuntimeError:
-        raise IndirectCallCycleError(database.lineno(kwdargs.get('call_origin', (None, None))[1]))
-
+        raise IndirectCallCycleError(kwdargs['database'].lineno(kwdargs.get('call_origin', (None, None))[1]))
 
 
 # noinspection PyUnusedLocal
@@ -1487,276 +1591,66 @@ def _builtin_findall(pattern, goal, result, **kwdargs):
     return _builtin_findall_base(pattern, goal, result, **kwdargs)
 
 
-# noinspection PyPep8Naming
-class problog_export(object):
-    database = None
-
-    @classmethod
-    def add_function(cls, name, in_args, out_args, function):
-        if problog_export.database is not None:
-            problog_export.database.add_extern(name, in_args + out_args, function)
-
-    # noinspection PyUnusedLocal
-    def __init__(self, *args, **kwdargs):
-        # TODO check if arguments are in order: input first, output last
-        self.input_arguments = [a[1:] for a in args if a[0] == '+']
-        self.output_arguments = [a[1:] for a in args if a[0] == '-']
-        self.functor = kwdargs.get('functor')
-
-    def _convert_input(self, a, t):
-        if t == 'str':
-            return str(a)
-        elif t == 'int':
-            return int(a)
-        elif t == 'float':
-            return float(a)
-        elif t == 'list':
-            return term2list(a)
-        elif t == 'term':
-            return a
-        else:
-            raise ValueError("Unknown type specifier '%s'!" % t)
-
-    def _type_to_callmode(self, t):
-        if t == 'str':
-            return 'a'
-        elif t == 'int':
-            return 'i'
-        elif t == 'float':
-            return 'f'
-        elif t == 'list':
-            return 'L'
-        elif t == 'term':
-            return '*'
-        else:
-            raise ValueError("Unknown type specifier '%s'!" % t)
-
-    def _extract_callmode(self):
-        callmode_in = ''
-        for t in self.input_arguments:
-            callmode_in += self._type_to_callmode(t)
-
-        # multiple call modes: index = binary encoding on whether the output is bound
-        # 0 -> all unbound
-        # 1 -> first output arg is bound
-        # 2 -> second output arg is bound
-        # 3 -> first and second are bound
-
-        n = len(self.output_arguments)
-        for i in range(0, 1 << n):
-            callmode = callmode_in
-            for j, t in enumerate(self.output_arguments):
-                if i & (1 << (n - j - 1)):
-                    callmode += self._type_to_callmode(t)
-                else:
-                    callmode += 'v'
-            yield callmode
-
-    def _convert_output(self, a, t):
-        if t == 'str':
-            return Term(a)
-        elif t == 'int':
-            return Constant(a)
-        elif t == 'float':
-            return Constant(a)
-        elif t == 'list':
-            return list2term(a)
-        elif t == 'term':
-            if not isinstance(a, Term):
-                raise ValueError("Expected term output, got '%s' instead." % type(a))
-            return a
-        else:
-            raise ValueError("Unknown type specifier '%s'!" % t)
-
-    def _convert_inputs(self, args):
-        return [self._convert_input(a, t) for a, t in zip(args, self.input_arguments)]
-
-    def _convert_outputs(self, args):
-        return [self._convert_output(a, t) for a, t in zip(args, self.output_arguments)]
-
-    def __call__(self, function, funcname=None):
-        if funcname is None:
-            if self.functor is None:
-                funcname = function.__name__
-            else:
-                funcname = self.functor
-
-        def _wrapped_function(*args, **kwdargs):
-            bound = check_mode(args, list(self._extract_callmode()), funcname, **kwdargs)
-            converted_args = self._convert_inputs(args)
-            result = function(*converted_args)
-            if len(self.output_arguments) == 1:
-                result = [result]
-
-            try:
-                transformed = []
-                for i, r in enumerate(result):
-                    r = self._convert_output(r, self.output_arguments[i])
-                    if bound & (1 << (len(self.output_arguments) - i - 1)):
-                        r = unify_value(r, args[len(self.input_arguments) + i], {})
-                    transformed.append(r)
-                result = args[:len(self.input_arguments)] + tuple(transformed)
-                return [result]
-            except UnifyError:
-                return []
-
-        problog_export.add_function(funcname, len(self.input_arguments),
-                                    len(self.output_arguments), _wrapped_function)
-        return function
-
-
-# noinspection PyPep8Naming
-class problog_export_raw(problog_export):
-
-    # noinspection PyUnusedLocal
-    def __init__(self, *args, **kwdargs):
-        problog_export.__init__(self, *args, **kwdargs)
-        self.input_arguments = [a[1:] for a in args]
-
-    def _convert_input(self, a, t):
-        if is_variable(a):
-            return None
-        else:
-            return problog_export._convert_input(self, a, t)
-
-    def _extract_callmode(self):
-        callmode_in = ''
-
-        # multiple call modes: index = binary encoding on whether the output is bound
-        # 0 -> all unbound
-        # 1 -> first output arg is bound
-        # 2 -> second output arg is bound
-        # 3 -> first and second are bound
-
-        n = len(self.input_arguments)
-        for i in range(0, 1 << n):
-            callmode = callmode_in
-            for j, t in enumerate(self.input_arguments):
-                if i & (1 << (n - j - 1)):
-                    callmode += self._type_to_callmode(t)
-                else:
-                    callmode += 'v'
-            yield callmode
-
-    def __call__(self, function, funcname=None):
-        if funcname is None:
-            if self.functor is None:
-                funcname = function.__name__
-            else:
-                funcname = self.functor
-
-        def _wrapped_function(*args, **kwdargs):
-            bound = check_mode(args, list(self._extract_callmode()), funcname, **kwdargs)
-            converted_args = self._convert_inputs(args)
-            results = []
-            for result in function(*converted_args, **kwdargs):
-                if len(result) == 2 and type(result[0]) == tuple:
-                    # Probabilistic
-                    result, p = result
-                    raise Exception('We don\'t support probabilistic yet!')
-                else:
-                    p = None
-
-                # result is always a list of tuples
-                try:
-                    transformed = []
-                    for i, r in enumerate(result):
-                        r = self._convert_output(r, self.input_arguments[i])
-                        if bound & (1 << i):
-                            r = unify_value(r, args[i], {})
-                        transformed.append(r)
-                    result = tuple(transformed)
-                    results.append(result)
-                except UnifyError:
-                    pass
-            return results
-
-        problog_export.add_function(funcname, len(self.input_arguments),
-                                    0, _wrapped_function)
-        return function
-
-
-# noinspection PyPep8Naming
-class problog_export_nondet(problog_export):
-    def __call__(self, function, funcname=None):
-        if funcname is None:
-            if self.functor is None:
-                funcname = function.__name__
-            else:
-                funcname = self.functor
-
-        def _wrapped_function(*args, **kwdargs):
-            bound = check_mode(args, list(self._extract_callmode()), funcname, **kwdargs)
-            converted_args = self._convert_inputs(args)
-            results = []
-            for result in function(*converted_args):
-                if len(self.output_arguments) == 1:
-                    result = [result]
-
-                try:
-                    transformed = []
-                    for i, r in enumerate(result):
-                        r = self._convert_output(r, self.output_arguments[i])
-                        if bound & (1 << (len(self.output_arguments) - i - 1)):
-                            r = unify_value(r, args[len(self.input_arguments) + i], {})
-                        transformed.append(r)
-                    result = args[:len(self.input_arguments)] + tuple(transformed)
-                    results.append(result)
-                except UnifyError:
-                    pass
-            return results
-
-        problog_export.add_function(funcname, len(self.input_arguments),
-                                    len(self.output_arguments), _wrapped_function)
-        return function
-
-
+# noinspection PyUnusedLocal
 def _builtin_module(name, predicates, **kwargs):
     return True
 
 
-def _builtin_use_module2(filename, predicates, **kwdargs):
-    return _builtin_use_module(filename, **kwdargs)
+# noinspection PyUnusedLocal
+def _builtin_use_module2(filename, predicates, database=None, location=None, **kwdargs):
+    database.use_module(filename, predicates, location=location)
+    return True
 
 
 def _builtin_use_module(filename, database=None, location=None, **kwdargs):
-    if filename.functor == 'library' and filename.arity == 1:
-        filename = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'library',
-                                _atom_to_filename(filename.args[0]))
-        if not os.path.exists(filename + '.pl'):
-            filename += '.py'
-    else:
-        root = database.source_root
-        if filename.location:
-            source_root = database.source_files[filename.location[0]]
-            if source_root:
-                root = os.path.dirname(source_root)
-
-        filename = os.path.join(root, _atom_to_filename(filename))
-
-    if filename[-3:] == '.py':
-        try:
-            load_external_module(database, filename)
-        except IOError as err:
-            raise ConsultError('Error while reading external library: %s' % str(err),
-                               database.lineno(location))
-        return True
-    else:
-        return _builtin_consult(Term(filename), database=database, location=location, **kwdargs)
+    database.use_module(filename, None, location=location)
+    return True
 
 
-def load_external_module(database, filename):
-    import imp
-    problog_export.database = database
-    with open(filename, 'r') as extfile:
-        imp.load_module('externals', extfile, filename, ('.py', 'U', 1))
+@builtin_boolean('_use_module', 3)
+def _builtin_use_module2_scope(scope, filename, predicates, database=None, location=None, **kwdargs):
+    scope = str(scope)
+    if scope == 'None':
+        scope = None
+    database.use_module(filename, predicates, my_scope=scope, location=location)
+    return True
 
+
+@builtin_boolean('_use_module', 2)
+def _use_module(scope, filename, database=None, location=None, **kwdargs):
+    scope = str(scope)
+    if scope == 'None':
+        scope = None
+    database.use_module(filename, None, my_scope=scope, location=location)
+    return True
+
+@builtin_boolean('_consult', 2)
+def _consult(scope, filename, database=None, engine=None, **kwdargs):
+    check_mode((filename,), ['a'], functor='consult', **kwdargs)
+    scope = str(scope)
+    if scope == 'None':
+        scope = None
+    database.consult(filename, location=kwdargs.get('location'), my_scope=scope)
+    return True
+
+@builtin_boolean('dbg_printdb', 0)
+def _dbg_printdb(database=None, **kwargs):
+    print(database, file=sys.stderr)
+    return True
+
+
+def _builtin_try_call(term, **kwdargs):
+    try:
+        return _builtin_call(term, **kwdargs)
+    except UnknownClause:
+        return True, kwdargs['callback'].notifyComplete()
 
 def _builtin_call(term, args=(), engine=None, callback=None, transform=None, context=None, **kwdargs):
     check_mode((term,), ['c'], functor='call')
     # Find the define node for the given query term.
     term_call = term.with_args(*(term.args + args))
 
+    from .engine_stack import get_state
     try:
         if transform is None:
             from .engine_stack import Transformations
@@ -1766,10 +1660,10 @@ def _builtin_call(term, args=(), engine=None, callback=None, transform=None, con
             n = len(term.args)
             res1 = result[:n]
             res2 = result[n:]
-            return [term.with_args(*res1)] + list(res2)
+            return engine.create_context([term.with_args(*res1)] + list(res2), state=get_state(result))
         transform.addFunction(_trans)
 
-        actions = engine.call_intern(term_call, transform=transform, **kwdargs)
+        actions = engine.call_intern(term_call, transform=transform, parent_context=context, **kwdargs)
     except UnknownClauseInternal:
         raise UnknownClause(term_call.signature, kwdargs['database'].lineno(kwdargs['location']))
     return True, actions
@@ -1785,17 +1679,16 @@ def _builtin_subquery(term, prob, evidence=None, engine=None, database=None, **k
     else:
         check_mode((term, prob), ['cv'], functor='subquery')
 
-    from .sdd_formula import SDD
-
     eng = engine.__class__()
-
     target = eng.ground(database, term, label='query')
 
     if evidence:
         for ev in term2list(evidence):
             target = eng.ground(database, ev, target=target, label=target.LABEL_EVIDENCE_POS)
 
-    results = SDD.create_from(target).evaluate()
+    from . import get_evaluatable
+    kc = get_evaluatable(name=None) # TODO somehow pass evaluatable preference (name, -k)
+    results = kc.create_from(target).evaluate()
     if evidence:
         return [(t, Constant(p), evidence) for t, p in results.items()]
     else:
@@ -1804,6 +1697,9 @@ def _builtin_subquery(term, prob, evidence=None, engine=None, database=None, **k
 
 def _builtin_calln(term, *args, **kwdargs):
     return _builtin_call(term, args, **kwdargs)
+
+def _builtin_try_calln(term, *args, **kwdargs):
+    return _builtin_try_call(term, args, **kwdargs)
 
 
 def _builtin_calln_nc(term, *args, **kwdargs):
@@ -1824,3 +1720,175 @@ class IndirectCallCycleError(GroundingError):
         GroundingError.__init__(self,
                                 'Indirect cycle detected (passing through findall/3)',
                                 location)
+
+
+def _build_scope(term):
+
+    if term.functor == "'&'":
+        a = _build_scope(term.args[0])
+        b = _build_scope(term.args[1])
+        print (a, b, a & b)
+        return a & b
+    elif term.functor == "'|'":
+        a = _build_scope(term.args[0])
+        b = _build_scope(term.args[1])
+        return a | b
+    elif term.functor == "'-'":
+        a = _build_scope(term.args[0])
+        b = _build_scope(term.args[1])
+        return a - b
+    elif _is_list(term):
+        return frozenset(term2list(term))
+    elif isinstance(term, Object):
+        if isinstance(term.functor, frozenset) or isinstance(term.functor, set):
+            return term.functor
+        else:
+            raise GroundingError('Unknown object type in set operation')
+    else:
+        raise GroundingError('Unknown set construction')
+
+
+def _builtin_create_scope(term, scope, **kwargs):
+    mode = check_mode((term, scope), ['Lv','gv'], **kwargs)
+    if mode in (0, 1):
+        result = Object(_build_scope(term))
+    else:
+        raise NotImplemented
+    return [(term, result)]
+
+
+def _builtin_subquery_in_scope(scope, term, prob, evidence=None, engine=None, database=None, **kwdargs):
+    if evidence:
+        check_mode((scope, term, prob, evidence), ['gcvL'], functor='subquery')
+    else:
+        check_mode((scope, term, prob), ['gcv'], functor='subquery')
+
+    from .sdd_formula import SDD  # TODO use get_evaluatable
+
+    scopel = _build_scope(scope)
+
+    eng = engine.__class__()
+
+    target = eng.ground(database, term, label='query', include=scopel)
+
+    if evidence:
+        for ev in term2list(evidence):
+            target = eng.ground(database, ev, target=target, label=target.LABEL_EVIDENCE_POS, include=scopel)
+
+    results = SDD.create_from(target).evaluate()
+    if evidence:
+        return [(scope, t, Constant(p), evidence) for t, p in results.items()]
+    else:
+        return [(scope, t, Constant(p)) for t, p in results.items()]
+
+
+def _builtin_call_in_scope(scope, term, args=(), engine=None, callback=None, transform=None, context=None, **kwdargs):
+    check_mode((term,), ['c'], functor='call')
+    # Find the define node for the given query term.
+    term_call = term.with_args(*(term.args + args))
+
+    scopel = _build_scope(scope)
+
+    try:
+        if transform is None:
+            from .engine_stack import Transformations
+            transform = Transformations()
+
+        def _trans(result):
+            n = len(term.args)
+            res1 = result[:n]
+            res2 = result[n:]
+            return [scope, term.with_args(*res1)] + list(res2)
+        transform.addFunction(_trans)
+
+        actions = engine.call_intern(term_call, transform=transform, dont_cache=True, no_cache=True, include=scopel, parent_context=context, **kwdargs)
+    except UnknownClauseInternal:
+        raise UnknownClause(term_call.signature, kwdargs['database'].lineno(kwdargs['location']))
+    return True, actions
+
+
+def _builtin_calln_in_scope(scope, term, *args, **kwdargs):
+    return _builtin_call_in_scope(scope, term, args, **kwdargs)
+
+
+def _builtin_find_scope(term, scope, engine=None, database=None, **kwargs):
+    check_mode((term, scope), ['cv'], functor='find_scope')
+
+    if term.functor == '*':
+        nodes = range(0, len(database))
+    else:
+        define = database.find(term)
+        if define is None:
+            nodes = 0
+        else:
+            define_node = database.get_node(define).children
+            nodes = define_node.find(term.args)
+
+    nodes = Object(frozenset(nodes))
+    return [(term, nodes)]
+
+
+@builtin_simple('set_state', 1)
+def _builtin_set_state(term, **kwargs):
+    from engine_stack import Context
+    return [Context([term], state=term)]
+
+
+@builtin_simple('reset_state', 0)
+def _builtin_reset_state(**kwargs):
+    from engine_stack import Context
+    return [Context()]
+
+
+@builtin_boolean('check_state', 1)
+def _builtin_check_state(term, context=None, **kwargs):
+    from engine_stack import get_state
+    if get_state(context) == term:
+        return True
+    else:
+        return False
+
+
+@builtin_boolean('print_state', 0)
+def _builtin_print_state(context=None, **kwargs):
+    if hasattr(context, 'state') and context.state is not None:
+        print ('State:', context.state)
+    else:
+        print ('State not set')
+    return True
+
+
+@builtin_boolean('probabilityX', 1)
+def _builtin_probability(term, context=None, database=None, **kwargs):
+    check_mode([term], ['c'], functor='probability')
+    database.queries.append((term, context.state.get('conditions', ())))
+    print (database.queries, file=sys.stderr)
+    return True
+
+@builtin_simple('condition', 1)
+def _builtin_condition(term, context=None, database=None, **kwargs):
+    check_mode([term], ['c'], functor='condition')
+    from engine_stack import Context
+    return [Context([term], state=context.state | {'conditions': [term]})]
+
+@builtin_simple('seq', 1)
+def seq(term, database=None, **kwargs):
+    check_mode((term,), ['v'], functor='seq', database=None, **kwargs)
+
+    s = database.get_data('__seq__', 0)
+    s += 1
+    database.set_data('__seq__', s)
+
+    return [(Constant(s),)]
+
+@builtin_boolean('trace', 0)
+def trace(engine=None, **kwargs):
+    if engine.debugger:
+        engine.debugger.interactive = True
+    return True
+
+@builtin_boolean('notrace', 0)
+def notrace(engine=None, **kwargs):
+    if engine.debugger:
+        engine.debugger.interactive = False
+    return True

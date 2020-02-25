@@ -26,7 +26,7 @@ import traceback
 from ..program import PrologFile, SimpleProgram
 from ..engine import DefaultEngine
 from ..evaluator import SemiringLogProbability, SemiringProbability, SemiringSymbolic
-from .. import get_evaluatable, get_evaluatables
+from .. import get_evaluatable, get_evaluatables, library_paths
 
 from ..util import Timer, start_timer, stop_timer, init_logger, format_dictionary, format_value
 from ..errors import process_error
@@ -82,14 +82,13 @@ def print_result_json(d, output, precision=8):
     return 0
 
 
-def execute(filename, knowledge=None, semiring=None, debug=False, combine=False, profile=False, trace=False, **kwdargs):
+def execute(filename, knowledge=None, semiring=None, combine=False, profile=False, trace=False, **kwdargs):
     """Run ProbLog.
 
     :param filename: input file
     :param knowledge: knowledge compilation class or identifier
     :param semiring: semiring to use
     :param parse_class: prolog parser to use
-    :param debug: enable advanced error output
     :param engine_debug: enable engine debugging output
     :param kwdargs: additional arguments
     :return: tuple where first value indicates success, and second value contains result details
@@ -121,7 +120,7 @@ def execute(filename, knowledge=None, semiring=None, debug=False, combine=False,
                 semiring = db_semiring
             if knowledge is None or type(knowledge) == str:
                 knowledge = get_evaluatable(knowledge, semiring=semiring)
-            formula = knowledge.create_from(db, engine=engine, **kwdargs)
+            formula = knowledge.create_from(db, engine=engine, database=db, **kwdargs)
             result = formula.evaluate(semiring=semiring, **kwdargs)
 
             # Update location information on result terms
@@ -192,6 +191,7 @@ def argparser():
                         choices=get_evaluatables(),
                         default=None, help="Knowledge compilation tool.")
     parser.add_argument('--combine', help="Combine input files into single model.", action='store_true')
+    #parser.add_argument('--grounder', choices=['yap', 'default', 'yap_debug'], default=None)
 
     # Evaluation semiring
     ls_group = parser.add_mutually_exclusive_group()
@@ -221,6 +221,7 @@ def argparser():
     parser.add_argument('--trace', action='store_true', help='output runtime trace')
     parser.add_argument('--profile-level', type=int, default=0)
     parser.add_argument('--format', choices=['text', 'prolog'])
+    parser.add_argument('-L', '--library', action='append', help='Add to ProbLog library search path')
 
     # Additional arguments (passed through)
     parser.add_argument('--engine-debug', action='store_true', help=argparse.SUPPRESS)
@@ -260,6 +261,10 @@ def argparser():
 def main(argv, result_handler=None):
     parser = argparser()
     args = parser.parse_args(argv)
+
+    if args.library:
+        for path in args.library:
+            library_paths.append(path)
 
     if result_handler is None:
         if args.web:

@@ -79,7 +79,7 @@ class SimpleDDNNFEvaluator(Evaluator):
             for ev in self.evidence():
                 self.set_evidence(abs(ev), ev > 0)
 
-        if self.semiring.result(self._get_z(), self.formula) == 0.0:
+        if self.semiring.is_zero(self._get_z()):
             raise InconsistentEvidenceError(context=" during evidence evaluation")
 
     def propagate(self):
@@ -115,8 +115,7 @@ class SimpleDDNNFEvaluator(Evaluator):
             self._set_value(abs(node), (node > 0))
             result = self._get_weight(len(self.formula))
             self._reset_value(abs(node), p, n)
-            print('simpleddnnfeval.evaluate.has_evidence = ', self.has_evidence())
-            if self.has_evidence():
+            if self.has_evidence() or self.semiring.is_nsp():
                 result = self.semiring.normalize(result, self._get_z())
         return self.semiring.result(result, self.formula)
 

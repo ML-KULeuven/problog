@@ -27,15 +27,16 @@ from .dd_formula import DD
 from .sdd_formula import SDD
 from .bdd_formula import BDD
 from .core import transform
-from .evaluator import Evaluator, EvaluatableDSP
+from .evaluator import Evaluator, EvaluatableDSP, InconsistentEvidenceError
 
 from .dd_formula import build_dd
 
 import warnings
 import time
 import logging
-
+import copy
 import signal
+
 from .core import transform_create_as
 
 from .util import UHeap
@@ -50,6 +51,7 @@ def timeout_handler(signum, frame):
 
 
 class ForwardInference(DD):
+
     def __init__(self, compile_timeout=None, **kwdargs):
         super(ForwardInference, self).__init__(auto_compact=False, **kwdargs)
 
@@ -82,7 +84,15 @@ class ForwardInference(DD):
 
     def init_build(self):
         if self.evidence():
-            self.evidence_node = self.add_and([n for q, n in self.evidence() if n is None or n != 0])
+            ev = [n for q, n in self.evidence() if n is None or n != 0]
+            if ev:
+                if len(ev) == 1:
+                    self.evidence_node = ev[0]
+                else:
+                    self.evidence_node = self.add_and(ev)
+            else:
+                # Only deterministically true evidence
+                self.evidence_node = 0
 
         self._facts = []  # list of facts
         self._atoms_in_rules = defaultdict(OrderedSet)  # lookup all rules in which an atom is used
@@ -138,7 +148,7 @@ class ForwardInference(DD):
         # Start with current nodes
         current_nodes = set(abs(n) for q, n, l in self.labeled() if self.is_probabilistic(n))
         if self.is_probabilistic(self.evidence_node):
-            current_nodes.add(self.evidence_node)
+            current_nodes.add(abs(self.evidence_node))
         current_level = 0
         while current_nodes:
             self._node_levels.append(current_nodes)
@@ -388,13 +398,13 @@ class ForwardInference(DD):
         if not self.is_probabilistic(self.evidence_node):
             return self.get_manager().true()
         else:
-            inode = self.get_inode(self.evidence_node)
+            inode = self.get_inode(self.evidence_node, final=True)
             if inode:
                 return inode
             else:
                 return self.get_manager().true()
 
-    def get_inode(self, index):
+    def get_inode(self, index, final=False):
         """
         Get the internal node corresponding to the entry at the given index.
         :param index: index of node to retrieve
@@ -402,7 +412,6 @@ class ForwardInference(DD):
         :rtype: SDDNode
         """
         assert self.is_probabilistic(index)
-
         node = self.get_node(abs(index))
         if type(node).__name__ == 'atom':
             av = self.atom2var.get(abs(index))
@@ -415,13 +424,15 @@ class ForwardInference(DD):
                 return self.get_manager().negate(result)
             else:
                 return result
-        elif index < 0:
+        elif index < 0 and not final:
             # We are requesting a negated node => use previous stratum's result
             result = self._inodes_neg[-index - 1]
             if result is None and self._inodes_prev[-index - 1] is not None:
                 result = self.get_manager().negate(self._inodes_prev[-index - 1])
                 self._inodes_neg[-index - 1] = result
             return result
+        elif index < 0:
+            return self.get_manager().negate(self.inodes[-index - 1])
         else:
             return self.inodes[index - 1]
 
@@ -444,13 +455,56 @@ class _ForwardSDD(SDD, ForwardInference):
 
     transform_preference = 1000
 
-    def __init__(self, sdd_auto_gc=True, **kwdargs):
+    def __init__(self, sdd_auto_gc=False, **kwdargs):
         SDD.__init__(self, sdd_auto_gc=sdd_auto_gc, **kwdargs)
         ForwardInference.__init__(self, **kwdargs)
 
     @classmethod
     def is_available(cls):
         return SDD.is_available()
+
+    def to_explicit_encoding(self):
+        """
+        Transform the current implicit encoding to an SDD with explicit encoding. The latter will contain indicator
+        variables for inferred literals and contains both the 'true and false' case. For example, while the implicit
+        encoding for c :- a,b will result in c = a * b., the explicit encoding will result in (c * a * b) + (-c * (-a + -b))
+        In the explicit encoding, evidence can be incorporated as changing the weights and a negation can also easily be
+        queried. Furthermore, the explicit encoding implementation can guarantee a circuit with one root instead of
+        multiple.
+
+        :return: The explicit encoding of this formula.
+        :rtype: SDDExplicit
+        """
+        from .sdd_formula_explicit import build_explicit_from_forwardsdd
+        from .sdd_formula_explicit import SDDExplicit
+        return build_explicit_from_forwardsdd(source=self, destination=SDDExplicit())
+
+    def copy_to_noref(self, destination):
+        """
+        Copy the relevant data structures without any refcounts to the new inodes.
+        Because of this, the destination should have auto_gc disabled.
+        :param destination: The DD to copy the data structures' references to.
+        :type destination: DD
+        """
+        destination.atom2var = self.atom2var.copy()
+        destination.var2atom = self.var2atom.copy()
+
+        old = self.inode_manager.nodes
+        self.inode_manager.nodes = self.inodes
+        destination.inode_manager = self.inode_manager.get_deepcopy_noref()
+        self.inode_manager.nodes = old
+
+        destination._atomcount = self._atomcount
+        destination._weights = self._weights.copy()
+        destination._constraints = self._constraints.copy()
+        destination.evidence_node = self.evidence_node
+        destination._nodes = self._nodes.copy()
+        destination._index_atom = self._index_atom.copy()
+        destination._index_next = self._index_next
+        destination._index_conj = self._index_conj.copy()
+        destination._index_disj = self._index_disj.copy()
+        destination._names = copy.deepcopy(self._names)
+        destination._constraints_me = copy.deepcopy(self._constraints_me)
 
 
 class _ForwardBDD(BDD, ForwardInference):
@@ -486,13 +540,18 @@ class ForwardSDD(LogicFormula, EvaluatableDSP):
         LogicFormula.__init__(self, **kwargs)
         EvaluatableDSP.__init__(self)
         self.kwargs = kwargs
+        self.internal = _ForwardSDD(**self.kwargs)
 
     @classmethod
     def is_available(cls):
         return SDD.is_available()
 
     def _create_evaluator(self, semiring, weights, **kwargs):
-        return ForwardEvaluator(self, semiring, _ForwardSDD(**self.kwargs), weights, **kwargs)
+        return ForwardEvaluator(self, semiring, self.internal, weights, **kwargs)
+
+    def to_formula(self):
+        build_dd(self, self.internal)
+        return self.internal.to_formula()
 
 
 class ForwardBDD(LogicFormula, EvaluatableDSP):
@@ -533,7 +592,6 @@ class ForwardEvaluator(Evaluator):
         self._start_time = None
 
     def node_updated(self, source, node, complete):
-
         is_evidence = node == abs(source.evidence_node)
         name = [n for n, i, l in self.formula.labeled()
                 if source.is_probabilistic(i) and abs(i) == node]
@@ -546,10 +604,13 @@ class ForwardEvaluator(Evaluator):
                 av = source.atom2var.get(atom)
                 if av is not None:
                     weights[av] = weight
-            inode = source.get_inode(node)
+            inode = source.get_inode(node, final=True)
             if inode is not None:
                 enode = source.get_manager().conjoin(source.get_evidence_inode(),
                                                      source.get_constraint_inode())
+                if self.fsdd.get_manager().is_false(enode):
+                    raise InconsistentEvidenceError(context=' during compilation')
+
                 qnode = source.get_manager().conjoin(inode, enode)
                 tvalue = source.get_manager().wmc(enode, weights, self.semiring)
                 value = source.get_manager().wmc(qnode, weights, self.semiring)
@@ -579,11 +640,17 @@ class ForwardEvaluator(Evaluator):
         # We should do all compilation here.
         self.fsdd.register_update_listener(self)
         self._start_time = time.time()
-        build_dd(self.formula, self.fsdd)
+        if len(self.fsdd) == 0:
+            if self.fsdd.init_varcount == -1:
+                self.fsdd.init_varcount = self.formula.atomcount
+            build_dd(self.formula, self.fsdd)
 
         # Update weights with constraints and evidence
         enode = self.fsdd.get_manager().conjoin(self.fsdd.get_evidence_inode(),
                                                 self.fsdd.get_constraint_inode())
+
+        if self.fsdd.get_manager().is_false(enode):
+            raise InconsistentEvidenceError(context=' during compilation')
 
         # Make sure all atoms exist in atom2var.
         for name, node, label in self.fsdd.labeled():
@@ -595,6 +662,8 @@ class ForwardEvaluator(Evaluator):
             av = self.fsdd.atom2var.get(atom)
             if av is not None:
                 weights[av] = weight
+            elif atom == 0:
+                weights[0] = weight
 
         for name, node, label in self.fsdd.labeled():
             if self.fsdd.is_probabilistic(node):
@@ -608,7 +677,6 @@ class ForwardEvaluator(Evaluator):
             else:
                 result = self.semiring.zero()
             self._results[node] = result
-
 
     def propagate(self):
         self.initialize()

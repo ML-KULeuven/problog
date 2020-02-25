@@ -47,7 +47,18 @@ from IPython.core.magic import (
 from IPython.core.magic_arguments import (
     argument, magic_arguments,
     parse_argstring)
-from IPython.utils.warn import info, error
+
+import IPython
+if IPython.version_info[0] >= 6:
+    import warnings
+
+    def info(message):
+        warnings.warn('WARNING: '+message)
+
+    def error(message):
+        warnings.warn('ERROR: '+message)
+else:
+    from IPython.utils.warn import info, error
 
 
 def runproblog(s, knowledge=knowledge_default, semiring=None, parser_class=DefaultPrologParser,
@@ -62,7 +73,7 @@ def runproblog(s, knowledge=knowledge_default, semiring=None, parser_class=Defau
     except Exception as e:
         return '<pre>{}</pre>'.format(e)
     if result is None:
-        error('Error when running ProbLog')
+        warnings.warn('Error when running ProbLog')
         return None
     else:
         return formatoutput(result, output=output)
@@ -121,7 +132,7 @@ class ProbLogMagics(Magics):
             else:
                 knowledge = DDNNF
         else:
-            error("Unknown option for --knowledge: '%s'" % args.knowledge)
+            warnings.warn("Unknown option for --knowledge: '%s'" % args.knowledge)
         if args.logspace:
             semiring = SemiringLogProbability()
         else:
@@ -145,9 +156,9 @@ class ProbLogMagics(Magics):
         """problog object magic"""
         obj = self.shell.ev(line)
         if not isinstance(obj, LogicProgram):
-            error("expected object to be of type LogicProgram")
+            warnings.warn("expected object to be of type LogicProgram")
         else:
-            data = runproblog(s, output='html')
+            data = runproblog(obj, output='html')
             if data:
                 display_html(data, raw=True)
 
@@ -157,11 +168,11 @@ class ProbLogMagics(Magics):
         objs = self.shell.ev(line)
         for i, obj in enumerate(objs):
             if not isinstance(obj, LogicProgram):
-                error("expected object {} to be of type LogicProgram".format(i))
+                warnings.warn("expected object {} to be of type LogicProgram".format(i))
             else:
-                data = runproblog(s, output='html')
+                data = runproblog(obj, output='html')
                 if data:
-                    info('object {}:'.format(i))
+                    warnings.warn('object {}:'.format(i))
                     display_html(data, raw=True)
 
     @line_cell_magic

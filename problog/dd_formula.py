@@ -67,29 +67,27 @@ class DD(LogicFormula, EvaluatableDSP):
         :param index: index of node to retrieve
         :return: internal node corresponding to the given index
         """
-        negate = False
+        mgr = self.get_manager()  # type: DDManager
         if self.is_false(index):
-            return self.get_manager().false()
+            return mgr.false()
         elif self.is_true(index):
-            return self.get_manager().true()
-        elif index < 0:
-            index = -index
-            negate = True
+            return mgr.true()
+
+        negate = index < 0
+        index = abs(index)
         node = self.get_node(index)
+
         if type(node).__name__ == 'atom':
-            result = self.get_manager().literal(self.atom2var[index])
+            result = mgr.literal(self.atom2var[index])
         else:
             # Extend list
-            while len(self.get_manager().nodes) < index:
-                self.get_manager().nodes.append(None)
-            if self.get_manager().nodes[index - 1] is None:
-                self.get_manager().nodes[index - 1] = self._create_inode(node)
-            result = self.get_manager().nodes[index - 1]
-        if negate:
-            new_sdd = self.get_manager().negate(result)
-            return new_sdd
-        else:
-            return result
+            while len(mgr.nodes) < index:
+                mgr.nodes.append(None)
+            result = mgr.nodes[index - 1]
+            if result is None:
+                result = self._create_inode(node)
+                mgr.nodes[index - 1] = result
+        return mgr.negate(result) if negate else result
 
     def _create_inode(self, node):  # TODO: Recursion is slow in python. Change build_dd to not use this and get_inode?
         if type(node).__name__ == 'conj':
@@ -141,6 +139,20 @@ class DD(LogicFormula, EvaluatableDSP):
                 self.get_manager().deref(self.get_manager().constraint_dd)
                 self.get_manager().deref(rule_sdd)
                 self.get_manager().constraint_dd = new_constraint_dd
+
+    def to_dot(self, *args, **kwargs):
+        if kwargs.get('use_internal'):
+            dot_text = ["digraph {\n", "overlap=false\n"]  # TODO Support multiple nodes in write_to_dot
+            for qn, qi in self.queries():
+                filename = mktempfile('.dot')
+                self.get_manager().write_to_dot(self.get_inode(qi), filename)
+                with open(filename) as f:
+                    dot_text += f.readlines()[4:-1]
+
+            dot_text.append("}")
+            return "".join(dot_text)
+        else:
+            return self.to_formula().to_dot(*args, **kwargs)
 
 
 class DDManager(object):
@@ -397,21 +409,22 @@ class DDEvaluator(Evaluator):
             av = self.formula.atom2var.get(atom)
             if av is not None:
                 self.weights[av] = weight
+            elif atom == 0:
+                self.weights[0] = weight
 
         if with_evidence:
             for ev in self.evidence():
-                if ev in self.formula.atom2var:
+                if abs(ev) in self.formula.atom2var:
                     # Only for atoms
-                    self.set_evidence(self.formula.atom2var[ev], ev > 0)
+                    self.set_evidence(self.formula.atom2var[abs(ev)], ev > 0)
 
     def propagate(self):
         self._initialize()
         if isinstance(self.semiring, SemiringLogProbability) or isinstance(self.semiring, SemiringProbability):
             self.normalization = self._get_manager().wmc_true(self.weights, self.semiring)
-
         else:
             self.normalization = None
-        self.evaluate_evidence()
+        self.evaluate_evidence(recompute=True)
 
     def _evaluate_evidence(self, recompute=False):
         if self._evidence_weight is None or recompute:
@@ -421,7 +434,7 @@ class DDEvaluator(Evaluator):
 
             if isinstance(self.semiring, SemiringLogProbability) or isinstance(self.semiring, SemiringProbability):
                 result = self._get_manager().wmc(self.evidence_inode, self.weights, self.semiring)
-                if result == self.semiring.zero():
+                if self.semiring.is_zero(result):
                     raise InconsistentEvidenceError(context=' during compilation')
                 self._evidence_weight = self.semiring.normalize(result, self.normalization)
             else:
@@ -442,11 +455,6 @@ class DDEvaluator(Evaluator):
         return self.semiring.result(self._evaluate_evidence(recompute=recompute), self.formula)
 
     def evaluate(self, node, smooth=True):
-        try:
-            vnode = self.formula.get_node(abs(node))
-        except Exception:
-            vnode = ''
-        print("DDEvaluator.evaluate", node, vnode)
         if isinstance(self.semiring, SemiringLogProbability) or isinstance(self.semiring, SemiringProbability):
             return self.evaluate_standard(node, smooth=smooth)
         else:
@@ -512,9 +520,9 @@ class DDEvaluator(Evaluator):
 
         inode = self.evidence_inode
 
-        result = self.semiring.result(
-            self._get_manager().wmc_literal(
-                inode, self.weights, self.semiring, self.formula.atom2var[node]), self.formula)
+        literal_result = self._get_manager().wmc_literal(inode, self.weights, self.semiring,
+                                                         self.formula.atom2var[node])
+        result = self.semiring.result(literal_result, self.formula)
         return result
 
     def set_evidence(self, index, value):
@@ -553,17 +561,16 @@ def build_dd(source, destination, **kwdargs):
     :param kwdargs: extra arguments
     :return: destination
     """
-
     with Timer('Compiling %s' % destination.__class__.__name__):
 
         # TODO maintain a translation table
         for i, n, t in source:
             if t == 'atom':
-                j = destination.add_atom(n.identifier, n.probability, n.group, source.get_name(i))
+                j = destination.add_atom(n.identifier, n.probability, n.group, name=source.get_name(i), cr_extra=False)
             elif t == 'conj':
-                j = destination.add_and(n.children, source.get_name(i))
+                j = destination.add_and(n.children, name=n.name)
             elif t == 'disj':
-                j = destination.add_or(n.children, source.get_name(i))
+                j = destination.add_or(n.children, name=n.name)
             else:
                 raise TypeError('Unknown node type')
             # assert i == j  # Does not hold with constraints. See if-comment.
@@ -571,9 +578,6 @@ def build_dd(source, destination, **kwdargs):
         for name, node, label in source.get_names_with_label():
             destination.add_name(name, node, label)
 
-        for c in source.constraints():
-            if c.is_nontrivial():
-                destination.add_constraint(c)
         destination.build_dd()
 
     return destination

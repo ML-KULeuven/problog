@@ -37,6 +37,8 @@ problog_tasks['shell'] = 'problog.tasks.shell'
 problog_tasks['bn'] = 'problog.tasks.bayesnet'
 problog_tasks['parse'] = 'problog.parser'
 problog_tasks['map'] = 'problog.tasks.map'
+problog_tasks['time'] = 'problog.tasks.time1'
+problog_tasks['constraint'] = 'problog.tasks.constraint'
 
 problog_default_task = 'prob'
 
@@ -88,7 +90,7 @@ def main(argv=None):
         elif argv[0] == 'unittest':
             import unittest
             test_results = unittest.TextTestResult(sys.stderr, False, 1)
-            unittest.TestLoader().discover(os.path.dirname(__file__)).run(test_results)
+            unittest.TestLoader().discover(os.path.join(os.path.dirname(__file__), '..')).run(test_results)
             return
         elif argv[0] == '--version':
             print (version.version)

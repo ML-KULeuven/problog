@@ -19,39 +19,38 @@ import unittest
 
 import glob, os, traceback, sys
 
+from problog.forward import _ForwardSDD
+
 if __name__ == '__main__' :
     sys.path.insert(0,os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')))
 
 from problog import root_path
 
-from problog.setup import install
 from problog.program import PrologFile, DefaultPrologParser, ExtendedPrologFactory
-from problog.ddnnf_formula import DDNNF
-from problog.sdd_formula import SDD
-from problog.evaluator import SemiringProbability, SemiringLogProbability
+from problog import get_evaluatable
+from problog.evaluator import SemiringProbability, SemiringLogProbability, Semiring
+
+# noinspection PyBroadException
+try:
+    from pysdd import sdd
+    has_sdd = True
+except Exception as err:
+    print("SDD library not available due to error: ", err, file=sys.stderr)
+    has_sdd = False
+
 
 class TestDummy(unittest.TestCase):
 
     def test_dummy(self) : pass
 
-class TestSystemSDD(unittest.TestCase) :
+
+class TestSystemGeneric(unittest.TestCase):
 
     def setUp(self) :
-
         try :
             self.assertSequenceEqual = self.assertItemsEqual
         except AttributeError :
             self.assertSequenceEqual = self.assertCountEqual
-
-class TestSystemNNF(unittest.TestCase) :
-
-    def setUp(self) :
-
-        try :
-            self.assertSequenceEqual = self.assertItemsEqual
-        except AttributeError :
-            self.assertSequenceEqual = self.assertCountEqual
-
 
 
 def read_result(filename) :
@@ -77,23 +76,40 @@ def read_result(filename) :
                 results[query.strip()] = float(prob.strip())
     return results
 
-def createSystemTestSDD(filename, logspace=False) :
+
+def createSystemTestGeneric(filename, logspace=False) :
 
     correct = read_result(filename)
 
-    def test(self) :
+    def test(self):
+        semirings = {"Default": None, "Custom": SemiringProbabilityCopy(), "CustomNSP": SemiringProbabilityNSPCopy()}
+        for eval_name in evaluatables:
+            for semiring in semirings:
+                with self.subTest(evaluatable_name=eval_name, semiring=semiring):
+                    evaluate(self, evaluatable_name=eval_name, custom_semiring=semirings[semiring])
+
+        # explicit encoding from ForwardSDD
+        if has_sdd:
+            for semiring in semirings:
+                with self.subTest(semiring=semiring):
+                    evaluate_explicit_from_fsdd(self, custom_semiring=semirings[semiring])
+
+    def evaluate(self, evaluatable_name=None, custom_semiring=None) :
         try :
             parser = DefaultPrologParser(ExtendedPrologFactory())
-            sdd = SDD.createFrom(PrologFile(filename, parser=parser))
+            kc = get_evaluatable(name=evaluatable_name).create_from(PrologFile(filename, parser=parser))
 
-            if logspace :
+            if custom_semiring is not None:
+                semiring = custom_semiring  # forces the custom semiring code.
+            elif logspace:
                 semiring = SemiringLogProbability()
-            else :
+            else:
                 semiring = SemiringProbability()
 
-            computed = sdd.evaluate(semiring=semiring)
+            computed = kc.evaluate(semiring=semiring)
             computed = { str(k) : v for k,v in computed.items() }
         except Exception as err :
+            #print("exception %s" % err)
             e = err
             computed = None
 
@@ -106,26 +122,24 @@ def createSystemTestSDD(filename, logspace=False) :
             for query in correct :
                 self.assertAlmostEqual(correct[query], computed[query], msg=query)
 
-    return test
-
-
-def createSystemTestNNF(filename, logspace=False) :
-
-    correct = read_result(filename)
-
-    def test(self) :
-        try :
+    def evaluate_explicit_from_fsdd(self, custom_semiring=None) :
+        try:
             parser = DefaultPrologParser(ExtendedPrologFactory())
-            sdd = DDNNF.createFrom(PrologFile(filename, parser=parser))
+            lf = PrologFile(filename, parser=parser)
+            kc = _ForwardSDD.create_from(lf)  # type: _ForwardSDD
+            kc = kc.to_explicit_encoding()
 
-            if logspace :
+            if custom_semiring is not None:
+                semiring = custom_semiring  # forces the custom semiring code.
+            elif logspace:
                 semiring = SemiringLogProbability()
-            else :
+            else:
                 semiring = SemiringProbability()
 
-            computed = sdd.evaluate(semiring=semiring)
+            computed = kc.evaluate(semiring=semiring)
             computed = { str(k) : v for k,v in computed.items() }
         except Exception as err :
+            #print("exception %s" % err)
             e = err
             computed = None
 
@@ -135,29 +149,78 @@ def createSystemTestNNF(filename, logspace=False) :
             self.assertIsInstance( correct, dict )
             self.assertSequenceEqual(correct, computed)
 
-            for query in correct :
+            for query in correct:
                 self.assertAlmostEqual(correct[query], computed[query], msg=query)
 
     return test
 
+
+class SemiringProbabilityCopy(Semiring):
+    """Mocking SemiringProbability to force the 'custom semiring' code -> Must not extend SemiringProbability."""
+
+    def __init__(self):
+        self._semiring = SemiringProbability()
+
+    def one(self):
+        return self._semiring.one()
+
+    def zero(self):
+        return self._semiring.zero()
+
+    def is_one(self, value):
+        return self._semiring.is_one(value)
+
+    def is_zero(self, value):
+        return self._semiring.is_zero(value)
+
+    def plus(self, a, b):
+        return self._semiring.plus(a, b)
+
+    def times(self, a, b):
+        return self._semiring.times(a, b)
+
+    def negate(self, a):
+        return self._semiring.negate(a)
+
+    def normalize(self, a, z):
+        return self._semiring.normalize(a, z)
+
+    def value(self, a):
+        return self._semiring.value(a)
+
+    def is_dsp(self):
+        return self._semiring.is_dsp()
+
+    def in_domain(self, a):
+        return self._semiring.in_domain(a)
+
+
+class SemiringProbabilityNSPCopy(SemiringProbabilityCopy):
+
+    def is_nsp(self):
+        return True
 
 if __name__ == '__main__' :
     filenames = sys.argv[1:]
 else :
     filenames = glob.glob( root_path('test', '*.pl' ) )
 
-for testfile in filenames :
-    # testname = 'test_system_' + os.path.splitext(os.path.basename(testfile))[0]
-    # setattr( TestSystemSDD, testname, createSystemTestSDD(testfile) )
-    # setattr( TestSystemNNF, testname, createSystemTestNNF(testfile) )
 
+evaluatables = ["ddnnf"]
+
+if has_sdd:
+    evaluatables.append("sdd")
+    evaluatables.append("sddx")
+    evaluatables.append("fsdd")
+else:
+    print("No SDD support - The system tests are not performed with SDDs.")
+
+
+for testfile in filenames:
     testname = 'test_system_' + os.path.splitext(os.path.basename(testfile))[0]
-    setattr( TestSystemSDD, testname, createSystemTestSDD(testfile, True) )
-    setattr( TestSystemNNF, testname, createSystemTestNNF(testfile, True) )
+    setattr( TestSystemGeneric, testname, createSystemTestGeneric(testfile, True) )
 
 
 if __name__ == '__main__' :
-    suite = unittest.TestLoader().loadTestsFromTestCase(TestSystemSDD)
-    unittest.TextTestRunner(verbosity=2).run(suite)
-    suite = unittest.TestLoader().loadTestsFromTestCase(TestSystemNNF)
+    suite = unittest.TestLoader().loadTestsFromTestCase(TestSystemGeneric)
     unittest.TextTestRunner(verbosity=2).run(suite)

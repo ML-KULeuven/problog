@@ -95,7 +95,7 @@ def gather_info():
     # SDD module
     # noinspection PyBroadException
     try:
-        import sdd
+        import pysdd
         system_info['sdd_module'] = True
     except Exception:
         pass
@@ -106,38 +106,6 @@ def gather_info():
     # c2d
     system_info['c2d'] = distutils.spawn.find_executable('cnf2dDNNF') is not None
     return system_info
-
-
-def build_sdd(force=False):
-    if get_system() == 'windows':
-        print('The SDD library is not yet available for Windows.')
-        return
-
-    build_lib = get_module_paths()[0]
-    build_dir = get_module_paths()[-1]
-
-    filename = os.path.join(build_lib, '_sdd.so')
-    if force and os.path.exists(filename):
-        os.remove(filename)
-
-    lib_dir = os.path.abspath(os.path.join(build_dir, 'sdd', os.uname()[0].lower()))
-
-    with WorkingDir(build_dir):
-
-        from distutils.core import setup, Extension
-        sdd_module = Extension('_sdd', sources=['sdd/sdd_wrap.c', 'sdd/except.c'], libraries=['sdd'],
-                               library_dirs=[lib_dir])
-
-        setup(name='sdd',
-              version='1.0',
-              author="",
-              description="""SDD Library""",
-              ext_modules=[sdd_module],
-              py_modules=["sdd"],
-              script_name='',
-              script_args=['build_ext', '--build-lib', build_lib, '--rpath', lib_dir]
-              )
-
 
 def build_maxsatz():
     if get_system() == 'windows':
@@ -157,16 +125,7 @@ def build_maxsatz():
 
 def install(force=True):
     info = gather_info()
-    update = False
-
-    if force or not info.get('sdd_module'):
-        build_sdd(force=force)
-        update = True
-
     build_maxsatz()
-
-    if update:
-        info = gather_info()
     return info
 
 

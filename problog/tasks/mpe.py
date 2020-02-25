@@ -23,7 +23,7 @@ from __future__ import print_function
 import sys
 import traceback
 
-from problog.program import PrologFile
+from problog.program import PrologFile, SimpleProgram
 from problog.constraint import TrueConstraint
 from problog.formula import LogicFormula, LogicDAG
 from problog.cnf_formula import CNF
@@ -63,9 +63,9 @@ def main_mpe_semiring(args):
         try:
             pl = PrologFile(inputfile)
 
-            lf = LogicFormula.create_from(model, label_all=True)
+            lf = LogicFormula.create_from(pl, label_all=True, avoid_name_clash=True)
 
-            prob, facts = mpe_semiring(lf, args.verbose)
+            prob, facts = mpe_semiring(lf, args.verbose, minpe=args.minpe)
             result_handler((True, (prob, facts)), outf)
 
         except Exception as err:
@@ -74,8 +74,11 @@ def main_mpe_semiring(args):
             result_handler((False, err), outf)
 
 
-def mpe_semiring(lf, verbose=0, solver=None):
-    semiring = SemiringMPEState()
+def mpe_semiring(lf, verbose=0, solver=None, minpe=False):
+    if minpe:
+        semiring = SemiringMinPEState()
+    else:
+        semiring = SemiringMPEState()
     kc_class = get_evaluatable(semiring=semiring)
 
     if lf.evidence():
@@ -84,18 +87,34 @@ def mpe_semiring(lf, verbose=0, solver=None):
         lf.clear_evidence()
 
         if lf.queries():
-            print('%% WARNING: ignoring queries in file', file=sys.stderr)
+            non_atom = []
+            atom = []
+            qs = []
+            for qnm, qi in lf.queries():
+                if lf.is_probabilistic(qi):
+                    if type(lf.get_node(qi)).__name__ != 'atom':
+                        non_atom.append(qnm)
+                atom.append(qi)
+                qs += [qnm, -qnm]
+            qs = set(qs)
+            if non_atom:
+                print('WARNING: compound queries are not supported in the output: %s' % ', '.join(map(str, non_atom)), file=sys.stderr)
+
+            qn = lf.add_and([lf.add_or((qi, lf.negate(qi)), compact=False) for qi in atom] + [qn])
+
+        else:
+            qs = None
         lf.clear_queries()
 
         query_name = Term('query')
-        lf.add_query(query_name, qn)
-        kc = kc_class.create_from(lf)
+        lf.add_query(query_name, qn, keep_name=True)
 
-        # with open('/tmp/x.dot', 'w') as f:
-        #     print(kc.to_dot(), file=f)
+        kc = kc_class.create_from(lf)
 
         results = kc.evaluate(semiring=semiring)
         prob, facts = results[query_name]
+        if qs is not None:
+            facts &= qs
     else:
         prob, facts = 1.0, []
 
@@ -119,9 +138,19 @@ def main_mpe_maxsat(args):
         try:
             pl = PrologFile(inputfile)
 
+            # filtered_pl = SimpleProgram()
+            # has_queries = False
+            # for statement in pl:
+            #     if 'query/1' in statement.predicates:
+            #         has_queries = True
+            #     else:
+            #         filtered_pl += statement
+            # if has_queries:
+            #     print('%% WARNING: ignoring queries in file', file=sys.stderr)
+
             dag = LogicDAG.createFrom(pl, avoid_name_clash=True, label_all=True, labels=[('output', 1)])
 
-            prob, output_facts = mpe_maxsat(dag, verbose=args.verbose, solver=args.solver)
+            prob, output_facts = mpe_maxsat(dag, verbose=args.verbose, solver=args.solver, minpe=args.minpe)
 
             result_handler((True, (prob, output_facts)), outf)
         except Exception as err:
@@ -133,16 +162,11 @@ def main_mpe_maxsat(args):
         outf.close()
 
 
-def mpe_maxsat(dag, verbose=0, solver=None):
-    if dag.queries():
-        print('%% WARNING: ignoring queries in file', file=sys.stderr)
-        dag.clear_queries()
-
+def mpe_maxsat(dag, verbose=0, solver=None, minpe=False):
     logger = init_logger(verbose)
     logger.info('Ground program size: %s' % len(dag))
 
-    cnf = CNF.createFrom(dag)
-
+    cnf = CNF.createFrom(dag, force_atoms=True)
     for qn, qi in cnf.evidence():
         if not cnf.is_true(qi):
             cnf.add_constraint(TrueConstraint(qi))
@@ -155,7 +179,7 @@ def mpe_maxsat(dag, verbose=0, solver=None):
         solver = get_solver(solver)
 
         with Timer('Solving'):
-            result = frozenset(solver.evaluate(cnf))
+            result = frozenset(solver.evaluate(cnf, invert_weights=minpe))
         weights = cnf.extract_weights(SemiringProbability())
         output_facts = None
         prob = 1.0
@@ -183,7 +207,6 @@ def mpe_maxsat(dag, verbose=0, solver=None):
         output_facts = []
 
     return prob, output_facts
-
 
 
 def print_result(result, output=sys.stdout):
@@ -308,6 +331,25 @@ class SemiringMPEState(Semiring):
         return 1.0 - s, {key}
 
 
+class SemiringMinPEState(SemiringMPEState):
+
+    def __init__(self):
+        SemiringMPEState.__init__(self)
+
+    def plus(self, a, b):
+        if a[0] == 0:
+            return b
+        elif b[0] == 0:
+            return a
+        elif a[0] > b[0]:
+            return b
+        elif a[0] < b[0]:
+            return a
+        else:
+            return a[0], a[1]  # | b[1]   # doesn't matter?
+
+
+
 def argparser():
     import argparse
 
@@ -322,6 +364,7 @@ def argparser():
     parser.add_argument('--web', action='store_true', help=argparse.SUPPRESS)
     parser.add_argument('--use-maxsat', action='store_true', help=argparse.SUPPRESS)
     parser.add_argument('--use-semiring', action='store_true', help=argparse.SUPPRESS)
+    parser.add_argument('--minpe', action='store_true', help=argparse.SUPPRESS)
     parser.add_argument('-v', '--verbose', action='count', help='Increase verbosity')
     return parser
 

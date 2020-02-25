@@ -21,13 +21,12 @@ Provides common interface for evaluation of weighted logic formulas.
     See the License for the specific language governing permissions and
     limitations under the License.
 """
-from __future__ import print_function, division
+from __future__ import print_function
 
 import math
 
 from .core import ProbLogObject, transform_allow_subclass
-from .errors import InconsistentEvidenceError, InvalidValue, InstallError
-
+from .errors import InconsistentEvidenceError, InvalidValue, ProbLogError
 
 try:
     from numpy import polynomial
@@ -35,11 +34,10 @@ try:
 except ImportError:
     pn = None
 
-
-class OperationNotSupported(Exception):
+class OperationNotSupported(ProbLogError):
 
     def __init__(self):
-        Exception.__init__(self, 'This operation is not supported by this semiring.')
+        ProbLogError.__init__(self, 'This operation is not supported by this semiring')
 
 
 class Semiring(object):
@@ -153,6 +151,32 @@ class Semiring(object):
     def false(self, key=None):
         """Handle weight for deterministically false."""
         return self.zero(), self.one()
+
+    def to_evidence(self, pos_weight, neg_weight, sign):
+        """
+        Converts the pos. and neg. weight (internal repr.) of a literal into the case where the literal is evidence.
+        Note that the literal can be a negative atom regardless of the given sign.
+
+        :param pos_weight: The current positive weight of the literal.
+        :param neg_weight: The current negative weight of the literal.
+        :param sign: Denotes whether the literal or its negation is evidence. sign > 0 denotes the literal is evidence,
+            otherwise its negation is evidence. Note: The literal itself can also still be a negative atom.
+        :returns: A tuple of the positive and negative weight as if the literal was evidence.
+            For example, for probability, returns (self.one(), self.zero()) if sign else (self.zero(), self.one())
+        """
+        return (self.one(), self.zero()) if sign > 0 else (self.zero(), self.one())
+
+    def ad_negate(self, pos_weight, neg_weight):
+        """
+        Negation in the context of an annotated disjunction. e.g. in a probabilistic context for 0.2::a ; 0.8::b,
+        the negative label for both a and b is 1.0 such that model {a,-b} = 0.2 * 1.0 and {-a,b} = 1.0 * 0.8.
+        For a, pos_weight would be 0.2 and neg_weight could be 0.8. The returned value is 1.0.
+        :param pos_weight: The current positive weight of the literal (e.g. 0.2 or 0.8). Internal representation.
+        :param neg_weight: The current negative weight of the literal (e.g. 0.8 or 0.2). Internal representation.
+        :return: neg_weight corrected based on the given pos_weight, given the ad context (e.g. 1.0). Internal
+        representation.
+        """
+        return self.one()
 
 
 class SemiringProbability(Semiring):
@@ -537,7 +561,6 @@ class Evaluatable(ProbLogObject):
         :return: The result of the evaluation expressed as an external value of the semiring. \
          If index is ``None`` (all queries) then the result is a dictionary of name to value.
         """
-        print('evaluator.evaluate')
         evaluator = self.get_evaluator(semiring, evidence, weights, **kwargs)
 
         if index is None:
@@ -610,7 +633,7 @@ class Evaluator(object):
         """Set value for evidence node.
 
         :param index: index of evidence node
-        :param value: value of evidence
+        :param value: value of evidence. True if the evidence is positive, False otherwise.
         """
         raise NotImplementedError('abstract method')
 
@@ -708,16 +731,7 @@ class FormulaEvaluator(object):
         self._fact_weights = self.formula.extract_weights(self.semiring)
 
     def evaluate(self, index, smooth=None):
-        # print('Start semiring.result')
-        # print(type(self.formula))
-        # print(self.formula)
-        with open("/Users/wannes/Desktop/nnf.gv", "w") as ofile:
-            print(self.formula.to_dot(), file=ofile)
-            print("\n\n\n", file=ofile)
-            print("\n".join(["// {}".format(line) for line in str(self.formula).split("\n")]), file=ofile)
-        result = self.semiring.result(self.get_weight(index, smooth=smooth), self.formula)
-        # print('smooth', self._computed_smooth)
-        return result
+        return self.semiring.result(self.get_weight(index, smooth=smooth), self.formula)
 
     def compute_weight(self, index, smooth=None):
         """Compute the weight of the node with the given index.
@@ -782,13 +796,13 @@ class FormulaEvaluatorNSP(FormulaEvaluator):
         """Get the weight of the node with the given index.
 
         :param index: integer or formula.TRUE or formula.FALSE
-        :return: weight of the node
+        :return: weight of the node and the set of abs(literals) involved
         """
 
         if index == self.formula.TRUE:
-            return self.semiring.one()
+            return self.semiring.one(), set()
         elif index == self.formula.FALSE:
-            return self.semiring.zero()
+            return self.semiring.zero(), set()
         elif index < 0:
             weight = self._fact_weights.get(-index)
             if weight is None:

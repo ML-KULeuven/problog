@@ -67,8 +67,8 @@ class BaseFormula(ProbLogObject):
 
         self._constraints = []           # Constraints: list of Constraint
 
-        self._names = defaultdict(OrderedDict)  # Node names: dict(label: dict(key, Term))
-
+        #self._names = defaultdict(OrderedDict)  # Node names: dict(label: dict(key, Term))
+        self._names = defaultdict(dict)
         self._atomcount = 0
 
     @property
@@ -96,14 +96,6 @@ class BaseFormula(ProbLogObject):
         """
         self._weights = weights
 
-    def update_weights(self, weights):
-        """Update weights of the atoms in the formula.
-
-        :param weights: dictionary of weights
-        :type weights: dict[int, Term]
-        """
-        self._weights.update(weights)
-
     def get_weight(self, key, semiring):
         """Get actual value of the node with the given key according to the given semiring.
 
@@ -124,39 +116,73 @@ class BaseFormula(ProbLogObject):
     def extract_weights(self, semiring, weights=None):
         """Extracts the positive and negative weights for all atoms in the data structure.
 
+        * Atoms with weight set to neutral will get weight ``(semiring.one(), semiring.one())``.
+        * If the weights argument is given, it completely replaces the formula's weights.
+        * All constraints are applied to the weights.
+        * The namedtuple formula.pn_weight can be used to pass both a positive and negative weight.
+
         :param semiring: semiring that determines the interpretation of the weights
-        :param weights: dictionary of { node name : weight } that overrides the builtin weights
-        :returns: dictionary { key: (positive weight, negative weight) }
-        :rtype: dict[int, tuple[any]]
-
-        Atoms with weight set to neutral will get weight ``(semiring.one(), semiring.one())``.
-
-        If the weights argument is given, it completely replaces the formula's weights.
-
-        All constraints are applied to the weights.
+        :param weights: dictionary of { node name : weight } or { node id : weight} that overrides the builtin weights,
+            the given weights must be in external representation.
+        :type weights: dict[(Term | int), any]
+        :returns: dictionary { key: (positive weight, negative weight) } where the weights are in internal
+            representation.
+        :rtype: dict[int, tuple[any,any]]
         """
-
-        if weights is None:
-            weights = self.get_weights()
-        else:
-            oweights = dict(self.get_weights().items())
-            oweights.update({self.get_node_by_name(n): v for n, v in weights.items()})
-            weights = oweights
-
         result = {}
-        for n, w in weights.items():
-            if hasattr(self, 'get_name'):
-                name = self.get_name(n)
-            else:
-                name = n
-            if w == self.WEIGHT_NEUTRAL and type(self.WEIGHT_NEUTRAL) == type(w):
-                result[n] = semiring.one(), semiring.one()
-            elif w == False:
-                result[n] = semiring.false(name)
-            elif w is None:
-                result[n] = semiring.true(name)
-            else:
-                result[n] = semiring.pos_value(w, name), semiring.neg_value(w, name)
+        # Set given weights, has priority over program weights.
+        if weights is not None:
+            for n, w in weights.items():
+                key = n if isinstance(n, int) else self.get_node_by_name(n)
+
+                if hasattr(self, 'get_name'):
+                    name = self.get_name(key)
+                elif not isinstance(n, int):
+                    name = n
+                else:
+                    name = key
+
+                if key >= 0:
+                    if w == self.WEIGHT_NEUTRAL and type(self.WEIGHT_NEUTRAL) == type(w):
+                        result[key] = semiring.one(), semiring.one()
+                    elif w == False:
+                        result[key] = semiring.false(name)
+                    elif w is None:
+                        result[key] = semiring.true(name)
+                    elif isinstance(w, pn_weight):
+                        result[key] = semiring.value(w.p_weight), semiring.value(w.n_weight)
+                    else:
+                        result[key] = semiring.pos_value(w, name), semiring.neg_value(w, name)
+                else:
+                    # If key < 0 we have to reverse weight order (p,n) to (n,p)
+                    if w == self.WEIGHT_NEUTRAL and type(self.WEIGHT_NEUTRAL) == type(w):
+                        result[abs(key)] = semiring.one(), semiring.one()
+                    elif w == False:
+                        result[abs(key)] = semiring.true(name)
+                    elif w is None:
+                        result[abs(key)] = semiring.false(name)
+                    elif isinstance(w, pn_weight):
+                        result[abs(key)] = semiring.value(w.n_weight), semiring.value(w.p_weight)
+                    else:
+                        result[abs(key)] = semiring.neg_value(w, name), semiring.pos_value(w, name)
+
+        # Set remaining program weights
+        for key, w in self.get_weights().items():
+            if result.get(abs(key)) is None:
+                if hasattr(self, 'get_name'):
+                    name = self.get_name(key)
+                else:
+                    name = key
+                if w == self.WEIGHT_NEUTRAL and type(self.WEIGHT_NEUTRAL) == type(w):
+                    result[key] = semiring.one(), semiring.one()
+                elif w is False:
+                    result[key] = semiring.false(name)
+                elif w is None:
+                    result[key] = semiring.true(name)
+                elif isinstance(w, pn_weight):
+                    result[key] = semiring.value(w.p_weight), semiring.value(w.n_weight)
+                else:
+                    result[key] = semiring.pos_value(w, name), semiring.neg_value(w, name)
 
         for c in self.constraints():
             c.update_weights(result, semiring)
@@ -166,13 +192,13 @@ class BaseFormula(ProbLogObject):
     # ==========                           NODE NAMES                            =========== #
     # ====================================================================================== #
 
-    def add_name(self, name, key, label=None):
+    def add_name(self, name, key, label=None, keep_name=False):
         """Add a name to the given node.
 
         :param name: name of the node
         :type name: Term
         :param key: key of the node
-        :type key: int | TRUE | FALSE
+        :type key: int | bool
         :param label: type of label (one of LABEL_*)
         """
         if label is None:
@@ -196,7 +222,7 @@ class BaseFormula(ProbLogObject):
     #     names = self.get_names()
     #     print (names)
 
-    def add_query(self, name, key):
+    def add_query(self, name, key, keep_name=False):
         """Add a query name.
 
         Same as ``add_name(name, key, self.LABEL_QUERY)``.
@@ -204,9 +230,9 @@ class BaseFormula(ProbLogObject):
         :param name: name of the query
         :param key: key of the query node
         """
-        self.add_name(name, key, self.LABEL_QUERY)
+        self.add_name(name, key, self.LABEL_QUERY, keep_name=keep_name)
 
-    def add_evidence(self, name, key, value):
+    def add_evidence(self, name, key, value, keep_name=False):
         """Add an evidence name.
 
         Same as ``add_name(name, key, self.LABEL_EVIDENCE_???)``.
@@ -216,11 +242,11 @@ class BaseFormula(ProbLogObject):
         :param value: value of the evidence (True, False or None)
         """
         if value is None:
-            self.add_name(name, key, self.LABEL_EVIDENCE_MAYBE)
+            self.add_name(name, key, self.LABEL_EVIDENCE_MAYBE, keep_name=keep_name)
         elif value:
-            self.add_name(name, key, self.LABEL_EVIDENCE_POS)
+            self.add_name(name, key, self.LABEL_EVIDENCE_POS, keep_name=keep_name)
         else:
-            self.add_name(name, key, self.LABEL_EVIDENCE_NEG)
+            self.add_name(name, key, self.LABEL_EVIDENCE_NEG, keep_name=keep_name)
 
     def clear_evidence(self):
         """Remove all evidence."""
@@ -375,6 +401,9 @@ atom = namedtuple('atom', ('identifier', 'probability', 'group', 'name', 'source
 conj = namedtuple('conj', ('children', 'name'))
 disj = namedtuple('disj', ('children', 'name'))
 
+# tuple containing the positive and negative weight of a node.
+pn_weight = namedtuple('pos_neg_weight', 'p_weight, n_weight')
+
 
 class LogicFormula(BaseFormula):
     """A logic formula is a data structure that is used to represent generic And-Or graphs.
@@ -409,7 +438,7 @@ class LogicFormula(BaseFormula):
     # noinspection PyUnusedLocal
     def __init__(self, auto_compact=True, avoid_name_clash=False, keep_order=False,
                  use_string_names=False, keep_all=False, propagate_weights=None,
-                 max_arity=0, keep_duplicates=False, keep_builtins=False, hide_builtins=False,
+                 max_arity=0, keep_duplicates=False, keep_builtins=False, hide_builtins=False, database=None,
                  **kwdargs):
         BaseFormula.__init__(self)
 
@@ -417,6 +446,7 @@ class LogicFormula(BaseFormula):
         self._nodes = []
         # Lookup index for 'atom' nodes, key is identifier passed to addAtom()
         self._index_atom = {}
+        self._index_next = 0
         # Lookup index for 'and' nodes, key is tuple of sorted children
         self._index_conj = {}
         # Lookup index for 'or' nodes, key is tuple of sorted children
@@ -427,7 +457,7 @@ class LogicFormula(BaseFormula):
         self._auto_compact = auto_compact
         self._avoid_name_clash = avoid_name_clash
         self._keep_order = keep_order
-        self._keep_all = keep_all
+        self.keep_all = keep_all
         self._keep_builtins = (keep_all or keep_builtins) and not hide_builtins
         self._keep_duplicates = keep_duplicates
 
@@ -438,32 +468,31 @@ class LogicFormula(BaseFormula):
         self.semiring = propagate_weights
 
         self._use_string_names = use_string_names
+        self._database = database
+
+    @property
+    def database(self):
+        return self._database
 
     # ====================================================================================== #
     # ==========                         MANAGE LABELS                           =========== #
     # ====================================================================================== #
 
-    def add_name(self, name, key, label=None):
+    def add_name(self, name, key, label=None, keep_name=False):
         """Associates a name to the given node identifier.
 
             :param name: name of the node
             :param key: id of the node
             :param label: type of node (see LogicFormula.LABEL_*)
+            :param keep_name: keep name of node if it exists
         """
         if self._use_string_names:
             name = str(name)
 
-        if self.is_probabilistic(key):
+        if not keep_name and self.is_probabilistic(key):
             node = self.get_node(abs(key))
-            ntype = type(node).__name__
-            if key < 0:
-                lname = -name
-            else:
-                lname = name
-            if ntype == 'atom':
-                node = type(node)(*(node[:-2] + (lname, node[-1])))
-            else:
-                node = type(node)(*(node[:-1] + (lname,)))
+            lname = -name if key < 0 else name
+            node = node._replace(name=lname)
             self._update(abs(key), node)
 
         BaseFormula.add_name(self, name, key, label)
@@ -483,10 +512,8 @@ class LogicFormula(BaseFormula):
     def _add(self, node, key=None, reuse=True):
         """Adds a new node, or reuses an existing one.
 
-        :param node: node to add
-        :param reuse: (default True) attempt to map the new node onto an existing one based on its \
-         content
-
+        :param node: node to add (namedtuple: atom, conj or disj)
+        :param reuse: (default True) attempt to map the new node onto an existing one based on its content
         """
         if reuse:
             # Determine the node's key and lookup identifier base on node type.
@@ -508,6 +535,9 @@ class LogicFormula(BaseFormula):
                 index = len(self._nodes) + 1
                 # Add the entry to the collection
                 collection[key] = index
+                # If atom, update max index
+                if ntype == 'atom' and type(key) == int and key >= self._index_next:
+                    self._index_next = key + 1
                 # Add entry to the set of nodes
                 self._nodes.append(node)
             else:
@@ -521,6 +551,13 @@ class LogicFormula(BaseFormula):
         # Return the entry
         return index
 
+    def get_next_atom_identifier(self):
+        """
+        Get a unique identifier that can - and has not - been used to add a new atom.
+        :return: A next unique identifier to use when adding new atoms (self.add_atom(identifier=..))
+        """
+        return self._index_next
+
     def _update(self, key, value):
         """Replace the node with the given content.
 
@@ -532,14 +569,21 @@ class LogicFormula(BaseFormula):
         assert(key > 0)
         self._nodes[key - 1] = value
 
-    def _add_constraint_me(self, group, node):
+    def _add_constraint_me(self, group, node, cr_extra=True):
+        """
+
+        :param group:
+        :param node:
+        :param cr_extra: When required, create an additional extra_node atom for the group.
+        :return:
+        """
         if group is None:
             return node
         constraint = self._constraints_me.get(group)
         if constraint is None:
             constraint = ConstraintAD(group)
             self._constraints_me[group] = constraint
-        node = constraint.add(node, self)
+        node = constraint.add(node, self, cr_extra=cr_extra)
         return node
 
     def force_weights(self):
@@ -549,7 +593,7 @@ class LogicFormula(BaseFormula):
                 w = weights.get(i, n.probability)
                 self._nodes[i - 1] = atom(n.identifier, w, n.group, n.name, n.source)
 
-    def add_atom(self, identifier, probability, group=None, name=None, source=None):
+    def add_atom(self, identifier, probability, group=None, name=None, source=None, cr_extra=True):
         """Add an atom to the formula.
 
         :param identifier: a unique identifier for the atom
@@ -557,6 +601,7 @@ class LogicFormula(BaseFormula):
         :param group: a group identifier that identifies mutually exclusive atoms (or None if no \
         constraint)
         :param name: name of the new node
+        :param cr_extra: When required, create an extra_node for the constraint group.
         :returns: the identifiers of the node in the formula (returns self.TRUE for deterministic \
         atoms)
 
@@ -569,9 +614,9 @@ class LogicFormula(BaseFormula):
          same group.
         * To add an explicitly present deterministic node you can set the probability to ``True``.
         """
-        if probability is None and not self._keep_all:
+        if probability is None and not self.keep_all:
             return self.TRUE
-        elif probability is False and not self._keep_all:
+        elif probability is False and not self.keep_all:
             return self.FALSE
         elif probability != self.WEIGHT_NEUTRAL and self.semiring and \
                 self.semiring.is_zero(self.semiring.value(probability)):
@@ -581,19 +626,20 @@ class LogicFormula(BaseFormula):
             return self.TRUE
         else:
             atom = self._create_atom(identifier, probability, group, name, source)
+            length_before = len(self._nodes)
             node_id = self._add(atom, key=identifier)
 
             self.get_weights()[node_id] = probability
             if name is not None:
                 self.add_name(name, node_id, self.LABEL_NAMED)
-            if node_id == len(self._nodes):
+            if len(self._nodes) != length_before:
                 # The node was not reused?
                 self._atomcount += 1
                 # TODO if the next call return 0 or None, the node is still added?
-                node_id = self._add_constraint_me(group, node_id)
+                node_id = self._add_constraint_me(group, node_id, cr_extra=cr_extra)
             return node_id
 
-    def add_and(self, components, key=None, name=None):
+    def add_and(self, components, key=None, name=None, compact=None):
         """Add a conjunction to the logic formula.
 
         :param components: a list of node identifiers that already exist in the logic formula.
@@ -601,9 +647,9 @@ class LogicFormula(BaseFormula):
         :param name: name of the node
         :returns: the key of the node in the formula (returns 0 for deterministic atoms)
         """
-        return self._add_compound('conj', components, self.FALSE, self.TRUE, key=key, name=name)
+        return self._add_compound('conj', components, self.FALSE, self.TRUE, key=key, name=name, compact=compact)
 
-    def add_or(self, components, key=None, readonly=True, name=None):
+    def add_or(self, components, key=None, readonly=True, name=None, placeholder=False, compact=None):
         """Add a disjunction to the logic formula.
 
         :param components: a list of node identifiers that already exist in the logic formula.
@@ -625,7 +671,8 @@ class LogicFormula(BaseFormula):
         This may cause the data structure to contain superfluous nodes.
         """
         return self._add_compound('disj', components, self.TRUE, self.FALSE, key=key,
-                                  readonly=readonly, name=name)
+                                  readonly=readonly and not placeholder, name=name,
+                                  placeholder=placeholder, compact=compact)
 
     def add_disjunct(self, key, component):
         """Add a component to the node with the given key.
@@ -682,12 +729,13 @@ class LogicFormula(BaseFormula):
 
     # noinspection PyUnusedLocal
     def _add_compound(self, nodetype, content, t, f, key=None,
-                      readonly=True, update=None, name=None):
+                      readonly=True, update=None, name=None, placeholder=False, compact=None):
         """Add a compound term (AND or OR)."""
-        assert content   # Content should not be empty
+        if not placeholder:
+            assert content   # Content should not be empty
 
         name_clash = False
-        if self._auto_compact:
+        if compact or self._auto_compact and compact is None:
             # If there is a t node, (true for OR, false for AND)
             if t in content:
                 return t
@@ -705,7 +753,7 @@ class LogicFormula(BaseFormula):
                 content = tuple(set(content))
 
             # Empty OR node fails, AND node is true
-            if not content:
+            if not content and not placeholder:
                 return f
 
             # Contains opposites: return 'TRUE' for or, 'FALSE' for and
@@ -714,7 +762,7 @@ class LogicFormula(BaseFormula):
 
             # If node has only one child, just return the child.
             # Don't do this for modifiable nodes, we need to keep a separate node.
-            if (readonly and update is None) and len(content) == 1:
+            if readonly and update is None and len(content) == 1:
                 if self._avoid_name_clash:
                     name_old = self.get_node(abs(content[0])).name
                     if name is None or name_old is None or name == name_old:
@@ -735,7 +783,7 @@ class LogicFormula(BaseFormula):
 
         if nodetype == 'conj':
             node = self._create_conj(content, name)
-            return self._add(node, reuse=self._auto_compact and not self._keep_all)
+            return self._add(node, reuse=self._auto_compact and not self.keep_all)
         elif nodetype == 'disj':
             node = self._create_disj(content, name)
             if update is not None:
@@ -743,7 +791,7 @@ class LogicFormula(BaseFormula):
                 return self._update(update, node)
             elif readonly:
                 # If the node is readonly, we can try to reuse an existing node.
-                new_node = self._add(node, reuse=self._auto_compact and not name_clash and not self._keep_all)
+                new_node = self._add(node, reuse=self._auto_compact and not name_clash and not self.keep_all)
                 return new_node
             else:
                 # If node is modifiable, we shouldn't reuse an existing node.
@@ -758,6 +806,14 @@ class LogicFormula(BaseFormula):
         :returns: iterator over tuples ( key, node, type )
         """
         for i, n in enumerate(self._nodes):
+            yield (i + 1, n, type(n).__name__)
+
+    def __reversed__(self):
+        """Iterate over the nodes in the formula in the opposite direction.
+
+        :returns: iterator over tuples ( key, node, type )
+        """
+        for i, n in reversed(self._nodes):
             yield (i + 1, n, type(n).__name__)
 
     def __len__(self):
@@ -814,8 +870,7 @@ class LogicFormula(BaseFormula):
             self.get_evidence_values()[key] = value
 
     def propagate(self, nodeids, current=None):
-        """Propagate the value of the given node
-          (true if node is positive, false if node is negative)
+        """Propagate the value of the given node (true if node is positive, false if node is negative)
         The propagation algorithm is not complete.
 
         :param nodeids: evidence nodes to set (> 0 means true, < 0 means false)
@@ -1017,7 +1072,7 @@ class LogicFormula(BaseFormula):
         .. code-block:: python
 
             pl = problog.program.PrologFile(input_file)
-            problog.formula.LogicFormula.create_from(avoid_name_clash=True, keep_order=True, \
+            problog.formula.LogicFormula.create_from(pl, avoid_name_clash=True, keep_order=True, \
 label_all=True)
             prologfile = gp.to_prolog()
 
@@ -1055,10 +1110,9 @@ label_all=True)
                     lines.append('%s :- fail.' % qn)
                 lines.append('evidence(%s).' % qn)
             elif qi < 0:
-                lines.append('evidence(%s).' % qn)
+                lines.append('evidence(\+%s).' % qn)
             else:
                 lines.append('evidence(%s).' % qn)
-
 
         return '\n'.join(lines)
 
@@ -1206,6 +1260,11 @@ label_all=True)
                         choice_name[p] = n.name
 
         for group, choices in choice_by_group.items():
+            # Check for single atom AD.
+            if len(choices) == 1 and choice_name.get(choices[0]) is None:
+                processed[choices[0]] = False  # Revert to not yet processed.
+                continue
+
             # Construct head
             head = Or.from_list([choice_name[c].with_probability(choice_prob[c]) for c in choices])
 
@@ -1513,15 +1572,16 @@ label_all=True)
         return s + '}'
 
     def clone(self, destination):
+        destination._auto_compact = False
         source = self
         # TODO maintain a translation table
         for i, n, t in source:
             if t == 'atom':
-                j = destination.add_atom(n.identifier, n.probability, n.group, source.get_name(i))
+                j = destination.add_atom(n.identifier, n.probability, n.group, name=source.get_name(i))
             elif t == 'conj':
-                j = destination.add_and(n.children, source.get_name(i))
+                j = destination.add_and(n.children, name=n.name)
             elif t == 'disj':
-                j = destination.add_or(n.children, source.get_name(i))
+                j = destination.add_or(n.children, name=n.name)
             else:
                 raise TypeError('Unknown node type')
             assert i == j
