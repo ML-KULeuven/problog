@@ -10,7 +10,7 @@ For a very quick introduction to Prolog you can check the `Wikipedia page <https
 
 For a more in-depth introduction you can check the
 `Learn Prolog Now! <http://lpn.swi-prolog.org/lpnpage.php?pagetype=html&pageid=lpn-htmlch1>`_
-tutorial or the book `Simply Logical by Peter Flach <https://www.cs.bris.ac.uk/~flach/SimplyLogical.html>`_.
+tutorial or the book `Simply Logical by Peter Flach <https://book.simply-logical.space>`_.
 
 ProbLog
 -------

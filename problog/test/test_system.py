@@ -107,15 +107,18 @@ def createSystemTestGeneric(filename, logspace=False) :
                 semiring = SemiringProbability()
 
             computed = kc.evaluate(semiring=semiring)
+            #print("computed %s" % computed)
+            #print("eval_name %s" % evaluatable_name)
             computed = { str(k) : v for k,v in computed.items() }
         except Exception as err :
-            #print("exception %s" % err)
+            print("exception %s" % err)
             e = err
             computed = None
 
         if computed is None :
             self.assertEqual(correct, type(e).__name__)
         else :
+            #print("computed %s" % computed)
             self.assertIsInstance( correct, dict )
             self.assertSequenceEqual(correct, computed)
 

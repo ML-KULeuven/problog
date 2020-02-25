@@ -551,7 +551,7 @@ class Evaluatable(ProbLogObject):
         evaluator.propagate()
         return evaluator
 
-    def evaluate(self, index=None, semiring=None, evidence=None, weights=None, smooth=None, **kwargs):
+    def evaluate(self, index=None, semiring=None, evidence=None, weights=None, **kwargs):
         """Evaluate a set of nodes.
 
         :param index: node to evaluate (default: all queries)
@@ -569,11 +569,11 @@ class Evaluatable(ProbLogObject):
 
             # interrupted = False
             for name, node, label in evaluator.formula.labeled():
-                w = evaluator.evaluate(node, smooth=smooth)
+                w = evaluator.evaluate(node)
                 result[name] = w
             return result
         else:
-            return evaluator.evaluate(index, smooth=smooth)
+            return evaluator.evaluate(index)
 
 
 @transform_allow_subclass
@@ -606,7 +606,7 @@ class Evaluator(object):
         """Propagate changes in weight or evidence values."""
         raise NotImplementedError('Evaluator.propagate() is an abstract method.')
 
-    def evaluate(self, index, smooth=True):
+    def evaluate(self, index):
         """Compute the value of the given node."""
         raise NotImplementedError('abstract method')
 
@@ -739,6 +739,7 @@ class FormulaEvaluator(object):
         :param index: integer or formula.TRUE or formula.FALSE
         :return: weight of the node
         """
+        print("compute_weight in FormulaEvaluator happened")
         # print('handle smooth', smooth)
         if smooth is None:
             raise Exception()

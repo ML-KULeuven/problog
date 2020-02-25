@@ -439,28 +439,31 @@ class DDEvaluator(Evaluator):
                 self._evidence_weight = self.semiring.normalize(result, self.normalization)
             else:
                 formula = LogicNNF()
-                smooth = True
-                # print('count', self.formula.get_manager().count())
-                # print('inode', self.evidence_inode)
-                self.formula.get_manager().write_to_dot(self.evidence_inode, '/Users/wannes/Desktop/sdd.gv')
                 i = self.formula._to_formula(formula, self.evidence_inode, {})
-                print('Formula (evidence) to evaluate')
-                print(formula)
-                self._evidence_weight = formula.evaluate(index=i, semiring=self.semiring, smooth=smooth)
-                print('evidence weight', self._evidence_weight)
+                if i is None:  # = Node(False)
+                    # evaluate(index=i=None,..) evaluates the LABEL.QUERY's of formula.
+                    formula.add_name(name='tempFalse', key=None, label=formula.LABEL_QUERY)
+                    result = formula.evaluate(index=i, semiring=self.semiring)
+                    result = result['tempFalse']
+                else:
+                    result = formula.evaluate(index=i, semiring=self.semiring)
+
+                if self.semiring.is_zero(result):
+                    raise InconsistentEvidenceError(context=' during compilation')
+                self._evidence_weight = result
 
         return self._evidence_weight
 
     def evaluate_evidence(self, recompute=False):
         return self.semiring.result(self._evaluate_evidence(recompute=recompute), self.formula)
 
-    def evaluate(self, node, smooth=True):
+    def evaluate(self, node):
         if isinstance(self.semiring, SemiringLogProbability) or isinstance(self.semiring, SemiringProbability):
-            return self.evaluate_standard(node, smooth=smooth)
+            return self.evaluate_standard(node)
         else:
-            return self.evaluate_custom(node, smooth=smooth)
+            return self.evaluate_custom(node)
 
-    def evaluate_standard(self, node, smooth=True):
+    def evaluate_standard(self, node):
         # Trivial case: node is deterministically True or False
         if node == self.formula.TRUE:
             result = self.semiring.one()
@@ -482,7 +485,7 @@ class DDEvaluator(Evaluator):
             result = self.semiring.normalize(result, self._evidence_weight)
         return self.semiring.result(result, self.formula)
 
-    def evaluate_custom(self, node, smooth=True):
+    def evaluate_custom(self, node):
         # Trivial case: node is deterministically True or False
         if node == self.formula.TRUE:
             result = self.semiring.one()
@@ -496,14 +499,15 @@ class DDEvaluator(Evaluator):
             formula = LogicNNF()
             i = self.formula._to_formula(formula, query_sdd, {})
 
-            print('Formula (query ^ evidence) to evaluate (i={})'.format(i))
-            print(formula)
-            if i is None:
-                # TODO: i == None if formula is False. (BaseFormula.FALSE is None). Now mapped to 0.0, correct?
-                result = 0.0
+            if i is None:  # = SddNode(False)
+                # evaluate(index=i=None,..) evaluates the LABEL.QUERY's of formula.
+                name = self.formula.get_name(node)
+                formula.add_name(name=name, key=None, label=formula.LABEL_QUERY)
+                result = formula.evaluate(index=i, semiring=self.semiring)
+                # index=None such that this if i is None is unnecessary. (same structure at _evaluate_evidence(..))
+                result = result[name]
             else:
-                result = formula.evaluate(index=i, semiring=self.semiring, smooth=smooth)
-            print('result', result)
+                result = formula.evaluate(index=i, semiring=self.semiring)
 
             self._get_manager().deref(query_sdd)
 
@@ -526,18 +530,14 @@ class DDEvaluator(Evaluator):
         return result
 
     def set_evidence(self, index, value):
-        pos = self.semiring.one()
-        neg = self.semiring.zero()
+        curr_pos_weight, curr_neg_weight = self.weights.get(index)
+        pos, neg = self.semiring.to_evidence(curr_pos_weight, curr_neg_weight, sign=value)
 
-        current_weight = self.weights.get(index)
-        if value:
-            if current_weight and self.semiring.is_zero(current_weight[0]):
-                raise InconsistentEvidenceError(self._deref_node(index))
-            self.set_weight(index, pos, neg)
-        else:
-            if current_weight and self.semiring.is_one(current_weight[0]):
-                raise InconsistentEvidenceError(self._deref_node(index))
-            self.set_weight(index, neg, pos)
+        if (value and self.semiring.is_zero(curr_pos_weight)) or \
+                (not value and self.semiring.is_zero(curr_neg_weight)):
+            raise InconsistentEvidenceError(self._deref_node(index))
+
+        self.set_weight(index, pos, neg)
 
     def set_weight(self, index, pos, neg):
         # index = index of atom in weights, so atom2var[key] = index

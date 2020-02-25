@@ -22,7 +22,7 @@ Forward compilation using TP-operator.
     limitations under the License.
 """
 from __future__ import print_function
-from .formula import LogicFormula, OrderedSet, atom
+from .formula import LogicFormula, OrderedSet, atom, pn_weight
 from .dd_formula import DD
 from .sdd_formula import SDD
 from .bdd_formula import BDD
@@ -681,7 +681,7 @@ class ForwardEvaluator(Evaluator):
     def propagate(self):
         self.initialize()
 
-    def evaluate(self, index, smooth=True):
+    def evaluate(self, index):
         """Compute the value of the given node."""
         # We should get results from cache here.
 
@@ -689,16 +689,24 @@ class ForwardEvaluator(Evaluator):
         if index is None:
             return 0.0
         elif index == 0:
-            return 1.0
+            if not self.semiring.is_nsp():
+                return self.semiring.result(self.semiring.one(), self.formula)
+            else:
+                # We need the full theory to calculate WMC(Theory & True) so resort to XSDD
+                from problog.sdd_formula_explicit import SDDExplicit
+                xsdd = SDDExplicit.create_from(self.formula)
+                result = xsdd.evaluate(index=0, semiring=self.semiring, weights={k: pn_weight(v[0], v[1]) for k, v in
+                                                                                 self.weights.items()})
+                return self.semiring.result(result, self.formula)
         else:
             n = self.formula.get_node(abs(index))
             nt = type(n).__name__
             if nt == 'atom':
-                wp = self._results[abs(index)]
+                wp = self._results[index]
                 # wp, wn = self.weights.get(abs(index))
                 if index < 0:
-                    wn = self.semiring.negate(wp)
-                    return self.semiring.result(wn, self.formula)
+                    #wn = self.semiring.negate(wp)
+                    return self.semiring.result(wp, self.formula)
                 else:
                     return self.semiring.result(wp, self.formula)
             else:
@@ -706,21 +714,23 @@ class ForwardEvaluator(Evaluator):
                 if index < 0:
                     if -index in self._results:
                         if -index in self._complete:
-                            return self.semiring.result(self.semiring.negate(self._results[-index]),
-                                                        self.formula)
+                            return self.semiring.result(self.semiring.negate(self._results[-index]), self.formula)
                         else:
-                            return 0.0, self.semiring.result(
-                                self.semiring.negate(self._results[-index]), self.formula)
+                            return self.semiring.result(self.semiring.zero()), \
+                                   self.semiring.result(self.semiring.negate(self._results[-index]), self.formula)
                     else:
-                        return 0.0, 1.0
+                        return self.semiring.result(self.semiring.zero()), \
+                               self.semiring.result(self.semiring.one())
                 else:
                     if index in self._results:
                         if index in self._complete:
                             return self.semiring.result(self._results[index], self.formula)
                         else:
-                            return self.semiring.result(self._results[index], self.formula), 1.0
+                            return self.semiring.result(self._results[index], self.formula), \
+                                   self.semiring.result(self.semiring.one())
                     else:
-                        return 0.0, 1.0
+                        return self.semiring.result(self.semiring.zero()), \
+                               self.semiring.result(self.semiring.one())
 
     def evaluate_evidence(self):
         raise NotImplementedError('Evaluator.evaluate_evidence is an abstract method.')

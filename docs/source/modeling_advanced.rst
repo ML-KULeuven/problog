@@ -44,12 +44,16 @@ Functions decorated with ``problog_export_nondet`` should return a list of resul
 
 Functions decorated with ``problog_export_raw`` should return a list of tuples where each tuple
 contains a value for each argument listed in the specification.
+A function decorated with this decorator should have only ``+`` specifiers and it should be prepared to receive
+additional arguments containing the execution context (i.e. by adding **kwargs as last argument).
+
+The internal Prolog database that is in use can be accessed through the variable ``problog_export.database``.
 
 For example, consider the following Python module ``numbers.py`` which defines two functions.
 
 .. code-block:: python
 
-    from problog.extern import problog_export, problog_export_nondet
+    from problog.extern import problog_export, problog_export_nondet, problog_export_raw
 
     @problog_export('+int', '+int', '-int')
     def sum(a, b):
@@ -73,6 +77,31 @@ For example, consider the following Python module ``numbers.py`` which defines t
             return [()] # one result (empty tuple)
         else:
             return []   # no results
+
+    @problog_export_raw('+term', '+term')
+    def successor(a, b, **kwargs):
+        """Defines the successor relation between a and b."""
+        from problog.engine_builtin import check_mode
+        # We support three modes: a,b both integer; a integer and b variable; a variable and b integer.
+        # This will raise an error for any other case.
+        mode = check_mode([a, b], ['ii', 'iv', 'vi'], functor='successor', **kwargs)
+
+        if mode == 0:
+            # Both integers
+            av = int(a)
+            bv = int(b)
+            if av + 1 == bv:
+                return [(av, bv)]
+            else:
+                return []
+        elif mode == 1:
+            # Integer / Variable
+            av = int(a)
+            return [(av, Constant(av + 1))]
+        else:
+            # Variable / Integer
+            bv = int(b)
+            return [(Constant(bv - 1), bv)]
 
 
 This module can be used in ProbLog by loading it using the ``use_module`` directive.
