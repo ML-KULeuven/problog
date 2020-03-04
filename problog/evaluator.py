@@ -739,7 +739,6 @@ class FormulaEvaluator(object):
         :param index: integer or formula.TRUE or formula.FALSE
         :return: weight of the node
         """
-        print("compute_weight in FormulaEvaluator happened")
         # print('handle smooth', smooth)
         if smooth is None:
             raise Exception()
