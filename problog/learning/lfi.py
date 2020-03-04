@@ -152,9 +152,9 @@ import traceback
 
 
 def str2bool(s):
-    if str(s) == 'true':
+    if str(s) == "true":
         return True
-    elif str(s) == 'false':
+    elif str(s) == "false":
         return False
     else:
         return None

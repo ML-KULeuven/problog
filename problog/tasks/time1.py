@@ -14,10 +14,16 @@ def argparser():
 
     # TODO support more options of task 'prob' (e.g. -k)
 
-    ap.add_argument('filename', nargs='+', help='Name of file to run (can be multiple).')
-    ap.add_argument('-b', '--base', action='append', default=[], help='Additional models to load.')
-    ap.add_argument('-n', '--repeat', type=int, default=1, help='Repeat each run this many times.')
-    ap.add_argument('-k', choices=get_evaluatables())
+    ap.add_argument(
+        "filename", nargs="+", help="Name of file to run (can be multiple)."
+    )
+    ap.add_argument(
+        "-b", "--base", action="append", default=[], help="Additional models to load."
+    )
+    ap.add_argument(
+        "-n", "--repeat", type=int, default=1, help="Repeat each run this many times."
+    )
+    ap.add_argument("-k", choices=get_evaluatables())
 
     return ap
 
@@ -31,13 +37,12 @@ def main(argv):
         for run in range(0, args.repeat):
             timers = process(filename, base=args.base, ktype=args.k)
             if first:
-                print('filename', timers.header, 'total', sep=';')
+                print("filename", timers.header, "total", sep=";")
                 first = False
-            print(filename, timers, timers.total, sep=';')
+            print(filename, timers, timers.total, sep=";")
 
 
 class Timer(object):
-
     def __init__(self, name):
         self.name = name
         self._start_time = None
@@ -67,11 +72,10 @@ class Timer(object):
         if self._err_name is not None:
             return self._err_name
         else:
-            return '%.6f' % (self._end_time - self._start_time)
+            return "%.6f" % (self._end_time - self._start_time)
 
 
 class TimerCollection(object):
-
     def __init__(self):
         self.timers = []
 
@@ -82,17 +86,17 @@ class TimerCollection(object):
 
     @property
     def header(self):
-        return ';'.join([tmr.name for tmr in self.timers])
+        return ";".join([tmr.name for tmr in self.timers])
 
     def __str__(self):
-        return ';'.join([tmr.elapsed_time_string for tmr in self.timers])
+        return ";".join([tmr.elapsed_time_string for tmr in self.timers])
 
     @property
     def total(self):
         try:
             return sum(tmr.elapsed_time for tmr in self.timers)
         except TypeError:
-            return 'ERROR'
+            return "ERROR"
 
     def __len__(self):
         return len(self.timers)
@@ -105,7 +109,7 @@ def process(filename, base=None, ktype=None):
     timers = TimerCollection()
 
     # Step 1: parse the model
-    with timers.new('parse'):
+    with timers.new("parse"):
         model = SimpleProgram()
         for i, fn in enumerate([filename] + base):
             filemodel = PrologFile(fn)
@@ -115,27 +119,27 @@ def process(filename, base=None, ktype=None):
                 model.source_root = filemodel.source_root
 
     # Step 2: compile the model into a database
-    with timers.new('load'):
+    with timers.new("load"):
         engine = DefaultEngine()
         database = engine.prepare(model)
 
     # Step 3: ground all
-    with timers.new('ground'):
+    with timers.new("ground"):
         ground_program = LogicFormula.create_from(database)
 
     # Step 4: break cycles
-    with timers.new('cycles'):
-        if ktype == 'fsdd':
+    with timers.new("cycles"):
+        if ktype == "fsdd":
             ground_formula = ground_program
         else:
             ground_formula = LogicDAG.create_from(ground_program)
 
     # Step 5: compile
-    with timers.new('compile'):
+    with timers.new("compile"):
         knowledge = get_evaluatable(ktype).create_from(ground_formula)
 
     # Step 6: evaluate
-    with timers.new('evaluate'):
+    with timers.new("evaluate"):
         results = knowledge.evaluate()
 
     return timers

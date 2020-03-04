@@ -11,11 +11,13 @@ import os
 import sys
 import glob
 
-if __name__ == '__main__' :
-    sys.path.insert(0,os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')))
+if __name__ == "__main__":
+    sys.path.insert(
+        0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../"))
+    )
 
 
-class TestLFICont(unittest.TestCase) :
+class TestLFICont(unittest.TestCase):
     def setUp(self):
         try:
             self.assertSequenceEqual = self.assertItemsEqual
@@ -24,34 +26,44 @@ class TestLFICont(unittest.TestCase) :
 
 
 def createTestLFICont(filename):
-
-    def test(self) :
-        problogcli = root_path('problog-cli.py')
+    def test(self):
+        problogcli = root_path("problog-cli.py")
 
         model = filename
         examples = filename.replace(".pl", ".ev")
         if not os.path.exists(examples):
             raise Exception("Evidence file is missing: {}".format(examples))
 
-        out = subprocess_check_output([sys.executable, problogcli, 'lfi', '-n', '10', '-O',
-                                       model.replace('.pl', '.l_pl'), model, examples])
+        out = subprocess_check_output(
+            [
+                sys.executable,
+                problogcli,
+                "lfi",
+                "-n",
+                "10",
+                "-O",
+                model.replace(".pl", ".l_pl"),
+                model,
+                examples,
+            ]
+        )
         outline = out.strip().split()
         print(outline)
 
     return test
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     filenames = sys.argv[1:]
 else:
-    filenames = glob.glob(root_path('test', 'lficont', '*.pl'))
+    filenames = glob.glob(root_path("test", "lficont", "*.pl"))
 
 
 for testfile in filenames:
-    testname = 'test_lficont_' + os.path.splitext(os.path.basename(testfile))[0]
+    testname = "test_lficont_" + os.path.splitext(os.path.basename(testfile))[0]
     setattr(TestLFICont, testname, createTestLFICont(testfile))
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     suite = unittest.TestLoader().loadTestsFromTestCase(TestLFICont)
     unittest.TextTestRunner(verbosity=2).run(suite)

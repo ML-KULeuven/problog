@@ -33,7 +33,7 @@ class Constraint(object):
 
     def get_nodes(self):
         """Get all nodes involved in this constraint."""
-        raise NotImplementedError('abstract method')
+        raise NotImplementedError("abstract method")
 
     def update_weights(self, weights, semiring):
         """Update the weights in the given dictionary according to the constraints.
@@ -62,7 +62,7 @@ class Constraint(object):
         :return: list of clauses where each clause is represent as a list of node keys
         :rtype: list[list[int]]
         """
-        raise NotImplementedError('abstract method')
+        raise NotImplementedError("abstract method")
 
     def copy(self, rename=None):
         """Copy this constraint while applying the given node renaming.
@@ -70,7 +70,7 @@ class Constraint(object):
         :param rename: node rename map (or None if no rename is required)
         :return: copy of the current constraint
         """
-        raise NotImplementedError('abstract method')
+        raise NotImplementedError("abstract method")
 
 
 class ConstraintAD(Constraint):
@@ -83,7 +83,7 @@ class ConstraintAD(Constraint):
         self.location = None
 
     def __str__(self):
-        return 'annotated_disjunction(%s, %s)' % (list(self.nodes), self.extra_node)
+        return "annotated_disjunction(%s, %s)" % (list(self.nodes), self.extra_node)
 
     def get_nodes(self):
         if self.extra_node:
@@ -112,9 +112,15 @@ class ConstraintAD(Constraint):
         is_extra = formula.get_node(node).probability == formula.WEIGHT_NEUTRAL
 
         try:
-            if not self.location and formula.get_node(node).name and formula.get_node(node).name.args:
+            if (
+                not self.location
+                and formula.get_node(node).name
+                and formula.get_node(node).name.args
+            ):
                 if formula.database:
-                    self.location = formula.database.lineno(formula.get_node(node).name.args[-1].location)
+                    self.location = formula.database.lineno(
+                        formula.get_node(node).name.args[-1].location
+                    )
         except AttributeError:
             pass
 
@@ -163,9 +169,9 @@ class ConstraintAD(Constraint):
             nodes = list(self.nodes) + [self.extra_node]
             lines = []
             for i, n in enumerate(nodes):
-                for m in nodes[i + 1:]:
-                    lines.append((-n, -m))    # mutually exclusive
-            lines.append(nodes)   # pick one
+                for m in nodes[i + 1 :]:
+                    lines.append((-n, -m))  # mutually exclusive
+            lines.append(nodes)  # pick one
             return lines
         else:
             return []
@@ -176,8 +182,16 @@ class ConstraintAD(Constraint):
         :param formula: formula to update
         """
         if self.is_nontrivial():
-            name = Term('choice', Constant(self.group[0]), Term('e'), Term('null'), *self.group[1])
-            self.extra_node = formula.add_atom(('%s_extra' % (self.group,)), True, name=name, group=self.group)
+            name = Term(
+                "choice",
+                Constant(self.group[0]),
+                Term("e"),
+                Term("null"),
+                *self.group[1]
+            )
+            self.extra_node = formula.add_atom(
+                ("%s_extra" % (self.group,)), True, name=name, group=self.group
+            )
             # formula.addConstraintOnNode(self, self.extra_node)
 
     def update_weights(self, weights, semiring):
@@ -188,15 +202,30 @@ class ConstraintAD(Constraint):
                 weights[n] = (pos, semiring.ad_negate(pos, neg))
                 ws.append(pos)
 
-            name = Term('choice', Constant(self.group[0]), Term('e'), Term('null'), *self.group[1])
+            name = Term(
+                "choice",
+                Constant(self.group[0]),
+                Term("e"),
+                Term("null"),
+                *self.group[1]
+            )
             try:
                 complement = semiring.ad_complement(ws, key=name)
                 if not semiring.in_domain(complement):
-                    raise InvalidValue('Sum of annotated disjunction weigths exceeds acceptable value', location=self.location)
+                    raise InvalidValue(
+                        "Sum of annotated disjunction weigths exceeds acceptable value",
+                        location=self.location,
+                    )
             except InvalidValue:
-                raise InvalidValue('Sum of annotated disjunction weigths exceeds acceptable value', location=self.location)
+                raise InvalidValue(
+                    "Sum of annotated disjunction weigths exceeds acceptable value",
+                    location=self.location,
+                )
                 # TODO add location
-            weights[self.extra_node] = (complement, semiring.ad_negate(complement, semiring.one()))
+            weights[self.extra_node] = (
+                complement,
+                semiring.ad_negate(complement, semiring.one()),
+            )
 
     def copy(self, rename=None):
         if rename is None:
@@ -217,7 +246,9 @@ class ConstraintAD(Constraint):
         elif self.is_false():
             return False
         else:
-            actual = [values.get(i) for i in self.get_nodes() if values.get(i) is not None]
+            actual = [
+                values.get(i) for i in self.get_nodes() if values.get(i) is not None
+            ]
             return sum(actual) == 1
 
     def propagate(self, values, weights, node=None):
@@ -235,7 +266,7 @@ class ConstraintAD(Constraint):
         elif self.is_false():
             return False
         else:
-            #print ([(i, values[i]) for i in self.get_nodes() if values.get(i) is not None], self.get_nodes())
+            # print ([(i, values[i]) for i in self.get_nodes() if values.get(i) is not None], self.get_nodes())
             # If there is a true value: set all the others to false
             true_values = [i for i in self.get_nodes() if values.get(i) == 1.0]
             if len(true_values) == 1:
@@ -243,21 +274,23 @@ class ConstraintAD(Constraint):
                 for i in self.get_nodes():
                     if i != v:
                         values[i] = 0.0
-           #     print ('a', values)
+                #     print ('a', values)
                 return True
             elif len(true_values) > 1:
-         #       print('b', values)
+                #       print('b', values)
                 return False
             else:
-                false_values = set([i for i in self.get_nodes() if values.get(i) == 0.0])
+                false_values = set(
+                    [i for i in self.get_nodes() if values.get(i) == 0.0]
+                )
                 remain = 1.0 - sum(weights[v] for v in false_values)
                 # if len(false_values) == len(self.get_nodes()) - 1:
                 for i in self.get_nodes():
                     if not i in false_values:
                         values[i] = weights[i] / remain
-          #      print ('c', values)
+                #      print ('c', values)
                 return True
-        #print ('d', values)
+        # print ('d', values)
 
 
 class ClauseConstraint(Constraint):
@@ -275,7 +308,7 @@ class ClauseConstraint(Constraint):
         return ClauseConstraint(map(lambda x: rename.get(x, x), self.nodes))
 
     def __str__(self):
-        return '%s is true' % self.nodes
+        return "%s is true" % self.nodes
 
 
 class TrueConstraint(Constraint):
@@ -296,4 +329,4 @@ class TrueConstraint(Constraint):
         return TrueConstraint(rename.get(self.node, self.node))
 
     def __str__(self):
-        return '%s is true' % self.node
+        return "%s is true" % self.node
