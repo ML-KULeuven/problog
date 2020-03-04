@@ -1,3 +1,4 @@
+%Expected outcome:
 % 0.666666666666667::stress(X) :- person(X).
 % 0.333333801609191::influences(X,Y) :- person(X), person(Y).
 % smokes(X) :- stress(X).
