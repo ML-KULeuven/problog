@@ -1027,7 +1027,7 @@ def get_state(c):
     if hasattr(c, 'state'):
         return c.state
     else:
-        return None
+        return State()
 
 
 class State(dict):
