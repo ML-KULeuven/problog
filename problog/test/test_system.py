@@ -15,14 +15,15 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 """
+import glob
+import os
+import sys
 import unittest
-
-import glob, os, traceback, sys
 
 from problog.forward import _ForwardSDD
 
-if __name__ == '__main__' :
-    sys.path.insert(0,os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')))
+if __name__ == '__main__':
+    sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')))
 
 from problog import root_path
 
@@ -46,30 +47,30 @@ class TestDummy(unittest.TestCase):
 
 class TestSystemGeneric(unittest.TestCase):
 
-    def setUp(self) :
-        try :
+    def setUp(self):
+        try:
             self.assertSequenceEqual = self.assertItemsEqual
         except AttributeError :
             self.assertSequenceEqual = self.assertCountEqual
 
 
-def read_result(filename) :
+def read_result(filename):
     results = {}
-    with open( filename ) as f :
+    with open(filename) as f:
         reading = False
-        for l in f :
+        for l in f:
             l = l.strip()
-            if l.startswith('%Expected outcome:') :
+            if l.startswith('%Expected outcome:'):
                 reading = True
             elif reading :
-                if l.lower().startswith('% error') :
+                if l.lower().startswith('% error'):
                     return l[len('% error'):].strip()
                 elif l.startswith('% ') :
                     query, prob = l[2:].rsplit(None,1)
                     results[query.strip()] = float(prob.strip())
                 else :
                     reading = False
-            if l.startswith('query(') and l.find('% outcome:') >= 0 :
+            if l.startswith('query(') and l.find('% outcome:') >= 0:
                 pos = l.find('% outcome:')
                 query = l[6:pos].strip().rstrip('.').rstrip()[:-1]
                 prob = l[pos+10:]
@@ -77,8 +78,7 @@ def read_result(filename) :
     return results
 
 
-def createSystemTestGeneric(filename, logspace=False) :
-
+def createSystemTestGeneric(filename, logspace=False):
     correct = read_result(filename)
 
     def test(self):
@@ -94,8 +94,8 @@ def createSystemTestGeneric(filename, logspace=False) :
                 with self.subTest(semiring=semiring):
                     evaluate_explicit_from_fsdd(self, custom_semiring=semirings[semiring])
 
-    def evaluate(self, evaluatable_name=None, custom_semiring=None) :
-        try :
+    def evaluate(self, evaluatable_name=None, custom_semiring=None):
+        try:
             parser = DefaultPrologParser(ExtendedPrologFactory())
             kc = get_evaluatable(name=evaluatable_name).create_from(PrologFile(filename, parser=parser))
 
@@ -107,22 +107,22 @@ def createSystemTestGeneric(filename, logspace=False) :
                 semiring = SemiringProbability()
 
             computed = kc.evaluate(semiring=semiring)
-            computed = { str(k) : v for k,v in computed.items() }
-        except Exception as err :
+            computed = { str(k): v for k, v in computed.items() }
+        except Exception as err:
             #print("exception %s" % err)
             e = err
             computed = None
 
-        if computed is None :
+        if computed is None:
             self.assertEqual(correct, type(e).__name__)
-        else :
+        else:
             self.assertIsInstance( correct, dict )
             self.assertSequenceEqual(correct, computed)
 
-            for query in correct :
+            for query in correct:
                 self.assertAlmostEqual(correct[query], computed[query], msg=query)
 
-    def evaluate_explicit_from_fsdd(self, custom_semiring=None) :
+    def evaluate_explicit_from_fsdd(self, custom_semiring=None):
         try:
             parser = DefaultPrologParser(ExtendedPrologFactory())
             lf = PrologFile(filename, parser=parser)
@@ -137,15 +137,15 @@ def createSystemTestGeneric(filename, logspace=False) :
                 semiring = SemiringProbability()
 
             computed = kc.evaluate(semiring=semiring)
-            computed = { str(k) : v for k,v in computed.items() }
-        except Exception as err :
+            computed = {str(k): v for k, v in computed.items()}
+        except Exception as err:
             #print("exception %s" % err)
             e = err
             computed = None
 
-        if computed is None :
+        if computed is None:
             self.assertEqual(correct, type(e).__name__)
-        else :
+        else:
             self.assertIsInstance( correct, dict )
             self.assertSequenceEqual(correct, computed)
 
@@ -199,6 +199,19 @@ class SemiringProbabilityNSPCopy(SemiringProbabilityCopy):
 
     def is_nsp(self):
         return True
+
+    def pos_value(self, a, key=None):
+        if isinstance(a, tuple):
+            return float(a[0])
+        else:
+            return float(a)
+
+    def neg_value(self, a, key=None):
+        if isinstance(a, tuple):
+            return float(a[1])
+        else:
+            return 1-float(a)
+
 
 if __name__ == '__main__' :
     filenames = sys.argv[1:]

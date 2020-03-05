@@ -24,7 +24,7 @@ Interface to Sentential Decision Diagrams (SDD)
 from __future__ import print_function
 from collections import namedtuple
 
-from .formula import LogicDAG, LogicFormula, LogicNNF, pn_weight
+from .formula import LogicDAG, LogicFormula, LogicNNF
 from .core import transform
 from .errors import InstallError, InconsistentEvidenceError
 from .dd_formula import DD, build_dd, DDManager, DDEvaluator
@@ -795,11 +795,8 @@ class SDDEvaluator(DDEvaluator):
             if not self.semiring.is_nsp():
                 result = self.semiring.one()
             else:
-                # We need the full theory to calculate WMC(Theory & True) so resort to XSDD
-                from problog.sdd_formula_explicit import SDDExplicit
-                xsdd = SDDExplicit.create_from(self.formula, var_constraint=self.formula.var_constraint)
-                result = xsdd.evaluate(index=0, semiring=self.semiring, weights={k: pn_weight(v[0], v[1]) for k, v in
-                                                                                 self.weights.items()})
+                # WMC(Theory & True & Evidence) / same. The constraints are already included in the evidence node.
+                result = self.semiring.normalize(self._evidence_weight, self._evidence_weight)
         elif node is self.formula.FALSE:
             result = self.semiring.zero()
         else:
