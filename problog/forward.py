@@ -210,7 +210,7 @@ class ForwardInference(DD):
                     self.set_complete(parent)
                     parent_minmax = 0
                 elif parent_nodetype == "conj":
-                    parent_minmax = max(parent_children_minmax)  # TODO: = instead of ==?
+                    parent_minmax = max(parent_children_minmax)
                 else:
                     parent_minmax = min(parent_children_minmax)
                 self._update_minmax_depths(parent, parent_minmax)
