@@ -64,6 +64,7 @@ class SimpleDDNNFEvaluator(Evaluator):
 
     def __init__(self, formula, semiring, weights=None, **kwargs):
         Evaluator.__init__(self, formula, semiring, weights, **kwargs)
+        self.cache_intermediate = {}  # weights of intermediate nodes
 
     def _initialize(self, with_evidence=True):
         self.weights.clear()
@@ -143,16 +144,20 @@ class SimpleDDNNFEvaluator(Evaluator):
         elif index is None:
             return self.semiring.zero()
         else:
-            w = self.weights.get(abs(index))
+            abs_index = abs(index)
+            w = self.weights.get(abs_index)  # Leaf nodes
+            if w is not None:
+                return w[index < 0]
+            w = self.cache_intermediate.get(abs_index)  # Intermediate nodes
             if w is None:
                 w = self._calculate_weight(index)
-                return w
-            else:
-                return w[index < 0]
+                self.cache_intermediate[abs_index] = w
+            return w
 
     def set_weight(self, index, pos, neg):
         # index = index of atom in weights, so atom2var[key] = index
         self.weights[index] = (pos, neg)
+        self.cache_intermediate.clear()
 
     def set_evidence(self, index, value):
         curr_pos_weight, curr_neg_weight = self.weights.get(index)

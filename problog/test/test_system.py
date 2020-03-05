@@ -264,13 +264,13 @@ class SemiringProbabilityNSPCopy(SemiringProbabilityCopy):
     def is_nsp(self):
         return True
 
-    def pos_value(self, a, key):
+    def pos_value(self, a, key=None):
         if isinstance(a, tuple):
             return float(a[0])
         else:
             return float(a)
 
-    def neg_value(self, a, key):
+    def neg_value(self, a, key=None):
         if isinstance(a, tuple):
             return float(a[1])
         else:
