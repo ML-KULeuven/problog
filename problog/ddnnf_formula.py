@@ -145,14 +145,13 @@ class SimpleDDNNFEvaluator(Evaluator):
             return self.semiring.zero()
         else:
             abs_index = abs(index)
-            w = self.weights.get(abs_index)  # Leaf nodes
+            w = self.weights.get(abs_index) or self.cache_intermediate.get(abs_index)
             if w is not None:
                 return w[index < 0]
-            w = self.cache_intermediate.get(abs_index)  # Intermediate nodes
-            if w is None:
+            else:
                 w = self._calculate_weight(index)
-                self.cache_intermediate[abs_index] = w
-            return w
+                self.cache_intermediate[abs_index] = w, w
+                return w
 
     def set_weight(self, index, pos, neg):
         # index = index of atom in weights, so atom2var[key] = index
