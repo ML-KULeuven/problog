@@ -76,7 +76,6 @@ def createTestLFI(filename, useparents=False):
                     ]
                 )
             except Exception as err:
-                # print(expected)
                 assert expected == "NonGroundProbabilisticClause"
                 return
                 # # This test is specifically for test/lfi/AD/relatedAD_1 and test/lfi/AD/relatedAD_2
@@ -92,17 +91,10 @@ def createTestLFI(filename, useparents=False):
         with open(out_model, "r") as f:
             outlines = f.readlines()
 
-        outlines = outlines.split("\n")
-        # outlines = [line.strip() for line in outlines]
-        # rounded_outlines = []
+        outlines = [line.strip() for line in outlines]
 
-
-        # for line in outlines:
         assert len(expected) == len(outlines)
         for expectedline, line in zip(expected, outlines):
-            # if "<RAND>" in expectedline:
-            #     randomline = True # TODO: compare when "<RAND>" is in expectedline
-
             line = line.strip()
             if "::" in line:
                 if ";" not in line:
@@ -110,16 +102,18 @@ def createTestLFI(filename, useparents=False):
                         line = "<RAND>::" + line.split("::")[1]
                     else:
                         prob = float(line.split("::")[0])
-                        rounded_prob = round(prob, 6)
-                        if abs(prob - rounded_prob) < 0.000001:
-                            line = str(rounded_prob) + "::" + line.split("::")[1]
-                        else:
-                            line = str(prob) + "::" + line.split("::")[1]
+                        rounded_prob = '{:.6f}'.format(prob)
+                        line = rounded_prob + "::" + line.split("::")[1]
+                        expectedline_prob = float(expectedline.split("::")[0])
+                        rounded_expectedline_prob = '{:.6f}'.format(expectedline_prob)
+                        expectedline = str(rounded_expectedline_prob) + "::" + expectedline.split("::")[1]
+
                 else:
-                    if "<RAND>" in expectedline and ";" in expectedline:
+                    if ";" in expectedline:
                         ad_expectedlines = expectedline.split(";")
                         ad_lines = line.split(";")
                         rounded_ad_lines = []
+                        rounded_expected_ad_lines = []
                         # TODO assert len(ad_expectedlines) == len(ad_lines)
                         for ad_expectedline, ad_line in zip(ad_expectedlines, ad_lines):
                             if "<RAND>" in ad_expectedline:
@@ -127,15 +121,15 @@ def createTestLFI(filename, useparents=False):
                             else:
                                 ad_line = ad_line.strip()
                                 ad_prob = float(ad_line.split("::")[0])
-                                rounded_ad_prob = round(ad_prob, 6)
-                                if abs(ad_prob - rounded_ad_prob) < 0.000001:
-                                    ad_line = (
-                                        str(rounded_ad_prob) + "::" + ad_line.split("::")[1]
-                                    )
-                                else:
-                                    ad_line = str(ad_prob) + "::" + ad_line.split("::")[1]
+                                ad_expectedline_prob = float(ad_expectedline.split("::")[0])
+                                rounded_ad_prob = '{:.6f}'.format(ad_prob)
+                                rounded_ad_expectedline_prob = '{:.6f}'.format(ad_expectedline_prob)
+                                ad_line = str(rounded_ad_prob) + "::" + ad_line.split("::")[1]
+                                ad_expectedline = str(rounded_ad_expectedline_prob) + "::" + ad_expectedline.split("::")[1]
                             rounded_ad_lines.append(ad_line)
+                            rounded_expected_ad_lines.append(ad_expectedline)
                         line = "; ".join(rounded_ad_lines)
+                        expectedline = "; ".join(rounded_expected_ad_lines)
                     else:
                         raise AssertionError
             # rounded_outlines.append(line)
@@ -144,15 +138,6 @@ def createTestLFI(filename, useparents=False):
 
         print(expected)
         print(outlines)
-
-        # assert len(expected) == len(rounded_outlines)
-        # for i, j in zip(expected, rounded_outlines):
-        #     if "< RAND >" not in i:
-        #         assert i == j
-        #     else:
-        #         continue
-
-        # assert expected == rounded_outlines
 
     return test
 
