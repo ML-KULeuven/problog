@@ -1,4 +1,3 @@
-% This test fails.
 %Expected outcome:
 % 0.449489::a; 0.550510::b.
 % 0.449489::a; 0.550510::c.

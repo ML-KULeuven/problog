@@ -90,15 +90,8 @@ def createTestLFI(filename, useparents=False):
 
 
         with open(out_model, "r") as f:
-            # outlines = f.readlines()
-            outlines = """0.333333333333333::burglary.
-0.2::earthquake.
-0.539214118349683::p_alarm1.
-1.0::p_alarm2.
-0.0::p_alarm3.
-alarm :- burglary, earthquake, p_alarm1.
-alarm :- burglary, \+earthquake, p_alarm2.
-alarm :- \+burglary, earthquake, p_alarm3."""
+            outlines = f.readlines()
+
         outlines = outlines.split("\n")
         # outlines = [line.strip() for line in outlines]
         # rounded_outlines = []
