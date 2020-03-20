@@ -102,11 +102,15 @@ def createTestLFI(filename, useparents=False):
                         line = "<RAND>::" + line.split("::")[1]
                     else:
                         prob = float(line.split("::")[0])
-                        rounded_prob = '{:.6f}'.format(prob)
-                        line = rounded_prob + "::" + line.split("::")[1]
                         expectedline_prob = float(expectedline.split("::")[0])
+                        rounded_prob = '{:.6f}'.format(prob)
                         rounded_expectedline_prob = '{:.6f}'.format(expectedline_prob)
+                        if abs(float(rounded_prob) - float(rounded_expectedline_prob)) < 0.00001:
+                            line = rounded_expectedline_prob + "::" + line.split("::")[1]
+                        else:
+                            line = rounded_prob + "::" + line.split("::")[1]
                         expectedline = str(rounded_expectedline_prob) + "::" + expectedline.split("::")[1]
+
 
                 else:
                     if ";" in expectedline:
@@ -125,8 +129,11 @@ def createTestLFI(filename, useparents=False):
                                 ad_expectedline_prob = float(ad_expectedline.split("::")[0])
                                 rounded_ad_prob = '{:.6f}'.format(ad_prob)
                                 rounded_ad_expectedline_prob = '{:.6f}'.format(ad_expectedline_prob)
-                                ad_line = str(rounded_ad_prob) + "::" + ad_line.split("::")[1]
-                                ad_expectedline = str(rounded_ad_expectedline_prob) + "::" + ad_expectedline.split("::")[1]
+                                if abs(float(rounded_ad_prob) - float(rounded_ad_expectedline_prob)) < 0.00001:
+                                    ad_line = rounded_ad_expectedline_prob + "::" + ad_line.split("::")[1]
+                                else:
+                                    ad_line = rounded_ad_prob + "::" + ad_line.split("::")[1]
+                                ad_expectedline = rounded_ad_expectedline_prob + "::" + ad_expectedline.split("::")[1]
                             rounded_ad_lines.append(ad_line)
                             rounded_expected_ad_lines.append(ad_expectedline)
                         line = "; ".join(rounded_ad_lines)
