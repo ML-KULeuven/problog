@@ -1,4 +1,4 @@
-evidence(a(1)).
+evidence(a(1), true).
 evidence(b(1), false).
 ---
 evidence(a(1)).

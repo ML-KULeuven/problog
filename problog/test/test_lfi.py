@@ -116,10 +116,11 @@ def createTestLFI(filename, useparents=False):
                         rounded_expected_ad_lines = []
                         # TODO assert len(ad_expectedlines) == len(ad_lines)
                         for ad_expectedline, ad_line in zip(ad_expectedlines, ad_lines):
+                            ad_line = ad_line.strip()
+                            ad_expectedline = ad_expectedline.strip()
                             if "<RAND>" in ad_expectedline:
                                 ad_line = "<RAND>::" + ad_line.split("::")[1]
                             else:
-                                ad_line = ad_line.strip()
                                 ad_prob = float(ad_line.split("::")[0])
                                 ad_expectedline_prob = float(ad_expectedline.split("::")[0])
                                 rounded_ad_prob = '{:.6f}'.format(ad_prob)
@@ -154,50 +155,50 @@ if __name__ == "__main__":
     filenames = sys.argv[1:]
 
 else:
-    # ignore_previous_output("../../test/lfi/AD/")
-    # ADfilenames = glob.glob(root_path("test", "lfi", "AD", "*.pl"))
-    # ignore_previous_output("../../test/lfi/simple/")
-    # simple_filenames = glob.glob(root_path("test", "lfi", "simple", "*.pl"))
-    # ignore_previous_output("../../test/lfi/useParents/")
-    # useParents_filenames = glob.glob(root_path("test", "lfi", "useParents", "*.pl"))
-    # ignore_previous_output("../../test/lfi/unit_tests/")
-    # unit_test_filenames = glob.glob(root_path("test", "lfi", "unit_tests", "test_*.pl"))
-    # ignore_previous_output("../../test/lfi/test_interface/")
-    # test_interface_filenames = glob.glob(root_path("test", "lfi", "test_interface", "test1_model.pl"))
-    ignore_previous_output("../../test/lfi/todo/")
-    test_todo_filenames = glob.glob(root_path("test", "lfi", "todo", "*.pl"))
+    ignore_previous_output("../../test/lfi/AD/")
+    ADfilenames = glob.glob(root_path("test", "lfi", "AD", "*.pl"))
+    ignore_previous_output("../../test/lfi/simple/")
+    simple_filenames = glob.glob(root_path("test", "lfi", "simple", "*.pl"))
+    ignore_previous_output("../../test/lfi/useParents/")
+    useParents_filenames = glob.glob(root_path("test", "lfi", "useParents", "*.pl"))
+    ignore_previous_output("../../test/lfi/unit_tests/")
+    unit_test_filenames = glob.glob(root_path("test", "lfi", "unit_tests", "test_*.pl"))
+    ignore_previous_output("../../test/lfi/test_interface/")
+    test_interface_filenames = glob.glob(root_path("test", "lfi", "test_interface", "test1_model.pl"))
+    # ignore_previous_output("../../test/lfi/todo/")
+    # test_todo_filenames = glob.glob(root_path("test", "lfi", "todo", "*.pl"))
 
 # tests for simple cases (non-ADs)
-# for testfile in simple_filenames:
-#     testname = "test_lfi_simple_" + os.path.splitext(os.path.basename(testfile))[0]
-#     setattr(TestLFI, testname, createTestLFI(testfile, True))
-#
-# # tests for ADs
-# for testfile in ADfilenames:
-#     testname = "test_lfi_AD_" + os.path.splitext(os.path.basename(testfile))[0]
-#     setattr(TestLFI, testname, createTestLFI(testfile, True))
-#
-# # tests for useParents
-# for testfile in useParents_filenames:
-#     testname = "test_lfi_parents_" + os.path.splitext(os.path.basename(testfile))[0]
-#     setattr(TestLFI, testname, createTestLFI(testfile, True))
-#
-# # tests for unit tests
-# for testfile in unit_test_filenames:
-#     testname = "test_lfi_unit_test_" + os.path.splitext(os.path.basename(testfile))[0]
-#     setattr(TestLFI, testname, createTestLFI(testfile, True))
-#
-# # tests for test_interface
-# for testfile in test_interface_filenames:
-#     testname = (
-#         "test_lfi_test_interface_" + os.path.splitext(os.path.basename(testfile))[0]
-#     )
-#     setattr(TestLFI, testname, createTestLFI(testfile, useparents=True))
-for testfile in test_todo_filenames:
+for testfile in simple_filenames:
+    testname = "test_lfi_simple_" + os.path.splitext(os.path.basename(testfile))[0]
+    setattr(TestLFI, testname, createTestLFI(testfile, True))
+
+# tests for ADs
+for testfile in ADfilenames:
+    testname = "test_lfi_AD_" + os.path.splitext(os.path.basename(testfile))[0]
+    setattr(TestLFI, testname, createTestLFI(testfile, True))
+
+# tests for useParents
+for testfile in useParents_filenames:
+    testname = "test_lfi_parents_" + os.path.splitext(os.path.basename(testfile))[0]
+    setattr(TestLFI, testname, createTestLFI(testfile, True))
+
+# tests for unit tests
+for testfile in unit_test_filenames:
+    testname = "test_lfi_unit_test_" + os.path.splitext(os.path.basename(testfile))[0]
+    setattr(TestLFI, testname, createTestLFI(testfile, True))
+
+# tests for test_interface
+for testfile in test_interface_filenames:
     testname = (
-        "test_lfi_test_todo_" + os.path.splitext(os.path.basename(testfile))[0]
+        "test_lfi_test_interface_" + os.path.splitext(os.path.basename(testfile))[0]
     )
     setattr(TestLFI, testname, createTestLFI(testfile, useparents=True))
+# for testfile in test_todo_filenames:
+#     testname = (
+#         "test_lfi_test_todo_" + os.path.splitext(os.path.basename(testfile))[0]
+#     )
+#     setattr(TestLFI, testname, createTestLFI(testfile, useparents=True))
 
 if __name__ == "__main__":
     suite = unittest.TestLoader().loadTestsFromTestCase(TestLFI)
