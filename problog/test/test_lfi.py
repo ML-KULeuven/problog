@@ -17,6 +17,14 @@ if __name__ == "__main__":
         0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../"))
     )
 
+try:
+    from pysdd import sdd
+
+    has_sdd = True
+except Exception as err:
+    print("SDD library not available due to error: ", err, file=sys.stderr)
+    has_sdd = False
+
 
 class TestLFI(unittest.TestCase):
     def setUp(self):
@@ -46,7 +54,16 @@ def read_result(filename):
 
 
 def createTestLFI(filename, useparents=False):
+
     def test(self):
+        for eval_name in evaluatables:
+            with self.subTest(evaluatable=eval_name):
+                test_func(
+                    self,
+                    evaluatable=eval_name,
+                )
+
+    def test_func(self, evaluatable="ddnnf"):
         problogcli = root_path("problog-cli.py")
 
         model = filename
@@ -65,7 +82,7 @@ def createTestLFI(filename, useparents=False):
                         problogcli,
                         "lfi",
                         "-k",
-                        "ddnnf",
+                        evaluatable,
                         "-n",
                         "500",
                         "-O",
@@ -76,6 +93,8 @@ def createTestLFI(filename, useparents=False):
                     ]
                 )
             except Exception as err:
+                print(expected)
+                print(err)
                 assert expected == "NonGroundProbabilisticClause"
                 return
                 # # This test is specifically for test/lfi/AD/relatedAD_1 and test/lfi/AD/relatedAD_2
@@ -85,8 +104,6 @@ def createTestLFI(filename, useparents=False):
                 #     print(err.output)
                 #     tb = traceback.format_exc()
                 #     print(tb)
-
-
 
         with open(out_model, "r") as f:
             outlines = f.readlines()
@@ -110,7 +127,6 @@ def createTestLFI(filename, useparents=False):
                         else:
                             line = rounded_prob + "::" + line.split("::")[1]
                         expectedline = str(rounded_expectedline_prob) + "::" + expectedline.split("::")[1]
-
 
                 else:
                     if ";" in expectedline:
@@ -160,7 +176,6 @@ def ignore_previous_output(path):
 
 if __name__ == "__main__":
     filenames = sys.argv[1:]
-
 else:
     ignore_previous_output("../../test/lfi/AD/")
     ADfilenames = glob.glob(root_path("test", "lfi", "AD", "*.pl"))
@@ -174,6 +189,14 @@ else:
     test_interface_filenames = glob.glob(root_path("test", "lfi", "test_interface", "test1_model.pl"))
     # ignore_previous_output("../../test/lfi/todo/")
     # test_todo_filenames = glob.glob(root_path("test", "lfi", "todo", "*.pl"))
+
+evaluatables = ["ddnnf"]
+
+if has_sdd:
+    evaluatables.append("sdd")
+    evaluatables.append("sddx")
+else:
+    print("No SDD support - The system tests are not performed with SDDs.")
 
 # tests for simple cases (non-ADs)
 for testfile in simple_filenames:
