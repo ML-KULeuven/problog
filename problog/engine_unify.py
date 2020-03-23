@@ -28,6 +28,7 @@ from .logic import is_variable
 
 class UnifyError(Exception):
     """Unification error (used and handled internally)."""
+
     pass
 
 
@@ -75,7 +76,7 @@ def instantiate(term, context):
 
 class OccursCheck(GroundingError):
     def __init__(self, location=None):
-        GroundingError.__init__(self, 'Infinite unification', location=location)
+        GroundingError.__init__(self, "Infinite unification", location=location)
 
 
 def unify_value(value1, value2, source_values):
@@ -98,7 +99,9 @@ def unify_value(value1, value2, source_values):
             return value1
         else:
             # Two named variables: unify their source_values
-            value = unify_value(source_values.get(value1), source_values.get(value2), source_values)
+            value = unify_value(
+                source_values.get(value1), source_values.get(value2), source_values
+            )
             if value is None:
                 value = max(value1, value2)
             if value1 != value:
@@ -126,8 +129,12 @@ def unify_value(value1, value2, source_values):
             source_values[value2] = value
             return value
     elif value1.signature == value2.signature:  # Assume Term
-        return value1.with_args(*[unify_value(a1, a2, source_values)
-                                  for a1, a2 in zip(value1.args, value2.args)])
+        return value1.with_args(
+            *[
+                unify_value(a1, a2, source_values)
+                for a1, a2 in zip(value1.args, value2.args)
+            ]
+        )
     else:
         raise UnifyError()
 
@@ -181,7 +188,9 @@ def unify_value_dc(value1, value2, source_values, target_values):
                 source_values[value1] = value2
             else:
                 # unify in same context target_values
-                source_values[value1] = unify_value(source_values[value1], value2, target_values)
+                source_values[value1] = unify_value(
+                    source_values[value1], value2, target_values
+                )
     elif is_variable(value2):
         sv2 = target_values.get(value2)
         if sv2 is None:
@@ -291,7 +300,9 @@ def unify_call_head(call_args, head_args, target_context):
     :param target_context: list of values of variables in the clause
     :raise UnifyError: unification failed
     """
-    source_values = {}  # contains the values unified to the variables in the call arguments
+    source_values = (
+        {}
+    )  # contains the values unified to the variables in the call arguments
     for call_arg, head_arg in zip(call_args, head_args):
         _unify_call_head_single(call_arg, head_arg, target_context, source_values)
     result = substitute_all(target_context, source_values)
@@ -317,8 +328,9 @@ def _unify_call_head_single(source_value, target_value, target_context, source_v
     """
     if is_variable(target_value):  # target_value is variable (integer >= 0)
         assert type(target_value) == int and target_value >= 0
-        target_context[target_value] = \
-            unify_value(source_value, target_context[target_value], source_values)
+        target_context[target_value] = unify_value(
+            source_value, target_context[target_value], source_values
+        )
     else:  # target_value is a Term (which can still contain variables)
         if is_variable(source_value):  # source value is variable (integer < 0)
             if source_value is None:
@@ -328,8 +340,9 @@ def _unify_call_head_single(source_value, target_value, target_context, source_v
                 # This means that *all* occurrences of source_value should unify with the same value.
                 # We keep track of the value for each source_value, and unify the target_value with the current value.
                 # Note that we unify two values in the same scope.
-                source_values[source_value] = \
-                    unify_value(source_values.get(source_value), target_value, source_values)
+                source_values[source_value] = unify_value(
+                    source_values.get(source_value), target_value, source_values
+                )
         else:  # source value is a Term (which can still contain variables)
             if target_value.signature == source_value.signature:
                 # When signatures match, recursively unify the arguments.

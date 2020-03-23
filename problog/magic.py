@@ -23,8 +23,8 @@ https://gist.github.com/cjdrake/7982333
 import sys
 import os
 
-sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
-sys.path.append(os.path.join(os.path.dirname(__file__), '../examples'))
+sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
+sys.path.append(os.path.join(os.path.dirname(__file__), "../examples"))
 
 from problog.logic import Term
 from problog.program import PrologString, ExtendedPrologFactory, LogicProgram
@@ -40,29 +40,32 @@ else:
     knowledge_default = DDNNF
 
 from IPython.core.display import display_html
-from IPython.core.magic import (
-    Magics, magics_class,
-    line_magic, line_cell_magic
-)
-from IPython.core.magic_arguments import (
-    argument, magic_arguments,
-    parse_argstring)
+from IPython.core.magic import Magics, magics_class, line_magic, line_cell_magic
+from IPython.core.magic_arguments import argument, magic_arguments, parse_argstring
 
 import IPython
+
 if IPython.version_info[0] >= 6:
     import warnings
 
     def info(message):
-        warnings.warn('WARNING: '+message)
+        warnings.warn("WARNING: " + message)
 
     def error(message):
-        warnings.warn('ERROR: '+message)
+        warnings.warn("ERROR: " + message)
+
+
 else:
     from IPython.utils.warn import info, error
 
 
-def runproblog(s, knowledge=knowledge_default, semiring=None, parser_class=DefaultPrologParser,
-               output='html'):
+def runproblog(
+    s,
+    knowledge=knowledge_default,
+    semiring=None,
+    parser_class=DefaultPrologParser,
+    output="html",
+):
     """Execute problog and return an html snippet, or None."""
     try:
         parser = parser_class(ExtendedPrologFactory())
@@ -71,44 +74,50 @@ def runproblog(s, knowledge=knowledge_default, semiring=None, parser_class=Defau
         result = formula.evaluate(semiring=semiring)
         # result = ProbLog.convert(model, knowledge).evaluate()
     except Exception as e:
-        return '<pre>{}</pre>'.format(e)
+        return "<pre>{}</pre>".format(e)
     if result is None:
-        warnings.warn('Error when running ProbLog')
+        warnings.warn("Error when running ProbLog")
         return None
     else:
         return formatoutput(result, output=output)
 
 
-def runproblogsampling(s, n=5, output='html'):
+def runproblogsampling(s, n=5, output="html"):
     model = PrologString(s)
     samples = plsample.sample(model, n=n, tuples=True)
-    result = ''
+    result = ""
     for sample in samples:
-        result += ','.join(str(Term(query[0], *query[1:-1])) for query in sample) + '<br/>'
-    if output == 'html':
-        return '<pre>{}</pre>'.format(result)
+        result += (
+            ",".join(str(Term(query[0], *query[1:-1])) for query in sample) + "<br/>"
+        )
+    if output == "html":
+        return "<pre>{}</pre>".format(result)
     return result
 
 
-def formatoutput(result, output='html'):
-    if output == 'html':
-        html = '<table style="width:100%;"><tr><th style="width:66%;">Atom<th>Probability'
+def formatoutput(result, output="html"):
+    if output == "html":
+        html = (
+            '<table style="width:100%;"><tr><th style="width:66%;">Atom<th>Probability'
+        )
         atomprobs = [(str(atom), prob) for atom, prob in result.items()]
         atomprobs.sort(key=lambda x: x[0])
         for atom, prob in atomprobs:
             p = prob * 100
-            html += '<tr><td>{a}'.format(a=atom)
-            color = 'black'
-            html += '<td><div class="progress-bar" role="progressbar" aria-valuenow="{perc}" ' \
-                    'aria-valuemin="0" aria-valuemax="100" style="text-align:left;' \
-                    'width:{perc}%;padding:3px;color:{c};background-color:#9ac2f4;">' \
-                    '{prob:6.4f}</div>'.format(perc=prob * 100, prob=prob, c=color)
-        html += '</table>'
+            html += "<tr><td>{a}".format(a=atom)
+            color = "black"
+            html += (
+                '<td><div class="progress-bar" role="progressbar" aria-valuenow="{perc}" '
+                'aria-valuemin="0" aria-valuemax="100" style="text-align:left;'
+                'width:{perc}%;padding:3px;color:{c};background-color:#9ac2f4;">'
+                "{prob:6.4f}</div>".format(perc=prob * 100, prob=prob, c=color)
+            )
+        html += "</table>"
         return html
     else:
-        txt = ''
+        txt = ""
         for atom, prob in result.items():
-            txt += '{:<40}: {}'.format(atom, prob)
+            txt += "{:<40}: {}".format(atom, prob)
         return txt
 
 
@@ -116,15 +125,20 @@ def formatoutput(result, output='html'):
 class ProbLogMagics(Magics):
     @line_cell_magic
     @magic_arguments()
-    @argument('--knowledge', '-k', choices=('sdd', 'nnf'), default=None,
-              help="Knowledge compilation tool.")
-    @argument('--logspace', action='store_true', help="Use log space evaluation.")
+    @argument(
+        "--knowledge",
+        "-k",
+        choices=("sdd", "nnf"),
+        default=None,
+        help="Knowledge compilation tool.",
+    )
+    @argument("--logspace", action="store_true", help="Use log space evaluation.")
     def problog(self, line, cell=None):
         """problog line/cell magic"""
         args = parse_argstring(self.problog, line)
-        if args.knowledge == 'nnf':
+        if args.knowledge == "nnf":
             knowledge = DDNNF
-        elif args.knowledge == 'sdd':
+        elif args.knowledge == "sdd":
             knowledge = SDD
         elif args.knowledge is None:
             if SDD.is_available():
@@ -139,7 +153,7 @@ class ProbLogMagics(Magics):
             semiring = None
 
         s = cell
-        data = runproblog(s, knowledge=knowledge, semiring=semiring, output='html')
+        data = runproblog(s, knowledge=knowledge, semiring=semiring, output="html")
         if data:
             display_html(data, raw=True)
 
@@ -147,7 +161,7 @@ class ProbLogMagics(Magics):
     def problogstr(self, line):
         """problog string magic"""
         s = self.shell.ev(line)
-        data = runproblog(s, output='html')
+        data = runproblog(s, output="html")
         if data:
             display_html(data, raw=True)
 
@@ -158,7 +172,7 @@ class ProbLogMagics(Magics):
         if not isinstance(obj, LogicProgram):
             warnings.warn("expected object to be of type LogicProgram")
         else:
-            data = runproblog(obj, output='html')
+            data = runproblog(obj, output="html")
             if data:
                 display_html(data, raw=True)
 
@@ -170,14 +184,14 @@ class ProbLogMagics(Magics):
             if not isinstance(obj, LogicProgram):
                 warnings.warn("expected object {} to be of type LogicProgram".format(i))
             else:
-                data = runproblog(obj, output='html')
+                data = runproblog(obj, output="html")
                 if data:
-                    warnings.warn('object {}:'.format(i))
+                    warnings.warn("object {}:".format(i))
                     display_html(data, raw=True)
 
     @line_cell_magic
     @magic_arguments()
-    @argument('-N', help='Number of samples')
+    @argument("-N", help="Number of samples")
     def problogsample(self, line, cell=None):
         """problog line/cell magic"""
         args = parse_argstring(self.problogsample, line)
@@ -185,7 +199,7 @@ class ProbLogMagics(Magics):
         if args.N is not None:
             n = int(args.N)
         s = cell
-        data = runproblogsampling(s, n=n, output='html')
+        data = runproblogsampling(s, n=n, output="html")
         if data:
             display_html(data, raw=True)
 

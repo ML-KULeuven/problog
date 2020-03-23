@@ -29,10 +29,10 @@ system_info = gather_info()
 
 
 def root_path(*args):
-    return os.path.abspath(os.path.join(os.path.dirname(__file__), '..', *args))
+    return os.path.abspath(os.path.join(os.path.dirname(__file__), "..", *args))
 
 
-library_paths = [root_path('problog', 'library')]
+library_paths = [root_path("problog", "library")]
 
 
 # Load all submodules. This has two reasons:
@@ -59,14 +59,16 @@ from . import tasks
 from . import debug
 
 
-_evaluatables = {'sdd': sdd_formula.SDD,
-                 'sddx': sdd_formula_explicit.SDDExplicit,
-                 'bdd': bdd_formula.BDD,
-                 'nnf': ddnnf_formula.DDNNF,
-                 'ddnnf': ddnnf_formula.DDNNF,
-                 'kbest': kbest.KBestFormula,
-                 'fsdd': forward.ForwardSDD,
-                 'fbdd': forward.ForwardBDD}
+_evaluatables = {
+    "sdd": sdd_formula.SDD,
+    "sddx": sdd_formula_explicit.SDDExplicit,
+    "bdd": bdd_formula.BDD,
+    "nnf": ddnnf_formula.DDNNF,
+    "ddnnf": ddnnf_formula.DDNNF,
+    "kbest": kbest.KBestFormula,
+    "fsdd": forward.ForwardSDD,
+    "fbdd": forward.ForwardBDD,
+}
 
 
 def get_evaluatables():
@@ -81,4 +83,3 @@ def get_evaluatable(name=None, semiring=None):
             return formula.LogicNNF
     else:
         return _evaluatables[name]
-

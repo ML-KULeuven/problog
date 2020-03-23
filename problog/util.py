@@ -37,21 +37,20 @@ import collections
 
 
 class ProbLogLogFormatter(logging.Formatter):
-
     def __init__(self):
         logging.Formatter.__init__(self)
 
     def format(self, message):
         msg = str(message.msg) % message.args
-        lines = msg.split('\n')
+        lines = msg.split("\n")
         if message.levelno < 10:
-            linestart = '[LVL%s] ' % message.levelno
+            linestart = "[LVL%s] " % message.levelno
         else:
-            linestart = '[%s] ' % message.levelname
-        return linestart + ('\n' + linestart).join(lines)
+            linestart = "[%s] " % message.levelname
+        return linestart + ("\n" + linestart).join(lines)
 
 
-def init_logger(verbose=None, name='problog', out=None):
+def init_logger(verbose=None, name="problog", out=None):
     """Initialize default logger.
 
     :param verbose: verbosity level (0: WARNING, 1: INFO, 2: DEBUG)
@@ -74,14 +73,14 @@ def init_logger(verbose=None, name='problog', out=None):
         logger.setLevel(logging.WARNING)
     elif verbose == 1:
         logger.setLevel(logging.INFO)
-        logger.info('Output level: INFO')
+        logger.info("Output level: INFO")
     elif verbose == 2:
         logger.setLevel(logging.DEBUG)
-        logger.debug('Output level: DEBUG')
+        logger.debug("Output level: DEBUG")
     else:
-        level = max(1, 12 - verbose)   # between 9 and 1
+        level = max(1, 12 - verbose)  # between 9 and 1
         logger.setLevel(level)
-        logger.log(level, 'Output level: %s' % level)
+        logger.log(level, "Output level: %s" % level)
     return logger
 
 
@@ -95,7 +94,7 @@ class Timer(object):
     :type output: file
     """
 
-    def __init__(self, msg, output=None, logger='problog'):
+    def __init__(self, msg, output=None, logger="problog"):
         self.message = msg
         self.start_time = None
         self.output = output
@@ -108,9 +107,12 @@ class Timer(object):
     def __exit__(self, *args):
         if self.output is None:
             logger = logging.getLogger(self.logger)
-            logger.info('%s: %.4fs' % (self.message, time.time() - self.start_time))
+            logger.info("%s: %.4fs" % (self.message, time.time() - self.start_time))
         else:
-            print ('%s: %.4fs' % (self.message, time.time() - self.start_time), file=self.output)
+            print(
+                "%s: %.4fs" % (self.message, time.time() - self.start_time),
+                file=self.output,
+            )
 
 
 # noinspection PyUnusedLocal
@@ -120,7 +122,7 @@ def _raise_timeout(*args):
     :param args: signal information (ignored)
     :raise KeyboardInterrupt:
     """
-    raise KeyboardInterrupt('Timeout')   # Global exception on all threads
+    raise KeyboardInterrupt("Timeout")  # Global exception on all threads
 
 
 def start_timer(timeout=0):
@@ -149,8 +151,8 @@ def subprocess_check_output(*popenargs, **kwargs):
     :return: result of subprocess.call
     """
 
-    if 'stderr' not in kwargs:
-        kwargs['stderr'] = subprocess.PIPE
+    if "stderr" not in kwargs:
+        kwargs["stderr"] = subprocess.PIPE
 
     popenargs = _find_process(*popenargs)
     process = subprocess.Popen(stdout=subprocess.PIPE, *popenargs, **kwargs)
@@ -232,6 +234,7 @@ def kill_proc_tree(process, including_parent=True):
     try:
         # noinspection PyPackageRequirements
         import psutil
+
         pid = process.pid
         parent = psutil.Process(pid)
         children = parent.children(recursive=True)
@@ -256,8 +259,8 @@ class OrderedSet(collections.MutableSet):
 
     def __init__(self, iterable=None):
         self.end = end = []
-        end += [None, end, end]         # sentinel node for doubly linked list
-        self.map = {}                   # key --> [key, prev, next]
+        end += [None, end, end]  # sentinel node for doubly linked list
+        self.map = {}  # key --> [key, prev, next]
         if iterable is not None:
             # noinspection PyMethodFirstArgAssignment
             self |= iterable
@@ -309,15 +312,15 @@ class OrderedSet(collections.MutableSet):
         :return: last element
         """
         if not self:
-            raise KeyError('set is empty')
+            raise KeyError("set is empty")
         key = self.end[1][0] if last else self.end[2][0]
         self.discard(key)
         return key
 
     def __repr__(self):
         if not self:
-            return '%s()' % (self.__class__.__name__,)
-        return '%s(%r)' % (self.__class__.__name__, list(self))
+            return "%s()" % (self.__class__.__name__,)
+        return "%s(%r)" % (self.__class__.__name__, list(self))
 
     def __eq__(self, other):
         if other is None:
@@ -327,7 +330,7 @@ class OrderedSet(collections.MutableSet):
         return set(self) == set(other)
 
 
-def mktempfile(suffix=''):
+def mktempfile(suffix=""):
     """Create a temporary file with the given name suffix.
 
     :param suffix: extension of the file
@@ -357,7 +360,7 @@ def load_module(filename):
     :return: loaded module
     :rtype: module
     """
-    if filename.endswith('.py'):
+    if filename.endswith(".py"):
         filename = os.path.abspath(os.path.join(os.path.dirname(__file__), filename))
         (path, name) = os.path.split(filename)
         (name, ext) = os.path.splitext(name)
@@ -365,7 +368,7 @@ def load_module(filename):
         return imp.load_module(name, extfile, filename, data)
     else:
         mod = __import__(filename)
-        components = filename.split('.')
+        components = filename.split(".")
         for c in components[1:]:
             mod = getattr(mod, c)
         return mod
@@ -381,13 +384,13 @@ def format_value(data, precision=8):
     :rtype: str
     """
     if isinstance(data, float):
-        data = ('%.' + str(precision) + 'g') % data
+        data = ("%." + str(precision) + "g") % data
     else:
         data = str(data)
-    return ('{:<' + str(precision + 2) + '}').format(data)
+    return ("{:<" + str(precision + 2) + "}").format(data)
 
 
-def format_tuple(data, precision=8, columnsep='\t'):
+def format_tuple(data, precision=8, columnsep="\t"):
     """Pretty print a given tuple (or single value).
 
     :param data: data to format
@@ -411,7 +414,7 @@ def format_tuple(data, precision=8, columnsep='\t'):
         return format_value(data, precision=precision)
 
 
-def format_dictionary(data, precision=8, keysep=':', columnsep='\t'):
+def format_dictionary(data, precision=8, keysep=":", columnsep="\t"):
     """Pretty print a given dictionary.
 
     :param data: data to format
@@ -431,11 +434,11 @@ def format_dictionary(data, precision=8, keysep=':', columnsep='\t'):
         s = []
         # Determine maximum length of key
         l = max(len(str(k)) for k in data)
-        fmt = ('{:>' + str(l) + '}{}{}{}')
+        fmt = "{:>" + str(l) + "}{}{}{}"
         for it in sorted([(str(k), v) for k, v in data.items()]):
             val = format_tuple(it[1], precision=precision, columnsep=columnsep)
             s.append(fmt.format(it[0], keysep, columnsep, val))
-        return '\n'.join(s)
+        return "\n".join(s)
 
 
 class UHeap(object):
@@ -580,7 +583,6 @@ class UHeap(object):
 
 
 class BitVector(object):
-
     def __init__(self):
         self.binsize_bits = 5
         self.binsize = 1 << self.binsize_bits
@@ -591,16 +593,16 @@ class BitVector(object):
     def add(self, index):
         # b = index // self.binsize
         # i = index % self.binsize
-        mask = ((1 << self.binsize_bits) - 1)
+        mask = (1 << self.binsize_bits) - 1
         b = index >> self.binsize_bits
         i = index & mask
         n = len(self.blocks)
         if n <= b:
             self.blocks.extend([0] * (b - n + 1))
-        self.blocks[b] |= (1 << i)
+        self.blocks[b] |= 1 << i
 
     def __contains__(self, index):
-        mask = ((1 << self.binsize_bits) - 1)
+        mask = (1 << self.binsize_bits) - 1
         b = index >> self.binsize_bits
         i = index & mask
         n = len(self.blocks)
@@ -675,5 +677,7 @@ class BitVector(object):
         n = (n & 0x0F0F0F0F0F0F0F0F) + ((n & 0xF0F0F0F0F0F0F0F0) >> 4)
         n = (n & 0x00FF00FF00FF00FF) + ((n & 0xFF00FF00FF00FF00) >> 8)
         n = (n & 0x0000FFFF0000FFFF) + ((n & 0xFFFF0000FFFF0000) >> 16)
-        n = (n & 0x00000000FFFFFFFF) + ((n & 0xFFFFFFFF00000000) >> 32)  # This last & isn't strictly necessary.
+        n = (n & 0x00000000FFFFFFFF) + (
+            (n & 0xFFFFFFFF00000000) >> 32
+        )  # This last & isn't strictly necessary.
         return n

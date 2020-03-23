@@ -1,0 +1,9 @@
+evidence(a,false).
+evidence(b).
+---
+evidence(a).
+evidence(b).
+---
+evidence(b,false).
+---
+evidence(b).

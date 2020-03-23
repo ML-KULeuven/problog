@@ -1,0 +1,18 @@
+evidence(a(1)).
+% b needs to be true
+---
+evidence(a(1)).
+evidence(b(1)).
+---
+evidence(c(1)).
+---
+evidence(b(2)).
+---
+evidence(a(2)).
+% b needs to be true
+---
+evidence(b(3)).
+---
+evidence(c(3)).
+---
+evidence(b(2)).

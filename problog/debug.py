@@ -25,9 +25,9 @@ import sys
 
 def printtrace(func):
     def _wrapped_function(*args, **kwdargs):
-        print('CALL:', func.__name__, args, kwdargs)
+        print("CALL:", func.__name__, args, kwdargs)
         result = func(*args, **kwdargs)
-        print('RETURN:', func.__name__, args, kwdargs, result)
+        print("RETURN:", func.__name__, args, kwdargs, result)
         return result
 
     return _wrapped_function
@@ -35,21 +35,20 @@ def printtrace(func):
 
 def printtrace_self(func):
     def _wrapped_function(self, *args, **kwdargs):
-        print('CALL:', func.__name__, args, kwdargs)
+        print("CALL:", func.__name__, args, kwdargs)
         result = func(self, *args, **kwdargs)
-        print('RETURN:', func.__name__, args, kwdargs, result)
+        print("RETURN:", func.__name__, args, kwdargs, result)
         return result
 
     return _wrapped_function
 
 
 class EngineTracer(object):
-
     def __init__(self, keep_trace=True, interactive=False):
         self.call_redirect = {}
         self.call_results = defaultdict(int)
-        self.level = 0    # level of calls (depth of stack)
-        self.stack = []   # stack of calls (approximate?)
+        self.level = 0  # level of calls (depth of stack)
+        self.stack = []  # stack of calls (approximate?)
         self.interactive = interactive
         if keep_trace:
             self.trace = []
@@ -64,21 +63,21 @@ class EngineTracer(object):
 
     def interact(self, record):
         if self.interactive and record:
-            print (self.show_record(record), end='\t?')
+            print(self.show_record(record), end="\t?")
             a = sys.stdin.readline()
-            if a.strip() == 'gp':
+            if a.strip() == "gp":
                 pass
-            elif a.strip() == 'l':
+            elif a.strip() == "l":
                 self.interactive = False
 
     def process_message(self, msgtype, msgtarget, msgargs, context):
-        if msgtarget is None and msgtype == 'r' and msgtarget in self.call_redirect:
+        if msgtarget is None and msgtype == "r" and msgtarget in self.call_redirect:
             self.call_result(*(self.call_redirect[msgtarget] + (msgargs[0],)))
 
-        if msgtype == 'r' and msgargs[3] and msgtarget in self.call_redirect:
+        if msgtype == "r" and msgargs[3] and msgtarget in self.call_redirect:
             self.call_return(*self.call_redirect[msgtarget])
             del self.call_redirect[msgtarget]
-        elif msgtype == 'c' and msgtarget in self.call_redirect:
+        elif msgtype == "c" and msgtarget in self.call_redirect:
             self.call_return(*self.call_redirect[msgtarget])
             del self.call_redirect[msgtarget]
 
@@ -98,7 +97,13 @@ class EngineTracer(object):
 
     def call_result(self, node_id, functor, context, result=None, location=None):
         term = Term(functor, *context, location=location)
-        record = (self.level, "result", term, time.time() - self.time_start_global, result)
+        record = (
+            self.level,
+            "result",
+            term,
+            time.time() - self.time_start_global,
+            result,
+        )
         if self.trace is not None:
             self.trace.append(record)
         self.call_results[(node_id, term)] += 1
@@ -113,9 +118,15 @@ class EngineTracer(object):
         if self.stack:
             self.stack.pop(-1)
         if self.call_results[(node_id, term)] > 0:
-            record = (self.level, "complete", term, now-self.time_start_global, now-ts)
+            record = (
+                self.level,
+                "complete",
+                term,
+                now - self.time_start_global,
+                now - ts,
+            )
         else:
-            record = (self.level, "fail", term, now-self.time_start_global, now-ts)
+            record = (self.level, "fail", term, now - self.time_start_global, now - ts)
         if self.trace is not None:
             self.trace.append(record)
 
@@ -131,16 +142,22 @@ class EngineTracer(object):
         :param aggregate: aggregation level (0: no aggregation, 1: same call, 2: predicate)
         :return: string
         """
-        s = ''
+        s = ""
         if aggregate == 0:
-            s += '%50s\t %7s \t %4s \t %4s \t %s \n' % ("call", "time", "#sol", "#call", "location")
-            s += '-' * 100 + '\n'
+            s += "%50s\t %7s \t %4s \t %4s \t %s \n" % (
+                "call",
+                "time",
+                "#sol",
+                "#call",
+                "location",
+            )
+            s += "-" * 100 + "\n"
             for tm, key in sorted((t, k) for k, t in self.timestats.items()):
                 term, location = key
                 nb = self.resultstats[key]
                 cl = self.callstats[key]
                 location = location_string(location)
-                s += '%50s\t %.5f \t %d \t %d \t [%s]\n' % (term, tm, nb, cl, location)
+                s += "%50s\t %.5f \t %d \t %d \t [%s]\n" % (term, tm, nb, cl, location)
         else:
             timestats_agg = defaultdict(float)
             resultstats_agg = defaultdict(int)
@@ -155,20 +172,20 @@ class EngineTracer(object):
                 resultstats_agg[key] += self.resultstats[k]
                 callstats_agg[key] += self.callstats[k]
 
-            s += '%50s\t %7s \t %4s \t %4s\n' % ("call", "time", "#sol", "#call")
-            s += '-' * 100 + '\n'
+            s += "%50s\t %7s \t %4s \t %4s\n" % ("call", "time", "#sol", "#call")
+            s += "-" * 100 + "\n"
             for tm, key in sorted((t, k) for k, t in timestats_agg.items()):
                 nb = resultstats_agg[key]
                 cl = callstats_agg[key]
-                s += '%50s\t %.5f \t %d \t %d\n' % (key, tm, nb, cl)
+                s += "%50s\t %.5f \t %d \t %d\n" % (key, tm, nb, cl)
 
         return s
 
     def show_trace(self):
-        s = ''
+        s = ""
         if self.trace is not None:
             for record in self.trace:
-                s += self.show_record(record) + '\n'
+                s += self.show_record(record) + "\n"
         return s
 
     def show_record(self, record):
@@ -176,28 +193,49 @@ class EngineTracer(object):
         msg = record[1]
         term = record[2]
         tm_cumul = record[3]
-        if msg == 'call':
-            s = "%s %s %s {%.5f} [%s]" % (' ' * lvl, msg, term, tm_cumul, location_string(term.location))
-        elif msg == 'result':
+        if msg == "call":
+            s = "%s %s %s {%.5f} [%s]" % (
+                " " * lvl,
+                msg,
+                term,
+                tm_cumul,
+                location_string(term.location),
+            )
+        elif msg == "result":
             args = record[4]
-            s = "%s %s %s %s {%.5f} [%s]" % (' ' * lvl, msg, term, args, tm_cumul, location_string(term.location))
+            s = "%s %s %s %s {%.5f} [%s]" % (
+                " " * lvl,
+                msg,
+                term,
+                args,
+                tm_cumul,
+                location_string(term.location),
+            )
         else:
             tm_local = record[4]
-            s = "%s %s %s {%.5f} {%.5f} [%s]" % (' ' * lvl, msg, term, tm_cumul, tm_local, location_string(term.location))
+            s = "%s %s %s {%.5f} {%.5f} [%s]" % (
+                " " * lvl,
+                msg,
+                term,
+                tm_cumul,
+                tm_local,
+                location_string(term.location),
+            )
         return s
 
 
 def location_string(location):
     if location is None:
-        return ''
+        return ""
     if type(location) == tuple:
         fn, ln, cn = location
         if fn is None:
-            return 'at %s:%s' % (ln, cn)
+            return "at %s:%s" % (ln, cn)
         else:
-            return 'at %s:%s in %s' % (ln, cn, fn)
+            return "at %s:%s in %s" % (ln, cn, fn)
     else:
-        return 'at character %s' % location
+        return "at character %s" % location
+
 
 # Assume the program
 #   a(1).

@@ -24,8 +24,19 @@ Implementation of Prolog / ProbLog builtins.
 
 from __future__ import print_function
 
-from .logic import term2str, Term, Clause, Constant, term2list, list2term, \
-    is_ground, is_variable, Var, AnnotatedDisjunction, Object
+from .logic import (
+    term2str,
+    Term,
+    Clause,
+    Constant,
+    term2list,
+    list2term,
+    is_ground,
+    is_variable,
+    Var,
+    AnnotatedDisjunction,
+    Object,
+)
 from .program import PrologFile
 from .errors import GroundingError, UserError
 from .engine_unify import unify_value, UnifyError, substitute_simple
@@ -46,13 +57,13 @@ class builtin(object):
 
     @classmethod
     def _add_builtin(cls, engine, bltn, b=None, s=None, sp=None):
-        if bltn[0] == 'bool':
+        if bltn[0] == "bool":
             engine.add_builtin(bltn[1], bltn[2], b(bltn[3]))
-        elif bltn[0] == 'det':
+        elif bltn[0] == "det":
             engine.add_builtin(bltn[1], bltn[2], s(bltn[3]))
-        elif bltn[0] == 'prob':
+        elif bltn[0] == "prob":
             engine.add_builtin(bltn[1], bltn[2], sp(bltn[3]))
-        elif bltn[0] == 'raw':
+        elif bltn[0] == "raw":
             engine.add_builtin(bltn[1], bltn[2], bltn[3])
         else:
             raise ValueError("Unknown builtin type '%s'." % bltn[0])
@@ -74,27 +85,23 @@ class builtin(object):
 
 
 class builtin_boolean(builtin):
-
     def __init__(self, *args):
-        builtin.__init__(self, 'bool', *args)
+        builtin.__init__(self, "bool", *args)
 
 
 class builtin_simple(builtin):
-
     def __init__(self, *args):
-        builtin.__init__(self, 'det', *args)
+        builtin.__init__(self, "det", *args)
 
 
 class builtin_probabilistic(builtin):
-
     def __init__(self, *args):
-        builtin.__init__(self, 'prob', *args)
+        builtin.__init__(self, "prob", *args)
 
 
 class builtin_raw(builtin):
-
     def __init__(self, *args):
-        builtin.__init__(self, 'raw', *args)
+        builtin.__init__(self, "raw", *args)
 
 
 def add_standard_builtins(engine, b=None, s=None, sp=None):
@@ -108,138 +115,138 @@ def add_standard_builtins(engine, b=None, s=None, sp=None):
     """
 
     # SPECIAL CASES NEED TO BE IN ORDER
-    engine.add_builtin('true', 0, b(_builtin_true))  # -1
-    engine.add_builtin('fail', 0, b(_builtin_fail))  # -2
-    engine.add_builtin('false', 0, b(_builtin_fail))  # -3
+    engine.add_builtin("true", 0, b(_builtin_true))  # -1
+    engine.add_builtin("fail", 0, b(_builtin_fail))  # -2
+    engine.add_builtin("false", 0, b(_builtin_fail))  # -3
 
-    engine.add_builtin('=', 2, s(_builtin_eq))  # -4
-    engine.add_builtin('\=', 2, b(_builtin_neq))  # -5
+    engine.add_builtin("=", 2, s(_builtin_eq))  # -4
+    engine.add_builtin("\=", 2, b(_builtin_neq))  # -5
 
-    engine.add_builtin('findall', 3, sp(_builtin_findall))  # -6
-    engine.add_builtin('all', 3, sp(_builtin_all))  # -7
-    engine.add_builtin('all_or_none', 3, sp(_builtin_all_or_none))  # -8
+    engine.add_builtin("findall", 3, sp(_builtin_findall))  # -6
+    engine.add_builtin("all", 3, sp(_builtin_all))  # -7
+    engine.add_builtin("all_or_none", 3, sp(_builtin_all_or_none))  # -8
 
-    engine.add_builtin('==', 2, b(_builtin_same))
-    engine.add_builtin('\==', 2, b(_builtin_notsame))
+    engine.add_builtin("==", 2, b(_builtin_same))
+    engine.add_builtin("\==", 2, b(_builtin_notsame))
 
-    engine.add_builtin('is', 2, s(_builtin_is))
+    engine.add_builtin("is", 2, s(_builtin_is))
 
-    engine.add_builtin('>', 2, b(_builtin_gt))
-    engine.add_builtin('<', 2, b(_builtin_lt))
-    engine.add_builtin('=<', 2, b(_builtin_le))
-    engine.add_builtin('>=', 2, b(_builtin_ge))
-    engine.add_builtin('=\=', 2, b(_builtin_val_neq))
-    engine.add_builtin('=:=', 2, b(_builtin_val_eq))
+    engine.add_builtin(">", 2, b(_builtin_gt))
+    engine.add_builtin("<", 2, b(_builtin_lt))
+    engine.add_builtin("=<", 2, b(_builtin_le))
+    engine.add_builtin(">=", 2, b(_builtin_ge))
+    engine.add_builtin("=\=", 2, b(_builtin_val_neq))
+    engine.add_builtin("=:=", 2, b(_builtin_val_eq))
 
-    engine.add_builtin('var', 1, b(_builtin_var))
-    engine.add_builtin('atom', 1, b(_builtin_atom))
-    engine.add_builtin('atomic', 1, b(_builtin_atomic))
-    engine.add_builtin('compound', 1, b(_builtin_compound))
-    engine.add_builtin('float', 1, b(_builtin_float))
-    engine.add_builtin('rational', 1, b(_builtin_rational))
-    engine.add_builtin('integer', 1, b(_builtin_integer))
-    engine.add_builtin('nonvar', 1, b(_builtin_nonvar))
-    engine.add_builtin('number', 1, b(_builtin_number))
-    engine.add_builtin('simple', 1, b(_builtin_simple))
-    engine.add_builtin('callable', 1, b(_builtin_callable))
-    engine.add_builtin('dbreference', 1, b(_builtin_dbreference))
-    engine.add_builtin('primitive', 1, b(_builtin_primitive))
-    engine.add_builtin('ground', 1, b(_builtin_ground))
-    engine.add_builtin('is_list', 1, b(_builtin_is_list))
+    engine.add_builtin("var", 1, b(_builtin_var))
+    engine.add_builtin("atom", 1, b(_builtin_atom))
+    engine.add_builtin("atomic", 1, b(_builtin_atomic))
+    engine.add_builtin("compound", 1, b(_builtin_compound))
+    engine.add_builtin("float", 1, b(_builtin_float))
+    engine.add_builtin("rational", 1, b(_builtin_rational))
+    engine.add_builtin("integer", 1, b(_builtin_integer))
+    engine.add_builtin("nonvar", 1, b(_builtin_nonvar))
+    engine.add_builtin("number", 1, b(_builtin_number))
+    engine.add_builtin("simple", 1, b(_builtin_simple))
+    engine.add_builtin("callable", 1, b(_builtin_callable))
+    engine.add_builtin("dbreference", 1, b(_builtin_dbreference))
+    engine.add_builtin("primitive", 1, b(_builtin_primitive))
+    engine.add_builtin("ground", 1, b(_builtin_ground))
+    engine.add_builtin("is_list", 1, b(_builtin_is_list))
 
-    engine.add_builtin('=..', 2, s(_builtin_split_call))
-    engine.add_builtin('arg', 3, s(_builtin_arg))
-    engine.add_builtin('functor', 3, s(_builtin_functor))
+    engine.add_builtin("=..", 2, s(_builtin_split_call))
+    engine.add_builtin("arg", 3, s(_builtin_arg))
+    engine.add_builtin("functor", 3, s(_builtin_functor))
 
-    engine.add_builtin('@>', 2, b(_builtin_struct_gt))
-    engine.add_builtin('@<', 2, b(_builtin_struct_lt))
-    engine.add_builtin('@>=', 2, b(_builtin_struct_ge))
-    engine.add_builtin('@=<', 2, b(_builtin_struct_le))
-    engine.add_builtin('compare', 3, s(_builtin_compare))
+    engine.add_builtin("@>", 2, b(_builtin_struct_gt))
+    engine.add_builtin("@<", 2, b(_builtin_struct_lt))
+    engine.add_builtin("@>=", 2, b(_builtin_struct_ge))
+    engine.add_builtin("@=<", 2, b(_builtin_struct_le))
+    engine.add_builtin("compare", 3, s(_builtin_compare))
 
-    engine.add_builtin('length', 2, s(_builtin_length))
+    engine.add_builtin("length", 2, s(_builtin_length))
     # engine.add_builtin('call_external', 2, s(_builtin_call_external))
 
-    engine.add_builtin('sort', 2, s(_builtin_sort))
-    engine.add_builtin('between', 3, s(_builtin_between))
-    engine.add_builtin('succ', 2, s(_builtin_succ))
-    engine.add_builtin('plus', 3, s(_builtin_plus))
+    engine.add_builtin("sort", 2, s(_builtin_sort))
+    engine.add_builtin("between", 3, s(_builtin_between))
+    engine.add_builtin("succ", 2, s(_builtin_succ))
+    engine.add_builtin("plus", 3, s(_builtin_plus))
 
-    engine.add_builtin('consult', 1, b(_builtin_consult))
-    engine.add_builtin('.', 2, b(_builtin_consult_as_list))
+    engine.add_builtin("consult", 1, b(_builtin_consult))
+    engine.add_builtin(".", 2, b(_builtin_consult_as_list))
     # engine.add_builtin('load_external', 1, b(_builtin_load_external))
-    engine.add_builtin('unknown', 1, b(_builtin_unknown))
+    engine.add_builtin("unknown", 1, b(_builtin_unknown))
 
-    engine.add_builtin('use_module', 1, b(_builtin_use_module))
-    engine.add_builtin('use_module', 2, b(_builtin_use_module2))
-    engine.add_builtin('module', 2, b(_builtin_module))
+    engine.add_builtin("use_module", 1, b(_builtin_use_module))
+    engine.add_builtin("use_module", 2, b(_builtin_use_module2))
+    engine.add_builtin("module", 2, b(_builtin_module))
 
-    engine.add_builtin('once', 1, _builtin_call)
-    engine.add_builtin('call', 1, _builtin_call)
-    engine.add_builtin('call_nc', 1, _builtin_call_nc)
-    engine.add_builtin('try_call', 1, _builtin_try_call)
+    engine.add_builtin("once", 1, _builtin_call)
+    engine.add_builtin("call", 1, _builtin_call)
+    engine.add_builtin("call_nc", 1, _builtin_call_nc)
+    engine.add_builtin("try_call", 1, _builtin_try_call)
     for i in range(2, 10):
-        engine.add_builtin('call', i, _builtin_calln)
-        engine.add_builtin('call_nc', i, _builtin_calln_nc)
-        engine.add_builtin('try_call', i, _builtin_try_calln)
+        engine.add_builtin("call", i, _builtin_calln)
+        engine.add_builtin("call_nc", i, _builtin_calln_nc)
+        engine.add_builtin("try_call", i, _builtin_try_calln)
 
-    engine.add_builtin('subquery', 2, s(_builtin_subquery))
-    engine.add_builtin('subquery', 3, s(_builtin_subquery))
+    engine.add_builtin("subquery", 2, s(_builtin_subquery))
+    engine.add_builtin("subquery", 3, s(_builtin_subquery))
 
-    engine.add_builtin('sample_uniform1', 3, sp(_builtin_sample_uniform))
-
-    for i in range(1, 10):
-        engine.add_builtin('debugprint', i, b(_builtin_debugprint))
+    engine.add_builtin("sample_uniform1", 3, sp(_builtin_sample_uniform))
 
     for i in range(1, 10):
-        engine.add_builtin('write', i, b(_builtin_write))
+        engine.add_builtin("debugprint", i, b(_builtin_debugprint))
 
     for i in range(1, 10):
-        engine.add_builtin('writenl', i, b(_builtin_writenl))
-        engine.add_builtin('writeln', i, b(_builtin_writenl))
+        engine.add_builtin("write", i, b(_builtin_write))
 
     for i in range(1, 10):
-        engine.add_builtin('error', i, b(_builtin_error))
+        engine.add_builtin("writenl", i, b(_builtin_writenl))
+        engine.add_builtin("writeln", i, b(_builtin_writenl))
 
-    engine.add_builtin('nl', 0, b(_builtin_nl))
-    engine.add_builtin('cmd_args', 1, s(_builtin_cmdargs))
-    engine.add_builtin('atom_number', 2, s(_builtin_atom_number))
-    engine.add_builtin('nocache', 2, b(_builtin_nocache))
+    for i in range(1, 10):
+        engine.add_builtin("error", i, b(_builtin_error))
 
-    engine.add_builtin('numbervars', 2, s(_builtin_numbervars_0))
-    engine.add_builtin('numbervars', 3, s(_builtin_numbervars))
-    engine.add_builtin('varnumbers', 2, s(_builtin_varnumbers))
+    engine.add_builtin("nl", 0, b(_builtin_nl))
+    engine.add_builtin("cmd_args", 1, s(_builtin_cmdargs))
+    engine.add_builtin("atom_number", 2, s(_builtin_atom_number))
+    engine.add_builtin("nocache", 2, b(_builtin_nocache))
 
-    engine.add_builtin('subsumes_term', 2, b(_builtin_subsumes_term))
-    engine.add_builtin('subsumes_chk', 2, b(_builtin_subsumes_term))
+    engine.add_builtin("numbervars", 2, s(_builtin_numbervars_0))
+    engine.add_builtin("numbervars", 3, s(_builtin_numbervars))
+    engine.add_builtin("varnumbers", 2, s(_builtin_varnumbers))
 
-    engine.add_builtin('possible', 1, s(_builtin_possible))
-    engine.add_builtin('clause', 2, s(_builtin_clause))
-    engine.add_builtin('clause', 3, s(_builtin_clause3))
+    engine.add_builtin("subsumes_term", 2, b(_builtin_subsumes_term))
+    engine.add_builtin("subsumes_chk", 2, b(_builtin_subsumes_term))
 
-    engine.add_builtin('create_scope', 2, s(_builtin_create_scope))
+    engine.add_builtin("possible", 1, s(_builtin_possible))
+    engine.add_builtin("clause", 2, s(_builtin_clause))
+    engine.add_builtin("clause", 3, s(_builtin_clause3))
 
-    engine.add_builtin('subquery_in_scope', 3, s(_builtin_subquery_in_scope))
-    engine.add_builtin('subquery_in_scope', 4, s(_builtin_subquery_in_scope))
+    engine.add_builtin("create_scope", 2, s(_builtin_create_scope))
 
-    engine.add_builtin('call_in_scope', 2, _builtin_call_in_scope)
+    engine.add_builtin("subquery_in_scope", 3, s(_builtin_subquery_in_scope))
+    engine.add_builtin("subquery_in_scope", 4, s(_builtin_subquery_in_scope))
+
+    engine.add_builtin("call_in_scope", 2, _builtin_call_in_scope)
     for i in range(2, 10):
-        engine.add_builtin('call_in_scope', i + 1, _builtin_calln_in_scope)
+        engine.add_builtin("call_in_scope", i + 1, _builtin_calln_in_scope)
 
-    engine.add_builtin('find_scope', 2, s(_builtin_find_scope))
+    engine.add_builtin("find_scope", 2, s(_builtin_find_scope))
 
     builtin.add_builtins(engine, b, s, sp)
 
 
 # @builtin_boolean('nocache', 1)
 def _builtin_nocache(functor, arity, database=None, **kwd):
-    check_mode((functor, arity), ['ai'], **kwd)
+    check_mode((functor, arity), ["ai"], **kwd)
     database.dont_cache.add((str(functor), int(arity)))
     return True
 
 
 def _builtin_clause(head, body, database=None, **kwd):
-    mode = check_mode((head, body), ['c*', 'v*'], **kwd)
+    mode = check_mode((head, body), ["c*", "v*"], **kwd)
 
     if mode == 0:
         clause_def = database.find(head)
@@ -261,7 +268,7 @@ def _builtin_clause(head, body, database=None, **kwd):
             b = clause.body
         else:
             h = clause
-            b = Term('true')
+            b = Term("true")
 
         try:
             unify_value(head, h, {})
@@ -274,7 +281,7 @@ def _builtin_clause(head, body, database=None, **kwd):
 
 
 def _builtin_clause3(head, body, prob, database=None, **kwd):
-    mode = check_mode((head, body, prob), ['c**', 'v**'], **kwd)
+    mode = check_mode((head, body, prob), ["c**", "v**"], **kwd)
 
     if mode == 0:
         clause_def = database.find(head)
@@ -299,7 +306,7 @@ def _builtin_clause3(head, body, prob, database=None, **kwd):
             p = list2term([hh.probability for hh in clause.heads])
         else:
             h = clause
-            b = Term('true')
+            b = Term("true")
             p = clause.probability
         if p is None:
             p = Constant(1.0)
@@ -316,7 +323,7 @@ def _builtin_clause3(head, body, prob, database=None, **kwd):
 
 
 def _builtin_cmdargs(lst, engine=None, **kwd):
-    m = check_mode((lst,), ['v', 'L'], **kwd)
+    m = check_mode((lst,), ["v", "L"], **kwd)
     args = engine.args
     if args is None:
         args = []
@@ -332,14 +339,14 @@ def _builtin_cmdargs(lst, engine=None, **kwd):
 
 
 def _builtin_atom_number(atom, number, **kwd):
-    mode = check_mode((atom, number), ['vf', 'vi', 'av', 'af', 'ai'], **kwd)
+    mode = check_mode((atom, number), ["vf", "vi", "av", "af", "ai"], **kwd)
     if mode in (0, 1):
         return [(Term(str(number)), number)]
     elif mode == 2:
         try:
             v = float(atom.functor)
         except ValueError:
-            return []   # fail silently
+            return []  # fail silently
             # raise GroundingError('Atom does not represent a number: \'%s\'' % atom)
 
         if round(v) == v:
@@ -356,7 +363,7 @@ def _builtin_atom_number(atom, number, **kwd):
 
 # noinspection PyUnusedLocal
 def _builtin_debugprint(*args, **kwd):
-    print(' '.join(map(term2str, args)), file=sys.stderr)
+    print(" ".join(map(term2str, args)), file=sys.stderr)
     return True
 
 
@@ -368,21 +375,22 @@ def term2str_noquote(term):
 
 
 def _builtin_write(*args, **kwd):
-    print(' '.join(map(term2str_noquote, args)), end='')
+    print(" ".join(map(term2str_noquote, args)), end="")
     return True
 
 
 def _builtin_error(*args, **kwd):
-    location = kwd.get('call_origin', (None, None))[1]
-    database = kwd['database']
+    location = kwd.get("call_origin", (None, None))[1]
+    database = kwd["database"]
     location = database.lineno(location)
-    message = ''.join(map(term2str_noquote, args))
+    message = "".join(map(term2str_noquote, args))
     raise UserError(message, location=location)
 
 
 def _builtin_writenl(*args, **kwd):
-    print(' '.join(map(term2str_noquote, args)))
+    print(" ".join(map(term2str_noquote, args)))
     return True
+
 
 def _builtin_nl(**kwd):
     print()
@@ -398,19 +406,19 @@ class CallModeError(GroundingError):
         if accepted is None:
             accepted = []
         if functor:
-            self.scope = '%s/%s' % (functor, len(args))
+            self.scope = "%s/%s" % (functor, len(args))
         else:
             self.scope = None
-        self.received = ', '.join(map(self._show_arg, args))
-        self.expected = [', '.join(map(self._show_mode, mode)) for mode in accepted]
-        msg = 'Invalid argument types for call'
+        self.received = ", ".join(map(self._show_arg, args))
+        self.expected = [", ".join(map(self._show_mode, mode)) for mode in accepted]
+        msg = "Invalid argument types for call"
         if self.scope:
             msg += " to '%s'" % self.scope
-        msg += ': arguments: (%s)' % self.received
+        msg += ": arguments: (%s)" % self.received
         if accepted:
-            msg += ', expected: (%s)' % ') or ('.join(self.expected)
+            msg += ", expected: (%s)" % ") or (".join(self.expected)
         else:
-            msg += ', expected: ' + message
+            msg += ", expected: " + message
         GroundingError.__init__(self, msg, location)
 
     def _show_arg(self, x):
@@ -465,8 +473,12 @@ def _is_float_pos(term):
 
 
 def _is_float_neg(term):
-    return _is_term(term) and term.arity == 1 and term.functor == "'-'" and \
-        _is_float_pos(term.args[0])
+    return (
+        _is_term(term)
+        and term.arity == 1
+        and term.functor == "'-'"
+        and _is_float_pos(term.args[0])
+    )
 
 
 def _is_float(term):
@@ -478,8 +490,12 @@ def _is_integer_pos(term):
 
 
 def _is_integer_neg(term):
-    return _is_term(term) and term.arity == 1 and term.functor == "'-'" and \
-        _is_integer_pos(term.args[0])
+    return (
+        _is_term(term)
+        and term.arity == 1
+        and term.functor == "'-'"
+        and _is_integer_pos(term.args[0])
+    )
 
 
 def _is_integer(term):
@@ -526,7 +542,7 @@ def _is_list_maybe(term):
     :param term:
     :return:
     """
-    return _is_compound(term) and term.functor == '.' and term.arity == 2
+    return _is_compound(term) and term.functor == "." and term.arity == 2
 
 
 def _is_list_nonempty(term):
@@ -548,7 +564,7 @@ def _is_fixed_list_nonempty(term):
 
 
 def _is_list_empty(term):
-    return _is_atom(term) and term.functor == '[]'
+    return _is_atom(term) and term.functor == "[]"
 
 
 def _is_list(term):
@@ -564,19 +580,19 @@ def _is_object(term):
 
 
 mode_types = {
-    'i': ('integer', _is_integer),
-    'I': ('positive_integer', _is_integer_pos),
-    'f': ('float', _is_float),
-    'v': ('var', _is_var),
-    'n': ('nonvar', _is_nonvar),
-    'l': ('list', _is_list),
-    'L': ('fixed_list', _is_fixed_list),  # List of fixed length (i.e. tail is [])
-    '*': ('any', lambda x: True),
-    '<': ('compare', _is_compare),  # < = >
-    'g': ('ground', is_ground),
-    'a': ('atom', _is_atom),
-    'c': ('callable', _is_term),
-    'o': ('object', _is_object)
+    "i": ("integer", _is_integer),
+    "I": ("positive_integer", _is_integer_pos),
+    "f": ("float", _is_float),
+    "v": ("var", _is_var),
+    "n": ("nonvar", _is_nonvar),
+    "l": ("list", _is_list),
+    "L": ("fixed_list", _is_fixed_list),  # List of fixed length (i.e. tail is [])
+    "*": ("any", lambda x: True),
+    "<": ("compare", _is_compare),  # < = >
+    "g": ("ground", is_ground),
+    "a": ("atom", _is_atom),
+    "c": ("callable", _is_term),
+    "o": ("object", _is_object),
 }
 
 
@@ -652,23 +668,29 @@ def _builtin_split_call(term, parts, database=None, location=None, **kwdargs):
     :param kwdargs:
     :return:
     """
-    functor = '=..'
+    functor = "=.."
     # modes:
     #   <v> =.. list  => list has to be fixed length and non-empty
     #                       IF its length > 1 then first element should be an atom
     #   <n> =.. <list or var>
     #
-    mode = check_mode((term, parts), ['vL', 'nv', 'nl'], functor=functor, **kwdargs)
+    mode = check_mode((term, parts), ["vL", "nv", "nl"], functor=functor, **kwdargs)
     if mode == 0:
         elements, tail = list_elements(parts)
         if len(elements) == 0:
-            raise CallModeError(functor, (term, parts),
-                                message='non-empty list for arg #2 if arg #1 is a variable',
-                                location=database.lineno(location))
+            raise CallModeError(
+                functor,
+                (term, parts),
+                message="non-empty list for arg #2 if arg #1 is a variable",
+                location=database.lineno(location),
+            )
         elif len(elements) > 1 and not _is_atom(elements[0]):
-            raise CallModeError(functor, (term, parts),
-                                message='atom as first element in list if arg #1 is a variable',
-                                location=database.lineno(location))
+            raise CallModeError(
+                functor,
+                (term, parts),
+                message="atom as first element in list if arg #1 is a variable",
+                location=database.lineno(location),
+            )
         elif len(elements) == 1:
             # Special case => term == parts[0]
             return [(elements[0], parts)]
@@ -677,9 +699,9 @@ def _builtin_split_call(term, parts, database=None, location=None, **kwdargs):
             return [(term_part, parts)]
     else:
         part_list = (term.with_args(),) + term.args
-        current = Term('[]')
+        current = Term("[]")
         for t in reversed(part_list):
-            current = Term('.', t, current)
+            current = Term(".", t, current)
         try:
             local_values = {}
             list_part = unify_value(current, parts, local_values)
@@ -692,7 +714,7 @@ def _builtin_split_call(term, parts, database=None, location=None, **kwdargs):
 
 
 def _builtin_arg(index, term, arguments, **kwdargs):
-    check_mode((index, term, arguments), ['In*'], functor='arg', **kwdargs)
+    check_mode((index, term, arguments), ["In*"], functor="arg", **kwdargs)
     index_v = int(index) - 1
     if 0 <= index_v < len(term.args):
         try:
@@ -705,7 +727,9 @@ def _builtin_arg(index, term, arguments, **kwdargs):
 
 
 def _builtin_functor(term, functor, arity, **kwdargs):
-    mode = check_mode((term, functor, arity), ['vaI', 'n**'], functor='functor', **kwdargs)
+    mode = check_mode(
+        (term, functor, arity), ["vaI", "n**"], functor="functor", **kwdargs
+    )
 
     if mode == 0:
         return [(Term(functor, *((None,) * int(arity))), functor, arity)]
@@ -774,7 +798,7 @@ def _builtin_gt(arg1, arg2, engine=None, **kwdargs):
     """``A > B``
         A and B are ground
     """
-    check_mode((arg1, arg2), ['gg'], functor='>', **kwdargs)
+    check_mode((arg1, arg2), ["gg"], functor=">", **kwdargs)
     a_value = arg1.compute_value(engine.functions)
     b_value = arg2.compute_value(engine.functions)
     if a_value is None or b_value is None:
@@ -787,7 +811,7 @@ def _builtin_lt(arg1, arg2, engine=None, **kwdargs):
     """``A > B``
         A and B are ground
     """
-    check_mode((arg1, arg2), ['gg'], functor='<', **kwdargs)
+    check_mode((arg1, arg2), ["gg"], functor="<", **kwdargs)
     a_value = arg1.compute_value(engine.functions)
     b_value = arg2.compute_value(engine.functions)
     if a_value is None or b_value is None:
@@ -800,7 +824,7 @@ def _builtin_le(arg1, arg2, engine=None, **k):
     """``A =< B``
         A and B are ground
     """
-    check_mode((arg1, arg2), ['gg'], functor='=<', **k)
+    check_mode((arg1, arg2), ["gg"], functor="=<", **k)
     a_value = arg1.compute_value(engine.functions)
     b_value = arg2.compute_value(engine.functions)
     if a_value is None or b_value is None:
@@ -813,7 +837,7 @@ def _builtin_ge(arg1, arg2, engine=None, **k):
     """``A >= B``
         A and B are ground
     """
-    check_mode((arg1, arg2), ['gg'], functor='>=', **k)
+    check_mode((arg1, arg2), ["gg"], functor=">=", **k)
     a_value = arg1.compute_value(engine.functions)
     b_value = arg2.compute_value(engine.functions)
     if a_value is None or b_value is None:
@@ -826,7 +850,7 @@ def _builtin_val_neq(a, b, engine=None, **k):
     """``A =\= B``
         A and B are ground
     """
-    check_mode((a, b), ['gg'], functor='=\=', **k)
+    check_mode((a, b), ["gg"], functor="=\=", **k)
     a_value = a.compute_value(engine.functions)
     b_value = b.compute_value(engine.functions)
     if a_value is None or b_value is None:
@@ -839,7 +863,7 @@ def _builtin_val_eq(a, b, engine=None, **k):
     """``A =:= B``
         A and B are ground
     """
-    check_mode((a, b), ['gg'], functor='=:=', **k)
+    check_mode((a, b), ["gg"], functor="=:=", **k)
     a_value = a.compute_value(engine.functions)
     b_value = b.compute_value(engine.functions)
     if a_value is None or b_value is None:
@@ -857,7 +881,7 @@ def _builtin_is(a, b, engine=None, **k):
         @param engine:
         @param k:
     """
-    check_mode((a, b), ['*g'], functor='is', **k)
+    check_mode((a, b), ["*g"], functor="is", **k)
     try:
         b_value = b.compute_value(engine.functions)
         if b_value is None:
@@ -1049,7 +1073,7 @@ def _builtin_struct_ge(a, b, **k):
 
 
 def _builtin_compare(c, a, b, **k):
-    mode = check_mode((c, a, b), ['<**', 'v**'], functor='compare', **k)
+    mode = check_mode((c, a, b), ["<**", "v**"], functor="compare", **k)
     compares = "'>'", "'='", "'<'"
     cp = struct_cmp(a, b)
     c_token = compares[1 - cp]
@@ -1063,10 +1087,11 @@ def _builtin_compare(c, a, b, **k):
 
 # numbervars(T,+N1,-Nn)    number the variables TBD?
 
+
 def build_list(elements, tail):
     current = tail
     for el in reversed(elements):
-        current = Term('.', el, current)
+        current = Term(".", el, current)
     return current
 
 
@@ -1076,10 +1101,9 @@ def _builtin_numbervars_0(term, output, **k):
 
 
 def _builtin_numbervars(term, start, output, **k):
-    mode = check_mode((term, start, output), ['*i*'], functor='numbervars', **k)
+    mode = check_mode((term, start, output), ["*i*"], functor="numbervars", **k)
 
     class NumberVars(object):
-
         def __init__(self, start):
             self._n = start
             self._table = {}
@@ -1088,7 +1112,7 @@ def _builtin_numbervars(term, start, output, **k):
             if item in self._table:
                 return self._table[item]
             else:
-                r = Term('$Var', Constant(self._n))
+                r = Term("$Var", Constant(self._n))
                 self._table[item] = r
                 self._n += 1
                 return r
@@ -1098,20 +1122,19 @@ def _builtin_numbervars(term, start, output, **k):
 
 
 def _builtin_varnumbers(term, output, engine=None, context=None, **k):
-    check_mode((term, output), ['cv', 'cc'], functor='varnumbers', **k)
+    check_mode((term, output), ["cv", "cc"], functor="varnumbers", **k)
     start = engine.context_min_var(context)
 
     class VarNumbers(object):
-
         def __init__(self, start):
             self._n = start
             self._table = {}
 
         def __contains__(self, item):
-            return isinstance(item, Term) and item.functor == '$Var'
+            return isinstance(item, Term) and item.functor == "$Var"
 
         def __getitem__(self, item):
-            assert isinstance(item, Term) and item.functor == '$Var'
+            assert isinstance(item, Term) and item.functor == "$Var"
             item = int(item.args[0])
             if item in self._table:
                 return self._table[item]
@@ -1119,9 +1142,11 @@ def _builtin_varnumbers(term, output, engine=None, context=None, **k):
                 self._n -= 1
                 self._table[item] = self._n
                 return self._n
+
     xx = term.apply_term(VarNumbers(start))
     out = unify_value(output, xx, {})
     return [(term, out)]
+
 
 # class UnknownExternal(GroundingError):
 #     """Undefined clause in call."""
@@ -1146,7 +1171,7 @@ def _builtin_varnumbers(term, output, engine=None, context=None, **k):
 
 
 def _builtin_length(l, n, **k):
-    mode = check_mode((l, n), ['LI', 'Lv', 'lI', 'vI'], functor='length', **k)
+    mode = check_mode((l, n), ["LI", "Lv", "lI", "vI"], functor="length", **k)
     # Note that Prolog also accepts 'vv' and 'lv', but these are unbounded.
     # Note that lI is a subset of LI, but only first matching mode is returned.
     if mode == 0 or mode == 1:  # Given fixed list and maybe length
@@ -1166,20 +1191,20 @@ def _builtin_length(l, n, **k):
         if remain < 0:
             raise UnifyError()
         else:
-            min_var = k.get('engine').context_min_var(k.get('context'))
+            min_var = k.get("engine").context_min_var(k.get("context"))
             extra = list(range(min_var, min_var - remain, -1))  # [None] * remain
-        new_l = build_list(elements + extra, Term('[]'))
+        new_l = build_list(elements + extra, Term("[]"))
         return [(new_l, n)]
 
 
 def _builtin_sort(l, s, **k):
     # TODO doesn't work properly with variables e.g. gives sort([X,Y,Y],[_])
     # should be sort([X,Y,Y],[X,Y])
-    check_mode((l, s), ['L*'], functor='sort', **k)
+    check_mode((l, s), ["L*"], functor="sort", **k)
     elements, tail = list_elements(l)
     # assert( is_list_empty(tail) )
     try:
-        sorted_list = build_list(sorted(set(elements), key=StructSort), Term('[]'))
+        sorted_list = build_list(sorted(set(elements), key=StructSort), Term("[]"))
         s_out = unify_value(s, sorted_list, {})
         return [(l, s_out)]
     except UnifyError:
@@ -1195,7 +1220,7 @@ def _builtin_between(low, high, value, **k):
    :param k:
    :return:
     """
-    mode = check_mode((low, high, value), ['iii', 'iiv'], functor='between', **k)
+    mode = check_mode((low, high, value), ["iii", "iiv"], functor="between", **k)
     low_v = int(low)
     high_v = int(high)
     if mode == 0:  # Check
@@ -1217,7 +1242,7 @@ def _builtin_succ(a, b, **kwdargs):
    :param kwdargs: additional arguments
    :return:
     """
-    mode = check_mode((a, b), ['vI', 'Iv', 'II'], functor='succ', **kwdargs)
+    mode = check_mode((a, b), ["vI", "Iv", "II"], functor="succ", **kwdargs)
     if mode == 0:
         b_v = int(b)
         return [(Constant(b_v - 1), b)]
@@ -1241,7 +1266,9 @@ def _builtin_plus(a, b, c, **kwdargs):
    :param kwdargs: additional arguments
    :return:
     """
-    mode = check_mode((a, b, c), ['iii', 'iiv', 'ivi', 'vii'], functor='plus', **kwdargs)
+    mode = check_mode(
+        (a, b, c), ["iii", "iiv", "ivi", "vii"], functor="plus", **kwdargs
+    )
     if mode == 0:
         a_v = int(a)
         b_v = int(b)
@@ -1286,7 +1313,7 @@ def _builtin_consult_as_list(op1, op2, **kwdargs):
    :return: True
     """
     # TODO make non-recursive
-    check_mode((op1, op2), ['*L'], functor='consult', **kwdargs)
+    check_mode((op1, op2), ["*L"], functor="consult", **kwdargs)
     _builtin_consult(op1, **kwdargs)
     if _is_list_nonempty(op2):
         _builtin_consult_as_list(op2.args[0], op2.args[1], **kwdargs)
@@ -1303,15 +1330,15 @@ def _builtin_consult(filename, database=None, engine=None, **kwdargs):
    :param kwdargs: additional arguments
    :return: True
     """
-    check_mode((filename,), ['a'], functor='consult', **kwdargs)
-    database.consult(filename, location=kwdargs.get('location'))
+    check_mode((filename,), ["a"], functor="consult", **kwdargs)
+    database.consult(filename, location=kwdargs.get("location"))
     return True
 
 
 # noinspection PyUnusedLocal
 def _builtin_unknown(arg, engine=None, **kwdargs):
-    check_mode((arg,), ['a'], functor='unknown')
-    if arg.functor == 'fail':
+    check_mode((arg,), ["a"], functor="unknown")
+    if arg.functor == "fail":
         engine.unknown = engine.UNKNOWN_FAIL
     else:
         engine.unknown = engine.UNKNOWN_ERROR
@@ -1347,14 +1374,22 @@ def _select_sublist(lst, target):
     while n >= 0:
         # Generate the list of positive values and node identifiers
         # noinspection PyTypeChecker
-        sublist = [lst[i] for i in range(0, ln)
-                   if (choice_bits[i] is None and lst[i][1] == target.TRUE) or
-                   (choice_bits[i] is not None and n & 1 << choice_bits[i])]
+        sublist = [
+            lst[i]
+            for i in range(0, ln)
+            if (choice_bits[i] is None and lst[i][1] == target.TRUE)
+            or (choice_bits[i] is not None and n & 1 << choice_bits[i])
+        ]
         # Generate the list of negative node identifiers
         # noinspection PyTypeChecker
-        sublist_no = tuple([target.negate(lst[i][1]) for i in range(0, ln)
-                            if (choice_bits[i] is None and lst[i][1] == target.FALSE) or (
-                            choice_bits[i] is not None and not n & 1 << choice_bits[i])])
+        sublist_no = tuple(
+            [
+                target.negate(lst[i][1])
+                for i in range(0, ln)
+                if (choice_bits[i] is None and lst[i][1] == target.FALSE)
+                or (choice_bits[i] is not None and not n & 1 << choice_bits[i])
+            ]
+        )
         if sublist:
             terms, nodes = zip(*sublist)
         else:
@@ -1368,8 +1403,17 @@ def _builtin_all_or_none(pattern, goal, result, **kwargs):
     return _builtin_all(pattern, goal, result, allow_none=True, **kwargs)
 
 
-def _builtin_all(pattern, goal, result, allow_none=False, database=None, target=None,
-                 engine=None, context=None, **kwdargs):
+def _builtin_all(
+    pattern,
+    goal,
+    result,
+    allow_none=False,
+    database=None,
+    target=None,
+    engine=None,
+    context=None,
+    **kwdargs
+):
     """
     Implementation of all/3 builtin.
    :param pattern: pattern to extract
@@ -1388,7 +1432,9 @@ def _builtin_all(pattern, goal, result, allow_none=False, database=None, target=
    :return: list results (tuple of lists and node identifiers)
     """
     # Check the modes.
-    mode = check_mode((pattern, goal, result,), ['*cv', '*cl'], database=database, **kwdargs)
+    mode = check_mode(
+        (pattern, goal, result,), ["*cv", "*cl"], database=database, **kwdargs
+    )
 
     findall_head = Term(engine.get_non_cache_functor(), pattern, *goal.variables())
     findall_clause = Clause(findall_head, goal)
@@ -1403,7 +1449,9 @@ def _builtin_all(pattern, goal, result, allow_none=False, database=None, target=
 
     findall_head = substitute_simple(findall_head, _TranslateToNone())
 
-    results = engine.call(findall_head, subcall=True, database=findall_db, target=target, **kwdargs)
+    results = engine.call(
+        findall_head, subcall=True, database=findall_db, target=target, **kwdargs
+    )
     results = [(res[0], n) for res, n in results]
     output = []
 
@@ -1412,7 +1460,7 @@ def _builtin_all(pattern, goal, result, allow_none=False, database=None, target=
             continue
         node = target.add_and(n)
         if node is not None:
-            res = build_list(l, Term('[]'))
+            res = build_list(l, Term("[]"))
             if mode == 0:  # var
                 args = (pattern, goal, res)
                 output.append((args, node))
@@ -1427,8 +1475,16 @@ def _builtin_all(pattern, goal, result, allow_none=False, database=None, target=
     return output
 
 
-def _builtin_findall_base(pattern, goal, result, database=None, target=None,
-                          engine=None, context=None, **kwdargs):
+def _builtin_findall_base(
+    pattern,
+    goal,
+    result,
+    database=None,
+    target=None,
+    engine=None,
+    context=None,
+    **kwdargs
+):
     """
     Implementation of findall/3 builtin.
    :param pattern: pattern to extract
@@ -1447,7 +1503,9 @@ def _builtin_findall_base(pattern, goal, result, database=None, target=None,
    :return: list results (tuple of lists and node identifiers)
     """
     # Check the modes.
-    mode = check_mode((pattern, goal, result,), ['*cv', '*cl'], database=database, **kwdargs)
+    mode = check_mode(
+        (pattern, goal, result,), ["*cv", "*cl"], database=database, **kwdargs
+    )
 
     findall_head = Term(engine.get_non_cache_functor(), pattern, *goal.variables())
     findall_clause = Clause(findall_head, goal)
@@ -1462,11 +1520,21 @@ def _builtin_findall_base(pattern, goal, result, database=None, target=None,
 
     findall_head = substitute_simple(findall_head, _TranslateToNone())
 
-    findall_target = target.__class__(keep_order=True, keep_all=True, keep_duplicates=True)
+    findall_target = target.__class__(
+        keep_order=True, keep_all=True, keep_duplicates=True
+    )
     try:
-        results = engine.call(findall_head, subcall=True, database=findall_db, target=findall_target, **kwdargs)
+        results = engine.call(
+            findall_head,
+            subcall=True,
+            database=findall_db,
+            target=findall_target,
+            **kwdargs
+        )
     except RuntimeError:
-        raise IndirectCallCycleError(database.lineno(kwdargs.get('call_origin', (None, None))[1]))
+        raise IndirectCallCycleError(
+            database.lineno(kwdargs.get("call_origin", (None, None))[1])
+        )
 
     new_results = []
     keep_all_restore = target.keep_all
@@ -1492,7 +1560,7 @@ def _builtin_findall_base(pattern, goal, result, database=None, target=None,
     for l, n in _select_sublist(new_results, target):
         node = target.add_and(n)
         if node is not None:
-            res = build_list(l, Term('[]'))
+            res = build_list(l, Term("[]"))
             if mode == 0:  # var
                 args = (pattern, goal, res)
                 output.append((args, node))
@@ -1526,7 +1594,9 @@ def _builtin_possible(goal, engine=None, **kwdargs):
     except UnifyError:
         return []
     except RuntimeError:
-        raise IndirectCallCycleError(kwdargs['database'].lineno(kwdargs.get('call_origin', (None, None))[1]))
+        raise IndirectCallCycleError(
+            kwdargs["database"].lineno(kwdargs.get("call_origin", (None, None))[1])
+        )
 
 
 # noinspection PyUnusedLocal
@@ -1558,8 +1628,8 @@ def _builtin_sample_uniform(key, lst, result, database=None, target=None, **kwda
     :param kwdargs:
     :return:
     """
-    mode = check_mode((key, lst, result,), ['gLv', 'gLn'], database=database, **kwdargs)
-    identifier = '_uniform_%s' % key
+    mode = check_mode((key, lst, result,), ["gLv", "gLn"], database=database, **kwdargs)
+    identifier = "_uniform_%s" % key
     elements, tail = list_elements(lst)
     if len(elements) == 0:
         return []
@@ -1570,9 +1640,16 @@ def _builtin_sample_uniform(key, lst, result, database=None, target=None, **kwda
             for i, elem in enumerate(elements):
                 elem_identifier = (identifier, i)
                 # res = unify_value(result, elem)
-                results.append(((key, lst, elem),
-                                target.add_atom(identifier=elem_identifier, probability=prob,
-                                                group=identifier)))
+                results.append(
+                    (
+                        (key, lst, elem),
+                        target.add_atom(
+                            identifier=elem_identifier,
+                            probability=prob,
+                            group=identifier,
+                        ),
+                    )
+                )
         else:
             res = None
             for el in elements:
@@ -1582,8 +1659,12 @@ def _builtin_sample_uniform(key, lst, result, database=None, target=None, **kwda
                 except UnifyError:
                     pass
             if res is not None:
-                results.append(((key, lst, res),
-                                target.add_atom(identifier=identifier, probability=prob)))
+                results.append(
+                    (
+                        (key, lst, res),
+                        target.add_atom(identifier=identifier, probability=prob),
+                    )
+                )
         return results
 
 
@@ -1607,33 +1688,37 @@ def _builtin_use_module(filename, database=None, location=None, **kwdargs):
     return True
 
 
-@builtin_boolean('_use_module', 3)
-def _builtin_use_module2_scope(scope, filename, predicates, database=None, location=None, **kwdargs):
+@builtin_boolean("_use_module", 3)
+def _builtin_use_module2_scope(
+    scope, filename, predicates, database=None, location=None, **kwdargs
+):
     scope = str(scope)
-    if scope == 'None':
+    if scope == "None":
         scope = None
     database.use_module(filename, predicates, my_scope=scope, location=location)
     return True
 
 
-@builtin_boolean('_use_module', 2)
+@builtin_boolean("_use_module", 2)
 def _use_module(scope, filename, database=None, location=None, **kwdargs):
     scope = str(scope)
-    if scope == 'None':
+    if scope == "None":
         scope = None
     database.use_module(filename, None, my_scope=scope, location=location)
     return True
 
-@builtin_boolean('_consult', 2)
+
+@builtin_boolean("_consult", 2)
 def _consult(scope, filename, database=None, engine=None, **kwdargs):
-    check_mode((filename,), ['a'], functor='consult', **kwdargs)
+    check_mode((filename,), ["a"], functor="consult", **kwdargs)
     scope = str(scope)
-    if scope == 'None':
+    if scope == "None":
         scope = None
-    database.consult(filename, location=kwdargs.get('location'), my_scope=scope)
+    database.consult(filename, location=kwdargs.get("location"), my_scope=scope)
     return True
 
-@builtin_boolean('dbg_printdb', 0)
+
+@builtin_boolean("dbg_printdb", 0)
 def _dbg_printdb(database=None, **kwargs):
     print(database, file=sys.stderr)
     return True
@@ -1643,29 +1728,41 @@ def _builtin_try_call(term, **kwdargs):
     try:
         return _builtin_call(term, **kwdargs)
     except UnknownClause:
-        return True, kwdargs['callback'].notifyComplete()
+        return True, kwdargs["callback"].notifyComplete()
 
-def _builtin_call(term, args=(), engine=None, callback=None, transform=None, context=None, **kwdargs):
-    check_mode((term,), ['c'], functor='call')
+
+def _builtin_call(
+    term, args=(), engine=None, callback=None, transform=None, context=None, **kwdargs
+):
+    check_mode((term,), ["c"], functor="call")
     # Find the define node for the given query term.
     term_call = term.with_args(*(term.args + args))
 
     from .engine_stack import get_state
+
     try:
         if transform is None:
             from .engine_stack import Transformations
+
             transform = Transformations()
 
         def _trans(result):
             n = len(term.args)
             res1 = result[:n]
             res2 = result[n:]
-            return engine.create_context([term.with_args(*res1)] + list(res2), state=get_state(result))
+            return engine.create_context(
+                [term.with_args(*res1)] + list(res2), state=get_state(result)
+            )
+
         transform.addFunction(_trans)
 
-        actions = engine.call_intern(term_call, transform=transform, parent_context=context, **kwdargs)
+        actions = engine.call_intern(
+            term_call, transform=transform, parent_context=context, **kwdargs
+        )
     except UnknownClauseInternal:
-        raise UnknownClause(term_call.signature, kwdargs['database'].lineno(kwdargs['location']))
+        raise UnknownClause(
+            term_call.signature, kwdargs["database"].lineno(kwdargs["location"])
+        )
     return True, actions
 
 
@@ -1675,19 +1772,24 @@ def _builtin_call_nc(*args, **kwdargs):
 
 def _builtin_subquery(term, prob, evidence=None, engine=None, database=None, **kwdargs):
     if evidence:
-        check_mode((term, prob, evidence), ['cvL'], functor='subquery')
+        check_mode((term, prob, evidence), ["cvL"], functor="subquery")
     else:
-        check_mode((term, prob), ['cv'], functor='subquery')
+        check_mode((term, prob), ["cv"], functor="subquery")
 
     eng = engine.__class__()
-    target = eng.ground(database, term, label='query')
+    target = eng.ground(database, term, label="query")
 
     if evidence:
         for ev in term2list(evidence):
-            target = eng.ground(database, ev, target=target, label=target.LABEL_EVIDENCE_POS)
+            target = eng.ground(
+                database, ev, target=target, label=target.LABEL_EVIDENCE_POS
+            )
 
     from . import get_evaluatable
-    kc = get_evaluatable(name=None) # TODO somehow pass evaluatable preference (name, -k)
+
+    kc = get_evaluatable(
+        name=None
+    )  # TODO somehow pass evaluatable preference (name, -k)
     results = kc.create_from(target).evaluate()
     if evidence:
         return [(t, Constant(p), evidence) for t, p in results.items()]
@@ -1698,6 +1800,7 @@ def _builtin_subquery(term, prob, evidence=None, engine=None, database=None, **k
 def _builtin_calln(term, *args, **kwdargs):
     return _builtin_call(term, args, **kwdargs)
 
+
 def _builtin_try_calln(term, *args, **kwdargs):
     return _builtin_try_call(term, args, **kwdargs)
 
@@ -1707,9 +1810,10 @@ def _builtin_calln_nc(term, *args, **kwdargs):
 
 
 def _builtin_subsumes_term(generic, specific, **kwargs):
-    check_mode((generic, specific), ['**'], functor='subsumes_term')
+    check_mode((generic, specific), ["**"], functor="subsumes_term")
 
     from .engine_unify import subsumes
+
     return subsumes(generic, specific)
 
 
@@ -1717,9 +1821,9 @@ class IndirectCallCycleError(GroundingError):
     """Cycle should not pass through indirect calls (e.g. call/1, findall/3)."""
 
     def __init__(self, location=None):
-        GroundingError.__init__(self,
-                                'Indirect cycle detected (passing through findall/3)',
-                                location)
+        GroundingError.__init__(
+            self, "Indirect cycle detected (passing through findall/3)", location
+        )
 
 
 def _build_scope(term):
@@ -1727,7 +1831,7 @@ def _build_scope(term):
     if term.functor == "'&'":
         a = _build_scope(term.args[0])
         b = _build_scope(term.args[1])
-        print (a, b, a & b)
+        print(a, b, a & b)
         return a & b
     elif term.functor == "'|'":
         a = _build_scope(term.args[0])
@@ -1743,13 +1847,13 @@ def _build_scope(term):
         if isinstance(term.functor, frozenset) or isinstance(term.functor, set):
             return term.functor
         else:
-            raise GroundingError('Unknown object type in set operation')
+            raise GroundingError("Unknown object type in set operation")
     else:
-        raise GroundingError('Unknown set construction')
+        raise GroundingError("Unknown set construction")
 
 
 def _builtin_create_scope(term, scope, **kwargs):
-    mode = check_mode((term, scope), ['Lv','gv'], **kwargs)
+    mode = check_mode((term, scope), ["Lv", "gv"], **kwargs)
     if mode in (0, 1):
         result = Object(_build_scope(term))
     else:
@@ -1757,11 +1861,13 @@ def _builtin_create_scope(term, scope, **kwargs):
     return [(term, result)]
 
 
-def _builtin_subquery_in_scope(scope, term, prob, evidence=None, engine=None, database=None, **kwdargs):
+def _builtin_subquery_in_scope(
+    scope, term, prob, evidence=None, engine=None, database=None, **kwdargs
+):
     if evidence:
-        check_mode((scope, term, prob, evidence), ['gcvL'], functor='subquery')
+        check_mode((scope, term, prob, evidence), ["gcvL"], functor="subquery")
     else:
-        check_mode((scope, term, prob), ['gcv'], functor='subquery')
+        check_mode((scope, term, prob), ["gcv"], functor="subquery")
 
     from .sdd_formula import SDD  # TODO use get_evaluatable
 
@@ -1769,11 +1875,17 @@ def _builtin_subquery_in_scope(scope, term, prob, evidence=None, engine=None, da
 
     eng = engine.__class__()
 
-    target = eng.ground(database, term, label='query', include=scopel)
+    target = eng.ground(database, term, label="query", include=scopel)
 
     if evidence:
         for ev in term2list(evidence):
-            target = eng.ground(database, ev, target=target, label=target.LABEL_EVIDENCE_POS, include=scopel)
+            target = eng.ground(
+                database,
+                ev,
+                target=target,
+                label=target.LABEL_EVIDENCE_POS,
+                include=scopel,
+            )
 
     results = SDD.create_from(target).evaluate()
     if evidence:
@@ -1782,8 +1894,17 @@ def _builtin_subquery_in_scope(scope, term, prob, evidence=None, engine=None, da
         return [(scope, t, Constant(p)) for t, p in results.items()]
 
 
-def _builtin_call_in_scope(scope, term, args=(), engine=None, callback=None, transform=None, context=None, **kwdargs):
-    check_mode((term,), ['c'], functor='call')
+def _builtin_call_in_scope(
+    scope,
+    term,
+    args=(),
+    engine=None,
+    callback=None,
+    transform=None,
+    context=None,
+    **kwdargs
+):
+    check_mode((term,), ["c"], functor="call")
     # Find the define node for the given query term.
     term_call = term.with_args(*(term.args + args))
 
@@ -1792,6 +1913,7 @@ def _builtin_call_in_scope(scope, term, args=(), engine=None, callback=None, tra
     try:
         if transform is None:
             from .engine_stack import Transformations
+
             transform = Transformations()
 
         def _trans(result):
@@ -1799,11 +1921,22 @@ def _builtin_call_in_scope(scope, term, args=(), engine=None, callback=None, tra
             res1 = result[:n]
             res2 = result[n:]
             return [scope, term.with_args(*res1)] + list(res2)
+
         transform.addFunction(_trans)
 
-        actions = engine.call_intern(term_call, transform=transform, dont_cache=True, no_cache=True, include=scopel, parent_context=context, **kwdargs)
+        actions = engine.call_intern(
+            term_call,
+            transform=transform,
+            dont_cache=True,
+            no_cache=True,
+            include=scopel,
+            parent_context=context,
+            **kwdargs
+        )
     except UnknownClauseInternal:
-        raise UnknownClause(term_call.signature, kwdargs['database'].lineno(kwdargs['location']))
+        raise UnknownClause(
+            term_call.signature, kwdargs["database"].lineno(kwdargs["location"])
+        )
     return True, actions
 
 
@@ -1812,9 +1945,9 @@ def _builtin_calln_in_scope(scope, term, *args, **kwdargs):
 
 
 def _builtin_find_scope(term, scope, engine=None, database=None, **kwargs):
-    check_mode((term, scope), ['cv'], functor='find_scope')
+    check_mode((term, scope), ["cv"], functor="find_scope")
 
-    if term.functor == '*':
+    if term.functor == "*":
         nodes = range(0, len(database))
     else:
         define = database.find(term)
@@ -1828,66 +1961,74 @@ def _builtin_find_scope(term, scope, engine=None, database=None, **kwargs):
     return [(term, nodes)]
 
 
-@builtin_simple('set_state', 1)
+@builtin_simple("set_state", 1)
 def _builtin_set_state(term, **kwargs):
     from engine_stack import Context
+
     return [Context([term], state=term)]
 
 
-@builtin_simple('reset_state', 0)
+@builtin_simple("reset_state", 0)
 def _builtin_reset_state(**kwargs):
     from engine_stack import Context
+
     return [Context()]
 
 
-@builtin_boolean('check_state', 1)
+@builtin_boolean("check_state", 1)
 def _builtin_check_state(term, context=None, **kwargs):
     from engine_stack import get_state
+
     if get_state(context) == term:
         return True
     else:
         return False
 
 
-@builtin_boolean('print_state', 0)
+@builtin_boolean("print_state", 0)
 def _builtin_print_state(context=None, **kwargs):
-    if hasattr(context, 'state') and context.state is not None:
-        print ('State:', context.state)
+    if hasattr(context, "state") and context.state is not None:
+        print("State:", context.state)
     else:
-        print ('State not set')
+        print("State not set")
     return True
 
 
-@builtin_boolean('probabilityX', 1)
+@builtin_boolean("probabilityX", 1)
 def _builtin_probability(term, context=None, database=None, **kwargs):
-    check_mode([term], ['c'], functor='probability')
-    database.queries.append((term, context.state.get('conditions', ())))
-    print (database.queries, file=sys.stderr)
+    check_mode([term], ["c"], functor="probability")
+    database.queries.append((term, context.state.get("conditions", ())))
+    print(database.queries, file=sys.stderr)
     return True
 
-@builtin_simple('condition', 1)
+
+@builtin_simple("condition", 1)
 def _builtin_condition(term, context=None, database=None, **kwargs):
-    check_mode([term], ['c'], functor='condition')
+    check_mode([term], ["c"], functor="condition")
     from engine_stack import Context
-    return [Context([term], state=context.state | {'conditions': [term]})]
 
-@builtin_simple('seq', 1)
+    return [Context([term], state=context.state | {"conditions": [term]})]
+
+
+@builtin_simple("seq", 1)
 def seq(term, database=None, **kwargs):
-    check_mode((term,), ['v'], functor='seq', database=None, **kwargs)
+    check_mode((term,), ["v"], functor="seq", database=None, **kwargs)
 
-    s = database.get_data('__seq__', 0)
+    s = database.get_data("__seq__", 0)
     s += 1
-    database.set_data('__seq__', s)
+    database.set_data("__seq__", s)
 
     return [(Constant(s),)]
 
-@builtin_boolean('trace', 0)
+
+@builtin_boolean("trace", 0)
 def trace(engine=None, **kwargs):
     if engine.debugger:
         engine.debugger.interactive = True
     return True
 
-@builtin_boolean('notrace', 0)
+
+@builtin_boolean("notrace", 0)
 def notrace(engine=None, **kwargs):
     if engine.debugger:
         engine.debugger.interactive = False

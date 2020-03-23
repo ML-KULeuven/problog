@@ -36,7 +36,7 @@ def main(argv, result_handler=None):
     args = argparser().parse_args(argv)
     inputfile = args.inputfile
 
-    init_logger(args.verbose, name='dtproblog')
+    init_logger(args.verbose, name="dtproblog")
 
     if result_handler is None:
         if args.web:
@@ -45,7 +45,7 @@ def main(argv, result_handler=None):
             result_handler = print_result
 
     if args.output is not None:
-        outf = open(args.output, 'w')
+        outf = open(args.output, "w")
     else:
         outf = sys.stdout
 
@@ -54,11 +54,13 @@ def main(argv, result_handler=None):
         result = dtproblog(model, **vars(args))
 
         choices, score, stats = result
-        logging.getLogger('dtproblog').info('Number of strategies evaluated: %s' % stats.get('eval'))
+        logging.getLogger("dtproblog").info(
+            "Number of strategies evaluated: %s" % stats.get("eval")
+        )
 
         renamed_choices = {}
         for k, v in choices.items():
-            if k.functor == 'choice':
+            if k.functor == "choice":
                 k = k.args[2]
             renamed_choices[k] = v
 
@@ -84,17 +86,17 @@ def dtproblog(model, search=None, koption=None, locations=False, web=False, **kw
     :return: best decisions, score of best decision, statistics
     """
 
-    with Timer('Total', logger='dtproblog'):
-        with Timer('Parse input', logger='dtproblog'):
+    with Timer("Total", logger="dtproblog"):
+        with Timer("Parse input", logger="dtproblog"):
             eng = DefaultEngine(label_all=True)
             db = eng.prepare(model)
 
-        with Timer('Ground', logger='dtproblog'):
+        with Timer("Ground", logger="dtproblog"):
             # decisions = dict((d[0], None) for d in eng.query(db, Term('decision', None)))
-            utilities = dict(eng.query(db, Term('utility', None, None)))
+            utilities = dict(eng.query(db, Term("utility", None, None)))
 
             # logging.getLogger('dtproblog').debug('Decisions: %s' % decisions)
-            logging.getLogger('dtproblog').debug('Utilities: %s' % utilities)
+            logging.getLogger("dtproblog").debug("Utilities: %s" % utilities)
 
             # for d in decisions:
             #     db += d.with_probability(Constant(0.5))
@@ -103,7 +105,7 @@ def dtproblog(model, search=None, koption=None, locations=False, web=False, **kw
             decisions = []
             decision_nodes = set()
             for i, n, t in gp:
-                if t == 'atom' and n.probability == Term('?'):
+                if t == "atom" and n.probability == Term("?"):
                     decisions.append((i, n.name))
                     decision_nodes.add(i)
 
@@ -113,22 +115,26 @@ def dtproblog(model, search=None, koption=None, locations=False, web=False, **kw
                     constraints.append(c)
 
         if decision_nodes:
-            with Timer('Compile', logger='dtproblog'):
+            with Timer("Compile", logger="dtproblog"):
                 knowledge = get_evaluatable(koption).create_from(gp)
 
-            with Timer('Optimize', logger='dtproblog'):
-                if search == 'local':
-                    result = search_local(knowledge, decisions, utilities, constraints, **kwargs)
+            with Timer("Optimize", logger="dtproblog"):
+                if search == "local":
+                    result = search_local(
+                        knowledge, decisions, utilities, constraints, **kwargs
+                    )
                 else:
-                    result = search_exhaustive(knowledge, decisions, utilities, constraints, **kwargs)
+                    result = search_exhaustive(
+                        knowledge, decisions, utilities, constraints, **kwargs
+                    )
         else:
-            logging.getLogger('dtproblog').warn('no decisions found')
+            logging.getLogger("dtproblog").warn("no decisions found")
             # no decisions to be made
-            result = {}, 0.0, {'eval': 0}
+            result = {}, 0.0, {"eval": 0}
 
         if web or locations:
             for k, v in result[0].items():
-                if k.functor == 'choice':
+                if k.functor == "choice":
                     k.args[2].loc = db.lineno(k.args[2].location)
                 else:
                     k.loc = db.lineno(k.location)
@@ -147,16 +153,16 @@ def evaluate(formula, decisions, utilities, verbose=0):
         score += vneg * float(utilities.get(-r, 0.0))
 
     if verbose is not None and verbose >= 3:
-        print ('---------------')
-        print ('Decisions:')
-        print (format_dictionary(decisions))
-        print ('Scores:')
-        print (format_dictionary(result))
+        print("---------------")
+        print("Decisions:")
+        print(format_dictionary(decisions))
+        print("Scores:")
+        print(format_dictionary(result))
     return score
 
 
 def search_exhaustive(formula, decisions, utilities, constraints, verbose=0, **kwargs):
-    stats = {'eval': 0}
+    stats = {"eval": 0}
     best_score = None
     best_choice = None
 
@@ -176,11 +182,13 @@ def search_exhaustive(formula, decisions, utilities, constraints, verbose=0, **k
             continue
 
         score = evaluate(formula, evidence, utilities, verbose)
-        stats['eval'] += 1
+        stats["eval"] += 1
         if best_score is None or score > best_score:
             best_score = score
             best_choice = dict(evidence)
-            logging.getLogger('dtproblog').debug('Improvement: %s -> %s' % (best_choice, best_score))
+            logging.getLogger("dtproblog").debug(
+                "Improvement: %s -> %s" % (best_choice, best_score)
+            )
     return best_choice, best_score, stats
 
 
@@ -194,11 +202,11 @@ def search_local(formula, decisions, utilities, constraints, verbose=0, **kwargs
     :param kwargs:
     :return:
     """
-    stats = {'eval': 1}
+    stats = {"eval": 1}
 
     for c in constraints:
         if not c.is_true():
-            raise ProbLogError('Local search does not support constraints')
+            raise ProbLogError("Local search does not support constraints")
 
     choices = {}
     # Create the initial strategy:
@@ -230,7 +238,7 @@ def search_local(formula, decisions, utilities, constraints, verbose=0, **kwargs
             choices[key] = 1 - choices[key]
             # Compute the score of the new strategy
             flip_score = evaluate(formula, choices, utilities)
-            stats['eval'] += 1
+            stats["eval"] += 1
             if flip_score <= best_score:
                 # The score is not better: undo the flip
                 choices[key] = 1 - choices[key]
@@ -238,7 +246,9 @@ def search_local(formula, decisions, utilities, constraints, verbose=0, **kwargs
                 # The score is better: update best score and pointer to last_update
                 last_update = key
                 best_score = flip_score
-                logging.getLogger('dtproblog').debug('Improvement: %s -> %s' % (choices, best_score))
+                logging.getLogger("dtproblog").debug(
+                    "Improvement: %s -> %s" % (choices, best_score)
+                )
         if last_update is None:
             # We went through all decisions without flipping.
             stop = True
@@ -259,7 +269,7 @@ def print_result(result, output=sys.stdout):
     if success:
         choices, score, stats = result
         print(format_dictionary(choices, 0), file=output)
-        print('SCORE: %s' % score, file=output)
+        print("SCORE: %s" % score, file=output)
         return 0
     else:
         print(process_error(result), file=output)
@@ -274,26 +284,27 @@ def print_result_json(d, output):
     :return:
     """
     import json
+
     result = {}
     success, d = d
     if success:
         choices, score, stats = d
-        result['SUCCESS'] = True
+        result["SUCCESS"] = True
 
         resout = []
         for n, p in choices.items():
-            if hasattr(n, 'loc') and n.loc is not None:
+            if hasattr(n, "loc") and n.loc is not None:
                 resout.append([str(n), int(p), n.loc[1], n.loc[2]])
             else:
                 resout.append([str(n), int(p), None, None])
-        result['choices'] = resout
-        result['score'] = score
-        result['stats'] = stats
+        result["choices"] = resout
+        result["score"] = score
+        result["stats"] = stats
     else:
-        result['SUCCESS'] = False
-        result['err'] = vars(d)
-        result['err']['message'] = process_error(result)
-    print (json.dumps(result), file=output)
+        result["SUCCESS"] = False
+        result["err"] = vars(d)
+        result["err"]["message"] = process_error(result)
+    print(json.dumps(result), file=output)
     return 0
 
 
@@ -310,17 +321,29 @@ def argparser():
     import argparse
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('inputfile')
-    parser.add_argument('--knowledge', '-k', dest='koption',
-                        choices=get_evaluatables(),
-                        default=None, help="Knowledge compilation tool.")
-    parser.add_argument('-s', '--search', choices=('local', 'exhaustive'), default='exhaustive')
-    parser.add_argument('-v', '--verbose', action='count', help='Set verbosity level')
-    parser.add_argument('-o', '--output', type=str, default=None,
-                        help='Write output to given file (default: write to stdout)')
-    parser.add_argument('--web', action='store_true', help=argparse.SUPPRESS)
+    parser.add_argument("inputfile")
+    parser.add_argument(
+        "--knowledge",
+        "-k",
+        dest="koption",
+        choices=get_evaluatables(),
+        default=None,
+        help="Knowledge compilation tool.",
+    )
+    parser.add_argument(
+        "-s", "--search", choices=("local", "exhaustive"), default="exhaustive"
+    )
+    parser.add_argument("-v", "--verbose", action="count", help="Set verbosity level")
+    parser.add_argument(
+        "-o",
+        "--output",
+        type=str,
+        default=None,
+        help="Write output to given file (default: write to stdout)",
+    )
+    parser.add_argument("--web", action="store_true", help=argparse.SUPPRESS)
     return parser
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main(sys.argv[1:])

@@ -11,8 +11,17 @@ from .errors import GroundingError
 from .engine import UnknownClause, NonGroundProbabilisticClause
 
 
-def ground_yap(model, target=None, queries=None, evidence=None, propagate_evidence=False,
-               labels=None, engine=None, debug=False, **kwdargs):
+def ground_yap(
+    model,
+    target=None,
+    queries=None,
+    evidence=None,
+    propagate_evidence=False,
+    labels=None,
+    engine=None,
+    debug=False,
+    **kwdargs
+):
     """Ground a given model.
 
     :param model: logic program to ground
@@ -25,36 +34,47 @@ def ground_yap(model, target=None, queries=None, evidence=None, propagate_eviden
     :rtype: LogicFormula
     """
 
-    with Timer('Grounding (YAP)'):
+    with Timer("Grounding (YAP)"):
 
         if debug:
-            fn_model = '/tmp/model.pl'
-            fn_ground = '/tmp/model.ground'
-            fn_evidence = '/tmp/model.evidence'
-            fn_query = '/tmp/model.query'
+            fn_model = "/tmp/model.pl"
+            fn_ground = "/tmp/model.ground"
+            fn_evidence = "/tmp/model.evidence"
+            fn_query = "/tmp/model.query"
 
         else:
-            fn_model = mktempfile('.pl')
-            fn_ground = mktempfile('.ground')
-            fn_evidence = mktempfile('.evidence')
-            fn_query = mktempfile('.query')
+            fn_model = mktempfile(".pl")
+            fn_ground = mktempfile(".ground")
+            fn_evidence = mktempfile(".evidence")
+            fn_query = mktempfile(".query")
 
-        with open(fn_model, 'w') as f:
-            f.write('\n'.join(map(statement_to_yap, model)) + '\n')
+        with open(fn_model, "w") as f:
+            f.write("\n".join(map(statement_to_yap, model)) + "\n")
 
-        yap_ground = os.path.join(os.path.dirname(__file__), 'yap', 'ground_compact.pl')
+        yap_ground = os.path.join(os.path.dirname(__file__), "yap", "ground_compact.pl")
 
-        cmd = ['yap', '-L', yap_ground, '--', fn_model, fn_ground, fn_evidence, fn_query]
+        cmd = [
+            "yap",
+            "-L",
+            yap_ground,
+            "--",
+            fn_model,
+            fn_ground,
+            fn_evidence,
+            fn_query,
+        ]
 
         try:
             output = subprocess_check_output(cmd)
 
         except CalledProcessError as err:
             errmsg = err.output.strip()
-            if errmsg.startswith('undefined'):
+            if errmsg.startswith("undefined"):
                 raise UnknownClause(errmsg.split()[1], None)
-            elif errmsg.startswith('non-ground'):
-                raise GroundingError('Non-ground clause detected: %s' % errmsg.split()[1], None)
+            elif errmsg.startswith("non-ground"):
+                raise GroundingError(
+                    "Non-ground clause detected: %s" % errmsg.split()[1], None
+                )
             else:
                 raise err
 
@@ -85,7 +105,7 @@ def read_grounding(lines, target, queries, evidence):
     line_nums = []
     for i, line in enumerate(lines):
         line = line.strip()
-        line, name = line.split('|')
+        line, name = line.split("|")
         name = name.strip()
         name = Term.from_string(name)
 
@@ -97,12 +117,14 @@ def read_grounding(lines, target, queries, evidence):
         id_counts[line_num] += 1
 
         line_nums.append(line_num)
-        if line_type == 'FACT':
-            parsed_lines.append((line_num, 'FACT', [i, float(line_content)], name))
-        elif line_type == 'AND':
-            parsed_lines.append((line_num, 'AND', [int(x) for x in line_content.split()], name))
+        if line_type == "FACT":
+            parsed_lines.append((line_num, "FACT", [i, float(line_content)], name))
+        elif line_type == "AND":
+            parsed_lines.append(
+                (line_num, "AND", [int(x) for x in line_content.split()], name)
+            )
         else:
-            raise Exception('Unexpected type: %s' % line_type)
+            raise Exception("Unexpected type: %s" % line_type)
 
     num2index = {}
 
@@ -119,8 +141,10 @@ def read_grounding(lines, target, queries, evidence):
         else:
             or_node = None
 
-        if line_type == 'FACT':
-            node_id = target.add_atom(line_content[0], probability=line_content[1], name=line_name)
+        if line_type == "FACT":
+            node_id = target.add_atom(
+                line_content[0], probability=line_content[1], name=line_name
+            )
         else:  # AND
             found_all = True
             children = []
@@ -169,30 +193,26 @@ def read_grounding(lines, target, queries, evidence):
             key = None
         else:
             key = num2index[names[q]]
-        target.add_evidence(q, key, v == 't')
+        target.add_evidence(q, key, v == "t")
 
     return target
 
 
 def statement_to_yap(statement):
 
-    if isinstance(statement, Clause) and statement.head.functor == '_directive':
-        if statement.body.functor in ('consult', 'use_module'):
-            return ''
+    if isinstance(statement, Clause) and statement.head.functor == "_directive":
+        if statement.body.functor in ("consult", "use_module"):
+            return ""
         else:
-            return ':- %s.' % statement.body
+            return ":- %s." % statement.body
 
     if isinstance(statement, AnnotatedDisjunction):
         heads = statement.heads
 
         # heads = [Term('', h.with_probability]
 
-        head = Term('problog_ad', list2term(heads), statement.body)
+        head = Term("problog_ad", list2term(heads), statement.body)
 
-        return '%s.' % head
+        return "%s." % head
     else:
-        return '%s.' % statement
-
-
-
-
+        return "%s." % statement
