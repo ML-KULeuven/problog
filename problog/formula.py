@@ -153,11 +153,6 @@ class BaseFormula(ProbLogObject):
                         result[key] = semiring.false(name)
                     elif w is None:
                         result[key] = semiring.true(name)
-                    elif isinstance(w, pn_weight):
-                        result[key] = (
-                            semiring.value(w.p_weight),
-                            semiring.value(w.n_weight),
-                        )
                     else:
                         result[key] = (
                             semiring.pos_value(w, name),
@@ -173,11 +168,6 @@ class BaseFormula(ProbLogObject):
                         result[abs(key)] = semiring.true(name)
                     elif w is None:
                         result[abs(key)] = semiring.false(name)
-                    elif isinstance(w, pn_weight):
-                        result[abs(key)] = (
-                            semiring.value(w.n_weight),
-                            semiring.value(w.p_weight),
-                        )
                     else:
                         result[abs(key)] = (
                             semiring.neg_value(w, name),
@@ -197,8 +187,6 @@ class BaseFormula(ProbLogObject):
                     result[key] = semiring.false(name)
                 elif w is None:
                     result[key] = semiring.true(name)
-                elif isinstance(w, pn_weight):
-                    result[key] = semiring.value(w.p_weight), semiring.value(w.n_weight)
                 else:
                     result[key] = (
                         semiring.pos_value(w, name),
