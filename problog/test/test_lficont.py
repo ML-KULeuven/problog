@@ -53,17 +53,17 @@ def createTestLFICont(filename):
     return test
 
 
-if __name__ == "__main__":
-    filenames = sys.argv[1:]
-else:
-    filenames = glob.glob(root_path("test", "lficont", "*.pl"))
-
-
-for testfile in filenames:
-    testname = "test_lficont_" + os.path.splitext(os.path.basename(testfile))[0]
-    setattr(TestLFICont, testname, createTestLFICont(testfile))
-
-
-if __name__ == "__main__":
-    suite = unittest.TestLoader().loadTestsFromTestCase(TestLFICont)
-    unittest.TextTestRunner(verbosity=2).run(suite)
+# if __name__ == "__main__":
+#     filenames = sys.argv[1:]
+# else:
+#     filenames = glob.glob(root_path("test", "lficont", "*.pl"))
+#
+#
+# for testfile in filenames:
+#     testname = "test_lficont_" + os.path.splitext(os.path.basename(testfile))[0]
+#     setattr(TestLFICont, testname, createTestLFICont(testfile))
+#
+#
+# if __name__ == "__main__":
+#     suite = unittest.TestLoader().loadTestsFromTestCase(TestLFICont)
+#     unittest.TextTestRunner(verbosity=2).run(suite)
