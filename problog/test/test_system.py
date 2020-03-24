@@ -15,9 +15,10 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 """
+import glob
+import os
+import sys
 import unittest
-
-import glob, os, traceback, sys
 
 from problog.forward import _ForwardSDD
 
@@ -213,6 +214,17 @@ class SemiringProbabilityNSPCopy(SemiringProbabilityCopy):
     def is_nsp(self):
         return True
 
+    def pos_value(self, a, key=None):
+        if isinstance(a, tuple):
+            return float(a[0])
+        else:
+            return float(a)
+
+    def neg_value(self, a, key=None):
+        if isinstance(a, tuple):
+            return float(a[1])
+        else:
+            return 1-float(a)
 
 if __name__ == "__main__":
     filenames = sys.argv[1:]

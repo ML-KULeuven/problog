@@ -119,7 +119,9 @@ class BaseFormula(ProbLogObject):
         * Atoms with weight set to neutral will get weight ``(semiring.one(), semiring.one())``.
         * If the weights argument is given, it completely replaces the formula's weights.
         * All constraints are applied to the weights.
-        * The namedtuple formula.pn_weight can be used to pass both a positive and negative weight.
+        * To specify positive and negative literal of an atom you can pass a tuple and handle it in the semiring functions pos_value and neg_value
+            (4,5)::a.
+            4 is the postive weight and 5 the negative.
 
         :param semiring: semiring that determines the interpretation of the weights
         :param weights: dictionary of { node name : weight } or { node id : weight} that overrides the builtin weights,
@@ -151,11 +153,6 @@ class BaseFormula(ProbLogObject):
                         result[key] = semiring.false(name)
                     elif w is None:
                         result[key] = semiring.true(name)
-                    elif isinstance(w, pn_weight):
-                        result[key] = (
-                            semiring.value(w.p_weight),
-                            semiring.value(w.n_weight),
-                        )
                     else:
                         result[key] = (
                             semiring.pos_value(w, name),
@@ -171,11 +168,6 @@ class BaseFormula(ProbLogObject):
                         result[abs(key)] = semiring.true(name)
                     elif w is None:
                         result[abs(key)] = semiring.false(name)
-                    elif isinstance(w, pn_weight):
-                        result[abs(key)] = (
-                            semiring.value(w.n_weight),
-                            semiring.value(w.p_weight),
-                        )
                     else:
                         result[abs(key)] = (
                             semiring.neg_value(w, name),
@@ -195,8 +187,6 @@ class BaseFormula(ProbLogObject):
                     result[key] = semiring.false(name)
                 elif w is None:
                     result[key] = semiring.true(name)
-                elif isinstance(w, pn_weight):
-                    result[key] = semiring.value(w.p_weight), semiring.value(w.n_weight)
                 else:
                     result[key] = (
                         semiring.pos_value(w, name),
@@ -426,9 +416,6 @@ class BaseFormula(ProbLogObject):
 atom = namedtuple("atom", ("identifier", "probability", "group", "name", "source"))
 conj = namedtuple("conj", ("children", "name"))
 disj = namedtuple("disj", ("children", "name"))
-
-# tuple containing the positive and negative weight of a node.
-pn_weight = namedtuple("pos_neg_weight", "p_weight, n_weight")
 
 
 class LogicFormula(BaseFormula):
