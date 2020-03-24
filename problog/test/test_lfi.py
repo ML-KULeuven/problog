@@ -20,9 +20,10 @@ if __name__ == "__main__":
 
 try:
     from pysdd import sdd
-    from pysdd.iterator import SddIterator
 
-    # from pysdd.util import sdd_to_dot
+    # from pysdd.iterator import SddIterator
+    from pysdd.util import sdd_to_dot
+
     # from pysdd.sdd import Vtree
     has_sdd = True
 except Exception as err:
