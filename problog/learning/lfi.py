@@ -3,101 +3,68 @@
 """
 Learning from interpretations
 -----------------------------
-
 Parameter learning for ProbLog.
-
 Given a probabilistic program with parameterized weights and a set of partial implementations,
 learns appropriate values of the parameters.
-
-
 Continuous distributions
 ++++++++++++++++++++++++
-
 A parametrized weight can also be a continuous normal distribution if the atom it is associated
 with only appears as a head (thus is not used in any bodies of other ProbLog rules).
-
 For example, the following GMM:
-
 .. code-block:: prolog::
     t(0.5)::c.
     t(normal(1,10))::fa :- c.
     t(normal(10,10))::fa :- \+c.
-
 with evidence:
-
 .. code-block:: prolog::
     evidence(fa, 10).
     ---
     evidence(fa, 18).
     ---
     evidence(fa, 8).
-
-
 Or a multivariate GMM:
-
 .. code-block:: prolog
     t(0.5)::c.
     t(normal([1,1],[10,1,1,10]))::fa :- c.
     t(normal([10,10],[10,1,1,10]))::fa :- \+c.
-
 with evidence:
-
 .. code-block:: prolog
     evidence(fa, [10,11]).
     ---
     evidence(fa, [18,12]).
     ---
     evidence(fa, [8,7]).
-
 The covariance matrix is represented as a row-based list ([[10,1],[1,10]] is [10,1,1,10]).
-
 The GMM can also be represent compactly and as one examples:
-
 .. code-block:: prolog
     t(0.5)::c(ID,1); t(0.5)::c(ID,2).
     comp(1). comp(2).
     t(normal(_,_),C)::fa(ID) :- comp(C), c(ID,C).
-
 with evidence:
-
 .. code-block:: prolog::
     evidence(fa(1), 10).
     evidence(fa(2), 18).
     evidence(fa(3), 8).
-
-
 Algorithm
 +++++++++
-
-The <OLD> algorithm used EM and operated as follows:
-
+The algorithm operates as follows:
     0. Set initial values for the weights to learn.
     1. Set the evidence present in the example.
     2. Query the model for the weights of the atoms to be learned.
     3. Update the weights to learn by taking the mean value over all examples and queries.
     4. Repeat steps 1 to 4 until convergence (or a maximum number of iterations).
-
-The <New> algorithm only takes 1 iteration.
-
 The score of the model for a given example is obtained by calculating the probability of the
 evidence in the example.
-
 Implementation
 ++++++++++++++
-
 The algorithm is implemented on top of the ProbLog toolbox.
-
 It uses the following extensions of ProbLog's classes:
-
     * a LogicProgram implementation that rewrites the model and extracts the weights to learn
     (see :py:func:`learning.lfi.LFIProblem.__iter__`)
     * a custom semiring that looks up the current value of a weight to learn
     (see :py:func:`learning.lfi.LFIProblem.value`)
-
-
 .. autoclass:: learning.lfi.LFIProblem
     :members: __iter__, value
-
 """
 
 from __future__ import print_function
@@ -165,7 +132,6 @@ def str2bool(s):
 
 def str2num(s):
     """Translate a Term that represents a number or list of numbers to observations (as Python primitives).
-
     :return: Tuple of (isobserved?, values)
     """
     if s.is_constant() and (s.is_float() or s.is_integer()):
@@ -189,7 +155,6 @@ cdist_names = ["normal"]
 def dist_prob(d, x, eps=None, log=False, density=True):
     """Compute the density of the value x given the distribution d (use interval 2*eps around x).
     Returns a polynomial
-
     :param d: Distribution Term
     :param x: Value
     :param log: use log-scale computations
@@ -250,7 +215,6 @@ def dist_prob(d, x, eps=None, log=False, density=True):
 
 def dist_prob_set(d, values, eps=1e-4):
     """Fit parameters based on EM.
-
     :param d: Distribution Term
     :param values: List of (value, weight, count)
     """
@@ -383,6 +347,8 @@ class LFIProblem(LogicProgram):
         self,
         source,
         examples,
+        max_iter=10000,
+        min_improv=1e-10,
         verbose=0,
         knowledge=None,
         leakprob=None,
@@ -394,13 +360,15 @@ class LFIProblem(LogicProgram):
     ):
         """
         Learn parameters using LFI.
-
         The atoms with to be learned continuous distributions can only appear in the head of a rule.
-
         :param source: filename of file containing input model
         :type source: str
         :param examples: list of observed terms / value
         :type examples: list[tuple(Term, bool)]
+        :param max_iter: maximum number of iterations to run
+        :type max_iter: int
+        :param min_improv: minimum improvement in log-likelihood for convergence detection
+        :type min_improv: float
         :param verbose: verbosity level
         :type verbose: int
         :param knowledge: class to use for knowledge compilation
@@ -438,7 +406,10 @@ class LFIProblem(LogicProgram):
         self.propagate_evidence = propagate_evidence
         self._compiled_examples = None
 
+        self.max_iter = max_iter
+        self.min_improv = min_improv
         self.verbose = verbose
+        self.iteration = 0
 
         if knowledge is None:
             knowledge = get_evaluatable()
@@ -446,7 +417,6 @@ class LFIProblem(LogicProgram):
 
         self.output_mode = False
         self.extra = extra
-        a = 1
 
         self._enable_normalize = normalize
         self._adatoms = []  # list AD atoms and total probability
@@ -507,7 +477,6 @@ class LFIProblem(LogicProgram):
 
     def get_weights(self, index):
         """Get a list of key, weight pairs for the given input fact.
-
         :param index: identifier of the fact
         :return: list of key, weight pairs where key refers to the additional variables
         on which the weight is based
@@ -545,7 +514,6 @@ class LFIProblem(LogicProgram):
 
     def _process_examples(self):
         """Process examples by grouping together examples with similar structure.
-
         :return: example groups based on evidence atoms
         :rtype: dict of atoms : values for examples
         """
@@ -1128,39 +1096,28 @@ class LFIProblem(LogicProgram):
         """
         Iterate over the clauses of the source model.
         This object can be used as a LogicProgram to be passed to the grounding Engine.
-
         Extracts and processes all ``t(...)`` weights.
         This
-
             * replaces each probabilistic atom ``t(...)::p(X)`` by a unique atom \
             ``lfi(i) :: lfi_fact_i(X)``;
             * adds a new clause ``p(X) :- lfi_fact_i(X)``;
             * adds a new query ``query( lfi_fact_i(X) )``;
             * initializes the weight of ``lfi(i)`` based on the ``t(...)`` specification;
-
         This also removes all existing queries from the model.
-
         Example:
-
         .. code-block:: prolog
-
             t(_) :: p(X) :- b(X).
             t(_) :: p(X) :- c(X).
-
         is transformed into
-
         .. code-block:: prolog
-
             lfi(0) :: lfi_fact_0(X) :- b(X).
             p(X) :- lfi_fact_0(X).
             lfi(1) :: lfi_fact_1(X) :- c(X).
             p(X) :- lfi_fact_1(X).
             query(lfi_fact_0(X)).
             query(lfi_fact_1(X)).
-
         If ``self.leakprobs`` is a value, then during learning all true
         examples are added to the program with the given leak probability.
-
         """
 
         if self.output_mode:
@@ -1394,6 +1351,12 @@ class LFIProblem(LogicProgram):
                         i, keys[0], self._get_weight(i, keys[0], strict=False) * n
                     )
 
+    def step(self):
+        self.iteration += 1
+        results = self._evaluate_examples()
+        getLogger("problog_lfi").info("Step {}: {}".format(self.iteration, results))
+        return self._update(results)
+
     def get_model(self):
         self.output_mode = True
         lines = []
@@ -1410,10 +1373,20 @@ class LFIProblem(LogicProgram):
         getLogger("problog_lfi").info("Bodies: %s" % self.bodies)
         getLogger("problog_lfi").info("Parents: %s" % self.parents)
         getLogger("problog_lfi").info("Initial weights: %s" % self._weights)
-
-        results = self._evaluate_examples()
-        getLogger("problog_lfi").info(results)
-        return self._update(results)
+        delta = 1000
+        prev_score = -1e10
+        # TODO: isn't this comparing delta i logprob with min_improv in prob?
+        while self.iteration < self.max_iter and (delta < 0 or delta > self.min_improv):
+            score = self.step()
+            getLogger("problog_lfi").info(
+                "Weights after iteration %s: %s" % (self.iteration, self._weights)
+            )
+            getLogger("problog_lfi").info(
+                "Score after iteration %s: %s" % (self.iteration, score)
+            )
+            delta = score - prev_score
+            prev_score = score
+        return prev_score
 
 
 class ExampleSet(object):
@@ -1437,7 +1410,6 @@ class ExampleSet(object):
 class Example(object):
     def __init__(self, index, atoms, values, cvalues):
         """An example consists of a list of atoms and their corresponding values (True/False).
-
         Different continuous values are all mapped to True and stored in self.n.
         """
         self.atoms = tuple(atoms)
@@ -1599,7 +1571,6 @@ class ExampleEvaluator(SemiringDensity):
         """Overrides from SemiringProbability.
         Replaces a weight of the form ``lfi(i, t(...))`` by its current estimated value.
         Other weights are passed through unchanged.
-
         :param a: term representing the weight
         :type a: Term
         :return: current weight
@@ -1761,7 +1732,6 @@ class ExampleEvaluatorLog(SemiringLogProbability):
         """Overrides from SemiringProbability.
         Replaces a weight of the form ``lfi(i, t(...))`` by its current estimated value.
         Other weights are passed through unchanged.
-
         :param a: term representing the weight
         :type a: Term
         :return: current weight
@@ -1930,7 +1900,7 @@ def run_lfi(program, examples, output_model=None, **kwdargs):
             names.append(name.apply(DefaultDict(translate)))
             weights.append(w_val)
 
-    return score, weights, names, lfi
+    return score, weights, names, lfi.iteration, lfi
 
 
 def argparser():
@@ -1941,6 +1911,8 @@ def argparser():
     )
     parser.add_argument("model")
     parser.add_argument("examples", nargs="+")
+    parser.add_argument("-n", dest="max_iter", default=10000, type=int)
+    parser.add_argument("-d", dest="min_improv", default=1e-10, type=float)
     parser.add_argument(
         "-o",
         "--output-model",
@@ -2072,14 +2044,14 @@ def main(argv, result_handler=None):
 def print_result(d, output, precision=8):
     success, d = d
     if success:
-        score, weights, names, lfi = d
+        score, weights, names, iterations, lfi = d
         weights_print = []
         for weight in weights:
             if isinstance(weight, Term) and weight.functor in cdist_names:
                 weights_print.append(weight)
             else:
                 weights_print.append(round(float(weight), precision))
-        # print(score, weights, names, file=output)
+        # print(score, weights, names, iterations, file=output)
         return 0
     else:
         # print(process_error(d), file=output)
@@ -2091,10 +2063,11 @@ def print_result_json(d, output, precision=8):
 
     success, d = d
     if success:
-        score, weights, names, lfi = d
+        score, weights, names, iterations, lfi = d
         results = {
             "SUCCESS": True,
             "score": score,
+            "iterations": iterations,
             "weights": [
                 [str(n), round(w, precision), n.loc[1], n.loc[2]]
                 for n, w in zip(names, weights)
