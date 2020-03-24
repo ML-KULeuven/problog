@@ -70,7 +70,8 @@ def createTestLFI(filename, useparents=False):
         examples = filename.replace(".pl", ".ev")
         out_model = filename.replace(".pl", ".l_pl")
 
-        expected = read_result(model)
+        expectedlines = read_result(model)
+        # print(expectedlines)
 
         if not os.path.exists(examples):
             raise Exception("Evidence file is missing: {}".format(examples))
@@ -93,75 +94,54 @@ def createTestLFI(filename, useparents=False):
                     ]
                 )
             except Exception as err:
-                print(expected)
-                print(err)
-                assert expected == "NonGroundProbabilisticClause"
+                # print(expected)
+                # print(err)
+                # This test is specifically for test/lfi/AD/relatedAD_1 and test/lfi/AD/relatedAD_2
+                assert expectedlines == "NonGroundProbabilisticClause"
                 return
-                # # This test is specifically for test/lfi/AD/relatedAD_1 and test/lfi/AD/relatedAD_2
-                # # print(type(err))
-                # if isinstance(err, subprocess.CalledProcessError):
-                # # print(type(err))
-                #     print(err.output)
-                #     tb = traceback.format_exc()
-                #     print(tb)
 
         with open(out_model, "r") as f:
             outlines = f.readlines()
-
         outlines = [line.strip() for line in outlines]
+        # print(outlines)
 
-        assert len(expected) == len(outlines)
-        for expectedline, line in zip(expected, outlines):
-            line = line.strip()
-            if "::" in line:
-                if ";" not in line:
-                    if "<RAND>" in expectedline and ";" not in expectedline:
-                        line = "<RAND>::" + line.split("::")[1]
+        assert len(expectedlines) == len(outlines)
+        # Compare expected program and learned program line by line
+        for expectedline, outline in zip(expectedlines, outlines):
+            # When there are probabilities
+            if "::" in outline:
+                # Break the lines into components where each component has exactly one probability
+                expectedline_comps = expectedline.split(";")
+                outline_comps = outline.split(";")
+                new_expectedline_comps = []
+                new_outline_comps = []
+                assert len(expectedline_comps) == len(outline_comps)
+                # Compare one expected probability and one learned probability at a time
+                for expectedline_comp, outline_comp in zip(expectedline_comps, outline_comps):
+                    outline_comp = outline_comp.strip()
+                    expectedline_comp = expectedline_comp.strip()
+                    # When the learned prob in outline_component does not matter,
+                    # discard the learned probability
+                    if "<RAND>" in expectedline_comp:
+                        outline_comp = "<RAND>::" + outline_comp.split("::")[1]
                     else:
-                        prob = float(line.split("::")[0])
-                        expectedline_prob = float(expectedline.split("::")[0])
-                        rounded_prob = '{:.6f}'.format(prob)
-                        rounded_expectedline_prob = '{:.6f}'.format(expectedline_prob)
-                        if abs(float(rounded_prob) - float(rounded_expectedline_prob)) < 0.00001:
-                            line = rounded_expectedline_prob + "::" + line.split("::")[1]
-                        else:
-                            line = rounded_prob + "::" + line.split("::")[1]
-                        expectedline = str(rounded_expectedline_prob) + "::" + expectedline.split("::")[1]
-
-                else:
-                    if ";" in expectedline:
-                        ad_expectedlines = expectedline.split(";")
-                        ad_lines = line.split(";")
-                        rounded_ad_lines = []
-                        rounded_expected_ad_lines = []
-                        # TODO assert len(ad_expectedlines) == len(ad_lines)
-                        for ad_expectedline, ad_line in zip(ad_expectedlines, ad_lines):
-                            ad_line = ad_line.strip()
-                            ad_expectedline = ad_expectedline.strip()
-                            if "<RAND>" in ad_expectedline:
-                                ad_line = "<RAND>::" + ad_line.split("::")[1]
-                            else:
-                                ad_prob = float(ad_line.split("::")[0])
-                                ad_expectedline_prob = float(ad_expectedline.split("::")[0])
-                                rounded_ad_prob = '{:.6f}'.format(ad_prob)
-                                rounded_ad_expectedline_prob = '{:.6f}'.format(ad_expectedline_prob)
-                                if abs(float(rounded_ad_prob) - float(rounded_ad_expectedline_prob)) < 0.00001:
-                                    ad_line = rounded_ad_expectedline_prob + "::" + ad_line.split("::")[1]
-                                else:
-                                    ad_line = rounded_ad_prob + "::" + ad_line.split("::")[1]
-                                ad_expectedline = rounded_ad_expectedline_prob + "::" + ad_expectedline.split("::")[1]
-                            rounded_ad_lines.append(ad_line)
-                            rounded_expected_ad_lines.append(ad_expectedline)
-                        line = "; ".join(rounded_ad_lines)
-                        expectedline = "; ".join(rounded_expected_ad_lines)
-                    else:
-                        raise AssertionError
-            # rounded_outlines.append(line)
-            assert expectedline == line
-
-
-        print(expected)
-        print(outlines)
+                        # Round the expected and learned probabilities
+                        rounded_outline_comp_prob = '{:.6f}'.format(float(outline_comp.split("::")[0]))
+                        rounded_expectedline_comp_prob = '{:.6f}'.format(float(expectedline_comp.split("::")[0]))
+                        # Update the expected component probability
+                        expectedline_comp = rounded_expectedline_comp_prob + "::" + \
+                                          expectedline_comp.split("::")[1]
+                        # If the learned probability is close enough to the expected probability
+                        if abs(float(rounded_outline_comp_prob) - float(rounded_expectedline_comp_prob)) < 0.00001:
+                            # Make the two lines identical
+                            outline_comp = rounded_expectedline_comp_prob + "::" + outline_comp.split("::")[1]
+                    new_outline_comps.append(outline_comp)
+                    new_expectedline_comps.append(expectedline_comp)
+                new_outline = "; ".join(new_outline_comps)
+                new_expectedline = "; ".join(new_expectedline_comps)
+            # print(new_expectedline)
+            # print(new_outline)
+            assert new_expectedline == new_outline
 
     return test
 
