@@ -1920,7 +1920,7 @@ def argparser():
         default=None,
         help="write resulting model to given file",
     )
-    parser.add_argument("--log", type=str, default=None, help="write log to file")
+    parser.add_argument("--logger", type=str, default=None, help="write log to file")
     parser.add_argument(
         "-k",
         "--knowledge",
@@ -2012,20 +2012,20 @@ def main(argv, result_handler=None):
 
     knowledge = get_evaluatable(args.koption)
 
-    if args.log is None:
+    if args.logger is None:
         outf = None
     else:
-        outf = open(args.log, "w")
+        outf = open(args.logger, "w")
 
-    log = init_logger(verbose=args.verbose, name="problog_lfi", out=outf)
+    logger = init_logger(verbose=args.verbose, name="problog_lfi", out=outf)
     create_logger("problog", args.verbose - 1)
 
     program = PrologFile(args.model)
     examples = list(read_examples(*args.examples))
     if len(examples) == 0:
-        log.warning("no examples specified")
+        logger.warning("no examples specified")
     else:
-        log.info("Number of examples: %s" % len(examples))
+        logger.info("Number of examples: %s" % len(examples))
     options = vars(args)
     del options["examples"]
 
@@ -2040,7 +2040,7 @@ def main(argv, result_handler=None):
         err.trace = trace
         retcode = result_handler((False, err), output=outf)
 
-    if args.log is not None:
+    if args.logger is not None:
         outf.close()
 
     if retcode:
