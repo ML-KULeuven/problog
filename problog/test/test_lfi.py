@@ -33,7 +33,8 @@ class TestLFI(unittest.TestCase):
         except AttributeError:
             self.assertSequenceEqual = self.assertCountEqual
 
-    def tearDownClass():
+    @classmethod
+    def tearDownClass(self):
         ignore_previous_output("../../test/lfi/AD/")
         ignore_previous_output("../../test/lfi/simple/")
         ignore_previous_output("../../test/lfi/useParents/")
@@ -89,7 +90,7 @@ def createTestLFI(filename, useparents=False):
                         problogcli,
                         "lfi",
                         "-k",
-                        evaluatable,
+                        "ddnnf",
                         "-n",
                         "500",
                         "-o",
