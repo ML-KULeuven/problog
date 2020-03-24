@@ -446,6 +446,7 @@ class LFIProblem(LogicProgram):
 
         self.output_mode = False
         self.extra = extra
+        a = 1
 
         self._enable_normalize = normalize
         self._adatoms = []  # list AD atoms and total probability
