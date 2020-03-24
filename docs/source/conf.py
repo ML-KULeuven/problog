@@ -218,7 +218,7 @@ latex_elements = {
 # (source start file, target name, title,
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
-    ("index", "ProbLog.tex", u"ProbLog Documentation", u"Anton Dries", "manual"),
+    ("index", "ProbLog.tex", u"ProbLog Documentation", u"Anton Dries", "manual")
 ]
 
 # The name of an image file (relative to this directory) to place at the top of
@@ -266,7 +266,7 @@ texinfo_documents = [
         "ProbLog",
         "One line description of project.",
         "Miscellaneous",
-    ),
+    )
 ]
 
 # Documents to append as an appendix to all manuals.

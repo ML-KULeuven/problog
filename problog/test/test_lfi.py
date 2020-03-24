@@ -96,6 +96,7 @@ def createTestLFI(filename, useparents=False):
                         model.replace(".pl", ".l_pl"),
                         model,
                         examples,
+                        "--useparents",
                     ]
                 )
             except Exception as err:
