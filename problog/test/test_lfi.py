@@ -100,8 +100,8 @@ def createTestLFI(filename, useparents=False):
                     ]
                 )
             except Exception as err:
-                # print(expected)
-                # print(err)
+                print(expectedlines)
+                print(err)
                 # This test is specifically for test/lfi/AD/relatedAD_1 and test/lfi/AD/relatedAD_2
                 assert expectedlines == "NonGroundProbabilisticClause"
                 return
