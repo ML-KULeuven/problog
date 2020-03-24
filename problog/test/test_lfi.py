@@ -11,6 +11,7 @@ import os
 import sys
 import glob
 import subprocess, traceback
+from problog.learning.lfi import lfi_wrapper
 
 if __name__ == "__main__":
     sys.path.insert(
@@ -84,21 +85,32 @@ def createTestLFI(filename, useparents=False):
             raise Exception("Evidence file is missing: {}".format(examples))
         if useparents:
             try:
-                out = subprocess_check_output(
-                    [
-                        sys.executable,
-                        problogcli,
-                        "lfi",
-                        "-k",
-                        evaluatable,
-                        "-n",
-                        "500",
-                        "-o",
-                        model.replace(".pl", ".l_pl"),
-                        model,
-                        examples,
-                    ]
-                )
+                # out = subprocess_check_output(
+                #     [
+                #         sys.executable,
+                #         problogcli,
+                #         "lfi",
+                #         "-k",
+                #         evaluatable,
+                #         "-n",
+                #         "500",
+                #         "-o",
+                #         model.replace(".pl", ".l_pl"),
+                #         model,
+                #         examples,
+                #     ]
+                # )
+                d = {
+                    "max_iter": 10000,
+                    "min_improv": 1e-10,
+                    "leakprob": None,
+                    "propagate_evidence": True,
+                    "eps": 0.0001,
+                    "normalize": True, 
+                    "web": False,
+                    "args": None}
+                results = lfi_wrapper(model, examples, evaluatable, d)
+
             except Exception as err:
                 print(expectedlines)
                 print(err)

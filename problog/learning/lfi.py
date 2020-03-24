@@ -1993,6 +1993,12 @@ def create_logger(name, verbose):
     logger.addHandler(ch)
     logger.setLevel(levels[verbose])
 
+def lfi_wrapper(plfile, evfiles, knowledge, options):
+    program = PrologFile(plfile)
+    examples = list(read_examples(*evfiles))
+    return run_lfi(program, examples, knowledge=knowledge, **options)
+
+
 
 def main(argv, result_handler=None):
     parser = argparser()
