@@ -69,13 +69,15 @@ with evidence:
 Algorithm
 +++++++++
 
-The algorithm operates as follows:
+The <OLD> algorithm used EM and operated as follows:
 
     0. Set initial values for the weights to learn.
     1. Set the evidence present in the example.
     2. Query the model for the weights of the atoms to be learned.
     3. Update the weights to learn by taking the mean value over all examples and queries.
     4. Repeat steps 1 to 4 until convergence (or a maximum number of iterations).
+
+The <New> algorithm only takes 1 iteration.
 
 The score of the model for a given example is obtained by calculating the probability of the
 evidence in the example.
@@ -381,8 +383,6 @@ class LFIProblem(LogicProgram):
         self,
         source,
         examples,
-        max_iter=10000,
-        min_improv=1e-10,
         verbose=0,
         knowledge=None,
         leakprob=None,
@@ -401,10 +401,6 @@ class LFIProblem(LogicProgram):
         :type source: str
         :param examples: list of observed terms / value
         :type examples: list[tuple(Term, bool)]
-        :param max_iter: maximum number of iterations to run
-        :type max_iter: int
-        :param min_improv: minimum improvement in log-likelihood for convergence detection
-        :type min_improv: float
         :param verbose: verbosity level
         :type verbose: int
         :param knowledge: class to use for knowledge compilation
@@ -442,10 +438,7 @@ class LFIProblem(LogicProgram):
         self.propagate_evidence = propagate_evidence
         self._compiled_examples = None
 
-        self.max_iter = max_iter
-        self.min_improv = min_improv
         self.verbose = verbose
-        self.iteration = 0
 
         if knowledge is None:
             knowledge = get_evaluatable()
@@ -1400,12 +1393,6 @@ class LFIProblem(LogicProgram):
                         i, keys[0], self._get_weight(i, keys[0], strict=False) * n
                     )
 
-    def step(self):
-        self.iteration += 1
-        results = self._evaluate_examples()
-        getLogger("problog_lfi").info("Step {}: {}".format(self.iteration, results))
-        return self._update(results)
-
     def get_model(self):
         self.output_mode = True
         lines = []
@@ -1422,20 +1409,10 @@ class LFIProblem(LogicProgram):
         getLogger("problog_lfi").info("Bodies: %s" % self.bodies)
         getLogger("problog_lfi").info("Parents: %s" % self.parents)
         getLogger("problog_lfi").info("Initial weights: %s" % self._weights)
-        delta = 1000
-        prev_score = -1e10
-        # TODO: isn't this comparing delta i logprob with min_improv in prob?
-        while self.iteration < self.max_iter and (delta < 0 or delta > self.min_improv):
-            score = self.step()
-            getLogger("problog_lfi").info(
-                "Weights after iteration %s: %s" % (self.iteration, self._weights)
-            )
-            getLogger("problog_lfi").info(
-                "Score after iteration %s: %s" % (self.iteration, score)
-            )
-            delta = score - prev_score
-            prev_score = score
-        return prev_score
+
+        results = self._evaluate_examples()
+        getLogger("problog_lfi").info(results)
+        return self._update(results)
 
 
 class ExampleSet(object):
@@ -1952,7 +1929,7 @@ def run_lfi(program, examples, output_model=None, **kwdargs):
             names.append(name.apply(DefaultDict(translate)))
             weights.append(w_val)
 
-    return score, weights, names, lfi.iteration, lfi
+    return score, weights, names, lfi
 
 
 def argparser():
@@ -1963,8 +1940,6 @@ def argparser():
     )
     parser.add_argument("model")
     parser.add_argument("examples", nargs="+")
-    parser.add_argument("-n", dest="max_iter", default=10000, type=int)
-    parser.add_argument("-d", dest="min_improv", default=1e-10, type=float)
     parser.add_argument(
         "-o",
         "--output-model",
@@ -2096,14 +2071,14 @@ def main(argv, result_handler=None):
 def print_result(d, output, precision=8):
     success, d = d
     if success:
-        score, weights, names, iterations, lfi = d
+        score, weights, names, lfi = d
         weights_print = []
         for weight in weights:
             if isinstance(weight, Term) and weight.functor in cdist_names:
                 weights_print.append(weight)
             else:
                 weights_print.append(round(float(weight), precision))
-        # print(score, weights, names, iterations, file=output)
+        # print(score, weights, names, file=output)
         return 0
     else:
         # print(process_error(d), file=output)
@@ -2115,11 +2090,10 @@ def print_result_json(d, output, precision=8):
 
     success, d = d
     if success:
-        score, weights, names, iterations, lfi = d
+        score, weights, names, lfi = d
         results = {
             "SUCCESS": True,
             "score": score,
-            "iterations": iterations,
             "weights": [
                 [str(n), round(w, precision), n.loc[1], n.loc[2]]
                 for n, w in zip(names, weights)
