@@ -390,7 +390,6 @@ class LFIProblem(LogicProgram):
         normalize=False,
         log=False,
         eps=1e-4,
-        use_parents=False,
         **extra
     ):
         """
@@ -418,8 +417,6 @@ class LFIProblem(LogicProgram):
         :type leakprob: float or None
         :param eps: Epsilon value which is the smallest value that is used
         :type eps: float
-        :param use_parents: Perform EM with P(x, parents | ev) instead of P(x | ev)
-        :type use_parents: bool
         :param extra: catch all for additional parameters (not used)
         """
         # logger = getLogger('problog_lfi')
@@ -427,7 +424,6 @@ class LFIProblem(LogicProgram):
         self.source = source
         self._log = log
         self._eps = eps
-        self._use_parents = use_parents
 
         # The names of the atom for which we want to learn weights.
         self.names = []
@@ -495,14 +491,10 @@ class LFIProblem(LogicProgram):
             ad_index = -1
         if len(self._adatoms[ad_index][1]) == 1:
             indices = self._adatoms[ad_index][1]
-            if self._use_parents:
-                self._adatomc[indices[0]] = [
-                    -1 - indices[0]
-                ]  # No AD, complement is negative variable
-            else:
-                self._adatoms.pop(ad_index)
-                for idx in indices:
-                    del self._adatomc[idx]
+
+            self._adatomc[indices[0]] = [
+                -1 - indices[0]
+            ]  # No AD, complement is negative variable
 
     def prepare(self):
         """Prepare for learning."""
@@ -568,10 +560,6 @@ class LFIProblem(LogicProgram):
         # ( atom ), ( ( value, ... ), ... )
 
         # Simple implementation: don't add neutral evidence.
-
-        use_parents = None
-        if self._use_parents:
-            use_parents = {"adatomc": self._adatomc}
 
         # ad_groups is a dictionary of lists, each list contains an AD
         # the key
@@ -762,13 +750,13 @@ class LFIProblem(LogicProgram):
 
                     atoms, values, cvalues = zip(*evidence_set)
                     # print(index, "Push evidence\t:", atoms, values, cvalues, "\n")
-                    result.add(index, atoms, values, cvalues, use_parents=use_parents)
+                    result.add(index, atoms, values, cvalues)
 
                 else:
                     # (No AD case) or (Inconsistent Evidence Case)
                     atoms, values, cvalues = zip(*example)
                     # print(index, "Push evidence\t:", atoms, values, "\n")
-                    result.add(index, atoms, values, cvalues, use_parents=use_parents)
+                    result.add(index, atoms, values, cvalues)
 
             return result
         else:
@@ -776,7 +764,7 @@ class LFIProblem(LogicProgram):
             result = ExampleSet()
             for index, example in enumerate(self.examples):
                 atoms, values, cvalues = zip(*example)
-                result.add(index, atoms, values, cvalues, use_parents=use_parents)
+                result.add(index, atoms, values, cvalues)
             return result
 
     def _compile_examples(self):
@@ -1030,26 +1018,19 @@ class LFIProblem(LogicProgram):
 
                 # 2) Replacement atom
                 replacement = lfi_fact.with_probability(lfi_prob)
-                if self._use_parents:
-                    if body is None:
-                        new_body = Term("true")
-                    else:
-                        new_body = body
+
+                if body is None:
+                    new_body = Term("true")
                 else:
-                    if body is None:
-                        new_body = lfi_fact
-                    else:
-                        new_body = body & lfi_fact
+                    new_body = body
 
                 # 3) Create redirection clause
-                if self._use_parents:
-                    extra_clauses += [
-                        Clause(atom1.with_probability(), lfi_body),
-                        Clause(lfi_body, lfi_par & lfi_fact),
-                        Clause(lfi_par, new_body),
-                    ]
-                else:
-                    extra_clauses += [Clause(atom1.with_probability(), new_body)]
+
+                extra_clauses += [
+                    Clause(atom1.with_probability(), lfi_body),
+                    Clause(lfi_body, lfi_par & lfi_fact),
+                    Clause(lfi_par, new_body),
+                ]
 
                 self.append_ad(len(self._weights))
                 # 4) Set initial weight
@@ -1061,9 +1042,8 @@ class LFIProblem(LogicProgram):
 
                 # 5) Add name
                 self.names.append(atom)
-                if self._use_parents:
-                    self.bodies.append(lfi_body)
-                    self.parents.append(lfi_par)
+                self.bodies.append(lfi_body)
+                self.parents.append(lfi_par)
                 atoms_out.append(replacement)
             else:
                 atoms_out.append(atom)
@@ -1239,13 +1219,9 @@ class LFIProblem(LogicProgram):
         getLogger("problog_lfi").debug("Evaluating examples ...")
 
         if self._log:
-            evaluator = ExampleEvaluatorLog(
-                self._weights, eps=self._eps, use_parents=self._use_parents
-            )
+            evaluator = ExampleEvaluatorLog(self._weights, eps=self._eps)
         else:
-            evaluator = ExampleEvaluator(
-                self._weights, eps=self._eps, use_parents=self._use_parents
-            )
+            evaluator = ExampleEvaluator(self._weights, eps=self._eps)
 
         results = []
         for i, example in enumerate(self._compiled_examples):
@@ -1322,10 +1298,7 @@ class LFIProblem(LogicProgram):
                 logger.debug("Pr(evidence) == 0.0")
                 # raise ProbLogError('Inconsistent evidence when updating')
 
-        if self._use_parents:
-            update_list = fact_body
-        else:
-            update_list = fact_marg
+        update_list = fact_body
 
         # indices_set = set()
         # for index in update_list:
@@ -1348,41 +1321,28 @@ class LFIProblem(LogicProgram):
                 )
                 weight_changed[int(index[0])] = True
             else:
-                if self._use_parents:
-                    if float(fact_body[index]) == 0.0:
-                        prob = 0.0
-                    else:
-                        # print(fact_par[index])
-                        temp = dict()
-                        ids, vars = zip(*list(fact_par.keys()))
-                        for id in set(ids):
-                            temp[id] = 0
-                            for var in set(vars):
-                                temp[id] += fact_par[(id, var)]
-                        prob = float(fact_body[index]) / float(temp[index[0]])
-                        # prob = float(fact_body[index]) / float(fact_par[index])
-                    logger.debug(
-                        "Update probabilistic fact {}: {} / {} = {}".format(
-                            index, fact_body[index], fact_par[index], prob
-                        )
-                    )
-                    self._set_weight(
-                        index[0], index[1], prob, weight_changed=weight_changed
-                    )
-                    weight_changed[int(index[0])] = True
 
-                elif fact_count[index] > 0:
-                    # TODO: This assumes the estimate for true and false add up to one (not true for AD)
-                    prob = float(fact_marg[index]) / float(fact_count[index])
-                    logger.debug(
-                        "Update probabilistic fact {}: {} / {} = {}".format(
-                            index, fact_marg[index], fact_count[index], prob
-                        )
+                if float(fact_body[index]) == 0.0:
+                    prob = 0.0
+                else:
+                    # print(fact_par[index])
+                    temp = dict()
+                    ids, vars = zip(*list(fact_par.keys()))
+                    for id in set(ids):
+                        temp[id] = 0
+                        for var in set(vars):
+                            temp[id] += fact_par[(id, var)]
+                    prob = float(fact_body[index]) / float(temp[index[0]])
+                    # prob = float(fact_body[index]) / float(fact_par[index])
+                logger.debug(
+                    "Update probabilistic fact {}: {} / {} = {}".format(
+                        index, fact_body[index], fact_par[index], prob
                     )
-                    self._set_weight(
-                        index[0], index[1], prob, weight_changed=weight_changed
-                    )
-                    weight_changed[int(index[0])] = True
+                )
+                self._set_weight(
+                    index[0], index[1], prob, weight_changed=weight_changed
+                )
+                weight_changed[int(index[0])] = True
 
         if self._enable_normalize:
             self._normalize_weights()
@@ -1457,12 +1417,10 @@ class LFIProblem(LogicProgram):
 
     def run(self):
         self.prepare()
-        if self._use_parents:
-            getLogger("problog_lfi").info("Weights to learn: %s" % self.names)
-            getLogger("problog_lfi").info("Bodies: %s" % self.bodies)
-            getLogger("problog_lfi").info("Parents: %s" % self.parents)
-        else:
-            getLogger("problog_lfi").info("Weights to learn: %s" % self.names)
+
+        getLogger("problog_lfi").info("Weights to learn: %s" % self.names)
+        getLogger("problog_lfi").info("Bodies: %s" % self.bodies)
+        getLogger("problog_lfi").info("Parents: %s" % self.parents)
         getLogger("problog_lfi").info("Initial weights: %s" % self._weights)
         delta = 1000
         prev_score = -1e10
@@ -1484,12 +1442,10 @@ class ExampleSet(object):
     def __init__(self):
         self._examples = {}
 
-    def add(self, index, atoms, values, cvalues, use_parents=None):
+    def add(self, index, atoms, values, cvalues):
         ex = self._examples.get((atoms, values))
         if ex is None:
-            self._examples[(atoms, values)] = Example(
-                index, atoms, values, cvalues, use_parents=use_parents
-            )
+            self._examples[(atoms, values)] = Example(index, atoms, values, cvalues)
         else:
             ex.add_index(index, cvalues)
 
@@ -1501,7 +1457,7 @@ class ExampleSet(object):
 
 
 class Example(object):
-    def __init__(self, index, atoms, values, cvalues, use_parents=None):
+    def __init__(self, index, atoms, values, cvalues):
         """An example consists of a list of atoms and their corresponding values (True/False).
 
         Different continuous values are all mapped to True and stored in self.n.
@@ -1510,7 +1466,6 @@ class Example(object):
         self.values = tuple(values)
         self.compiled = []
         self.n = {tuple(cvalues): [index]}
-        self._use_parents = use_parents
 
     def __hash__(self):
         return hash((self.atoms, self.values))
@@ -1559,21 +1514,21 @@ class Example(object):
                 fact = Term("lfi_fact", node.probability.args[0], Term("t", *factargs))
                 # print("Adding query: ", fact, i)
                 ground_program.add_query(fact, i)
-                if self._use_parents:
-                    # tmp_body = Term('lfi_body', node.probability.args[0], node.probability.args[1], *factargs)
-                    # tmp_body = Term('lfi_body', node.probability.args[0], node.probability.args[1])
-                    tmp_body = Term(
-                        "lfi_body", node.probability.args[0], Term("t", *factargs)
-                    )
-                    lfi_queries.append(tmp_body)
-                    # print("Adding query: ", tmp_body, i)
-                    # tmp_par = Term('lfi_par', node.probability.args[0], node.probability.args[1], *factargs)
-                    # tmp_par = Term('lfi_par', node.probability.args[0], node.probability.args[1])
-                    tmp_par = Term(
-                        "lfi_par", node.probability.args[0], Term("t", *factargs)
-                    )
-                    lfi_queries.append(tmp_par)
-                    # print("Adding query: ", tmp_par, i)
+
+                # tmp_body = Term('lfi_body', node.probability.args[0], node.probability.args[1], *factargs)
+                # tmp_body = Term('lfi_body', node.probability.args[0], node.probability.args[1])
+                tmp_body = Term(
+                    "lfi_body", node.probability.args[0], Term("t", *factargs)
+                )
+                lfi_queries.append(tmp_body)
+                # print("Adding query: ", tmp_body, i)
+                # tmp_par = Term('lfi_par', node.probability.args[0], node.probability.args[1], *factargs)
+                # tmp_par = Term('lfi_par', node.probability.args[0], node.probability.args[1])
+                tmp_par = Term(
+                    "lfi_par", node.probability.args[0], Term("t", *factargs)
+                )
+                lfi_queries.append(tmp_par)
+                # print("Adding query: ", tmp_par, i)
             elif (
                 t == "atom"
                 and isinstance(node.probability, Term)
@@ -1591,16 +1546,15 @@ class Example(object):
                 #       lfi continuous probs are associated with lfi/2
                 pass
 
-        if self._use_parents:
-            ground_program = ground(
-                baseprogram,
-                ground_program,
-                evidence=list(zip(self.atoms, self.values)),
-                propagate_evidence=lfi.propagate_evidence,
-                queries=lfi_queries,
-            )
-            # print("New ground_program")
-            # print(ground_program)
+        ground_program = ground(
+            baseprogram,
+            ground_program,
+            evidence=list(zip(self.atoms, self.values)),
+            propagate_evidence=lfi.propagate_evidence,
+            queries=lfi_queries,
+        )
+        # print("New ground_program")
+        # print(ground_program)
 
         self.compiled = lfi.knowledge.create_from(ground_program)
         # print("Compiled program:")
@@ -1615,12 +1569,11 @@ class Example(object):
 
 
 class ExampleEvaluator(SemiringDensity):
-    def __init__(self, weights, eps, use_parents=None):
+    def __init__(self, weights, eps):
         SemiringDensity.__init__(self)
         self._weights = weights
         self._cevidence = None
         self._eps = eps
-        self._use_parents = use_parents
 
     def _get_weight(self, index, args, strict=True):
         index = int(index)
@@ -1759,7 +1712,7 @@ class ExampleEvaluator(SemiringDensity):
         p_queries = {}
         # Probability of query given evidence
         for name, node, label in evaluator.formula.labeled():
-            if self._use_parents and name.functor not in ["lfi_body", "lfi_par"]:
+            if name.functor not in ["lfi_body", "lfi_par"]:
                 continue
             # print("evaluate start {}".format(name), node)
             w = evaluator.evaluate(node)
@@ -1782,12 +1735,11 @@ class ExampleEvaluator(SemiringDensity):
 
 
 class ExampleEvaluatorLog(SemiringLogProbability):
-    def __init__(self, weights, eps, use_parents=None):
+    def __init__(self, weights, eps):
         SemiringLogProbability.__init__(self)
         self._weights = weights
         self._cevidence = None
         self._eps = eps
-        self._use_parents = use_parents
 
     def _get_weight(self, index, args, strict=True):
         index = int(index)
@@ -2069,12 +2021,6 @@ def argparser():
         action="store_false",
         dest="normalize",
         help="Do not normalize AD-weights.",
-    )
-    parser.add_argument(
-        "--useparents",
-        action="store_true",
-        dest="use_parents",
-        help="Use parents to compute expectation",
     )
     parser.add_argument("-v", "--verbose", action="count", default=0)
     parser.add_argument("--web", action="store_true", help=argparse.SUPPRESS)
