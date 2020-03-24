@@ -112,7 +112,8 @@ except ImportError:
 
 from collections import defaultdict
 from itertools import chain
-
+from problog.util import init_logger
+from logging import getLogger
 from problog.engine import DefaultEngine, ground
 from problog.evaluator import (
     SemiringProbability,
@@ -213,7 +214,7 @@ def dist_prob(d, x, eps=None, log=False, density=True):
             try:
                 rv = stats.multivariate_normal(m, cov)
             except np.linalg.linalg.LinAlgError as exc:
-                logger = logging.getLogger("problog_lfi")
+                logger = getLogger("problog_lfi")
                 logger.debug(
                     "Encountered a singular covariance matrix: N({},\n{})".format(
                         m, cov
@@ -251,7 +252,7 @@ def dist_prob_set(d, values, eps=1e-4):
     :param d: Distribution Term
     :param values: List of (value, weight, count)
     """
-    logger = logging.getLogger("problog_lfi")
+    logger = getLogger("problog_lfi")
     if stats is None or np is None:
         raise ProbLogError(
             "Continuous variables require Scipy and Numpy to be installed."
@@ -421,7 +422,7 @@ class LFIProblem(LogicProgram):
         :type use_parents: bool
         :param extra: catch all for additional parameters (not used)
         """
-        # logger = logging.getLogger('problog_lfi')
+        # logger = getLogger('problog_lfi')
         LogicProgram.__init__(self)
         self.source = source
         self._log = log
@@ -813,7 +814,7 @@ class LFIProblem(LogicProgram):
 
     def _process_atom_cont(self, atom, body):
         """Returns tuple ( prob_atom, [ additional clauses ] )"""
-        logger = logging.getLogger("problog_lfi")
+        logger = getLogger("problog_lfi")
         atoms_out = []
         extra_clauses = []
 
@@ -1235,7 +1236,7 @@ class LFIProblem(LogicProgram):
         """Evaluate the model with its current estimates for all examples."""
         results = []
         i = 0
-        logging.getLogger("problog_lfi").debug("Evaluating examples ...")
+        getLogger("problog_lfi").debug("Evaluating examples ...")
 
         if self._log:
             evaluator = ExampleEvaluatorLog(
@@ -1252,7 +1253,7 @@ class LFIProblem(LogicProgram):
                 results.append(evaluator(example))
             except InconsistentEvidenceError:
                 # print("Ignoring example {}/{}".format(i + 1, len(self._compiled_examples)))
-                logging.getLogger("problog_lfi").warning(
+                getLogger("problog_lfi").warning(
                     "Ignoring example {}/{}".format(i + 1, len(self._compiled_examples))
                 )
         # for result in results:
@@ -1265,7 +1266,7 @@ class LFIProblem(LogicProgram):
     def _update(self, results):
         """Update the current estimates based on the latest evaluation results."""
         # print("_update", results)
-        logger = logging.getLogger("problog_lfi")
+        logger = getLogger("problog_lfi")
         # fact_marg = defaultdict(DensityValue)
         fact_marg = defaultdict(int)
         fact_body = defaultdict(int)
@@ -1442,9 +1443,7 @@ class LFIProblem(LogicProgram):
     def step(self):
         self.iteration += 1
         results = self._evaluate_examples()
-        logging.getLogger("problog_lfi").info(
-            "Step {}: {}".format(self.iteration, results)
-        )
+        getLogger("problog_lfi").info("Step {}: {}".format(self.iteration, results))
         return self._update(results)
 
     def get_model(self):
@@ -1459,21 +1458,21 @@ class LFIProblem(LogicProgram):
     def run(self):
         self.prepare()
         if self._use_parents:
-            logging.getLogger("problog_lfi").info("Weights to learn: %s" % self.names)
-            logging.getLogger("problog_lfi").info("Bodies: %s" % self.bodies)
-            logging.getLogger("problog_lfi").info("Parents: %s" % self.parents)
+            getLogger("problog_lfi").info("Weights to learn: %s" % self.names)
+            getLogger("problog_lfi").info("Bodies: %s" % self.bodies)
+            getLogger("problog_lfi").info("Parents: %s" % self.parents)
         else:
-            logging.getLogger("problog_lfi").info("Weights to learn: %s" % self.names)
-        logging.getLogger("problog_lfi").info("Initial weights: %s" % self._weights)
+            getLogger("problog_lfi").info("Weights to learn: %s" % self.names)
+        getLogger("problog_lfi").info("Initial weights: %s" % self._weights)
         delta = 1000
         prev_score = -1e10
         # TODO: isn't this comparing delta i logprob with min_improv in prob?
         while self.iteration < self.max_iter and (delta < 0 or delta > self.min_improv):
             score = self.step()
-            logging.getLogger("problog_lfi").info(
+            getLogger("problog_lfi").info(
                 "Weights after iteration %s: %s" % (self.iteration, self._weights)
             )
-            logging.getLogger("problog_lfi").info(
+            getLogger("problog_lfi").info(
                 "Score after iteration %s: %s" % (self.iteration, score)
             )
             delta = score - prev_score
@@ -2015,15 +2014,13 @@ def argparser():
     parser.add_argument("-n", dest="max_iter", default=10000, type=int)
     parser.add_argument("-d", dest="min_improv", default=1e-10, type=float)
     parser.add_argument(
-        "-O",
+        "-o",
         "--output-model",
         type=str,
         default=None,
         help="write resulting model to given file",
     )
-    parser.add_argument(
-        "-o", "--output", type=str, default=None, help="write output to file"
-    )
+    parser.add_argument("--log", type=str, default=None, help="write log to file")
     parser.add_argument(
         "-k",
         "--knowledge",
@@ -2095,7 +2092,7 @@ def argparser():
 def create_logger(name, verbose):
     levels = [logging.WARNING, logging.INFO, logging.DEBUG] + list(range(9, 0, -1))
     verbose = max(0, min(len(levels) - 1, verbose))
-    logger = logging.getLogger(name)
+    logger = getLogger(name)
     ch = logging.StreamHandler(sys.stdout)
     formatter = logging.Formatter("[%(levelname)s] %(message)s")
     ch.setFormatter(formatter)
@@ -2115,20 +2112,20 @@ def main(argv, result_handler=None):
 
     knowledge = get_evaluatable(args.koption)
 
-    if args.output is None:
-        outf = sys.stdout
+    if args.log is None:
+        outf = None
     else:
-        outf = open(args.output, "w")
+        outf = open(args.log, "w")
 
-    create_logger("problog_lfi", args.verbose)
+    log = init_logger(verbose=args.verbose, name="problog_lfi", out=outf)
     create_logger("problog", args.verbose - 1)
 
     program = PrologFile(args.model)
     examples = list(read_examples(*args.examples))
     if len(examples) == 0:
-        logging.getLogger("problog_lfi").warning("no examples specified")
+        log.warning("no examples specified")
     else:
-        logging.getLogger("problog_lfi").info("Number of examples: %s" % len(examples))
+        log.info("Number of examples: %s" % len(examples))
     options = vars(args)
     del options["examples"]
 
@@ -2143,7 +2140,7 @@ def main(argv, result_handler=None):
         err.trace = trace
         retcode = result_handler((False, err), output=outf)
 
-    if args.output is not None:
+    if args.log is not None:
         outf.close()
 
     if retcode:
