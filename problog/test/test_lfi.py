@@ -33,6 +33,12 @@ class TestLFI(unittest.TestCase):
         except AttributeError:
             self.assertSequenceEqual = self.assertCountEqual
 
+    def tearDownClass():
+        ignore_previous_output("../../test/lfi/AD/")
+        ignore_previous_output("../../test/lfi/simple/")
+        ignore_previous_output("../../test/lfi/useParents/")
+        ignore_previous_output("../../test/lfi/unit_tests/")
+        ignore_previous_output("../../test/lfi/test_interface/")
 
 def read_result(filename):
     results = []
@@ -86,11 +92,10 @@ def createTestLFI(filename, useparents=False):
                         evaluatable,
                         "-n",
                         "500",
-                        "-O",
+                        "-o",
                         model.replace(".pl", ".l_pl"),
                         model,
                         examples,
-                        "--useparents",
                     ]
                 )
             except Exception as err:
@@ -157,18 +162,11 @@ def ignore_previous_output(path):
 if __name__ == "__main__":
     filenames = sys.argv[1:]
 else:
-    ignore_previous_output("../../test/lfi/AD/")
     ADfilenames = glob.glob(root_path("test", "lfi", "AD", "*.pl"))
-    ignore_previous_output("../../test/lfi/simple/")
     simple_filenames = glob.glob(root_path("test", "lfi", "simple", "*.pl"))
-    ignore_previous_output("../../test/lfi/useParents/")
     useParents_filenames = glob.glob(root_path("test", "lfi", "useParents", "*.pl"))
-    ignore_previous_output("../../test/lfi/unit_tests/")
     unit_test_filenames = glob.glob(root_path("test", "lfi", "unit_tests", "test_*.pl"))
-    ignore_previous_output("../../test/lfi/test_interface/")
     test_interface_filenames = glob.glob(root_path("test", "lfi", "test_interface", "test1_model.pl"))
-    # ignore_previous_output("../../test/lfi/todo/")
-    # test_todo_filenames = glob.glob(root_path("test", "lfi", "todo", "*.pl"))
 
 evaluatables = ["ddnnf"]
 
@@ -200,15 +198,11 @@ for testfile in unit_test_filenames:
 
 # tests for test_interface
 for testfile in test_interface_filenames:
-    testname = (
-        "test_lfi_test_interface_" + os.path.splitext(os.path.basename(testfile))[0]
-    )
+    testname = ("test_lfi_test_interface_" + os.path.splitext(os.path.basename(testfile))[0])
     setattr(TestLFI, testname, createTestLFI(testfile, useparents=True))
-# for testfile in test_todo_filenames:
-#     testname = (
-#         "test_lfi_test_todo_" + os.path.splitext(os.path.basename(testfile))[0]
-#     )
-#     setattr(TestLFI, testname, createTestLFI(testfile, useparents=True))
+
+
+
 
 if __name__ == "__main__":
     suite = unittest.TestLoader().loadTestsFromTestCase(TestLFI)
