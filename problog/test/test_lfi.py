@@ -90,14 +90,13 @@ def createTestLFI(filename, useparents=False):
                         problogcli,
                         "lfi",
                         "-k",
-                        "ddnnf",
+                        evaluatable,
                         "-n",
                         "500",
                         "-o",
                         model.replace(".pl", ".l_pl"),
                         model,
                         examples,
-                        "--useparents",
                     ]
                 )
             except Exception as err:
@@ -183,25 +182,25 @@ for testfile in simple_filenames:
     testname = "test_lfi_simple_" + os.path.splitext(os.path.basename(testfile))[0]
     setattr(TestLFI, testname, createTestLFI(testfile, True))
 
-# tests for ADs
-for testfile in ADfilenames:
-    testname = "test_lfi_AD_" + os.path.splitext(os.path.basename(testfile))[0]
-    setattr(TestLFI, testname, createTestLFI(testfile, True))
-
-# tests for useParents
-for testfile in useParents_filenames:
-    testname = "test_lfi_parents_" + os.path.splitext(os.path.basename(testfile))[0]
-    setattr(TestLFI, testname, createTestLFI(testfile, True))
-
-# tests for unit tests
-for testfile in unit_test_filenames:
-    testname = "test_lfi_unit_test_" + os.path.splitext(os.path.basename(testfile))[0]
-    setattr(TestLFI, testname, createTestLFI(testfile, True))
-
-# tests for test_interface
-for testfile in test_interface_filenames:
-    testname = ("test_lfi_test_interface_" + os.path.splitext(os.path.basename(testfile))[0])
-    setattr(TestLFI, testname, createTestLFI(testfile, useparents=True))
+# # tests for ADs
+# for testfile in ADfilenames:
+#     testname = "test_lfi_AD_" + os.path.splitext(os.path.basename(testfile))[0]
+#     setattr(TestLFI, testname, createTestLFI(testfile, True))
+#
+# # tests for useParents
+# for testfile in useParents_filenames:
+#     testname = "test_lfi_parents_" + os.path.splitext(os.path.basename(testfile))[0]
+#     setattr(TestLFI, testname, createTestLFI(testfile, True))
+#
+# # tests for unit tests
+# for testfile in unit_test_filenames:
+#     testname = "test_lfi_unit_test_" + os.path.splitext(os.path.basename(testfile))[0]
+#     setattr(TestLFI, testname, createTestLFI(testfile, True))
+#
+# # tests for test_interface
+# for testfile in test_interface_filenames:
+#     testname = ("test_lfi_test_interface_" + os.path.splitext(os.path.basename(testfile))[0])
+#     setattr(TestLFI, testname, createTestLFI(testfile, useparents=True))
 
 
 
