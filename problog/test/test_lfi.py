@@ -20,7 +20,10 @@ if __name__ == "__main__":
 
 try:
     from pysdd import sdd
+    from pysdd.iterator import SddIterator
 
+    # from pysdd.util import sdd_to_dot
+    # from pysdd.sdd import Vtree
     has_sdd = True
 except Exception as err:
     print("SDD library not available due to error: ", err, file=sys.stderr)
@@ -33,14 +36,6 @@ class TestLFI(unittest.TestCase):
             self.assertSequenceEqual = self.assertItemsEqual
         except AttributeError:
             self.assertSequenceEqual = self.assertCountEqual
-
-    @classmethod
-    def tearDownClass(self):
-        ignore_previous_output("../../test/lfi/AD/")
-        ignore_previous_output("../../test/lfi/simple/")
-        ignore_previous_output("../../test/lfi/useParents/")
-        ignore_previous_output("../../test/lfi/unit_tests/")
-        ignore_previous_output("../../test/lfi/test_interface/")
 
 
 def read_result(filename):
