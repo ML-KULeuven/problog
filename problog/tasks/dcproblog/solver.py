@@ -109,7 +109,6 @@ class InferenceSolver(object):
         diagram = self.compile_formula(lf_hal, **kwdargs)
         dde = diagram.get_evaluator(semiring=semiring, **kwdargs)
 
-
         sdds = dde.get_sdds()
         if self.draw_diagram:
             assert not dde.evidence_inode==None

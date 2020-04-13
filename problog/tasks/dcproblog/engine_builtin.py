@@ -94,7 +94,7 @@ def _builtin_observation(term, observation, engine=None, target=None, database=N
     return result
 
 def _builtin_query_density(term, engine=None, target=None, database=None, **kwdargs):
-    check_mode((term,), ['g'], functor='query_density_builtin1', target=target, **kwdargs)
+    check_mode((term,), ['*'], functor='query_density_builtin', target=target, **kwdargs)
     mixture = _query_density(term, engine, target, database, **kwdargs)
     return mixture
 

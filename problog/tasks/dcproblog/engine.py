@@ -41,6 +41,8 @@ class EngineHAL(DefaultEngine):
         # self.add_builtin('=:=', 2, b(_builtin_val_eq))
 
 
+        # self.add_builtin('subquery_builtin', 1, SimpleBuiltIn(_builtin_subquery))
+
 
     def query(self, db, term, gp=None, **kwdargs):
         """
@@ -70,11 +72,17 @@ class EngineHAL(DefaultEngine):
         for label, dquery in dqueries:
             logger.debug("Grounding query '%s'", dquery)
             target, mixture = self._ground(db, Term('query_density_builtin', dquery[0]), target)
-
             mixture = mixture[0][0][0]
-
             target.add_name((dquery[0], mixture), 0, target.LABEL_DQUERY)
             logger.debug("Ground program size: %s", len(target))
+
+    # def ground_queries(self, db, target, queries):
+    #     logger = logging.getLogger("problog")
+    #     for label, query in queries:
+    #         logger.debug("Grounding query '%s'", query)
+    #         target = self.ground(db, query, target, label=label)
+    #         logger.debug("Ground program size: %s", len(target))
+
 
 
     def ground_observation(self, db, target, observation, propagate_evidence=False):
@@ -111,8 +119,7 @@ class EngineHAL(DefaultEngine):
                 if not isinstance(query, Term):
                     raise GroundingError('Invalid query')   # TODO can we add a location?
             if dqueries == None:
-                dqueries = [(dq[0],) for dq in self.query(db, Term('query_density', None), gp=target)]
-                dqueries += [(dq[0],dq[1]) for dq in self.query(db, Term('query_density', None, None), gp=target)]
+                dqueries = [dq for dq in self.query(db, Term('query_density', None), gp=target)]
             for dquery in dqueries:
                 if not isinstance(dquery[0], Term):
                     raise GroundingError('Invalid query')
@@ -130,7 +137,6 @@ class EngineHAL(DefaultEngine):
             for label, arity in labels:
                  #ALSO here: need to pass on target
                 queries += [(label, q[0]) for q in self.query(db, Term(label, *([None] * arity)), gp=target)]
-
             dqueries = [(target.LABEL_DQUERY, dq) for dq in dqueries]
             for label, arity in labels:
                  #ALSO here: need to pass on target
