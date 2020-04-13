@@ -4,4 +4,5 @@
 * would be really nice: implement stochastic variational inference with pyro
 * adapt subquery predicate, does not work correctly right now
 * allow non-ground terms in density_query/1, solved now via between in body of query (observation/2 probably does not allow this at the moment either)
-* query_density without evidence fails/not correct, because density not in random_values 
+* query_density without evidence fails/not correct, because density not in random_values
+* add logprobability for inference with pyro
