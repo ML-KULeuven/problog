@@ -117,7 +117,6 @@ class TestTasks(unittest.TestCase):
         NOTSUPPORTED = [
             "subquery.pl",
         ]
-        print(len(testfiles))
         for tf in testfiles:
             # print(tf)
             if tf.split("/")[-1] in NOTSUPPORTED:
@@ -168,7 +167,6 @@ class TestTasks(unittest.TestCase):
         abe = "psi"
         args = {}
         for tf in testfiles:
-            print(tf)
             if tf.split("/")[-1] in NOTSUPPORTED:
                 continue
 
