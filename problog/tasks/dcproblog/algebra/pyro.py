@@ -137,7 +137,9 @@ class Pyro(Algebra):
 
     def integrate(self, weight, free_variable=None, normalization=False):
         if free_variable:
+            self.create_values(free_variable)
             values = self.random_values[free_variable]
+            print(values)
             # TODO pass on variables
             return S(MixtureComponent(values, weight.value, free_variable[1]))
         else:

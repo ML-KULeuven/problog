@@ -168,6 +168,10 @@ class Algebra(object):
         return a / z
 
     def get_values(self, density_name, dimension):
+        self.create_values(density_name)
+        return self.random_values[density_name][dimension]
+
+    def create_values(self, density_name):
         if not density_name in self.random_values:
             density = self.density_values[density_name]
             args = [
@@ -178,7 +182,6 @@ class Algebra(object):
             self.make_values(
                 density.name, density.components, density.distribution_functor, args
             )
-        return self.random_values[density_name][dimension]
 
     def construct_algebraic_expression(self, expression):
         if isinstance(expression, Constant):

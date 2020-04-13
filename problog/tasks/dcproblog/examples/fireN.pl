@@ -9,5 +9,5 @@ P::alarm:- between(1,2,N), \+fire, P is p3(N).
 
 evidence(alarm).
 
-% query_density(p1(1)).
+query_density(p1(1)).
 query_density(p2(N)).

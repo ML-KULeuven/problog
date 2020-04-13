@@ -9,6 +9,4 @@ B::coin_flip(N):- B is b(2).
 
 evidence(coin_flip(1), true).
 evidence(coin_flip(2), false).
-% query_density(b(N)).
-query_density(b(1)).
-query_density(b(2)).
+query_density(b(N)).

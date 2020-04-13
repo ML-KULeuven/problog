@@ -277,11 +277,16 @@ class SDDEvaluatorHAL(SDDEvaluator):
         return result
 
     def evaluate_sdd(
-        self, sdd, normalization=False, free_variable=None, evaluation_last=False
+        self,
+        sdd,
+        normalization=False,
+        free_variable=None,
+        evaluation_last=False,
+        density_query=False,
     ):
         if sdd is None:
             result = self.semiring.zero()
-        elif sdd.is_true():
+        elif sdd.is_true() and not density_query:
             if not self.semiring.is_nsp():
                 result = self.semiring.one()
             else:

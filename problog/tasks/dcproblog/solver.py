@@ -95,7 +95,10 @@ class InferenceSolver(object):
             for c in dqe_sdds.args:
                 free_variable = c[0].name
                 dqe_evaluated = dde.evaluate_sdd(
-                    c[1], free_variable=free_variable, evaluation_last=False
+                    c[1],
+                    free_variable=free_variable,
+                    evaluation_last=False,
+                    density_query=True,
                 )
                 dq_evaluated = dde.semiring.algebra.probability(
                     dqe_evaluated, e_evaluated
@@ -139,6 +142,7 @@ class InferenceSolver(object):
                 **kwdargs
             ),
         )
+
         semiring = SemiringHAL(
             self.operator.get_neutral(), self.abstract_abe, lf_hal.density_values
         )

@@ -1,7 +1,10 @@
 * add mat(), vec(), predicates to instantiate matrices and vector should be within "is" predicate on right hand side
 * with mat(), vec() multivariate distributions will be possible
+
 * add support for solving IndianGPA
+
 * would be really nice: implement stochastic variational inference with pyro
+
 * adapt subquery predicate, does not work correctly right now
-* query_density without evidence fails/not correct, because density not in random_values
+
 * add logprobability for inference with pyro
