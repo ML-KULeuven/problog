@@ -10,7 +10,6 @@ from .logic import Mixture
 from .formula import atom, LogicFormulaHAL
 
 
-
 class SDDHAL(SDD, LogicFormulaHAL):
     def __init__(self, **kwdargs):
         SDD.__init__(self, **kwdargs)
@@ -20,7 +19,9 @@ class SDDHAL(SDD, LogicFormulaHAL):
     def _create_evaluator(self, semiring, weights, **kwargs):
         return SDDEvaluatorHAL(self, semiring, weights, **kwargs)
 
-    def get_evaluator(self, semiring=None, evidence=None, weights=None, keep_evidence=False, **kwargs):
+    def get_evaluator(
+        self, semiring=None, evidence=None, weights=None, keep_evidence=False, **kwargs
+    ):
         """Get an evaluator for computing queries on this formula.
         It creates an new evaluator and initializes it with the given or predefined evidence.
 
@@ -37,7 +38,6 @@ class SDDHAL(SDD, LogicFormulaHAL):
         # assert semiring
         assert semiring
 
-
         evaluator = self._create_evaluator(semiring, weights, **kwargs)
 
         for ev_name, ev_index, ev_value in self.evidence_all():
@@ -46,9 +46,13 @@ class SDDHAL(SDD, LogicFormulaHAL):
             elif ev_index is None and ev_value < 0:
                 pass  # false evidence is deterministically false
             elif ev_index == 0 and ev_value < 0:
-                raise InconsistentEvidenceError(source='evidence('+str(ev_name)+',false)')  # true evidence is false
+                raise InconsistentEvidenceError(
+                    source="evidence(" + str(ev_name) + ",false)"
+                )  # true evidence is false
             elif ev_index is None and ev_value > 0:
-                raise InconsistentEvidenceError(source='evidence('+str(ev_name)+',true)')  # false evidence is true
+                raise InconsistentEvidenceError(
+                    source="evidence(" + str(ev_name) + ",true)"
+                )  # false evidence is true
             elif evidence is None and ev_value != 0:
                 evaluator.add_evidence(ev_value * ev_index)
             elif evidence is not None:
@@ -70,7 +74,6 @@ class SDDHAL(SDD, LogicFormulaHAL):
         evaluator.propagate()
         return evaluator
 
-
     def to_formula(self, sdds):
         """Extracts a LogicFormula from the SDD."""
         formula = LogicFormulaHAL(keep_order=True)
@@ -85,15 +88,14 @@ class SDDHAL(SDD, LogicFormulaHAL):
         return formula
 
     def sdd_functions_to_dot(self, *args, sdds=None, **kwargs):
-        if kwargs.get('use_internal'):
+        if kwargs.get("use_internal"):
             for qn, qi in self.queries():
-                filename = mktempfile('.dot')
+                filename = mktempfile(".dot")
                 self.get_manager().write_to_dot(self.get_inode(qi), filename)
                 with open(filename) as f:
                     return f.read()
         else:
             return self.to_formula(sdds).functions_to_dot(*args, **kwargs)
-
 
     def _to_formula(self, formula, current_node, cache=None):
         if cache is not None and current_node.id in cache:
@@ -109,11 +111,23 @@ class SDDHAL(SDD, LogicFormulaHAL):
             at = self.var2atom[abs(lit)]
             node = self.get_node(at)
             if lit < 0:
-                retval = -formula.add_atom(-lit, probability=node.probability, \
-                name=node.name, group=node.group, cr_extra=False, is_extra=node.is_extra)
+                retval = -formula.add_atom(
+                    -lit,
+                    probability=node.probability,
+                    name=node.name,
+                    group=node.group,
+                    cr_extra=False,
+                    is_extra=node.is_extra,
+                )
             else:
-                retval = formula.add_atom(lit, probability=node.probability,\
-                name=node.name, group=node.group, cr_extra=False, is_extra=node.is_extra)
+                retval = formula.add_atom(
+                    lit,
+                    probability=node.probability,
+                    name=node.name,
+                    group=node.group,
+                    cr_extra=False,
+                    is_extra=node.is_extra,
+                )
         else:  # is decision
             elements = list(current_node.elements())
             primes = [prime for (prime, sub) in elements]
@@ -130,7 +144,6 @@ class SDDHAL(SDD, LogicFormulaHAL):
         if cache is not None:
             cache[current_node.id] = retval
         return retval
-
 
     def extract_weights(self, semiring, weights=None):
         """Extracts the positive and negative weights for all atoms in the data structure.
@@ -155,11 +168,15 @@ class SDDHAL(SDD, LogicFormulaHAL):
             weights = oweights
 
         result = {}
-        observation_weight_nodes = [w for w  in weights if weights[w].functor=="observation"]
+        observation_weight_nodes = [
+            w for w in weights if weights[w].functor == "observation"
+        ]
         for on in observation_weight_nodes:
             name = self._get_name(on)
-            result[on] = semiring.pos_value(weights[on], name, on), semiring.neg_value(weights[on], name, on)
-
+            result[on] = (
+                semiring.pos_value(weights[on], name, on),
+                semiring.neg_value(weights[on], name, on),
+            )
 
         for n, w in weights.items():
             if n in observation_weight_nodes:
@@ -172,7 +189,10 @@ class SDDHAL(SDD, LogicFormulaHAL):
             elif w is None:
                 result[n] = semiring.true(name)
             else:
-                result[n] = semiring.pos_value(w, name, n), semiring.neg_value(w, name, n)
+                result[n] = (
+                    semiring.pos_value(w, name, n),
+                    semiring.neg_value(w, name, n),
+                )
 
         for c in self.constraints():
             c.update_weights(result, semiring)
@@ -180,18 +200,15 @@ class SDDHAL(SDD, LogicFormulaHAL):
         return result
 
     def _get_name(self, n):
-        if hasattr(self, 'get_name'):
+        if hasattr(self, "get_name"):
             name = self.get_name(n)
         else:
             name = n
         return name
 
 
-
-
-
 class SDDEvaluatorHAL(SDDEvaluator):
-    def __init__(self, formula, semiring,  weights=None, **kwargs):
+    def __init__(self, formula, semiring, weights=None, **kwargs):
         SDDEvaluator.__init__(self, formula, semiring, weights, **kwargs)
         self.__observation = []
 
@@ -206,7 +223,6 @@ class SDDEvaluatorHAL(SDDEvaluator):
     def has_observation(self):
         """Checks whether there is active observation."""
         return self.__observation != []
-
 
     def propagate(self):
         self._initialize()
@@ -225,14 +241,15 @@ class SDDEvaluatorHAL(SDDEvaluator):
                     # Only for atoms
                     self.set_evidence(self.formula.atom2var[ev], ev > 0)
 
-
     def get_sdds(self):
         result = {}
         constraint_inode = self.formula.get_constraint_inode()
         evidence_nodes = [self.formula.get_inode(ev) for ev in self.evidence()]
         observation_nodes = [self.formula.get_inode(ob) for ob in self.observation()]
 
-        self.evidence_inode = self._get_manager().conjoin(constraint_inode, *(observation_nodes), *(evidence_nodes))
+        self.evidence_inode = self._get_manager().conjoin(
+            constraint_inode, *(observation_nodes), *(evidence_nodes)
+        )
         result["e"] = self.evidence_inode
         result["qe"] = OrderedDict()
         for query, node in self.formula.queries():
@@ -250,14 +267,18 @@ class SDDEvaluatorHAL(SDDEvaluator):
             for c in dquery[1].args:
                 dquery_def_inode = self.formula.get_inode(c[1])
                 evidence_inode = self.evidence_inode
-                dquery_sdd = self._get_manager().conjoin(dquery_def_inode, evidence_inode)
+                dquery_sdd = self._get_manager().conjoin(
+                    dquery_def_inode, evidence_inode
+                )
                 components_sdd.append((c[0], dquery_sdd))
 
-            mixture = Mixture(*components_sdd)
+            mixture = Mixture(dq, *components_sdd)
             result["dqe"][dq] = mixture
         return result
 
-    def evaluate_sdd(self, sdd, normalization=False, free_variable=None, evaluation_last=False):
+    def evaluate_sdd(
+        self, sdd, normalization=False, free_variable=None, evaluation_last=False
+    ):
         if sdd is None:
             result = self.semiring.zero()
         elif sdd.is_true():
@@ -269,10 +290,17 @@ class SDDEvaluatorHAL(SDDEvaluator):
             result = self.semiring.zero()
         else:
             smooth_to_root = self.semiring.is_nsp()
-            result = self._get_manager().wmc(sdd, weights=self.weights, semiring=self.semiring,
-                                                 pr_semiring=False, perform_smoothing=True,
-                                                 smooth_to_root=smooth_to_root)
-            result = self.semiring.result(result, free_variable=free_variable, normalization=normalization)
+            result = self._get_manager().wmc(
+                sdd,
+                weights=self.weights,
+                semiring=self.semiring,
+                pr_semiring=False,
+                perform_smoothing=True,
+                smooth_to_root=smooth_to_root,
+            )
+            result = self.semiring.result(
+                result, free_variable=free_variable, normalization=normalization
+            )
             if evaluation_last:
                 self._get_manager().deref(sdd)
 
@@ -283,5 +311,6 @@ class SDDEvaluatorHAL(SDDEvaluator):
 def build_sdd(source, destination, **kwdargs):
     result = build_dd(source, destination, **kwdargs)
     return result
+
 
 transform_create_as(SDDHAL, LogicFormula)

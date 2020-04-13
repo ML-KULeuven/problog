@@ -101,7 +101,7 @@ class InferenceSolver(object):
                     dqe_evaluated, e_evaluated
                 )
                 r.append(dq_evaluated)
-            probabilities["dq"][dq] = Mixture(*r)
+            probabilities["dq"][dq] = Mixture(dq, *r)
         return probabilities
 
     def make_diagram(self, dde, sdds):
