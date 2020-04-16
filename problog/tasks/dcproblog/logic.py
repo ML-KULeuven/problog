@@ -276,3 +276,7 @@ class Mixture(Term):
     def __init__(self, variable, *components):
         self.variable = variable
         Term.__init__(self, "Mixture", *components)
+
+    def components(self):
+        comps = [c.value for c in self.args]
+        return comps

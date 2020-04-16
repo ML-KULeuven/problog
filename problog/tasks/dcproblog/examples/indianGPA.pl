@@ -18,6 +18,6 @@ gpa(i)~delta(0.0):-\+isdensity(i), \+perfect_gpa(i).
 gpa(student)~delta(A):- A is gpa(a).
 gpa(student)~delta(I):- I is gpa(i).
 
-observation(gpa(student),2.0).
+observation(gpa(student),4.0).
 query(american).
 query(indian).
