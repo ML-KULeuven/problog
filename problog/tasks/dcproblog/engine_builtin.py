@@ -1,4 +1,5 @@
 import itertools
+from collections import OrderedDict
 
 from problog.engine import _ReplaceVar, substitute_call_args
 from problog.engine_builtin import check_mode, _builtin_possible
@@ -163,7 +164,7 @@ def _query_density(term, engine, target, database, **kwdargs):
     functor = "density_query"
     target, d_nodes = engine._ground(database, Term("~", term, None), target)
     components = []
-    mixtures = {}
+    mixtures = OrderedDict()
     for d_node in d_nodes:
         distribution = get_distribution(
             d_node, engine=engine, database=database, target=target, **kwdargs

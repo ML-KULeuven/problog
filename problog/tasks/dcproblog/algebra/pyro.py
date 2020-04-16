@@ -139,7 +139,6 @@ class Pyro(Algebra):
         if free_variable:
             self.create_values(free_variable)
             values = self.random_values[free_variable]
-            print(values)
             # TODO pass on variables
             return S(MixtureComponent(values, weight.value, free_variable[1]))
         else:
