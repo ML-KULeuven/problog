@@ -1,5 +1,6 @@
 from problog.engine_stack import NODE_FALSE
 
+
 class SimpleProbabilisticBuiltIn(object):
     """Simple builtin that does cannot be involved in a cycle or require engine information and has 0 or more results."""
 
@@ -7,14 +8,17 @@ class SimpleProbabilisticBuiltIn(object):
         self.base_function = base_function
 
     def __call__(self, *args, **kwdargs):
-        callback = kwdargs.get('callback')
+        callback = kwdargs.get("callback")
         results = self.base_function(*args, **kwdargs)
         output = []
         if results:
             for i, result in enumerate(results):
                 if not result[1] is NODE_FALSE:
-                    output += callback.notifyResult(kwdargs['engine'].create_context(result[0], parent=result[0]),
-                                                    result[1], i == len(results) - 1)
+                    output += callback.notifyResult(
+                        kwdargs["engine"].create_context(result[0], parent=result[0]),
+                        result[1],
+                        i == len(results) - 1,
+                    )
             if output:
                 return True, output
             else:

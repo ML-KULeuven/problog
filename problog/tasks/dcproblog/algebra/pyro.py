@@ -4,6 +4,8 @@ import math
 
 from .algebra import Algebra, BaseS, SUB
 
+from ..logic import SymbolicConstant
+
 str2distribution = {
     "delta": pyro.distributions.Delta,
     "normal": pyro.distributions.Normal,
@@ -29,18 +31,53 @@ class MixtureComponent(object):
         return "MixComp{}".format(str(self.component_index).translate(SUB))
 
 
+class ObservationWeight(object):
+    def __init__(self, value, dmu):
+        self.value = value
+        self.dmu = dmu
+
+    def __str__(self):
+        return str(self.value)
+
+    def __repr__(self):
+        return str(self)
+
+
 class S(BaseS):
-    def __init__(self, tensor, variables=set()):
+    def __init__(self, tensor, variables=set(), dmu=0):
+        self.dmu = dmu
+        if isinstance(tensor, torch.Tensor) and bool(torch.all(torch.eq(tensor, 0.0))):
+            tensor = 0.0
+
         BaseS.__init__(self, tensor, variables)
 
     def __add__(self, other):
-        return S(self.value + other.value, variables=self.variables | other.variables)
+        if isinstance(self.value, (int, float)) and self.value == 0.0:
+            return other
+        elif isinstance(other.value, (int, float)) and other.value == 0.0:
+            return self
+        if self.dmu > other.dmu:
+            return other
+        elif self.dmu < other.dmu:
+            return self
+        else:
+            return S(
+                self.value + other.value,
+                variables=self.variables | other.variables,
+                dmu=self.dmu,
+            )
 
     def __sub__(self, other):
+        assert self.dmu == other.dmu
         return S(self.value - other.value, variables=self.variables | other.variables)
 
     def __mul__(self, other):
-        return S(self.value * other.value, variables=self.variables | other.variables)
+        dmu = self.dmu + other.dmu
+        return S(
+            self.value * other.value,
+            variables=self.variables | other.variables,
+            dmu=dmu,
+        )
 
     def __truediv__(self, other):
         return S(self.value / other.value, variables=self.variables | other.variables)
@@ -129,11 +166,17 @@ class Pyro(Algebra):
             Tensor = torch.cuda.FloatTensor
         return Tensor
 
-    def symbolize(self, expression, variables=set()):
+    def symbolize(self, expression, variables=set(), dmu=0):
         if isinstance(expression, (int, float)):
-            return S(float(expression))
+            return S(float(expression), dmu=dmu)
+        elif isinstance(expression, ObservationWeight):
+            return S(
+                observation_weight.value,
+                variables=set(variables),
+                dmu=observation_weight.dmu,
+            )
         else:
-            return S(expression, variables=set(variables))
+            return S(expression, variables=set(variables), dmu=dmu)
 
     def integrate(self, weight, free_variable=None, normalization=False):
         if free_variable:
@@ -159,14 +202,19 @@ class Pyro(Algebra):
     def construct_density(self, name, dim, functor, args):
         args = [a.value for a in args]
         if functor in (
-            pyro.distributions.Delta,
             pyro.distributions.Normal,
             pyro.distributions.Uniform,
             pyro.distributions.Beta,
             pyro.distributions.Poisson,
         ):
-            # return functor(*args)
             density = functor(*args)
+            return self._format_density(density, dim, self.n_samples)
+        elif functor in (pyro.distributions.Delta,):
+            if isinstance(args[0], (int, float)):
+                v = torch.tensor(args[0])
+            else:
+                v = args[0]
+            density = functor(v)
             return self._format_density(density, dim, self.n_samples)
         # elif functor in (torch.normalInd_pdf,):
         #     return functor(*args)
@@ -192,9 +240,22 @@ class Pyro(Algebra):
 
         for c in var.components:
             self.construct_algebraic_expression(c)
+
         obs = self.construct_algebraic_expression(obs)
         density = self.densities[density_name]
-        observation_weight = torch.exp(density.log_prob(torch.tensor(obs.value)))
+
+        if var.distribution_functor in ("delta",):
+            arg = var.distribution_args[0]
+            if isinstance(arg, (SymbolicConstant,)):
+                value = torch.exp(density.log_prob(torch.tensor(obs.value)))
+                dmu = 0
+                observation_weight = ObservationWeight(value, dmu)
+            else:
+                observation_weight = self.make_observation(arg, obs)
+        else:
+            value = torch.exp(density.log_prob(torch.tensor(obs.value)))
+            dmu = 1
+            observation_weight = ObservationWeight(value, dmu)
 
         self.random_values[density_name][dimensions - 1] = obs.value
         # this is the line that relates to the comment above

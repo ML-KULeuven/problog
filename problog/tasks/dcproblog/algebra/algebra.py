@@ -6,6 +6,7 @@ from ..logic import (
     SymbolicConstant,
     RandomVariableComponentConstant,
     RandomVariableConstant,
+    LogicVectorConstant,
 )
 
 
@@ -78,11 +79,6 @@ def neS(a, b):
     return a.ne(b)
 
 
-def obsS(a, b):
-    r = a.obs(b)
-    return r
-
-
 str2algebra = {
     "<": ltS,
     "<=": leS,
@@ -99,7 +95,6 @@ str2algebra = {
     "pow": powS,
     "exp": expS,
     "sigmoid": sigmoidS,
-    "observation": obsS,
 }
 
 
@@ -184,14 +179,26 @@ class Algebra(object):
             )
 
     def construct_algebraic_expression(self, expression):
+        if isinstance(expression, BaseS):
+            return expression
         if isinstance(expression, Constant):
             return self.construct_algebraic_expression(expression.functor)
         # elif isinstance(expression, RandomVariableConstant) and expression.functor=="beta":
         elif isinstance(expression, RandomVariableConstant) and (
-            expression.distribution_functor in ("beta",)
+            expression.distribution_functor in ("beta", "delta")
         ):
             component = self.construct_algebraic_expression(expression.components[0])
             return component
+
+        elif isinstance(expression, LogicVectorConstant):
+            assert (
+                len(expression.components) == 1
+            )  # multivariate stuff not really supported here
+            values_list = [
+                self.construct_algebraic_expression(c) for c in expression.components
+            ]
+            return values_list[0]
+            # raise NotImplementedError
         elif isinstance(expression, RandomVariableConstant):
             raise NotImplementedError
         else:
@@ -199,9 +206,13 @@ class Algebra(object):
 
             if expression.functor == "observation":
                 observation_weight = self.make_observation(*expression.args)
-                return self.symbolize(
-                    observation_weight, variables=expression.args[0].cvariables
+                observation_weight = self.symbolize(
+                    observation_weight.value,
+                    variables=expression.args[0].cvariables,
+                    dmu=observation_weight.dmu,
                 )
+                return observation_weight
+
             elif isinstance(expression, RandomVariableComponentConstant):
                 density_name = expression.density_name
                 dimension = expression.dimension

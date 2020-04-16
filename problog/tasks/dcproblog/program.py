@@ -9,12 +9,14 @@ class DCPrologFactory(DefaultPrologFactory):
         DefaultPrologFactory.__init__(self, identifier=identifier)
 
     def build_function(self, functor, arguments, location=None, **extra):
-        if functor=="'~'":
-            #Maybe add arithmetic for distributional head here
+        if functor == "'~'":
+            # Maybe add arithmetic for distributional head here
             rv, distribution = arguments
 
             assert distribution.functor in distributions
             distribution = Distribution(distribution.functor, *distribution.args)
-            return Term(functor, rv, distribution, location=(self.loc_id, location), **extra)
+            return Term(
+                functor, rv, distribution, location=(self.loc_id, location), **extra
+            )
         else:
             return Term(functor, *arguments, location=(self.loc_id, location), **extra)

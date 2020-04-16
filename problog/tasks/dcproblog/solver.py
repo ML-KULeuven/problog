@@ -82,6 +82,7 @@ class InferenceSolver(object):
             sdds["e"], normalization=True, evaluation_last=False
         )
         if e_evaluated.value == dde.semiring.zero().value:
+            print(e_evaluated)
             raise InconsistentEvidenceError(context=": after evaluating evidence")
         probabilities["q"] = OrderedDict()
         for q, qe_sdd in sdds["qe"].items():

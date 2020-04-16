@@ -256,8 +256,8 @@ class RandomVariableConstant(LogicVectorConstant):
 
 
 class Distribution(Term):
-    def __init__(self, distribution, *arguments):
-        Term.__init__(self, distribution, *arguments)
+    def __init__(self, distribution, *arguments, **kwdargs):
+        Term.__init__(self, distribution, *arguments, **kwdargs)
         # has to be done probably during grounding and not during program creation
         # because the grounding might affect the number of parameters which might change the dimensionality?
         self.dimensions = self.infer_dimensions()
