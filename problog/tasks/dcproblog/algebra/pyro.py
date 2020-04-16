@@ -48,7 +48,6 @@ class S(BaseS):
         self.dmu = dmu
         if isinstance(tensor, torch.Tensor) and bool(torch.all(torch.eq(tensor, 0.0))):
             tensor = 0.0
-
         BaseS.__init__(self, tensor, variables)
 
     def __add__(self, other):
@@ -69,6 +68,7 @@ class S(BaseS):
 
     def __sub__(self, other):
         assert self.dmu == other.dmu
+        assert self.dmu == 0
         return S(self.value - other.value, variables=self.variables | other.variables)
 
     def __mul__(self, other):
@@ -136,15 +136,6 @@ class S(BaseS):
     def ne(self, other):
         raise NotImplementedError()
 
-    def obs(self, other):
-        value = other.value
-        s = S(value, variables=self.variables | other.variables)
-
-        import sys
-
-        sys.exit()
-        return s
-
 
 class Pyro(Algebra):
     def __init__(self, values, n_samples, ttype, device):
@@ -186,9 +177,15 @@ class Pyro(Algebra):
             return S(MixtureComponent(values, weight.value, free_variable[1]))
         else:
             if isinstance(weight.value, (int, float)):
-                return S(weight.value)
+                return S(weight.value, dmu=weight.dmu)
             else:
-                return S(torch.mean(weight.value))
+                return S(torch.mean(weight.value), dmu=weight.dmu)
+
+    def normalize(self, a, z):
+        if a.dmu > z.dmu:
+            return self.symbolize(0)
+        else:
+            return a / z
 
     @staticmethod
     def _format_density(density, dim, n_samples):

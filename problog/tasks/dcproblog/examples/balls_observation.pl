@@ -4,5 +4,5 @@ n(1).
 size(N)~beta(2,3):-material(N,metal).
 size(N)~beta(4,2):-material(N,wood).
 
-observation(size(N),P):- P is 4/10, writeln(P).
+observation(size(N),P):- P is 4/10.
 query(material(1,wood)).

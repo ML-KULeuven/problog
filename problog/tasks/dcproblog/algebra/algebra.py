@@ -150,7 +150,10 @@ class Algebra(object):
         return self.construct_algebraic_expression(expression)
 
     def negate(self, a):
-        return self.construct_negated_algebraic_expression(a)
+        if a.dmu > 0:
+            return self.symbolize(1, dmu=0)
+        else:
+            return self.construct_negated_algebraic_expression(a)
 
     def result(self, a, free_variable=None, normalization=False):
         return self.integrate(
@@ -160,7 +163,7 @@ class Algebra(object):
     def probability(self, a, z):
         if not a:
             return self.symbolize(0)
-        return a / z
+        return self.normalize(a, z)
 
     def get_values(self, density_name, dimension):
         self.create_values(density_name)
