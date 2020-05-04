@@ -5,7 +5,7 @@ from my_pyswip import Prolog, Functor, Atom, registerForeign, PL_FA_NONDETERMINI
 from time import time
 
 
-def pyswip_to_term(pyswip_obj):
+def pyswip_to_term(pyswip_obj, rtype=None):
     if type(pyswip_obj) is Functor:
         args = [pyswip_to_term(a) for a in pyswip_obj.args]
         return Term(pyswip_obj.name.get_value(), *args)
@@ -16,9 +16,11 @@ def pyswip_to_term(pyswip_obj):
     elif type(pyswip_obj) is str:
         return Constant(make_safe(pyswip_obj))
     elif type(pyswip_obj) is list:
+        if rtype is list:
+            return [pyswip_to_term(o, rtype=rtype) for o in pyswip_obj]
         return list2term([pyswip_to_term(o) for o in pyswip_obj])
     elif type(pyswip_obj) is Variable:
-        return Var(pyswip_obj.chars)
+        return Var("A" + pyswip_obj.chars[1:])
     else:
         raise Exception('Unhandled type {} from object {}'.format(type(pyswip_obj), pyswip_obj))
 
@@ -40,7 +42,7 @@ def bind_functor(functor):
     return SWITerm(functor.swipl, t)
 
 
-def term_to_pyswip(term, swipl):
+def term_to_pyswip(term, swipl, rtype=None):
     if type(term) is list:
         return [term_to_pyswip(arg, swipl) for arg in term]
     if type(term) is Term:
@@ -60,6 +62,8 @@ def term_to_pyswip(term, swipl):
         f = term.functor
         if type(f) is str:
             f = unquote(f)
+            if rtype is Term:
+                f = Atom(f, swipl)
         return f
     elif type(term) is Var:
         return Variable(name=term.name)

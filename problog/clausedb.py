@@ -634,13 +634,13 @@ class ClauseDB(LogicProgram):
             module_preds = term2list(module_preds)
         return module_name, module_preds
 
-    def use_module(self, filename, predicates, location=None, my_scope=None):
+    def use_module(self, filename, predicates, prolog=None, location=None, my_scope=None):
         filename = self.resolve_filename(filename)
         if filename is None:
             raise ConsultError('Unknown library location', self.lineno(location))
         elif filename is not None and filename[-3:] == '.py':
             try:
-                module_name, module_predicates = self.load_external_module(filename)
+                module_name, module_predicates = self.load_external_module(filename, prolog=prolog)
             except IOError as err:
                 raise ConsultError('Error while reading external library: %s' % str(err),
                                    self.lineno(location))
@@ -688,15 +688,19 @@ class ClauseDB(LogicProgram):
                 sh = self.__node_redirect.get(sh, sh)
                 self.__node_redirect[rh] = sh
 
-    def load_external_module(self, filename):
-        from .extern import problog_export
+    def load_external_module(self, filename, prolog=None):
+        if prolog is None:
+            from .extern import problog_export
+            problog_export.database = self
+        else:
+            from problog.prolog_engine.extern import swi_problog_export
+            swi_problog_export.prolog = prolog
+            print(swi_problog_export.prolog)
         import imp
-        problog_export.database = self
 
         module_name = os.path.splitext(os.path.split(filename)[-1])[0]
         with open(filename, 'r') as extfile:
             imp.load_module(module_name, extfile, filename, ('.py', 'U', 1))
-
         return module_name, self.__extern[module_name]
 
 

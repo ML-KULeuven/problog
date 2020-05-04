@@ -1,8 +1,8 @@
-:- use_module(library(lists), [enum_groups/4, nth0/3]).
-:- use_module(library(apply), [maplist/3]).
+:- use_module(library(lists)). %, [enum_groups/4, nth0/3]).
+:- use_module(library(apply)). %, [maplist/3]).
 
 aggregate(AggFunc, Var, Group, Body, (Group, Result)) :-
-    all([Group, Body, Var], Body, L),
+    export_findall([Group, Body, Var], Body, L),
     maplist(nth0(0), L, LG),
     maplist(nth0(2), L, LV),
     enum_groups(LG, LV, Group, Values),

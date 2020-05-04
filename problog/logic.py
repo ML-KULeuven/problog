@@ -630,9 +630,6 @@ class Term(object):
     def __eq__(self, other):
         if not isinstance(other, Term):
             return False
-        cache_eq = self._get_cached_eq(other)
-        if cache_eq is not None:
-            return cache_eq
         # Non-recursive version of equality check.
         l1 = deque([self])
         l2 = deque([other])

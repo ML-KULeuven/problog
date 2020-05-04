@@ -1,12 +1,28 @@
 import sys
 from my_pyswip import registerForeign, Term as SWITerm, Functor as SWIFunctor, Variable as SWIVariable, getFloat, \
-    PL_FIRST_CALL, PL_REDO, PL_PRUNED, PL_FA_NONDETERMINISTIC
+    PL_FIRST_CALL, PL_REDO, PL_PRUNED, PL_FA_NONDETERMINISTIC, Atom
 from problog.logic import Term
 from problog.extern import problog_export
 from swip import pyswip_to_term, term_to_pyswip, pyswip_to_number
 
 
 class swi_problog_export(object):
+    """
+    Decorator for the problog (based on swi engine) foreign functions
+
+    The arguments are the input and output types
+    e.g., ('+term', '+list', '-term') means that the arity of the function is 3,
+    two arguments are inputs, the first one is a term and the second one a list,
+    and the output will be a term.
+
+    Three symbols are expected: + for the input, - for the output and ? for both
+    List of possible types:
+        - term
+        - list
+        - int
+        - float
+        - str
+    """
     prolog = None
     database = None
 
@@ -41,21 +57,35 @@ class swi_problog_export(object):
             elif self.input_arguments[x] == "float":
                 res.append(pyswip_to_number(args[i], float))
             else:
-                res.append(pyswip_to_term(args[i]))
+                rtype = None
+                if self.input_arguments[x] == "list":
+                    rtype = list
+                res.append(pyswip_to_term(args[i], rtype=rtype))
             x += 1
         return res
 
     def _convert_outputs(self, result, *args):
-        x = 0
-        for i in self.output_ids:
-            if self.output_arguments[x] == "int" or self.output_arguments[x] == "float":
-                res = result[x]
-            else:
-                res = term_to_pyswip(result[x], swi_problog_export.prolog.swipl)
-            if not self.unify(args[i], res):
-                return False
-            x += 1
+        if len(self.output_ids) > 1:
+            x = 0
+            for i in self.output_ids:
+                res = self._convert_output(x, result[x])
+                if not self.unify(args[i], res):
+                    return False
+                x += 1
+        else:
+            for i in self.output_ids:
+                result = self._convert_output(0, result)
+                if not self.unify(args[i], result):
+                    return False
         return True
+
+    def _convert_output(self, x, result):
+        if self.output_arguments[x] in ("int", "float", "str"):
+            return result
+        rtype = None
+        if self.output_arguments[x] == "term":
+            rtype = Term
+        return term_to_pyswip(result, swi_problog_export.prolog.swipl, rtype)
 
     @staticmethod
     def unify(term, value):

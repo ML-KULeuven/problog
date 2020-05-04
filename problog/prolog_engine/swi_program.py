@@ -6,7 +6,7 @@ from time import time
 from problog.clausedb import ConsultError
 from problog.core import ProbLogObject
 from problog.logic import unquote, term2list, ArithmeticError, Term
-from problog.prolog_engine.threaded_prolog import DirtyProlog
+from threaded_prolog import DirtyProlog
 
 
 def handle_prob(prob):
@@ -107,8 +107,10 @@ class SWIProgram(ProbLogObject):
         body = self.to_str(self.db.get_node(node.child))
         self.clauses.append(
             (i, handle_functor(node.functor, node.args), body))
-        self.prolog.assertz('cl({},{})'.format(self.clauses[-1][1], self.clauses[-1][2]))
-        # print('cl({},{})'.format(self.clauses[-1][1], self.clauses[-1][2]))
+        self.add_clause_string(self.clauses[-1][1], self.clauses[-1][2])
+
+    def add_clause_string(self, head, body):
+        self.prolog.assertz('cl({},{})'.format(head, body))
 
     def add_choice(self, node):
         self.add_fact(node)

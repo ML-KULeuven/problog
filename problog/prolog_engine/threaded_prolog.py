@@ -7,7 +7,7 @@ from swip import parse_result
 
 def load_external_file(filename, prolog, database=None):
     # Weird need to give this prolog to swi_prolog_export
-    from extern import swi_problog_export
+    from problog.prolog_engine.extern import swi_problog_export
     import imp
     swi_problog_export.prolog = prolog
     swi_problog_export.database = database
