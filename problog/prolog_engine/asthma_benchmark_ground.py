@@ -6,10 +6,11 @@ import time
 import argparse
 
 sys.path.append("../..")
-
+from problog.engine import DefaultEngine
 from problog.program import PrologString
 from prolog_engine import PrologEngine
 from problog.formula import LogicFormula
+from problog.logic import Term, Var
 from problog.sdd_formula import SDD
 import subprocess
 
@@ -26,24 +27,21 @@ def generate_program(people):
     prog += "smokes(X) :- stress(X). \n"
     prog += "smokes(X) :- friend(X,Y), influences(Y,X), smokes(Y). \n"
     prog += "0.4::asthma(X) :- smokes(X). \n"
-    return prog
+    return PrologString(prog)
     
-def evaluate(prog):
-    program = PrologString(prog)
-    engine = PrologEngine()
-    sp = engine.prepare(program)
+def evaluate(prog, engine_Class):
+    # program = PrologString(prog)
+    engine = engine_Class()
+    sp = engine.prepare(prog)
     formula = LogicFormula(keep_all=False)
-    formula = engine.ground(sp, 'asthma(_)', target=formula, label=LogicFormula.LABEL_QUERY)
+    start = time.time()
+    formula = engine.ground(sp, Term('asthma',Var('X')), target=formula, label=LogicFormula.LABEL_QUERY, profile=1)
+    ground_time = time.time()-start
+    print(engine)
+    print(ground_time)
     # sdd = SDD.create_from(formula)
     # return sdd.evaluate()
-    
-def problog_prepare(prog):
-    program = prog + "query(asthma(_)). \n"
-    filename = "asthma_problog_test.pl"
-    with open(filename, "w") as fout:
-        fout.write(program)
-    return filename
-    
+
 
 def main():
     parser = argparse.ArgumentParser()
@@ -52,21 +50,24 @@ def main():
     args = parser.parse_args()
     
     prog = generate_program(args.people)
-    start = time.time()
-    evaluate(prog)
-    stop = time.time()
-    
-    filename = problog_prepare(prog)
-    start2 = time.time()
-    subprocess.call(["python3", "/home/yann/master_problog/problog-cli.py", "ground", "--break-cycles", filename, "--output", "/dev/null"])
-    stop2 = time.time()
-    
-    new_file = not os.path.isfile(args.out)
-    with open(args.out, "a") as fin:
-        if new_file:
-            fin.write("method,people,time\n")
-        fin.write("SWIProbLog," + str(args.people) + "," + str(stop - start) + "\n")
-        fin.write("ProbLog," + str(args.people) + "," + str(stop2 - start2) + "\n")
-    
+    # for engine in [DefaultEngine, PrologEngine]:
+    for engine in [PrologEngine]:
+        evaluate(prog, engine)
+    # start = time.time()
+    # evaluate(prog)
+    # stop = time.time()
+#
+#     filename = problog_prepare(prog)
+#     start2 = time.time()
+#     subprocess.call(["python3", "/home/yann/master_problog/problog-cli.py", "ground", "--break-cycles", filename, "--output", "/dev/null"])
+#     stop2 = time.time()
+#
+#     new_file = not os.path.isfile(args.out)
+#     with open(args.out, "a") as fin:
+#         if new_file:
+#             fin.write("method,people,time\n")
+#         fin.write("SWIProbLog," + str(args.people) + "," + str(stop - start) + "\n")
+#         fin.write("ProbLog," + str(args.people) + "," + str(stop2 - start2) + "\n")
+
 if __name__ == "__main__":
     main()

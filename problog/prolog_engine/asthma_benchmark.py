@@ -58,7 +58,7 @@ def main():
     
     filename = problog_prepare(prog)
     start2 = time.time()
-    subprocess.call(["python3", "/home/yann/master_problog/problog-cli.py", filename, "--output", "/dev/null"])
+    subprocess.call(["python3", "../../problog-cli.py", filename, "--output", "/dev/null"])
     stop2 = time.time()
     
     new_file = not os.path.isfile(args.out)
