@@ -1,4 +1,4 @@
-:- use_module(library(lists), [enum_groups/4, nth/3]).
+:- use_module(library(lists), [enum_groups/4, nth0/3]).
 :- use_module(library(apply), [maplist/3]).
 
 aggregate(AggFunc, Var, Group, Body, (Group, Result)) :-
