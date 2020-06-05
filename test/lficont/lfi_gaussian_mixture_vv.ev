@@ -1,0 +1,16 @@
+evidence(fa(1), 10).
+evidence(fa(2), 12).
+evidence(fa(3), 8).
+evidence(fa(4), 11).
+evidence(fa(5), 7).
+evidence(fa(6), 13).
+evidence(fa(7), 20).
+evidence(fa(8), 21).
+evidence(fa(9), 22).
+evidence(fa(10), 18).
+evidence(fa(11), 19).
+evidence(fa(12), 19).
+evidence(fa(13), 19).
+evidence(fa(14), 23).
+evidence(fa(15), 21).
+

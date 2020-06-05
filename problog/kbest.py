@@ -63,9 +63,17 @@ transform(LogicDAG, KBestFormula, clarks_completion)
 
 
 class KBestEvaluator(Evaluator):
-
-    def __init__(self, formula, semiring, weights=None, lower_only=False,
-                 verbose=None, convergence=1e-9, explain=None, **kwargs):
+    def __init__(
+        self,
+        formula,
+        semiring,
+        weights=None,
+        lower_only=False,
+        verbose=None,
+        convergence=1e-9,
+        explain=None,
+        **kwargs
+    ):
         Evaluator.__init__(self, formula, semiring, weights, **kwargs)
 
         self.sdd_manager = None
@@ -87,7 +95,7 @@ class KBestEvaluator(Evaluator):
         self._convergence = convergence
 
     def initialize(self):
-        raise NotImplementedError('Evaluator.initialize() is an abstract method.')
+        raise NotImplementedError("Evaluator.initialize() is an abstract method.")
 
     def propagate(self):
         self._weights = self.formula.extract_weights(self.semiring, self._given_weights)
@@ -103,20 +111,20 @@ class KBestEvaluator(Evaluator):
         else:
             name = index
 
-        logger = logging.getLogger('problog')
-        logger.debug('evaluating query %s' % name)
+        logger = logging.getLogger("problog")
+        logger.debug("evaluating query %s" % name)
 
         if index is None:
             if self._explain is not None:
-                self._explain.append('%s :- fail.' % name)
+                self._explain.append("%s :- fail." % name)
             return 0.0
         elif index == 0:
             if self._explain is not None:
-                self._explain.append('%s :- true.' % name)
+                self._explain.append("%s :- true." % name)
             return 1.0
         else:
-            lb = Border(self.formula, self.sdd_manager, self.semiring, index, 'lower')
-            ub = Border(self.formula, self.sdd_manager, self.semiring, -index, 'upper')
+            lb = Border(self.formula, self.sdd_manager, self.semiring, index, "lower")
+            ub = Border(self.formula, self.sdd_manager, self.semiring, -index, "upper")
 
             k = 0
             # Select the border with most improvement
@@ -128,20 +136,26 @@ class KBestEvaluator(Evaluator):
             try:
                 while not nborder.is_complete():
                     solution = nborder.update()
-                    logger.debug('  update: %s %s < p < %s ' %
-                                 (nborder.name, lb.value, 1.0 - ub.value))
+                    logger.debug(
+                        "  update: %s %s < p < %s "
+                        % (nborder.name, lb.value, 1.0 - ub.value)
+                    )
                     if self._explain is not None and solution is not None:
                         solution_names = []
 
                         probability = nborder.improvement
                         for s in solution:
-                            n = self._reverse_names.get(abs(s), Term('choice_%s' % (abs(s))))
+                            n = self._reverse_names.get(
+                                abs(s), Term("choice_%s" % (abs(s)))
+                            )
                             if s < 0:
                                 solution_names.append(-n)
                             else:
                                 solution_names.append(n)
-                        proof = ', '.join(map(str, solution_names))
-                        self._explain.append('%s :- %s.  %% P=%.8g' % (name, proof, probability))
+                        proof = ", ".join(map(str, solution_names))
+                        self._explain.append(
+                            "%s :- %s.  %% P=%.8g" % (name, proof, probability)
+                        )
 
                     if solution is not None:
                         k += 1
@@ -150,14 +164,14 @@ class KBestEvaluator(Evaluator):
                         if nborder == lb:
                             if self._explain is not None:
                                 if k == 0:
-                                    self._explain.append('%s :- fail.' % name)
-                                self._explain.append('')
+                                    self._explain.append("%s :- fail." % name)
+                                self._explain.append("")
                             return lb.value
                         else:
                             return 1.0 - ub.value
 
                     if ub.value + lb.value > 1.0 - self._convergence:
-                        logger.debug('  convergence reached')
+                        logger.debug("  convergence reached")
                         return lb.value, 1.0 - ub.value
                     if self._lower_only:
                         nborder = lb
@@ -171,11 +185,13 @@ class KBestEvaluator(Evaluator):
             return lb.value, 1.0 - ub.value
 
     def evaluate_evidence(self):
-        raise NotImplementedError('Evaluator.evaluate_evidence is an abstract method.')
+        raise NotImplementedError("Evaluator.evaluate_evidence is an abstract method.")
 
     def add_evidence(self, node):
         """Add evidence"""
-        warnings.warn('Evidence is not supported by this evaluation method and will be ignored.')
+        warnings.warn(
+            "Evidence is not supported by this evaluation method and will be ignored."
+        )
 
     def has_evidence(self):
         return self.__evidence != []
@@ -189,7 +205,6 @@ class KBestEvaluator(Evaluator):
 
 @total_ordering
 class Border(object):
-
     def __init__(self, cnf, manager, semiring, query, name, smart_constraints=False):
         self.wcnf = deepcopy(cnf)
         self.wcnf.add_constraint(TrueConstraint(query), True)
@@ -270,5 +285,3 @@ class Border(object):
 
     def __eq__(self, other):
         return self.improvement == other.improvement
-
-

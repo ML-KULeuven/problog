@@ -1,7 +1,10 @@
 from IPython.display import HTML
+
+
 def show_tree(callback):
 
-    return HTML("""
+    return HTML(
+        """
 <div id="pic"></div>
 <script src="http://d3js.org/d3.v3.min.js"></script>
     <style>
@@ -181,7 +184,9 @@ function click(treenode) {
       // update(treenode);
     }
 
-  command = \"""" + callback + """('" + JSON.stringify(treenode.node) + "')";
+  command = \""""
+        + callback
+        + """('" + JSON.stringify(treenode.node) + "')";
   var msgid = kernel.execute(command, {shell: {reply: callback}}, {user_expressions: {out1: command}});
 }
 }
@@ -189,4 +194,5 @@ function click(treenode) {
 
 
 </script>
-""")
+"""
+    )

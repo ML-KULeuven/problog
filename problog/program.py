@@ -24,7 +24,18 @@ Provides tools for loading logic programs.
 from __future__ import print_function
 
 from .errors import GroundingError
-from .logic import Term, Var, Constant, AnnotatedDisjunction, Clause, And, Or, Not, AggTerm, list2term
+from .logic import (
+    Term,
+    Var,
+    Constant,
+    AnnotatedDisjunction,
+    Clause,
+    And,
+    Or,
+    Not,
+    AggTerm,
+    list2term,
+)
 from .core import transform, ProbLogObject
 
 from .parser import DefaultPrologParser, Factory
@@ -37,7 +48,9 @@ import sys
 class LogicProgram(ProbLogObject):
     """LogicProgram"""
 
-    def __init__(self, source_root='.', source_files=None, line_info=None, **extra_info):
+    def __init__(
+        self, source_root=".", source_files=None, line_info=None, **extra_info
+    ):
         if source_files is None:
             source_files = [None]
         if line_info is None:
@@ -81,8 +94,10 @@ class LogicProgram(ProbLogObject):
                     # TODO compute correct location
                     raise GroundingError("Unexpected fact '%s'" % head)
                 elif len(heads) > 1 and head.probability is None:
-                    raise GroundingError("Non-probabilistic head in multi-head clause '%s'" % head)
-            self.add_clause(AnnotatedDisjunction(heads, Term('true')), scope=scope)
+                    raise GroundingError(
+                        "Non-probabilistic head in multi-head clause '%s'" % head
+                    )
+            self.add_clause(AnnotatedDisjunction(heads, Term("true")), scope=scope)
         elif isinstance(clausefact, AnnotatedDisjunction):
             self.add_clause(clausefact, scope=scope)
         elif isinstance(clausefact, Clause):
@@ -90,8 +105,9 @@ class LogicProgram(ProbLogObject):
         elif type(clausefact) == Term:
             self.add_fact(clausefact, scope=scope)
         else:
-            raise GroundingError("Unexpected fact '%s'" % clausefact,
-                                 self.lineno(clausefact.location))
+            raise GroundingError(
+                "Unexpected fact '%s'" % clausefact, self.lineno(clausefact.location)
+            )
 
     @classmethod
     def create_from(cls, src, force_copy=False, **extra):
@@ -132,14 +148,14 @@ class LogicProgram(ProbLogObject):
             return src
         else:
             obj = cls(**extra)
-            if hasattr(src, 'extra_info'):
+            if hasattr(src, "extra_info"):
                 obj.extra_info.update(src.extra_info)
-            if hasattr(src, 'source_root'):
+            if hasattr(src, "source_root"):
                 obj.source_root = src.source_root
-            if hasattr(src, 'source_files'):
+            if hasattr(src, "source_files"):
                 obj.source_files = src.source_files[:]
                 obj.source_parent = src.source_parent[:]
-            if hasattr(src, 'line_info'):
+            if hasattr(src, "line_info"):
                 obj.line_info = src.line_info[:]
             obj.add_all(src)
             return obj
@@ -162,6 +178,7 @@ class LogicProgram(ProbLogObject):
             return None
         else:
             import bisect
+
             i = bisect.bisect_right(self.line_info[fn], char)
             lineno = i
             charno = char - self.line_info[fn][i - 1]
@@ -172,9 +189,9 @@ class LogicProgram(ProbLogObject):
             return filename, lineno, charno
 
     def to_prolog(self):
-        s = ''
+        s = ""
         for statement in self:
-            s += '%s.\n' % statement
+            s += "%s.\n" % statement
         return s
 
 
@@ -210,8 +227,15 @@ class SimpleProgram(LogicProgram):
 class PrologString(LogicProgram):
     """Read a logic program from a string of ProbLog code."""
 
-    def __init__(self, string, parser=None, factory=None, source_root='.', source_files=None,
-                 identifier=0):
+    def __init__(
+        self,
+        string,
+        parser=None,
+        factory=None,
+        source_root=".",
+        source_files=None,
+        identifier=0,
+    ):
         self.__string = string
         self.__program = None
         self.__identifier = identifier
@@ -225,8 +249,14 @@ class PrologString(LogicProgram):
         else:
             self.parser = parser
 
-        LogicProgram.__init__(self, source_root=source_root, source_files=source_files,
-                              line_info=lines, factory=factory, parser=parser)
+        LogicProgram.__init__(
+            self,
+            source_root=source_root,
+            source_files=source_files,
+            line_info=lines,
+            factory=factory,
+            parser=parser,
+        )
 
     def _program(self):
         """Parsed program"""
@@ -237,10 +267,10 @@ class PrologString(LogicProgram):
     def _find_lines(self, s):
         """Find line-end positions."""
         lines = [-1]
-        f = s.find('\n')
+        f = s.find("\n")
         while f >= 0:
             lines.append(f)
-            f = s.find('\n', f + 1)
+            f = s.find("\n", f + 1)
         lines.append(len(s))
         return lines
 
@@ -257,14 +287,14 @@ class PrologString(LogicProgram):
 
         :param clause: add a clause
         """
-        raise AttributeError('not supported')
+        raise AttributeError("not supported")
 
     def add_fact(self, fact, scope=None):
         """Add a fact to the logic program.
 
         :param fact: add a fact
         """
-        raise AttributeError('not supported')
+        raise AttributeError("not supported")
 
 
 class PrologFile(PrologString):
@@ -276,9 +306,9 @@ class PrologFile(PrologString):
     """
 
     def __init__(self, filename, parser=None, factory=None, identifier=0):
-        if filename == '-':
-            source_root = ''
-            source_files = ['-']
+        if filename == "-":
+            source_root = ""
+            source_files = ["-"]
             source_text = sys.stdin.read()
         else:
             rootfile = os.path.abspath(filename)
@@ -289,23 +319,29 @@ class PrologFile(PrologString):
                     source_text = f.read()
             except IOError as err:
                 raise ProbLogError(str(err))
-        PrologString.__init__(self, source_text, parser=parser, factory=factory,
-                              source_root=source_root, source_files=source_files,
-                              identifier=identifier)
+        PrologString.__init__(
+            self,
+            source_text,
+            parser=parser,
+            factory=factory,
+            source_root=source_root,
+            source_files=source_files,
+            identifier=identifier,
+        )
 
     def add_clause(self, clause, scope=None):
         """Add a clause to the logic program.
 
         :param clause: add a clause
         """
-        raise AttributeError('not supported')
+        raise AttributeError("not supported")
 
     def add_fact(self, fact, scope=None):
         """Add a fact to the logic program.
 
         :param fact: add a fact
         """
-        raise AttributeError('not supported')
+        raise AttributeError("not supported")
 
 
 class PrologFactory(Factory):
@@ -329,33 +365,42 @@ class PrologFactory(Factory):
     def build_constant(self, value, location=None):
         return Constant(value, location=(self.loc_id, location))
 
-    def build_binop(self, functor, operand1, operand2, function=None, location=None, **extra):
-        return self.build_function("'" + functor + "'", (operand1, operand2), location=location, **extra)
+    def build_binop(
+        self, functor, operand1, operand2, function=None, location=None, **extra
+    ):
+        return self.build_function(
+            "'" + functor + "'", (operand1, operand2), location=location, **extra
+        )
 
     def build_directive(self, functor, operand, **extra):
-        head = self.build_function('_directive', [])
+        head = self.build_function("_directive", [])
         return self.build_clause(functor, [head], operand, **extra)
 
     def build_unop(self, functor, operand, location=None, **extra):
-        if functor == '-' and operand.is_constant() and \
-                (operand.is_float() or operand.is_integer()):
+        if (
+            functor == "-"
+            and operand.is_constant()
+            and (operand.is_float() or operand.is_integer())
+        ):
             return Constant(-operand.value)
-        return self.build_function("'" + functor + "'", (operand,), location=location, **extra)
+        return self.build_function(
+            "'" + functor + "'", (operand,), location=location, **extra
+        )
 
     def build_list(self, values, tail=None, location=None, **extra):
         if tail is None:
-            current = Term('[]')
+            current = Term("[]")
         else:
             current = tail
         for value in reversed(values):
-            current = self.build_function('.', (value, current), location=location)
+            current = self.build_function(".", (value, current), location=location)
         return current
 
     def build_string(self, value, location=None):
         return self.build_constant('"' + value + '"', location=location)
 
     def build_cut(self, location=None):
-        raise AttributeError('not supported')
+        raise AttributeError("not supported")
 
     # noinspection PyUnusedLocal
     def build_clause(self, functor, operand1, operand2, location=None, **extra):
@@ -368,7 +413,9 @@ class PrologFactory(Factory):
             # elif len(heads) > 1 and head.probability is None:
             #     raise GroundingError("Non-probabilistic head in multi-head clause '%s'" % head)
         if len(heads) > 1:
-            return AnnotatedDisjunction(heads, operand2, location=(self.loc_id, location))
+            return AnnotatedDisjunction(
+                heads, operand2, location=(self.loc_id, location)
+            )
         else:
             has_agg = False
             # TODO add tests and errors
@@ -382,8 +429,15 @@ class PrologFactory(Factory):
 
                 aggfunc = operand1[0].args[-1]()
                 aggvar = operand1[0].args[-1].args[0]
-                result = Var('R_VAR')
-                body = Term('aggregate', aggfunc, aggvar, groupvars, body, Term(',', groupvars, result))
+                result = Var("R_VAR")
+                body = Term(
+                    "aggregate",
+                    aggfunc,
+                    aggvar,
+                    groupvars,
+                    body,
+                    Term(",", groupvars, result),
+                )
                 headargs = operand1[0].args[:-1] + (result,)
                 head = operand1[0](*headargs)
                 # aggregate(avg_list, Salary, [Dept], (person(X), salary(X, Salary), dept(X, Dept)), ([Dept], AvgSalary)).
@@ -442,7 +496,7 @@ class ExtendedPrologFactory(PrologFactory):
             self._update_functors(t.heads)
         elif type(t) is Term:
             if t.signature in self.neg_head_lits:
-                t.functor = self.neg_head_lits[t.signature]['p']
+                t.functor = self.neg_head_lits[t.signature]["p"]
         elif type(t) is Not:
             self._update_functors(t.child)
         elif type(t) is Or or type(t) is And:
@@ -469,9 +523,11 @@ class ExtendedPrologFactory(PrologFactory):
         # literal such that:
         # f :- f_p, \+f_n.
         for k, v in self.neg_head_lits.items():
-            cur_vars = [Var("V{}".format(i)) for i in range(v['c'])]
-            new_clause = Clause(Term(v['f'], *cur_vars),
-                                And(Term(v['p'], *cur_vars), Not('\+', Term(v['n'], *cur_vars))))
+            cur_vars = [Var("V{}".format(i)) for i in range(v["c"])]
+            new_clause = Clause(
+                Term(v["f"], *cur_vars),
+                And(Term(v["p"], *cur_vars), Not("\+", Term(v["n"], *cur_vars))),
+            )
             clauses.append(new_clause)
         return clauses
 
@@ -484,12 +540,12 @@ class ExtendedPrologFactory(PrologFactory):
         literal = abs(literal)
         if literal.signature not in self.neg_head_lits:
             self.neg_head_lits[literal.signature] = {
-                'c': literal.arity,
-                'p': literal.functor + "_p",
-                'n': literal.functor + "_n",
-                'f': literal.functor
+                "c": literal.arity,
+                "p": literal.functor + "_p",
+                "n": literal.functor + "_n",
+                "f": literal.functor,
             }
-        literal.functor = self.neg_head_lits[literal.signature]['n']
+        literal.functor = self.neg_head_lits[literal.signature]["n"]
         return literal
 
     def build_probabilistic(self, operand1, operand2, location=None, **extra):
@@ -500,7 +556,7 @@ class ExtendedPrologFactory(PrologFactory):
         :param extra:
         :return:
         """
-        if ('unaryop' in extra and extra['unaryop'] == '\\+') or operand2.is_negated():
+        if ("unaryop" in extra and extra["unaryop"] == "\\+") or operand2.is_negated():
             operand2 = self.neg_head_literal_to_pos_literal(operand2)
         operand2.probability = operand1
         return operand2
@@ -522,7 +578,10 @@ class ExtendedPrologFactory(PrologFactory):
                 new_heads.append(new_head)
             else:
                 new_heads.append(head)
-        return super(ExtendedPrologFactory, self).build_clause(functor, new_heads, operand2, location, **extra)
+        return super(ExtendedPrologFactory, self).build_clause(
+            functor, new_heads, operand2, location, **extra
+        )
+
 
 DefaultPrologFactory = ExtendedPrologFactory
 

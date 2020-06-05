@@ -25,13 +25,13 @@ def py2pl(d):
 
     if type(d) == list or type(d) == tuple:
         if type(d) == tuple:
-            f = ','
+            f = ","
             tail = py2pl(d[-1])
         else:
-            f = '.'
+            f = "."
             if not d:
-                return Term('[]')
-            tail = Term(f, py2pl(d[-1]), Term('[]'))
+                return Term("[]")
+            tail = Term(f, py2pl(d[-1]), Term("[]"))
         for el in reversed(d[:-1]):
             tail = Term(f, py2pl(el), tail)
         return tail
@@ -45,7 +45,9 @@ def py2pl(d):
     if isinstance(d, Term):
         return d
 
-    raise ValueError("Cannot convert from Python to Prolog: {} ({}).".format(d, type(d)))
+    raise ValueError(
+        "Cannot convert from Python to Prolog: {} ({}).".format(d, type(d))
+    )
 
 
 def pl2py(d):
@@ -53,7 +55,7 @@ def pl2py(d):
 
     if isinstance(d, Constant):
         if type(d.value) == str:
-            return d.value.replace('"', '').replace("'", '')
+            return d.value.replace('"', "").replace("'", "")
         return d.value
 
     if isinstance(d, Term):
@@ -61,20 +63,20 @@ def pl2py(d):
             # list
             elements = []
             tail = d
-            while isinstance(tail, Term) and tail.arity == 2 and tail.functor == '.':
+            while isinstance(tail, Term) and tail.arity == 2 and tail.functor == ".":
                 elements.append(pl2py(tail.args[0]))
                 tail = tail.args[1]
-            if str(tail) != '[]':
+            if str(tail) != "[]":
                 elements.append(pl2py(tail))
             return elements
         elif d.functor == "," and d.arity == 2:
             # list
             elements = []
             tail = d
-            while isinstance(tail, Term) and tail.arity == 2 and tail.functor == ',':
+            while isinstance(tail, Term) and tail.arity == 2 and tail.functor == ",":
                 elements.append(pl2py(tail.args[0]))
                 tail = tail.args[1]
-            if str(tail) != '[]':
+            if str(tail) != "[]":
                 elements.append(pl2py(tail))
             return elements
         else:
@@ -83,5 +85,6 @@ def pl2py(d):
     if isinstance(d, int):
         return Var(term2str(d))
 
-    raise ValueError("Cannot convert from Prolog to Python: {} ({}).".format(d, type(d)))
-
+    raise ValueError(
+        "Cannot convert from Prolog to Python: {} ({}).".format(d, type(d))
+    )

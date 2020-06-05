@@ -1,0 +1,23 @@
+evidence(a).
+evidence(b, false).
+evidence(c, false).
+---
+evidence(a).
+evidence(b, false).
+%evidence(c, false).
+---
+evidence(a).
+%evidence(b, false).
+evidence(c, false).
+---
+evidence(a, false).
+evidence(b).
+evidence(c).
+---
+evidence(a, false).
+evidence(b).
+%evidence(c).
+---
+evidence(a, false).
+%evidence(b).
+evidence(c).

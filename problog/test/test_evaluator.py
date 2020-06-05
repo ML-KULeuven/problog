@@ -28,6 +28,7 @@ from problog.test.test_system import SemiringProbabilityNSPCopy
 
 try:
     from pysdd import sdd
+
     has_sdd = True
 except Exception as err:
     has_sdd = False
@@ -43,7 +44,6 @@ else:
 
 
 class TestEvaluator(unittest.TestCase):
-
     def test_evaluate_custom_weights(self):
         """
         Tests evaluate() with custom weights (not the ones from the ProbLog file)
@@ -67,7 +67,7 @@ class TestEvaluator(unittest.TestCase):
                 if isinstance(a, tuple):
                     return float(a[1])
                 else:
-                    return 1-float(a)
+                    return 1 - float(a)
 
         program = """
                     0.25::a.
@@ -78,7 +78,7 @@ class TestEvaluator(unittest.TestCase):
         semiring = TestSemiringProbabilityNSP()
         kc_class = get_evaluatable(name=eval_name, semiring=semiring)
         kc = kc_class.create_from(lf)
-        a = Term('a')
+        a = Term("a")
 
         # without custom weights
         results = kc.evaluate(semiring=semiring)
@@ -95,7 +95,7 @@ class TestEvaluator(unittest.TestCase):
         self.assertEqual(0.5, results[a])
 
         # with custom weights based on index
-        weights = {kc.get_node_by_name(a) : 0.2}
+        weights = {kc.get_node_by_name(a): 0.2}
         results = kc.evaluate(semiring=semiring, weights=weights)
         self.assertEqual(0.2, results[a])
 
@@ -110,10 +110,12 @@ class TestEvaluator(unittest.TestCase):
                 return a
 
         weights = {0: (0.3, 0.7), a: (0.1, 0.1)}
-        results = kc.evaluate(index=0, semiring=TestSemiringProbabilityIgnoreNormalize(), weights=weights)
+        results = kc.evaluate(
+            index=0, semiring=TestSemiringProbabilityIgnoreNormalize(), weights=weights
+        )
         self.assertEqual(0.06, results)
 
 
-if __name__ == '__main__' :
+if __name__ == "__main__":
     suite = unittest.TestLoader().loadTestsFromTestCase(TestEvaluator)
     unittest.TextTestRunner(verbosity=2).run(suite)
