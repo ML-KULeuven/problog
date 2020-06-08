@@ -733,8 +733,9 @@ class LFIProblem(LogicProgram):
         """Compile examples."""
         logger = getLogger("problog_lfi")
         baseprogram = DefaultEngine(**self.extra).prepare(self)
-        logger.debug("\nBase Program\t:")
-        logger.debug("\t" + baseprogram.to_prolog().replace("\n", "\n\t"))
+        logger.debug(
+            "\nBase Program:\n\t" + baseprogram.to_prolog().replace("\n", "\n\t")
+        )
         examples = self._process_examples()
         for i, example in enumerate(examples):
             logger.debug("Compiling example {}/{}".format(i + 1, len(examples)))
@@ -760,6 +761,9 @@ class LFIProblem(LogicProgram):
         if result is None:
             result = self._process_atom_discr(atom, body)
         # print(str(atom) + " got processed to " + str(result))
+        getLogger("problog_lfi").debug(
+            "\nProcessed Atoms:\t\n\t" + "\n\t".join([str(item) for item in result])
+        )
         return result
 
     def _process_atom_cont(self, atom, body):
@@ -1167,7 +1171,7 @@ class LFIProblem(LogicProgram):
         """Evaluate the model with its current estimates for all examples."""
         results = []
         i = 0
-        getLogger("problog_lfi").debug("Evaluating examples ...")
+        getLogger("problog_lfi").debug("Evaluating examples:")
 
         if self._log:
             evaluator = ExampleEvaluatorLog(self._weights, eps=self._eps)
@@ -1183,8 +1187,22 @@ class LFIProblem(LogicProgram):
                 getLogger("problog_lfi").warning(
                     "Ignoring example {}/{}".format(i + 1, len(self._compiled_examples))
                 )
-        # for result in results:
-        #     # print(result)
+
+        getLogger("problog_lfi").info(
+            "\n".join(
+                [
+                    "Example "
+                    + str(i + 1)
+                    + ":\tp_evidence = "
+                    + str(p_evidence)
+                    + "\tp_queries = "
+                    + str(p_queries)
+                    + "\tp_values = "
+                    + str(p_values)
+                    for i, [(n, p_evidence, p_queries, p_values)] in enumerate(results)
+                ]
+            )
+        )
 
         return list(chain.from_iterable(results))
 
@@ -1353,8 +1371,8 @@ class LFIProblem(LogicProgram):
 
     def step(self):
         self.iteration += 1
+        getLogger("problog_lfi").info("\nIteration " + str(self.iteration))
         results = self._evaluate_examples()
-        getLogger("problog_lfi").info("Step {}: {}".format(self.iteration, results))
         return self._update(results)
 
     def get_model(self):
@@ -1428,8 +1446,8 @@ class Example(object):
     def compile(self, lfi, baseprogram):
         logger = getLogger("problog_lfi")
         ground_program = None  # Let the grounder decide
-        logger.debug("\t" + "Compile grounding:")
-        logger.debug("\t" + "Grounded Atoms:" + "\t" + str(self.atoms))
+        logger.debug("\tGrounded Atoms:\t" + str(self.atoms))
+        logger.debug("\tEvidence:\t" + str(list(zip(self.atoms, self.values))))
 
         ground_program = ground(
             baseprogram,
@@ -1438,6 +1456,7 @@ class Example(object):
             propagate_evidence=lfi.propagate_evidence,
         )
         # logger.debug("\t" + "New ground_program:\n\t\t" + ground_program.to_prolog().replace("\n", "\n\t\t"))
+
         logger.debug(
             "\t"
             + "New ground_program:\n\t\t"
@@ -1464,7 +1483,7 @@ class Example(object):
                     factargs = node.identifier[1]
                 fact = Term("lfi_fact", node.probability.args[0], Term("t", *factargs))
                 logger.debug(
-                    "\t" + "Adding query for fact: " + str(fact) + "\t" + str(i)
+                    "\tNode " + str(i) + ":\tAdding query for fact:\t" + str(fact)
                 )
                 ground_program.add_query(fact, i)
 
@@ -1473,14 +1492,22 @@ class Example(object):
                 )
                 lfi_queries.append(tmp_body)
                 logger.debug(
-                    "\t" + "Adding query for body: " + str(tmp_body) + "\t" + str(i)
+                    "\tNode "
+                    + str(i)
+                    + ":\tAdding query for body:\t"
+                    + str(tmp_body)
+                    + "\t"
                 )
                 tmp_par = Term(
                     "lfi_par", node.probability.args[0], Term("t", *factargs)
                 )
                 lfi_queries.append(tmp_par)
                 logger.debug(
-                    "\t" + "Adding query for parent: " + str(tmp_par) + "\t" + str(i)
+                    "\tNode "
+                    + str(i)
+                    + ":\tAdding query for par :\t"
+                    + str(tmp_par)
+                    + "\t"
                 )
             elif (
                 t == "atom"
@@ -1594,24 +1621,18 @@ class ExampleEvaluator(SemiringDensity):
             return float(a)
 
     def __call__(self, example):
-        # print("__call__")
         """Evaluate the model with its current estimates for all examples."""
-        # # print('=========>>>')
         at = example.atoms
         val = example.values
         comp = example.compiled
         results = []
         for cval, n in example.n.items():
             results.append(self._call_internal(at, val, cval, comp, n))
-        # # print('<<<=========')
-        # print("__call__.results = ", results)
         return results
 
     def _call_internal(self, at, val, cval, comp, n):
-        # print("__call_internal__")
-        # # print('=========')
-        # # print('ExampleEvaluator.__call__({},{},{},{})'.format(n, at, val, cval))
-        # # print('_weights: ', self._weights)
+        # print('ExampleEvaluator.__call__({},{},{},{})'.format(n, at, val, cval))
+        # print('_weights: ', self._weights)
         evidence = {}
         self._cevidence = {}
         # p_values = {}
@@ -1899,6 +1920,7 @@ def run_lfi(program, examples, output_model=None, **kwdargs):
     if output_model is not None:
         with open(output_model, "w") as f:
             f.write(lfi.get_model())
+    getLogger("problog_lfi").info("\nLearned Model:\t\n" + lfi.get_model())
 
     names = []
     weights = []
@@ -2046,6 +2068,7 @@ def main(argv, result_handler=None):
         retcode = result_handler((True, results), outf=outf)
     except Exception as err:
         trace = traceback.format_exc()
+        getLogger("problog_lfi").error("\nError encountered:\t\n" + trace)
         err.trace = trace
         retcode = result_handler((False, err), outf=outf)
 
