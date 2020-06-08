@@ -1,5 +1,5 @@
 %Expected outcome:
-% <RAND>::a(X); <RAND>::b(Y) :- X==Y, between(1,2,X), between(1,2,Y).
+% 0.5::a(X); 0.5::b(X) :- between(1,2,X).
 
-t(_)::a(X); t(_)::b(Y) :- X==Y, between(1,2,X), between(1,2,Y).
+t(_)::a(X); t(_)::b(X) :- between(1,2,X).
 
