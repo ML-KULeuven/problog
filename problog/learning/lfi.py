@@ -1020,7 +1020,6 @@ class LFIProblem(LogicProgram):
             if len(atoms) == 1:  # Simple clause
                 return [atoms_out[0]] + extra_clauses
             else:
-                # return [AnnotatedDisjunction(atoms_out, Term("true"))] + extra_clauses
                 return [AnnotatedDisjunction(atoms_out, body)] + extra_clauses
         else:
             if len(atoms) == 1:
