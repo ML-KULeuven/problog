@@ -155,7 +155,7 @@ def ignore_previous_output(path):
     # dir_name = "../../test/lfi/unit_tests/"
     test = os.listdir(path)
     for item in test:
-        if item.endswith("_out.pl"):
+        if item.endswith(".out"):
             os.remove(os.path.join(path, item))
 
 
@@ -166,8 +166,9 @@ else:
     simple_filenames = glob.glob(root_path("test", "lfi", "Simple", "*.pl"))
     misc_filenames = glob.glob(root_path("test", "lfi", "Misc", "*.pl"))
 
-# evaluatables = ["ddnnf"]
-evaluatables = []
+evaluatables = ["ddnnf"]
+# evaluatables = []
+
 if has_sdd:
     evaluatables.append("sdd")
     evaluatables.append("sddx")
