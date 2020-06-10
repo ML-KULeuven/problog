@@ -1,8 +1,0 @@
-evidence(a(1),true).
----
-evidence(b(1)).
----
-%evidence(b(2),false).
-evidence(a(2)).
----
-evidence(a(1)).

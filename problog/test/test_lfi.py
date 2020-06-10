@@ -54,7 +54,7 @@ def read_result(filename):
     return results
 
 
-def createTestLFI(filename, useparents=False):
+def createTestLFI(filename):
     def test(self):
         for eval_name in evaluatables:
             with self.subTest(evaluatable=eval_name):
@@ -67,28 +67,28 @@ def createTestLFI(filename, useparents=False):
 
         if not os.path.exists(examples):
             raise Exception("Evidence file is missing: {}".format(examples))
-        if useparents:
-            try:
-                d = {
-                    "max_iter": 10000,
-                    "min_improv": 1e-10,
-                    "leakprob": None,
-                    "propagate_evidence": True,
-                    "eps": 0.0001,
-                    "normalize": True,
-                    "web": False,
-                    "args": None,
-                }
-                score, weights, names, iterations, lfi = lfi_wrapper(
-                    model, [examples], evaluatable, d
-                )
-                outlines = lfi.get_model()
-            except Exception as err:
-                print(expectedlines)
-                print(err)
-                # This test is specifically for test/lfi/AD/relatedAD_1 and test/lfi/AD/relatedAD_2
-                assert expectedlines == "NonGroundProbabilisticClause"
-                return
+
+        try:
+            d = {
+                "max_iter": 10000,
+                "min_improv": 1e-10,
+                "leakprob": None,
+                "propagate_evidence": True,
+                "eps": 0.0001,
+                "normalize": True,
+                "web": False,
+                "args": None,
+            }
+            score, weights, names, iterations, lfi = lfi_wrapper(
+                model, [examples], evaluatable, d
+            )
+            outlines = lfi.get_model()
+        except Exception as err:
+            print(expectedlines)
+            print(err)
+            # This test is specifically for test/lfi/AD/relatedAD_1 and test/lfi/AD/relatedAD_2
+            assert expectedlines == "NonGroundProbabilisticClause"
+            return
 
         outlines = outlines.split("\n")[:-1]
         assert len(expectedlines) == len(outlines)
@@ -155,55 +155,39 @@ def ignore_previous_output(path):
     # dir_name = "../../test/lfi/unit_tests/"
     test = os.listdir(path)
     for item in test:
-        if item.endswith(".l_pl"):
+        if item.endswith("_out.pl"):
             os.remove(os.path.join(path, item))
 
 
 if __name__ == "__main__":
     filenames = sys.argv[1:]
 else:
-    ADfilenames = glob.glob(root_path("test", "lfi", "AD", "*.pl"))
-    simple_filenames = glob.glob(root_path("test", "lfi", "simple", "*.pl"))
-    useParents_filenames = glob.glob(root_path("test", "lfi", "useParents", "*.pl"))
-    unit_test_filenames = glob.glob(root_path("test", "lfi", "unit_tests", "test_*.pl"))
-    test_interface_filenames = glob.glob(
-        root_path("test", "lfi", "test_interface", "test1_model.pl")
-    )
+    AD_filenames = glob.glob(root_path("test", "lfi", "AD", "*.pl"))
+    simple_filenames = glob.glob(root_path("test", "lfi", "Simple", "*.pl"))
+    misc_filenames = glob.glob(root_path("test", "lfi", "Misc", "*.pl"))
 
-evaluatables = ["ddnnf"]
-
+# evaluatables = ["ddnnf"]
+evaluatables = []
 if has_sdd:
     evaluatables.append("sdd")
     evaluatables.append("sddx")
 else:
     print("No SDD support - The system tests are not performed with SDDs.")
 
-# tests for simple cases (non-ADs)
-for testfile in simple_filenames:
-    testname = "test_lfi_simple_" + os.path.splitext(os.path.basename(testfile))[0]
-    setattr(TestLFI, testname, createTestLFI(testfile, True))
-
 # tests for ADs
-for testfile in ADfilenames:
+for testfile in AD_filenames:
     testname = "test_lfi_AD_" + os.path.splitext(os.path.basename(testfile))[0]
-    setattr(TestLFI, testname, createTestLFI(testfile, True))
+    setattr(TestLFI, testname, createTestLFI(testfile))
 
-# tests for useParents
-for testfile in useParents_filenames:
-    testname = "test_lfi_parents_" + os.path.splitext(os.path.basename(testfile))[0]
-    setattr(TestLFI, testname, createTestLFI(testfile, True))
+# tests for simple unit tests
+for testfile in simple_filenames:
+    testname = "test_lfi_Simple_" + os.path.splitext(os.path.basename(testfile))[0]
+    setattr(TestLFI, testname, createTestLFI(testfile))
 
-# tests for unit tests
-for testfile in unit_test_filenames:
-    testname = "test_lfi_unit_test_" + os.path.splitext(os.path.basename(testfile))[0]
-    setattr(TestLFI, testname, createTestLFI(testfile, True))
-
-# tests for test_interface
-for testfile in test_interface_filenames:
-    testname = (
-        "test_lfi_test_interface_" + os.path.splitext(os.path.basename(testfile))[0]
-    )
-    setattr(TestLFI, testname, createTestLFI(testfile, useparents=True))
+# tests for Miscellaneous files
+for testfile in misc_filenames:
+    testname = "test_lfi_Misc_" + os.path.splitext(os.path.basename(testfile))[0]
+    setattr(TestLFI, testname, createTestLFI(testfile))
 
 
 if __name__ == "__main__":
