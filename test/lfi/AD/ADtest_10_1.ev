@@ -1,23 +1,18 @@
 evidence(a).
-evidence(b, false).
-evidence(c, false).
 ---
 evidence(a).
+---
 evidence(b, false).
-%evidence(c, false).
 ---
-evidence(a).
-%evidence(b, false).
-evidence(c, false).
+evidence(b).
 ---
 evidence(a, false).
-evidence(b).
+evidence(b, false).
+---
 evidence(c).
 ---
-evidence(a, false).
-evidence(b).
-%evidence(c).
+evidence(d).
 ---
-evidence(a, false).
-%evidence(b).
-evidence(c).
+evidence(f, false).
+---
+evidence(f, false).
