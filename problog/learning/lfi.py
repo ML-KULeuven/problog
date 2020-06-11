@@ -957,7 +957,10 @@ class LFIProblem(LogicProgram):
             for var in q:
                 vars.add(var)
 
-        prob_args = atom.probability.args[1:]
+        if atom.probability:
+            prob_args = atom.probability.args[1:]
+        else:
+            prob_args = (1.0,)
         newcount = "_".join([str(self.count+count) for count in range(len(atoms))])
         lfi_par_rule = Term("lfi_par_rule", Constant(newcount), Term("t", *prob_args, *vars))
 
