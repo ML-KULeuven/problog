@@ -937,6 +937,32 @@ class LFIProblem(LogicProgram):
         # First argument is probability available for learnable weights in the AD.
         self.add_ad(1.0 - fixed_probability, [])  # TODO : this adds extra ad
 
+        ######################
+        # Replace anonymous variables with non-anonymous variables.
+        class ReplaceAnon(object):  # TODO: can be defined outside of for loop?
+            def __init__(self):
+                self.cnt = 0
+
+            def __getitem__(self, key):
+                if key == "_":
+                    self.cnt += 1
+                    return Var("anon_%s" % self.cnt)
+                else:
+                    return Var(key)
+
+        atom1 = atom.apply(ReplaceAnon())
+        vars = set()
+        for atom in atoms:
+            q = list(atom.apply(ReplaceAnon()).args)
+            for var in q:
+                vars.add(var)
+
+        prob_args = atom.probability.args[1:]
+        newcount = "_".join([str(self.count+count) for count in range(len(atoms))])
+        lfi_par_rule = Term("lfi_par_rule", Constant(newcount), Term("t", *prob_args, *vars))
+
+        ##############
+
         for atom in atoms:
             if atom.probability and atom.probability.functor == "t":
                 # t(_)::p(X) :- body.
@@ -991,9 +1017,7 @@ class LFIProblem(LogicProgram):
                 # lfi_par  = Term('lfi_par',  Constant(self.count_ad()), Term('t', *prob_args), *atom1.args)
                 # TODO: lfi_par should be unique for rule, not per disjunct
                 # lfi_par = Term('lfi_par',   Constant(self.count),      Term('t', *prob_args), *atom1.args)
-                lfi_par = Term(
-                    "lfi_par", Constant(self.count), Term("t", *prob_args, *atom1.args)
-                )
+                lfi_par = Term("lfi_par", Constant(self.count), Term("t", *prob_args, *atom1.args))
                 # lfi_prob = Term('lfi', Constant(self.count), Term('t', *prob_args, *atom1.args))
                 lfi_prob = Term("lfi", Constant(self.count), Term("t"))
 
@@ -1010,7 +1034,8 @@ class LFIProblem(LogicProgram):
                 extra_clauses += [
                     Clause(atom1.with_probability(), lfi_body),
                     Clause(lfi_body, lfi_par & lfi_fact),
-                    Clause(lfi_par, new_body),
+                    Clause(lfi_par, lfi_par_rule),
+                    Clause(lfi_par_rule, new_body)
                 ]
 
                 # TODO: replace above with below
@@ -1041,7 +1066,7 @@ class LFIProblem(LogicProgram):
             if len(atoms) == 1:  # Simple clause
                 return [atoms_out[0]] + extra_clauses
             else:
-                return [AnnotatedDisjunction(atoms_out, lfi_par)] + extra_clauses
+                return [AnnotatedDisjunction(atoms_out, lfi_par_rule)] + extra_clauses
         else:
             if len(atoms) == 1:
                 if body is None:
