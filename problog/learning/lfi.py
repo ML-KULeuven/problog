@@ -517,23 +517,25 @@ class LFIProblem(LogicProgram):
         :return: example groups based on evidence atoms
         :rtype: dict of atoms : values for examples
         """
-
+        logger = getLogger("problog_lfi")
         # value can be True / False / None
         # ( atom ), ( ( value, ... ), ... )
 
         # Simple implementation: don't add neutral evidence.
 
-        # ad_groups is a dictionary of lists, each list contains an AD
-        # the key
+        # ad_groups is a list of lists where each list contains an AD
         ad_groups = list()
         for ad in self._adatoms:
             # if it's an AD group AND the total probability is 1.0
-            if len(ad[1]) > 1 and ad[0] == 1.0:
+            # if len(ad[1]) > 1 and ad[0] == 1.0:
+
+            # if it's an AD group
+            if len(ad[1]) > 1:
                 ad_list = []
                 for var in ad[1]:
                     ad_list.append(Term(self.names[var].functor, *self.names[var].args))
                 ad_groups.append(tuple(ad_list))
-        # print("AD Groups\t\t:", ad_groups)
+        logger.debug("AD Groups\t\t:" + str(ad_groups))
 
         def multiple_true(d):
             """
@@ -719,7 +721,20 @@ class LFIProblem(LogicProgram):
                     atoms, values, cvalues = zip(*example)
                     # print(index, "Push evidence\t:", atoms, values, "\n")
                     result.add(index, atoms, values, cvalues)
-
+            # logger.debug(
+            #     "\nProcessed Examples:\n\t"
+            #     + "\n\t".join(
+            #         [
+            #             "Atoms: "
+            #             + str(ex.atoms)
+            #             + "\tValues: "
+            #             + str(ex.values)
+            #             + "\tContinuous Values: "
+            #             + str(ex.n)
+            #             for ex in result
+            #         ]
+            #     )
+            # )
             return result
         else:
             # smarter: compile-once all examples with same atoms
@@ -1193,12 +1208,14 @@ class LFIProblem(LogicProgram):
                     "Ignoring example {}/{}".format(i + 1, len(self._compiled_examples))
                 )
 
-        getLogger("problog_lfi").info(
+        getLogger("problog_lfi").debug(
             "\n".join(
                 [
                     "Example "
                     + str(i + 1)
-                    + ":\tp_evidence = "
+                    + ":\tFrequency = "
+                    + str(n)
+                    + "\tp_evidence = "
                     + str(p_evidence)
                     + "\tp_queries = "
                     + str(p_queries)
