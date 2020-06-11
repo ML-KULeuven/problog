@@ -954,8 +954,10 @@ class LFIProblem(LogicProgram):
             prob_args = atom.probability.args[1:]
         else:
             prob_args = (1.0,)
-        newcount = "_".join([str(self.count+count) for count in range(len(atoms))])
-        lfi_par_rule = Term("lfi_par_rule", Constant(newcount), Term("t", *prob_args, *vars))
+        newcount = "_".join([str(self.count + count) for count in range(len(atoms))])
+        lfi_par_rule = Term(
+            "lfi_par_rule", Constant(newcount), Term("t", *prob_args, *vars)
+        )
 
         ##############
 
@@ -1013,7 +1015,9 @@ class LFIProblem(LogicProgram):
                 # lfi_par  = Term('lfi_par',  Constant(self.count_ad()), Term('t', *prob_args), *atom1.args)
                 # TODO: lfi_par should be unique for rule, not per disjunct
                 # lfi_par = Term('lfi_par',   Constant(self.count),      Term('t', *prob_args), *atom1.args)
-                lfi_par = Term("lfi_par", Constant(self.count), Term("t", *prob_args, *atom1.args))
+                lfi_par = Term(
+                    "lfi_par", Constant(self.count), Term("t", *prob_args, *atom1.args)
+                )
                 # lfi_prob = Term('lfi', Constant(self.count), Term('t', *prob_args, *atom1.args))
                 lfi_prob = Term("lfi", Constant(self.count), Term("t"))
 
@@ -1031,7 +1035,7 @@ class LFIProblem(LogicProgram):
                     Clause(atom1.with_probability(), lfi_body),
                     Clause(lfi_body, lfi_par & lfi_fact),
                     Clause(lfi_par, lfi_par_rule),
-                    Clause(lfi_par_rule, new_body)
+                    Clause(lfi_par_rule, new_body),
                 ]
 
                 # TODO: replace above with below
