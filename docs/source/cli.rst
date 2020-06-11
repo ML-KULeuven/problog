@@ -26,8 +26,15 @@ Currently, the following modes are supported
 Default (no keyword)
 --------------------
 
-In the default mode, ProbLog takes a model and computes the probability of the queries.
-The output is a set of probabilities.
+Run ProbLog in standard inference mode.
+
+Used as ``problog <model> [optional]`` where:
+
+- ``<model>`` is a file containing the ProbLog model;
+- ``[optional]`` is a set of optional parameters.
+
+Returns a set of probabilities for the queries in the model.
+
 
 For example, given a file ``some_heads.pl``
 
@@ -43,47 +50,61 @@ For example, given a file ``some_heads.pl``
 
 We can do
 
-.. code-block:: prolog
+.. code-block:: shell
 
     $ problog some_heads.pl
     someHeads : 0.8
 
-ProbLog supports supports several alternative knowledge compilation tools.
-By default, it uses the first available option from
-
-    1. SDD
-    2. d-DNNF using c2d
-    3. d-DNNF using dsharp
-
-The choice between SDD and d-DNNF can also be set using the option ``-k`` or ``--knowledge``.
-
-By default, ProbLog transforms probabilities to logarithmic space to avoid rounding errors. \
-This behavior can be disabled using the flag ``--nologspace``.
-
-By default, Problog outputs its results to standard output. To write to an output file, use the \
-option ``-o`` or ``--output``.
-
-A time out can be set using the option ``-t`` or ``--timeout``.
-
-For progress information use the ``-v`` or ``--verbose`` option (can be repeated).
-
-The following options are advanced options:
-
-  * ``--debug``: turn on debugging mode (prints full error messages)
-  * ``--recursion-limit <value>``: increase Python's recursion limit (default: 1000)
-  * ``--engine-debug``: turn on very verbose grounding
-  * ``--sdd-auto-gc``: turn on SDD minimization and garbage collection (default: off)
-  * ``--sdd-preset-variables``: preserve SDD variables (default: off)
+This mode supports many optional arguments to customize the inference:
 
 
-Sampling and sampling based inference (``sample``)
+    - ``--knowledge {sdd,sddx,bdd,nnf,ddnnf,kbest,fsdd,fbdd}, -k {sdd,sddx,bdd,nnf,ddnnf,kbest,fsdd,fbdd}``;  Knowledge compilation tool. By default, it uses the first available option from SDD, d-DNNF using c2d and d-DNNF using dsharp.
+    - ``--combine``             Combine input files into single model.
+    - ``--logspace``            Use log space evaluation (default).
+    - ``--nologspace``          Use normal space evaluation.
+    - ``--symbolic``            Use symbolic computations.
+    - ``--output OUTPUT, -o OUTPUT``; Output file (default stdout)
+    - ``--recursion-limit RECURSION_LIMIT``; Set Python recursion limit. (default: 10000)
+    - ``--timeout TIMEOUT, -t TIMEOUT``; Set timeout (in seconds, default=off).
+    - ``--compile-timeout COMPILE_TIMEOUT``; Set timeout for compilation (in seconds, default=off).
+    - ``--debug, -d``           Enable debug mode (print full errors).
+    - ``--full-trace, -T``      Full tracing.
+    - ``-a ARGS, --arg ARGS``   Pass additional arguments to the cmd_args builtin.
+    - ``--profile``            output runtime profile
+    - ``--trace``               output runtime trace
+    - ``--profile-level PROFILE_LEVEL``
+    - ``--format {text,prolog}``
+    - ``-L LIBRARY, --library LIBRARY``; Add to ProbLog library search path
+    - ``--propagate-evidence``;  Enable evidence propagation
+    - ``--dont-propagate-evidence``; Disable evidence propagation
+    - ``--propagate-weights``;   Enable weight propagation
+    - ``--convergence CONVERGENCE, -c CONVERGENCE``; Stop anytime when bounds are within this range
+
+
+Sampling (``sample``)
 --------------------------------------------------
 
-Sampling
-++++++++
 
-In the ``sample`` mode, ProbLog will generate possible assignments to the queries in the model.
-For example,
+Run ProbLog in sampling mode, generating possible assignments to the queries in the model.
+
+Used as ``problog sample <model> [optional]`` where:
+
+- ``<model>`` is a file containing the ProbLog model with the queries of interest;
+- ``[optional]`` is a set of optional parameters.
+
+For example, given a file ``some_heads.pl``
+
+.. code-block:: prolog
+
+    $ cat some_heads.pl
+    0.5::heads1.
+    0.6::heads2.
+    someHeads :- heads1.
+    someHeads :- heads2.
+
+    query(someHeads).
+
+We can do:
 
 .. code-block:: prolog
 
@@ -101,20 +122,8 @@ The probability indicated is the probability of *the choices made to obtain the 
 It is **NOT** the probability of the sample itself (because there may be multiple choices that \
 lead to the same sample).
 
-The argument ``-N`` indicates the number of samples to generate.
 
-The argument ``--oneline`` can be used to change the output format to place each sample on a \
-separate line. The previous output would then be formatted as:
-
-.. code-block:: prolog
-
-    $ problog sample some_heads.pl -N 3 --oneline
-    % Probability: 0.2
-    someHeads. % Probability: 0.2
-    someHeads. % Probability: 0.3
-
-By default, only query atoms are part of the sample.
-To also include facts that were chosen while sampling, the argument ``--with-facts`` can be used.
+By default, only query atoms are part of the sample. To also include facts that were chosen while sampling, the argument ``--with-facts`` can be used.
 The result above would then become
 
 .. code-block:: prolog
@@ -124,20 +133,46 @@ The result above would then become
     heads1. someHeads. % Probability: 0.2
     heads2. someHeads. % Probability: 0.3
 
-The sampling algorithm supports **evidence** through rejection sampling.  All generated samples \
-are guaranteed to satisfy the evidence.  Note that this process can be slow if the evidence has \
+The sampling algorithm supports **evidence** through rejection sampling.  All generated samples
+are guaranteed to satisfy the evidence.  Note that this process can be slow if the evidence has
 low probability.
 
-The sampling algorithm support evidence propagation, that is, in certain cases it can ensure the \
- evidence holds without the use of rejection sampling.
-To enable this feature use the ``--propagate-evidence`` argument. Evidence propagation is not \
- supported on programs with continuous distributions, or on programs where the evidence has \
- infinite support.
+The sampling algorithm support evidence propagation, that is, in certain cases it can ensure the
+evidence holds without the use of rejection sampling.
+To enable this feature use the ``--propagate-evidence`` argument. Evidence propagation is not
+supported on programs with continuous distributions, or on programs where the evidence has
+infinite support.
+
+
+All the optional arguments:
+
+    - ``-h, --help``; show the help message and exit
+    - ``-N N, -n N``;Number of samples.
+    - ``--with-facts``; Also output choice facts (default: just queries).
+    - ``--with-probability``; Show probability.
+    - ``--as-evidence``; Output as evidence.
+    - ``--propagate-evidence``; Enable evidence propagation
+    - ``--dont-propagate-evidence``; Disable evidence propagation
+    - ``--oneline``; Format samples on one line.
+    - ``--estimate``; Estimate probability of queries from samples (see next section).
+    - ``--timeout TIMEOUT, -t TIMEOUT``; Set timeout (in seconds, default=off).
+    - ``--output OUTPUT, -o OUTPUT``; Filename of output file.
+    - ``--verbose, -v``; Verbose output
+    - ``--seed SEED, -s SEED``; Random seed
+    - ``--full-trace``;
+    - ``--strip-tag``; Strip outermost tag from output.
+    - ``-a ARGS, --arg ARGS``; Pass additional arguments to the cmd_args builtin.
+    - ``--progress``; show progress.
+
+
+
+
+
 
 Sample based inference
 ++++++++++++++++++++++
 
-It is also possible to use the sample mode for *probability estimation* by setting the flag \
+The sample mode can be used for *probability estimation* by setting the flag \
 ``--estimate``.  The output is similar to the output in default mode.
 
 The number of samples used for estimation can be determined in three ways:
@@ -154,22 +189,45 @@ The number of samples used for estimation can be determined in three ways:
 
 This mode also support the ``--propagate-evidence`` flag.
 
+
 References:
-+++++++++++
 
-    https://lirias.kuleuven.be/handle/123456789/510199
+    Paper: https://lirias.kuleuven.be/handle/123456789/510199
 
+    Tutorial: https://dtai.cs.kuleuven.be/problog/tutorial/sampling/02_arithmeticexpressions.html
 
 Most Probable Explanation (``mpe``)
 -----------------------------------
 
-In MPE mode, ProbLog computes the possible world with the highest probability in which all queries
-and evidence is true.
 
-For example, consider the following program.
 
-.. code-block:: prolog
+Run ProbLog in MPE mode, computing the possible world with the highest probability in which all queries
+and evidence are true.
 
+
+Used as ``problog mpe <model> [optional]`` where:
+
+- ``<model>`` is a file containing the ProbLog model;
+- ``[optional]`` is a set of optional parameters.
+
+Returns:
+
+- the possible world with the highest probability (as a set of facts);
+- the probability of the most probable explanation.
+
+The optional arguments are:
+
+  - ``-h, --help``; show this help message and exit
+  - ``--solver {maxsatz,scip,sat4j}``;  MaxSAT solver to use
+  - ``--full``; Also show false atoms.
+  - ``-o OUTPUT, --output OUTPUT``;  Write output to given file (default: write to stdout)
+  - ``-v, --verbose``; Increase verbosity
+
+For example, given a file ``digraph.pl`` describing a probabilistic graph:
+
+.. code-block:: shell
+
+    $ cat digraph.pl
     0.6::edge(1,2).
     0.1::edge(1,3).
     0.4::edge(2,5).
@@ -179,67 +237,56 @@ For example, consider the following program.
     0.2::edge(5,6).
 
     path(X,Y) :- edge(X,Y).
-    path(X,Y) :- edge(X,Z),
-                 Y \== Z,
-                 path(Z,Y).
+    path(X,Y) :- edge(X,Z), Y \== Z,path(Z,Y).
 
     evidence(path(1,5)).
     evidence(path(1,6)).
 
-This program describes a probabilistic graph.
+We can do:
 
-.. digraph:: probabilistic_graph
+.. code-block:: shell
 
-    rankdir=LR;
-    1 -> 3 [label="0.1"];
-    1 -> 2 [label="0.6"];
-    2 -> 5 [label="0.4"];
-    2 -> 6 [label="0.3"];
-    3 -> 4 [label="0.3"];
-    4 -> 5 [label="0.8"];
-    5 -> 6 [label="0.2"];
-
-The command ``problog mpe pgraph.pl`` produces the most probable graph in which there are paths
-from node 1 to node 5 and from node 1 to node 6.
-
-The result is
-
-.. code-block:: prolog
-
-    edge(4,5)
-    edge(1,2)
-    edge(2,5)
-    edge(2,6)
-    \+edge(1,3)
-    \+edge(3,4)
-    \+edge(5,6)
+    $ problog mpe pgraph.pl
+    edge(4,5)  edge(1,2)  edge(2,5) edge(2,6)
+    \+edge(1,3)  \+edge(3,4)  \+edge(5,6)
     % Probability: 0.0290304
-
-Note that the first edge is not necessary for the paths to exist, but it is included because it is
-more likely to exist.
-
-.. code-block:: prolog
-
-    \+edge(3,4)
-    edge(4,5)
-    \+edge(1,3)
-    edge(1,2)
-    edge(2,5)
-    \+edge(5,6)
-    edge(2,6)
-
-
-In order to compute the result, ProbLog uses a Max-Sat solver (``maxsatz``) which is included in
-the distribution.
 
 
 Learning from interpretations (``lfi``)
 ---------------------------------------
+Run ProbLog in the learning from interpretation (LFI) setting. Given a probabilistic program with parameterized weights
+and a set of (partial) interpretation, learns appropriate values of the parameters.
 
-Learning expects a program with a number of unknown probabilities expressed as ``t(_)``.
-If you want to start learning from a given initialisation, say 0.2, you can use ``t(0.2)``.
+Used as: ``problog lfi <model> <evidence> [optional]`` where:
 
-Given a program ``some_heads.pl`` with unknown probabilities:
+- ``<model>`` is the ProbLog model file;
+- ``<evidence>`` is the a file containing a set of examples to learn from.
+- ``[optional]`` are optional arguments
+
+The command standard output is: ``<loss> <probs> <atoms> <iter>`` where:
+
+- ``<loss>`` is the final loss of the learning problem;
+- ``<probs>`` is a list of the learned paramenters (i.e. probabilities);
+- ``<atoms>`` is the list of clauses that the probabilities refer to (positional mapping);
+- ``<iter>`` is the number of EM iterations.
+
+The optional arguments are:
+
+    - ``-h, --help``; show the help message and exit
+    - ``-n MAX_ITER``;
+    - ``-d MIN_IMPROV``;
+    - ``-O OUTPUT_MODEL, --output-model OUTPUT_MODEL``;  write resulting model to given file
+    - ``-o OUTPUT, --output OUTPUT``; write output to file
+    - ``-k {sdd,sddx,bdd,nnf,ddnnf,kbest,fsdd,fbdd}, --knowledge {sdd,sddx,bdd,nnf,ddnnf,kbest,fsdd,fbdd}``; knowledge compilation tool
+    - ``-l LEAKPROB, --leak-probabilities LEAKPROB``; Add leak probabilities for evidence atoms.
+    - ``--propagate-evidence``; Enable evidence propagation
+    - ``--dont-propagate-evidence``; Disable evidence propagation
+    - ``--normalize``; Normalize AD-weights.
+    - ``-v, --verbose``;
+    - ``-a ARGS, --arg ARGS``;   Pass additional arguments to the cmd_args builtin.
+
+
+An example of model file ``some_heads.pl``:
 
 .. code-block:: prolog
 
@@ -248,8 +295,7 @@ Given a program ``some_heads.pl`` with unknown probabilities:
     someHeads :- heads1.
     someHeads :- heads2.
 
-And an evidence file ``some_heads_ev.pl`` (sampled using probabilities 0.5 and 0.6, \
-no evidence on ``heads2``):
+An example of evidence file ``some_heads.pl``:
 
 .. code-block:: prolog
 
@@ -260,30 +306,10 @@ no evidence on ``heads2``):
     evidence(heads1,true).
     ----------------
     evidence(someHeads,true).
-    evidence(heads1,true).
-    ----------------
-    evidence(someHeads,false).
     evidence(heads1,false).
     ----------------
-    evidence(someHeads,true).
-    evidence(heads1,true).
-    ----------------
-    evidence(someHeads,true).
-    evidence(heads1,false).
-    ----------------
-    evidence(someHeads,true).
-    evidence(heads1,false).
-    ----------------
-    evidence(someHeads,true).
-    evidence(heads1,true).
-    ----------------
-    evidence(someHeads,true).
-    evidence(heads1,false).
-    ----------------
-    evidence(someHeads,true).
-    evidence(heads1,false).
 
-We can now learn the missing probabilities using:
+An example of LFI call:
 
 .. code-block:: shell
 
@@ -306,32 +332,56 @@ The learned program is saved in ``some_heads_learned.pl``.
 Decision Theoretic ProbLog (``dt``)
 -----------------------------------
 
-DTProbLog is a decision-theoretic extension of ProbLog.
+Run ProbLog in decision-theoretic mode.
 
-A model in DTProbLog differs from standard ProbLog models in a number of ways:
+Used as: ``problog dt <model> [optional]`` where:
 
-  * There are no queries and evidence.
-  * Certain facts are annotated as being a decision fact for which the optimal choice must be determined.
-  * Certain atoms are annotated with an utility, indicating their contribution to the final score.
+- ``<model>`` is the a decision-theoretic ProbLog model file;
+- ``[optional]`` are optional arguments
 
-Decision facts can be annotated in any of the following ways:
+The command standard output is ``<choices> <score>`` where:
 
-.. code-block:: prolog
-
-   ?::a.
-   decision(a).
-
-Utilities can be defined using the ``utility/2`` predicate:
-
-.. code-block:: prolog
-
-   utility(win, 10).
-   utility(buy, -1).
-
+- ``<choices>`` are the best decisions;
+- ``<scores>`` is the score for the best decision.
 
 The current implementation supports two evaluation strategies: exhaustive search (exact) and local search (approximate).
-Exhaustive search is the default.
-Local search can be enabled with the argument ``-s local``.
+Exhaustive search is the default. Local search can be enabled with the argument ``-s local``.
+
+The optional arguments are:
+
+  - ``-h, --help``; show the help message and exit
+  - ``--knowledge {sdd,sddx,bdd,nnf,ddnnf,kbest,fsdd,fbdd}, -k {sdd,sddx,bdd,nnf,ddnnf,kbest,fsdd,fbdd}``; Knowledge compilation tool.
+  - ``-s {local,exhaustive}``; --search {local,exhaustive}
+  - ``-v, --verbose``; Set verbosity level
+  - ``-o OUTPUT, --output OUTPUT``;  Write output to given file (default: write to stdout)
+
+
+For example, given the DT-model:
+
+.. code-block:: shell
+
+    $ cat dt_model.pl
+    0.3::rain.
+    0.5::wind.
+    ?::umbrella.
+    ?::raincoat.
+    broken_umbrella :- umbrella, rain, wind.
+    dry :- rain, raincoat.
+    dry :- rain, umbrella, not broken_umbrella.
+    dry :- not(rain).
+    utility(broken_umbrella, -40).
+    utility(raincoat, -20).
+    utility(umbrella, -2).
+    utility(dry, 60).
+
+
+we can do:
+    .. code-block:: shell
+
+        $ problog dt dt_model.pl
+        raincoat:	0
+        umbrella:	1
+        SCORE: 43.00000000000001
 
 
 References:
@@ -342,33 +392,38 @@ References:
 MAP inference (``map``)
 -----------------------
 
+Run ProbLog in MAP mode. Only facts that occur as explicit queries are assigned and all other probabilistic facts are marginalized over.
 MAP inference is implemented on top of DT-ProbLog.
-MAP inference is similar to MPE inference, except that only facts that occur as explicit queries are assigned and all other probabilistic facts are marginalized over.
 
-.. code-block:: prolog
+Used as: ``problog map <model> [optional]`` where:
 
-    0.6::edge(1,2).
-    0.1::edge(1,3).
-    0.4::edge(2,5).
-    0.3::edge(2,6).
-    0.3::edge(3,4).
-    0.8::edge(4,5).
-    0.2::edge(5,6).
+- ``<model>`` is the a ProbLog model file;
+- ``[optional]`` are optional arguments
 
-    path(X,Y) :- edge(X,Y).
-    path(X,Y) :- edge(X,Z),
-                 Y \== Z,
-                 path(Z,Y).
+The command standard output is ``<choices> <score>`` where:
 
-    query(edge(1,2)).
-    query(edge(1,3)).
+- ``<choices>`` are the MAP assignments;
+- ``<scores>`` is the score for the MAP.
 
-    evidence(path(1,6)).
+The current implementation supports two evaluation strategies: exhaustive search (exact) and local search (approximate).
+Exhaustive search is the default. Local search can be enabled with the argument ``-s local``.
 
+The optional arguments are:
+
+  - ``-h, --help``; show the help message and exit
+  - ``--knowledge {sdd,sddx,bdd,nnf,ddnnf,kbest,fsdd,fbdd}, -k {sdd,sddx,bdd,nnf,ddnnf,kbest,fsdd,fbdd}``; Knowledge compilation tool.
+  - ``-s {local,exhaustive}``; --search {local,exhaustive}
+  - ``-v, --verbose``; Set verbosity level
+  - ``-o OUTPUT, --output OUTPUT``;  Write output to given file (default: write to stdout)
 
 
 Explanation mode (``explain``)
 ------------------------------
+
+Run ProbLog in explain mode.
+
+Used as: ``problog explain <model> [optional]``.
+
 
 The ``explain`` mode offers insight in how probabilities can be computed for a ProbLog program.
 Given a model, the output consists of three parts:
@@ -379,21 +434,41 @@ Given a model, the output consists of three parts:
 
 This mode currently does not support evidence.
 
+
+
 Grounding (``ground``)
 ----------------------
+
+Run ProbLog ground routine.
+
+Used as: ``problog ground <model> [optional]``.
 
 The ``ground`` mode provides access to the ProbLog grounder.
 Given a model, the output consists of the ground program.
 
-The output can be formatted in different formats:
 
-  * pl: ProbLog format
-  * dot: GraphViz representation of the AND-OR tree
-  * svg: GraphViz representation of the AND-OR tree as SVG (requires GraphViz)
-  * cnf: DIMACS encoding as CNF
-  * internal: Internal representation (for debugging)
+The optional arguments are:
+  - ``-h, --help``; show the help message and exit
+  - ``--format {dot,pl,cnf,svg,internal}``; output format. The output can be formatted in different formats:
+      * pl: ProbLog format
+      * dot: GraphViz representation of the AND-OR tree
+      * svg: GraphViz representation of the AND-OR tree as SVG (requires GraphViz)
+      * cnf: DIMACS encoding as CNF
+      * internal: Internal representation (for debugging)
+  - ``--break-cycles``; perform cycle breaking
+  - ``--transform-nnf``; transform to NNF
+  - ``--keep-all``; also output deterministic nodes
+  - ``--keep-duplicates``; don't eliminate duplicate literals
+  - ``--any-order``; allow reordering nodes
+  - ``--hide-builtins``; hide deterministic part based on builtins
+  - ``--propagate-evidence``; propagate evidence
+  - ``--propagate-weights``; propagate evidence
+  - ``--compact``; allow compact model (may remove some predicates)
+  - ``--noninterpretable``;
+  - ``--verbose, -v``; Verbose output
+  - ``-o OUTPUT, --output OUTPUT``; output file
+  - ``-a ARGS, --arg ARGS``; Pass additional arguments to the cmd_args builtin.
 
-These can be provided using the ``--format`` option.
 
 By default, the output is the ground program before cycle breaking (except for ``cnf``).
 To perform cycle breaking, provide the ``--break-cycles`` argument.

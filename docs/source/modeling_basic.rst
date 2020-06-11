@@ -1,4 +1,4 @@
-Writing models in ProbLog: basic concepts
+ProbLog models
 =========================================
 
 Prolog
@@ -17,8 +17,12 @@ ProbLog
 
 ProbLog introduces an additional operator ``::`` and two predicates ``query`` and ``evidence``.
 
-Probabilistic logic programs
-++++++++++++++++++++++++++++
+Moreover, ProbLog models can be executed in multiple modes, some of them adding specific syntax.
+
+Both standard and specific notations are described in the following.
+
+Probabilistic predicates
+++++++++++++++++++++++++
 
 The main difference between Prolog and ProbLog is that ProbLog support probabilistic
 predicates.
@@ -46,6 +50,11 @@ We can generalize this to an unbound number of coins by using a variable argumen
 
     0.5::heads(C).
 
+
+
+Annotated disjunctions
+++++++++++++++++++++++
+
 ProbLog also supports non-binary choices.
 For example, we can model the throw of die as follows.
 
@@ -59,6 +68,11 @@ It expresses that at most one of these choices is true.
 There is always an implicit *null* choice which states that none of the options is taken.
 In this example, however, that extra state has zero probability because the probabilities of the
 other states sum to one.
+
+
+
+Probabilistc clauses
+++++++++++++++++++++
 
 ProbLog also supports probabilities in the head of clauses.
 
@@ -101,12 +115,9 @@ disjunctive facts.
     weather(T, rain) :- T > 0, T1 is T - 1, weather(T1, sun), weather_after_rain(T, rain).
 
 
-Queries and evidence
-++++++++++++++++++++
-
-ProbLog models usually include information about queries and evidence.
+Queries
++++++++
 A query indicates for which entity we want to compute the probability.
-Evidence specifies any observations on which we want to condition this probability.
 
 Queries are specified by adding a fact ``query(Query)``:
 
@@ -135,6 +146,11 @@ sufficient information to ground the probabilistic parts.
 
 This has the same effect as the previous program.
 
+
+Evidence
+++++++++
+
+Evidence specifies any observations on which we want to condition this probability.
 Evidence conditions a part of the program to be true or false.
 
 It can be specified using a fact ``evidence(Literal)``.
@@ -152,6 +168,7 @@ You can try it out in the `online editor <https://dtai.cs.kuleuven.be/problog/ed
 
 Evidence can also be specified using the binary predicate ``evidence(Positive, true)`` and
 ``evidence(Positive, false)``.
+
 
 Tabling
 +++++++
@@ -227,10 +244,75 @@ Note that the use of findall can lead to a combinatorial explosion when used in 
 context.
 
 
-Tutorial
---------
 
-More examples are available in the `interactive tutorial <https://dtai.cs.kuleuven.be/problog/tutorial.html>`_.
+Learning models
+---------------
+
+ProbLog programs can be used to in a learning setting, where some or all the probabilities are unkonwn.
+In this case, the probability annotation in a probabilistic fact can be one of three possible forms:
+
+- Of the form ``t(_)``, as in for instance ``t(_)::p_alarm1``. This indicates that the probability of this fact is to be learned from data.
+- Of the form ``t(p)``, with ``p`` a probability, as in for instance ``t(0.5)::burglary``. This again indicates that the probability of this fact is to be learned from data, but instead of initializing this probability randomly, it will be set to the value ``p`` in the first iteration of EM.
+- Of the form ``p``, with ``p`` a probability, as in for instance ``0.2::earthquake``. This indicates that the probability of this fact is fixed (not learned), and it correspond to the standard annotation of probabilistic facts.
+
+
+In a learning setting, the ProbLog model is usually accompanied with a set of examples to learn from.
+Examples are provided using the ``evidence`` predicate for each atom in an example.
+Examples are separated using dashes ``---``.
+
+
+An example of learning model:
+
+.. code-block:: prolog
+
+    t(_)::heads1.
+    t(_)::heads2.
+    someHeads :- heads1.
+    someHeads :- heads2.
+
+An example of how to provide examples:
+
+.. code-block:: prolog
+
+    evidence(someHeads,false).
+    evidence(heads1,false).
+    ----------------
+    evidence(someHeads,true).
+    evidence(heads1,true).
+    ----------------
+    evidence(someHeads,true).
+    evidence(heads1,false).
+    ----------------
+
+
+
+
+Decision-theoretic models
+-------------------------
+
+DTProbLog is a decision-theoretic extension of ProbLog.
+
+A model in DTProbLog differs from standard ProbLog models in a number of ways:
+
+  * There are no queries and evidence.
+  * Certain facts are annotated as being a decision fact for which the optimal choice must be determined.
+  * Certain atoms are annotated with an utility, indicating their contribution to the final score.
+
+Decision facts can be annotated in any of the following ways:
+
+.. code-block:: prolog
+
+   ?::a.
+   decision(a).
+
+Utilities can be defined using the ``utility/2`` predicate:
+
+.. code-block:: prolog
+
+   utility(win, 10).
+   utility(buy, -1).
+
+
 
 Libraries and Builtins
 ----------------------
