@@ -58,27 +58,27 @@ We can do
 This mode supports many optional arguments to customize the inference:
 
 
-    - ``--knowledge {sdd,sddx,bdd,nnf,ddnnf,kbest,fsdd,fbdd}, -k {sdd,sddx,bdd,nnf,ddnnf,kbest,fsdd,fbdd}``;  Knowledge compilation tool. By default, it uses the first available option from SDD, d-DNNF using c2d and d-DNNF using dsharp.
-    - ``--combine``             Combine input files into single model.
-    - ``--logspace``            Use log space evaluation (default).
-    - ``--nologspace``          Use normal space evaluation.
-    - ``--symbolic``            Use symbolic computations.
-    - ``--output OUTPUT, -o OUTPUT``; Output file (default stdout)
-    - ``--recursion-limit RECURSION_LIMIT``; Set Python recursion limit. (default: 10000)
-    - ``--timeout TIMEOUT, -t TIMEOUT``; Set timeout (in seconds, default=off).
-    - ``--compile-timeout COMPILE_TIMEOUT``; Set timeout for compilation (in seconds, default=off).
-    - ``--debug, -d``           Enable debug mode (print full errors).
-    - ``--full-trace, -T``      Full tracing.
-    - ``-a ARGS, --arg ARGS``   Pass additional arguments to the cmd_args builtin.
-    - ``--profile``            output runtime profile
-    - ``--trace``               output runtime trace
-    - ``--profile-level PROFILE_LEVEL``
-    - ``--format {text,prolog}``
-    - ``-L LIBRARY, --library LIBRARY``; Add to ProbLog library search path
-    - ``--propagate-evidence``;  Enable evidence propagation
-    - ``--dont-propagate-evidence``; Disable evidence propagation
-    - ``--propagate-weights``;   Enable weight propagation
-    - ``--convergence CONVERGENCE, -c CONVERGENCE``; Stop anytime when bounds are within this range
+- ``--knowledge {sdd,sddx,bdd,nnf,ddnnf,kbest,fsdd,fbdd}, -k {sdd,sddx,bdd,nnf,ddnnf,kbest,fsdd,fbdd}``;  Knowledge compilation tool. By default, it uses the first available option from SDD, d-DNNF using c2d and d-DNNF using dsharp.
+- ``--combine``             Combine input files into single model.
+- ``--logspace``            Use log space evaluation (default).
+- ``--nologspace``          Use normal space evaluation.
+- ``--symbolic``            Use symbolic computations.
+- ``--output OUTPUT, -o OUTPUT``; Output file (default stdout)
+- ``--recursion-limit RECURSION_LIMIT``; Set Python recursion limit. (default: 10000)
+- ``--timeout TIMEOUT, -t TIMEOUT``; Set timeout (in seconds, default=off).
+- ``--compile-timeout COMPILE_TIMEOUT``; Set timeout for compilation (in seconds, default=off).
+- ``--debug, -d``           Enable debug mode (print full errors).
+- ``--full-trace, -T``      Full tracing.
+- ``-a ARGS, --arg ARGS``   Pass additional arguments to the cmd_args builtin.
+- ``--profile``            output runtime profile
+- ``--trace``               output runtime trace
+- ``--profile-level PROFILE_LEVEL``
+- ``--format {text,prolog}``
+- ``-L LIBRARY, --library LIBRARY``; Add to ProbLog library search path
+- ``--propagate-evidence``;  Enable evidence propagation
+- ``--dont-propagate-evidence``; Disable evidence propagation
+- ``--propagate-weights``;   Enable weight propagation
+- ``--convergence CONVERGENCE, -c CONVERGENCE``; Stop anytime when bounds are within this range
 
 
 Sampling (``sample``)
@@ -146,23 +146,23 @@ infinite support.
 
 All the optional arguments:
 
-    - ``-h, --help``; show the help message and exit
-    - ``-N N, -n N``;Number of samples.
-    - ``--with-facts``; Also output choice facts (default: just queries).
-    - ``--with-probability``; Show probability.
-    - ``--as-evidence``; Output as evidence.
-    - ``--propagate-evidence``; Enable evidence propagation
-    - ``--dont-propagate-evidence``; Disable evidence propagation
-    - ``--oneline``; Format samples on one line.
-    - ``--estimate``; Estimate probability of queries from samples (see next section).
-    - ``--timeout TIMEOUT, -t TIMEOUT``; Set timeout (in seconds, default=off).
-    - ``--output OUTPUT, -o OUTPUT``; Filename of output file.
-    - ``--verbose, -v``; Verbose output
-    - ``--seed SEED, -s SEED``; Random seed
-    - ``--full-trace``;
-    - ``--strip-tag``; Strip outermost tag from output.
-    - ``-a ARGS, --arg ARGS``; Pass additional arguments to the cmd_args builtin.
-    - ``--progress``; show progress.
+- ``-h, --help``; show the help message and exit
+- ``-N N, -n N``;Number of samples.
+- ``--with-facts``; Also output choice facts (default: just queries).
+- ``--with-probability``; Show probability.
+- ``--as-evidence``; Output as evidence.
+- ``--propagate-evidence``; Enable evidence propagation
+- ``--dont-propagate-evidence``; Disable evidence propagation
+- ``--oneline``; Format samples on one line.
+- ``--estimate``; Estimate probability of queries from samples (see next section).
+- ``--timeout TIMEOUT, -t TIMEOUT``; Set timeout (in seconds, default=off).
+- ``--output OUTPUT, -o OUTPUT``; Filename of output file.
+- ``--verbose, -v``; Verbose output
+- ``--seed SEED, -s SEED``; Random seed
+- ``--full-trace``;
+- ``--strip-tag``; Strip outermost tag from output.
+- ``-a ARGS, --arg ARGS``; Pass additional arguments to the cmd_args builtin.
+- ``--progress``; show progress.
 
 
 
@@ -217,11 +217,11 @@ Returns:
 
 The optional arguments are:
 
-  - ``-h, --help``; show this help message and exit
-  - ``--solver {maxsatz,scip,sat4j}``;  MaxSAT solver to use
-  - ``--full``; Also show false atoms.
-  - ``-o OUTPUT, --output OUTPUT``;  Write output to given file (default: write to stdout)
-  - ``-v, --verbose``; Increase verbosity
+- ``-h, --help``; show this help message and exit
+- ``--solver {maxsatz,scip,sat4j}``;  MaxSAT solver to use
+- ``--full``; Also show false atoms.
+- ``-o OUTPUT, --output OUTPUT``;  Write output to given file (default: write to stdout)
+- ``-v, --verbose``; Increase verbosity
 
 For example, given a file ``digraph.pl`` describing a probabilistic graph:
 
@@ -272,18 +272,18 @@ The command standard output is: ``<loss> <probs> <atoms> <iter>`` where:
 
 The optional arguments are:
 
-    - ``-h, --help``; show the help message and exit
-    - ``-n MAX_ITER``;
-    - ``-d MIN_IMPROV``;
-    - ``-O OUTPUT_MODEL, --output-model OUTPUT_MODEL``;  write resulting model to given file
-    - ``-o OUTPUT, --output OUTPUT``; write output to file
-    - ``-k {sdd,sddx,bdd,nnf,ddnnf,kbest,fsdd,fbdd}, --knowledge {sdd,sddx,bdd,nnf,ddnnf,kbest,fsdd,fbdd}``; knowledge compilation tool
-    - ``-l LEAKPROB, --leak-probabilities LEAKPROB``; Add leak probabilities for evidence atoms.
-    - ``--propagate-evidence``; Enable evidence propagation
-    - ``--dont-propagate-evidence``; Disable evidence propagation
-    - ``--normalize``; Normalize AD-weights.
-    - ``-v, --verbose``;
-    - ``-a ARGS, --arg ARGS``;   Pass additional arguments to the cmd_args builtin.
+- ``-h, --help``; show the help message and exit
+- ``-n MAX_ITER``;
+- ``-d MIN_IMPROV``;
+- ``-O OUTPUT_MODEL, --output-model OUTPUT_MODEL``;  write resulting model to given file
+- ``-o OUTPUT, --output OUTPUT``; write output to file
+- ``-k {sdd,sddx,bdd,nnf,ddnnf,kbest,fsdd,fbdd}, --knowledge {sdd,sddx,bdd,nnf,ddnnf,kbest,fsdd,fbdd}``; knowledge compilation tool
+- ``-l LEAKPROB, --leak-probabilities LEAKPROB``; Add leak probabilities for evidence atoms.
+- ``--propagate-evidence``; Enable evidence propagation
+- ``--dont-propagate-evidence``; Disable evidence propagation
+- ``--normalize``; Normalize AD-weights.
+- ``-v, --verbose``;
+- ``-a ARGS, --arg ARGS``;   Pass additional arguments to the cmd_args builtin.
 
 
 An example of model file ``some_heads.pl``:
@@ -349,11 +349,11 @@ Exhaustive search is the default. Local search can be enabled with the argument 
 
 The optional arguments are:
 
-  - ``-h, --help``; show the help message and exit
-  - ``--knowledge {sdd,sddx,bdd,nnf,ddnnf,kbest,fsdd,fbdd}, -k {sdd,sddx,bdd,nnf,ddnnf,kbest,fsdd,fbdd}``; Knowledge compilation tool.
-  - ``-s {local,exhaustive}``; --search {local,exhaustive}
-  - ``-v, --verbose``; Set verbosity level
-  - ``-o OUTPUT, --output OUTPUT``;  Write output to given file (default: write to stdout)
+- ``-h, --help``; show the help message and exit
+- ``--knowledge {sdd,sddx,bdd,nnf,ddnnf,kbest,fsdd,fbdd}, -k {sdd,sddx,bdd,nnf,ddnnf,kbest,fsdd,fbdd}``; Knowledge compilation tool.
+- ``-s {local,exhaustive}``; --search {local,exhaustive}
+- ``-v, --verbose``; Set verbosity level
+- ``-o OUTPUT, --output OUTPUT``;  Write output to given file (default: write to stdout)
 
 
 For example, given the DT-model:
@@ -410,11 +410,11 @@ Exhaustive search is the default. Local search can be enabled with the argument 
 
 The optional arguments are:
 
-  - ``-h, --help``; show the help message and exit
-  - ``--knowledge {sdd,sddx,bdd,nnf,ddnnf,kbest,fsdd,fbdd}, -k {sdd,sddx,bdd,nnf,ddnnf,kbest,fsdd,fbdd}``; Knowledge compilation tool.
-  - ``-s {local,exhaustive}``; --search {local,exhaustive}
-  - ``-v, --verbose``; Set verbosity level
-  - ``-o OUTPUT, --output OUTPUT``;  Write output to given file (default: write to stdout)
+- ``-h, --help``; show the help message and exit
+- ``--knowledge {sdd,sddx,bdd,nnf,ddnnf,kbest,fsdd,fbdd}, -k {sdd,sddx,bdd,nnf,ddnnf,kbest,fsdd,fbdd}``; Knowledge compilation tool.
+- ``-s {local,exhaustive}``; --search {local,exhaustive}
+- ``-v, --verbose``; Set verbosity level
+- ``-o OUTPUT, --output OUTPUT``;  Write output to given file (default: write to stdout)
 
 
 Explanation mode (``explain``)
@@ -448,26 +448,26 @@ Given a model, the output consists of the ground program.
 
 
 The optional arguments are:
-  - ``-h, --help``; show the help message and exit
-  - ``--format {dot,pl,cnf,svg,internal}``; output format. The output can be formatted in different formats:
-      * pl: ProbLog format
-      * dot: GraphViz representation of the AND-OR tree
-      * svg: GraphViz representation of the AND-OR tree as SVG (requires GraphViz)
-      * cnf: DIMACS encoding as CNF
-      * internal: Internal representation (for debugging)
-  - ``--break-cycles``; perform cycle breaking
-  - ``--transform-nnf``; transform to NNF
-  - ``--keep-all``; also output deterministic nodes
-  - ``--keep-duplicates``; don't eliminate duplicate literals
-  - ``--any-order``; allow reordering nodes
-  - ``--hide-builtins``; hide deterministic part based on builtins
-  - ``--propagate-evidence``; propagate evidence
-  - ``--propagate-weights``; propagate evidence
-  - ``--compact``; allow compact model (may remove some predicates)
-  - ``--noninterpretable``;
-  - ``--verbose, -v``; Verbose output
-  - ``-o OUTPUT, --output OUTPUT``; output file
-  - ``-a ARGS, --arg ARGS``; Pass additional arguments to the cmd_args builtin.
+- ``-h, --help``; show the help message and exit
+- ``--format {dot,pl,cnf,svg,internal}``; output format. The output can be formatted in different formats:
+  * pl: ProbLog format
+  * dot: GraphViz representation of the AND-OR tree
+  * svg: GraphViz representation of the AND-OR tree as SVG (requires GraphViz)
+  * cnf: DIMACS encoding as CNF
+  * internal: Internal representation (for debugging)
+- ``--break-cycles``; perform cycle breaking
+- ``--transform-nnf``; transform to NNF
+- ``--keep-all``; also output deterministic nodes
+- ``--keep-duplicates``; don't eliminate duplicate literals
+- ``--any-order``; allow reordering nodes
+- ``--hide-builtins``; hide deterministic part based on builtins
+- ``--propagate-evidence``; propagate evidence
+- ``--propagate-weights``; propagate evidence
+- ``--compact``; allow compact model (may remove some predicates)
+- ``--noninterpretable``;
+- ``--verbose, -v``; Verbose output
+- ``-o OUTPUT, --output OUTPUT``; output file
+- ``-a ARGS, --arg ARGS``; Pass additional arguments to the cmd_args builtin.
 
 
 By default, the output is the ground program before cycle breaking (except for ``cnf``).
