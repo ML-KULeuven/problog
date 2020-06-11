@@ -526,9 +526,6 @@ class LFIProblem(LogicProgram):
         # ad_groups is a list of lists where each list contains an AD
         ad_groups = list()
         for ad in self._adatoms:
-            # if it's an AD group AND the total probability is 1.0
-            # if len(ad[1]) > 1 and ad[0] == 1.0:
-
             # if it's an AD group
             if len(ad[1]) > 1:
                 ad_list = []
@@ -775,10 +772,6 @@ class LFIProblem(LogicProgram):
                     result = self._process_atom_cont(atom, body)
         if result is None:
             result = self._process_atom_discr(atom, body)
-        # print(str(atom) + " got processed to " + str(result))
-        getLogger("problog_lfi").debug(
-            "\nProcessed Atoms:\t\n\t" + "\n\t".join([str(item) for item in result])
-        )
         return result
 
     def _process_atom_cont(self, atom, body):
@@ -1150,18 +1143,19 @@ class LFIProblem(LogicProgram):
         else:
             process_atom = self._process_atom
 
+        getLogger("problog_lfi").debug("\nProcessed Atoms:")
         for clause in self.source:
             if isinstance(clause, Clause):
                 if clause.head.functor == "query" and clause.head.arity == 1:
                     continue
                 extra_clauses = process_atom(clause.head, clause.body)
                 for extra in extra_clauses:
-                    # print("RULE >>", extra)
+                    getLogger("problog_lfi").debug("\t" + str(extra))
                     yield extra
             elif isinstance(clause, AnnotatedDisjunction):
                 extra_clauses = process_atom(Or.from_list(clause.heads), clause.body)
                 for extra in extra_clauses:
-                    # print("RULE >>", extra)
+                    getLogger("problog_lfi").debug("\t" + str(extra))
                     yield extra
             else:
                 if clause.functor == "query" and clause.arity == 1:
@@ -1169,7 +1163,7 @@ class LFIProblem(LogicProgram):
                 # Fact
                 extra_clauses = process_atom(clause, None)
                 for extra in extra_clauses:
-                    # print("RULE >>", extra)
+                    getLogger("problog_lfi").debug("\t" + str(extra))
                     yield extra
 
         if self.leakprob is not None:
@@ -1901,7 +1895,6 @@ def extract_evidence(pl):
         if vlr is None:  # TODO: also check that atom is a continuous distribution
             vlr, vlv = str2num(vl)
         result.append((at, vlr, vlv))
-    # return [(at, str2bool(vl)) for at, vl in atoms]
     return result
 
 
