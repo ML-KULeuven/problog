@@ -674,12 +674,6 @@ class LFIProblem(LogicProgram):
                     Clause(lfi_par_rule, new_body),
                 ]
 
-                # TODO: replace above with below
-                # extra_clauses += [
-                #     Clause(atom1.with_probability(), lfi_par & lfi_fact),
-                #     Clause(lfi_par, new_body),
-                # ]
-
                 self.append_ad(len(self._weights))
                 # 4) Set initial weight
                 if start_value is None:
