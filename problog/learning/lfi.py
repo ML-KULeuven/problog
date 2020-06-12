@@ -569,7 +569,6 @@ class LFIProblem(LogicProgram):
         # First argument is probability available for learnable weights in the AD.
         self.add_ad(1.0 - fixed_probability, [])  # TODO : this adds extra ad
 
-        ######################
         # Replace anonymous variables with non-anonymous variables.
         class ReplaceAnon(object):  # TODO: can be defined outside of for loop?
             def __init__(self):
@@ -593,11 +592,9 @@ class LFIProblem(LogicProgram):
         else:
             prob_args = (1.0,)
         newcount = "_".join([str(self.count + count) for count in range(len(atoms))])
-        lfi_par_rule = Term(
-            "lfi_par_rule", Constant(newcount), Term("t", *prob_args, *vars)
-        )
-
-        ##############
+        lfi_rule = Term("lfi_rule", Constant(newcount), Term("t", *prob_args, *vars))
+        if body is not None:
+            extra_clauses.append(Clause(lfi_rule, body))
 
         for atom in atoms:
             if atom.probability and atom.probability.functor == "t":
@@ -655,24 +652,20 @@ class LFIProblem(LogicProgram):
                     "lfi_par", Constant(self.count), Term("t", *prob_args, *atom1.args)
                 )
                 # lfi_prob = Term('lfi', Constant(self.count), Term('t', *prob_args, *atom1.args))
-                lfi_prob = Term("lfi", Constant(self.count), Term("t"))
+                lfi_prob = Term("lfi_prob", Constant(self.count), Term("t"))
 
                 # 2) Replacement atom
                 replacement = lfi_fact.with_probability(lfi_prob)
 
-                if body is None:
-                    new_body = Term("true")
-                else:
-                    new_body = body
-
                 # 3) Create redirection clause
 
-                extra_clauses += [
-                    Clause(atom1.with_probability(), lfi_body),
-                    Clause(lfi_body, lfi_par & lfi_fact),
-                    Clause(lfi_par, lfi_par_rule),
-                    Clause(lfi_par_rule, new_body),
-                ]
+                extra_clauses.append(Clause(atom1.with_probability(), lfi_body))
+                extra_clauses.append(Clause(lfi_body, lfi_par & lfi_fact))
+
+                if body is None:
+                    extra_clauses.append(Clause(lfi_par, Term("true")))
+                else:
+                    extra_clauses.append(Clause(lfi_par, lfi_rule))
 
                 self.append_ad(len(self._weights))
                 # 4) Set initial weight
@@ -693,10 +686,17 @@ class LFIProblem(LogicProgram):
         self.verify_ad()
 
         if has_lfi_fact:
-            if len(atoms) == 1:  # Simple clause
+            if len(atoms) == 1:
+                # Non AD
                 return [atoms_out[0]] + extra_clauses
             else:
-                return [AnnotatedDisjunction(atoms_out, lfi_par_rule)] + extra_clauses
+                # AD
+                if body is None:
+                    return [
+                        AnnotatedDisjunction(atoms_out, Term("true"))
+                    ] + extra_clauses
+                else:
+                    return [AnnotatedDisjunction(atoms_out, lfi_rule)] + extra_clauses
         else:
             if len(atoms) == 1:
                 if body is None:
@@ -1097,7 +1097,7 @@ class Example(object):
             if (
                 t == "atom"
                 and isinstance(node.probability, Term)
-                and node.probability.functor == "lfi"
+                and node.probability.functor == "lfi_prob"
             ):
                 factargs = ()
                 # # print("node.identifier", node.identifier)
@@ -1205,7 +1205,7 @@ class ExampleEvaluator(SemiringDensity):
         :return: current weight
         :rtype: float
         """
-        if isinstance(a, Term) and a.functor == "lfi":
+        if isinstance(a, Term) and a.functor == "lfi_prob":
             # index = int(a.args[0])
             return self._get_weight(*a.args)
         else:
@@ -1326,7 +1326,7 @@ class ExampleEvaluatorLog(SemiringLogProbability):
         :return: current weight
         :rtype: float
         """
-        if isinstance(a, Term) and a.functor == "lfi":
+        if isinstance(a, Term) and a.functor == "lfi_prob":
             rval = self._get_weight(*a.args)
         else:
             rval = math.log(float(a))
