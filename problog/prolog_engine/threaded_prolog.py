@@ -1,8 +1,8 @@
 import dill as pickle
 from multiprocessing import Process, Pipe
 import os
-from my_pyswip import Prolog
-from swip import parse_result
+from problog.prolog_engine.my_pyswip import Prolog
+from problog.prolog_engine.swip import parse_result
 
 
 def load_external_file(filename, prolog, database=None):

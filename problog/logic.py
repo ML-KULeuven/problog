@@ -630,6 +630,8 @@ class Term(object):
     def __eq__(self, other):
         if not isinstance(other, Term):
             return False
+        if hash(self) != hash(other):
+            return False
         # Non-recursive version of equality check.
         l1 = deque([self])
         l2 = deque([other])

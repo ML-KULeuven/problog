@@ -23,7 +23,7 @@
 # SOFTWARE.
 
 
-from my_pyswip.core import *
+from problog.prolog_engine.my_pyswip.core import *
 
 
 class InvalidTypeError(TypeError):

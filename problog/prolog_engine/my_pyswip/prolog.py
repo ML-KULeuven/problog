@@ -25,7 +25,7 @@
 
 import sys
 
-from my_pyswip.core import *
+from problog.prolog_engine.my_pyswip.core import *
 
 
 class PrologError(Exception):
@@ -70,7 +70,7 @@ def _initialize(swipl):
 
 
 # NOTE: This import MUST be after _initialize is called!!
-from my_pyswip.easy import getTerm
+from problog.prolog_engine.my_pyswip.easy import getTerm
 
 
 class Prolog:

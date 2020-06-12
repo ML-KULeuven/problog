@@ -26,5 +26,5 @@
 # PySwip version
 __VERSION__ = "0.2.7"
 
-from my_pyswip.prolog import Prolog
-from my_pyswip.easy import *
+from problog.prolog_engine.my_pyswip.prolog import Prolog
+from problog.prolog_engine.my_pyswip.easy import *

@@ -1,7 +1,7 @@
 from problog.logic import Term, Constant, list2term, term2list, Var, is_list, make_safe, unquote
 from problog.parser import PrologParser
 from problog.program import ExtendedPrologFactory
-from my_pyswip import Prolog, Functor, Atom, registerForeign, PL_FA_NONDETERMINISTIC, Variable, Term as SWITerm
+from problog.prolog_engine.my_pyswip import Prolog, Functor, Atom, registerForeign, PL_FA_NONDETERMINISTIC, Variable, Term as SWITerm
 from time import time
 
 

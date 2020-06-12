@@ -6,7 +6,8 @@ from time import time
 from problog.clausedb import ConsultError
 from problog.core import ProbLogObject
 from problog.logic import unquote, term2list, ArithmeticError, Term
-from threaded_prolog import DirtyProlog
+from problog.prolog_engine.threaded_prolog import DirtyProlog
+from problog.prolog_engine.swi_formula import SWI_Formula
 
 
 def handle_prob(prob):
@@ -236,14 +237,17 @@ class SWIProgram(ProbLogObject):
                     dependencies[k2] = [n for n in dependencies[k2] if n != node]
         return self.d
 
-    def add_proofs(self, proofs, ground_queries, target, label=None):
-        target.names = dict()
-        d = self.build_formula(proofs, target)
-        if label is not None:
-            for q in ground_queries:
-                key = d[q]
-                target.add_name(q, key, label=label)
-        return target
+    # def add_proofs(self, proofs, ground_queries, formula, label=None):
+    #
+    #     swi_formula = SWI_Formula(names={q: label for q in ground_queries})
+    #     for p in proofs:
+    #         swi_formula.add_proof(p)
+    #     # swi_formula.to_formula(target)
+    #     # if label is not None:
+    #     #     for q in ground_queries:
+    #     #         key = swi_formula.nodes[q]
+    #     #         target.add_name(q, key, label=label)
+    #     return target
 
     def query(self, query, profile=0):
         query = str(query)
