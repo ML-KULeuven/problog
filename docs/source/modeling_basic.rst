@@ -15,18 +15,33 @@ tutorial or the book `Simply Logical by Peter Flach <https://book.simply-logical
 ProbLog
 -------
 
-ProbLog introduces an additional operator ``::`` and two predicates ``query`` and ``evidence``.
+ProbLog extends Prolog syntax by introducing few new operators to allow for probabilistic modeling.
+The following table provides a simple overview.
 
-Moreover, ProbLog models can be executed in multiple modes, some of them adding specific syntax.
+========================  =============================
+   Definition                            Example
+========================  =============================
+fact                           ``a.``
+probabilistic fact                ``0.5::a.``
+clause                          ``a :- x.``
+probabilistic clause        ``0.5::a :- x.``
+annotated disjunction        ``0.5::a; 0.5::b.``
+annotated disjunction         ``0.5::a; 0.5::b :- x.``
+========================  =============================
 
-Both standard and specific notations are described in the following.
 
-Probabilistic predicates
-++++++++++++++++++++++++
+
+
+In addition, Problog introduces also two predicates ``query`` and ``evidence`` for querying a probabilistic program or to condition
+it to some pieces of evidence.
+
+
+
+Probabilistic facts
++++++++++++++++++++
 
 The main difference between Prolog and ProbLog is that ProbLog support probabilistic
-predicates.
-In the language, this extension is realized by the addition of a single operator ``::``.
+facts. In the language, this extension is realized by the addition of a single operator ``::``.
 
 In an example program involving coin tosses, we could have the following statement.
 
@@ -71,8 +86,8 @@ other states sum to one.
 
 
 
-Probabilistc clauses
-++++++++++++++++++++
+Probabilistic clauses
++++++++++++++++++++++
 
 ProbLog also supports probabilities in the head of clauses.
 
@@ -245,10 +260,17 @@ context.
 
 
 
-Learning models
----------------
+Other modes syntax
+------------------
 
-ProbLog programs can be used to in a learning setting, where some or all the probabilities are unkonwn.
+When ProbLog is executed in modes that are different from standard inference, new specific notation is available.
+
+
+
+Learning from interpretations (LFI) mode
+++++++++++++++++++++++++++++++++++++++++
+
+ProbLog programs can be used in a learning setting, where some or all the probabilities are unkonwn.
 In this case, the probability annotation in a probabilistic fact can be one of three possible forms:
 
 - Of the form ``t(_)``, as in for instance ``t(_)::p_alarm1``. This indicates that the probability of this fact is to be learned from data.
@@ -287,8 +309,9 @@ An example of how to provide examples:
 
 
 
-Decision-theoretic models
--------------------------
+Decision-theoretic mode
++++++++++++++++++++++++
+
 
 DTProbLog is a decision-theoretic extension of ProbLog.
 
