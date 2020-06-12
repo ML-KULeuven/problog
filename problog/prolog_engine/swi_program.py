@@ -6,8 +6,7 @@ from time import time
 from problog.clausedb import ConsultError
 from problog.core import ProbLogObject
 from problog.logic import unquote, term2list, ArithmeticError, Term
-from problog.prolog_engine.threaded_prolog import DirtyProlog
-from problog.prolog_engine.swi_formula import SWI_Formula
+from pylo_prolog import PyloProlog
 
 
 def handle_prob(prob):
@@ -63,7 +62,7 @@ class SWIProgram(ProbLogObject):
         self.index_dict = dict()
         self.groups = dict()
         # Warning: Has to be evaluated before the creation of the Prolog engine
-        self.prolog = DirtyProlog()
+        self.prolog = PyloProlog()
         self.parse_directives(self.prolog)
         self.d = dict()
         self.prolog.consult(str(Path(__file__).parent / consult))
@@ -100,7 +99,8 @@ class SWIProgram(ProbLogObject):
         new_fact = (i, handle_prob(node.probability), handle_functor(node.functor, node.args))
         self.facts.append(new_fact)
         self.index_dict[i] = new_fact
-        self.prolog.assertz('fa({},{},{})'.format(*self.facts[-1]).replace("'", '"'))
+        self.prolog.assertz("fa", self.facts[-1])
+        # self.prolog.assertz('fa({},{},{})'.format(*self.facts[-1]).replace("'", '"'))
         # print('fa({},{},{})'.format(*self.facts[-1]))
 
     def add_clause(self, node):
@@ -111,7 +111,8 @@ class SWIProgram(ProbLogObject):
         self.add_clause_string(self.clauses[-1][1], self.clauses[-1][2])
 
     def add_clause_string(self, head, body):
-        self.prolog.assertz('cl({},{})'.format(head, body))
+        self.prolog.assertz("cl", (head, body))
+        # self.prolog.assertz('cl({},{})'.format(head, body))
 
     def add_choice(self, node):
         self.add_fact(node)
