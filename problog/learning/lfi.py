@@ -6,7 +6,8 @@ Learning from interpretations
 Parameter learning for ProbLog.
 Given a probabilistic program with parameterized weights and a set of partial implementations,
 learns appropriate values of the parameters.
-Continuous distributions
+
+Continuous distributions (Not-Implemented Yet)
 ++++++++++++++++++++++++
 A parametrized weight can also be a continuous normal distribution if the atom it is associated
 with only appears as a head (thus is not used in any bodies of other ProbLog rules).
@@ -45,6 +46,7 @@ with evidence:
     evidence(fa(1), 10).
     evidence(fa(2), 18).
     evidence(fa(3), 8).
+
 Algorithm
 +++++++++
 The algorithm operates as follows:
@@ -55,6 +57,7 @@ The algorithm operates as follows:
     4. Repeat steps 1 to 4 until convergence (or a maximum number of iterations).
 The score of the model for a given example is obtained by calculating the probability of the
 evidence in the example.
+
 Implementation
 ++++++++++++++
 The algorithm is implemented on top of the ProbLog toolbox.
@@ -84,12 +87,7 @@ from itertools import chain
 from problog.util import init_logger
 from logging import getLogger
 from problog.engine import DefaultEngine, ground
-from problog.evaluator import (
-    SemiringProbability,
-    SemiringLogProbability,
-    SemiringDensity,
-    DensityValue,
-)
+from problog.evaluator import SemiringLogProbability, SemiringDensity, DensityValue
 from problog.logic import (
     Term,
     Constant,
@@ -100,23 +98,9 @@ from problog.logic import (
     InstantiationError,
     ArithmeticError,
     term2list,
-    list2term,
-    Not,
 )
 from problog.program import PrologString, PrologFile, LogicProgram
-from problog.core import ProbLogError
-from problog.errors import process_error, InconsistentEvidenceError
-
-# Scipy and Numpy are optional installs (only required for continuous variables)
-try:
-    import scipy.stats as stats
-except ImportError:
-    stats = None
-try:
-    import numpy as np
-except ImportError:
-    np = None
-
+from problog.errors import InconsistentEvidenceError
 from problog import get_evaluatable, get_evaluatables
 import traceback
 
@@ -149,199 +133,6 @@ def str2num(s):
         return None, None
 
 
-cdist_names = ["normal"]
-
-
-def dist_prob(d, x, eps=None, log=False, density=True):
-    """Compute the density of the value x given the distribution d (use interval 2*eps around x).
-    Returns a polynomial
-    :param d: Distribution Term
-    :param x: Value
-    :param log: use log-scale computations
-    :return: Probability
-    """
-
-    if stats is None or np is None:
-        raise ProbLogError(
-            "Continuous variables require Scipy and Numpy to be installed."
-        )
-
-    if d.functor == "normal":
-        if isinstance(d.args[0], Term) and d.args[0].functor == ".":
-            args = (term2list(d.args[0]), term2list(d.args[1]))
-        else:
-            args = d.args
-        if isinstance(args[0], list):  # multivariate
-            m = args[0]
-            ndim = len(m)
-            cov = args[1]
-            if len(cov) != ndim * ndim:
-                raise ValueError("Distribution parameters do not match: {}".format(d))
-            cov = np.reshape(cov, (ndim, ndim))
-            try:
-                rv = stats.multivariate_normal(m, cov)
-            except np.linalg.linalg.LinAlgError as exc:
-                logger = getLogger("problog_lfi")
-                logger.debug(
-                    "Encountered a singular covariance matrix: N({},\n{})".format(
-                        m, cov
-                    )
-                )
-                raise exc
-            if log:
-                raise NotImplementedError("log computations not yet supported")
-            else:
-                result = [0, rv.pdf(x)]
-            retval = DensityValue(result)
-        else:  # univariate
-            m, s = map(float, d.args)
-            rv = stats.norm(m, s)
-            # TODO: The multiplication with eps should be avoided by working with densities
-            result = rv.pdf(x)
-            if log:
-                try:
-                    result = math.log(result)
-                except ValueError:
-                    result = -math.inf
-            # # print('dist_prob({}, {}) -> {}'.format(d, x, result))
-            retval = DensityValue([0, result])
-
-        if density:
-            return retval
-        else:
-            return float(retval)
-    raise ValueError("Distribution not supported '%s'" % d.functor)
-
-
-def dist_prob_set(d, values, eps=1e-4):
-    """Fit parameters based on EM.
-    :param d: Distribution Term
-    :param values: List of (value, weight, count)
-    """
-    logger = getLogger("problog_lfi")
-    if stats is None or np is None:
-        raise ProbLogError(
-            "Continuous variables require Scipy and Numpy to be installed."
-        )
-    if d.functor == "normal":
-        if isinstance(d.args[0], Term) and d.args[0].functor == ".":
-            args = (term2list(d.args[0]), term2list(d.args[1]))
-        else:
-            args = d.args
-        if isinstance(args[0], list):  # multivariate
-            # TODO: cleanup (make nice with numpy, store numpy in Term to avoid conversions?)
-            pf = 0.0
-            ndim = len(args[0])
-            mu = np.zeros(ndim)
-            cov = np.zeros((ndim, ndim))
-            for value, weight, count in values:
-                weight = float(weight)
-                pf += weight * count
-                mu += weight * count * np.array(value)
-            if pf == 0.0:
-                # Reuse previous distribution, no samples found
-                return d
-            mu /= pf
-            for value, weight, count in values:
-                weight = float(weight)
-                xmu = np.matrix(value) - mu
-                cov += weight * count * xmu.T * xmu
-            cov /= pf
-            s_eps = eps ** 2
-            # if np.linalg.matrix_rank(cov) != ndim:
-            #     # The matrix is singular, reinitialise to random value
-            #     # See Bishop 9.2.1 on singularities in GMM. Better solutions exist.
-            #     logger.debug('Singular matrix, reset to random values')
-            #     mu = np.random.random(ndim)
-            #     cov = np.diagflat([1000.0]*ndim)
-            # for i in range(cov.shape[0]):
-            #     if cov[i, i] < s_eps:
-            #         # Covariance is corrected to not have probabilities larger than 1
-            #         # Pdf is multiplied with eps to translate to prob
-            #         logger.debug('Corrected covar from {} to {}'.format(cov[i, i], s_eps))
-            #         cov[i, i] = s_eps
-            try:
-                rv = stats.multivariate_normal(mu, cov)
-                if rv.pdf(mu) > 1.0 / (2 * eps):
-                    logger.debug("PDF larger than 1.0/(2*eps), assume singularity")
-                    raise np.linalg.linalg.LinAlgError()
-            except np.linalg.linalg.LinAlgError:
-                logger.debug("Singular matrix for normal dist, reset to random values")
-                logger.debug("mu = {}".format(mu))
-                logger.debug("cov = \n{}".format(cov))
-                # The matrix is singular, reinitialise to random value
-                # See Bishop 9.2.1 on singularities in GMM. Better solutions exist.
-                mu = np.random.random(ndim)
-                cov = np.diagflat([1000.0] * ndim)
-            cov = cov.reshape(-1)
-            # # print('Update: {} -> normal({},{})'.format(d, mu, cov))
-            # values.sort(key=lambda t: t[0])
-            # for value, weight, count in values:
-            #     # print('({:<4}, {:7.5f}, {:<4})'.format(value, weight, count))
-            return d.with_args(list2term(mu.tolist()), list2term(cov.tolist()))
-        else:  # univariate
-            pf = 0.0
-            mu = 0.0
-            var = 0.0
-            for value, weight, count in values:
-                weight = float(weight)
-                pf += weight * count
-                mu += weight * count * value
-            if pf == 0.0:
-                # Reuse previous distribution, no samples found
-                return d
-            mu /= pf
-            for value, weight, count in values:
-                weight = float(weight)
-                var += weight * count * (value - mu) ** 2
-            var /= pf
-            if var < eps ** 2:
-                # TODO: Is this a good approach? Should also take singularity into account
-                # Std is corrected to not have probabilities larger than 1
-                # Pdf is multiplied with eps to translate to prob
-                std = eps
-                logger.debug("Corrected std to {}".format(std))
-            else:
-                std = math.sqrt(
-                    var
-                )  # TODO: should we make this also variance to be consistent with multivariate?
-            # # print('Update: {} -> normal({},{})'.format(d, mu, std))
-            # values.sort(key=lambda t: t[0])
-            # for value, weight, count in values:
-            #     # print('({:<4}, {:7.5f}, {:<4})'.format(value, weight, count))
-            return d.with_args(Constant(mu), Constant(std))
-    raise ValueError("Distribution not supported '%s'" % d.functor)
-
-
-def dist_perturb(d):
-    if stats is None or np is None:
-        raise ProbLogError(
-            "Continuous variables require Scipy and Numpy to be installed."
-        )
-    if d.functor == "normal":
-        if isinstance(d.args[0], Term) and d.args[0].functor == ".":
-            args = (term2list(d.args[0]), term2list(d.args[1]))
-        else:
-            args = d.args
-        if isinstance(args[0], list):  # multivariate
-            mu = args[0]  # type: List[float]
-            ndim = len(mu)
-            cov = args[1]  # type: List[float]
-            if len(cov) != ndim * ndim:
-                raise ValueError("Distribution parameters do not match: {}".format(d))
-            rv = stats.multivariate_normal(mu, np.reshape(cov, (ndim, ndim)) / 10)
-            mu = rv.rvs()
-            dn = d.with_args(list2term(mu.tolist()), list2term(cov))
-            return dn
-        else:  # univariate
-            mu, std = map(float, d.args)
-            rv = stats.norm(mu, std / 10)
-            mu = float(rv.rvs())
-            dn = d.with_args(Constant(mu), Constant(std))
-            return dn
-    raise ValueError("Distribution not supported '%s'" % d.functor)
-
-
 class LFIProblem(LogicProgram):
     def __init__(
         self,
@@ -360,7 +151,6 @@ class LFIProblem(LogicProgram):
     ):
         """
         Learn parameters using LFI.
-        The atoms with to be learned continuous distributions can only appear in the head of a rule.
         :param source: filename of file containing input model
         :type source: str
         :param examples: list of observed terms / value
@@ -383,7 +173,6 @@ class LFIProblem(LogicProgram):
         :type eps: float
         :param extra: catch all for additional parameters (not used)
         """
-        # logger = getLogger('problog')
         LogicProgram.__init__(self)
         self.source = source
         self._log = log
@@ -422,7 +211,6 @@ class LFIProblem(LogicProgram):
         self._adatoms = []  # list AD atoms and total probability
         self._adatomc = {}  # complement of AD atom (complement that adds to prob 1.0)
         self._adparent = {}  # atom representing parent of AD
-        self._catoms = set()  # Continuous atoms
 
     @property
     def count(self):
@@ -489,25 +277,17 @@ class LFIProblem(LogicProgram):
             return [(Term("t"), weight)]
 
     def _set_weight(self, index, args, weight, weight_changed=None):
-        # # print(self._weights)
         index = int(index)
         if not args:
             assert not isinstance(self._weights[index], dict)
             self._weights[index] = weight
         elif isinstance(self._weights[index], dict):
-            # self._weights[index][args] = weight
             if weight_changed and weight_changed[index]:
                 self._weights[index][Term(args.functor)] += weight
             else:
                 self._weights[index][Term(args.functor)] = weight
         else:
-            if index in self._catoms:
-                # If new t args, perturb the distribution a bit to avoid identical ones
-                weight = dist_perturb(weight)
-            # TODO: Shouldn't all weights be perturbed to avoid identical updates?
-            # self._weights[index] = {args: weight}
             self._weights[index] = {Term(args.functor): weight}
-        # print("Weights", self._weights)
 
     def _add_weight(self, weight):
         self._weights.append(weight)
@@ -690,7 +470,6 @@ class LFIProblem(LogicProgram):
                     add_compliment = all_false_except_one(d)
 
                     if inconsistent2:
-                        # print("*** Warning: Inconsistent Evidence Detected! Ignoring this datapoint. ***\n")
                         inconsistent_example = True
                         continue
                     elif add_compliment:
@@ -710,13 +489,11 @@ class LFIProblem(LogicProgram):
                         evidence_set.add((key, value, None))
 
                     atoms, values, cvalues = zip(*evidence_set)
-                    # print(index, "Push evidence\t:", atoms, values, cvalues, "\n")
                     result.add(index, atoms, values, cvalues)
 
                 else:
                     # (No AD case) or (Inconsistent Evidence Case)
                     atoms, values, cvalues = zip(*example)
-                    # print(index, "Push evidence\t:", atoms, values, "\n")
                     result.add(index, atoms, values, cvalues)
             # logger.debug(
             #     "\nProcessed Examples:\n\t"
@@ -755,144 +532,6 @@ class LFIProblem(LogicProgram):
         self._compiled_examples = examples
 
     def _process_atom(self, atom, body):
-        """Returns tuple ( prob_atom, [ additional clauses ] )"""
-        result = None
-        if isinstance(atom, Or):
-            # Annotated disjuntions are always discrete distributions
-            result = self._process_atom_discr(atom, body)
-        if (
-            result is None
-            and atom.probability
-            and isinstance(atom.probability, Term)
-            and len(atom.probability.args) > 0
-        ):
-            cdist = atom.probability.args[0]
-            if isinstance(cdist, Term) and not isinstance(cdist, Var):
-                if cdist.functor in cdist_names:
-                    result = self._process_atom_cont(atom, body)
-        if result is None:
-            result = self._process_atom_discr(atom, body)
-        return result
-
-    def _process_atom_cont(self, atom, body):
-        """Returns tuple ( prob_atom, [ additional clauses ] )"""
-        logger = getLogger("problog_lfi")
-        atoms_out = []
-        extra_clauses = []
-
-        has_lfi_fact = False
-
-        if atom.probability and atom.probability.functor == "t":
-            has_lfi_fact = True
-            cdist = atom.probability.args[0]
-            if isinstance(cdist, Term) and cdist.functor in cdist_names:
-                start_dist = cdist
-                if cdist.functor == "normal":
-                    start_params = [None, None]
-                    try:
-                        if cdist.args[0].functor == ".":
-                            start_params[0] = term2list(cdist.args[0])  # multivariate
-                        else:
-                            start_params[0] = float(cdist.args[0])  # univariate
-                    except InstantiationError:
-                        start_params[0] = None
-                    except ArithmeticError:
-                        start_params[0] = None
-                    try:
-                        if cdist.args[1].functor == ".":
-                            start_params[1] = term2list(cdist.args[1])  # multivariate
-                        else:
-                            start_params[1] = float(cdist.args[1])  # univariate
-                    except InstantiationError:
-                        start_params[1] = None
-                    except ArithmeticError:
-                        start_params[1] = None
-                else:
-                    start_params = None
-            else:
-                start_dist = None
-                start_params = None
-
-            # Learnable probability
-            # # print('get start_value from {}'.format(cdist))
-
-            # Replace anonymous variables with non-anonymous variables.
-            class ReplaceAnon(object):
-                def __init__(self):
-                    self.cnt = 0
-
-                def __getitem__(self, key):
-                    if key == "_":
-                        self.cnt += 1
-                        return Var("anon_%s" % self.cnt)
-                    else:
-                        return Var(key)
-
-            atom1 = atom.apply(ReplaceAnon())
-            prob_args = atom.probability.args[1:]
-
-            # 1) Introduce a new fact
-            #  lfi_fact(0, t(1), 2, 3)
-            #           |    |   |
-            #           |    |   `-> Arguments for atom in head
-            #           |    `-> Arguments for prob in head in t(_, 1)
-            #           `-> Identifier for original to learn term
-            # TODO: naming it clfi_fact instead of lfi_fact is not really necessary
-            lfi_fact = Term(
-                "clfi_fact", Constant(self.count), Term("t", *prob_args), *atom1.args
-            )
-            lfi_prob = Term(
-                "clfi",
-                Constant(self.count),
-                Term("t", *prob_args),
-                atom.with_probability(),
-            )
-
-            # 2) Replacement atom
-            replacement = lfi_fact.with_probability(lfi_prob)
-            if body is None:
-                new_body = lfi_fact
-            else:
-                new_body = body & lfi_fact
-
-            # 3) Create redirection clause
-            extra_clauses += [Clause(atom1.with_probability(), new_body)]
-
-            # 4) Set initial weight
-            if start_dist is None:
-                raise ProbLogError("No correct initial distribution defined")
-            elif start_dist.functor == "normal":
-                if start_params[0] is None:
-                    start_params[0] = Constant(random.gauss(0, 10))
-                if start_params[1] is None:
-                    start_params[1] = Constant(
-                        1000000
-                    )  # TODO: What is a good choice here?
-                start_dist = start_dist.with_args(start_params[0], start_params[1])
-                self._add_weight(start_dist)
-
-            # 5) Add name
-            self._catoms.add(len(self.names))
-            self.names.append(atom)
-            atoms_out.append(replacement)
-        else:
-            # TODO: process continuous distribution for not to be learned distributions
-            atoms_out.append(atom)
-            raise ProbLogError(
-                "Continuous distributions that do not have to be learned is not yet supported."
-            )
-
-        if has_lfi_fact:
-            result = [atoms_out[0]] + extra_clauses
-        else:
-            if body is None:
-                result = [atoms_out[0]]
-            else:
-                result = [Clause(atoms_out[0], body)]
-        logger.debug("New clauses: " + str(result))
-        return result
-
-    def _process_atom_discr(self, atom, body):
         """Returns tuple ( prob_atom, [ additional clauses ] )"""
         if isinstance(atom, Or):
             # Annotated disjunction
@@ -943,7 +582,6 @@ class LFIProblem(LogicProgram):
                 else:
                     return Var(key)
 
-        atom1 = atom.apply(ReplaceAnon())
         vars = set()
         for atom in atoms:
             q = list(atom.apply(ReplaceAnon()).args)
@@ -1004,8 +642,6 @@ class LFIProblem(LogicProgram):
                 prob_args = atom.probability.args[1:]
 
                 # 1) Introduce a new fact
-                # lfi_fact = Term('lfi_fact', Constant(self.count),      Term('t', *prob_args), *atom1.args)
-                # lfi_body = Term('lfi_body', Constant(self.count),      Term('t', *prob_args), *atom1.args)
                 lfi_fact = Term(
                     "lfi_fact", Constant(self.count), Term("t", *prob_args, *atom1.args)
                 )
@@ -1088,28 +724,18 @@ class LFIProblem(LogicProgram):
 
         transforms = defaultdict(list)
 
-        clauses = []
         atoms_fixed = []
-        t_args = None
         fixed_only = True
         for atom in atoms:
             if atom.probability and atom.probability.functor == "t":
                 assert atom in self.names
-                # assert (t_args is None or atom.probability.args == t_args)
-                # t_args = atom.probability.args
 
                 index = self.output_names.index(atom)
                 weights = self.get_weights(index)
 
                 for w_args, w_val in weights:
                     translate = tuple(zip(atom.probability.args[1:], w_args.args))
-                    if isinstance(w_val, Term) and w_val.functor in cdist_names:
-                        # Keep the complex structure that represents the distribution
-                        transforms[translate].append(atom.with_probability(w_val))
-                    else:
-                        transforms[translate].append(
-                            atom.with_probability(Constant(w_val))
-                        )
+                    transforms[translate].append(atom.with_probability(Constant(w_val)))
                 self.output_names[index] = None
                 fixed_only = False
             else:
@@ -1216,8 +842,7 @@ class LFIProblem(LogicProgram):
 
     def _evaluate_examples(self):
         """Evaluate the model with its current estimates for all examples."""
-        results = []
-        i = 0
+
         getLogger("problog_lfi").debug("Evaluating examples:")
 
         if self._log:
@@ -1255,13 +880,9 @@ class LFIProblem(LogicProgram):
 
         return list(chain.from_iterable(results))
 
-        # return list(chain.from_iterable(map(evaluator, self._compiled_examples)))
-
     def _update(self, results):
         """Update the current estimates based on the latest evaluation results."""
-        # print("_update", results)
         logger = getLogger("problog_lfi")
-        # fact_marg = defaultdict(DensityValue)
         fact_marg = defaultdict(int)
         fact_body = defaultdict(int)
         fact_par = defaultdict(int)
@@ -1269,18 +890,9 @@ class LFIProblem(LogicProgram):
         fact_values = dict()
         score = 0.0
         for m, pEvidence, result, p_values in results:
-            # if not isinstance(pEvidence, DensityValue):
-            #     pEvidence = DensityValue.wrap(pEvidence)
-            # print("_update.result", result)
             par_marg = dict()
-            # # print('p_values', p_values)
             for fact, value in result.items():
-                # print(fact, value)
                 index = fact.args[0:2]
-                # if not index in fact_marg:
-                #     fact_marg[index] = polynomial.polynomial.polyzero
-                # if not isinstance(value, DensityValue):
-                #     value = DensityValue.wrap(value)
                 if fact.functor == "lfi_fact":
                     fact_marg[index] += value * m
                 if fact.functor == "lfi_body":
@@ -1299,14 +911,12 @@ class LFIProblem(LogicProgram):
                             par_marg[(o_index, index[1])] = value
                 fact_count[index] += m
                 if fact in p_values:
-                    # # print('fact in p_values', fact)
                     k = (index[0], index[1])
                     if k not in fact_values:
                         fact_values[k] = (self._get_weight(index[0], index[1]), list())
                     p_value = p_values[fact]
                     fact_values[k][1].append((p_value, value, m))
             for index, value in par_marg.items():
-                # print("value[{}]={} ({})".format(index, value, m))
                 fact_par[index] += value * m
             try:
                 if isinstance(pEvidence, DensityValue):
@@ -1314,53 +924,30 @@ class LFIProblem(LogicProgram):
                 score += math.log(pEvidence)
             except ValueError:
                 logger.debug("Pr(evidence) == 0.0")
-                # raise ProbLogError('Inconsistent evidence when updating')
 
         update_list = fact_body
 
-        # indices_set = set()
-        # for index in update_list:
-        #     indices_set.add(index[0])
         weight_changed = [False] * len(self.names)
-        # print("Weight_changed List:", weight_changed)
         for index in update_list:
-            k = (index[0], index[1])
-            if k in fact_values:
-                logger.debug(
-                    "Update continuous distribution {}: ".format(index)
-                    + ", ".join([str(v) for v in fact_values[k]])
-                )
-                self._set_weight(
-                    index[0],
-                    index[1],
-                    dist_prob_set(
-                        *fact_values[k], eps=self._eps, weight_changed=weight_changed
-                    ),
-                )
-                weight_changed[int(index[0])] = True
+            if float(fact_body[index]) == 0.0:
+                prob = 0.0
             else:
-
-                if float(fact_body[index]) == 0.0:
-                    prob = 0.0
-                else:
-                    # print(fact_par[index])
-                    temp = dict()
-                    ids, vars = zip(*list(fact_par.keys()))
-                    for id in set(ids):
-                        temp[id] = 0
-                        for var in set(vars):
-                            temp[id] += fact_par[(id, var)]
-                    prob = float(fact_body[index]) / float(temp[index[0]])
-                    # prob = float(fact_body[index]) / float(fact_par[index])
-                logger.debug(
-                    "Update probabilistic fact {}: {} / {} = {}".format(
-                        index, fact_body[index], fact_par[index], prob
-                    )
+                # print(fact_par[index])
+                temp = dict()
+                ids, vars = zip(*list(fact_par.keys()))
+                for id in set(ids):
+                    temp[id] = 0
+                    for var in set(vars):
+                        temp[id] += fact_par[(id, var)]
+                prob = float(fact_body[index]) / float(temp[index[0]])
+                # prob = float(fact_body[index]) / float(fact_par[index])
+            logger.debug(
+                "Update probabilistic fact {}: {} / {} = {}".format(
+                    index, fact_body[index], fact_par[index], prob
                 )
-                self._set_weight(
-                    index[0], index[1], prob, weight_changed=weight_changed
-                )
-                weight_changed[int(index[0])] = True
+            )
+            self._set_weight(index[0], index[1], prob, weight_changed=weight_changed)
+            weight_changed[int(index[0])] = True
 
         if self._enable_normalize:
             self._normalize_weights()
@@ -1370,7 +957,6 @@ class LFIProblem(LogicProgram):
     def _normalize_weights(self):
         # TODO: too late here, AD should be taken into account in _update
         # Derivation is sum(all values for var=k) / sum(all values for i sum(all values for var=i))
-        # print("_adatoms", self._adatoms)
 
         for available_prob, idx in self._adatoms:
             if len(idx) == 1:
@@ -1558,19 +1144,8 @@ class Example(object):
                     + str(tmp_par)
                     + "\t"
                 )
-            elif (
-                t == "atom"
-                and isinstance(node.probability, Term)
-                and node.probability.functor == "clfi"
-            ):
-                factargs = ()
-                if type(node.identifier) == tuple:
-                    factargs = node.identifier[1]
-                fact = Term("clfi_fact", node.probability.args[0], Term("t", *factargs))
-                ground_program.add_query(fact, i)
+
             elif t == "atom":
-                # TODO: check if non-lfi and continuous and save locations to replace later
-                #       lfi continuous probs are associated with lfi/2
                 pass
 
         ground_program = ground(
@@ -1607,7 +1182,6 @@ class ExampleEvaluator(SemiringDensity):
     def __init__(self, weights, eps):
         SemiringDensity.__init__(self)
         self._weights = weights
-        self._cevidence = None
         self._eps = eps
 
     def _get_weight(self, index, args, strict=True):
@@ -1620,30 +1194,6 @@ class ExampleEvaluator(SemiringDensity):
                 return weight.get(args)
         else:
             return weight
-
-    def _get_cweight(self, index, args, atom, strict=True):
-        # TODO: Should we cache this? This method is called multiple times with the same arguments
-        index = int(index)
-        dist = self._weights[index]
-        if isinstance(dist, dict):
-            if strict:
-                dist = dist[args]
-            else:
-                raise ProbLogError(
-                    "Continuous distribution is not available for {}, {}".format(
-                        index, args
-                    )
-                )
-        if not isinstance(dist, Term):
-            raise ProbLogError(
-                "Expected a continuous distribution, got {}".format(dist)
-            )
-        value = self._cevidence.get(atom)
-        if value is not None:
-            p = dist_prob(dist, value, eps=self._eps)
-        else:
-            raise ProbLogError("Expected continuous evidence for {}")
-        return p
 
     def is_dsp(self):
         """Indicates whether this semiring requires solving a disjoint sum problem."""
@@ -1664,8 +1214,6 @@ class ExampleEvaluator(SemiringDensity):
         if isinstance(a, Term) and a.functor == "lfi":
             # index = int(a.args[0])
             return self._get_weight(*a.args)
-        elif isinstance(a, Term) and a.functor == "clfi":
-            return self._get_cweight(*a.args)
         else:
             return float(a)
 
@@ -1680,11 +1228,10 @@ class ExampleEvaluator(SemiringDensity):
         return results
 
     def _call_internal(self, at, val, cval, comp, n):
-        # print('ExampleEvaluator.__call__({},{},{},{})'.format(n, at, val, cval))
-        # print('_weights: ', self._weights)
+
         evidence = {}
         self._cevidence = {}
-        # p_values = {}
+
         for a, v, cv in zip(at, val, cval):
             if a in evidence:
                 if cv is not None:
@@ -1742,22 +1289,16 @@ class ExampleEvaluator(SemiringDensity):
         for name, node, label in evaluator.formula.labeled():
             if name.functor not in ["lfi_body", "lfi_par"]:
                 continue
-            # print("evaluate start {}".format(name), node)
+
             w = evaluator.evaluate(node)
-            # print("evaluate {}: {} ({})".format(name, w, len(n)))
-            # w = evaluator.evaluate_fact(node)
-            # print ("WWW", w, w1, w2)
+
             if isinstance(w, DensityValue):
-                # # print("{} => {}".format(w, float(w)))
-                # w = float(w)
                 p_queries[name] = w
             elif w < 1e-6:  # TODO: too high for multivariate dists?
                 p_queries[name] = 0.0
             else:
                 p_queries[name] = w
-        # print("_call_internal.evaluate_evidence")
         p_evidence = evaluator.evaluate_evidence()
-        # print("_call_internal.result", p_evidence, "\n", p_queries, "\n\n ".join([str(v) for v in p_values.items()]),)
 
         return len(n), p_evidence, p_queries, p_values
 
@@ -1766,7 +1307,6 @@ class ExampleEvaluatorLog(SemiringLogProbability):
     def __init__(self, weights, eps):
         SemiringLogProbability.__init__(self)
         self._weights = weights
-        self._cevidence = None
         self._eps = eps
 
     def _get_weight(self, index, args, strict=True):
@@ -1783,30 +1323,6 @@ class ExampleEvaluatorLog(SemiringLogProbability):
             return float("-inf")
         return result
 
-    def _get_cweight(self, index, args, atom, strict=True):
-        # TODO: Should we cache this? This method is called multiple times with the same arguments
-        index = int(index)
-        dist = self._weights[index]
-        if isinstance(dist, dict):
-            if strict:
-                dist = dist[args]
-            else:
-                raise ProbLogError(
-                    "Continuous distribution is not available for {}, {}".format(
-                        index, args
-                    )
-                )
-        if not isinstance(dist, Term):
-            raise ProbLogError(
-                "Expected a continuous distribution, got {}".format(dist)
-            )
-        value = self._cevidence.get(atom)
-        if value is not None:
-            p = dist_prob(dist, value, log=True, eps=self._eps)
-        else:
-            raise ProbLogError("Expected continuous evidence for {}")
-        return p
-
     def value(self, a):
         """Overrides from SemiringProbability.
         Replaces a weight of the form ``lfi(i, t(...))`` by its current estimated value.
@@ -1817,35 +1333,25 @@ class ExampleEvaluatorLog(SemiringLogProbability):
         :rtype: float
         """
         if isinstance(a, Term) and a.functor == "lfi":
-            # index = int(a.args[0])
             rval = self._get_weight(*a.args)
-        elif isinstance(a, Term) and a.functor == "clfi":
-            rval = self._get_cweight(*a.args)
         else:
             rval = math.log(float(a))
         return rval
 
     def __call__(self, example):
         """Evaluate the model with its current estimates for all examples."""
-        # # print('=========>>>')
         at = example.atoms
         val = example.values
         comp = example.compiled
         results = []
         for cval, n in example.n.items():
             results.append(self._call_internal(at, val, cval, comp, n))
-        # # print('<<<=========')
         return results
 
     def _call_internal(self, at, val, cval, comp, n):
-        # # print('=========')
-        # # print('ExampleEvaluator.__call__({},{},{},{})'.format(n, at, val, cval))
-        # # print('_weights: ', self._weights)
         evidence = {}
         self._cevidence = {}
-        # p_values = {}
         for a, v, cv in zip(at, val, cval):
-            # # print('__call__', a, v, cv)
             if a in evidence:
                 if cv is not None:
                     if self._cevidence[a] != cv:
@@ -1899,14 +1405,8 @@ class ExampleEvaluatorLog(SemiringLogProbability):
         # Probability of query given evidence
         for name, node, label in evaluator.formula.labeled():
             w = evaluator.evaluate_fact(node)
-            # if w < 1e-6:  # TODO: too high for multivariate dists
-            #     # print('Set w to 0: ', w)
-            #     p_queries[name] = 0.0
-            # else:
             p_queries[name] = w
-        # TODO: p_evidence becomes too small for many continuous observations
         p_evidence = evaluator.evaluate_evidence()
-        # # print('__call__.result', p_evidence, '\n', p_queries, '\n', '\n '.join([str(v) for v in p_values.items()]))
         return len(n), p_evidence, p_queries, p_values
 
 
@@ -1925,7 +1425,7 @@ def extract_evidence(pl):
     for at, vl in atoms:
         vlr = str2bool(vl)
         vlv = None
-        if vlr is None:  # TODO: also check that atom is a continuous distribution
+        if vlr is None:
             vlr, vlv = str2num(vl)
         result.append((at, vlr, vlv))
     return result
@@ -2131,12 +1631,6 @@ def print_result(d, outf, precision=8):
     success, d = d
     if success:
         score, weights, names, iterations, lfi = d
-        weights_print = []
-        for weight in weights:
-            if isinstance(weight, Term) and weight.functor in cdist_names:
-                weights_print.append(weight)
-            else:
-                weights_print.append(round(float(weight), precision))
         # print(score, weights, names, iterations, file=outf)
         return 0
     else:
