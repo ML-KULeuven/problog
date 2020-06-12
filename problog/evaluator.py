@@ -26,7 +26,7 @@ from __future__ import print_function
 import math
 
 from .core import ProbLogObject, transform_allow_subclass
-from .errors import InconsistentEvidenceError, InvalidValue, ProbLogError
+from .errors import InconsistentEvidenceError, InvalidValue, ProbLogError, InstallError
 
 try:
     from numpy import polynomial
