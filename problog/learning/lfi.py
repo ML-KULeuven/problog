@@ -279,15 +279,18 @@ class LFIProblem(LogicProgram):
     def _set_weight(self, index, args, weight, weight_changed=None):
         index = int(index)
         if not args:
-            assert not isinstance(self._weights[index], dict)
+            # assert not isinstance(self._weights[index], dict)
             self._weights[index] = weight
         elif isinstance(self._weights[index], dict):
             if weight_changed and weight_changed[index]:
-                self._weights[index][Term(args.functor)] += weight
+                # self._weights[index][Term(args.functor)] += weight
+                self._weights[index][Term("t")] += weight
             else:
-                self._weights[index][Term(args.functor)] = weight
+                # self._weights[index][Term(args.functor)] = weight
+                self._weights[index][Term("t")] = weight
         else:
-            self._weights[index] = {Term(args.functor): weight}
+            # self._weights[index] = {Term(args.functor): weight}
+            self._weights[index] = {Term("t"): weight}
 
     def _add_weight(self, weight):
         self._weights.append(weight)
@@ -527,7 +530,7 @@ class LFIProblem(LogicProgram):
         )
         examples = self._process_examples()
         for i, example in enumerate(examples):
-            logger.debug("Compiling example {}/{}".format(i + 1, len(examples)))
+            logger.debug("\nCompiling example {}/{}".format(i + 1, len(examples)))
             example.compile(self, baseprogram)
         self._compiled_examples = examples
 
@@ -560,7 +563,7 @@ class LFIProblem(LogicProgram):
             elif atom.probability and atom.probability.is_constant():
                 fixed_probability += float(atom.probability)
 
-        random_weights = [random.random() for i in range(0, num_random_weights + 1)]
+        random_weights = [random.random() for _ in range(0, num_random_weights + 1)]
         norm_factor = (1.0 - prior_probability - fixed_probability) / sum(
             random_weights
         )
@@ -570,7 +573,7 @@ class LFIProblem(LogicProgram):
         self.add_ad(1.0 - fixed_probability, [])  # TODO : this adds extra ad
 
         # Replace anonymous variables with non-anonymous variables.
-        class ReplaceAnon(object):  # TODO: can be defined outside of for loop?
+        class ReplaceAnon(object):
             def __init__(self):
                 self.cnt = 0
 
@@ -581,18 +584,23 @@ class LFIProblem(LogicProgram):
                 else:
                     return Var(key)
 
-        vars = set()
+        prob_args = []
+        if isinstance(atom.probability, Term):
+            for arg in atom.probability.args:
+                if not isinstance(arg, Constant) and arg != Var("_"):
+                    prob_args.append(arg)
+
+        newcount = "_".join([str(self.count + count) for count in range(len(atoms))])
+
+        vars = []
         for atom in atoms:
             q = list(atom.apply(ReplaceAnon()).args)
             for var in q:
-                vars.add(var)
+                if var not in vars:
+                    vars.append(var)
 
-        if atom.probability:
-            prob_args = atom.probability.args[1:]
-        else:
-            prob_args = (1.0,)
-        newcount = "_".join([str(self.count + count) for count in range(len(atoms))])
-        lfi_rule = Term("lfi_rule", Constant(newcount), Term("t", *prob_args, *vars))
+        # lfi_rule = Term("lfi_rule", Constant(newcount), Term("t", *prob_args, *vars))
+        lfi_rule = Term("lfi_rule", Constant(newcount), *vars)
         if body is not None:
             extra_clauses.append(Clause(lfi_rule, body))
 
@@ -623,42 +631,28 @@ class LFIProblem(LogicProgram):
                 except ArithmeticError:
                     start_value = None
 
-                # Replace anonymous variables with non-anonymous variables.
-                class ReplaceAnon(object):  # TODO: can be defined outside of for loop?
-                    def __init__(self):
-                        self.cnt = 0
-
-                    def __getitem__(self, key):
-                        if key == "_":
-                            self.cnt += 1
-                            return Var("anon_%s" % self.cnt)
-                        else:
-                            return Var(key)
-
                 atom1 = atom.apply(ReplaceAnon())
-                prob_args = atom.probability.args[1:]
 
-                # 1) Introduce a new fact
-                lfi_fact = Term(
-                    "lfi_fact", Constant(self.count), Term("t", *prob_args, *atom1.args)
-                )
-                lfi_body = Term(
-                    "lfi_body", Constant(self.count), Term("t", *prob_args, *atom1.args)
-                )
-                # lfi_par  = Term('lfi_par',  Constant(self.count_ad()), Term('t', *prob_args), *atom1.args)
-                # TODO: lfi_par should be unique for rule, not per disjunct
-                # lfi_par = Term('lfi_par',   Constant(self.count),      Term('t', *prob_args), *atom1.args)
-                lfi_par = Term(
-                    "lfi_par", Constant(self.count), Term("t", *prob_args, *atom1.args)
-                )
-                # lfi_prob = Term('lfi', Constant(self.count), Term('t', *prob_args, *atom1.args))
-                lfi_prob = Term("lfi_prob", Constant(self.count), Term("t"))
+                # 1) Introduce a new LFI terms
+                # lfi_fact = Term(
+                #     "lfi_fact", Constant(self.count), Term("t", *prob_args, *atom1.args)
+                # )
+                # lfi_body = Term(
+                #     "lfi_body", Constant(self.count), Term("t", *prob_args, *atom1.args)
+                # )
+                # lfi_par = Term(
+                #     "lfi_par", Constant(self.count), Term("t", *prob_args, *atom1.args)
+                # )
+                # lfi_prob = Term("lfi_prob", Constant(self.count), Term("t"))
+                lfi_fact = Term("lfi_fact", Constant(self.count), *atom1.args)
+                lfi_body = Term("lfi_body", Constant(self.count), *atom1.args)
+                lfi_par = Term("lfi_par", Constant(self.count), *atom1.args)
+                lfi_prob = Term("lfi_prob", Constant(self.count), Term("t", *prob_args))
 
                 # 2) Replacement atom
                 replacement = lfi_fact.with_probability(lfi_prob)
 
                 # 3) Create redirection clause
-
                 extra_clauses.append(Clause(atom1.with_probability(), lfi_body))
                 extra_clauses.append(Clause(lfi_body, lfi_par & lfi_fact))
 
@@ -668,12 +662,12 @@ class LFIProblem(LogicProgram):
                     extra_clauses.append(Clause(lfi_par, lfi_rule))
 
                 self.append_ad(len(self._weights))
+
                 # 4) Set initial weight
                 if start_value is None:
+                    # Assign a random weight initially
                     start_value = random_weights.pop(-1)
-                    self._add_weight(start_value)
-                else:
-                    self._add_weight(start_value)
+                self._add_weight(start_value)
 
                 # 5) Add name
                 self.names.append(atom)
@@ -796,19 +790,22 @@ class LFIProblem(LogicProgram):
         else:
             process_atom = self._process_atom
 
-        getLogger("problog_lfi").debug("\nProcessed Atoms:")
+        if self.output_mode is False:
+            getLogger("problog_lfi").debug("\nProcessed Atoms:")
         for clause in self.source:
             if isinstance(clause, Clause):
                 if clause.head.functor == "query" and clause.head.arity == 1:
                     continue
                 extra_clauses = process_atom(clause.head, clause.body)
                 for extra in extra_clauses:
-                    getLogger("problog_lfi").debug("\t" + str(extra))
+                    if self.output_mode is False:
+                        getLogger("problog_lfi").debug("\t" + str(extra))
                     yield extra
             elif isinstance(clause, AnnotatedDisjunction):
                 extra_clauses = process_atom(Or.from_list(clause.heads), clause.body)
                 for extra in extra_clauses:
-                    getLogger("problog_lfi").debug("\t" + str(extra))
+                    if self.output_mode is False:
+                        getLogger("problog_lfi").debug("\t" + str(extra))
                     yield extra
             else:
                 if clause.functor == "query" and clause.arity == 1:
@@ -816,7 +813,8 @@ class LFIProblem(LogicProgram):
                 # Fact
                 extra_clauses = process_atom(clause, None)
                 for extra in extra_clauses:
-                    getLogger("problog_lfi").debug("\t" + str(extra))
+                    if self.output_mode is False:
+                        getLogger("problog_lfi").debug("\t" + str(extra))
                     yield extra
 
         if self.leakprob is not None:
@@ -847,30 +845,23 @@ class LFIProblem(LogicProgram):
         results = []
         for i, example in enumerate(self._compiled_examples):
             try:
-                results.append(evaluator(example))
+                result = evaluator(example)
+                results.append(result)
+                getLogger("problog_lfi").debug(
+                    "Example "
+                    + str(i + 1)
+                    + ":\tFrequency = "
+                    + str(result[0][0])
+                    + "\tp_evidence = "
+                    + str(result[0][1])
+                    + "\tp_queries = "
+                    + str(result[0][2])
+                )
             except InconsistentEvidenceError:
                 # print("Ignoring example {}/{}".format(i + 1, len(self._compiled_examples)))
                 getLogger("problog_lfi").warning(
                     "Ignoring example {}/{}".format(i + 1, len(self._compiled_examples))
                 )
-
-        getLogger("problog_lfi").debug(
-            "\n".join(
-                [
-                    "Example "
-                    + str(i + 1)
-                    + ":\tFrequency = "
-                    + str(n)
-                    + "\tp_evidence = "
-                    + str(p_evidence)
-                    + "\tp_queries = "
-                    + str(p_queries)
-                    + "\tp_values = "
-                    + str(p_values)
-                    for i, [(n, p_evidence, p_queries, p_values)] in enumerate(results)
-                ]
-            )
-        )
 
         return list(chain.from_iterable(results))
 
@@ -881,12 +872,12 @@ class LFIProblem(LogicProgram):
         fact_body = defaultdict(int)
         fact_par = defaultdict(int)
         fact_count = defaultdict(int)
-        fact_values = dict()
+
         score = 0.0
-        for m, pEvidence, result, p_values in results:
+        for m, pEvidence, result in results:
             par_marg = dict()
             for fact, value in result.items():
-                index = fact.args[0:2]
+                index = fact.args
                 if fact.functor == "lfi_fact":
                     fact_marg[index] += value * m
                 if fact.functor == "lfi_body":
@@ -901,15 +892,14 @@ class LFIProblem(LogicProgram):
                             )
                     par_marg[index] = value
                     for o_index in self._adatomc[index[0]]:
-                        if o_index >= 0:
-                            par_marg[(o_index, index[1])] = value
+                        if o_index >= 0 and len(index) == 1:
+                            # Propositional AD
+                            par_marg[(o_index,)] = value
+                        elif o_index >= 0 and len(index) > 1:
+                            # First Order AD
+                            par_marg[(o_index, *index[1:])] = value
                 fact_count[index] += m
-                if fact in p_values:
-                    k = (index[0], index[1])
-                    if k not in fact_values:
-                        fact_values[k] = (self._get_weight(index[0], index[1]), list())
-                    p_value = p_values[fact]
-                    fact_values[k][1].append((p_value, value, m))
+
             for index, value in par_marg.items():
                 fact_par[index] += value * m
             try:
@@ -922,25 +912,25 @@ class LFIProblem(LogicProgram):
         update_list = fact_body
 
         weight_changed = [False] * len(self.names)
+        fact_par_grouped = dict()
+        for key, value in fact_par.items():
+            id = key[0]
+            if id in fact_par_grouped:
+                fact_par_grouped[id] += value
+            else:
+                fact_par_grouped[id] = value
+
         for index in update_list:
             if float(fact_body[index]) == 0.0:
                 prob = 0.0
             else:
-                # print(fact_par[index])
-                temp = dict()
-                ids, vars = zip(*list(fact_par.keys()))
-                for id in set(ids):
-                    temp[id] = 0
-                    for var in set(vars):
-                        temp[id] += fact_par[(id, var)]
-                prob = float(fact_body[index]) / float(temp[index[0]])
-                # prob = float(fact_body[index]) / float(fact_par[index])
+                prob = float(fact_body[index]) / float(fact_par_grouped[index[0]])
             logger.debug(
                 "Update probabilistic fact {}: {} / {} = {}".format(
-                    index, fact_body[index], fact_par[index], prob
+                    index, fact_body[index], fact_par_grouped[index[0]], prob
                 )
             )
-            self._set_weight(index[0], index[1], prob, weight_changed=weight_changed)
+            self._set_weight(index[0], index[1:], prob, weight_changed=weight_changed)
             weight_changed[int(index[0])] = True
 
         if self._enable_normalize:
@@ -954,6 +944,7 @@ class LFIProblem(LogicProgram):
 
         for available_prob, idx in self._adatoms:
             if len(idx) == 1:
+                # Not an AD; No need to normalize
                 continue
             keys = set()
             for i in idx:
@@ -1100,25 +1091,27 @@ class Example(object):
                 and node.probability.functor == "lfi_prob"
             ):
                 factargs = ()
-                # # print("node.identifier", node.identifier)
                 if node.name.functor != "choice":
                     if node.name.functor == "lfi_fact":
-                        for arg in node.name.args:
-                            if str(arg.functor) == "t":
-                                factargs = arg.args
+                        factargs = node.name.args[1:]
+                        # for arg in node.name.args:
+                        #     if str(arg.functor) == "t":
+                        #         factargs = arg.args
                     else:
                         factargs = node.name.args
                 elif type(node.identifier) == tuple:
                     factargs = node.identifier[1]
-                fact = Term("lfi_fact", node.probability.args[0], Term("t", *factargs))
+                fact = Term("lfi_fact", node.probability.args[0], *factargs)
+                # fact = Term("lfi_fact", node.probability.args[0], Term("t", *factargs))
                 logger.debug(
                     "\tNode " + str(i) + ":\tAdding query for fact:\t" + str(fact)
                 )
                 ground_program.add_query(fact, i)
 
-                tmp_body = Term(
-                    "lfi_body", node.probability.args[0], Term("t", *factargs)
-                )
+                tmp_body = Term("lfi_body", node.probability.args[0], *factargs)
+                # tmp_body = Term(
+                #     "lfi_body", node.probability.args[0], Term("t", *factargs)
+                # )
                 lfi_queries.append(tmp_body)
                 logger.debug(
                     "\tNode "
@@ -1127,9 +1120,10 @@ class Example(object):
                     + str(tmp_body)
                     + "\t"
                 )
-                tmp_par = Term(
-                    "lfi_par", node.probability.args[0], Term("t", *factargs)
-                )
+                tmp_par = Term("lfi_par", node.probability.args[0], *factargs)
+                # tmp_par = Term(
+                #     "lfi_par", node.probability.args[0], Term("t", *factargs)
+                # )
                 lfi_queries.append(tmp_par)
                 logger.debug(
                     "\tNode "
@@ -1154,15 +1148,17 @@ class Example(object):
             + "New ground_program:\n\t\t"
             + str(ground_program).replace("\n", "\n\t\t")
         )
-        # logger.debug("\t\t" + ground_program.to_prolog().replace("\n", "\n\t\t"))
 
         self.compiled = lfi.knowledge.create_from(ground_program)
-        logger.debug(
-            "\t"
-            + "Compiled program:\n\t\t"
-            + str(self.compiled).replace("\n", "\n\t\t")
-        )
-        # logger.debug("\t\t" + self.compiled.to_prolog().replace("\n", "\n\t\t"))
+        try:
+            logger.debug(
+                "\tCompiled program:\n\t\t"
+                + self.compiled.to_prolog().replace("\n", "\n\t\t")
+            )
+        except Exception:
+            logger.debug(
+                "\tCompiled program:\n\t\t" + str(self.compiled).replace("\n", "\n\t\t")
+            )
 
     def add_index(self, index, cvalues):
         k = tuple(cvalues)
@@ -1224,22 +1220,9 @@ class ExampleEvaluator(SemiringDensity):
     def _call_internal(self, at, val, cval, comp, n):
 
         evidence = {}
-        self._cevidence = {}
 
         for a, v, cv in zip(at, val, cval):
             if a in evidence:
-                if cv is not None:
-                    if self._cevidence[a] != cv:
-                        context = " (found evidence({},{}) and evidence({},{}) in example {})".format(
-                            a,
-                            evidence[a],
-                            a,
-                            cv,
-                            ",".join([str(ni) for ni in n])
-                            if isinstance(n, list)
-                            else n + 1,
-                        )
-                        raise InconsistentEvidenceError(source=a, context=context)
                 if evidence[a] != v:
                     context = " (found evidence({},{}) and evidence({},{}) in example {})".format(
                         a,
@@ -1252,23 +1235,7 @@ class ExampleEvaluator(SemiringDensity):
                     )
                     raise InconsistentEvidenceError(source=a, context=context)
             else:
-                if cv is not None:
-                    self._cevidence[a] = cv
                 evidence[a] = v
-
-        p_values = {}
-        # TODO: this loop is not required if there are no clfi_facts
-        for idx, node, ty in comp:
-            if ty == "atom":
-                name = node.name
-                if (
-                    name is not None and name.functor == "clfi_fact"
-                ):  # TODO: when is this wrapped in 'choice'? Before compilation?
-                    clfi = node.probability
-                    ev_atom = clfi.args[2]
-                    value = self._cevidence.get(ev_atom)
-                    if value is not None:
-                        p_values[node.name] = value
 
         try:
             # TODO: The next step generates the entire formula if it is density and this is redone later (caching?)
@@ -1286,15 +1253,13 @@ class ExampleEvaluator(SemiringDensity):
 
             w = evaluator.evaluate(node)
 
-            if isinstance(w, DensityValue):
-                p_queries[name] = w
-            elif w < 1e-6:  # TODO: too high for multivariate dists?
+            if w < 1e-6:
                 p_queries[name] = 0.0
             else:
                 p_queries[name] = w
         p_evidence = evaluator.evaluate_evidence()
 
-        return len(n), p_evidence, p_queries, p_values
+        return len(n), p_evidence, p_queries
 
 
 class ExampleEvaluatorLog(SemiringLogProbability):
