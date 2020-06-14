@@ -1372,7 +1372,6 @@ label_all=True)
     def _is_valid_name(self, name):
         return (
             name is not None
-            and not name.functor.startswith("_problog_")
             and not name.functor == "choice"
             and not name.functor.startswith("body_")
         )
