@@ -1,5 +1,6 @@
-from pylo.XSBProlog import XSBProlog
-from pylo.language import global_context
+from problog.prolog_engine.pylo.XSBProlog import XSBProlog
+from problog.prolog_engine.pylo.GnuProlog import GNUProlog
+from problog.prolog_engine.pylo.language import global_context
 from problog.logic import Term, Constant, Var
 
 class PyloProlog:

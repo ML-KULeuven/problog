@@ -6,7 +6,7 @@ from time import time
 from problog.clausedb import ConsultError
 from problog.core import ProbLogObject
 from problog.logic import unquote, term2list, ArithmeticError, Term
-from pylo_prolog import PyloProlog
+from problog.prolog_engine.pylo_prolog import PyloProlog
 
 
 def handle_prob(prob):

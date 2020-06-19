@@ -372,7 +372,11 @@ class ClauseDB(LogicProgram):
             group = len(self.__nodes)
 
             # Create the body clause
-            body_node = self._compile(struct.body, variables, scope=scope, is_problog_scope=is_problog_scope)
+            # if struct.body == Term('true'):
+            if False:
+                body_node= None
+            else:
+                body_node = self._compile(struct.body, variables, scope=scope, is_problog_scope=is_problog_scope)
             body_count = len(variables)
             # Body arguments
             body_args = tuple(range(0, len(variables)))
@@ -381,9 +385,11 @@ class ClauseDB(LogicProgram):
                 heads_list = Term('multi')  # list2term(new_heads)
             else:
                 heads_list = new_heads[0].with_probability(None)
-            body_head = Term(body_functor, Constant(group), heads_list, *body_args)
-            self._add_clause_node(body_head, body_node, len(variables), variables.local_variables)
-            clause_body = self._add_head(body_head)
+            # if body_node is not None:
+            if True:
+                body_head = Term(body_functor, Constant(group), heads_list, *body_args)
+                self._add_clause_node(body_head, body_node, len(variables), variables.local_variables)
+                clause_body = self._add_head(body_head)
             for choice, head in enumerate(new_heads):
                 head = self._scope_term(head, scope, is_problog_scope=is_problog_scope)
                 # For each head: add choice node
@@ -394,10 +400,14 @@ class ClauseDB(LogicProgram):
                                                     group, head.location)
                 choice_call = self._append_node(self._call(choice_functor, body_args, choice_node,
                                                            head.location, None, None))
-                body_call = self._append_node(self._call(body_functor, body_head.args, clause_body,
-                                                         head.location, None, None))
-                choice_body = self._add_and_node(body_call, choice_call)
-                self._add_clause_node(head, choice_body, body_count, {}, group=group)
+                # if body_node is not None:
+                if True:
+                    body_call = self._append_node(self._call(body_functor, body_head.args, clause_body,
+                                                             head.location, None, None))
+                    choice_body = self._add_and_node(body_call, choice_call)
+                    self._add_clause_node(head, choice_body, body_count, {}, group=group)
+                else:
+                    self._add_clause_node(head, choice_call, body_count, {}, group=group)
             return None
         elif isinstance(struct, Clause):
             if struct.head.probability is not None:

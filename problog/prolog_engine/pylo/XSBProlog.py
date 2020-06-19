@@ -1,12 +1,12 @@
-from pylo.Prolog import (
+from problog.prolog_engine.pylo.Prolog import (
     Prolog
 )
-from pylo.language import Constant, Variable, Functor, Structure, List, Predicate, Literal, Negation, Clause, global_context
+from problog.prolog_engine.pylo.language import Constant, Variable, Functor, Structure, List, Predicate, Literal, Negation, Clause, global_context
 import sys
 sys.path.append("../../build")
 import os
 
-from pylo import pyxsb
+from problog.prolog_engine.pylo import pyxsb
 from typing import Union, Dict, Sequence
 from functools import reduce
 

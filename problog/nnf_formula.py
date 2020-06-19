@@ -1,4 +1,4 @@
-from ddnnf_formula import DDNNF as NNF
+from .ddnnf_formula import DDNNF as NNF
 
 import warnings
 
