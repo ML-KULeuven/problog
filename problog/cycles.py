@@ -33,6 +33,7 @@ from .formula import LogicFormula, LogicDAG
 from collections import defaultdict
 import logging
 
+cycle_var_prefix = "problog_cv_"
 
 # noinspection PyUnusedLocal
 @transform(LogicFormula, LogicDAG)
@@ -158,7 +159,7 @@ def _break_cycles(
         newname = node.name
         if newname is not None and child_cycles_broken:
             newfunc = (
-                "_problog_" + newname.functor + "_cb_" + str(len(translation[nodeid]))
+                cycle_var_prefix + newname.functor + "_cb_" + str(len(translation[nodeid]))
             )
             newname = Term(newfunc, *newname.args)
         if nodetype == "conj":
