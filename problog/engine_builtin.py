@@ -1433,7 +1433,7 @@ def _builtin_all(
     """
     # Check the modes.
     mode = check_mode(
-        (pattern, goal, result,), ["*cv", "*cl"], database=database, **kwdargs
+        (pattern, goal, result), ["*cv", "*cl"], database=database, **kwdargs
     )
 
     findall_head = Term(engine.get_non_cache_functor(), pattern, *goal.variables())
@@ -1504,7 +1504,7 @@ def _builtin_findall_base(
     """
     # Check the modes.
     mode = check_mode(
-        (pattern, goal, result,), ["*cv", "*cl"], database=database, **kwdargs
+        (pattern, goal, result), ["*cv", "*cl"], database=database, **kwdargs
     )
 
     findall_head = Term(engine.get_non_cache_functor(), pattern, *goal.variables())
@@ -1628,7 +1628,7 @@ def _builtin_sample_uniform(key, lst, result, database=None, target=None, **kwda
     :param kwdargs:
     :return:
     """
-    mode = check_mode((key, lst, result,), ["gLv", "gLn"], database=database, **kwdargs)
+    mode = check_mode((key, lst, result), ["gLv", "gLn"], database=database, **kwdargs)
     identifier = "_uniform_%s" % key
     elements, tail = list_elements(lst)
     if len(elements) == 0:

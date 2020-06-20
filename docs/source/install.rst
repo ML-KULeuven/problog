@@ -11,8 +11,8 @@ Python is included in most installations of Linux and Mac OSX.
 Windows users can find instructions on how to install it in the
 `Python documentation <https://docs.python.org/3.5/using/windows.html>`_.
 
-Installing Python
------------------
+Installing with pip
+-------------------
 
 ProbLog is available in the Python Package Index (PyPi) and it can be installed with
 

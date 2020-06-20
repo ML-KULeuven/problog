@@ -891,7 +891,9 @@ class SDDEvaluator(DDEvaluator):
                 result = self.semiring.one()
             else:
                 # WMC(Theory & True & Evidence) / same. The constraints are already included in the evidence node.
-                result = self.semiring.normalize(self._evidence_weight, self._evidence_weight)
+                result = self.semiring.normalize(
+                    self._evidence_weight, self._evidence_weight
+                )
         elif node is self.formula.FALSE:
             result = self.semiring.zero()
         else:

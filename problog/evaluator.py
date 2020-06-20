@@ -406,8 +406,8 @@ class SemiringDensity(Semiring):
     """
 
     def __init__(self):
-        if pn is None:
-            raise InstallError("Density calculation require the NumPy package.")
+        # if pn is None:
+        #     raise InstallError("Density calculation require the NumPy package.")
         Semiring.__init__(self)
 
     def one(self):

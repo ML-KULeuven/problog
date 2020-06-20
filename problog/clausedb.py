@@ -72,7 +72,7 @@ class ClauseDB(LogicProgram):
         "choice",
         ("functor", "args", "probability", "locvars", "group", "choice", "location"),
     )
-    _extern = namedtuple("extern", ("functor", "arity", "function",))
+    _extern = namedtuple("extern", ("functor", "arity", "function"))
 
     FUNCTOR_CHOICE = "choice"
     FUNCTOR_BODY = "body"

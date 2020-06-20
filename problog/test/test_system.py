@@ -15,9 +15,10 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 """
+import glob
+import os
+import sys
 import unittest
-
-import glob, os, sys
 
 from problog.forward import _ForwardSDD
 
@@ -223,7 +224,7 @@ class SemiringProbabilityNSPCopy(SemiringProbabilityCopy):
         if isinstance(a, tuple):
             return float(a[1])
         else:
-            return 1-float(a)
+            return 1 - float(a)
 
 
 if __name__ == "__main__":
