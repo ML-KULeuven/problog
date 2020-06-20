@@ -58,11 +58,11 @@ class BaseFormula(ProbLogObject):
     LABEL_NAMED = "named"
 
     def __init__(self):
-        self._weights = {}  # Node weights: dict(key: Term)
+        self._weights = {}               # Node weights: dict(key: Term)
 
-        self._constraints = []  # Constraints: list of Constraint
+        self._constraints = []           # Constraints: list of Constraint
 
-        # self._names = defaultdict(OrderedDict)  # Node names: dict(label: dict(key, Term))
+        #self._names = defaultdict(OrderedDict)  # Node names: dict(label: dict(key, Term))
         self._names = defaultdict(dict)
         self._atomcount = 0
 
@@ -1388,7 +1388,6 @@ label_all=True)
     def _is_valid_name(self, name):
         return (
             name is not None
-            and not name.functor.startswith("_problog_")
             and not name.functor == "choice"
             and not name.functor.startswith("body_")
         )

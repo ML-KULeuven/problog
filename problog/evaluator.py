@@ -63,7 +63,7 @@ class Semiring(object):
 
     def is_zero(self, value):
         """Tests whether the given value is the identity element of the addition."""
-        return value == self.zero
+        return value == self.zero()
 
     def plus(self, a, b):
         """Computes the addition of the given values."""
