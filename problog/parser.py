@@ -535,6 +535,8 @@ class PrologParser(object):
                 pos + 3,
             )
         elif s[pos : pos + 2] == "==":
+            from warnings import warn
+            warn("The use of '==' might give unexpected results. Consider using '=' instead.")
             return (
                 Token(
                     "==",
@@ -691,6 +693,8 @@ class PrologParser(object):
                 pos + 4,
             )
         elif s[pos : pos + 3] == "\\==":
+            from warnings import warn
+            warn("The use of '\\==' might give unexpected results. Consider using '\\=' instead.")
             return (
                 Token(
                     "\\==",
