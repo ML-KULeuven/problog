@@ -1042,9 +1042,13 @@ class ParserElement(object):
         self.ignoreExprs = list()
         self.debug = False
         self.streamlined = False
-        self.mayIndexError = True  # used to optimize exception handling for subclasses that don't advance parse index
+        self.mayIndexError = (
+            True
+        )  # used to optimize exception handling for subclasses that don't advance parse index
         self.errmsg = ""
-        self.modalResults = True  # used to mark results names as modal (report only last) or cumulative (list all)
+        self.modalResults = (
+            True
+        )  # used to mark results names as modal (report only last) or cumulative (list all)
         self.debugActions = (None, None, None)  # custom debug actions
         self.re = None
         self.callPreparse = True  # used to avoid redundant calls to preParse
@@ -2435,13 +2439,7 @@ class White(Token):
        matched; default is C{" \\t\\r\\n"}.  Also takes optional C{min}, C{max}, and C{exact} arguments,
        as defined for the C{L{Word}} class."""
 
-    whiteStrs = {
-        " ": "<SPC>",
-        "\t": "<TAB>",
-        "\n": "<LF>",
-        "\r": "<CR>",
-        "\f": "<FF>",
-    }
+    whiteStrs = {" ": "<SPC>", "\t": "<TAB>", "\n": "<LF>", "\r": "<CR>", "\f": "<FF>"}
 
     def __init__(self, ws=" \t\r\n", min=1, max=0, exact=0):
         super(White, self).__init__()

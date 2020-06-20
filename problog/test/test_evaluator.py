@@ -67,7 +67,7 @@ class TestEvaluator(unittest.TestCase):
                 if isinstance(a, tuple):
                     return float(a[1])
                 else:
-                    return 1-float(a)
+                    return 1 - float(a)
 
         program = """
                     0.25::a.
@@ -110,7 +110,9 @@ class TestEvaluator(unittest.TestCase):
                 return a
 
         weights = {0: (0.3, 0.7), a: (0.1, 0.1)}
-        results = kc.evaluate(index=0, semiring=TestSemiringProbabilityIgnoreNormalize(), weights=weights)
+        results = kc.evaluate(
+            index=0, semiring=TestSemiringProbabilityIgnoreNormalize(), weights=weights
+        )
         self.assertEqual(0.06, results)
 
 

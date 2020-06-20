@@ -195,6 +195,8 @@ class LogicProgram(ProbLogObject):
         return s
 
 
+
+
 class SimpleProgram(LogicProgram):
     """LogicProgram implementation as a list of clauses."""
 
@@ -222,6 +224,7 @@ class SimpleProgram(LogicProgram):
 
     def __iter__(self):
         return iter(self.__clauses)
+
 
 
 class PrologString(LogicProgram):
