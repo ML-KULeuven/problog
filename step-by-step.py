@@ -22,6 +22,7 @@ import sys
 import time
 import os
 
+from problog.formula import LogicDAG
 from problog.program import PrologFile
 from problog.logic import Term
 from problog.evaluator import SemiringSymbolic, Evaluator
@@ -78,7 +79,7 @@ def main(filename, with_dot, knowledge):
 
     print("\n=== Acyclic Ground Program ===")
     with Timer("acyclic"):
-        gp = gp.makeAcyclic()
+        gp = LogicDAG.createFrom(gp)
     print(gp)
 
     if dotprefix != None:
