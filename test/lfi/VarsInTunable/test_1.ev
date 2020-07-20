@@ -1,9 +1,0 @@
-evidence(hair(alice)).
-evidence(hair(bob)).
----
-evidence(hair(alice),false).
-evidence(hair(bob)).
----
-evidence(hair(bob)).
----
-evidence(hair(bob),false).
