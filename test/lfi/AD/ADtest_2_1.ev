@@ -4,9 +4,9 @@ evidence(b).
 ---
 evidence(a).
 ---
-evidence(b).
----
 evidence(a).
-evidence(b).
 ---
-evidence(a,false).
+evidence(c,false).
+---
+evidence(c,false).
+
