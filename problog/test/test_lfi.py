@@ -84,8 +84,8 @@ def createTestLFI(filename):
             )
             outlines = lfi.get_model()
         except Exception as err:
-            print(expectedlines)
-            print(err)
+            # print(expectedlines)
+            # print(err)
             # This test is specifically for test/lfi/AD/relatedAD_1 and test/lfi/AD/relatedAD_2
             assert expectedlines == "NonGroundProbabilisticClause"
             return
@@ -166,8 +166,8 @@ else:
     simple_filenames = glob.glob(root_path("test", "lfi", "Simple", "*.pl"))
     misc_filenames = glob.glob(root_path("test", "lfi", "Misc", "*.pl"))
 
-# evaluatables = ["ddnnf"]
-evaluatables = []
+evaluatables = ["ddnnf"]
+# evaluatables = []
 
 if has_sdd:
     evaluatables.append("sdd")
