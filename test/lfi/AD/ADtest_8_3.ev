@@ -1,0 +1,8 @@
+evidence(a(1,2), true).
+evidence(a(1,1), true).
+evidence(b(2,2), true).
+evidence(c(3), false).
+---
+evidence(a(1,1), true).
+evidence(b(2,2), false).
+evidence(c(2), false).

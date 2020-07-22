@@ -166,8 +166,8 @@ else:
     simple_filenames = glob.glob(root_path("test", "lfi", "Simple", "*.pl"))
     misc_filenames = glob.glob(root_path("test", "lfi", "Misc", "*.pl"))
 
-evaluatables = ["ddnnf"]
-# evaluatables = []
+# evaluatables = ["ddnnf"]
+evaluatables = []
 
 if has_sdd:
     evaluatables.append("sdd")
