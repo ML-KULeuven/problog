@@ -100,7 +100,7 @@ from problog.logic import (
     term2list,
 )
 from problog.program import PrologString, PrologFile, LogicProgram
-from problog.errors import InconsistentEvidenceError
+from problog.errors import InconsistentEvidenceError, process_error
 from problog import get_evaluatable, get_evaluatables
 import traceback
 
@@ -1453,7 +1453,7 @@ def argparser():
     parser.add_argument("-d", dest="min_improv", default=1e-10, type=float)
     parser.add_argument(
         "-o",
-        "--output-model",
+        "--output",
         type=str,
         default=None,
         help="write resulting model to given file",
@@ -1550,12 +1550,17 @@ def main(argv, result_handler=None):
 
     knowledge = get_evaluatable(args.koption)
 
-    if args.logger is None:
+    if args.output is None:
         outf = None
     else:
-        outf = open(args.logger, "w")
+        outf = open(args.output, "w")
 
-    logger = init_logger(verbose=args.verbose, name="problog_lfi", out=outf)
+    if args.logger is None:
+        logf = None
+    else:
+        logf = open(args.logger, "w")
+
+    logger = init_logger(verbose=args.verbose, name="problog_lfi", out=logf)
     create_logger("problog_lfi", args.verbose - 1)
 
     program = PrologFile(args.model)
@@ -1580,6 +1585,9 @@ def main(argv, result_handler=None):
         retcode = result_handler((False, err), outf=outf)
 
     if args.logger is not None:
+        logf.close()
+
+    if args.output is not None:
         outf.close()
 
     if retcode:
@@ -1590,10 +1598,11 @@ def print_result(d, outf, precision=8):
     success, d = d
     if success:
         score, weights, names, iterations, lfi = d
-        # print(score, weights, names, iterations, file=outf)
+        weights = list(map(lambda x: round(x, precision), weights))
+        print(score, weights, names, iterations, file=outf)
         return 0
     else:
-        # print(process_error(d), file=outf)
+        print(process_error(d), file=outf)
         return 1
 
 
@@ -1613,10 +1622,10 @@ def print_result_json(d, outf, precision=8):
             ],
             "model": lfi.get_model(),
         }
-        # print(json.dumps(results), file=outf)
+        print(json.dumps(results), file=outf)
     else:
         results = {"SUCCESS": False, "err": vars(d)}
-        # print(json.dumps(results), file=outf)
+        print(json.dumps(results), file=outf)
     return 0
 
 
