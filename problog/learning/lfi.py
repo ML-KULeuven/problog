@@ -871,7 +871,6 @@ class LFIProblem(LogicProgram):
         fact_marg = defaultdict(int)
         fact_body = defaultdict(int)
         fact_par = defaultdict(int)
-        fact_count = defaultdict(int)
 
         score = 0.0
         for m, pEvidence, result in results:
@@ -898,7 +897,6 @@ class LFIProblem(LogicProgram):
                         elif o_index >= 0 and len(index) > 1:
                             # First Order AD
                             par_marg[(o_index, *index[1:])] = value
-                fact_count[index] += m
 
             for index, value in par_marg.items():
                 fact_par[index] += value * m
