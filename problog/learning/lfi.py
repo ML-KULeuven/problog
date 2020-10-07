@@ -145,7 +145,6 @@ class LFIProblem(LogicProgram):
         leakprob=None,
         propagate_evidence=True,
         normalize=False,
-        log=False,
         eps=1e-4,
         **extra
     ):
@@ -175,7 +174,6 @@ class LFIProblem(LogicProgram):
         """
         LogicProgram.__init__(self)
         self.source = source
-        self._log = log
         self._eps = eps
 
         # The names of the atom for which we want to learn weights.
@@ -412,7 +410,7 @@ class LFIProblem(LogicProgram):
                     ad_evidences.append(d)
 
                 # add all evidence in the example to ad_evidences
-                for atom, value, cvalue in example:
+                for atom, value in example:
                     # if atom has a tunable probability to learn
                     if any([atom.signature == name.signature for name in self.names]):
                         # Propositional evidence
@@ -486,18 +484,18 @@ class LFIProblem(LogicProgram):
                     for d in grounded_ad_evidences:
                         for key, value in d.items():
                             if value is not None:
-                                evidence_set.add((key, value, None))
+                                evidence_set.add((key, value))
 
                     for key, value in non_ad_evidence.items():
-                        evidence_set.add((key, value, None))
+                        evidence_set.add((key, value))
 
-                    atoms, values, cvalues = zip(*evidence_set)
-                    result.add(index, atoms, values, cvalues)
+                    atoms, values = zip(*evidence_set)
+                    result.add(index, atoms, values)
 
                 else:
                     # (No AD case) or (Inconsistent Evidence Case)
-                    atoms, values, cvalues = zip(*example)
-                    result.add(index, atoms, values, cvalues)
+                    atoms, values = zip(*example)
+                    result.add(index, atoms, values)
             # logger.debug(
             #     "\nProcessed Examples:\n\t"
             #     + "\n\t".join(
@@ -506,8 +504,6 @@ class LFIProblem(LogicProgram):
             #             + str(ex.atoms)
             #             + "\tValues: "
             #             + str(ex.values)
-            #             + "\tContinuous Values: "
-            #             + str(ex.n)
             #             for ex in result
             #         ]
             #     )
@@ -517,8 +513,8 @@ class LFIProblem(LogicProgram):
             # smarter: compile-once all examples with same atoms
             result = ExampleSet()
             for index, example in enumerate(self.examples):
-                atoms, values, cvalues = zip(*example)
-                result.add(index, atoms, values, cvalues)
+                atoms, values = zip(*example)
+                result.add(index, atoms, values)
             return result
 
     def _compile_examples(self):
@@ -837,10 +833,7 @@ class LFIProblem(LogicProgram):
 
         getLogger("problog_lfi").debug("Evaluating examples:")
 
-        if self._log:
-            evaluator = ExampleEvaluatorLog(self._weights, eps=self._eps)
-        else:
-            evaluator = ExampleEvaluator(self._weights, eps=self._eps)
+        evaluator = ExampleEvaluator(self._weights, eps=self._eps)
 
         results = []
         for i, example in enumerate(self._compiled_examples):
@@ -1029,12 +1022,12 @@ class ExampleSet(object):
     def __init__(self):
         self._examples = {}
 
-    def add(self, index, atoms, values, cvalues):
+    def add(self, index, atoms, values):
         ex = self._examples.get((atoms, values))
         if ex is None:
-            self._examples[(atoms, values)] = Example(index, atoms, values, cvalues)
+            self._examples[(atoms, values)] = Example(index, atoms, values)
         else:
-            ex.add_index(index, cvalues)
+            ex.add_index(index)
 
     def __iter__(self):
         return iter(self._examples.values())
@@ -1044,14 +1037,14 @@ class ExampleSet(object):
 
 
 class Example(object):
-    def __init__(self, index, atoms, values, cvalues):
+    def __init__(self, index, atoms, values):
         """An example consists of a list of atoms and their corresponding values (True/False).
-        Different continuous values are all mapped to True and stored in self.n.
+        Different indices are stored in self.indices
         """
         self.atoms = tuple(atoms)
         self.values = tuple(values)
         self.compiled = []
-        self.n = {tuple(cvalues): [index]}
+        self.n = [index]
 
     def __hash__(self):
         return hash((self.atoms, self.values))
@@ -1158,12 +1151,8 @@ class Example(object):
                 "\tCompiled program:\n\t\t" + str(self.compiled).replace("\n", "\n\t\t")
             )
 
-    def add_index(self, index, cvalues):
-        k = tuple(cvalues)
-        if k in self.n:
-            self.n[k].append(index)
-        else:
-            self.n[k] = [index]
+    def add_index(self, index):
+        self.n.append(index)
 
 
 class ExampleEvaluator(SemiringDensity):
@@ -1207,19 +1196,13 @@ class ExampleEvaluator(SemiringDensity):
 
     def __call__(self, example):
         """Evaluate the model with its current estimates for all examples."""
-        at = example.atoms
-        val = example.values
-        comp = example.compiled
-        results = []
-        for cval, n in example.n.items():
-            results.append(self._call_internal(at, val, cval, comp, n))
-        return results
+        return [self._call_internal(example.atoms, example.values, example.compiled, example.n)]
 
-    def _call_internal(self, at, val, cval, comp, n):
+    def _call_internal(self, at, val, comp, n):
 
         evidence = {}
 
-        for a, v, cv in zip(at, val, cval):
+        for a, v in zip(at, val):
             if a in evidence:
                 if evidence[a] != v:
                     context = " (found evidence({},{}) and evidence({},{}) in example {})".format(
@@ -1259,114 +1242,6 @@ class ExampleEvaluator(SemiringDensity):
 
         return len(n), p_evidence, p_queries
 
-
-class ExampleEvaluatorLog(SemiringLogProbability):
-    def __init__(self, weights, eps):
-        SemiringLogProbability.__init__(self)
-        self._weights = weights
-        self._eps = eps
-
-    def _get_weight(self, index, args, strict=True):
-        index = int(index)
-        weight = self._weights[index]
-        if isinstance(weight, dict):
-            if strict:
-                weight = weight[args]
-            else:
-                weight = weight.get(args, 0.0)
-        try:
-            result = math.log(weight)
-        except ValueError:
-            return float("-inf")
-        return result
-
-    def value(self, a):
-        """Overrides from SemiringProbability.
-        Replaces a weight of the form ``lfi(i, t(...))`` by its current estimated value.
-        Other weights are passed through unchanged.
-        :param a: term representing the weight
-        :type a: Term
-        :return: current weight
-        :rtype: float
-        """
-        if isinstance(a, Term) and a.functor == "lfi_prob":
-            rval = self._get_weight(*a.args)
-        else:
-            rval = math.log(float(a))
-        return rval
-
-    def __call__(self, example):
-        """Evaluate the model with its current estimates for all examples."""
-        at = example.atoms
-        val = example.values
-        comp = example.compiled
-        results = []
-        for cval, n in example.n.items():
-            results.append(self._call_internal(at, val, cval, comp, n))
-        return results
-
-    def _call_internal(self, at, val, cval, comp, n):
-        evidence = {}
-        self._cevidence = {}
-        for a, v, cv in zip(at, val, cval):
-            if a in evidence:
-                if cv is not None:
-                    if self._cevidence[a] != cv:
-                        context = " (found evidence({},{}) and evidence({},{}) in example {})".format(
-                            a,
-                            evidence[a],
-                            a,
-                            cv,
-                            ",".join([str(ni) for ni in n])
-                            if isinstance(n, list)
-                            else n + 1,
-                        )
-                        raise InconsistentEvidenceError(source=a, context=context)
-                if evidence[a] != v:
-                    context = " (found evidence({},{}) and evidence({},{}) in example {})".format(
-                        a,
-                        evidence[a],
-                        a,
-                        v,
-                        ",".join([str(ni) for ni in n])
-                        if isinstance(n, list)
-                        else n + 1,
-                    )
-                    raise InconsistentEvidenceError(source=a, context=context)
-            else:
-                if cv is not None:
-                    self._cevidence[a] = cv
-                evidence[a] = v
-
-        p_values = {}
-        # TODO: this loop is not required if there are no clfi_facts
-        for idx, node, ty in comp:
-            if ty == "atom":
-                name = node.name
-                # TODO: when is this wrapped in 'choice'? Before compilation?
-                if name is not None and name.functor == "clfi_fact":
-                    clfi = node.probability
-                    ev_atom = clfi.args[2]
-                    value = self._cevidence.get(ev_atom)
-                    if value is not None:
-                        p_values[node.name] = value
-
-        try:
-            evaluator = comp.get_evaluator(semiring=self, evidence=evidence)
-        except InconsistentEvidenceError as err:
-            n = ",".join([str(ni + 1) for ni in n]) if isinstance(n, list) else n + 1
-            context = err.context + " (example {})".format(n)
-            raise InconsistentEvidenceError(err.source, context)
-
-        p_queries = {}
-        # Probability of query given evidence
-        for name, node, label in evaluator.formula.labeled():
-            w = evaluator.evaluate_fact(node)
-            p_queries[name] = w
-        p_evidence = evaluator.evaluate_evidence()
-        return len(n), p_evidence, p_queries, p_values
-
-
 def extract_evidence(pl):
     engine = DefaultEngine()
     atoms = engine.query(pl, Term("evidence", None, None))
@@ -1381,10 +1256,7 @@ def extract_evidence(pl):
     result = []
     for at, vl in atoms:
         vlr = str2bool(vl)
-        vlv = None
-        if vlr is None:
-            vlr, vlv = str2num(vl)
-        result.append((at, vlr, vlv))
+        result.append((at, vlr))
     return result
 
 
