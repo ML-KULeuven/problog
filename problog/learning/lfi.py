@@ -1595,7 +1595,11 @@ def print_result(d, outf, precision=8):
     if success:
         score, weights, names, iterations, lfi = d
         weights = list(map(lambda x: round(x, precision), weights))
-        print(score, weights, names, iterations, file=outf)
+        print("Score = " + str(score), file=outf)
+        print("Tunable Clauses = " + str(names), file=outf)
+        print("Learned Weights = " + str(weights), file=outf)
+        print("Number of iterations taken for convergence = " + str(iterations), file=outf)
+        # print(score, weights, names, iterations, file=outf)
         return 0
     else:
         print(process_error(d), file=outf)
