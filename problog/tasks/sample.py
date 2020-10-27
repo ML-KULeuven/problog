@@ -245,9 +245,8 @@ class SampledFormula(LogicFormula):
                         value = random.random() <= p / r
                     if value:
                         self.probability *= p
-                        self.groups[
-                            origin
-                        ] = None  # Other choices in group are not allowed
+                        # Other choices in group are not allowed
+                        self.groups[origin] = None
                     elif r is not None:
                         self.groups[origin] = r - p  # Adjust remaining probability
                     if value:

@@ -149,7 +149,7 @@ def main(argv, result_handler=None):
             with open(tmpfile, "w") as f:
                 print(dot, file=f)
             svg = subprocess_check_output(["dot", tmpfile, "-Tsvg"])
-            final_result = (True, gp.to_dot())
+            final_result = (True, svg)
         elif outformat == "cnf":
             cnfnames = False
             if args.verbose > 0:

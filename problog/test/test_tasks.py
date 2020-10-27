@@ -212,7 +212,9 @@ class TestTasks(unittest.TestCase):
     def test_time(self):
         file_name = test_folder / "tasks" / "some_heads.pl"
         result = time1.main([str(file_name)])
-        self.assertEqual(6, len(result))
+        self.assertEqual(1, len(result))
+        #TODO: assert 6 within results
+        assert False
 
     # BN
     def check_bn(self, file_name, expected):

@@ -125,13 +125,7 @@ def csv_load(filename, predicate):
                     )
                 )
         return (
-            "INSERT INTO "
-            + predicate
-            + "("
-            + ",".join(columns)
-            + ") VALUES ("
-            + ",".join(values)
-            + ");"
+            f"INSERT INTO {predicate}({','.join(columns)}) VALUES ({','.join(values)});"
         )
 
     cursor.execute(insert_statement(row))

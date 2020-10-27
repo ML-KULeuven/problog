@@ -768,7 +768,7 @@ def _builtin_eq(arg1, arg2, **kwdargs):
 
 # noinspection PyUnusedLocal
 def _builtin_neq(arg1, arg2, **kwdargs):
-    """``A \\= B``
+    """``A \= B``
         A and B not both variables
     """
     try:
@@ -780,7 +780,7 @@ def _builtin_neq(arg1, arg2, **kwdargs):
 
 # noinspection PyUnusedLocal
 def _builtin_notsame(arg1, arg2, **kwdargs):
-    """``A \\== B``"""
+    """``A \== B``"""
     return not arg1 == arg2
 
 
@@ -843,7 +843,7 @@ def _builtin_ge(arg1, arg2, engine=None, **k):
 
 
 def _builtin_val_neq(a, b, engine=None, **k):
-    """``A =\\= B``
+    """``A =\= B``
         A and B are ground
     """
     check_mode((a, b), ["gg"], functor="=\\=", **k)
@@ -1608,7 +1608,7 @@ def _builtin_sample_uniform(key, lst, result, database=None, target=None, **kwda
     The first argument is used as an identifier such that calls with the same key enforce mutual \
     exclusivity on the results, that is, the probability of
 
-        sample_uniform(K,L,R1), sample_uniform(K,L,R2), R1 \\== R2
+        sample_uniform(K,L,R1), sample_uniform(K,L,R2), R1 \== R2
 
     is 0.
 

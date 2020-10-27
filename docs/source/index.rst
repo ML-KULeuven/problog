@@ -11,14 +11,12 @@ Welcome to the ProbLog 2.1 documentation.
 Contents:
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 3
    :numbered:
 
    install
-   cli
-   python
    modeling_basic
-   modeling_advanced
+   cli
    prolog
    faq
    api

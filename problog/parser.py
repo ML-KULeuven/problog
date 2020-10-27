@@ -504,6 +504,76 @@ class PrologParser(object):
                 ),
                 pos + 3,
             )
+        elif s[pos : pos + 3] == "=\=":
+            return (
+                Token(
+                    "=\=",
+                    pos,
+                    binop=(700, "xfx", self.factory.build_binop),
+                    functor=self._next_paren_open(s, pos),
+                ),
+                pos + 3,
+            )
+        elif s[pos : pos + 3] == "=@=":
+            return (
+                Token(
+                    "=@=",
+                    pos,
+                    binop=(700, "xfx", self.factory.build_binop),
+                    functor=self._next_paren_open(s, pos),
+                ),
+                pos + 3,
+            )
+        elif s[pos : pos + 3] == "=..":
+            return (
+                Token(
+                    "=..",
+                    pos,
+                    binop=(700, "xfx", self.factory.build_binop),
+                    functor=self._next_paren_open(s, pos),
+                ),
+                pos + 3,
+            )
+        elif s[pos : pos + 2] == "==":
+            return (
+                Token(
+                    "==",
+                    pos,
+                    binop=(700, "xfx", self.factory.build_binop),
+                    functor=self._next_paren_open(s, pos),
+                ),
+                pos + 2,
+            )
+        elif s[pos : pos + 2] == "=>":
+            return (
+                Token(
+                    "=>",
+                    pos,
+                    binop=(700, "yfx", self.factory.build_binop),
+                    functor=self._next_paren_open(s, pos),
+                ),
+                pos + 2,
+            )
+        if s[pos : pos + 2] == "=<":
+            return (
+                Token(
+                    "=<",
+                    pos,
+                    binop=(700, "xfx", self.factory.build_binop),
+                    functor=self._next_paren_open(s, pos),
+                ),
+                pos + 2,
+            )
+        elif s[pos : pos + 3] == "=:=":
+            return (
+                Token(
+                    "=:=",
+                    pos,
+                    binop=(700, "xfx", self.factory.build_binop),
+                    functor=self._next_paren_open(s, pos),
+                ),
+                pos + 3,
+            )
         elif s[pos : pos + 3] == "=\\=":
             return (
                 Token(
@@ -662,6 +732,66 @@ class PrologParser(object):
         return Token("[", pos, atom=False, special=SPECIAL_BRACK_OPEN), pos + 1
 
     def _token_backslash(self, s, pos):
+        if s[pos : pos + 2] == "\\\\":
+            return (
+                Token(
+                    "\\\\",
+                    pos,
+                    unop=(200, "fy", self.factory.build_unop),
+                    functor=self._next_paren_open(s, pos),
+                ),
+                pos + 2,
+            )
+        elif s[pos : pos + 2] == "\\+":
+            return (
+                Token(
+                    "\\+",
+                    pos,
+                    unop=(900, "fy", self.factory.build_not),
+                    functor=self._next_paren_open(s, pos),
+                ),
+                pos + 2,
+            )
+        elif s[pos : pos + 4] == "\\=@=":
+            return (
+                Token(
+                    "\\+",
+                    pos,
+                    binop=(700, "xfx", self.factory.build_binop),
+                    functor=self._next_paren_open(s, pos),
+                ),
+                pos + 4,
+            )
+        elif s[pos : pos + 3] == "\\==":
+            return (
+                Token(
+                    "\\==",
+                    pos,
+                    binop=(700, "xfx", self.factory.build_binop),
+                    functor=self._next_paren_open(s, pos),
+                ),
+                pos + 3,
+            )
+        elif s[pos : pos + 2] == "\\=":
+            return (
+                Token(
+                    "\\=",
+                    pos,
+                    binop=(700, "xfx", self.factory.build_binop),
+                    functor=self._next_paren_open(s, pos),
+                ),
+                pos + 2,
+            )
+        elif s[pos : pos + 2] == "\\/":
+            return (
+                Token(
+                    "\\/",
+                    pos,
+                    binop=(500, "yfx", self.factory.build_binop),
+                    functor=self._next_paren_open(s, pos),
+                ),
+                pos + 2,
+            )
         if s[pos : pos + 2] == "\\\\":
             return (
                 Token(

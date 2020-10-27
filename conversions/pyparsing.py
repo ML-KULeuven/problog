@@ -348,18 +348,18 @@ class ParseSyntaxException(ParseFatalException):
         )
 
 
-# ~ class ReparseException(ParseBaseException):
-# ~ """Experimental class - parse actions can raise this exception to cause
-# ~ pyparsing to reparse the input string:
-# ~ - with a modified input string, and/or
-# ~ - with a modified start location
-# ~ Set the values of the ReparseException in the constructor, and raise the
-# ~ exception in a parse action to cause pyparsing to use the new string/location.
-# ~ Setting the values as None causes no change to be made.
-# ~ """
-# ~ def __init_( self, newstring, restartLoc ):
-# ~ self.newParseText = newstring
-# ~ self.reparseLoc = restartLoc
+#~ class ReparseException(ParseBaseException):
+    #~ """Experimental class - parse actions can raise this exception to cause
+       #~ pyparsing to reparse the input string:
+        #~ - with a modified input string, and/or
+        #~ - with a modified start location
+       #~ Set the values of the ReparseException in the constructor, and raise the
+       #~ exception in a parse action to cause pyparsing to use the new string/location.
+       #~ Setting the values as None causes no change to be made.
+       #~ """
+    #~ def __init_( self, newstring, restartLoc ):
+        #~ self.newParseText = newstring
+        #~ self.reparseLoc = restartLoc
 
 
 class RecursiveGrammarException(Exception):
@@ -594,11 +594,11 @@ class ParseResults(object):
         """Inserts new element at location index in the list of parsed tokens."""
         self.__toklist.insert(index, insStr)
         # fixup indices in token dictionary
-        # ~ for name in self.__tokdict:
-        # ~ occurrences = self.__tokdict[name]
-        # ~ for k, (value, position) in enumerate(occurrences):
-        # ~ occurrences[k] = _ParseResultsWithOffset(value, position + (position > index))
-        for name, occurrences in self.__tokdict.items():
+        #~ for name in self.__tokdict:
+            #~ occurrences = self.__tokdict[name]
+            #~ for k, (value, position) in enumerate(occurrences):
+                #~ occurrences[k] = _ParseResultsWithOffset(value, position + (position > index))
+        for name,occurrences in self.__tokdict.items():
             for k, (value, position) in enumerate(occurrences):
                 occurrences[k] = _ParseResultsWithOffset(
                     value, position + (position > index)
@@ -971,25 +971,25 @@ def nullDebugAction(*args):
 
 
 # Only works on Python 3.x - nonlocal is toxic to Python 2 installs
-# ~ 'decorator to trim function calls to match the arity of the target'
-# ~ def _trim_arity(func, maxargs=3):
-# ~ if func in singleArgBuiltins:
-# ~ return lambda s,l,t: func(t)
-# ~ limit = 0
-# ~ foundArity = False
-# ~ def wrapper(*args):
-# ~ nonlocal limit,foundArity
-# ~ while 1:
-# ~ try:
-# ~ ret = func(*args[limit:])
-# ~ foundArity = True
-# ~ return ret
-# ~ except TypeError:
-# ~ if limit == maxargs or foundArity:
-# ~ raise
-# ~ limit += 1
-# ~ continue
-# ~ return wrapper
+#~ 'decorator to trim function calls to match the arity of the target'
+#~ def _trim_arity(func, maxargs=3):
+    #~ if func in singleArgBuiltins:
+        #~ return lambda s,l,t: func(t)
+    #~ limit = 0
+    #~ foundArity = False
+    #~ def wrapper(*args):
+        #~ nonlocal limit,foundArity
+        #~ while 1:
+            #~ try:
+                #~ ret = func(*args[limit:])
+                #~ foundArity = True
+                #~ return ret
+            #~ except TypeError:
+                #~ if limit == maxargs or foundArity:
+                    #~ raise
+                #~ limit += 1
+                #~ continue
+    #~ return wrapper
 
 # this version is Python 2.x-3.x cross-compatible
 "decorator to trim function calls to match the arity of the target"
@@ -1224,9 +1224,9 @@ class ParserElement(object):
         debugging = self.debug  # and doActions )
 
         if debugging or self.failAction:
-            # ~ print ("Match",self,"at loc",loc,"(%d,%d)" % ( lineno(loc,instring), col(loc,instring) ))
-            if self.debugActions[0]:
-                self.debugActions[0](instring, loc, self)
+            #~ print ("Match",self,"at loc",loc,"(%d,%d)" % ( lineno(loc,instring), col(loc,instring) ))
+            if (self.debugActions[0] ):
+                self.debugActions[0]( instring, loc, self )
             if callPreParse and self.callPreparse:
                 preloc = self.preParse(instring, loc)
             else:
@@ -1294,9 +1294,9 @@ class ParserElement(object):
                         )
 
         if debugging:
-            # ~ print ("Matched",self,"->",retTokens.asList())
-            if self.debugActions[1]:
-                self.debugActions[1](instring, tokensStart, loc, self, retTokens)
+            #~ print ("Matched",self,"->",retTokens.asList())
+            if (self.debugActions[1] ):
+                self.debugActions[1]( instring, tokensStart, loc, self, retTokens )
 
         return loc, retTokens
 

@@ -1,0 +1,29 @@
+evidence(fa, [10,11]).
+---
+evidence(fa, [12,12]).
+---
+evidence(fa, [8,7]).
+---
+evidence(fa, [11,10]).
+---
+evidence(fa, [7,7]).
+---
+evidence(fa, [13,12]).
+---
+evidence(fa, [20,20]).
+---
+evidence(fa, [21,21]).
+---
+evidence(fa, [22,22]).
+---
+evidence(fa, [18,19]).
+---
+evidence(fa, [19,19]).
+---
+evidence(fa, [19,20]).
+---
+evidence(fa, [19,18]).
+---
+evidence(fa, [23,22]).
+---
+evidence(fa, [21,21]).

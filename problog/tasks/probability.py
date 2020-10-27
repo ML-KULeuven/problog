@@ -105,7 +105,6 @@ def execute(
     :param knowledge: knowledge compilation class or identifier
     :param semiring: semiring to use
     :param parse_class: prolog parser to use
-    :param debug: enable advanced error output
     :param engine_debug: enable engine debugging output
     :param kwdargs: additional arguments
     :return: tuple where first value indicates success, and second value contains result details

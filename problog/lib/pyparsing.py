@@ -962,31 +962,36 @@ def nullDebugAction(*args):
 
 
 # Only works on Python 3.x - nonlocal is toxic to Python 2 installs
-# ~ 'decorator to trim function calls to match the arity of the target'
-# ~ def _trim_arity(func, maxargs=3):
-# ~ if func in singleArgBuiltins:
-# ~ return lambda s,l,t: func(t)
-# ~ limit = 0
-# ~ foundArity = False
-# ~ def wrapper(*args):
-# ~ nonlocal limit,foundArity
-# ~ while 1:
-# ~ try:
-# ~ ret = func(*args[limit:])
-# ~ foundArity = True
-# ~ return ret
-# ~ except TypeError:
-# ~ if limit == maxargs or foundArity:
-# ~ raise
-# ~ limit += 1
-# ~ continue
-# ~ return wrapper
+#~ 'decorator to trim function calls to match the arity of the target'
+#~ def _trim_arity(func, maxargs=3):
+    #~ if func in singleArgBuiltins:
+        #~ return lambda s,l,t: func(t)
+    #~ limit = 0
+    #~ foundArity = False
+    #~ def wrapper(*args):
+        #~ nonlocal limit,foundArity
+        #~ while 1:
+            #~ try:
+                #~ ret = func(*args[limit:])
+                #~ foundArity = True
+                #~ return ret
+            #~ except TypeError:
+                #~ if limit == maxargs or foundArity:
+                    #~ raise
+                #~ limit += 1
+                #~ continue
+    #~ return wrapper
 
 # this version is Python 2.x-3.x cross-compatible
-"decorator to trim function calls to match the arity of the target"
 
 
 def _trim_arity(func, maxargs=2):
+    """
+    Decorator to trim function calls to match the arity of the target
+    :param func:
+    :param maxargs:
+    :return:
+    """
     if func in singleArgBuiltins:
         return lambda s, l, t: func(t)
     limit = [0]
@@ -1043,13 +1048,11 @@ class ParserElement(object):
         self.ignoreExprs = list()
         self.debug = False
         self.streamlined = False
-        self.mayIndexError = (
-            True
-        )  # used to optimize exception handling for subclasses that don't advance parse index
+        # mayIndexError : used to optimize exception handling for subclasses that don't advance parse index
+        self.mayIndexError = True
         self.errmsg = ""
-        self.modalResults = (
-            True
-        )  # used to mark results names as modal (report only last) or cumulative (list all)
+        # modelResults : used to mark results names as modal (report only last) or cumulative (list all)
+        self.modalResults = True
         self.debugActions = (None, None, None)  # custom debug actions
         self.re = None
         self.callPreparse = True  # used to avoid redundant calls to preParse
@@ -3146,9 +3149,8 @@ class NotAny(ParseElementEnhance):
     def __init__(self, expr):
         super(NotAny, self).__init__(expr)
         # ~ self.leaveWhitespace()
-        self.skipWhitespace = (
-            False
-        )  # do NOT use self.leaveWhitespace(), don't want to propagate to exprs
+        # skipWhitespace : do NOT use self.leaveWhitespace(), don't want to propagate to exprs
+        self.skipWhitespace = False
         self.mayReturnEmpty = True
         self.errmsg = "Found unwanted token, " + _ustr(self.expr)
 
@@ -4376,6 +4378,20 @@ cppStyleComment = Regex(
 
 javaStyleComment = cppStyleComment
 pythonStyleComment = Regex(r"#.*").setName("Python style comment")
+_commasepitem = (
+    Combine(
+        OneOrMore(
+            Word(printables, excludeChars=",")
+            + Optional(Word(" \t") + ~Literal(",") + ~LineEnd())
+        )
+    )
+    .streamline()
+    .setName("commaItem")
+)
+commaSeparatedList = delimitedList(
+    Optional(quotedString.copy() | _commasepitem, default="")
+).setName("commaSeparatedList")
+
 _commasepitem = (
     Combine(
         OneOrMore(

@@ -1,0 +1,18 @@
+evidence(a(1, 1), true).
+evidence(b(2, 2), false).
+---
+evidence(a(1, 1), true).
+evidence(b(2, 2), false).
+evidence(c(2, 2), false).
+---
+evidence(a(2, 2), true).
+evidence(c(1, 1), true).
+---
+evidence(b(1, 1), false).
+evidence(c(2, 2), true).
+---
+evidence(b(2, 2)).
+---
+evidence(a(2, 2), false).
+evidence(b(2, 2), false).
+evidence(c(2, 2)).

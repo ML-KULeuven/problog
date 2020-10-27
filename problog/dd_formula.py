@@ -94,10 +94,8 @@ class DD(LogicFormula, EvaluatableDSP):
                 mgr.nodes[index - 1] = result
         return mgr.negate(result) if negate else result
 
-    def _create_inode(
-        self, node
-    ):  # TODO: Recursion is slow in python. Change build_dd to not use this and get_inode?
-        if type(node).__name__ == "conj":
+    def _create_inode(self, node):
+        if type(node).__name__ == 'conj':
             return self.get_manager().conjoin(
                 *[self.get_inode(c) for c in node.children]
             )
@@ -183,9 +181,8 @@ class DDManager(object):
     """
 
     def __init__(self):
-        self.nodes = (
-            []
-        )  # Stores inodes (only conjoin and disjoin, the remaining atoms are in formula.atom2var)
+        # nodes: Stores inodes (only conjoin and disjoin, the remaining atoms are in formula.atom2var)
+        self.nodes = []
         self.constraint_dd = None
 
     def set_node(self, index, node):
@@ -475,7 +472,7 @@ class DDEvaluator(Evaluator):
                 )
             else:
                 formula = LogicNNF()
-                i = self.formula._to_formula(formula, self.evidence_inode)
+                i = self.formula._to_formula(formula, self.evidence_inode, {})
                 if i is None:  # = Node(False)
                     # evaluate(index=i=None,..) evaluates the LABEL.QUERY's of formula.
                     formula.add_name(
@@ -539,7 +536,7 @@ class DDEvaluator(Evaluator):
             query_sdd = self._get_manager().conjoin(query_def_inode, evidence_inode)
 
             formula = LogicNNF()
-            i = self.formula._to_formula(formula, query_sdd)
+            i = self.formula._to_formula(formula, query_sdd, {})
 
             if i is None:  # = SddNode(False)
                 # evaluate(index=i=None,..) evaluates the LABEL.QUERY's of formula.
@@ -554,7 +551,7 @@ class DDEvaluator(Evaluator):
             self._get_manager().deref(query_sdd)
 
             # TODO only normalize when there are evidence or constraints.
-            #            result = self.semiring.normalize(result, self.normalization)
+            # result = self.semiring.normalize(result, self.normalization)
             result = self.semiring.normalize(result, self._evidence_weight)
         return self.semiring.result(result, self.formula)
 

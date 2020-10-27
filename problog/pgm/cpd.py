@@ -528,12 +528,12 @@ class Variable(object):
     def to_problog_value(self, value, value_as_term=True):
         if self.boolean_true is None:
             if type(value) is frozenset and len(value) == 1:
-                value, = value
+                (value,) = value
             if type(value) is frozenset:
                 # It is a disjunction of possible values
                 if len(value) == len(self.values) - 1:
                     # This is the negation of one value
-                    new_value, = frozenset(self.values) - value
+                    (new_value,) = frozenset(self.values) - value
                     if value_as_term:
                         return "\\+" + self.clean() + '("' + str(new_value) + '")'
                     else:

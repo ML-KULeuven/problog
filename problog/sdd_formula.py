@@ -436,9 +436,7 @@ class SDDManager(DDManager):
 
             # setup
             wmc_manager = sdd.WmcManager(node, log_mode=logspace)
-            for (
-                n
-            ) in weights:  # TODO wmc_manager.set_literal_weights_from_array is faster
+            for n in weights:  # TODO wmc_manager.set_literal_weights_from_array is faster
                 pos, neg = weights[n]
                 if n <= varcount:
                     wmc_manager.set_literal_weight(n, pos)
@@ -613,6 +611,9 @@ class SDDManager(DDManager):
 
     def wmc_true(self, weights, semiring):
         return self.wmc(self.true(), weights, semiring)
+
+    def count(self):
+        return self.get_manager().count()
 
     def get_deepcopy_noref(
         self,

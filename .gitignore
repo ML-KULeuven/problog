@@ -19,6 +19,7 @@ problog.egg-info/
 sandbox/
 data/
 test-reports/
+problog/test/resulttable
 
 problog/lib/python2/
 problog/lib/python3/
@@ -27,4 +28,7 @@ problog/lib/python3/
 
 web/cache
 web/logs
-problog/test/resulttable
+
+*.out
+*.log
+
