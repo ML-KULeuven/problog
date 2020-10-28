@@ -91,6 +91,10 @@ class TimerCollection(object):
     def header(self):
         return ";".join([tmr.name for tmr in self.timers])
 
+    def __iter__(self):
+        for t in self.timers:
+            yield t
+
     def __str__(self):
         return ";".join([tmr.elapsed_time_string for tmr in self.timers])
 
