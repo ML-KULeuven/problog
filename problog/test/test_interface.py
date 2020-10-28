@@ -53,18 +53,10 @@ class TestInterfaces(unittest.TestCase):
     def test_cli_learn(self):
         problogcli = root_path("problog-cli.py")
 
-        model = root_path("problog", "learning", "test1_model.pl")
-        examples = root_path("problog", "learning", "test1_examples.pl")
+        model = root_path("test", "lfi", "AD", "ADtest_8_1.pl")
+        examples = root_path("test", "lfi", "AD", "ADtest_8_1.ev")
 
         out = subprocess_check_output(
             [sys.executable, problogcli, "lfi", model, examples]
         )
-        outline = out.strip().split()
-
-        self.assertGreater(int(outline[-1]), 2)
-
-        weights = [float(outline[i].strip("[],")) for i in (1, 2, 3, 4)]
-
-        self.assertAlmostEqual(weights[0], 1.0 / 3)
-        self.assertAlmostEqual(weights[2], 1.0)
-        self.assertAlmostEqual(weights[3], 0.0)
+        assert out.startswith('0.0 [0.4, 0.2, 0.4] [t(_)::a(X), t(_)::b(Y), t(_)::c(Z)]')
