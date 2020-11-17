@@ -240,8 +240,9 @@ class SDDExplicitEvaluator(SDDEvaluator):
         Evaluate the circuit (root node) with the current weights (self.weights)
         :return: The WMC of the circuit with the current weights
         """
-        pr_semiring = isinstance(
-            self.semiring, (SemiringLogProbability, SemiringProbability)
+        pr_semiring = (
+            type(self.semiring) == SemiringProbability
+            or type(self.semiring) == SemiringLogProbability
         )
         query_def_inode = self.formula.get_root_inode()
         return self._get_manager().wmc(

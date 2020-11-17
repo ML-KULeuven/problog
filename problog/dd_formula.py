@@ -95,7 +95,7 @@ class DD(LogicFormula, EvaluatableDSP):
         return mgr.negate(result) if negate else result
 
     def _create_inode(self, node):
-        if type(node).__name__ == 'conj':
+        if type(node).__name__ == "conj":
             return self.get_manager().conjoin(
                 *[self.get_inode(c) for c in node.children]
             )
@@ -441,8 +441,9 @@ class DDEvaluator(Evaluator):
 
     def propagate(self):
         self._initialize()
-        if isinstance(self.semiring, SemiringLogProbability) or isinstance(
-            self.semiring, SemiringProbability
+        if (
+            type(self.semiring) == SemiringLogProbability
+            or type(self.semiring) == SemiringProbability
         ):
             self.normalization = self._get_manager().wmc_true(
                 self.weights, self.semiring
@@ -459,8 +460,9 @@ class DDEvaluator(Evaluator):
                 constraint_inode, *evidence_nodes
             )
 
-            if isinstance(self.semiring, SemiringLogProbability) or isinstance(
-                self.semiring, SemiringProbability
+            if (
+                type(self.semiring) == SemiringLogProbability
+                or type(self.semiring) == SemiringProbability
             ):
                 result = self._get_manager().wmc(
                     self.evidence_inode, self.weights, self.semiring
@@ -495,8 +497,9 @@ class DDEvaluator(Evaluator):
         )
 
     def evaluate(self, node):
-        if isinstance(self.semiring, SemiringLogProbability) or isinstance(
-            self.semiring, SemiringProbability
+        if (
+            type(self.semiring) == SemiringLogProbability
+            or type(self.semiring) == SemiringProbability
         ):
             return self.evaluate_standard(node)
         else:
