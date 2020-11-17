@@ -31,6 +31,8 @@ from .evaluator import Evaluatable, FormulaEvaluator, FormulaEvaluatorNSP
 from .logic import Term, Or, Clause, And, is_ground
 from .util import OrderedSet
 
+def escape(s):
+    return s.replace('"','\\"')
 
 class BaseFormula(ProbLogObject):
     """Defines a basic logic formula consisting of nodes in some logical relation.
@@ -1708,7 +1710,7 @@ label_all=True)
             elif index == 0 and index not in negative:
                 s += '%s [label="true"];\n' % index
                 negative.add(0)
-            s += 'q_%s [ label="%s", shape="plaintext" ];\n' % (q, name)
+            s += 'q_%s [ label="%s", shape="plaintext" ];\n' % (q, escape(str(name)))
             s += 'q_%s -> %s [style="dotted" %s];\n' % (q, index, opt)
             q += 1
         return s + "}"
