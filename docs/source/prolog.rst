@@ -248,7 +248,7 @@ ProbLog-specific builtins
 
  * ``try_call/N``: same as ``call/N`` but silently fail if the called predicate is undefined
  * ``subquery(+Goal, ?Probability)``: evaluate the Goal and return its probability
- * ``subquery(+Goal, +ListOfEvidence, ?Probability)``: evaluate the Goal, given the evidence, and return its Probability
+ * ``subquery(+Goal, ?Probability, +ListOfEvidence)``: evaluate the Goal, given the evidence, and return its Probability
  * ``debugprint/N``: print messages to stderr
  * ``write/N``: print messages to stdout
  * ``writenl/N``: print messages and newline to stdout
