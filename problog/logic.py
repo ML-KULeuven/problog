@@ -794,9 +794,9 @@ class Term(object):
     @classmethod
     def from_string(cls, str, factory=None, parser=None):
         if factory is None:
-            from .program import ExtendedPrologFactory
+            from .program import DefaultPrologFactory
 
-            factory = ExtendedPrologFactory()
+            factory = DefaultPrologFactory()
         if parser is None:
             from .parser import PrologParser
 
