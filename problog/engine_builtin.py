@@ -1952,7 +1952,7 @@ def _builtin_find_scope(term, scope, engine=None, database=None, **kwargs):
             nodes = 0
         else:
             define_node = database.get_node(define).children
-            nodes = define_node.find(term.args)
+            nodes = define_node.find(term)
 
     nodes = Object(frozenset(nodes))
     return [(term, nodes)]

@@ -1,3 +1,4 @@
+import bisect
 import os
 from collections import defaultdict, namedtuple
 
@@ -995,6 +996,313 @@ def intersection(l1, l2):
 
 
 class ClauseIndex(list):
+    """ Trie version """
+    def __init__(self, parent, arity):
+        list.__init__(self)
+        self.__parent = parent
+        # self.__basetype = OrderedSet
+        self.__index = TermTrieNode(functor=None, arity=None, arg_stack=None, item=None)
+        self.__optimized = False
+        self.__erased = set()
+
+    def find(self, term):
+        assert isinstance(term, Term)
+        #TODO: Provide option to return everything if there is only query/1 or something?
+        result = self.__index.find(term)
+        #print(f"Searching...{term}: {result}")
+        if self.__erased:
+            result -= self.__erased
+        return result
+
+    def append(self, item):
+        #TODO: What about List?? scope1:(0.1::a ; 0.9::b :- c). yields a list [0.1::a ; 0.9::b].
+        list.append(self, item)
+        node = self.__parent.get_node(item)
+        term = Term(node.functor, *node.args)
+        #print(f"Added {term} as {item}")
+        self.__index.add_term(term, item)
+
+    def erase(self, items):
+        self.__erased |= set(items)
+
+
+class TermTrieNode:
+
+    def __init__(self, functor, arity, arg_stack, item):
+        """
+        Use the static methods #TODO: complete
+
+        :param functor: The functor of the first argument
+        :type functor: str
+        :param arity: The arity of the first argument
+        :type arity: int
+        :param arg_stack: Stack of remaining args. If any, then at least arity number of elements should be in here.
+        :type arg_stack: List[Term]
+        :param item: The item to store
+        :param next_arg: #TODO
+        """
+        self.functor = str(functor) if functor is not None else functor  # Trie edge label
+        self.arity = arity  # Trie edge label
+        self.children = []  # Trie children of this node
+        self.var_child = None  # Trie child of this node for which next arg is a Var
+        self.arg_stack = arg_stack
+        if item is None:
+            self.item = set()
+        elif isinstance(item, set):
+            self.item = item
+        else:
+            self.item = {item} #TODO: Can this be multiple or always one??
+        self.next_arg = None  #TODO: needed when expanded; used to skip this argument
+
+    @staticmethod
+    def create_leaf(functor, arity, arg_stack, item):
+        return TermTrieNode(functor, arity, arg_stack, item)
+
+    @staticmethod
+    def _create_intermediate(functor, arity):
+        return TermTrieNode(functor, arity, None, None)
+
+    def is_leaf(self):
+        """ Whether this is a leaf node, having no children """
+        return self.arg_stack is not None and len(self.children) == 0 and self.var_child is None
+
+    def is_empty(self):
+        """ Whether this does not contain any element yet, so is neither a leaf nor an intermediate node """
+        return self.arg_stack is None and len(self.children) == 0 and self.var_child is None
+
+    def find(self, term):
+        """
+        #TODO
+        :param term:
+        :return:
+        """
+        return self._find(arg_stack=[term])
+
+    def _find(self, arg_stack, arg_skip_count=0):
+        """ Auxiliary method of find/1
+        :param arg_stack:
+        :param arg_skip_count: The number of next arguments to skip
+        :return:
+        """
+        if self.is_leaf():
+            c_arg_stack = self.arg_stack.copy()
+            # skip args
+            while arg_skip_count > 0:
+                arg_skip_count -= 1
+                c_arg_stack.pop()
+            # check match and if so, return self.item
+            if len(arg_stack) != len(c_arg_stack):
+                return set()
+            if len(arg_stack) == 0:
+                return self.item
+            c_next_arg = c_arg_stack.pop()
+            next_arg = arg_stack.pop()
+            #TODO: Does type have to be same?
+            while (len(c_arg_stack) > 0 and len(arg_stack) > 0) and \
+                    (isinstance(c_next_arg, Var) or isinstance(next_arg, Var) or
+                     (c_next_arg.arity == next_arg.arity and c_next_arg.functor == next_arg.functor)):
+                if not(isinstance(c_next_arg, Var) or isinstance(next_arg, Var)):
+                    # If it were vars, we would have skipped this arg
+                    self._add_args_to_stack(c_next_arg, c_arg_stack)
+                    self._add_args_to_stack(next_arg, arg_stack)
+                c_next_arg = c_arg_stack.pop()
+                next_arg = arg_stack.pop()
+            if len(c_arg_stack) == 0 and len(arg_stack) == 0:
+                return self.item
+            else:
+                assert len(c_arg_stack) != 0 and len(arg_stack) != 0
+                return set()
+        else:
+            results = set()
+            if arg_skip_count > 0:
+                # We are still skipping args, not checking yet
+                arg_skip_count -= 1  # skipped next functor
+                for node in self.children:
+                    #TODO: Can we avoid .copy() if we don't yet use it anyway?
+                    results |= node._find(arg_stack.copy(), arg_skip_count=arg_skip_count + node.arity)
+                if self.var_child is not None:
+                    results |= self.var_child._find(arg_stack.copy(), arg_skip_count=arg_skip_count + self.var_child.arity)
+            else:
+                first_arg = arg_stack.pop()
+                if self.var_child is not None:
+                    # Add any items from Variable child
+                    results |= self.var_child._find(arg_stack.copy())
+                if isinstance(first_arg, Var):
+                    # Go over all children but jump appropriately to the next arg..
+                    for node in self.children:
+                        results |= node._find(arg_stack.copy(), arg_skip_count=node.arity)
+                else:
+                    # Find matching child
+                    functor = first_arg.functor
+                    arity = first_arg.arity
+                    insertion_index = self._term_binary_search(self.children, str(functor), arity)
+                    if len(self.children) == insertion_index:
+                        matching_node = None
+                        found_match = False
+                    else:
+                        matching_node = self.children[insertion_index]
+                        found_match = matching_node.arity == arity and matching_node.functor == str(functor)
+                    if found_match:
+                        # Continue search within matching child
+                        self._add_args_to_stack(first_arg, arg_stack)
+                        results |= matching_node._find(arg_stack)
+            return results
+
+
+    def _add_args_to_stack(self, term, arg_stack):
+        new_args = [a if not type(a) == int else Var(a) for a in term.args].__reversed__()
+        arg_stack.extend(new_args)
+
+    def _expand_to_intermediate(self, arg_stack, item):
+        #TODO: If they're the same then don't unroll the entire thing (just undo somehow?, copy the arg_stack)
+        arg_stack_backup = self.arg_stack.copy()
+        # Compare the next tuple of functor, arity
+        new_next_arg = arg_stack.pop()
+        self._add_args_to_stack(new_next_arg, arg_stack)
+        curr_next_arg = self.arg_stack.pop()
+        self._add_args_to_stack(curr_next_arg, self.arg_stack)
+        diff_node = self  # The node on which both arg_stacks differ
+        while len(arg_stack) > 0 and len(self.arg_stack) > 0 and \
+                type(new_next_arg) == type(curr_next_arg) and \
+                ((new_next_arg.functor == curr_next_arg.functor and new_next_arg.arity == curr_next_arg.arity) or \
+                (isinstance(new_next_arg, Var) and isinstance(curr_next_arg, Var))):
+            # Keep unrolling until stacks are different (next_args are different)
+            new_diff_node = TermTrieNode._create_intermediate(curr_next_arg.functor, curr_next_arg.arity)
+            if isinstance(curr_next_arg, Var):
+                diff_node.var_child = new_diff_node
+            else:
+                diff_node.children.append(new_diff_node)
+            diff_node = new_diff_node
+            # Unroll next
+            new_next_arg = arg_stack.pop()
+            self._add_args_to_stack(new_next_arg, arg_stack)
+            curr_next_arg = self.arg_stack.pop()
+            self._add_args_to_stack(curr_next_arg, self.arg_stack)
+
+        equivalent_stacks = (len(arg_stack) == 0 == len(self.arg_stack)) and \
+                            new_next_arg.functor == curr_next_arg.functor and \
+                            new_next_arg.arity == curr_next_arg.arity
+        if equivalent_stacks or (isinstance(new_next_arg, Var) and isinstance(curr_next_arg, Var)):
+            # They were equivalent. Restore stack and just add the item
+            self.arg_stack = arg_stack_backup
+            self.item.add(item)
+            self.children = []
+            self.var_child = None
+        else:
+            # Create two different children in last unrolled
+            child1 = TermTrieNode.create_leaf(curr_next_arg.functor, curr_next_arg.arity, self.arg_stack, self.item)
+            child2 = TermTrieNode.create_leaf(new_next_arg.functor, new_next_arg.arity, arg_stack, item)
+            if isinstance(curr_next_arg, Var):
+                diff_node.var_child = child1
+                diff_node.children.append(child2)  # They can't both be Var (see while loop)
+            elif isinstance(new_next_arg, Var):
+                diff_node.var_child = child2
+                diff_node.children.append(child1)  # They can't both be Var (see while loop)
+            else:
+                # Add them both in a sorted manner
+                diff_node.children = [child1]
+                insertion_index = self._term_binary_search(diff_node.children, str(child2.functor), child2.arity)
+                diff_node.children.insert(insertion_index, child2)
+
+            # Convert current into intermediate node
+            self.arg_stack = None
+            self.item = {}
+
+    def _add_term_args(self, arg_stack: list, item):
+        """ Auxiliary method of add_term/2 """
+        if self.is_empty():
+            self.arg_stack = arg_stack
+            self.item = {item}
+        elif self.is_leaf():
+            # If not the same, expand till they're different
+            self._expand_to_intermediate(arg_stack, item)
+        else:
+            first_arg = arg_stack.pop()
+            functor = first_arg.functor
+            arity = first_arg.arity
+            self._add_args_to_stack(first_arg, arg_stack)
+
+            if isinstance(first_arg, Var):
+                # If first_arg is variable, store item under var_child
+                if self.var_child is not None:
+                    # Expand existing Var entry
+                    self.var_child._add_term_args(arg_stack, item)
+                else:
+                    self.var_child = TermTrieNode.create_leaf(functor, arity, arg_stack, item)
+            else:
+                # find child with matching <functor,arity> for first arg.
+                insertion_index = self._term_binary_search(self.children, str(functor), arity)
+                if len(self.children) == 0 or insertion_index == len(self.children):
+                    # No match
+                    matching_node = None
+                    found_match = False
+                else:
+                    # Maybe match
+                    matching_node = self.children[insertion_index]
+                    found_match = matching_node.arity == arity and matching_node.functor == str(functor)
+
+                if found_match:
+                    # If match, expand in matching node
+                    matching_node._add_term_args(arg_stack, item)
+                else:
+                    # If no match, create new child node
+                    new_child = TermTrieNode.create_leaf(first_arg.functor, first_arg.arity, arg_stack, item)
+                    self.children.insert(insertion_index, new_child)
+
+    def add_term(self, term, item):
+        """
+        # TODO
+        :param term:
+        :param item:
+        :return:
+        """
+        return self._add_term_args([term], item)
+
+    @staticmethod
+    def _term_binary_search(child_list, functor, arity):
+        """
+        Performs a binary search for term on the list of children.
+        Assumes term is not an instance of Var
+        Code based on bisect_left of python3.6/bisect.py
+        :param child_list: The list of trie nodes to search in. Will use functor and arity to compare.
+        :type child_list: List[TermTrieNode]
+        :param functor: The functor of (functor,arity) which is searched for.
+        :type functor: str
+        :param arity: The arity of (functor,arity) which is searched for.
+        :type arity: int
+        :return: The index where to find (functor,arity) if it was present.
+        """
+        # assert(not isinstance(term, Var))
+        lo = 0
+        hi = len(child_list)
+
+        while lo < hi:
+            mid = (lo + hi) // 2
+            if child_list[mid].arity < arity or \
+                    child_list[mid].arity == arity and child_list[mid].functor < functor:
+                lo = mid + 1
+            else:
+                hi = mid
+        return lo
+
+    def _str_aux(self, level=0):
+        """ Auxiliary function for __str__ to pass on indentation level """
+        if self.is_leaf():
+            return f"{self.functor}/{self.arity}: item={self.item}, stack={self.arg_stack}"
+        else:
+            intend = f"\t" * level
+            result = f"{self.functor}/{self.arity}"
+            if self.var_child is not None:
+                result += f"\n{intend}- Var: {self.var_child._str_aux(level+1)}"
+            for child in self.children:
+                result += f"\n{intend}- {child._str_aux(level+1)}"
+            return result
+
+    def __str__(self, level=0):
+        return self._str_aux()
+
+
+class ClauseIndexOld(list):
     def __init__(self, parent, arity):
         list.__init__(self)
         self.__parent = parent
@@ -1003,34 +1311,36 @@ class ClauseIndex(list):
         self.__optimized = False
         self.__erased = set()
 
-    def find(self, arguments):
+    def find(self, term):
+        arguments = term.args
         results = None
         for i, arg in enumerate(arguments):
             if not is_ground(arg):
                 pass  # Variable => no restrictions
             else:
-                curr = self.__index[i].get(arg)
-                none = self.__index[i].get(None, self.__basetype())
-                if curr is None:
-                    curr = none
-                else:
-                    curr |= none
+                curr = self.__index[i].get(arg, self.__basetype())
+                curr |= self.__index[i].get(None, self.__basetype())
 
                 if results is None:  # First argument with restriction
                     results = curr
                 else:
                     results = results & curr  # for some reason &= doesn't work here
             if results is not None and not results:
+                # print(f"Searching...{term}: {set(results)}")
                 return []
         if results is None:
             if self.__erased:
+                # print(f"Searching...{term}: {OrderedSet(self) - self.__erased}")
                 return OrderedSet(self) - self.__erased
             else:
+                # print(f"Searching...{term}: {set(self)}")
                 return self
         else:
             if self.__erased:
+                # print(f"Searching...{term}: {results - self.__erased}")
                 return results - self.__erased
             else:
+                # print(f"Searching...{term}: {set(results)}")
                 return results
 
     def _add(self, key, item):
@@ -1039,16 +1349,14 @@ class ClauseIndex(list):
 
     def append(self, item):
         list.append(self, item)
-        key = []
+        node = self.__parent.get_node(item)
         try:
-            args = self.__parent.get_node(item).args
+            args = node.args
         except AttributeError:
             args = [None] * self.__parent.get_node(item).arity
-        for arg in args:
-            if is_ground(arg):
-                key.append(arg)
-            else:
-                key.append(None)
+        key = [arg if is_ground(arg) else None for arg in args]
+        term = Term(node.functor, *args)
+        # print(f"Added {term} as {item}")
         self._add(key, item)
 
     def erase(self, items):

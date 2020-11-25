@@ -740,7 +740,7 @@ class StackBasedEngine(ClauseDBEngine):
             else:
                 # The node has not been seen before.
                 # Get the children that may fit the context (can contain false positives).
-                children = node.children.find(context)
+                children = node.children.find(Term(node.functor, *context))
                 to_complete = len(children)
 
                 if to_complete == 0:
