@@ -870,8 +870,8 @@ class LFIProblem(LogicProgram):
             par_marg = dict()
             for fact, value in result.items():
                 index = fact.args
-                if fact.functor == "lfi_fact":
-                    fact_marg[index] += value * m
+                # if fact.functor == "lfi_fact":
+                #     fact_marg[index] += value * m
                 if fact.functor == "lfi_body":
                     fact_body[index] += value * m
                 elif fact.functor == "lfi_par":
@@ -1094,10 +1094,11 @@ class Example(object):
                     factargs = node.identifier[1]
                 fact = Term("lfi_fact", node.probability.args[0], *factargs)
                 # fact = Term("lfi_fact", node.probability.args[0], Term("t", *factargs))
-                logger.debug(
-                    "\tNode " + str(i) + ":\tAdding query for fact:\t" + str(fact)
-                )
-                ground_program.add_query(fact, i)
+
+                # logger.debug(
+                #     "\tNode " + str(i) + ":\tAdding query for fact:\t" + str(fact)
+                # )
+                # ground_program.add_query(fact, i)
 
                 tmp_body = Term("lfi_body", node.probability.args[0], *factargs)
                 # tmp_body = Term(
