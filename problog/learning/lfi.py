@@ -454,7 +454,7 @@ class LFIProblem(LogicProgram):
                         ADtemplate = getADtemplate(d)
                         # group all pairs according to ADtemplate
                         for k, v in d.items():
-                            if v is not "Template":
+                            if v != "Template":
                                 add_to_ad_evidence((k, v), new_ad_evidence, ADtemplate)
                         grounded_ad_evidences += new_ad_evidence
                     # for propositional evidence dictionaries
