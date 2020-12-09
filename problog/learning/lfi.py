@@ -915,8 +915,8 @@ class LFIProblem(LogicProgram):
         fact_par = defaultdict(int)
 
         #TODO: shouldnt have lfi_body(_) here
-        # Preprocessing results to remove lfi_body queries that do not have a corresponding lfi_par
-        #TODO : This should be done earlier
+        #      Preprocessing results to remove lfi_body queries that do not have a corresponding lfi_par
+        #      This should be done earlier
         results_new = []
         for m, pEvidence, result in results:
             result_new = dict()
@@ -927,15 +927,12 @@ class LFIProblem(LogicProgram):
                     else:
                         result_new[fact] = value
                         result_new[Term("lfi_par", *fact.args)] = 0
-                if fact.functor == "lfi_par" and fact.args[0] is not None:
+                elif fact.functor == "lfi_par" and fact.args[0] is not None:
                     if Term("lfi_body", *fact.args) in result:
                         result_new[fact] = value
                     else:
                         result_new[fact] = value
                         result_new[Term("lfi_body", *fact.args)] = 0
-                # elif fact.functor == "lfi_par" and Term("lfi_body", None, *tuple(list(fact.args)[1:])) in result:
-                #     result_new[fact] = value
-                #     result_new[Term("lfi_body", *fact.args)] = result[Term("lfi_body", None, *tuple(list(fact.args)[1:]))]
             results_new.append((m, pEvidence, result_new))
 
 
@@ -1300,11 +1297,12 @@ class Example(object):
 
         ground_program = ground(
             baseprogram,
-            ground_program,
+            ground_program_tmp,
             evidence=list(zip(self.atoms, self.values)),
             propagate_evidence=lfi.propagate_evidence,
             queries=lfi_queries,
         )
+
         logger.debug(
             "\t"
             + "New ground_program:\n\t\t"
