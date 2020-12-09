@@ -530,55 +530,6 @@ class LFIProblem(LogicProgram):
             example.compile(self, baseprogram)
         self._compiled_examples = examples
 
-    def _compile_examples_new(self):
-        """Compile examples."""
-        logger = getLogger("problog_lfi")
-
-        # logger.debug(
-        #     "\nBase Program:\n\t" + baseprogram.to_prolog().replace("\n", "\n\t")
-        # )
-
-        examples = self._process_examples()
-        for i, example in enumerate(examples):
-            logger.debug("\nCompiling example {}/{}".format(i + 1, len(examples)))
-
-            text = self.source.to_prolog()
-
-
-
-
-            for i in range(len(example.atoms)):
-                text += str(Term('evidence', example.atoms[i], str(example.values[i]).lower()))+".\n"
-                # if example.values[i]:
-                    # baseprogram.add_fact(Term('evidence', example.atoms[i]))
-                # else:
-                    # baseprogram.add_fact(Term('evidence', Term("\+", example.atoms[i])))
-
-            #
-            lfi_queries = set()
-            # # tmp_body = Term("lfi_body", None, *factargs)
-            # # tmp_body = Term("lfi_body", None, None, None)
-            # lfi_queries.add(Term("lfi_body", None, Constant(1), Constant(1)))
-            # lfi_queries.add(Term("lfi_body", None, Constant(2), Constant(2)))
-            lfi_queries.add(Term("lfi_body", None, None, None))
-            # # tmp_par = Term("lfi_par", None, *factargs)
-            # # tmp_par = Term("lfi_par", None, None, None)
-            # lfi_queries.add(Term("lfi_par", None, Constant(1), Constant(1)))
-            # lfi_queries.add(Term("lfi_par", None, Constant(2), Constant(2)))
-            lfi_queries.add(Term("lfi_par", None, None, None))
-
-            for query in lfi_queries:
-                # baseprogram.add_fact(Term('query', query))
-                text += str(Term('query', query))+".\n"
-
-            self.source = PrologString(text)
-            engine = DefaultEngine(**self.extra)
-            baseprogram = engine.prepare(self)
-
-
-            example.compile(self, engine, baseprogram, **self.extra)
-        self._compiled_examples = examples
-
     def _process_atom(self, atom, body):
         """Returns tuple ( prob_atom, [ additional clauses ] )"""
         if isinstance(atom, Or):
@@ -914,31 +865,8 @@ class LFIProblem(LogicProgram):
         fact_body = defaultdict(int)
         fact_par = defaultdict(int)
 
-        #TODO: shouldnt have lfi_body(_) here
-        #      Preprocessing results to remove lfi_body queries that do not have a corresponding lfi_par
-        #      This should be done earlier
-        results_new = []
-        for m, pEvidence, result in results:
-            result_new = dict()
-            for fact, value in result.items():
-                if fact.functor == "lfi_body" and fact.args[0] is not None:
-                    if Term("lfi_par", *fact.args) in result:
-                        result_new[fact] = value
-                    else:
-                        result_new[fact] = value
-                        result_new[Term("lfi_par", *fact.args)] = 0
-                elif fact.functor == "lfi_par" and fact.args[0] is not None:
-                    if Term("lfi_body", *fact.args) in result:
-                        result_new[fact] = value
-                    else:
-                        result_new[fact] = value
-                        result_new[Term("lfi_body", *fact.args)] = 0
-            results_new.append((m, pEvidence, result_new))
-
-
-
         score = 0.0
-        for m, pEvidence, result in results_new:
+        for m, pEvidence, result in results:
             par_marg = dict()
             for fact, value in result.items():
                 index = fact.args
@@ -984,13 +912,10 @@ class LFIProblem(LogicProgram):
                 fact_par_grouped[id] = value
 
         for index in update_list:
-            # if index[0] is None:
-            #     continue
             if float(fact_body[index]) == 0.0:
                 prob = 0.0
             else:
                 prob = float(fact_body[index]) / float(fact_par_grouped[index[0]])
-
             logger.debug(
                 "Update probabilistic fact {}: {} / {} = {}".format(
                     index, fact_body[index], fact_par_grouped[index[0]], prob
@@ -1129,7 +1054,7 @@ class Example(object):
             return False
         return self.atoms == other.atoms and self.values == other.values
 
-    def compile_old_old(self, lfi, baseprogram):
+    def compile(self, lfi, baseprogram):
         logger = getLogger("problog_lfi")
         ground_program = None  # Let the grounder decide
         logger.debug("\tGrounded Atoms:\t" + str(self.atoms))
@@ -1141,7 +1066,6 @@ class Example(object):
             evidence=list(zip(self.atoms, self.values)),
             propagate_evidence=lfi.propagate_evidence,
         )
-
         # logger.debug("\t" + "New ground_program:\n\t\t" + ground_program.to_prolog().replace("\n", "\n\t\t"))
 
         logger.debug(
@@ -1168,7 +1092,7 @@ class Example(object):
                         factargs = node.name.args
                 elif type(node.identifier) == tuple:
                     factargs = node.identifier[1]
-                # fact = Term("lfi_fact", node.probability.args[0], *factargs)
+                fact = Term("lfi_fact", node.probability.args[0], *factargs)
                 # fact = Term("lfi_fact", node.probability.args[0], Term("t", *factargs))
 
                 # logger.debug(
@@ -1218,205 +1142,6 @@ class Example(object):
         )
 
         self.compiled = lfi.knowledge.create_from(ground_program)
-        try:
-            logger.debug(
-                "\tCompiled program:\n\t\t"
-                + self.compiled.to_prolog().replace("\n", "\n\t\t")
-            )
-        except Exception:
-            logger.debug(
-                "\tCompiled program:\n\t\t" + str(self.compiled).replace("\n", "\n\t\t")
-            )
-
-
-    def compile(self, lfi, baseprogram):
-        logger = getLogger("problog_lfi")
-        ground_program = None  # Let the grounder decide
-        logger.debug("\tGrounded Atoms:\t" + str(self.atoms))
-        logger.debug("\tEvidence:\t" + str(list(zip(self.atoms, self.values))))
-
-
-        ground_program_tmp = ground(
-            baseprogram,
-            ground_program,
-            evidence=list(zip(self.atoms, self.values)),
-            propagate_evidence=lfi.propagate_evidence,
-        )
-
-        # logger.debug("\t" + "New ground_program:\n\t\t" + ground_program.to_prolog().replace("\n", "\n\t\t"))
-
-        logger.debug(
-            "\t"
-            + "New ground_program:\n\t\t"
-            + str(ground_program_tmp).replace("\n", "\n\t\t")
-        )
-
-        lfi_queries = set()
-        for i, node, t in ground_program_tmp:
-            if (
-                t == "atom"
-                and isinstance(node.probability, Term)
-                and node.probability.functor == "lfi_prob"
-            ):
-                factargs = ()
-                if node.name.functor != "choice":
-                    if node.name.functor == "lfi_fact":
-                        factargs = node.name.args[1:]
-                    else:
-                        factargs = node.name.args
-                elif type(node.identifier) == tuple:
-                    factargs = node.identifier[1]
-
-                # tmp_body = Term("lfi_body", node.probability.args[0], *factargs)
-                # tmp_body = Term("lfi_body", None, *((None, )*len(factargs)))
-                tmp_body = Term("lfi_body", None, *factargs)
-
-                lfi_queries.add(tmp_body)
-                logger.debug(
-                    "\tNode "
-                    + str(i)
-                    + ":\tAdding query for body:\t"
-                    + str(tmp_body)
-                    + "\t"
-                )
-                # tmp_par = Term("lfi_par", node.probability.args[0], *factargs)
-                # tmp_par = Term("lfi_par", None, *((None, )*len(factargs)))
-                tmp_par = Term("lfi_par", None, *factargs)
-
-                lfi_queries.add(tmp_par)
-                logger.debug(
-                    "\tNode "
-                    + str(i)
-                    + ":\tAdding query for par :\t"
-                    + str(tmp_par)
-                    + "\t"
-                )
-
-            elif t == "atom":
-                pass
-
-        ground_program = ground(
-            baseprogram,
-            ground_program_tmp,
-            evidence=list(zip(self.atoms, self.values)),
-            propagate_evidence=lfi.propagate_evidence,
-            queries=lfi_queries,
-        )
-
-        logger.debug(
-            "\t"
-            + "New ground_program:\n\t\t"
-            + str(ground_program).replace("\n", "\n\t\t")
-        )
-
-        self.compiled = lfi.knowledge.create_from(ground_program)
-        try:
-            logger.debug(
-                "\tCompiled program:\n\t\t"
-                + self.compiled.to_prolog().replace("\n", "\n\t\t")
-            )
-        except Exception:
-            logger.debug(
-                "\tCompiled program:\n\t\t" + str(self.compiled).replace("\n", "\n\t\t")
-            )
-
-
-    def compile_new(self, lfi, engine, baseprogram, **extra):
-        logger = getLogger("problog_lfi")
-        ground_program = None  # Let the grounder decide
-        logger.debug("\tGrounded Atoms:\t" + str(self.atoms))
-        logger.debug("\tEvidence:\t" + str(list(zip(self.atoms, self.values))))
-
-
-
-        # ground_program_tmp = ground(
-        #     baseprogram,
-        #     ground_program,
-        #     evidence=list(zip(self.atoms, self.values)),
-        #     propagate_evidence=lfi.propagate_evidence,
-        # )
-        #
-        # # logger.debug("\t" + "New ground_program:\n\t\t" + ground_program.to_prolog().replace("\n", "\n\t\t"))
-        #
-        # logger.debug(
-        #     "\t"
-        #     + "New ground_program:\n\t\t"
-        #     + str(ground_program_tmp).replace("\n", "\n\t\t")
-        # )
-
-        # lfi_queries = set()
-        # # tmp_body = Term("lfi_body", None, *factargs)
-        # # tmp_body = Term("lfi_body", None, None, None)
-        # lfi_queries.add(Term("lfi_body", None, Constant(1), Constant(1)))
-        # lfi_queries.add(Term("lfi_body", None, Constant(2), Constant(2)))
-        # # tmp_par = Term("lfi_par", None, *factargs)
-        # # tmp_par = Term("lfi_par", None, None, None)
-        # lfi_queries.add(Term("lfi_par", None, Constant(1), Constant(1)))
-        # lfi_queries.add(Term("lfi_par", None, Constant(2), Constant(2)))
-        #
-        # for query in lfi_queries:
-        #     baseprogram.add_fact(Term('query', query))
-
-        # for i, node, t in ground_program_tmp:
-        #     if (
-        #         t == "atom"
-        #         and isinstance(node.probability, Term)
-        #         and node.probability.functor == "lfi_prob"
-        #     ):
-        #         factargs = ()
-        #         if node.name.functor != "choice":
-        #             if node.name.functor == "lfi_fact":
-        #                 factargs = node.name.args[1:]
-        #             else:
-        #                 factargs = node.name.args
-        #         elif type(node.identifier) == tuple:
-        #             factargs = node.identifier[1]
-        #
-        #         # tmp_body = Term("lfi_body", node.probability.args[0], *factargs)
-        #         # tmp_body = Term("lfi_body", None, *((None, )*len(factargs)))
-        #         tmp_body = Term("lfi_body", None, *factargs)
-        #
-        #         lfi_queries.add(tmp_body)
-        #         logger.debug(
-        #             "\tNode "
-        #             + str(i)
-        #             + ":\tAdding query for body:\t"
-        #             + str(tmp_body)
-        #             + "\t"
-        #         )
-        #         # tmp_par = Term("lfi_par", node.probability.args[0], *factargs)
-        #         # tmp_par = Term("lfi_par", None, *((None, )*len(factargs)))
-        #         tmp_par = Term("lfi_par", None, *factargs)
-        #
-        #         lfi_queries.add(tmp_par)
-        #         logger.debug(
-        #             "\tNode "
-        #             + str(i)
-        #             + ":\tAdding query for par :\t"
-        #             + str(tmp_par)
-        #             + "\t"
-        #         )
-        #
-        #     elif t == "atom":
-        #         pass
-
-        # ground_program = ground(
-        #     baseprogram,
-        #     ground_program,
-        #     evidence=list(zip(self.atoms, self.values)),
-        #     propagate_evidence=lfi.propagate_evidence,
-        #     queries=lfi_queries,
-        # )
-
-        #
-        # logger.debug(
-        #     "\t"
-        #     + "New ground_program:\n\t\t"
-        #     + str(ground_program).replace("\n", "\n\t\t")
-        # )
-
-        # self.compiled = lfi.knowledge.create_from(ground_program)
-        self.compiled = lfi.knowledge.create_from(baseprogram, engine=engine, database=baseprogram)
         try:
             logger.debug(
                 "\tCompiled program:\n\t\t"
