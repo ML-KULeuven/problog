@@ -861,17 +861,14 @@ class LFIProblem(LogicProgram):
     def _update(self, results):
         """Update the current estimates based on the latest evaluation results."""
         logger = getLogger("problog_lfi")
-        fact_marg = defaultdict(int)
         fact_body = defaultdict(int)
         fact_par = defaultdict(int)
 
-        score = 0.0
+        # score = 0.0
         for m, pEvidence, result in results:
             par_marg = dict()
             for fact, value in result.items():
                 index = fact.args
-                # if fact.functor == "lfi_fact":
-                #     fact_marg[index] += value * m
                 if fact.functor == "lfi_body":
                     fact_body[index] += value * m
                 elif fact.functor == "lfi_par":
@@ -893,12 +890,12 @@ class LFIProblem(LogicProgram):
 
             for index, value in par_marg.items():
                 fact_par[index] += value * m
-            try:
-                if isinstance(pEvidence, DensityValue):
-                    pEvidence = pEvidence.value()
-                score += math.log(pEvidence)
-            except ValueError:
-                logger.debug("Pr(evidence) == 0.0")
+            # try:
+            #     if isinstance(pEvidence, DensityValue):
+            #         pEvidence = pEvidence.value() # pEvidence is P(example | parameters)
+            #     score += math.log(pEvidence)
+            # except ValueError:
+            #     logger.debug("Pr(evidence) == 0.0")
 
         update_list = fact_body
 
@@ -911,11 +908,13 @@ class LFIProblem(LogicProgram):
             else:
                 fact_par_grouped[id] = value
 
+        score = 0.0
         for index in update_list:
             if float(fact_body[index]) == 0.0:
                 prob = 0.0
             else:
                 prob = float(fact_body[index]) / float(fact_par_grouped[index[0]])
+                score += math.log(prob)
             logger.debug(
                 "Update probabilistic fact {}: {} / {} = {}".format(
                     index, fact_body[index], fact_par_grouped[index[0]], prob
@@ -1004,7 +1003,7 @@ class LFIProblem(LogicProgram):
         getLogger("problog_lfi").info("Initial weights: %s" % self._weights)
         delta = 1000
         prev_score = -1e10
-        # TODO: isn't this comparing delta i logprob with min_improv in prob?
+
         while self.iteration < self.max_iter and (delta < 0 or delta > self.min_improv):
             score = self.step()
             getLogger("problog_lfi").info(
@@ -1013,6 +1012,10 @@ class LFIProblem(LogicProgram):
             getLogger("problog_lfi").info(
                 "Score after iteration %s: %s" % (self.iteration, score)
             )
+            # Let p_1, ..., p_N the parameters we need to learn
+            # Let p_{1,m}, ..., p_{n,m} the estimates in the m-th iteration
+            # delta is (log(p_{1,m+1}) + ... + log(p_{N,m+1})) - (log(p_{1,m}) + ... + log(p_{N,m}))
+            # In other words, 10^delta = (p_{1,m+1} * ... *p_{N,m+1})/(p_{1,m} * ... * p_{N,m})
             delta = score - prev_score
             prev_score = score
         return prev_score
