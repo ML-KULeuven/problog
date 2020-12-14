@@ -287,8 +287,10 @@ class LFIProblem(LogicProgram):
                 # self._weights[index][Term(args.functor)] = weight
                 self._weights[index][Term("t")] = weight
         else:
+            # for arg in args:
+            self._weights[index] = {Term("t", *tuple([arg.functor for arg in args])): weight}
             # self._weights[index] = {Term(args.functor): weight}
-            self._weights[index] = {Term("t"): weight}
+            # self._weights[index] = {Term("t"): weight}
 
     def _add_weight(self, weight):
         self._weights.append(weight)
@@ -880,13 +882,16 @@ class LFIProblem(LogicProgram):
                                 )
                             )
                     par_marg[index] = value
+                    # par_marg[index] = 1
                     for o_index in self._adatomc[index[0]]:
                         if o_index >= 0 and len(index) == 1:
                             # Propositional AD
                             par_marg[(o_index,)] = value
+                            # par_marg[(o_index,)] = 1
                         elif o_index >= 0 and len(index) > 1:
                             # First Order AD
                             par_marg[(o_index, *index[1:])] = value
+                            # par_marg[(o_index, *index[1:])] = 1
 
             for index, value in par_marg.items():
                 fact_par[index] += value * m
