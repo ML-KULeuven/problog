@@ -1456,7 +1456,7 @@ def argparser():
         "--output",
         type=str,
         default=None,
-        help="write resulting model to given file",
+        help="write output to file",
     )
     parser.add_argument(
         "-O",
