@@ -1458,6 +1458,13 @@ def argparser():
         default=None,
         help="write resulting model to given file",
     )
+    parser.add_argument(
+        "-O",
+        "--output-model",
+        type=str,
+        default=None,
+        help="write resulting model to given file"
+    )
     parser.add_argument("--logger", type=str, default=None, help="write log to file")
     parser.add_argument(
         "-k",
