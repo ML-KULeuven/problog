@@ -1,4 +1,3 @@
-import bisect
 import os
 from collections import defaultdict, namedtuple
 
@@ -995,7 +994,7 @@ def intersection(l1, l2):
     return r
 
 
-class ClauseIndex(list):
+class ClauseIndexNew(list):
     """ Trie version """
     def __init__(self, parent, arity):
         list.__init__(self)
@@ -1009,7 +1008,7 @@ class ClauseIndex(list):
         assert isinstance(term, Term)
         #TODO: Provide option to return everything if there is only query/1 or something?
         result = self.__index.find(term)
-        #print(f"Searching...{term}: {result}")
+        print(f"Searching...{term}: {result}")
         if self.__erased:
             result -= self.__erased
         return result
@@ -1019,7 +1018,7 @@ class ClauseIndex(list):
         list.append(self, item)
         node = self.__parent.get_node(item)
         term = Term(node.functor, *node.args)
-        #print(f"Added {term} as {item}")
+        print(f"Added {term} as {item}")
         self.__index.add_term(term, item)
 
     def erase(self, items):
@@ -1302,7 +1301,7 @@ class TermTrieNode:
         return self._str_aux()
 
 
-class ClauseIndexOld(list):
+class ClauseIndex(list):
     def __init__(self, parent, arity):
         list.__init__(self)
         self.__parent = parent
@@ -1326,21 +1325,21 @@ class ClauseIndexOld(list):
                 else:
                     results = results & curr  # for some reason &= doesn't work here
             if results is not None and not results:
-                # print(f"Searching...{term}: {set(results)}")
+                print(f"Searching...{term}: {set(results)}")
                 return []
         if results is None:
             if self.__erased:
-                # print(f"Searching...{term}: {OrderedSet(self) - self.__erased}")
+                print(f"Searching...{term}: {OrderedSet(self) - self.__erased}")
                 return OrderedSet(self) - self.__erased
             else:
-                # print(f"Searching...{term}: {set(self)}")
+                print(f"Searching...{term}: {set(self)}")
                 return self
         else:
             if self.__erased:
-                # print(f"Searching...{term}: {results - self.__erased}")
+                print(f"Searching...{term}: {results - self.__erased}")
                 return results - self.__erased
             else:
-                # print(f"Searching...{term}: {set(results)}")
+                print(f"Searching...{term}: {set(results)}")
                 return results
 
     def _add(self, key, item):
@@ -1356,7 +1355,7 @@ class ClauseIndexOld(list):
             args = [None] * self.__parent.get_node(item).arity
         key = [arg if is_ground(arg) else None for arg in args]
         term = Term(node.functor, *args)
-        # print(f"Added {term} as {item}")
+        print(f"Added {term} as {item}")
         self._add(key, item)
 
     def erase(self, items):
