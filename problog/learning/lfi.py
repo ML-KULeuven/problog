@@ -69,9 +69,6 @@ It uses the following extensions of ProbLog's classes:
 .. autoclass:: learning.lfi.LFIProblem
     :members: __iter__, value
 """
-
-from __future__ import print_function
-
 import sys
 import random
 import math
@@ -87,7 +84,7 @@ from itertools import chain
 from problog.util import init_logger
 from logging import getLogger
 from problog.engine import DefaultEngine, ground
-from problog.evaluator import SemiringLogProbability, SemiringDensity, DensityValue
+from problog.evaluator import SemiringLogProbability, SemiringProbability
 from problog.logic import (
     Term,
     Constant,
@@ -903,8 +900,6 @@ class LFIProblem(LogicProgram):
             for index, value in par_marg.items():
                 fact_par[index] += value * m
             try:
-                if isinstance(pEvidence, DensityValue):
-                    pEvidence = pEvidence.value()
                 score += math.log(pEvidence)
             except ValueError:
                 logger.debug("Pr(evidence) == 0.0")
@@ -1168,9 +1163,8 @@ class Example(object):
             self.n[k] = [index]
 
 
-class ExampleEvaluator(SemiringDensity):
+class ExampleEvaluator(SemiringProbability):
     def __init__(self, weights, eps):
-        SemiringDensity.__init__(self)
         self._weights = weights
         self._eps = eps
 
