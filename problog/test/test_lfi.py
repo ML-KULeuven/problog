@@ -2,16 +2,14 @@
 Module name
 """
 
-from __future__ import print_function
-
-from problog import root_path
-from problog.util import subprocess_call, subprocess_check_output
 import unittest
 import os
 import sys
 import glob
-import subprocess, traceback
+
+from problog import root_path
 from problog.learning.lfi import lfi_wrapper, LFIProblem
+
 
 if __name__ == "__main__":
     sys.path.insert(
@@ -87,7 +85,7 @@ def createTestLFI(filename):
             # print(expectedlines)
             # print(err)
             # This test is specifically for test/lfi/AD/relatedAD_1 and test/lfi/AD/relatedAD_2
-            assert expectedlines == "NonGroundProbabilisticClause"
+            assert "NonGroundProbabilisticClause" == expectedlines
             return
 
         outlines = outlines.split("\n")[:-1]
@@ -101,7 +99,7 @@ def createTestLFI(filename):
                 outline_comps = outline.split(";")
                 new_expectedline_comps = []
                 new_outline_comps = []
-                assert len(expectedline_comps) == len(outline_comps)
+                assert len(outline_comps) == len(expectedline_comps)
                 # Compare one expected probability and one learned probability at a time
                 for expectedline_comp, outline_comp in zip(
                     expectedline_comps, outline_comps
@@ -146,7 +144,7 @@ def createTestLFI(filename):
                 new_expectedline = "; ".join(new_expectedline_comps)
             # print(new_expectedline)
             # print(new_outline)
-            assert new_expectedline == new_outline
+            assert new_outline == new_expectedline
 
     return test
 
