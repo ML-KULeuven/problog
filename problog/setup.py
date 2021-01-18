@@ -21,12 +21,10 @@ Provides an installer for ProbLog dependencies.
     See the License for the specific language governing permissions and
     limitations under the License.
 """
-from __future__ import print_function
-
+import distutils.ccompiler
+import distutils.spawn
 import os
 import sys
-import distutils.spawn
-import distutils.ccompiler
 
 
 def get_system():

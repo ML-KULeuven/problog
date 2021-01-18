@@ -77,18 +77,13 @@ This module contains basic logic constructs.
     limitations under the License.
 
 """
-from __future__ import print_function
-from __future__ import division  # consistent behaviour of / and // in python 2 and 3
-import functools
 import math
-import sys
 import re
-
-
-from .util import OrderedSet
-from .errors import GroundingError
-
+import sys
 from collections import deque
+
+from .errors import GroundingError
+from .util import OrderedSet
 
 
 def term2str(term):
@@ -192,7 +187,11 @@ class Term(object):
     (character position in input)
     """
 
+    max_id = 0
+
     def __init__(self, functor, *args, **kwdargs):
+        self.id = Term.max_id
+        Term.max_id += 1
         self.__functor = functor
         self.__args = args
         self.__arity = len(self.__args)
@@ -275,6 +274,7 @@ class Term(object):
         old_stack = [deque([self])]
         new_stack = []
         term_stack = []
+
         while old_stack:
             current = old_stack[-1].popleft()
             if current is None or type(current) == int:
@@ -282,6 +282,12 @@ class Term(object):
                     new_stack[-1].append(subst[current])
                 else:
                     return subst[current]
+            elif type(current) == list:
+                # If the current element is a list (an AD for example), we apply substitutions on elements of the list
+                new_current = []
+                for a in current:
+                    new_current.append(a.apply(subst))
+                new_stack[-1].append(new_current)
             elif current.is_var():
                 if new_stack:
                     new_stack[-1].append(subst[current.name])
@@ -586,6 +592,10 @@ class Term(object):
         """Checks whether this Term represents a variable."""
         return False
 
+    def is_scope_term(self):
+        """Checks whether the current term is actually a term inside a scope"""
+        return self.functor.strip("'") == ":"
+
     def is_constant(self):
         """Checks whether this Term represents a constant."""
         return False
@@ -596,7 +606,9 @@ class Term(object):
             queue = deque([self])
             while queue:
                 term = queue.popleft()
-                if term is None or type(term) == int or term.is_var():
+                if type(term) == list:
+                    queue.extend(term)
+                elif term is None or type(term) == int or term.is_var():
                     self._cache_is_ground = False
                     return False
                 elif isinstance(term, Term):
@@ -662,6 +674,7 @@ class Term(object):
     def __eq__(self, other):
         if not isinstance(other, Term):
             return False
+
         # Non-recursive version of equality check.
         l1 = deque([self])
         l2 = deque([other])
@@ -686,7 +699,7 @@ class Term(object):
                 elif t1.functor != t2.functor:
                     return False
             else:  # t1 and t2 are Terms
-                if t1.__functor != t2.__functor:
+                if not isinstance(t1, Not) and t1.__functor != t2.__functor:
                     return False
                 if t1.__arity != t2.__arity:
                     return False
@@ -719,12 +732,25 @@ class Term(object):
     def __hash__(self):
         if self.__hash is None:
             firstarg = None
+
             if len(self.__args) > 0:
                 firstarg = self.__args[0]
 
-            self.__hash = hash(
-                (self.__functor, self.__arity, firstarg, self._list_length())
-            )
+            # CG
+            list_hash = [self.__functor, self.__arity, self._list_length()]
+            # We only consider small number of arguments, because arbitrary numbers lead to RecursionError
+
+            if self._list_length() < 10:
+                for a in self.__args:
+                    if type(a) == list:
+                        list_hash.extend(a)
+                    else:
+                        list_hash.append(a)
+                # list_hash.extend(self.__args)
+
+            self.__hash = hash(tuple(list_hash))
+
+            # self.__hash = hash((self.__functor, self.__arity, firstarg, self._list_length()))
         return self.__hash
 
     def __lshift__(self, body):
@@ -737,7 +763,7 @@ class Term(object):
         return Or(self, rhs)
 
     def __invert__(self):
-        return Not("\+", self)
+        return Not("\\+", self)
 
     def __float__(self):
         return float(self.value)
@@ -746,7 +772,7 @@ class Term(object):
         return int(self.value)
 
     def __neg__(self):
-        return Not("\+", self)
+        return Not("\\+", self)
 
     def __abs__(self):
         return self
@@ -926,7 +952,7 @@ class Clause(Term):
         self.body = body
 
     def __repr__(self):
-        if self.head.functor == "_directive":
+        if self.head and self.head.functor == "_directive":
             self.repr = ":- %s" % self.body
         else:
             self.repr = "%s :- %s" % (self.head, self.body)
@@ -953,6 +979,16 @@ class AnnotatedDisjunction(Term):
             self.repr = "%s :- %s" % ("; ".join(map(str, self.heads)), self.body)
         self.reprhash = hash(self.repr)
         return self.repr
+
+    def __hash__(self):
+        return super().__hash__()
+
+    def __eq__(self, other):
+        return (
+            type(self) == type(other)
+            and self.heads == other.heads
+            and self.body == other.body
+        )
 
     @property
     def predicates(self):
@@ -1192,7 +1228,7 @@ def unquote(s):
     return s.strip("'")
 
 
-safe_expr = re.compile("[a-z]+(\w)*$")
+safe_expr = re.compile("[a-z]+(\\w)*$")
 
 
 def is_safe(t):

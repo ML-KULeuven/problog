@@ -15,8 +15,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 """
-from __future__ import print_function
-
 from .logic import Constant, Term, Var, term2str
 
 
@@ -26,6 +24,8 @@ def py2pl(d):
     if type(d) == list or type(d) == tuple:
         if type(d) == tuple:
             f = ","
+            if not d:
+                return Term("()")
             tail = py2pl(d[-1])
         else:
             f = "."
@@ -70,7 +70,7 @@ def pl2py(d):
                 elements.append(pl2py(tail))
             return elements
         elif d.functor == "," and d.arity == 2:
-            # list
+            # tuple
             elements = []
             tail = d
             while isinstance(tail, Term) and tail.arity == 2 and tail.functor == ",":
@@ -78,7 +78,11 @@ def pl2py(d):
                 tail = tail.args[1]
             if str(tail) != "[]":
                 elements.append(pl2py(tail))
-            return elements
+            return tuple(elements)
+        elif d.functor == "[]":
+            return []
+        elif d.functor == "()":
+            return ()
         else:
             return d
 

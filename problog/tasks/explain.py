@@ -18,22 +18,19 @@
     limitations under the License.
 """
 
-from __future__ import print_function
-
-from ..program import PrologFile
-from ..engine import DefaultEngine
-from ..util import init_logger, format_dictionary
-from ..kbest import KBestFormula
-from ..errors import process_error
-
 import argparse
-import sys
 import json
+import sys
 import traceback
+
+from ..engine import DefaultEngine
+from ..errors import process_error
+from ..kbest import KBestFormula
+from ..program import PrologFile
+from ..util import init_logger, format_dictionary
 
 
 def main(argv):
-
     parser = argparse.ArgumentParser()
     parser.add_argument("filename")
     parser.add_argument("-v", "--verbose", action="count")
@@ -47,6 +44,7 @@ def main(argv):
     else:
         out = sys.stdout
 
+    result = {}
     try:
         pl = PrologFile(args.filename)
         db = DefaultEngine().prepare(pl)
@@ -57,11 +55,11 @@ def main(argv):
         explanation = []
         results = cnf.evaluate(explain=explanation)
 
+        result["SUCCESS"] = True
+        result["program"] = program
+        result["proofs"] = explanation
+        result["results"] = results
         if args.web:
-            result = {}
-            result["SUCCESS"] = True
-            result["program"] = program
-            result["proofs"] = explanation
             result["probabilities"] = [
                 (str(k), round(v, 8)) for k, v in results.items()
             ]
@@ -80,11 +78,11 @@ def main(argv):
             print("Probabilities", file=out)
             print("-------------", file=out)
             print(format_dictionary(results), file=out)
+
     except Exception as err:
         trace = traceback.format_exc()
         err.trace = trace
         if args.web:
-            result = {}
             result["SUCCESS"] = False
             result["err"] = vars(err)
             result["err"]["message"] = process_error(err)
@@ -94,6 +92,8 @@ def main(argv):
 
     if args.output:
         out.close()
+
+    return result
 
 
 if __name__ == "__main__":

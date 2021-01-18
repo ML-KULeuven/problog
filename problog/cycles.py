@@ -22,16 +22,13 @@ Cycle breaking in propositional formulae.
     limitations under the License.
 """
 
-
-from __future__ import print_function
-
-from .logic import Term
-from .core import transform
-from .util import Timer
-from .formula import LogicFormula, LogicDAG
-
-from collections import defaultdict
 import logging
+from collections import defaultdict
+
+from .core import transform
+from .formula import LogicFormula, LogicDAG
+from .logic import Term
+from .util import Timer
 
 cycle_var_prefix = "problog_cv_"
 
@@ -140,7 +137,11 @@ def _break_cycles(
     nodetype = type(node).__name__
     if nodetype == "atom":
         newnode = target.add_atom(
-            node.identifier, node.probability, node.group, node.name
+            node.identifier,
+            node.probability,
+            group=node.group,
+            name=node.name,
+            is_extra=node.is_extra,
         )
     else:
         children = [

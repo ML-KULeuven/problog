@@ -21,8 +21,11 @@ Provides tools for loading logic programs.
     See the License for the specific language governing permissions and
     limitations under the License.
 """
-from __future__ import print_function
+import os
+import sys
 
+from .core import ProbLogError
+from .core import transform, ProbLogObject
 from .errors import GroundingError
 from .logic import (
     Term,
@@ -36,13 +39,7 @@ from .logic import (
     AggTerm,
     list2term,
 )
-from .core import transform, ProbLogObject
-
 from .parser import DefaultPrologParser, Factory
-from .core import ProbLogError
-
-import os
-import sys
 
 
 class LogicProgram(ProbLogObject):
@@ -66,14 +63,14 @@ class LogicProgram(ProbLogObject):
         """Iterator for the clauses in the program."""
         raise NotImplementedError("LogicProgram.__iter__ is an abstract method.")
 
-    def add_clause(self, clause, scope=None):
+    def add_clause(self, clause, scope=None, is_problog_scope=False):
         """Add a clause to the logic program.
 
         :param clause: add a clause
         """
         raise NotImplementedError("LogicProgram.addClause is an abstract method.")
 
-    def add_fact(self, fact, scope=None):
+    def add_fact(self, fact, scope=None, is_problog_scope=False):
         """Add a fact to the logic program.
 
         :param fact: add a fact
@@ -85,7 +82,7 @@ class LogicProgram(ProbLogObject):
         self.add_statement(clausefact)
         return self
 
-    def add_statement(self, clausefact, scope=None):
+    def add_statement(self, clausefact, scope=None, is_problog_scope=False):
         if isinstance(clausefact, Or):
             heads = clausefact.to_list()
             # TODO move this to parser code
@@ -97,13 +94,38 @@ class LogicProgram(ProbLogObject):
                     raise GroundingError(
                         "Non-probabilistic head in multi-head clause '%s'" % head
                     )
-            self.add_clause(AnnotatedDisjunction(heads, Term("true")), scope=scope)
+            self.add_clause(
+                AnnotatedDisjunction(heads, Term("true")),
+                scope=scope,
+                is_problog_scope=is_problog_scope,
+            )
         elif isinstance(clausefact, AnnotatedDisjunction):
-            self.add_clause(clausefact, scope=scope)
+            self.add_clause(clausefact, scope=scope, is_problog_scope=is_problog_scope)
         elif isinstance(clausefact, Clause):
-            self.add_clause(clausefact, scope=scope)
+            self.add_clause(clausefact, scope=scope, is_problog_scope=is_problog_scope)
         elif type(clausefact) == Term:
-            self.add_fact(clausefact, scope=scope)
+            if clausefact.is_scope_term():
+                scope_name = clausefact.args[0]
+                # TODO: Warning: I will have to think about Variable, Constant cases as well...
+                # If the  first in-scope Term is a Term (not a clause, AD, ...), we pass on the probability, otherwise not
+                if type(clausefact.args[1]) == Term:
+                    self.add_statement(
+                        clausefact.args[1].with_probability(p=clausefact.probability),
+                        scope=scope_name,
+                        is_problog_scope=True,
+                    )
+                # If the first in-scope Term is not a Term (it is a clause, AD, ...), we store it to manipulate it
+                else:
+                    self.add_statement(
+                        clausefact.args[1], scope=scope_name, is_problog_scope=True
+                    )
+                    self.add_fact(clausefact, scope=scope, is_problog_scope=True)
+            # Default behavior (no scopes)
+            else:
+                self.add_fact(
+                    clausefact, scope=scope, is_problog_scope=is_problog_scope
+                )
+
         else:
             raise GroundingError(
                 "Unexpected fact '%s'" % clausefact, self.lineno(clausefact.location)
@@ -195,8 +217,6 @@ class LogicProgram(ProbLogObject):
         return s
 
 
-
-
 class SimpleProgram(LogicProgram):
     """LogicProgram implementation as a list of clauses."""
 
@@ -204,7 +224,7 @@ class SimpleProgram(LogicProgram):
         LogicProgram.__init__(self)
         self.__clauses = []
 
-    def add_clause(self, clause, scope=None):
+    def add_clause(self, clause, scope=None, is_problog_scope=False):
         """Add a clause to the logic program.
 
         :param clause: add a clause
@@ -215,7 +235,7 @@ class SimpleProgram(LogicProgram):
         else:
             self.__clauses.append(clause)
 
-    def add_fact(self, fact, scope=None):
+    def add_fact(self, fact, scope=None, is_problog_scope=False):
         """Add a fact to the logic program.
 
         :param fact: add a fact
@@ -224,7 +244,6 @@ class SimpleProgram(LogicProgram):
 
     def __iter__(self):
         return iter(self.__clauses)
-
 
 
 class PrologString(LogicProgram):
@@ -285,14 +304,14 @@ class PrologString(LogicProgram):
         program = self._program()
         return program[sl]
 
-    def add_clause(self, clause, scope=None):
+    def add_clause(self, clause, scope=None, is_problog_scope=False):
         """Add a clause to the logic program.
 
         :param clause: add a clause
         """
         raise AttributeError("not supported")
 
-    def add_fact(self, fact, scope=None):
+    def add_fact(self, fact, scope=None, is_problog_scope=False):
         """Add a fact to the logic program.
 
         :param fact: add a fact
@@ -332,14 +351,14 @@ class PrologFile(PrologString):
             identifier=identifier,
         )
 
-    def add_clause(self, clause, scope=None):
+    def add_clause(self, clause, scope=None, is_problog_scope=False):
         """Add a clause to the logic program.
 
         :param clause: add a clause
         """
         raise AttributeError("not supported")
 
-    def add_fact(self, fact, scope=None):
+    def add_fact(self, fact, scope=None, is_problog_scope=False):
         """Add a fact to the logic program.
 
         :param fact: add a fact
@@ -422,16 +441,18 @@ class PrologFactory(Factory):
         else:
             has_agg = False
             # TODO add tests and errors
-            for arg in operand1[0].args:
+            is_scope = operand1[0].functor == "':'"
+            term = operand1[0] if not is_scope else operand1[0].args[1]
+            for arg in term.args:
                 if isinstance(arg, AggTerm):
                     has_agg = True
                     break
             if has_agg:
-                groupvars = list2term(operand1[0].args[:-1])
+                groupvars = list2term(term.args[:-1])
                 body = operand2
 
-                aggfunc = operand1[0].args[-1]()
-                aggvar = operand1[0].args[-1].args[0]
+                aggfunc = term.args[-1]()
+                aggvar = term.args[-1].args[0]
                 result = Var("R_VAR")
                 body = Term(
                     "aggregate",
@@ -441,8 +462,14 @@ class PrologFactory(Factory):
                     body,
                     Term(",", groupvars, result),
                 )
-                headargs = operand1[0].args[:-1] + (result,)
-                head = operand1[0](*headargs)
+                headargs = term.args[:-1] + (result,)
+                head = (
+                    operand1[0](*headargs)
+                    if not is_scope
+                    else operand1[0](
+                        operand1[0].args[0], operand1[0].args[1](*headargs)
+                    )
+                )
                 # aggregate(avg_list, Salary, [Dept], (person(X), salary(X, Salary), dept(X, Dept)), ([Dept], AvgSalary)).
                 return Clause(head, body, location=(self.loc_id, location))
             else:
@@ -481,7 +508,7 @@ class ExtendedPrologFactory(PrologFactory):
     """Prolog with some extra syntactic sugar.
 
     Non-standard syntax:
-    - Negative head literals [Meert and Vennekens, PGM 2014]: 0.5::\+a :- b.
+    - Negative head literals [Meert and Vennekens, PGM 2014]: 0.5:: \\+a :- b.
     """
 
     def __init__(self, identifier=0):
@@ -529,7 +556,7 @@ class ExtendedPrologFactory(PrologFactory):
             cur_vars = [Var("V{}".format(i)) for i in range(v["c"])]
             new_clause = Clause(
                 Term(v["f"], *cur_vars),
-                And(Term(v["p"], *cur_vars), Not("\+", Term(v["n"], *cur_vars))),
+                And(Term(v["p"], *cur_vars), Not("\\+", Term(v["n"], *cur_vars))),
             )
             clauses.append(new_clause)
         return clauses

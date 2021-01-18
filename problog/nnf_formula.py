@@ -1,5 +1,3 @@
-from .ddnnf_formula import DDNNF as NNF
-
 import warnings
 
 warnings.warn(

@@ -2,12 +2,9 @@
 Maximum A-Posteriori inference for ProbLog (MAP)
 """
 
-from __future__ import print_function
+import sys
+import traceback
 
-
-from .. import get_evaluatable
-from ..program import PrologFile
-from ..formula import LogicFormula
 from .dtproblog import (
     search_exhaustive,
     search_local,
@@ -15,11 +12,10 @@ from .dtproblog import (
     print_result,
     print_result_json,
 )
+from .. import get_evaluatable
 from ..constraint import TrueConstraint
-
-import math
-import sys
-import traceback
+from ..formula import LogicFormula
+from ..program import PrologFile
 
 
 def main(argv, result_handler=None):
@@ -38,6 +34,7 @@ def main(argv, result_handler=None):
 
     search = args.search
 
+    final_result = None
     try:
 
         # certain queries are given, they refer to facts
@@ -95,10 +92,14 @@ def main(argv, result_handler=None):
         decisions, score, stats = result
 
         # score = math.exp(-score)
-        result_handler((True, (decisions, score, stats)), outf)
+        final_result = (True, (decisions, score, stats))
     except Exception as err:
         err.trace = traceback.format_exc()
-        result_handler((False, err), outf)
+        final_result = (False, err)
+
+    result_handler(final_result, outf)
 
     if args.output is not None:
         outf.close()
+
+    return final_result

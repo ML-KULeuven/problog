@@ -28,118 +28,116 @@
  *
  * ***** END LICENSE BLOCK ***** */
 
-ace.define('ace/mode/problog', ['require', 'exports', 'module' , 'ace/lib/oop', 'ace/mode/text', 'ace/tokenizer', 'ace/mode/problog_highlight_rules', 'ace/range'], function(require, exports, module) {
+ace.define('ace/mode/problog', ['require', 'exports', 'module', 'ace/lib/oop', 'ace/mode/text', 'ace/tokenizer', 'ace/mode/problog_highlight_rules', 'ace/range'], function (require, exports, module) {
 
 
-var oop = require("ace/lib/oop");
-var TextMode = require("ace/mode/text").Mode;
-var Tokenizer = require("ace/tokenizer").Tokenizer;
-var ProblogHighlightRules = require("./problog_highlight_rules").ProblogHighlightRules;
-var Range = require("ace/range").Range;
+    var oop = require("ace/lib/oop");
+    var TextMode = require("ace/mode/text").Mode;
+    var Tokenizer = require("ace/tokenizer").Tokenizer;
+    var ProblogHighlightRules = require("./problog_highlight_rules").ProblogHighlightRules;
+    var Range = require("ace/range").Range;
 
-var Mode = function() {
-    this.$tokenizer = new Tokenizer(new ProblogHighlightRules().getRules());
-};
-oop.inherits(Mode, TextMode);
-
-(function() {
-
-    this.toggleCommentLines = function(state, doc, startRow, endRow) {
-        var outdent = true;
-        var outentedRows = [];
-        var re = /^(\s*)--/;
-
-        for (var i=startRow; i<= endRow; i++) {
-            if (!re.test(doc.getLine(i))) {
-                outdent = false;
-                break;
-            }
-        }
-
-        if (outdent) {
-            var deleteRange = new Range(0, 0, 0, 0);
-            for (var i=startRow; i<= endRow; i++)
-            {
-                var line = doc.getLine(i);
-                var m = line.match(re);
-                deleteRange.start.row = i;
-                deleteRange.end.row = i;
-                deleteRange.end.column = m[0].length;
-                doc.replace(deleteRange, m[1]);
-            }
-        }
-        else {
-            doc.indentRows(startRow, endRow, "--");
-        }
+    var Mode = function () {
+        this.$tokenizer = new Tokenizer(new ProblogHighlightRules().getRules());
     };
+    oop.inherits(Mode, TextMode);
 
-}).call(Mode.prototype);
+    (function () {
 
-exports.Mode = Mode;
+        this.toggleCommentLines = function (state, doc, startRow, endRow) {
+            var outdent = true;
+            var outentedRows = [];
+            var re = /^(\s*)--/;
+
+            for (var i = startRow; i <= endRow; i++) {
+                if (!re.test(doc.getLine(i))) {
+                    outdent = false;
+                    break;
+                }
+            }
+
+            if (outdent) {
+                var deleteRange = new Range(0, 0, 0, 0);
+                for (var i = startRow; i <= endRow; i++) {
+                    var line = doc.getLine(i);
+                    var m = line.match(re);
+                    deleteRange.start.row = i;
+                    deleteRange.end.row = i;
+                    deleteRange.end.column = m[0].length;
+                    doc.replace(deleteRange, m[1]);
+                }
+            } else {
+                doc.indentRows(startRow, endRow, "--");
+            }
+        };
+
+    }).call(Mode.prototype);
+
+    exports.Mode = Mode;
 
 });
 
-ace.define('ace/mode/problog_highlight_rules', ['require', 'exports', 'module' , 'ace/lib/oop', 'ace/mode/text_highlight_rules'], function(require, exports, module) {
+ace.define('ace/mode/problog_highlight_rules', ['require', 'exports', 'module', 'ace/lib/oop', 'ace/mode/text_highlight_rules'], function (require, exports, module) {
 
 
-var oop = require("ace/lib/oop");
-var TextHighlightRules = require("./text_highlight_rules").TextHighlightRules;
+    var oop = require("ace/lib/oop");
+    var TextHighlightRules = require("./text_highlight_rules").TextHighlightRules;
 
-var ProblogHighlightRules = function() {
+    var ProblogHighlightRules = function () {
 
-    var keywords = (
-        "query|evidence"
-    );
+        var keywords = (
+            "query|evidence"
+        );
 
-    var builtinConstants = (
-        "true|false|null"
-    );
+        var builtinConstants = (
+            "true|false|null"
+        );
 
-    var builtinFunctions = (
-        "is"
-    );
+        var builtinFunctions = (
+            "is"
+        );
 
-    var keywordMapper = this.createKeywordMapper({
-        "support.function": builtinFunctions,
-        "keyword": keywords,
-        "constant.language": builtinConstants
-    }, "identifier", true);
+        var keywordMapper = this.createKeywordMapper({
+            "support.function": builtinFunctions,
+            "keyword": keywords,
+            "constant.language": builtinConstants
+        }, "identifier", true);
 
-    this.$rules = {
-        "start" : [ {
-            token : "comment",
-            regex : "%.*$"
-        }, {
-            token : "string",           // " string
-            regex : '".*?"'
-        }, {
-            token : "string",           // ' string
-            regex : "'.*?'"
-        }, {
-            token : "constant.numeric", // float
-            regex : "[+-]?\\d+(?:(?:\\.\\d*)?(?:[eE][+-]?\\d+)?)?\\b"
-        }, {
-            token : keywordMapper,
-            regex : "[a-zA-Z][a-zA-Z0-9_]*\\b"
-        }, {
-            token : "keyword.operator",
-            regex : ":-|::|\\.|\\\\\\+|\\+|-|<|>"
-        }, {
-            token : "paren.lparen",
-            regex : "[\\(]"
-        }, {
-            token : "paren.rparen",
-            regex : "[\\)]"
-        }, {
-            token : "text",
-            regex : "\\s+"
-        } ]
+        this.$rules = {
+            "start": [{
+                token: "comment",
+                regex: "%.*$"
+            }, {
+                token: "string",           // " string
+                regex: '".*?"'
+            }, {
+                token: "string",           // ' string
+                regex: "'.*?'"
+            }, {
+                token: "constant.numeric", // float
+                regex: "[+-]?\\d+(?:(?:\\.\\d*)?(?:[eE][+-]?\\d+)?)?\\b"
+            }, {
+                token: keywordMapper,
+                regex: "[a-zA-Z][a-zA-Z0-9_]*\\b"
+            }, {
+                token: "keyword.operator",
+                regex: ":-|::|\\.|\\\\\\+|\\+|-|<|>"
+            }, {
+                token: "paren.lparen",
+                regex: "[\\(]"
+            }, {
+                token: "paren.rparen",
+                regex: "[\\)]"
+            }, {
+                token: "text",
+                regex: "\\s+"
+            }]
+        };
     };
-};
 
-oop.inherits(ProblogHighlightRules, TextHighlightRules);
+    oop.inherits(ProblogHighlightRules, TextHighlightRules);
 
-exports.ProblogHighlightRules = ProblogHighlightRules;
+    exports.ProblogHighlightRules = ProblogHighlightRules;
 });
 
 

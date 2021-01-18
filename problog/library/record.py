@@ -1,5 +1,6 @@
-from problog.extern import problog_export, problog_export_nondet
 from collections import OrderedDict
+
+from problog.extern import problog_export, problog_export_nondet
 from problog.logic import Constant
 
 recdb_key = "_rec_db"
@@ -55,7 +56,6 @@ class LL(object):
 
 
 class LLEntry(object):
-
     __slots__ = ("lst", "val", "prv", "nxt")
 
     def __init__(self, lst, val, prv, nxt):

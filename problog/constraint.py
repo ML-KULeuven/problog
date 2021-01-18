@@ -22,8 +22,6 @@ Data structures for specifying propositional constraints.
     limitations under the License.
 """
 
-from __future__ import print_function
-
 from .errors import InvalidValue
 from .logic import Term, Constant
 
@@ -109,7 +107,7 @@ class ConstraintAD(Constraint):
         if node in self.nodes:
             return node
 
-        is_extra = formula.get_node(node).probability == formula.WEIGHT_NEUTRAL
+        is_extra = formula.get_node(node).is_extra
 
         try:
             if (
@@ -190,7 +188,11 @@ class ConstraintAD(Constraint):
                 *self.group[1]
             )
             self.extra_node = formula.add_atom(
-                ("%s_extra" % (self.group,)), True, name=name, group=self.group
+                ("%s_extra" % (self.group,)),
+                True,
+                name=name,
+                group=self.group,
+                is_extra=True,
             )
             # formula.addConstraintOnNode(self, self.extra_node)
 

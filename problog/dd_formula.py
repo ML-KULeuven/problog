@@ -22,11 +22,7 @@ Common interface to decision diagrams (BDD, SDD).
     limitations under the License.
 """
 
-from __future__ import print_function
-
-
-from .util import Timer, mktempfile
-from .formula import LogicFormula, atom, LogicNNF
+from .errors import InconsistentEvidenceError
 from .evaluator import (
     EvaluatableDSP,
     Evaluator,
@@ -34,7 +30,8 @@ from .evaluator import (
     SemiringLogProbability,
     SemiringProbability,
 )
-from .errors import InconsistentEvidenceError
+from .formula import LogicFormula, atom, LogicNNF
+from .util import Timer, mktempfile
 
 
 class DD(LogicFormula, EvaluatableDSP):
@@ -60,12 +57,14 @@ class DD(LogicFormula, EvaluatableDSP):
             self.inode_manager = self._create_manager()
         return self.inode_manager
 
-    def _create_atom(self, identifier, probability, group, name=None, source=None):
+    def _create_atom(
+        self, identifier, probability, group, name=None, source=None, is_extra=False
+    ):
         index = len(self) + 1
         var = self.get_manager().add_variable()
         self.atom2var[index] = var
         self.var2atom[var] = index
-        return atom(identifier, probability, group, name, source)
+        return atom(identifier, probability, group, name, source, is_extra)
 
     def get_inode(self, index):
         """Get the internal node corresponding to the entry at the given index.
@@ -616,9 +615,10 @@ def build_dd(source, destination, **kwdargs):
                 j = destination.add_atom(
                     n.identifier,
                     n.probability,
-                    n.group,
+                    group=n.group,
                     name=source.get_name(i),
                     cr_extra=False,
+                    is_extra=n.is_extra,
                 )
             elif t == "conj":
                 j = destination.add_and(n.children, name=n.name)

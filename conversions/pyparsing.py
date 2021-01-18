@@ -3224,8 +3224,8 @@ class NotAny(ParseElementEnhance):
         super(NotAny, self).__init__(expr)
         # ~ self.leaveWhitespace()
         self.skipWhitespace = (
-            False  # do NOT use self.leaveWhitespace(), don't want to propagate to exprs
-        )
+            False
+        )  # do NOT use self.leaveWhitespace(), don't want to propagate to exprs
         self.mayReturnEmpty = True
         self.errmsg = "Found unwanted token, " + _ustr(self.expr)
 

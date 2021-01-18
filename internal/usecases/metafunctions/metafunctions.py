@@ -2,8 +2,6 @@
 Module name
 """
 
-from __future__ import print_function
-
 testprogram = """
     a(1).
     a(2).

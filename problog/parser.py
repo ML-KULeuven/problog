@@ -144,8 +144,6 @@ class Token(object):
         return "'%s' {%s}" % (self.string, self.list_options())
 
 
-from collections import namedtuple
-
 SPECIAL_PAREN_OPEN = 0
 SPECIAL_PAREN_CLOSE = 1
 SPECIAL_END = 2
@@ -187,11 +185,11 @@ def skip_comment_line(s, pos):
 
 
 def is_lower(c):
-    return c.islower()  #'a' <= c <= 'z'
+    return c.islower()  # 'a' <= c <= 'z'
 
 
 def is_upper(c):
-    return c.isupper()  #'A' <= c <= 'Z'
+    return c.isupper()  # 'A' <= c <= 'Z'
 
 
 def is_digit(c):
@@ -508,10 +506,10 @@ class PrologParser(object):
                 ),
                 pos + 3,
             )
-        elif s[pos : pos + 3] == "=\=":
+        elif s[pos : pos + 3] == "=\\=":
             return (
                 Token(
-                    "=\=",
+                    "=\\=",
                     pos,
                     binop=(700, "xfx", self.factory.build_binop),
                     functor=self._next_paren_open(s, pos),
@@ -539,6 +537,8 @@ class PrologParser(object):
                 pos + 3,
             )
         elif s[pos : pos + 2] == "==":
+            from warnings import warn
+            warn("The use of '==' might give unexpected results. Consider using '=' instead.")
             return (
                 Token(
                     "==",
@@ -695,6 +695,8 @@ class PrologParser(object):
                 pos + 4,
             )
         elif s[pos : pos + 3] == "\\==":
+            from warnings import warn
+            warn("The use of '\\==' might give unexpected results. Consider using '\\=' instead.")
             return (
                 Token(
                     "\\==",

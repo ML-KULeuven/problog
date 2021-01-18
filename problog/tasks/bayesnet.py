@@ -16,20 +16,17 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
-from __future__ import print_function
-
-import sys
 import itertools
 import logging
+import sys
 
 from problog.formula import LogicDAG
-from problog.parser import DefaultPrologParser
-from problog.program import ExtendedPrologFactory, PrologFile
 from problog.logic import Term, Or, Clause, And, Not
+from problog.parser import DefaultPrologParser
 from problog.pgm.cpd import Variable, Factor, OrCPT, PGM
-
-from ..util import init_logger
+from problog.program import ExtendedPrologFactory, PrologFile
 from ..errors import process_error
+from ..util import init_logger
 
 
 def print_result_standard(result, output=sys.stdout):
@@ -287,6 +284,7 @@ def main(argv, result_handler=None):
     target = LogicDAG  # Break cycles
     print_result = print_result_standard
 
+    final_result = None
     try:
         gp = target.createFrom(
             PrologFile(
@@ -317,19 +315,23 @@ def main(argv, result_handler=None):
             bn_str = bn.to_graphviz()
         else:
             bn_str = str(bn)
-        rc = print_result((True, bn_str), output=outfile)
+        final_result = (True, bn_str)
+        rc = print_result(final_result, output=outfile)
 
     except Exception as err:
         import traceback
 
         err.trace = traceback.format_exc()
-        rc = print_result((False, err))
+        final_result = (False, err)
+        rc = print_result(final_result)
 
     if args.output:
         outfile.close()
 
     if rc:
         sys.exit(rc)
+
+    return final_result
 
 
 if __name__ == "__main__":

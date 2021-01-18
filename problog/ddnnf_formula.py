@@ -21,20 +21,18 @@ Provides access to d-DNNF formulae.
     See the License for the specific language governing permissions and
     limitations under the License.
 """
-from __future__ import print_function
-
-import tempfile
 import os
 import subprocess
+import tempfile
 from collections import defaultdict
 
 from . import system_info
-from .evaluator import Evaluator, EvaluatableDSP
-from .errors import InconsistentEvidenceError
-from .formula import LogicDAG
 from .cnf_formula import CNF
 from .core import transform
 from .errors import CompilationError
+from .errors import InconsistentEvidenceError
+from .evaluator import Evaluator, EvaluatableDSP
+from .formula import LogicDAG
 from .util import Timer, subprocess_check_call
 
 
@@ -147,14 +145,13 @@ class SimpleDDNNFEvaluator(Evaluator):
             return self.semiring.zero()
         else:
             abs_index = abs(index)
-            w = self.weights.get(abs_index)  # Leaf nodes
+            w = self.weights.get(abs_index) or self.cache_intermediate.get(abs_index)
             if w is not None:
                 return w[index < 0]
-            w = self.cache_intermediate.get(abs_index)  # Intermediate nodes
-            if w is None:
+            else:
                 w = self._calculate_weight(index)
-                self.cache_intermediate[abs_index] = w
-            return w
+                self.cache_intermediate[abs_index] = w, w
+                return w
 
     def set_weight(self, index, pos, neg):
         # index = index of atom in weights, so atom2var[key] = index

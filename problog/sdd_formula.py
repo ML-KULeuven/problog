@@ -21,17 +21,15 @@ Interface to Sentential Decision Diagrams (SDD)
     See the License for the specific language governing permissions and
     limitations under the License.
 """
-from __future__ import print_function
+import os
 from collections import namedtuple
 
-from .formula import LogicDAG, LogicFormula, LogicNNF
 from .core import transform
-from .errors import InstallError, InconsistentEvidenceError
 from .dd_formula import DD, build_dd, DDManager, DDEvaluator
-from .evaluator import FormulaEvaluatorNSP, SemiringLogProbability, SemiringProbability
-
+from .errors import InstallError, InconsistentEvidenceError
+from .evaluator import SemiringLogProbability, SemiringProbability
+from .formula import LogicDAG, LogicFormula
 from .util import mktempfile
-import os
 
 # noinspection PyBroadException
 try:
@@ -195,6 +193,7 @@ class SDD(DD):
                     name=node.name,
                     group=node.group,
                     cr_extra=False,
+                    is_extra=node.is_extra,
                 )
             else:
                 retval = formula.add_atom(
@@ -203,6 +202,7 @@ class SDD(DD):
                     name=node.name,
                     group=node.group,
                     cr_extra=False,
+                    is_extra=node.is_extra,
                 )
         else:  # is decision
             # Formula: (p1^s1) v (p2^s2) v ...

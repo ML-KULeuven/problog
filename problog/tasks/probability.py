@@ -16,18 +16,16 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
-from __future__ import print_function
-
+import os
 import stat
 import sys
-import os
 import traceback
 
-from ..program import PrologFile, SimpleProgram
-from ..engine import DefaultEngine
-from ..evaluator import SemiringLogProbability, SemiringProbability, SemiringSymbolic
 from .. import get_evaluatable, get_evaluatables, library_paths
-
+from ..engine import DefaultEngine
+from ..errors import process_error
+from ..evaluator import SemiringLogProbability, SemiringProbability, SemiringSymbolic
+from ..program import PrologFile, SimpleProgram
 from ..util import (
     Timer,
     start_timer,
@@ -36,7 +34,6 @@ from ..util import (
     format_dictionary,
     format_value,
 )
-from ..errors import process_error
 
 
 def print_result(d, output, debug=False, precision=8):
@@ -412,24 +409,27 @@ def main(argv, result_handler=None):
     if args.propagate_weights:
         args.propagate_weights = semiring
 
+    result = None
     if args.combine:
         result = execute(args.filenames, args.koption, semiring, **vars(args))
         retcode = result_handler(result, output)
-        sys.exit(retcode)
+        # sys.exit(retcode)
     else:
         for filename in args.filenames:
             if len(args.filenames) > 1:
                 print("Results for %s:" % filename)
             result = execute(filename, args.koption, semiring, **vars(args))
             retcode = result_handler(result, output)
-            if len(args.filenames) == 1:
-                sys.exit(retcode)
+            # if len(args.filenames) == 1:
+            #     sys.exit(retcode)
 
     if args.output is not None:
         output.close()
 
     if args.timeout:
         stop_timer()
+
+    return result
 
 
 if __name__ == "__main__":

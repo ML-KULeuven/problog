@@ -1,3 +1,6 @@
+% Warning: this file does not seem like a proper DTProblog file:
+% there are no '?' probabilities for decisions being made
+
 0.5::play1.
 0.5::play2.
 

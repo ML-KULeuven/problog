@@ -1,8 +1,6 @@
-from __future__ import print_function
-
-import sys
-import os
 import atexit
+import os
+import sys
 
 try:
     import readline  # provides better input
@@ -92,7 +90,6 @@ usage = """
 
 
 class Option(object):
-
     pass
 
 
@@ -119,7 +116,6 @@ class BooleanOption(Option):
 
 
 def main(argv, **kwdargs):
-
     if readline:
         histfile = os.path.join(os.path.expanduser("~"), ".probloghistory")
         try:
