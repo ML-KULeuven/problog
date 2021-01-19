@@ -97,44 +97,29 @@ class S(BaseS):
         else:
             return S(torch.sigmoid(self.value), variables=self.variables)
 
-    # TODO rewrite this with >= instead of max stuff?
-    @staticmethod
-    def gtz(a):
-        if isinstance(a, (int, float)):
-            return max(a, 0) / a
-        else:
-            z = torch.zeros((1,))
-            a = torch.abs(torch.max(a, z) / a)
-            return a
-
     def lt(self, other):
-        value = other.value - self.value
-        value = self.gtz(value)
-        return S(value, variables=self.variables | other.variables)
+        value = self.value < self.other
+        return S(value.float(), variables=self.variables | other.variables)
 
     def le(self, other):
-        value = other.value - self.value
-        value = self.gtz(value)
-        s = S(value, variables=self.variables | other.variables)
-        return s
+        value = self.value <= self.other
+        return S(value.float(), variables=self.variables | other.variables)
 
     def gt(self, other):
-        value = self.value - other.value
-        value = self.gtz(value)
-        s = S(value, variables=self.variables | other.variables)
-        return s
+        value = self.value > other.value
+        return S(value.float(), variables=self.variables | other.variables)
 
     def ge(self, other):
-        value = self.value - other.value
-        value = self.gtz(value)
-        s = S(value, variables=self.variables | other.variables)
-        return s
+        value = self.value >= other.value
+        return S(value.float(), variables=self.variables | other.variables)
 
     def eq(self, other):
-        raise NotImplementedError()
+        value = self.value == other.value
+        return S(value.float(), variables=self.variables | other.variables)
 
     def ne(self, other):
-        raise NotImplementedError()
+        value = self.value == other.value
+        return S(value.float(), variables=self.variables | other.variables)
 
 
 class Pyro(Algebra):

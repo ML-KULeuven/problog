@@ -107,6 +107,30 @@ def _builtin_ge(arg1, arg2, engine=None, target=None, **kwdargs):
     return result
 
 
+def _builtin_val_eq(arg1, arg2, engine=None, target=None, **kwdargs):
+    check_mode((arg1, arg2), ["gg"], functor="=:=", **kwdargs)
+    functor = "=:="
+    ab_values = make_comparison_args(
+        arg1, arg2, engine=engine, target=target, **kwdargs
+    )
+    result = make_comparison(
+        functor, ab_values, engine=engine, target=target, **kwdargs
+    )
+    return result
+
+
+def _builtin_val_neq(arg1, arg2, engine=None, target=None, **kwdargs):
+    check_mode((arg1, arg2), ["gg"], functor="=/=", **kwdargs)
+    functor = "=/="
+    ab_values = make_comparison_args(
+        arg1, arg2, engine=engine, target=target, **kwdargs
+    )
+    result = make_comparison(
+        functor, ab_values, engine=engine, target=target, **kwdargs
+    )
+    return result
+
+
 def _builtin_observation(
     term, observation, engine=None, target=None, database=None, **kwdargs
 ):

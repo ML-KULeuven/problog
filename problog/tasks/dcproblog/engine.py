@@ -17,6 +17,8 @@ from .engine_builtin import (
     _builtin_lt,
     _builtin_le,
     _builtin_ge,
+    _builtin_val_eq,
+    _builtin_val_neq,
     _builtin_observation,
     _builtin_query_density,
 )
@@ -35,14 +37,13 @@ class EngineHAL(DefaultEngine):
         self.add_builtin("<", 2, SimpleProbabilisticBuiltIn(_builtin_lt))
         self.add_builtin("=<", 2, SimpleProbabilisticBuiltIn(_builtin_le))
         self.add_builtin(">=", 2, SimpleProbabilisticBuiltIn(_builtin_ge))
+        self.add_builtin("=\\=", 2, SimpleProbabilisticBuiltIn(_builtin_val_neq))
+        self.add_builtin("=:=", 2, SimpleProbabilisticBuiltIn(_builtin_val_eq))
 
         self.add_builtin("observation_builtin", 2, SimpleBuiltIn(_builtin_observation))
         self.add_builtin(
             "query_density_builtin", 1, SimpleBuiltIn(_builtin_query_density)
         )
-
-        # self.add_builtin('=\=', 2, b(_builtin_val_neq))
-        # self.add_builtin('=:=', 2, b(_builtin_val_eq))
 
         # self.add_builtin('subquery_builtin', 1, SimpleBuiltIn(_builtin_subquery))
 
