@@ -70,8 +70,6 @@ It uses the following extensions of ProbLog's classes:
     :members: __iter__, value
 """
 
-from __future__ import print_function
-
 import sys
 import random
 import math
@@ -1449,6 +1447,7 @@ def argparser():
     )
     parser.add_argument("model")
     parser.add_argument("examples", nargs="+")
+    parser.add_argument("-s", dest="seed", default=None, type=int, help="The seed to use when sampling initial values")
     parser.add_argument("-n", dest="max_iter", default=10000, type=int)
     parser.add_argument("-d", dest="min_improv", default=1e-10, type=float)
     parser.add_argument(
@@ -1572,6 +1571,9 @@ def main(argv, result_handler=None):
     del options["examples"]
 
     try:
+        if args.seed is not None:
+            print(f"Using seed {args.seed}")
+            random.seed(a=args.seed)
         results = run_lfi(program, examples, knowledge=knowledge, **options)
 
         for n in results[2]:
