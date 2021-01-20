@@ -731,22 +731,40 @@ class Term(object):
 
     def __hash__(self):
         if self.__hash is None:
-            firstarg = None
-
-            if len(self.__args) > 0:
-                firstarg = self.__args[0]
-
             # CG
             list_hash = [self.__functor, self.__arity, self._list_length()]
-            # We only consider small number of arguments, because arbitrary numbers lead to RecursionError
 
-            if self._list_length() < 10:
-                for a in self.__args:
-                    if type(a) == list:
-                        list_hash.extend(a)
-                    else:
-                        list_hash.append(a)
-                # list_hash.extend(self.__args)
+            def get_arg_len(a):
+                if isinstance(a, list):
+                    return len(a)
+                elif isinstance(a, Term):
+                    return a._list_length()
+                else:
+                    return 1
+
+            def add_to_hash(a):
+                if isinstance(a, list):
+                    list_hash.extend(a)
+                else:
+                    list_hash.append(a)
+
+            # We only consider restricted number of args, because arbitrary numbers lead to RecursionError
+            if self.__args is not None and len(self.__args) > 0:
+                cut_off_len = 10
+
+                # include first arg
+                total_list_len = get_arg_len(self.__args[0])
+                add_to_hash(self.__args[0])
+
+                # include more args?
+                if cut_off_len > total_list_len:
+                    for arg in self.__args[1:10]:  # Only consider first 10 args (bit arbitrary)
+                        arg_length = get_arg_len(arg)
+                        if total_list_len + arg_length <= cut_off_len:
+                            total_list_len += arg_length
+                            add_to_hash(arg)
+                        else:
+                            break
 
             self.__hash = hash(tuple(list_hash))
 
@@ -1228,7 +1246,7 @@ def unquote(s):
     return s.strip("'")
 
 
-safe_expr = re.compile("[a-z]+(\\w)*$")
+safe_expr = re.compile("[a-z]+(\w)*$")
 
 
 def is_safe(t):
