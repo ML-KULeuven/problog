@@ -802,7 +802,7 @@ class StackBasedEngine(ClauseDBEngine):
             if hasattr(result, "state"):
                 state1 = result.state
             else:
-                state1 = None
+                state1 = None  # TODO: None or empty state? -Vin.
 
             output1 = self._clone_context(context, state=state1)
             try:
@@ -986,7 +986,7 @@ def get_state(c):
     if hasattr(c, "state"):
         return c.state
     else:
-        return None
+        return State()
 
 
 class State(dict):

@@ -186,12 +186,7 @@ class Term(object):
     :param kwdargs: additional arguments; currently 'p' (probability) and 'location' \
     (character position in input)
     """
-
-    max_id = 0
-
     def __init__(self, functor, *args, **kwdargs):
-        self.id = Term.max_id
-        Term.max_id += 1
         self.__functor = functor
         self.__args = args
         self.__arity = len(self.__args)
@@ -447,7 +442,7 @@ class Term(object):
                 if len(current.op_spec) == 2:  # unary operator
                     cf = str(current.functor).strip("'")
                     if "a" <= cf[0] <= "z":
-                        put(" " + cf + " ")
+                        put(f" {cf} ")
                     else:
                         put(cf)
                     q = deque()
@@ -699,6 +694,7 @@ class Term(object):
                 elif t1.functor != t2.functor:
                     return False
             else:  # t1 and t2 are Terms
+                # not isinstance(t1, Not) so \+x and not(x) are equal
                 if not isinstance(t1, Not) and t1.__functor != t2.__functor:
                     return False
                 if t1.__arity != t2.__arity:
@@ -922,7 +918,7 @@ class Object(Term):
 
     def compute_value(self, functions=None):
         return float(self.functor)
-        return self.functor
+        # return self.functor
 
     def is_constant(self):
         return True

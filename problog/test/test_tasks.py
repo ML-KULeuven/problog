@@ -211,8 +211,18 @@ class TestTasks(unittest.TestCase):
 
     def test_time(self):
         file_name = test_folder / "tasks" / "some_heads.pl"
-        result = time1.main([str(file_name)])
-        self.assertEqual(6, len(result))
+        n = 3
+        result = time1.main([str(file_name), f"-n {n}"])
+        # One result for one file
+        self.assertEqual(1, len(result))
+        result = result[str(file_name)]
+        # n results for n repetitions
+        self.assertEqual(n, len(result))
+        for run_n in result:
+            # Check timers in each repetition
+            expected_names = {"parse", "load", "ground", "cycles", "compile", "evaluate"}
+            timer_names = {timer.name for timer in run_n}
+            assert expected_names.issubset(timer_names)
 
     # BN
     def check_bn(self, file_name, expected):
