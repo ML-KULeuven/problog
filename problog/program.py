@@ -91,9 +91,7 @@ class LogicProgram(ProbLogObject):
                     # TODO compute correct location
                     raise GroundingError("Unexpected fact '%s'" % head)
                 elif len(heads) > 1 and head.probability is None:
-                    raise GroundingError(
-                        "Non-probabilistic head in multi-head clause '%s'" % head
-                    )
+                    raise GroundingError(f"Non-probabilistic head in multi-head clause '{head}'")
             self.add_clause(
                 AnnotatedDisjunction(heads, Term("true")),
                 scope=scope,
@@ -107,14 +105,14 @@ class LogicProgram(ProbLogObject):
             if clausefact.is_scope_term():
                 scope_name = clausefact.args[0]
                 # TODO: Warning: I will have to think about Variable, Constant cases as well...
-                # If the  first in-scope Term is a Term (not a clause, AD, ...), we pass on the probability, otherwise not
+                # If first in-scope Term is a Term (not a clause, AD, ...), pass on the probability, otherwise not
                 if type(clausefact.args[1]) == Term:
                     self.add_statement(
                         clausefact.args[1].with_probability(p=clausefact.probability),
                         scope=scope_name,
                         is_problog_scope=True,
                     )
-                # If the first in-scope Term is not a Term (it is a clause, AD, ...), we store it to manipulate it
+                # If first in-scope Term is not a Term (so clause, AD, ...), we store it to manipulate it
                 else:
                     self.add_statement(
                         clausefact.args[1], scope=scope_name, is_problog_scope=True
@@ -390,9 +388,7 @@ class PrologFactory(Factory):
     def build_binop(
         self, functor, operand1, operand2, function=None, location=None, **extra
     ):
-        return self.build_function(
-            "'" + functor + "'", (operand1, operand2), location=location, **extra
-        )
+        return self.build_function(f"'{functor}'", (operand1, operand2), location=location, **extra)
 
     def build_directive(self, functor, operand, **extra):
         head = self.build_function("_directive", [])
@@ -405,9 +401,7 @@ class PrologFactory(Factory):
             and (operand.is_float() or operand.is_integer())
         ):
             return Constant(-operand.value)
-        return self.build_function(
-            "'" + functor + "'", (operand,), location=location, **extra
-        )
+        return self.build_function(f"'{functor}'", (operand,), location=location, **extra)
 
     def build_list(self, values, tail=None, location=None, **extra):
         if tail is None:
@@ -439,14 +433,10 @@ class PrologFactory(Factory):
                 heads, operand2, location=(self.loc_id, location)
             )
         else:
-            has_agg = False
             # TODO add tests and errors
             is_scope = operand1[0].functor == "':'"
             term = operand1[0] if not is_scope else operand1[0].args[1]
-            for arg in term.args:
-                if isinstance(arg, AggTerm):
-                    has_agg = True
-                    break
+            has_agg = any(isinstance(arg, AggTerm) for arg in term.args)
             if has_agg:
                 groupvars = list2term(term.args[:-1])
                 body = operand2
