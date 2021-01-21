@@ -69,7 +69,6 @@ It uses the following extensions of ProbLog's classes:
 .. autoclass:: learning.lfi.LFIProblem
     :members: __iter__, value
 """
-
 import sys
 import random
 import math
