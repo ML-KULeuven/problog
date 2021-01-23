@@ -1,0 +1,29 @@
+evidence(fa, 10).
+---
+evidence(fa, 12).
+---
+evidence(fa, 8).
+---
+evidence(fa, 11).
+---
+evidence(fa, 7).
+---
+evidence(fa, 13).
+---
+evidence(fa, 20).
+---
+evidence(fa, 21).
+---
+evidence(fa, 22).
+---
+evidence(fa, 18).
+---
+evidence(fa, 19).
+---
+evidence(fa, 19).
+---
+evidence(fa, 19).
+---
+evidence(fa, 23).
+---
+evidence(fa, 21).

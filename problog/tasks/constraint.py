@@ -322,6 +322,8 @@ def main(argv, handle_output=None):
     else:
         print("=== UNSATISFIABLE ===")
 
+    if verbose:
+        debug("Loading...")
 
 def run(filename, verbose=None):
     find_solver()

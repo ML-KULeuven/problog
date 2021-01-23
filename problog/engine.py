@@ -44,7 +44,7 @@ def ground(model, target=None, grounder=None, **kwdargs):
     :rtype: LogicFormula
     """
     if grounder in ("yap", "yap_debug"):
-        from ground_yap import ground_yap
+        from .ground_yap import ground_yap
 
         return ground_yap(model, target, **kwdargs)
     else:

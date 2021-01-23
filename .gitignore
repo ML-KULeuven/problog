@@ -27,4 +27,7 @@ problog/lib/python3/
 
 web/cache
 web/logs
+
+*.out
+*.log
 problog/test/resulttable

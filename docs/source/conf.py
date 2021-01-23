@@ -59,7 +59,7 @@ master_doc = "index"
 
 # General information about the project.
 project = u"ProbLog"
-copyright = u"2014, Anton Dries"
+copyright = u"2020, KU Leuven, DTAI Research Group"
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
@@ -218,7 +218,7 @@ latex_elements = {
 # (source start file, target name, title,
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
-    ("index", "ProbLog.tex", u"ProbLog Documentation", u"Anton Dries", "manual")
+    ("index", "ProbLog.tex", u"ProbLog Documentation", u"KU Leuven, DTAI Research Group", "manual")
 ]
 
 # The name of an image file (relative to this directory) to place at the top of
@@ -246,7 +246,7 @@ latex_documents = [
 
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
-man_pages = [("index", "problog", u"ProbLog Documentation", [u"Anton Dries"], 1)]
+man_pages = [("index", "problog", u"ProbLog Documentation", [u"KU Leuven, DTAI Research Group"], 1)]
 
 # If true, show URL addresses after external links.
 # man_show_urls = False
@@ -262,7 +262,7 @@ texinfo_documents = [
         "index",
         "ProbLog",
         u"ProbLog Documentation",
-        u"Anton Dries",
+        u"KU Leuven, DTAI Research Group",
         "ProbLog",
         "One line description of project.",
         "Miscellaneous",
@@ -286,9 +286,9 @@ texinfo_documents = [
 
 # Bibliographic Dublin Core info.
 epub_title = u"ProbLog"
-epub_author = u"Anton Dries"
-epub_publisher = u"Anton Dries"
-epub_copyright = u"2014, Anton Dries"
+epub_author = u"KU Leuven, DTAI Research Group"
+epub_publisher = u"KU Leuven, DTAI Research Group"
+epub_copyright = u"2020, KU Leuven, DTAI Research Group"
 
 # The basename for the epub file. It defaults to the project name.
 # epub_basename = u'ProbLog'

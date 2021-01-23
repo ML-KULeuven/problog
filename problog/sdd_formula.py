@@ -614,6 +614,9 @@ class SDDManager(DDManager):
     def wmc_true(self, weights, semiring):
         return self.wmc(self.true(), weights, semiring)
 
+    def count(self):
+        return self.get_manager().count()
+
     def get_deepcopy_noref(
         self,
     ):  # TODO might be cleaner to maintain refcounts and deref everything afterwards in SDDExplicit

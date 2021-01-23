@@ -27,7 +27,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../"
 from problog.program import PrologFile
 from problog.errors import process_error
 
-from learning import lfi
+from problog.learning import lfi
 
 
 # from problog.sdd_formula import SDD
