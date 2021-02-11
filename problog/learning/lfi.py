@@ -912,8 +912,8 @@ class LFIProblem(LogicProgram):
                 fact_par_grouped[id] = value
 
         for index in update_list:
-            if float(fact_body[index]) == 0.0:
-                prob = 0.0
+            if float(fact_par_grouped[index[0]]) == 0.0:
+                continue
             else:
                 prob = float(fact_body[index]) / float(fact_par_grouped[index[0]])
             logger.debug(
