@@ -298,7 +298,7 @@ class LFIProblem(LogicProgram):
         :return: example groups based on evidence atoms
         :rtype: dict of atoms : values for examples
         """
-        logger = getLogger("problog_lfi")
+        logger = getLogger("emplifi")
         # value can be True / False / None
         # ( atom ), ( ( value, ... ), ... )
 
@@ -519,7 +519,7 @@ class LFIProblem(LogicProgram):
 
     def _compile_examples(self):
         """Compile examples."""
-        logger = getLogger("problog_lfi")
+        logger = getLogger("emplifi")
         baseprogram = DefaultEngine(**self.extra).prepare(self)
         logger.debug(
             "\nBase Program:\n\t" + baseprogram.to_prolog().replace("\n", "\n\t")
@@ -787,7 +787,7 @@ class LFIProblem(LogicProgram):
             process_atom = self._process_atom
 
         if self.output_mode is False:
-            getLogger("problog_lfi").debug("\nProcessed Atoms:")
+            getLogger("emplifi").debug("\nProcessed Atoms:")
         for clause in self.source:
             if isinstance(clause, Clause):
                 if clause.head.functor == "query" and clause.head.arity == 1:
@@ -795,13 +795,13 @@ class LFIProblem(LogicProgram):
                 extra_clauses = process_atom(clause.head, clause.body)
                 for extra in extra_clauses:
                     if self.output_mode is False:
-                        getLogger("problog_lfi").debug("\t" + str(extra))
+                        getLogger("emplifi").debug("\t" + str(extra))
                     yield extra
             elif isinstance(clause, AnnotatedDisjunction):
                 extra_clauses = process_atom(Or.from_list(clause.heads), clause.body)
                 for extra in extra_clauses:
                     if self.output_mode is False:
-                        getLogger("problog_lfi").debug("\t" + str(extra))
+                        getLogger("emplifi").debug("\t" + str(extra))
                     yield extra
             else:
                 if clause.functor == "query" and clause.arity == 1:
@@ -810,7 +810,7 @@ class LFIProblem(LogicProgram):
                 extra_clauses = process_atom(clause, None)
                 for extra in extra_clauses:
                     if self.output_mode is False:
-                        getLogger("problog_lfi").debug("\t" + str(extra))
+                        getLogger("emplifi").debug("\t" + str(extra))
                     yield extra
 
         if self.leakprob is not None:
@@ -831,7 +831,7 @@ class LFIProblem(LogicProgram):
     def _evaluate_examples(self):
         """Evaluate the model with its current estimates for all examples."""
 
-        getLogger("problog_lfi").debug("Evaluating examples:")
+        getLogger("emplifi").debug("Evaluating examples:")
 
         evaluator = ExampleEvaluator(self._weights, eps=self._eps)
 
@@ -840,7 +840,7 @@ class LFIProblem(LogicProgram):
             try:
                 result = evaluator(example)
                 results.append(result)
-                getLogger("problog_lfi").debug(
+                getLogger("emplifi").debug(
                     "Example "
                     + str(i + 1)
                     + ":\tFrequency = "
@@ -852,7 +852,7 @@ class LFIProblem(LogicProgram):
                 )
             except InconsistentEvidenceError:
                 # print("Ignoring example {}/{}".format(i + 1, len(self._compiled_examples)))
-                getLogger("problog_lfi").warning(
+                getLogger("emplifi").warning(
                     "Ignoring example {}/{}".format(i + 1, len(self._compiled_examples))
                 )
 
@@ -860,7 +860,7 @@ class LFIProblem(LogicProgram):
 
     def _update(self, results):
         """Update the current estimates based on the latest evaluation results."""
-        logger = getLogger("problog_lfi")
+        logger = getLogger("emplifi")
         fact_marg = defaultdict(int)
         fact_body = defaultdict(int)
         fact_par = defaultdict(int)
@@ -982,7 +982,7 @@ class LFIProblem(LogicProgram):
 
     def step(self):
         self.iteration += 1
-        getLogger("problog_lfi").info("\nIteration " + str(self.iteration))
+        getLogger("emplifi").info("\nIteration " + str(self.iteration))
         results = self._evaluate_examples()
         return self._update(results)
 
@@ -998,19 +998,19 @@ class LFIProblem(LogicProgram):
     def run(self):
         self.prepare()
 
-        getLogger("problog_lfi").info("Weights to learn: %s" % self.names)
-        getLogger("problog_lfi").info("Bodies: %s" % self.bodies)
-        getLogger("problog_lfi").info("Parents: %s" % self.parents)
-        getLogger("problog_lfi").info("Initial weights: %s" % self._weights)
+        getLogger("emplifi").info("Weights to learn: %s" % self.names)
+        getLogger("emplifi").info("Bodies: %s" % self.bodies)
+        getLogger("emplifi").info("Parents: %s" % self.parents)
+        getLogger("emplifi").info("Initial weights: %s" % self._weights)
         delta = 1000
         prev_score = -1e10
         # TODO: isn't this comparing delta i logprob with min_improv in prob?
         while self.iteration < self.max_iter and (delta < 0 or delta > self.min_improv):
             score = self.step()
-            getLogger("problog_lfi").info(
+            getLogger("emplifi").info(
                 "Weights after iteration %s: %s" % (self.iteration, self._weights)
             )
-            getLogger("problog_lfi").info(
+            getLogger("emplifi").info(
                 "Score after iteration %s: %s" % (self.iteration, score)
             )
             delta = score - prev_score
@@ -1055,7 +1055,7 @@ class Example(object):
         return self.atoms == other.atoms and self.values == other.values
 
     def compile(self, lfi, baseprogram):
-        logger = getLogger("problog_lfi")
+        logger = getLogger("emplifi")
         ground_program = None  # Let the grounder decide
         logger.debug("\tGrounded Atoms:\t" + str(self.atoms))
         logger.debug("\tEvidence:\t" + str(list(zip(self.atoms, self.values))))
@@ -1295,7 +1295,7 @@ def run_lfi(program, examples, **kwdargs):
     lfi = LFIProblem(program, examples, **kwdargs)
     score = lfi.run()
 
-    getLogger("problog_lfi").info("\nLearned Model:\t\n" + lfi.get_model())
+    getLogger("emplifi").info("\nLearned Model:\t\n" + lfi.get_model())
 
     names = []
     weights = []
@@ -1429,8 +1429,8 @@ def main(argv, result_handler=None):
     else:
         logf = open(args.logger, "w")
 
-    logger = init_logger(verbose=args.verbose, name="problog_lfi", out=logf)
-    create_logger("problog_lfi", args.verbose - 1)
+    logger = init_logger(verbose=args.verbose, name="emplifi", out=logf)
+    create_logger("emplifi", args.verbose - 1)
 
     program = PrologFile(args.model)
     examples = list(read_examples(*args.examples))
@@ -1450,7 +1450,7 @@ def main(argv, result_handler=None):
         # lfi.get_model()
     except Exception as err:
         trace = traceback.format_exc()
-        getLogger("problog_lfi").error("\nError encountered:\t\n" + trace)
+        getLogger("emplifi").error("\nError encountered:\t\n" + trace)
         err.trace = trace
         retcode = result_handler((False, err), outf=outf)
 
