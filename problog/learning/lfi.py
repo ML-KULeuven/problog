@@ -1306,7 +1306,7 @@ def run_lfi(program, examples, **kwdargs):
             names.append(name.apply(DefaultDict(translate)))
             weights.append(w_val)
 
-    return score, weights, names, lfi.iteration, lfi
+    return score, weights, names, lfi.iteration, lfi, lfi.get_model()
 
 
 def argparser():
@@ -1447,6 +1447,7 @@ def main(argv, result_handler=None):
         for n in results[2]:
             n.loc = program.lineno(n.location)
         retcode = result_handler((True, results), outf=outf)
+        # lfi.get_model()
     except Exception as err:
         trace = traceback.format_exc()
         getLogger("problog_lfi").error("\nError encountered:\t\n" + trace)
@@ -1466,12 +1467,13 @@ def main(argv, result_handler=None):
 def print_result(d, outf, precision=8):
     success, d = d
     if success:
-        score, weights, names, iterations, lfi = d
+        score, weights, names, iterations, lfi, model = d
+        print("% Learned Model:\n" + str(model), file=outf)
         weights = list(map(lambda x: round(x, precision), weights))
-        print("Score = " + str(score), file=outf)
-        print("Tunable Clauses = " + str(names), file=outf)
-        print("Learned Weights = " + str(weights), file=outf)
-        print("Number of iterations taken for convergence = " + str(iterations), file=outf)
+        print("% Score = " + str(score), file=outf)
+        print("% Tunable Clauses = " + str(names), file=outf)
+        print("% Learned Weights = " + str(weights), file=outf)
+        print("% Number of iterations taken for convergence = " + str(iterations), file=outf)
         # print(score, weights, names, iterations, file=outf)
         return 0
     else:
