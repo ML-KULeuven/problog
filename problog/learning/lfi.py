@@ -459,7 +459,7 @@ def run_lfi( program, examples, output_model=None, **kwdargs):
     if output_model is not None:
         with open(output_model, 'w') as f:
             f.write(lfi.get_model())
-    return score, lfi.weights, lfi.names, lfi.iteration
+    return score, lfi.weights, lfi.names, lfi.iteration, lfi
 
 
 def argparser():
@@ -503,10 +503,10 @@ def main(argv, result_handler=None):
 
     knowledge = get_evaluatable(args.koption)
 
-    if args.output is None:
+    if args.output_model is None:
         outf = sys.stdout
     else:
-        outf = open(args.output, 'w')
+        outf = open(args.output_model, 'w')
 
     create_logger('problog_lfi', args.verbose)
     create_logger('problog', args.verbose - 1)
@@ -541,9 +541,16 @@ def main(argv, result_handler=None):
 def print_result(d, output, precision=8):
     success, d = d
     if success:
-        score, weights, names, iterations = d
+        # score, weights, names, iterations = d
+        # weights = list(map(lambda x: round(x, precision), weights))
+        # print (score, weights, names, iterations, file=output)
+        score, weights, names, iterations, lfi = d
+        print("% Learned Model:\n" + str(lfi.get_model()), file=output)
         weights = list(map(lambda x: round(x, precision), weights))
-        print (score, weights, names, iterations, file=output)
+        print("% Score = " + str(score), file=output)
+        print("% Tunable Clauses = " + str(names), file=output)
+        print("% Learned Weights = " + str(weights), file=output)
+        print("% Number of iterations taken for convergence = " + str(iterations), file=output)
         return 0
     else:
         print (process_error(d), file=output)
