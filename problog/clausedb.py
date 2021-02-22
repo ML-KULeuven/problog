@@ -1020,6 +1020,9 @@ class ClauseIndexNew(list):
         term = Term(node.functor, *node.args)
         print(f"Added {term} as {item}")
         self.__index.add_term(term, item)
+        print("New tree")
+        print(self.__index)
+        print("")
 
     def erase(self, items):
         self.__erased |= set(items)
@@ -1153,7 +1156,15 @@ class TermTrieNode:
         arg_stack.extend(new_args)
 
     def _expand_to_intermediate(self, arg_stack, item):
-        #TODO: If they're the same then don't unroll the entire thing (just undo somehow?, copy the arg_stack)
+        if len(arg_stack) == 0:
+            # If arg_stack empty than both terms match exactly
+            # Just update items, do not turn into intermediate node
+            # case example: 0.1::a(1). 0.2::a(2). 0.3::a(1).
+            assert(len(self.arg_stack) == 0)  # Otherwise there would have been an arity difference
+            self.item.add(item)
+            return
+
+        #TODO: (opt) If they're the same then don't unroll the entire thing (just undo somehow?, copy the arg_stack)
         arg_stack_backup = self.arg_stack.copy()
         # Compare the next tuple of functor, arity
         new_next_arg = arg_stack.pop()
@@ -1361,4 +1372,4 @@ class ClauseIndexOld(list):
     def erase(self, items):
         self.__erased |= set(items)
 
-ClauseIndex = ClauseIndexOld
+ClauseIndex = ClauseIndexNew
