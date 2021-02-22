@@ -1301,7 +1301,7 @@ class TermTrieNode:
         return self._str_aux()
 
 
-class ClauseIndex(list):
+class ClauseIndexOld(list):
     def __init__(self, parent, arity):
         list.__init__(self)
         self.__parent = parent
@@ -1360,3 +1360,5 @@ class ClauseIndex(list):
 
     def erase(self, items):
         self.__erased |= set(items)
+
+ClauseIndex = ClauseIndexOld
