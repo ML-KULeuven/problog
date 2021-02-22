@@ -1028,7 +1028,31 @@ class ClauseIndexNew(list):
         self.__erased |= set(items)
 
 
+class TrieItemTuple(tuple):
+    """
+    Used by TermTrieNode. Do NOT use this for anything else.
+    A tuple storing the itemID in the trie as well as the 'timestep' it was inserted at.
+    Two TrieItemTuple are equal if the itemID matches.
+    """
+
+    def __new__(cls, *args):
+        return tuple.__new__(cls, args)
+
+    def __hash__(self):
+        return hash(self[0])
+
+    def __eq__(self, other):
+        return self[0] == other[0]
+
+
 class TermTrieNode:
+    """
+    #TODO: describe
+
+    Note: The insertion order of items are taken into account when returning find results
+    (uses TrieItemTuple to pack the items when inserting).
+
+    """
 
     def __init__(self, functor, arity, arg_stack, item):
         """
@@ -1040,7 +1064,7 @@ class TermTrieNode:
         :type arity: int
         :param arg_stack: Stack of remaining args. If any, then at least arity number of elements should be in here.
         :type arg_stack: List[Term]
-        :param item: The item to store
+        :param item: The item to store, this should be a TrieItemTuple or a set of those
         :param next_arg: #TODO
         """
         self.functor = str(functor) if functor is not None else functor  # Trie edge label
@@ -1048,13 +1072,15 @@ class TermTrieNode:
         self.children = []  # Trie children of this node
         self.var_child = None  # Trie child of this node for which next arg is a Var
         self.arg_stack = arg_stack
-        if item is None:
+        self.item_nb = 0
+        if item is None:  # item = set of tuples (itemID, insertionOrder)
             self.item = set()
         elif isinstance(item, set):
             self.item = item
         else:
+            assert isinstance(item, TrieItemTuple)
             self.item = {item} #TODO: Can this be multiple or always one??
-        self.next_arg = None  #TODO: needed when expanded; used to skip this argument
+        self.next_arg = None  #TODO: needed when expanded; used to skip this argument #TODO: Still needed?
 
     @staticmethod
     def create_leaf(functor, arity, arg_stack, item):
@@ -1078,7 +1104,10 @@ class TermTrieNode:
         :param term:
         :return:
         """
-        return self._find(arg_stack=[term])
+        # Obtain result. Sort based on insertionOrder (2nd elem of item_tuple)
+        result = sorted(self._find(arg_stack=[term]), key=lambda item_tuple: item_tuple[1])
+        # Return results in that order but omit itemOrder
+        return [itemID for itemID, itemOrder in result]
 
     def _find(self, arg_stack, arg_skip_count=0):
         """ Auxiliary method of find/1
@@ -1162,6 +1191,7 @@ class TermTrieNode:
             # case example: 0.1::a(1). 0.2::a(2). 0.3::a(1).
             assert(len(self.arg_stack) == 0)  # Otherwise there would have been an arity difference
             self.item.add(item)
+            #self.item.add(item)
             return
 
         #TODO: (opt) If they're the same then don't unroll the entire thing (just undo somehow?, copy the arg_stack)
@@ -1195,6 +1225,7 @@ class TermTrieNode:
         if equivalent_stacks or (isinstance(new_next_arg, Var) and isinstance(curr_next_arg, Var)):
             # They were equivalent. Restore stack and just add the item
             self.arg_stack = arg_stack_backup
+            #self.item.add(item)
             self.item.add(item)
             self.children = []
             self.var_child = None
@@ -1266,7 +1297,8 @@ class TermTrieNode:
         :param item:
         :return:
         """
-        return self._add_term_args([term], item)
+        self.item_nb += 1
+        return self._add_term_args([term], TrieItemTuple(item, self.item_nb))
 
     @staticmethod
     def _term_binary_search(child_list, functor, arity):
@@ -1310,6 +1342,10 @@ class TermTrieNode:
 
     def __str__(self, level=0):
         return self._str_aux()
+
+    # self.item_nb does not match length if an item was rejected due to being a duplicate
+    # def __len__(self):
+    #     return self.item_nb
 
 
 class ClauseIndexOld(list):
