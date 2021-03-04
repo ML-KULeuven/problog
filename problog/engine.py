@@ -215,17 +215,24 @@ class ClauseDBEngine(GenericEngine):
         term = Term("_directive")
         directive_node = db.find(term)
         if directive_node is not None:
-            directives = db.get_node(directive_node).children
+            directives_list =  db.get_node(directive_node).children
+            # Emulate the order in which directives are encountered using a stack.
+            pending_directives = []
+            while directives_list:
+                pending_directives.append(directives_list.pop())
 
             gp = LogicFormula()
-            while directives:
-                current = directives.pop(0)
+            while pending_directives:
+                current = pending_directives.pop()
                 self.execute(
                     current,
                     database=db,
                     context=self.create_context((), define=None),
                     target=gp,
                 )
+                while directives_list:
+                    pending_directives.append(directives_list.pop())
+
         return True
 
     # noinspection PyUnusedLocal
