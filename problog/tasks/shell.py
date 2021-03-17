@@ -155,6 +155,7 @@ def main(argv, **kwdargs):
                         raise ProbLogError("Unknown option '%s'" % c.args[0])
                 elif c.signature in nonprob:
                     DefaultEngine().query(db, c)
+                    db = DefaultEngine().prepare(db)
                     # show('%% Consulted file %s' % c.args[0])
                 elif c.signature == "query/1":
                     gp = DefaultEngine().ground(db, c.args[0], label="query")
