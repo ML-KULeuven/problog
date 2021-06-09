@@ -298,9 +298,10 @@ def enumerate_solutions(sols, verbose, formula, sdd=None):
 
 
 def check_prob_constraint(constraints):
-    for name, index in constraints:
-        if index is not None and name.args[1].functor == "ensure_prob":
-            return True
+    return any(
+        index is not None and name.args[1].functor == "ensure_prob"
+        for name, index in constraints
+    )
 
 
 def main(argv, handle_output=None):
@@ -324,6 +325,7 @@ def main(argv, handle_output=None):
 
     if verbose:
         debug("Loading...")
+
 
 def run(filename, verbose=None):
     find_solver()

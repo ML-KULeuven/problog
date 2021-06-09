@@ -120,17 +120,17 @@ class SimpleDDNNFEvaluator(Evaluator):
             self._set_value(abs(node), (node > 0))
             result = self.get_root_weight()
             self._reset_value(abs(node), p, n)
-            if self.has_evidence() or self.semiring.is_nsp() or self.has_constraints(ignore_type=[ConstraintAD]):
+            if self.has_evidence() or self.semiring.is_nsp() or self.has_constraints(ignore_type={ConstraintAD}):
                 result = self.semiring.normalize(result, self._get_z())
         return self.semiring.result(result, self.formula)
 
     def has_constraints(self, ignore_type=None):
         """
         Check whether the formula has any constraints that are not of the ignore_type.
-        :param ignore_type: A list of constraint classes to ignore.
-        :type ignore_type: None | List
+        :param ignore_type: A set of constraint classes to ignore.
+        :type ignore_type: None | Set
         """
-        ignore_type = ignore_type or []
+        ignore_type = ignore_type or set()
         return any(type(constraint) not in ignore_type for constraint in self.formula.constraints())
 
     def _reset_value(self, index, pos, neg):
