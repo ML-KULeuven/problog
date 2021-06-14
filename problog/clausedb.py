@@ -102,8 +102,8 @@ class ClauseDB(LogicProgram):
         self._load_builtin_module()
 
     def _load_builtin_module(self):
-        # self.use_module(Term('library', Term('builtin')), None)
-        pass
+        self.use_module(Term('library', Term('builtin')), None)
+        # pass
 
     def __len__(self):
         return len(self.__nodes) + self.__offset
