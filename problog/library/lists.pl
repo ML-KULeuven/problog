@@ -165,8 +165,8 @@ append(LoL,L) :- append2(LoL,[],L).
     
 append2([],Acc,Acc).
 append2([L|T],Acc,Out) :-
-    append(Acc,L,Acc1),
-    append2(T,Acc1,Out).
+    append2(T,Acc1,Out),
+    append(Acc,L,Acc1).
     
 prefix(A,B) :- append(A,_,B).
 
