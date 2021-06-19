@@ -1,7 +1,7 @@
-evidence(a(1)).
+evidence(a(1), false).
 ---
-evidence(a(2)).
+evidence(a(2), false).
 ---
-evidence(a(1)).
+evidence(a(1), false).
 ---
-evidence(a(1)).
+evidence(a(1), false).

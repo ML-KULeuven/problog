@@ -144,9 +144,11 @@ def createTestLFI(filename):
                     new_expectedline_comps.append(expectedline_comp)
                 new_outline = "; ".join(new_outline_comps)
                 new_expectedline = "; ".join(new_expectedline_comps)
+                expectedline = new_expectedline
+                outline = new_outline
             # print(new_expectedline)
             # print(new_outline)
-            assert new_expectedline == new_outline
+            assert expectedline == outline
 
     return test
 
@@ -175,15 +177,15 @@ if has_sdd:
 else:
     print("No SDD support - The system tests are not performed with SDDs.")
 
-# tests for ADs
-for testfile in AD_filenames:
-    testname = "test_lfi_AD_" + os.path.splitext(os.path.basename(testfile))[0]
-    setattr(TestLFI, testname, createTestLFI(testfile))
+# # tests for ADs
+# for testfile in AD_filenames:
+#     testname = "test_lfi_AD_" + os.path.splitext(os.path.basename(testfile))[0]
+#     setattr(TestLFI, testname, createTestLFI(testfile))
 
-# tests for simple unit tests
-for testfile in simple_filenames:
-    testname = "test_lfi_Simple_" + os.path.splitext(os.path.basename(testfile))[0]
-    setattr(TestLFI, testname, createTestLFI(testfile))
+# # tests for simple unit tests
+# for testfile in simple_filenames:
+#     testname = "test_lfi_Simple_" + os.path.splitext(os.path.basename(testfile))[0]
+#     setattr(TestLFI, testname, createTestLFI(testfile))
 
 # tests for Miscellaneous files
 for testfile in misc_filenames:

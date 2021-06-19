@@ -274,21 +274,25 @@ class LFIProblem(LogicProgram):
         else:
             return [(Term("t"), weight)]
 
+
     def _set_weight(self, index, args, weight, weight_changed=None):
-        index = int(index)
+        index = int(index) # FIXME index[0], index[1]
         if not args:
             # assert not isinstance(self._weights[index], dict)
             self._weights[index] = weight
         elif isinstance(self._weights[index], dict):
-            if weight_changed and weight_changed[index]:
+            if self._weights and self._weights[index] and weight_changed and args in weight_changed[index] and weight_changed[index][args]:
                 # self._weights[index][Term(args.functor)] += weight
-                self._weights[index][Term("t")] += weight
+                # self._weights[index][Term("t")] += weight # WIP: old
+                self._weights[index][args] += weight
             else:
                 # self._weights[index][Term(args.functor)] = weight
-                self._weights[index][Term("t")] = weight
+                # self._weights[index][Term("t")] = weight # WIP: old
+                self._weights[index][args] = weight
         else:
             # self._weights[index] = {Term(args.functor): weight}
-            self._weights[index] = {Term("t"): weight}
+            # self._weights[index] = {Term("t"): weight} # WIP: old
+            self._weights[index] = {args: weight}
 
     def _add_weight(self, weight):
         self._weights.append(weight)
@@ -314,16 +318,6 @@ class LFIProblem(LogicProgram):
                     ad_list.append(Term(self.names[var].functor, *self.names[var].args))
                 ad_groups.append(tuple(ad_list))
         logger.debug("AD Groups\t\t:" + str(ad_groups))
-
-        def multiple_true(d):
-            """
-            This function recognizes inconsistent evidence s.t. more than one term is True in AD.
-            :param d: dictionary of ADs in form {term: value}
-                    value can be True, False, None, "Template"
-            :return: whether more than one value is True
-            """
-            true_count = sum(v is True for v in d.values())
-            return true_count > 1
 
         def all_false(d):
             """
@@ -588,15 +582,35 @@ class LFIProblem(LogicProgram):
 
         newcount = "_".join([str(self.count + count) for count in range(len(atoms))])
 
-        vars = []
+        factargs = []
+        # probargs = ()
         for atom in atoms:
+            # WIP: old
+            # q = list(atom.apply(ReplaceAnon()).args)
+            # for var in q:
+            #     if var not in vars:
+            #         vars.append(var)
+            # WIP: new
+            # factargs = factargs.union(set(atom.apply(ReplaceAnon()).args))
+            # # if isinstance(atom.probability, Term):
+            # #     probargs = set(atom.probability.apply(ReplaceAnon()).args[1:])
+            # # if isinstance(atom.probability, Term):
+            # #     q = q.union(set(atom.probability.apply(ReplaceAnon()).args[1:] ))
+            # WIP: new new
             q = list(atom.apply(ReplaceAnon()).args)
             for var in q:
-                if var not in vars:
-                    vars.append(var)
+                if var not in factargs:
+                    factargs.append(var)
+            # factargs = factargs.union(set(atom.apply(ReplaceAnon()).args))
 
-        # lfi_rule = Term("lfi_rule", Constant(newcount), Term("t", *prob_args, *vars))
-        lfi_rule = Term("lfi_rule", Constant(newcount), *vars)
+        # vars = list(factargs)
+
+
+        lfi_rule = Term("lfi_rule", Constant(newcount), Term("t", *prob_args), *factargs)
+        # lfi_rule = Term("lfi_rule", Constant(newcount), Term("t", *prob_args))
+        # lfi_rule = Term("lfi_rule", Constant(newcount), *vars)
+        # lfi_rule = Term("lfi_rule", Constant(newcount), *probargs, *factargs)
+
         if body is not None:
             extra_clauses.append(Clause(lfi_rule, body))
 
@@ -640,9 +654,25 @@ class LFIProblem(LogicProgram):
                 #     "lfi_par", Constant(self.count), Term("t", *prob_args, *atom1.args)
                 # )
                 # lfi_prob = Term("lfi_prob", Constant(self.count), Term("t"))
-                lfi_fact = Term("lfi_fact", Constant(self.count), *atom1.args)
-                lfi_body = Term("lfi_body", Constant(self.count), *atom1.args)
-                lfi_par = Term("lfi_par", Constant(self.count), *atom1.args)
+                # WIP: old
+                # lfi_fact = Term("lfi_fact", Constant(self.count), *atom1.args)
+                # lfi_body = Term("lfi_body", Constant(self.count), *atom1.args)
+                # lfi_par = Term("lfi_par", Constant(self.count), *atom1.args)
+                # lfi_prob = Term("lfi_prob", Constant(self.count), Term("t", *prob_args))
+
+                # WIP: new
+                # prob_vars = set(atom1.probability.args[1:])
+                # extra_vars = prob_vars.difference(atom1.args)
+                # lfi_fact = Term("lfi_fact", Constant(self.count), *atom1.args, *extra_vars)
+                # lfi_body = Term("lfi_body", Constant(self.count), *atom1.args, *extra_vars)
+                # lfi_par = Term("lfi_par", Constant(self.count), *atom1.args, *extra_vars)
+                # lfi_prob = Term("lfi_prob", Constant(self.count), Term("t", *prob_args))
+
+                factargs = atom1.args
+                # WIP: new new
+                lfi_fact = Term("lfi_fact", Constant(self.count), Term("t", *prob_args), *factargs)
+                lfi_body = Term("lfi_body", Constant(self.count), Term("t", *prob_args), *factargs)
+                lfi_par = Term("lfi_par", Constant(self.count), Term("t", *prob_args), *factargs)
                 lfi_prob = Term("lfi_prob", Constant(self.count), Term("t", *prob_args))
 
                 # 2) Replacement atom
@@ -868,25 +898,47 @@ class LFIProblem(LogicProgram):
         for m, pEvidence, result in results:
             par_marg = dict()
             for fact, value in result.items():
-                index = fact.args
+                # index = fact.args # WIP: old
+                index = (fact.args[0], fact.args[1]) # WIP: new
                 if fact.functor == "lfi_body":
                     fact_body[index] += value * m
                 elif fact.functor == "lfi_par":
+                    # WIP: old
+                    # if index in par_marg:
+                    #     if par_marg[index] != value:
+                    #         raise Exception(
+                    #             "Different parent margs for {}={} and previous {}={}".format(
+                    #                 fact, value, index, par_marg[index]
+                    #             )
+                    #         )
+                    # par_marg[index] = value
+                    # for o_index in self._adatomc[index[0]]:
+                    #     if o_index >= 0 and len(index) == 1:
+                    #         # Propositional AD
+                    #         par_marg[(o_index,)] = value
+                    #     elif o_index >= 0 and len(index) > 1:
+                    #         # First Order AD
+                    #         par_marg[(o_index, *index[1:])] = value
+                    # WIP: new
                     if index in par_marg:
-                        if par_marg[index] != value:
-                            raise Exception(
-                                "Different parent margs for {}={} and previous {}={}".format(
-                                    fact, value, index, par_marg[index]
-                                )
-                            )
-                    par_marg[index] = value
-                    for o_index in self._adatomc[index[0]]:
-                        if o_index >= 0 and len(index) == 1:
-                            # Propositional AD
-                            par_marg[(o_index,)] = value
-                        elif o_index >= 0 and len(index) > 1:
-                            # First Order AD
-                            par_marg[(o_index, *index[1:])] = value
+                        par_marg[index] += value
+                        for o_index in self._adatomc[index[0]]:
+                            if o_index >= 0 and len(index) == 1:
+                                # Propositional AD
+                                par_marg[(o_index,)] += value
+                            elif o_index >= 0 and len(index) > 1:
+                                # First Order AD
+                                par_marg[(o_index, *index[1:])] += value
+                    else:
+                        par_marg[index] = value
+
+                        for o_index in self._adatomc[index[0]]:
+                            if o_index >= 0 and len(index) == 1:
+                                # Propositional AD
+                                par_marg[(o_index,)] = value
+                            elif o_index >= 0 and len(index) > 1:
+                                # First Order AD
+                                par_marg[(o_index, *index[1:])] = value
 
             for index, value in par_marg.items():
                 fact_par[index] += value * m
@@ -899,29 +951,58 @@ class LFIProblem(LogicProgram):
 
         update_list = fact_body
 
-        weight_changed = [False] * len(self.names)
-        fact_par_grouped = dict()
-        for key, value in fact_par.items():
-            id = key[0]
-            if id in fact_par_grouped:
-                fact_par_grouped[id] += value
-            else:
-                fact_par_grouped[id] = value
+        weight_changed = []# FIXME: dont use self.names because shared by different t(_,X) groundings!
+        for weight in self._weights:
+            if isinstance(weight, float):
+                weight_changed.append(False)
+            elif isinstance(weight, dict):
+                d = dict()
+                for w in weight:
+                    d[w] = False
+                weight_changed.append(d)
+
+        # WIP: old
+        # fact_par_grouped = dict()
+        # for key, value in fact_par.items():
+        #     id = key[0] # TODO: is should be (key[0], key[1])
+        #     if id in fact_par_grouped:
+        #         fact_par_grouped[id] += value
+        #     else:
+        #         fact_par_grouped[id] = value
+        # WIP: new
+        fact_par_grouped = fact_par
 
         score = 0.0
         for index in update_list:
             if float(fact_body[index]) == 0.0:
                 prob = 0.0
             else:
-                prob = float(fact_body[index]) / float(fact_par_grouped[index[0]])
+                # prob = float(fact_body[index]) / float(fact_par_grouped[index[0]]) # WIP old
+                prob = float(fact_body[index]) / float(fact_par_grouped[index]) # WIP new
                 score += math.log(prob)
-            logger.debug(
+
+            # logger.debug(# WIP old
+            #     "Update probabilistic fact {}: {} / {} = {}".format(
+            #         index, fact_body[index], fact_par_grouped[index[0]], prob
+            #     )
+            # )
+
+            logger.debug(# WIP new
                 "Update probabilistic fact {}: {} / {} = {}".format(
-                    index, fact_body[index], fact_par_grouped[index[0]], prob
+                    index, fact_body[index], fact_par_grouped[index], prob
                 )
             )
-            self._set_weight(index[0], index[1:], prob, weight_changed=weight_changed)
-            weight_changed[int(index[0])] = True
+            # self._set_weight(index[0], index[1:], prob, weight_changed=weight_changed)
+            self._set_weight(index[0], index[1], prob, weight_changed=weight_changed)
+            if not index[1]:
+                weight_changed[int(index[0])] = True
+            elif isinstance(weight_changed[int(index[0])], dict) and index[1] in weight_changed[int(index[0])]:
+                weight_changed[int(index[0])][index[1]] = True
+            else:
+                weight_changed[int(index[0])] = {index[1]: True}
+            # weight_changed[int(index[0])] = True
+            # if isinstance(weight_changed, index[1])
+            # self._set_weight(index[0], index[1], prob)
 
         if self._enable_normalize:
             self._normalize_weights()
@@ -940,43 +1021,32 @@ class LFIProblem(LogicProgram):
             for i in idx:
                 for key, val in self.get_weights(i):
                     keys.add(key)
-            if len(keys) > 1:
-                try:
-                    keys.remove(Term("t"))
-                except KeyError:
-                    pass
+
+            # todo: What is this?
+            # if len(keys) > 1:
+            #     try:
+            #         keys.remove(Term("t"))
+            #     except KeyError:
+            #         pass
 
             keys = list(keys)
-            if len(keys) > 1:
-                w = 0.0
-                for key in keys:
-                    w += sum(self._get_weight(i, key, strict=False) for i in idx)
+            for key in keys:
+                w = sum(self._get_weight(i, key, strict=False) for i in idx)
                 if w != 0:
                     n = (
-                        available_prob / w
+                            available_prob / w
                     )  # Some part of probability might be taken by non-learnable weights in AD.
                 else:
                     n = available_prob
+
                 for i in idx:
                     self._set_weight(
                         i,
-                        list(self._weights[i].keys())[0],
+                        key,
                         self._get_weight(
-                            i, list(self._weights[i].keys())[0], strict=False
+                            i, key, strict=False
                         )
                         * n,
-                    )
-            else:
-                w = sum(self._get_weight(i, keys[0], strict=False) for i in idx)
-                if w != 0:
-                    n = (
-                        available_prob / w
-                    )  # Some part of probability might be taken by non-learnable weights in AD.
-                else:
-                    n = available_prob
-                for i in idx:
-                    self._set_weight(
-                        i, keys[0], self._get_weight(i, keys[0], strict=False) * n
                     )
 
     def step(self):
@@ -1085,25 +1155,28 @@ class Example(object):
                 and node.probability.functor == "lfi_prob"
             ):
                 factargs = ()
+                probargs = ()
                 if node.name.functor != "choice":
                     if node.name.functor == "lfi_fact":
-                        factargs = node.name.args[1:]
+                        # factargs = node.name.args[1:]# WIP: old
+                        factargs = node.name.args[1].args# WIP: new
                         # for arg in node.name.args:
                         #     if str(arg.functor) == "t":
                         #         factargs = arg.args
                     else:
-                        factargs = node.name.args
+                        factargs = node.name.args # WIP: old
+                        probargs = node.probability.args[1].args  # WIP: new
                 elif type(node.identifier) == tuple:
-                    factargs = node.identifier[1]
-                fact = Term("lfi_fact", node.probability.args[0], *factargs)
-                # fact = Term("lfi_fact", node.probability.args[0], Term("t", *factargs))
+                    # WIP: old
+                    # factargs = node.identifier[1]
+                    # WIP: new
+                    # factargs = node.name.args[2].args[1:]
+                    factargs = node.name.args[2].args[2:]
+                    probargs = node.probability.args[1].args  # WIP
 
-                # logger.debug(
-                #     "\tNode " + str(i) + ":\tAdding query for fact:\t" + str(fact)
-                # )
-                # ground_program.add_query(fact, i)
 
-                tmp_body = Term("lfi_body", node.probability.args[0], *factargs)
+                # tmp_body = Term("lfi_body", node.probability.args[0], *factargs) # WIP old
+                tmp_body = Term("lfi_body", node.probability.args[0], Term("t", *probargs), *factargs) # WIP new
                 # tmp_body = Term(
                 #     "lfi_body", node.probability.args[0], Term("t", *factargs)
                 # )
@@ -1115,7 +1188,8 @@ class Example(object):
                     + str(tmp_body)
                     + "\t"
                 )
-                tmp_par = Term("lfi_par", node.probability.args[0], *factargs)
+                # tmp_par = Term("lfi_par", node.probability.args[0], *factargs) # WIP old
+                tmp_par = Term("lfi_par", node.probability.args[0], Term("t", *probargs), *factargs) # WIP new
                 # tmp_par = Term(
                 #     "lfi_par", node.probability.args[0], Term("t", *factargs)
                 # )
