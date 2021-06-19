@@ -177,15 +177,15 @@ if has_sdd:
 else:
     print("No SDD support - The system tests are not performed with SDDs.")
 
-# # tests for ADs
-# for testfile in AD_filenames:
-#     testname = "test_lfi_AD_" + os.path.splitext(os.path.basename(testfile))[0]
-#     setattr(TestLFI, testname, createTestLFI(testfile))
+# tests for ADs
+for testfile in AD_filenames:
+    testname = "test_lfi_AD_" + os.path.splitext(os.path.basename(testfile))[0]
+    setattr(TestLFI, testname, createTestLFI(testfile))
 
-# # tests for simple unit tests
-# for testfile in simple_filenames:
-#     testname = "test_lfi_Simple_" + os.path.splitext(os.path.basename(testfile))[0]
-#     setattr(TestLFI, testname, createTestLFI(testfile))
+# tests for simple unit tests
+for testfile in simple_filenames:
+    testname = "test_lfi_Simple_" + os.path.splitext(os.path.basename(testfile))[0]
+    setattr(TestLFI, testname, createTestLFI(testfile))
 
 # tests for Miscellaneous files
 for testfile in misc_filenames:
