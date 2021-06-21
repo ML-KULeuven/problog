@@ -104,6 +104,7 @@ class LFIProblem(LogicProgram):
         knowledge=None,
         leakprob=None,
         propagate_evidence=True,
+        infer_AD_values=True,
         normalize=False,
         eps=1e-4,
         **extra
@@ -151,6 +152,7 @@ class LFIProblem(LogicProgram):
         self.leakprob = leakprob
         self.leakprobatoms = None
         self.propagate_evidence = propagate_evidence
+        self.infer_AD_values = infer_AD_values
         self._compiled_examples = None
 
         self.max_iter = max_iter
@@ -338,7 +340,7 @@ class LFIProblem(LogicProgram):
             new_d[k] = v
             l.append(new_d)
 
-        if self.propagate_evidence:
+        if self.infer_AD_values:
             result = ExampleSet()
             inconsistent = False
             # iterate over all examples given in .ev
@@ -1249,6 +1251,13 @@ def argparser():
         dest="leakprob",
         type=float,
         help="Add leak probabilities for evidence atoms.",
+    )
+    parser.add_argument(
+        "--infer-AD-values",
+        action="store_true",
+        dest="infer_AD_values",
+        default=True,
+        help="Infer values in ADs",
     )
     parser.add_argument(
         "--propagate-evidence",
