@@ -7,46 +7,6 @@ Parameter learning for ProbLog.
 Given a probabilistic program with parameterized weights and a set of partial implementations,
 learns appropriate values of the parameters.
 
-Continuous distributions (Not-Implemented Yet)
-++++++++++++++++++++++++
-A parametrized weight can also be a continuous normal distribution if the atom it is associated
-with only appears as a head (thus is not used in any bodies of other ProbLog rules).
-For example, the following GMM:
-.. code-block:: prolog::
-    t(0.5)::c.
-    t(normal(1,10))::fa :- c.
-    t(normal(10,10))::fa :- \+c.
-with evidence:
-.. code-block:: prolog::
-    evidence(fa, 10).
-    ---
-    evidence(fa, 18).
-    ---
-    evidence(fa, 8).
-Or a multivariate GMM:
-.. code-block:: prolog
-    t(0.5)::c.
-    t(normal([1,1],[10,1,1,10]))::fa :- c.
-    t(normal([10,10],[10,1,1,10]))::fa :- \+c.
-with evidence:
-.. code-block:: prolog
-    evidence(fa, [10,11]).
-    ---
-    evidence(fa, [18,12]).
-    ---
-    evidence(fa, [8,7]).
-The covariance matrix is represented as a row-based list ([[10,1],[1,10]] is [10,1,1,10]).
-The GMM can also be represent compactly and as one examples:
-.. code-block:: prolog
-    t(0.5)::c(ID,1); t(0.5)::c(ID,2).
-    comp(1). comp(2).
-    t(normal(_,_),C)::fa(ID) :- comp(C), c(ID,C).
-with evidence:
-.. code-block:: prolog::
-    evidence(fa(1), 10).
-    evidence(fa(2), 18).
-    evidence(fa(3), 8).
-
 Algorithm
 +++++++++
 The algorithm operates as follows:
@@ -445,12 +405,10 @@ class LFIProblem(LogicProgram):
                             if v != "Template":
                                 add_to_ad_evidence((k, v), new_ad_evidence, ADtemplate)
                         grounded_ad_evidences += new_ad_evidence
-                    # for propositional evidence dictionaries
                     else:
                         # simply us them
                         grounded_ad_evidences.append(d)
 
-                # # print(grounded_ad_evidences)
 
                 inconsistent_example = False
                 for i, d in enumerate(grounded_ad_evidences):
@@ -484,18 +442,6 @@ class LFIProblem(LogicProgram):
                     # (No AD case) or (Inconsistent Evidence Case)
                     atoms, values = zip(*example)
                     result.add(index, atoms, values)
-            # logger.debug(
-            #     "\nProcessed Examples:\n\t"
-            #     + "\n\t".join(
-            #         [
-            #             "Atoms: "
-            #             + str(ex.atoms)
-            #             + "\tValues: "
-            #             + str(ex.values)
-            #             for ex in result
-            #         ]
-            #     )
-            # )
             return result
         else:
             # smarter: compile-once all examples with same atoms
@@ -593,22 +539,26 @@ class LFIProblem(LogicProgram):
 
         for atom in atoms:
             if atom.probability and atom.probability.functor == "t":
-                # t(_)::p(X) :- body.
+                # t(_, X)::p(X, Y) :- body.
                 #
                 # Translate to
-                #   lfi(1)::lfi_fact_1(X).
-                #   p(X) :- lfi_body_1(X).
-                #   lfi_body_1(X) :- body,   lfi_fact_1(X).
-                #   lfi_body_2(X) :- body, \+lfi_fact_1(X).
+                #     lfi_prob(1, t(X))::lfi_fact(1, t(X), X, Y).
+                #     lfi_rule(1, t(X), X, Y): - body.
+                #     p(X, Y): - lfi_body(1, t(X), X, Y).
+                #     lfi_body(1, t(X), X, Y): - lfi_par(1, t(X), X, Y), lfi_fact(1, t(X), X, Y).
+                #     lfi_par(1, t(X), X, Y): - lfi_rule(1, t(X), X, Y).
                 #
-                # For annotated disjunction: t(_)::p1(X); t(_)::p2(X) :- body.
-                #   lfi1::lfi_fact_1(X); lfi2::lfi_fact_2(X); ... .
-                #   p1(X) :- lfi_body_1(X).
-                #   lfi_body_1(X) :- body, lfi_fact_1(X).
-                #   p2(X) :- lfi_body_2(X).
-                #   lfi_body_2(X) :- body, lfi_fact_2(X).
-                #  ....
-                has_lfi_fact = True
+                #
+                # For annotated disjunction: t(_)::p1(X); t(_)::p2(X): - body.
+                #     lfi_prob(0, t)::lfi_fact(0, t, X); lfi_prob(1, t)::lfi_fact(1, t, X): - lfi_rule(0_1, t, X).
+                #     lfi_rule(0_1, t, X): - body.
+                #     p1(X): - lfi_body(0, t, X).
+                #     lfi_body(0, t, X): - lfi_par(0, t, X), lfi_fact(0, t, X).
+                #     lfi_par(0, t, X): - lfi_rule(0_1, t, X).
+                #     p2(X): - lfi_body(1, t, X).
+                #     lfi_body(1, t, X): - lfi_par(1, t, X), lfi_fact(1, t, X).
+                #     lfi_par(1, t, X): - lfi_rule(0_1, t, X).
+                #     ...
 
                 # Learnable probability
                 try:
@@ -740,24 +690,30 @@ class LFIProblem(LogicProgram):
         This object can be used as a LogicProgram to be passed to the grounding Engine.
         Extracts and processes all ``t(...)`` weights.
         This
-            * replaces each probabilistic atom ``t(...)::p(X)`` by a unique atom \
-            ``lfi(i) :: lfi_fact_i(X)``;
-            * adds a new clause ``p(X) :- lfi_fact_i(X)``;
-            * adds a new query ``query( lfi_fact_i(X) )``;
-            * initializes the weight of ``lfi(i)`` based on the ``t(...)`` specification;
+            * replaces each probabilistic atom ``t(_, X)::p(X, Y) :- b(X, Y)`` by a unique atom \
+            ``lfi_prob(i,t(X))::lfi_fact(i,t(X),X,Y)``;
+            * adds a new clause ``p(X,Y) :- lfi_body(1,t(X),X,Y)``;
+            * adds a new clause ``lfi_body(i,t(X),X,Y) :- lfi_par(i,t(X),X,Y), lfi_fact(i,t(X),X,Y)``;
+            * adds a new clause ``lfi_par(i,t(X),X,Y) :- lfi_rule(i,t(X),X,Y)``;
+            * adds a new clause ``lfi_rule(i,t(X),X,Y) :- b(X,Y)``;
+            * initializes the weight of ``lfi_prob(i,t(X))`` based on the ``t(...)`` specification;
         This also removes all existing queries from the model.
         Example:
         .. code-block:: prolog
+            t(_) :: b(X).
             t(_) :: p(X) :- b(X).
-            t(_) :: p(X) :- c(X).
         is transformed into
         .. code-block:: prolog
-            lfi(0) :: lfi_fact_0(X) :- b(X).
-            p(X) :- lfi_fact_0(X).
-            lfi(1) :: lfi_fact_1(X) :- c(X).
-            p(X) :- lfi_fact_1(X).
-            query(lfi_fact_0(X)).
-            query(lfi_fact_1(X)).
+            lfi_prob(0,t)::lfi_fact(0,t,X).
+            b(X) :- lfi_body(0,t,X).
+            lfi_body(0,t,X) :- lfi_par(0,t,X), lfi_fact(0,t,X).
+            lfi_par(0,t,X) :- true.
+            lfi_prob(1,t)::lfi_fact(1,t,X).
+            lfi_rule(1,t,X) :- b(X).
+            p(X) :- lfi_body(1,t,X).
+            lfi_body(1,t,X) :- lfi_par(1,t,X), lfi_fact(1,t,X).
+            lfi_par(1,t,X) :- lfi_rule(1,t,X).
+
         If ``self.leakprobs`` is a value, then during learning all true
         examples are added to the program with the given leak probability.
         """
@@ -1133,7 +1089,7 @@ class ExampleEvaluator(SemiringDensity):
 
     def value(self, a):
         """Overrides from SemiringProbability.
-        Replaces a weight of the form ``lfi(i, t(...))`` by its current estimated value.
+        Replaces a weight of the form ``lfi_prob(i, t(...))`` by its current estimated value.
         Other weights are passed through unchanged.
         :param a: term representing the weight
         :type a: Term
