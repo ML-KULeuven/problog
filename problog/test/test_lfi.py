@@ -167,6 +167,7 @@ else:
     AD_filenames = glob.glob(root_path("test", "lfi", "AD", "*.pl"))
     simple_filenames = glob.glob(root_path("test", "lfi", "Simple", "*.pl"))
     misc_filenames = glob.glob(root_path("test", "lfi", "Misc", "*.pl"))
+    vars_in_T_filenames = glob.glob(root_path("test", "lfi", "VarsInTunable", "*.pl"))
 
 # evaluatables = ["ddnnf"]
 evaluatables = []
@@ -177,20 +178,25 @@ if has_sdd:
 else:
     print("No SDD support - The system tests are not performed with SDDs.")
 
-# tests for ADs
-for testfile in AD_filenames:
-    testname = "test_lfi_AD_" + os.path.splitext(os.path.basename(testfile))[0]
+# # tests for ADs
+# for testfile in AD_filenames:
+#     testname = "test_lfi_AD_" + os.path.splitext(os.path.basename(testfile))[0]
+#     setattr(TestLFI, testname, createTestLFI(testfile))
+#
+# # tests for simple unit tests
+# for testfile in simple_filenames:
+#     testname = "test_lfi_Simple_" + os.path.splitext(os.path.basename(testfile))[0]
+#     setattr(TestLFI, testname, createTestLFI(testfile))
+
+# tests for Variables in t()
+for testfile in vars_in_T_filenames:
+    testname = "test_lfi_VarsInT_" + os.path.splitext(os.path.basename(testfile))[0]
     setattr(TestLFI, testname, createTestLFI(testfile))
 
-# tests for simple unit tests
-for testfile in simple_filenames:
-    testname = "test_lfi_Simple_" + os.path.splitext(os.path.basename(testfile))[0]
-    setattr(TestLFI, testname, createTestLFI(testfile))
-
-# tests for Miscellaneous files
-for testfile in misc_filenames:
-    testname = "test_lfi_Misc_" + os.path.splitext(os.path.basename(testfile))[0]
-    setattr(TestLFI, testname, createTestLFI(testfile))
+# # tests for Miscellaneous files
+# for testfile in misc_filenames:
+#     testname = "test_lfi_Misc_" + os.path.splitext(os.path.basename(testfile))[0]
+#     setattr(TestLFI, testname, createTestLFI(testfile))
 
 
 if __name__ == "__main__":
