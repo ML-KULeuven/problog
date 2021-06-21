@@ -34,7 +34,7 @@ cycle_var_prefix = "problog_cv_"
 
 # noinspection PyUnusedLocal
 @transform(LogicFormula, LogicDAG)
-def break_cycles(source, target, translation=None, **kwdargs):
+def break_cycles(source, target, translation=None, keep_named=False, **kwdargs):
     """Break cycles in the source logic formula.
 
     :param source: logic formula with cycles
@@ -50,7 +50,12 @@ def break_cycles(source, target, translation=None, **kwdargs):
         if translation is None:
             translation = defaultdict(list)
 
-        for q, n, l in source.labeled():
+        labeled = source.labeled()
+        if keep_named:
+            for name, node, label in source.get_names_with_label():
+                if label == source.LABEL_NAMED:
+                    labeled.append((name, node, label))
+        for q, n, l in labeled:
             if source.is_probabilistic(n):
                 newnode = _break_cycles(
                     source, target, n, [], cycles_broken, content, translation
