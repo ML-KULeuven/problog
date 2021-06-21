@@ -559,7 +559,7 @@ class LFIProblem(LogicProgram):
                 #     lfi_body(1, t, X): - lfi_par(1, t, X), lfi_fact(1, t, X).
                 #     lfi_par(1, t, X): - lfi_rule(0_1, t, X).
                 #     ...
-
+                has_lfi_fact = True
                 # Learnable probability
                 try:
                     start_value = float(atom.probability.args[0])
