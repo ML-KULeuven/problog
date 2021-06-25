@@ -852,13 +852,18 @@ class ClauseDB(LogicProgram):
 
     def load_external_module(self, filename):
         from .extern import problog_export
-        import imp
 
         problog_export.database = self
-
         module_name = os.path.splitext(os.path.split(filename)[-1])[0]
-        with open(filename, "r") as extfile:
-            imp.load_module(module_name, extfile, filename, (".py", "U", 1))
+
+        # Replaced deprecated imp.load_module()
+        # source: https://stackoverflow.com/a/19011259
+        import importlib.machinery
+        import importlib.util
+        loader = importlib.machinery.SourceFileLoader(module_name, filename)
+        module_spec = importlib.util.spec_from_loader(loader.name, loader)
+        new_module = importlib.util.module_from_spec(module_spec)
+        loader.exec_module(new_module)
 
         return module_name, self.__extern[module_name]
 
