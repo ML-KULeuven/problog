@@ -5,22 +5,14 @@ Module name
 from __future__ import print_function
 
 from problog import root_path
-from problog.util import subprocess_call, subprocess_check_output
 import unittest
 import os
 import sys
 import glob
-import subprocess, traceback
 from problog.learning.lfi import lfi_wrapper, LFIProblem
-
-if __name__ == "__main__":
-    sys.path.insert(
-        0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../"))
-    )
 
 try:
     from pysdd import sdd
-
     has_sdd = True
 except Exception as err:
     print("SDD library not available due to error: ", err, file=sys.stderr)
@@ -54,13 +46,13 @@ def read_result(filename):
     return results
 
 
-def createTestLFI(filename):
+def createTestLFI(filename, evaluatables):
     def test(self):
         for eval_name in evaluatables:
             with self.subTest(evaluatable=eval_name):
                 test_func(self, evaluatable=eval_name)
 
-    def test_func(self, evaluatable="ddnnf"):
+    def test_func(self, evaluatable):
         model = filename
         examples = filename.replace(".pl", ".ev")
         expectedlines = read_result(model)
@@ -84,9 +76,6 @@ def createTestLFI(filename):
             )
             outlines = lfi.get_model()
         except Exception as err:
-            # print(expectedlines)
-            # print(err)
-            # This test is specifically for test/lfi/AD/relatedAD_1 and test/lfi/AD/relatedAD_2
             assert expectedlines == "NonGroundProbabilisticClause"
             return
 
@@ -144,53 +133,47 @@ def createTestLFI(filename):
                     new_expectedline_comps.append(expectedline_comp)
                 new_outline = "; ".join(new_outline_comps)
                 new_expectedline = "; ".join(new_expectedline_comps)
-            # print(new_expectedline)
-            # print(new_outline)
-            assert new_expectedline == new_outline
+                expectedline = new_expectedline
+                outline = new_outline
+            assert expectedline == outline
 
     return test
 
 
-def ignore_previous_output(path):
-    # dir_name = "../../test/lfi/unit_tests/"
-    test = os.listdir(path)
-    for item in test:
-        if item.endswith(".out"):
-            os.remove(os.path.join(path, item))
+def main():
+    AD_filenames = glob.glob(root_path("test", "lfi", "ad", "*.pl"))
+    simple_filenames = glob.glob(root_path("test", "lfi", "simple", "*.pl"))
+    misc_filenames = glob.glob(root_path("test", "lfi", "misc", "*.pl"))
+    vars_in_T_filenames = glob.glob(root_path("test", "lfi", "vars_in_tunable", "*.pl"))
+
+    evaluatables = ["ddnnf"]
+
+    if has_sdd:
+        evaluatables.append("sdd")
+        evaluatables.append("sddx")
+    else:
+        print("No SDD support - The system tests are not performed with SDDs.")
+
+    # tests for ADs
+    for testfile in AD_filenames:
+        testname = "test_lfi_ad_" + os.path.splitext(os.path.basename(testfile))[0]
+        setattr(TestLFI, testname, createTestLFI(testfile, evaluatables))
+
+    # tests for simple unit tests
+    for testfile in simple_filenames:
+        testname = "test_lfi_simple_" + os.path.splitext(os.path.basename(testfile))[0]
+        setattr(TestLFI, testname, createTestLFI(testfile, evaluatables))
+
+    # tests for Variables in t()
+    for testfile in vars_in_T_filenames:
+        testname = "test_lfi_vars_inT_" + os.path.splitext(os.path.basename(testfile))[0]
+        setattr(TestLFI, testname, createTestLFI(testfile, evaluatables))
+
+    # tests for Miscellaneous files
+    for testfile in misc_filenames:
+        testname = "test_lfi_misc_" + os.path.splitext(os.path.basename(testfile))[0]
+        setattr(TestLFI, testname, createTestLFI(testfile, evaluatables))
 
 
-if __name__ == "__main__":
-    filenames = sys.argv[1:]
-else:
-    AD_filenames = glob.glob(root_path("test", "lfi", "AD", "*.pl"))
-    simple_filenames = glob.glob(root_path("test", "lfi", "Simple", "*.pl"))
-    misc_filenames = glob.glob(root_path("test", "lfi", "Misc", "*.pl"))
+main()
 
-evaluatables = ["ddnnf"]
-# evaluatables = []
-
-if has_sdd:
-    evaluatables.append("sdd")
-    evaluatables.append("sddx")
-else:
-    print("No SDD support - The system tests are not performed with SDDs.")
-
-# tests for ADs
-for testfile in AD_filenames:
-    testname = "test_lfi_AD_" + os.path.splitext(os.path.basename(testfile))[0]
-    setattr(TestLFI, testname, createTestLFI(testfile))
-
-# tests for simple unit tests
-for testfile in simple_filenames:
-    testname = "test_lfi_Simple_" + os.path.splitext(os.path.basename(testfile))[0]
-    setattr(TestLFI, testname, createTestLFI(testfile))
-
-# tests for Miscellaneous files
-for testfile in misc_filenames:
-    testname = "test_lfi_Misc_" + os.path.splitext(os.path.basename(testfile))[0]
-    setattr(TestLFI, testname, createTestLFI(testfile))
-
-
-if __name__ == "__main__":
-    suite = unittest.TestLoader().loadTestsFromTestCase(TestLFI)
-    unittest.TextTestRunner(verbosity=2).run(suite)
