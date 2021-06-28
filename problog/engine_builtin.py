@@ -230,6 +230,7 @@ def add_standard_builtins(engine, b=None, s=None, sp=None):
         engine.add_builtin("call_in_scope", i + 1, _builtin_calln_in_scope)
 
     engine.add_builtin("find_scope", 2, s(_builtin_find_scope))
+    #engine.add_builtin("forall", 2, s(_builtin_forall)) TODO: Add forall as built-in here
 
     builtin.add_builtins(engine, b, s, sp)
 

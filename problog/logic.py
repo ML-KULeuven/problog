@@ -666,10 +666,44 @@ class Term(object):
             current = current.args[1]
         return elements, current
 
+    def diff(self, other):
+        if not isinstance(other, Term):
+            return 'other not a term'
+        # Non-recursive version of equality check.
+        l1 = deque([self])
+        l2 = deque([other])
+        while l1 and l2:
+            t1 = l1.popleft()
+            t2 = l2.popleft()
+            if len(l1) != len(l2):
+                return 'l1 and l2 length difference'
+            elif id(t1) == id(t2):
+                pass
+            elif type(t1) != type(t2):
+                return 'type: {} vs {}'.format(type(t1), type(t2))
+            elif type(t1) == int:
+                if t1 != t2:
+                    return '{} != {}'.format(t1,t2)
+            elif t1 is None:
+                if t2 is not None:
+                    return 't1 is None but t2 is not'
+            elif isinstance(t1, Constant):  # t2 too
+                if type(t1.functor) != type(t2.functor):
+                    return '{} vs {}'.format(type(t1.functor), type(t2.functor))
+                elif t1.functor != t2.functor:
+                    return '{} vs {}'.format(t1.functor, t2.functor)
+            else:  # t1 and t2 are Terms
+                if not isinstance(t1, Not) and t1.__functor != t2.__functor:
+                    return 'not not and functor {} vs {}'.format(t1.__functor, t2.__functor)
+                if t1.__arity != t2.__arity:
+                    return 'arity: {} vs {}'.format(t1.__arity, t2.__arity)
+                l1.extend(t1.__args)
+                l2.extend(t2.__args)
+        return l1 == l2  # Should both be empty.
+
     def __eq__(self, other):
         if not isinstance(other, Term):
             return False
-
         # Non-recursive version of equality check.
         l1 = deque([self])
         l2 = deque([other])
