@@ -39,7 +39,6 @@ problog_tasks["parse"] = "problog.parser"
 problog_tasks["map"] = "problog.tasks.map"
 problog_tasks["time"] = "problog.tasks.time1"
 problog_tasks["constraint"] = "problog.tasks.constraint"
-problog_tasks["dc"] = "problog.tasks.dcproblog.tasks"
 
 problog_default_task = "prob"
 
