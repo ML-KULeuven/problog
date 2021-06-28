@@ -415,6 +415,7 @@ class PrologFactory(Factory):
             is_scope = operand1[0].functor == "':'"
             term = operand1[0] if not is_scope else operand1[0].args[1]
             # Example of a scoped aggregate scope1:dept_salary(Dept, avg<Salary>) :- BODY.
+            # Reason as to be careful about scopes: cf. test/aggregate_builtins_scoped.pl
             has_agg = any(isinstance(arg, AggTerm) for arg in term.args)
             if has_agg:
                 groupvars = list2term(term.args[:-1])
