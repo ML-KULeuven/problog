@@ -53,10 +53,11 @@ class TestInterfaces(unittest.TestCase):
     def test_cli_learn(self):
         problogcli = root_path("problog-cli.py")
 
-        model = root_path("test", "lfi", "AD", "ADtest_8_1.pl")
-        examples = root_path("test", "lfi", "AD", "ADtest_8_1.ev")
+        model = root_path("test", "lfi", "ad", "ADtest_8_1.pl")
+        examples = root_path("test", "lfi", "ad", "ADtest_8_1.ev")
 
         out = subprocess_check_output(
-            [sys.executable, problogcli, "lfi", model, examples]
+            [sys.executable, problogcli, "lfi", model, examples, ]
         )
-        assert out.startswith('0.0 [0.4, 0.2, 0.4] [t(_)::a(X), t(_)::b(Y), t(_)::c(Z)]')
+        assert "[0.4, 0.2, 0.4]" in out
+        assert "[t(_)::a(X), t(_)::b(Y), t(_)::c(Z)]" in out
