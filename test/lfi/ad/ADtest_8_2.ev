@@ -1,0 +1,18 @@
+evidence(a(x1), true).
+---
+evidence(b(x2), true).
+---
+evidence(c(x3), true).
+---
+evidence(a(x1), true).
+evidence(b(x2), false).
+---
+evidence(c(x2), false).
+evidence(c(x3), true).
+---
+evidence(a(x1), false).
+evidence(b(x2), false).
+evidence(c(x3), true).
+---
+evidence(b(x2), false).
+evidence(c(x3), false).
