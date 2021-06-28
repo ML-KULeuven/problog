@@ -11,6 +11,7 @@ from problog.learning.lfi import lfi_wrapper, LFIProblem
 
 try:
     from pysdd import sdd
+
     has_sdd = True
 except Exception as err:
     print("SDD library not available due to error: ", err, file=sys.stderr)
@@ -35,7 +36,7 @@ def read_result(filename):
                 reading = True
             elif reading:
                 if l.lower().startswith("% error: "):
-                    return l[len("% error: ") :].strip()
+                    return l[len("% error: "):].strip()
                 elif l.startswith("% "):
                     res = l[2:]
                     results.append(res)
@@ -91,7 +92,7 @@ def createTestLFI(filename, evaluatables):
                 assert len(outline_comps) == len(expectedline_comps)
                 # Compare one expected probability and one learned probability at a time
                 for expectedline_comp, outline_comp in zip(
-                    expectedline_comps, outline_comps
+                        expectedline_comps, outline_comps
                 ):
                     outline_comp = outline_comp.strip()
                     expectedline_comp = expectedline_comp.strip()
@@ -109,23 +110,23 @@ def createTestLFI(filename, evaluatables):
                         )
                         # Update the expected component probability
                         expectedline_comp = (
-                            rounded_expectedline_comp_prob
-                            + "::"
-                            + expectedline_comp.split("::")[1]
+                                rounded_expectedline_comp_prob
+                                + "::"
+                                + expectedline_comp.split("::")[1]
                         )
                         # If the learned probability is close enough to the expected probability
                         if (
-                            abs(
-                                float(rounded_outline_comp_prob)
-                                - float(rounded_expectedline_comp_prob)
-                            )
-                            < 0.00001
+                                abs(
+                                    float(rounded_outline_comp_prob)
+                                    - float(rounded_expectedline_comp_prob)
+                                )
+                                < 0.00001
                         ):
                             # Make the two lines identical
                             outline_comp = (
-                                rounded_expectedline_comp_prob
-                                + "::"
-                                + outline_comp.split("::")[1]
+                                    rounded_expectedline_comp_prob
+                                    + "::"
+                                    + outline_comp.split("::")[1]
                             )
                     new_outline_comps.append(outline_comp)
                     new_expectedline_comps.append(expectedline_comp)
@@ -173,5 +174,8 @@ def main():
         setattr(TestLFI, testname, createTestLFI(testfile, evaluatables))
 
 
+main()
+
 if __name__ == "__main__":
-    main()
+    suite = unittest.TestLoader().loadTestsFromTestCase(TestLFI)
+    unittest.TextTestRunner(verbosity=2).run(suite)
