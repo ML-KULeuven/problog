@@ -63,14 +63,14 @@ class LogicProgram(ProbLogObject):
         """Iterator for the clauses in the program."""
         raise NotImplementedError("LogicProgram.__iter__ is an abstract method.")
 
-    def add_clause(self, clause, scope=None, is_problog_scope=False):
+    def add_clause(self, clause, scope=None):
         """Add a clause to the logic program.
 
         :param clause: add a clause
         """
         raise NotImplementedError("LogicProgram.addClause is an abstract method.")
 
-    def add_fact(self, fact, scope=None, is_problog_scope=False):
+    def add_fact(self, fact, scope=None):
         """Add a fact to the logic program.
 
         :param fact: add a fact
@@ -82,7 +82,7 @@ class LogicProgram(ProbLogObject):
         self.add_statement(clausefact)
         return self
 
-    def add_statement(self, clausefact, scope=None, is_problog_scope=False):
+    def add_statement(self, clausefact, scope=None):
         if isinstance(clausefact, Or):
             heads = clausefact.to_list()
             # TODO move this to parser code
@@ -95,35 +95,13 @@ class LogicProgram(ProbLogObject):
             self.add_clause(
                 AnnotatedDisjunction(heads, Term("true")),
                 scope=scope,
-                is_problog_scope=is_problog_scope,
             )
         elif isinstance(clausefact, AnnotatedDisjunction):
-            self.add_clause(clausefact, scope=scope, is_problog_scope=is_problog_scope)
+            self.add_clause(clausefact, scope=scope)
         elif isinstance(clausefact, Clause):
-            self.add_clause(clausefact, scope=scope, is_problog_scope=is_problog_scope)
+            self.add_clause(clausefact, scope=scope)
         elif type(clausefact) == Term:
-            if clausefact.is_scope_term():
-                scope_name = clausefact.args[0]
-                # TODO: Warning: I will have to think about Variable, Constant cases as well...
-                # If first in-scope Term is a Term (not a clause, AD, ...), pass on the probability, otherwise not
-                if type(clausefact.args[1]) == Term:
-                    self.add_statement(
-                        clausefact.args[1].with_probability(p=clausefact.probability),
-                        scope=scope_name,
-                        is_problog_scope=True,
-                    )
-                # If first in-scope Term is not a Term (so clause, AD, ...), we store it to manipulate it
-                else:
-                    self.add_statement(
-                        clausefact.args[1], scope=scope_name, is_problog_scope=True
-                    )
-                    self.add_fact(clausefact, scope=scope, is_problog_scope=True)
-            # Default behavior (no scopes)
-            else:
-                self.add_fact(
-                    clausefact, scope=scope, is_problog_scope=is_problog_scope
-                )
-
+            self.add_fact(clausefact, scope=scope)
         else:
             raise GroundingError(
                 "Unexpected fact '%s'" % clausefact, self.lineno(clausefact.location)
@@ -222,7 +200,7 @@ class SimpleProgram(LogicProgram):
         LogicProgram.__init__(self)
         self.__clauses = []
 
-    def add_clause(self, clause, scope=None, is_problog_scope=False):
+    def add_clause(self, clause, scope=None):
         """Add a clause to the logic program.
 
         :param clause: add a clause
@@ -233,7 +211,7 @@ class SimpleProgram(LogicProgram):
         else:
             self.__clauses.append(clause)
 
-    def add_fact(self, fact, scope=None, is_problog_scope=False):
+    def add_fact(self, fact, scope=None):
         """Add a fact to the logic program.
 
         :param fact: add a fact
@@ -302,14 +280,14 @@ class PrologString(LogicProgram):
         program = self._program()
         return program[sl]
 
-    def add_clause(self, clause, scope=None, is_problog_scope=False):
+    def add_clause(self, clause, scope=None):
         """Add a clause to the logic program.
 
         :param clause: add a clause
         """
         raise AttributeError("not supported")
 
-    def add_fact(self, fact, scope=None, is_problog_scope=False):
+    def add_fact(self, fact, scope=None):
         """Add a fact to the logic program.
 
         :param fact: add a fact
@@ -349,14 +327,14 @@ class PrologFile(PrologString):
             identifier=identifier,
         )
 
-    def add_clause(self, clause, scope=None, is_problog_scope=False):
+    def add_clause(self, clause, scope=None):
         """Add a clause to the logic program.
 
         :param clause: add a clause
         """
         raise AttributeError("not supported")
 
-    def add_fact(self, fact, scope=None, is_problog_scope=False):
+    def add_fact(self, fact, scope=None):
         """Add a fact to the logic program.
 
         :param fact: add a fact
@@ -436,6 +414,7 @@ class PrologFactory(Factory):
             # TODO add tests and errors
             is_scope = operand1[0].functor == "':'"
             term = operand1[0] if not is_scope else operand1[0].args[1]
+            # Example of a scoped aggregate scope1:dept_salary(Dept, avg<Salary>) :- BODY.
             has_agg = any(isinstance(arg, AggTerm) for arg in term.args)
             if has_agg:
                 groupvars = list2term(term.args[:-1])
