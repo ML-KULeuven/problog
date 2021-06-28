@@ -39,6 +39,7 @@ def break_cycles(source, target, translation=None, keep_named=False, **kwdargs):
 
     :param source: logic formula with cycles
     :param target: target logic formula without cycles
+    :param kee_named: if true, then named nodes will be preserved after cycle breaking
     :param kwdargs: additional arguments (ignored)
     :return: target
     """
