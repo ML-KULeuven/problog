@@ -1225,7 +1225,7 @@ _arithmetic_functions = {
     ("ceiling", 1): lambda x: int(math.ceil(x)),
     ("round", 1): lambda x: int(round(x)),
     ("floor", 1): lambda x: int(math.floor(x)),
-    ("truncate", 1): lambda x: int(math.trunc),
+    ("truncate", 1): lambda x: int(math.trunc(x)),
     ("min", 2): min,
     ("max", 2): max,
     ("exp", 2): math.pow,
@@ -1276,7 +1276,7 @@ def unquote(s):
     return s.strip("'")
 
 
-safe_expr = re.compile("[a-z]+(\w)*$")
+safe_expr = re.compile(r"[a-z]+(\w)*$")
 
 
 def is_safe(t):
@@ -1317,7 +1317,7 @@ def compute_function(func, args, extra_functions=None):
         else:
             return function(*values)
     except ValueError as err:
-        raise ArithmeticError(err.message)
+        raise ArithmeticError(str(err))
     except ZeroDivisionError:
         raise ArithmeticError("Division by zero.")
 
