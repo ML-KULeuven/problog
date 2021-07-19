@@ -102,7 +102,7 @@ class LFIProblem(LogicProgram):
         leakprob=None,
         propagate_evidence=True,
         normalize=False,
-        eps=1e-4,
+        logspace=False,
         **extra
     ):
         """
@@ -110,7 +110,7 @@ class LFIProblem(LogicProgram):
         :param source: filename of file containing input model
         :type source: str
         :param examples: list of observed terms / value
-        :type examples: list[tuple(Term, bool)]
+        :type examples: list[list[tuple(Term, bool)]]
         :param max_iter: maximum number of iterations to run
         :type max_iter: int
         :param min_improv: minimum improvement in log-likelihood for convergence detection
@@ -125,13 +125,11 @@ class LFIProblem(LogicProgram):
                          retrieve the constants from the evidence file.
                          (default: None)
         :type leakprob: float or None
-        :param eps: Epsilon value which is the smallest value that is used
-        :type eps: float
         :param extra: catch all for additional parameters (not used)
         """
         LogicProgram.__init__(self)
         self.source = source
-        self._eps = eps
+        self._log = logspace
 
         # The names of the atom for which we want to learn weights.
         self.names = []
@@ -144,7 +142,7 @@ class LFIProblem(LogicProgram):
         #  for weights of form t(SV, arg1, arg2, ...).
         self._weights = []
 
-        self.examples = examples
+        self.examples = LFIProblem._fix_examples(examples)
         self.leakprob = leakprob
         self.leakprobatoms = None
         self.propagate_evidence = propagate_evidence
@@ -166,6 +164,26 @@ class LFIProblem(LogicProgram):
         self._adatoms = []  # list AD atoms and total probability
         self._adatomc = {}  # complement of AD atom (complement that adds to prob 1.0)
         self._adparent = {}  # atom representing parent of AD
+
+    @staticmethod
+    def _fix_examples(examples):
+        """ Fixes input format of examples, present in problog 2.1.0.42
+
+            ProbLog 2.1.0.42 contained pieces of code from the work on LFI supporting continuous distributions.
+            In this code, self.examples did no longer have the format list[tuple(Term, bool)] but was instead
+            storing tuples of size 3, with the third argument being 'cvalue'. This shouldn't have been pushed, and it
+            is possible some people have adapted their input format to this. After reverting this format change, this
+            method ensures backwards compatibility for the format of tuples with length 3.
+            If later this format of length three is restored, remove this method.
+        """
+        if len(examples) > 0 and len(examples[0]) > 0 and len(examples[0][0]) > 2:
+            # Assumes all elements use the same format of tuple of length 3 (so we only check [0][0])
+            return [
+                [(tuple_ex[0], tuple_ex[1]) for tuple_ex in example]
+                for example in examples
+            ]
+        else:
+            return examples
 
     @property
     def count(self):
@@ -457,7 +475,8 @@ class LFIProblem(LogicProgram):
     def _compile_examples(self):
         """Compile examples."""
         logger = getLogger("problog_lfi")
-        baseprogram = DefaultEngine(**self.extra).prepare(self)
+        baseprogram = DefaultEngine(**self.extra)
+        baseprogram = baseprogram.prepare(self)
         logger.debug(
             "\nBase Program:\n\t" + baseprogram.to_prolog().replace("\n", "\n\t")
         )
@@ -779,8 +798,10 @@ class LFIProblem(LogicProgram):
         """Evaluate the model with its current estimates for all examples."""
 
         getLogger("problog_lfi").debug("Evaluating examples:")
-
-        evaluator = ExampleEvaluator(self._weights, eps=self._eps)
+        if self._log:
+            evaluator = ExampleEvaluatorLog(self._weights)
+        else:
+            evaluator = ExampleEvaluator(self._weights)
 
         results = []
         for i, example in enumerate(self._compiled_examples):
@@ -923,6 +944,13 @@ class LFIProblem(LogicProgram):
         getLogger("problog_lfi").info("Bodies: %s" % self.bodies)
         getLogger("problog_lfi").info("Parents: %s" % self.parents)
         getLogger("problog_lfi").info("Initial weights: %s" % self._weights)
+
+        # if self._log:
+        #     new_w = []
+        #     for w in self._weights:
+        #         new_w.append(math.log(w))
+        #     self._weights = new_w
+
         delta = 1000
         prev_score = -1e10
 
@@ -1076,9 +1104,9 @@ class Example(object):
 
 
 class ExampleEvaluator(SemiringProbability):
-    def __init__(self, weights, eps):
+    def __init__(self, weights):
+        SemiringProbability.__init__(self)
         self._weights = weights
-        self._eps = eps
 
     def _get_weight(self, index, args, strict=True):
         index = int(index)
@@ -1154,7 +1182,6 @@ class ExampleEvaluator(SemiringProbability):
         for name, node, label in evaluator.formula.labeled():
             if name.functor not in ["lfi_body", "lfi_par"]:
                 continue
-
             w = evaluator.evaluate(node)
 
             if w < 1e-6:
@@ -1163,6 +1190,90 @@ class ExampleEvaluator(SemiringProbability):
                 p_queries[name] = w
         p_evidence = evaluator.evaluate_evidence()
 
+        return len(n), p_evidence, p_queries
+
+
+class ExampleEvaluatorLog(SemiringLogProbability):
+    def __init__(self, weights):
+        SemiringLogProbability.__init__(self)
+        self._weights = weights
+
+    def _get_weight(self, index, args, strict=True):
+        index = int(index)
+        weight = self._weights[index]
+        if isinstance(weight, dict):
+            if strict:
+                weight = weight[args]
+            else:
+                weight = weight.get(args, 0.0)
+        try:
+            result = math.log(weight)
+        except ValueError:
+            return float("-inf")
+        return result
+
+    def value(self, a):
+        """Overrides from SemiringProbability.
+        Replaces a weight of the form ``lfi(i, t(...))`` by its current estimated value.
+        Other weights are passed through unchanged.
+        :param a: term representing the weight
+        :type a: Term
+        :return: current weight
+        :rtype: float
+        """
+        if isinstance(a, Term) and a.functor == "lfi_prob":
+            rval = self._get_weight(*a.args)
+        else:
+            rval = math.log(float(a))
+        return rval
+
+    def __call__(self, example):
+        """Evaluate the model with its current estimates for all examples."""
+        return [
+            self._call_internal(
+                example.atoms, example.values, example.compiled, example.n
+            )
+        ]
+
+    def _call_internal(self, at, val, comp, n):
+
+        evidence = {}
+
+        for a, v in zip(at, val):
+            if a in evidence:
+                if evidence[a] != v:
+                    context = " (found evidence({},{}) and evidence({},{}) in example {})".format(
+                        a,
+                        evidence[a],
+                        a,
+                        v,
+                        ",".join([str(ni) for ni in n])
+                        if isinstance(n, list)
+                        else n + 1,
+                    )
+                    raise InconsistentEvidenceError(source=a, context=context)
+            else:
+                evidence[a] = v
+
+        try:
+            # TODO: The next step generates the entire formula if it is density and this is redone later (caching?)
+            evaluator = comp.get_evaluator(semiring=self, evidence=evidence)
+        except InconsistentEvidenceError as err:
+            n = ",".join([str(ni + 1) for ni in n]) if isinstance(n, list) else n + 1
+            context = err.context + " (example {})".format(n)
+            raise InconsistentEvidenceError(err.source, context)
+
+        p_queries = {}
+        # Probability of query given evidence
+        for name, node, label in evaluator.formula.labeled():
+            if name.functor not in ["lfi_body", "lfi_par"]:
+                continue
+            w = evaluator.evaluate(node)
+
+            p_queries[name] = w
+
+        p_evidence = evaluator.evaluate_evidence()
+        # p_evidence = math.exp(p_evidence)
         return len(n), p_evidence, p_queries
 
 
@@ -1214,11 +1325,14 @@ class DefaultDict(object):
         return self.base.get(key, Var(key))
 
 
-def run_lfi(program, examples, **kwdargs):
+def run_lfi(program, examples, output_model=None, **kwdargs):
     lfi = LFIProblem(program, examples, **kwdargs)
     score = lfi.run()
 
     getLogger("problog_lfi").info("\nLearned Model:\t\n" + lfi.get_model())
+    if output_model is not None:
+        with open(output_model, "w") as f:
+            f.write(lfi.get_model())
 
     names = []
     weights = []
@@ -1240,32 +1354,56 @@ def argparser():
     )
     parser.add_argument("model")
     parser.add_argument("examples", nargs="+")
-    parser.add_argument("-s", dest="seed", default=None, type=int, help="The seed to use when sampling initial values")
+    parser.add_argument(
+        "-s",
+        dest="seed",
+        default=None,
+        type=int,
+        help="The seed to use when sampling initial values",
+    )
     parser.add_argument("-n", dest="max_iter", default=10000, type=int)
     parser.add_argument("-d", dest="min_improv", default=1e-10, type=float)
+    # parser.add_argument(
+    #     "-o",
+    #     "--output",
+    #     dest="output",
+    #     type=str,
+    #     default=None,
+    #     help="write resulting model to given file",
+    # )
     parser.add_argument(
-        "-o",
-        "--output",
-        dest="output",
+        "-O",
+        "--output-model",
         type=str,
         default=None,
         help="write resulting model to given file",
     )
-    parser.add_argument("--logger", type=str, default=None, help="write log to file")
+    parser.add_argument(
+        "-o", "--output", type=str, default=None, help="write output to file"
+    )
+    parser.add_argument(
+        "--logger", type=str, default=None, help="write log to a given file"
+    )
     parser.add_argument(
         "-k",
         "--knowledge",
         dest="koption",
-        choices=get_evaluatables(),
+        choices={"sdd", "sddx", "ddnnf"},  # get_evaluatables(),
         default=None,
         help="knowledge compilation tool",
+    )
+    parser.add_argument(
+        "--logspace",
+        action="store_true",
+        help="use log space evaluation",
+        default=False,
     )
     parser.add_argument(
         "-l",
         "--leak-probabilities",
         dest="leakprob",
         type=float,
-        help="Add leak probabilities for evidence atoms.",
+        help="Add leak probabilities for evidence atoms",
     )
     parser.add_argument(
         "--propagate-evidence",
@@ -1280,12 +1418,6 @@ def argparser():
         dest="propagate_evidence",
         default=True,
         help="Disable evidence propagation",
-    )
-    parser.add_argument(
-        "--eps",
-        type=float,
-        default=1e-4,
-        help="Smallest difference between continuous values (default 1e-4)",
     )
     normalize_group = parser.add_mutually_exclusive_group()
     normalize_group.add_argument(
@@ -1394,13 +1526,13 @@ def print_result(d, outf, precision=8):
     if success:
         score, weights, names, iterations, lfi = d
         weights = list(map(lambda x: round(x, precision), weights))
-        print("Score = " + str(score), file=outf)
-        print("Tunable Clauses = " + str(names), file=outf)
-        print("Learned Weights = " + str(weights), file=outf)
-        print(
-            "Number of iterations taken for convergence = " + str(iterations), file=outf
-        )
-        # print(score, weights, names, iterations, file=outf)
+        # print("Score: " + str(score), file=outf)
+        # print("Tunable clauses: " + str(names), file=outf)
+        # print("Learned weights: " + str(weights), file=outf)
+        # print(f
+        #     "Number of iterations before convergence: {iterations}", file=outf
+        # )
+        print(score, weights, names, iterations, file=outf)
         return 0
     else:
         print(process_error(d), file=outf)

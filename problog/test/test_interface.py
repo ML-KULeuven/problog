@@ -59,5 +59,4 @@ class TestInterfaces(unittest.TestCase):
         out = subprocess_check_output(
             [sys.executable, problogcli, "lfi", model, examples, ]
         )
-        assert "[0.4, 0.2, 0.4]" in out
-        assert "[t(_)::a(X), t(_)::b(Y), t(_)::c(Z)]" in out
+        assert "[0.4, 0.2, 0.4] [t(_)::a(X), t(_)::b(Y), t(_)::c(Z)]" in out

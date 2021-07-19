@@ -1,0 +1,750 @@
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1)).
+evidence(umbrella(d2)).
+--------
+evidence(umbrella(d1)).
+evidence(umbrella(d2)).
+--------
+evidence(umbrella(d1)).
+evidence(umbrella(d2)).
+--------
+evidence(umbrella(d1)).
+evidence(umbrella(d2)).
+--------
+evidence(umbrella(d1)).
+evidence(umbrella(d2)).
+--------
+evidence(umbrella(d1)).
+evidence(umbrella(d2)).
+--------
+evidence(umbrella(d1)).
+evidence(umbrella(d2)).
+--------
+evidence(umbrella(d1)).
+evidence(umbrella(d2)).
+--------
+evidence(umbrella(d1)).
+evidence(umbrella(d2)).
+--------
+evidence(umbrella(d1)).
+evidence(umbrella(d2)).
+--------
+evidence(umbrella(d1)).
+evidence(umbrella(d2)).
+--------
+evidence(umbrella(d1)).
+evidence(umbrella(d2)).
+--------
+evidence(umbrella(d1)).
+evidence(umbrella(d2)).
+--------
+evidence(umbrella(d1)).
+evidence(umbrella(d2)).
+--------
+evidence(umbrella(d1)).
+evidence(umbrella(d2)).
+--------
+evidence(umbrella(d1)).
+evidence(umbrella(d2)).
+--------
+evidence(umbrella(d1)).
+evidence(umbrella(d2)).
+--------
+evidence(umbrella(d1)).
+evidence(umbrella(d2)).
+--------
+evidence(umbrella(d1)).
+evidence(umbrella(d2)).
+--------
+evidence(umbrella(d1)).
+evidence(umbrella(d2)).
+--------
+evidence(umbrella(d1)).
+evidence(umbrella(d2)).
+--------
+evidence(umbrella(d1)).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1)).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1)).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1)).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1)).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1)).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1)).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1)).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1)).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1)).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1)).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1)).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1)).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1)).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1)).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1)).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1)).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1)).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1)).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1)).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1)).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1)).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1)).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1)).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1)).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1)).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1)).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1)).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1)).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1)).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1)).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1)).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1)).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1)).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1)).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1)).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1)).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1)).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1)).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1)).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1)).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1)).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1)).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1)).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1)).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1)).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1)).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1)).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1)).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2)).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2)).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2)).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2)).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2)).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2)).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2)).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2)).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2)).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2), false).
+--------
+evidence(umbrella(d1), false).
+evidence(umbrella(d2), false).

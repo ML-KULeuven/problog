@@ -1,5 +1,5 @@
 """
-Module name
+test_lfi.py - Test class for LFI problems
 """
 
 from problog import root_path
@@ -48,10 +48,11 @@ def read_result(filename):
 def createTestLFI(filename, evaluatables):
     def test(self):
         for eval_name in evaluatables:
-            with self.subTest(evaluatable=eval_name):
-                test_func(self, evaluatable=eval_name)
+            for logspace in [False, True]:
+                with self.subTest(evaluatable=eval_name, logspace=logspace):
+                    test_func(self, evaluatable=eval_name, logspace=logspace)
 
-    def test_func(self, evaluatable):
+    def test_func(self, evaluatable, logspace):
         model = filename
         examples = filename.replace(".pl", ".ev")
         expectedlines = read_result(model)
@@ -65,16 +66,16 @@ def createTestLFI(filename, evaluatables):
                 "min_improv": 1e-10,
                 "leakprob": None,
                 "propagate_evidence": True,
-                "eps": 0.0001,
+                "logspace": logspace,
                 "normalize": True,
                 "web": False,
-                "args": None,
+                "args": None
             }
             score, weights, names, iterations, lfi = lfi_wrapper(
                 model, [examples], evaluatable, d
             )
             outlines = lfi.get_model()
-        except Exception as err:
+        except Exception as _:
             assert expectedlines == "NonGroundProbabilisticClause"
             return
 
@@ -150,6 +151,7 @@ def main():
     if has_sdd:
         evaluatables.append("sdd")
         evaluatables.append("sddx")
+
     else:
         print("No SDD support - The system tests are not performed with SDDs.")
 
