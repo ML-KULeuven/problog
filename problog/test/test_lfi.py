@@ -1,8 +1,6 @@
 """
-Module name
+test_lfi.py - Test class for LFI problems
 """
-
-from __future__ import print_function
 
 from problog import root_path
 import unittest
@@ -13,6 +11,7 @@ from problog.learning.lfi import lfi_wrapper, LFIProblem
 
 try:
     from pysdd import sdd
+
     has_sdd = True
 except Exception as err:
     print("SDD library not available due to error: ", err, file=sys.stderr)
@@ -37,7 +36,7 @@ def read_result(filename):
                 reading = True
             elif reading:
                 if l.lower().startswith("% error: "):
-                    return l[len("% error: ") :].strip()
+                    return l[len("% error: "):].strip()
                 elif l.startswith("% "):
                     res = l[2:]
                     results.append(res)
@@ -49,10 +48,11 @@ def read_result(filename):
 def createTestLFI(filename, evaluatables):
     def test(self):
         for eval_name in evaluatables:
-            with self.subTest(evaluatable=eval_name):
-                test_func(self, evaluatable=eval_name)
+            for logspace in [False, True]:
+                with self.subTest(evaluatable=eval_name, logspace=logspace):
+                    test_func(self, evaluatable=eval_name, logspace=logspace)
 
-    def test_func(self, evaluatable):
+    def test_func(self, evaluatable, logspace):
         model = filename
         examples = filename.replace(".pl", ".ev")
         expectedlines = read_result(model)
@@ -66,16 +66,16 @@ def createTestLFI(filename, evaluatables):
                 "min_improv": 1e-10,
                 "leakprob": None,
                 "propagate_evidence": True,
-                "eps": 0.0001,
+                "logspace": logspace,
                 "normalize": True,
                 "web": False,
-                "args": None,
+                "args": None
             }
             score, weights, names, iterations, lfi = lfi_wrapper(
                 model, [examples], evaluatable, d
             )
             outlines = lfi.get_model()
-        except Exception as err:
+        except Exception as _:
             assert expectedlines == "NonGroundProbabilisticClause"
             return
 
@@ -90,10 +90,10 @@ def createTestLFI(filename, evaluatables):
                 outline_comps = outline.split(";")
                 new_expectedline_comps = []
                 new_outline_comps = []
-                assert len(expectedline_comps) == len(outline_comps)
+                assert len(outline_comps) == len(expectedline_comps)
                 # Compare one expected probability and one learned probability at a time
                 for expectedline_comp, outline_comp in zip(
-                    expectedline_comps, outline_comps
+                        expectedline_comps, outline_comps
                 ):
                     outline_comp = outline_comp.strip()
                     expectedline_comp = expectedline_comp.strip()
@@ -111,23 +111,23 @@ def createTestLFI(filename, evaluatables):
                         )
                         # Update the expected component probability
                         expectedline_comp = (
-                            rounded_expectedline_comp_prob
-                            + "::"
-                            + expectedline_comp.split("::")[1]
+                                rounded_expectedline_comp_prob
+                                + "::"
+                                + expectedline_comp.split("::")[1]
                         )
                         # If the learned probability is close enough to the expected probability
                         if (
-                            abs(
-                                float(rounded_outline_comp_prob)
-                                - float(rounded_expectedline_comp_prob)
-                            )
-                            < 0.00001
+                                abs(
+                                    float(rounded_outline_comp_prob)
+                                    - float(rounded_expectedline_comp_prob)
+                                )
+                                < 0.00001
                         ):
                             # Make the two lines identical
                             outline_comp = (
-                                rounded_expectedline_comp_prob
-                                + "::"
-                                + outline_comp.split("::")[1]
+                                    rounded_expectedline_comp_prob
+                                    + "::"
+                                    + outline_comp.split("::")[1]
                             )
                     new_outline_comps.append(outline_comp)
                     new_expectedline_comps.append(expectedline_comp)
@@ -151,6 +151,7 @@ def main():
     if has_sdd:
         evaluatables.append("sdd")
         evaluatables.append("sddx")
+
     else:
         print("No SDD support - The system tests are not performed with SDDs.")
 
@@ -177,3 +178,6 @@ def main():
 
 main()
 
+if __name__ == "__main__":
+    suite = unittest.TestLoader().loadTestsFromTestCase(TestLFI)
+    unittest.TextTestRunner(verbosity=2).run(suite)

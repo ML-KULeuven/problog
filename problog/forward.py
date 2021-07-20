@@ -21,29 +21,22 @@ Forward compilation using TP-operator.
     See the License for the specific language governing permissions and
     limitations under the License.
 """
-from __future__ import print_function
-from .formula import LogicFormula, OrderedSet, atom
-from .dd_formula import DD
-from .sdd_formula import SDD
+import copy
+import logging
+import random
+import signal
+import time
+from collections import defaultdict
+
 from .bdd_formula import BDD
 from .core import transform
-from .evaluator import Evaluator, EvaluatableDSP, InconsistentEvidenceError
-
-from .dd_formula import build_dd
-
-import warnings
-import time
-import logging
-import copy
-import signal
-
 from .core import transform_create_as
-
+from .dd_formula import DD
+from .dd_formula import build_dd
+from .evaluator import Evaluator, EvaluatableDSP, InconsistentEvidenceError
+from .formula import LogicFormula, OrderedSet, atom
+from .sdd_formula import SDD
 from .util import UHeap
-
-import random
-
-from collections import defaultdict
 
 
 def timeout_handler(signum, frame):
@@ -71,8 +64,10 @@ class ForwardInference(DD):
     def register_update_listener(self, obj):
         self._update_listeners.append(obj)
 
-    def _create_atom(self, identifier, probability, group, name=None, source=None):
-        return atom(identifier, probability, group, name, source)
+    def _create_atom(
+        self, identifier, probability, group, name=None, source=None, is_extra=False
+    ):
+        return atom(identifier, probability, group, name, source, is_extra)
 
     def is_complete(self, node):
         node = abs(node)
@@ -215,9 +210,9 @@ class ForwardInference(DD):
                     self.set_complete(parent)
                     parent_minmax = 0
                 elif parent_nodetype == "conj":
-                    parent_minmax == max(parent_children_minmax)
+                    parent_minmax = max(parent_children_minmax)
                 else:
-                    parent_minmax == min(parent_children_minmax)
+                    parent_minmax = min(parent_children_minmax)
                 self._update_minmax_depths(parent, parent_minmax)
 
     def sort_nodes(self, nodes):
@@ -337,7 +332,11 @@ class ForwardInference(DD):
                 inode = int(inode)
             if t == "atom":
                 j = destination.add_atom(
-                    n.identifier, n.probability, n.group, name=inode
+                    n.identifier,
+                    n.probability,
+                    n.group,
+                    name=inode,
+                    is_extra=n.is_extra,
                 )
             elif t == "conj":
                 children = [c for c in n.children if self.get_inode(c) is not None]
@@ -465,7 +464,6 @@ class ForwardInference(DD):
 
 
 class _ForwardSDD(SDD, ForwardInference):
-
     transform_preference = 1000
 
     def __init__(self, sdd_auto_gc=False, **kwdargs):
@@ -522,7 +520,6 @@ class _ForwardSDD(SDD, ForwardInference):
 
 
 class _ForwardBDD(BDD, ForwardInference):
-
     transform_preference = 1000
 
     def __init__(self, **kwdargs):
@@ -547,7 +544,6 @@ def build_sdd(source, destination, **kwdargs):
 
 
 class ForwardSDD(LogicFormula, EvaluatableDSP):
-
     transform_preference = 30
 
     def __init__(self, **kwargs):
@@ -569,7 +565,6 @@ class ForwardSDD(LogicFormula, EvaluatableDSP):
 
 
 class ForwardBDD(LogicFormula, EvaluatableDSP):
-
     transform_preference = 40
 
     def __init__(self, **kwargs):

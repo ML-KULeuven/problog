@@ -1,4 +1,4 @@
-from problog.extern import problog_export, problog_export_nondet, problog_export_raw
+from problog.extern import problog_export, problog_export_raw
 
 
 @problog_export_raw("+term")

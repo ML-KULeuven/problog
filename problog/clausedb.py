@@ -1,13 +1,9 @@
-from __future__ import print_function
-
 import os
-
 from collections import defaultdict, namedtuple
 
-from .program import LogicProgram, PrologFile
+from .errors import InvalidValue
 from .logic import *
-
-from .errors import GroundingError, InvalidValue
+from .program import LogicProgram, PrologFile
 from .util import OrderedSet
 
 
@@ -106,8 +102,8 @@ class ClauseDB(LogicProgram):
         self._load_builtin_module()
 
     def _load_builtin_module(self):
-        # self.use_module(Term('library', Term('builtin')), None)
-        pass
+        self.use_module(Term('library', Term('builtin')), None)
+        # pass
 
     def __len__(self):
         return len(self.__nodes) + self.__offset
@@ -365,7 +361,10 @@ class ClauseDB(LogicProgram):
             )
             return self._add_define_node(term, fact_node)
         else:
-            return self.add_clause(Clause(term, Term("true")), scope=scope)
+            return self.add_clause(
+                Clause(term, Term("true")),
+                scope=scope,
+            )
 
     def add_extern(self, predicate, arity, func, scope=None):
         head = Term(predicate, *[None] * arity)
@@ -404,20 +403,34 @@ class ClauseDB(LogicProgram):
             variables = _AutoDict()
 
         if isinstance(struct, And):
-            op1 = self._compile(struct.op1, variables, scope=scope)
-            op2 = self._compile(struct.op2, variables, scope=scope)
+            op1 = self._compile(
+                struct.op1, variables, scope=scope
+            )
+            op2 = self._compile(
+                struct.op2, variables, scope=scope
+            )
             return self._add_and_node(op1, op2)
         elif isinstance(struct, Or):
-            op1 = self._compile(struct.op1, variables, scope=scope)
-            op2 = self._compile(struct.op2, variables, scope=scope)
+            op1 = self._compile(
+                struct.op1, variables, scope=scope
+            )
+            op2 = self._compile(
+                struct.op2, variables, scope=scope
+            )
             return self._add_or_node(op1, op2)
         elif isinstance(struct, Not):
             variables.enter_local()
-            child = self._compile(struct.child, variables, scope=scope)
+            child = self._compile(
+                struct.child, variables, scope=scope
+            )
             variables.exit_local()
             return self._add_not_node(child, location=struct.location)
         elif isinstance(struct, Term) and struct.signature == "not/1":
-            child = self._compile(struct.args[0], variables, scope=scope)
+            child = self._compile(
+                struct.args[0],
+                variables,
+                scope=scope,
+            )
             return self._add_not_node(child, location=struct.location)
         elif isinstance(struct, AnnotatedDisjunction):
             # Determine number of variables in the head
@@ -427,7 +440,9 @@ class ClauseDB(LogicProgram):
             group = len(self.__nodes)
 
             # Create the body clause
-            body_node = self._compile(struct.body, variables, scope=scope)
+            body_node = self._compile(
+                struct.body, variables, scope=scope
+            )
             body_count = len(variables)
             # Body arguments
             body_args = tuple(range(0, len(variables)))
@@ -485,11 +500,19 @@ class ClauseDB(LogicProgram):
         elif isinstance(struct, Clause):
             if struct.head.probability is not None:
                 return self._compile(
-                    AnnotatedDisjunction([struct.head], struct.body), scope=scope
+                    AnnotatedDisjunction([struct.head], struct.body),
+                    scope=scope,
                 )
             else:
-                new_head = self._scope_term(struct.head.apply(variables), scope)
-                body_node = self._compile(struct.body, variables, scope=scope)
+                new_head = self._scope_term(
+                    struct.head.apply(variables),
+                    scope,
+                )
+                body_node = self._compile(
+                    struct.body,
+                    variables,
+                    scope=scope,
+                )
                 return self._add_clause_node(
                     new_head, body_node, len(variables), variables.local_variables
                 )
@@ -519,7 +542,9 @@ class ClauseDB(LogicProgram):
                         # If the argument was temporarily wrapped: unwrap it.
                         new_arg = new_arg.args[0]
                     args.append(new_arg)
-                return self._add_call_node(struct(*args), scope=scope)
+                return self._add_call_node(
+                    struct(*args), scope=scope
+                )
             elif struct.functor in ("consult", "use_module"):
                 new_struct = Term(
                     "_" + struct.functor,
@@ -527,9 +552,15 @@ class ClauseDB(LogicProgram):
                     *struct.args,
                     location=struct.location
                 )
-                return self._add_call_node(new_struct.apply(variables), scope=scope)
+                return self._add_call_node(
+                    new_struct.apply(variables),
+                    scope=scope,
+                )
             else:
-                return self._add_call_node(struct.apply(variables), scope=scope)
+                return self._add_call_node(
+                    struct.apply(variables),
+                    scope=scope,
+                )
         else:
             raise ValueError("Unknown structure type: '%s'" % struct)
 
@@ -567,7 +598,7 @@ class ClauseDB(LogicProgram):
             a, b = node.children
             return Or(self._extract(a), self._extract(b))
         elif nodetype == "neg":
-            return Not("\+", self._extract(node.child))
+            return Not("\\+", self._extract(node.child))
         else:
             raise ValueError("Unknown node type: '%s'" % nodetype)
 
@@ -793,16 +824,20 @@ class ClauseDB(LogicProgram):
                             location=location,
                         )
 
-    def _create_alias(self, pred, scope, rename=None, my_scope=None):
+    def _create_alias(
+        self, pred, scope, rename=None, my_scope=None
+    ):
         if rename is None:
             rename = pred.args[0]
 
         if scope is not None:
             root_sign = self._scope_term(
-                Term(rename, *[None] * int(pred.args[1])), my_scope
+                Term(rename, *[None] * int(pred.args[1])),
+                my_scope,
             )
             scoped_sign = self._scope_term(
-                Term(pred.args[0], *[None] * int(pred.args[1])), scope
+                Term(pred.args[0], *[None] * int(pred.args[1])),
+                scope,
             )
 
             rh = self._add_head(root_sign, create=False)

@@ -6,8 +6,6 @@ hugin2problog.py
 Created by Wannes Meert on 23-02-2016.
 Copyright (c) 2016 KU Leuven. All rights reserved.
 """
-from __future__ import print_function
-
 import sys
 import os
 import argparse

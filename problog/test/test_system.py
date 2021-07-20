@@ -20,18 +20,18 @@ import os
 import sys
 import unittest
 
+from problog import get_evaluatable
+from problog import root_path
+from problog.ddnnf_formula import DDNNF
+from problog.evaluator import SemiringProbability, SemiringLogProbability, Semiring
+from problog.formula import LogicFormula
 from problog.forward import _ForwardSDD
+from problog.program import PrologFile, DefaultPrologParser, ExtendedPrologFactory
 
 if __name__ == "__main__":
     sys.path.insert(
         0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../"))
     )
-
-from problog import root_path
-
-from problog.program import PrologFile, DefaultPrologParser, ExtendedPrologFactory
-from problog import get_evaluatable
-from problog.evaluator import SemiringProbability, SemiringLogProbability, Semiring
 
 # noinspection PyBroadException
 try:
@@ -41,6 +41,57 @@ try:
 except Exception as err:
     print("SDD library not available due to error: ", err, file=sys.stderr)
     has_sdd = False
+
+
+class TestSystemSpecific(unittest.TestCase):
+    def setUp(self):
+        try:
+            self.assertSequenceEqual = self.assertItemsEqual
+        except AttributeError:
+            self.assertSequenceEqual = self.assertCountEqual
+
+    def test_keep_order(self):
+        """
+
+        :return:
+        """
+        filename = root_path("test/specific/", "bug_keep_order.pl")
+        correct = read_result(filename)
+        pl = PrologFile(filename)
+        for avoid_name_clash in [True, False]:
+            for keep_order in [True, False]:
+                for label_all in [True, False]:
+                    with self.subTest(
+                        avoid_name_clash=avoid_name_clash,
+                        keep_order=keep_order,
+                        label_all=label_all,
+                    ):
+                        try:
+                            lf = LogicFormula.create_from(
+                                pl,
+                                avoid_name_clash=avoid_name_clash,
+                                keep_order=keep_order,
+                                label_all=label_all,
+                            )
+                            ddnnf = DDNNF.create_from(lf)
+
+                            computed = ddnnf.evaluate()
+                            computed = {str(k): v for k, v in computed.items()}
+                        except Exception as err:
+                            print(err)
+                            e = err
+                            computed = None
+
+                        if computed is None:
+                            self.assertEqual(correct, type(e).__name__)
+                        else:
+                            self.assertIsInstance(correct, dict)
+                            self.assertSequenceEqual(correct, computed)
+
+                            for query in correct:
+                                self.assertAlmostEqual(
+                                    correct[query], computed[query], msg=query
+                                )
 
 
 class TestDummy(unittest.TestCase):
@@ -81,7 +132,6 @@ def read_result(filename):
 
 
 def createSystemTestGeneric(filename, logspace=False):
-
     correct = read_result(filename)
 
     def test(self):
@@ -170,44 +220,11 @@ def createSystemTestGeneric(filename, logspace=False):
     return test
 
 
-class SemiringProbabilityCopy(Semiring):
-    """Mocking SemiringProbability to force the 'custom semiring' code -> Must not extend SemiringProbability."""
+class SemiringProbabilityCopy(SemiringProbability):
+    """ To avoid checks of type(semiring) == SemiringProbability """
 
     def __init__(self):
-        self._semiring = SemiringProbability()
-
-    def one(self):
-        return self._semiring.one()
-
-    def zero(self):
-        return self._semiring.zero()
-
-    def is_one(self, value):
-        return self._semiring.is_one(value)
-
-    def is_zero(self, value):
-        return self._semiring.is_zero(value)
-
-    def plus(self, a, b):
-        return self._semiring.plus(a, b)
-
-    def times(self, a, b):
-        return self._semiring.times(a, b)
-
-    def negate(self, a):
-        return self._semiring.negate(a)
-
-    def normalize(self, a, z):
-        return self._semiring.normalize(a, z)
-
-    def value(self, a):
-        return self._semiring.value(a)
-
-    def is_dsp(self):
-        return self._semiring.is_dsp()
-
-    def in_domain(self, a):
-        return self._semiring.in_domain(a)
+        super(SemiringProbabilityCopy, self).__init__()
 
 
 class SemiringProbabilityNSPCopy(SemiringProbabilityCopy):
@@ -232,7 +249,6 @@ if __name__ == "__main__":
 else:
     filenames = glob.glob(root_path("test", "*.pl"))
 
-
 evaluatables = ["ddnnf"]
 
 if has_sdd:
@@ -242,12 +258,12 @@ if has_sdd:
 else:
     print("No SDD support - The system tests are not performed with SDDs.")
 
-
 for testfile in filenames:
     testname = "test_system_" + os.path.splitext(os.path.basename(testfile))[0]
     setattr(TestSystemGeneric, testname, createSystemTestGeneric(testfile, True))
 
-
 if __name__ == "__main__":
     suite = unittest.TestLoader().loadTestsFromTestCase(TestSystemGeneric)
+    unittest.TextTestRunner(verbosity=2).run(suite)
+    suite = unittest.TestLoader().loadTestsFromTestCase(TestSystemSpecific)
     unittest.TextTestRunner(verbosity=2).run(suite)

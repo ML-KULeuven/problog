@@ -8,8 +8,6 @@ http://graphmod.ics.uci.edu/uai08/FileFormat
 Created by Wannes Meert on 31-01-2016.
 Copyright (c) 2016 KU Leuven. All rights reserved.
 """
-from __future__ import print_function
-
 import sys
 import os
 import argparse

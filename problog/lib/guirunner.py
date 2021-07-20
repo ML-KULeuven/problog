@@ -15,44 +15,16 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 """
-from __future__ import print_function
-
-import argparse
-import sys
-import subprocess
 import os
-
+import subprocess
+import sys
 
 if sys.version_info.major == 2:
-    from Tkinter import (
-        Tk,
-        BOTH,
-        RIGHT,
-        IntVar,
-        StringVar,
-        Grid,
-        X,
-        Y,
-        Text,
-        END,
-        Spinbox,
-    )
+    from Tkinter import Tk, BOTH, RIGHT, StringVar, Grid, Text, END, Spinbox
     from ttk import Combobox, Entry, Frame, Button, Label, Checkbutton
     import tkFileDialog
 else:
-    from tkinter import (
-        Tk,
-        BOTH,
-        RIGHT,
-        IntVar,
-        StringVar,
-        Grid,
-        X,
-        Y,
-        Text,
-        END,
-        Spinbox,
-    )
+    from tkinter import Tk, BOTH, RIGHT, StringVar, Grid, Text, END, Spinbox
     from tkinter.ttk import Combobox, Entry, Frame, Button, Label, Checkbutton
     import tkinter.filedialog as tkFileDialog
 

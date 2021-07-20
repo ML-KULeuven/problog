@@ -22,26 +22,24 @@ Cycle breaking in propositional formulae.
     limitations under the License.
 """
 
-
-from __future__ import print_function
-
-from .logic import Term
-from .core import transform
-from .util import Timer
-from .formula import LogicFormula, LogicDAG
-
-from collections import defaultdict
 import logging
+from collections import defaultdict
+
+from .core import transform
+from .formula import LogicFormula, LogicDAG
+from .logic import Term
+from .util import Timer
 
 cycle_var_prefix = "problog_cv_"
 
 # noinspection PyUnusedLocal
 @transform(LogicFormula, LogicDAG)
-def break_cycles(source, target, translation=None, **kwdargs):
+def break_cycles(source, target, translation=None, keep_named=False, **kwdargs):
     """Break cycles in the source logic formula.
 
     :param source: logic formula with cycles
     :param target: target logic formula without cycles
+    :param keep_named: if true, then named nodes will be preserved after cycle breaking
     :param kwdargs: additional arguments (ignored)
     :return: target
     """
@@ -53,7 +51,12 @@ def break_cycles(source, target, translation=None, **kwdargs):
         if translation is None:
             translation = defaultdict(list)
 
-        for q, n, l in source.labeled():
+        labeled = source.labeled()
+        if keep_named:
+            for name, node, label in source.get_names_with_label():
+                if label == source.LABEL_NAMED:
+                    labeled.append((name, node, label))
+        for q, n, l in labeled:
             if source.is_probabilistic(n):
                 newnode = _break_cycles(
                     source, target, n, [], cycles_broken, content, translation
@@ -140,7 +143,11 @@ def _break_cycles(
     nodetype = type(node).__name__
     if nodetype == "atom":
         newnode = target.add_atom(
-            node.identifier, node.probability, node.group, node.name
+            node.identifier,
+            node.probability,
+            group=node.group,
+            name=node.name,
+            is_extra=node.is_extra,
         )
     else:
         children = [

@@ -20,8 +20,8 @@ Based on:
 https://gist.github.com/cjdrake/7982333
 """
 
-import sys
 import os
+import sys
 
 sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
 sys.path.append(os.path.join(os.path.dirname(__file__), "../examples"))
@@ -56,7 +56,7 @@ if IPython.version_info[0] >= 6:
 
 
 else:
-    from IPython.utils.warn import info, error
+    pass
 
 
 def runproblog(

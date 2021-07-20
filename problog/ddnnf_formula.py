@@ -21,20 +21,19 @@ Provides access to d-DNNF formulae.
     See the License for the specific language governing permissions and
     limitations under the License.
 """
-from __future__ import print_function
-
-import tempfile
 import os
 import subprocess
+import tempfile
 from collections import defaultdict
 
 from . import system_info
-from .evaluator import Evaluator, EvaluatableDSP
-from .errors import InconsistentEvidenceError
-from .formula import LogicDAG
 from .cnf_formula import CNF
+from .constraint import ConstraintAD
 from .core import transform
 from .errors import CompilationError
+from .errors import InconsistentEvidenceError
+from .evaluator import Evaluator, EvaluatableDSP
+from .formula import LogicDAG
 from .util import Timer, subprocess_check_call
 
 
@@ -107,6 +106,7 @@ class SimpleDDNNFEvaluator(Evaluator):
 
     def evaluate(self, node):
         if node == 0:
+            # if query = True
             if not self.semiring.is_nsp():
                 result = self.semiring.one()
             else:
@@ -120,16 +120,25 @@ class SimpleDDNNFEvaluator(Evaluator):
             self._set_value(abs(node), (node > 0))
             result = self.get_root_weight()
             self._reset_value(abs(node), p, n)
-            if self.has_evidence() or self.semiring.is_nsp():
+            if self.has_evidence() or self.semiring.is_nsp() or self.has_constraints(ignore_type={ConstraintAD}):
                 result = self.semiring.normalize(result, self._get_z())
         return self.semiring.result(result, self.formula)
+
+    def has_constraints(self, ignore_type=None):
+        """
+        Check whether the formula has any constraints that are not of the ignore_type.
+        :param ignore_type: A set of constraint classes to ignore.
+        :type ignore_type: None | Set
+        """
+        ignore_type = ignore_type or set()
+        return any(type(constraint) not in ignore_type for constraint in self.formula.constraints())
 
     def _reset_value(self, index, pos, neg):
         self.set_weight(index, pos, neg)
 
     def get_root_weight(self):
-        """
-        Get the WMC of the root of this formula.
+        """Get the WMC of the root of this formula.
+
         :return: The WMC of the root of this formula (WMC of node len(self.formula)), multiplied with weight of True
         (self.weights.get(0)).
         """
@@ -147,14 +156,13 @@ class SimpleDDNNFEvaluator(Evaluator):
             return self.semiring.zero()
         else:
             abs_index = abs(index)
-            w = self.weights.get(abs_index)  # Leaf nodes
+            w = self.weights.get(abs_index) or self.cache_intermediate.get(abs_index)
             if w is not None:
                 return w[index < 0]
-            w = self.cache_intermediate.get(abs_index)  # Intermediate nodes
-            if w is None:
+            else:
                 w = self._calculate_weight(index)
-                self.cache_intermediate[abs_index] = w
-            return w
+                self.cache_intermediate[abs_index] = w, w
+                return w
 
     def set_weight(self, index, pos, neg):
         # index = index of atom in weights, so atom2var[key] = index

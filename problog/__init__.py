@@ -58,7 +58,6 @@ from . import kbest
 from . import tasks
 from . import debug
 
-
 _evaluatables = {
     "sdd": sdd_formula.SDD,
     "sddx": sdd_formula_explicit.SDDExplicit,

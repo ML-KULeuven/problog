@@ -15,24 +15,22 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 """
-from __future__ import print_function
+import glob
+import os
+import subprocess
 
 # Load general Python modules
 import sys
-import os
-import glob
 import tempfile
 import traceback
-import subprocess
+
 import resource
 
 # Load ProbLog modules
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from problog.program import PrologString
-from problog.evaluator import SemiringSymbolic, Evaluator
 from problog.ddnnf_formula import DDNNF
-from problog.sdd_formula import SDD
-from problog.formula import LogicDAG, LogicFormula
+from problog.formula import LogicFormula
 
 # Which compiled knowledge format to use? (SDD or DDNNF)
 KNOWLEDGE = DDNNF
@@ -40,7 +38,6 @@ KNOWLEDGE = DDNNF
 DEFAULT_PORT = 8000
 DEFAULT_TIMEOUT = 60
 DEFAULT_MEMOUT = 1.0  # gigabyte
-
 
 # Load Python standard web-related modules (based on Python version)
 import json

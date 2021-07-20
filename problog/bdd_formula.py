@@ -22,12 +22,10 @@ Provides access to Binary Decision Diagrams (BDDs).
     limitations under the License.
 """
 
-from __future__ import print_function
-
-from .formula import LogicDAG
 from .core import transform
-from .errors import InstallError
 from .dd_formula import DD, build_dd, DDManager
+from .errors import InstallError
+from .formula import LogicDAG
 
 # noinspection PyBroadException
 # noinspection PyUnresolvedReferences

@@ -22,20 +22,16 @@ Interface to Sentential Decision Diagrams (SDD) using the explicit encoding repr
     See the License for the specific language governing permissions and
     limitations under the License.
 """
-from __future__ import print_function
 from collections import namedtuple
 
-from .formula import LogicDAG, LogicFormula
 from .core import transform
 from .errors import InconsistentEvidenceError
-from .util import Timer
 from .evaluator import SemiringProbability, SemiringLogProbability
-from .sdd_formula import SDDEvaluator, SDD, x_constrained
+from .formula import LogicDAG, LogicFormula
 from .forward import _ForwardSDD, ForwardInference
+from .sdd_formula import SDDEvaluator, SDD, x_constrained
 from .sdd_formula import SDDManager
-
-from .util import mktempfile
-
+from .util import Timer
 
 # noinspection PyBroadException
 try:
@@ -334,6 +330,7 @@ def build_explicit_from_logicdag(source, destination, **kwdargs):
                     clause.group,
                     source.get_name(line_id),
                     cr_extra=False,
+                    is_extra=clause.is_extra,
                 )
                 identifier += 1
 
@@ -363,6 +360,7 @@ def build_explicit_from_logicdag(source, destination, **kwdargs):
                         probability=True,
                         group=None,
                         name=clause.name,
+                        is_extra=False,
                     )
                     identifier += 1
                     # body

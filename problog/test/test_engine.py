@@ -15,16 +15,12 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 """
-from __future__ import print_function
-
+import random
 import unittest
 
-from problog.program import PrologString
 from problog.engine import DefaultEngine
 from problog.logic import Term, Constant
-from problog.formula import LogicFormula
-
-import glob, os, random
+from problog.program import PrologString
 
 
 class TestEngine(unittest.TestCase):

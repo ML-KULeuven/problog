@@ -16,9 +16,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 """
-from __future__ import print_function
-
-import os, sys, subprocess, traceback, json
+import json
+import os
+import sys
 
 sys.setrecursionlimit(10000)
 
@@ -28,6 +28,7 @@ from problog.program import PrologFile
 from problog.errors import process_error
 
 from problog.learning import lfi
+
 
 # from problog.sdd_formula import SDD
 

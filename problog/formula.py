@@ -21,21 +21,18 @@ Data structures for propositional logic.
     See the License for the specific language governing permissions and
     limitations under the License.
 """
-from __future__ import print_function
-
-from collections import namedtuple, defaultdict, OrderedDict
-
-from .core import ProbLogObject
-from .errors import InconsistentEvidenceError
-
-from .util import OrderedSet
-from .logic import Term, Or, Clause, And, is_ground
-
-from .evaluator import Evaluatable, FormulaEvaluator, FormulaEvaluatorNSP
+from collections import namedtuple, defaultdict
 
 from .constraint import ConstraintAD
+from .core import ProbLogObject
 from .core import transform
+from .errors import InconsistentEvidenceError
+from .evaluator import Evaluatable, FormulaEvaluator, FormulaEvaluatorNSP
+from .logic import Term, Or, Clause, And, is_ground
+from .util import OrderedSet
 
+def escape(s):
+    return s.replace('"','\\"')
 
 class BaseFormula(ProbLogObject):
     """Defines a basic logic formula consisting of nodes in some logical relation.
@@ -212,6 +209,7 @@ class BaseFormula(ProbLogObject):
         """
         if label is None:
             label = self.LABEL_NAMED
+        #TODO CG: name is a Term, not a string! --> many Term __eq__ calls
         self._names[label][name] = key
 
     def get_node_by_name(self, name):
@@ -413,7 +411,10 @@ class BaseFormula(ProbLogObject):
         return hasattr(self, flag) and getattr(self, flag)
 
 
-atom = namedtuple("atom", ("identifier", "probability", "group", "name", "source"))
+atom = namedtuple(
+    "atom", ("identifier", "probability", "group", "name", "source", "is_extra")
+)
+atom.__new__.__defaults__ = (False,) * len(atom._fields)
 conj = namedtuple("conj", ("children", "name"))
 disj = namedtuple("disj", ("children", "name"))
 
@@ -439,8 +440,10 @@ class LogicFormula(BaseFormula):
 
     # negation is encoded by using a negative number for the key
 
-    def _create_atom(self, identifier, probability, group, name=None, source=None):
-        return atom(identifier, probability, group, name, source)
+    def _create_atom(
+        self, identifier, probability, group, name=None, source=None, is_extra=False
+    ):
+        return atom(identifier, probability, group, name, source, is_extra)
 
     def _create_conj(self, children, name=None):
         return conj(children, name)
@@ -618,7 +621,14 @@ class LogicFormula(BaseFormula):
                 self._nodes[i - 1] = atom(n.identifier, w, n.group, n.name, n.source)
 
     def add_atom(
-        self, identifier, probability, group=None, name=None, source=None, cr_extra=True
+        self,
+        identifier,
+        probability,
+        group=None,
+        name=None,
+        source=None,
+        cr_extra=True,
+        is_extra=False,
     ):
         """Add an atom to the formula.
 
@@ -657,7 +667,14 @@ class LogicFormula(BaseFormula):
         ):
             return self.TRUE
         else:
-            atom = self._create_atom(identifier, probability, group, name, source)
+            atom = self._create_atom(
+                identifier,
+                probability,
+                group=group,
+                name=name,
+                source=source,
+                is_extra=is_extra,
+            )
             length_before = len(self._nodes)
             node_id = self._add(atom, key=identifier)
 
@@ -821,7 +838,8 @@ class LogicFormula(BaseFormula):
                 content = tuple(OrderedSet(content))
             else:  # any_order
                 # can also merge (a, b) and (b, a)
-                content = tuple(set(content))
+                content = tuple(OrderedSet(content))
+                # content = tuple(set(content))
 
             # Empty OR node fails, AND node is true
             if not content and not placeholder:
@@ -1190,7 +1208,7 @@ label_all=True)
                     lines.append("%s :- fail." % qn)
                 lines.append("evidence(%s)." % qn)
             elif qi < 0:
-                lines.append("evidence(\+%s)." % qn)
+                lines.append("evidence(\\+%s)." % qn)
             else:
                 lines.append("evidence(%s)." % qn)
 
@@ -1394,11 +1412,12 @@ label_all=True)
                 else:
                     return node.name
             elif ntype == "conj":
+                children = self._unroll_conj(node)
+                result = And.from_list(list(map(self.get_name, children)))
                 if index < 0:
-                    return -node.name
+                    return -result
                 else:
-                    children = self._unroll_conj(node)
-                    return And.from_list(list(map(self.get_name, children)))
+                    return result
             elif (
                 ntype == "disj"
                 and len(node.children) == 1
@@ -1691,7 +1710,7 @@ label_all=True)
             elif index == 0 and index not in negative:
                 s += '%s [label="true"];\n' % index
                 negative.add(0)
-            s += 'q_%s [ label="%s", shape="plaintext" ];\n' % (q, name)
+            s += 'q_%s [ label="%s", shape="plaintext" ];\n' % (q, escape(str(name)))
             s += 'q_%s -> %s [style="dotted" %s];\n' % (q, index, opt)
             q += 1
         return s + "}"
@@ -1702,6 +1721,8 @@ label_all=True)
         # TODO maintain a translation table
         for i, n, t in source:
             if t == "atom":
+                # TODO test this
+                # j = destination.add_atom(n.identifier, n.probability, n.group, name=source.get_name(i), cr_extra=False, is_extra=n.is_extra)
                 j = destination.add_atom(
                     n.identifier, n.probability, n.group, name=source.get_name(i)
                 )

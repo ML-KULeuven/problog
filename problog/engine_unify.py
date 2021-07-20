@@ -21,7 +21,6 @@ Implementation of unification for the grounding engine.
     See the License for the specific language governing permissions and
     limitations under the License.
 """
-from __future__ import print_function
 from .errors import GroundingError
 from .logic import is_variable
 
@@ -436,7 +435,6 @@ def unify_call_return(result, call_args, context, var_translate, min_var, mask=N
 
 
 def subsumes(generic, specific):
-
     sv = _VarTranslateWrapper({}, 0)
     tv = {}  # dict: internal mapping in caller
 

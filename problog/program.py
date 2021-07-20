@@ -21,8 +21,11 @@ Provides tools for loading logic programs.
     See the License for the specific language governing permissions and
     limitations under the License.
 """
-from __future__ import print_function
+import os
+import sys
 
+from .core import ProbLogError
+from .core import transform, ProbLogObject
 from .errors import GroundingError
 from .logic import (
     Term,
@@ -36,13 +39,7 @@ from .logic import (
     AggTerm,
     list2term,
 )
-from .core import transform, ProbLogObject
-
 from .parser import DefaultPrologParser, Factory
-from .core import ProbLogError
-
-import os
-import sys
 
 
 class LogicProgram(ProbLogObject):
@@ -94,10 +91,11 @@ class LogicProgram(ProbLogObject):
                     # TODO compute correct location
                     raise GroundingError("Unexpected fact '%s'" % head)
                 elif len(heads) > 1 and head.probability is None:
-                    raise GroundingError(
-                        "Non-probabilistic head in multi-head clause '%s'" % head
-                    )
-            self.add_clause(AnnotatedDisjunction(heads, Term("true")), scope=scope)
+                    raise GroundingError(f"Non-probabilistic head in multi-head clause '{head}'")
+            self.add_clause(
+                AnnotatedDisjunction(heads, Term("true")),
+                scope=scope,
+            )
         elif isinstance(clausefact, AnnotatedDisjunction):
             self.add_clause(clausefact, scope=scope)
         elif isinstance(clausefact, Clause):
@@ -195,8 +193,6 @@ class LogicProgram(ProbLogObject):
         return s
 
 
-
-
 class SimpleProgram(LogicProgram):
     """LogicProgram implementation as a list of clauses."""
 
@@ -224,7 +220,6 @@ class SimpleProgram(LogicProgram):
 
     def __iter__(self):
         return iter(self.__clauses)
-
 
 
 class PrologString(LogicProgram):
@@ -371,9 +366,7 @@ class PrologFactory(Factory):
     def build_binop(
         self, functor, operand1, operand2, function=None, location=None, **extra
     ):
-        return self.build_function(
-            "'" + functor + "'", (operand1, operand2), location=location, **extra
-        )
+        return self.build_function(f"'{functor}'", (operand1, operand2), location=location, **extra)
 
     def build_directive(self, functor, operand, **extra):
         head = self.build_function("_directive", [])
@@ -386,9 +379,7 @@ class PrologFactory(Factory):
             and (operand.is_float() or operand.is_integer())
         ):
             return Constant(-operand.value)
-        return self.build_function(
-            "'" + functor + "'", (operand,), location=location, **extra
-        )
+        return self.build_function(f"'{functor}'", (operand,), location=location, **extra)
 
     def build_list(self, values, tail=None, location=None, **extra):
         if tail is None:
@@ -420,18 +411,18 @@ class PrologFactory(Factory):
                 heads, operand2, location=(self.loc_id, location)
             )
         else:
-            has_agg = False
             # TODO add tests and errors
-            for arg in operand1[0].args:
-                if isinstance(arg, AggTerm):
-                    has_agg = True
-                    break
+            is_scope = operand1[0].functor == "':'"
+            term = operand1[0] if not is_scope else operand1[0].args[1]
+            # Example of a scoped aggregate scope1:dept_salary(Dept, avg<Salary>) :- BODY.
+            # Reason as to be careful about scopes: cf. test/aggregate_builtins_scoped.pl
+            has_agg = any(isinstance(arg, AggTerm) for arg in term.args)
             if has_agg:
-                groupvars = list2term(operand1[0].args[:-1])
+                groupvars = list2term(term.args[:-1])
                 body = operand2
 
-                aggfunc = operand1[0].args[-1]()
-                aggvar = operand1[0].args[-1].args[0]
+                aggfunc = term.args[-1]()
+                aggvar = term.args[-1].args[0]
                 result = Var("R_VAR")
                 body = Term(
                     "aggregate",
@@ -441,8 +432,14 @@ class PrologFactory(Factory):
                     body,
                     Term(",", groupvars, result),
                 )
-                headargs = operand1[0].args[:-1] + (result,)
-                head = operand1[0](*headargs)
+                headargs = term.args[:-1] + (result,)
+                head = (
+                    operand1[0](*headargs)
+                    if not is_scope
+                    else operand1[0](
+                        operand1[0].args[0], operand1[0].args[1](*headargs)
+                    )
+                )
                 # aggregate(avg_list, Salary, [Dept], (person(X), salary(X, Salary), dept(X, Dept)), ([Dept], AvgSalary)).
                 return Clause(head, body, location=(self.loc_id, location))
             else:
@@ -481,7 +478,7 @@ class ExtendedPrologFactory(PrologFactory):
     """Prolog with some extra syntactic sugar.
 
     Non-standard syntax:
-    - Negative head literals [Meert and Vennekens, PGM 2014]: 0.5::\+a :- b.
+    - Negative head literals [Meert and Vennekens, PGM 2014]: 0.5:: \\+a :- b.
     """
 
     def __init__(self, identifier=0):
@@ -529,7 +526,7 @@ class ExtendedPrologFactory(PrologFactory):
             cur_vars = [Var("V{}".format(i)) for i in range(v["c"])]
             new_clause = Clause(
                 Term(v["f"], *cur_vars),
-                And(Term(v["p"], *cur_vars), Not("\+", Term(v["n"], *cur_vars))),
+                And(Term(v["p"], *cur_vars), Not("\\+", Term(v["n"], *cur_vars))),
             )
             clauses.append(new_clause)
         return clauses

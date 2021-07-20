@@ -39,17 +39,15 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 """
-from __future__ import print_function
+import logging.config
+import os
+import subprocess
 
 # Load general Python modules
 import sys
-import os
 import tempfile
-import traceback
-import subprocess
+
 import resource
-import logging
-import logging.config
 
 DEFAULT_PORT = 5100
 DEFAULT_TIMEOUT = 60
@@ -416,7 +414,6 @@ def get_editor():
 
 @handle_url(api_root + "update")
 def update_problog():
-
     workingdir = os.path.abspath(os.path.dirname(__file__))
     try:
         out = subprocess.check_output(
@@ -557,6 +554,11 @@ def main(argv, **extra):
         "--port", "-p", type=int, default=DEFAULT_PORT, help="Server listening port"
     )
     parser.add_argument(
+        "--test",
+        action="store_true",
+        help="Don't run server forever, but just test if it starts",
+    )
+    parser.add_argument(
         "--timeout",
         "-t",
         type=int,
@@ -602,7 +604,9 @@ def main(argv, **extra):
         import webbrowser
 
         webbrowser.open("http://localhost:%s/" % args.port, new=2, autoraise=True)
-    httpd.serve_forever()
+
+    if not args.test:
+        httpd.serve_forever()
 
 
 if __name__ == "__main__":

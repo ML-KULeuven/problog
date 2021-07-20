@@ -18,20 +18,18 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
-from __future__ import print_function
-
 import sys
 import traceback
 
-from problog.program import PrologFile, SimpleProgram
-from problog.constraint import TrueConstraint
-from problog.formula import LogicFormula, LogicDAG
-from problog.cnf_formula import CNF
-from problog.maxsat import get_solver, get_available_solvers
-from problog.errors import process_error
 from problog import get_evaluatable
-from problog.evaluator import Semiring, OperationNotSupported, SemiringProbability
+from problog.cnf_formula import CNF
+from problog.constraint import TrueConstraint
+from problog.errors import process_error
+from problog.evaluator import Semiring, SemiringProbability
+from problog.formula import LogicFormula, LogicDAG
 from problog.logic import Term
+from problog.maxsat import get_solver, get_available_solvers
+from problog.program import PrologFile
 from problog.util import init_logger, Timer
 
 
@@ -60,18 +58,22 @@ def main_mpe_semiring(args):
         outf = sys.stdout
 
     with Timer("Total"):
+        final_result = None
         try:
             pl = PrologFile(inputfile)
 
             lf = LogicFormula.create_from(pl, label_all=True, avoid_name_clash=True)
 
             prob, facts = mpe_semiring(lf, args.verbose, minpe=args.minpe)
-            result_handler((True, (prob, facts)), outf)
+            final_result = (True, (prob, facts))
 
         except Exception as err:
             trace = traceback.format_exc()
             err.trace = trace
-            result_handler((False, err), outf)
+            final_result = (False, err)
+        result_handler(final_result, outf)
+
+        return final_result
 
 
 def mpe_semiring(lf, verbose=0, solver=None, minpe=False):
@@ -141,6 +143,7 @@ def main_mpe_maxsat(args):
         outf = sys.stdout
 
     with Timer("Total"):
+        final_result = None
         try:
             pl = PrologFile(inputfile)
 
@@ -162,14 +165,18 @@ def main_mpe_maxsat(args):
                 dag, verbose=args.verbose, solver=args.solver, minpe=args.minpe
             )
 
-            result_handler((True, (prob, output_facts)), outf)
+            final_result = (True, (prob, output_facts))
         except Exception as err:
             trace = traceback.format_exc()
             err.trace = trace
-            result_handler((False, err), outf)
+            final_result = (False, err)
+
+        result_handler(final_result, outf)
 
     if args.output is not None:
         outf.close()
+
+    return final_result
 
 
 def mpe_maxsat(dag, verbose=0, solver=None, minpe=False):

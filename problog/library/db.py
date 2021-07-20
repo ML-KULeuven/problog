@@ -1,13 +1,10 @@
-from __future__ import print_function
-
-from problog.extern import problog_export, problog_export_nondet, problog_export_raw
-
-from problog.logic import Term, Constant
-from problog.errors import UserError, InvalidValue
-
-import sqlite3
-import os
 import logging
+import os
+import sqlite3
+
+from problog.errors import UserError, InvalidValue
+from problog.extern import problog_export, problog_export_raw
+from problog.logic import Term, Constant
 
 logger = logging.getLogger("problog")
 
@@ -36,7 +33,6 @@ def get_colnames(conn, tablename):
 
 @problog_export("+str")
 def sqlite_load(filename):
-
     filename = problog_export.database.resolve_filename(filename)
     if not os.path.exists(filename):
         raise UserError("Can't find database '%s'" % filename)

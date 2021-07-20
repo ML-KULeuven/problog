@@ -1,3 +1,7 @@
+% Warning: this file does not seem like a proper DTProblog file:
+% there are no '?' probabilities for decisions being made
+% Response: decision(something). instead of ?::something. is also fine.
+
 0.5::play1.
 0.5::play2.
 

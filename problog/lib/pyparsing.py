@@ -21,40 +21,41 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #
+import collections.abc
 
 __doc__ = """
-pyparsing module - Classes and methods to define and execute parsing grammars
-
-The pyparsing module is an alternative approach to creating and executing simple grammars,
-vs. the traditional lex/yacc approach, or the use of regular expressions.  With pyparsing, you
-don't need to learn a new syntax for defining grammars or matching expressions - the parsing module
-provides a library of classes that you use to construct the grammar directly in Python.
-
-Here is a program to parse "Hello, World!" (or any greeting of the form C{"<salutation>, <addressee>!"})::
-
-    from pyparsing import Word, alphas
-
-    # define grammar of a greeting
-    greet = Word( alphas ) + "," + Word( alphas ) + "!"
-
-    hello = "Hello, World!"
-    print (hello, "->", greet.parseString( hello ))
-
-The program outputs the following::
-
-    Hello, World! -> ['Hello', ',', 'World', '!']
-
-The Python representation of the grammar is quite readable, owing to the self-explanatory
-class names, and the use of '+', '|' and '^' operators.
-
-The parsed results returned from C{parseString()} can be accessed as a nested list, a dictionary, or an
-object with named attributes.
-
-The pyparsing module handles some of the problems that are typically vexing when writing text parsers:
- - extra or missing whitespace (the above program will also handle "Hello,World!", "Hello  ,  World  !", etc.)
- - quoted strings
- - embedded comments
-"""
+    pyparsing module - Classes and methods to define and execute parsing grammars
+    
+    The pyparsing module is an alternative approach to creating and executing simple grammars,
+    vs. the traditional lex/yacc approach, or the use of regular expressions.  With pyparsing, you
+    don't need to learn a new syntax for defining grammars or matching expressions - the parsing module
+    provides a library of classes that you use to construct the grammar directly in Python.
+    
+    Here is a program to parse "Hello, World!" (or any greeting of the form C{"<salutation>, <addressee>!"})::
+    
+        from pyparsing import Word, alphas
+    
+        # define grammar of a greeting
+        greet = Word( alphas ) + "," + Word( alphas ) + "!"
+    
+        hello = "Hello, World!"
+        print (hello, "->", greet.parseString( hello ))
+    
+    The program outputs the following::
+    
+        Hello, World! -> ['Hello', ',', 'World', '!']
+    
+    The Python representation of the grammar is quite readable, owing to the self-explanatory
+    class names, and the use of '+', '|' and '^' operators.
+    
+    The parsed results returned from C{parseString()} can be accessed as a nested list, a dictionary, or an
+    object with named attributes.
+    
+    The pyparsing module handles some of the problems that are typically vexing when writing text parsers:
+     - extra or missing whitespace (the above program will also handle "Hello,World!", "Hello  ,  World  !", etc.)
+     - quoted strings
+     - embedded comments
+    """
 
 __version__ = "2.0.3"
 __versionTime__ = "16 Aug 2014 00:12"
@@ -893,7 +894,7 @@ class ParseResults(object):
         return dir(super(ParseResults, self)) + list(self.keys())
 
 
-collections.MutableMapping.register(ParseResults)
+collections.abc.MutableMapping.register(ParseResults)
 
 
 def col(loc, strg):
@@ -2344,7 +2345,7 @@ class QuotedString(Token):
             if isinstance(ret, basestring):
                 # replace escaped characters
                 if self.escChar:
-                    ret = re.sub(self.escCharReplacePattern, "\g<1>", ret)
+                    ret = re.sub(self.escCharReplacePattern, "\\g<1>", ret)
 
                 # replace escaped quotes
                 if self.escQuote:
@@ -2651,7 +2652,7 @@ class ParseExpression(ParserElement):
 
         if isinstance(exprs, basestring):
             self.exprs = [Literal(exprs)]
-        elif isinstance(exprs, collections.Sequence):
+        elif isinstance(exprs, collections.abc.Sequence):
             # if sequence of strings provided, wrap with Literal
             if all(isinstance(expr, basestring) for expr in exprs):
                 exprs = map(Literal, exprs)
@@ -3146,8 +3147,8 @@ class NotAny(ParseElementEnhance):
         super(NotAny, self).__init__(expr)
         # ~ self.leaveWhitespace()
         self.skipWhitespace = (
-            False  # do NOT use self.leaveWhitespace(), don't want to propagate to exprs
-        )
+            False
+        )  # do NOT use self.leaveWhitespace(), don't want to propagate to exprs
         self.mayReturnEmpty = True
         self.errmsg = "Found unwanted token, " + _ustr(self.expr)
 
@@ -4388,7 +4389,6 @@ _commasepitem = (
 commaSeparatedList = delimitedList(
     Optional(quotedString.copy() | _commasepitem, default="")
 ).setName("commaSeparatedList")
-
 
 if __name__ == "__main__":
 

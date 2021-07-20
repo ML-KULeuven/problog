@@ -1,12 +1,10 @@
-from __future__ import print_function
-
 import argparse
 import time
 
-from ..program import SimpleProgram, PrologFile
+from .. import get_evaluatables, get_evaluatable
 from ..engine import DefaultEngine
 from ..formula import LogicFormula, LogicDAG
-from .. import get_evaluatables, get_evaluatable
+from ..program import SimpleProgram, PrologFile
 
 
 def argparser():
@@ -33,13 +31,18 @@ def main(argv):
     args = parser.parse_args(argv)
 
     first = True
+    all_timers = dict()
     for filename in args.filename:
+        timer_list = []
         for run in range(0, args.repeat):
             timers = process(filename, base=args.base, ktype=args.k)
             if first:
                 print("filename", timers.header, "total", sep=";")
                 first = False
             print(filename, timers, timers.total, sep=";")
+            timer_list.append(timers)
+        all_timers[filename] = timer_list
+    return all_timers
 
 
 class Timer(object):
@@ -87,6 +90,10 @@ class TimerCollection(object):
     @property
     def header(self):
         return ";".join([tmr.name for tmr in self.timers])
+
+    def __iter__(self):
+        for t in self.timers:
+            yield t
 
     def __str__(self):
         return ";".join([tmr.elapsed_time_string for tmr in self.timers])

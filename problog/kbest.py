@@ -22,28 +22,21 @@ Anytime evaluation using best proofs.
     limitations under the License.
 """
 
-from __future__ import print_function
-
-
-from .core import transform
-from .formula import LogicDAG
-from .constraint import TrueConstraint, ClauseConstraint
+import logging
+import warnings
+from copy import deepcopy
+from functools import total_ordering
 
 from .cnf_formula import CNF, clarks_completion
-from .maxsat import get_solver, UnsatisfiableError
+from .constraint import TrueConstraint, ClauseConstraint
+from .core import transform
 from .evaluator import Evaluator, Evaluatable
+from .formula import LogicDAG
 from .logic import Term
-
-from copy import deepcopy
-
-import warnings
-import logging
-
-from functools import total_ordering
+from .maxsat import get_solver, UnsatisfiableError
 
 
 class KBestFormula(CNF, Evaluatable):
-
     transform_preference = 40
 
     def __init__(self, **kwargs):

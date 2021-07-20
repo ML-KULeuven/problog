@@ -1,9 +1,6 @@
-from __future__ import print_function
-
 import unittest
 
 import problog
-
 
 a = problog.logic.Term("a")
 b = problog.logic.Term("b")
@@ -66,7 +63,6 @@ for i, t in enumerate(tests):
     f.__doc__ = "%s = %s -> %s" % (t2s(t1), t2s(t2), r)
 
     setattr(TestUnify, "test_unify_%03d" % i, f)
-
 
 if __name__ == "__main__":
     unittest.main()

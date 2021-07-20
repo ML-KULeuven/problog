@@ -1,8 +1,6 @@
-from __future__ import print_function
-
-import sys
-import os
 import atexit
+import os
+import sys
 
 try:
     import readline  # provides better input
@@ -92,7 +90,6 @@ usage = """
 
 
 class Option(object):
-
     pass
 
 
@@ -119,7 +116,6 @@ class BooleanOption(Option):
 
 
 def main(argv, **kwdargs):
-
     if readline:
         histfile = os.path.join(os.path.expanduser("~"), ".probloghistory")
         try:
@@ -159,6 +155,7 @@ def main(argv, **kwdargs):
                         raise ProbLogError("Unknown option '%s'" % c.args[0])
                 elif c.signature in nonprob:
                     DefaultEngine().query(db, c)
+                    db = DefaultEngine().prepare(db)
                     # show('%% Consulted file %s' % c.args[0])
                 elif c.signature == "query/1":
                     gp = DefaultEngine().ground(db, c.args[0], label="query")

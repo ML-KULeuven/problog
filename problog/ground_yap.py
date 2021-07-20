@@ -1,14 +1,11 @@
-from __future__ import print_function
-
-from .util import subprocess_check_output, mktempfile, Timer
-from logging import getLogger
-from .logic import AnnotatedDisjunction, list2term, Term, Clause, Or, Constant
-import sys
 import os
 from collections import defaultdict, deque
 from subprocess import CalledProcessError
+
+from .engine import UnknownClause
 from .errors import GroundingError
-from .engine import UnknownClause, NonGroundProbabilisticClause
+from .logic import AnnotatedDisjunction, list2term, Term, Clause
+from .util import subprocess_check_output, mktempfile, Timer
 
 
 def ground_yap(
@@ -199,7 +196,6 @@ def read_grounding(lines, target, queries, evidence):
 
 
 def statement_to_yap(statement):
-
     if isinstance(statement, Clause) and statement.head.functor == "_directive":
         if statement.body.functor in ("consult", "use_module"):
             return ""

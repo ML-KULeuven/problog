@@ -277,7 +277,9 @@ The optional arguments are:
 - ``-d MIN_IMPROV``;
 - ``-O OUTPUT_MODEL, --output-model OUTPUT_MODEL``;  write resulting model to given file
 - ``-o OUTPUT, --output OUTPUT``; write output to file
-- ``-k {sdd,sddx,bdd,nnf,ddnnf,kbest,fsdd,fbdd}, --knowledge {sdd,sddx,bdd,nnf,ddnnf,kbest,fsdd,fbdd}``; knowledge compilation tool
+- ``--logger LOGGER``; write log to a given file
+- ``-k {sdd,sddx,ddnnf}, --knowledge {sdd,sddx,ddnnf}``; knowledge compilation tool
+- ``--logspace``; use log space evaluation
 - ``-l LEAKPROB, --leak-probabilities LEAKPROB``; Add leak probabilities for evidence atoms.
 - ``--propagate-evidence``; Enable evidence propagation
 - ``--dont-propagate-evidence``; Disable evidence propagation
@@ -314,15 +316,15 @@ An example of LFI call:
 .. code-block:: shell
 
     $ problog lfi some_heads.pl some_heads_ev.pl -O some_heads_learned.pl
-    -6.88403875238 [0.4, 0.66666619] [t(_)::heads1, t(_)::heads2] 14
+    -1.7917594692732088 [0.33333333, 0.5] [t(_)::heads1, t(_)::heads2] 21
 
 The learned program is saved in ``some_heads_learned.pl``.
 
 .. code-block:: shell
 
     $ cat some_heads_learned.pl
-    0.4::heads1.
-    0.666666192095::heads2.
+    0.33333333::heads1.
+    0.5::heads2.
     someHeads :- heads1.
     someHeads :- heads2.
 

@@ -77,18 +77,13 @@ This module contains basic logic constructs.
     limitations under the License.
 
 """
-from __future__ import print_function
-from __future__ import division  # consistent behaviour of / and // in python 2 and 3
-import functools
 import math
-import sys
 import re
-
-
-from .util import OrderedSet
-from .errors import GroundingError
-
+import sys
 from collections import deque
+
+from .errors import GroundingError
+from .util import OrderedSet
 
 
 def term2str(term):
@@ -191,7 +186,6 @@ class Term(object):
     :param kwdargs: additional arguments; currently 'p' (probability) and 'location' \
     (character position in input)
     """
-
     def __init__(self, functor, *args, **kwdargs):
         self.__functor = functor
         self.__args = args
@@ -275,6 +269,7 @@ class Term(object):
         old_stack = [deque([self])]
         new_stack = []
         term_stack = []
+
         while old_stack:
             current = old_stack[-1].popleft()
             if current is None or type(current) == int:
@@ -282,6 +277,12 @@ class Term(object):
                     new_stack[-1].append(subst[current])
                 else:
                     return subst[current]
+            elif type(current) == list:
+                # If the current element is a list (an AD for example), we apply substitutions on elements of the list
+                new_current = []
+                for a in current:
+                    new_current.append(a.apply(subst))
+                new_stack[-1].append(new_current)
             elif current.is_var():
                 if new_stack:
                     new_stack[-1].append(subst[current.name])
@@ -441,7 +442,7 @@ class Term(object):
                 if len(current.op_spec) == 2:  # unary operator
                     cf = str(current.functor).strip("'")
                     if "a" <= cf[0] <= "z":
-                        put(" " + cf + " ")
+                        put(f" {cf} ")
                     else:
                         put(cf)
                     q = deque()
@@ -586,6 +587,10 @@ class Term(object):
         """Checks whether this Term represents a variable."""
         return False
 
+    def is_scope_term(self):
+        """Checks whether the current term is actually a term inside a scope"""
+        return self.functor.strip("'") == ":"
+
     def is_constant(self):
         """Checks whether this Term represents a constant."""
         return False
@@ -596,7 +601,9 @@ class Term(object):
             queue = deque([self])
             while queue:
                 term = queue.popleft()
-                if term is None or type(term) == int or term.is_var():
+                if type(term) == list:
+                    queue.extend(term)
+                elif term is None or type(term) == int or term.is_var():
                     self._cache_is_ground = False
                     return False
                 elif isinstance(term, Term):
@@ -659,6 +666,41 @@ class Term(object):
             current = current.args[1]
         return elements, current
 
+    def diff(self, other):
+        if not isinstance(other, Term):
+            return 'other not a term'
+        # Non-recursive version of equality check.
+        l1 = deque([self])
+        l2 = deque([other])
+        while l1 and l2:
+            t1 = l1.popleft()
+            t2 = l2.popleft()
+            if len(l1) != len(l2):
+                return 'l1 and l2 length difference'
+            elif id(t1) == id(t2):
+                pass
+            elif type(t1) != type(t2):
+                return 'type: {} vs {}'.format(type(t1), type(t2))
+            elif type(t1) == int:
+                if t1 != t2:
+                    return '{} != {}'.format(t1,t2)
+            elif t1 is None:
+                if t2 is not None:
+                    return 't1 is None but t2 is not'
+            elif isinstance(t1, Constant):  # t2 too
+                if type(t1.functor) != type(t2.functor):
+                    return '{} vs {}'.format(type(t1.functor), type(t2.functor))
+                elif t1.functor != t2.functor:
+                    return '{} vs {}'.format(t1.functor, t2.functor)
+            else:  # t1 and t2 are Terms
+                if not isinstance(t1, Not) and t1.__functor != t2.__functor:
+                    return 'not not and functor {} vs {}'.format(t1.__functor, t2.__functor)
+                if t1.__arity != t2.__arity:
+                    return 'arity: {} vs {}'.format(t1.__arity, t2.__arity)
+                l1.extend(t1.__args)
+                l2.extend(t2.__args)
+        return l1 == l2  # Should both be empty.
+
     def __eq__(self, other):
         if not isinstance(other, Term):
             return False
@@ -686,7 +728,8 @@ class Term(object):
                 elif t1.functor != t2.functor:
                     return False
             else:  # t1 and t2 are Terms
-                if t1.__functor != t2.__functor:
+                # not isinstance(t1, Not) so \+x and not(x) are equal
+                if not isinstance(t1, Not) and t1.__functor != t2.__functor:
                     return False
                 if t1.__arity != t2.__arity:
                     return False
@@ -718,13 +761,44 @@ class Term(object):
 
     def __hash__(self):
         if self.__hash is None:
-            firstarg = None
-            if len(self.__args) > 0:
-                firstarg = self.__args[0]
+            # CG
+            list_hash = [self.__functor, self.__arity, self._list_length()]
 
-            self.__hash = hash(
-                (self.__functor, self.__arity, firstarg, self._list_length())
-            )
+            def get_arg_len(a):
+                if isinstance(a, list):
+                    return len(a)
+                elif isinstance(a, Term):
+                    return a._list_length()
+                else:
+                    return 1
+
+            def add_to_hash(a):
+                if isinstance(a, list):
+                    list_hash.extend(a)
+                else:
+                    list_hash.append(a)
+
+            # We only consider restricted number of args, because arbitrary numbers lead to RecursionError
+            if self.__args is not None and len(self.__args) > 0:
+                cut_off_len = 10
+
+                # include first arg
+                total_list_len = get_arg_len(self.__args[0])
+                add_to_hash(self.__args[0])
+
+                # include more args?
+                if cut_off_len > total_list_len:
+                    for arg in self.__args[1:10]:  # Only consider first 10 args (bit arbitrary)
+                        arg_length = get_arg_len(arg)
+                        if total_list_len + arg_length <= cut_off_len:
+                            total_list_len += arg_length
+                            add_to_hash(arg)
+                        else:
+                            break
+
+            self.__hash = hash(tuple(list_hash))
+
+            # self.__hash = hash((self.__functor, self.__arity, firstarg, self._list_length()))
         return self.__hash
 
     def __lshift__(self, body):
@@ -737,7 +811,7 @@ class Term(object):
         return Or(self, rhs)
 
     def __invert__(self):
-        return Not("\+", self)
+        return Not("\\+", self)
 
     def __float__(self):
         return float(self.value)
@@ -746,7 +820,7 @@ class Term(object):
         return int(self.value)
 
     def __neg__(self):
-        return Not("\+", self)
+        return Not("\\+", self)
 
     def __abs__(self):
         return self
@@ -878,7 +952,7 @@ class Object(Term):
 
     def compute_value(self, functions=None):
         return float(self.functor)
-        return self.functor
+        # return self.functor
 
     def is_constant(self):
         return True
@@ -926,7 +1000,7 @@ class Clause(Term):
         self.body = body
 
     def __repr__(self):
-        if self.head.functor == "_directive":
+        if self.head and self.head.functor == "_directive":
             self.repr = ":- %s" % self.body
         else:
             self.repr = "%s :- %s" % (self.head, self.body)
@@ -953,6 +1027,16 @@ class AnnotatedDisjunction(Term):
             self.repr = "%s :- %s" % ("; ".join(map(str, self.heads)), self.body)
         self.reprhash = hash(self.repr)
         return self.repr
+
+    def __hash__(self):
+        return super().__hash__()
+
+    def __eq__(self, other):
+        return (
+            type(self) == type(other)
+            and self.heads == other.heads
+            and self.body == other.body
+        )
 
     @property
     def predicates(self):
@@ -1141,7 +1225,7 @@ _arithmetic_functions = {
     ("ceiling", 1): lambda x: int(math.ceil(x)),
     ("round", 1): lambda x: int(round(x)),
     ("floor", 1): lambda x: int(math.floor(x)),
-    ("truncate", 1): lambda x: int(math.trunc),
+    ("truncate", 1): lambda x: int(math.trunc(x)),
     ("min", 2): min,
     ("max", 2): max,
     ("exp", 2): math.pow,
@@ -1192,7 +1276,7 @@ def unquote(s):
     return s.strip("'")
 
 
-safe_expr = re.compile("[a-z]+(\w)*$")
+safe_expr = re.compile(r"[a-z]+(\w)*$")
 
 
 def is_safe(t):
@@ -1233,7 +1317,7 @@ def compute_function(func, args, extra_functions=None):
         else:
             return function(*values)
     except ValueError as err:
-        raise ArithmeticError(err.message)
+        raise ArithmeticError(str(err))
     except ZeroDivisionError:
         raise ArithmeticError("Division by zero.")
 

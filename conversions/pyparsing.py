@@ -348,18 +348,18 @@ class ParseSyntaxException(ParseFatalException):
         )
 
 
-# ~ class ReparseException(ParseBaseException):
-# ~ """Experimental class - parse actions can raise this exception to cause
-# ~ pyparsing to reparse the input string:
-# ~ - with a modified input string, and/or
-# ~ - with a modified start location
-# ~ Set the values of the ReparseException in the constructor, and raise the
-# ~ exception in a parse action to cause pyparsing to use the new string/location.
-# ~ Setting the values as None causes no change to be made.
-# ~ """
-# ~ def __init_( self, newstring, restartLoc ):
-# ~ self.newParseText = newstring
-# ~ self.reparseLoc = restartLoc
+# class ReparseException(ParseBaseException):
+#     """Experimental class - parse actions can raise this exception to cause
+#         pyparsing to reparse the input string:
+#          - with a modified input string, and/or
+#          - with a modified start location
+#         Set the values of the ReparseException in the constructor, and raise the
+#         exception in a parse action to cause pyparsing to use the new string/location.
+#         Setting the values as None causes no change to be made.
+#         """
+#     def __init_(self, newstring, restartLoc):
+#          self.newParseText = newstring
+#          self.reparseLoc = restartLoc
 
 
 class RecursiveGrammarException(Exception):
@@ -594,10 +594,10 @@ class ParseResults(object):
         """Inserts new element at location index in the list of parsed tokens."""
         self.__toklist.insert(index, insStr)
         # fixup indices in token dictionary
-        # ~ for name in self.__tokdict:
-        # ~ occurrences = self.__tokdict[name]
-        # ~ for k, (value, position) in enumerate(occurrences):
-        # ~ occurrences[k] = _ParseResultsWithOffset(value, position + (position > index))
+        # for name in self.__tokdict:
+        #     occurrences = self.__tokdict[name]
+        #     for k, (value, position) in enumerate(occurrences):
+        #         occurrences[k] = _ParseResultsWithOffset(value, position + (position > index))
         for name, occurrences in self.__tokdict.items():
             for k, (value, position) in enumerate(occurrences):
                 occurrences[k] = _ParseResultsWithOffset(
@@ -971,25 +971,26 @@ def nullDebugAction(*args):
 
 
 # Only works on Python 3.x - nonlocal is toxic to Python 2 installs
-# ~ 'decorator to trim function calls to match the arity of the target'
-# ~ def _trim_arity(func, maxargs=3):
-# ~ if func in singleArgBuiltins:
-# ~ return lambda s,l,t: func(t)
-# ~ limit = 0
-# ~ foundArity = False
-# ~ def wrapper(*args):
-# ~ nonlocal limit,foundArity
-# ~ while 1:
-# ~ try:
-# ~ ret = func(*args[limit:])
-# ~ foundArity = True
-# ~ return ret
-# ~ except TypeError:
-# ~ if limit == maxargs or foundArity:
-# ~ raise
-# ~ limit += 1
-# ~ continue
-# ~ return wrapper
+# 'decorator to trim function calls to match the arity of the target'
+# def _trim_arity(func, maxargs=3):
+#     if func in singleArgBuiltins:
+#         return lambda s, l, t: func(t)
+#     limit = 0
+#     foundArity = False
+#
+#     def wrapper(*args):
+#         nonlocal limit, foundArity
+#         while 1:
+#             try:
+#                 ret = func(*args[limit:])
+#                 foundArity = True
+#                 return ret
+#             except TypeError:
+#                 if limit == maxargs or foundArity:
+#                     raise
+#                 limit += 1
+#                 continue
+#     return wrapper
 
 # this version is Python 2.x-3.x cross-compatible
 "decorator to trim function calls to match the arity of the target"
@@ -1062,13 +1063,9 @@ class ParserElement(object):
         self.ignoreExprs = list()
         self.debug = False
         self.streamlined = False
-        self.mayIndexError = (
-            True
-        )  # used to optimize exception handling for subclasses that don't advance parse index
+        self.mayIndexError = True  # used to optimize exception handling for subclasses that don't advance parse index
         self.errmsg = ""
-        self.modalResults = (
-            True
-        )  # used to mark results names as modal (report only last) or cumulative (list all)
+        self.modalResults = True  # used to mark results names as modal (report only last) or cumulative (list all)
         self.debugActions = (None, None, None)  # custom debug actions
         self.re = None
         self.callPreparse = True  # used to avoid redundant calls to preParse
@@ -3429,7 +3426,7 @@ class SkipTo(ParseElementEnhance):
         while tmploc <= instrlen:
             if self_failOn_canParseNext is not None:
                 # break if failOn expression matches
-                if self_failOn.canParseNext(instring, tmploc):
+                if self_failOn_canParseNext(instring, tmploc):
                     break
 
             if self_ignoreExpr_tryParse is not None:

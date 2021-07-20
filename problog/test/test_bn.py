@@ -15,15 +15,14 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 """
-import unittest
-
 import glob
 import os
 import sys
+import unittest
 
 from problog.formula import LogicDAG
-from problog.tasks.bayesnet import formula_to_bn
 from problog.program import PrologFile, DefaultPrologParser, ExtendedPrologFactory
+from problog.tasks.bayesnet import formula_to_bn
 
 if __name__ == "__main__":
     sys.path.insert(
@@ -63,7 +62,6 @@ def read_expected_result(filename):
 
 
 def createBNTestGeneric(filename, logspace=False):
-
     correct = read_expected_result(filename)
 
     def test(self):
@@ -98,11 +96,9 @@ if __name__ == "__main__":
 else:
     filenames = glob.glob(root_path("test/bn", "*.pl"))
 
-
 for testfile in filenames:
     testname = "test_bn_" + os.path.splitext(os.path.basename(testfile))[0]
     setattr(TestBNGeneric, testname, createBNTestGeneric(testfile, True))
-
 
 if __name__ == "__main__":
     suite = unittest.TestLoader().loadTestsFromTestCase(TestBNGeneric)

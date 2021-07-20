@@ -8,7 +8,6 @@ http://www.cs.cmu.edu/~fgcozman/Research/InterchangeFormat/
 Created by Wannes Meert.
 Copyright (c) 2017 KU Leuven. All rights reserved.
 """
-from __future__ import print_function
 
 import os
 import sys

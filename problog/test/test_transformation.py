@@ -1,11 +1,9 @@
-from __future__ import print_function
-
 import unittest
 
-from problog.program import PrologString
-from problog.formula import LogicFormula
 from problog import get_evaluatable
 from problog.evaluator import SemiringProbability
+from problog.formula import LogicFormula
+from problog.program import PrologString
 
 # noinspection PyBroadException
 try:

@@ -21,19 +21,17 @@ Provides useful utilities functions and classes.
     See the License for the specific language governing permissions and
     limitations under the License.
 """
-from __future__ import print_function
-
-import logging
-import time
-
-import signal
-import sys
-import os
-import subprocess
-import distutils.spawn
-import tempfile
-import imp
 import collections
+import collections.abc
+import distutils.spawn
+import imp
+import logging
+import os
+import signal
+import subprocess
+import sys
+import tempfile
+import time
 
 
 class ProbLogLogFormatter(logging.Formatter):
@@ -250,7 +248,7 @@ def kill_proc_tree(process, including_parent=True):
         process.kill()
 
 
-class OrderedSet(collections.MutableSet):
+class OrderedSet(collections.abc.MutableSet):
     """Provides an ordered version of a set which keeps elements in the order they are added.
 
     :param iterable: add elements from this iterable (default: None)
@@ -405,7 +403,7 @@ def format_tuple(data, precision=8, columnsep="\t"):
     if isinstance(data, str):
         # is a string -> return string itself
         return data
-    elif isinstance(data, collections.Sequence):
+    elif isinstance(data, collections.abc.Sequence):
         values = list(map(lambda v: format_value(v, precision=precision), data))
         if len(values) == 2 and values[0] == values[1]:
             values = [values[0]]
