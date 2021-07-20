@@ -23,10 +23,6 @@ tested on *Mac OSX*, *Linux* and *Windows*.
 
 [![CircleCI](https://circleci.com/gh/ML-KULeuven/problog/tree/master.svg?style=svg)](https://circleci.com/gh/ML-KULeuven/problog/tree/master)
 [![codecov](https://codecov.io/gh/ML-KULeuven/problog/branch/master/graph/badge.svg)](https://codecov.io/gh/ML-KULeuven/problog/branch/master)
-dev:
-[![CircleCI](https://circleci.com/gh/ML-KULeuven/problog/tree/develop.svg?style=svg)](https://circleci.com/gh/ML-KULeuven/problog/tree/develop)
-[![codecov](https://codecov.io/gh/ML-KULeuven/problog/branch/develop/graph/badge.svg)](https://codecov.io/gh/ML-KULeuven/problog/branch/develop)
-
 
 ProbLog supports optional components which can be installed separately.
 See the file [INSTALL](https://github.com/ML-KULeuven/problog/blob/develop/INSTALL) for detailed installation instructions.
