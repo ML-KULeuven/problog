@@ -1,0 +1,24 @@
+evidence(q(2)).
+evidence(p(0), false).
+evidence(p(1)).
+evidence(p(2), false).
+---
+evidence(q(2)).
+evidence(p(0)).
+evidence(p(1), false).
+evidence(p(2), false).
+---
+evidence(q(2), false).
+evidence(p(0)).
+evidence(p(1), false).
+evidence(p(2), false).
+---
+evidence(q(2), false).
+evidence(p(0)).
+evidence(p(1), false).
+evidence(p(2), false).
+---
+evidence(q(2)).
+evidence(p(0)).
+evidence(p(1), false).
+evidence(p(2), false).

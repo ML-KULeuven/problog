@@ -1,0 +1,13 @@
+evidence(q(b2)).
+evidence(p(a0), false).
+---
+evidence(q(b2)).
+evidence(p(a0)).
+evidence(p(a1), false).
+---
+evidence(q(b2), false).
+evidence(p(a0)).
+evidence(p(a1)).
+---
+evidence(p(a0)).
+evidence(p(a1)).

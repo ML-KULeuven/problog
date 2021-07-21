@@ -867,11 +867,16 @@ class LFIProblem(LogicProgram):
 
         score = 0.0
         for index in update_list:
-            if float(fact_body[index]) == 0.0:
+            if float(fact_body[index]) <= 10**-15:
+                # if close to zero
                 prob = 0.0
             else:
                 prob = float(fact_body[index]) / float(fact_par[index])
-                score += math.log(prob)
+                try:
+                    score += math.log(prob)
+                except ValueError as ex:
+                    # prob too close to zero
+                    pass
 
             logger.debug(
                 "Update probabilistic fact {}: {} / {} = {}".format(
@@ -1038,7 +1043,10 @@ class Example(object):
                 probargs = ()
                 if node.name.functor != "choice":
                     if node.name.functor == "lfi_fact":
-                        factargs = node.name.args[1].args
+                        factargs = node.name.args[2:]
+                    elif node.name.functor == "lfi_body" or node.name.functor == "lfi_par":
+                        factargs = node.name.args[2:]
+                        probargs = node.probability.args[1].args
                     else:
                         factargs = node.name.args
                         probargs = node.probability.args[1].args
