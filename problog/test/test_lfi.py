@@ -1,6 +1,7 @@
 """
 test_lfi.py - Test class for LFI problems
 """
+import random
 
 from problog import root_path
 import unittest
@@ -69,8 +70,9 @@ def createTestLFI(filename, evaluatables):
                 "logspace": logspace,
                 "normalize": True,
                 "web": False,
-                "args": None
+                "args": None,
             }
+            random.seed(a=1000)
             score, weights, names, iterations, lfi = lfi_wrapper(
                 model, [examples], evaluatable, d
             )
@@ -81,6 +83,12 @@ def createTestLFI(filename, evaluatables):
 
         outlines = outlines.split("\n")[:-1]
         assert len(expectedlines) == len(outlines)
+
+        # We need to sort outlines and expectedlines, because apparently the order of the rules can
+        # depend on the target language (-k flag).
+        outlines.sort(key=lambda x: x if "::" not in x else x.split("::")[1])
+        expectedlines.sort(key=lambda x: x if "::" not in x else x.split("::")[1])
+
         # Compare expected program and learned program line by line
         for expectedline, outline in zip(expectedlines, outlines):
             # When there are probabilities
@@ -135,7 +143,7 @@ def createTestLFI(filename, evaluatables):
                 new_expectedline = "; ".join(new_expectedline_comps)
                 expectedline = new_expectedline
                 outline = new_outline
-            assert expectedline == outline
+            self.assertEqual(outline, expectedline)
 
     return test
 

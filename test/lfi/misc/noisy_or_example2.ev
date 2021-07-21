@@ -1,0 +1,21 @@
+
+evidence(topic(t1),true).
+evidence(topic(t2),false).
+evidence(word(w1), true).
+evidence(word(w2), false).
+-----
+evidence(topic(t1),true).
+evidence(topic(t2),false).
+evidence(word(w1), true).
+evidence(word(w2), false).
+-----
+evidence(topic(t1),false).
+evidence(topic(t2),true).
+evidence(word(w1), false).
+evidence(word(w2), true).
+-----
+evidence(topic(t1),false).
+evidence(topic(t2),true).
+evidence(word(w1), true).
+evidence(word(w2), true).
+-----
