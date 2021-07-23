@@ -1,6 +1,6 @@
 #! /usr/bin/env python
 """
-Query-based sampler for ProbLog 2.1
+Query-based sampler for ProbLog 2.1+
 ===================================
 
   Concept:

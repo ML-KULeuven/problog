@@ -1,7 +1,7 @@
 Using ProbLog as a standalone tool
 ==================================
 
-The command line interface (CLI) gives access to the basic functionality of ProbLog 2.1.
+The command line interface (CLI) gives access to the basic functionality of ProbLog 2.2.
 It is accessible through the script ``problog`` (or ``problog-cli.py`` in the repository version).
 
 The CLI has different modes of operation. These can be accessed by adding a keyword as the first \
