@@ -28,8 +28,8 @@ def prompt(txt="?- "):
         return input(txt)
 
 
-usage = """
-    This is the interactive shell of ProbLog 2.1.
+usage = f"""
+    This is the interactive shell of ProbLog {version}.
 
     You probably want to load a program first:
 
@@ -124,7 +124,7 @@ def main(argv, **kwdargs):
             pass
         atexit.register(readline.write_history_file, histfile)
 
-    show("%% Welcome to ProbLog 2.1 (version %s)" % version)
+    show("%% Welcome to ProbLog 2.2 (version %s)" % version)
     show("% Type 'help.' for more information.")
 
     # engine = DefaultEngine()
