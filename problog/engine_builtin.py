@@ -268,8 +268,10 @@ def _builtin_clause(head, body, database=None, **kwd):
             b = Term("true")
 
         try:
-            unify_value(head, h, {})
-            unify_value(body, b, {})
+            # Perform unifying checks before storing the results
+            # can't do unify_value with Vars, first replace them with ints (database._create_ints)
+            unify_value(head, database._create_ints(h), {})
+            unify_value(body, database._create_ints(b), {})
             result.append((h, b))
         except UnifyError:
             pass
