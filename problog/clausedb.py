@@ -564,6 +564,29 @@ class ClauseDB(LogicProgram):
         else:
             raise ValueError("Unknown structure type: '%s'" % struct)
 
+    def _create_ints(self, term):
+        """
+        Convert all occurrences of Var into ints.
+
+        For example, when term = Term('a', Var('V_1'), Constant(3)), this returns Term('a', 1, Constant(3))
+        This assumes each Var has functor V_{var_id} with var_id some int value.
+        This is opposite to the method _create_vars(term).
+        :param term: The term to replace all Var occurrences in.
+        :type term: Term
+        :return: The same term but with all occurrences of Var replaced with their corresponding int value.
+        :rtype: Term
+        """
+        if type(term) == Var:
+            assert term.functor[:2] == "V_"
+            # Convert V_{digit} to an int of value {digit}
+            return int(term.functor[2:])
+        else:
+            args = [self._create_ints(arg) for arg in term.args]
+            term = term.with_args(*args)
+            if term.probability is not None:
+                term = term.with_probability(self._create_ints(term.probability))
+            return term
+
     def _create_vars(self, term):
         if type(term) == int:
             return Var("V_" + str(term))

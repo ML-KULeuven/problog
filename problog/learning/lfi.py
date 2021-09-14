@@ -1494,7 +1494,6 @@ def main(argv, result_handler=None):
         logf = open(args.logger, "w")
 
     logger = init_logger(verbose=args.verbose, name="problog_lfi", out=logf)
-    create_logger("problog_lfi", args.verbose - 1)
 
     program = PrologFile(args.model)
     examples = list(read_examples(*args.examples))
