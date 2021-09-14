@@ -34,6 +34,7 @@ from ..util import (
     format_dictionary,
     format_value,
 )
+from ..version import version as problog_version
 
 
 def print_result(d, output, debug=False, precision=8):
@@ -105,6 +106,7 @@ def execute(
     :param knowledge: knowledge compilation class or identifier
     :param semiring: semiring to use
     :param parse_class: prolog parser to use
+    :param debug: enable advanced error output
     :param engine_debug: enable engine debugging output
     :param kwdargs: additional arguments
     :return: tuple where first value indicates success, and second value contains result details
@@ -182,7 +184,7 @@ def argparser():
 
         pass
 
-    description = """ProbLog 2.1 command line interface
+    description = f"""ProbLog {problog_version} command line interface
 
     The arguments listed below are for the default mode.
     ProbLog also supports the following alternative modes:

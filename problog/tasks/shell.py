@@ -28,8 +28,8 @@ def prompt(txt="?- "):
         return input(txt)
 
 
-usage = """
-    This is the interactive shell of ProbLog 2.1.
+usage = f"""
+    This is the interactive shell of ProbLog {version}.
 
     You probably want to load a program first:
 
@@ -124,7 +124,7 @@ def main(argv, **kwdargs):
             pass
         atexit.register(readline.write_history_file, histfile)
 
-    show("%% Welcome to ProbLog 2.1 (version %s)" % version)
+    show("%% Welcome to ProbLog 2.2 (version %s)" % version)
     show("% Type 'help.' for more information.")
 
     # engine = DefaultEngine()
@@ -155,6 +155,7 @@ def main(argv, **kwdargs):
                         raise ProbLogError("Unknown option '%s'" % c.args[0])
                 elif c.signature in nonprob:
                     DefaultEngine().query(db, c)
+                    db = DefaultEngine().prepare(db)
                     # show('%% Consulted file %s' % c.args[0])
                 elif c.signature == "query/1":
                     gp = DefaultEngine().ground(db, c.args[0], label="query")

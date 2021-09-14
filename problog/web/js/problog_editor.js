@@ -1,4 +1,4 @@
-/* Problog v2.1 javascript interface
+/* Problog v2.2 javascript interface since v2.1
  *
  * Usage:
  * When calling `problog.initialize()`, all .problog-editor divs are replaced

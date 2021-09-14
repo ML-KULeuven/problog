@@ -6,7 +6,7 @@
 ProbLog
 =======
 
-Welcome to the ProbLog 2.1 documentation.
+Welcome to the ProbLog 2.2 documentation.
 
 Contents:
 

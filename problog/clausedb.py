@@ -102,8 +102,8 @@ class ClauseDB(LogicProgram):
         self._load_builtin_module()
 
     def _load_builtin_module(self):
-        # self.use_module(Term('library', Term('builtin')), None)
-        pass
+        self.use_module(Term('library', Term('builtin')), None)
+        # pass
 
     def __len__(self):
         return len(self.__nodes) + self.__offset
@@ -162,24 +162,16 @@ class ClauseDB(LogicProgram):
         """Add an *or* node."""
         return self._append_node(self._disj((op1, op2), location))
 
-    def _scope_term(self, term, scope, is_problog_scope=False):
+    def _scope_term(self, term, scope):
         if term.signature in self.__builtins:
             scope = None
         if term.functor == "_directive":
             scope = None
         if scope is not None:
-            if not is_problog_scope:
-                term.functor = "_%s_%s" % (
-                    scope,
-                    term.functor,
-                )  # _scope_functor --> scope:functor
-            else:
-                ## CG MODIFS
-                new_term = Term(
-                    "':'", scope, term.with_probability(None), p=term.probability
-                )
-                return new_term
-        return term
+            term.functor = "_%s_%s" % (scope, term.functor)
+            return term
+        else:
+            return term
 
     def _add_define_node(self, head, childnode):
         define_index = self._add_head(head)
@@ -226,12 +218,12 @@ class ClauseDB(LogicProgram):
         )
         return self._add_define_node(head, clause_node)
 
-    def _add_call_node(self, term, scope=None, is_problog_scope=False):
+    def _add_call_node(self, term, scope=None):
         """Add a *call* node."""
         # if term.signature in ('query/1', 'evidence/1', 'evidence/2'):
         #    raise AccessError("Can\'t call %s directly." % term.signature)
 
-        term = self._scope_term(term, scope, is_problog_scope=is_problog_scope)
+        term = self._scope_term(term, scope)
         defnode = self._add_head(term, create=False)
         return self._append_node(
             self._call(
@@ -341,7 +333,7 @@ class ClauseDB(LogicProgram):
         s += "Redirects: " + str(self.__node_redirect)
         return s
 
-    def add_clause(self, clause, scope=None, is_problog_scope=False):
+    def add_clause(self, clause, scope=None):
         """Add a clause to the database.
 
        :param clause: Clause to add
@@ -349,9 +341,9 @@ class ClauseDB(LogicProgram):
        :returns: location of the definition node in the database
        :rtype: int
         """
-        return self._compile(clause, scope=scope, is_problog_scope=is_problog_scope)
+        return self._compile(clause, scope=scope)
 
-    def add_fact(self, term, scope=None, is_problog_scope=False):
+    def add_fact(self, term, scope=None):
         """Add a fact to the database.
        :param term: fact to add
        :type term: Term
@@ -363,7 +355,7 @@ class ClauseDB(LogicProgram):
         term.apply(variables)
         # If the fact has variables, threat is as a clause.
         if len(variables) == 0:
-            term = self._scope_term(term, scope, is_problog_scope=is_problog_scope)
+            term = self._scope_term(term, scope)
             fact_node = self._append_node(
                 self._fact(term.functor, term.args, term.probability, term.location)
             )
@@ -372,12 +364,11 @@ class ClauseDB(LogicProgram):
             return self.add_clause(
                 Clause(term, Term("true")),
                 scope=scope,
-                is_problog_scope=is_problog_scope,
             )
 
-    def add_extern(self, predicate, arity, func, scope=None, is_problog_scope=False):
+    def add_extern(self, predicate, arity, func, scope=None):
         head = Term(predicate, *[None] * arity)
-        head = self._scope_term(head, scope, is_problog_scope=is_problog_scope)
+        head = self._scope_term(head, scope)
         node_id = self._get_head(head)
         ext = self._extern(head.functor, head.arity, func)
         if node_id is None:
@@ -398,7 +389,7 @@ class ClauseDB(LogicProgram):
         else:
             return []
 
-    def _compile(self, struct, variables=None, scope=None, is_problog_scope=False):
+    def _compile(self, struct, variables=None, scope=None):
         """Compile the given structure and add it to the database.
 
         :param struct: structure to compile
@@ -413,24 +404,24 @@ class ClauseDB(LogicProgram):
 
         if isinstance(struct, And):
             op1 = self._compile(
-                struct.op1, variables, scope=scope, is_problog_scope=is_problog_scope
+                struct.op1, variables, scope=scope
             )
             op2 = self._compile(
-                struct.op2, variables, scope=scope, is_problog_scope=is_problog_scope
+                struct.op2, variables, scope=scope
             )
             return self._add_and_node(op1, op2)
         elif isinstance(struct, Or):
             op1 = self._compile(
-                struct.op1, variables, scope=scope, is_problog_scope=is_problog_scope
+                struct.op1, variables, scope=scope
             )
             op2 = self._compile(
-                struct.op2, variables, scope=scope, is_problog_scope=is_problog_scope
+                struct.op2, variables, scope=scope
             )
             return self._add_or_node(op1, op2)
         elif isinstance(struct, Not):
             variables.enter_local()
             child = self._compile(
-                struct.child, variables, scope=scope, is_problog_scope=is_problog_scope
+                struct.child, variables, scope=scope
             )
             variables.exit_local()
             return self._add_not_node(child, location=struct.location)
@@ -439,7 +430,6 @@ class ClauseDB(LogicProgram):
                 struct.args[0],
                 variables,
                 scope=scope,
-                is_problog_scope=is_problog_scope,
             )
             return self._add_not_node(child, location=struct.location)
         elif isinstance(struct, AnnotatedDisjunction):
@@ -451,7 +441,7 @@ class ClauseDB(LogicProgram):
 
             # Create the body clause
             body_node = self._compile(
-                struct.body, variables, scope=scope, is_problog_scope=is_problog_scope
+                struct.body, variables, scope=scope
             )
             body_count = len(variables)
             # Body arguments
@@ -467,7 +457,7 @@ class ClauseDB(LogicProgram):
             )
             clause_body = self._add_head(body_head)
             for choice, head in enumerate(new_heads):
-                head = self._scope_term(head, scope, is_problog_scope=is_problog_scope)
+                head = self._scope_term(head, scope)
                 # For each head: add choice node
                 choice_functor = Term(
                     self.FUNCTOR_CHOICE,
@@ -512,19 +502,16 @@ class ClauseDB(LogicProgram):
                 return self._compile(
                     AnnotatedDisjunction([struct.head], struct.body),
                     scope=scope,
-                    is_problog_scope=is_problog_scope,
                 )
             else:
                 new_head = self._scope_term(
                     struct.head.apply(variables),
                     scope,
-                    is_problog_scope=is_problog_scope,
                 )
                 body_node = self._compile(
                     struct.body,
                     variables,
                     scope=scope,
-                    is_problog_scope=is_problog_scope,
                 )
                 return self._add_clause_node(
                     new_head, body_node, len(variables), variables.local_variables
@@ -533,7 +520,6 @@ class ClauseDB(LogicProgram):
             return self._add_call_node(
                 Term("call", struct.apply(variables), location=struct.location),
                 scope=scope,
-                is_problog_scope=is_problog_scope,
             )
         elif isinstance(struct, Term):
             local_scope = self.get_local_scope(struct.signature)
@@ -557,7 +543,7 @@ class ClauseDB(LogicProgram):
                         new_arg = new_arg.args[0]
                     args.append(new_arg)
                 return self._add_call_node(
-                    struct(*args), scope=scope, is_problog_scope=is_problog_scope
+                    struct(*args), scope=scope
                 )
             elif struct.functor in ("consult", "use_module"):
                 new_struct = Term(
@@ -569,13 +555,11 @@ class ClauseDB(LogicProgram):
                 return self._add_call_node(
                     new_struct.apply(variables),
                     scope=scope,
-                    is_problog_scope=is_problog_scope,
                 )
             else:
                 return self._add_call_node(
                     struct.apply(variables),
                     scope=scope,
-                    is_problog_scope=is_problog_scope,
                 )
         else:
             raise ValueError("Unknown structure type: '%s'" % struct)
@@ -789,7 +773,7 @@ class ClauseDB(LogicProgram):
                 module_name = str(clause.args[1].args[0])
                 module_preds = clause.args[1].args[1]
             else:
-                self.add_statement(clause, module_name, False)
+                self.add_statement(clause, module_name)
         if module_preds is not None:
             module_preds = term2list(module_preds)
         return module_name, module_preds
@@ -841,7 +825,7 @@ class ClauseDB(LogicProgram):
                         )
 
     def _create_alias(
-        self, pred, scope, rename=None, my_scope=None, is_problog_scope=False
+        self, pred, scope, rename=None, my_scope=None
     ):
         if rename is None:
             rename = pred.args[0]
@@ -850,12 +834,10 @@ class ClauseDB(LogicProgram):
             root_sign = self._scope_term(
                 Term(rename, *[None] * int(pred.args[1])),
                 my_scope,
-                is_problog_scope=is_problog_scope,
             )
             scoped_sign = self._scope_term(
                 Term(pred.args[0], *[None] * int(pred.args[1])),
                 scope,
-                is_problog_scope=is_problog_scope,
             )
 
             rh = self._add_head(root_sign, create=False)

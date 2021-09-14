@@ -1,20 +1,14 @@
 """
-Module name
+test_lfi.py - Test class for LFI problems
 """
+import random
 
+from problog import root_path
 import unittest
 import os
 import sys
 import glob
-
-from problog import root_path
 from problog.learning.lfi import lfi_wrapper, LFIProblem
-
-
-if __name__ == "__main__":
-    sys.path.insert(
-        0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../"))
-    )
 
 try:
     from pysdd import sdd
@@ -43,7 +37,7 @@ def read_result(filename):
                 reading = True
             elif reading:
                 if l.lower().startswith("% error: "):
-                    return l[len("% error: ") :].strip()
+                    return l[len("% error: "):].strip()
                 elif l.startswith("% "):
                     res = l[2:]
                     results.append(res)
@@ -52,13 +46,14 @@ def read_result(filename):
     return results
 
 
-def createTestLFI(filename):
+def createTestLFI(filename, evaluatables):
     def test(self):
         for eval_name in evaluatables:
-            with self.subTest(evaluatable=eval_name):
-                test_func(self, evaluatable=eval_name)
+            for logspace in [False, True]:
+                with self.subTest(evaluatable=eval_name, logspace=logspace):
+                    test_func(self, evaluatable=eval_name, logspace=logspace)
 
-    def test_func(self, evaluatable="ddnnf"):
+    def test_func(self, evaluatable, logspace):
         model = filename
         examples = filename.replace(".pl", ".ev")
         expectedlines = read_result(model)
@@ -72,24 +67,28 @@ def createTestLFI(filename):
                 "min_improv": 1e-10,
                 "leakprob": None,
                 "propagate_evidence": True,
-                "eps": 0.0001,
+                "logspace": logspace,
                 "normalize": True,
                 "web": False,
                 "args": None,
             }
+            random.seed(a=1000)
             score, weights, names, iterations, lfi = lfi_wrapper(
                 model, [examples], evaluatable, d
             )
             outlines = lfi.get_model()
-        except Exception as err:
-            # print(expectedlines)
-            # print(err)
-            # This test is specifically for test/lfi/AD/relatedAD_1 and test/lfi/AD/relatedAD_2
-            assert "NonGroundProbabilisticClause" == expectedlines
+        except Exception as _:
+            assert expectedlines == "NonGroundProbabilisticClause"
             return
 
         outlines = outlines.split("\n")[:-1]
         assert len(expectedlines) == len(outlines)
+
+        # We need to sort outlines and expectedlines, because apparently the order of the rules can
+        # depend on the target language (-k flag).
+        outlines.sort(key=lambda x: x if "::" not in x else x.split("::")[1])
+        expectedlines.sort(key=lambda x: x if "::" not in x else x.split("::")[1])
+
         # Compare expected program and learned program line by line
         for expectedline, outline in zip(expectedlines, outlines):
             # When there are probabilities
@@ -102,7 +101,7 @@ def createTestLFI(filename):
                 assert len(outline_comps) == len(expectedline_comps)
                 # Compare one expected probability and one learned probability at a time
                 for expectedline_comp, outline_comp in zip(
-                    expectedline_comps, outline_comps
+                        expectedline_comps, outline_comps
                 ):
                     outline_comp = outline_comp.strip()
                     expectedline_comp = expectedline_comp.strip()
@@ -120,74 +119,72 @@ def createTestLFI(filename):
                         )
                         # Update the expected component probability
                         expectedline_comp = (
-                            rounded_expectedline_comp_prob
-                            + "::"
-                            + expectedline_comp.split("::")[1]
+                                rounded_expectedline_comp_prob
+                                + "::"
+                                + expectedline_comp.split("::")[1]
                         )
                         # If the learned probability is close enough to the expected probability
                         if (
-                            abs(
-                                float(rounded_outline_comp_prob)
-                                - float(rounded_expectedline_comp_prob)
-                            )
-                            < 0.00001
+                                abs(
+                                    float(rounded_outline_comp_prob)
+                                    - float(rounded_expectedline_comp_prob)
+                                )
+                                < 0.00001
                         ):
                             # Make the two lines identical
                             outline_comp = (
-                                rounded_expectedline_comp_prob
-                                + "::"
-                                + outline_comp.split("::")[1]
+                                    rounded_expectedline_comp_prob
+                                    + "::"
+                                    + outline_comp.split("::")[1]
                             )
                     new_outline_comps.append(outline_comp)
                     new_expectedline_comps.append(expectedline_comp)
                 new_outline = "; ".join(new_outline_comps)
                 new_expectedline = "; ".join(new_expectedline_comps)
-            # print(new_expectedline)
-            # print(new_outline)
-            assert new_outline == new_expectedline
+                expectedline = new_expectedline
+                outline = new_outline
+            self.assertEqual(outline, expectedline)
 
     return test
 
 
-def ignore_previous_output(path):
-    # dir_name = "../../test/lfi/unit_tests/"
-    test = os.listdir(path)
-    for item in test:
-        if item.endswith(".out"):
-            os.remove(os.path.join(path, item))
+def main():
+    AD_filenames = glob.glob(root_path("test", "lfi", "ad", "*.pl"))
+    simple_filenames = glob.glob(root_path("test", "lfi", "simple", "*.pl"))
+    misc_filenames = glob.glob(root_path("test", "lfi", "misc", "*.pl"))
+    vars_in_T_filenames = glob.glob(root_path("test", "lfi", "vars_in_tunable", "*.pl"))
+
+    evaluatables = ["ddnnf"]
+
+    if has_sdd:
+        evaluatables.append("sdd")
+        evaluatables.append("sddx")
+
+    else:
+        print("No SDD support - The system tests are not performed with SDDs.")
+
+    # tests for ADs
+    for testfile in AD_filenames:
+        testname = "test_lfi_ad_" + os.path.splitext(os.path.basename(testfile))[0]
+        setattr(TestLFI, testname, createTestLFI(testfile, evaluatables))
+
+    # tests for simple unit tests
+    for testfile in simple_filenames:
+        testname = "test_lfi_simple_" + os.path.splitext(os.path.basename(testfile))[0]
+        setattr(TestLFI, testname, createTestLFI(testfile, evaluatables))
+
+    # tests for Variables in t()
+    for testfile in vars_in_T_filenames:
+        testname = "test_lfi_vars_inT_" + os.path.splitext(os.path.basename(testfile))[0]
+        setattr(TestLFI, testname, createTestLFI(testfile, evaluatables))
+
+    # tests for Miscellaneous files
+    for testfile in misc_filenames:
+        testname = "test_lfi_misc_" + os.path.splitext(os.path.basename(testfile))[0]
+        setattr(TestLFI, testname, createTestLFI(testfile, evaluatables))
 
 
-if __name__ == "__main__":
-    filenames = sys.argv[1:]
-else:
-    AD_filenames = glob.glob(root_path("test", "lfi", "AD", "*.pl"))
-    simple_filenames = glob.glob(root_path("test", "lfi", "Simple", "*.pl"))
-    misc_filenames = glob.glob(root_path("test", "lfi", "Misc", "*.pl"))
-
-evaluatables = ["ddnnf"]
-# evaluatables = []
-
-if has_sdd:
-    evaluatables.append("sdd")
-    evaluatables.append("sddx")
-else:
-    print("No SDD support - The system tests are not performed with SDDs.")
-
-# tests for ADs
-for testfile in AD_filenames:
-    testname = "test_lfi_AD_" + os.path.splitext(os.path.basename(testfile))[0]
-    setattr(TestLFI, testname, createTestLFI(testfile))
-
-# tests for simple unit tests
-for testfile in simple_filenames:
-    testname = "test_lfi_Simple_" + os.path.splitext(os.path.basename(testfile))[0]
-    setattr(TestLFI, testname, createTestLFI(testfile))
-
-# tests for Miscellaneous files
-for testfile in misc_filenames:
-    testname = "test_lfi_Misc_" + os.path.splitext(os.path.basename(testfile))[0]
-    setattr(TestLFI, testname, createTestLFI(testfile))
-
+main()
 
 if __name__ == "__main__":
     suite = unittest.TestLoader().loadTestsFromTestCase(TestLFI)

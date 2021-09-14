@@ -97,7 +97,7 @@ class TestSampleTask(unittest.TestCase):
 
     def test_heights(self):
         samples = self.get_samples("heights.pl", num_samples=10)
-        self.assertEquals(10, len(samples))
+        self.assertEqual(10, len(samples))
         for s in samples:
             self.assertAlmostEqual(
                 360, float(s[Term("twice_height", Term("harry"))]), delta=60

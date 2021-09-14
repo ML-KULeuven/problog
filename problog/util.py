@@ -22,6 +22,7 @@ Provides useful utilities functions and classes.
     limitations under the License.
 """
 import collections
+import collections.abc
 import distutils.spawn
 import imp
 import logging
@@ -402,7 +403,7 @@ def format_tuple(data, precision=8, columnsep="\t"):
     if isinstance(data, str):
         # is a string -> return string itself
         return data
-    elif isinstance(data, collections.Sequence):
+    elif isinstance(data, collections.abc.Sequence):
         values = list(map(lambda v: format_value(v, precision=precision), data))
         if len(values) == 2 and values[0] == values[1]:
             values = [values[0]]

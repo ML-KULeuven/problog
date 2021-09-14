@@ -1,6 +1,17 @@
 This change log only contains significant changes and/or new features.
 Intermediate bugfixes and speed improvements are not listed.
 
+2021/07/19
+
+    ProbLog 2.2 released. Additional new features include:
+        - improvements to LFI (speed, bugfixes)
+        - more tests and documentation
+        - collect, aggregate and scope libraries (cf. docs/source/prolog.rst)
+        - Caching of intermediate results using 'ddnnf' (since 2.1.0.40)
+        - Many more...
+
+...
+
 2019/03/28
 
     Dropped support for Python 2.7+

@@ -1,7 +1,7 @@
 Installation instructions
 =========================
 
-ProbLog 2.1 requires Python 3.6+ since 2.1.0.36
+ProbLog 2.2 requires Python 3.6+ since 2.1.0.36
 
 Mac OSX and most Linux installations have Python pre-installed.
 If Python is not yet installed on your system you can obtain it from 

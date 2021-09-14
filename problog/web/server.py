@@ -47,7 +47,7 @@ import subprocess
 import sys
 import tempfile
 
-# import resource
+import resource
 
 DEFAULT_PORT = 5100
 DEFAULT_TIMEOUT = 60

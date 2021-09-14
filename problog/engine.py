@@ -88,45 +88,45 @@ def ground_default(
 class GenericEngine(object):  # pragma: no cover
     """Generic interface to a grounding engine."""
 
-    def prepare(self, db):
+    def prepare(self, db: LogicProgram):
         """Prepare the given database for querying.
         Calling this method is optional.
 
-       :param db: logic program
-       :returns: logic program in optimized format where builtins are initialized and directives \
-       have been evaluated
+        :param db: logic program
+        :returns: logic program in optimized format where builtins are initialized and directives \
+        have been evaluated
         """
         raise NotImplementedError("GenericEngine.prepare is an abstract method.")
 
-    def query(self, db, term):
+    def query(self, db: LogicProgram, term):
         """Evaluate a query without generating a ground program.
 
-       :param db: logic program
-       :param term: term to query; variables should be represented as None
-       :returns: list of tuples of argument for which the query succeeds.
+        :param db: logic program
+        :param term: term to query; variables should be represented as None
+        :returns: list of tuples of argument for which the query succeeds.
         """
         raise NotImplementedError("GenericEngine.query is an abstract method.")
 
-    def ground(self, db, term, target=None, label=None):
+    def ground(self, db: LogicProgram, term, target=None, label=None):
         """Ground a given query term and store the result in the given ground program.
 
-       :param db: logic program
-       :param term: term to ground; variables should be represented as None
-       :param target: target logic formula to store grounding in (a new one is created if none is \
-       given)
-       :param label: optional label (query, evidence, ...)
-       :returns: logic formula (target if given)
+        :param db: logic program
+        :param term: term to ground; variables should be represented as None
+        :param target: target logic formula to store grounding in (a new one is created if none is \
+        given)
+        :param label: optional label (query, evidence, ...)
+        :returns: logic formula (target if given)
         """
         raise NotImplementedError("GenericEngine.ground is an abstract method.")
 
-    def ground_all(self, db, target=None, queries=None, evidence=None):
+    def ground_all(self, db: LogicProgram, target=None, queries=None, evidence=None):
         """Ground all queries and evidence found in the the given database.
 
-       :param db: logic program
-       :param target: logic formula to ground into
-       :param queries: list of queries to evaluate instead of the ones in the logic program
-       :param evidence: list of evidence to evaluate instead of the ones in the logic program
-       :returns: ground program
+        :param db: logic program
+        :param target: logic formula to ground into
+        :param queries: list of queries to evaluate instead of the ones in the logic program
+        :param evidence: list of evidence to evaluate instead of the ones in the logic program
+        :returns: ground program
         """
         raise NotImplementedError("GenericEngine.ground_all is an abstract method.")
 
@@ -215,17 +215,24 @@ class ClauseDBEngine(GenericEngine):
         term = Term("_directive")
         directive_node = db.find(term)
         if directive_node is not None:
-            directives = db.get_node(directive_node).children
+            directives_list = db.get_node(directive_node).children
+            # Emulate the order in which directives are encountered using a stack.
+            pending_directives = []
+            while directives_list:
+                pending_directives.append(directives_list.pop())
 
             gp = LogicFormula()
-            while directives:
-                current = directives.pop(0)
+            while pending_directives:
+                current = pending_directives.pop()
                 self.execute(
                     current,
                     database=db,
                     context=self.create_context((), define=None),
                     target=gp,
                 )
+                while directives_list:
+                    pending_directives.append(directives_list.pop())
+
         return True
 
     # noinspection PyUnusedLocal
@@ -307,17 +314,15 @@ class ClauseDBEngine(GenericEngine):
     def ground(self, db, term, target=None, label=None, **kwdargs):
         """Ground a query on the given database.
 
-       :param db: logic program
-       :type db: LogicProgram
-       :param term: query term
-       :type term: Term
-       :param gp: output data structure (for incremental grounding)
-       :type gp: LogicFormula
-       :param label: type of query (e.g. ``query``, ``evidence`` or ``-evidence``)
-       :type label: str
-       :param kwdargs: additional arguments
-       :return: ground program containing the query
-       :rtype: LogicFormula
+        :param db: logic program
+        :type db: LogicProgram
+        :param term: query term
+        :type term: Term
+        :param label: type of query (e.g. ``query``, ``evidence`` or ``-evidence``)
+        :type label: str
+        :param kwdargs: additional arguments
+        :return: ground program containing the query
+        :rtype: LogicFormula
         """
         if term.is_negated():
             negated = True
