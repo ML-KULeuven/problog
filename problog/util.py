@@ -13,7 +13,7 @@ Provides useful utilities functions and classes.
     you may not use this file except in compliance with the License.
     You may obtain a copy of the License at
 
-        http://www.apache.org/licenses/LICENSE-2.0
+        https://www.apache.org/licenses/LICENSE-2.0
 
     Unless required by applicable law or agreed to in writing, software
     distributed under the License is distributed on an "AS IS" BASIS,
@@ -24,7 +24,7 @@ Provides useful utilities functions and classes.
 import collections
 import collections.abc
 import distutils.spawn
-import imp
+import importlib.util
 import logging
 import os
 import signal
@@ -359,11 +359,17 @@ def load_module(filename):
     :rtype: module
     """
     if filename.endswith(".py"):
+        # extract module name from filepath (filename)
         filename = os.path.abspath(os.path.join(os.path.dirname(__file__), filename))
-        (path, name) = os.path.split(filename)
-        (name, ext) = os.path.splitext(name)
-        (extfile, filename, data) = imp.find_module(name, [path])
-        return imp.load_module(name, extfile, filename, data)
+        (_, name) = os.path.split(filename)
+        (module_name, ext) = os.path.splitext(name)
+        # import module (module_name) from path (filename)
+        # source: https://docs.python.org/3/library/importlib.html#importing-a-source-file-directly
+        spec = importlib.util.spec_from_file_location(module_name, filename)
+        module = importlib.util.module_from_spec(spec)
+        sys.modules[module_name] = module
+        spec.loader.exec_module(module)
+        return module
     else:
         mod = __import__(filename)
         components = filename.split(".")

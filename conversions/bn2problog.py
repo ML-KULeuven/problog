@@ -9,7 +9,6 @@ Copyright (c) 2016 KU Leuven. All rights reserved.
 import sys
 import os
 import argparse
-import itertools
 import logging
 import abc
 
@@ -77,13 +76,13 @@ class BNParser:
             "--valueinatomname",
             action="store_false",
             help="Add value to atom name instead as a term (this removes invalid characters, "
-            "be careful that clean values do not overlap)",
+                 "be careful that clean values do not overlap)",
         )
         parser.add_argument(
             "--adisfunction",
             action="store_true",
             help="Consider all ADs to represent functions of mutual exclusive conditions (like "
-            "in a Bayesian net)",
+                 "in a Bayesian net)",
         )
         parser.add_argument("--compress", action="store_true", help="Compress tables")
         parser.add_argument(
