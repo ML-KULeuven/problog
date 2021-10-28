@@ -1336,6 +1336,36 @@ void reduce_clause_weight(int clause, int weight) {
   }
 }
 
+// return remaining clause weight
+int treat_complementary_unitclauses(int var, int clause) {
+  int clause1;
+  while (MY_UNITCLAUSE_STACK_fill_pointer>0) {
+    clause1=pop(MY_UNITCLAUSE_STACK);
+    if (clause_weight[clause] > clause_weight[clause1]) {
+      clause_state[clause1] = PASSIVE; push(clause1, CLAUSE_STACK);
+      nb_neg_clause_of_length1[var] -= clause_weight[clause1];
+      NB_EMPTY += clause_weight[clause1];
+      reduce_clause_weight(clause, clause_weight[clause1]);
+    }
+    else if (clause_weight[clause] == clause_weight[clause1]) {
+      clause_state[clause1] = PASSIVE; push(clause1, CLAUSE_STACK);
+      clause_state[clause] = PASSIVE; push(clause, CLAUSE_STACK);
+      nb_neg_clause_of_length1[var] -= clause_weight[clause1];
+      NB_EMPTY += clause_weight[clause1];
+      return 0;
+    }
+    else {
+      clause_state[clause] = PASSIVE; push(clause, CLAUSE_STACK);
+      nb_neg_clause_of_length1[var] -= clause_weight[clause];
+      NB_EMPTY += clause_weight[clause];
+      reduce_clause_weight(clause1, clause_weight[clause]);
+      push(clause1, MY_UNITCLAUSE_STACK);
+      return 0;
+    }
+  }
+  return clause_weight[clause];
+}
+
 void remove_linear_reason(int clause, lli_type min_weight) {
   if (clause_weight[clause] == min_weight) {
     clause_state[clause]=PASSIVE;
@@ -2474,35 +2504,7 @@ int get_neg_clause_nb(int var) {
 #define OTHER_LIT_FIXED 1
 #define THIS_LIT_FIXED 2
 
-// return remaining clause weight
-int treat_complementary_unitclauses(int var, int clause) {
-  int clause1;
-  while (MY_UNITCLAUSE_STACK_fill_pointer>0) {
-    clause1=pop(MY_UNITCLAUSE_STACK);
-    if (clause_weight[clause] > clause_weight[clause1]) {
-      clause_state[clause1] = PASSIVE; push(clause1, CLAUSE_STACK);
-      nb_neg_clause_of_length1[var] -= clause_weight[clause1];
-      NB_EMPTY += clause_weight[clause1];
-      reduce_clause_weight(clause, clause_weight[clause1]);
-    }
-    else if (clause_weight[clause] == clause_weight[clause1]) {
-      clause_state[clause1] = PASSIVE; push(clause1, CLAUSE_STACK);
-      clause_state[clause] = PASSIVE; push(clause, CLAUSE_STACK);
-      nb_neg_clause_of_length1[var] -= clause_weight[clause1];
-      NB_EMPTY += clause_weight[clause1];
-      return 0;
-    }
-    else {
-      clause_state[clause] = PASSIVE; push(clause, CLAUSE_STACK);
-      nb_neg_clause_of_length1[var] -= clause_weight[clause];
-      NB_EMPTY += clause_weight[clause];
-      reduce_clause_weight(clause1, clause_weight[clause]);
-      push(clause1, MY_UNITCLAUSE_STACK);
-      return 0;
-    }
-  }
-  return clause_weight[clause];
-}
+
 
 int get_pos_clause_nb(int var) {
   lli_type pos_clause1_nb=0, pos_clause3_nb = 0, pos_clause2_nb = 0;
@@ -3084,3 +3086,4 @@ int main(int argc, char *argv[]) {
 
   return 0;
 }
+
