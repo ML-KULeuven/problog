@@ -13,6 +13,7 @@ problog.egg-info/
 
 
 /problog/bin/darwin/cnf2dDNNF
+/problog/bin/darwin/maxsatz
 /problog/bin/java/
 
 sandbox/
