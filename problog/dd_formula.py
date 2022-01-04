@@ -443,9 +443,13 @@ class DDEvaluator(Evaluator):
 
     def propagate(self):
         self._initialize()
+        # if (
+        #     type(self.semiring) == SemiringLogProbability
+        #     or type(self.semiring) == SemiringProbability
+        # ):
         if (
-            type(self.semiring) == SemiringLogProbability
-            or type(self.semiring) == SemiringProbability
+                isinstance(self.semiring, SemiringLogProbability)
+                or isinstance(self.semiring, SemiringProbability)
         ):
             self.normalization = self._get_manager().wmc_true(
                 self.weights, self.semiring
@@ -462,9 +466,13 @@ class DDEvaluator(Evaluator):
                 constraint_inode, *evidence_nodes
             )
 
+            # if (
+            #     type(self.semiring) == SemiringLogProbability
+            #     or type(self.semiring) == SemiringProbability
+            # ):
             if (
-                type(self.semiring) == SemiringLogProbability
-                or type(self.semiring) == SemiringProbability
+                    isinstance(self.semiring, SemiringLogProbability)
+                    or isinstance(self.semiring, SemiringProbability)
             ):
                 result = self._get_manager().wmc(
                     self.evidence_inode, self.weights, self.semiring
@@ -499,9 +507,13 @@ class DDEvaluator(Evaluator):
         )
 
     def evaluate(self, node):
+        # if (
+        #     type(self.semiring) == SemiringLogProbability
+        #     or type(self.semiring) == SemiringProbability
+        # ):
         if (
-            type(self.semiring) == SemiringLogProbability
-            or type(self.semiring) == SemiringProbability
+                isinstance(self.semiring, SemiringLogProbability)
+                or isinstance(self.semiring, SemiringProbability)
         ):
             return self.evaluate_standard(node)
         else:

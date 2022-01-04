@@ -66,6 +66,7 @@ def init_logger(verbose=None, name="problog", out=None):
     # formatter = logging.Formatter('[%(levelname)s] %(message)s')
     formatter = ProbLogLogFormatter()
     ch.setFormatter(formatter)
+    logger.handlers = []
     logger.addHandler(ch)
     if not verbose:
         logger.setLevel(logging.WARNING)

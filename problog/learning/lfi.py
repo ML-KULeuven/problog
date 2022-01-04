@@ -60,6 +60,7 @@ from problog.program import PrologString, PrologFile, LogicProgram
 from problog.errors import InconsistentEvidenceError, process_error
 from problog import get_evaluatable, get_evaluatables
 import traceback
+import timeit
 
 
 def str2bool(s):
@@ -100,7 +101,8 @@ class LFIProblem(LogicProgram):
         verbose=0,
         knowledge=None,
         leakprob=None,
-        propagate_evidence=True,
+        propagate_evidence=False,
+        infer_AD_values=True,
         normalize=False,
         logspace=False,
         **extra
@@ -125,6 +127,11 @@ class LFIProblem(LogicProgram):
                          retrieve the constants from the evidence file.
                          (default: None)
         :type leakprob: float or None
+        :param infer_AD_values: enable inferring AD values from given evidence,
+                                e.g. for an AD p1::q1; ... ;pn::qn :- b.
+                                if b is true and q2,...,qn are all false, then an extra evidence q1 = T is inserted.
+                                (see also LFIProblem._process_examples.all_false_except_one)
+        :type infer_AD_values: bool
         :param extra: catch all for additional parameters (not used)
         """
         LogicProgram.__init__(self)
@@ -146,6 +153,7 @@ class LFIProblem(LogicProgram):
         self.leakprob = leakprob
         self.leakprobatoms = None
         self.propagate_evidence = propagate_evidence
+        self.infer_AD_values = infer_AD_values
         self._compiled_examples = None
 
         self.max_iter = max_iter
@@ -358,7 +366,7 @@ class LFIProblem(LogicProgram):
             new_d[k] = v
             l.append(new_d)
 
-        if self.propagate_evidence:
+        if self.infer_AD_values:
             result = ExampleSet()
             inconsistent = False
             # iterate over all examples given in .ev
@@ -381,17 +389,18 @@ class LFIProblem(LogicProgram):
                 for atom, value in example:
                     # if atom has a tunable probability to learn
                     if any([atom.signature == name.signature for name in self.names]):
-                        # Propositional evidence
-                        if len(atom.args) == 0:
+                        if len(atom.args) == 0: # Propositional evidence
                             # insert evidence
+                            is_ad = False
                             for d in ad_evidences:
                                 if atom in d:
                                     d[atom] = value
-                            non_ad_evidence[
-                                atom
-                            ] = value  # TODO: what does this capture?
-                        # First Order evidence
-                        else:
+                                    is_ad = True
+                            if not is_ad:
+                                non_ad_evidence[
+                                    atom
+                                ] = value
+                        else: # First Order evidence
                             # find the right AD dictionary : AD_dict
                             AD_dict = None
                             for d in ad_evidences:
@@ -485,6 +494,11 @@ class LFIProblem(LogicProgram):
             logger.debug("\nCompiling example {}/{}".format(i + 1, len(examples)))
             example.compile(self, baseprogram)
         self._compiled_examples = examples
+        
+        # for example in examples:
+        #     logger.info(
+        #         f"Circuit size: \n\t{example.n}\n\t{len(example.compiled)}"
+        #     )
 
     def _process_atom(self, atom, body):
         """Returns tuple ( prob_atom, [ additional clauses ] )"""
@@ -636,7 +650,7 @@ class LFIProblem(LogicProgram):
         self.verify_ad()
 
         if has_lfi_fact:
-            if len(atoms) == 1:
+            if len(atoms) == 1 and body is None:
                 # Non AD
                 return [atoms_out[0]] + extra_clauses
             else:
@@ -832,7 +846,7 @@ class LFIProblem(LogicProgram):
         fact_body = defaultdict(int)
         fact_par = defaultdict(int)
 
-        # score = 0.0
+        score = 0.0
         for m, pEvidence, result in results:
             par_marg = dict()
             for fact, value in result.items():
@@ -852,6 +866,10 @@ class LFIProblem(LogicProgram):
 
             for index, value in par_marg.items():
                 fact_par[index] += value * m
+            try:
+                score += math.log(pEvidence)
+            except ValueError:
+                logger.debug("Pr(evidence) == 0.0")
 
         update_list = fact_body
 
@@ -943,8 +961,10 @@ class LFIProblem(LogicProgram):
         return "\n".join(lines)
 
     def run(self):
+        tic = timeit.default_timer()
         self.prepare()
-
+        toc = timeit.default_timer()
+        getLogger("problog_lfi").info("Compile time: %f" % (toc - tic))
         getLogger("problog_lfi").info("Weights to learn: %s" % self.names)
         getLogger("problog_lfi").info("Bodies: %s" % self.bodies)
         getLogger("problog_lfi").info("Parents: %s" % self.parents)
@@ -958,7 +978,8 @@ class LFIProblem(LogicProgram):
 
         delta = 1000
         prev_score = -1e10
-
+        tic = timeit.default_timer()
+        # while self.iteration < self.max_iter and (delta > self.min_improv):
         while self.iteration < self.max_iter and (delta < 0 or delta > self.min_improv):
             score = self.step()
             getLogger("problog_lfi").info(
@@ -971,8 +992,11 @@ class LFIProblem(LogicProgram):
             # Let p_{1,m}, ..., p_{n,m} the estimates in the m-th iteration
             # delta is (log(p_{1,m+1}) + ... + log(p_{N,m+1})) - (log(p_{1,m}) + ... + log(p_{N,m}))
             # In other words, 10^delta = (p_{1,m+1} * ... *p_{N,m+1})/(p_{1,m} * ... * p_{N,m})
+            # delta = abs(score - prev_score)
             delta = score - prev_score
             prev_score = score
+        toc = timeit.default_timer()
+        getLogger("problog_lfi").info("Evaluation time: %f" % (toc - tic))
         return prev_score
 
 
@@ -1024,7 +1048,6 @@ class Example(object):
             evidence=list(zip(self.atoms, self.values)),
             propagate_evidence=lfi.propagate_evidence,
         )
-        # logger.debug("\t" + "New ground_program:\n\t\t" + ground_program.to_prolog().replace("\n", "\n\t\t"))
 
         logger.debug(
             "\t"
@@ -1032,7 +1055,7 @@ class Example(object):
             + str(ground_program).replace("\n", "\n\t\t")
         )
 
-        lfi_queries = []
+        lfi_queries = set()
         for i, node, t in ground_program:
             if (
                 t == "atom"
@@ -1053,35 +1076,47 @@ class Example(object):
                 elif type(node.identifier) == tuple:
                     factargs = node.name.args[2].args[2:]
                     probargs = node.probability.args[1].args
+                lfi_queries.add((node.probability.args[0], probargs, factargs))
 
-                tmp_body = Term(
-                    "lfi_body",
-                    node.probability.args[0],
-                    Term("t", *probargs),
-                    *factargs
-                )
-                lfi_queries.append(tmp_body)
-                logger.debug(
-                    "\tNode "
-                    + str(i)
-                    + ":\tAdding query for body:\t"
-                    + str(tmp_body)
-                    + "\t"
-                )
-                tmp_par = Term(
-                    "lfi_par", node.probability.args[0], Term("t", *probargs), *factargs
-                )
-                lfi_queries.append(tmp_par)
-                logger.debug(
-                    "\tNode "
-                    + str(i)
-                    + ":\tAdding query for par :\t"
-                    + str(tmp_par)
-                    + "\t"
-                )
+        ats = lfi._adatoms
+        def add_queries(old_lfi_queries):
+            new_lfi_queries = set()
+            for _, ad_group in ats:
+                for ad in ad_group:
+                    if ad in [i[0] for i in old_lfi_queries]:
+                        for old_lfi_query in [i for i in old_lfi_queries if i[0] == ad]:
+                            for other_ad in ad_group:
+                                new_lfi_queries.add((other_ad, old_lfi_query[1], old_lfi_query[2]))
+            return new_lfi_queries
+            
+        # add all AD heads to the query set until no more queries can be added
+        old_lfi_queries = set()
+        new_lfi_queries = lfi_queries
+        
+        while old_lfi_queries != new_lfi_queries:
+            old_lfi_queries = new_lfi_queries
+            new_lfi_queries = add_queries(old_lfi_queries)
 
-            elif t == "atom":
-                pass
+        lfi_queries = []
+        for q in new_lfi_queries:
+            tmp_body = Term("lfi_body", Constant(q[0]), Term("t", *q[1]), *q[2])
+            lfi_queries.append(tmp_body)
+            logger.debug(
+                "\tNode "
+                # + str(i)
+                + ":\tAdding query for body:\t"
+                + str(tmp_body)
+                + "\t"
+            )
+            tmp_par = Term("lfi_par", Constant(q[0]), Term("t", *q[1]), *q[2])
+            lfi_queries.append(tmp_par)
+            logger.debug(
+                "\tNode "
+                # + str(i)
+                + ":\tAdding query for par :\t"
+                + str(tmp_par)
+                + "\t"
+            )
 
         ground_program = ground(
             baseprogram,
@@ -1160,7 +1195,6 @@ class ExampleEvaluator(SemiringProbability):
     def _call_internal(self, at, val, comp, n):
 
         evidence = {}
-
         for a, v in zip(at, val):
             if a in evidence:
                 if evidence[a] != v:
@@ -1191,7 +1225,6 @@ class ExampleEvaluator(SemiringProbability):
             if name.functor not in ["lfi_body", "lfi_par"]:
                 continue
             w = evaluator.evaluate(node)
-
             if w < 1e-6:
                 p_queries[name] = 0.0
             else:
@@ -1493,14 +1526,15 @@ def main(argv, result_handler=None):
     else:
         logf = open(args.logger, "w")
 
+
     logger = init_logger(verbose=args.verbose, name="problog_lfi", out=logf)
 
     program = PrologFile(args.model)
     examples = list(read_examples(*args.examples))
     if len(examples) == 0:
-        logger.warning("no examples specified")
+        getLogger("problog_lfi").warning("no examples specified")
     else:
-        logger.info("Number of examples: %s" % len(examples))
+        getLogger("problog_lfi").info("Number of examples: %s" % len(examples))
     options = vars(args)
     del options["examples"]
 
