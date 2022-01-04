@@ -126,8 +126,8 @@ disjunctive facts.
     weather(T, rain) :- T > 0, T1 is T - 1, weather(T1, sun), weather_after_sun(T, rain).
 
     0.4::weather_after_rain(T,sun); 0.6::weather_after_rain(T,rain).
-    weather(T, sun) :- T > 0, T1 is T - 1, weather(T1, sun), weather_after_rain(T, sun).
-    weather(T, rain) :- T > 0, T1 is T - 1, weather(T1, sun), weather_after_rain(T, rain).
+    weather(T, sun) :- T > 0, T1 is T - 1, weather(T1, rain), weather_after_rain(T, sun).
+    weather(T, rain) :- T > 0, T1 is T - 1, weather(T1, rain), weather_after_rain(T, rain).
 
 
 Queries
