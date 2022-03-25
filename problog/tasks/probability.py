@@ -411,6 +411,7 @@ def main(argv, result_handler=None):
     if args.propagate_weights:
         args.propagate_weights = semiring
 
+    retcode = 0
     result = None
     if args.combine:
         result = execute(args.filenames, args.koption, semiring, **vars(args))
@@ -430,9 +431,7 @@ def main(argv, result_handler=None):
 
     if args.timeout:
         stop_timer()
-
-    return result
-
+    return retcode
 
 if __name__ == "__main__":
     main(sys.argv[1:])
