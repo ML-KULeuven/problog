@@ -76,8 +76,7 @@ def pl2py(d):
             while isinstance(tail, Term) and tail.arity == 2 and tail.functor == ",":
                 elements.append(pl2py(tail.args[0]))
                 tail = tail.args[1]
-            if str(tail) != "[]":
-                elements.append(pl2py(tail))
+            elements.append(pl2py(tail))
             return tuple(elements)
         elif d.functor == "[]":
             return []
