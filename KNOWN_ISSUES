@@ -33,6 +33,7 @@ There are two possible solutions:
 
     - Use a different knowledge compiler that does not have this issue (c2d or SDD).
     
-    - Compile a dSharp 32-bit version (dSharp source: https://bitbucket.org/haz/dsharp/src/default/) 
+    - Compile a dSharp 32-bit version (dSharp source: https://github.com/QuMuLab/dsharp/)
     and replace the original dSharp file with it. The path can be found in the OSError message.
     Alternatively, use the 32-bit version in this zip: https://github.com/ML-KULeuven/problog/files/3448011/dsharp.zip
+    Note: the .zip version is outdated and needs to be replaced (that binary has a limit on CNF clause length).
