@@ -66,11 +66,12 @@ def createTestLFI(filename, evaluatables):
                 "max_iter": 10000,
                 "min_improv": 1e-10,
                 "leakprob": None,
-                "propagate_evidence": True,
+                "propagate_evidence": False,
                 "logspace": logspace,
                 "normalize": True,
                 "web": False,
                 "args": None,
+                "infer_AD_values": True
             }
             random.seed(a=1000)
             score, weights, names, iterations, lfi = lfi_wrapper(

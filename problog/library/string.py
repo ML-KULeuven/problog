@@ -14,7 +14,7 @@ def join(sep, terms):
 
 @problog_export("+str", "-list")
 def str2lst(string):
-    return map(Term, map(make_safe, string))
+    return list(map(Term, map(make_safe, string)))
 
 
 @problog_export("+list", "-str")

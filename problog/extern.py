@@ -13,7 +13,7 @@ Interface for calling Python from ProbLog.
     you may not use this file except in compliance with the License.
     You may obtain a copy of the License at
 
-        http://www.apache.org/licenses/LICENSE-2.0
+        https://www.apache.org/licenses/LICENSE-2.0
 
     Unless required by applicable law or agreed to in writing, software
     distributed under the License is distributed on an "AS IS" BASIS,
@@ -142,8 +142,8 @@ class problog_export(object):
             )
             converted_args = self._convert_inputs(args)
 
-            argspec = inspect.getargspec(func)
-            if argspec.keywords is not None:
+            argspec = inspect.getfullargspec(func)
+            if argspec.varkw is not None:
                 result = func(*converted_args, **kwdargs)
             else:
                 result = func(*converted_args)
@@ -272,8 +272,8 @@ class problog_export_nondet(problog_export):
             )
             converted_args = self._convert_inputs(args)
             results = []
-            argspec = inspect.getargspec(func)
-            if argspec.keywords is not None:
+            argspec = inspect.getfullargspec(func)
+            if argspec.varkw is not None:
                 func_result = func(*converted_args, **kwdargs)
             else:
                 func_result = func(*converted_args)

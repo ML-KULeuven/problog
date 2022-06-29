@@ -29,3 +29,8 @@ class TestPypl(unittest.TestCase):
         test_dict = {"a": 1}
         with self.assertRaises(ValueError):
             py2pl(test_dict)
+
+    def test_list_at_end_of_comma_double_conversion(self):
+        test_value = (1, [])
+        res_value = pl2py(py2pl(test_value))
+        self.assertEqual(test_value, res_value)

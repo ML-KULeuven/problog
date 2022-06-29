@@ -220,11 +220,44 @@ def createSystemTestGeneric(filename, logspace=False):
     return test
 
 
-class SemiringProbabilityCopy(SemiringProbability):
-    """ To avoid checks of type(semiring) == SemiringProbability """
+class SemiringProbabilityCopy(Semiring):
+    """Mocking SemiringProbability to force the 'custom semiring' code -> Must not extend SemiringProbability."""
 
     def __init__(self):
-        super(SemiringProbabilityCopy, self).__init__()
+        self._semiring = SemiringProbability()
+
+    def one(self):
+        return self._semiring.one()
+
+    def zero(self):
+        return self._semiring.zero()
+
+    def is_one(self, value):
+        return self._semiring.is_one(value)
+
+    def is_zero(self, value):
+        return self._semiring.is_zero(value)
+
+    def plus(self, a, b):
+        return self._semiring.plus(a, b)
+
+    def times(self, a, b):
+        return self._semiring.times(a, b)
+
+    def negate(self, a):
+        return self._semiring.negate(a)
+
+    def normalize(self, a, z):
+        return self._semiring.normalize(a, z)
+
+    def value(self, a):
+        return self._semiring.value(a)
+
+    def is_dsp(self):
+        return self._semiring.is_dsp()
+
+    def in_domain(self, a):
+        return self._semiring.in_domain(a)
 
 
 class SemiringProbabilityNSPCopy(SemiringProbabilityCopy):
