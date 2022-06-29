@@ -94,7 +94,7 @@ class TestTasks(unittest.TestCase):
 
     def test_probability_some_heads(self):
         file_name = test_folder / "tasks" / "some_heads.pl"
-        result = probability.main([str(file_name)])
+        result = probability.main_result([str(file_name)])
         self.check_probability({Term("someHeads"): 0.8}, result)
 
     def check_probability_probabilistic_graph(self, result):
@@ -112,35 +112,35 @@ class TestTasks(unittest.TestCase):
 
     def test_probability_pgraph(self):
         file_name = test_folder / "tasks" / "map_probabilistic_graph.pl"
-        self.check_probability_probabilistic_graph(probability.main([str(file_name)]))
+        self.check_probability_probabilistic_graph(probability.main_result([str(file_name)]))
         self.check_probability_probabilistic_graph(
-            probability.main([str(file_name), "--combine"])
+            probability.main_result([str(file_name), "--combine"])
         )
         self.check_probability_probabilistic_graph(
-            probability.main([str(file_name), "--nologspace"])
+            probability.main_result([str(file_name), "--nologspace"])
         )
         self.check_probability_probabilistic_graph(
-            probability.main([str(file_name), "--propagate-evidence"])
+            probability.main_result([str(file_name), "--propagate-evidence"])
         )
         self.check_probability_probabilistic_graph(
-            probability.main([str(file_name), "--propagate-weights"])
+            probability.main_result([str(file_name), "--propagate-weights"])
         )
         self.check_probability_probabilistic_graph(
-            probability.main(
+            probability.main_result(
                 [str(file_name), "--propagate-evidence", "--propagate-weights"]
             )
         )
         self.check_probability_probabilistic_graph(
-            probability.main([str(file_name), "--unbuffered"])
+            probability.main_result([str(file_name), "--unbuffered"])
         )
         self.check_probability_probabilistic_graph(
-            probability.main([str(file_name), "--convergence", str(0.00000001)])
+            probability.main_result([str(file_name), "--convergence", str(0.00000001)])
         )
         self.check_probability_probabilistic_graph(
-            probability.main([str(file_name), "--format", "prolog"])
+            probability.main_result([str(file_name), "--format", "prolog"])
         )
         self.check_probability_probabilistic_graph(
-            probability.main([str(file_name), "--web"])
+            probability.main_result([str(file_name), "--web"])
         )
 
     def check_ground_result(self, expected, result):

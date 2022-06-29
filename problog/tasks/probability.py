@@ -361,6 +361,11 @@ def argparser():
     return parser
 
 
+def main_result(argv):
+    """ Equivalent to the main method, but it returns the result rather than success/failure. """
+    return main(argv, result_handler=lambda result, output: result)
+
+
 def main(argv, result_handler=None):
     parser = argparser()
     args = parser.parse_args(argv)
@@ -432,6 +437,7 @@ def main(argv, result_handler=None):
     if args.timeout:
         stop_timer()
     return retcode
+
 
 if __name__ == "__main__":
     main(sys.argv[1:])
