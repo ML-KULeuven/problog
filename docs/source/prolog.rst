@@ -248,7 +248,9 @@ ProbLog-specific builtins
 
  * ``try_call/N``: same as ``call/N`` but silently fail if the called predicate is undefined
  * ``subquery(+Goal, ?Probability)``: evaluate the Goal and return its probability
- * ``subquery(+Goal, +ListOfEvidence, ?Probability)``: evaluate the Goal, given the evidence, and return its Probability
+ * ``subquery(+Goal, ?Probability, +ListOfEvidence)``: evaluate the Goal, given the evidence, and return its Probability
+ * ``subquery(+Goal, ?Probability, +ListOfEvidence, +Semiring, +Evaluator)``: evaluate the Goal, given the evidence, and
+   return its Probability, using the specific semiring and evaluator (both specified using strings).
  * ``debugprint/N``: print messages to stderr
  * ``write/N``: print messages to stdout
  * ``writenl/N``: print messages and newline to stdout
@@ -267,8 +269,9 @@ ProbLog-specific builtins
  * ``clause/3``
 
  * ``create_scope/2``
- * ``subquery_in_scope/3``
- * ``subquery_in_scope/4``
+ * ``subquery_in_scope(+Scope, +Goal, ?Probability)``
+ * ``subquery_in_scope(+Scope, +Goal, ?Probability, +ListOfEvidence)``
+ * ``subquery_in_scope(+Scope, +Goal, ?Probability, +ListOfEvidence, +Semiring, +Evaluator)``
  * ``call_in_scope/N``
  * ``find_scope/2``
  * ``set_state/1``
