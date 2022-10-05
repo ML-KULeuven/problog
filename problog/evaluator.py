@@ -170,6 +170,16 @@ class Semiring(object):
         """
         return self.one()
 
+    @classmethod
+    def create(cls, *, engine, database, **kwargs):
+        """Create an instance of this semiring class. Used for sub-queries.
+
+        :param engine: Engine in use.
+        :param database: Database in use.
+        :param kwargs: Keyword arguments passed from subquery
+        """
+        raise NotImplementedError()
+
 
 class SemiringProbability(Semiring):
     """Implementation of the semiring interface for probabilities."""
@@ -213,6 +223,10 @@ class SemiringProbability(Semiring):
 
     def in_domain(self, a):
         return 0.0 - 1e-9 <= a <= 1.0 + 1e-9
+
+    @classmethod
+    def create(cls, *, engine, database, **kwargs):
+        return cls()
 
 
 class SemiringLogProbability(SemiringProbability):
@@ -326,6 +340,10 @@ class SemiringSymbolic(Semiring):
     def is_dsp(self):
         """Indicates whether this semiring requires solving a disjoint sum problem."""
         return True
+
+    @classmethod
+    def create(cls, *, engine, database, **kwargs):
+        return cls()
 
 
 class Evaluatable(ProbLogObject):

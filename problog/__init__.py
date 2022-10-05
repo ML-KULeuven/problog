@@ -17,6 +17,7 @@ limitations under the License.
 """
 import os
 import sys
+import typing
 
 sys.setrecursionlimit(10000)
 
@@ -58,7 +59,7 @@ from . import kbest
 from . import tasks
 from . import debug
 
-_evaluatables = {
+_evaluatables: typing.Dict[str, typing.Type[evaluator.Evaluatable]] = {
     "sdd": sdd_formula.SDD,
     "sddx": sdd_formula_explicit.SDDExplicit,
     "bdd": bdd_formula.BDD,
@@ -69,12 +70,41 @@ _evaluatables = {
     "fbdd": forward.ForwardBDD,
 }
 
+_semirings: typing.Dict[str, typing.Type[evaluator.Semiring]] = {
+    "prob": evaluator.SemiringProbability,
+    "logprob": evaluator.SemiringLogProbability,
+    "symbolic": evaluator.SemiringSymbolic,
+}
 
-def get_evaluatables():
+
+def get_semirings() -> typing.Collection[str]:
+    """Get the set of registered semirings."""
+    return _semirings.keys()
+
+
+def register_semiring(name: str, cls: typing.Type[evaluator.Semiring]):
+    """Register a semiring in the semiring registry."""
+    assert (
+        name not in _semirings
+    ), "A semi-ring with the same name is already registered."
+    _semirings[name] = cls
+
+
+def get_semiring(name: typing.Optional[str] = None) -> typing.Type[evaluator.Semiring]:
+    """Lookup a semiring."""
+    if name is None:
+        return _semirings["prob"]
+    return _semirings.get(name, None)
+
+
+def get_evaluatables() -> typing.Collection[str]:
     return _evaluatables.keys()
 
 
-def get_evaluatable(name=None, semiring=None):
+def get_evaluatable(
+    name: typing.Optional[str] = None,
+    semiring: typing.Optional[evaluator.Semiring] = None,
+) -> typing.Type[evaluator.Evaluatable]:
     if name is None:
         if semiring is None or semiring.is_dsp():
             return evaluator.EvaluatableDSP
