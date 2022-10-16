@@ -20,7 +20,7 @@ import os
 import sys
 import unittest
 
-from problog import get_evaluatable
+from problog import get_evaluatable, register_semiring
 from problog import root_path
 from problog.ddnnf_formula import DDNNF
 from problog.evaluator import SemiringProbability, SemiringLogProbability, Semiring
@@ -259,6 +259,10 @@ class SemiringProbabilityCopy(Semiring):
     def in_domain(self, a):
         return self._semiring.in_domain(a)
 
+    @classmethod
+    def create(cls, *, engine, database, **kwargs):
+        return cls()
+
 
 class SemiringProbabilityNSPCopy(SemiringProbabilityCopy):
     def is_nsp(self):
@@ -275,6 +279,10 @@ class SemiringProbabilityNSPCopy(SemiringProbabilityCopy):
             return float(a[1])
         else:
             return 1 - float(a)
+
+
+register_semiring("prob_copy", SemiringProbabilityCopy)
+register_semiring("prob_nsp_copy", SemiringProbabilityNSPCopy)
 
 
 if __name__ == "__main__":

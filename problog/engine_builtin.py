@@ -23,8 +23,10 @@ Implementation of Prolog / ProbLog builtins.
 """
 
 import sys
+import typing
 
-from .engine import UnknownClauseInternal, UnknownClause
+from .clausedb import ClauseDB
+from .engine import UnknownClauseInternal, UnknownClause, ClauseDBEngine
 from .engine_unify import unify_value, UnifyError, substitute_simple
 from .errors import GroundingError, UserError
 from .logic import (
@@ -52,7 +54,7 @@ class builtin(object):
         cls.registry.append((tp, name, arity, func))
 
     @classmethod
-    def _add_builtin(cls, engine, bltn, b=None, s=None, sp=None):
+    def _add_builtin(cls, engine: ClauseDBEngine, bltn, b=None, s=None, sp=None):
         if bltn[0] == "bool":
             engine.add_builtin(bltn[1], bltn[2], b(bltn[3]))
         elif bltn[0] == "det":
@@ -65,7 +67,7 @@ class builtin(object):
             raise ValueError("Unknown builtin type '%s'." % bltn[0])
 
     @classmethod
-    def add_builtins(cls, engine, b=None, s=None, sp=None):
+    def add_builtins(cls, engine: ClauseDBEngine, b=None, s=None, sp=None):
         if cls.registry is not None:
             for bltn in cls.registry:
                 cls._add_builtin(engine, bltn, b, s, sp)
@@ -188,6 +190,7 @@ def add_standard_builtins(engine, b=None, s=None, sp=None):
 
     engine.add_builtin("subquery", 2, s(_builtin_subquery))
     engine.add_builtin("subquery", 3, s(_builtin_subquery))
+    engine.add_builtin("subquery", 5, s(_builtin_subquery))
 
     engine.add_builtin("sample_uniform1", 3, sp(_builtin_sample_uniform))
 
@@ -224,6 +227,7 @@ def add_standard_builtins(engine, b=None, s=None, sp=None):
 
     engine.add_builtin("subquery_in_scope", 3, s(_builtin_subquery_in_scope))
     engine.add_builtin("subquery_in_scope", 4, s(_builtin_subquery_in_scope))
+    engine.add_builtin("subquery_in_scope", 6, s(_builtin_subquery_in_scope))
 
     engine.add_builtin("call_in_scope", 2, _builtin_call_in_scope)
     for i in range(2, 10):
@@ -1771,8 +1775,11 @@ def _builtin_call_nc(*args, **kwdargs):
     return _builtin_call(*args, dont_cache=True, **kwdargs)
 
 
-def _builtin_subquery(term, prob, evidence=None, engine=None, database=None, **kwdargs):
-    if evidence:
+def _builtin_subquery(term, prob, evidence=None, semiring=None, evaluator=None,
+                      engine: ClauseDBEngine = None, database: ClauseDB = None, **kwdargs):
+    if evaluator:
+        check_mode((term, prob, evidence, semiring, evaluator), ["cvLgg"], functor="subquery")
+    elif evidence:
         check_mode((term, prob, evidence), ["cvL"], functor="subquery")
     else:
         check_mode((term, prob), ["cv"], functor="subquery")
@@ -1786,16 +1793,46 @@ def _builtin_subquery(term, prob, evidence=None, engine=None, database=None, **k
                 database, ev, target=target, label=target.LABEL_EVIDENCE_POS
             )
 
-    from . import get_evaluatable
+    kc, semiring = _create_evaluator_and_semiring(semiring=semiring, evaluator=evaluator,
+                                                  database=database, engine=engine,
+                                                  **kwdargs)
 
-    kc = get_evaluatable(
-        name=None
-    )  # TODO somehow pass evaluatable preference (name, -k)
-    results = kc.create_from(target).evaluate()
+    results = kc.create_from(target).evaluate(semiring=semiring)
+    if evaluator:
+        return [(t, Constant(p), evidence, evaluator, semiring) for t, p in results.items()]
     if evidence:
         return [(t, Constant(p), evidence) for t, p in results.items()]
     else:
         return [(t, Constant(p)) for t, p in results.items()]
+
+
+def _create_evaluator_and_semiring(*, semiring: typing.Optional[Term], evaluator: typing.Optional[Term],
+                                   database: ClauseDB, engine: ClauseDBEngine, **kwargs):
+    """Helper to create evaluator and semiring.
+
+    :param semiring: Semiring name to use.
+    :param evaluator: Evaluator name to use.
+    :param database: Database with program.
+    :param engine: Engine executing the program.
+    :param kwargs: Keyword arguments sent to the builtin calling this.
+    """
+    from . import get_evaluatable, get_semiring
+    evaluator_name = None
+    semiring_name = None
+    if evaluator:
+        if not isinstance(evaluator, Constant) or not evaluator.is_string():
+            raise GroundingError("subquery: evaluator must be a string")
+        evaluator_name = evaluator.functor.strip('"')
+    if semiring:
+        if not isinstance(semiring, Constant) or not semiring.is_string():
+            raise GroundingError("subquery: semiring must be a string")
+        semiring_name = semiring.functor.strip('"')
+    semiring = get_semiring(name=semiring_name).create(engine=engine, database=database, **kwargs)
+    kc = get_evaluatable(
+        name=evaluator_name,
+        semiring=semiring
+    )
+    return kc, semiring
 
 
 def _builtin_calln(term, *args, **kwdargs):
@@ -1862,14 +1899,14 @@ def _builtin_create_scope(term, scope, **kwargs):
 
 
 def _builtin_subquery_in_scope(
-    scope, term, prob, evidence=None, engine=None, database=None, **kwdargs
+    scope, term, prob, evidence=None, semiring=None, evaluator=None, engine=None, database=None, **kwdargs
 ):
-    if evidence:
+    if evaluator:
+        check_mode((scope, term, prob, evidence, semiring, evaluator), ["gcvLgg"], functor="subquery")
+    elif evidence:
         check_mode((scope, term, prob, evidence), ["gcvL"], functor="subquery")
     else:
         check_mode((scope, term, prob), ["gcv"], functor="subquery")
-
-    from .sdd_formula import SDD  # TODO use get_evaluatable
 
     scopel = _build_scope(scope)
 
@@ -1887,8 +1924,14 @@ def _builtin_subquery_in_scope(
                 include=scopel,
             )
 
-    results = SDD.create_from(target).evaluate()
-    if evidence:
+    kc, semiring = _create_evaluator_and_semiring(semiring=semiring, evaluator=evaluator,
+                                                  database=database, engine=engine,
+                                                  **kwdargs)
+
+    results = kc.create_from(target).evaluate(semiring=semiring)
+    if evaluator:
+        return [(scope, t, Constant(p), evidence, semiring, evaluator) for t, p in results.items()]
+    elif evidence:
         return [(scope, t, Constant(p), evidence) for t, p in results.items()]
     else:
         return [(scope, t, Constant(p)) for t, p in results.items()]
