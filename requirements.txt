@@ -1,0 +1,14 @@
+dd==0.6.0
+ipython==8.12.3
+nltk==3.8.1
+numpy==1.26.4
+psutil==5.9.8
+pyeda==0.29.0
+PyQt4==4.11.4
+pysdd==0.2.11
+pytest==8.2.1
+python_igraph==0.11.5
+scikit_learn==1.5.0
+scipy==1.13.1
+setuptools==69.5.1
+tqdm==4.66.4
