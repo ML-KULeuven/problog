@@ -65,7 +65,7 @@ elif __name__ == "__main__":
         version=version,
         description="ProbLog2: Probabilistic Logic Programming toolbox",
         long_description=long_description,
-        long_description_content_type='text/markdown'
+        long_description_content_type='text/markdown',
         url="https://dtai.cs.kuleuven.be/problog",
         author="ProbLog team",
         author_email="anton.dries@cs.kuleuven.be",
