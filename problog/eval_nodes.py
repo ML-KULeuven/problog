@@ -727,7 +727,7 @@ class EvalNot(EvalNode):
     def complete(self, source=None):
         actions = []
         if self.nodes:
-            if self.engine.label_all:
+            if self.engine.label_all and self.identifier is not None:
                 name = Term('aux_{}'.format(self.identifier))
             else:
                 name = None
