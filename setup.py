@@ -13,6 +13,10 @@ with open(version_file) as fp:
     exec(fp.read(), version)
 version = version["version"]
 
+from pathlib import Path
+this_directory = Path(__file__).parent
+long_description = (this_directory / "README.md").read_text()
+
 if __name__ == "__main__" and len(sys.argv) == 1:
     from problog import setup as problog_setup
 
@@ -60,6 +64,8 @@ elif __name__ == "__main__":
         name="problog",
         version=version,
         description="ProbLog2: Probabilistic Logic Programming toolbox",
+        long_description=long_description,
+        long_description_content_type='text/markdown'
         url="https://dtai.cs.kuleuven.be/problog",
         author="ProbLog team",
         author_email="anton.dries@cs.kuleuven.be",
