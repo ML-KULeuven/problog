@@ -21,9 +21,10 @@ Provides an installer for ProbLog dependencies.
     See the License for the specific language governing permissions and
     limitations under the License.
 """
-import distutils.ccompiler
-import distutils.spawn
+import shutil
+
 import os
+import subprocess
 import sys
 
 
@@ -108,27 +109,40 @@ def gather_info():
         pass
 
     # DSharp
-    system_info["dsharp"] = distutils.spawn.find_executable("dsharp") is not None
+    system_info["dsharp"] = shutil.which("dsharp") is not None
 
     # c2d
-    system_info["c2d"] = distutils.spawn.find_executable("cnf2dDNNF") is not None
+    system_info["c2d"] = shutil.which("cnf2dDNNF") is not None
     return system_info
 
+
+def detect_compiler():
+    """Detects the available C compiler."""
+    if shutil.which("gcc"):
+        return "gcc"
+    elif shutil.which("clang"):
+        return "clang"
+    elif shutil.which("cl"):  # Microsoft Visual C++ (MSVC)
+        return "cl"
+    else:
+        raise RuntimeError("No suitable C compiler found")
 
 def build_maxsatz():
     if get_system() == "windows":
         return  # We include the binary
 
-    compiler = distutils.ccompiler.new_compiler()
-
     dest_dir, source_dir = get_binary_paths()
     source_dir = os.path.join(source_dir, "source", "maxsatz")
     source_file = "maxsatz2009.c"
+    output_file = os.path.join(dest_dir, "maxsatz")
+
+    compiler = detect_compiler()
+    if compiler not in ["gcc", "clang"]:
+        return
 
     with WorkingDir(source_dir):
-        objfile = compiler.compile([source_file], output_dir=dest_dir)
-        compiler.link_executable(objfile, os.path.join(dest_dir, "maxsatz"))
-        os.remove(objfile[0])
+        compile_cmd = [compiler, "-o", output_file, source_file]
+        subprocess.run(compile_cmd, check=True)
 
 
 def install(force=True):

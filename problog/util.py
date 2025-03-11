@@ -23,10 +23,10 @@ Provides useful utilities functions and classes.
 """
 import collections
 import collections.abc
-import distutils.spawn
 import importlib.util
 import logging
 import os
+import shutil
 import signal
 import subprocess
 import sys
@@ -214,7 +214,7 @@ def subprocess_call(*popenargs, **kwargs):
 
 
 def _find_process(cmd, *rest):
-    fullname = distutils.spawn.find_executable(cmd[0])
+    fullname = shutil.which(cmd[0])
     if fullname is not None:
         return ([fullname] + cmd[1:],) + rest
     else:
