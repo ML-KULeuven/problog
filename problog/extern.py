@@ -48,7 +48,7 @@ class problog_export(object):
 
     def _convert_input(self, a, t):
         if t == "str":
-            return str(a)
+            return a.functor.strip('"')
         elif t == "int":
             return int(a)
         elif t == "float":
@@ -64,7 +64,7 @@ class problog_export(object):
 
     def _type_to_callmode(self, t):
         if t == "str":
-            return "a"
+            return "s"
         elif t == "int":
             return "i"
         elif t == "float":

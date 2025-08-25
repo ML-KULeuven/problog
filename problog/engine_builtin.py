@@ -596,6 +596,7 @@ mode_types = {
     "a": ("atom", _is_atom),
     "c": ("callable", _is_term),
     "o": ("object", _is_object),
+    "s": ("string", _is_string),
 }
 
 
