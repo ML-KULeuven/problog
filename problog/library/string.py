@@ -20,3 +20,7 @@ def str2lst(string):
 @problog_export("+list", "-str")
 def lst2str(terms):
     return join("", terms)
+
+@problog_export("+str", "-int")
+def str2int(s):
+    return int(s)

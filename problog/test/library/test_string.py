@@ -81,3 +81,16 @@ class TestLibString(unittest.TestCase):
         self.assertEqual(
             [str(x) for x in res.keys()], ["test(aaaddddfffff)"]
         )  # name check
+
+    def test_numerical_string(self):
+        p = PrologString(
+            '''
+                    :- use_module(library(string)).
+                    query(str2int("2",X)).
+            '''
+        )
+        res = get_evaluatable().create_from(p).evaluate()
+        self.assertEqual(list(res.values()), [1.0])  # probability check
+        self.assertEqual(
+            [str(x) for x in res.keys()], ['str2int("2",2)']
+        )
