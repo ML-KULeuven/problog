@@ -1313,7 +1313,7 @@ class SubExpression(object):
         self._arglist = True
         self.max_operators = []
         self.aggregate = False
-
+        self.special = None
         self.priority = 0
 
     @property
