@@ -846,7 +846,7 @@ class LFIProblem(LogicProgram):
         fact_body = defaultdict(int)
         fact_par = defaultdict(int)
 
-        score = 0.0
+        log_likelihood = 0.0
         for m, pEvidence, result in results:
             par_marg = dict()
             for fact, value in result.items():
@@ -867,7 +867,7 @@ class LFIProblem(LogicProgram):
             for index, value in par_marg.items():
                 fact_par[index] += value * m
             try:
-                score += math.log(pEvidence)
+                log_likelihood += m * math.log(pEvidence)
             except ValueError:
                 logger.debug("Pr(evidence) == 0.0")
 
@@ -883,7 +883,7 @@ class LFIProblem(LogicProgram):
                     d[w] = False
                 weight_changed.append(d)
 
-        score = 0.0
+        convergence_score = 0.0
         for index in update_list:
             if float(fact_body[index]) <= 10**-15:
                 # if close to zero
@@ -891,7 +891,7 @@ class LFIProblem(LogicProgram):
             else:
                 prob = float(fact_body[index]) / float(fact_par[index])
                 try:
-                    score += math.log(prob)
+                    convergence_score += math.log(prob)
                 except ValueError as ex:
                     # prob too close to zero
                     pass
@@ -915,7 +915,7 @@ class LFIProblem(LogicProgram):
         if self._enable_normalize:
             self._normalize_weights()
 
-        return score
+        return log_likelihood, convergence_score
 
     def _normalize_weights(self):
         # TODO: too late here, AD should be taken into account in _update
@@ -978,26 +978,27 @@ class LFIProblem(LogicProgram):
 
         delta = 1000
         prev_score = -1e10
+        log_likelihood = 0.0
         tic = timeit.default_timer()
         # while self.iteration < self.max_iter and (delta > self.min_improv):
         while self.iteration < self.max_iter and (delta < 0 or delta > self.min_improv):
-            score = self.step()
+            log_likelihood, convergence_score = self.step()
             getLogger("problog_lfi").info(
                 "Weights after iteration %s: %s" % (self.iteration, self._weights)
             )
             getLogger("problog_lfi").info(
-                "Score after iteration %s: %s" % (self.iteration, score)
+                "Score after iteration %s: %s" % (self.iteration, log_likelihood)
             )
             # Let p_1, ..., p_N the parameters we need to learn
             # Let p_{1,m}, ..., p_{n,m} the estimates in the m-th iteration
             # delta is (log(p_{1,m+1}) + ... + log(p_{N,m+1})) - (log(p_{1,m}) + ... + log(p_{N,m}))
             # In other words, 10^delta = (p_{1,m+1} * ... *p_{N,m+1})/(p_{1,m} * ... * p_{N,m})
             # delta = abs(score - prev_score)
-            delta = score - prev_score
-            prev_score = score
+            delta = convergence_score - prev_score
+            prev_score = convergence_score
         toc = timeit.default_timer()
         getLogger("problog_lfi").info("Evaluation time: %f" % (toc - tic))
-        return prev_score
+        return log_likelihood
 
 
 class ExampleSet(object):
