@@ -366,6 +366,33 @@ class ClauseDB(LogicProgram):
                 scope=scope,
             )
 
+    def declare_dynamic(self, functor, arity, scope=None):
+        """Declare a predicate as dynamic.
+
+        A dynamic predicate can be modified with assertz/retract and will fail
+        gracefully (rather than raising an error) when called with no clauses.
+
+        :param functor: functor name of the predicate
+        :type functor: str
+        :param arity: arity of the predicate
+        :type arity: int
+        :param scope: optional scope
+        """
+        head = Term(functor, *[None] * arity)
+        head = self._scope_term(head, scope)
+        node_index = self._add_head(head, create=True)
+        node = self.get_node(node_index)
+        if not node:
+            # If the node is still an empty placeholder (from a prior call node
+            # compilation), upgrade it to a proper empty define node so that
+            # calling the predicate with no clauses fails gracefully.
+            self._set_node(
+                node_index,
+                self._define(
+                    head.functor, head.arity, self._create_index(head.arity), head.location
+                ),
+            )
+
     def add_extern(self, predicate, arity, func, scope=None):
         head = Term(predicate, *[None] * arity)
         head = self._scope_term(head, scope)

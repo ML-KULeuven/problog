@@ -9,6 +9,13 @@ def assertz(term, target=None, **kwargs):
 
 
 @problog_export_raw("+term")
+def asserta(term, target=None, **kwargs):
+    problog_export.database += term
+    target._cache.reset()  # reset tabling cache
+    return [(term,)]
+
+
+@problog_export_raw("+term")
 def retract(term, target=None, **kwargs):
     db = problog_export.database
     nodekey = db.find(term)

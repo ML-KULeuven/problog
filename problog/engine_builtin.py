@@ -179,6 +179,8 @@ def add_standard_builtins(engine, b=None, s=None, sp=None):
     engine.add_builtin("use_module", 2, b(_builtin_use_module2))
     engine.add_builtin("module", 2, b(_builtin_module))
 
+    engine.add_builtin("dynamic", 1, b(_builtin_dynamic))
+
     engine.add_builtin("once", 1, _builtin_call)
     engine.add_builtin("call", 1, _builtin_call)
     engine.add_builtin("call_nc", 1, _builtin_call_nc)
@@ -1346,6 +1348,39 @@ def _builtin_unknown(arg, engine=None, **kwdargs):
         engine.unknown = engine.UNKNOWN_FAIL
     else:
         engine.unknown = engine.UNKNOWN_ERROR
+    return True
+
+
+def _declare_dynamic_term(term, database):
+    """Helper to declare a single functor/arity term as dynamic."""
+    if term.functor == "'/'" and len(term.args) == 2:
+        functor = str(term.args[0])
+        try:
+            arity = int(term.args[1])
+        except (ValueError, TypeError):
+            raise UserError(
+                "dynamic/1: expected functor/arity, got '%s'" % term
+            )
+        database.declare_dynamic(functor, arity)
+    elif term.functor == "," and len(term.args) == 2:
+        _declare_dynamic_term(term.args[0], database)
+        _declare_dynamic_term(term.args[1], database)
+    else:
+        raise UserError(
+            "dynamic/1: expected functor/arity, got '%s'" % term
+        )
+
+
+def _builtin_dynamic(arg, database=None, **kwdargs):
+    """Implementation of dynamic/1.
+
+    Declares a predicate as dynamic, meaning it can be modified at runtime
+    with assertz/retract and will fail gracefully (rather than raising an
+    error) when called with no clauses defined.
+
+    Usage: :- dynamic(functor/arity).
+    """
+    _declare_dynamic_term(arg, database)
     return True
 
 
