@@ -18,6 +18,7 @@ def asserta(term, target=None, **kwargs):
     target._cache.reset()  # reset tabling cache
     return [(term,)]
 
+
 @problog_export_raw("+term")
 def retract(term, target=None, **kwargs):
     db = problog_export.database
