@@ -383,9 +383,11 @@ class ClauseDB(LogicProgram):
         node_index = self._add_head(head, create=True)
         node = self.get_node(node_index)
         if not node:
-            # If the node is still an empty placeholder (from a prior call node
-            # compilation), upgrade it to a proper empty define node so that
-            # calling the predicate with no clauses fails gracefully.
+            # Upgrade an empty placeholder to a proper define node.
+            # A placeholder () is created when a predicate is referenced in a
+            # clause body before being defined. Upgrading it ensures that
+            # calling the predicate with no clauses fails gracefully instead
+            # of raising an UnknownClause error.
             self._set_node(
                 node_index,
                 self._define(

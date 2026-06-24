@@ -1353,6 +1353,8 @@ def _builtin_unknown(arg, engine=None, **kwdargs):
 
 def _declare_dynamic_term(term, database):
     """Helper to declare a single functor/arity term as dynamic."""
+    # In ProbLog's internal term representation, the '/' operator (used in
+    # functor/arity notation) has functor "'/'", not "/".
     if term.functor == "'/'" and len(term.args) == 2:
         functor = str(term.args[0])
         try:
