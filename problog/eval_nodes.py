@@ -814,6 +814,11 @@ class EvalAnd(EvalNode):
                 all_complete, complete_actions = self.complete()
             else:
                 all_complete, complete_actions = False, []
+            if target_node == NODE_FALSE:
+                # The conjunction is unsatisfiable, so there is no proof to report.
+                # Reporting it would also confuse a parent conjunction, which uses
+                # 'source is None' to tell apart the results of its two conjuncts.
+                return all_complete, complete_actions
             if all_complete:
                 return True, self.notifyResult(result, target_node, is_last=True)
             else:
