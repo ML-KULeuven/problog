@@ -427,7 +427,10 @@ def main(argv, result_handler=None):
             if len(args.filenames) > 1:
                 print("Results for %s:" % filename)
             result = execute(filename, args.koption, semiring, **vars(args))
-            retcode = result_handler(result, output)
+            filecode = result_handler(result, output)
+            # Report failure if any of the files failed, not just the last one.
+            if filecode:
+                retcode = filecode
             # if len(args.filenames) == 1:
             #     sys.exit(retcode)
 

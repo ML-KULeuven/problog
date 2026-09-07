@@ -21,6 +21,7 @@ import sys
 
 sys.path.append(os.path.join(os.path.dirname(__file__), "..", ".."))
 
+from problog.errors import process_error
 from problog.util import load_module
 from problog import version
 
@@ -43,13 +44,36 @@ problog_tasks["constraint"] = "problog.tasks.constraint"
 problog_default_task = "prob"
 
 
+def exit_code(result):
+    """Translate the return value of a task into a process exit code.
+
+    Tasks are not consistent in what they return: some return an exit code
+    directly, others return the ``(success, result)`` pair that their result
+    handlers take, others a dictionary with a ``SUCCESS`` key, and some return
+    nothing at all.  Anything that is not recognisable as a failure is
+    reported as success.
+
+    :param result: return value of a task's main function
+    :return: 0 on success, non-zero on failure
+    """
+    if isinstance(result, tuple) and len(result) == 2 and isinstance(result[0], bool):
+        success, _ = result
+        return 0 if success else 1
+    elif isinstance(result, dict) and "SUCCESS" in result:
+        return 0 if result["SUCCESS"] else 1
+    elif isinstance(result, int) and not isinstance(result, bool):
+        return result
+    else:
+        return 0
+
+
 def run_task(argv):
     """Execute a task in ProbLog.
     If the first argument is a known task name, that task is executed.
     Otherwise the default task is executed.
 
     :param argv: list of arguments for the task
-    :return: result of the task (typically None)
+    :return: exit code of the task (0 on success)
     """
     if len(argv) > 0 and argv[0] in problog_tasks:
         task = argv[0]
@@ -57,7 +81,15 @@ def run_task(argv):
     else:
         task = problog_default_task
         args = argv
-    return load_task(task).main(args)
+    try:
+        result = load_task(task).main(args)
+    except Exception as err:
+        # Not every task catches everything it can raise.  Report those errors
+        # the same way the tasks themselves do, instead of letting a traceback
+        # escape with a misleading exit code.
+        print(process_error(err), file=sys.stderr)
+        return 1
+    return exit_code(result)
 
 
 def load_task(name):

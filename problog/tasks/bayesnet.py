@@ -316,20 +316,17 @@ def main(argv, result_handler=None):
         else:
             bn_str = str(bn)
         final_result = (True, bn_str)
-        rc = print_result(final_result, output=outfile)
+        print_result(final_result, output=outfile)
 
     except Exception as err:
         import traceback
 
         err.trace = traceback.format_exc()
         final_result = (False, err)
-        rc = print_result(final_result)
+        print_result(final_result)
 
     if args.output:
         outfile.close()
-
-    if rc:
-        sys.exit(rc)
 
     return final_result
 

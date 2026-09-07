@@ -4,6 +4,7 @@ from pathlib import Path
 
 from problog.logic import Constant, Term, Not
 from problog.tasks import map, explain, time1, bayesnet, mpe, ground, probability
+from problog.tasks import exit_code, run_task
 
 dirname = os.path.dirname(__file__)
 test_folder = Path(dirname, "./../../test/")
@@ -332,3 +333,47 @@ class TestTasks(unittest.TestCase):
             "\n\nFactor (c15 | edge(1,3), path(3,6)) = 0, 1\n(False, False): [1.0, 0.0]"
             "\n(False, True): [1.0, 0.0]\n(True, False): [1.0, 0.0]\n(True, True): [0.0, 1.0]\n",
         )
+
+
+class TestExitCode(unittest.TestCase):
+    """The CLI must report success as 0 and failure as non-zero (issue #82)."""
+
+    def test_exit_code_translation(self):
+        # (success, result) pairs, as returned by most tasks
+        self.assertEqual(0, exit_code((True, "anything")))
+        self.assertEqual(1, exit_code((False, Exception("boom"))))
+        # dictionaries with a SUCCESS key, as returned by explain
+        self.assertEqual(0, exit_code({"SUCCESS": True}))
+        self.assertEqual(1, exit_code({"SUCCESS": False}))
+        # tasks that already return an exit code
+        self.assertEqual(0, exit_code(0))
+        self.assertEqual(1, exit_code(1))
+        # tasks that return nothing at all
+        self.assertEqual(0, exit_code(None))
+
+    def test_tasks_succeed_with_zero(self):
+        file_name = test_folder / "tasks" / "some_heads.pl"
+        for task in ("prob", "mpe", "sample", "ground", "explain", "bn"):
+            argv = [] if task == "prob" else [task]
+            argv.append(str(file_name))
+            self.assertEqual(
+                0, run_task(argv), "task %s should report success" % task
+            )
+
+    def test_tasks_fail_with_nonzero(self):
+        file_name = test_folder / "tasks" / "does_not_exist.pl"
+        for task in ("prob", "mpe", "sample", "ground", "explain", "map", "bn"):
+            argv = [] if task == "prob" else [task]
+            argv.append(str(file_name))
+            self.assertNotEqual(
+                0, run_task(argv), "task %s should report failure" % task
+            )
+
+    def test_failure_is_not_masked_by_a_later_file(self):
+        # With several input files the exit code must reflect any failure,
+        # not just the outcome of the last file.
+        good = str(test_folder / "tasks" / "some_heads.pl")
+        bad = str(test_folder / "tasks" / "does_not_exist.pl")
+        self.assertNotEqual(0, run_task([bad, good]))
+        self.assertNotEqual(0, run_task([good, bad]))
+        self.assertEqual(0, run_task([good, good]))

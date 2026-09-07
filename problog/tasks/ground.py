@@ -165,12 +165,9 @@ def main(argv, result_handler=None):
         err.trace = traceback.format_exc()
         final_result = (False, err)
 
-    rc = print_result(final_result, output=outfile)
+    print_result(final_result, output=outfile)
     if args.output:
         outfile.close()
-
-    if rc:
-        sys.exit(rc)
 
     return final_result
 

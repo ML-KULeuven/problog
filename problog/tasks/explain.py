@@ -82,8 +82,8 @@ def main(argv):
     except Exception as err:
         trace = traceback.format_exc()
         err.trace = trace
+        result["SUCCESS"] = False
         if args.web:
-            result["SUCCESS"] = False
             result["err"] = vars(err)
             result["err"]["message"] = process_error(err)
             print(json.dumps(result), file=out)
