@@ -18,7 +18,12 @@ limitations under the License.
 import unittest
 
 from problog import get_evaluatable
-from problog.evaluator import SemiringProbability
+from problog.evaluator import (
+    Evaluatable,
+    Semiring,
+    SemiringLogProbability,
+    SemiringProbability,
+)
 from problog.formula import LogicFormula
 from problog.logic import Term
 from problog.program import PrologString
@@ -119,3 +124,63 @@ class TestEvaluator(unittest.TestCase):
 if __name__ == "__main__":
     suite = unittest.TestLoader().loadTestsFromTestCase(TestEvaluator)
     unittest.TextTestRunner(verbosity=2).run(suite)
+
+
+class TestResultDomain(unittest.TestCase):
+    """A compiler that returns a formula not representing the program must not
+    produce a silently wrong probability (issue #113)."""
+
+    def test_probability_semirings_reject_impossible_results(self):
+        for semiring in (SemiringProbability(), SemiringLogProbability()):
+            # result() of the log semiring exponentiates, so both report
+            # probabilities as their external value.
+            self.assertTrue(semiring.result_in_domain(0.0))
+            self.assertTrue(semiring.result_in_domain(0.5))
+            self.assertTrue(semiring.result_in_domain(1.0))
+            self.assertFalse(semiring.result_in_domain(156.1304671248511))
+            self.assertFalse(semiring.result_in_domain(-0.5))
+
+    def test_custom_semirings_are_unconstrained(self):
+        # aProbLog semirings compute over arbitrary values and must not be
+        # restricted to [0, 1].
+        class CustomSemiring(Semiring):
+            def one(self):
+                return 1
+
+            def zero(self):
+                return 0
+
+            def plus(self, a, b):
+                return a + b
+
+            def times(self, a, b):
+                return a * b
+
+        self.assertTrue(CustomSemiring().result_in_domain(156.13))
+
+    def test_evaluate_rejects_an_out_of_domain_result(self):
+        from problog.errors import CompilationError
+
+        class FakeFormula(object):
+            def labeled(self):
+                return [(Term("q"), 1, None)]
+
+        class FakeEvaluator(object):
+            def __init__(self):
+                self.formula = FakeFormula()
+                self.semiring = SemiringProbability()
+
+            def evaluate(self, index):
+                return 156.1304671248511
+
+        class FakeEvaluatable(Evaluatable):
+            def _create_evaluator(self, semiring, weights, **kwargs):
+                return FakeEvaluator()
+
+            def get_evaluator(self, semiring=None, evidence=None, weights=None, **kwargs):
+                return FakeEvaluator()
+
+        with self.assertRaises(CompilationError):
+            FakeEvaluatable().evaluate()
+        with self.assertRaises(CompilationError):
+            FakeEvaluatable().evaluate(index=1)

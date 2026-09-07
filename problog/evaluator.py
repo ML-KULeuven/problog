@@ -24,7 +24,12 @@ Provides common interface for evaluation of weighted logic formulas.
 import math
 
 from .core import ProbLogObject, transform_allow_subclass
-from .errors import InconsistentEvidenceError, InvalidValue, ProbLogError
+from .errors import (
+    CompilationError,
+    InconsistentEvidenceError,
+    InvalidValue,
+    ProbLogError,
+)
 
 
 class OperationNotSupported(ProbLogError):
@@ -130,6 +135,15 @@ class Semiring(object):
         """Checks whether the given (internal) value is valid."""
         return True
 
+    def result_in_domain(self, a):
+        """Checks whether the given external value is a valid result.
+
+        Unlike :func:`in_domain`, this is applied to the value produced by
+        :func:`result`, so it can catch a knowledge compiler that returned a
+        formula which does not represent the program it was given.
+        """
+        return True
+
     def ad_complement(self, ws, key=None):
         s = self.zero()
         for w in ws:
@@ -222,6 +236,9 @@ class SemiringProbability(Semiring):
         return True
 
     def in_domain(self, a):
+        return 0.0 - 1e-9 <= a <= 1.0 + 1e-9
+
+    def result_in_domain(self, a):
         return 0.0 - 1e-9 <= a <= 1.0 + 1e-9
 
     @classmethod
@@ -429,10 +446,30 @@ class Evaluatable(ProbLogObject):
             # interrupted = False
             for name, node, label in evaluator.formula.labeled():
                 w = evaluator.evaluate(node)
+                self._check_result(evaluator.semiring, name, w)
                 result[name] = w
             return result
         else:
-            return evaluator.evaluate(index)
+            w = evaluator.evaluate(index)
+            self._check_result(evaluator.semiring, index, w)
+            return w
+
+    @staticmethod
+    def _check_result(semiring, name, value):
+        """Verify that an evaluation result is valid for the semiring in use.
+
+        A knowledge compiler that returns a formula which does not represent
+        the program it was given produces results that are silently wrong,
+        such as a probability above one. Semirings that do not constrain their
+        results are unaffected.
+        """
+        if not semiring.result_in_domain(value):
+            raise CompilationError(
+                "Evaluating '%s' produced %s, which is not a valid result for "
+                "this semiring. The knowledge compiler most likely returned a "
+                "formula that does not represent this program; try a different "
+                "one, for instance with '-k sdd'" % (name, value)
+            )
 
 
 @transform_allow_subclass
