@@ -467,3 +467,60 @@ class TestSolverAvailability(unittest.TestCase):
         solver = Sat4jSolver()
         if not os.path.exists(solver.jar):
             self.assertIn(solver.jar, solver.unavailable_reason())
+
+
+class TestGroundAuxNames(unittest.TestCase):
+    """Auxiliary atoms introduced for negation must be named uniquely (issue #125)."""
+
+    # Example 4 from the tutorial. Its ground program looked cyclic, because
+    # two different auxiliary atoms were both printed as 'aux_0':
+    #   c1(1) :- \+aux_0.   aux_0 :- or_c1_c2(1).   or_c1_c2(1) :- c1(1).
+    MODEL = """
+0.5::c1(0).
+0.5::c2(0).
+0.5::c1(T) :- T > 0, TT is T-1, \\+ or_c1_c2(TT).
+0.5::c2(T) :- T > 0, TT is T-1, \\+ or_c1_c2(TT).
+or_c1_c2(T) :- c1(T).
+or_c1_c2(T) :- c2(T).
+return(T,1,1) :- or_c1_c2(T), c1(T), c2(T).
+return(T,1,0) :- or_c1_c2(T), c1(T), \\+ c2(T).
+return(T,0,1) :- or_c1_c2(T), \\+ c1(T), c2(T).
+return(T,0,0) :- or_c1_c2(T), \\+c1(T), \\+c2(T).
+query(return(T,_,_)) :- between(0,2,T).
+"""
+
+    def _to_prolog(self, avoid_name_clash):
+        # The arguments the 'ground' task uses; --compact turns off
+        # avoid_name_clash.
+        from problog.formula import LogicDAG
+        from problog.parser import DefaultPrologParser
+        from problog.program import ExtendedPrologFactory, PrologString
+
+        return LogicDAG.createFrom(
+            PrologString(self.MODEL),
+            label_all=True,
+            keep_order=True,
+            avoid_name_clash=avoid_name_clash,
+        ).to_prolog()
+
+    def test_no_negative_auxiliary_names(self):
+        # Node keys are signed, and one was used directly as the name, which
+        # produced atoms called 'aux_-1', 'aux_-17' and 'aux_-36'.
+        self.assertNotRegex(self._to_prolog(True), r"aux_-\d")
+
+    def test_ground_program_matches_compact_form(self):
+        # The default output differed from --compact only by auxiliary atoms
+        # that aliased an already named atom, and it was those that collided.
+        self.assertEqual(self._to_prolog(False), self._to_prolog(True))
+
+    def test_probabilities_are_unchanged(self):
+        from problog import get_evaluatable
+        from problog.logic import Constant, Term
+        from problog.program import PrologString
+
+        result = get_evaluatable().create_from(PrologString(self.MODEL)).evaluate()
+        result = {str(k): v for k, v in result.items()}
+        self.assertAlmostEqual(0.25, result["return(0,0,1)"], delta=1e-8)
+        self.assertAlmostEqual(0.25, result["return(0,1,0)"], delta=1e-8)
+        self.assertAlmostEqual(0.25, result["return(0,1,1)"], delta=1e-8)
+        self.assertAlmostEqual(0.0, result["return(0,0,0)"], delta=1e-8)

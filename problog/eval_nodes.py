@@ -727,11 +727,28 @@ class EvalNot(EvalNode):
     def complete(self, source=None):
         actions = []
         if self.nodes:
-            if self.engine.label_all and self.identifier is not None:
-                name = Term('aux_{}'.format(self.identifier))
-            else:
-                name = None
-            or_node = self.target.add_not(self.target.add_or(self.nodes, name=name))
+            or_key = self.target.add_or(self.nodes)
+            if (
+                self.engine.label_all
+                and self.identifier is not None
+                and or_key != NODE_TRUE
+                and or_key != NODE_FALSE
+            ):
+                # Name the auxiliary atom after the node it stands for. Its key
+                # is unique, whereas self.identifier identifies the call this
+                # negation belongs to: several negations share one, and it is
+                # zero for a deterministically true call and negative for a
+                # negated one, which produced colliding names such as two
+                # distinct 'aux_0' atoms, and names such as 'aux_-17'.
+                if self.target.get_node(abs(or_key)).name is None:
+                    # Only name a node that does not have a name of its own;
+                    # add_or() did the same when it was given the name.
+                    self.target.add_name(
+                        Term("aux_{}".format(abs(or_key))),
+                        or_key,
+                        self.target.LABEL_NAMED,
+                    )
+            or_node = self.target.add_not(or_key)
             if or_node != NODE_FALSE:
                 actions += self.notifyResult(self.context, or_node)
         else:
