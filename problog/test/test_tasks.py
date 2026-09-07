@@ -394,10 +394,12 @@ class TestMaxSatInput(unittest.TestCase):
         return CNF.createFrom(dag, force_atoms=True)
 
     def test_to_lp_accepts_invert_weights(self):
-        from problog.maxsat import get_solver
+        from problog.maxsat import SCIPSolver
 
         cnf = self._cnf()
-        solver = get_solver("scip")
+        # constructed directly: this checks the input it builds, not whether
+        # scip happens to be installed here
+        solver = SCIPSolver()
         # Used to raise TypeError: to_lp() got an unexpected keyword argument.
         self.assertTrue(solver.prepare_input(cnf, invert_weights=False))
         self.assertTrue(solver.prepare_input(cnf, invert_weights=True))
@@ -415,3 +417,53 @@ class TestMaxSatInput(unittest.TestCase):
         self.assertEqual(
             normal.split("subject to")[1], inverted.split("subject to")[1]
         )
+
+
+class TestSolverAvailability(unittest.TestCase):
+    """Only solvers that can actually run should be offered (issue #130)."""
+
+    def test_missing_command_is_reported(self):
+        from problog.maxsat import MaxSATSolver
+
+        solver = MaxSATSolver(["problog-no-such-solver-binary"])
+        self.assertFalse(solver.is_available())
+        self.assertIn("problog-no-such-solver-binary", solver.unavailable_reason())
+
+    def test_available_solvers_are_known_and_usable(self):
+        from problog.maxsat import (
+            get_available_solvers,
+            get_known_solvers,
+            _create_solver,
+        )
+
+        available = get_available_solvers()
+        self.assertTrue(set(available) <= set(get_known_solvers()))
+        for name in available:
+            self.assertTrue(_create_solver(name).is_available())
+
+    def test_unavailable_solver_explains_itself(self):
+        from problog.errors import InstallError
+        from problog.maxsat import (
+            get_available_solvers,
+            get_known_solvers,
+            get_solver,
+        )
+
+        available = get_available_solvers()
+        for name in get_known_solvers():
+            if name in available:
+                self.assertIsNotNone(get_solver(name))
+            else:
+                # Used to fail later with a bare 'Unable to access jarfile' or
+                # FileNotFoundError from deep inside the solver call.
+                with self.assertRaises(InstallError) as ctx:
+                    get_solver(name)
+                self.assertIn(name, str(ctx.exception))
+
+    def test_sat4j_reports_the_missing_jar(self):
+        import os
+        from problog.maxsat import Sat4jSolver
+
+        solver = Sat4jSolver()
+        if not os.path.exists(solver.jar):
+            self.assertIn(solver.jar, solver.unavailable_reason())

@@ -28,7 +28,7 @@ from problog.errors import process_error
 from problog.evaluator import Semiring, SemiringProbability
 from problog.formula import LogicFormula, LogicDAG
 from problog.logic import Term
-from problog.maxsat import get_solver, get_available_solvers
+from problog.maxsat import get_solver, get_known_solvers
 from problog.program import PrologFile
 from problog.util import init_logger, Timer
 
@@ -380,7 +380,7 @@ def argparser():
     parser.add_argument("inputfile")
     parser.add_argument(
         "--solver",
-        choices=get_available_solvers(),
+        choices=get_known_solvers(),
         default=None,
         help="MaxSAT solver to use",
     )
