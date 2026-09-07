@@ -123,13 +123,21 @@ class CNF(BaseFormula):
         result += "\n".join(map(lambda cl: " ".join(map(str, cl)) + " 0", content))
         return result
 
-    def to_lp(self, partial=False, semiring=None, smart_constraints=False):
+    def to_lp(
+        self,
+        partial=False,
+        semiring=None,
+        smart_constraints=False,
+        invert_weights=False,
+    ):
         """Transfrom to CPLEX lp format (MIP program).
         This is always weighted.
 
         :param partial: split variables in possibly true / certainly true
         :param semiring: semiring for weight transformation (if weighted)
         :param smart_constraints: only enforce constraints when variables are set
+        :param invert_weights: invert the weights, e.g. to find the least
+            probable explanation instead of the most probable one
         :return: string in LP format
         """
         header, content = self._contents(
@@ -144,11 +152,20 @@ class CNF(BaseFormula):
 
         var2str = lambda var: "x%s" % var if var > 0 else "-x%s" % -var
 
+        atom_weights = self.extract_weights(semiring)
+        if invert_weights:
+            # Negate the weights so that maximising the objective yields the
+            # least probable explanation instead of the most probable one.
+            # This mirrors what _contents() does for the DIMACS output.
+            atom_weights = {
+                i: (-w_pos, -w_neg) for i, (w_pos, w_neg) in atom_weights.items()
+            }
+
         if partial:
             ct = lambda it: 2 * it
             pt = lambda it: ct(it) - 1
 
-            weights = self.extract_weights(semiring)
+            weights = atom_weights
             objective = []
             for v in range(0, self.atomcount + 1):
                 w_pos, w_neg = weights.get(v, (semiring.one(), semiring.one()))
@@ -162,7 +179,7 @@ class CNF(BaseFormula):
 
         else:
             weights = {}
-            for i, w in self.extract_weights(semiring).items():
+            for i, w in atom_weights.items():
                 w = w[0] - w[1]
                 if w != 0:
                     weights[i] = str(w)

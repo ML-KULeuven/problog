@@ -377,3 +377,41 @@ class TestExitCode(unittest.TestCase):
         self.assertNotEqual(0, run_task([bad, good]))
         self.assertNotEqual(0, run_task([good, bad]))
         self.assertEqual(0, run_task([good, good]))
+
+
+class TestMaxSatInput(unittest.TestCase):
+    """The MIP (scip) input must be produced without error (issue #130)."""
+
+    def _cnf(self):
+        from problog.formula import LogicDAG
+        from problog.cnf_formula import CNF
+        from problog.program import PrologString
+
+        model = PrologString("0.3::a.\n0.5::b.\nc :- a, b.\nquery(c).\n")
+        dag = LogicDAG.createFrom(
+            model, avoid_name_clash=True, label_all=True, labels=[("output", 1)]
+        )
+        return CNF.createFrom(dag, force_atoms=True)
+
+    def test_to_lp_accepts_invert_weights(self):
+        from problog.maxsat import get_solver
+
+        cnf = self._cnf()
+        solver = get_solver("scip")
+        # Used to raise TypeError: to_lp() got an unexpected keyword argument.
+        self.assertTrue(solver.prepare_input(cnf, invert_weights=False))
+        self.assertTrue(solver.prepare_input(cnf, invert_weights=True))
+
+    def test_invert_weights_negates_the_objective(self):
+        cnf = self._cnf()
+
+        def objective(lp):
+            return [l for l in lp.split("\n") if l.strip().startswith("obj:")][0]
+
+        normal = cnf.to_lp()
+        inverted = cnf.to_lp(invert_weights=True)
+        self.assertNotEqual(objective(normal), objective(inverted))
+        # Only the objective changes; the constraints describe the same problem.
+        self.assertEqual(
+            normal.split("subject to")[1], inverted.split("subject to")[1]
+        )
