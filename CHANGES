@@ -1,6 +1,33 @@
 This change log only contains significant changes and/or new features.
 Intermediate bugfixes and speed improvements are not listed.
 
+2026/09/07
+
+    ProbLog 2.2.11 released.
+
+    Changed behaviour:
+        - Every task now exits with code 0 on success and non-zero on failure.
+          Only 'problog <model>' did so before; mpe, sample, ground, explain,
+          dt, map and bn reported failure even when they had succeeded. Scripts
+          that test the exit code of those tasks will behave differently.
+        - Evaluation now raises an error when a knowledge compiler returns a
+          result outside the domain of the semiring, such as a probability
+          greater than one, instead of reporting that value.
+        - Learning from interpretations no longer sets a parameter to zero when
+          no example constrains it. Such a parameter keeps its initial value.
+        - Auxiliary atoms introduced for negated goals are named after the node
+          they stand for, so the output of 'problog ground' differs for models
+          that use negation. The programs are equivalent.
+
+    macOS:
+        - dsharp is now a universal binary and runs on Apple Silicon.
+        - A maxsatz binary is included, which the mpe task needs.
+
+    Other:
+        - MaxSAT solvers that are not installed are reported as unavailable,
+          rather than failing inside the call to the solver.
+        - 'problog mpe --solver scip' no longer fails with a TypeError.
+
 2021/07/19
 
     ProbLog 2.2 released. Additional new features include:
