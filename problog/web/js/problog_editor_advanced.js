@@ -154,6 +154,9 @@ var problog = {
                 }
                 var result = problog.createTable(result, [['Atom', '50%'], ['Value', '50%']]);
                 pbl.dom.results.html(result);
+                if (data.prob !== undefined) {
+                    $("<p><strong>Probability</strong>: " + data.prob + "</p>").appendTo(pbl.dom.results);
+                }
             }
         },
         {
