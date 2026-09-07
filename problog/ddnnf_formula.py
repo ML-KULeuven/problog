@@ -40,8 +40,8 @@ from .util import Timer, subprocess_check_call
 class DSharpError(CompilationError):
     """DSharp has crashed."""
 
-    def __init__(self):
-        msg = "DSharp has encountered an error"
+    def __init__(self, err: subprocess.CalledProcessError):
+        msg = f"DSharp has encountered an error:\n{err}"
         if system_info["os"] == "darwin":
             msg += ". This is a known issue. See KNOWN_ISSUES for details on how to resolve this problem"
         CompilationError.__init__(self, msg)
@@ -305,8 +305,8 @@ def _compile_with_dsharp(cnf, nnf=None, smooth=True, **kwdargs):
 
         try:
             result = _compile(cnf, cmd, cnf_file, nnf_file)
-        except subprocess.CalledProcessError:
-            raise DSharpError()
+        except subprocess.CalledProcessError as e:
+            raise DSharpError(e)
 
         try:
             os.remove(cnf_file)
