@@ -148,6 +148,7 @@ class LFIProblem(LogicProgram):
         # When necessary they are replaced by a dictionary [t(arg1, arg2, ...) -> float]
         #  for weights of form t(SV, arg1, arg2, ...).
         self._weights = []
+        self._initial_weights = []
 
         self.examples = LFIProblem._fix_examples(examples)
         self.leakprob = leakprob
@@ -232,6 +233,9 @@ class LFIProblem(LogicProgram):
     def prepare(self):
         """Prepare for learning."""
         self._compile_examples()
+        # Keep the starting values around: a parameter that no example says
+        # anything about has to stay where it started (see _update).
+        self._initial_weights = list(self._weights)
 
     def _get_weight(self, index, args, strict=True):
         index = int(index)
@@ -243,6 +247,23 @@ class LFIProblem(LogicProgram):
                 return weight.get(args, 0.0)
         else:
             return weight
+
+    def _get_current_weight(self, index, args):
+        """Current value of a parameter.
+
+        Parameterised weights are only added to the weight dictionary once an
+        example has produced an estimate for them, so fall back to the initial
+        value when there is no entry yet.
+
+        :param index: identifier of the fact
+        :param args: additional variables the weight is based on
+        :return: the weight currently in use for this parameter
+        """
+        index = int(index)
+        weight = self._weights[index]
+        if isinstance(weight, dict) and args not in weight:
+            return self._initial_weights[index]
+        return self._get_weight(index, args)
 
     def get_weights(self, index):
         """Get a list of key, weight pairs for the given input fact.
@@ -885,22 +906,35 @@ class LFIProblem(LogicProgram):
 
         convergence_score = 0.0
         for index in update_list:
-            if float(fact_body[index]) <= 10**-15:
-                # if close to zero
-                prob = 0.0
-            else:
-                prob = float(fact_body[index]) / float(fact_par[index])
-                try:
-                    convergence_score += math.log(prob)
-                except ValueError as ex:
-                    # prob too close to zero
-                    pass
-
-            logger.debug(
-                "Update probabilistic fact {}: {} / {} = {}".format(
-                    index, fact_body[index], fact_par[index], prob
+            if float(fact_par[index]) <= 10**-15:
+                # Nothing in the evidence makes the body of this clause true,
+                # so the examples say nothing about this parameter and the
+                # estimate would be 0/0. Keep its current value instead of
+                # assuming zero, and leave it out of the convergence score.
+                prob = self._get_current_weight(index[0], index[1])
+                logger.debug(
+                    "Keep probabilistic fact {}: {} / {} is undetermined, "
+                    "staying at {}".format(
+                        index, fact_body[index], fact_par[index], prob
+                    )
                 )
-            )
+            else:
+                if float(fact_body[index]) <= 10**-15:
+                    # if close to zero
+                    prob = 0.0
+                else:
+                    prob = float(fact_body[index]) / float(fact_par[index])
+                    try:
+                        convergence_score += math.log(prob)
+                    except ValueError as ex:
+                        # prob too close to zero
+                        pass
+
+                logger.debug(
+                    "Update probabilistic fact {}: {} / {} = {}".format(
+                        index, fact_body[index], fact_par[index], prob
+                    )
+                )
             self._set_weight(index[0], index[1], prob, weight_changed=weight_changed)
             if not index[1]:
                 weight_changed[int(index[0])] = True
