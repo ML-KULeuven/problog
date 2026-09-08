@@ -24,48 +24,90 @@ permissions:
   contents: read
 
 jobs:
-  wheels:
+  # Linux wheels are built by driving docker from the host rather than using a
+  # job container.  The runner's Node is glibc-linked, so actions/checkout
+  # cannot start inside a musllinux (Alpine) image at all, and cannot start
+  # inside manylinux2014 either.  Running the JS actions on the host and the
+  # build in the container sidesteps both, and lets any image be used -- it is
+  # also what cibuildwheel does internally.
+  linux-wheels:
     name: wheel ${{ matrix.plat }}
     runs-on: ${{ matrix.os }}
-    container: ${{ matrix.container }}
     strategy:
       fail-fast: false
       matrix:
         include:
-          # Built inside manylinux so the binaries link against an old glibc and
-          # the manylinux tag is one we can actually honour.  manylinux2014
-          # (glibc 2.17) is not usable as a job container: the runner's Node
-          # binary needs glibc 2.28, so actions/checkout cannot start there.
           - os: ubuntu-latest
             plat: manylinux_2_28_x86_64
-            bindir: linux
-            container: quay.io/pypa/manylinux_2_28_x86_64
+            image: quay.io/pypa/manylinux_2_28_x86_64
+          - os: ubuntu-24.04-arm
+            plat: manylinux_2_28_aarch64
+            image: quay.io/pypa/manylinux_2_28_aarch64
+          - os: ubuntu-latest
+            plat: musllinux_1_2_x86_64
+            image: quay.io/pypa/musllinux_1_2_x86_64
+          - os: ubuntu-24.04-arm
+            plat: musllinux_1_2_aarch64
+            image: quay.io/pypa/musllinux_1_2_aarch64
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Build the binaries and the wheel in ${{ matrix.image }}
+        run: |
+          docker run --rm -v "$PWD:/io" -w /io "${{ matrix.image }}" sh -c '
+            set -eux
+            export PATH=/opt/python/cp311-cp311/bin:$PATH
+            make binaries
+            python -m pip install --upgrade pip build wheel pytest pyparsing
+            # Test the binaries this job just built, before they are packaged.
+            python -m pytest problog/test/test_ddnnf_formula.py -q
+            # Each wheel carries its own platform and nothing else.
+            rm -rf problog/bin/darwin problog/bin/windows
+            python -m build --wheel
+          '
+          sudo chown -R "$(id -u):$(id -g)" .
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Tag it for this platform
+        run: |
+          python -m pip install --upgrade wheel
+          python -m wheel tags --python-tag py3 --abi-tag none \
+                 --platform-tag ${{ matrix.plat }} --remove dist/*.whl
+          ls -l dist
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wheel-${{ matrix.plat }}
+          path: dist/*.whl
+
+  wheels:
+    name: wheel ${{ matrix.plat }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
           - os: macos-14
             plat: macosx_11_0_universal2
             bindir: darwin
-            container: ""
           - os: windows-latest
             plat: win_amd64
             bindir: windows
-            container: ""
 
     steps:
-      - name: Trust the workspace
-        if: matrix.container != ''
-        run: git config --global --add safe.directory '*'
-
       - uses: actions/checkout@v4
         with:
           submodules: recursive
 
       - uses: actions/setup-python@v5
-        if: matrix.container == ''
         with:
           python-version: '3.11'
-
-      - name: Use the container's Python
-        if: matrix.container != ''
-        run: echo "/opt/python/cp311-cp311/bin" >> "$GITHUB_PATH"
 
       # dsharp only builds under mingw on Windows.
       - uses: msys2/setup-msys2@v2
@@ -98,9 +140,8 @@ jobs:
         shell: bash
         run: python -m pytest problog/test/test_ddnnf_formula.py -q
 
-      # bin/<platform> holds build outputs, but bin/darwin also holds a tracked
-      # wrapper script, so the package-data globs would put it in every wheel.
-      # Each wheel carries its own platform and nothing else.
+      # bin/darwin also holds a tracked wrapper script, so the package-data
+      # globs would put it in every wheel.
       - name: Keep only this platform's binaries
         shell: bash
         run: |
@@ -149,7 +190,7 @@ jobs:
           path: dist/*.tar.gz
 
   publish:
-    needs: [wheels, sdist]
+    needs: [linux-wheels, wheels, sdist]
     if: github.event_name == 'release'
     runs-on: ubuntu-latest
     steps:
