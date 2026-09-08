@@ -38,12 +38,15 @@ jobs:
           # binary needs glibc 2.28, so actions/checkout cannot start there.
           - os: ubuntu-latest
             plat: manylinux_2_28_x86_64
+            bindir: linux
             container: quay.io/pypa/manylinux_2_28_x86_64
           - os: macos-14
             plat: macosx_11_0_universal2
+            bindir: darwin
             container: ""
           - os: windows-latest
             plat: win_amd64
+            bindir: windows
             container: ""
 
     steps:
@@ -94,6 +97,17 @@ jobs:
       - name: Acceptance test the built binaries
         shell: bash
         run: python -m pytest problog/test/test_ddnnf_formula.py -q
+
+      # bin/<platform> holds build outputs, but bin/darwin also holds a tracked
+      # wrapper script, so the package-data globs would put it in every wheel.
+      # Each wheel carries its own platform and nothing else.
+      - name: Keep only this platform's binaries
+        shell: bash
+        run: |
+          for d in darwin linux windows; do
+            [ "$d" = "${{ matrix.bindir }}" ] || rm -rf "problog/bin/$d"
+          done
+          find problog/bin -type f | sort
 
       - name: Build the wheel
         shell: bash
