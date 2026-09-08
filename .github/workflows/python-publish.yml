@@ -62,8 +62,9 @@ jobs:
             export PATH=/opt/python/cp311-cp311/bin:$PATH
             make binaries
             python -m pip install --upgrade pip build wheel pytest pyparsing
-            # Test the binaries this job just built, before they are packaged.
-            python -m pytest problog/test/test_ddnnf_formula.py -q
+            # Run the whole suite against the binaries this job just built,
+            # before they are packaged.
+            python -m pytest problog/test -q
             # Each wheel carries its own platform and nothing else.
             rm -rf problog/bin/darwin problog/bin/windows
             python -m build --wheel
@@ -133,15 +134,16 @@ jobs:
         shell: bash
         run: python -m pip install --upgrade pip build wheel pytest pyparsing
 
-      # Test the binaries this job just built, before they are packaged.  This
-      # is what catches a knowledge compiler that runs but produces a formula
-      # that is not a d-DNNF -- see ML-KULeuven/problog#113.
-      - name: Acceptance test the built binaries
+      # Run the whole suite against the binaries this job just built, before
+      # they are packaged.  Among other things this is what catches a knowledge
+      # compiler that runs but produces a formula that is not a d-DNNF -- see
+      # ML-KULeuven/problog#113.
+      - name: Test the built binaries
         shell: bash
-        run: python -m pytest problog/test/test_ddnnf_formula.py -q
+        run: python -m pytest problog/test -q
 
-      # bin/darwin also holds a tracked wrapper script, so the package-data
-      # globs would put it in every wheel.
+      # Defence in depth: keep each wheel to its own platform regardless of
+      # what else ends up under bin/.
       - name: Keep only this platform's binaries
         shell: bash
         run: |
