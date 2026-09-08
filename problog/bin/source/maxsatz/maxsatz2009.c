@@ -3019,8 +3019,16 @@ int main(int argc, char *argv[]) {
     printf("Using format: %s input_instance [-l]\n\t-l: without local search.", argv[0]);
     return 1;
   }
-  for (i=0; i<WORD_LENGTH; i++)
+  /* ProbLog patch: this copied a fixed WORD_LENGTH bytes out of argv[1]
+     regardless of how long the filename actually was, reading off the end of
+     the argv block and through the environment.  Whether that segfaulted
+     depended only on how much mapped memory happened to follow argv[1], so
+     maxsatz crashed on every input under a small environment and worked under
+     a large one.  It also left saved_input_file unterminated, which the two
+     printf("%s") uses below rely on. */
+  for (i=0; i<WORD_LENGTH-1 && argv[1][i] != '\0'; i++)
     saved_input_file[i]=argv[1][i];
+  saved_input_file[i]='\0';
   
   // a_tms = ( struct tms *) malloc( sizeof (struct tms));
   // mess=times(a_tms); begintime = a_tms->tms_utime;

@@ -163,11 +163,7 @@ $(DSHARP): $(DSHARP_SOURCES) | $(BINDIR)
 	cp $(WORK)/dsharp$(EXE) $@ 2>/dev/null || cp $(WORK)/dsharp $@
 	chmod 755 $@
 
-# maxsatz2009.c is 2009-vintage C and gcc miscompiles it at -O2 into a SIGSEGV,
-# including with -fno-strict-aliasing -fwrapv, so it has undefined behaviour
-# beyond the two classic categories.  clang is unaffected, but build it
-# unoptimised everywhere, which is how it was built for years before this.
-MAXSATZ_CFLAGS :=
+MAXSATZ_CFLAGS := -O2
 
 $(MAXSATZ): $(MAXSATZ_SRC) | $(BINDIR)
 	$(CC) $(ARCHES) $(MAXSATZ_CFLAGS) -o $@ $<
