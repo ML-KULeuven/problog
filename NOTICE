@@ -1,0 +1,50 @@
+ProbLog
+Copyright 2015 KU Leuven, DTAI Research Group
+
+This product is licensed under the Apache License, Version 2.0. A copy of the
+license is included as LICENSE.
+
+ProbLog additionally distributes the following third-party programs, which it
+invokes as separate processes. Each is covered by its own license, reproduced
+under problog/bin/LICENSES/.
+
+
+dsharp
+    problog/bin/linux/dsharp
+    problog/bin/darwin/dsharp
+    problog/bin/windows/dsharp.exe
+
+    Copyright (c) 2022 Christian Muise
+    MIT License, see problog/bin/LICENSES/dsharp-MIT.txt
+    https://github.com/QuMuLab/dsharp
+
+
+maxsatz
+    problog/bin/linux/maxsatz
+    problog/bin/darwin/maxsatz
+    problog/bin/windows/maxsatz.exe
+
+    Copyright (C) 2009 Chu Min Li
+    GNU General Public License, version 2 or later,
+    see problog/bin/LICENSES/maxsatz-GPL-2.0.txt
+
+    The corresponding source is distributed with these binaries as
+    problog/bin/source/maxsatz/maxsatz2009.c
+
+
+GCC runtime libraries
+    problog/bin/windows/libgcc_s_dw2-1.dll
+    problog/bin/windows/libstdc++-6.dll
+
+    Copyright (C) Free Software Foundation, Inc.
+    GNU General Public License, version 3, with the GCC Runtime Library
+    Exception, version 3.1, see
+    problog/bin/LICENSES/gcc-runtime-GPL-3.0.txt and
+    problog/bin/LICENSES/gcc-runtime-exception-3.1.txt
+
+
+The c2d knowledge compiler is NOT distributed with ProbLog. ProbLog can use it
+if you obtain it yourself from http://reasoning.cs.ucla.edu/c2d/ and make it
+available as 'cnf2dDNNF' on the search path. On macOS the wrapper script
+problog/bin/darwin/cnf2dDNNF_wine describes how to run the Windows build under
+wine.

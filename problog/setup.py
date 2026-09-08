@@ -127,7 +127,11 @@ def detect_compiler():
     else:
         raise RuntimeError("No suitable C compiler found")
 
-def build_maxsatz():
+def build_maxsatz(force=False):
+    """Compile the maxsatz solver for this platform.
+
+    :param force: compile even when a binary is already present
+    """
     if get_system() == "windows":
         return  # We include the binary
 
@@ -135,6 +139,15 @@ def build_maxsatz():
     source_dir = os.path.join(source_dir, "source", "maxsatz")
     source_file = "maxsatz2009.c"
     output_file = os.path.join(dest_dir, "maxsatz")
+
+    if not force and os.path.exists(output_file):
+        # A binary is already there, and replacing it with one built for the
+        # machine running this would be wrong when that machine is building a
+        # distribution rather than installing one. bdist_wheel runs the install
+        # command, so this is reached while a wheel is being built, where it
+        # used to overwrite the universal macOS binary with a single
+        # architecture one.
+        return
 
     compiler = detect_compiler()
     if compiler not in ["gcc", "clang"]:
@@ -147,7 +160,7 @@ def build_maxsatz():
 
 def install(force=True):
     info = gather_info()
-    build_maxsatz()
+    build_maxsatz(force=force)
     return info
 
 

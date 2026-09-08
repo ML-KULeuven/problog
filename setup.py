@@ -34,13 +34,16 @@ elif __name__ == "__main__":
             from problog import setup as problog_setup
 
             try:
-                problog_setup.install()
+                # force=False: never replace a binary that ships with the
+                # package, which this would otherwise do when building a wheel.
+                problog_setup.install(force=False)
             except Exception as err:
                 print("Optional ProbLog installation failed: %s" % err, file=sys.stderr)
             os.chdir(before_dir)
 
     package_data = {
         "problog": [
+            "bin/LICENSES/*.txt",
             "bin/darwin/cnf2dDNNF_wine",
             "bin/darwin/dsharp",
             "bin/darwin/maxsatz",
@@ -70,6 +73,7 @@ elif __name__ == "__main__":
         author="ProbLog team",
         author_email="anton.dries@cs.kuleuven.be",
         license="Apache Software License",
+        license_files=["LICENSE", "NOTICE"],
         classifiers=[
             "Development Status :: 4 - Beta",
             "License :: OSI Approved :: Apache Software License",
