@@ -60,7 +60,11 @@ jobs:
           docker run --rm -v "$PWD:/io" -w /io "${{ matrix.image }}" sh -c '
             set -eux
             export PATH=/opt/python/cp311-cp311/bin:$PATH
-            make binaries
+            # gcc miscompiles maxsatz2009.c into a binary that segfaults on
+            # every input, at -O2 and unoptimised alike.  clang builds it
+            # correctly, as it does on macOS.  dsharp stays on g++.
+            if command -v yum >/dev/null 2>&1; then yum install -y clang; else apk add --no-cache clang; fi
+            make binaries CC=clang
             python -m pip install --upgrade pip build wheel pytest pyparsing
             # Run the whole suite against the binaries this job just built,
             # before they are packaged.
