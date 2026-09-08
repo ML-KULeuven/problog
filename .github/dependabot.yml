@@ -1,0 +1,14 @@
+version: 2
+updates:
+  # dsharp is pinned as a submodule and compiled into every wheel, so an
+  # upstream change arrives as a pull request and goes through the full
+  # per-platform build and the d-DNNF acceptance test before it can be merged.
+  - package-ecosystem: "gitsubmodule"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "monthly"

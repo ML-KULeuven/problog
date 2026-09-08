@@ -1,10 +1,12 @@
 # The solver binaries are build outputs (see the top-level Makefile).  They
 # belong in the per-platform wheels only; the sdist stays pure Python, so
-# exclude them here -- package_data would otherwise pull whatever happens to
-# be present in the working tree into the sdist as well.
-exclude problog/bin/darwin/dsharp
-exclude problog/bin/darwin/maxsatz
-exclude problog/bin/linux/dsharp
-exclude problog/bin/linux/maxsatz
-exclude problog/bin/windows/dsharp.exe
-exclude problog/bin/windows/maxsatz.exe
+# exclude them here -- package_data would otherwise pull whatever happens to be
+# present in the working tree into the sdist as well.
+#
+# Keep these names spelled out.  A tempting `maxsatz*` would also match
+# maxsatz2009.c, and that source has to keep shipping: maxsatz is
+# GPL-2.0-or-later and we distribute the compiled binary.
+#
+# Expect two "no previously-included files matching ... found" warnings per
+# build: the .exe names never match off Windows, and vice versa.
+global-exclude dsharp dsharp.exe maxsatz maxsatz.exe

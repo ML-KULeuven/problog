@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools >= 61.0"]
+requires = ["setuptools >= 77.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -7,13 +7,13 @@ name = "problog"
 description = "ProbLog2: Probabilistic Logic Programming toolbox"
 readme = { file = "README.md", content-type = "text/markdown" }
 requires-python = ">=3.8"
-license = { text = "Apache Software License" }
+license = "Apache-2.0"
+license-files = ["LICENSE", "NOTICE"]
 authors = [{ name = "ProbLog team", email = "anton.dries@cs.kuleuven.be" }]
 keywords = ["prolog", "probabilistic", "logic"]
 dynamic = ["version"]
 classifiers = [
     "Development Status :: 4 - Beta",
-    "License :: OSI Approved :: Apache Software License",
     "Intended Audience :: Science/Research",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.8",
@@ -34,9 +34,6 @@ Homepage = "https://dtai.cs.kuleuven.be/problog"
 
 [project.scripts]
 problog = "problog.tasks:main"
-
-[tool.setuptools]
-license-files = ["LICENSE", "NOTICE"]
 
 [tool.setuptools.dynamic]
 version = { attr = "problog.version.version" }
