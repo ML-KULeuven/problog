@@ -15,6 +15,17 @@ problog.egg-info/
 /problog/bin/darwin/cnf2dDNNF
 /problog/bin/java/
 
+# Solver binaries are build outputs, produced by `make binaries` and by the
+# release workflow.  Only their sources are tracked: extern/dsharp for dsharp,
+# problog/bin/source/maxsatz for maxsatz (kept and shipped because maxsatz is
+# GPL-2.0-or-later and we distribute the compiled binary).
+/problog/bin/darwin/dsharp
+/problog/bin/darwin/maxsatz
+/problog/bin/linux/dsharp
+/problog/bin/linux/maxsatz
+/problog/bin/windows/dsharp.exe
+/problog/bin/windows/maxsatz.exe
+
 sandbox/
 data/
 test-reports/

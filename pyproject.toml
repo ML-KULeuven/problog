@@ -1,3 +1,65 @@
 [build-system]
 requires = ["setuptools >= 61.0"]
 build-backend = "setuptools.build_meta"
+
+[project]
+name = "problog"
+description = "ProbLog2: Probabilistic Logic Programming toolbox"
+readme = { file = "README.md", content-type = "text/markdown" }
+requires-python = ">=3.8"
+license = { text = "Apache Software License" }
+authors = [{ name = "ProbLog team", email = "anton.dries@cs.kuleuven.be" }]
+keywords = ["prolog", "probabilistic", "logic"]
+dynamic = ["version"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "License :: OSI Approved :: Apache Software License",
+    "Intended Audience :: Science/Research",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Prolog",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+dependencies = []
+
+[project.optional-dependencies]
+sdd = ["pysdd>=0.2.6"]
+
+[project.urls]
+Homepage = "https://dtai.cs.kuleuven.be/problog"
+
+[project.scripts]
+problog = "problog.tasks:main"
+
+[tool.setuptools]
+license-files = ["LICENSE", "NOTICE"]
+
+[tool.setuptools.dynamic]
+version = { attr = "problog.version.version" }
+
+[tool.setuptools.packages.find]
+include = ["problog*"]
+
+# The solver binaries are build outputs: `make binaries` (or the release
+# workflow) puts them in bin/<platform>/ before the wheel is built, and these
+# globs package whatever is present.  A build with no binaries produces a pure
+# wheel, which is what the sdist path does.  bin/source/maxsatz is shipped
+# deliberately: maxsatz is GPL-2.0-or-later and we distribute its binary.
+[tool.setuptools.package-data]
+problog = [
+    "bin/LICENSES/*.txt",
+    "bin/source/maxsatz/*.c",
+    "bin/darwin/*",
+    "bin/linux/*",
+    "bin/windows/*",
+    "web/*.py",
+    "web/*.html",
+    "web/js/*.js",
+    "library/*.pl",
+    "library/*.py",
+    "library/nlp4plp.d/*",
+]

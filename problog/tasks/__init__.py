@@ -114,7 +114,19 @@ def main(argv=None):
         if argv[0] == "install":
             from .. import setup
 
-            setup.install()
+            # Nothing is compiled at install time any more: each wheel carries
+            # the binaries for its own platform.  Kept as a diagnostic, since
+            # the case where they are absent is an sdist install on a platform
+            # we publish no wheel for.
+            print(
+                "ProbLog no longer compiles anything at install time; the "
+                "solver binaries ship with the wheel for your platform.\n"
+                "If a compiler is reported as missing below: in a source "
+                "checkout run 'make binaries'; otherwise install PySDD "
+                "(pip install problog[sdd]) or put a 'dsharp' binary on your "
+                "PATH.\n"
+            )
+            print(setup.system_info())
             return
         elif argv[0] == "info":
             from problog.core import list_transformations
