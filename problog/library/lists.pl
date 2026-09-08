@@ -39,10 +39,16 @@
     select_weighted/4
 ]).
 
-% member(X,L)
-%  X is an element from list L
-memberchk(X,[X|_]).
-memberchk(X,[Y|T]) :- X \= Y, memberchk(X,T).
+% memberchk(X,L)
+%  X unifies with an element of list L.  Succeeds at most once.
+%  A ground list is walked in Python: doing it with the clauses of
+%  memberchk_search/2 costs a tabled call per element, which dominates any
+%  program that carries a list along as a set of what it has already visited.
+memberchk(X,L) :- memberchk_ground(X,L).
+memberchk(X,L) :- ground_list(L,false), memberchk_search(X,L).
+
+memberchk_search(X,[X|_]).
+memberchk_search(X,[Y|T]) :- X \= Y, memberchk_search(X,T).
 
 
 % member(X,L)
