@@ -51,7 +51,7 @@ jobs:
             image: quay.io/pypa/musllinux_1_2_aarch64
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           submodules: recursive
 
@@ -71,7 +71,7 @@ jobs:
           '
           sudo chown -R "$(id -u):$(id -g)" .
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: '3.11'
 
@@ -82,7 +82,7 @@ jobs:
                  --platform-tag ${{ matrix.plat }} --remove dist/*.whl
           ls -l dist
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: wheel-${{ matrix.plat }}
           path: dist/*.whl
@@ -109,11 +109,11 @@ jobs:
             tests: problog/test -k "ddnnf or dsharp or mpe or maxsat"
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           submodules: recursive
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: '3.11'
 
@@ -170,7 +170,7 @@ jobs:
                  --platform-tag ${{ matrix.plat }} --remove dist/*.whl
           ls -l dist
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: wheel-${{ matrix.plat }}
           path: dist/*.whl
@@ -179,8 +179,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       # No submodule: the sdist is pure Python and carries no binaries.
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: '3.11'
       - run: python -m pip install --upgrade pip build
@@ -193,7 +193,7 @@ jobs:
             echo "::error::sdist contains solver binaries; it must stay pure"
             exit 1
           fi
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: sdist
           path: dist/*.tar.gz
@@ -203,13 +203,13 @@ jobs:
     if: github.event_name == 'release'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           path: dist
           merge-multiple: true
       - run: ls -l dist
       - name: Publish package
-        uses: pypa/gh-action-pypi-publish@27b31702a0e7fc50959f5ad993c78deac1bdfc29
+        uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33  # v1.14.2
         with:
           user: __token__
           password: ${{ secrets.PYPI_API_TOKEN }}
