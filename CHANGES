@@ -62,6 +62,10 @@ Intermediate bugfixes and speed improvements are not listed.
         - MaxSAT solvers that are not installed are reported as unavailable,
           rather than failing inside the call to the solver.
         - 'problog mpe --solver scip' no longer fails with a TypeError.
+        - 'problog explain --web' produces JSON again. It serialised a
+          dictionary keyed by Term, which json rejects, so it failed before
+          writing anything. The task also reports a k-best result that is a
+          pair of bounds rather than an exact value, instead of failing on it.
 
     macOS:
         - dsharp is now a universal binary and runs on Apple Silicon.

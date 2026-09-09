@@ -1,7 +1,11 @@
+import json
 import os
+import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
+from problog.kbest import KBestEvaluator
 from problog.logic import Constant, Term, Not
 from problog.tasks import map, explain, time1, bayesnet, mpe, ground, probability
 from problog.tasks import exit_code, run_task
@@ -88,6 +92,59 @@ class TestTasks(unittest.TestCase):
         # Test result
         results = result["results"]
         self.assertAlmostEqual(0.8, results[Term("someHeads")], delta=1e6)
+
+    def test_explain_accepts_bounds_from_kbest(self):
+        """KBestEvaluator answers with a (lower, upper) pair rather than a
+        float whenever its search converges on bounds instead of reaching an
+        exact value. The domain check compared that pair against 0.0 and 1.0
+        and died with a TypeError, so whether 'problog explain' worked came
+        down to how the k-best search happened to terminate."""
+        file_name = test_folder / "tasks" / "some_heads.pl"
+        with patch.object(KBestEvaluator, "evaluate", return_value=(0.75, 0.85)):
+            result = explain.main([str(file_name)])
+
+        self.assertTrue(result["SUCCESS"])
+        self.assertEqual((0.75, 0.85), result["results"][Term("someHeads")])
+
+    def test_explain_rejects_bounds_outside_the_domain(self):
+        """A bound above one still has to be caught: the check is there to
+        report a knowledge compiler that returned the wrong formula."""
+        file_name = test_folder / "tasks" / "some_heads.pl"
+        with patch.object(KBestEvaluator, "evaluate", return_value=(0.75, 1.5)):
+            result = explain.main([str(file_name)])
+
+        self.assertFalse(result["SUCCESS"])
+
+    def _explain_web_json(self, file_name):
+        """Run the explain task with --web and parse what it wrote."""
+        handle, path = tempfile.mkstemp(suffix=".json")
+        os.close(handle)
+        try:
+            explain.main([str(file_name), "--web", "-o", path])
+            with open(path) as out:
+                return json.load(out)
+        finally:
+            os.unlink(path)
+
+    def test_explain_web_output_is_json(self):
+        """--web serialised a dictionary keyed by Term, which json refuses
+        with "keys must be str", so it never produced any output at all."""
+        payload = self._explain_web_json(test_folder / "tasks" / "some_heads.pl")
+
+        self.assertTrue(payload["SUCCESS"])
+        self.assertAlmostEqual(0.8, payload["results"]["someHeads"], places=6)
+        self.assertEqual([["someHeads", 0.8]], payload["probabilities"])
+
+    def test_explain_web_output_with_bounds(self):
+        """A pair reaches the web output as a two element list; rounding it
+        as if it were a float raised a TypeError."""
+        file_name = test_folder / "tasks" / "some_heads.pl"
+        with patch.object(KBestEvaluator, "evaluate", return_value=(0.75, 0.85)):
+            payload = self._explain_web_json(file_name)
+
+        self.assertTrue(payload["SUCCESS"])
+        self.assertEqual([0.75, 0.85], payload["results"]["someHeads"])
+        self.assertEqual([["someHeads", [0.75, 0.85]]], payload["probabilities"])
 
     def check_probability(self, expected, result):
         self.assertTrue(result[0])
