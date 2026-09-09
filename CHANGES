@@ -56,6 +56,13 @@ Intermediate bugfixes and speed improvements are not listed.
         - maxsatz read a fixed 1024 bytes out of its filename argument, which
           crashed it on every input in environments where nothing mapped
           followed argv. The mpe task could fail for this reason alone.
+        - maxsatz did not terminate the 'p wcnf' header it copied out of the
+          input file, so the sscanf reading it ran into uninitialised stack.
+          When that began with a digit the hard clause weight came out ten
+          times too large, hard clauses became soft, and the solver returned a
+          model that broke one. The same input then answered differently from
+          one run to the next. 'problog explain' hit this about once in thirty
+          runs and reported a probability of 1.4; mpe uses the same solver.
         - problog_export_raw swapped its arguments from arity two upwards: a
           bound argument was never checked against the answer and was silently
           replaced by it.
