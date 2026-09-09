@@ -37,6 +37,34 @@ from .formula import LogicDAG
 from .util import Timer, subprocess_check_call
 
 
+class MissingCompilerError(CompilationError):
+    """A knowledge compiler binary is not available on this system."""
+
+    def __init__(self, name):
+        msg = "the knowledge compiler '%s' was not found" % name
+        root = os.path.abspath(
+            os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
+        )
+        if os.path.exists(os.path.join(root, "Makefile")) and os.path.isdir(
+            os.path.join(root, "extern")
+        ):
+            # A source checkout: the binaries are build outputs, not tracked.
+            msg += (
+                "\nThis is a source checkout, where the solver binaries are built "
+                "rather than committed. Run:\n"
+                "    git submodule update --init --recursive\n"
+                "    make binaries"
+            )
+        else:
+            msg += (
+                "\nNo binary ships for this platform. Either install PySDD and use "
+                "a different compiler:\n"
+                "    pip install problog[sdd]   # then run with -k sdd\n"
+                "or put a '%s' binary on your PATH" % name
+            )
+        CompilationError.__init__(self, msg)
+
+
 class DSharpError(CompilationError):
     """DSharp has crashed."""
 
@@ -305,6 +333,10 @@ def _compile_with_dsharp(cnf, nnf=None, smooth=True, **kwdargs):
 
         try:
             result = _compile(cnf, cmd, cnf_file, nnf_file)
+        except FileNotFoundError:
+            # The binary is absent rather than broken; say what to do about it
+            # instead of surfacing a bare FileNotFoundError.
+            raise MissingCompilerError("dsharp")
         except subprocess.CalledProcessError as e:
             raise DSharpError(e)
 

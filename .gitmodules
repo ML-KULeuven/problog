@@ -1,0 +1,4 @@
+[submodule "extern/dsharp"]
+	path = extern/dsharp
+	url = https://github.com/rmanhaeve/dsharp.git
+	branch = fix/ddnnf-decomposability-conflict-clause-implications

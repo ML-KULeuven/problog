@@ -1,6 +1,16 @@
 import unittest
 
-from problog.logic import And, AnnotatedDisjunction, Or, Clause, Not, Term, Var
+from problog.logic import (
+    And,
+    AnnotatedDisjunction,
+    Constant,
+    Or,
+    Clause,
+    Not,
+    Term,
+    Var,
+    list2term,
+)
 
 
 class TestLogic(unittest.TestCase):
@@ -149,3 +159,42 @@ class TestLogic(unittest.TestCase):
         self.assertTrue(c4 == c5)
         self.assertFalse(c4 == c6)
         self.assertFalse(c4 == c7)
+
+    def test_hash_matches_equality(self):
+        equal_terms = [
+            (Not("\\+", Term("a")), Not("not", Term("a"))),
+            (And(Term("a"), Term("b")), Term("a") & Term("b")),
+            (Term("a") & Term("b") & Term("c"), Term.from_string("a,b,c.")),
+            (Term.from_string("a:-b."), Clause(Term("a"), Term("b"))),
+            (
+                AnnotatedDisjunction([Term("a"), Term("b")], Term("c")),
+                AnnotatedDisjunction([Term("a"), Term("b")], Term("c")),
+            ),
+            (Term("p", Var("X")), Term("p", Var("X"))),
+            (
+                list2term([Constant(i) for i in range(50)]),
+                list2term([Constant(i) for i in range(50)]),
+            ),
+        ]
+        for t1, t2 in equal_terms:
+            self.assertEqual(t1, t2)
+            msg = "%s and %s are equal but hash differently" % (t1, t2)
+            self.assertEqual(hash(t1), hash(t2), msg)
+
+    def test_hash_uses_whole_term(self):
+        # Hashing only a prefix of a term made every longer term sharing that
+        # prefix collide, which degrades the goal tables of the engine into
+        # linear scans over Term.__eq__ (issue #78).
+        lists = [list2term([Constant(0)] * 20 + [Constant(i)]) for i in range(100)]
+        self.assertEqual(len(lists), len(set(map(hash, lists))))
+
+        args = [Term("f", *([Constant(0)] * 20 + [Constant(i)])) for i in range(100)]
+        self.assertEqual(len(args), len(set(map(hash, args))))
+
+    def test_hash_deep_term(self):
+        # Hashing may not recurse: these are deeper than the recursion limit.
+        deep_list = list2term([Constant(i) for i in range(50000)])
+        nested = Constant(0)
+        for i in range(50000):
+            nested = Term("f", nested)
+        self.assertNotEqual(hash(deep_list), hash(nested))

@@ -462,10 +462,14 @@ class TestSolverAvailability(unittest.TestCase):
 
     def test_sat4j_reports_the_missing_jar(self):
         import os
+        import shutil
         from problog.maxsat import Sat4jSolver
 
         solver = Sat4jSolver()
-        if not os.path.exists(solver.jar):
+        if shutil.which("java") is None:
+            # A missing java is reported first, and is the more useful message.
+            self.assertIn("java", solver.unavailable_reason())
+        elif not os.path.exists(solver.jar):
             self.assertIn(solver.jar, solver.unavailable_reason())
 
 

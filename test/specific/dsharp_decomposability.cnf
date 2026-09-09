@@ -1,0 +1,33 @@
+c ProbLog issue #113 / dsharp: a d-DNNF that is logically correct but not
+c decomposable.  An AND node ends up with children that share variables 3, 4
+c and 6, because a conflict clause implied literal 3 -- which belongs to a
+c SIBLING component -- inside this branch, and ordinary propagation then
+c carried 4 and -6 along with it.  dsharp reports 798 solutions while its own
+c .nnf has 854 models.  Reduced from the model in ML-KULeuven/problog#113.
+p cnf 20 26
+-5 -1 0
+-3 4 0
+-6 -3 0
+-7 3 0
+-9 8 0
+-10 5 7 9 0
+11 -2 -10 0
+-11 10 0
+14 -13 -3 0
+-14 13 0
+-14 3 0
+-15 -1 14 0
+8 -9 -3 0
+-8 3 0
+4 2 0
+1 11 12 -4 0
+-13 -10 0
+-16 10 0
+-17 -2 0
+-17 15 0
+-18 16 17 0
+18 -16 0
+-12 -18 0
+-19 18 0
+-12 -1 0
+20 18 0

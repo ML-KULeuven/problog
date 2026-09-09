@@ -1,40 +1,215 @@
-# This workflow will upload a Python Package using Twine when a release is created
-# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-python#publishing-to-package-registries
+# Build one wheel per platform and publish on release.
+#
+# ProbLog has no extension modules, so the wheels are Python-version invariant:
+# py3-none-<platform>.  What differs per platform is the solver binaries, which
+# are compiled by `make binaries` in each job before the wheel is built.
+#
+# The wheel and the sdist are built by separate jobs on purpose.  A plain
+# `python -m build` would build the sdist first and then the wheel from that
+# sdist, and the wheel would inherit MANIFEST.in's exclusions and ship with no
+# binaries at all.
 
-# This workflow uses actions that are not certified by GitHub.
-# They are provided by a third-party and are governed by
-# separate terms of service, privacy policy, and support
-# documentation.
-
-name: Upload Python Package
+name: Build wheels and publish
 
 on:
-  workflow_dispatch:
+  push:
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
   release:
     types: [published]
+  workflow_dispatch:
 
 permissions:
   contents: read
 
 jobs:
-  deploy:
-
-    runs-on: ubuntu-latest
+  # Linux wheels are built by driving docker from the host rather than using a
+  # job container.  The runner's Node is glibc-linked, so actions/checkout
+  # cannot start inside a musllinux (Alpine) image at all, and cannot start
+  # inside manylinux2014 either.  Running the JS actions on the host and the
+  # build in the container sidesteps both, and lets any image be used -- it is
+  # also what cibuildwheel does internally.
+  linux-wheels:
+    name: wheel ${{ matrix.plat }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            plat: manylinux_2_28_x86_64
+            image: quay.io/pypa/manylinux_2_28_x86_64
+          - os: ubuntu-24.04-arm
+            plat: manylinux_2_28_aarch64
+            image: quay.io/pypa/manylinux_2_28_aarch64
+          - os: ubuntu-latest
+            plat: musllinux_1_2_x86_64
+            image: quay.io/pypa/musllinux_1_2_x86_64
+          - os: ubuntu-24.04-arm
+            plat: musllinux_1_2_aarch64
+            image: quay.io/pypa/musllinux_1_2_aarch64
 
     steps:
-    - uses: actions/checkout@v4
-    - name: Set up Python
-      uses: actions/setup-python@v3
-      with:
-        python-version: '3.x'
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install build
-    - name: Build package
-      run: python -m build
-    - name: Publish package
-      uses: pypa/gh-action-pypi-publish@27b31702a0e7fc50959f5ad993c78deac1bdfc29
-      with:
-        user: __token__
-        password: ${{ secrets.PYPI_API_TOKEN }}
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Build the binaries and the wheel in ${{ matrix.image }}
+        run: |
+          docker run --rm -v "$PWD:/io" -w /io "${{ matrix.image }}" sh -c '
+            set -eux
+            export PATH=/opt/python/cp311-cp311/bin:$PATH
+            make binaries
+            python -m pip install --upgrade pip build wheel pytest pyparsing
+            # Run the whole suite against the binaries this job just built,
+            # before they are packaged.
+            python -m pytest problog/test -q
+            # Each wheel carries its own platform and nothing else.
+            rm -rf problog/bin/darwin problog/bin/windows
+            python -m build --wheel
+          '
+          sudo chown -R "$(id -u):$(id -g)" .
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Tag it for this platform
+        run: |
+          python -m pip install --upgrade wheel
+          python -m wheel tags --python-tag py3 --abi-tag none \
+                 --platform-tag ${{ matrix.plat }} --remove dist/*.whl
+          ls -l dist
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wheel-${{ matrix.plat }}
+          path: dist/*.whl
+
+  wheels:
+    name: wheel ${{ matrix.plat }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-14
+            plat: macosx_11_0_universal2
+            bindir: darwin
+            tests: problog/test
+          # The full suite does not pass on Windows yet: ProbLog's engine
+          # recurses deeper than the default 1 MB thread stack allows, so the
+          # interpreter dies rather than raising RecursionError.  That predates
+          # this branch -- the suite had never been run on Windows.  Until it
+          # is fixed, cover the tests that exercise the binaries we ship.
+          - os: windows-latest
+            plat: win_amd64
+            bindir: windows
+            tests: problog/test -k "ddnnf or dsharp or mpe or maxsat"
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      # dsharp only builds under mingw on Windows.
+      - uses: msys2/setup-msys2@v2
+        if: runner.os == 'Windows'
+        with:
+          msystem: MINGW64
+          update: true
+          install: >-
+            base-devel
+            make
+            mingw-w64-x86_64-toolchain
+
+      - name: Build the solver binaries
+        if: runner.os != 'Windows'
+        run: make binaries
+
+      - name: Build the solver binaries (msys2)
+        if: runner.os == 'Windows'
+        shell: msys2 {0}
+        run: make binaries
+
+      - name: Install build dependencies
+        shell: bash
+        run: python -m pip install --upgrade pip build wheel pytest pyparsing
+
+      # Run the whole suite against the binaries this job just built, before
+      # they are packaged.  Among other things this is what catches a knowledge
+      # compiler that runs but produces a formula that is not a d-DNNF -- see
+      # ML-KULeuven/problog#113.
+      - name: Test the built binaries
+        shell: bash
+        run: python -m pytest ${{ matrix.tests }} -q
+
+      # Defence in depth: keep each wheel to its own platform regardless of
+      # what else ends up under bin/.
+      - name: Keep only this platform's binaries
+        shell: bash
+        run: |
+          for d in darwin linux windows; do
+            [ "$d" = "${{ matrix.bindir }}" ] || rm -rf "problog/bin/$d"
+          done
+          find problog/bin -type f | sort
+
+      - name: Build the wheel
+        shell: bash
+        run: python -m build --wheel
+
+      - name: Tag it for this platform
+        shell: bash
+        run: |
+          python -m wheel tags --python-tag py3 --abi-tag none \
+                 --platform-tag ${{ matrix.plat }} --remove dist/*.whl
+          ls -l dist
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wheel-${{ matrix.plat }}
+          path: dist/*.whl
+
+  sdist:
+    runs-on: ubuntu-latest
+    steps:
+      # No submodule: the sdist is pure Python and carries no binaries.
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m pip install --upgrade pip build
+      - run: python -m build --sdist
+      - name: Check the sdist carries no binaries
+        run: |
+          if tar -tzf dist/*.tar.gz \
+               | grep -vE '/bin/source/' \
+               | grep -E '/(dsharp|maxsatz)(\.exe)?$'; then
+            echo "::error::sdist contains solver binaries; it must stay pure"
+            exit 1
+          fi
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sdist
+          path: dist/*.tar.gz
+
+  publish:
+    needs: [linux-wheels, wheels, sdist]
+    if: github.event_name == 'release'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      - run: ls -l dist
+      - name: Publish package
+        uses: pypa/gh-action-pypi-publish@27b31702a0e7fc50959f5ad993c78deac1bdfc29
+        with:
+          user: __token__
+          password: ${{ secrets.PYPI_API_TOKEN }}
