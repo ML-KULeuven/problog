@@ -131,7 +131,19 @@ else
   endif
   ARCHES :=
   CC := gcc
-  DSHARP_FLAGS :=
+  # Link the C++ and GCC runtimes into dsharp instead of depending on them.
+  # Neither is present on the machines we ship to: a stock Alpine has no
+  # libstdc++.so.6 (it is a separate apk, which the musllinux build image
+  # happens to have), and a Windows machine has no libstdc++-6.dll or
+  # libgcc_s_seh-1.dll unless mingw is installed.  Both build images do, which
+  # is why the wheel jobs pass and the wheels then fail on a user's machine.
+  # 2.2.10 solved the Windows half by shipping the two DLLs next to dsharp.exe;
+  # one link flag covers both platforms and leaves nothing to install.
+  # It costs size -- dsharp goes from roughly 214 KB to 2 MB.  The GCC Runtime
+  # Library Exception permits distributing the result, and its text is already
+  # in problog/bin/LICENSES/.
+  # macOS needs none of this: libc++ is part of the OS.
+  DSHARP_FLAGS := LFLAGS="-static-libstdc++ -static-libgcc"
 endif
 
 BINDIR      := problog/bin/$(PLAT)
