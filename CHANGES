@@ -1,9 +1,32 @@
 This change log only contains significant changes and/or new features.
 Intermediate bugfixes and speed improvements are not listed.
 
-2026/09/07
+2026/09/09
 
-    ProbLog 2.2.11 released.
+    ProbLog 2.3.0 released.
+
+    This release also carries the changes prepared as 2.2.11, which was never
+    published; 2.2.10 is the previous release on PyPI.
+
+    Packaging:
+        - ProbLog now ships one wheel per platform instead of a single
+          py3-none-any wheel: macOS 11+ (universal2), manylinux_2_28 and
+          musllinux_1_2 (x86_64 and aarch64), and Windows x86_64. Each wheel
+          carries only the solver binaries for its own platform.
+        - The solver binaries are build outputs, compiled in CI from source,
+          and are no longer committed to the repository.
+        - dsharp carries the C++ and GCC runtimes with it, so it needs nothing
+          installed alongside it. 2.2.10 shipped libstdc++-6.dll and
+          libgcc_s_dw2-1.dll next to dsharp.exe for this reason on Windows;
+          those files are gone and are no longer needed. It also means the
+          binary works on a stock Alpine, which has no libstdc++ package
+          installed.
+        - The source distribution is pure Python and contains no solver
+          binaries. Installing from source on a platform without a wheel gives
+          a ProbLog that needs dsharp and maxsatz to be put on PATH by hand.
+        - c2d is no longer distributed. Its license did not permit it.
+        - The license texts of the distributed binaries are included, under
+          problog/bin/LICENSES/.
 
     Changed behaviour:
         - Every task now exits with code 0 on success and non-zero on failure.
@@ -19,14 +42,30 @@ Intermediate bugfixes and speed improvements are not listed.
           they stand for, so the output of 'problog ground' differs for models
           that use negation. The programs are equivalent.
 
-    macOS:
-        - dsharp is now a universal binary and runs on Apple Silicon.
-        - A maxsatz binary is included, which the mpe task needs.
+    Grounding performance:
+        - Terms are hashed in full. Term.__hash__ stopped after ten list
+          elements or arguments, so programs that thread a list through a
+          recursion -- the usual way to write a terminating transitive closure
+          -- filled a single hash bucket and turned every goal table lookup
+          into a linear scan. Grounding one such program went from 1128s to
+          71s.
+        - memberchk/2 walks a ground list in Python instead of resolving one
+          tabled call per element.
 
-    Other:
+    Fixes:
+        - maxsatz read a fixed 1024 bytes out of its filename argument, which
+          crashed it on every input in environments where nothing mapped
+          followed argv. The mpe task could fail for this reason alone.
+        - problog_export_raw swapped its arguments from arity two upwards: a
+          bound argument was never checked against the answer and was silently
+          replaced by it.
         - MaxSAT solvers that are not installed are reported as unavailable,
           rather than failing inside the call to the solver.
         - 'problog mpe --solver scip' no longer fails with a TypeError.
+
+    macOS:
+        - dsharp is now a universal binary and runs on Apple Silicon.
+        - A maxsatz binary is included, which the mpe task needs.
 
 2021/07/19
 
