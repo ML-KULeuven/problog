@@ -51,7 +51,7 @@ jobs:
             image: quay.io/pypa/musllinux_1_2_aarch64
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           submodules: recursive
 
@@ -109,7 +109,7 @@ jobs:
             tests: problog/test -k "ddnnf or dsharp or mpe or maxsat"
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           submodules: recursive
 
@@ -179,7 +179,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       # No submodule: the sdist is pure Python and carries no binaries.
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
