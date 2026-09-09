@@ -232,9 +232,13 @@ class problog_export_raw(problog_export):
                 # result is always a list of tuples
                 try:
                     transformed = []
+                    n = len(self.input_arguments)
                     for i, r in enumerate(result):
                         r = self._convert_output(r, self.input_arguments[i])
-                        if bound & (1 << i):
+                        # _extract_callmode puts the bit of argument i at
+                        # n - i - 1, so indexing it with i swaps the arguments
+                        # around and unifies the wrong ones.
+                        if bound & (1 << (n - i - 1)):
                             r = unify_value(r, args[i], {})
                         transformed.append(r)
                     from .engine_stack import Context, get_state

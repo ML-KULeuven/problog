@@ -761,45 +761,46 @@ class Term(object):
 
     def __hash__(self):
         if self.__hash is None:
-            # CG
-            list_hash = [self.__functor, self.__arity, self._list_length()]
-
-            def get_arg_len(a):
-                if isinstance(a, list):
-                    return len(a)
-                elif isinstance(a, Term):
-                    return a._list_length()
+            # The hash has to look at the whole term.  Truncating it (e.g. after a
+            # fixed number of list elements) makes every longer term that shares a
+            # prefix collide, which degrades the goal tables of the engine into
+            # linear scans over __eq__.  Hashing a deep term recursively overflows
+            # the Python stack, so the subterm hashes are filled in bottom-up with
+            # an explicit stack.  They are cached per term, so a term built on top
+            # of already hashed subterms still only costs O(arity).
+            todo = [(self, False)]
+            while todo:
+                term, expanded = todo.pop()
+                if term.__hash is not None:
+                    continue
+                elif expanded:
+                    term.__hash = term._compute_hash()
                 else:
-                    return 1
-
-            def add_to_hash(a):
-                if isinstance(a, list):
-                    list_hash.extend(a)
-                else:
-                    list_hash.append(a)
-
-            # We only consider restricted number of args, because arbitrary numbers lead to RecursionError
-            if self.__args is not None and len(self.__args) > 0:
-                cut_off_len = 10
-
-                # include first arg
-                total_list_len = get_arg_len(self.__args[0])
-                add_to_hash(self.__args[0])
-
-                # include more args?
-                if cut_off_len > total_list_len:
-                    for arg in self.__args[1:10]:  # Only consider first 10 args (bit arbitrary)
-                        arg_length = get_arg_len(arg)
-                        if total_list_len + arg_length <= cut_off_len:
-                            total_list_len += arg_length
-                            add_to_hash(arg)
-                        else:
-                            break
-
-            self.__hash = hash(tuple(list_hash))
-
-            # self.__hash = hash((self.__functor, self.__arity, firstarg, self._list_length()))
+                    todo.append((term, True))
+                    todo.extend((a, False) for a in term._hash_subterms())
         return self.__hash
+
+    def _hash_subterms(self):
+        """The subterms whose hash is needed to hash this term.
+
+        Arity zero terms are skipped: they have nothing nested and some of them
+        (:class:`Constant`, :class:`Var`, :class:`Object`) hash themselves.
+        """
+        for arg in self.__args:
+            # An argument can be a list of terms, e.g. the heads of an
+            # AnnotatedDisjunction.
+            args = arg if type(arg) == list else (arg,)
+            for a in args:
+                if isinstance(a, Term) and a.__arity and a.__hash is None:
+                    yield a
+
+    def _compute_hash(self):
+        # \+x and not(x) are equal (see __eq__) so they may not differ here.
+        functor = "\\+" if isinstance(self, Not) else self.__functor
+        key = [functor, self.__arity]
+        for arg in self.__args:
+            key.append(tuple(arg) if type(arg) == list else arg)
+        return hash(tuple(key))
 
     def __lshift__(self, body):
         return Clause(self, body)
