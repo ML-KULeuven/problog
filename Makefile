@@ -125,9 +125,15 @@ else
   ifneq (,$(filter MINGW% MSYS%,$(UNAME_S)))
     PLAT := windows
     EXE  := .exe
+    # Everything, not just the two above: msys2's gcc uses posix threads, so
+    # its libstdc++ also pulls in libwinpthread-1.dll, and that one is no more
+    # present on a Windows machine than the others.  -static leaves an exe that
+    # imports KERNEL32.dll and msvcrt.dll only.
+    DSHARP_LDFLAGS := -static
   else
     PLAT := linux
     EXE  :=
+    DSHARP_LDFLAGS := -static-libstdc++ -static-libgcc
   endif
   ARCHES :=
   CC := gcc
@@ -138,12 +144,12 @@ else
   # libgcc_s_seh-1.dll unless mingw is installed.  Both build images do, which
   # is why the wheel jobs pass and the wheels then fail on a user's machine.
   # 2.2.10 solved the Windows half by shipping the two DLLs next to dsharp.exe;
-  # one link flag covers both platforms and leaves nothing to install.
+  # linking them in covers both platforms and leaves nothing to install.
   # It costs size -- dsharp goes from roughly 214 KB to 2 MB.  The GCC Runtime
   # Library Exception permits distributing the result, and its text is already
   # in problog/bin/LICENSES/.
   # macOS needs none of this: libc++ is part of the OS.
-  DSHARP_FLAGS := LFLAGS="-static-libstdc++ -static-libgcc"
+  DSHARP_FLAGS := LFLAGS="$(DSHARP_LDFLAGS)"
 endif
 
 BINDIR      := problog/bin/$(PLAT)

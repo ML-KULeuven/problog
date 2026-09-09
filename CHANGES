@@ -16,9 +16,11 @@ Intermediate bugfixes and speed improvements are not listed.
         - The solver binaries are build outputs, compiled in CI from source,
           and are no longer committed to the repository.
         - dsharp carries the C++ and GCC runtimes with it, so it needs nothing
-          installed alongside it. Earlier releases shipped libstdc++-6.dll and
-          libgcc_s_seh-1.dll next to dsharp.exe for this reason on Windows;
-          those files are gone and are no longer needed.
+          installed alongside it. 2.2.10 shipped libstdc++-6.dll and
+          libgcc_s_dw2-1.dll next to dsharp.exe for this reason on Windows;
+          those files are gone and are no longer needed. It also means the
+          binary works on a stock Alpine, which has no libstdc++ package
+          installed.
         - The source distribution is pure Python and contains no solver
           binaries. Installing from source on a platform without a wheel gives
           a ProbLog that needs dsharp and maxsatz to be put on PATH by hand.
