@@ -462,8 +462,15 @@ class Evaluatable(ProbLogObject):
         the program it was given produces results that are silently wrong,
         such as a probability above one. Semirings that do not constrain their
         results are unaffected.
+
+        Not every evaluator answers with a single value: KBestEvaluator
+        returns a (lower, upper) pair whenever its search converges on bounds
+        instead of reaching an exact value, and each bound is a result of the
+        semiring in its own right. Check them one by one, so that a pair does
+        not reach result_in_domain() and fail its comparison with a TypeError.
         """
-        if not semiring.result_in_domain(value):
+        values = value if isinstance(value, tuple) else (value,)
+        if not all(semiring.result_in_domain(v) for v in values):
             raise CompilationError(
                 "Evaluating '%s' produced %s, which is not a valid result for "
                 "this semiring. The knowledge compiler most likely returned a "

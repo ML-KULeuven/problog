@@ -30,6 +30,18 @@ from ..program import PrologFile
 from ..util import init_logger, format_dictionary
 
 
+def _round_probability(value):
+    """Round a result of the explain task for JSON output.
+
+    KBestFormula answers with a (lower, upper) pair whenever its search
+    converges on bounds rather than reaching an exact value, so a result is
+    not always a float. A pair becomes a two element list.
+    """
+    if isinstance(value, tuple):
+        return [round(v, 8) for v in value]
+    return round(value, 8)
+
+
 def main(argv):
     parser = argparse.ArgumentParser()
     parser.add_argument("filename")
@@ -60,10 +72,17 @@ def main(argv):
         result["proofs"] = explanation
         result["results"] = results
         if args.web:
-            result["probabilities"] = [
-                (str(k), round(v, 8)) for k, v in results.items()
+            # json cannot serialise `results` as it stands: it is keyed by
+            # Term, which raises "keys must be str". Serialise a copy and
+            # leave `result` alone for callers that use main()'s return value.
+            web_result = dict(result)
+            web_result["results"] = {
+                str(k): _round_probability(v) for k, v in results.items()
+            }
+            web_result["probabilities"] = [
+                (str(k), _round_probability(v)) for k, v in results.items()
             ]
-            print(json.dumps(result), file=out)
+            print(json.dumps(web_result), file=out)
         else:
             print("Transformed program", file=out)
             print("-------------------", file=out)
