@@ -15,11 +15,17 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 """
+import os
 import random
+import subprocess
+import sys
+import textwrap
 import unittest
 
+import problog
 from problog.debug import EngineTracer
 from problog.engine import DefaultEngine
+from problog.engine_builtin import IndirectCallCycleError
 from problog.logic import Term, Constant
 from problog.program import PrologString
 
@@ -227,6 +233,107 @@ class TestEngineCycles(unittest.TestCase):
             self.assertCollectionEqual(
                 self.edges, edges, msg="Test failed for random seed %s" % seed
             )
+
+
+class TestSubcallDepth(unittest.TestCase):
+    """findall/3 grounds its goal by calling the engine again, so a cycle
+    through it nests without end.  The engine has to stop that itself: nesting
+    is Python recursion, and letting it run until the interpreter is out of
+    stack kills the process outright on the smaller stacks -- see
+    ML-KULeuven/problog#151.
+    """
+
+    #: What a thread gets on Windows, the smallest stack we expect.
+    small_stack = 1024 * 1024
+
+    program = """
+        a(1).
+        a(2).
+        a(L) :- findall(X, a(X), L).
+        query(a(L)).
+    """
+
+    def test_cycle_over_findall_is_reported(self):
+        engine = DefaultEngine()
+        db = engine.prepare(PrologString(self.program))
+        self.assertRaises(IndirectCallCycleError, engine.ground_all, db)
+
+    def test_cycle_over_findall_fits_a_small_stack(self):
+        """The bound has to fire well before the stack runs out.
+
+        Grounding happens in a subprocess because a regression here is a dead
+        interpreter, which should fail this one test rather than take the whole
+        suite down with it.
+        """
+        script = textwrap.dedent(
+            """
+            import sys
+            import threading
+
+            from problog.engine import DefaultEngine
+            from problog.engine_builtin import IndirectCallCycleError
+            from problog.program import PrologString
+
+            outcome = []
+
+            def ground():
+                engine = DefaultEngine()
+                db = engine.prepare(PrologString(%r))
+                try:
+                    engine.ground_all(db)
+                    outcome.append("no cycle reported")
+                except IndirectCallCycleError:
+                    outcome.append(None)
+                except BaseException as err:
+                    outcome.append(repr(err))
+
+            threading.stack_size(%d)
+            thread = threading.Thread(target=ground)
+            thread.start()
+            thread.join()
+            if outcome != [None]:
+                sys.exit("".join(str(o) for o in outcome))
+            """
+        ) % (self.program, self.small_stack)
+
+        root = os.path.dirname(os.path.dirname(os.path.abspath(problog.__file__)))
+        env = dict(os.environ)
+        env["PYTHONPATH"] = os.pathsep.join(
+            [root] + ([env["PYTHONPATH"]] if "PYTHONPATH" in env else [])
+        )
+        done = subprocess.run(
+            [sys.executable, "-c", script],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            env=env,
+        )
+        self.assertEqual(
+            0,
+            done.returncode,
+            "grounding a findall/3 cycle on a %d byte stack: %s"
+            % (self.small_stack, done.stderr.decode("utf-8", "replace").strip()),
+        )
+
+    def test_subcall_depth_is_configurable(self):
+        engine = DefaultEngine(max_subcall_depth=4)
+        self.assertEqual(4, engine.max_subcall_depth)
+        db = engine.prepare(PrologString(self.program))
+        self.assertRaises(IndirectCallCycleError, engine.ground_all, db)
+
+    def test_subcall_depth_is_restored(self):
+        """The counter has to come back down, cycle or no cycle."""
+        engine = DefaultEngine()
+        db = engine.prepare(
+            PrologString("a(1).\nb(L) :- findall(X, a(X), L).\nquery(b(L)).")
+        )
+        engine.ground_all(db)
+        self.assertEqual(0, engine.subcall_depth)
+
+        engine = DefaultEngine()
+        db = engine.prepare(PrologString(self.program))
+        self.assertRaises(IndirectCallCycleError, engine.ground_all, db)
+        self.assertEqual(0, engine.subcall_depth)
+
 
 def test_profile_equal_timing():
     tracer = EngineTracer()

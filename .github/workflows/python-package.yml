@@ -29,10 +29,13 @@ jobs:
         python-version: ${{ matrix.python-version }}
     - name: Build the solver binaries
       run: make binaries
+    # pysdd is what the sdd, sddx and fsdd evaluatables compile with.  It is an
+    # optional dependency, and without it those three drop out of the suite
+    # without a word: 1606 of the 2089 subtests never ran here before.
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        python -m pip install pytest
+        python -m pip install pytest pysdd
         if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
     - name: Test with pytest
       run: |
