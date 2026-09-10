@@ -539,11 +539,19 @@ int build_simple_sat_instance(char *input_file) {
     fscanf(fp_in, "%c", &ch);
   }
   i = 0;
-  while (ch != '\n') {
+  /* Leave room for the terminator, and write it: sscanf() below reads until
+     one, and pLine is an uninitialised stack buffer.  Without this it runs off
+     the end of the copied header into whatever the stack happens to hold, and
+     when that starts with a digit the %lli picks the digits up and
+     HARD_WEIGHT comes out larger than the file asked for.  Clauses meant to be
+     hard are then soft, and the solver is free to violate them -- the same
+     input decides differently from one run to the next. */
+  while (ch != '\n' && i < WORD_LENGTH - 1) {
     pLine[i] = ch;
     i++;
     fscanf(fp_in, "%c", &ch);
   }
+  pLine[i] = '\0';
   sscanf(pLine, "p %s %d %d %lli", 
 	 word2, &NB_VAR, &NB_CLAUSE, &HARD_WEIGHT);
   printf("c Instance info: p %s %d %d %lli\n", 
