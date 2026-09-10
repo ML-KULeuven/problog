@@ -61,7 +61,7 @@ jobs:
             set -eux
             export PATH=/opt/python/cp311-cp311/bin:$PATH
             make binaries
-            python -m pip install --upgrade pip build wheel pytest pyparsing
+            python -m pip install --upgrade pip build wheel pytest pyparsing pysdd
             # Run the whole suite against the binaries this job just built,
             # before they are packaged.
             python -m pytest problog/test -q
@@ -130,9 +130,12 @@ jobs:
         shell: msys2 {0}
         run: make binaries
 
+      # pysdd is what the sdd, sddx and fsdd evaluatables compile with.  It is
+      # an optional dependency, and without it those three drop out of the
+      # suite without a word.
       - name: Install build dependencies
         shell: bash
-        run: python -m pip install --upgrade pip build wheel pytest pyparsing
+        run: python -m pip install --upgrade pip build wheel pytest pyparsing pysdd
 
       # Run the whole suite against the binaries this job just built, before
       # they are packaged.  Among other things this is what catches a knowledge
