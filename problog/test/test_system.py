@@ -20,6 +20,7 @@ import os
 import sys
 import threading
 import unittest
+from concurrent.futures import ThreadPoolExecutor
 
 from problog import get_evaluatable, register_semiring
 from problog import root_path
@@ -147,26 +148,14 @@ def on_a_deep_stack(func):
     compiles the same models in under 512 kB.  So give the test the stack it
     wants rather than let the platform decide whether it runs.
     """
-    outcome = []
-
-    def call():
-        try:
-            outcome.append((True, func()))
-        except BaseException as err:  # re-raised on the calling thread below
-            outcome.append((False, err))
-
+    # The pool starts its worker inside submit(), while the larger size holds.
     previous = threading.stack_size(16 * 1024 * 1024)
     try:
-        thread = threading.Thread(target=call)
-        thread.start()
-        thread.join()
+        with ThreadPoolExecutor(max_workers=1) as pool:
+            future = pool.submit(func)
     finally:
         threading.stack_size(previous)
-
-    succeeded, value = outcome[0]
-    if succeeded:
-        return value
-    raise value
+    return future.result()
 
 
 def createSystemTestGeneric(filename, logspace=False):
