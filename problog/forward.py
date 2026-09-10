@@ -39,6 +39,10 @@ from .sdd_formula import SDD
 from .util import UHeap
 
 
+#: signal.alarm is POSIX only, so the compilation timeout is too.
+HAS_ALARM = hasattr(signal, "alarm")
+
+
 def timeout_handler(signum, frame):
     raise SystemError("Process timeout (Python) [%s]" % signum)
 
@@ -300,26 +304,39 @@ class ForwardInference(DD):
         required_nodes |= set(
             [abs(n) for q, n, v in self.evidence_all() if self.is_probabilistic(n)]
         )
+        armed = False
         if self.timeout:
-            # signal.signal(signal.SIGALRM, timeout_handler)
-            signal.alarm(self.timeout)
-            signal.signal(signal.SIGALRM, timeout_handler)
-            logging.getLogger("problog").info("Set timeout:", self.timeout)
+            if HAS_ALARM:
+                signal.signal(signal.SIGALRM, timeout_handler)
+                signal.alarm(self.timeout)
+                armed = True
+                logging.getLogger("problog").info("Set timeout: %s", self.timeout)
+            else:
+                logging.getLogger("problog").warning(
+                    "Compiling without the requested timeout of %s seconds: "
+                    "this platform has no signal.alarm",
+                    self.timeout,
+                )
         try:
-            self.init_build()
-            updated_nodes = OrderedSet(self._facts)
-            while updated_nodes:
-                # TODO only check nodes that are actually used in negation
-                updated_nodes = self.build_stratum(updated_nodes)
-            self._propagate_complete(False)
-        except SystemError as err:
-            self._propagate_complete(True)
-            logging.getLogger("problog").warning(err)
-        except KeyboardInterrupt as err:
-            self._propagate_complete(True)
-            logging.getLogger("problog").warning(err)
-
-        signal.alarm(0)
+            try:
+                self.init_build()
+                updated_nodes = OrderedSet(self._facts)
+                while updated_nodes:
+                    # TODO only check nodes that are actually used in negation
+                    updated_nodes = self.build_stratum(updated_nodes)
+                self._propagate_complete(False)
+            except SystemError as err:
+                self._propagate_complete(True)
+                logging.getLogger("problog").warning(err)
+            except KeyboardInterrupt as err:
+                self._propagate_complete(True)
+                logging.getLogger("problog").warning(err)
+        finally:
+            # Only cancel an alarm this call set: signal.alarm does not exist
+            # on Windows, and cancelling unconditionally raised AttributeError
+            # there for every compilation, timeout or no timeout.
+            if armed:
+                signal.alarm(0)
         self.build_constraint_dd()
 
     def current(self):
