@@ -1464,7 +1464,7 @@ def argparser():
         "-k",
         "--knowledge",
         dest="koption",
-        choices={"sdd", "sddx", "ddnnf"},  # get_evaluatables(),
+        choices={"mvsdd", "sdd", "sddx", "ddnnf"},  # get_evaluatables(),
         default=None,
         help="knowledge compilation tool",
     )

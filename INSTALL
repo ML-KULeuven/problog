@@ -15,9 +15,10 @@ For better performance you can also run ProbLog with PyPy:
 ProbLog's evaluation is based on knowledge compilation tools.
 By default it uses dsharp [https://github.com/QuMuLab/dsharp/].
 
-It also supports two other tools:
+It also supports three other tools:
     * C2D Compiler (NNF) [http://reasoning.cs.ucla.edu/c2d/]
     * Sentential Decision Diagrams (SDD) [http://reasoning.cs.ucla.edu/sdd/]
+    * Multi-valued SDDs (MV-SDD) [https://github.com/rmanhaeve/mv-sdd]
 
 It is recommended to install one of these alternatives (especially for Mac users).
 
@@ -34,6 +35,18 @@ When installing from source, use "pip install .[sdd]"
 Usage: 
 ProbLog will automatically use SDDs from now on.
 If you want to use d-DNNFs you can use add the command line options -k nnf.
+
+MV-SDD
+++++++
+
+MV-SDDs represent each annotated disjunction as one multi-valued variable instead of one
+Boolean variable per head, which avoids compiling the constraint that exactly one head is
+chosen. They need Python 3.10+ and the mv-sdd package ("pip install problog[mvsdd]", or
+"pip install .[mvsdd]" from source).
+
+Usage:
+ProbLog uses MV-SDDs whenever mv-sdd is installed, also when PySDD is installed.
+Use -k sdd to use SDDs instead.
 
 C2D
 +++
@@ -59,6 +72,11 @@ Usage:
 ProbLog will automatically use SDDs from now on.
 If you want to use d-DNNFs you can use add the command line options -k nnf. 
 
+MV-SDD
+++++++
+
+As on Linux: install mv-sdd ("pip install problog[mvsdd]"); ProbLog then uses MV-SDDs.
+
 C2D
 +++
 C2D is not available for Mac OSX.
@@ -72,6 +90,10 @@ Windows
 SDD
 +++
 SDDs are not available for Windows.
+
+MV-SDD
+++++++
+MV-SDDs are not available for Windows.
 
 C2D
 +++

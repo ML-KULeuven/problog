@@ -28,6 +28,8 @@ dependencies = []
 
 [project.optional-dependencies]
 sdd = ["pysdd>=0.2.6"]
+# Weighted model counting arrived after 0.1.0b1.  mv-sdd publishes no Windows wheels.
+mvsdd = ["mv-sdd>0.1.0b1; python_version >= '3.10' and platform_system != 'Windows'"]
 
 [project.urls]
 Homepage = "https://dtai.cs.kuleuven.be/problog"

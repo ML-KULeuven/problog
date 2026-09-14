@@ -49,6 +49,7 @@ from . import logic
 from . import ddnnf_formula
 from . import parser
 from . import program
+from . import mvsdd_formula
 from . import sdd_formula
 from . import sdd_formula_explicit
 from . import util
@@ -60,6 +61,7 @@ from . import tasks
 from . import debug
 
 _evaluatables: typing.Dict[str, typing.Type[evaluator.Evaluatable]] = {
+    "mvsdd": mvsdd_formula.MVSDD,
     "sdd": sdd_formula.SDD,
     "sddx": sdd_formula_explicit.SDDExplicit,
     "bdd": bdd_formula.BDD,

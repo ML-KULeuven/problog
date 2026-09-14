@@ -4,6 +4,7 @@ from problog import get_evaluatable
 from problog.evaluator import SemiringProbability
 from problog.formula import LogicFormula
 from problog.program import PrologString
+from problog.mvsdd_formula import MVSDD
 
 # noinspection PyBroadException
 try:
@@ -21,6 +22,9 @@ if has_sdd:
     evaluatables.append("fsdd")
 else:
     print("No SDD support - The transformation tests are not performed with SDDs.")
+
+if MVSDD.is_available():
+    evaluatables.append("mvsdd")
 
 
 class TestTransformation(unittest.TestCase):

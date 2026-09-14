@@ -29,6 +29,7 @@ from problog.evaluator import SemiringProbability, SemiringLogProbability, Semir
 from problog.formula import LogicFormula
 from problog.forward import _ForwardSDD
 from problog.program import PrologFile, DefaultPrologParser, ExtendedPrologFactory
+from problog.mvsdd_formula import MVSDD
 
 if __name__ == "__main__":
     sys.path.insert(
@@ -328,6 +329,9 @@ if has_sdd:
     evaluatables.append("fsdd")
 else:
     print("No SDD support - The system tests are not performed with SDDs.")
+
+if MVSDD.is_available():
+    evaluatables.append("mvsdd")
 
 for testfile in filenames:
     testname = "test_system_" + os.path.splitext(os.path.basename(testfile))[0]

@@ -24,6 +24,7 @@ from problog.engine import GenericEngine
 from problog.formula import LogicFormula
 from problog.logic import Term, Constant
 from problog.program import PrologString, LogicProgram
+from problog.mvsdd_formula import MVSDD
 
 # noinspection PyBroadException
 try:
@@ -41,6 +42,9 @@ if has_sdd:
     evaluatables.append("fsdd")
 else:
     print("No SDD support - The evaluator tests are not performed with SDDs.")
+
+if MVSDD.is_available():
+    evaluatables.append("mvsdd")
 
 _MOCK_SEMIRING_CONSTRUCTED_COUNT = 0
 

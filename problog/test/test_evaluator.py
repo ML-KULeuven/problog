@@ -27,6 +27,7 @@ from problog.evaluator import (
 from problog.formula import LogicFormula
 from problog.logic import Term
 from problog.program import PrologString
+from problog.mvsdd_formula import MVSDD
 
 # noinspection PyBroadException
 from problog.test.test_system import SemiringProbabilityNSPCopy
@@ -46,6 +47,9 @@ if has_sdd:
     evaluatables.append("fsdd")
 else:
     print("No SDD support - The evaluator tests are not performed with SDDs.")
+
+if MVSDD.is_available():
+    evaluatables.append("mvsdd")
 
 
 class TestEvaluator(unittest.TestCase):

@@ -9,6 +9,7 @@ import os
 import sys
 import glob
 from problog.learning.lfi import lfi_wrapper, LFIProblem
+from problog.mvsdd_formula import MVSDD
 
 try:
     from pysdd import sdd
@@ -163,6 +164,9 @@ def main():
 
     else:
         print("No SDD support - The system tests are not performed with SDDs.")
+
+    if MVSDD.is_available():
+        evaluatables.append("mvsdd")
 
     # tests for ADs
     for testfile in AD_filenames:
