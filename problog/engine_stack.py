@@ -62,6 +62,29 @@ class InvalidEngineState(Exception):
     pass
 
 
+#: Deepest nesting of engine subcalls (findall/3 and the other indirect calls)
+#: that is allowed.  Each level is Python recursion costing some seventeen
+#: frames of real C stack, so a cycle through findall/3 -- which nests without
+#: end -- would otherwise overrun the stack.  Where that stack is small enough,
+#: as on Windows, the overrun kills the process before Python can raise.
+#:
+#: A level measures at roughly 9 kB of stack, so the smallest stack we expect,
+#: the 1 MB a thread gets on Windows, holds about a hundred of them.  Thirty-two
+#: keeps a threefold margin on that and is still far above what programs need:
+#: the deepest the test suite nests is two.
+MAX_SUBCALL_DEPTH = 32
+
+
+class SubcallDepthExceeded(RuntimeError):
+    """Raised when subcalls nest deeper than :data:`MAX_SUBCALL_DEPTH`.
+
+    A RuntimeError because every subcall site already turns one into the
+    IndirectCallCycleError it wants to report, with the location of the call.
+    """
+
+    pass
+
+
 class StackBasedEngine(ClauseDBEngine):
     def __init__(self, label_all=False, **kwdargs):
         ClauseDBEngine.__init__(self, **kwdargs)
@@ -83,6 +106,9 @@ class StackBasedEngine(ClauseDBEngine):
         self.pointer = 0
         self.stack_size = 128
         self.stack = [None] * self.stack_size
+
+        self.subcall_depth = 0
+        self.max_subcall_depth = kwdargs.get("max_subcall_depth", MAX_SUBCALL_DEPTH)
 
         self.stats = [0] * 10
 
@@ -310,7 +336,30 @@ class StackBasedEngine(ClauseDBEngine):
 
         return initial_actions
 
-    def execute(
+    def execute(self, node_id, subcall=False, **kwdargs):
+        """
+        Execute the given node.
+        :param node_id: pointer of the node in the database
+        :param subcall: indicates whether this is a toplevel call or a subcall
+        :param kwdargs: additional arguments
+        :return: results of the execution
+        :raise SubcallDepthExceeded: if subcalls nest deeper than
+            :attr:`max_subcall_depth`
+        """
+        if not subcall:
+            return self._execute(node_id, subcall=subcall, **kwdargs)
+
+        if self.subcall_depth >= self.max_subcall_depth:
+            raise SubcallDepthExceeded(
+                "Subcalls nested deeper than %s" % self.max_subcall_depth
+            )
+        self.subcall_depth += 1
+        try:
+            return self._execute(node_id, subcall=subcall, **kwdargs)
+        finally:
+            self.subcall_depth -= 1
+
+    def _execute(
         self,
         node_id,
         target=None,
@@ -321,7 +370,8 @@ class StackBasedEngine(ClauseDBEngine):
         **kwdargs
     ):
         """
-        Execute the given node.
+        Execute the given node, without the subcall bookkeeping :meth:`execute`
+        does.  Everything calls that one instead.
         :param node_id: pointer of the node in the database
         :param subcall: indicates whether this is a toplevel call or a subcall
         :param target: target datastructure for storing the ground program

@@ -18,7 +18,9 @@ limitations under the License.
 import glob
 import os
 import sys
+import threading
 import unittest
+from concurrent.futures import ThreadPoolExecutor
 
 from problog import get_evaluatable, register_semiring
 from problog import root_path
@@ -131,6 +133,31 @@ def read_result(filename):
     return results
 
 
+def on_a_deep_stack(func):
+    """Call func on a thread with a stack larger than any platform's default.
+
+    ForwardSDD's explicit encoding multiplies wide SDD decompositions, and
+    libsdd sizes a local array by the width of the decomposition it is
+    multiplying -- one frame of multiply_decompositions measures at 74 kB
+    against the 336 bytes of the frame beside it.  Compiling 6_hmm_weather this
+    way wants more than the 2 MB of stack a release python.exe reserves on
+    Windows, where overrunning it kills the interpreter rather than raising.
+
+    Nothing outside this test compiles that way: to_explicit_encoding has no
+    other caller, and every evaluatable a user can name -- sdd, sddx, fsdd --
+    compiles the same models in under 512 kB.  So give the test the stack it
+    wants rather than let the platform decide whether it runs.
+    """
+    # The pool starts its worker inside submit(), while the larger size holds.
+    previous = threading.stack_size(16 * 1024 * 1024)
+    try:
+        with ThreadPoolExecutor(max_workers=1) as pool:
+            future = pool.submit(func)
+    finally:
+        threading.stack_size(previous)
+    return future.result()
+
+
 def createSystemTestGeneric(filename, logspace=False):
     correct = read_result(filename)
 
@@ -188,7 +215,7 @@ def createSystemTestGeneric(filename, logspace=False):
                 self.assertAlmostEqual(correct[query], computed[query], msg=query)
 
     def evaluate_explicit_from_fsdd(self, custom_semiring=None):
-        try:
+        def compile_and_evaluate():
             parser = DefaultPrologParser(ExtendedPrologFactory())
             lf = PrologFile(filename, parser=parser)
             kc = _ForwardSDD.create_from(lf)  # type: _ForwardSDD
@@ -201,7 +228,10 @@ def createSystemTestGeneric(filename, logspace=False):
             else:
                 semiring = SemiringProbability()
 
-            computed = kc.evaluate(semiring=semiring)
+            return kc.evaluate(semiring=semiring)
+
+        try:
+            computed = on_a_deep_stack(compile_and_evaluate)
             computed = {str(k): v for k, v in computed.items()}
         except Exception as err:
             # print("exception %s" % err)

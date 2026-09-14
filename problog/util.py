@@ -21,6 +21,7 @@ Provides useful utilities functions and classes.
     See the License for the specific language governing permissions and
     limitations under the License.
 """
+import _thread
 import collections
 import collections.abc
 import importlib.util
@@ -31,6 +32,7 @@ import signal
 import subprocess
 import sys
 import tempfile
+import threading
 import time
 
 
@@ -114,6 +116,14 @@ class Timer(object):
             )
 
 
+#: SIGALRM and signal.alarm are POSIX only.  Windows gets the timer below.
+HAS_ALARM = hasattr(signal, "alarm")
+
+_timer = None
+_expired = False
+_previous_sigint = None
+
+
 # noinspection PyUnusedLocal
 def _raise_timeout(*args):
     """Raise global timeout exception (used by global timer)
@@ -124,19 +134,67 @@ def _raise_timeout(*args):
     raise KeyboardInterrupt("Timeout")  # Global exception on all threads
 
 
+def _expire():
+    """Interrupt the main thread, from the timer thread.
+
+    Raising here would only unwind the timer thread, so ask the main thread to
+    raise instead.  It does that through its SIGINT handler, which is why
+    _on_sigint below is installed for as long as the timer is pending.
+    """
+    global _expired
+    _expired = True
+    _thread.interrupt_main()
+
+
+def _on_sigint(signum, frame):
+    """Tell the timer's own interrupt apart from the user pressing Ctrl+C."""
+    if _expired:
+        _raise_timeout(signum, frame)
+    if callable(_previous_sigint):
+        return _previous_sigint(signum, frame)
+    raise KeyboardInterrupt()
+
+
 def start_timer(timeout=0):
     """Start a global timeout timer.
 
     :param timeout: timeout in seconds
     :type timeout: int
     """
-    signal.signal(signal.SIGALRM, _raise_timeout)
-    signal.alarm(timeout)
+    global _timer, _expired, _previous_sigint
+    if not timeout:
+        return
+
+    if HAS_ALARM:
+        signal.signal(signal.SIGALRM, _raise_timeout)
+        signal.alarm(timeout)
+        return
+
+    # Windows has neither SIGALRM nor alarm, so time it on a thread and have
+    # the main one raise where the alarm handler would have.  The message
+    # matters: errors.py reads it to tell a timeout from a user interrupt.
+    _expired = False
+    _previous_sigint = signal.getsignal(signal.SIGINT)
+    signal.signal(signal.SIGINT, _on_sigint)
+    _timer = threading.Timer(timeout, _expire)
+    _timer.daemon = True
+    _timer.start()
 
 
 def stop_timer():
     """Stop the global timeout timer."""
-    signal.alarm(0)
+    global _timer, _expired, _previous_sigint
+    if HAS_ALARM:
+        signal.alarm(0)
+        return
+
+    if _timer is not None:
+        _timer.cancel()
+        _timer = None
+    if _previous_sigint is not None:
+        signal.signal(signal.SIGINT, _previous_sigint)
+        _previous_sigint = None
+    _expired = False
 
 
 def subprocess_check_output(*popenargs, **kwargs):
