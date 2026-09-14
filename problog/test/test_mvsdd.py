@@ -16,11 +16,14 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 import unittest
+from unittest import mock
 
+from problog import sdd_formula
 from problog.evaluator import SemiringLogProbability
 from problog.logic import Term
 from problog.mvsdd_formula import MVSDD, ISSUE_URL
 from problog.program import PrologString
+from problog.sdd_formula import SDD
 
 # Grounding keeps only the heads the queries need: c(1,b) and c(2,r) are left out, and the
 # choice of none of the heads absorbs their probability.
@@ -127,6 +130,41 @@ class TestMVSDD(unittest.TestCase):
     def test_no_probabilistic_atoms(self):
         kc = MVSDD.create_from(PrologString("a.\nb :- fail.\nquery(a).\nquery(b).\n"))
         self.assertResults({"a": 1.0, "b": 0.0}, kc.evaluate())
+
+
+@unittest.skipUnless(SDD.is_available(), "PySDD is not installed")
+class TestSuggestMVSDD(unittest.TestCase):
+    """SDD points out MV-SDD when it compiles annotated disjunctions without it."""
+
+    def setUp(self):
+        for patch in (
+            mock.patch.object(sdd_formula, "_mvsdd_suggested", False),
+            mock.patch.object(sdd_formula, "_mvsdd_installable", return_value=True),
+            mock.patch.object(sdd_formula.logging.getLogger("problog"), "warning"),
+        ):
+            patch.start()
+            self.addCleanup(patch.stop)
+        self.warning = sdd_formula.logging.getLogger("problog").warning
+
+    def compile_twice(self, program):
+        for _ in range(2):
+            SDD.create_from(PrologString(program)).evaluate()
+
+    def test_warns_once_without_mvsdd(self):
+        with mock.patch.object(MVSDD, "is_available", return_value=False):
+            self.compile_twice(COLOURS)
+        self.warning.assert_called_once()
+        self.assertIn("pip install -U mv-sdd", self.warning.call_args[0][0])
+
+    def test_quiet_without_annotated_disjunctions(self):
+        with mock.patch.object(MVSDD, "is_available", return_value=False):
+            self.compile_twice("0.5::a.\nquery(a).\n")
+        self.warning.assert_not_called()
+
+    def test_quiet_with_mvsdd(self):
+        with mock.patch.object(MVSDD, "is_available", return_value=True):
+            self.compile_twice(COLOURS)
+        self.warning.assert_not_called()
 
 
 if __name__ == "__main__":

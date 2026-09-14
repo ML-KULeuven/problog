@@ -21,14 +21,18 @@ Interface to Sentential Decision Diagrams (SDD)
     See the License for the specific language governing permissions and
     limitations under the License.
 """
+import logging
 import os
+import sys
 from collections import namedtuple
 
+from .constraint import ConstraintAD
 from .core import transform
 from .dd_formula import DD, build_dd, DDManager, DDEvaluator
 from .errors import InstallError, InconsistentEvidenceError
 from .evaluator import SemiringLogProbability, SemiringProbability
 from .formula import LogicDAG, LogicFormula
+from .mvsdd_formula import MVSDD
 from .util import mktempfile
 
 # noinspection PyBroadException
@@ -106,6 +110,10 @@ class SDD(DD):
             var_constraint=self.var_constraint,
             varcount=self.init_varcount,
         )
+
+    def build_constraint_dd(self):
+        _suggest_mvsdd(self)
+        super().build_constraint_dd()
 
     def _create_evaluator(self, semiring, weights, **kwargs):
         return SDDEvaluator(self, semiring, weights, **kwargs)
@@ -216,6 +224,28 @@ class SDD(DD):
         if cache is not None:
             cache[current_node.id] = retval
         return retval
+
+
+_mvsdd_suggested = False
+
+
+def _mvsdd_installable():
+    """Whether mv-sdd can be installed here: it needs Python 3.10 and publishes no Windows builds."""
+    return sys.version_info >= (3, 10) and sys.platform != "win32"
+
+
+def _suggest_mvsdd(formula):
+    """Point out MV-SDD, once per process, when an SDD compiles annotated disjunctions without it."""
+    global _mvsdd_suggested
+    if _mvsdd_suggested or MVSDD.is_available() or not _mvsdd_installable():
+        return
+    if any(isinstance(c, ConstraintAD) and c.is_nontrivial() for c in formula.constraints()):
+        _mvsdd_suggested = True
+        logging.getLogger("problog").warning(
+            "This program has annotated disjunctions, which MV-SDD compiles natively and "
+            "often much faster than SDD, but MV-SDD is not available. Install or upgrade it "
+            "with: pip install -U mv-sdd"
+        )
 
 
 class SDDManager(DDManager):
