@@ -15,8 +15,10 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 """
+import os
 import shutil
 import subprocess
+import tempfile
 import unittest
 
 from problog import root_path
@@ -81,6 +83,40 @@ class TestMaxsatz(unittest.TestCase):
             "maxsatz answered %s over %d runs on one unchanged input; it has "
             "to answer the same thing every time" % (sorted(seen_answer), RUNS),
         )
+
+    def test_leaves_working_directory_alone(self):
+        """maxsatz crashed when run from a directory it could not write to.
+
+        After solving, it appended a line to a file named 'resulttable' in its
+        working directory without checking that the file could be opened, so
+        from a read-only directory fprintf got a NULL stream and segfaulted.
+        The ProbLog web server runs from such a directory, which broke every
+        MPE query there.
+
+        Permissions do not stop root, so also check that nothing is written:
+        that holds for every user.
+        """
+        if shutil.which("maxsatz") is None:
+            self.skipTest("maxsatz is not available")
+
+        cnf = root_path("test/specific/", "maxsatz_hard_weight.cnf")
+        with tempfile.TemporaryDirectory() as cwd:
+            os.chmod(cwd, 0o555)
+            try:
+                result = subprocess.run(
+                    ["maxsatz", cnf], cwd=cwd, stdout=subprocess.PIPE
+                )
+                written = os.listdir(cwd)
+            finally:
+                os.chmod(cwd, 0o755)
+
+        self.assertEqual(
+            0,
+            result.returncode,
+            "maxsatz exited with %d when run from a read-only directory"
+            % result.returncode,
+        )
+        self.assertEqual([], written, "maxsatz wrote into its working directory")
 
 
 if __name__ == "__main__":
