@@ -3021,7 +3021,6 @@ int main(int argc, char *argv[]) {
   int i;
   long begintime, endtime, mess;
   struct tms *a_tms;
-  FILE *fp_time;
   
   if (argc <= 1) {
     printf("Using format: %s input_instance [-l]\n\t-l: without local search.", argv[0]);
@@ -3032,8 +3031,8 @@ int main(int argc, char *argv[]) {
      the argv block and through the environment.  Whether that segfaulted
      depended only on how much mapped memory happened to follow argv[1], so
      maxsatz crashed on every input under a small environment and worked under
-     a large one.  It also left saved_input_file unterminated, which the two
-     printf("%s") uses below rely on. */
+     a large one.  It also left saved_input_file unterminated, which the
+     printf("%s") below relies on. */
   for (i=0; i<WORD_LENGTH-1 && argv[1][i] != '\0'; i++)
     saved_input_file[i]=argv[1][i];
   saved_input_file[i]='\0';
@@ -3089,16 +3088,16 @@ int main(int argc, char *argv[]) {
   printf ("Program terminated in %5.3f seconds.\n",
 	  ((double)(endtime-begintime)/CLOCKS_PER_SEC));
 
-  fp_time = fopen("resulttable", "a");
-  fprintf(fp_time, "wpmsz-2.5 %s %5.3f %lld %lld %lld %d %d %d %d\n", 
-	  saved_input_file, ((double)(endtime-begintime)/CLOCKS_PER_SEC), 
-	  NB_BRANCHE, NB_BACK,  
-	  UB, NB_VAR, INIT_NB_CLAUSE, NB_CLAUSE-INIT_NB_CLAUSE, CMTR[0]+CMTR[1]);
+  /* ProbLog patch: this also appended the line below to a file named
+     resulttable in the working directory, without checking that the file
+     could be opened.  From a directory it cannot write to, such as the one the
+     ProbLog web server runs in, fprintf got a NULL stream and maxsatz
+     segfaulted after solving.  Nothing reads that file, and it littered every
+     directory ProbLog was run from, so it is no longer written. */
   printf("wpmsz-2.5 %s %5.3f %lld %lld %lld %d %d %d %d\n", 
 	 	 saved_input_file, ((double)(endtime-begintime)/CLOCKS_PER_SEC), 
 	 NB_BRANCHE, NB_BACK,
 	 UB, NB_VAR, INIT_NB_CLAUSE, NB_CLAUSE-INIT_NB_CLAUSE, CMTR[0]+CMTR[1]);
-  fclose(fp_time);
 
   return 0;
 }

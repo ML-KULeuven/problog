@@ -172,9 +172,21 @@ def call_process(cmd, timeout, memout):
 
     """
 
+    def lower_limit(limit, value):
+        # A process may not raise its hard limit, so never ask for more than
+        # the server itself was given.
+        _, hard = resource.getrlimit(limit)
+        if hard != resource.RLIM_INFINITY:
+            value = min(value, hard)
+        resource.setrlimit(limit, (value, value))
+
     def setlimits():
-        resource.setrlimit(resource.RLIMIT_CPU, (timeout, timeout))
-        resource.setrlimit(resource.RLIMIT_AS, (memout, memout))
+        lower_limit(resource.RLIMIT_CPU, timeout)
+        try:
+            lower_limit(resource.RLIMIT_AS, memout)
+        except ValueError:
+            # macOS refuses a memory limit of any size.
+            pass
 
     return subprocess.check_output(cmd, preexec_fn=setlimits)
 
@@ -230,7 +242,8 @@ def run_problog_task(task, model, callback=None, data=None, options=None):
 
     try:
         # Execute ProbLog
-        call_process(cmd, DEFAULT_TIMEOUT, DEFAULT_MEMOUT * (1 << 30))
+        # setrlimit takes whole bytes; --memout is a float number of gigabytes.
+        call_process(cmd, DEFAULT_TIMEOUT, int(DEFAULT_MEMOUT * (1 << 30)))
 
         # Read output produced by ProbLog
         with open(outfile) as f:
